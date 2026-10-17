@@ -948,10 +948,10 @@ index ddfb9a3..4636a1e 100644
    bool TurnContextCurrent(const TurnContextOwner& owner) const;
    bool RemoteDebuggingOwnerCurrent(const std::string& token, uint64_t connection) const;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index e382a5a..a05620c 100644
+index 95ea69c..d313bdf 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -31,9 +31,10 @@
+@@ -34,9 +34,10 @@
  #include "chrome/browser/bookmarks/bookmark_model_factory.h"
  #include "chrome/browser/buildflags.h"
  #if BUILDFLAG(ENABLE_AUX_SHELL)
@@ -964,7 +964,7 @@ index e382a5a..a05620c 100644
  #if BUILDFLAG(ENABLE_PRINTING)
  #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
  #include "chrome/browser/printing/print_view_manager.h"
-@@ -139,7 +140,6 @@ namespace {
+@@ -142,7 +143,6 @@ namespace {
  
  #if BUILDFLAG(ENABLE_AUX_SHELL)
  constexpr size_t kMaxAuxEvidenceImageBytes = 8 * 1024 * 1024;
@@ -972,7 +972,7 @@ index e382a5a..a05620c 100644
  
  bool WriteAuxText(const base::FilePath& destination, std::string content) {
    base::FilePath temporary;
-@@ -176,37 +176,32 @@ bool CopyAuxArtifact(const base::FilePath& root,
+@@ -179,37 +179,32 @@ bool CopyAuxArtifact(const base::FilePath& root,
    return false;
  }
  
@@ -1032,7 +1032,7 @@ index e382a5a..a05620c 100644
  }
  #endif
  
-@@ -619,7 +614,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+@@ -622,7 +617,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
    if (purpose == FileDialogPurpose::kEvidenceImage) {
      base::ThreadPool::PostTaskAndReplyWithResult(
          FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
@@ -1041,7 +1041,7 @@ index e382a5a..a05620c 100644
          base::BindOnce(
              [](RequestCallback callback, std::optional<std::string> result) {
                std::move(callback).Run(result.has_value(), result.value_or(""),
-@@ -790,14 +785,14 @@ void WebUIBrowserUI::MultiFilesSelected(
+@@ -793,14 +788,14 @@ void WebUIBrowserUI::MultiFilesSelected(
    std::move(callback).Run(true, *base::WriteJson(result), "", "");
  }
  
@@ -1063,7 +1063,7 @@ index e382a5a..a05620c 100644
      std::move(callback).Run(false, "", "ref_stale",
                              "Original document selection is unavailable");
      return;
-@@ -810,43 +805,57 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
+@@ -813,43 +808,57 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
                              "Document selection index is out of range");
      return;
    }
@@ -1156,7 +1156,7 @@ index e382a5a..a05620c 100644
  }
  
  void WebUIBrowserUI::FileSelectionCanceled() {
-@@ -1209,6 +1218,14 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -1212,6 +1221,14 @@ void WebUIBrowserUI::Request(const std::string& method,
            },
            std::move(callback));
    const auto& api_method = (*list)[0].GetString();
@@ -1172,7 +1172,7 @@ index e382a5a..a05620c 100644
        api_method == "runs.retry" || api_method == "runs.branch" ||
        api_method == "runs.branch.list" ||
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index 57d0958..bd863c7 100644
+index febda1d..f233699 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
 @@ -5,10 +5,11 @@
@@ -2649,7 +2649,7 @@ index 0000000..0fa85c3
 +  ReadChunk(uint32 index) => (Chunk chunk);
 +};
 diff --git a/chrome/utility/BUILD.gn b/chrome/utility/BUILD.gn
-index 1673288..6be4e3b 100644
+index 409b9ec..cd0cce3 100644
 --- a/chrome/utility/BUILD.gn
 +++ b/chrome/utility/BUILD.gn
 @@ -3,6 +3,7 @@
@@ -2658,17 +2658,17 @@ index 1673288..6be4e3b 100644
  import("//build/config/sysroot.gni")
 +import("//chrome/browser/buildflags.gni")
  import("//chrome/common/features.gni")
+ import("//chrome/services/file_util/public/features.gni")
  import("//chrome/services/speech/buildflags/buildflags.gni")
- import("//components/on_device_translation/buildflags/features.gni")
-@@ -35,6 +36,7 @@ static_library("utility") {
+@@ -36,6 +37,7 @@ static_library("utility") {
      "//build:chromeos_buildflags",
      "//chrome:resources",
      "//chrome:strings",
 +    "//chrome/browser:buildflags",
      "//chrome/common",
      "//chrome/common:mojo_bindings",
-     "//chrome/services/speech/buildflags",
-@@ -77,6 +79,10 @@ static_library("utility") {
+     "//chrome/services/file_util:buildflags",
+@@ -79,6 +81,10 @@ static_library("utility") {
      "//ui/base:buildflags",
    ]
  
@@ -2680,7 +2680,7 @@ index 1673288..6be4e3b 100644
      sources += [
        "aux/firefox_private_vfs.cc",
 diff --git a/chrome/utility/services.cc b/chrome/utility/services.cc
-index b47e56c..50cb8a0 100644
+index 0c67fdd..b7c5a58 100644
 --- a/chrome/utility/services.cc
 +++ b/chrome/utility/services.cc
 @@ -8,6 +8,7 @@
@@ -2688,10 +2688,10 @@ index b47e56c..50cb8a0 100644
  
  #include "build/build_config.h"
 +#include "chrome/browser/buildflags.h"
+ #include "chrome/services/file_util/buildflags.h"
  #include "chrome/services/speech/buildflags/buildflags.h"
  #include "components/on_device_translation/buildflags/buildflags.h"
- #include "components/paint_preview/buildflags/buildflags.h"
-@@ -32,6 +33,12 @@
+@@ -33,6 +34,12 @@
  #include "services/passage_embeddings/passage_embeddings_service.h"
  #include "ui/accessibility/accessibility_features.h"
  
@@ -2704,7 +2704,7 @@ index b47e56c..50cb8a0 100644
  #if BUILDFLAG(IS_ANDROID)
  #include "chrome/services/readaloud/read_aloud_playback_controller.h"  // nogncheck
  #endif  // BUILDFLAG(IS_ANDROID)
-@@ -480,6 +487,18 @@ auto RunAuxFirefoxProfileDecoder(
+@@ -481,6 +488,17 @@ auto RunAuxFirefoxProfileDecoder(
  }
  #endif
  
@@ -2715,15 +2715,14 @@ index b47e56c..50cb8a0 100644
 +          switches::kProcessType) != switches::kUtilityProcess) {
 +    return nullptr;
 +  }
-+  return std::make_unique<aux::document::DocumentExtractor>(
-+      std::move(receiver));
++  return std::make_unique<aux::document::DocumentExtractor>(std::move(receiver));
 +}
 +#endif
 +
  }  // namespace
  
  void RegisterElevatedMainThreadServices(mojo::ServiceFactory& services) {
-@@ -595,6 +614,9 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
+@@ -596,6 +614,9 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
  }
  
  void RegisterIOThreadServices(mojo::ServiceFactory& services) {

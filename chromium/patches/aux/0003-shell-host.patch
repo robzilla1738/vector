@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
-index 681ad0d..32349a8 100644
+index 548441c..e74afb0 100644
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -140,6 +140,9 @@
+@@ -141,6 +141,9 @@
  #include "components/update_client/update_query_params.h"
  #include "components/variations/service/variations_service.h"
  #include "components/web_resource/web_resource_pref_names.h"
@@ -12,7 +12,7 @@ index 681ad0d..32349a8 100644
  #include "content/public/browser/browser_task_traits.h"
  #include "content/public/browser/browser_thread.h"
  #include "content/public/browser/child_process_security_policy.h"
-@@ -335,6 +338,9 @@ BrowserProcessImpl::BrowserProcessImpl(StartupData* startup_data)
+@@ -336,6 +339,9 @@ BrowserProcessImpl::BrowserProcessImpl(StartupData* startup_data)
    g_browser_process = this;
  
    features_->Init();
@@ -22,7 +22,7 @@ index 681ad0d..32349a8 100644
  
    DCHECK(browser_policy_connector_);
    DCHECK(local_state_);
-@@ -608,6 +614,9 @@ void BrowserProcessImpl::StartTearDown() {
+@@ -610,6 +616,9 @@ void BrowserProcessImpl::StartTearDown() {
    DCHECK(IsShuttingDown());
  
    features_->PostMainMessageLoopRun();
@@ -44,7 +44,7 @@ index 681ad0d..32349a8 100644
  
  #if BUILDFLAG(IS_LINUX) && BUILDFLAG(USE_DBUS)
 diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
-index 3fab4be..b3af18d 100644
+index a6961cf..a4b3ba7 100644
 --- a/chrome/browser/browser_process_impl.h
 +++ b/chrome/browser/browser_process_impl.h
 @@ -25,6 +25,7 @@
@@ -66,7 +66,7 @@ index 3fab4be..b3af18d 100644
  class BatteryMetrics;
  class ChromeMetricsServicesManagerClient;
  class DevToolsAutoOpener;
-@@ -515,6 +520,9 @@ class BrowserProcessImpl : public BrowserProcess,
+@@ -514,6 +519,9 @@ class BrowserProcessImpl : public BrowserProcess,
  
    // This must be destroyed before UnownedUserDataHost.
    std::unique_ptr<GlobalFeatures> features_;
@@ -77,7 +77,7 @@ index 3fab4be..b3af18d 100644
    // Observes application-wide events and logs them to breadcrumbs. Null if
    // breadcrumbs logging is disabled.
 diff --git a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
-index 6da26cc..6cabe23 100644
+index 31f36e3..337174c 100644
 --- a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
 +++ b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
 @@ -6,6 +6,11 @@
@@ -92,7 +92,7 @@ index 6da26cc..6cabe23 100644
  #include "chrome/browser/actor/ui/actor_overlay_ui.h"
  #include "chrome/browser/chrome_browser_interface_binders_webui_parts.h"
  #include "chrome/browser/contextual_cueing/internals/contextual_cueing_internals.mojom.h"
-@@ -146,12 +151,12 @@
+@@ -147,12 +152,12 @@
  #include "chrome/browser/ui/webui/app_settings/web_app_settings_ui.h"
  // The intro mojom targets exist on ChromeOS but these headers are only
  // compiled on Win/Mac/Linux; gn check is static, so suppress it on ChromeOS.
@@ -107,7 +107,7 @@ index 6da26cc..6cabe23 100644
  #include "chrome/browser/ui/webui/on_device_translation_internals/on_device_translation_internals_ui.h"
  #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin.mojom.h"
  #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin_ui.h"
-@@ -549,6 +554,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
+@@ -553,6 +558,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
        on_device_internals::OnDeviceInternalsUI>(map);
    RegisterWebUIControllerInterfaceBinder<
        guest_contents::mojom::GuestContentsHost, WebUIBrowserUI>(map);
@@ -118,7 +118,7 @@ index 6da26cc..6cabe23 100644
  
    const bool is_contextual_tasks_enabled =
        contextual_tasks::IsContextualTasksUIEnabled();
-@@ -565,9 +574,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
+@@ -569,9 +578,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
    // registry.ForWebUI() pattern used in
    // PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop below which
    // eliminates the need to account for feature flag combinations.
@@ -132,7 +132,7 @@ index 6da26cc..6cabe23 100644
  
    if (base::FeatureList::IsEnabled(
            omnibox::kComposeboxDriveContextMenuOption)) {
-@@ -689,8 +699,11 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
+@@ -694,8 +704,11 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
        .Add<help_bubble::mojom::HelpBubbleHandlerFactory>();
  
    if (webui_browser::IsWebUIBrowserEnabled()) {
@@ -147,15 +147,15 @@ index 6da26cc..6cabe23 100644
          .Add<bookmarks_api::mojom::BookmarksService>()
          .Add<extensions_bar::mojom::PageHandlerFactory>()
 diff --git a/chrome/browser/notifications/notification_handler.h b/chrome/browser/notifications/notification_handler.h
-index 57dd57a..8421b54 100644
+index 38b8338..13a0eed 100644
 --- a/chrome/browser/notifications/notification_handler.h
 +++ b/chrome/browser/notifications/notification_handler.h
-@@ -41,7 +41,8 @@ class NotificationHandler {
-     TAILORED_SECURITY = 10,
+@@ -42,7 +42,8 @@ class NotificationHandler {
      DEFAULT_BROWSER_CHANGED = 11,
      EXTENSION_REQUEST = 12,
--    MAX = EXTENSION_REQUEST,
-+    AUX_RUN_ATTENTION = 13,
+     GLIC_ACTOR_TASK = 13,
+-    MAX = GLIC_ACTOR_TASK,
++    AUX_RUN_ATTENTION = 14,
 +    MAX = AUX_RUN_ATTENTION,
    };
  
@@ -685,7 +685,7 @@ index 0000000..fb9c230
 +}
 +}  // namespace aux
 diff --git a/chrome/browser/ui/startup/first_run_service.cc b/chrome/browser/ui/startup/first_run_service.cc
-index e1f1e2b..a301fde 100644
+index 7e1709c..03cb072 100644
 --- a/chrome/browser/ui/startup/first_run_service.cc
 +++ b/chrome/browser/ui/startup/first_run_service.cc
 @@ -13,6 +13,7 @@
@@ -696,7 +696,7 @@ index e1f1e2b..a301fde 100644
  #include "chrome/browser/first_run/first_run.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/profiles/profile_selections.h"
-@@ -296,6 +297,8 @@ FirstRunServiceFactory::BuildServiceInstanceForBrowserContext(
+@@ -295,6 +296,8 @@ FirstRunServiceFactory::BuildServiceInstanceForBrowserContext(
  // Helpers ---------------------------------------------------------------------
  
  bool ShouldOpenFirstRun(Profile* profile) {
@@ -1136,7 +1136,7 @@ index 0000000..2fc2379
 +      (bool ok, string result_json, string error_code, string error_message);
 +};
 diff --git a/chrome/browser/ui/webui_browser/webui_browser.cc b/chrome/browser/ui/webui_browser/webui_browser.cc
-index da9f377..ca20324 100644
+index 5ccde5e..027f6ed 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser.cc
 @@ -5,6 +5,7 @@
@@ -1146,8 +1146,8 @@ index da9f377..ca20324 100644
 +#include "chrome/browser/buildflags.h"
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
  #include "chrome/common/chrome_features.h"
- #include "content/public/browser/web_contents.h"
-@@ -14,7 +15,11 @@
+ #include "content/public/browser/navigation_controller.h"
+@@ -15,7 +16,11 @@
  namespace webui_browser {
  
  bool IsWebUIBrowserEnabled() {
@@ -1260,7 +1260,7 @@ index cb0e145..bf810f3 100644
    // The RenderFrameHost takes ownership of this object via the DocumentService.
    new WebUIBrowserGuestHandler(render_frame_host(), std::move(receiver),
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
-index d4563ad..865f903 100644
+index 2843563..896906e 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
 @@ -5,6 +5,15 @@
@@ -1277,9 +1277,9 @@ index d4563ad..865f903 100644
 +#include "chrome/browser/ui/aux/methods/extensions_ui_methods.h"
 +#endif
  
- #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
  #include "chrome/browser/ui/side_panel/side_panel_entry.h"
-@@ -22,9 +31,15 @@
+@@ -23,9 +32,15 @@
  namespace {
  
  content::WebContents* GetContainingWebContents(views::View* view) {
@@ -1298,7 +1298,7 @@ index d4563ad..865f903 100644
  }
  
  }  // namespace
-@@ -57,11 +72,17 @@ void WebUIBrowserSidePanelUI::Close(SidePanelEntryHideReason reason,
+@@ -59,11 +74,17 @@ void WebUIBrowserSidePanelUI::Close(SidePanelEntryHideReason reason,
  }
  
  void WebUIBrowserSidePanelUI::Toggle(SidePanelEntryKey key,
@@ -1318,7 +1318,7 @@ index d4563ad..865f903 100644
  }
  
  void WebUIBrowserSidePanelUI::ShowFrom(
-@@ -79,9 +100,9 @@ void WebUIBrowserSidePanelUI::SetNoDelaysForTesting(
+@@ -81,9 +102,9 @@ void WebUIBrowserSidePanelUI::SetNoDelaysForTesting(
  
  content::WebContents* WebUIBrowserSidePanelUI::GetWebContentsForId(
      SidePanelEntryId entry_id) const {
@@ -1331,7 +1331,7 @@ index d4563ad..865f903 100644
  }
  
  void WebUIBrowserSidePanelUI::Show(
-@@ -93,7 +114,15 @@ void WebUIBrowserSidePanelUI::Show(
+@@ -95,7 +116,15 @@ void WebUIBrowserSidePanelUI::Show(
      return;
    }
  
@@ -1347,7 +1347,7 @@ index d4563ad..865f903 100644
    if (IsSidePanelShowing() && *current_key() == input) {
      waiter()->ResetLoadingEntryIfNecessary();
  
-@@ -110,7 +139,7 @@ void WebUIBrowserSidePanelUI::Show(
+@@ -112,7 +141,7 @@ void WebUIBrowserSidePanelUI::Show(
    waiter()->WaitForEntry(
        entry, base::BindOnce(&WebUIBrowserSidePanelUI::PopulateSidePanel,
                              base::Unretained(this), suppress_animations, input,
@@ -1356,7 +1356,7 @@ index d4563ad..865f903 100644
  }
  
  void WebUIBrowserSidePanelUI::PopulateSidePanel(
-@@ -124,8 +153,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
+@@ -126,8 +155,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
      if (previous_entry) {
        previous_entry->OnEntryWillHide(SidePanelEntryHideReason::kReplaced);
  
@@ -1366,7 +1366,7 @@ index d4563ad..865f903 100644
  
        previous_entry->CacheView(std::move(current_side_panel_view_));
        current_side_panel_view_.reset();
-@@ -141,6 +169,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
+@@ -143,6 +171,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
        views::kDetachedViewFocusManagerKey,
        GetWebUIBrowserWindow()->widget()->GetFocusManager());
    SetCurrentKey(unique_key);
@@ -1374,7 +1374,7 @@ index d4563ad..865f903 100644
    GetWebUIBrowserWindow()->ShowSidePanel(entry->key());
  
    if (auto* contextual_registry = GetActiveContextualRegistry()) {
-@@ -149,7 +178,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
+@@ -151,7 +180,7 @@ void WebUIBrowserSidePanelUI::PopulateSidePanel(
  
    entry->OnEntryShown();
  
@@ -1383,7 +1383,7 @@ index d4563ad..865f903 100644
  
    // TODO(webium): lens side panel will be closed on opening other side panels.
    // It observes the side panel opening using
-@@ -182,6 +211,9 @@ void WebUIBrowserSidePanelUI::MaybeShowEntryOnTabStripModelChanged(
+@@ -184,6 +213,9 @@ void WebUIBrowserSidePanelUI::MaybeShowEntryOnTabStripModelChanged(
        (*old_contextual_registry->GetActiveEntry())->key() ==
            current_key()->key &&
        current_key()->tab_handle) {
@@ -1393,7 +1393,7 @@ index d4563ad..865f903 100644
      auto* active_entry = old_contextual_registry->GetActiveEntry().value();
      active_entry->CacheView(std::move(current_side_panel_view_));
      current_side_panel_view_.reset();
-@@ -196,6 +228,7 @@ void WebUIBrowserSidePanelUI::OnSidePanelClosed() {
+@@ -198,6 +230,7 @@ void WebUIBrowserSidePanelUI::OnSidePanelClosed() {
      return;
    }
  
@@ -1401,7 +1401,7 @@ index d4563ad..865f903 100644
    SidePanelEntry* previous_entry = GetEntryForUniqueKey(*current_key());
    SetCurrentKey(std::nullopt);
    if (previous_entry) {
-@@ -212,8 +245,42 @@ void WebUIBrowserSidePanelUI::OnSidePanelClosed() {
+@@ -214,8 +247,42 @@ void WebUIBrowserSidePanelUI::OnSidePanelClosed() {
    SidePanelRegistry::From(browser())->ResetActiveEntry();
  
    current_side_panel_view_.reset();
@@ -1447,7 +1447,7 @@ index d4563ad..865f903 100644
  
  WebUIBrowserWindow* WebUIBrowserSidePanelUI::GetWebUIBrowserWindow() {
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
-index c99d041..1f147a4 100644
+index 5b9e27f..c26a461 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
 @@ -6,6 +6,9 @@
@@ -1468,7 +1468,7 @@ index c99d041..1f147a4 100644
 +class WebUIBrowserSidePanelUI : public SidePanelUIBase,
 +                               public content::WebContentsObserver {
   public:
-   explicit WebUIBrowserSidePanelUI(Browser* browser);
+   explicit WebUIBrowserSidePanelUI(BrowserWindowInterface* browser);
    ~WebUIBrowserSidePanelUI() override;
 @@ -37,6 +41,10 @@ class WebUIBrowserSidePanelUI : public SidePanelUIBase {
  
@@ -1501,10 +1501,10 @@ index c99d041..1f147a4 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_SIDE_PANEL_UI_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 5c29c02..e382a5a 100644
+index 2dc243e..95ea69c 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -3,9 +3,70 @@
+@@ -3,12 +3,73 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
@@ -1512,6 +1512,9 @@ index 5c29c02..e382a5a 100644
 +#include "ui/views/controls/menu/menu_model_adapter.h"
 +#include "ui/views/controls/menu/menu_runner.h"
  
+ #include <array>
+ 
+ #include "base/containers/to_vector.h"
 +#include <cmath>
 +#include <utility>
 +#include <variant>
@@ -1575,7 +1578,7 @@ index 5c29c02..e382a5a 100644
  #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-@@ -34,6 +95,15 @@
+@@ -37,6 +98,15 @@
  #include "chrome/grit/tab_strip_api_resources_map.h"
  #include "chrome/grit/webui_browser_resources.h"
  #include "chrome/grit/webui_browser_resources_map.h"
@@ -1591,7 +1594,7 @@ index 5c29c02..e382a5a 100644
  #include "chrome/grit/webui_toolbar_shared_resources.h"
  #include "chrome/grit/webui_toolbar_shared_resources_map.h"
  #include "components/contextual_search/contextual_search_service.h"
-@@ -42,18 +112,124 @@
+@@ -45,18 +115,124 @@
  #include "components/guest_contents/browser/guest_contents_host_impl.h"
  #include "components/surface_embed/common/features.h"
  #include "content/public/browser/browser_context.h"
@@ -1716,7 +1719,7 @@ index 5c29c02..e382a5a 100644
  std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
    // TODO(webium): Ideally, the titles should be added to SIDE_PANEL_ENTRY_IDS
    // macros in chrome/browser/ui/side_panel/side_panel_entry_id.h, and
-@@ -79,9 +255,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+@@ -82,9 +258,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
  
  }  // namespace
  
@@ -1777,7 +1780,7 @@ index 5c29c02..e382a5a 100644
  
  bool WebUIBrowserUIConfig::IsWebUIEnabled(
      content::BrowserContext* browser_context) {
-@@ -99,18 +325,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -102,18 +328,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    WebUIBrowserWindow* webui_browser_window =
        WebUIBrowserWindow::FromWebShellWebContents(web_ui->GetWebContents());
    Profile* profile = Profile::FromWebUI(web_ui);
@@ -1818,7 +1821,7 @@ index 5c29c02..e382a5a 100644
    source->AddResourcePaths(kTabStripApiResources);
    source->AddResourcePaths(kWebuiToolbarSharedResources);
  
-@@ -167,7 +414,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -170,7 +417,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    }
  }
  
@@ -1832,7 +1835,7 @@ index 5c29c02..e382a5a 100644
  
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<webui_browser::mojom::PageHandlerFactory> receiver) {
-@@ -175,6 +427,825 @@ void WebUIBrowserUI::BindInterface(
+@@ -178,6 +430,825 @@ void WebUIBrowserUI::BindInterface(
    page_factory_receiver_.Bind(std::move(receiver));
  }
  
@@ -2658,7 +2661,7 @@ index 5c29c02..e382a5a 100644
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<bookmark_bar::mojom::PageHandlerFactory> receiver) {
    bookmark_bar_page_factory_receiver_.reset();
-@@ -188,8 +1259,7 @@ void WebUIBrowserUI::BindInterface(
+@@ -191,8 +1262,7 @@ void WebUIBrowserUI::BindInterface(
  }
  
  void WebUIBrowserUI::BindInterface(
@@ -2668,7 +2671,7 @@ index 5c29c02..e382a5a 100644
    searchbox_page_factory_receiver_.reset();
    searchbox_page_factory_receiver_.Bind(std::move(receiver));
  }
-@@ -316,17 +1386,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
+@@ -320,17 +1390,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
        browser_window()->GetWebUIBrowserSidePanelUI();
    content::WebContents* web_contents =
        side_panel_ui->GetWebContentsForId(side_panel_entry_key.id());
@@ -2703,7 +2706,7 @@ index 5c29c02..e382a5a 100644
  }
  
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index 1c81b67..57d0958 100644
+index f0b2bca..febda1d 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
 @@ -6,7 +6,21 @@
@@ -2969,10 +2972,10 @@ index 1c81b67..57d0958 100644
        bookmark_bar_page_factory_receiver_{this};
    mojo::Receiver<extensions_bar::mojom::PageHandlerFactory>
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-index e664f20..3ac6d6b 100644
+index 0a49a8e..a82d309 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-@@ -3,11 +3,27 @@
+@@ -3,14 +3,30 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
@@ -2993,6 +2996,9 @@ index e664f20..3ac6d6b 100644
 +#include "base/strings/string_util.h"
 +#include "base/strings/utf_string_conversions.h"
  #include "chrome/browser/app_mode/app_mode_utils.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "ui/base/window_open_disposition.h"
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +#include "chrome/browser/ui/aux/shell_warmup_manager.h"
@@ -3000,7 +3006,7 @@ index e664f20..3ac6d6b 100644
  #if BUILDFLAG(IS_MAC)
  #include "chrome/browser/global_keyboard_shortcuts_mac.h"
  #endif
-@@ -30,8 +46,12 @@
+@@ -32,8 +48,12 @@
  #include "chrome/browser/ui/find_bar/find_bar.h"
  #include "chrome/browser/ui/interaction/browser_elements.h"
  #include "chrome/browser/ui/side_panel/side_panel_ui_base.h"
@@ -3013,7 +3019,7 @@ index e664f20..3ac6d6b 100644
  #include "chrome/browser/ui/views/find_bar_host.h"
  #include "chrome/browser/ui/views/find_bar_owner.h"
  #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
-@@ -65,15 +85,68 @@
+@@ -67,15 +87,68 @@
  #include "ui/base/interaction/element_tracker.h"
  #include "ui/compositor/compositor.h"
  #include "ui/content_accelerators/accelerator_util.h"
@@ -3082,7 +3088,7 @@ index e664f20..3ac6d6b 100644
  // Copied from chrome/browser/ui/views/frame/browser_widget.cc.
  bool IsUsingLinuxSystemTheme(Profile* profile) {
  #if BUILDFLAG(IS_LINUX)
-@@ -136,6 +209,9 @@ class WebUIBrowserWindow::WidgetDelegate : public views::WidgetDelegate {
+@@ -138,6 +211,9 @@ class WebUIBrowserWindow::WidgetDelegate : public views::WidgetDelegate {
  
  WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
      : browser_(browser) {
@@ -3092,7 +3098,7 @@ index e664f20..3ac6d6b 100644
    // GuestContents is not approved for use in production. Restrict its
    // proxy content feature kAttachUnownedInnerWebContents to development,
    // canary, and test builds.
-@@ -177,6 +253,12 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+@@ -179,6 +255,12 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
    auto web_view = std::make_unique<views::WebView>(browser_->GetProfile());
  
    auto* ui_web_contents = web_view->GetWebContents();
@@ -3105,7 +3111,7 @@ index e664f20..3ac6d6b 100644
    web_contents_delegate_->SetUIWebContents(ui_web_contents);
    ui_web_contents->SetDelegate(web_contents_delegate_.get());
    ui_web_contents->SetUserData(
-@@ -192,8 +274,13 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+@@ -194,8 +276,13 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
        std::make_unique<ui::ScopedUnownedUserData<ExtensionsContainer>>(
            browser_->GetUnownedUserDataHost(), *extensions_container_);
  
@@ -3119,7 +3125,7 @@ index e664f20..3ac6d6b 100644
    // Set the ColorProviderSource after attaching to the WebView otherwise
    // attaching overwrites it.
    // TODO(webium): |widget_| should use |this| as its ColorProviderSource as
-@@ -225,9 +312,15 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+@@ -227,9 +314,15 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
                                base::Unretained(this)));
  
    LoadAccelerators();
@@ -3135,7 +3141,7 @@ index e664f20..3ac6d6b 100644
    browser_->GetFeatures().TearDownPreBrowserWindowDestruction();
    web_view_ = nullptr;
    // We want to destroy the extensions container before the `widget_` since
-@@ -321,8 +414,8 @@ void WebUIBrowserWindow::PaintAsActiveChanged() {
+@@ -323,8 +416,8 @@ void WebUIBrowserWindow::PaintAsActiveChanged() {
    } else {
      BrowserActiveStateManager::From(browser_)->DidBecomeInactive();
    }
@@ -3146,7 +3152,7 @@ index e664f20..3ac6d6b 100644
    }
  }
  
-@@ -423,18 +516,30 @@ gfx::NativeWindow WebUIBrowserWindow::GetNativeWindow() const {
+@@ -425,18 +518,30 @@ gfx::NativeWindow WebUIBrowserWindow::GetNativeWindow() const {
    // to verify.
    return gfx::NativeWindow();
  #else
@@ -3178,7 +3184,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::SetTopControlsShownRatio(
-@@ -618,11 +723,26 @@ void WebUIBrowserWindow::OnWidgetBoundsChanged(views::Widget* widget,
+@@ -628,11 +733,26 @@ void WebUIBrowserWindow::OnWidgetBoundsChanged(views::Widget* widget,
  }
  
  gfx::Rect WebUIBrowserWindow::GetContentsBoundsInScreen() const {
@@ -3205,7 +3211,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
-@@ -645,8 +765,8 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
+@@ -655,8 +775,8 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
    }
  
    // Notify the WebUI about the fullscreen mode.
@@ -3215,8 +3221,8 @@ index e664f20..3ac6d6b 100644
 +    ui->page()->OnFullscreenModeChanged(fullscreen, context);
    }
  
-   browser_->GetFeatures()
-@@ -719,6 +839,9 @@ void WebUIBrowserWindow::LoadAccelerators() {
+   ExclusiveAccessManager::From(browser_)
+@@ -728,6 +848,9 @@ void WebUIBrowserWindow::LoadAccelerators() {
  
  bool WebUIBrowserWindow::AcceleratorPressed(
      const ui::Accelerator& accelerator) {
@@ -3226,7 +3232,7 @@ index e664f20..3ac6d6b 100644
    int command_id;
    // Though AcceleratorManager should not send unknown |accelerator| to us, it's
    // still possible the command cannot be executed now.
-@@ -745,8 +868,12 @@ void WebUIBrowserWindow::SetTopControlsGestureScrollInProgress(
+@@ -754,8 +877,12 @@ void WebUIBrowserWindow::SetTopControlsGestureScrollInProgress(
  }
  
  std::vector<StatusBubble*> WebUIBrowserWindow::GetStatusBubbles() {
@@ -3239,7 +3245,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::UpdateTitleBar() {
-@@ -756,7 +883,9 @@ void WebUIBrowserWindow::UpdateTitleBar() {
+@@ -765,7 +892,9 @@ void WebUIBrowserWindow::UpdateTitleBar() {
  
  void WebUIBrowserWindow::OnBookmarkBarStateChanged(
      BookmarkBar::AnimateChangeType change_type) {
@@ -3250,7 +3256,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::UpdateLoadingAnimations(bool is_visible) {
-@@ -840,14 +969,20 @@ LocationBar* WebUIBrowserWindow::GetLocationBar() const {
+@@ -864,14 +993,20 @@ ui::AcceleratorProvider* WebUIBrowserWindow::GetAcceleratorProvider() {
  }
  
  void WebUIBrowserWindow::SetFocusToLocationBar(bool is_user_initiated) {
@@ -3275,7 +3281,7 @@ index e664f20..3ac6d6b 100644
    }
  }
  
-@@ -962,7 +1097,8 @@ void WebUIBrowserWindow::ConfirmBrowserCloseWithPendingDownloads(
+@@ -986,7 +1121,8 @@ void WebUIBrowserWindow::ConfirmBrowserCloseWithPendingDownloads(
      int download_count,
      UnloadController::DownloadCloseType dialog_type,
      base::OnceCallback<void(bool)> callback) {
@@ -3285,7 +3291,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::UserChangedTheme(
-@@ -1014,6 +1150,13 @@ WebUIBrowserWindow::PreHandleKeyboardEvent(
+@@ -1038,6 +1174,13 @@ WebUIBrowserWindow::PreHandleKeyboardEvent(
    ui::Accelerator accelerator =
        ui::GetAcceleratorFromNativeWebKeyboardEvent(event);
  
@@ -3299,7 +3305,7 @@ index e664f20..3ac6d6b 100644
    // What we have to do here is as follows:
    // - If the |browser_| is for an app, do nothing.
    // - On CrOS if |accelerator| is deprecated, we allow web contents to consume
-@@ -1112,24 +1255,26 @@ ExclusiveAccessContext* WebUIBrowserWindow::GetExclusiveAccessContext() {
+@@ -1136,24 +1279,26 @@ ExclusiveAccessContext* WebUIBrowserWindow::GetExclusiveAccessContext() {
  }
  
  std::string WebUIBrowserWindow::GetWorkspace() const {
@@ -3333,7 +3339,7 @@ index e664f20..3ac6d6b 100644
  }
  
  void WebUIBrowserWindow::ShowCaretBrowsingDialog() {
-@@ -1293,8 +1438,17 @@ views::ClientView* WebUIBrowserWindow::WidgetDelegate::CreateClientView(
+@@ -1317,8 +1462,17 @@ views::ClientView* WebUIBrowserWindow::WidgetDelegate::CreateClientView(
  std::u16string WebUIBrowserWindow::WidgetDelegate::GetWindowTitle() const {
    // TODO(webium):  BrowserView::GetWindowTitle() has some magic for media
    // on Mac.
@@ -3352,7 +3358,7 @@ index e664f20..3ac6d6b 100644
  }
  
  bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
-@@ -1319,18 +1473,23 @@ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
+@@ -1343,18 +1497,23 @@ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
  }
  
  WebUIBrowserUI* WebUIBrowserWindow::GetWebUIBrowserUI() const {
@@ -3383,7 +3389,7 @@ index e664f20..3ac6d6b 100644
  
  WebUIBrowserSidePanelUI* WebUIBrowserWindow::GetWebUIBrowserSidePanelUI() {
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
-index bb20c9d..b76477c 100644
+index 0e493cc..c836d5e 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
 @@ -6,8 +6,15 @@
@@ -3400,9 +3406,9 @@ index bb20c9d..b76477c 100644
  #include "base/callback_list.h"
 +#include "chrome/browser/buildflags.h"
  #include "base/memory/raw_ptr.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
  #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
- #include "chrome/browser/ui/browser_window.h"
-@@ -36,9 +43,12 @@ class WebUIBrowserSidePanelUI;
+@@ -38,9 +45,12 @@ class WebUIBrowserSidePanelUI;
  class WebUIBrowserUI;
  class WebUIBrowserWebContentsDelegate;
  class WebUIStubLocationBar;
@@ -3415,7 +3421,7 @@ index bb20c9d..b76477c 100644
  class WebUIBrowserWindow : public BrowserWindow,
                             public ui::ColorProviderSource,
                             public ui::AcceleratorProvider,
-@@ -49,6 +59,15 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -51,6 +61,15 @@ class WebUIBrowserWindow : public BrowserWindow,
   public:
    explicit WebUIBrowserWindow(BrowserWindowInterface* browser);
    ~WebUIBrowserWindow() override;
@@ -3431,7 +3437,7 @@ index bb20c9d..b76477c 100644
  
    // Returns the containing browser window for a WebContents that hosts
    // WebShell.
-@@ -66,6 +85,15 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -68,6 +87,15 @@ class WebUIBrowserWindow : public BrowserWindow,
  
    // BrowserWindow:
    gfx::NativeWindow GetNativeWindow() const override;
@@ -3447,7 +3453,7 @@ index bb20c9d..b76477c 100644
    bool IsOnCurrentWorkspace() const override;
    bool IsVisibleOnScreen() const override;
    void SetTopControlsShownRatio(content::WebContents* web_contents,
-@@ -233,6 +261,10 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -236,6 +264,10 @@ class WebUIBrowserWindow : public BrowserWindow,
    void DeleteBrowserWindow() final;
  
   private:
@@ -3458,7 +3464,7 @@ index bb20c9d..b76477c 100644
    class WidgetDelegate;
    friend class WebUIBrowserExclusiveAccessContext;
  
-@@ -289,13 +321,35 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -292,13 +324,35 @@ class WebUIBrowserWindow : public BrowserWindow,
    std::unique_ptr<WebUIBrowserWebContentsDelegate> web_contents_delegate_;
    std::unique_ptr<WidgetDelegate> widget_delegate_;
    std::unique_ptr<views::Widget> widget_;
@@ -3495,7 +3501,7 @@ index bb20c9d..b76477c 100644
    std::unique_ptr<WebUIBrowserModalDialogHost> modal_dialog_host_;
    std::unique_ptr<webui_toolbar::IconTable> icon_table_;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-index 405471b..0be4698 100644
+index 7188576..d9fb165 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 @@ -5,17 +5,42 @@
@@ -3540,8 +3546,8 @@ index 405471b..0be4698 100644
 +#include "ui/views/focus/focus_manager.h"
  #import "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
  #include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
- #include "ui/views/cocoa/native_widget_mac_ns_window_host.h"
-@@ -25,8 +50,105 @@
+ #include "ui/base/window_open_disposition.h"
+@@ -26,8 +51,105 @@
  #error "This file is macOS-only and should not be included on other platforms."
  #endif
  
@@ -3647,7 +3653,7 @@ index 405471b..0be4698 100644
  AppShimHost* GetHostForBrowser(BrowserWindowInterface* browser) {
    auto* const shim_manager = apps::AppShimManager::Get();
    CHECK(browser);
-@@ -55,6 +177,152 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
+@@ -56,6 +178,152 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
  
  }  // namespace
  
@@ -3800,7 +3806,7 @@ index 405471b..0be4698 100644
  bool WebUIBrowserWindow::HandleKeyboardEvent(
      const input::NativeWebKeyboardEvent& event) {
    if (!ShouldHandleKeyboardEvent(event)) {
-@@ -99,6 +367,7 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -100,6 +368,7 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
        bridge->SetCommandDispatcher(
            [[ChromeCommandDispatcherDelegate alloc] init],
            [[BrowserWindowCommandHandler alloc] init]);
@@ -3808,7 +3814,7 @@ index 405471b..0be4698 100644
      } else {
        if (auto* host = GetHostForBrowser(browser_)) {
          host->GetAppShim()->CreateCommandDispatcherForWidget(
-@@ -107,10 +376,42 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -108,10 +377,42 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
      }
    }
  
@@ -3851,7 +3857,7 @@ index 405471b..0be4698 100644
      if (is_before_first_responder) {
        // The specification for this private extensions API is incredibly vague.
        // For now, we avoid triggering chrome commands prior to giving the
-@@ -141,6 +442,13 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -142,6 +443,13 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
    bool ExecuteCommand(int32_t command,
                        WindowOpenDisposition window_open_disposition,
                        bool is_before_first_responder) override {
@@ -3865,7 +3871,7 @@ index 405471b..0be4698 100644
      if (!WillExecuteCommand(command, window_open_disposition,
                              is_before_first_responder)) {
        return false;
-@@ -185,3 +493,113 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -186,3 +494,113 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
  views::NativeWidget* WebUIBrowserWindow::CreateNativeWidget() {
    return new WebUIBrowserNativeWidgetMac(browser_.get(), widget_.get());
  }
@@ -3980,10 +3986,10 @@ index 405471b..0be4698 100644
 +}
 +#endif
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
-index 23b1c12..67e15d9 100644
+index 47c543c..14112e9 100644
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
-@@ -432,6 +432,8 @@ inline constexpr char kChromeUIUntrustedReadAnythingSidePanelURL[] =
+@@ -439,6 +439,8 @@ inline constexpr char kChromeUIUntrustedReadAnythingSidePanelURL[] =
  inline constexpr char kChromeUIWebAppInternalsHost[] = "web-app-internals";
  inline constexpr char kChromeUIWebuiBrowserHost[] = "webui-browser";
  inline constexpr char kChromeUIWebuiBrowserURL[] = "chrome://webui-browser/";
@@ -4057,10 +4063,10 @@ index e5bcc98..4858733 100644
  
  <!-- LINT.IfChange(ProfileLockStatus) -->
 diff --git a/ui/webui/webui_features.gni b/ui/webui/webui_features.gni
-index 8793ed8..e94e6f7 100644
+index 711d4bb..48be603 100644
 --- a/ui/webui/webui_features.gni
 +++ b/ui/webui/webui_features.gni
-@@ -67,7 +67,7 @@ if (enable_cast_receiver || is_cast_android || is_castos) {
+@@ -68,7 +68,7 @@ if (enable_cast_receiver || is_cast_android || is_castos) {
  if (enable_webui_generate_code_cache) {
    enable_webui_generate_code_cache =
        optimize_webui && host_toolchain == current_toolchain && !is_msan &&

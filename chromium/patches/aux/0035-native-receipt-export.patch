@@ -507,16 +507,18 @@ index 4636a1e..7246def 100644
    std::string native_person_connection_id_;
    bool shutting_down_ = false;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index a05620c..9e54e41 100644
+index d313bdf..af5027f 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -7,15 +7,19 @@
+@@ -7,6 +7,7 @@
  #include "ui/views/controls/menu/menu_model_adapter.h"
  #include "ui/views/controls/menu/menu_runner.h"
  
 +#include <algorithm>
-+#include <array>
- #include <cmath>
+ #include <array>
+ 
+ #include "base/containers/to_vector.h"
+@@ -14,11 +15,13 @@
  #include <utility>
  #include <variant>
  
@@ -530,7 +532,7 @@ index a05620c..9e54e41 100644
  #include "base/timer/timer.h"
  #include "chrome/browser/shell_integration.h"
  #include "printing/buildflags/buildflags.h"
-@@ -31,6 +35,7 @@
+@@ -34,6 +37,7 @@
  #include "chrome/browser/bookmarks/bookmark_model_factory.h"
  #include "chrome/browser/buildflags.h"
  #if BUILDFLAG(ENABLE_AUX_SHELL)
@@ -538,7 +540,7 @@ index a05620c..9e54e41 100644
  #include "chrome/browser/devtools/devtools_window.h"
  #include "chrome/browser/download/download_prefs.h"
  #include "chrome/browser/ui/aux/evidence_documents.h"
-@@ -152,25 +157,65 @@ bool WriteAuxText(const base::FilePath& destination, std::string content) {
+@@ -155,25 +159,65 @@ bool WriteAuxText(const base::FilePath& destination, std::string content) {
    return false;
  }
  
@@ -618,7 +620,7 @@ index a05620c..9e54e41 100644
      return true;
    base::DeleteFile(temporary);
    return false;
-@@ -411,6 +456,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -414,6 +458,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
  
  WebUIBrowserUI::~WebUIBrowserUI() {
  #if BUILDFLAG(ENABLE_AUX_SHELL)
@@ -626,7 +628,7 @@ index a05620c..9e54e41 100644
    if (open_file_dialog_)
      open_file_dialog_->ListenerDestroyed();
  #endif
-@@ -447,9 +493,12 @@ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool foc
+@@ -450,9 +495,12 @@ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool foc
  
  void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
                                             std::string content,
@@ -641,7 +643,7 @@ index a05620c..9e54e41 100644
    if (open_file_dialog_) {
      std::move(callback).Run(false, "", "conflict", "A file dialog is already open");
      return;
-@@ -467,6 +516,9 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+@@ -470,6 +518,9 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
    save_file_content_ = std::move(content);
    save_file_source_ = std::move(source);
    save_file_source_size_ = source_size;
@@ -651,7 +653,7 @@ index a05620c..9e54e41 100644
    open_file_dialog_->SelectFile(
        ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(),
        browser_->GetProfile()->last_selected_directory().Append(
-@@ -475,6 +527,59 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+@@ -478,6 +529,59 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
        browser_->GetWindow()->GetNativeWindow());
  }
  
@@ -711,7 +713,7 @@ index a05620c..9e54e41 100644
  void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
                                    int index) {
    if (file_dialog_purpose_ == FileDialogPurpose::kEvidenceDocuments) {
-@@ -487,8 +592,16 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+@@ -490,8 +594,16 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
        std::exchange(file_dialog_purpose_, FileDialogPurpose::kNone);
    std::string save_content = std::move(save_file_content_);
    std::string transfer_passphrase = std::move(password_transfer_passphrase_);
@@ -730,7 +732,7 @@ index a05620c..9e54e41 100644
    std::string save_pdf_page_id = std::exchange(save_pdf_page_id_, {});
    auto save_pdf_document =
        std::exchange(save_pdf_document_, content::WeakDocumentPtr());
-@@ -587,18 +700,17 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+@@ -590,18 +702,17 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
      return;
    }
    if (purpose == FileDialogPurpose::kSaveFile) {
@@ -758,7 +760,7 @@ index a05620c..9e54e41 100644
                if (!saved) {
                  std::move(callback).Run(false, "", "io_error", "The file could not be saved");
                  return;
-@@ -608,7 +720,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+@@ -611,7 +722,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
                                        json ? "" : "io_error",
                                        json ? "" : "The file path could not be returned");
              },
@@ -767,7 +769,7 @@ index a05620c..9e54e41 100644
      return;
    }
    if (purpose == FileDialogPurpose::kEvidenceImage) {
-@@ -864,8 +976,12 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+@@ -867,8 +978,12 @@ void WebUIBrowserUI::FileSelectionCanceled() {
    file_dialog_purpose_ = FileDialogPurpose::kNone;
    save_file_content_.clear();
    password_transfer_passphrase_.clear();
@@ -781,7 +783,7 @@ index a05620c..9e54e41 100644
    save_pdf_page_id_.clear();
    save_pdf_document_ = {};
    if (purpose == FileDialogPurpose::kEvidenceDocuments) {
-@@ -887,6 +1003,7 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+@@ -890,6 +1005,7 @@ void WebUIBrowserUI::FileSelectionCanceled() {
  void WebUIBrowserUI::CreateShellHost(
      mojo::PendingReceiver<aux::mojom::ShellHost> host,
      mojo::PendingRemote<aux::mojom::ShellHostClient> client) {
@@ -789,7 +791,7 @@ index a05620c..9e54e41 100644
    if (dictation_) {
      dictation_->CancelAll();
    }
-@@ -907,6 +1024,7 @@ void WebUIBrowserUI::CreateShellHost(
+@@ -910,6 +1026,7 @@ void WebUIBrowserUI::CreateShellHost(
              ui->dictation_->CancelAll();
            }
            if (ui) {
@@ -797,7 +799,7 @@ index a05620c..9e54e41 100644
              ui->shell_host_receiver_.reset();
              ui->shell_host_client_.reset();
            }
-@@ -1219,7 +1337,8 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -1222,7 +1339,8 @@ void WebUIBrowserUI::Request(const std::string& method,
            std::move(callback));
    const auto& api_method = (*list)[0].GetString();
    if (api_method == "conversations.attachments.import" ||
@@ -808,7 +810,7 @@ index a05620c..9e54e41 100644
          browser_->GetWeakPtr(),
          web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(), api_method,
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index bd863c7..e7566b1 100644
+index f233699..12654ec 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
 @@ -15,6 +15,8 @@

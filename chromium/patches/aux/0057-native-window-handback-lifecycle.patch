@@ -1,0 +1,242 @@
+diff --git a/chrome/browser/ui/autofill/address_bubbles_controller.cc b/chrome/browser/ui/autofill/address_bubbles_controller.cc
+index af32d3b..4bfddcb 100644
+--- a/chrome/browser/ui/autofill/address_bubbles_controller.cc
++++ b/chrome/browser/ui/autofill/address_bubbles_controller.cc
+@@ -30,7 +30,6 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promos_utils.h"
+-#include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/grit/theme_resources.h"
+ #include "components/application_locale_storage/application_locale_storage.h"
+ #include "components/autofill/content/browser/content_autofill_client.h"
+@@ -43,6 +42,7 @@
+ #include "components/signin/public/identity_manager/account_info.h"
+ #include "components/strings/grit/components_strings.h"
+ #include "components/sync/base/user_selectable_type.h"
++#include "components/tabs/public/tab_interface.h"
+ #include "ui/base/l10n/l10n_util.h"
+ 
+ namespace autofill {
+@@ -312,9 +312,8 @@ void AddressBubblesController::SetUpBubble(
+ 
+ void AddressBubblesController::MaybeShowIOSDektopAddressPromo() {
+   BrowserWindowInterface* browser =
+-      BrowserWindow::FindBrowserWindowWithWebContents(web_contents())
+-          ->AsBrowserView()
+-          ->browser();
++      tabs::TabInterface::GetFromContents(web_contents())
++          ->GetBrowserWindowInterface();
+ 
+   // Verify if user is eligible for iOS promo, and attempt showing if they are.
+   ios_promos_utils::VerifyIOSPromoEligibility(
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+index 4c27894..506148c 100644
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -50,6 +50,9 @@
+ #include "url/origin.h"
+ 
+ namespace aux {
++struct EgressDocumentProtection {
++  bool guarded = false;
++};
+ struct NativePersonNavigationReceipt {
+   content::WeakDocumentPtr document;
+   base::WeakPtr<content::WebContents> page;
+@@ -77,7 +80,8 @@ class EgressDocument : public content::DocumentUserData<EgressDocument> {
+   ~EgressDocument() override = default;
+   std::string token = base::UnguessableToken::Create().ToString();
+   bool opaque_transport_used = false;
+-  bool protected_document = false;
++  const std::shared_ptr<EgressDocumentProtection> protection =
++      std::make_shared<EgressDocumentProtection>();
+   // A document can retain DOM values after its run ends. A later run must
+   // create a fresh document instead of inheriting untracked saved credentials.
+   std::string credential_run_id;
+@@ -1291,7 +1295,7 @@ bool EgressController::CanDiscardPage(content::WebContents* page) const {
+   auto* frame = page->GetPrimaryMainFrame();
+   const auto* document =
+       frame ? EgressDocument::GetForCurrentDocument(frame) : nullptr;
+-  if (document && document->protected_document &&
++  if (document && document->protection->guarded &&
+       (state == pages_.end() || state->second->returned_person_read_document
+                                         .AsRenderFrameHostIfValid() != frame)) {
+     return false;
+@@ -1574,7 +1578,7 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
+   }
+   state->guarded = true;
+   state->returned_person_read_document = {};
+-  document->protected_document = true;
++  document->protection->guarded = true;
+   state->document = frame->GetWeakDocumentPtr();
+   state->lease = lease->Clone();
+   state->installed_document_token = document->token;
+@@ -2084,7 +2088,14 @@ bool EgressController::CanPresentHumanSessionDocument(
+       identity->id() == context.page_id && !identity->runtime_owned() &&
+       page->GetPrimaryMainFrame() == frame;
+ }
++std::shared_ptr<const EgressDocumentProtection>
++EgressController::CaptureDocumentProtection(content::RenderFrameHost* frame) {
++  return EgressDocument::GetOrCreateForCurrentDocument(frame)->protection;
++}
+ bool EgressController::IsProtected(const EgressRequestContext& context) {
++  if (context.protection && context.protection->guarded) {
++    return true;
++  }
+   if (context.ambiguous) {
+     return std::ranges::any_of(
+         pages_, [](const auto& item) { return item.second->guarded; });
+@@ -2095,7 +2106,7 @@ bool EgressController::IsProtected(const EgressRequestContext& context) {
+   }
+   auto* frame = context.document.AsRenderFrameHostIfValid();
+   if (frame && EgressDocument::GetOrCreateForCurrentDocument(frame)
+-                   ->protected_document) {
++                   ->protection->guarded) {
+     return true;
+   }
+   auto* child =
+diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
+index 023c7f4..0c30066 100644
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -44,12 +44,14 @@ class URLLoaderFactoryBuilder;
+ }  // namespace network
+ namespace aux {
+ struct NativePersonNavigationReceipt;
++struct EgressDocumentProtection;
+ struct EgressRequestContext {
+   content::WeakDocumentPtr document;
+   std::string page_id;
+   std::string kind;
+   bool ambiguous = false;
+   std::shared_ptr<NativePersonNavigationReceipt> person_navigation;
++  std::shared_ptr<const EgressDocumentProtection> protection;
+ };
+ struct NativeCdpRetirementReceipt {
+   base::DictValue original_lease;
+@@ -207,6 +209,8 @@ class EgressController final : public base::SupportsUserData::Data {
+                bool allowed);
+ 
+  private:
++  std::shared_ptr<const EgressDocumentProtection> CaptureDocumentProtection(
++      content::RenderFrameHost* frame);
+   std::shared_ptr<NativePersonNavigationReceipt> CapturePersonNavigation(
+       content::RenderFrameHost* frame,
+       int64_t navigation_id);
+diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
+index 014bcb3..988657c 100644
+--- a/chrome/browser/ui/aux/egress_url_loader.cc
++++ b/chrome/browser/ui/aux/egress_url_loader.cc
+@@ -576,6 +576,7 @@ void EgressController::ProxyFactory(
+            : nullptr;
+   if (document) {
+     state->context.document = document->GetWeakDocumentPtr();
++    state->context.protection = controller->CaptureDocumentProtection(document);
+     state->context.page_id = PageIdentity::GetOrCreate(profile, page);
+     if (navigation && navigation_id) {
+       state->context.person_navigation =
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+index 5c412a5..f1c9e7d 100644
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -72,7 +72,6 @@
+ #include "content/public/common/isolated_world_ids.h"
+ #include "net/base/net_errors.h"
+ #include "crypto/hash.h"
+-#include "third_party/blink/public/common/input/web_input_event.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/base/page_transition_types.h"
+ #include "ui/message_center/public/cpp/notification.h"
+@@ -185,42 +184,6 @@ class PageSignals : public content::WebContentsObserver,
+   void DidStartLoading() override { PublishLoading(); }
+   void DidStopLoading() override { PublishLoading(); }
+   void OnAudioStateChanged(bool audible) override { PublishAudio(audible); }
+-  void DidGetUserInteraction(const blink::WebInputEvent& event) override {
+-    // Agent input enters through the private DevTools broker and carries the
+-    // debugger bit. An unmarked interaction on this guest page asks the
+-    // runtime to hand control to the person. This observer runs before the
+-    // event is dispatched to the renderer.
+-    if (!profile_ || profile_->IsOffTheRecord() || page_id_.empty() ||
+-        (event.GetModifiers() & blink::WebInputEvent::kFromDebugger))
+-      return;
+-    const base::TimeTicks now = base::TimeTicks::Now();
+-    if (!last_physical_takeover_.is_null() &&
+-        now - last_physical_takeover_ < base::Milliseconds(100))
+-      return;
+-    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
+-    if (!runtime)
+-      return;
+-    base::DictValue payload;
+-    payload.Set("pageId", page_id_);
+-    if (auto json = base::WriteJson(payload)) {
+-      last_physical_takeover_ = now;
+-      runtime->CallInternal("view.takeover", std::move(*json),
+-                            base::BindOnce([](AuxRuntimeHost::Response response) {
+-                              if (!response.ok) {
+-                                LOG(WARNING) << "Aux physical takeover refused: "
+-                                             << response.error_code;
+-                                return;
+-                              }
+-                              auto result = base::JSONReader::Read(
+-                                  response.result_json, base::JSON_PARSE_RFC);
+-                              const base::DictValue* dict =
+-                                  result ? result->GetIfDict() : nullptr;
+-                              if (dict && dict->FindBool("accepted").value_or(false)) {
+-                                LOG(INFO) << "Aux physical takeover accepted";
+-                              }
+-                            }));
+-    }
+-  }
+   void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override {
+     if (status == base::TERMINATION_STATUS_PROCESS_CRASHED ||
+         status == base::TERMINATION_STATUS_ABNORMAL_TERMINATION ||
+@@ -497,7 +460,6 @@ class PageSignals : public content::WebContentsObserver,
+ 
+   raw_ptr<Profile> profile_;
+   std::string page_id_;
+-  base::TimeTicks last_physical_takeover_;
+   bool auth_prompt_ = false;
+   int navigation_generation_ = 0;
+   std::string page_change_url_;
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+index c09d9d4..f26cb99 100644
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -94,6 +94,7 @@
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/browser_window_state.h"
+ #include "chrome/browser/ui/browser_window_theme_observer.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/dialogs/browser_dialogs.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
+@@ -1173,12 +1174,24 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
+   // level NativeView.
+   if (const auto* widget = views::Widget::GetTopLevelWidgetForNativeView(
+           web_contents->GetNativeView())) {
+-    return BrowserView::GetBrowserViewForNativeWindow(
+-        widget->GetNativeWindow());
++    if (auto* window = WebUIBrowserWindow::FromNativeWindow(
++            widget->GetNativeWindow())) {
++      return window;
++    }
++    if (auto* window = BrowserView::GetBrowserViewForNativeWindow(
++            widget->GetNativeWindow())) {
++      return window;
++    }
+   }
+-  const auto* browser =
++  auto* browser =
+       GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents);
+-  return browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
++  if (!browser) {
++    return nullptr;
++  }
++  if (auto* window = WebUIBrowserWindow::FromBrowser(browser)) {
++    return window;
++  }
++  return BrowserView::GetBrowserViewForBrowser(browser);
+ }
+ 
+ // static

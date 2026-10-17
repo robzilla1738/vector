@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/extensions/api/tabs/tabs_api.cc b/chrome/browser/extensions/api/tabs/tabs_api.cc
-index d225b39..4b4a0c5 100644
+index 0892d1b..29499d4 100644
 --- a/chrome/browser/extensions/api/tabs/tabs_api.cc
 +++ b/chrome/browser/extensions/api/tabs/tabs_api.cc
 @@ -3,6 +3,10 @@
@@ -13,7 +13,7 @@ index d225b39..4b4a0c5 100644
  
  #include "base/metrics/histogram_functions.h"
  #include "base/metrics/histogram_macros.h"
-@@ -2364,6 +2368,17 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
+@@ -2420,6 +2424,17 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
      // any).
    }
  
@@ -31,7 +31,7 @@ index d225b39..4b4a0c5 100644
    ExtensionTabUtil::ScrubTabBehavior scrub_tab_behavior =
        ExtensionTabUtil::GetScrubTabBehavior(extension(), source_context_type(),
                                              new_contents);
-@@ -2784,6 +2799,12 @@ bool TabsUpdateFunction::UpdateActiveTab(
+@@ -2840,6 +2855,12 @@ bool TabsUpdateFunction::UpdateActiveTab(
      tab_list.ActivateTab(tab_list.GetTab(tab_index)->GetHandle());
      DCHECK_EQ(tab_index, tab_list.GetActiveIndex());
    }
@@ -80,7 +80,7 @@ index 7d19744..b53f130 100644
    if (DiscardAttemptMarker::Get(PageNodeImpl::FromNode(page_node)) &&
        !base::FeatureList::IsEnabled(kIgnoreDiscardAttemptMarker)) {
 diff --git a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
-index e7810ac..5c002a3 100644
+index 6f872ee..9ca821c 100644
 --- a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
 +++ b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
 @@ -17,6 +17,11 @@
@@ -131,7 +131,7 @@ index e7810ac..5c002a3 100644
                                          discard_start_time);
    } else {
 diff --git a/chrome/browser/sessions/session_restore.cc b/chrome/browser/sessions/session_restore.cc
-index be7345c..2935d9a 100644
+index 684340e..b0da8e4 100644
 --- a/chrome/browser/sessions/session_restore.cc
 +++ b/chrome/browser/sessions/session_restore.cc
 @@ -41,6 +41,9 @@
@@ -144,7 +144,7 @@ index be7345c..2935d9a 100644
  #include "chrome/browser/prefs/session_startup_pref.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
  #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
-@@ -1018,8 +1021,25 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
+@@ -1027,8 +1030,25 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
      // possible yet due the ordering of TabStripModelObserver notifications in
      // an edge case.
  
@@ -171,7 +171,7 @@ index be7345c..2935d9a 100644
  
      // Capture all the splits and all tabs to split.
      std::map<split_tabs::SplitTabId, std::vector<tabs::TabInterface*>>
-@@ -1029,8 +1049,15 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
+@@ -1038,8 +1058,15 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
      // base::Time) can be mapped onto the TimeTicks timeline WebContents wants.
      const base::Time now = base::Time::Now();
      const base::TimeTicks now_ticks = base::TimeTicks::Now();
@@ -187,7 +187,7 @@ index be7345c..2935d9a 100644
  
        // Loads are scheduled for each restored tab unless the tab is going to
        // be selected as ShowBrowser() will load the selected tab.
-@@ -1044,7 +1071,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
+@@ -1053,7 +1080,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
        // If the browser already has tabs, we want to restore the new ones after
        // the existing ones. E.g. this happens in Win8 Metro where we merge
        // windows or when launching a hosted app from the app launcher.
@@ -196,7 +196,7 @@ index be7345c..2935d9a 100644
        RestoreTab(tab, browser, is_active_browser, restored_tabs, new_group_ids,
                   &tabs_by_split_id, tab_index, is_selected_tab,
                   last_active_time_ticks, tab.last_active_time,
-@@ -1129,7 +1156,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
+@@ -1139,7 +1166,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
      DCHECK(web_contents);
  
      RestoredTab restored_tab(web_contents, is_selected_tab,
@@ -3235,7 +3235,7 @@ index 0000000..e2976df
 +
 +#endif  // CHROME_BROWSER_UI_AUX_TAB_CATALOG_H_
 diff --git a/chrome/browser/ui/tabs/tab_strip_model.cc b/chrome/browser/ui/tabs/tab_strip_model.cc
-index b3ed5f8..d869656 100644
+index 01f863a..7693497 100644
 --- a/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ b/chrome/browser/ui/tabs/tab_strip_model.cc
 @@ -3,6 +3,10 @@
@@ -3344,7 +3344,7 @@ index b3ed5f8..d869656 100644
  void TabStripModel::CloseWebContentsAt(int index, uint32_t close_types) {
    CHECK(ContainsIndex(index));
    CloseWebContents(GetWebContentsAt(index), close_types);
-@@ -3839,16 +3895,33 @@ tabs::TabInterface* TabStripModel::GetTabForWebContents(
+@@ -3857,16 +3913,33 @@ tabs::TabInterface* TabStripModel::GetTabForWebContents(
  
  void TabStripModel::CloseTabs(base::span<content::WebContents* const> items,
                                uint32_t close_types) {
@@ -3378,7 +3378,7 @@ index b3ed5f8..d869656 100644
    }
  
    if (filtered_items.empty()) {
-@@ -3868,8 +3941,11 @@ void TabStripModel::CloseTabs(base::span<content::WebContents* const> items,
+@@ -3886,8 +3959,11 @@ void TabStripModel::CloseTabs(base::span<content::WebContents* const> items,
    // length of the observer method calls (SendDetachWebContentsNotifications).
    ui::ListSelectionModel tmp_model = selection_model().GetListSelectionModel();
    DetachNotifications notifications(GetActiveTab(), tmp_model);
@@ -3392,7 +3392,7 @@ index b3ed5f8..d869656 100644
  
    // When unload handler is triggered for all items, we should wait for the
    // result.
-@@ -3969,22 +4045,38 @@ tabs::TabStripModelSelectionState TabStripModel::GetSelectionStateFrom(
+@@ -3987,25 +4063,41 @@ tabs::TabStripModelSelectionState TabStripModel::GetSelectionStateFrom(
  bool TabStripModel::CloseWebContentses(
      base::span<content::WebContents* const> items,
      uint32_t close_types,
@@ -3427,13 +3427,16 @@ index b3ed5f8..d869656 100644
        tab_model->WillBecomeHidden(base::PassKey<TabStripModel>());
 +      if (creator_close && !original_member()) return false;
      }
-     tab_model->WillDetach(base::PassKey<TabStripModel>(),
-                           tabs::TabInterface::DetachReason::kDelete);
-+    if (creator_close && !original_member()) return false;
+     // TODO(crbug.com/558720516): Remove this and always call WillDetach after
+     // unload handlers below.
+     if (!ShouldRunUnloadListenerBeforeClosing(contents)) {
+       tab_model->WillDetach(base::PassKey<TabStripModel>(),
+                             tabs::TabInterface::DetachReason::kDelete);
++      if (creator_close && !original_member()) return false;
+     }
    }
  
-   // We only try the fast shutdown path if the whole browser process is *not*
-@@ -3994,7 +4086,12 @@ bool TabStripModel::CloseWebContentses(
+@@ -4016,7 +4108,12 @@ bool TabStripModel::CloseWebContentses(
      // Construct a map of processes to the number of associated tabs that are
      // closing.
      base::flat_map<content::RenderProcessHost*, size_t> processes;
@@ -3447,7 +3450,24 @@ index b3ed5f8..d869656 100644
        if (ShouldRunUnloadListenerBeforeClosing(contents)) {
          continue;
        }
-@@ -4050,7 +4147,9 @@ bool TabStripModel::CloseWebContentses(
+@@ -4066,8 +4163,16 @@ bool TabStripModel::CloseWebContentses(
+ 
+     tabs::TabModel* tab_model = GetTabModelAtIndex(current_index);
+     if (ShouldRunUnloadListenerBeforeClosing(closing_contents)) {
++      auto original_page = closing_contents->GetWeakPtr();
+       tab_model->WillDetach(base::PassKey<TabStripModel>(),
+                             tabs::TabInterface::DetachReason::kDelete);
++      if (!creator_close_invocations[i].is_empty()) {
++        if (!original_model || !original_page) return false;
++        current_index = original_model->GetIndexOfWebContents(original_page.get());
++        if (current_index == kNoTab ||
++            original_model->GetTabModelAtIndex(current_index) != tab_model)
++          return false;
++      }
+     }
+ 
+     bool create_historical_tab =
+@@ -4078,7 +4183,9 @@ bool TabStripModel::CloseWebContentses(
                        close_types & TabCloseTypes::CLOSE_EXPAND_SIDE_PANEL
                            ? TabRemovedReason::kDeletedAndExpandSidePanel
                            : TabRemovedReason::kDeleted,
@@ -3458,7 +3478,7 @@ index b3ed5f8..d869656 100644
      detached_tab.push_back(std::move(dt));
    }
  
-@@ -4802,13 +4901,18 @@ void TabStripModel::InsertTabAtIndexImpl(
+@@ -4830,13 +4937,18 @@ void TabStripModel::InsertTabAtIndexImpl(
  std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
      int index,
      tabs::TabInterface::DetachReason tab_detach_reason,
@@ -3478,7 +3498,7 @@ index b3ed5f8..d869656 100644
    if (removed_tab_is_split) {
      next_selected_index = GetIndexOfTab(
          GetSplitData(tab_to_remove->GetSplit().value())->ListTabs()[0]);
-@@ -4816,6 +4920,24 @@ std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
+@@ -4844,6 +4956,24 @@ std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
                      SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
    }
  

@@ -1472,7 +1472,7 @@ index 44ffa91..5ce565b 100644
  
  // static
 diff --git a/content/browser/devtools/devtools_http_handler.cc b/content/browser/devtools/devtools_http_handler.cc
-index d14be48..77f4ccd 100644
+index e63f76c..8f20b97 100644
 --- a/content/browser/devtools/devtools_http_handler.cc
 +++ b/content/browser/devtools/devtools_http_handler.cc
 @@ -228,21 +228,50 @@ void ServerWrapper::Close(int connection_id) {
@@ -1506,7 +1506,7 @@ index d14be48..77f4ccd 100644
 -                   std::unique_ptr<DevToolsSocketFactory> socket_factory) {
 +                   std::unique_ptr<DevToolsSocketFactory> socket_factory,
 +                   std::shared_ptr<DevToolsServerLifecycle> lifecycle) {
-   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);
 +  if (lifecycle->termination_scheduled) return;
 +  lifecycle->termination_scheduled = true;
    if (server_wrapper)
@@ -1537,7 +1537,7 @@ index d14be48..77f4ccd 100644
 -                       std::unique_ptr<net::IPEndPoint> ip_address) {
 +                       std::unique_ptr<net::IPEndPoint> ip_address,
 +                       std::shared_ptr<DevToolsServerLifecycle> lifecycle) {
-   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);
 +  lifecycle->starting = false;
    if (handler && thread && server_wrapper) {
      handler->ServerStarted(
@@ -1559,10 +1559,10 @@ index d14be48..77f4ccd 100644
 -    bool bundles_resources) {
 +    bool bundles_resources,
 +    std::shared_ptr<DevToolsServerLifecycle> lifecycle) {
-   DCHECK(thread->task_runner()->BelongsToCurrentThread());
+   CHECK(thread->task_runner()->BelongsToCurrentThread(),
+         base::NotFatalUntil::M159);
    std::unique_ptr<ServerWrapper> server_wrapper;
-   std::unique_ptr<net::ServerSocket> server_socket =
-@@ -316,7 +349,7 @@ void StartServerOnHandlerThread(
+@@ -317,7 +350,7 @@ void StartServerOnHandlerThread(
        FROM_HERE,
        base::BindOnce(&ServerStartedOnUI, std::move(handler), std::move(thread),
                       server_wrapper.release(), socket_factory.release(),
@@ -1571,7 +1571,7 @@ index d14be48..77f4ccd 100644
  }
  
  // DevToolsAgentHostClientImpl -----------------------------------------------
-@@ -393,6 +426,15 @@ static bool TimeComparator(scoped_refptr<DevToolsAgentHost> host1,
+@@ -394,6 +427,15 @@ static bool TimeComparator(scoped_refptr<DevToolsAgentHost> host1,
  
  // DevToolsHttpHandler -------------------------------------------------------
  
@@ -1587,7 +1587,7 @@ index d14be48..77f4ccd 100644
  net::IPEndPoint DevToolsHttpHandler::GetServerIpAddress() const {
    if (server_ip_address_) {
      return *server_ip_address_;
-@@ -410,8 +452,9 @@ DevToolsHttpHandler::~DevToolsHttpHandler() {
+@@ -411,8 +453,9 @@ DevToolsHttpHandler::~DevToolsHttpHandler() {
    // by the targets. It is essential that this happens before we issue delete
    // soon for the server wrapper.
    connection_to_client_.clear();
@@ -1599,7 +1599,7 @@ index d14be48..77f4ccd 100644
    delegate_ = nullptr;
  }
  
-@@ -902,8 +945,10 @@ DevToolsHttpHandler::DevToolsHttpHandler(
+@@ -903,8 +946,10 @@ DevToolsHttpHandler::DevToolsHttpHandler(
      std::unique_ptr<DevToolsSocketFactory> socket_factory,
      const base::FilePath& output_directory,
      const base::FilePath& debug_frontend_dir,
@@ -1612,7 +1612,7 @@ index d14be48..77f4ccd 100644
    browser_guid_ =
        delegate_->IsBrowserTargetDiscoverable()
            ? kBrowserUrlPrefix
-@@ -921,7 +966,13 @@ DevToolsHttpHandler::DevToolsHttpHandler(
+@@ -922,7 +967,13 @@ DevToolsHttpHandler::DevToolsHttpHandler(
          base::BindOnce(&StartServerOnHandlerThread, weak_factory_.GetWeakPtr(),
                         std::move(thread), std::move(socket_factory),
                         output_directory, debug_frontend_dir, browser_guid_,
@@ -1627,7 +1627,7 @@ index d14be48..77f4ccd 100644
    }
    std::string remote_allow_origins = base::ToLowerASCII(
        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-@@ -942,6 +993,7 @@ void DevToolsHttpHandler::ServerStarted(
+@@ -943,6 +994,7 @@ void DevToolsHttpHandler::ServerStarted(
    server_wrapper_ = std::move(server_wrapper);
    socket_factory_ = std::move(socket_factory);
    server_ip_address_ = std::move(ip_address);
@@ -1677,10 +1677,10 @@ index 107e08a..c460dba 100644
    void OnJsonRequest(int connection_id,
                       const net::HttpServerRequestInfo& info);
 diff --git a/content/browser/devtools/protocol/page_handler.cc b/content/browser/devtools/protocol/page_handler.cc
-index 457615a..61c2cf7 100644
+index 34f1a43..0690883 100644
 --- a/content/browser/devtools/protocol/page_handler.cc
 +++ b/content/browser/devtools/protocol/page_handler.cc
-@@ -1040,6 +1040,13 @@ void PageHandler::Navigate(const std::string& url,
+@@ -1043,6 +1043,13 @@ void PageHandler::Navigate(const std::string& url,
    }
  
    NavigationController::LoadURLParams params(gurl);
@@ -1695,10 +1695,10 @@ index 457615a..61c2cf7 100644
    params.transition_type = type;
    params.frame_tree_node_id = frame_tree_node->frame_tree_node_id();
 diff --git a/content/browser/renderer_host/navigation_controller_impl.cc b/content/browser/renderer_host/navigation_controller_impl.cc
-index fb322aa..c5c0eac 100644
+index e588886..80d3505 100644
 --- a/content/browser/renderer_host/navigation_controller_impl.cc
 +++ b/content/browser/renderer_host/navigation_controller_impl.cc
-@@ -4406,6 +4406,9 @@ base::WeakPtr<NavigationHandle> NavigationControllerImpl::NavigateWithoutEntry(
+@@ -4408,6 +4408,9 @@ base::WeakPtr<NavigationHandle> NavigationControllerImpl::NavigateWithoutEntry(
  
    base::WeakPtr<NavigationHandle> created_navigation_handle(
        request->GetWeakPtr());
@@ -1750,7 +1750,7 @@ index e72f03b..feba0e2 100644
    // Note: this method may be called before navigation commits.
    virtual bool MayAttachToURL(const GURL& url, bool is_webui);
 diff --git a/content/public/browser/navigation_controller.h b/content/public/browser/navigation_controller.h
-index 9e8862a..87fea02 100644
+index 07a33ac..463d84d 100644
 --- a/content/public/browser/navigation_controller.h
 +++ b/content/public/browser/navigation_controller.h
 @@ -12,6 +12,7 @@
