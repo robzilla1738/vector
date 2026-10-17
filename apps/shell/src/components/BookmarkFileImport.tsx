@@ -154,20 +154,25 @@ export function BookmarkImportFileControl({
       >
         {flow.busy ? "Working…" : label}
       </button>
-      <input
-        ref={flow.fileInput}
-        type="file"
-        accept=".html,.htm,text/html"
-        disabled={disabled || flow.busy || !flow.available}
-        hidden
-        aria-label="Import bookmark file"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) void flow.readFile(file);
-        }}
-      />
+      <BookmarkImportFileInput flow={flow} disabled={disabled} />
     </>
+  );
+}
+export function BookmarkImportFileInput({ flow, disabled = false }: { flow: Flow; disabled?: boolean }) {
+  return (
+    <input
+      ref={flow.fileInput}
+      type="file"
+      accept=".html,.htm,text/html"
+      disabled={disabled || flow.busy || !flow.available}
+      hidden
+      aria-label="Import bookmark file"
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file) void flow.readFile(file);
+      }}
+    />
   );
 }
 export function BookmarkImportReview({

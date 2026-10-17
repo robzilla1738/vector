@@ -23,7 +23,9 @@ chrome remains accessible; Close and Escape leave the page without a modal scrim
 or focus trap. Bookmarks adds a collapsible folder tree using native node IDs and
 child order, synchronized with the breadcrumb and results. Compact bookmark rows
 use page-session icons and an anchored action dialog for preview, edit and delete;
-reading-list controls retain their inline presentation. Grouped History and
+reading-list controls retain their inline presentation. An Organize menu owns
+bookmark creation, selection and import/export; the file input remains mounted
+outside the menu so dismissal does not interrupt file selection. Grouped History and
 separate browser page routes remain parity gaps; History currently groups by date.
 
 Memory Settings uses four routed views under the same retained Space editor:

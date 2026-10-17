@@ -6,6 +6,8 @@ import { errorMessage } from "../error-message";
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
+import { ActionMenu } from "../ui";
+import { NewBookmarkDialog } from "./NewBookmarkDialog";
 import { SavedPageActions } from "./SavedPageActions";
 import { FavIcon } from "./SiteTile";
 import { BookmarkFolderNavigation } from "./BookmarkFolderNavigation";
@@ -57,7 +59,7 @@ import {
   shellIconTrash,
 } from "../ui/icons";
 import { bridge, inNativeHost } from "../bridge";
-import { BookmarkImportFileControl, BookmarkImportReview, useBookmarkFileImport } from "./BookmarkFileImport";
+import { BookmarkImportFileInput, BookmarkImportReview, useBookmarkFileImport } from "./BookmarkFileImport";
 import { RecentlyClosed } from "./RecentlyClosed";
 import { ClearHistory } from "./ClearHistory";
 import { OpenBookmarkFolder } from "./OpenBookmarkFolder";
@@ -173,8 +175,8 @@ const SavedPageRow = memo(function SavedPageRow({
       : "";
   });
   const item = useStore.getState().bookmarks[position];
-  const favicon = useStore((state) =>
-    orderedPages(state.pages).find((page) => page.url === item?.url)?.favicon,
+  const favicon = useStore(
+    (state) => orderedPages(state.pages).find((page) => page.url === item?.url)?.favicon,
   );
   const offlinePage = useStore((state) =>
     view === "reading"
@@ -229,7 +231,12 @@ const SavedPageRow = memo(function SavedPageRow({
           <span {...staticHintProps}>{item.folderPath.join(" / ")}</span>
         ) : null}
       </button>
-      <SavedPageActions title={title} menu={view === "bookmarks"} hidden={view === "bookmarks" && selecting} disabled={busy}>
+      <SavedPageActions
+        title={title}
+        menu={view === "bookmarks"}
+        hidden={view === "bookmarks" && selecting}
+        disabled={busy}
+      >
         {canPeek && bookmarkWebUrl(item.url) && (
           <button
             {...staticSmallIconButtonProps}
@@ -490,6 +497,7 @@ export function Library({
       ),
     [],
   );
+  const [addingBookmark, setAddingBookmark] = useState(false);
   const [folderEditor, setFolderEditor] = useState<{
     mode: "create" | "rename";
     name: string;
@@ -711,6 +719,7 @@ export function Library({
   )
     breadcrumbs.unshift(node);
   function openFolder(id: string) {
+    setAddingBookmark(false);
     setFolderId(id);
     setQuery("");
     setEditing(null);
@@ -831,6 +840,7 @@ export function Library({
     [action, close],
   );
   function choose(next: View) {
+    setAddingBookmark(false);
     setFolderEditor(null);
     setSelecting(false);
     setSelection([]);
@@ -949,35 +959,124 @@ export function Library({
           )}
         </div>
         <div className="library-main">
-          <div className="library-field" data-input-surface>
-            <span className="library-icon">{shellIconSearch}</span>
-            <input
-              ref={search}
-              value={query}
-              aria-label={`Search ${VIEW_NAMES[view].toLowerCase()}`}
-              placeholder={`Search ${VIEW_NAMES[view].toLowerCase()} by title or address…`}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing) return;
-                if (event.key === "Enter" && !selecting && !loading) {
-                  if (view === "closed") {
-                    event.preventDefault();
-                    firstResult.current?.click();
-                  } else if (view === "bookmarks" && childFolders[0]) {
-                    event.preventDefault();
-                    openFolder(childFolders[0].nodeId);
-                  } else if (items[0]) {
-                    event.preventDefault();
-                    open(items[0]);
+          <div className="library-search-row">
+            <div className="library-field" data-input-surface>
+              <span className="library-icon">{shellIconSearch}</span>
+              <input
+                ref={search}
+                value={query}
+                aria-label={`Search ${VIEW_NAMES[view].toLowerCase()}`}
+                placeholder={`Search ${VIEW_NAMES[view].toLowerCase()} by title or address…`}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
+                  if (event.key === "Enter" && !selecting && !loading) {
+                    if (view === "closed") {
+                      event.preventDefault();
+                      firstResult.current?.click();
+                    } else if (view === "bookmarks" && childFolders[0]) {
+                      event.preventDefault();
+                      openFolder(childFolders[0].nodeId);
+                    } else if (items[0]) {
+                      event.preventDefault();
+                      open(items[0]);
+                    }
                   }
-                }
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  firstResult.current?.focus();
-                }
-              }}
-            />
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    firstResult.current?.focus();
+                  }
+                }}
+              />
+            </div>
+            {view === "bookmarks" && (
+              <ActionMenu
+                label="Organize bookmarks"
+                actions={[
+                  {
+                    label: "Add new bookmark",
+                    disabled: busy || !snapshot?.editable || !currentFolder,
+                    onSelect: () => {
+                      setError("");
+                      setAddingBookmark(true);
+                    },
+                  },
+                  {
+                    label: "Bookmark current page",
+                    disabled:
+                      busy ||
+                      !snapshot?.editable ||
+                      !active ||
+                      !/^https?:\/\//i.test(active.url) ||
+                      isSaved(active.url),
+                    onSelect: () =>
+                      active &&
+                      void action(async () => {
+                        await save({ url: active.url, title: active.title || hostOf(active.url) });
+                        setNotice("Current page bookmarked.");
+                      }),
+                  },
+                  {
+                    label: "Add new folder",
+                    disabled: busy || !snapshot?.editable || !currentFolder,
+                    onSelect: () =>
+                      currentFolder && setFolderEditor({ mode: "create", name: "", folder: currentFolder }),
+                  },
+                  {
+                    label: "Select bookmarks",
+                    disabled: busy || !bookmarks.length,
+                    onSelect: () => {
+                      setSelecting(true);
+                      setSelection([]);
+                      setEditing(null);
+                      setMoveFolder(JSON.stringify(folder));
+                      setNewMoveFolder("");
+                    },
+                  },
+                  {
+                    label: "Import bookmarks",
+                    disabled: busy || !bookmarkImport.available,
+                    onSelect: bookmarkImport.choose,
+                  },
+                  {
+                    label: "Export bookmarks",
+                    disabled: busy || !snapshot || (!bookmarks.length && !folders.length) || !inNativeHost,
+                    onSelect: () =>
+                      void action(async () => {
+                        const file = await bridge.saveFile(
+                          "aux-bookmarks.html",
+                          exportBookmarkFile(bookmarks, snapshot!),
+                        );
+                        if (file) {
+                          const skipped = bookmarks.filter((item) => !bookmarkWebUrl(item.url)).length;
+                          setNotice(
+                            skipped
+                              ? `Web bookmarks exported. ${skipped} unsupported addresses omitted.`
+                              : "Bookmarks exported.",
+                          );
+                        }
+                      }),
+                  },
+                ]}
+              />
+            )}
           </div>
+          {view === "bookmarks" && <BookmarkImportFileInput flow={bookmarkImport} disabled={busy} />}
+          {addingBookmark && currentFolder && (
+            <NewBookmarkDialog
+              folderName={currentFolder.title || "Bookmarks"}
+              busy={busy}
+              error={error}
+              onClose={() => setAddingBookmark(false)}
+              onSave={(draft) =>
+                void action(async () => {
+                  await save(draft);
+                  setAddingBookmark(false);
+                  setNotice("Bookmark added.");
+                })
+              }
+            />
+          )}
           {bridge.privateMode && (
             <p className="library-message hint">
               Bookmarks and history stay in this private window until it closes. Exported files remain on your
@@ -991,7 +1090,7 @@ export function Library({
             <RecentlyClosed query={query} firstOpenRef={firstResult} />
           ) : (
             <>
-              <div className="library-tools" hidden={selecting && view === "bookmarks"}>
+              <div className="library-tools" hidden={view === "bookmarks"}>
                 <button
                   {...smallButtonProps}
                   disabled={busy || !active || !/^https?:\/\//i.test(active.url) || isSaved(active.url)}
@@ -1034,56 +1133,6 @@ export function Library({
                       ? "Page in reading list"
                       : "Read later"}
                   </button>
-                )}
-                {view === "bookmarks" && (
-                  <>
-                    <button
-                      {...smallButtonProps}
-                      disabled={busy || !bookmarks.length}
-                      aria-pressed={selecting}
-                      onClick={() => {
-                        setSelecting((value) => !value);
-                        setSelection([]);
-                        setEditing(null);
-                        setMoveFolder(JSON.stringify(folder));
-                        setNewMoveFolder("");
-                      }}
-                    >
-                      Select
-                    </button>
-                    <button
-                      {...smallButtonProps}
-                      disabled={busy}
-                      onClick={() =>
-                        currentFolder && setFolderEditor({ mode: "create", name: "", folder: currentFolder })
-                      }
-                    >
-                      {shellIconFolderClosed} New folder
-                    </button>
-                    <BookmarkImportFileControl flow={bookmarkImport} disabled={busy} label="Import HTML" />
-                    <button
-                      {...smallButtonProps}
-                      disabled={busy || !snapshot || (!bookmarks.length && !folders.length) || !inNativeHost}
-                      onClick={() =>
-                        void action(async () => {
-                          const file = await bridge.saveFile(
-                            "aux-bookmarks.html",
-                            exportBookmarkFile(bookmarks, snapshot!),
-                          );
-                          if (file) {
-                            const skipped = bookmarks.filter((item) => !bookmarkWebUrl(item.url)).length;
-                            setNotice(
-                              skipped
-                                ? `Web bookmarks exported. ${skipped} unsupported addresses omitted.`
-                                : "Bookmarks exported.",
-                            );
-                          }
-                        })
-                      }
-                    >
-                      Export HTML
-                    </button>
-                  </>
                 )}
                 {view === "history" && (
                   <>

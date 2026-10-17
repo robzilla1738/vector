@@ -1,5 +1,23 @@
 # Aux status — October 16, 2026
 
+Bookmark Organize batch (reference 169): creation, selection and HTML import/export
+now live in the Organize menu beside search. Added a web-bookmark form backed by
+the existing native create method, showing the destination folder, guarding busy
+submission and retaining failed drafts. The import input stays mounted outside
+the menu, preserving file-selection delivery after menu dismissal. Shared input
+styles were found overriding Library's pill radius; Library now explicitly keeps
+its rounded search surface. Sort-by-name and full clipboard/open-destination
+parity remain open.
+
+Validation: integrated check passed typecheck/lint and all 4,628 tests across
+745 files in 95.06s, including new form/failed-draft and persistent-import-input
+coverage. Final renderer build passed in 2.10s. Logs:
+`/tmp/aux-bookmark-organize-check.log`, `/tmp/aux-bookmark-organize-build.log`.
+Integrated Vite Library entry and Organize menu were visually inspected. Mock
+folders are read-only, so actual creation and final pill styling still require
+the consolidated native walkthrough. No real Profile was touched.
+
+
 Bookmark row/action batch (reference 168/170): saved bookmarks now use compact
 rows with site icons (existing page-session favicon only, otherwise a globe),
 inline title/address columns and a shared rounded results surface. Narrow panes

@@ -65,7 +65,9 @@ it("updates the changed bookmark row without losing its sibling or edit action",
   expect(host.textContent).not.toContain("Second bookmark");
   expect(host.textContent).toContain("First bookmark");
 
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Actions for Renamed bookmark"]')!.click());
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Actions for Renamed bookmark"]')!.click(),
+  );
   await act(async () =>
     document.querySelector<HTMLButtonElement>('[aria-label="Edit Renamed bookmark"]')!.click(),
   );
@@ -292,4 +294,21 @@ it("uses the shared reviewed bookmark file import and refreshes the real Library
   expect(useStore.getState().bookmarks).toEqual([imported]);
   expect(host.querySelector('[aria-label="Bookmark import preview"]')).toBeNull();
   expect(host.textContent).toContain("Imported 1 bookmarks");
+});
+
+it("keeps the import file input mounted when Organize closes after choosing a file", async () => {
+  await act(async () => root.render(<Library />));
+  const input = host.querySelector<HTMLInputElement>('input[type="file"]')!;
+  const pick = vi.spyOn(input, "click").mockImplementation(() => {});
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Organize bookmarks"]')!.click());
+  const menu = document.querySelector('[role="menu"]')!;
+  await act(async () =>
+    [...menu.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Import bookmarks")!
+      .click(),
+  );
+  expect(pick).toHaveBeenCalledOnce();
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(host.querySelector('input[type="file"]')).toBe(input);
+  expect(input.isConnected).toBe(true);
 });
