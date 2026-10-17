@@ -7,13 +7,24 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current native preview
+## Current replacement build
+
+Product **f8a63b938**, launcher **34011**, exec **63143**, log
+`/tmp/aux-memory-index-native-build.log`. Launcher confirmed live. Preserve this
+single builder and freeze renderer/runtime edits until staging finishes. Prior
+launcher26443, app27577 and runtime27591 retired normally; Profileaux-dev-juErea
+and lock were verified removed. CUA homeHistoryApp is stale.
+
+Next acceptance: About identity; Ask spacing and Tab/draft round trip; Memory
+Configure before/after Rebuild, approved-note chunk count/update time, pause and
+reopening. Compare075 plus light/narrow layouts. No packaged acceptance yet.
+
+## Previous Home/history native preview (retired)
 
 Product **0a5a757e0**, launcher **26443**, app **27577**, runtime **27591**,
 exec **4789**, API port **51167**, disposable Profile **aux-dev-juErea**.
 Log `/tmp/aux-home-history-native-build.log`; native build passed in **9m22.03s**
-and runtime staging completed. CUA **homeHistoryApp** is live. Preserve this
-launcher's cleanup ownership; there is no pending build. About confirmed clean
+and runtime staging completed. CUA **homeHistoryApp** is stale; this preview retired normally. About confirmed clean
 source `0a5a757e0d00e973ad7d3845a9059a33cddb021a`, Chromium154.0.8037.98 and ABI9021388e….
 Prior launcher17093, app18292, runtime18307, Profileaux-dev-c7Z9wr and lock all
 retired normally and were verified removed before replacement.
@@ -51,15 +62,14 @@ restored the unfinished text. The synthetic draft was cleared, the temporary tab
 closed and native sidebar restored. Capture `aux-ask-spacing-live-renderer.jpg`
 under the capture directory shows the empty Ask/Routines layout. It includes an
 extra outer native toolbar; accounting for that toolbar, Recent work aligns with004.
-This is renderer evidence, not packaged acceptance. Native0a5a757e0 remains live;
-queue this source change with the next native replacement rather than starting a
-separate nine-minute build for spacing alone.
+This is renderer evidence, not packaged acceptance. Native0a5a757e0 has retired; this source change is included in the
+combined f8a63b938 replacement.
 
 `npm run check` passed typecheck/lint and **4,629 tests /745 files** in95.79s
 (`/tmp/aux-home-ask-check.log`). Reference rescan remains182PNG/192TXT/6support.
 Full parity, image thumbnails and native light/narrow comparison remain open.
 
-## Memory index batch — source checked, packaging next
+## Memory index batch — source checked, replacement building
 
 Memory now persists encrypted512-character search chunks with64-character overlap,
 a digest of approved source text and a real update time. Search uses these chunks

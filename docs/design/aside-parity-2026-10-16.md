@@ -2605,3 +2605,10 @@ new encrypted index/restart/rebuild/Forget and UI refresh evidence plus existing
 recovery tests. Log /tmp/aux-memory-index-check.log. Generated authorization was
 refreshed after the first compile identified the missing method. Native packaging
 and comparison with075 remain pending; combine with the Ask follow-up.
+
+
+Replacement ownership: f8a63b938 launcher34011/session63143, log
+/tmp/aux-memory-index-native-build.log. Prior26443/app27577/runtime27591 retired
+normally; Profileaux-dev-juErea and lock verified removed. CUA homeHistoryApp is
+stale. Renderer/runtime source frozen until staging; combined Ask/Memory native
+acceptance remains pending. Launcher34011 was confirmed live after starting.
