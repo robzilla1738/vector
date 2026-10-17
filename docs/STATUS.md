@@ -1,12 +1,31 @@
 # Aux status — October 16, 2026
 
-Current replacement build: product **2408e4727**, launcher **4140**, exec **37073**,
-log `/tmp/aux-memory-activity-native-build.log`. The prior launcher95514/app96859
-retired normally; aux-dev-cVMdy3, runtime96875 and the native lock were verified
-removed before replacement. Wait on this same live builder, verify About, then
-create a synthetic completed chat and inspect Memory Activity/recovery separation
-in the packaged native app. Do not bind the retired layoutPreviewApp CUA object.
-No new renderer/runtime source edits until staging completes.
+Current live preview: product **2408e4727**, launcher **4140**, app **5496**,
+runtime **5517**, exec **37073**, disposable Profile **aux-dev-NybYhE**,
+API `http://127.0.0.1:60568`. Log `/tmp/aux-memory-activity-native-build.log`.
+Native build passed in **9m36.99s**. About verified clean source
+2408e4727a04378863f612cfe10e4044201e5f2e, Chromium154.0.8037.98 and ABI9021388e….
+Preserve launcher4140 cleanup ownership. CUA binding: memoryActivityApp.
+
+Native acceptance: a real synthetic two-sentence notebook chat completed and
+produced two pending review notes. Memory History opened Activity by default,
+showing the source title, date, Chat completed trigger, measured2ms duration and
+2notes; local extraction explicitly has no model request. Recovery revisions is
+a separate view and correctly empty before note acceptance. Capture:
+`/tmp/aux-parity-2026-10-16/aux-memory-activity-native-2408e4727.png`.
+No unchanged tests rerun. Reference corpus remains182PNG.
+
+Next concrete defect: from native Bookmarks with its search field focused,
+Cmd-T then immediate typing opens the command surface but text reaches the old
+page. Escape also fails to dismiss until clicking the command input. This
+reproduces the earlier fixture observation in the new packaged app; it is not
+merely an unverified timing suspicion. CommandBar surfaceMode layout effect
+focuses only the DOM input; the separate address focusRequest path calls native
+bridge.focusShell then refocuses. Native DispatchAuxShortcut already calls
+WebContents::Focus before emitting the shortcut. Trace native embedded-content
+focus ownership and overlay handoff; do not assume a delayed retry fixes it.
+No focus source edits yet. The preview is left on native Bookmarks with search
+cleared after clicking the command input and Escape. Broader parity remains open.
 
 
 Source batch: Memory History now opens a dated extraction-activity list and detail
@@ -30,8 +49,7 @@ Synthetic Vite preview checked selection, dated grouping, no-change detail, wide
 dark and narrow light layout. Final narrow light capture:
 `/tmp/aux-parity-2026-10-16/aux-memory-activity-narrow-light-vite.png`.
 Wide capture predates the final stronger active-row color. Temporary fixture files
-were removed and its tab closed. Native Memory activity acceptance is pending;
-the live preview below still contains the previous runtime and renderer.
+were removed and its tab closed. Native Memory activity acceptance is recorded above; the previews below are historical.
 
 
 Previously accepted layout preview built successfully in **9m10.20s**. Launcher **95514**,

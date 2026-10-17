@@ -6,8 +6,10 @@ local processing duration and trigger. History separates Activity from Recovery
 revisions. Recovery and Forget include activity; no model usage is fabricated.
 Integrated check passed4619/4620; corrected one removed-activity expectation and
 all56 affected tests passed. Wide dark and narrow light synthetic rendering and
-selection were checked, with stronger light active-row contrast. Native acceptance
-awaits launcher4140/exec37073; ownership and evidence paths are in STATUS.
+selection were checked, with stronger light active-row contrast. Native acceptance passed in product2408e4727: a real synthetic completed chat
+produced2notes and a dated activity record with Chat completed trigger and2ms
+duration; Recovery revisions remains separate. Capture and live ownership are in
+STATUS. A native Cmd-T focus handoff defect was reproduced and remains open.
 This does not complete document-tree, model-extraction, failure/diff, retention or
 index-rebuild parity.
 
