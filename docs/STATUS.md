@@ -1,14 +1,32 @@
 # Aux status — October 16, 2026
 
-Current replacement build: **930d6632f**, launcher **95514**, exec **35247**,
-log `/tmp/aux-layout-defaults-build.log`. Includes the f95a500ce layout defaults
-and toolbar alignment, plus regenerated settings-search copy. Native compilation
-passed and framework linking is in progress. Wait for staging and launch, verify
-About, then fresh sidebar/toolbar visibility and right-aligned actions.
-Launcher 91436/app 92805 retired normally; aux-dev-2gPXgK and its lock were
-verified removed before this replacement. Do not bind the retired app or start
-another builder. Subsequent 196c543fd records the already-generated search copy
-and architecture description; it does not introduce a different renderer design.
+Live layout preview built successfully in **9m10.20s**. Launcher **95514**,
+app **96859**, runtime **96875**, exec **35247**, disposable Profile
+**aux-dev-cVMdy3**, runtime API `http://127.0.0.1:58795`.
+Log `/tmp/aux-layout-defaults-build.log`. Preserve this launcher's cleanup ownership.
+About reports product **f95a500ce2a37b65552022dfa31f5349d7c993d9+dirty**,
+Chromium 154.0.8037.98 and ABI 9021388e…. The native identity was captured after
+renderer generation changed settings/search.generated.ts; that exact search-copy
+change was subsequently committed in **196c543fd**. Docs-only HEAD advances are
+excluded from product identity. Do not label this app 930d6632f or a clean build.
+The current checkout is clean; no product source changed during runtime staging.
+
+Native acceptance: fresh Profile sidebar expanded and toolbar visible, with actions
+at the right edge. Explicit Auto-hide preference switches on; Labs opt-out leaves
+the toolbar visible despite that saved preference. Reading-list mark-read moves
+the item to Read and retains focus on its action button. Native Bookmarks reloads
+and preserves Private/group/split opt-outs while the owned runtime process is
+suspended (STAT T verified); runtime was resumed (STAT S verified) immediately
+afterward. Feature settings were restored on, Auto-hide preference off.
+Capture `/tmp/aux-parity-2026-10-16/aux-visible-navigation-f95a500ce-dirty.png`.
+No unchanged tests were rerun; f95a500ce integrated check already passed 4,618 tests.
+
+Memory references 072, 074 and 075 were reopened. Current revision history is not
+the extraction-activity history in 074; current report splitting has no model usage
+to display. Document tree, real extraction activity, index status and retention
+remain implementation gaps. See `docs/design/memory-parity-implementation.md`.
+Broader parity, matched light/narrow views, populated History, phase perf and manual
+20-task smoke remain incomplete.
 
 
 Previously accepted candidate **4b1358c589f27d8dd830e3eaca76163325ed2793** built

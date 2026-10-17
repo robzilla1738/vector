@@ -1,5 +1,16 @@
 # Aside UI parity — October 16, 2026
 
+October 17 layout native acceptance: observed About identity f95a500ce+dirty
+(the generated search copy was committed afterward in 196c543fd). Fresh sidebar
+and toolbar are visible, toolbar actions align right, and Labs auto-hide opt-out
+overrides the saved enabled preference. Reading mark-read retains row-action focus.
+Native Bookmarks retains three feature opt-outs after reload with runtime suspended;
+runtime resumed and test preferences restored. Capture and live ownership are in
+STATUS. This supersedes the replacement-build assumptions below, not the remaining
+full-parity gaps. Memory's document/extraction gaps are specified in
+[memory-parity-implementation.md](memory-parity-implementation.md).
+
+
 October 17 follow-up acceptance: candidate 4b1358c58 hides empty native bookmark
 roots and removes Private/group/split actions immediately after their Labs opt-outs,
 without reloading the native page. The model-search focus follows the rounded
