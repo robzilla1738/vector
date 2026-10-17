@@ -1,5 +1,19 @@
 # Aux status — October 16, 2026
 
+Native follow-up consolidation is running from `bca52783c`, including organization
+value comparison, all-root bookmark navigation and post-edit refresh/focus.
+Launcher **41736**, exec session **82219**, log `/tmp/aux-organization-native.log`.
+Previous launcher 32186 was retired with SIGTERM; its app 35867 exited, disposable
+Profile `aux-dev-iuwRXZ` was removed and the plain lock was released before this
+builder started. Preserve launcher 41736's cleanup ownership and poll the existing
+session. No app or native acceptance for this candidate is ready yet.
+
+Next native evidence: About revision; Quick Ask open/expand with an unsent draft
+and allow the delayed organization notification window to pass; bookmark edit
+updates immediately and a second edit succeeds; all native bookmark roots are
+visible in the rail. Broader parity and earlier unaccepted surfaces remain open.
+
+
 Organization persistence follow-up: found key-order-sensitive JSON comparisons
 in the no-op commit guard and three-way merge. Chromium dictionary serialization
 can reorder keys while preserving values; two normal windows refreshing Spaces
