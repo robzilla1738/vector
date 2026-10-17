@@ -442,3 +442,33 @@
     margin-top: 12px;
   }
 }
+
+@layer overrides {
+  .settings-memory-subnav {
+    margin: 2px 0 6px 18px;
+    padding-left: 8px;
+    border-left: 1px solid var(--line);
+  }
+  .settings-nav .settings-memory-subnav button[data-category] {
+    font-weight: 400;
+  }
+  @container settings-page (width < 720px) {
+    .settings-memory-subnav {
+      display: flex;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    .settings-rail-item:has(.settings-memory-subnav) {
+      display: flex;
+    }
+  }
+}
+
+@layer overrides {
+  .memory-settings > h2 {
+    font-size: 18px;
+    font-weight: var(--fw-medium);
+    margin: 0 0 12px;
+  }
+}

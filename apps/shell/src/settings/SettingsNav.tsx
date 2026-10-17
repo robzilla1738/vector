@@ -1,3 +1,4 @@
+import type { MemoryView } from "./routes";
 import { SearchField } from "../ui";
 import type { RefObject } from "react";
 import { moveListFocus } from "../keyboard-list";
@@ -9,6 +10,8 @@ export function SettingsNav({
   onQueryChange,
   category,
   connectionTab,
+  memoryView = "overview",
+  onOpenMemoryView,
   searching,
   memoryAvailable,
   downloadNamingAvailable,
@@ -30,6 +33,8 @@ export function SettingsNav({
   onQueryChange: (query: string) => void;
   category: string;
   connectionTab: ConnectionTab;
+  memoryView?: MemoryView;
+  onOpenMemoryView?: (view: MemoryView) => void;
   searching: boolean;
   memoryAvailable: boolean;
   downloadNamingAvailable: boolean;
@@ -81,6 +86,8 @@ export function SettingsNav({
       <SectionRail
         category={category}
         connectionTab={connectionTab}
+        memoryView={memoryView}
+        onOpenMemoryView={onOpenMemoryView}
         searching={searching}
         memoryAvailable={memoryAvailable}
         downloadNamingAvailable={downloadNamingAvailable}

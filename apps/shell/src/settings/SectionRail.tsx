@@ -1,3 +1,4 @@
+import { memoryViews, type MemoryView } from "./routes";
 import type { RefObject } from "react";
 import {
   shellIconDownloadSm,
@@ -123,6 +124,8 @@ const items: readonly RailItem[] = [
 export function SectionRail({
   category,
   connectionTab,
+  memoryView = "overview",
+  onOpenMemoryView,
   searching,
   memoryAvailable,
   downloadNamingAvailable,
@@ -140,6 +143,8 @@ export function SectionRail({
 }: {
   category: string;
   connectionTab: ConnectionTab;
+  memoryView?: MemoryView;
+  onOpenMemoryView?: (view: MemoryView) => void;
   searching: boolean;
   memoryAvailable: boolean;
   downloadNamingAvailable: boolean;
@@ -183,13 +188,32 @@ export function SectionRail({
               data-category={item.label}
               title={item.label}
               aria-current={
-                !searching && selectedPath === settingsPath(item.category, item.tab) ? "page" : undefined
+                !searching &&
+                !(item.category === "Memory" && onOpenMemoryView) &&
+                selectedPath === settingsPath(item.category, item.tab)
+                  ? "page"
+                  : undefined
               }
               onClick={() => onOpenCategory(item.category, item.tab)}
             >
               <span className="settings-category-icon">{item.icon}</span>
               <span className="settings-category-label">{item.label}</span>
             </button>
+            {item.category === "Memory" && category === "Memory" && !searching && onOpenMemoryView && (
+              <div className="settings-memory-subnav">
+                {memoryViews.map(({ view, label }) => (
+                  <button
+                    type="button"
+                    key={view}
+                    data-category={`Memory ${label}`}
+                    aria-current={memoryView === view ? "page" : undefined}
+                    onClick={() => onOpenMemoryView(view)}
+                  >
+                    <span className="settings-category-label">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}

@@ -1,3 +1,4 @@
+import type { MemoryView } from "../settings/routes";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
@@ -65,10 +66,12 @@ function MemoryControl({
 
 export function SpaceMemoryEditor({
   memory,
+  view,
   disabled = false,
   onSaved,
 }: {
   memory: WorkspaceMemory;
+  view?: MemoryView;
   disabled?: boolean;
   onSaved(memory: WorkspaceMemory): void;
 }) {
@@ -203,128 +206,134 @@ export function SpaceMemoryEditor({
   return (
     <div className="space-memory-editor">
       {needsFreshBackup && <MemoryRecoveryNotice />}
-      <label className="memory-use-toggle" htmlFor={enabledId}>
-        <MemoryControl
-          onError={controlError}
-          command="toggle-space-memory-enabled"
-          inputId={enabledId}
-          scopeId={memory.workspaceId}
-          checkbox
-          checked={memory.enabled !== false}
-          disabled={disabled || busy}
-          action={() => setEnabled(memory.enabled === false)}
-        />
-        <span>
-          Use Space memory in new replies
-          <small>
-            {memory.enabled === false
-              ? "Paused. Saved memory stays available; recording and use in new replies stop."
-              : "Saved notes and enabled browsing memory can inform conversations and tasks in this Space."}
-          </small>
-        </span>
-      </label>
-      <details className="memory-overview" open={overviewOpen}>
-        <MemoryControl
-          onError={controlError}
-          command="toggle-space-memory-overview"
-          scopeId={memory.workspaceId}
-          summary
-          action={() => {
-            if (!mounted.current || !scope.active || bridge.privateMode)
-              throw new Error("The Space changed.");
-            setOverviewOpen((value) => !value);
-          }}
-        >
-          Space overview{changed ? " · Unsaved" : ""}
-        </MemoryControl>
-        <textarea
-          aria-label="Space memory"
-          value={content}
-          maxLength={16_000}
-          disabled={disabled || busy}
-          placeholder="Project context, preferences, and decisions worth keeping…"
-          onChange={(event) => edit(event.target.value)}
-        />
-        <div className="space-memory-editor-actions">
-          <span {...staticHintProps}>
-            {changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} ·{" "}
-            {content.length.toLocaleString()}/16,000
-          </span>
-          <span {...auxClassSpacerProps} />
-          {content && (
-            <MemoryControl
-              onError={controlError}
-              command="clear-space-memory-draft"
-              scopeId={memory.workspaceId}
-              {...smallGhostButtonProps}
-              disabled={disabled || busy}
-              action={() => {
-                assertDraft();
-                edit("");
-              }}
-            >
-              Clear notes
-            </MemoryControl>
-          )}
-          {draft && (
-            <MemoryControl
-              onError={controlError}
-              command="discard-space-memory-draft"
-              scopeId={memory.workspaceId}
-              {...smallGhostButtonProps}
-              disabled={disabled || busy}
-              action={() => {
-                assertDraft();
-                useMemoryDrafts.getState().write(memory.workspaceId, null);
-                setConflict(null);
-                setError("");
-              }}
-            >
-              Discard draft
-            </MemoryControl>
-          )}
+      <div hidden={!!view && view !== "configure"}>
+        <label className="memory-use-toggle" htmlFor={enabledId}>
           <MemoryControl
             onError={controlError}
-            command="save-space-memory"
+            command="toggle-space-memory-enabled"
+            inputId={enabledId}
             scopeId={memory.workspaceId}
-            disabled={disabled || busy || !changed}
-            action={() => save()}
+            checkbox
+            checked={memory.enabled !== false}
+            disabled={disabled || busy}
+            action={() => setEnabled(memory.enabled === false)}
+          />
+          <span>
+            Use Space memory in new replies
+            <small>
+              {memory.enabled === false
+                ? "Paused. Saved memory stays available; recording and use in new replies stop."
+                : "Saved notes and enabled browsing memory can inform conversations and tasks in this Space."}
+            </small>
+          </span>
+        </label>
+      </div>
+      <div hidden={!!view && view !== "overview"}>
+        <details className="memory-overview" open={overviewOpen}>
+          <MemoryControl
+            onError={controlError}
+            command="toggle-space-memory-overview"
+            scopeId={memory.workspaceId}
+            summary
+            action={() => {
+              if (!mounted.current || !scope.active || bridge.privateMode)
+                throw new Error("The Space changed.");
+              setOverviewOpen((value) => !value);
+            }}
           >
-            {busy ? "Saving…" : "Save notes"}
+            Space overview{changed ? " · Unsaved" : ""}
           </MemoryControl>
-        </div>
-        {!content && memory.content && (
-          <p {...staticHintProps}>
-            Save to remove these notes from future context. Earlier task records retain their original
-            snapshots.
-          </p>
-        )}
-        {memory.updatedAt && (
-          <p {...staticHintProps}>
-            Saved {new Date(memory.updatedAt).toLocaleString()} · Written by you ·{" "}
-            {memory.enabled === false ? "Paused for future replies" : "Used in this Space"}.
-          </p>
-        )}
-        {memory.enabled === false && (
-          <p {...staticHintProps}>
-            Pausing applies to new context. Active runs and earlier task records retain their existing
-            snapshots.
-          </p>
-        )}
-      </details>
-      <MemoryItems
-        memory={memory}
-        disabled={disabled || busy}
-        onSaved={(saved) => {
-          const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
-          if (current?.revision === memory.revision && saved.content === memory.content)
-            useMemoryDrafts.getState().write(memory.workspaceId, { ...current, revision: saved.revision });
-          if (noteRemoved(saved)) setNeedsFreshBackup(true);
-          onSaved(saved);
-        }}
-      />
-      <BrowsingMemory key={memory.workspaceId} memory={memory} />
-      <ContentMemory key={`content-${memory.workspaceId}`} memory={memory} />
+          <textarea
+            aria-label="Space memory"
+            value={content}
+            maxLength={16_000}
+            disabled={disabled || busy}
+            placeholder="Project context, preferences, and decisions worth keeping…"
+            onChange={(event) => edit(event.target.value)}
+          />
+          <div className="space-memory-editor-actions">
+            <span {...staticHintProps}>
+              {changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} ·{" "}
+              {content.length.toLocaleString()}/16,000
+            </span>
+            <span {...auxClassSpacerProps} />
+            {content && (
+              <MemoryControl
+                onError={controlError}
+                command="clear-space-memory-draft"
+                scopeId={memory.workspaceId}
+                {...smallGhostButtonProps}
+                disabled={disabled || busy}
+                action={() => {
+                  assertDraft();
+                  edit("");
+                }}
+              >
+                Clear notes
+              </MemoryControl>
+            )}
+            {draft && (
+              <MemoryControl
+                onError={controlError}
+                command="discard-space-memory-draft"
+                scopeId={memory.workspaceId}
+                {...smallGhostButtonProps}
+                disabled={disabled || busy}
+                action={() => {
+                  assertDraft();
+                  useMemoryDrafts.getState().write(memory.workspaceId, null);
+                  setConflict(null);
+                  setError("");
+                }}
+              >
+                Discard draft
+              </MemoryControl>
+            )}
+            <MemoryControl
+              onError={controlError}
+              command="save-space-memory"
+              scopeId={memory.workspaceId}
+              disabled={disabled || busy || !changed}
+              action={() => save()}
+            >
+              {busy ? "Saving…" : "Save notes"}
+            </MemoryControl>
+          </div>
+          {!content && memory.content && (
+            <p {...staticHintProps}>
+              Save to remove these notes from future context. Earlier task records retain their original
+              snapshots.
+            </p>
+          )}
+          {memory.updatedAt && (
+            <p {...staticHintProps}>
+              Saved {new Date(memory.updatedAt).toLocaleString()} · Written by you ·{" "}
+              {memory.enabled === false ? "Paused for future replies" : "Used in this Space"}.
+            </p>
+          )}
+          {memory.enabled === false && (
+            <p {...staticHintProps}>
+              Pausing applies to new context. Active runs and earlier task records retain their existing
+              snapshots.
+            </p>
+          )}
+        </details>
+        <MemoryItems
+          memory={memory}
+          disabled={disabled || busy}
+          onSaved={(saved) => {
+            const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
+            if (current?.revision === memory.revision && saved.content === memory.content)
+              useMemoryDrafts.getState().write(memory.workspaceId, { ...current, revision: saved.revision });
+            if (noteRemoved(saved)) setNeedsFreshBackup(true);
+            onSaved(saved);
+          }}
+        />
+      </div>
+      <div hidden={!!view && view !== "context"}>
+        <BrowsingMemory key={memory.workspaceId} memory={memory} />
+        <ContentMemory key={`content-${memory.workspaceId}`} memory={memory} />
+      </div>
       {storageError && (
         <output data-block {...staticHintProps}>
           Your draft is available in this window but could not be saved for restart.

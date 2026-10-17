@@ -1,3 +1,4 @@
+import { memoryViews, type MemoryView } from "../settings/routes";
 import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -11,7 +12,7 @@ import { SpaceMemoryEditor } from "./SpaceMemoryEditor";
 import { SpaceMemory } from "../settings/sections/SpaceMemory";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-export function MemorySettings() {
+export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
   const layout = useStore((state) => state.layout);
   const spaces = [...layout.spaces, ...(layout.archivedSpaces ?? [])].filter((space) => space.workspaceId);
   const [spaceId, setSpaceId] = useState(
@@ -48,9 +49,10 @@ export function MemorySettings() {
     )
       throw new Error("The Space changed. Choose its current memory control.");
   }
-  const matchingSpaces = query.trim()
-    ? spaces.filter((item) => matches.some((match) => match.workspaceId === item.workspaceId))
-    : spaces;
+  const matchingSpaces =
+    view === "overview" && query.trim()
+      ? spaces.filter((item) => matches.some((match) => match.workspaceId === item.workspaceId))
+      : spaces;
   useEffect(() => {
     if (bridge.privateMode || !query.trim()) {
       setMatches([]);
@@ -112,44 +114,53 @@ export function MemorySettings() {
   if (bridge.privateMode) return <p {...staticHintProps}>Space memory is unavailable in private browsing.</p>;
   return (
     <div className="memory-settings">
+      <h2>{memoryViews.find((item) => item.view === view)?.label}</h2>
       <p {...staticHintProps}>
-        Keep useful preferences and project context in one place. Write notes yourself or opt in to
-        remembering page titles and addresses below. Browsing memory is off by default.
+        {view === "overview"
+          ? "Review saved preferences, project context and notes for this Space."
+          : view === "history"
+            ? "Browse saved memory revisions and restore an earlier summary."
+            : view === "context"
+              ? "Choose which browsing information Aux can remember in this Space."
+              : "Control how this Space saves memory and uses it in future replies."}
       </p>
-      <label className="memory-space-search" data-input-surface>
-        Search saved memory
-        <input
-          {...staticFieldInputProps}
-          aria-label="Search Space names and saved notes"
-          value={query}
-          placeholder="Search Space names and saved notes…"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
-      {searching && (
-        <output {...staticHintProps} data-block>
-          Searching saved notes…
-        </output>
-      )}
-      {searchError && (
-        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
-          {searchError}{" "}
-          <MemorySettingsControl
-            {...smallGhostButtonProps}
-            command="retry-memory-search"
-            scopeId={query}
-            invoke={() => {
-              if (selectedSpaceId) currentSpace(selectedSpaceId, selectedWorkspaceId);
-              setRefresh((value) => value + 1);
-            }}
-          >
-            Retry
-          </MemorySettingsControl>
-        </p>
-      )}
+      <div hidden={view !== "overview"}>
+        <label className="memory-space-search" data-input-surface>
+          Search saved memory
+          <input
+            {...staticFieldInputProps}
+            aria-label="Search Space names and saved notes"
+            value={query}
+            placeholder="Search Space names and saved notes…"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {searching && (
+          <output {...staticHintProps} data-block>
+            Searching saved notes…
+          </output>
+        )}
+        {searchError && (
+          <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+            {searchError}{" "}
+            <MemorySettingsControl
+              {...smallGhostButtonProps}
+              command="retry-memory-search"
+              scopeId={query}
+              invoke={() => {
+                if (selectedSpaceId) currentSpace(selectedSpaceId, selectedWorkspaceId);
+                setRefresh((value) => value + 1);
+              }}
+            >
+              Retry
+            </MemorySettingsControl>
+          </p>
+        )}
+      </div>
       <div
-        className={`memory-space-list ${query.trim() ? "memory-search-results" : ""}`}
+        className={`memory-space-list ${view === "overview" && query.trim() ? "memory-search-results" : ""}`}
         role="group"
+        hidden={spaces.length < 2 && !query.trim()}
         aria-label="Space memory selection"
       >
         {matchingSpaces.map((item) => {
@@ -170,7 +181,7 @@ export function MemorySettings() {
                 {item.name}
                 {layout.archivedSpaces?.some((archived) => archived.id === item.id) ? " · Archived" : ""}
               </span>
-              {query.trim() && (
+              {view === "overview" && query.trim() && (
                 <small>
                   {matches.find((match) => match.workspaceId === item.workspaceId)?.excerpt ||
                     "No saved notes"}
@@ -215,6 +226,7 @@ export function MemorySettings() {
         <SpaceMemoryEditor
           key={`editor:${memory.workspaceId}`}
           memory={memory}
+          view={view}
           onSaved={(value) => {
             if (value.workspaceId !== selectedWorkspace.current) return;
             setMemory(value);
@@ -223,7 +235,9 @@ export function MemorySettings() {
         />
       )}
       {space?.workspaceId && (
-        <SpaceMemory key={`pipeline:${space.workspaceId}`} workspaceId={space.workspaceId} />
+        <div hidden={view === "context"}>
+          <SpaceMemory key={`pipeline:${space.workspaceId}`} workspaceId={space.workspaceId} view={view} />
+        </div>
       )}
       {!spaces.length && <p {...staticHintProps}>Create a Space to save shared notes.</p>}
     </div>

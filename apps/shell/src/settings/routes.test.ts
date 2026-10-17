@@ -30,3 +30,12 @@ it("keeps internal Settings URLs in the browser shell", () => {
   expect(auxShellPathFromUrl("https://example.com/settings/appearance")).toBeNull();
   expect(() => auxShellPathFromUrl("chrome://aux/settings/unknown")).toThrow("isn't available");
 });
+
+it("round trips Memory subpages without opening a guest tab", () => {
+  for (const view of ["history", "context", "configure"] as const) {
+    const path = settingsPath("Memory", undefined, view);
+    expect(settingsRouteFromPath(path)).toMatchObject({ category: "Memory", memoryView: view });
+    expect(auxShellPathFromUrl(`chrome://aux${path}`)).toBe(path);
+  }
+  expect(settingsPath("Memory", undefined, "overview")).toBe("/settings/memory");
+});

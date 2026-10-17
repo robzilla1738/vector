@@ -1,5 +1,32 @@
 # Aside UI parity — October 16, 2026
 
+Memory navigation pass (references 072–077): Overview, History, Context
+awareness and Configure now have nested Settings-rail destinations and stable
+internal routes (`memory`, `memory-history`, `memory-context`, `memory-configure`).
+Settings popstate reads the subview; selecting the parent or a search result
+returns to Overview. Narrow Settings renders the destinations in its horizontal
+rail. The editor stays mounted across views to retain drafts. Overview contains
+saved notes and review; History exposes the revision browser; Context awareness
+contains browsing/page-content recall; Configure contains memory enable/use
+controls. History remains available while extraction is paused. A failed pipeline
+load no longer presents a misleading empty revision list.
+
+Validation: integrated typecheck/lint and 4,619 tests across 742 files passed
+(91.82s). Final focused route/Memory suites passed 41 tests after copy and loading
+state refinements; final renderer build passed in 2.06s. Logs:
+`/tmp/aux-memory-navigation-check.log`, `/tmp/aux-memory-navigation-final-tests.log`,
+`/tmp/aux-memory-navigation-final-build.log`. Vite inspection verified the direct
+Context route, switching to Configure and History, narrow navigation and the wide
+nested rail. Capture: `/tmp/aux-parity-2026-10-16/aux-memory-subnav-wide-vite.png`
+(pre-final copy/heading refinement). Browser back/forward behavior has route
+wiring but still needs an integrated native walkthrough. Mock pipeline methods
+are unavailable; no real memory settings or owner data were changed.
+
+This removes the navigation gap, not the remaining document-tree, extraction
+metrics, episodic retention or index rebuild gaps. Native consolidation is still
+pending: launcher 88765 owns the existing `c7b770bfe` preview. Full parity remains
+open.
+
 Memory history presentation (reference 074): replaced the repeated full-revision
 stack with a selectable revision list and one document detail pane. Dates, note
 counts and source counts use existing revision data. Restore remains bound to

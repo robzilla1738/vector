@@ -1,6 +1,15 @@
+export type MemoryView = "overview" | "history" | "context" | "configure";
+export const memoryViews: readonly { view: MemoryView; label: string }[] = [
+  { view: "overview", label: "Overview" },
+  { view: "history", label: "History" },
+  { view: "context", label: "Context awareness" },
+  { view: "configure", label: "Configure" },
+];
+
 export type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 
 export interface SettingsRoute {
+  memoryView?: MemoryView;
   category: string;
   connectionTab?: ConnectionTab;
   slug: string;
@@ -28,6 +37,9 @@ const routes: readonly SettingsRoute[] = [
   { slug: "skills-plugins", category: "Connections", connectionTab: "Plugins" },
   { slug: "mcp-connectors", category: "Connections", connectionTab: "Services" },
   { slug: "memory", category: "Memory" },
+  ...memoryViews
+    .filter(({ view }) => view !== "overview")
+    .map(({ view }) => ({ slug: `memory-${view}`, category: "Memory", memoryView: view })),
   { slug: "projects", category: "Projects" },
   { slug: "developers-external-agents", category: "Connections", connectionTab: "Agents" },
   { slug: "extensions", category: "Extensions" },
@@ -54,7 +66,12 @@ export function auxShellPathFromUrl(rawUrl: string): string | null {
   return `/settings/${route.slug}`;
 }
 
-export function settingsPath(category: string, connectionTab: ConnectionTab = "Services"): string {
+export function settingsPath(
+  category: string,
+  connectionTab: ConnectionTab = "Services",
+  memoryView: MemoryView = "overview",
+): string {
+  if (category === "Memory" && memoryView !== "overview") return `/settings/memory-${memoryView}`;
   const legacyTab: ConnectionTab | null =
     category === "Models"
       ? "Models"
@@ -72,7 +89,7 @@ export function settingsPath(category: string, connectionTab: ConnectionTab = "S
   return `/settings/${route?.slug ?? "general"}`;
 }
 
-export function pushSettingsPath(category: string, connectionTab?: ConnectionTab) {
-  const path = settingsPath(category, connectionTab);
+export function pushSettingsPath(category: string, connectionTab?: ConnectionTab, memoryView?: MemoryView) {
+  const path = settingsPath(category, connectionTab, memoryView);
   if (window.location.pathname !== path) window.history.pushState(null, "", path);
 }

@@ -1,3 +1,4 @@
+import type { MemoryView } from "../settings/routes";
 import { CloudExecution } from "../settings/sections/CloudExecution";
 import { lazySection } from "../settings/LazySettingsSection";
 import { staticIconButtonProps } from "../ui/class-props";
@@ -159,6 +160,7 @@ export function Settings() {
             ? "Vault"
             : "Models"),
   );
+  const [memoryView, setMemoryView] = useState<MemoryView>(initialRoute?.memoryView ?? "overview");
   const [subview, setSubview] = useState<string | null>(null);
   const subviewOrigin = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -178,6 +180,7 @@ export function Settings() {
         return;
       }
       setCategory(route.category);
+      setMemoryView(route.memoryView ?? "overview");
       setConnectionTab(route.connectionTab ?? "Services");
       setSubview(null);
       setQuery("");
@@ -191,6 +194,7 @@ export function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   function openCategory(name: string, tabOverride?: ConnectionTab) {
+    setMemoryView("overview");
     setSubview(null);
     setCategory(connectionCategories.includes(name) ? "Connections" : name);
     const nextTab =
@@ -295,7 +299,7 @@ export function Settings() {
 
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [category, query, connectionTab, subview]);
+  }, [category, query, connectionTab, memoryView, subview]);
 
   useLayoutEffect(() => {
     if (refreshVersion) {
@@ -368,6 +372,12 @@ export function Settings() {
           onQueryChange={setQuery}
           category={category}
           connectionTab={connectionTab}
+          memoryView={memoryView}
+          onOpenMemoryView={(view) => {
+            setMemoryView(view);
+            setQuery("");
+            pushSettingsPath("Memory", undefined, view);
+          }}
           searching={searching}
           memoryAvailable={memoryAvailable}
           downloadNamingAvailable={downloadNamingAvailable}
@@ -478,7 +488,7 @@ export function Settings() {
 
         {memoryAvailable && (
           <section tabIndex={-1} hidden={!visible("Memory")}>
-            <MemorySettings active={visible("Memory")} />
+            <MemorySettings active={visible("Memory")} view={memoryView} />
           </section>
         )}
         {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
