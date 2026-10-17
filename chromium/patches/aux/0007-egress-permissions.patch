@@ -4749,10 +4749,10 @@ index 39677fd..21ebf45 100644
    mojo::PendingRemote<network::mojom::P2PTrustedSocketManagerClient>
        trusted_socket_manager_client;
 diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/browser/websockets/websocket_connector_impl.cc
-index 0a89667..8824d10 100644
+index 0a89667..97cb512 100644
 --- a/content/browser/websockets/websocket_connector_impl.cc
 +++ b/content/browser/websockets/websocket_connector_impl.cc
-@@ -125,7 +125,51 @@ void WebSocketConnectorImpl::Connect(
+@@ -125,7 +125,55 @@ void WebSocketConnectorImpl::Connect(
    RenderFrameHost* frame = RenderFrameHost::FromID(frame_id_);
    content::ContentBrowserClient::WebSocketOptions options =
        GetContentClient()->browser()->GetWebSocketOptions(frame);
@@ -4764,7 +4764,6 @@ index 0a89667..8824d10 100644
 +          [](base::WeakPtr<WebSocketConnectorImpl> connector, GURL url,
 +             std::vector<std::string> protocols,
 +             std::optional<std::string> user_agent,
-+             net::StorageAccessApiStatus storage_access,
 +             mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
 +                 client,
 +             std::optional<base::UnguessableToken> throttling,
@@ -4782,22 +4781,27 @@ index 0a89667..8824d10 100644
 +            }
 +            options.header_client = std::move(headers);
 +            connector->ConnectAfterCheck(routed_url, protocols, user_agent,
-+                                         storage_access, std::move(client),
++                                         std::move(client),
 +                                         throttling, address_space,
 +                                         std::move(options));
 +          },
 +          weak_factory_.GetWeakPtr(), url, requested_protocols, user_agent,
-+          storage_access_api_status, std::move(handshake_client),
++          std::move(handshake_client),
 +          throttling_profile_id, target_address_space, std::move(options)));
 +}
  
-+void WebSocketConnectorImpl::ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
-+    const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++void WebSocketConnectorImpl::ConnectAfterCheck(
++    const GURL& url,
++    const std::vector<std::string>& requested_protocols,
++    const std::optional<std::string>& user_agent,
 +    mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
 +    const std::optional<base::UnguessableToken>& throttling_profile_id,
 +    network::mojom::IPAddressSpace target_address_space,
 +    content::ContentBrowserClient::WebSocketOptions options) {
-+  if (frame_id_.frame_routing_id != IPC::mojom::kRoutingIdNone && !weak_document_.AsRenderFrameHostIfValid()) return;
++  if (frame_id_.frame_routing_id != IPC::mojom::kRoutingIdNone &&
++      !weak_document_.AsRenderFrameHostIfValid()) {
++    return;
++  }
 +  auto* process = RenderProcessHost::FromID(frame_id_.child_id);
 +  auto* frame = RenderFrameHost::FromID(frame_id_);
 +  if (!process) return;
@@ -4805,23 +4809,25 @@ index 0a89667..8824d10 100644
        ConnectCalledByContentBrowserClient, requested_protocols,
        storage_access_api_status_, isolation_info_, frame_id_,
 diff --git a/content/browser/websockets/websocket_connector_impl.h b/content/browser/websockets/websocket_connector_impl.h
-index 1c4adf2..46430d6 100644
+index 1c4adf2..c8d68b0 100644
 --- a/content/browser/websockets/websocket_connector_impl.h
 +++ b/content/browser/websockets/websocket_connector_impl.h
-@@ -10,6 +10,7 @@
+@@ -9,6 +9,7 @@
+ #include <string>
  #include <vector>
  
- #include "base/unguessable_token.h"
 +#include "base/memory/weak_ptr.h"
+ #include "base/unguessable_token.h"
  #include "content/public/browser/content_browser_client.h"
  #include "content/public/browser/global_routing_id.h"
- #include "content/public/browser/weak_document_ptr.h"
-@@ -58,6 +59,12 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
+@@ -58,6 +59,14 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
        network::mojom::IPAddressSpace target_address_space) override;
  
   private:
-+  void ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
-+      const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++  void ConnectAfterCheck(
++      const GURL& url,
++      const std::vector<std::string>& requested_protocols,
++      const std::optional<std::string>& user_agent,
 +      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
 +      const std::optional<base::UnguessableToken>& throttling_profile_id,
 +      network::mojom::IPAddressSpace target_address_space,
@@ -4829,7 +4835,7 @@ index 1c4adf2..46430d6 100644
    static void ConnectCalledByContentBrowserClient(
        const std::vector<std::string>& requested_protocols,
        net::StorageAccessApiStatus storage_access_api_status,
-@@ -87,6 +94,7 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
+@@ -87,6 +96,7 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
    const net::StorageAccessApiStatus storage_access_api_status_;
    const base::UnguessableToken network_restrictions_id_;
    const std::optional<base::UnguessableToken> devtools_worker_token_;
