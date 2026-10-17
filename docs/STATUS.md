@@ -1,5 +1,32 @@
 # Aux status — October 16, 2026
 
+Latest routine visual review: the local renderer confirms searchable model
+selection (GPT filtering and GPT-6.1 Sol selection), High thinking selection and
+completion notification opt-out. Reference 084 comparison exposed overly bright
+form fields and a redundant standalone Time zone disclosure. Inputs now use the
+dialog surface, the heading uses medium weight, and creation's Time zone joins
+Advanced with saved-task, review and spend controls. The saved trigger editor
+retains its independent Time zone disclosure. The walkthrough confirms Advanced
+reveals the editable fields. Capture:
+`/tmp/aux-parity-2026-10-16/aux-routine-form-polish-vite.png`.
+No routine was created, activated or run in this walkthrough.
+`npm run check` passed typecheck/lint and all 4,615 tests across 741 files;
+renderer build passed in 3.35s. Logs: `/tmp/aux-routine-form-polish-check.log`
+and `/tmp/aux-routine-form-polish-build.log`. No runtime source changed.
+
+Native consolidation has finished: 9m07.50s, 25 steps, success. Launcher 60321
+owns live app 64878 and disposable Profile `aux-dev-BlQeyX`; log remains
+`/tmp/aux-routine-preferences-native.log`. About confirms shell source
+`286ae0c3b3f63f94e5215a081b39f042b7d731be`. Native Agents naming, the three-category
+notification menu and rounded focused model search have been inspected. Capture:
+`/tmp/aux-parity-2026-10-16/aux-agents-menu-native-286ae.png`.
+The searchable routine picker/thinking and this form polish are newer renderer
+source, verified through local Vite inside the disposable native preview. Native
+routine persistence, live completion delivery, matching viewport/light/narrow
+comparisons and full parity remain open. Earlier linking notes below are historical;
+do not start a duplicate builder or touch the owner's Profile.
+
+
 October 16 Channels review: references 091–096 expose an unimplemented messenger
 surface, including Slack/Telegram/Discord connections, peer pairing, per-channel
 mention/follow-up rules and reconnect. Current Calendar/MCP grants and developer

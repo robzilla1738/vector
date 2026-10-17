@@ -126,6 +126,24 @@ export function RoutineSchedule({
       ? `Calendar event · ${selectedGrant.label} · ${selectedGrant.accountKey}`
       : "Choose a Calendar grant.";
 
+  const timezoneFields = (kind === "schedule" ||
+    kind === "rrule" ||
+    kind === "monitor" ||
+    kind === "heartbeat") && (
+    <>
+      <label>
+        Time zone
+        <input required value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+      </label>
+      {kind === "schedule" && (
+        <p {...staticHintProps}>
+          On clock-change days, a missing local time is skipped. A repeated local time runs once at its first
+          occurrence.
+        </p>
+      )}
+    </>
+  );
+
   return (
     <form
       className="routine-schedule"
@@ -370,27 +388,24 @@ export function RoutineSchedule({
           </label>
         )}
         {preferences}
-        {(kind === "schedule" || kind === "rrule" || kind === "monitor" || kind === "heartbeat") && (
+        {mode === "create" ? (
+          <details className="routine-create-advanced">
+            <summary>Advanced</summary>
+            {timezoneFields}
+            {children}
+          </details>
+        ) : timezoneFields ? (
           <details className="routine-timezone">
             <summary>Time zone · {timezone}</summary>
-            <label>
-              Time zone
-              <input required value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-            </label>
-            {kind === "schedule" && (
-              <p {...staticHintProps}>
-                On clock-change days, a missing local time is skipped. A repeated local time runs once at its
-                first occurrence.
-              </p>
-            )}
+            {timezoneFields}
           </details>
-        )}
+        ) : null}
         {mode === "edit" && (
           <output className="routine-schedule-summary" data-block>
             {summary}
           </output>
         )}
-        {children}
+        {mode === "edit" && children}
         <div className="routine-schedule-actions">
           {actions}
           <button {...auxClassButtonProps} type="submit" disabled={!!saveDisabled || submitDisabled}>

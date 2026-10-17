@@ -34,6 +34,7 @@
   }
   .routine-create-heading h3 {
     margin: 0;
+    font-weight: var(--fw-medium);
   }
   .routine-create-heading button {
     display: grid;
@@ -56,7 +57,7 @@
   }
   .routine-create-dialog :is(input:not([type="checkbox"]), select, textarea) {
     color: var(--ink-0);
-    background: var(--surface-input);
+    background: transparent;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
     padding: var(--space-2);

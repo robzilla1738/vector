@@ -5,6 +5,22 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Latest routine and native walkthrough
+
+Reference 084 was reopened against the current renderer. Search filtering and
+model choice, High thinking and completion opt-out work in the local Vite
+walkthrough. Title/prompt fields now share the quiet dialog surface, the heading
+is medium weight, and Time zone is grouped under Advanced with secondary creation
+controls. Expansion exposes the actual editable timezone and retained task/review/
+spend controls. Capture and validation are recorded in STATUS. No routine ran.
+
+The consolidated native shell is now live at `286ae0c3b`, with Agents naming,
+three notification choices and rounded search focus visually inspected. The newer
+routine picker/thinking and form polish still require native consolidation. Exact
+viewport comparisons, light/narrow views, live delivery and full parity remain
+OPEN. This supersedes the older pending-link notes below. Recursive inventory
+currently contains 380 non-thumbnail files; continue rescanning for additions.
+
 ## Channels audit — references 091–096
 
 Reviewed all six captures against current source. This is an implementation gap,

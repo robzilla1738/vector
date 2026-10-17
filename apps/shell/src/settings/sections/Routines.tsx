@@ -274,8 +274,7 @@ function CreateRoutineDialog({
           </button>
         }
       >
-        <details className="routine-create-advanced">
-          <summary>Advanced</summary>
+        <>
           <label>
             Saved task (optional)
             <select
@@ -318,7 +317,7 @@ function CreateRoutineDialog({
               disabled={busy}
             />
           </label>
-        </details>
+        </>
       </RoutineSchedule>
       {error && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
