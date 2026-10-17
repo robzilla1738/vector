@@ -388,3 +388,67 @@ it("does not revive held original ACK delivery after an observed no-render windo
   expect(template().value).toBe("Original held draft {text}");
   expect(document.body.textContent).not.toContain("Saved for this Profile");
 });
+
+it("accepts its exact persisted revision broadcast before the save acknowledgement", async () => {
+  await render();
+  await write("My native save {text}");
+  const pending = held<boolean>();
+  save.mockReturnValueOnce(pending.promise);
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    button("Save Selection & Capture").focus();
+    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+  });
+  const submitted = save.mock.calls[0]![0].selectionCapture;
+  settings = { selectionCapture: { ...submitted, revision: submitted.revision + 1 } };
+  await render();
+  expect(document.body.textContent).not.toContain("changed in another window");
+  expect(button("Saving…").disabled).toBe(true);
+  await act(async () => pending.resolve(true));
+  expect(await completion).toBe(true);
+  expect(document.body.textContent).toContain("Saved for this Profile");
+  expect(button("Save Selection & Capture").disabled).toBe(true);
+  expect(template().value).toBe("My native save {text}");
+});
+
+it("does not turn a matching broadcast into a successful save without an accepted acknowledgement", async () => {
+  await render();
+  await write("Still waiting for acknowledgement {text}");
+  const pending = held<boolean>();
+  save.mockReturnValueOnce(pending.promise);
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    button("Save Selection & Capture").focus();
+    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+  });
+  const submitted = save.mock.calls[0]![0].selectionCapture;
+  settings = { selectionCapture: { ...submitted, revision: submitted.revision + 1 } };
+  await render();
+  await act(async () => pending.resolve(false));
+  expect(await completion).toBe(false);
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
+  expect(template().value).toBe("Still waiting for acknowledgement {text}");
+  expect(button("Reload saved settings")).toBeDefined();
+});
+
+it("does not retire a second save when the previous acknowledged broadcast arrives late", async () => {
+  await render();
+  await write("First accepted action {text}");
+  await invoke("save-selection-capture-settings", button("Save Selection & Capture"));
+  const first = save.mock.calls[0]![0].selectionCapture;
+  await write("Second accepted action {text}");
+  const pending = held<boolean>();
+  save.mockReturnValueOnce(pending.promise);
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    button("Save Selection & Capture").focus();
+    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+  });
+  settings = { selectionCapture: { ...first, revision: first.revision + 1 } };
+  await render();
+  expect(button("Saving…").disabled).toBe(true);
+  await act(async () => pending.resolve(true));
+  expect(await completion).toBe(true);
+  expect(document.body.textContent).toContain("Saved for this Profile");
+  expect(template().value).toBe("Second accepted action {text}");
+});

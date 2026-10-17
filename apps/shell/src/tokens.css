@@ -100,6 +100,8 @@
     --space-7: 32px;
     --space-8: 40px;
     --space-9: 56px;
+    --dialog-width: 384px;
+    --dialog-width-wide: 560px;
 
     /* Exact geometry for reference-derived tab joins and inset surfaces. */
     --r-exact-sm: 4px;

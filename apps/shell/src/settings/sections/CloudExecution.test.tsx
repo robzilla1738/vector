@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { CloudExecution } from "./CloudExecution";
+import { CloudExecution, CloudExecutionEditor } from "./CloudExecution";
 const rpc = vi.hoisted(() => vi.fn());
 const owner = vi.hoisted(() => ({
   windowId: "original-window",
@@ -17,25 +17,22 @@ it("requires explicit rates and review, sends only the protected setup API and c
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  rpc.mockImplementation(
-    async (method: string, params?: Record<string, unknown>) => {
-      if (method === "settings.cloud.status")
-        return { configured: false, revision: 4 };
-      if (method === "settings.cloud.configure")
-        return {
-          configured: true,
+  rpc.mockImplementation(async (method: string, params?: Record<string, unknown>) => {
+    if (method === "settings.cloud.status") return { configured: false, revision: 4 };
+    if (method === "settings.cloud.configure")
+      return {
+        configured: true,
+        revision: 5,
+        teamId: params!.teamId,
+        projectId: params!.projectId,
+        quote: {
+          ...(params!.quote as object),
           revision: 5,
-          teamId: params!.teamId,
-          projectId: params!.projectId,
-          quote: {
-            ...(params!.quote as object),
-            revision: 5,
-            accountDigest: "a".repeat(64),
-          },
-        };
-      throw new Error(`Unexpected ${method}`);
-    },
-  );
+          accountDigest: "a".repeat(64),
+        },
+      };
+    throw new Error(`Unexpected ${method}`);
+  });
   const input = (label: string) =>
     [...container.querySelectorAll("label")]
       .find((item) => item.textContent?.startsWith(label))!
@@ -43,10 +40,7 @@ it("requires explicit rates and review, sends only the protected setup API and c
   const change = async (label: string, value: string) => {
     const field = input(label);
     await act(async () => {
-      Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value",
-      )!.set!.call(field, value);
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, value);
       field.dispatchEvent(new Event("input", { bubbles: true }));
     });
   };
@@ -55,18 +49,14 @@ it("requires explicit rates and review, sends only the protected setup API and c
       (item) => item.textContent === "Save cloud account and rates",
     )!;
   try {
-    await act(async () => root.render(<CloudExecution />));
+    await act(async () => root.render(<CloudExecutionEditor />));
     expect(
       [...container.querySelectorAll('input[type="number"]')].every(
         (field) => (field as HTMLInputElement).value === "",
       ),
     ).toBe(true);
     await act(async () => save().click());
-    expect(
-      rpc.mock.calls.filter(
-        ([method]) => method === "settings.cloud.configure",
-      ),
-    ).toHaveLength(0);
+    expect(rpc.mock.calls.filter(([method]) => method === "settings.cloud.configure")).toHaveLength(0);
     for (const [label, value] of Object.entries({
       "Vercel access token": "ephemeral-test-token",
       "Team ID": "team_fixture",
@@ -85,9 +75,7 @@ it("requires explicit rates and review, sends only the protected setup API and c
       const basis = container.querySelector<HTMLSelectElement>("select")!;
       basis.value = "public-estimate";
       basis.dispatchEvent(new Event("change", { bubbles: true }));
-      container
-        .querySelector<HTMLInputElement>('input[type="checkbox"]')!
-        .click();
+      container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
     });
     await act(async () => save().click());
     expect(rpc).toHaveBeenCalledWith(
@@ -109,20 +97,55 @@ it("requires explicit rates and review, sends only the protected setup API and c
       }),
     );
     expect(input("Vercel access token").value).toBe("");
-    expect(
-      rpc.mock.calls.every(([method]) => method.startsWith("settings.cloud.")),
-    ).toBe(true);
+    expect(rpc.mock.calls.every(([method]) => method.startsWith("settings.cloud."))).toBe(true);
     owner.windowId = "replacement-window";
     await act(async () => save().click());
-    expect(
-      rpc.mock.calls.filter(
-        ([method]) => method === "settings.cloud.configure",
-      ),
-    ).toHaveLength(1);
+    expect(rpc.mock.calls.filter(([method]) => method === "settings.cloud.configure")).toHaveLength(1);
   } finally {
     act(() => root.unmount());
     container.remove();
     owner.windowId = "original-window";
+    vi.unstubAllGlobals();
+  }
+});
+
+it("loads cloud setup on demand and clears the credential draft when the dialog is dismissed", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
+  rpc.mockReset().mockResolvedValue({ configured: false, revision: 4 });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<CloudExecution />));
+    expect(rpc).not.toHaveBeenCalled();
+    await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
+    const token = document.querySelector<HTMLInputElement>('dialog input[type="password"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        token,
+        "temporary-test-credential",
+      );
+      token.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      document
+        .querySelector("dialog")!
+        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+    expect(document.querySelector("dialog")).toBeNull();
+    await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
+    expect(document.querySelector<HTMLInputElement>('dialog input[type="password"]')!.value).toBe("");
+    expect(rpc.mock.calls.map(([method]) => method)).toEqual([
+      "settings.cloud.status",
+      "settings.cloud.status",
+    ]);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
 });

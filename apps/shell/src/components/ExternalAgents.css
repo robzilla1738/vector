@@ -2,8 +2,6 @@
   .developer-connection-editor {
     display: grid;
     gap: var(--space-3);
-    padding: var(--space-3-5);
-    background: var(--settings-card);
   }
   .developer-connection-editor > p {
     margin: 0;

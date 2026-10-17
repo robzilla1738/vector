@@ -44,6 +44,13 @@
   .selection-action-editor > p {
     margin: 0;
   }
+  .selection-action-name {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+  .selection-action-editor .settings-editor-checkbox {
+    margin-inline-end: auto;
+  }
   .selection-action-editor pre {
     padding: var(--space-3);
     border-radius: var(--r-lg);

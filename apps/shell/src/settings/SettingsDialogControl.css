@@ -1,4 +1,37 @@
 @layer components {
+  .settings-preference-dialog-wide {
+    width: var(--dialog-width-wide);
+  }
+  .settings-editor-fields {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-3);
+  }
+  .settings-editor-fields > label:not(.settings-editor-checkbox) {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-1-5);
+  }
+  .settings-editor-fields > label > :is(input, select, textarea) {
+    width: 100%;
+  }
+  .settings-editor-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .settings-editor-checkbox > input {
+    flex: none;
+  }
+  .settings-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .settings-editor-actions > .btn {
+    flex: 0 0 auto;
+  }
   .settings-preference-dialog > header {
     display: flex;
     align-items: center;

@@ -7,7 +7,28 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Settings structure and editor batch — source
+## Settings editor behavior and layout follow-up — source
+
+The native5c4a43a07 walkthrough found Selection & Capture misclassifying its own
+persisted settings broadcast as an external conflict. Pending saves now retain
+ownership only for their exact expected value or a previously acknowledged value;
+other revisions and retired window/Private owners still invalidate delivery. New
+actions open their editor immediately, and moving an action returns focus to its
+name. Night shift also keeps its exact broadcast pending until the native ACK;
+its editor closes only on success and remains searchable before mounting.
+
+Shared regular/wide dialog tokens and field/action layouts fix compressed action
+controls. Developers connections and cloud account/rate setup now use focused
+editors. Cloud credentials are ephemeral and clear on dismissal. MCP setup removes
+the duplicate heading/border. Models provider and Connect edges align, and empty
+Skills no longer reserves two empty panels. These changes await native acceptance.
+The integrated check passed typecheck/lint and4,654tests across747files in106.89s
+(`/tmp/aux-parity-followup-check.log`). A further delayed-prior-broadcast case and
+search/editor regressions passed28focused tests; final typecheck passed. The last
+password-transfer geometry correction uses the same field/action layout. No
+unchanged full suite was repeated.
+
+## Settings structure and editor batch — packaged5c4a43a07
 
 The next local slice replaces inline selection-action forms with compact rows and
 focused editors, puts MCP registration in a reviewed dialog, adds keyboard-operated
@@ -29,7 +50,11 @@ Logs: `/tmp/aux-parity-settings-batch-check.log` and
 `/tmp/aux-parity-parent-owners.log`. The first renderer build caught static search-index generation attempting to index
 installed package names. Dynamic rows now opt out of static field indexing while
 the containing package section remains searchable. Generation and nine affected
-tests passed, as did focused lint. Native acceptance is pending.
+tests passed, as did focused lint. Packaged5c4a43a07 built in8m38.02s and About
+confirmed its source. Compact Selection, Skills/MCP keyboard switching, MCP setup,
+Models, Night shift and Quick Ask were inspected. Captures40–48 exposed the save
+race and compressed editor/provider geometry addressed above; this package is not
+full acceptance of the batch.
 
 ## Popup and editor follow-up — native verified
 
@@ -182,11 +207,12 @@ No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-The `56f74fd32` preview has been retired normally through launcher **86926**.
-App **88158**, disposable Profile **aux-dev-jTFpmK** and the native lock were
-verified removed. Log: `/tmp/aux-parity-popup-native.log`. The next integrated
-Settings batch awaits its native build. Never embed the full mock renderer inside
-the user-visible native preview; inspect native `chrome://aux` pages.
+The5c4a43a07 preview retired normally through original launcher **92379**.
+App **93690**, API **49536**, disposable Profile **aux-dev-ZXr486** and the native
+lock were verified absent. CUA binding `settingsBatchApp` is stale. Its final
+capture49 confirmed password editor focus/dismissal geometry and exposed cramped
+transfer buttons, now corrected in source. The next integrated preview is pending.
+Never embed the full mock renderer inside Aux.
 
 The following populated Memory evidence is from earlier disposable previews:
 

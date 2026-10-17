@@ -228,3 +228,12 @@ section, so closing an action editor does not discard the unsaved draft. Skills
 and MCP keep visited tab content mounted, while search waits for its destination
 panel to become visible before focusing it. Feature Settings mounts receive active
 state for the same lifecycle contract.
+
+Settings editors share regular/wide width tokens and `settings-editor-fields` /
+`settings-editor-actions` layout primitives. New Selection actions use the dialog's
+initial-open state; the parent retains unsaved action drafts. Cloud account setup
+owns its credential draft inside the mounted editor, clearing it on dismissal.
+Selection and Night shift save owners recognize an exact pending broadcast before
+the request ACK without treating it as another window's edit. This does not admit
+unrelated saved revisions or revive retired window/Private owners; success still
+requires the original command acknowledgement.

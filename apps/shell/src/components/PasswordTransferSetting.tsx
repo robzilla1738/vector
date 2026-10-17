@@ -1,5 +1,4 @@
-import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
-import { staticRowProps, staticHintProps } from "../ui/class-props";
+import { staticFieldErrorProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useState } from "react";
@@ -38,8 +37,8 @@ export function PasswordTransferSetting() {
   }
 
   return (
-    <div {...staticFieldProps}>
-      <div {...staticRowProps}>
+    <div className="settings-editor-fields">
+      <div className="settings-editor-actions">
         <button
           {...smallButtonProps}
           disabled={!inNativeHost}
@@ -57,7 +56,8 @@ export function PasswordTransferSetting() {
         Import or export Chromium Profile passwords in a passphrase-encrypted Aux file. Export requires device
         authentication. The passwords never pass through the page or agent runtime.
       </p>
-      <div {...staticRowProps}>
+      <label>
+        Transfer passphrase
         <input
           type="password"
           aria-label="Password transfer passphrase"
@@ -66,9 +66,11 @@ export function PasswordTransferSetting() {
           maxLength={200}
           value={passphrase}
           onChange={(event) => setPassphrase(event.target.value)}
-          placeholder="Transfer passphrase (12+ characters)"
+          placeholder="At least 12 characters"
           disabled={busy || !inNativeHost}
         />
+      </label>
+      <div className="settings-editor-actions">
         <button
           {...smallButtonProps}
           disabled={busy || !inNativeHost || passphrase.length < 12}

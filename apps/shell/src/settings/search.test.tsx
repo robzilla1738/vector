@@ -68,6 +68,12 @@ it("finds unopened sections and routes backup editor fields without mounting the
   expect(searchSettings("OpenAI API key")).toContainEqual(
     expect.objectContaining({ category: "Models", label: "OpenAI API key", target: "Model provider" }),
   );
+  expect(searchSettings("night shift")).toContainEqual(
+    expect.objectContaining({ category: "Routines", target: "Night shift" }),
+  );
+  expect(searchSettings("cloud resource rates")).toContainEqual(
+    expect.objectContaining({ category: "External agents", target: "Cloud account" }),
+  );
 });
 
 it("normalizes non-Latin combining marks before matching every search token", () => {

@@ -283,3 +283,26 @@ keyboard and search behavior. Selection action saves, previews and reordering st
 local until the existing explicit Save; no model/capture call is added. New native
 acceptance is pending. Decorative illustrations retain Aux identity and are not
 accepted as pixel-exact reference assets. Rescan: still182 PNGs.
+
+
+## Packaged editor walkthrough and follow-up
+
+5c4a43a07 built in8m38.02s and was verified in About. Captures40–48 cover compact
+Selection, action preview, Models, Skills/MCP, registration, Developers, Night shift
+and Quick Ask. Skills/MCP arrow-key selection works and Escape returns to the
+registration trigger. Selection rename/reorder reached the runtime, but its own
+broadcast incorrectly displayed a conflict. Reload showed the saved revision.
+Source now distinguishes the exact pending/acknowledged value from external edits.
+
+Native captures also showed action controls wrapping into narrow columns, a
+28px-short Models Connect row, a nested MCP border/heading, and oversized empty
+Skills panels. Shared editor widths/layout, the provider row width, simplified MCP
+form and compact empty state address these in source. Developers and Cloud setup
+move into the shared editor; Night shift now has a static search destination and
+accepted-save closing. Native verification remains pending. Corpus unchanged182PNG.
+
+Password transfer capture49 confirmed initial passphrase focus and exposed the same
+compressed action buttons; the shared field/action layout now puts the passphrase
+on its own labeled row. No password import/export was attempted. Integrated
+check:4,654tests/747files plus typecheck/lint passed. Final save-order/search/editor
+follow-up:28tests passed. Final native acceptance remains pending.

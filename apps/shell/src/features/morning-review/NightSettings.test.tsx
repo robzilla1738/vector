@@ -74,6 +74,31 @@ it("awaits the actual registered settings command and keeps policy unchanged unt
   }
 });
 
+it("keeps an exact own broadcast pending and closes only after the native save is acknowledged", async () => {
+  const f = view();
+  const pending = held<unknown>();
+  const saved = vi.fn();
+  vi.spyOn(bridge, "invoke").mockReturnValueOnce(pending.promise);
+  try {
+    await act(async () => f.root.render(<NightSettings onSaved={saved} />));
+    await act(async () => f.host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    await act(async () => f.save().click());
+    await act(async () =>
+      useStore.setState((state) => ({
+        settings: { ...state.settings, nightShift: { ...f.saved, enabled: true } },
+      })),
+    );
+    expect(f.save().disabled).toBe(true);
+    expect(saved).not.toHaveBeenCalled();
+    await act(async () => pending.resolve({}));
+    expect(saved).toHaveBeenCalledTimes(1);
+    expect(f.save().disabled).toBe(false);
+  } finally {
+    pending.resolve({});
+    await f.close();
+  }
+});
+
 it("retains the edited policy after a rejected native save and retries through the same real command", async () => {
   const f = view();
   let reject!: (reason: Error) => void;

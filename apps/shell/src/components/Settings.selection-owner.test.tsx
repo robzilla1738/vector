@@ -135,6 +135,30 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
+it("accepts its own persisted broadcast before the native ACK without reporting a conflict", async () => {
+  const pending = held<unknown>();
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => pending.promise);
+  await render();
+  await write("Native broadcast before ACK {text}");
+  const { completion } = await save();
+  const patch = invoke.mock.calls[0]![1] as {
+    selectionCapture: ReturnType<typeof defaultSelectionCaptureSettings>;
+  };
+  await act(async () =>
+    useStore.setState({
+      settings: {
+        selectionCapture: { ...patch.selectionCapture, revision: patch.selectionCapture.revision + 1 },
+      },
+    }),
+  );
+  expect(document.body.textContent).not.toContain("changed in another window");
+  expect(button("Saving…").disabled).toBe(true);
+  await act(async () => pending.resolve({}));
+  expect(await completion).toBe(true);
+  expect(document.body.textContent).toContain("Saved for this Profile");
+  expect(template().value).toBe("Native broadcast before ACK {text}");
+  expect(toast).not.toHaveBeenCalled();
+});
 it("suppresses actual parent error publication after committed Private roundtrip while preserving false ACK", async () => {
   const old = held<unknown>();
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => old.promise);

@@ -524,15 +524,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "External agents",
     label: "Cloud account",
-    description: "",
+    description:
+      "Connect your Vercel Sandbox account and review its resource rates and session limits.",
     target: "Cloud account",
-    searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
-  },
-  {
-    category: "External agents",
-    label: "Cloud resource rates",
-    description: "Review the rates and session limits for your own Vercel account before saving.",
-    target: "Cloud resource rates",
+    searchTerms: [
+      "Vercel",
+      "Sandbox",
+      "Run in cloud",
+      "Bash",
+      "REPL",
+      "Cloud resource rates",
+      "billing",
+      "region",
+    ],
   },
   {
     category: "Usage & Budgets",
@@ -797,6 +801,14 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "External agents",
+    label: "External agent connections",
+    description:
+      "Connect an MCP client to one saved task or Space using its own account and model.",
+    target: "External agent connections",
+    searchTerms: ["MCP", "Codex", "Claude", "Cursor", "token", "tools", "scope"],
+  },
+  {
+    category: "External agents",
     label: "Aux command line",
     description:
       "Install the bundled aux launcher in ~/.local/bin. Existing commands owned by you stay unchanged.",
@@ -852,6 +864,13 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description: "Preview the matching rule without opening a page.",
     target: "Test a URL",
     feature: "linkRouting",
+  },
+  {
+    category: "Routines",
+    label: "Night shift",
+    description: "Schedule queued work and set overnight time, power and spending limits.",
+    target: "Night shift",
+    feature: "overnightReview",
   },
   {
     category: "Downloads",

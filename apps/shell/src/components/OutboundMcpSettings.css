@@ -69,13 +69,7 @@
   .mcp-add-editor {
     gap: var(--space-5);
   }
-  .mcp-add-editor fieldset {
-    min-width: 0;
-    border: 0;
-    margin: 0;
-    padding: 0;
-  }
-  .mcp-add-editor :is(legend, summary) {
+  .mcp-add-editor summary {
     padding: 0 0 var(--space-3);
     font-weight: var(--fw-medium);
   }
@@ -89,19 +83,11 @@
     margin: var(--space-1) 0;
     color: var(--ink-2);
   }
-  .mcp-add-editor .mcp-register {
-    display: grid;
-    gap: var(--space-3);
-    padding: var(--space-3-5);
-  }
   .mcp-add-editor label {
     display: grid;
     gap: var(--space-1-5);
   }
   .mcp-add-editor :is(input, select, textarea) {
     width: 100%;
-  }
-  .settings-preference-dialog:has(.mcp-add-editor) {
-    width: 560px;
   }
 }

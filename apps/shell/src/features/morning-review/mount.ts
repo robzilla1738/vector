@@ -1,32 +1,13 @@
 import { confirmationFromSuspension } from "../permissions/confirmation";
-import { createElement, lazy, Suspense } from "react";
+import { createElement, lazy } from "react";
 import type { FeatureMount, ComposerPluginProps } from "../registry";
 import { call, useStore } from "../../store";
 import { executeCommand } from "../../commands";
-import { SettingsField } from "../../settings/primitives";
-import { SettingsDialogControl } from "../../settings/SettingsDialogControl";
 import { NightOverlays } from "./NightOverlays";
 export { NightOverlays } from "./NightOverlays";
-const NightSettings = lazy(() =>
-  import("./NightSettings").then((module) => ({ default: module.NightSettings })),
+const NightSettingsSection = lazy(() =>
+  import("./NightSettings").then((module) => ({ default: module.NightSettingsSection })),
 );
-function NightSettingsSection({ active = false }: { active?: boolean }) {
-  return createElement(SettingsField, {
-    compact: true,
-    label: "Night shift",
-    hint: "Schedule queued work and set overnight time, power and spending limits.",
-    children: createElement(SettingsDialogControl, {
-      active,
-      label: "Night shift",
-      action: "Configure…",
-      children: createElement(
-        Suspense,
-        { fallback: createElement("p", { role: "status" }, "Loading night shift settings…") },
-        createElement(NightSettings),
-      ),
-    }),
-  });
-}
 
 import {
   bootNightReview,

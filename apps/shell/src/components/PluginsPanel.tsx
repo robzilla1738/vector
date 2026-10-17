@@ -261,116 +261,126 @@ export function PluginsPanel({ destination, active = true }: { destination?: str
               {message}
             </output>
           )}
-          <div className="plugin-review-layout">
-            <aside className="plugin-review-list" aria-label="Installed plugins">
-              {visible.map((plugin) => (
-                <button
-                  key={plugin.pluginId}
-                  {...auxNativeButtonTypeProps}
-                  aria-current={selectedId === plugin.pluginId ? "true" : undefined}
-                  onClick={() => setSelectedId(plugin.pluginId)}
-                >
-                  <strong>{plugin.name}</strong>
-                  <span>
-                    {plugin.version || "Plugin"} · {plugin.routineIds.length} Skills
-                  </span>
-                </button>
-              ))}
-              {!visible.length && <p {...staticHintProps}>No plugins installed in this Space.</p>}
-            </aside>
-            <div className="plugin-review-detail">
-              {!selected && <p {...staticHintProps}>Choose an installed plugin to inspect its components.</p>}
-              {selected && (
-                <>
-                  <strong>
-                    {selected.name}
-                    {selected.version ? ` · ${selected.version}` : ""}
-                  </strong>
-                  {selected.description && <p {...staticHintProps}>{selected.description}</p>}
-                  <p {...staticHintProps}>
-                    Installed {new Date(selected.installedAt).toLocaleString()} · {selected.routineIds.length}
-                    {" imported Skills"}
-                  </p>
-                  {assets.map((asset) => (
-                    <div className="plugin-review-asset" key={asset.assetId}>
-                      <strong>
-                        {asset.kind.replace("_", " ")} · {asset.name}
-                      </strong>
-                      <span {...staticHintProps}>
-                        {grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
-                          ? "Granted in this Space"
-                          : "No authority"}{" "}
-                        · digest {asset.digest.slice(0, 16)}…
-                      </span>
-                      {asset.description && <span {...staticHintProps}>{asset.description}</span>}
-                      {asset.kind === "skill" &&
-                        !grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt) && (
-                          <button
-                            {...smallGhostButtonProps}
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                const grant = await bridge.invoke("plugins.skills.grant", {
-                                  assetId: asset.assetId,
-                                  expectedDigest: asset.digest,
-                                  scope: { kind: "workspace", workspaceId: selected.workspaceId },
-                                });
-                                setGrants((current) => [grant, ...current]);
-                                setMessage(
-                                  `${asset.name} is available in this Space. Its instructions remain untrusted.`,
-                                );
-                              })
-                            }
-                          >
-                            Grant Skill to this Space
-                          </button>
-                        )}
-                      {grants
-                        .filter((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
-                        .map((grant) => (
-                          <button
-                            key={grant.grantId}
-                            {...smallGhostButtonProps}
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                const revoked = await bridge.invoke("plugins.skills.revoke", {
-                                  grantId: grant.grantId,
-                                });
-                                setGrants((current) =>
-                                  current.map((item) => (item.grantId === revoked.grantId ? revoked : item)),
-                                );
-                                setMessage(`${asset.name} access revoked.`);
-                              })
-                            }
-                          >
-                            Revoke Skill access
-                          </button>
-                        ))}
-                    </div>
-                  ))}
+          {visible.length ? (
+            <div className="plugin-review-layout">
+              <aside className="plugin-review-list" aria-label="Installed plugins">
+                {visible.map((plugin) => (
                   <button
-                    {...smallGhostButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void action(async () => {
-                        const result = await bridge.invoke("plugins.uninstall", {
-                          pluginId: selected.pluginId,
-                        });
-                        setMessage(
-                          `Uninstalled ${selected.name}. Archived ${result.archivedRoutines} imported Skills.`,
-                        );
-                        setSelectedId("");
-                        await refresh();
-                      })
-                    }
+                    key={plugin.pluginId}
+                    {...auxNativeButtonTypeProps}
+                    aria-current={selectedId === plugin.pluginId ? "true" : undefined}
+                    onClick={() => setSelectedId(plugin.pluginId)}
                   >
-                    Uninstall plugin
+                    <strong>{plugin.name}</strong>
+                    <span>
+                      {plugin.version || "Plugin"} · {plugin.routineIds.length} Skills
+                    </span>
                   </button>
-                </>
-              )}
+                ))}
+              </aside>
+              <div className="plugin-review-detail">
+                {!selected && (
+                  <p {...staticHintProps}>Choose an installed plugin to inspect its components.</p>
+                )}
+                {selected && (
+                  <>
+                    <strong>
+                      {selected.name}
+                      {selected.version ? ` · ${selected.version}` : ""}
+                    </strong>
+                    {selected.description && <p {...staticHintProps}>{selected.description}</p>}
+                    <p {...staticHintProps}>
+                      Installed {new Date(selected.installedAt).toLocaleString()} ·{" "}
+                      {selected.routineIds.length}
+                      {" imported Skills"}
+                    </p>
+                    {assets.map((asset) => (
+                      <div className="plugin-review-asset" key={asset.assetId}>
+                        <strong>
+                          {asset.kind.replace("_", " ")} · {asset.name}
+                        </strong>
+                        <span {...staticHintProps}>
+                          {grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
+                            ? "Granted in this Space"
+                            : "No authority"}{" "}
+                          · digest {asset.digest.slice(0, 16)}…
+                        </span>
+                        {asset.description && <span {...staticHintProps}>{asset.description}</span>}
+                        {asset.kind === "skill" &&
+                          !grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt) && (
+                            <button
+                              {...smallGhostButtonProps}
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  const grant = await bridge.invoke("plugins.skills.grant", {
+                                    assetId: asset.assetId,
+                                    expectedDigest: asset.digest,
+                                    scope: { kind: "workspace", workspaceId: selected.workspaceId },
+                                  });
+                                  setGrants((current) => [grant, ...current]);
+                                  setMessage(
+                                    `${asset.name} is available in this Space. Its instructions remain untrusted.`,
+                                  );
+                                })
+                              }
+                            >
+                              Grant Skill to this Space
+                            </button>
+                          )}
+                        {grants
+                          .filter((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
+                          .map((grant) => (
+                            <button
+                              key={grant.grantId}
+                              {...smallGhostButtonProps}
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  const revoked = await bridge.invoke("plugins.skills.revoke", {
+                                    grantId: grant.grantId,
+                                  });
+                                  setGrants((current) =>
+                                    current.map((item) =>
+                                      item.grantId === revoked.grantId ? revoked : item,
+                                    ),
+                                  );
+                                  setMessage(`${asset.name} access revoked.`);
+                                })
+                              }
+                            >
+                              Revoke Skill access
+                            </button>
+                          ))}
+                      </div>
+                    ))}
+                    <button
+                      {...smallGhostButtonProps}
+                      disabled={busy}
+                      onClick={() =>
+                        void action(async () => {
+                          const result = await bridge.invoke("plugins.uninstall", {
+                            pluginId: selected.pluginId,
+                          });
+                          setMessage(
+                            `Uninstalled ${selected.name}. Archived ${result.archivedRoutines} imported Skills.`,
+                          );
+                          setSelectedId("");
+                          await refresh();
+                        })
+                      }
+                    >
+                      Uninstall plugin
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="plugin-review-empty hint" role="status">
+              No plugins installed in this Space.
+            </p>
+          )}
         </section>
       </div>
     </div>

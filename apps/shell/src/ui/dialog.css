@@ -17,7 +17,7 @@
     );
   }
   .aux-dialog-surface {
-    width: 384px;
+    width: var(--dialog-width);
     max-width: calc(100vw - 32px);
     max-height: calc(100dvh - 32px);
     overflow-y: auto;

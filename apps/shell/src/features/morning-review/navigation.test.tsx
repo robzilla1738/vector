@@ -17,7 +17,7 @@ vi.mock("../../commands", () => ({ executeCommand: fixture.execute }));
 vi.mock("./MorningReview", () => ({
   MorningReviewInbox: () => <h2>Overnight review</h2>,
 }));
-vi.mock("./NightSettings", () => ({ NightSettings: () => null }));
+vi.mock("./NightSettings", () => ({ NightSettingsSection: () => null }));
 import { useNightReview } from "./state";
 import { NightOverlays } from "./mount";
 import { SettingsShell } from "../../settings/SettingsShell";

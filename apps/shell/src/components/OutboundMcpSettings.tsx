@@ -351,7 +351,12 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
               ))}
             </select>
           </label>
-          <SettingsDialogControl active={active} label="Add an MCP server" action="＋ Add server…">
+          <SettingsDialogControl
+            active={active}
+            size="wide"
+            label="Add an MCP server"
+            action="＋ Add server…"
+          >
             <div className="outbound-mcp mcp-add-editor">
               <details className="mcp-official-connections">
                 <summary>Official remote connections</summary>
@@ -391,8 +396,7 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                   </div>
                 ))}
               </details>
-              <fieldset className="field mcp-register">
-                <legend>Add an MCP server</legend>
+              <div className="settings-editor-fields" role="group" aria-label="Server connection">
                 <label>
                   Server name
                   <input
@@ -526,7 +530,7 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                 >
                   Add server
                 </button>
-              </fieldset>
+              </div>
               {error && <p role="alert">{error}</p>}
               {message && <output>{message}</output>}
             </div>

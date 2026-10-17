@@ -23,7 +23,7 @@ import {
 } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";
-import { useSettingsSaveOwner } from "./use-settings-save-owner";
+import { useSettingsSaveOwner, type SettingsSaveOwner } from "./use-settings-save-owner";
 import { useScopedCommandControls } from "../../scoped-command-controls";
 import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
@@ -137,6 +137,7 @@ function Hotkey({
 function ActionRow({
   action,
   active,
+  defaultOpen,
   previewContent,
   saveControls,
   index,
@@ -153,6 +154,7 @@ function ActionRow({
 }: {
   action: Preferences["actions"][number];
   active: boolean;
+  defaultOpen: boolean;
   previewContent?: ReactNode;
   saveControls: ReactNode;
   index: number;
@@ -167,14 +169,32 @@ function ActionRow({
   preview(id: string): void;
   remove(id: string): void;
 }) {
+  const nameInput = useRef<HTMLInputElement>(null);
   return (
     <li className="selection-action-row">
       <span>{action.name || "Untitled action"}</span>
       {!action.enabled && <span className="selection-action-state">Off</span>}
-      <SettingsDialogControl active={active} label={`Edit ${action.name || "action"}`} action="⋯">
+      <SettingsDialogControl
+        active={active}
+        defaultOpen={defaultOpen}
+        size="wide"
+        label={`Edit ${action.name || "action"}`}
+        action="⋯"
+      >
         <div className="selection-action-editor">
-          <div className="row wrap">
-            <label>
+          <label className="selection-action-name">
+            Name
+            <input
+              ref={nameInput}
+              aria-label={`Action ${index + 1} name`}
+              maxLength={60}
+              value={action.name}
+              disabled={disabled}
+              onChange={(event) => change(action.id, { name: event.target.value })}
+            />
+          </label>
+          <div className="settings-editor-actions">
+            <label className="settings-editor-checkbox">
               <input
                 {...nativeCheckboxTypeProps}
                 checked={action.enabled}
@@ -186,20 +206,16 @@ function ActionRow({
               />{" "}
               Enabled
             </label>
-            <input
-              aria-label={`Action ${index + 1} name`}
-              maxLength={60}
-              value={action.name}
-              disabled={disabled}
-              onChange={(event) => change(action.id, { name: event.target.value })}
-            />
             <PreferenceAction
               command="move-selection-action-up"
               scopeId={scopeId}
               {...smallGhostButtonProps}
               aria-label={`Move ${action.name || "action"} up`}
               disabled={disabled || index === 0}
-              invoke={() => move(action.id, -1)}
+              invoke={() => {
+                move(action.id, -1);
+                nameInput.current?.focus();
+              }}
             >
               ↑
             </PreferenceAction>
@@ -209,7 +225,10 @@ function ActionRow({
               {...smallGhostButtonProps}
               aria-label={`Move ${action.name || "action"} down`}
               disabled={disabled || index === count - 1}
-              invoke={() => move(action.id, 1)}
+              invoke={() => {
+                move(action.id, 1);
+                nameInput.current?.focus();
+              }}
             >
               ↓
             </PreferenceAction>
@@ -271,9 +290,19 @@ export function SelectionCaptureSettings({
     privateMode = bridge.privateMode;
   const connected = useStore((state) => state.connected);
   const unavailable = !active || privateMode || kind !== "normal";
+  const acknowledgedKey = useRef<string | null>(null);
+  const pendingSave = useRef<{ owner: SettingsSaveOwner; baseKey: string; expectedKey: string } | null>(null);
+  const receipt = pendingSave.current;
+  // The runtime broadcasts persisted settings before replying to the save request.
+  // Exact pending or previously acknowledged values retain the live save owner.
+  const ownBroadcast =
+    !!receipt?.owner.active &&
+    receipt.owner.pending &&
+    (receipt.expectedKey === savedKey || acknowledgedKey.current === savedKey);
+  const ownerSavedKey = ownBroadcast ? receipt.baseKey : savedKey;
   const identity = useMemo(
-    () => [active, savedKey, windowId, kind, privateMode, connected],
-    [active, savedKey, windowId, kind, privateMode, connected],
+    () => [active, ownerSavedKey, windowId, kind, privateMode, connected],
+    [active, ownerSavedKey, windowId, kind, privateMode, connected],
   );
   const admitted = useCallback(
     () =>
@@ -308,13 +337,14 @@ export function SelectionCaptureSettings({
   const setError = (message: string) => (message ? fail(getOwner(), message) : clearFailure());
   const [message, setMessage] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [createdActionId, setCreatedActionId] = useState<string | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const draftRef = useRef(draft);
   useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
   const dirty = JSON.stringify(draft) !== baseKey;
-  const changedElsewhere = savedKey !== baseKey && saved.revision >= draft.revision;
+  const changedElsewhere = !ownBroadcast && savedKey !== baseKey && saved.revision >= draft.revision;
   useEffect(() => {
     if (!dirty && !busy && saved.revision >= draft.revision) {
       setDraft(readSelectionCaptureSettings(settings.selectionCapture));
@@ -391,13 +421,19 @@ export function SelectionCaptureSettings({
       return;
     setMessage("");
     const refusal = "Selection & Capture was not saved. Your edits are still here.";
+    const next = readSelectionCaptureSettings({
+      ...saveValidation.data,
+      revision: saveValidation.data.revision + 1,
+    });
+    const receipt = { owner: original, baseKey: savedKey, expectedKey: JSON.stringify(next) };
+    pendingSave.current = receipt;
     return perform(
       original,
       savedDraft,
       draftRef,
       (present) => onSave({ selectionCapture: saveValidation.data }, present),
       () => {
-        const next = { ...saveValidation.data, revision: saveValidation.data.revision + 1 };
+        acknowledgedKey.current = JSON.stringify(next);
         draftRef.current = next;
         setDraft(next);
         setBaseKey(JSON.stringify(next));
@@ -443,7 +479,7 @@ export function SelectionCaptureSettings({
       {conflict && <p {...nativeAlertRoleProps}>{conflict}</p>}
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {message && <output>{message}</output>}
-      <div className="row wrap">
+      <div className="settings-editor-actions">
         <PreferenceAction
           command="save-selection-capture-settings"
           scopeId={scopeId}
@@ -510,6 +546,7 @@ export function SelectionCaptureSettings({
               <ActionRow
                 key={action.id}
                 action={action}
+                defaultOpen={action.id === createdActionId}
                 saveControls={saveControls}
                 active={!unavailable}
                 previewContent={
@@ -551,19 +588,21 @@ export function SelectionCaptureSettings({
           <button
             ref={(element) => {
               addButton.current = element;
-              publish("add", "add-selection-action", element, () =>
+              publish("add", "add-selection-action", element, () => {
+                const id = crypto.randomUUID();
                 update({
                   actions: [
                     ...draftRef.current.actions,
                     {
-                      id: crypto.randomUUID(),
+                      id,
                       name: "New action",
                       enabled: true,
                       template: "Explain this selection.\n\n{text}",
                     },
                   ],
-                }),
-              );
+                });
+                setCreatedActionId(id);
+              });
             }}
             {...smallButtonProps}
             disabled={busy || unavailable || draft.actions.length >= 12}

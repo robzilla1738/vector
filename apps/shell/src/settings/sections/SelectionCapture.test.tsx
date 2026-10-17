@@ -75,6 +75,7 @@ it("indexes the overview and controls and previews/reorders/edits actions withou
   );
   await click(named("Move Explain up"));
   expect(document.querySelector<HTMLInputElement>('[aria-label="Action 1 name"]')!.value).toBe("Explain");
+  expect(document.activeElement).toBe(document.querySelector('[aria-label="Action 1 name"]'));
   await write(
     document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!,
     "Translate into Spanish: {text}",
@@ -94,6 +95,8 @@ it("indexes the overview and controls and previews/reorders/edits actions withou
 it("preserves edits after a failed save and provides explicit recovery", async () => {
   await act(async () => root.render(<Fixture />));
   await click(button("Add selection action"));
+  expect(document.querySelector('[aria-label="Edit New action"][role="dialog"]')).not.toBeNull();
+  expect(document.activeElement).toBe(document.querySelector('[aria-label="Action 5 name"]'));
   save.mockResolvedValueOnce(false);
   await click(button("Save Selection & Capture"));
   expect(document.body.textContent).toContain("Your edits are still here");

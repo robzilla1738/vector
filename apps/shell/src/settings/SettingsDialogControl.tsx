@@ -10,6 +10,8 @@ export function SettingsDialogControl({
   label,
   action,
   navigation = false,
+  defaultOpen = false,
+  size = "regular",
   children,
   showClose = typeof children !== "function",
 }: {
@@ -17,10 +19,12 @@ export function SettingsDialogControl({
   label: string;
   action: string;
   navigation?: boolean;
+  defaultOpen?: boolean;
+  size?: "regular" | "wide";
   children: ReactNode | ((close: () => void) => ReactNode);
   showClose?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const trigger = useRef<HTMLButtonElement>(null);
   const editorFocus = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -44,7 +48,7 @@ export function SettingsDialogControl({
       {open && active && (
         <Dialog
           label={label}
-          className="aux-dialog-surface settings-preference-dialog"
+          className={`aux-dialog-surface settings-preference-dialog settings-preference-dialog-${size}`}
           returnFocus={trigger}
           initialFocusRef={editorFocus}
           onClose={() => setOpen(false)}

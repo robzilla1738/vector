@@ -8,6 +8,8 @@ import { call } from "../../store";
 import { bridge } from "../../bridge";
 import { errorMessage } from "../../error-message";
 import { SettingsField } from "../primitives";
+import { SettingsDialogControl } from "../SettingsDialogControl";
+import { SettingsGroup } from "../../ui";
 
 const fields = [
   "vcpus",
@@ -36,15 +38,48 @@ const blankRates = () => ({
 
 /** Account credentials are an ephemeral human draft, never a composer or run input. */
 export function CloudExecution() {
+  return (
+    <SettingsGroup title="Run in cloud">
+      <SettingsField
+        compact
+        label="Cloud account"
+        hint="Connect your Vercel Sandbox account and review its resource rates and session limits."
+        searchTerms={[
+          "Vercel",
+          "Sandbox",
+          "Run in cloud",
+          "Bash",
+          "REPL",
+          "Cloud resource rates",
+          "billing",
+          "region",
+        ]}
+      >
+        <SettingsDialogControl
+          active
+          size="wide"
+          label="Cloud account and resource rates"
+          action="Configure…"
+          showClose
+        >
+          {(close) => <CloudExecutionEditor onSaved={close} onCancel={close} />}
+        </SettingsDialogControl>
+      </SettingsField>
+    </SettingsGroup>
+  );
+}
+
+export function CloudExecutionEditor({
+  onSaved,
+  onCancel,
+}: { onSaved?: () => void; onCancel?: () => void } = {}) {
   const [status, setStatus] = useState<CloudSettingsStatus | null>(null);
   const [token, setToken] = useState(""),
     [teamId, setTeam] = useState(""),
     [projectId, setProject] = useState("");
   const [region, setRegion] = useState(""),
     [rateSource, setSource] = useState("");
-  const [rateBasis, setBasis] = useState<
-    "" | "public-estimate" | "account-contract"
-  >("");
+  const [rateBasis, setBasis] = useState<"" | "public-estimate" | "account-contract">("");
   const [rates, setRates] = useState(blankRates),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -77,9 +112,7 @@ export function CloudExecution() {
     );
   }
   const sameWindow = () =>
-    bridge.windowId === windowId &&
-    bridge.windowKind === windowKind &&
-    bridge.privateMode === privateMode;
+    bridge.windowId === windowId && bridge.windowKind === windowKind && bridge.privateMode === privateMode;
   useEffect(() => {
     const generation = ++epoch.current;
     setStatus(null);
@@ -92,8 +125,7 @@ export function CloudExecution() {
         if (epoch.current === generation && sameWindow()) install(result);
       })
       .catch((reason) => {
-        if (epoch.current === generation && sameWindow())
-          setError(errorMessage(reason));
+        if (epoch.current === generation && sameWindow()) setError(errorMessage(reason));
       });
     return () => {
       ++epoch.current;
@@ -146,6 +178,7 @@ export function CloudExecution() {
       if (current()) {
         install(result);
         setToken("");
+        if (!clear) onSaved?.();
       }
     } catch (reason) {
       if (current()) setError(errorMessage(reason));
@@ -158,23 +191,17 @@ export function CloudExecution() {
   }
   const disabled = busy || !status;
   return (
-    <section aria-label="Cloud execution">
-      <h3>Run in cloud</h3>
-      <p>
-        Run Bash and the persistent code REPL in your Vercel Sandbox account.
-        Your Profile, saved credentials and local files stay on this Mac. No
-        ports are exposed.
+    <section aria-label="Cloud execution" className="settings-editor-fields">
+      <p className="hint">
+        Run Bash and the persistent code REPL in your Vercel Sandbox account. Your Profile, saved credentials
+        and local files stay on this Mac. No ports are exposed.
       </p>
-      <p>
-        Resource charges are separate from model charges. Finite spending limits
-        currently require local execution because an enforceable cloud traffic
-        envelope is unavailable. Public estimates remain uncertain billing
-        receipts.
+      <p className="hint">
+        Resource charges are separate from model charges. Finite spending limits currently require local
+        execution because an enforceable cloud traffic envelope is unavailable. Public estimates remain
+        uncertain billing receipts.
       </p>
-      <SettingsField
-        label="Cloud account"
-        searchTerms={["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"]}
-      >
+      <div className="settings-editor-fields" role="group" aria-label="Cloud account credentials">
         <label>
           Vercel access token
           <input
@@ -183,39 +210,23 @@ export function CloudExecution() {
             value={token}
             disabled={disabled}
             onChange={(event) => setToken(event.target.value)}
-            placeholder={
-              status?.configured ? "Keep current credential" : "Access token"
-            }
+            placeholder={status?.configured ? "Keep current credential" : "Access token"}
           />
         </label>
         <label>
           Team ID
-          <input
-            value={teamId}
-            disabled={disabled}
-            onChange={(event) => setTeam(event.target.value)}
-          />
+          <input value={teamId} disabled={disabled} onChange={(event) => setTeam(event.target.value)} />
         </label>
         <label>
           Project ID
-          <input
-            value={projectId}
-            disabled={disabled}
-            onChange={(event) => setProject(event.target.value)}
-          />
+          <input value={projectId} disabled={disabled} onChange={(event) => setProject(event.target.value)} />
         </label>
-      </SettingsField>
-      <SettingsField
-        label="Cloud resource rates"
-        description="Review the rates and session limits for your own Vercel account before saving."
-      >
+      </div>
+      <div className="settings-editor-fields" role="group" aria-label="Cloud resource rates">
+        <p className="hint">Review the rates and session limits for your own Vercel account before saving.</p>
         <label>
           Region
-          <input
-            value={region}
-            disabled={disabled}
-            onChange={(event) => setRegion(event.target.value)}
-          />
+          <input value={region} disabled={disabled} onChange={(event) => setRegion(event.target.value)} />
         </label>
         {fields.map((field) => (
           <label key={field}>
@@ -226,9 +237,7 @@ export function CloudExecution() {
               step="any"
               value={rates[field]}
               disabled={disabled}
-              onChange={(event) =>
-                setRates({ ...rates, [field]: event.target.value })
-              }
+              onChange={(event) => setRates({ ...rates, [field]: event.target.value })}
             />
           </label>
         ))}
@@ -247,10 +256,7 @@ export function CloudExecution() {
             value={rateBasis}
             disabled={disabled}
             onChange={(event) => {
-              if (
-                event.target.value === "public-estimate" ||
-                event.target.value === "account-contract"
-              )
+              if (event.target.value === "public-estimate" || event.target.value === "account-contract")
                 setBasis(event.target.value);
             }}
           >
@@ -259,31 +265,28 @@ export function CloudExecution() {
             <option value="account-contract">My account contract</option>
           </select>
         </label>
-      </SettingsField>
-      <label>
+      </div>
+      <label className="settings-editor-checkbox">
         <input
           type="checkbox"
           checked={reviewed}
           disabled={disabled}
           onChange={(event) => setReviewed(event.target.checked)}
         />
-        I reviewed these account rates and understand that Cloud resource
-        charges are separate from model charges.
+        I reviewed these account rates and understand that Cloud resource charges are separate from model
+        charges.
       </label>
-      <button
-        className="btn sm"
-        disabled={disabled}
-        onClick={() => void update()}
-      >
+      <button className="btn sm" disabled={disabled} onClick={() => void update()}>
         Save cloud account and rates
       </button>
       {status?.configured && (
-        <button
-          className="btn sm"
-          disabled={disabled}
-          onClick={() => void update(true)}
-        >
+        <button className="btn sm" disabled={disabled} onClick={() => void update(true)}>
           Disconnect cloud account
+        </button>
+      )}
+      {onCancel && (
+        <button className="btn sm ghost" type="button" onClick={onCancel}>
+          Cancel
         </button>
       )}
       {status && (

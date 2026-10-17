@@ -1,4 +1,3 @@
-import { staticFieldProps } from "../../ui/class-props";
 import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +7,8 @@ import { bridge } from "../../bridge";
 import { executeCommand } from "../../commands";
 import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
 import { registerScopedControl } from "../../scoped-control-commands";
+import { SettingsField } from "../../settings/primitives";
+import { SettingsDialogControl } from "../../settings/SettingsDialogControl";
 import {
   nativeCheckboxTypeProps,
   nativeNumberTypeProps,
@@ -18,7 +19,17 @@ type Command = "save-night-shift-draft" | "toggle-night-shift-enabled" | "toggle
 class NightOwner {
   #live = true;
   #pending = false;
-  constructor(readonly identity: string) {}
+  #expectedKey: string | null = null;
+  constructor(
+    readonly identity: string,
+    readonly savedKey: string,
+  ) {}
+  matchesSave(key: string) {
+    return this.#live && this.#pending && key === this.#expectedKey;
+  }
+  expectSave(value: Draft) {
+    this.#expectedKey = JSON.stringify(value);
+  }
   current() {
     const [privateMode, windowId, windowKind, saved] = JSON.parse(this.identity);
     return (
@@ -28,7 +39,8 @@ class NightOwner {
       !bridge.privateMode &&
       bridge.windowKind === "normal" &&
       bridge.windowId === windowId &&
-      JSON.stringify(useStore.getState().settings.nightShift ?? DEFAULT_NIGHT_SHIFT) === saved
+      (JSON.stringify(useStore.getState().settings.nightShift ?? DEFAULT_NIGHT_SHIFT) === saved ||
+        this.matchesSave(JSON.stringify(useStore.getState().settings.nightShift ?? DEFAULT_NIGHT_SHIFT)))
     );
   }
   retire() {
@@ -80,7 +92,7 @@ function NightControl({
       {children}
     </button>
   ) : (
-    <label>
+    <label className="settings-editor-checkbox">
       <input
         ref={(node) => {
           element.current = node;
@@ -95,18 +107,30 @@ function NightControl({
     </label>
   );
 }
-export function NightSettings() {
+export function NightSettingsSection({ active = false }: { active?: boolean }) {
+  return (
+    <SettingsField
+      compact
+      label="Night shift"
+      hint="Schedule queued work and set overnight time, power and spending limits."
+    >
+      <SettingsDialogControl active={active} label="Night shift" action="Configure…" showClose>
+        {(close) => <NightSettings onSaved={close} onCancel={close} />}
+      </SettingsDialogControl>
+    </SettingsField>
+  );
+}
+
+export function NightSettings({ onSaved, onCancel }: { onSaved?: () => void; onCancel?: () => void } = {}) {
   const saved = useStore((state) => state.settings.nightShift);
   const scopeId = useId();
+  const pendingSave = useRef<NightOwner | null>(null);
+  const savedKey = JSON.stringify(saved ?? DEFAULT_NIGHT_SHIFT);
+  const ownerSavedKey = pendingSave.current?.matchesSave(savedKey) ? pendingSave.current.savedKey : savedKey;
   const identity = String(
-    JSON.stringify([
-      bridge.privateMode,
-      bridge.windowId,
-      bridge.windowKind,
-      JSON.stringify(saved ?? DEFAULT_NIGHT_SHIFT),
-    ]),
+    JSON.stringify([bridge.privateMode, bridge.windowId, bridge.windowKind, ownerSavedKey]),
   );
-  const owner = useMemo(() => new NightOwner(identity), [identity]);
+  const owner = useMemo(() => new NightOwner(identity, ownerSavedKey), [identity, ownerSavedKey]);
   useLayoutEffect(() => () => owner.retire(), [owner]);
   const [edited, setEdited] = useState<{ owner: NightOwner; value: Draft } | null>(null);
   const draft =
@@ -130,7 +154,13 @@ export function NightSettings() {
     }
     setFailure(null);
     setPending(owner);
+    owner.expectSave(parsed.data);
+    pendingSave.current = owner;
     const original = executeCommand("configure-night-shift", { payload: { nightShift: parsed.data } })
+      .then((acknowledgement) => {
+        if (owner.current()) onSaved?.();
+        return acknowledgement;
+      })
       .catch((reason) => {
         if (owner.current())
           setFailure({
@@ -141,13 +171,13 @@ export function NightSettings() {
       })
       .finally(() => {
         owner.finish();
-        if (owner.current()) setPending(null);
+        setPending((current) => (current === owner ? null : current));
       });
     return guardCommandCompletion(original, () => owner.current());
   }
   if (bridge.privateMode || bridge.windowKind !== "normal") return null;
   return (
-    <section {...staticFieldProps} aria-label="Night shift settings">
+    <section className="settings-editor-fields" aria-label="Night shift settings">
       <p {...staticHintProps}>
         Aux works within this local time window while your Mac is awake. Only work you queue can run. Actions
         that need your approval wait for morning.
@@ -217,6 +247,11 @@ export function NightSettings() {
       <NightControl command="save-night-shift-draft" scopeId={scopeId} disabled={busy} invoke={save}>
         {busy ? "Saving…" : "Save night shift settings"}
       </NightControl>
+      {onCancel && (
+        <button {...smallButtonProps} type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      )}
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
     </section>
   );
