@@ -9,10 +9,11 @@ support the behavior, using Aux identity. This ledger supplements
 
 Reference046 now has all three independent notification types. Runtime-assigned
 routine provenance supports classification without guessing from text; routine
-questions remain under Needs attention. Source and integrated tests pass; native
-and visual acceptance remain OPEN. The visible Agents title/icon now matches the
+questions remain under Needs attention. Source and integrated tests pass; Vite confirms the three choices and independent
+routine toggling. Native acceptance remains OPEN. The visible Agents title/icon now matches the
 reference and search recognizes both Agents and Permissions. Existing route IDs
-remain stable. This follow-up is newer than the active48050 native build.
+remain stable. This follow-up is newer than the live native shell at `6f38844cc`. Menu alignment
+and wrapped subtitle spacing still need refinement.
 
 ## Agent behavior follow-up
 
@@ -20,8 +21,11 @@ References048–049 now have functional Queue/Steer and per-tab/current-chat
 preferences in the grouped Agent access card. Runtime persistence, live send
 routing, draft preservation and per-tab restoration have focused regression
 coverage. Vite confirms selectors and successful saves. Associations last for the
-browser window session, not across browser restart. Native walkthrough is pending;
-cleanup behavior and the remaining full-surface comparisons remain OPEN.
+browser window session, not across browser restart. Native `6f38844cc` confirms
+Steer persistence, separate unsent drafts across tabs and assistant hide/reopen,
+and Keep current chat retaining the current draft. Native Bell preview completed
+without an error; background delivery remains open. STATUS records captures.
+Cleanup behavior and the remaining full-surface comparisons remain OPEN.
 
 ## Chat attention follow-up
 
@@ -29,9 +33,9 @@ References045–046 now have a compact Chat card on the agent permissions surfac
 anchored notification choices, completion sound with Preview/Change and three
 local tones, and the existing system-delivery/Focus Mode controls. Local Vite
 confirmed selection persistence and audio activity; STATUS records validation.
-Routine completion filtering remains grouped with other completions until durable
-run provenance distinguishes it. Native background audio acceptance, follow-up,
-tab-switch, cleanup and the broader Agents comparison remain OPEN.
+The newer routine provenance batch separates routine completion filtering in
+source and Vite. Native background audio acceptance, routine delivery, cleanup
+and the broader Agents comparison remain OPEN.
 
 ## October 16 native consolidation
 

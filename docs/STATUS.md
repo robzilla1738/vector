@@ -14,18 +14,27 @@ Permissions search terms find its fields.
 Runtime dist rebuilt before the integrated check: typecheck/lint and all 4,612
 tests across 741 files passed. Final producer/navigation/search checks passed all
 12 tests; renderer build passed in 1.86s and final shell typecheck passed.
-Visual acceptance of the three-choice menu and Agents title is pending. These
-changes postdate the running native consolidation (launcher48050/session93092),
-which is still linking the previous behavior/sound batch. Do not conflate its
-upcoming native acceptance with this newer source. Agent-tab cleanup and full
-surface/phase acceptance remain open.
+Vite visual acceptance confirms the Agents title/icon and all three notification
+choices; toggling Routine completions leaves the other two choices unchanged.
+Capture: `/tmp/aux-parity-2026-10-16/aux-agents-three-notification-types-vite.png`.
+The popup still needs alignment and subtitle-spacing refinement. Native acceptance
+of this newer source, automatic background sound and live routine delivery remain
+open, alongside agent-tab cleanup and full surface/phase acceptance.
 
-Native consolidation started for `6f38844cc`: launcher 48050, exec session
-93092, log `/tmp/aux-agent-behavior-native.log`. Previous launcher 34917/app 36707
-exited normally and its disposable Profile was removed before starting. Keep this
-single builder and poll it; do not start another. Acceptance still needs native
-Settings persistence, sound preview/background delivery and per-tab chat restoration
-(including assistant hide/reopen and Keep current chat).
+Native consolidation for `6f38844cc` completed in 9m06.48s (25 steps). About
+confirmed source `6f38844ccab6e40ae4f336f75cd9f496765b0df8`, ABI `08299a59570b`.
+Launcher 48050/session 93092 owns app 52745 and disposable Profile `aux-dev-6yaYYY`;
+log: `/tmp/aux-agent-behavior-native.log`. Previous launcher 34917/app 36707
+exited normally and its disposable Profile was removed before replacement.
+Native Steer persisted through Settings reload. Bell preview entered Playing and
+returned to Preview without an error; audible/background delivery is not claimed.
+Two unsent drafts on example.com and example.org restored independently across
+switching and assistant hide/reopen. Keep current chat then retained the second
+draft when switching back to the first tab. No inference was invoked.
+Captures under `/tmp/aux-parity-2026-10-16/`:
+`aux-tab-draft-restored-native-6f388.png` and
+`aux-keep-current-chat-native-6f388.png`.
+This native shell predates the newer routine-notification/Agents naming batch.
 
 October 16 behavior batch (references 048–049): Agent access now groups mode,
 Follow-up behavior (Queue/Steer), and Ask Aux on tab switch (New chat per tab/Keep
@@ -42,8 +51,8 @@ tab ownership suites passed all 36 tests. Vite inspection verified both selector
 successful saves and grouped layout; capture:
 `/tmp/aux-parity-2026-10-16/aux-agent-behavior-settings-vite.png`.
 Final renderer build passed in 3.08s. Integrated `npm run check` passed typecheck,
-lint and all 4,610 tests across 741 files. Native consolidated acceptance is pending. Separate routine-completion filters,
-agent-tab cleanup, full Agents parity and phase acceptance remain open.
+lint and all 4,610 tests across 741 files. Focused native acceptance is recorded above. Agent-tab cleanup, full Agents
+parity and phase acceptance remain open.
 
 October 16 Chat attention batch (references 045–046): notification controls moved
 from General to the Permissions/Agents surface, in a compact Chat card. An anchored
