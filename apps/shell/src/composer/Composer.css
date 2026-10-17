@@ -277,9 +277,11 @@
     flex: 1;
     gap: 0;
   }
-  .rail .composer-model-controls,
-  .rail .composer-model-controls .composer-run-option {
+  .rail .composer-model-controls {
     flex: 1;
+  }
+  .rail .composer-model-controls .composer-run-option {
+    flex: 0 1 auto;
   }
   .rail .composer-model-controls .composer-model-picker-trigger {
     max-width: 100%;

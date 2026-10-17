@@ -153,7 +153,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
     expectCss(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
     expectCss(styles).toContain(
-      ":root .popup-material { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup));",
+      ":root select:not([multiple]):not([size])::picker(select) { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup));",
     );
     expectCss(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
     expect(styles).toMatch(/\.folder-kids\s*\{[^}]*overflow:\s*hidden/s);

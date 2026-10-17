@@ -159,8 +159,7 @@
     color: var(--ink-1);
     font-weight: var(--fw-regular);
   }
-  .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  .field select {
+  .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
     height: var(--control-h-lg);
     background: var(--surface-input);
     border: none;
@@ -173,20 +172,9 @@
     width: 100%;
   }
   .field select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
-      linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
-    background-position:
-      calc(100% - 16px) 15px,
-      calc(100% - 11px) 15px;
-    background-size: 5px 5px;
-    background-repeat: no-repeat;
-    padding-right: var(--space-7);
+    width: 100%;
   }
-  .field input:focus,
-  .field select:focus {
+  .field input:focus {
     box-shadow: none;
     outline: 1px solid var(--focus-line);
     outline-offset: 0;

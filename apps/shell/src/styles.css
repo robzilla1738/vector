@@ -1,6 +1,7 @@
 /* Aux shell CSS. Keep imports in visual cascade order; tokens.css declares layer order. */
 @import "./styles/reset.css";
 @import "./styles/primitives.css";
+@import "./styles/select.css";
 @import "./styles/toolbar.css";
 @import "./styles/sidebar.css";
 @import "./styles/stage.css";

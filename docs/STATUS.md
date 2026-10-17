@@ -7,6 +7,33 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Native dropdowns across the shell
+
+Single-choice selects now use startup-loaded Chromium `base-select` styling
+throughout Aux, including composer reasoning, Execution, Agent and Settings.
+The old Settings-only lazy stylesheet and gradient-arrow implementation are
+removed. Picker material uses the same 80% backing, 8px blur and glass rings as
+other popup surfaces; disabled states, keyboard focus and accessibility fallbacks
+remain. Native values, labels, refs, typeahead and change handlers are retained.
+Menu and details keyboard handlers now leave open native pickers in charge of
+Escape and typing; closed-select typeahead cannot jump to a parent menu item.
+The rail model wrapper no longer stretches a gap between model and reasoning.
+
+The native 021613d38 preview confirmed the earlier content-sized Auto spacing.
+Temporary CSS prototypes then confirmed the shared native picker (captures91–93),
+Execution keyboard selection/cloud Agent disabling, restoration to local mode,
+and Medium persisting from full chat to rail. These are prototype observations,
+not packaged acceptance of this batch. A synthetic inspector URL was accidentally
+sent while changing DevTools focus and immediately stopped; the UI confirmed
+Cancelled by user. The original launcher31315 retired normally; app32382,
+runtime32403, API58237, disposable Profileaux-dev-EuqoBh and lock are gone.
+
+Focused validation passed45tests/4files, including actual reasoning selection
+through Send, draft-scoped Execution/Agent/package changes, and nested picker
+keyboard ownership. Integrated `npm run check` passed typecheck, lint and
+4,675 tests / 749 files in101.72s (`/tmp/aux-shared-select-check.log`). Fresh
+packaged acceptance follows; the reference folder remains182PNGs.
+
 ## Shared popup material and browser search
 
 The live Aside rail-model popup (capture 86) and shipped `bg-glass`/`border-glass`

@@ -201,8 +201,15 @@ Configured model destinations retain the original account, connection revision, 
 ## Settings design ownership
 
 Settings uses the shared spacing, radius, typography and control-size tokens in
-`apps/shell/src/tokens.css`. `settings/controls.css` owns buttons, form controls,
-single-choice dropdown triggers and native pickers for Settings and portaled dialogs.
+`apps/shell/src/tokens.css`. `settings/controls.css` owns Settings buttons and form
+layout. Startup-loaded `styles/select.css` styles single-choice native Chromium
+controls throughout the shell using `appearance: base-select`; Settings loading
+does not change picker behavior. `styles/glass.css` applies the same popup material
+and accessibility fallbacks to native pickers and anchored menus. Native selects
+retain labels, keyboard/typeahead, forms, values and change events. Listboxes are
+excluded from the dropdown treatment. Parent menus leave open native pickers in
+charge of keyboard input and the first Escape; select typeahead does not move
+focus into the parent menu. Composer triggers share chevron sizing and label gaps.
 Status badges and timeline chips share pill geometry in styles/primitives.css; their
 individual selectors own only tone or content-specific behavior. Page/dialog title
 tokens scale with Interface text. Keep native

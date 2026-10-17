@@ -209,11 +209,13 @@ export function Menu({
       className={`aux-native-dialog aux-native-menu popup-material ${className}`}
       aria-label={label}
       onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
         event.stopPropagation();
         onClose();
       }}
       onKeyDown={(event) => {
+        if (nativePickerOpen(event.target)) return;
         onMenuKeyDown?.(event);
         if (event.defaultPrevented || event.nativeEvent.isComposing) return;
         if (event.key === "Escape") {

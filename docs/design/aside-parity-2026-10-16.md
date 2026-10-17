@@ -2775,3 +2775,23 @@ typecheck/lint and86affected tests in6files passed in2.08s
 (/tmp/aux-settings-controls-check.log). Final typecheck and3dismissal tests passed,
 including native-picker Escape ownership (/tmp/aux-settings-controls-final.log).
 No unchanged full suite repeated; no native rebuild for this source-only batch.
+
+
+## October 17 — startup native-select consolidation
+
+The owner's blue OS reasoning and Execution popup captures revealed that the
+existing customizable native select rules were lazy-loaded only with Settings
+and scoped to Settings/dialogs. `styles/select.css` now loads at startup across
+the shell; `styles/glass.css` owns material for both native pickers and menus.
+One downward chevron, shared geometry and keyboard focus replace scoped native
+picker variants and the gradient-arrow implementation. Menu/details handlers
+preserve native picker Escape and typeahead; composer/run bindings remain native.
+The rail model wrapper shrinks to content instead of separating model/reasoning.
+
+021613d38 prototypes91–93 confirm glass native options, Execution typeahead,
+cloud disabling Agent, local restoration and Medium surviving full-chat/rail
+transitions. Prototype styles retired with launcher31315 and its disposable
+Profile. Packaged startup-before-Settings, light/narrow and persistence acceptance
+remain pending. Focused45tests/4files and integrated typecheck/lint plus
+4,675tests/749files passed (101.72s, /tmp/aux-shared-select-check.log).
+Reference rescan182PNG. Full parity is not established.

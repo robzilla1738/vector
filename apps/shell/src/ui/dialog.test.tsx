@@ -3,13 +3,82 @@ import { act, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { ActionMenu } from "./index";
-import { Dialog } from "./dialog";
+import { Dialog, Menu } from "./dialog";
+import { detailsMenuKey } from "../keyboard-list";
 
 function key(node: Element, value: string, shiftKey = false) {
   node.dispatchEvent(new KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true }));
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+it.each(["menu", "details"])(
+  "%s leaves native select typing and picker dismissal to Chromium",
+  async (kind) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const close = vi.fn();
+    const menuKey = vi.fn();
+    const content = (
+      <>
+        <select aria-label="Execution" defaultValue="local">
+          <option value="local">On this Mac</option>
+          <option value="cloud">Run in cloud</option>
+        </select>
+        <button role="menuitem">Run tonight</button>
+      </>
+    );
+    try {
+      await act(async () =>
+        root.render(
+          kind === "menu" ? (
+            <Menu label="Run options" onClose={close} onMenuKeyDown={menuKey}>
+              {content}
+            </Menu>
+          ) : (
+            <details open onKeyDown={detailsMenuKey}>
+              <summary>Run options</summary>
+              {content}
+            </details>
+          ),
+        ),
+      );
+      const parent = document.querySelector<HTMLDialogElement | HTMLDetailsElement>(
+        kind === "menu" ? "dialog" : "details",
+      )!;
+      const select = parent.querySelector("select")!;
+      const matches = select.matches.bind(select);
+      let pickerOpen = true;
+      vi.spyOn(select, "matches").mockImplementation((selector) =>
+        selector === ":open" ? pickerOpen : matches(selector),
+      );
+      select.focus();
+      for (const value of ["r", "ArrowDown", "Escape"]) {
+        const event = new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true });
+        await act(async () => select.dispatchEvent(event));
+        expect(event.defaultPrevented).toBe(false);
+        expect(document.activeElement).toBe(select);
+        expect(parent.open).toBe(true);
+        expect(close).not.toHaveBeenCalled();
+      }
+      expect(menuKey).not.toHaveBeenCalled();
+      pickerOpen = false;
+      const typeahead = new KeyboardEvent("keydown", { key: "r", bubbles: true, cancelable: true });
+      await act(async () => select.dispatchEvent(typeahead));
+      expect(typeahead.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(select);
+      await act(async () => key(select, "Escape"));
+      expect(close).toHaveBeenCalledTimes(kind === "menu" ? 1 : 0);
+      expect(parent.open).toBe(kind === "menu");
+      expect(document.activeElement).toBe(kind === "menu" ? select : parent.querySelector("summary"));
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  },
+);
 
 it("ActionMenu focuses the first enabled item and Escape restores its trigger", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

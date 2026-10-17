@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { availableForFocus } from "./ui/focus";
+import { availableForFocus, nativePickerOpen } from "./ui/focus";
 
 /** Manual activation: arrows move focus; Enter/Space keep the control's action. */
 export function moveListFocus(event: KeyboardEvent<HTMLElement>, selector: string, vertical = true) {
@@ -27,7 +27,7 @@ const menuSearch = new WeakMap<HTMLElement, { text: string; time: number }>();
 /** Menu-only typeahead; editable fields retain normal typing and cursor movement. */
 export function moveMenuFocus(event: KeyboardEvent<HTMLElement>, selector = '[role^="menuitem"]') {
   const target = event.target as HTMLElement;
-  if (target.closest('input, textarea, [contenteditable="true"]')) return;
+  if (target.closest('input, select, textarea, [contenteditable="true"]')) return;
   moveListFocus(event, selector);
   if (event.defaultPrevented) menuSearch.delete(event.currentTarget);
   if (
@@ -63,6 +63,7 @@ export function moveMenuFocus(event: KeyboardEvent<HTMLElement>, selector = '[ro
 
 /** Keyboard behavior for a native details/summary menu without a second open state. */
 export function detailsMenuKey(event: KeyboardEvent<HTMLDetailsElement>) {
+  if (event.defaultPrevented || event.nativeEvent.isComposing || nativePickerOpen(event.target)) return;
   const details = event.currentTarget;
   const summary = details.querySelector("summary");
   if (event.target === summary && ["ArrowDown", "ArrowUp"].includes(event.key)) {

@@ -151,7 +151,7 @@ it("sends from All Chats through the ordinary composer and preserves a failed st
     conversationId: "history",
     agentDraft: "Synthetic history question",
     startRun,
-    composerPreferences: { new: { privateTask: false, reasoning: "high", agentMode: "ask" } },
+    composerPreferences: { new: { privateTask: false, agentMode: "ask" } },
   });
   await act(async () => root.render(<Conversation />));
   const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
@@ -161,6 +161,11 @@ it("sends from All Chats through the ordinary composer and preserves a failed st
   ).toBe(true);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Card view"]')!.click());
   expect(host.querySelector("textarea")).toBe(input);
+  const thinking = host.querySelector<HTMLSelectElement>('[aria-label="Thinking level"]')!;
+  await act(async () => {
+    thinking.value = "high";
+    thinking.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
   const id = useStore.getState().conversationId!;
   expect(id).not.toBe("history");

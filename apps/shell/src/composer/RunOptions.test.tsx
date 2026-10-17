@@ -105,6 +105,37 @@ it("captures a newchat private choice while existingchat mode stays immutable", 
   expect(useStore.getState().composerPreferences.new?.privateTask).toBe(true);
 });
 
+it("keeps execution, agent and package selections with their draft and disables local agents in cloud mode", async () => {
+  vi.spyOn(bridge, "invoke").mockResolvedValue({
+    packages: [
+      { name: "aux-core", version: "1", profiles: [] },
+      { name: "review-tools", version: "1", profiles: [{ name: "reviewer" }] },
+    ],
+    defaults: ["aux-core"],
+  } as never);
+  await mount();
+  select("Agent profile", "reviewer");
+  expect(useStore.getState().composerPreferences.new).toMatchObject({
+    profile: "reviewer",
+    packageNames: ["aux-core", "review-tools"],
+  });
+  select("Run execution", "cloud");
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Agent profile"]')!.disabled).toBe(true);
+  expect(useStore.getState().composerPreferences.new?.executionTarget).toBe("cloud");
+  await mount("chat:other");
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Run execution"]')!.value).toBe("local");
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Agent profile"]')!.value).toBe("default");
+  await mount();
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Run execution"]')!.value).toBe("cloud");
+  select("Run execution", "local");
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Agent profile"]')!.disabled).toBe(false);
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Agent profile"]')!.value).toBe("reviewer");
+  const checks = host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+  expect([...checks].map((input) => input.checked)).toEqual([true, true, false]);
+  await act(async () => checks[0]!.click());
+  expect(useStore.getState().composerPreferences.new?.packageNames).toEqual(["review-tools"]);
+});
+
 it("offers conversational capabilities while preserving an unsupported saved selection with an honest warning", async () => {
   vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "packages.list") return { packages: [], defaults: [] } as never;
