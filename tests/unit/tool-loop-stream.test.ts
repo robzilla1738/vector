@@ -1,6 +1,8 @@
 import { expect, it, vi } from "vitest";
 import { z } from "zod";
+import { asSchema, zodSchema } from "ai";
 import { MockLanguageModelV4 } from "../../apps/runtime/node_modules/ai/dist/test/index.js";
+import { buildToolManifest } from "../../apps/runtime/src/agent/loop/tools.js";
 import { GatewayModelClient } from "../../apps/runtime/src/agent/gateway-client.js";
 
 const usage = {
@@ -281,3 +283,67 @@ it("retains known usage on structured cancellation without corrective retry or f
   expect(model.doStreamCalls).toHaveLength(1);
   expect(model.doGenerateCalls).toHaveLength(0);
 });
+
+it.each([
+  { provider: "anthropic", references: true, maxRatio: 0.5 },
+  { provider: "openai", references: true, maxRatio: 0.5 },
+  { provider: "openai-compatible", references: false, maxRatio: 1.01 },
+])(
+  "retains compound browser steps with $provider tool schemas",
+  async ({ provider, references, maxRatio }) => {
+    const input = {
+      steps: [
+        {
+          id: "open",
+          op: "click",
+          target: "r1",
+          expect: [{ kind: "textVisible", text: "Ready" }],
+        },
+      ],
+    };
+    const model = new MockLanguageModelV4({
+      provider,
+      doStream: {
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue({ type: "stream-start", warnings: [] });
+            controller.enqueue({
+              type: "tool-call",
+              toolCallId: "act-1",
+              toolName: "act",
+              input: JSON.stringify(input),
+            });
+            controller.enqueue({
+              type: "finish",
+              finishReason: { unified: "tool-calls", raw: "tool_calls" },
+              usage,
+            });
+            controller.close();
+          },
+        }),
+      },
+    });
+    const act = buildToolManifest().act!;
+    const client = new GatewayModelClient("synthetic", { model: () => model });
+    const result = await client.toolCallStep({
+      modelId: "test",
+      system: "Use the page controls",
+      messages: [{ role: "user", content: "Open the record" }],
+      tools: { act },
+    });
+    expect(result.toolCalls).toEqual([{ toolCallId: "act-1", toolName: "act", input }]);
+    const providerTool = model.doStreamCalls[0]!.tools![0]!;
+    expect(providerTool).toMatchObject({ type: "function", name: "act" });
+    const schema = providerTool.inputSchema;
+    const serialized = JSON.stringify(schema);
+    const inline = JSON.stringify(await asSchema(zodSchema(act.inputSchema)).jsonSchema);
+    expect(serialized.length / inline.length).toBeLessThan(maxRatio);
+    expect(serialized.includes('"$ref":')).toBe(references);
+    for (const match of serialized.matchAll(/"\$ref":"(#[^"]+)"/g)) {
+      let target: unknown = schema;
+      for (const part of match[1]!.slice(2).split("/"))
+        target = (target as Record<string, unknown>)[part.replaceAll("~1", "/").replaceAll("~0", "~")];
+      expect(target).toBeDefined();
+    }
+  },
+);

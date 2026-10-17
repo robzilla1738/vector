@@ -7,6 +7,26 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Compact provider tool schemas — source
+
+OpenAI and Anthropic tool calls now use the SDK's shared local JSON-schema
+definitions. The exact51-tool SDK payload measures109,361bytes inline and
+54,559bytes with shared definitions. Original Zod validation, tool capabilities,
+governed dispatch and prompt-cache placement remain. Compatible transports keep
+inline schemas because their parsers may not resolve local references; context
+budget accounting retains its conservative existing estimate.
+
+Runtime dist was rebuilt. The initial focused run passed98tests/3files; the final
+SDK cases verify compound browser steps, resolvable references and compatible
+transport behavior. Typecheck and final lint pass. The integrated test phase
+passed4,677/4,678tests; one existing coder-worktree case timed out under native
+linking. All3cases in that file then passed in isolation in92.16s. No unchanged
+full suite is repeated. Logs: `/tmp/aux-prompt-efficiency-check.log`,
+`/tmp/aux-prompt-efficiency-final-lint.log`,
+`/tmp/aux-prompt-efficiency-final-tests.log`,
+`/tmp/aux-prompt-efficiency-coder-retry.log`.
+Real provider/token-latency and native smoke acceptance remain pending.
+
 ## Readiness implementation — source
 
 The owner authorized completing all six readiness batches with substantial
