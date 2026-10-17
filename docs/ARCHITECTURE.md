@@ -122,6 +122,12 @@ search also reuses the command bar's providers, with a compact presentation that
 accepts only a selected browser object or chat. Its empty Enter never starts a
 navigation or agent request.
 
+An unsaved normal-window rail draft retains its displayed active-page context
+when expanded. Quick Ask and explicit no-context choices remain separate. Reader
+admission rejects failed/blank website documents before native preparation;
+implicit unavailable tabs are omitted, while explicit and recovered selections
+retain strict failure semantics.
+
 Held Ctrl-Tab uses an ephemeral renderer selection over the current Space's
 native tabs. Native chord forwarding distinguishes a physical Control-Tab from
 menu commands and alternate shortcuts. The ordinary preview API supplies visible

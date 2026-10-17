@@ -88,6 +88,10 @@
     padding-top: 4px;
     border-top: var(--hairline) solid var(--line);
   }
+  .chat-run-menu-section:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
   .chat-run-menu-section > button {
     min-height: 36px;
     padding: 6px 8px;

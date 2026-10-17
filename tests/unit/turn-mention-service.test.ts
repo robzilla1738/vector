@@ -544,3 +544,32 @@ it.each([
     ).rejects.toMatchObject({ code: "permission_denied" });
   },
 );
+
+it.each([{ navigationError: { url: page.url, code: -20, message: "Blocked" } }, { showBlankDocument: true }])(
+  "omits failed implicit documents while keeping explicit selections strict: %j",
+  async (state) => {
+    const f = fixture();
+    f.pages.set("a", { ...page, ...state });
+    const source = f.sourceContext();
+    f.setSourceContext({
+      ...source,
+      layout: {
+        ...source.layout!,
+        shared: { ...source.layout!.shared, tabSpace: { a: "space", b: "space" } },
+      },
+    });
+    await f.service.begin("run", [], [], { nativeTurnContext: "owner" });
+    expect(f.prepareReadPage).toHaveBeenCalledExactlyOnceWith("b");
+    expect(f.service.selectedPages("run")).toEqual(["b"]);
+    expect(f.service.unavailableImplicitPages("run")).toEqual(["a"]);
+    await expect(
+      f.service.begin("explicit", [tab], [], { nativeTurnContext: "owner" }),
+    ).rejects.toMatchObject({
+      code: "ref_stale",
+    });
+    await expect(
+      f.service.begin("restored", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] }),
+    ).rejects.toMatchObject({ code: "ref_stale" });
+    expect(f.prepareReadPage).toHaveBeenCalledExactlyOnceWith("b");
+  },
+);

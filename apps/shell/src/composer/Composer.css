@@ -8,16 +8,12 @@
     border-radius: var(--r-2xl);
     corner-shape: round;
     background: var(--surface-primary);
-    box-shadow:
-      0 0 0 var(--hairline) var(--line-strong),
-      var(--shadow-card);
+    box-shadow: var(--shadow-card);
     transition: box-shadow var(--t-fast) var(--ease-in-out);
   }
   .conversation .composer-frame:focus-within {
     background: var(--surface-primary);
-    box-shadow:
-      0 0 0 var(--hairline) var(--line-strong),
-      var(--shadow-card);
+    box-shadow: var(--shadow-card);
   }
   .composer-frame .conversation-input {
     background: transparent;

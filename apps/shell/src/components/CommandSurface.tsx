@@ -1,7 +1,7 @@
 import { GlassMaterial } from "./GlassMaterial";
 import { orderedPages } from "../store/pages";
 import { smallGhostButtonProps } from "../ui/button-props";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { COMMANDS, type CommandDef, type PreparedConversation, type FeatureOverride } from "@aux/contracts";
 import { useShallow } from "zustand/react/shallow";
 import { useStore, call, errToast } from "../store";
@@ -16,6 +16,8 @@ import type { CommandInvocation } from "../features/registry";
 import type { Suggestion } from "./command-provider-types";
 import { commandSurfaceWorkRows, emptyCommandSurfaceWork } from "../command-surface-providers";
 import "./CommandSurface.css";
+
+const SEARCH_SURFACE_WIDTH = 620;
 
 export interface CommandSurfaceProps {
   request: CommandSurfaceRequest;
@@ -257,7 +259,10 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         !toolbar.closest('[inert], [aria-hidden="true"]') &&
         toolbar.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
       const box = stage?.getBoundingClientRect();
-      const width = Math.min(680, tabSearch ? Math.max(0, window.innerWidth - 16) : window.innerWidth * 0.7);
+      const width = Math.min(
+        SEARCH_SURFACE_WIDTH,
+        tabSearch ? Math.max(0, window.innerWidth - 16) : window.innerWidth * 0.7,
+      );
       const next = visible
         ? { left: bounds.left, top: bounds.top, width: bounds.width }
         : {
@@ -337,7 +342,12 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         data-mode={request.mode}
         data-presentation={tabSearch ? "tab-search" : undefined}
         data-command-surface-sequence={request.sequence}
-        style={placement ? { ...placement, transform: "none" } : undefined}
+        style={
+          {
+            "--command-surface-width": `${SEARCH_SURFACE_WIDTH}px`,
+            ...(placement ? { ...placement, transform: "none" } : {}),
+          } as CSSProperties
+        }
         ref={dialogRef}
       >
         <GlassMaterial alpha noTopGlow />

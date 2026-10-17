@@ -140,6 +140,12 @@ export class TurnMentionService {
         await Promise.all(
           [...selected].map(async (pageId) => {
             try {
+              const page = this.deps.page(pageId);
+              if (page?.navigationError || page?.showBlankDocument)
+                throw new AuxError(
+                  "ref_stale",
+                  "This tab has no loaded website document. Reload it or choose another tab.",
+                );
               await this.deps.prepareReadPage!(pageId);
             } catch (error) {
               if (

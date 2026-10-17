@@ -66,7 +66,7 @@
     max-width: 60%;
     padding: 4px 6px;
     border-radius: var(--r-lg);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
     font-weight: var(--fw-medium);
     letter-spacing: var(--tracking-snug);
     color: var(--ink-2);

@@ -234,8 +234,7 @@ export class PageRegistry {
     if (!current() || !lp || lp.driver || lp.target.agentIsolation || isolation.mode !== "session")
       throw new AuxError("ref_stale", "The original session document changed before reader admission.");
     const driver = this.driverFor("aux");
-    if (!driver)
-      throw new AuxError("backend_unavailable", "The protected browser reader is unavailable.");
+    if (!driver) throw new AuxError("backend_unavailable", "The protected browser reader is unavailable.");
     const original: BorrowedSession = { live: lp, isolation };
     this.borrowedSessions.set(pageId, original);
     // Retire pending fixed reads before any CDP attachment can dispatch.
@@ -339,6 +338,11 @@ export class PageRegistry {
   async prepareReadPage(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
     if (!lp) throw new AuxError("target_detached", "This tab is no longer available.");
+    if (lp.target.navigationError || lp.target.showBlankDocument)
+      throw new AuxError(
+        "ref_stale",
+        "This tab has no loaded website document. Reload it or choose another tab.",
+      );
     if (lp.driver || lp.target.backend !== "aux" || lp.target.ownedByRuntime || lp.target.agentIsolation)
       return;
     if (

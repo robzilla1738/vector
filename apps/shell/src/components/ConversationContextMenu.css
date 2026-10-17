@@ -53,8 +53,9 @@
     padding: 6px;
     border-radius: var(--r-xl);
     corner-shape: round;
-    background: var(--bg-hover);
-    box-shadow: none;
+    background: var(--surface-primary);
+    backdrop-filter: blur(var(--blur-12));
+    box-shadow: var(--shadow-card);
     color: var(--ink-2);
     font-size: var(--fs-xs);
   }

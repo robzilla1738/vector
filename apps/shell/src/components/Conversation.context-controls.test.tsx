@@ -331,6 +331,8 @@ it("shows the active website in a fresh rail draft and keeps an explicit no-cont
   );
   await render("new-rail");
   expect(summary().textContent).toContain("Original selected context");
+  await act(async () => root.render(<Conversation chatId="new-rail" />));
+  expect(summary().textContent).toContain("Original selected context");
   await act(async () => useStore.getState().setConversationContext("new-rail", "none"));
   expect(summary()).toBeNull();
 });

@@ -9,6 +9,22 @@ retired and old gaps may have been resolved by later entries.
 
 ## Sidebar anatomy and shared popup glass — current source
 
+The live Aside search popup measures 620×340 logical pixels (local capture 67).
+The follow-up uses that width, applies the source context-card fill/blur/ring,
+removes the duplicate composer ring, and includes tab previews in popup glass.
+Normal-window rail defaults persist when the draft expands into a full chat;
+Quick Ask does not acquire that automatic page context.
+
+Runtime reader admission now rejects failed or blank website documents. An
+unavailable implicit tab is omitted before admission; explicit and recovered
+selections still fail with a clear stale-document error. This addresses the
+failed-document path found in L02; it does not fix post-task native navigation.
+Runtime dist was rebuilt before tests. The integrated follow-up passed typecheck,
+lint and 4,669/4,670 tests; one existing worktree test timed out during native
+linking. All three tests in that file passed in isolation (67.52s). The full run
+covered 749 files; logs are `/tmp/aux-context-followup-check.log` and
+`/tmp/aux-context-coder-retry.log`. Follow-up native acceptance remains pending.
+
 The owner's new rail and search screenshots show a persistent multiline composer,
 a context card, compact controls and translucent popup material. The rail now uses
 an 84px minimum writing/action area with its selected website card above it; empty

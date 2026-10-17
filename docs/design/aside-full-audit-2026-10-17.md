@@ -12,6 +12,12 @@ c5d9bfc67 native captures 59–66 confirm Quick Ask registration/sizing, one cha
 window toolbar, grouped footer, extension menu and import editor focus. They do
 not accept this newer rail/glass implementation. New paired captures are pending.
 
+Live Aside capture `67-aside-live-tab-search.png` is 1240×680 physical pixels,
+establishing 620×340 logical popup geometry. Follow-up source adopts the width,
+the extracted context-card material and a single composer ring. Tab previews share
+the popup material. The context default survives expansion only for normal-window
+rail drafts. Check evidence is recorded in STATUS; native follow-up is pending.
+
 Two native fixture attempts exposed browser readiness gaps (post-task navigation
 blocked and invalid source-origin on the next turn). The 20-task smoke is incomplete;
 see STATUS for the local report and controlled runner retirement.

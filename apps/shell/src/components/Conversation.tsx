@@ -853,8 +853,19 @@ function ConversationContent({
   };
   const contexts = useStore((s) => s.conversationContexts);
   const unsavedDraft = taskModeKnown && !taskModeLocked;
-  const defaultContext = embedded && !home && unsavedDraft ? "active" : id ? "linked" : "none";
+  const defaultContext =
+    bridge.windowKind === "normal" && embedded && !home && unsavedDraft
+      ? "active"
+      : id
+        ? "linked"
+        : "none";
   const contextPage = contexts[id ? draftKey(id) : "new"] ?? defaultContext;
+  // Preserve the rail's visible default when this draft moves to a full window.
+  useEffect(() => {
+    const state = useStore.getState();
+    if (defaultContext === "active" && state.conversationContexts[id ? draftKey(id) : "new"] === undefined)
+      state.setConversationContext(id, "active");
+  }, [id, defaultContext]);
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id, pageId);
   const selectedBrowserSources = useStore((s) => s.conversationBrowserSources[browserSourcesKey(id)]);
   const browserSources = selectedBrowserSources ?? [];
