@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { errorMessage } from "../error-message";
+import { runCommand } from "../commands";
 import { ComposerModelPicker } from "./ComposerModelPicker";
 import "./ComposerModelControls.css";
 
@@ -90,6 +91,10 @@ export function ComposerModelControls({ draftKey, disabled }: { draftKey: string
           disabled={disabled}
           loading={requested && catalog?.generation !== identity && !catalogError}
           error={catalogError}
+          onSettings={() => {
+            useStore.setState({ settingsCategory: "Models" });
+            runCommand("settings");
+          }}
           onRequest={() => setRequested(true)}
           onRetry={() => setCatalogAttempt((attempt) => attempt + 1)}
           onChange={(modelId) => {

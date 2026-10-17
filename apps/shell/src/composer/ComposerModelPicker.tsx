@@ -1,8 +1,12 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import type { ModelCapability } from "@aux/contracts";
+import { MODEL_PROVIDER_NAMES, type ModelCapability } from "@aux/contracts";
 import { Menu } from "../ui/dialog";
-import { shellIconCheck, shellIconDown, shellIconSearch } from "../ui/icons";
+import { shellIconCheck, shellIconDown, shellIconSearch, shellIconOpen } from "../ui/icons";
 import "./ComposerModelPicker.css";
+import { ModelProviderMenu } from "./ModelProviderMenu";
+import { moveMenuFocus } from "../keyboard-list";
+
+const PROVIDER_NAMES: Record<string, string> = { ...MODEL_PROVIDER_NAMES, meta: "Meta", alibaba: "Alibaba" };
 
 /** Presentation only; RunOptions owns the catalog and validates every selection. */
 export function ComposerModelPicker({
@@ -16,6 +20,7 @@ export function ComposerModelPicker({
   onRequest,
   onRetry,
   onChange,
+  onSettings,
 }: {
   models: readonly ModelCapability[];
   modelId?: string;
@@ -24,12 +29,14 @@ export function ComposerModelPicker({
   disabled: boolean;
   loading: boolean;
   error?: string;
+  onSettings(): void;
   onRequest(): void;
   onRetry(): void;
   onChange(modelId: string | undefined): void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [providerOpen, setProviderOpen] = useState<string | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDialogElement>(null);
@@ -37,17 +44,20 @@ export function ComposerModelPicker({
   const close = () => {
     setOpen(false);
     setQuery("");
+    setProviderOpen(null);
   };
   useEffect(() => {
     if (disabled) {
       setOpen(false);
       setQuery("");
+      setProviderOpen(null);
     }
   }, [disabled]);
+  const providerName = (provider: string) => PROVIDER_NAMES[provider] ?? provider;
   const filter = query.trim().toLocaleLowerCase();
   const matches = (text: string) => !filter || text.toLocaleLowerCase().includes(filter);
   const visible = models.filter((model) =>
-    matches(`${model.name ?? ""} ${model.id} ${model.provider ?? ""}`),
+    matches(`${model.name ?? ""} ${model.id} ${providerName(model.provider ?? "")}`),
   );
   const groups = new Map<string, ModelCapability[]>();
   for (const model of visible) {
@@ -56,7 +66,6 @@ export function ComposerModelPicker({
     entries.push(model);
     groups.set(provider, entries);
   }
-  const grouped = new Set(models.map((model) => model.provider ?? "Models")).size > 1;
   const absent = !!modelId && !models.some((model) => model.id === modelId);
   const absentName = selectedModel?.name ?? modelId ?? "";
   const showAbsent = absent && matches(`${absentName} ${modelId}`);
@@ -71,9 +80,25 @@ export function ComposerModelPicker({
     event.stopPropagation();
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     event.preventDefault();
-    const items = menu.current?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)');
+    const items = menu.current?.querySelectorAll<HTMLButtonElement>("[data-model-root]:not(:disabled)");
     (event.key === "ArrowDown" ? items?.[0] : items?.[items.length - 1])?.focus();
   }
+  const modelRows = (entries: ModelCapability[], root: boolean) =>
+    entries.map((model) => (
+      <button
+        key={model.id}
+        type="button"
+        value={model.id}
+        role="menuitemradio"
+        data-model-root={root ? "" : undefined}
+        aria-checked={modelId === model.id}
+        title={model.name ? `${model.name} · ${model.id}` : model.id}
+        onClick={() => choose(model.id)}
+      >
+        <span>{model.name ?? model.id}</span>
+        {modelId === model.id && shellIconCheck}
+      </button>
+    ));
   return (
     <>
       <button
@@ -106,8 +131,12 @@ export function ComposerModelPicker({
           returnFocus={trigger}
           initialFocusRef={search}
           menuRef={menu}
-          placement="above-end"
+          placement="auto-end"
           onClose={close}
+          onMenuKeyDown={(event) => {
+            moveMenuFocus(event, "[data-model-root]");
+            if (event.defaultPrevented) setProviderOpen(null);
+          }}
         >
           <div className="composer-model-search" data-input-surface>
             {shellIconSearch}
@@ -117,13 +146,18 @@ export function ComposerModelPicker({
               aria-label="Search models"
               placeholder="Search models"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setProviderOpen(null);
+              }}
               onKeyDown={searchKey}
             />
           </div>
           <div className="composer-model-list" aria-busy={loading}>
             {showAutomatic && (
               <button
+                data-model-root
+                onMouseEnter={() => setProviderOpen(null)}
                 type="button"
                 value=""
                 role="menuitemradio"
@@ -135,7 +169,14 @@ export function ComposerModelPicker({
               </button>
             )}
             {showAbsent && (
-              <button type="button" value={modelId} role="menuitemradio" aria-checked="true" disabled>
+              <button
+                type="button"
+                value={modelId}
+                role="menuitemradio"
+                data-model-root
+                aria-checked="true"
+                disabled
+              >
                 <span>
                   {absentName}
                   <small>
@@ -153,7 +194,7 @@ export function ComposerModelPicker({
             {error && (
               <div className="composer-model-error">
                 <p role="alert">Model catalog unavailable: {error}</p>
-                <button type="button" role="menuitem" onClick={onRetry}>
+                <button type="button" role="menuitem" data-model-root onClick={onRetry}>
                   Retry
                 </button>
               </div>
@@ -161,26 +202,41 @@ export function ComposerModelPicker({
             {!loading && !error && !visible.length && (
               <p role="status">{filter ? "No matching models" : "No models are available"}</p>
             )}
-            {[...groups].map(([provider, entries]) => (
-              <div key={provider} role="group" aria-label={grouped ? provider : "Models"}>
-                {grouped && <p className="composer-model-provider">{provider}</p>}
-                {entries.map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    value={model.id}
-                    role="menuitemradio"
-                    aria-checked={modelId === model.id}
-                    title={model.name ? `${model.name} · ${model.id}` : model.id}
-                    onClick={() => choose(model.id)}
-                  >
-                    <span>{model.name ?? model.id}</span>
-                    {modelId === model.id && shellIconCheck}
-                  </button>
-                ))}
-              </div>
-            ))}
+            {[...groups].map(([provider, entries]) =>
+              !filter && provider !== "Models" ? (
+                <ModelProviderMenu
+                  key={provider}
+                  label={providerName(provider)}
+                  open={providerOpen === provider}
+                  onOpen={() => setProviderOpen(provider)}
+                  onClose={() => setProviderOpen(null)}
+                >
+                  {modelRows(entries, false)}
+                </ModelProviderMenu>
+              ) : (
+                <div key={provider} role="group" aria-label={providerName(provider)}>
+                  {filter && provider !== "Models" && (
+                    <p className="composer-model-provider">{providerName(provider)}</p>
+                  )}
+                  {modelRows(entries, true)}
+                </div>
+              ),
+            )}
           </div>
+          <button
+            type="button"
+            role="menuitem"
+            data-model-root
+            className="composer-model-settings"
+            onMouseEnter={() => setProviderOpen(null)}
+            onClick={() => {
+              close();
+              onSettings();
+            }}
+          >
+            <span>Settings</span>
+            {shellIconOpen}
+          </button>
         </Menu>
       )}
     </>

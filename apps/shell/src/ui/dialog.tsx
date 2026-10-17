@@ -117,7 +117,7 @@ export function Menu({
   anchor?: RefObject<HTMLElement | null>;
   point?: { x: number; y: number };
   atEnd?: boolean;
-  placement?: "below-end" | "above-start" | "above-end";
+  placement?: "below-end" | "above-start" | "above-end" | "auto-end";
   id?: string;
   onMenuKeyDown?: (event: KeyboardEvent<HTMLDialogElement>) => void;
   menuRef?: RefObject<HTMLDialogElement | null>;
@@ -137,7 +137,10 @@ export function Menu({
       dialog.style.bottom = "auto";
       if (rect) {
         const x = placement === "above-start" ? rect.left : rect.right - dialog.offsetWidth;
-        const y = placement.startsWith("above") ? rect.top - dialog.offsetHeight - 4 : rect.bottom + 4;
+        const above =
+          placement.startsWith("above") ||
+          (placement === "auto-end" && rect.bottom + dialog.offsetHeight + 12 > window.innerHeight);
+        const y = above ? rect.top - dialog.offsetHeight - 4 : rect.bottom + 4;
         positionContextMenu(dialog, x, y);
       } else if (point) positionContextMenu(dialog, point.x, point.y);
       requestStageReport();

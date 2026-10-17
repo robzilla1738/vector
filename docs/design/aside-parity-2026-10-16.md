@@ -1203,3 +1203,28 @@ Full check passes typecheck, lint and4,594 tests/738 files; renderer build1.95s.
 Native/Vite visual acceptance of these newest card
 changes is pending the active consolidated build. No parity closure is claimed.
 Reference folder rescanned:562 files, unchanged from the last batch.
+
+## Composer provider menus and consolidated native observation
+
+Composer model selection now uses provider rows with adjacent model submenus
+(references009–012), while search flattens matching models across providers.
+Right/Left and Escape enter/leave the submenu; selection retains existing catalog
+and composer ownership checks. The Settings row opens Models. The menu prefers
+below the trigger and falls back above near the bottom edge; pointer movement
+opens provider menus without accidental activation during initial placement.
+Full check passed4,594 tests/738 files. After final placement refinements,
+typecheck and10 affected tests passed; renderer build2.19s. Vite walkthrough
+verified opening, OpenAI submenu, GPT-6.1 Sol selection/reopen/search and Models
+navigation. Evidence: aux-model-provider-submenu-vite.png. Current card geometry
+and unavailable-state layout also observed: aux-privacy-cards-vite-f36e6.png.
+
+Native fc9df54b1 build succeeded in8m45.06s (26steps). Launcher9489/session75082,
+app14309, disposable aux-dev-yXOBjc remain active. The native shortcuts opened the
+tab picker and produced horizontal/stacked panes; captures:
+aux-split-horizontal-native-fc9df.png and aux-split-stacked-native-fc9df.png.
+A rapid Separate-then-shortcut sequence emitted the existing “tabs changed” guard;
+the next selection created the stacked split. Investigate that transition before
+claiming complete split-flow acceptance. Native compilation does not yet include
+the newer f36e6765e cards or provider menus. All captures live under
+/tmp/aux-parity-2026-10-16. Projects055–057 were inspected: creation, icon/color and
+working-directory parity are still open; no substitute project UI was added.

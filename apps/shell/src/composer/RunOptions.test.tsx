@@ -152,6 +152,28 @@ it("searches model names, IDs and providers and moves keyboard focus through the
   await openModels();
   const search = modelMenu().querySelector<HTMLInputElement>('[aria-label="Search models"]')!;
   expect(document.activeElement).toBe(search);
+  const beta = [...modelMenu().querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+    (button) => button.textContent === "Beta",
+  )!;
+  expect(modelOption("beta/fast")).toBeUndefined();
+  await act(async () => beta.click());
+  expect(document.activeElement).toBe(modelOption("beta/fast"));
+  expect(useStore.getState().composerPreferences.new?.modelId).toBeUndefined();
+  await act(async () =>
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })),
+  );
+  expect(document.activeElement).toBe(beta);
+  expect(modelOption("beta/fast")).toBeUndefined();
+  await act(async () =>
+    beta.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })),
+  );
+  expect(document.activeElement).toBe(modelOption("beta/fast"));
+  await act(async () =>
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+  );
+  expect(modelMenu()).not.toBeNull();
+  expect(document.activeElement).toBe(beta);
+  search.focus();
   const searchFor = async (value: string) =>
     act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, value);
