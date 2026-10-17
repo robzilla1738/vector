@@ -114,7 +114,10 @@ async function main() {
     const profile = args.includes("--temp-profile")
       ? (temporary = mkdtempSync(join(tmpdir(), "aux-dev-")))
       : join(homedir(), "aux-dev-profile");
-    await run(join(app, "Contents/MacOS/Aux"), [`--user-data-dir=${profile}`]);
+    await run(join(app, "Contents/MacOS/Aux"), [
+      `--user-data-dir=${profile}`,
+      ...(temporary ? ["--enable-logging=stderr"] : []),
+    ]);
   } finally {
     if (temporary) rmSync(temporary, { recursive: true, force: true });
     release();
