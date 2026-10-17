@@ -20,8 +20,9 @@ reading list, archived tabs and recently closed views share a navigation rail th
 becomes horizontal in narrow panes. It retains the original scoped Library
 commands and native storage methods. The covered stage is inert while the browser
 chrome remains accessible; Close and Escape leave the page without a modal scrim
-or focus trap. Date/group history and a bookmark-folder navigation tree are still
-separate parity gaps; the current History groups visits by date.
+or focus trap. Bookmarks adds a collapsible folder tree using native node IDs and
+child order, synchronized with the breadcrumb and results. Grouped History and
+separate browser page routes remain parity gaps; History currently groups by date.
 
 Memory Settings uses four routed views under the same retained Space editor:
 Overview, History, Context awareness and Configure. Subpage selection changes the

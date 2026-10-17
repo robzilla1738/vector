@@ -6,6 +6,7 @@ import { errorMessage } from "../error-message";
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
+import { BookmarkFolderNavigation } from "./BookmarkFolderNavigation";
 import { backgroundLink } from "../browser-links";
 import { readReaderArticle } from "../reader-article";
 import { moveListFocus } from "../keyboard-list";
@@ -874,53 +875,65 @@ export function Library({
             {shellIconClose}
           </button>
         </div>
-        <div className="library-tabs" role="tablist" aria-label="Library views" aria-orientation="vertical">
-          {views.map((tab) => (
-            <LibraryButton
-              command="select-library-view"
-              current={current}
-              key={tab}
-              originalRef={(node) => {
-                if (node) viewButtons.current.set(tab, node);
-                else viewButtons.current.delete(tab);
+        <div className="library-nav">
+          <div className="library-tabs" role="tablist" aria-label="Library views" aria-orientation="vertical">
+            {views.map((tab) => (
+              <LibraryButton
+                command="select-library-view"
+                current={current}
+                key={tab}
+                originalRef={(node) => {
+                  if (node) viewButtons.current.set(tab, node);
+                  else viewButtons.current.delete(tab);
+                }}
+                id={`library-${tab}`}
+                role="tab"
+                aria-selected={view === tab}
+                aria-controls="library-results"
+                tabIndex={view === tab ? 0 : -1}
+                className={view === tab ? "on" : ""}
+                keyboard
+                invoke={(event) => {
+                  if (
+                    event instanceof KeyboardEvent &&
+                    ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)
+                  ) {
+                    const next =
+                      views[
+                        (views.indexOf(tab) +
+                          (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : views.length - 1)) %
+                          views.length
+                      ]!;
+                    choose(next);
+                    viewButtons.current.get(next)?.focus();
+                  } else choose(tab);
+                }}
+              >
+                <span aria-hidden="true">
+                  {tab === "history"
+                    ? shellIconClock
+                    : tab === "bookmarks"
+                      ? shellIconBookmark
+                      : tab === "archived"
+                        ? shellIconArchive
+                        : tab === "closed"
+                          ? shellIconReopen
+                          : shellIconResult}
+                </span>
+                {VIEW_NAMES[tab]}
+              </LibraryButton>
+            ))}
+          </div>
+          {view === "bookmarks" && snapshot && (
+            <BookmarkFolderNavigation
+              snapshot={snapshot}
+              selectedId={currentFolder?.nodeId ?? snapshot.rootId}
+              disabled={busy}
+              onSelect={(id) => {
+                if (current()) openFolder(id);
               }}
-              id={`library-${tab}`}
-              role="tab"
-              aria-selected={view === tab}
-              aria-controls="library-results"
-              tabIndex={view === tab ? 0 : -1}
-              className={view === tab ? "on" : ""}
-              keyboard
-              invoke={(event) => {
-                if (
-                  event instanceof KeyboardEvent &&
-                  ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)
-                ) {
-                  const next =
-                    views[
-                      (views.indexOf(tab) +
-                        (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : views.length - 1)) %
-                        views.length
-                    ]!;
-                  choose(next);
-                  viewButtons.current.get(next)?.focus();
-                } else choose(tab);
-              }}
-            >
-              <span aria-hidden="true">
-                {tab === "history"
-                  ? shellIconClock
-                  : tab === "bookmarks"
-                    ? shellIconBookmark
-                    : tab === "archived"
-                      ? shellIconArchive
-                      : tab === "closed"
-                        ? shellIconReopen
-                        : shellIconResult}
-              </span>
-              {VIEW_NAMES[tab]}
-            </LibraryButton>
-          ))}
+            />
+          )}
         </div>
         <div className="library-main">
           <div className="library-field" data-input-surface>

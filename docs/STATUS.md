@@ -1,5 +1,24 @@
 # Aux status — October 16, 2026
 
+Bookmark folder navigation follow-up: the Library now includes a collapsible
+folder tree using native node IDs and child order. Selecting a folder updates the
+breadcrumb and results; external navigation reveals collapsed ancestors, and
+mutation busy states disable navigation. Duplicate folder names remain distinct.
+Integrated check passed all 4,626 tests across 744 files (98.82s), typecheck and
+lint (advisory effect warning); renderer build passed in 3.89s. Logs:
+`/tmp/aux-bookmark-folder-nav-check.log`, `/tmp/aux-bookmark-folder-nav-build.log`.
+The real Library component with synthetic folders was visually inspected:
+`/tmp/aux-parity-2026-10-16/aux-bookmark-folder-navigation-vite.png`.
+Temporary fixtures were removed. Narrow folder-tree and native acceptance remain
+open; running native 22360 still contains source 2cb93764b.
+
+The integrated Vite toolbar Library entry was rechecked successfully without a
+command change; the earlier failure did not reproduce. Evidence:
+`/tmp/aux-parity-2026-10-16/aux-library-integrated-entry-vite.png`.
+This supersedes the earlier source-entry uncertainty, not native acceptance.
+Separate browser page routes, grouped History and full bookmark parity remain open.
+
+
 Browser Library page batch: History and Bookmarks now render inside the stage
 instead of a centered modal. Added a left navigation rail, rounded search, and
 full-height results; narrow panes use a horizontally scrollable navigation strip.
