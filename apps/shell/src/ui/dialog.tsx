@@ -71,6 +71,7 @@ export function Dialog({
         onClose();
       }}
       onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
         event.stopPropagation();
         onClose();

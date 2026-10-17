@@ -10,13 +10,15 @@ only page titles and origins are supplied, with existing output validation and
 review/undo unchanged. Private/stale editors cannot save or publish completions.
 Runtime dist rebuilt before tests. All36 focused cases pass; integrated typecheck
 and lint pass, 4,575/4,576 tests across733 files pass (only the existing
-coder-worktrees timeout). Renderer build passes in1.90s. Live editor walkthrough
-and compiled-native inclusion are still pending; the current native builder
-staged its renderer before this source change.
+coder-worktrees timeout). Renderer build passes in1.90s. Live renderer walkthrough confirms Cancel discards, Save closes on acknowledgement,
+and reopening retains the43-character prompt. Capture: aux-tidy-saved-live-d3078.png.
+Compiled-native inclusion is still pending; native544 staged its renderer before
+this source change.
 
 **Native544da21a2 / area0042 built and launched.** Build passed38 steps in
 8m33.45s; launcher41893 owns disposable preview46360, Profile aux-dev-Q0doIW.
-Keep its lock/cleanup ownership until normal retirement. The selected-export
+This owned preview has now retired normally; its disposable Profile was removed
+and the next plain-lock command acquired successfully. The selected-export
 walkthrough accepted an unchanged standard Netscape HTML file after a deliberate
 directory xattr/ctime change: one bookmark imported with its folder; SDK listing
 confirmed exactly that synthetic URL. Editing the selected file after a fresh
@@ -452,3 +454,18 @@ Native compilation and clipboard observation remain pending.
 Final selected-export slice check: typecheck/lint pass; 4,563/4,564 tests
 across 732 files pass, with only the longstanding coder-worktrees 60-second
 timeout. All 21 focused import cases pass. Native 0042 build is still required.
+
+
+Next native correction: area0043 forwards the shell WebContents file chooser to
+Chromium’s existing BrowserWebContentsDelegate/standard FileSelectHelper rather
+than silently inheriting the no-op delegate. No new file-read method is exposed.
+Dialog now ignores bubbled descendant cancel events, so cancelling a file input
+cannot dismiss its enclosing editor. A focused lifecycle regression covers file
+cancel versus actual modal cancel. Area0043 reverse apply check passes; native
+compilation and the actual chooser/import walkthrough remain pending.
+
+
+Area0043 integrated check: typecheck/lint pass,4,576/4,577 tests across733
+files pass; only the existing coder-worktrees timeout fails. All5 Dialog cases,
+including descendant-cancel regression, pass. Renderer build passes3.03s.
+Native chooser forwarding is source/patch verified only until compiled launch.

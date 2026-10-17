@@ -995,3 +995,28 @@ cancel also bubbles into Dialog onCancel, dismissing the editor. Next slice must
 forward file selection to Chromium’s chooser and scope modal cancellation to the
 dialog itself, then verify real shared Settings import. Earlier mock evidence is
 insufficient. New browser-export review also leaves prior finished receipt visible.
+
+
+Live Tidy renderer evidence: typing43 characters updates the counter; Cancel and
+reopen returns0; Save and reopen retains43 and disables unchanged Save. Capture:
+aux-tidy-saved-live-d3078.png. This uses Vite’s mock Settings producer, with actual
+runtime persistence/propagation covered by unit tests; it is not compiled-native
+Tidy acceptance. The image also shows action fills still differ from030; matching
+neutral filled Save/Cancel and the reference close glyph remain visual polish.
+
+Retired launcher41893 normally, confirmed Profile aux-dev-Q0doIW removed, then
+acquired the normal lock for area0043 source edits. New native override forwards
+RunFileChooser to Chromium’s existing browser delegate. Dialog handles only its
+own cancel event, ignoring bubbled file-input cancellation. Reverse patch check
+passes. Native compilation and shared chooser/import evidence remain required.
+
+
+The live030 comparison exposed unfilled actions: added scoped neutral filled
+Cancel/Save surfaces using theme tokens, keeping disabled/busy state behavior.
+Their next compiled-native visual comparison remains required.
+
+
+Area0043 integrated check: typecheck/lint pass,4,576/4,577 tests across733
+files pass; only the existing coder-worktrees timeout fails. All5 Dialog cases,
+including descendant-cancel regression, pass. Renderer build passes3.03s.
+Native chooser forwarding is source/patch verified only until compiled launch.

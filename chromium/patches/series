@@ -40,3 +40,4 @@ aux/0039-image-clipboard.patch
 aux/0040-clear-window-glass.patch
 aux/0041-tab-switcher-chords.patch
 aux/0042-selected-export-file-snapshot.patch
+aux/0043-shell-file-chooser.patch

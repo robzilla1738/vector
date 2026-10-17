@@ -182,3 +182,23 @@ it("Dialog focuses an explicit heading and restores the opener on close", async 
     host.remove();
   }
 });
+
+
+it("file input cancellation keeps its containing dialog open; dialog cancellation closes it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const close = vi.fn();
+  try {
+    await act(async () => root.render(<Dialog label="Import" onClose={close}><input type="file" /></Dialog>));
+    const dialog = document.querySelector("dialog")!;
+    await act(async () => dialog.querySelector("input")!.dispatchEvent(new Event("cancel", { bubbles: true, cancelable: true })));
+    expect(close).not.toHaveBeenCalled();
+    await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: true, cancelable: true })));
+    expect(close).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

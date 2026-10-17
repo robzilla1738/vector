@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.h
+@@ -45,6 +45,9 @@
+       const content::OpenURLParams& params,
+       base::OnceCallback<void(content::NavigationHandle&)>
+           navigation_handle_callback) override;
++  void RunFileChooser(content::RenderFrameHost* render_frame_host,
++                      scoped_refptr<content::FileSelectListener> listener,
++                      const blink::mojom::FileChooserParams& params) override;
+   void SetFocusToLocationBar() override;
+   content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
+       content::WebContents* source,
+--- a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
+@@ -10,6 +10,7 @@
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/common/chrome_render_frame.mojom.h"
++#include "content/public/browser/file_select_listener.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/page_navigator.h"
+ #include "content/public/browser/reload_type.h"
+@@ -71,6 +72,14 @@
+                                      std::move(navigation_handle_callback));
+ }
+ 
++void WebUIBrowserWebContentsDelegate::RunFileChooser(
++    content::RenderFrameHost* render_frame_host,
++    scoped_refptr<content::FileSelectListener> listener,
++    const blink::mojom::FileChooserParams& params) {
++  BrowserWebContentsDelegate::From(window_->browser())
++      ->RunFileChooser(render_frame_host, std::move(listener), params);
++}
++
+ void WebUIBrowserWebContentsDelegate::SetFocusToLocationBar() {
+   // This is called by WebContentsViewChildFrame implementations in some
+   // circumstances (e.g. about:blank), not via user action.
