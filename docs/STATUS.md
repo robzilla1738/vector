@@ -3,6 +3,25 @@
 
 ## October 16 UI parity review — in progress
 
+Appearance now presents the first five common shortcut controls inline, with one
+shared recorder and the complete editor available from Manage shortcuts. Explicit
+row declarations preserve Settings search indexing. Tab leaves a recorder,
+conflicts retain the existing reassignment review, changing presentations cancels
+recording, and native accelerators are restored. Agent Rail keeps its truthful
+command label; direct split-orientation commands and the global Quick Ask row
+remain unfinished reference031 work. This is not complete card parity.
+Integrated check passed typecheck/lint and 4,582/4,583 cases (only the existing
+coder-worktrees timeout). After adjusting the row presentation for static search
+indexing, final typecheck and all three recorder cases passed; renderer build
+passed in 2.97s. Live visual acceptance remains pending.
+
+Native preview build for source39f9e3a26/area0044 is active under launcher63412,
+exec session20575, log /tmp/aux-appearance-zoom-native.log. It has reached linking;
+the newer inline shortcut renderer is not included in that staged native build.
+Do not replace this builder or clear its lock. Verify zoom endpoints, the latest
+primary Appearance ordering and shared bookmark parsing in its disposable Profile
+when it launches, then inspect the newer shortcut renderer separately.
+
 Appearance default page zoom now offers 25%–500%, including the upper choices
 in reference025. The renderer, host argument schema and native writer agree on
 the range; managed-policy and Profile restrictions remain intact. Area0044 is

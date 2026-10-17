@@ -3,6 +3,36 @@ import type { SettingsSearchItem } from "./search";
 export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Appearance",
+    label: "Toggle Sidebar",
+    description: "Show or hide the sidebar.",
+    target: "Toggle Sidebar",
+  },
+  {
+    category: "Appearance",
+    label: "Search tabs",
+    description: "Find and switch between open tabs.",
+    target: "Search tabs",
+  },
+  {
+    category: "Appearance",
+    label: "Toggle Agent Rail",
+    description: "Show or hide the agent beside the current tab.",
+    target: "Toggle Agent Rail",
+  },
+  {
+    category: "Appearance",
+    label: "New chat",
+    description: "Open a new chat.",
+    target: "New chat",
+  },
+  {
+    category: "Appearance",
+    label: "Copy URL",
+    description: "Copy the current page URL.",
+    target: "Copy URL",
+  },
+  {
+    category: "Appearance",
     label: "Theme",
     description: "Choose how Aux looks.",
     target: "Theme",
@@ -40,15 +70,15 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
-    label: "Website sizes",
-    description: "",
-    target: "Website sizes",
+    label: "All keyboard shortcuts",
+    description: "Browse, import and export every command binding.",
+    target: "All keyboard shortcuts",
   },
   {
     category: "Appearance",
-    label: "Keyboard shortcuts",
-    description: "Change browser and app shortcuts.",
-    target: "Keyboard shortcuts",
+    label: "Website sizes",
+    description: "",
+    target: "Website sizes",
   },
   {
     category: "Appearance",

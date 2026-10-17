@@ -2,7 +2,7 @@ import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props"
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ExtensionShortcuts } from "../features/extensions/ExtensionShortcuts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   bindingKey,
   bindingLabel,
@@ -43,11 +43,15 @@ export function ShortcutsSetting({
   onSave,
   active = true,
   commandId,
+  featuredCommands,
+  renderFeaturedCommand,
   disabled = false,
 }: {
   value: ShortcutOverrides;
   active?: boolean;
   commandId?: string;
+  featuredCommands?: readonly string[];
+  renderFeaturedCommand?: (id: string, control: ReactNode) => ReactNode;
   disabled?: boolean;
   onSave: (value: ShortcutOverrides) => Promise<boolean>;
 }) {
@@ -63,7 +67,7 @@ export function ShortcutsSetting({
   const [notice, setNotice] = useState("");
 
   const save = async (next: ShortcutOverrides) => {
-    if (busy) return;
+    if (busy || disabled || !active) return;
     setBusy(true);
     setError("");
     try {
@@ -89,7 +93,13 @@ export function ShortcutsSetting({
   useEffect(() => {
     if (!active || !recording || disabled) return;
     const onKeydown = (event: KeyboardEvent) => {
-      if (commandId && event.key === "Tab" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (
+        (commandId || featuredCommands) &&
+        event.key === "Tab" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
         setRecording(null);
         return;
       }
@@ -131,6 +141,11 @@ export function ShortcutsSetting({
     if (!active || disabled) setRecording(null);
   }, [active, disabled]);
 
+  useEffect(() => {
+    setRecording(null);
+    setPending(null);
+  }, [commandId, featuredCommands]);
+
   const steal = (entry: PendingConflict) => {
     const next: ShortcutOverrides = { ...value, [entry.id]: [entry.binding] };
     const chord = bindingKey(entry.binding);
@@ -153,60 +168,72 @@ export function ShortcutsSetting({
     link.click();
     URL.revokeObjectURL(url);
   };
-  const visibleDefs = defs.filter(
+  const orderedDefs = featuredCommands
+    ? featuredCommands.flatMap((id) => defs.filter((def) => def.id === id))
+    : defs;
+  const visibleDefs = orderedDefs.filter(
     (def) =>
       (!commandId || def.id === commandId) &&
       `${def.label} ${def.bindings.map((binding) => bindingLabel(binding, platform)).join(" ")}`
         .toLocaleLowerCase()
-        .includes(query.trim().toLocaleLowerCase()),
+        .includes(featuredCommands ? "" : query.trim().toLocaleLowerCase()),
   );
   return (
-    <div className={`shortcuts-setting${commandId ? " shortcut-single" : ""}`}>
-      {commandId ? (
-        visibleDefs.map((def) => (
-          <div className="shortcut-single-control" key={def.id}>
-            <input
-              readOnly
-              spellCheck={false}
-              autoComplete="off"
-              aria-label={`Change ${def.label} shortcut`}
-              placeholder={recording === def.id ? "Press keys…" : "Not set"}
-              value={
-                recording === def.id
-                  ? ""
-                  : def.bindings.map((binding) => bindingLabel(binding, platform)).join(", ")
-              }
-              disabled={busy || disabled}
-              onFocus={() => {
-                setPending(null);
-                setRecording(def.id);
-              }}
-              onClick={() => {
-                setPending(null);
-                setRecording(def.id);
-              }}
-              onBlur={() => setRecording(null)}
-            />
-            {value[def.id] !== undefined && (
-              <button
-                {...smallGhostButtonProps}
+    <div
+      className={`shortcuts-setting${commandId ? " shortcut-single" : ""}${featuredCommands ? " shortcut-featured" : ""}`}
+    >
+      {commandId || featuredCommands ? (
+        visibleDefs.map((def) => {
+          const control = (
+            <div className="shortcut-single-control" key={def.id}>
+              <input
+                readOnly
+                spellCheck={false}
+                autoComplete="off"
+                aria-label={`Change ${def.label} shortcut`}
+                placeholder={recording === def.id ? "Press keys…" : "Not set"}
+                value={
+                  recording === def.id
+                    ? ""
+                    : def.bindings.map((binding) => bindingLabel(binding, platform)).join(", ")
+                }
                 disabled={busy || disabled}
-                aria-label={`Reset ${def.label} shortcut`}
-                onClick={() => reset(def.id)}
-              >
-                Reset
-              </button>
-            )}
-          </div>
-        ))
+                onFocus={() => {
+                  setPending(null);
+                  setRecording(def.id);
+                }}
+                onClick={() => {
+                  setPending(null);
+                  setRecording(def.id);
+                }}
+                onBlur={() => setRecording(null)}
+              />
+              {value[def.id] !== undefined && (
+                <button
+                  {...smallGhostButtonProps}
+                  disabled={busy || disabled}
+                  aria-label={`Reset ${def.label} shortcut`}
+                  onClick={() => reset(def.id)}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          );
+          return featuredCommands && renderFeaturedCommand ? renderFeaturedCommand(def.id, control) : control;
+        })
       ) : (
         <>
           <p {...staticHintProps}>Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
           <div className="field-row">
-            <button {...smallButtonProps} disabled={busy} onClick={exportFile}>
+            <button {...smallButtonProps} disabled={busy || disabled} onClick={exportFile}>
               Export shortcuts
             </button>
-            <button {...smallButtonProps} disabled={busy} onClick={() => importInput.current?.click()}>
+            <button
+              {...smallButtonProps}
+              disabled={busy || disabled}
+              onClick={() => importInput.current?.click()}
+            >
               Import shortcuts
             </button>
             <input
@@ -215,7 +242,7 @@ export function ShortcutsSetting({
               type="file"
               accept="application/json,.json"
               aria-label="Import shortcuts"
-              disabled={busy}
+              disabled={busy || disabled}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
@@ -266,7 +293,7 @@ export function ShortcutsSetting({
                     <button
                       {...smallGhostButtonProps}
                       aria-label={`Change ${def.label} shortcut`}
-                      disabled={busy || recording !== null}
+                      disabled={busy || disabled || recording !== null}
                       onClick={() => {
                         setPending(null);
                         setRecording(def.id);
@@ -278,7 +305,7 @@ export function ShortcutsSetting({
                   {overridden && (
                     <button
                       {...smallGhostButtonProps}
-                      disabled={busy}
+                      disabled={busy || disabled}
                       aria-label={`Reset ${def.label} shortcut`}
                       onClick={() => reset(def.id)}
                     >
@@ -296,10 +323,10 @@ export function ShortcutsSetting({
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {bindingLabel(pending.binding, platform)} is used by{" "}
           {pending.rivals.map((def) => `“${def.label}”`).join(", ")}.
-          <button {...smallButtonProps} disabled={busy} onClick={() => steal(pending)}>
+          <button {...smallButtonProps} disabled={busy || disabled} onClick={() => steal(pending)}>
             Assign anyway — remove it there
           </button>
-          <button {...smallGhostButtonProps} disabled={busy} onClick={() => setPending(null)}>
+          <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => setPending(null)}>
             Cancel
           </button>
         </p>
@@ -321,12 +348,12 @@ export function ShortcutsSetting({
           {error}
         </p>
       )}
-      {!commandId && Object.keys(value).length > 0 && (
-        <button {...smallGhostButtonProps} disabled={busy} onClick={() => void save({})}>
+      {!commandId && !featuredCommands && Object.keys(value).length > 0 && (
+        <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => void save({})}>
           Reset all shortcuts
         </button>
       )}
-      {!commandId && <ExtensionShortcuts active={active} />}
+      {!commandId && !featuredCommands && <ExtensionShortcuts active={active} />}
     </div>
   );
 }

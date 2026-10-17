@@ -87,3 +87,50 @@ it("reuses conflict checks in the dedicated Quick Ask recorder and lets Tab leav
     vi.unstubAllGlobals();
   }
 });
+
+it("shares one recorder across common rows and restores native shortcuts when leaving the view", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  document.body.append(host);
+  const save = vi.fn().mockResolvedValue(true);
+  const suspend = vi.spyOn(bridge, "setShortcuts").mockResolvedValue(true);
+  const restore = vi.spyOn(bridge, "setShortcutOverrides").mockResolvedValue(true);
+  const featured = ["sidebar", "copy-url"];
+  try {
+    await act(async () =>
+      root.render(<ShortcutsSetting value={{}} onSave={save} featuredCommands={featured} />),
+    );
+    expect(host.querySelectorAll(".shortcut-single-control")).toHaveLength(2);
+    expect(host.querySelector('[aria-label="Find keyboard shortcut"]')).toBeNull();
+    const inputs = host.querySelectorAll<HTMLInputElement>("input");
+    await act(async () => inputs[0]!.focus());
+    expect(suspend).toHaveBeenLastCalledWith([]);
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    await act(async () => window.dispatchEvent(tab));
+    expect(tab.defaultPrevented).toBe(false);
+    expect(restore).toHaveBeenCalledWith({});
+    await act(async () => inputs[1]!.focus());
+    await act(async () =>
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "t",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    expect(host.textContent).toContain("is used by");
+    expect(save).not.toHaveBeenCalled();
+    await act(async () => root.render(<ShortcutsSetting value={{}} onSave={save} />));
+    expect(host.textContent).not.toContain("is used by");
+    expect(host.querySelector('[aria-label="Find keyboard shortcut"]')).not.toBeNull();
+    expect(restore).toHaveBeenLastCalledWith({});
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});

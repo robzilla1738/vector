@@ -1088,3 +1088,20 @@ preview is synchronous. Full check before that test correction passed typecheck/
 lint and4,577/4,579 cases; remaining failures were the Library timing assertion
 (now fixed/verified) and existing coder-worktrees timeout. Renderer1.76s. Native
 shared import acceptance remains required from a build including this parser.
+
+Reference025 zoom range is now implemented in local source39f9e3a26 and generated
+host validation c13988be7:25–500%, matching renderer/schema/native writer. Native
+builder63412 (session20575, /tmp/aux-appearance-zoom-native.log) is currently linking.
+Its staged renderer includes the plain-data bookmark parser and Appearance card
+ordering but predates the subsequent inline-shortcut changes.
+
+Reference031: source now shows five common shortcut rows inline through one
+recorder, with full editing/import/export behind Manage shortcuts. Static field
+labels keep the rows searchable. Recorder tests cover Tab leaving, native
+restoration, conflict review and changing presentations. Integrated check passed
+4,582/4,583 tests with only coder-worktrees60s timeout; final typecheck/three
+recorder tests and renderer2.97s passed after static search indexing adjustment.
+Native visual acceptance, reset-icon fidelity, two direct split-orientation
+commands and the global Quick Ask row remain open. Agent Rail is labeled for its
+actual behavior. This remains partial progress toward the complete reference card.
+Reference folder rescan still contains562 files; no new captures found this batch.

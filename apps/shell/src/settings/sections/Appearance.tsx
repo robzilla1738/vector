@@ -1,6 +1,6 @@
 import { Button, SettingsGroup } from "../../ui";
 import { smallGhostButtonProps } from "../../ui/button-props";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
 import { WebsiteSizes } from "../../components/WebsiteSizes";
@@ -12,6 +12,47 @@ import { SettingsDialogControl } from "../SettingsDialogControl";
 import { TidyTabsSetting } from "./TidyTabs";
 import { bridge } from "../../bridge";
 import { AppearanceChoice } from "./AppearanceChoice";
+
+const COMMON_SHORTCUTS = ["sidebar", "overview", "agent-rail", "new-chat", "copy-url"] as const;
+function renderCommonShortcut(id: string, control: ReactNode) {
+  switch (id) {
+    case "sidebar":
+      return (
+        <SettingsField key={id} compact label="Toggle Sidebar" hint="Show or hide the sidebar.">
+          {control}
+        </SettingsField>
+      );
+    case "overview":
+      return (
+        <SettingsField key={id} compact label="Search tabs" hint="Find and switch between open tabs.">
+          {control}
+        </SettingsField>
+      );
+    case "agent-rail":
+      return (
+        <SettingsField
+          key={id}
+          compact
+          label="Toggle Agent Rail"
+          hint="Show or hide the agent beside the current tab."
+        >
+          {control}
+        </SettingsField>
+      );
+    case "new-chat":
+      return (
+        <SettingsField key={id} compact label="New chat" hint="Open a new chat.">
+          {control}
+        </SettingsField>
+      );
+    case "copy-url":
+      return (
+        <SettingsField key={id} compact label="Copy URL" hint="Copy the current page URL.">
+          {control}
+        </SettingsField>
+      );
+  }
+}
 
 export function AppearanceSettings({
   active,
@@ -133,25 +174,32 @@ export function AppearanceSettings({
         </SettingsField>
       </SettingsGroup>
 
-      <SettingsGroup title="Websites & shortcuts">
-        <SettingsField label="Website sizes">
-          <WebsiteSizes />
-        </SettingsField>
-        <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts.">
+      <SettingsGroup title="Keyboard shortcuts">
+        <ShortcutsSetting
+          active={active}
+          disabled={bridge.privateMode}
+          featuredCommands={showShortcuts ? undefined : COMMON_SHORTCUTS}
+          renderFeaturedCommand={renderCommonShortcut}
+          value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
+          onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
+        />
+        <SettingsField
+          compact
+          label="All keyboard shortcuts"
+          hint="Browse, import and export every command binding."
+        >
           <button
             {...smallGhostButtonProps}
             aria-expanded={showShortcuts}
             onClick={() => setShowShortcuts((value) => !value)}
           >
-            {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
+            {showShortcuts ? "Show common shortcuts" : "Manage shortcuts"}
           </button>
-          {showShortcuts && (
-            <ShortcutsSetting
-              active={active}
-              value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
-              onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
-            />
-          )}
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup title="Websites">
+        <SettingsField label="Website sizes">
+          <WebsiteSizes />
         </SettingsField>
       </SettingsGroup>
       <SettingsGroup title="Window details">

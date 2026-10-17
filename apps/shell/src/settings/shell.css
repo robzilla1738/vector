@@ -1,4 +1,15 @@
 @layer overrides {
+  .shortcuts-setting.shortcut-featured {
+    gap: 0;
+  }
+  .settings-content .shortcut-featured .field.ui-setting {
+    border-radius: 0;
+  }
+  .settings-content .shortcut-featured + .field.ui-setting {
+    margin-top: 1px;
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+  }
   .shortcut-single-control {
     display: flex;
     align-items: center;
