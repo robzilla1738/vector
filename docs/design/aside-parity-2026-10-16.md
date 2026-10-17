@@ -7,6 +7,16 @@ support the behavior, using Aux identity. This ledger supplements
 
 ## Reference handling
 
+Latest references040–041 work: Adblock is a separate compact Settings card, with
+a real switch and searchable Configure menu. Configured sources open their editor;
+bundled recommendations prefill a draft and retain explicit download review.
+Add filter opens the same editor, whose pending writes prevent dismissal.
+Local Vite checks cover grouping, search and editor opening/closing. Eleven affected
+tests pass, including stale blocking reads, native refusal and keyboard search
+navigation. Native acceptance, exact source catalogue/count copy, site-settings
+navigation and full surface comparison remain OPEN. Capture evidence is recorded
+in STATUS; this does not supersede any other open ledger requirement.
+
 Reference folder: `/Users/rcourson/Desktop/Aside UI Reference 2026-10-16`.
 The owner is adding captures while work continues. Rescan **recursively** at each
 batch and before completion. Use `manifest.json`, README and reconstruction notes

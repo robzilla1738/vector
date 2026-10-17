@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { bridge } from "./bridge";
+import { ContentBlockingSettings } from "./settings/sections/ContentBlocking";
 import { SitePermissions } from "./components/SitePermissions";
 import { useStore } from "./store";
 const featureFlags = vi.hoisted(() => ({ contentBlocking: false }));
@@ -127,8 +128,8 @@ it("does not change privacy settings when their current state is unavailable", a
   const host = document.createElement("div"),
     root = createRoot(host);
   try {
-    await act(async () => root.render(<SitePermissions />));
-    expect(host.querySelectorAll(".memory-use-toggle input:disabled")).toHaveLength(1);
+    await act(async () => root.render(<ContentBlockingSettings active />));
+    expect(host.querySelectorAll('input[role="switch"]:disabled')).toHaveLength(1);
     expect(tracker).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());

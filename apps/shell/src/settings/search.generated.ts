@@ -283,6 +283,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "HTTPS-first",
   },
   {
+    category: "Site permissions",
+    label: "Block ads and trackers",
+    description:
+      "Block known advertising and tracking domains. Reload open tabs after changing this setting.",
+    target: "Block ads and trackers",
+  },
+  {
+    category: "Site permissions",
+    label: "Manage filters",
+    description: "Review filter sources, updates and website exceptions.",
+    target: "Manage filters",
+  },
+  {
     category: "Passwords & Autofill",
     label: "Personal info",
     description:

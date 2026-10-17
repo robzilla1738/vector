@@ -1,3 +1,4 @@
+import { ContentBlockingSettings } from "./ContentBlocking";
 import { ClearBrowsingData } from "../../components/ClearBrowsingData";
 import { SitePermissions } from "../../components/SitePermissions";
 import { SettingsGroup } from "../../ui";
@@ -10,6 +11,7 @@ import { CookieControlsSetting } from "./CookieControls";
 import { CrashReportingSetting } from "./CrashReporting";
 
 export function PrivacySecuritySettings({ active }: { active: boolean }) {
+  const contentBlockingAvailable = useFeature("contentBlocking");
   const httpsFirstAvailable = useFeature("httpsFirst");
   return (
     <SettingsSection name="Site permissions" hidden={!active}>
@@ -33,6 +35,7 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
           </button>
         </SettingsField>
       </SettingsGroup>
+      {contentBlockingAvailable && <ContentBlockingSettings active={active} />}
       <SettingsGroup title="Privacy">
         <SettingsField
           compact

@@ -3,6 +3,25 @@
 
 ## October 16 UI parity review — in progress
 
+Privacy & Security now separates Adblock from site permissions and places its
+compact switch/Configure card before Privacy (references040–041). Configure
+opens a searchable anchored menu of configured sources and bundled recommendations;
+selection opens the existing source editor with the chosen source or draft.
+Selecting a recommendation does not download it: the HTTPS review remains required.
+The editor cannot dismiss during a pending write. Website exceptions remain
+available, and blocking uses native acknowledgement with stale-read/duplicate-write
+protection. The replaced mixed privacy block was removed from SitePermissions.
+
+Vite visual checks passed compact grouping, search, Add filter and Done. Captures:
+/tmp/aux-parity-2026-10-16/aux-adblock-group-vite.png and aux-filter-search-vite.png.
+Full check passed typecheck/lint and 4,587/4,588 tests; the only failure was the
+existing coder-worktrees timeout. Final typecheck and all11 affected cases passed,
+including keyboard entry into filtered menu results. Renderer build passed.
+Compiled native verification is pending; running native preview is still a8e2a2ea8.
+Filter source-count wording, exact recommendation catalogue, site-settings
+navigation and the remainder of the Privacy & Security surface remain open.
+Reference folder rescan remains562 files. This is not whole-surface acceptance.
+
 Latest acceptance supersedes the pending area0045 notes below: native
 a8e2a2ea8 built in 26 steps (8m46.25s). The disposable preview kept the Aux shell
 at normal size at both 25% and 500% website defaults. Fresh example.org and

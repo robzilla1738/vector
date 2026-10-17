@@ -6,9 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { bridge } from "../bridge";
-import { FilterListManager } from "./FilterListManager";
-import { useFeature } from "../use-feature";
-import { nativeAlertRoleProps, nativeCheckboxTypeProps } from "../ui/native-attribute-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Decisions = Record<string, Record<string, "allow" | "deny">>;
 const labels: Record<string, string> = {
@@ -25,7 +23,6 @@ const labels: Record<string, string> = {
 };
 
 export function SitePermissions({ query = "" }: { query?: string }) {
-  const contentBlockingAvailable = useFeature("contentBlocking");
   const openSites = useStore(
     useShallow((state) => {
       const origins = new Set<string>();
@@ -53,19 +50,12 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   const currentSiteDataCount = siteDataCount?.key === siteDataKey ? siteDataCount : null;
   const currentSiteDataError = siteDataError?.key === siteDataKey ? siteDataError.message : "";
   const [decisions, setDecisions] = useState<Decisions>({});
-  const [privacy, setPrivacy] = useState<{
-    trackerBlock: boolean;
-    blocked: number;
-    allowedHosts?: string[];
-    httpsUpgrade?: boolean;
-  } | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [privacyError, setPrivacyError] = useState("");
   const request = useRef(0);
   const pending = useRef(false);
   const root = useRef<HTMLDivElement>(null);
@@ -74,26 +64,11 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     const version = ++request.current;
     setLoading(true);
     setLoadError("");
-    setPrivacyError("");
-    const [decisionsResult, privacyResult] = await Promise.allSettled([
-      bridge.sitePermissions(),
-      contentBlockingAvailable ? bridge.privacy() : Promise.resolve(null),
-    ]);
-    if (version === request.current) {
-      if (decisionsResult.status === "fulfilled") setDecisions(decisionsResult.value);
-      else
-        setLoadError(
-          decisionsResult.reason instanceof Error
-            ? decisionsResult.reason.message
-            : String(decisionsResult.reason),
-        );
-      if (privacyResult.status === "fulfilled") setPrivacy(privacyResult.value);
-      else {
-        setPrivacy(null);
-        setPrivacyError(
-          privacyResult.reason instanceof Error ? privacyResult.reason.message : String(privacyResult.reason),
-        );
-      }
+    try {
+      const next = await bridge.sitePermissions();
+      if (version === request.current) setDecisions(next);
+    } catch (reason) {
+      if (version === request.current) setLoadError(errorMessage(reason));
     }
     if (version === request.current) setLoading(false);
   }
@@ -199,78 +174,12 @@ export function SitePermissions({ query = "" }: { query?: string }) {
         .toLowerCase()
         .includes(terms),
     );
-  const toggleTracking = () =>
-    action("tracker-block", async () => {
-      if (!privacy)
-        throw new Error("Privacy settings are unavailable. Refresh them before changing tracker blocking.");
-      const next = await bridge.setTrackerBlock(!privacy.trackerBlock);
-      setPrivacy((current) => ({ ...current, ...next }));
-      setNotice(
-        next.trackerBlock
-          ? "Tracker and ad blocking is on for new requests. Reload open tabs to refresh hidden page elements."
-          : "Tracker and ad blocking is off for new requests.",
-      );
-    });
-  const removeAllowed = (host: string) =>
-    action(`allow-${host}`, async () => {
-      const allowedHosts = await bridge.removeAllowedHost(host);
-      setPrivacy((current) => (current ? { ...current, allowedHosts } : current));
-      setNotice(`${host} will block trackers and ads again. Reload its tabs to apply.`);
-    });
   return (
     <div ref={root} className="site-permissions">
       <p {...staticHintProps}>
         Manage saved website access for the shared human and agent browsing profile. Resetting a decision
         makes the site ask again; it does not clear cookies or sign you out.
       </p>
-      {contentBlockingAvailable && (
-        <section className="site-data-group" aria-label="Privacy">
-          <header>
-            <strong>Privacy</strong>
-          </header>
-          {privacyError && (
-            <p {...nativeAlertRoleProps}>Couldn’t refresh blocking settings. {privacyError}</p>
-          )}
-          <label className="memory-use-toggle">
-            <input
-              {...nativeCheckboxTypeProps}
-              checked={privacy?.trackerBlock ?? false}
-              disabled={!!busy || !privacy}
-              onChange={() => void toggleTracking()}
-            />
-            <span>
-              Block trackers and ads
-              <small>
-                {!privacy
-                  ? "Load privacy settings to see the current state."
-                  : privacy.trackerBlock === false
-                    ? "Off. Advertising and tracking domains load on every website."
-                    : `Known tracker, ad and telemetry domains can't load on any website${privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}
-              </small>
-            </span>
-          </label>
-          {privacy?.allowedHosts?.length ? (
-            <div className="filter-exceptions">
-              <strong {...staticHintProps}>Sites where blocking is paused</strong>
-              {privacy.allowedHosts.map((host) => (
-                <div className="site-permission-row" key={host}>
-                  <span>{host}</span>
-                  <span {...staticHintProps}>Blocking paused</span>
-                  <button
-                    {...smallButtonProps}
-                    aria-label={`Resume blocking on ${host}`}
-                    disabled={!!busy}
-                    onClick={() => void removeAllowed(host)}
-                  >
-                    {busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <FilterListManager />
-        </section>
-      )}
       <section className="site-data-group" aria-label="Website data">
         <header>
           <strong>Website data</strong>

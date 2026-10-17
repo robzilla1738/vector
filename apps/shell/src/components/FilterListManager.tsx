@@ -4,7 +4,7 @@ import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./FilterListManager.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { filterSourceUrl } from "@aux/contracts";
 import { bridge, type FilterListStatus } from "../bridge";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
@@ -14,14 +14,25 @@ import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attrib
 const messageOf = (reason: unknown) => errorMessage(reason);
 
 /** Real native subscription status; unavailable builds never claim filtering. */
-export function FilterListManager() {
+export type FilterSourceDraft = { name: string; url: string; kind: "adblock" | "hosts" };
+
+export function FilterListManager({
+  initialSelectedId = "",
+  initialSource,
+  onBusyChange,
+}: {
+  initialSelectedId?: string;
+  initialSource?: FilterSourceDraft;
+  onBusyChange?(busy: boolean): void;
+} = {}) {
   const [status, setStatus] = useState<FilterListStatus | null>(null);
-  const [selectedId, setSelectedId] = useState("");
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [kind, setKind] = useState<"adblock" | "hosts">("adblock");
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
+  const [name, setName] = useState(initialSource?.name ?? "");
+  const [url, setUrl] = useState(initialSource?.url ?? "");
+  const [kind, setKind] = useState<"adblock" | "hosts">(initialSource?.kind ?? "adblock");
   const [review, setReview] = useState<{ name: string; url: string; kind: "adblock" | "hosts" } | null>(null);
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const selected = status?.sources.find((source) => source.id === selectedId);
@@ -43,7 +54,10 @@ export function FilterListManager() {
   }, []);
 
   const action = async (work: () => Promise<void>) => {
+    if (pending.current) return;
+    pending.current = true;
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     setNotice("");
     try {
@@ -51,7 +65,9 @@ export function FilterListManager() {
     } catch (reason) {
       setError(messageOf(reason));
     } finally {
+      pending.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   };
 
@@ -120,8 +136,8 @@ export function FilterListManager() {
               {compilationWarning && (
                 <section aria-label="Filter compilation warnings" {...nativeStatusRoleProps}>
                   <p {...staticFieldErrorProps}>
-                    uBlock Origin rejected {compilationWarning.rejectedCount.toLocaleString()} rules
-                    from this exact source copy. Those rules are not applied.
+                    uBlock Origin rejected {compilationWarning.rejectedCount.toLocaleString()} rules from this
+                    exact source copy. Those rules are not applied.
                   </p>
                   {compilationWarning.samples.length > 0 && (
                     <ul>
