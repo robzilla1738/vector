@@ -1,0 +1,63 @@
+@layer overrides {
+  .task-attention-settings > h3 {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-regular);
+    margin: 0 12px 10px;
+  }
+  .task-attention-card {
+    background: var(--surface-secondary);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .settings-content .task-attention-card > .field {
+    border-radius: 0;
+    margin: 0;
+    background: transparent;
+  }
+  .task-attention-card > .field + .field {
+    border-top: 1px solid var(--line);
+  }
+  .task-attention-card .anchored-trigger {
+    border: 1px solid var(--line);
+    background: var(--surface-tertiary);
+    padding: 6px 10px;
+  }
+  .task-sound-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .task-sound-actions [role="alert"] {
+    width: 100%;
+    color: var(--ink-2);
+  }
+  .task-notice-choices {
+    display: grid;
+    min-width: 260px;
+    gap: 2px;
+  }
+  .task-notice-choices > button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 0;
+    background: transparent;
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--ink-1);
+  }
+  .task-notice-choices > button:hover,
+  .task-notice-choices > button:focus-visible {
+    background: var(--bg-hover);
+  }
+  .task-notice-choices small {
+    display: block;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    margin-top: 4px;
+  }
+}

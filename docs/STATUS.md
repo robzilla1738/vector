@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+October 16 Chat attention batch (references 045–046): notification controls moved
+from General to the Permissions/Agents surface, in a compact Chat card. An anchored
+selector independently filters completions and requests needing attention through
+the durable notification gate; category changes also agree with the existing Task
+notices toggle. Completion sound has three local tones, Preview and Change controls,
+and remembers the selected tone while disabled. Background sound respects notice
+filters, Focus Mode and the existing foreground suppression. System delivery stays
+an explicit opt-in and sends only the existing generic payload.
+
+Local Vite walkthrough verified category toggling, Escape focus return, Bell
+selection surviving reload, and Preview activating the browser audio indicator
+then returning to idle. Capture:
+`/tmp/aux-parity-2026-10-16/aux-chat-notification-settings-vite.png`.
+Integrated check passed typecheck/lint and 4,602 tests across 739 files; after final
+preference refinements, 19 focused tests passed. Renderer build passed in 2.20s.
+The live native app remains `80b9431f8`; this batch awaits native consolidation.
+Reference parity is still incomplete: routine completions need independent source
+tracking/filtering, and follow-up, tab-switch and cleanup controls remain open.
+Native background sound delivery is not yet accepted by this Vite preview check.
+
 October 16 native consolidation: source `80b9431f8` built successfully in
 9m06.79s (26 steps). The disposable preview now includes Models, Permissions and
 the shared rounded input-focus correction. Native model search showed no inner

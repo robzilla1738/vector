@@ -4,7 +4,11 @@ import { bridge } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { reconcileResultDrafts } from "../result-drafts";
 import { foregroundRunId, type RunNotificationGate } from "../agent/run-notifications";
-import { readInAppNoticePreference, readTaskFocusMode } from "../agent/run-notice-preference";
+import {
+  readInAppNoticePreference,
+  readTaskFocusMode,
+  readTaskNoticeKinds,
+} from "../agent/run-notice-preference";
 
 export function useWorkspaceEvents(notificationGate: RefObject<RunNotificationGate | null>) {
   // initial sync + event stream
@@ -41,6 +45,7 @@ export function useWorkspaceEvents(notificationGate: RefObject<RunNotificationGa
             return {
               preference: readInAppNoticePreference(),
               focusMode: readTaskFocusMode(),
+              kinds: readTaskNoticeKinds(),
               windowFocused: document.hasFocus(),
               foregroundRunId: foregroundRunId(state),
             };

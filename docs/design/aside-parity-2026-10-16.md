@@ -5,6 +5,16 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Chat attention follow-up
+
+References045–046 now have a compact Chat card on the agent permissions surface,
+anchored notification choices, completion sound with Preview/Change and three
+local tones, and the existing system-delivery/Focus Mode controls. Local Vite
+confirmed selection persistence and audio activity; STATUS records validation.
+Routine completion filtering remains grouped with other completions until durable
+run provenance distinguishes it. Native background audio acceptance, follow-up,
+tab-switch, cleanup and the broader Agents comparison remain OPEN.
+
 ## October 16 native consolidation
 
 Native `80b9431f8` verifies rounded model-search focus without the inner square,

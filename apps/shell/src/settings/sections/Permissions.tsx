@@ -5,6 +5,7 @@ import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } fro
 import { SettingsField, SettingsSection } from "../primitives";
 import { Popover } from "../../ui/popover";
 import { Plus } from "../../ui/icons";
+import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { PolicyGroups } from "../../features/permissions/PolicyGroups";
 import { Segmented } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
@@ -165,6 +166,7 @@ export function PermissionsSettings({
   }
   return (
     <SettingsSection name="Permissions" hidden={!active} className="permissions-settings">
+      {!bridge.privateMode && <TaskAttentionSettings active={active} />}
       <h3>Agent access</h3>
       <SettingsField
         compact

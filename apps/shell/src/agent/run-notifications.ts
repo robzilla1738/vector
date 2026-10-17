@@ -15,6 +15,7 @@ export type NoticeContext = {
   focusMode: boolean;
   windowFocused: boolean;
   foregroundRunId?: string | null;
+  kinds?: { attention: boolean; completion: boolean };
 };
 export type DurableRunState = { run: Run; suspension?: Suspension | null };
 export type NativeAttentionPayload = {
@@ -148,6 +149,8 @@ export class RunNotificationGate {
       else return null;
       identity = suspension.suspensionId;
     }
+    const enabled = getContext().kinds;
+    if (enabled && !(kind === "completed" ? enabled.completion : enabled.attention)) return null;
     const key = `${kind}:${candidate.runId}:${identity}`;
     const now = this.deps.now?.() ?? Date.now();
     if (

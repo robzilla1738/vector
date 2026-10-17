@@ -13,7 +13,11 @@ import {
   readInAppNoticePreference,
   readSystemTaskNotices,
   readTaskFocusMode,
+  readTaskSound,
+  readTaskNoticeKinds,
 } from "../agent/run-notice-preference";
+
+import { playTaskSound } from "../agent/task-sound";
 
 export function useRunAttention() {
   const [runNotice, setRunNotice] = useState<OwnerNotice | null>(null);
@@ -22,15 +26,19 @@ export function useRunAttention() {
   if (!notificationGate.current)
     notificationGate.current = new RunNotificationGate({
       getRun: (runId) => call("runs.get", { runId }),
-      emit: (notice) =>
-        deliverRunAttention(notice, {
+      emit: async (notice) => {
+        const sound = readTaskSound();
+        if (sound !== "off" && !readTaskFocusMode() && !document.hasFocus())
+          void playTaskSound(sound).catch(() => {});
+        await deliverRunAttention(notice, {
           showInApp: setRunNotice,
           native: inNativeHost ? (payload) => bridge.showRunAttention(payload) : undefined,
           systemEnabled: readSystemTaskNotices(),
           focusMode: readTaskFocusMode(),
           windowFocused: document.hasFocus(),
           windowId: bridge.windowId,
-        }),
+        });
+      },
     });
   const foregroundRun = useStore((state) => foregroundRunId(state));
   useEffect(
@@ -38,7 +46,14 @@ export function useRunAttention() {
       onInAppNoticePreferenceChange(() => {
         const current = readInAppNoticePreference();
         setNoticePreference(current);
-        if (current === "off" || readTaskFocusMode()) setRunNotice(null);
+        const kinds = readTaskNoticeKinds();
+        setRunNotice((notice) =>
+          current === "off" ||
+          readTaskFocusMode() ||
+          (notice && !(notice.kind === "completed" ? kinds.completion : kinds.attention))
+            ? null
+            : notice,
+        );
       }),
     [],
   );

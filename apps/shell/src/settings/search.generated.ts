@@ -273,6 +273,31 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     searchTerms: ["history", "undo", "blocked", "allowed"],
   },
   {
+    category: "Permissions",
+    label: "Task notifications",
+    description: "Choose which task events can notify you. Focus Mode pauses all alerts.",
+    target: "Task notifications",
+  },
+  {
+    category: "Permissions",
+    label: "Completion sound",
+    description: "Play a sound when background tasks finish or need attention.",
+    target: "Completion sound",
+  },
+  {
+    category: "Permissions",
+    label: "System task notifications",
+    description:
+      "Also show generic alerts on this Mac while Aux is in the background. Task content stays in Aux.",
+    target: "System task notifications",
+  },
+  {
+    category: "Permissions",
+    label: "Focus Mode",
+    description: "Pause task notices and sounds. Pending questions remain in Home and Tasks.",
+    target: "Focus Mode",
+  },
+  {
     category: "Site permissions",
     label: "Delete browsing history",
     description: "Delete history, cookies, and cached files.",
@@ -706,20 +731,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description:
       "Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants. After Forget, older Aux-managed backups cannot be restored; create a fresh backup. Copies exported outside Aux remain under your control and cannot be revoked. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.",
     target: "Task data backup",
-  },
-  {
-    category: "General",
-    label: "System task notifications",
-    description:
-      "When Task notices are on, show generic completion, question and handoff alerts on this Mac while Aux is in the background. Task titles, page text and answers stay in Aux. In-app attention remains available if macOS notifications are off.",
-    target: "System task notifications",
-  },
-  {
-    category: "General",
-    label: "Focus Mode",
-    description:
-      "Pause task notices while Focus Mode is on. Runs and their pending questions remain available in Home and Tasks.",
-    target: "Focus Mode",
   },
   {
     category: "General",

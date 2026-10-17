@@ -6,7 +6,7 @@ let fallback: "all" | "off" = "all";
 let systemFallback = false;
 let focusFallback = false;
 
-/** Local shell preference for in-app notices. OS delivery awaits a native method. */
+/** Local Profile preference shared by in-app and system delivery. */
 export function readInAppNoticePreference(): "all" | "off" {
   try {
     return localStorage.getItem(KEY) === "off" ? "off" : "all";
@@ -66,4 +66,58 @@ export function readTaskFocusMode(): boolean {
 export function writeTaskFocusMode(value: boolean): void {
   focusFallback = value;
   writeBoolean(FOCUS_KEY, value);
+}
+
+export type TaskNoticeKinds = { attention: boolean; completion: boolean };
+const KINDS_KEY = "aux.task-notice-kinds";
+const SOUND_KEY = "aux.task-completion-sound";
+const SELECTED_SOUND_KEY = "aux.task-selected-sound";
+let selectedSoundFallback: "soft" | "bell" | "bright" = "soft";
+let kindsFallback: TaskNoticeKinds = { attention: true, completion: true };
+let soundFallback = "off";
+export function readTaskNoticeKinds(): TaskNoticeKinds {
+  if (readInAppNoticePreference() === "off") return { attention: false, completion: false };
+  try {
+    const value = JSON.parse(localStorage.getItem(KINDS_KEY) ?? "{}");
+    return { attention: value?.attention !== false, completion: value?.completion !== false };
+  } catch {
+    return kindsFallback;
+  }
+}
+export function writeTaskNoticeKinds(value: TaskNoticeKinds): void {
+  kindsFallback = value;
+  try {
+    localStorage.setItem(KINDS_KEY, JSON.stringify(value));
+  } catch {
+    /* Current window fallback. */
+  }
+  writeInAppNoticePreference(value.attention || value.completion ? "all" : "off");
+}
+export function readTaskSound(): "off" | "soft" | "bell" | "bright" {
+  let value = soundFallback;
+  try {
+    value = localStorage.getItem(SOUND_KEY) ?? "off";
+  } catch {
+    /* Current window fallback. */
+  }
+  return value === "soft" || value === "bell" || value === "bright" ? value : "off";
+}
+export function readSelectedTaskSound(): "soft" | "bell" | "bright" {
+  try {
+    const value = localStorage.getItem(SELECTED_SOUND_KEY);
+    return value === "bell" || value === "bright" ? value : "soft";
+  } catch {
+    return selectedSoundFallback;
+  }
+}
+export function writeTaskSound(value: ReturnType<typeof readTaskSound>): void {
+  soundFallback = value;
+  if (value !== "off") selectedSoundFallback = value;
+  try {
+    localStorage.setItem(SOUND_KEY, value);
+    if (value !== "off") localStorage.setItem(SELECTED_SOUND_KEY, value);
+  } catch {
+    /* Current window fallback. */
+  }
+  window.dispatchEvent(new Event(CHANGE));
 }

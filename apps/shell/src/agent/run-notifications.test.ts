@@ -222,3 +222,23 @@ describe("owner notification gate", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 });
+
+it("filters completions independently from questions and rechecks choices after durable lookup", async () => {
+  const emit = vi.fn();
+  const settings = { ...context, kinds: { attention: true, completion: false } };
+  const getRun = vi.fn(async () => ({ run: completed }));
+  const gate = new RunNotificationGate({ getRun, emit });
+  expect(await gate.consider(running, completed, () => settings)).toBeNull();
+  expect(emit).not.toHaveBeenCalled();
+  settings.kinds.completion = true;
+  expect(await gate.consider(running, completed, () => settings)).toMatchObject({ kind: "completed" });
+  const questionGate = new RunNotificationGate({
+    getRun: async () => {
+      settings.kinds.attention = false;
+      return { run: parked, suspension: suspension("approval") };
+    },
+    emit,
+  });
+  expect(await questionGate.consider(running, parked, () => settings)).toBeNull();
+  expect(emit).toHaveBeenCalledTimes(1);
+});
