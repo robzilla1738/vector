@@ -603,3 +603,11 @@ Typecheck/lint pass. Full check4,582/4,584: existing coder-worktrees60s timeout 
 native-cdp-broker reconnect30s timeout; isolated CDP+clear-dialog recheck passed all
 11 cases in1.13s. Renderer2.57s. This source postdates staged nativea8e2a2ea8 and
 still needs live visual acceptance; don't treat it as compiled evidence.
+
+October16 page zoom follow-up: Reset no longer assumes100% is the Profile default.
+It remains available once the current page zoom is known, so a100% site override
+can reset to a different configured default. Regression verifies100%→500% through
+the native reset request. Typecheck/lint pass;4,584/4,585 tests pass across734 files
+(only coder-worktrees60s timeout). CDP reconnect passed in this run. Renderer2.01s.
+This renderer change also postdates active nativea8e2a2ea8; native Reset acceptance
+must use a build containing it. Native74686 remains alive generating debug symbols.

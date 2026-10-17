@@ -83,7 +83,7 @@ export function PageZoom({ pageId, documentEpoch }: { pageId: string; documentEp
         </button>
         <button
           {...smallButtonProps}
-          disabled={busy || percentage === 100}
+          disabled={busy || percentage === null}
           onClick={() => void change("reset")}
         >
           Reset
