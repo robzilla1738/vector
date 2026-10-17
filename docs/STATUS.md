@@ -7,6 +7,19 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Home and Settings source batch
+
+Home Recent work margin is100px (was152px), matching the observed reference gap
+while preserving the narrow container override. SettingsDialogControl Configure/
+Import triggers now use the regular bordered small-button surface. Home has a
+compact Profile and settings menu in the reference's upper-right position, with
+real Profiles, Usage & Budgets and General settings destinations. It omits Aside
+subscription/referral/community claims and is not mounted in Private Home.
+Menu route/dismissal and Escape/focus regressions pass. Integrated check passed
+typecheck/lint and **4,625 tests /745files** in94.48s; log
+`/tmp/aux-home-settings-check.log`. Native visual acceptance is pending. No runtime
+or native-source changes. The live preview below still predates this batch.
+
 ## Current live preview
 
 Product **3c34b442b**, launcher **12644**, app **13842**, runtime **13856**,

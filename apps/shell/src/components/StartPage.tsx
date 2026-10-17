@@ -1,3 +1,4 @@
+import { HomeSettingsMenu } from "./HomeSettingsMenu";
 import { smallButtonProps } from "../ui/button-props";
 import { FeatureSlots } from "../features/registry";
 import "./StartPage.css";
@@ -32,6 +33,7 @@ export function StartPage() {
   }, [focus]);
   return (
     <div className="start aux-home">
+      {!bridge.privateMode && <HomeSettingsMenu />}
       <div className="start-inner">
         {bridge.privateMode ? (
           <>

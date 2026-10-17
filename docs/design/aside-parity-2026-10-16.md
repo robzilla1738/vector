@@ -1,5 +1,14 @@
 # Aside UI parity — October 16, 2026
 
+October17 Home/Settings source batch: Recent work spacing152→100px; Configure and
+Import dialog triggers have bordered button surfaces; Home gains the upper-right
+Profile/settings entry with actual Aux Profiles, Usage & Budgets and Settings
+routes. No invented subscription percentages/referrals; Private Home omits it.
+All4,625tests/745files, typecheck and lint pass. Native comparison pending; current
+live3c34b442b still predates this batch. The Advanced destination, populated Home
+cards and broader Memory/model/channel work remain open.
+
+
 October17 native **3c34b442b** acceptance: Cmd-L now retains the full immediate
 about:blank and focus-handoff-check strings; subsequent Cmd-T retains its full
 draft, and Escape restores the original Bookmarks query/input. Build9m27.89s;

@@ -980,7 +980,7 @@
   }
   .home-history {
     width: min(827px, 100%);
-    margin: 152px auto 0;
+    margin: 100px auto 0;
   }
   .home-section-head {
     display: flex;

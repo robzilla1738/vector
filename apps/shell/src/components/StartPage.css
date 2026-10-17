@@ -175,3 +175,41 @@
     font-size: var(--fs-md);
   }
 }
+
+@layer components {
+  .home-settings {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 1;
+  }
+  .home-settings-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 999px;
+    color: var(--ink-2);
+  }
+  .home-settings-trigger:hover,
+  .home-settings-trigger[aria-expanded="true"] {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .home-profile-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface-primary);
+  }
+  .home-settings-menu {
+    width: 184px;
+  }
+  .home-settings-menu hr {
+    margin: 4px -4px;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+}

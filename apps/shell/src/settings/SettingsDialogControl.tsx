@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "../ui/dialog";
-import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+import { smallButtonProps } from "../ui/button-props";
 import { shellIconClose } from "../ui/icons";
 import "./SettingsDialogControl.css";
 
@@ -26,7 +26,7 @@ export function SettingsDialogControl({
   return (
     <>
       <button
-        {...smallGhostButtonProps}
+        {...smallButtonProps}
         ref={trigger}
         type="button"
         aria-label={label}
