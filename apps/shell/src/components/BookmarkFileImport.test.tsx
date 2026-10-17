@@ -86,7 +86,10 @@ it("previews an inert file and imports only reviewed supported bookmarks and fol
   await render();
   expect(mocks.rpc).not.toHaveBeenCalled();
   await file();
-  expect(host.textContent).toContain("1 web bookmarks ready");
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.textContent).toContain("1 web bookmarks ready");
+  });
   expect(host.textContent).toContain("2 duplicate or unsupported links skipped");
   expect(mocks.rpc).not.toHaveBeenCalled();
   await click("Import bookmarks");

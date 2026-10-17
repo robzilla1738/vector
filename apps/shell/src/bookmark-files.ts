@@ -1,3 +1,4 @@
+import type { DefaultTreeAdapterMap } from "parse5";
 import type { BookmarkFolderSnapshot } from "@aux/contracts/bookmark-folder-methods";
 export type BookmarkFileEntry = { url: string; title: string; folderPath?: string[] };
 export const MAX_BOOKMARK_FILE_SIZE = 5_000_000;
@@ -16,26 +17,29 @@ export function bookmarkWebUrl(value: string): string | null {
   }
 }
 
-function nodeText(node: Node): string {
+type ParsedNode = DefaultTreeAdapterMap["node"];
+const childrenOf = (node: ParsedNode): ParsedNode[] => ("childNodes" in node ? node.childNodes : []);
+
+function nodeText(node: ParsedNode): string {
   const pending = [node];
   let text = "";
   while (pending.length) {
     const item = pending.pop()!;
     const name = item.nodeName.toLowerCase();
-    if (name === "#text") text += item.nodeValue ?? "";
-    else if (!["script", "style", "template"].includes(name)) pending.push(...[...item.childNodes].reverse());
+    if (name === "#text" && "value" in item) text += item.value;
+    else if (!["script", "style", "template"].includes(name))
+      pending.push(...childrenOf(item).slice().reverse());
   }
   return text.replace(/\s+/g, " ").trim();
 }
 
-/** A detached template parses bookmark HTML as inert content: nothing is
- * attached to the document or promoted into a live browsing context. */
+/** Parse HTML into plain data, without DOM sinks, scripts, requests or TrustedHTML.
+ * Load the parser only when the user chooses a bookmark export. */
 export async function parseBookmarkFile(source: string) {
   if (new TextEncoder().encode(source).length > MAX_BOOKMARK_FILE_SIZE)
     throw new Error("Choose a bookmark HTML file smaller than 5 MB.");
-  const template = document.createElement("template");
-  template.innerHTML = source;
-  const pending: { node: Node; path: string[] }[] = [{ node: template.content, path: [] }];
+  const { parseFragment } = await import("parse5");
+  const pending: { node: ParsedNode; path: string[] }[] = [{ node: parseFragment(source), path: [] }];
   const bookmarks: BookmarkFileEntry[] = [];
   const folders = new Map<string, string[]>();
   const seen = new Set<string>();
@@ -45,7 +49,7 @@ export async function parseBookmarkFile(source: string) {
     const nodeName = node.nodeName.toLowerCase();
     if (["script", "style", "template"].includes(nodeName)) continue;
     if (nodeName === "a") {
-      const href = (node as Element).getAttribute("href") ?? "";
+      const href = "attrs" in node ? (node.attrs.find((attr) => attr.name === "href")?.value ?? "") : "";
       const url = bookmarkWebUrl(href);
       if (!url || seen.has(url)) {
         skipped++;
@@ -62,11 +66,11 @@ export async function parseBookmarkFile(source: string) {
     }
     let heading = "";
     const children: typeof pending = [];
-    for (const child of node.childNodes) {
+    for (const child of childrenOf(node)) {
       const childName = child.nodeName.toLowerCase();
       if (childName === "h3") heading = nodeText(child).slice(0, 200);
       if (childName === "dt") {
-        const title = [...child.childNodes].find((item) => item.nodeName.toLowerCase() === "h3");
+        const title = childrenOf(child).find((item) => item.nodeName.toLowerCase() === "h3");
         heading = title ? nodeText(title).slice(0, 200) : "";
       }
       const childPath = childName === "dl" && heading ? [...path, heading] : path;

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { parseBookmarkFile, exportBookmarkFile } from "./bookmark-files";
 it("parses browser HTML as inert data, preserving titles and rejecting unsafe or duplicate links", async () => {
   const result = await parseBookmarkFile(
@@ -94,4 +94,22 @@ it("exports duplicate and empty folders, native child order and saved browser sc
     bookmarks[2]!.url,
     bookmarks[1]!.url,
   ]);
+});
+
+it("parses a standard bookmark export when WebUI forbids every DOM HTML sink", async () => {
+  const sink = vi.spyOn(Element.prototype, "innerHTML", "set").mockImplementation(() => {
+    throw new TypeError("TrustedHTML required");
+  });
+  try {
+    const parsed = await parseBookmarkFile(
+      '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p>\n<DT><H3>Folder</H3>\n<DL><p>\n<DT><A HREF="https://example.test/native-import">Native import</A>\n</DL><p>\n</DL><p>',
+    );
+    expect(parsed.bookmarks).toEqual([
+      { url: "https://example.test/native-import", title: "Native import", folderPath: ["Folder"] },
+    ]);
+    expect(parsed.folders).toEqual([["Folder"]]);
+    expect(sink).not.toHaveBeenCalled();
+  } finally {
+    sink.mockRestore();
+  }
 });

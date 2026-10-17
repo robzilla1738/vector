@@ -1067,3 +1067,24 @@ recorder, conflict handling and native shortcut restoration. Do not relabel a
 flip-layout command as a direct split-orientation command or substitute Quick
 Ask for its global shortcut preference. Exact supported command behavior and
 corresponding inline fields need an implementation/verification slice.
+
+
+Native0edb56c33/area0043 passed29 build steps in9m27.37s. Disposable preview
+56765 (launcher50077, aux-dev-Em2Vio) proved macOS file chooser opens and chooser
+Cancel preserves the bookmark editor. Selecting the owned synthetic fixture then
+exposed WebUI TrustedHTML enforcement in the old template.innerHTML parser;
+shared import is not accepted yet. Compiled Tidy Save/reopen retained43 characters,
+and independent settings.get returned the same exact synthetic grouping preference.
+Capture: aux-tidy-saved-native-0edb5.png. Preview retired normally; both processes
+ended and its disposable Profile directory was removed.
+
+Replaced the DOM HTML sink with parse5 plain-data parsing, lazily loaded only for
+chosen files. Uses workspace’s existing locked7.3.0 parser as an explicit shell
+dependency. No Trusted Types policy exception or native file-read API was added.
+Existing URL/entity/folder/duplicate/size/depth limits remain. A regression forbids
+all DOM innerHTML assignments and still parses a standard export. Final20 affected
+cases pass. Two UI tests now await lazy parser loading rather than assuming the
+preview is synchronous. Full check before that test correction passed typecheck/
+lint and4,577/4,579 cases; remaining failures were the Library timing assertion
+(now fixed/verified) and existing coder-worktrees timeout. Renderer1.76s. Native
+shared import acceptance remains required from a build including this parser.

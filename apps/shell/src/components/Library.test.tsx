@@ -274,7 +274,10 @@ it("uses the shared reviewed bookmark file import and refreshes the real Library
   });
   await act(async () => file.dispatchEvent(new Event("change", { bubbles: true })));
   expect(invoke).not.toHaveBeenCalledWith("bookmarks.import", expect.anything());
-  expect(host.querySelector('[aria-label="Bookmark import preview"]')).not.toBeNull();
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.querySelector('[aria-label="Bookmark import preview"]')).not.toBeNull();
+  });
   await act(async () =>
     [...host.querySelectorAll<HTMLButtonElement>("button")]
       .find((item) => item.textContent === "Import bookmarks")!
