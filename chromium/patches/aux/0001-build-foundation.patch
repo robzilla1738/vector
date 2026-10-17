@@ -1086,7 +1086,7 @@ index bf4f418..911b9fb 100644
          "$root_gen_dir/chrome/side_panel_bookmarks_code_cache_resources.pak",
          "$root_gen_dir/chrome/side_panel_customize_chrome_code_cache_resources.pak",
 diff --git a/chrome/common/BUILD.gn b/chrome/common/BUILD.gn
-index e2dcc54..2586478 100644
+index e2dcc54..df7f27a 100644
 --- a/chrome/common/BUILD.gn
 +++ b/chrome/common/BUILD.gn
 @@ -6,6 +6,7 @@ import("//build/buildflag_header.gni")
@@ -1116,7 +1116,7 @@ index e2dcc54..2586478 100644
      "chrome_render_frame.mojom",
      "google_accounts_private_api_extension.mojom",
      "media/webrtc_logging.mojom",
-@@ -840,3 +846,11 @@ mojom("offline_page_auto_fetcher_mojom") {
+@@ -840,3 +846,10 @@ mojom("offline_page_auto_fetcher_mojom") {
    sources = [ "offline_page_auto_fetcher.mojom" ]
    public_deps = [ "//url/mojom:url_mojom_gurl" ]
  }
@@ -1124,7 +1124,6 @@ index e2dcc54..2586478 100644
 +if (enable_aux_shell) {
 +  mojom("aux_semantic_filters") {
 +    sources = [ "aux_semantic_filters.mojom" ]
-+    disable_variants = true
 +    webui_module_path = "/"
 +  }
 +}
