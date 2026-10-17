@@ -8,6 +8,7 @@ import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { ActionMenu } from "../ui";
 import { NewBookmarkDialog } from "./NewBookmarkDialog";
+import { HistoryVisitRow } from "./HistoryVisitRow";
 import { SavedPageActions } from "./SavedPageActions";
 import { FavIcon } from "./SiteTile";
 import { BookmarkFolderNavigation } from "./BookmarkFolderNavigation";
@@ -47,7 +48,6 @@ import {
   shellIconReopen,
   shellIconResult,
   shellIconBookmark,
-  shellIconBookmarkFill,
   shellIconCheck,
   shellIconCircle,
   shellIconClose,
@@ -783,17 +783,21 @@ export function Library({
   }, []);
   const save = useCallback(
     async (item: SavedPage) => {
-      if (!currentFolder) throw new Error("Bookmark folders are still loading.");
+      const folders = view === "history" ? await readBookmarkFolders() : null;
+      const destination = folders
+        ? folders.folders.find((folder) => folder.nodeId === folders.rootId)
+        : currentFolder;
+      if (!destination) throw new Error("Bookmark folders are still loading.");
       setSnapshot(
         await createBookmark({
           title: item.title,
           url: item.url,
-          destination: folderDestination(currentFolder),
+          destination: folderDestination(destination),
         }),
       );
       useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
     },
-    [currentFolder],
+    [currentFolder, view],
   );
   const open = useCallback(
     (item: SavedPage, background = false, trigger?: HTMLElement) => {
@@ -1563,80 +1567,34 @@ export function Library({
                         {(index === 0 || dayOf(displayItems[index - 1]!) !== dayOf(item)) && (
                           <h4 className="library-day">{dayOf(item)}</h4>
                         )}
-                        <div className="library-item">
-                          <button
-                            ref={index === 0 ? firstResult : undefined}
-                            className="library-open"
-                            disabled={busy}
-                            onClick={(event) => open(item, backgroundLink(event), event.currentTarget)}
-                            onAuxClick={(event) => {
-                              if (event.button === 1) {
-                                event.preventDefault();
-                                if (!selecting) open(item, true, event.currentTarget);
-                              }
-                            }}
-                            title={`${item.title || hostOf(item.url)} — ${item.url}`}
-                          >
-                            <span className="library-row-heading">
-                              <span className="library-title">{item.title || hostOf(item.url)}</span>
-                              {"visitedAt" in item && (
-                                <time
-                                  className="library-time"
-                                  dateTime={new Date(Number(item.visitedAt)).toISOString()}
-                                >
-                                  {new Date(Number(item.visitedAt)).toLocaleTimeString(undefined, {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })}
-                                </time>
-                              )}
-                            </span>
-                            <span className="library-url">{item.url}</span>
-                          </button>
-                          <div className="library-actions">
-                            <button
-                              {...staticSmallIconButtonProps}
-                              title={isSaved(item.url) ? "Already bookmarked" : "Bookmark page"}
-                              disabled={busy || isSaved(item.url)}
-                              aria-label={`Bookmark ${item.title || hostOf(item.url)}`}
-                              onClick={() =>
-                                void action(async () => {
-                                  await save(item);
-                                  setNotice("Page bookmarked.");
-                                })
-                              }
-                            >
-                              {isSaved(item.url) ? shellIconBookmarkFill : shellIconBookmark}
-                            </button>
-                            {"visitedAt" in item && (
-                              <button
-                                {...staticSmallIconButtonProps}
-                                title="Remove this visit"
-                                disabled={busy}
-                                aria-label={`Remove visit to ${item.title || hostOf(item.url)}`}
-                                onClick={() =>
-                                  void action(async () => {
-                                    await call("history.remove", {
-                                      url: item.url,
-                                      visitedAt: item.visitedAt,
-                                    });
-                                    setHistory((current) =>
-                                      current.filter(
-                                        (entry) =>
-                                          entry.url !== item.url || entry.visitedAt !== item.visitedAt,
-                                      ),
-                                    );
-                                    setNotice(
-                                      "Visit removed from browsing history. Bookmarks and saved work are unchanged.",
-                                    );
-                                  })
-                                }
-                              >
-                                {shellIconTrash}
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        {"visitedAt" in item && (
+                          <HistoryVisitRow
+                            item={item}
+                            firstResult={index === 0 ? firstResult : undefined}
+                            busy={busy}
+                            bookmarked={isSaved(item.url)}
+                            onOpen={open}
+                            onBookmark={() =>
+                              void action(async () => {
+                                await save(item);
+                                setNotice("Page bookmarked.");
+                              })
+                            }
+                            onRemove={() =>
+                              void action(async () => {
+                                await call("history.remove", { url: item.url, visitedAt: item.visitedAt });
+                                setHistory((current) =>
+                                  current.filter(
+                                    (entry) => entry.url !== item.url || entry.visitedAt !== item.visitedAt,
+                                  ),
+                                );
+                                setNotice(
+                                  "Visit removed from browsing history. Bookmarks and saved work are unchanged.",
+                                );
+                              })
+                            }
+                          />
+                        )}
                       </Fragment>
                     ),
                   )

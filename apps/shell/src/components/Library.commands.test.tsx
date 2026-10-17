@@ -351,3 +351,50 @@ it("page navigation supports vertical arrows without trapping Tab or dismissing 
   host.querySelector('[aria-label="Library"]')!.dispatchEvent(tab);
   expect(tab.defaultPrevented).toBe(false);
 });
+
+it("bookmarks from a directly opened History and removes only the chosen visit", async () => {
+  const first = { url: "https://example.com/review", title: "Design review", visitedAt: 100000 };
+  const second = { ...first, visitedAt: 90000 };
+  const snapshot = await bridge.bookmarksInvoke({ method: "bookmarks.folders.snapshot", params: {} });
+  if (snapshot.method !== "bookmarks.folders.snapshot") throw new Error("Expected snapshot");
+  vi.mocked(bridge.bookmarksInvoke).mockImplementation(async (request) => ({
+    method:
+      request.method === "bookmarks.entries.create"
+        ? "bookmarks.entries.create"
+        : "bookmarks.folders.snapshot",
+    result: snapshot.result,
+  }));
+  vi.mocked(bridge.invoke).mockImplementation(
+    async (method) =>
+      (method === "history.list" ? [first, second] : method === "bookmarks.list" ? [first] : []) as never,
+  );
+  await render();
+  await tick();
+  async function choose(label: string) {
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Actions for Design review"]')!.click(),
+    );
+    await act(async () =>
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((button) => button.textContent === label)!
+        .click(),
+    );
+  }
+  await choose("Bookmark page");
+  expect(bridge.bookmarksInvoke).toHaveBeenCalledWith({
+    method: "bookmarks.entries.create",
+    params: {
+      title: first.title,
+      url: first.url,
+      destination: { parentId: "1", index: 0, expectedChildren: [] },
+    },
+  });
+  expect(host.textContent).toContain("Page bookmarked.");
+  await choose("Remove this visit");
+  expect(bridge.invoke).toHaveBeenCalledWith("history.remove", {
+    url: first.url,
+    visitedAt: first.visitedAt,
+  });
+  expect(host.querySelectorAll(".library-item")).toHaveLength(1);
+  expect(host.querySelector("time")?.dateTime).toBe(new Date(second.visitedAt).toISOString());
+});

@@ -1,5 +1,24 @@
 # Aux status — October 16, 2026
 
+History reference 164 follow-up: compact visit rows now place the timestamp,
+site icon, title and hostname together, with the existing Bookmark/Remove actions
+in one keyboard-accessible overflow menu. Narrow rows stack title and hostname;
+full addresses remain available on hover. Icons use existing page-session data
+with the local globe fallback, without external favicon requests.
+
+Directly opening History exposed a save bug: Bookmark page required the folder
+snapshot loaded only by Bookmarks. Saving from History now reads a fresh root
+folder destination before creating the bookmark. The regression opens History
+directly, bookmarks a visit, then removes only one of two visits to the same URL.
+Integrated check: typecheck/lint and 4,634 tests / 746 files passed in 95.47s;
+renderer build 2.32s. Logs `/tmp/aux-history-row-check.log` and
+`/tmp/aux-history-row-build.log`. An unused import failed the first lint run and
+was removed before the passing check. This source batch postdates the active
+bca52783c native candidate. Visual/native acceptance is pending. Date/group tabs,
+real history clusters, selection and separate native page routes remain open;
+this is not full History parity. Reference corpus remains 380 source files.
+
+
 Native follow-up consolidation is running from `bca52783c`, including organization
 value comparison, all-root bookmark navigation and post-edit refresh/focus.
 Launcher **41736**, exec session **82219**, log `/tmp/aux-organization-native.log`.

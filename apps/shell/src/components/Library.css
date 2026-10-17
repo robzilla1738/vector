@@ -240,24 +240,29 @@
   }
   .library-page[data-view="history"] .library-open {
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr) minmax(80px, 28%);
+    grid-template-columns: 64px 20px minmax(0, 1fr);
     align-items: center;
     gap: 12px;
   }
-  .library-page[data-view="history"] .library-row-heading {
-    display: contents;
+  .library-history-icon,
+  .library-history-icon > :is(img, span) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
   }
-  .library-page[data-view="history"] .library-time {
-    grid-column: 1;
-    grid-row: 1;
+  .library-history-detail {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
   }
-  .library-page[data-view="history"] .library-title {
-    grid-column: 2;
-    grid-row: 1;
+  .library-history-detail .library-title {
+    flex: 0 1 auto;
   }
-  .library-page[data-view="history"] .library-url {
-    grid-column: 3;
-    grid-row: 1;
+  .library-history-detail .library-url {
+    flex: 0 2 auto;
   }
   @container library-page (width < 680px) {
     .library {
@@ -280,12 +285,13 @@
       padding: 8px 12px;
     }
     .library-page[data-view="history"] .library-open {
-      grid-template-columns: 56px minmax(0, 1fr);
-      gap: 4px 8px;
+      grid-template-columns: 56px 16px minmax(0, 1fr);
+      gap: 8px;
     }
-    .library-page[data-view="history"] .library-url {
-      grid-column: 2;
-      grid-row: 2;
+    .library-history-detail {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
     }
   }
   .library-tools {
