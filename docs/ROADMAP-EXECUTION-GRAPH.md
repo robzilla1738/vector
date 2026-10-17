@@ -22,7 +22,7 @@ flowchart LR
 | Batch | State | Outcome and acceptance |
 | --- | --- | --- |
 | R1 | active | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations. |
-| R2 | ready | Update the pinned Chromium security baseline in a disposable checkout; replay ordered area patches, compile and inspect changed behavior while preserving the stable product/stock checkouts. |
+| R2 | active: clean57-area replay | Update the pinned Chromium security baseline in a disposable checkout; replay ordered area patches, compile and inspect changed behavior while preserving the stable product/stock checkouts. |
 | R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
 | R4 | ready | Measure system/tool/page/history prompt contributions, reduce irrelevant schema/context and verify stable caching. Complete valid paired native startup/interaction/memory measurements against matching stock. |
 | R5 | ready | Finish channel persistence/transports/pairing/replies; named custom providers and supported subscription setup; Memory document authority/extraction/diffs/Dream; routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. Existing implemented features remain enabled. |

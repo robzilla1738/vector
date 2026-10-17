@@ -710,12 +710,17 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
-    const { streamText, tool } = await this.loadSdk();
+    const { streamText, tool, zodSchema } = await this.loadSdk();
     const started = Date.now();
     const names = Object.keys(opts.tools);
     const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
     const { cacheTools, ...request } = this.directRequest(opts, maxOut);
     const lastTool = names.at(-1);
+    const provider = this.gateway
+      ? modelCapabilities(opts.modelId, this.capabilities())?.provider
+      : (request.model as { provider?: string }).provider;
+    // Compatible servers may not resolve local schema references.
+    const useReferences = provider === "anthropic" || provider === "openai";
     const tools = Object.fromEntries(
       names.map((name) => {
         const spec = opts.tools[name]!;
@@ -723,7 +728,7 @@ export class GatewayModelClient implements ModelClient {
           name,
           tool({
             ...(spec.description ? { description: spec.description } : {}),
-            inputSchema: spec.inputSchema,
+            inputSchema: zodSchema(spec.inputSchema, { useReferences }),
             ...(cacheTools && name === lastTool
               ? { providerOptions: { anthropic: { cacheControl: ANTHROPIC_CACHE_CONTROL } } }
               : {}),

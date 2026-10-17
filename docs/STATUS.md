@@ -7,6 +7,71 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Chromium155 security migration — source replay complete
+
+The isolated security checkout is pinned to155.0.8059.85
+(`0e66b94549a8bd85f03fbdf189b752d6e7b63c32`). Fresh official depot_tools,
+dependency sync and hooks completed. All57native area patches now replay in
+order. A clean reconstruction from the pinned upstream blobs reproduces all
+890owned source paths exactly, including modes and binary branding assets
+(`/tmp/aux-chromium-155-clean-replay.json`). No stable checkout was reset.
+
+Rebased hooks preserve Chromium155's disconnect/destroy lifecycle, deferred
+beforeunload detach, browser element lookup and pause/stop activation restriction.
+Upstream now filters invisible bookmark roots itself, replacing Aux's old hook.
+The window/autofill correction and sticky factory protection are included.
+Native155 compilation and changed-flow acceptance remain pending; the product
+preview remains on154 until its current owner retires and migration is accepted.
+
+## Native readiness — window lookup correction awaiting acceptance
+
+The local minidump identifies the repeatable address-save SIGSEGV at
+`address_bubbles_controller.cc:62`: the shared BrowserWindow lookup returned
+only BrowserView, while Aux uses WebUIBrowserWindow. Area0057 resolves both
+native window implementations, including background tabs, and removes a second
+BrowserView assumption from the address promo. The actual existing Chromium
+address/payment bubble handler remains shared. Native compilation and the
+synthetic save/update/cancel walkthrough follow; no autofill acceptance yet.
+
+The same slice deletes the superseded PageSignals takeover callback. Native
+platform input admission remains the sole physical takeover producer. Network
+factories now retain their document's sticky protection marker after document
+destruction; returning control never clears old factory protection or permits
+late agent traffic. These changes need changed-flow native observation.
+
+The crash capture used only synthetic local form data and a disposable Profile.
+The minidump and symbolized stack remain local in `/tmp`; no process dump enters
+the repository. The live debugger request was retired through its original
+launcher, including its lock/Profile. macOS Developer Tools authorization is
+unneeded for the offline stack. No default-Profile process is running.
+The UI tool restarted Aux without the disposable Profile argument after the
+first crash; that process was stopped immediately and no further UI inspection
+used it. Crash-risk checks now inspect the owned PID before reading UI state.
+
+The separate Chromium155 checkout completed dependency sync/hooks and is
+replaying the ordered native areas. The stable product pin is unchanged until
+migration and build evidence are ready.
+
+## Compact provider tool schemas — source
+
+OpenAI and Anthropic tool calls now use the SDK's shared local JSON-schema
+definitions. The exact51-tool SDK payload measures109,361bytes inline and
+54,559bytes with shared definitions. Original Zod validation, tool capabilities,
+governed dispatch and prompt-cache placement remain. Compatible transports keep
+inline schemas because their parsers may not resolve local references; context
+budget accounting retains its conservative existing estimate.
+
+Runtime dist was rebuilt. The initial focused run passed98tests/3files; the final
+SDK cases verify compound browser steps, resolvable references and compatible
+transport behavior. Typecheck and final lint pass. The integrated test phase
+passed4,677/4,678tests; one existing coder-worktree case timed out under native
+linking. All3cases in that file then passed in isolation in92.16s. No unchanged
+full suite is repeated. Logs: `/tmp/aux-prompt-efficiency-check.log`,
+`/tmp/aux-prompt-efficiency-final-lint.log`,
+`/tmp/aux-prompt-efficiency-final-tests.log`,
+`/tmp/aux-prompt-efficiency-coder-retry.log`.
+Real provider/token-latency and native smoke acceptance remain pending.
+
 ## Readiness implementation — source
 
 The owner authorized completing all six readiness batches with substantial
