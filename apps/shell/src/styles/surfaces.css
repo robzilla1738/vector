@@ -1018,6 +1018,54 @@
     background: var(--surface-primary);
     box-shadow: var(--shadow-pop);
   }
+  .home-chat-card {
+    gap: var(--space-1);
+  }
+  .home-chat-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+  }
+  .home-chat-excerpt {
+    min-height: 0;
+    overflow: hidden;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+  }
+  .home-chat-excerpt .answer-markdown {
+    font-size: inherit;
+    line-height: inherit;
+  }
+  .home-chat-excerpt .answer-markdown > :first-child {
+    margin-top: 0;
+  }
+  .home-chat-excerpt .answer-markdown :is(h1, h2, h3) {
+    font-size: inherit;
+  }
+  .home-chat-excerpt :is(.answer-table-actions, .answer-code header) {
+    display: none;
+  }
+  .home-result-open {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 0;
+    flex-shrink: 0;
+    margin-top: var(--space-2);
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    text-align: left;
+  }
+  .home-result-open .result-card-preview {
+    margin: 0;
+    mask-image: none;
+  }
   .home-card-hero {
     position: relative;
     display: grid;
@@ -1103,12 +1151,6 @@
     min-height: 0;
     max-height: none;
     margin: 0;
-  }
-  .home-excerpt.rich {
-    display: block;
-    flex: 1;
-    overflow: hidden;
-    mask-image: linear-gradient(var(--mask-opaque) 80%, transparent);
   }
   .home-empty {
     grid-column: 1 / -1;
@@ -1474,21 +1516,6 @@
   .home-history .history-segment button {
     min-height: 28px;
     padding-inline: var(--space-3);
-  }
-  .home-excerpt .answer-markdown {
-    font-size: inherit;
-    line-height: inherit;
-  }
-  .home-excerpt .answer-table-actions,
-  .home-excerpt .answer-code header {
-    display: none;
-  }
-  .home-excerpt .answer-markdown :is(h1, h2, h3) {
-    font-size: var(--fs-sm);
-  }
-  .home-excerpt .answer-markdown ul,
-  .home-excerpt .answer-markdown ol {
-    padding-left: var(--space-4);
   }
   .home-mode kbd {
     display: inline-flex;

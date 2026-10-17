@@ -7,102 +7,55 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current replacement build
+## Current native preview
 
-Product **eabff947d**, launcher **17093**, exec **50761**, log
-`/tmp/aux-home-settings-native-build.log`. Wait on this same builder; no source
-edits until runtime staging finishes. Prior launcher12644, app13842, runtime13856,
-Profileaux-dev-kxVOpm and lock retired normally and were verified removed before
-replacement. CUA addressFocusApp is stale.
+Product **eabff947d**, launcher **17093**, app **18292**, runtime **18307**,
+exec **50761**, disposable Profile **aux-dev-c7Z9wr**, API port49455.
+Log `/tmp/aux-home-settings-native-build.log`; native build passed in **8m49.07s**
+and runtime staging finished. About verified clean source
+`eabff947db8db210d384dbe549cf8acab8047163`, Chromium154.0.8037.98 and ABI9021388e….
+CUA binding **homeSettingsApp**. Preserve this launcher's cleanup ownership.
+Previous12644 preview retired normally; addressFocusApp is stale.
 
-Acceptance next: verify About identity; zoom window using its exposed zoom action,
-compare Home spacing and upper-right menu against001/002, verify Profiles/Usage/
-Settings destinations and Escape focus, inspect bordered Configure/Import actions
-in Appearance/General. Create synthetic chats for populated Home comparison.
-Do not label this batch visually accepted until the packaged UI is observed.
+Native acceptance: Home Recent work spacing now aligns closely with001 at a
+near-matched window size (3456×2010 versus3424×1978). Home's upper-right menu
+opens Profiles, Usage & Budgets and General settings. Escape closes the menu and
+returns focus to its trigger. General Configure/Import and Appearance Configure
+have bordered surfaces; Languages and Customize Tidy Tabs dialogs open and cancel.
+Three synthetic real-provider chats completed without tools in this disposable
+Profile. The preview is left on populated Home in Search mode.
 
-## Home and Settings source batch
+Captures under `/tmp/aux-parity-2026-10-16/`:
+- `aux-home-menu-eabff947d.jpg`
+- `aux-general-actions-eabff947d.jpg`
+- `aux-appearance-actions-eabff947d.jpg`
+- `aux-home-populated-eabff947d.jpg`
 
-Home Recent work margin is100px (was152px), matching the observed reference gap
-while preserving the narrow container override. SettingsDialogControl Configure/
-Import triggers now use the regular bordered small-button surface. Home has a
-compact Profile and settings menu in the reference's upper-right position, with
-real Profiles, Usage & Budgets and General settings destinations. It omits Aside
-subscription/referral/community claims and is not mounted in Private Home.
-Menu route/dismissal and Escape/focus regressions pass. Integrated check passed
-typecheck/lint and **4,625 tests /745files** in94.48s; log
-`/tmp/aux-home-settings-check.log`. Native visual acceptance is pending. No runtime
-or native-source changes. The retired preview below predates this batch.
+## Home card source follow-up — not yet packaged
 
-## Previous accepted preview (retired)
+Populated native evidence exposed the remaining large mismatch with001: oversized
+chat icons, status badges and repeated action buttons displaced the actual reply.
+Chat cards now lead with real relative timestamps, title and Markdown response.
+Non-completed status and drafts remain visible. Only non-automatic deliverables
+get an openable result preview; redundant automatic report actions are removed.
+The whole card still opens the conversation, and draft subscriptions remain local
+to their own card. Old result-button presentation is removed.
 
-Product **3c34b442b**, launcher **12644**, app **13842**, runtime **13856**,
-exec **93546**, disposable Profile **aux-dev-kxVOpm**, API port64825.
-Log `/tmp/aux-address-focus-native-build.log`; native build passed in **9m27.89s**.
-About verified clean source3c34b442b2ec578303a703db6a4bcc877e098f4f,
-Chromium154.0.8037.98 and ABI9021388e…. CUA binding **addressFocusApp**.
-This preview is retired. Its addressFocusApp CUA binding is stale.
+Integrated check passed typecheck, lint and **4,625 tests /745 files** in95.78s
+(`/tmp/aux-home-cards-check.log`). Only dead CSS removal and formatting followed.
+This source follow-up is newer than the live eabff947d app. Native acceptance is
+pending. Do not claim complete populated-card parity; real image thumbnails and
+wide/narrow/light comparison remain to verify. Keep the substantial Memory
+model/UI batch open per the implementation boundary.
 
-Native rapid-typing acceptance passed: from Bookmarks search, Cmd-L preserved
-full about:blank and focus-handoff-check; after Cmd-L, Cmd-T preserved full
-keyboard focus check. Escape dismissed without clicking, restored the retained
-Bookmarks search, and subsequent typing appended to it. This verifies the native
-ownership and renderer delayed-selection corrections together. Integrated source
-check passed4,621tests/744files. No unchanged suite repeated for acceptance.
+## Previously accepted keyboard corrections
 
-Window zoom action expanded the preview for reference comparison. Current app
-captures are3456×2010 versus reference001/023 at3424×1978 (close, not exact).
-Saved captures:
-- `/tmp/aux-parity-2026-10-16/aux-appearance-expanded-3c34b442b.jpg`
-- `/tmp/aux-parity-2026-10-16/aux-home-expanded-3c34b442b.jpg`
-
-Next visual batch findings: Appearance card width/order/row spacing are close to
-023. SettingsDialogControl uses smallGhostButtonProps, leaving Configure as plain
-text where the reference shows a bordered action. Reference Tabs also has an
-Advanced row; verify its actual destination before adding it. Home hero position
-matches closely, but Recent work is about50CSS pixels too low: current
-`.home-history` margin-top152px versus approximately100px in001. Home screenshot
-has no synthetic chats yet, so populated card parity remains unverified. Home
-profile action and backdrop/palette also require comparison; do not infer a color
-fix from screenshots with uncontrolled backdrop. Sidebar address placement remains
-an explicit Aux owner decision. Preview is left on Home with suggestions collapsed.
-
-Memory document work remains the next substantial backend/UI batch; implement its
-model/recall/recovery together per the design boundary. Reference count stays182PNG.
-
-## Prior native acceptance and source follow-up
-
-Native product **dd642e5a4**, launcher **8670**, app **9769**, runtime **9785**,
-exec **81841**, disposable Profile **aux-dev-2nvFHq**, API port64030.
-Log `/tmp/aux-focus-handoff-native-build.log`; build passed in **9m27.82s**.
-About verified clean source dd642e5a4ca223df20aee336317beedef6414000,
-Chromium154.0.8037.98 and ABI9021388e…. This preview is retired.
-Its CUA binding **focusHandoffApp** is stale. Native checkout:
-`/Users/rcourson/Documents/Code/aux-chromium-product/chromium/src`, output
-`out/AuxFast/Aux.app`. The previous4140 preview and Profile were retired normally.
-
-Patch0052 native acceptance: with native Bookmarks search focused, Cmd-T followed
-immediately by about:blank opened the new tab and left Bookmarks search empty.
-A second test retained the original page query, put draft in the command input,
-and Escape dismissed without clicking and restored focus to the page input.
-Further typing appended to the page query. Hide/raise preserved page input focus.
-This verifies the embedded-page keyboard-ownership correction.
-
-A separate renderer defect remains in this packaged preview: Cmd-L followed by
-rapid about:blank yields bout:blank, and focus-handoff-check yields
-ocus-handoff-check. After Cmd-L, Cmd-T can also lose the draft prefix. CommandBar's
-focusRequest handler waits for native focusShell then selects again, replacing
-characters that arrived meanwhile. Source follow-up moves focus/select to the
-layout effect and removes delayed selection. A delayed-acknowledgement regression
-check accompanies it. Initial check caught only a test Promise<void> type mismatch;
-corrected to the bridge's undefined result. Integrated check passed typecheck/lint and all4,621tests/744files in99.52s,
-log `/tmp/aux-address-focus-check.log`. Native replacement required
-after source validation/commit; do not claim rapid-typing acceptance for this
-renderer until the replacement is tested.
-
-Patch0052 integrated check passed typecheck/lint and4,620tests/744files in95.67s
-(`/tmp/aux-focus-handoff-check.log`). No runtime edits. Original rounded model
-search fix remains accepted; full parity is not complete.
+Native patch0052 hands embedded-page focus back to the shell. Renderer3c34b442b
+focuses/selects synchronously and does not select again after the native ack.
+Native Cmd-L and subsequent Cmd-T preserved full rapid input; Escape restored the
+retained Bookmarks query and keyboard focus. Window hide/raise retained page focus.
+See the reference ledger for evidence. These corrections remain in the current
+preview; no unchanged keyboard campaign was repeated.
 
 ## Latest accepted behavior
 

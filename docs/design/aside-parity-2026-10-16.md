@@ -2477,3 +2477,31 @@ this source postdates the active native candidate 79bfa144e under launcher 52233
 Do not restart that builder. Full parity, group/split destinations, clipboard and
 separate native page routes remain open.
 
+
+
+## October 17 — Home menu native acceptance and populated-card correction
+
+Product eabff947d built successfully in8m49.07s and staged runtime. Launcher17093,
+app18292, runtime18307, session50761, Profileaux-dev-c7Z9wr, port49455. About
+confirmed clean eabff947db8db210d384dbe549cf8acab8047163 and Chromium154.0.8037.98.
+CUA homeSettingsApp is live; preserve launcher cleanup ownership.
+
+Compared001/002 at3456×2010 versus reference3424×1978. Recent work's100px margin
+now aligns closely. Upper-right menu routes to actual Profiles, Usage & Budgets
+and General; Escape returns focus. General Configure/Import and Appearance
+Configure show bordered surfaces. Languages and Tidy Tabs dialogs open/cancel.
+Captures: aux-home-menu-eabff947d.jpg, aux-general-actions-eabff947d.jpg,
+aux-appearance-actions-eabff947d.jpg under /tmp/aux-parity-2026-10-16/.
+
+Three synthetic real-provider chats (fictional notebook, paper garden, reading
+lamp; no tools) populated Home. aux-home-populated-eabff947d.jpg shows an important
+remaining mismatch: oversized chat icons and bottom buttons instead of timestamps,
+titles and reply-first content. Source follow-up replaces that hierarchy, retains
+live draft/status information and openable non-automatic deliverables, and removes
+redundant automatic-report buttons. The entire card retains conversation navigation.
+Source is not yet packaged or visually accepted. Real image thumbnails and matched
+light/narrow states remain open. Reference corpus unchanged:182PNG/192TXT.
+
+Validation: npm run check passed typecheck/lint and4,625tests/745files in95.78s
+(/tmp/aux-home-cards-check.log). Existing exact-artifact navigation and draft/focus
+tests passed. Only removed unused excerpt CSS and formatting after the check.

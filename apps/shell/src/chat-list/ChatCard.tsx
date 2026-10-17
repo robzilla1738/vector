@@ -3,7 +3,7 @@ import type { ConversationArtifact, ConversationSummary } from "@aux/contracts";
 import { draftKey } from "../conversation-drafts";
 import { STATUS_LABEL } from "../run-status";
 import { useStore } from "../store";
-import { MessageCircle, shellIconOpen } from "../ui/icons";
+import { relativeChatTime } from "./relative-chat-time";
 import { AnswerPreview } from "../components/surfaces";
 import { ResultExcerpt } from "../components/ResultCard";
 
@@ -31,47 +31,41 @@ export const ChatCard = memo(function ChatCard({
   const draft = useStore((state) => state.conversationDrafts[draftKey(item.chatId)]);
   const hasDraft = !!draft?.trim();
   const open = () => useStore.getState().openConversation(item.latestRun.runId);
+  const result =
+    !hasDraft && artifact?.runId === item.latestRun.runId && !artifact.automaticReport ? artifact : undefined;
   return (
-    <article className="home-card">
-      <button className="home-card-hero" onClick={open} aria-label={item.title}>
-        <span className="home-card-hero-icon">
-          <MessageCircle width={56} height={56} />
-        </span>
-        <span className="home-card-status">{hasDraft ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span>
-      </button>
+    <article className="home-card home-chat-card">
+      <div className="home-chat-meta">
+        <time
+          dateTime={new Date(item.updatedAt).toISOString()}
+          title={new Date(item.updatedAt).toLocaleString()}
+        >
+          {relativeChatTime(item.updatedAt)}
+        </time>
+        {(hasDraft || item.latestRun.status !== "completed") && (
+          <span>{hasDraft ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span>
+        )}
+      </div>
       <h3>
         <button className="home-card-open" onClick={open}>
           {item.title}
         </button>
       </h3>
-      {!hasDraft && artifact?.runId === item.latestRun.runId ? (
-        <div className="home-excerpt rich" inert>
-          <ResultExcerpt result={artifact} />
-        </div>
-      ) : (
-        <div className="home-excerpt" inert>
-          <AnswerPreview text={previewText(item, draft)} />
-        </div>
-      )}
-      <div className="home-card-actions">
-        <button className="home-card-cta" onClick={open}>
-          Open chat
-          {shellIconOpen}
-        </button>
-        {!hasDraft && artifact?.runId === item.latestRun.runId && (
-          <button
-            className="home-card-cta home-result-open"
-            onClick={() => {
-              useStore.getState().openConversationDraft(item.chatId);
-              useStore.setState({ resultPreview: artifact.artifactId });
-            }}
-          >
-            {artifact.filename}
-            {artifact.revision ? ` v${artifact.revision}` : ""}
-            {shellIconOpen}
-          </button>
-        )}
+      <div className="home-chat-excerpt" inert>
+        <AnswerPreview text={previewText(item, draft)} />
       </div>
+      {result && (
+        <button
+          className="home-result-open"
+          aria-label={`Open ${result.filename}${result.revision ? ` v${result.revision}` : ""}`}
+          onClick={() => {
+            useStore.getState().openConversationDraft(item.chatId);
+            useStore.setState({ resultPreview: result.artifactId });
+          }}
+        >
+          <ResultExcerpt result={result} />
+        </button>
+      )}
     </article>
   );
 });
