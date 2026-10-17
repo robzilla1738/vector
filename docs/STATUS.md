@@ -1,5 +1,16 @@
 # Aux status — October 16, 2026
 
+Current replacement build: **dd642e5a4**, launcher **8670**, exec **81841**,
+log `/tmp/aux-focus-handoff-native-build.log`. The previous launcher4140, app5496,
+runtime5517, disposable Profileaux-dev-NybYhE and lock retired normally and were
+verified gone before replacement. Do not use retired memoryActivityApp binding.
+Changed SurfaceEmbed connector/host and shell native sources have compiled; full
+link/package and live acceptance remain pending. Wait on this same builder.
+Do not edit runtime/renderer before staging finishes. Next acceptance: About,
+Bookmarks search focused → Cmd-T → immediate typing; Escape without clicking the
+command field; Cmd-L and return to page input; check window deactivation preserves
+page input ownership. No native fix claim until these checks pass.
+
 Focus handoff source patch **0052** is applied in the native checkout and recorded
 in the patch series. SurfaceEmbed element blur now returns keyboard ownership to
 its parent when that child still owns focus, excluding window-focus notifications
@@ -9,12 +20,12 @@ addresses the reproduced Cmd-T/typing/Escape failure below; native acceptance is
 pending. Integrated `npm run check` passed typecheck/lint and all4,620tests in
 744files (95.67s), log `/tmp/aux-focus-handoff-check.log`. No renderer/runtime edits.
 
-Current live preview: product **2408e4727**, launcher **4140**, app **5496**,
+Previously accepted preview (retired): product **2408e4727**, launcher **4140**, app **5496**,
 runtime **5517**, exec **37073**, disposable Profile **aux-dev-NybYhE**,
 API `http://127.0.0.1:60568`. Log `/tmp/aux-memory-activity-native-build.log`.
 Native build passed in **9m36.99s**. About verified clean source
 2408e4727a04378863f612cfe10e4044201e5f2e, Chromium154.0.8037.98 and ABI9021388e….
-Preserve launcher4140 cleanup ownership. CUA binding: memoryActivityApp.
+This preview is retired; its CUA binding memoryActivityApp is stale.
 
 Native acceptance: a real synthetic two-sentence notebook chat completed and
 produced two pending review notes. Memory History opened Activity by default,

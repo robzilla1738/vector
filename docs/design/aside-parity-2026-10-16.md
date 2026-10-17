@@ -1,5 +1,14 @@
 # Aside UI parity — October 16, 2026
 
+October 17 keyboard handoff batch **dd642e5a4**: reproduced Cmd-T from a native
+Bookmarks search leaving keyboard events in the hidden page. SurfaceEmbed ignored
+embed-element blur; patch0052 returns ownership to the parent only while that child
+still owns focus, preserving window deactivation and pending nested focus. Native
+shell shortcut/focusShell paths also release the active embed before focusing.
+Integrated check passed4,620tests/744files, typecheck and lint. Native replacement
+launcher8670 is compiling; actual typing/Escape acceptance remains pending.
+
+
 October 17 Memory activity source batch **2408e4727**: encrypted extraction
 records now accompany candidate notes, including no-change outcomes, measured
 local processing duration and trigger. History separates Activity from Recovery
