@@ -36,10 +36,16 @@ assertions; all 18 affected cases pass. Final integrated check: typecheck/lint
 pass, 4,545/4,546 tests pass across 731 files; only the longstanding
 coder-worktrees 60-second timeout fails. Final renderer build passes in 1.92s.
 
+**New native build in progress: `9d677b376`.** The preceding disposable preview
+retired normally (launcher exit 0); its synthetic Project fixture was removed.
+The single new launcher runs `node scripts/dev.mjs --temp-profile`; log:
+`/tmp/aux-settings-consolidated-native.log`. Inspect that same live builder before
+starting any replacement. New native language/search verification remains pending.
+
 **Compiled/staged candidate: `985ad7381`.** The single incremental native build
 passed in 25 steps / 8m33.06s, staging 215 renderer assets, rebuilt runtime and
-Node 26.9 (273 methods / 30 events, `cce8203bcbd0`). The owned launcher holds a
-disposable Profile and its plain lock. Retire it normally before another build.
+Node 26.9 (273 methods / 30 events, `cce8203bcbd0`). That preview has now retired normally; the new launcher above owns the
+development build and plain lock.
 
 Native walkthrough confirmed the direct Project picker, empty catalog, and Use
 an existing folder routing to the real Projects review editor in the Home Space.

@@ -780,3 +780,9 @@ Integrated check: typecheck/lint pass, 4,543/4,544 cases across 731 files pass; 
 the longstanding coder-worktrees 60-second timeout fails. Final 26 affected cases
 pass after adding fresh-pending, synchronous native failure and failed-read retry
 checks. Final renderer build passes in 2.08s. Full goal remains active.
+
+The `985ad7381` disposable preview subsequently retired through its original
+launcher (exit 0). Removed the exact synthetic Project fixture only after
+retirement. New single native launcher builds `9d677b376` with a temporary
+Profile; `/tmp/aux-settings-consolidated-native.log` tracks this build. Native
+search/language acceptance remains pending; do not replace a live builder.
