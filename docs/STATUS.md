@@ -7,6 +7,20 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Current replacement build
+
+Product **eabff947d**, launcher **17093**, exec **50761**, log
+`/tmp/aux-home-settings-native-build.log`. Wait on this same builder; no source
+edits until runtime staging finishes. Prior launcher12644, app13842, runtime13856,
+Profileaux-dev-kxVOpm and lock retired normally and were verified removed before
+replacement. CUA addressFocusApp is stale.
+
+Acceptance next: verify About identity; zoom window using its exposed zoom action,
+compare Home spacing and upper-right menu against001/002, verify Profiles/Usage/
+Settings destinations and Escape focus, inspect bordered Configure/Import actions
+in Appearance/General. Create synthetic chats for populated Home comparison.
+Do not label this batch visually accepted until the packaged UI is observed.
+
 ## Home and Settings source batch
 
 Home Recent work margin is100px (was152px), matching the observed reference gap
@@ -18,16 +32,16 @@ subscription/referral/community claims and is not mounted in Private Home.
 Menu route/dismissal and Escape/focus regressions pass. Integrated check passed
 typecheck/lint and **4,625 tests /745files** in94.48s; log
 `/tmp/aux-home-settings-check.log`. Native visual acceptance is pending. No runtime
-or native-source changes. The live preview below still predates this batch.
+or native-source changes. The retired preview below predates this batch.
 
-## Current live preview
+## Previous accepted preview (retired)
 
 Product **3c34b442b**, launcher **12644**, app **13842**, runtime **13856**,
 exec **93546**, disposable Profile **aux-dev-kxVOpm**, API port64825.
 Log `/tmp/aux-address-focus-native-build.log`; native build passed in **9m27.89s**.
 About verified clean source3c34b442b2ec578303a703db6a4bcc877e098f4f,
 Chromium154.0.8037.98 and ABI9021388e…. CUA binding **addressFocusApp**.
-Preserve launcher12644 cleanup ownership. The prior8670 preview is retired.
+This preview is retired. Its addressFocusApp CUA binding is stale.
 
 Native rapid-typing acceptance passed: from Bookmarks search, Cmd-L preserved
 full about:blank and focus-handoff-check; after Cmd-L, Cmd-T preserved full
