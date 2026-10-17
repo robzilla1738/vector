@@ -1,5 +1,14 @@
 # Aside UI parity — October 16, 2026
 
+October17 focus acceptance: native dd642e5a4 fixed embedded-page ownership;
+Cmd-T opened about:blank, Escape returned to the retained Bookmarks query/input,
+and hide/raise preserved page focus. Cmd-L exposed a separate delayed selection
+race (about:blank became bout:blank), also affecting a later Cmd-T mount. Renderer
+commit3c34b442b focuses/selects before typing and never reselects on native ack.
+Its regression and all4,621tests pass. Replacement launcher12644/exec93546 is
+building; rapid-typing acceptance remains pending. See current STATUS.
+
+
 October 17 keyboard handoff batch **dd642e5a4**: reproduced Cmd-T from a native
 Bookmarks search leaving keyboard events in the hidden page. SurfaceEmbed ignored
 embed-element blur; patch0052 returns ownership to the parent only while that child

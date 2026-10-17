@@ -7,14 +7,29 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current native preview and source follow-up
+## Current replacement build
+
+Product **3c34b442b**, launcher **12644**, exec **93546**, log
+`/tmp/aux-address-focus-native-build.log`. Wait on this same live builder. The
+previous launcher8670, app9769, runtime9785, Profileaux-dev-2nvFHq and lock retired
+normally and were verified removed before replacement. CUA focusHandoffApp is
+stale. No renderer/runtime edits until staging completes.
+
+Next: verify About, then check Cmd-L with immediate about:blank and
+focus-handoff-check from a native Bookmarks search input. Follow Cmd-L with Cmd-T
+and immediate typing too, since the prior focusRequest also affected the newly
+mounted command surface. Escape must dismiss without clicking and preserve the
+page query/focus. Source check passed4,621tests; native rapid-typing acceptance is
+pending. Continue the Memory document batch after this candidate is verified.
+
+## Prior native acceptance and source follow-up
 
 Native product **dd642e5a4**, launcher **8670**, app **9769**, runtime **9785**,
 exec **81841**, disposable Profile **aux-dev-2nvFHq**, API port64030.
 Log `/tmp/aux-focus-handoff-native-build.log`; build passed in **9m27.82s**.
 About verified clean source dd642e5a4ca223df20aee336317beedef6414000,
-Chromium154.0.8037.98 and ABI9021388e…. Preserve launcher8670 cleanup ownership.
-CUA binding **focusHandoffApp**. Native checkout:
+Chromium154.0.8037.98 and ABI9021388e…. This preview is retired.
+Its CUA binding **focusHandoffApp** is stale. Native checkout:
 `/Users/rcourson/Documents/Code/aux-chromium-product/chromium/src`, output
 `out/AuxFast/Aux.app`. The previous4140 preview and Profile were retired normally.
 
