@@ -35,20 +35,40 @@
   }
   .task-notice-choices {
     display: grid;
-    min-width: 260px;
+    min-width: 0;
     gap: 2px;
   }
   .task-notice-choices > button {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     border: 0;
     background: transparent;
     border-radius: var(--r-sm);
-    padding: 10px 12px;
+    padding: 6px 10px;
     text-align: left;
+    line-height: 1.35;
     color: var(--ink-1);
+  }
+  .anchored-panel:has(> .task-notice-types) {
+    width: 308px;
+  }
+  .task-notice-choices > button > span {
+    min-width: 0;
+  }
+  .task-notice-choices > button > svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .task-notice-choices > button:not(:has(> svg)) {
+    padding-right: 38px;
+  }
+  .task-sound-actions .btn > svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
   }
   .task-notice-choices > button:hover,
   .task-notice-choices > button:focus-visible {
@@ -58,6 +78,6 @@
     display: block;
     color: var(--ink-2);
     font-size: var(--fs-xs);
-    margin-top: 4px;
+    margin-top: 3px;
   }
 }

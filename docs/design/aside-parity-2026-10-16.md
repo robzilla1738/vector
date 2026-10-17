@@ -12,8 +12,10 @@ routine provenance supports classification without guessing from text; routine
 questions remain under Needs attention. Source and integrated tests pass; Vite confirms the three choices and independent
 routine toggling. Native acceptance remains OPEN. The visible Agents title/icon now matches the
 reference and search recognizes both Agents and Permissions. Existing route IDs
-remain stable. This follow-up is newer than the live native shell at `6f38844cc`. Menu alignment
-and wrapped subtitle spacing still need refinement.
+remain stable. This follow-up is newer than the live native shell at `6f38844cc`. The subsequent menu batch corrects trailing-edge alignment and wrapped subtitle
+spacing in Vite, with compact shared popup corners and a speaker Preview icon.
+Model selectors use the same trailing-edge alignment. STATUS records captures
+and the passing integrated check. Native and matched-viewport acceptance remain open.
 
 ## Agent behavior follow-up
 

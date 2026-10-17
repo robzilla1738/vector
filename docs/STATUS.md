@@ -1,5 +1,19 @@
 # Aux status — October 16, 2026
 
+October 16 settings-menu refinement: notification and task-model selectors now
+align menus to the control's trailing edge, retaining viewport clamping and
+above/below placement. Shared anchored menus use tighter corners. Notification
+rows have compact spacing, stable checkmark space and enough width for the routine
+subtitle; Preview includes the speaker icon. Vite walkthrough confirms alignment,
+unwrapped notification descriptions, Escape focus return, and model search.
+Captures: `/tmp/aux-parity-2026-10-16/aux-notification-menu-aligned-vite.png` and
+`/tmp/aux-parity-2026-10-16/aux-model-menu-aligned-vite.png`.
+`npm run check` passed typecheck/lint and all 4,613 tests across 741 files;
+renderer build passed in 2.25s. Native shell remains `6f38844cc`; these refinements
+await the next consolidated build. Full matched-viewport/light/narrow comparisons
+and remaining functional parity are still open. Reference inventory remains 562 files.
+
+
 October 16 routine-notification follow-up (reference 046): Needs attention,
 Task completions and Routine completions are independently selectable. Runtime
 routine execution, overnight routine execution and saved-step replay now stamp
@@ -17,7 +31,7 @@ tests across 741 files passed. Final producer/navigation/search checks passed al
 Vite visual acceptance confirms the Agents title/icon and all three notification
 choices; toggling Routine completions leaves the other two choices unchanged.
 Capture: `/tmp/aux-parity-2026-10-16/aux-agents-three-notification-types-vite.png`.
-The popup still needs alignment and subtitle-spacing refinement. Native acceptance
+The popup alignment and subtitle-spacing follow-up is recorded above. Native acceptance
 of this newer source, automatic background sound and live routine delivery remain
 open, alongside agent-tab cleanup and full surface/phase acceptance.
 

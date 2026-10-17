@@ -20,6 +20,7 @@ export function Popover({
   trigger,
   disabled,
   className = "",
+  align = "start",
   children,
   initialFocusRef,
   triggerControl,
@@ -29,6 +30,7 @@ export function Popover({
   trigger: ReactNode;
   disabled?: boolean;
   className?: string;
+  align?: "start" | "end";
   children(close: () => void): ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
   triggerControl?: (node: HTMLButtonElement | null, activate: () => void) => void;
@@ -55,7 +57,7 @@ export function Popover({
     const node = panel.current;
     const place = () => {
       const rect = button.current?.getBoundingClientRect();
-      if (rect) positionAnchoredPopover(node, rect);
+      if (rect) positionAnchoredPopover(node, rect, align);
       requestStageReport();
     };
     place();
@@ -69,7 +71,7 @@ export function Popover({
       window.removeEventListener("scroll", place, true);
       requestAnimationFrame(requestStageReport);
     };
-  }, [open]);
+  }, [open, align]);
   return (
     <>
       <button

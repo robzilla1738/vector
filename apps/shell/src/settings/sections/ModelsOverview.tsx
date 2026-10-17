@@ -433,6 +433,7 @@ function ModelChoice({
       <div className="settings-model-control">
         <Popover
           label={`${label} selection`}
+          align="end"
           className="settings-model-trigger"
           disabled={disabled}
           initialFocusRef={search}

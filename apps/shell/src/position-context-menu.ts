@@ -5,12 +5,17 @@ export function positionContextMenu(menu: HTMLElement, x: number, y: number) {
 }
 
 /** Keep a control's menu on one side of its anchor, with scrolling on that side. */
-export function positionAnchoredPopover(menu: HTMLElement, anchor: Pick<DOMRect, "left" | "top" | "bottom">) {
+export function positionAnchoredPopover(
+  menu: HTMLElement,
+  anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  align: "start" | "end" = "start",
+) {
   menu.style.maxHeight = "";
   const above = Math.max(0, anchor.top - 16);
   const below = Math.max(0, window.innerHeight - anchor.bottom - 16);
   const height = menu.offsetHeight;
   const upwards = height > below && above > below;
   menu.style.maxHeight = `${Math.min(420, upwards ? above : below)}px`;
-  positionContextMenu(menu, anchor.left, upwards ? anchor.top - 8 - menu.offsetHeight : anchor.bottom + 8);
+  const left = align === "end" ? anchor.right - menu.offsetWidth : anchor.left;
+  positionContextMenu(menu, left, upwards ? anchor.top - 8 - menu.offsetHeight : anchor.bottom + 8);
 }

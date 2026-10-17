@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Switch } from "../ui";
 import { SettingsField as Field } from "../settings/primitives";
 import { Popover } from "../ui/popover";
-import { ChevronDown, Check } from "../ui/icons";
+import { ChevronDown, Check, Volume2 } from "../ui/icons";
 import { playTaskSound, taskSounds, type TaskSound } from "./task-sound";
 import "./TaskAttentionSettings.css";
 import {
@@ -94,6 +94,7 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
         >
           <Popover
             label="Task notification types"
+            align="end"
             disabled={!active}
             trigger={
               <>
@@ -113,7 +114,7 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
             }
           >
             {() => (
-              <div className="task-notice-choices">
+              <div className="task-notice-choices task-notice-types">
                 {(
                   [
                     ["attention", "Needs attention", "Approvals, questions and handoffs"],
@@ -153,6 +154,7 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
                 disabled={!active || previewing}
                 onClick={() => void preview()}
               >
+                <Volume2 />
                 {previewing ? "Playing…" : "Preview"}
               </button>
               <Popover
