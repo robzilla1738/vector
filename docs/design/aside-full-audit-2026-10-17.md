@@ -13,11 +13,22 @@ checked source corrections. Search retains page paint but owns input, has no
 dimmer, and uses quiet single-line browser results by default. Full integrated
 check passed 4,672 tests; final-source native acceptance remains pending.
 
-Glass diagnostics 79–85 isolate sharp background text to transparent backing:
+Glass diagnostics 79–85 associate sharp background text with transparent backing:
 foreground blur works, and backdrop blur works with an opaque document backing.
 Changing popup isolation, corner shape, edge layers or modal backdrop did not
 resolve it. All temporary styles were removed. No global opaque fill was adopted;
 native transparent-material composition and retained-page search remain open.
+
+Native `ed45559fb` confirms retained-page browser search with visible backdrop
+blur (capture 87), and draft/context preservation during full-chat expansion
+(capture 88). About and runtime share the clean ed45559fb source identity.
+Live Aside rail-model capture 86 also has faint text through its menu, but a darker
+backing. Shipped `globals-Dh-l8GIz.css` (`bg-glass`, `border-glass`, `shadow-lg`)
+establishes 80% fill, 8px blur, 1px inner/0.5px outer rings and compact shadows.
+The next source slice follows this recipe and removes window-glass decorative
+layers from popups. Native area 0055 also refreshes the title on tab selection.
+Its packaged walkthrough is pending. Aside's original active New Tab was restored;
+no model selection or preference changed.
 
 The latest pasted references show the complete narrow rail and tab-search glass.
 Source corrections cover persistent rail composer height, context card, compact

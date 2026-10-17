@@ -1,5 +1,4 @@
 import "./TabPreview.css";
-import { GlassMaterial } from "./GlassMaterial";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PageTarget } from "@aux/contracts";
@@ -48,7 +47,6 @@ export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: num
   }, [page.pageId, page.url, page.showBlankDocument]);
   return createPortal(
     <div ref={card} className="menu tab-preview popup-material" role="tooltip" style={position}>
-      <GlassMaterial alpha noTopGlow />
       {(!isHomeAddress(page.url) || page.showBlankDocument === true) && (
         <div className="tab-preview-image">{image && <img src={image} alt="" />}</div>
       )}

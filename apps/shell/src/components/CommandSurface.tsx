@@ -1,4 +1,3 @@
-import { GlassMaterial } from "./GlassMaterial";
 import { orderedPages } from "../store/pages";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -350,7 +349,6 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         }
         ref={dialogRef}
       >
-        <GlassMaterial alpha noTopGlow />
         {picker && (
           <button
             {...smallGhostButtonProps}

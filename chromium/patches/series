@@ -52,3 +52,4 @@ aux/0051-native-library-feature-preferences.patch
 aux/0052-embedded-page-focus-handoff.patch
 aux/0053-native-history-dialog-return.patch
 aux/0054-quick-ask-draft-layout.patch
+aux/0055-active-tab-window-title.patch

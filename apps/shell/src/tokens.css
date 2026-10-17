@@ -202,7 +202,7 @@
     --blur-24: 24px;
     --blur-64: 64px;
     --blur-glass-floating: 4px;
-    --blur-popup: var(--blur-16);
+    --blur-popup: var(--blur-8);
     --composer-rail-min-height: 84px;
     --composer-context-width: 180px;
     --composer-context-height: 44px;
@@ -368,7 +368,12 @@
     --surface-sidebar: var(--sb-bg);
     --surface-popover: var(--bg-2);
     --surface-menu: #262626;
-    --popup-tint: rgb(38 38 38 / 60%);
+    --popup-tint: rgb(38 38 38 / 80%);
+    --popup-ring: rgb(0 0 0 / 80%);
+    --popup-inner-ring: rgb(255 255 255 / 10%);
+    --popup-shadow:
+      inset 0 0 0 1px var(--popup-inner-ring), 0 0 0 var(--hairline) var(--popup-ring),
+      0 10px 15px -3px var(--shadow-tint), 0 4px 6px -4px var(--shadow-tint);
     --surface-input: var(--surface-primary);
     --border: var(--line);
     --panel: var(--surface-panel);
@@ -428,7 +433,9 @@
     --bg-1: #f3f4f6;
     --bg-2: #fff;
     --surface-menu: #fff;
-    --popup-tint: rgb(255 255 255 / 70%);
+    --popup-tint: rgb(255 255 255 / 80%);
+    --popup-ring: rgb(0 0 0 / 19%);
+    --popup-inner-ring: rgb(255 255 255 / 80%);
     --bg-3: #f3f4f6;
     --bg-hover: rgb(0 0 0 / 10%);
     --bg-active: rgb(0 0 0 / 12.5%);

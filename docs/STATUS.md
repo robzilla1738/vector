@@ -7,32 +7,53 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Sidebar anatomy and shared popup glass — current source
+## Shared popup material and browser search
 
-Native `19dbb7105` built in 8m56.62s. About confirmed that renderer/native
-identity; runtime staging subsequently built `275690ec6`. This preview therefore
-has mixed source identities and must not stand in for final-source acceptance.
-The launcher stages runtime after native linking; keep source frozen through that
-step in the replacement build. Native observations confirmed the 400px and 280px
-rail footer, fresh UUID Project popup, model-search focus and Escape restoration,
-and consolidated More actions. Captures 68–78 are local audit artifacts.
+The live Aside rail-model popup (capture 86) and shipped `bg-glass`/`border-glass`
+styles establish an 80% menu backing, 8px blur, 1px inner ring, half-pixel outer
+ring and compact shadow. The source now uses this single recipe for menus,
+anchored pickers, search and tab previews. The added window-glass decorative
+layers were lightening popups a second time; they are removed from these surfaces.
+Light and dark material share semantic tokens and solid accessibility fallbacks.
+Native area 0055 refreshes the window title on active-tab changes, including
+already-loaded tabs that emit no new title event. Reverse-apply verification passes.
+The reasoning select now sizes to its selected text instead of its longest option;
+its chevron uses the same size and label gap as the other composer triggers.
+This fixes the owner's Auto/Automatic spacing report in both full chat and rail.
+The popup integration passed typecheck, lint and 4,672 tests / 749 files in
+102.40s (`/tmp/aux-popup-recipe-check.log`). The CSS spacing follow-up passed
+typecheck (`/tmp/aux-arrow-typecheck.log`); spacing and the native title update
+still need packaged acceptance.
 
-Browser search now retains the native page's paint while making the stage inert
-and retiring split drag/geometry authority. The sidebar search button opens the
-dedicated browser search rather than the command palette. Its default results
-omit repeated URL lines and the utility footer; keyboard-selected provider filters
-still expose their controls. Search has no extra dimmer. Integrated check passed
-typecheck, lint and 4,672 tests / 749 files in 110.28s
-(`/tmp/aux-search-material-check.log`). Native acceptance of this slice is pending.
+Native `ed45559fb` built in 8m26.90s. About and runtime both confirmed the same
+clean source identity. The sidebar search button opens dedicated browser search;
+the real website remains visible and visibly blurred behind it (capture 87).
+Search owns input and retires split dragging while retaining page paint. Default
+results omit repeated URL lines and the utility footer; keyboard-selected provider
+filters retain their controls. No extra search dimmer is painted. A synthetic rail
+draft and its current-page context both survived expansion into a full chat with
+one toolbar (capture 88); nothing was sent. The integrated search check passed
+4,672 tests / 749 files, typecheck and lint in 110.28s
+(`/tmp/aux-search-material-check.log`).
 
-Popup material still needs native acceptance. Temporary DevTools diagnostics
-confirmed blur(16px), also reproduced sharp background text on a plain backdrop
-surface, and demonstrated blur working when the document backing was opaque.
-Ordinary foreground blur works. The remaining issue concerns backdrop composition
-over the transparent window, not a missing CSS declaration. Diagnostics were
-removed; no opaque window backing or global tint change was adopted. Captures
-79–85 record this investigation. Search over retained opaque page content is the
-next observation; do not claim full liquid-glass parity from these source changes.
+That preview subsequently exited with SIGABRT; its log contained no fatal/check
+diagnostic and no corresponding macOS crash report was found. The launcher
+removed its disposable Profile and lock; the app and API listener are gone.
+The replacement walkthrough must include repeated tab switching and dismissal.
+
+The preceding `19dbb7105` preview had native/renderer 19dbb7105 and runtime
+275690ec6 because runtime staging follows native linking. It retired normally;
+its app, listener, disposable Profile and lock were verified gone. The replacement
+kept source frozen until runtime staging finished. Its earlier captures 68–78
+confirmed the 400px/280px rail, fresh UUID Project menu and popup focus restoration.
+
+Temporary diagnostics 79–85 showed sharp text through popup material over a
+transparent document, while ordinary blur and backdrop blur over opaque content
+worked. Live Aside also exhibits faint text through its rail popup; Aux's lighter
+backing and extra decorative fill amplified it. The opaque-backing experiment
+was not adopted, and all temporary styles were removed. Native search capture 87
+confirms that retaining page content supplies its real blurred backdrop. Full
+liquid-glass parity still requires the corrected material walkthrough.
 
 The live Aside search popup measures 620×340 logical pixels (local capture 67).
 The follow-up uses that width, applies the source context-card fill/blur/ring,
@@ -61,15 +82,16 @@ Unsaved UUID drafts use the active Space's reviewed projects only after their
 metadata/context loads; saved and unavailable chats do not borrow that scope.
 Failed/blank website documents are excluded from renderer context selection.
 
-Menus, anchored pickers and command search now share `popup-material`, themed tint,
-blur and the existing alpha glass edge layers. Replaced opaque overrides and the
-second popup pseudo-layer recipe were removed. Reduced transparency and forced
-colors retain solid surfaces. Full settings editors keep their separate material.
+The earlier batch introduced shared `popup-material` and removed opaque overrides
+and the second popup pseudo-layer recipe. The follow-up above also removes its
+window-glass decorative layers in favor of the reference menu rings. Reduced
+transparency and forced colors retain solid surfaces. Full settings editors keep
+their separate material.
 47 focused tests passed. Integrated `npm run check` passed typecheck/lint and
 4,667 tests; one old stylesheet assertion still required the replaced 80% fill.
 That assertion now checks the shared popup material and all 26 tests in its file
-pass on targeted retry (4,668 tests total). Native acceptance is pending.
-The reference folder still contains 182 PNGs; the two new owner images are also
+pass on targeted retry (4,668 tests total). This earlier implementation has the native observations above; the refined
+material still awaits its package. The reference folder still contains 182 PNGs; the two new owner images are also
 comparison references. Full parity remains incomplete.
 
 Packaged `c5d9bfc67` passed Developers field focus, compact/long Quick Ask sizing,

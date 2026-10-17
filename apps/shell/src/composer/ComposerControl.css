@@ -1,11 +1,13 @@
 @layer components {
   .composer-control {
     --composer-control-height: 28px;
+    --composer-control-gap: var(--space-1-5);
+    --composer-chevron-size: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
     flex: none;
-    gap: var(--space-1-5);
+    gap: var(--composer-control-gap);
     min-width: 0;
     max-width: 100%;
     height: var(--composer-control-height);
@@ -40,13 +42,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 12px;
-    width: 12px;
-    height: 12px;
+    flex: 0 0 var(--composer-chevron-size);
+    width: var(--composer-chevron-size);
+    height: var(--composer-chevron-size);
     color: inherit;
   }
   .composer-chevron svg {
-    width: 12px;
-    height: 12px;
+    width: var(--composer-chevron-size);
+    height: var(--composer-chevron-size);
   }
 }

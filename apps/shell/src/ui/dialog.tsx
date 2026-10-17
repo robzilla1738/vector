@@ -10,7 +10,6 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { GlassMaterial } from "../components/GlassMaterial";
 import { moveMenuFocus } from "../keyboard-list";
 import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
@@ -102,7 +101,6 @@ export function Dialog({
           onClose();
       }}
     >
-      {placement === "anchored" && <GlassMaterial alpha noTopGlow />}
       {children}
     </dialog>,
     document.body,
@@ -246,7 +244,6 @@ export function Menu({
           onClose();
       }}
     >
-      <GlassMaterial alpha noTopGlow />
       {children}
     </dialog>,
     document.body,

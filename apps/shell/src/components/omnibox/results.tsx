@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { GlassMaterial } from "../GlassMaterial";
 import { PreferenceAction } from "../../settings/sections/preference-command";
 import { nativeAlertRoleProps, nativeButtonTypeProps } from "../../ui/native-attribute-props";
 import { shellIconOpen, shellIconSend } from "../../ui/icons";
@@ -86,7 +85,6 @@ export function OmniboxResults(p: Props) {
       }}
       onMouseDown={(event) => event.preventDefault()}
     >
-      {!p.tabSearch && <GlassMaterial alpha noTopGlow />}
       {p.status}
 
       {p.searchSuggestions && (

@@ -413,37 +413,31 @@
   }
 }
 
-/* One floating material for native menus, anchored pickers and browser search.
- * Its translucent backing is independent of the owner's sidebar tint choice. */
+/* Aside's bg-glass/border-glass menu recipe. Floating surfaces have one backing
+ * and ring pair; window-glass decorative fills would lighten them a second time. */
 @layer overrides {
-  :root .popup-material:has(> .glass-material) {
+  :root .popup-material {
     background: var(--popup-tint);
     backdrop-filter: blur(var(--blur-popup));
     -webkit-backdrop-filter: blur(var(--blur-popup));
-    border: var(--hairline) solid transparent;
-    box-shadow: var(--shadow-pop);
+    border: 0;
+    box-shadow: var(--popup-shadow);
     isolation: isolate;
   }
-  .popup-material > .glass-material {
-    background: transparent;
-  }
-  .popup-material > .glass-material .glass-state-layer {
-    display: none;
-  }
   @supports not (backdrop-filter: blur(4px)) {
-    :root .popup-material:has(> .glass-material) {
+    :root .popup-material {
       background: var(--surface-menu);
     }
   }
   @media (prefers-reduced-transparency: reduce) {
-    :root .popup-material:has(> .glass-material) {
+    :root .popup-material {
       background: var(--surface-menu);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
   }
   @media (forced-colors: active) {
-    :root .popup-material:has(> .glass-material) {
+    :root .popup-material {
       background: Canvas;
       color: CanvasText;
       border: 1px solid CanvasText;
