@@ -1,5 +1,22 @@
 # Aux status — October 16, 2026
 
+Quick Ask presentation pass (reference 103): the page now starts with a
+split introduction card, compact composer illustration and the existing Open
+Quick Ask action. The enable/shortcut rows form a separate rounded group; when
+the shortcut is disabled its remaining row retains rounded corners. The hero
+stacks below 440px content width. The illustration is decorative and uses Aux
+surface/accent tokens; it does not add nonfunctional controls or claim to be a
+live popup capture. Existing native shortcut registration and recorder behavior
+are unchanged. Settings search retains the Quick Ask window destination.
+
+Integrated typecheck/lint and 4,617 tests across 741 files passed. Final renderer
+build passed in 2.45s after CSS refinement. Logs:
+`/tmp/aux-quick-ask-card-check.log`, `/tmp/aux-quick-ask-card-final-build.log`.
+Visual acceptance is pending: the single native build still runs under launcher
+88765/session 10789, currently generating debug symbols. It compiles `c7b770bfe`,
+so Memory document rendering and this card require Vite inspection after launch
+and later native consolidation. Full parity remains open.
+
 Memory reference review (072, 074, 075): approved summaries, revision
 summaries and selected saved notes now share formatted document rendering instead
 of raw preformatted/plain text. The existing answer Markdown renderer provides

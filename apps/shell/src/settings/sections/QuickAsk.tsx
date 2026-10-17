@@ -11,6 +11,8 @@ import { Switch } from "../../ui";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
+import { Plus, ArrowUp } from "../../ui/icons";
+import "./QuickAsk.css";
 
 type Status = { enabled: boolean; registered: boolean; error: string };
 export function QuickAskSettings({
@@ -75,11 +77,26 @@ export function QuickAskSettings({
     [publish, retry],
   );
   return (
-    <SettingsSection name="Quick Ask" hidden={!active}>
+    <SettingsSection name="Quick Ask" hidden={!active} className="quick-ask-settings">
       <SettingsField
         compact
-        label="Quick Ask window"
+        label="Chat with Aux anytime"
+        target="Quick Ask window"
         hint="Open a compact chat, then expand it into a full browser window without losing the draft."
+        details={
+          <div className="quick-ask-preview" aria-hidden="true">
+            <div className="quick-ask-preview-composer">
+              <span>Ask Aux</span>
+              <div>
+                <Plus />
+                <span>Quick Ask</span>
+                <i>
+                  <ArrowUp />
+                </i>
+              </div>
+            </div>
+          </div>
+        }
       >
         <button
           {...smallButtonProps}

@@ -574,7 +574,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Quick Ask",
-    label: "Quick Ask window",
+    label: "Chat with Aux anytime",
     description:
       "Open a compact chat, then expand it into a full browser window without losing the draft.",
     target: "Quick Ask window",
