@@ -1,5 +1,14 @@
 # Aux status — October 16, 2026
 
+Current replacement build: product **2408e4727**, launcher **4140**, exec **37073**,
+log `/tmp/aux-memory-activity-native-build.log`. The prior launcher95514/app96859
+retired normally; aux-dev-cVMdy3, runtime96875 and the native lock were verified
+removed before replacement. Wait on this same live builder, verify About, then
+create a synthetic completed chat and inspect Memory Activity/recovery separation
+in the packaged native app. Do not bind the retired layoutPreviewApp CUA object.
+No new renderer/runtime source edits until staging completes.
+
+
 Source batch: Memory History now opens a dated extraction-activity list and detail
 pane, with Recovery revisions retained as a separate view. Records contain actual
 local extraction duration, manual/completed-chat trigger and candidate identities;
@@ -25,7 +34,7 @@ were removed and its tab closed. Native Memory activity acceptance is pending;
 the live preview below still contains the previous runtime and renderer.
 
 
-Live layout preview built successfully in **9m10.20s**. Launcher **95514**,
+Previously accepted layout preview built successfully in **9m10.20s**. Launcher **95514**,
 app **96859**, runtime **96875**, exec **35247**, disposable Profile
 **aux-dev-cVMdy3**, runtime API `http://127.0.0.1:58795`.
 Log `/tmp/aux-layout-defaults-build.log`. Preserve this launcher's cleanup ownership.

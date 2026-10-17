@@ -1,5 +1,17 @@
 # Aside UI parity — October 16, 2026
 
+October 17 Memory activity source batch **2408e4727**: encrypted extraction
+records now accompany candidate notes, including no-change outcomes, measured
+local processing duration and trigger. History separates Activity from Recovery
+revisions. Recovery and Forget include activity; no model usage is fabricated.
+Integrated check passed4619/4620; corrected one removed-activity expectation and
+all56 affected tests passed. Wide dark and narrow light synthetic rendering and
+selection were checked, with stronger light active-row contrast. Native acceptance
+awaits launcher4140/exec37073; ownership and evidence paths are in STATUS.
+This does not complete document-tree, model-extraction, failure/diff, retention or
+index-rebuild parity.
+
+
 October 17 layout native acceptance: observed About identity f95a500ce+dirty
 (the generated search copy was committed afterward in 196c543fd). Fresh sidebar
 and toolbar are visible, toolbar actions align right, and Labs auto-hide opt-out
