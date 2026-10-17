@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentPolicyCategorySchema, AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
 import { FileAccessModeSchema, FileAccessSettingsSchema } from "@aux/contracts/api";
 import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } from "@aux/contracts";
+import { SettingsGroup } from "../../ui";
 import { SettingsField, SettingsSection } from "../primitives";
 import { Popover } from "../../ui/popover";
 import { Plus } from "../../ui/icons";
@@ -217,13 +218,15 @@ export function PermissionsSettings({
         </SettingsField>
         {error && <p role="alert">{error}</p>}
       </div>
-      <h3>File permissions</h3>
-      <SettingsField compact label="Local folders" hint="Review the folders shared with Aux in each Space.">
-        <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
-          Manage folders
-        </button>
-      </SettingsField>
+      <SettingsGroup title="File permissions">
+        <SettingsField compact label="Local folders" hint="Review the folders shared with Aux in each Space.">
+          <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
+            Manage folders
+          </button>
+        </SettingsField>
+      </SettingsGroup>
       <SettingsField
+        surface="plain"
         label="Tool permissions"
         target="Action categories"
         hint="Site rules take precedence over category rules. Account security and CAPTCHA always need you to take over."

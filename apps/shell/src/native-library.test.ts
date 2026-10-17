@@ -27,7 +27,7 @@ it("opens real browser pages without an agent runtime request", async () => {
   expect(newTab.mock.calls.map(([url]) => url)).toEqual([
     "chrome://bookmarks/",
     "chrome://history/",
-    "chrome://settings/clearBrowserData",
+    "chrome://settings/clearBrowserData?auxReturn=history",
   ]);
   expect(invoke).not.toHaveBeenCalled();
   expect(useStore.getState().overlay).toBeNull();

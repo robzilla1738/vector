@@ -4,7 +4,7 @@ import { useStore } from "./store";
 const routes = {
   bookmarks: "chrome://bookmarks/",
   history: "chrome://history/",
-  clear: "chrome://settings/clearBrowserData",
+  clear: "chrome://settings/clearBrowserData?auxReturn=history",
 } as const;
 
 /** Browser-owned pages stay usable independently of the agent runtime. */

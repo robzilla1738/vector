@@ -219,7 +219,7 @@ export function Settings() {
           {
             Models: "Models",
             Services: "Connected services",
-            Agents: "Developers & External Agents",
+            Agents: "Developers",
             Vault: "Vault",
             Plugins: "Skills & MCP",
           } as const

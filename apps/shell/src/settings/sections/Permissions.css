@@ -58,41 +58,22 @@
 }
 
 @layer overrides {
-  .settings-content .permissions-settings > h3 {
-    color: var(--ink-2);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-regular);
-    margin: var(--space-7) 0 var(--space-2-5);
-  }
-  .settings-content .permissions-settings > h3:first-child {
-    margin-top: 0;
-  }
-  .settings-content .permissions-settings [data-setting="Action categories"] {
-    margin-top: 28px;
-    padding: 0;
-    background: transparent;
-  }
-  .settings-content .permissions-settings [data-setting="Action categories"] > .setting-label {
-    color: var(--ink-2);
-    font-size: var(--fs-sm);
-    padding-inline: 12px;
-  }
   .permission-policy-groups {
     border-radius: var(--r-lg);
     background: var(--surface-secondary);
     overflow: hidden;
   }
   .permission-policy-group {
-    padding: 12px 16px;
+    padding: var(--space-3) var(--space-4);
   }
   .permission-policy-group + .permission-policy-group {
-    border-top: 1px solid var(--line);
+    border-top: var(--hairline) solid var(--line);
   }
   .permission-policy-group header {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .permission-policy-group strong {
     font-weight: var(--fw-medium);
@@ -103,32 +84,32 @@
     color: var(--ink-2);
   }
   .permission-policy-group > p {
-    margin: 6px 0 0 52px;
+    margin: var(--space-1-5) 0 0 52px;
     color: var(--ink-3);
   }
   .permission-add-rule {
     display: inline-flex;
-    gap: 6px;
+    gap: var(--space-1-5);
     align-items: center;
-    padding: 4px 6px;
+    padding: var(--space-1) var(--space-1-5);
     color: var(--ink-1);
   }
   .permission-add-rule svg {
-    width: 14px;
-    height: 14px;
+    width: var(--space-3-5);
+    height: var(--space-3-5);
     flex: none;
   }
   .permission-policy-group ul {
     padding: 0 0 0 52px;
-    margin: 6px 0 0;
+    margin: var(--space-1-5) 0 0;
     list-style: none;
   }
   .permission-policy-group li {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding-block: 4px;
+    gap: var(--space-2);
+    padding-block: var(--space-1);
   }
   .permission-policy-group li > span {
     min-width: 0;
@@ -138,38 +119,38 @@
     color: var(--ink-2);
   }
   .permission-defaults {
-    margin-top: 12px;
+    margin-top: var(--space-3);
   }
   .permission-defaults summary {
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     color: var(--ink-2);
     cursor: pointer;
   }
   .permission-defaults .permission-categories {
-    margin-top: 8px;
+    margin-top: var(--space-2);
     background: var(--surface-secondary);
     border-radius: var(--r-lg);
   }
   .permission-defaults .permission-categories :is(th, td) {
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
   }
   .permission-rule-popover {
     width: 320px;
     max-width: calc(100vw - 44px);
-    padding: 8px;
+    padding: var(--space-2);
   }
   .anchored-panel:has(> .permission-rule-popover) {
     width: auto;
   }
   .permission-rule-popover > p,
   .permission-site-form > p {
-    margin: 4px 0 12px;
+    margin: var(--space-1) 0 var(--space-3);
     color: var(--ink-2);
     font-size: var(--fs-sm);
   }
   .permission-rule-popover > div {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: center;
   }
   .permission-rule-popover select {
@@ -178,22 +159,22 @@
   }
   .permission-site-form {
     margin: 0;
-    padding: 8px;
+    padding: var(--space-2);
   }
   .permission-site-form input {
     min-width: 0;
     width: 100%;
-    border: 1px solid var(--line);
+    border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
     background: var(--surface-input);
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-2-5);
   }
   .permission-site-rule {
-    padding-block: 8px;
-    border-bottom: 1px solid var(--line);
+    padding-block: var(--space-2);
+    border-bottom: var(--hairline) solid var(--line);
   }
   .permission-site-rules + .hint {
-    margin-block: 4px 10px;
+    margin-block: var(--space-1) var(--space-2-5);
   }
   @media (max-width: 760px) {
     .permission-policy-group header {
@@ -219,18 +200,11 @@
   .settings-content .permissions-settings .field.ui-setting {
     margin-inline: 0;
   }
-  .settings-content .permissions-settings [data-setting="Local folders"] {
-    border-radius: 0 0 var(--r-lg) var(--r-lg);
-    margin-bottom: 28px;
-  }
-  .settings-content .permissions-settings [data-setting="Action categories"] {
-    margin-top: 28px;
-  }
   .settings-content .permissions-settings .field.ui-setting.compact > .ui-setting-control {
     max-width: none;
   }
   .permission-file-details {
-    margin-top: 8px;
+    margin-top: var(--space-2);
     color: var(--ink-2);
     font-size: var(--fs-sm);
   }
@@ -238,7 +212,7 @@
     cursor: pointer;
   }
   .permission-file-details p {
-    margin-top: 8px;
+    margin-top: var(--space-2);
     line-height: 1.5;
   }
 }
@@ -251,7 +225,7 @@
       [data-setting="Connected tools"],
       [data-setting="Activity log"]
     ) {
-    margin-block: 20px 0;
+    margin-block: var(--space-5) 0;
     border-radius: var(--r-lg);
   }
 }

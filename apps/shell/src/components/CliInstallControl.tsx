@@ -58,15 +58,22 @@ export function CliInstallControl() {
   }
   return (
     <SettingsField
+      compact
       label="Aux command line"
       description="Install the bundled aux launcher in ~/.local/bin. Existing commands owned by you stay unchanged."
       searchTerms={["Developers", "CLI", "terminal", "aux open"]}
+      details={
+        message || error ? (
+          <>
+            {message && <p role="status">{message}</p>}
+            {error && <p role="alert">{error}</p>}
+          </>
+        ) : undefined
+      }
     >
       <button className="btn sm" disabled={busy} onClick={() => void install()}>
         Install aux CLI
       </button>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
     </SettingsField>
   );
 }

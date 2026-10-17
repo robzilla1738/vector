@@ -32,6 +32,7 @@ export function SettingsField({
   searchTerms = [],
   target,
   compact = false,
+  surface = "card",
   icon,
   details,
   children,
@@ -42,6 +43,7 @@ export function SettingsField({
   searchTerms?: readonly string[];
   target?: string;
   compact?: boolean;
+  surface?: "card" | "plain";
   icon?: ReactNode;
   details?: ReactNode;
   children: ReactNode;
@@ -50,7 +52,7 @@ export function SettingsField({
   const supportingText = hint ?? description;
   return (
     <div
-      className={`field ui-setting${compact ? " compact" : ""}`}
+      className={`field ui-setting${compact ? " compact" : ""}${surface === "plain" ? " ui-setting-plain" : ""}`}
       data-setting={target ?? label}
       data-settings-field={label}
       data-settings-description={description ?? (typeof hint === "string" ? hint : "")}

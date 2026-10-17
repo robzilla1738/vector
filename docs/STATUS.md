@@ -7,7 +7,23 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## General, Agents and Memory layout consolidation — source
+## Developers, Passwords and shared surfaces — source
+
+Developers now uses shared CLI, Remote control and Skills & MCP groups. Passwords
+uses Password managers and Autofill groups, with a working navigation row to Aux
+Vault. Both were reviewed in the local renderer; the Vault row reaches the existing
+Vault settings. Controls retain their existing authorization and lifecycle behavior.
+Permissions uses a shared plain SettingsField surface rather than page-specific
+card overrides; spacing reuses existing tokens.
+
+Integrated check passed 4,646 tests / 746 files, typecheck and lint
+(`/tmp/aux-developer-password-layout-check.log`). Follow-up typecheck and all nine
+Permissions tests passed; all five native-library route tests passed. Native area
+0053 returns the History clear-data dialog to History on dismissal; native build
+and cancellation acceptance are pending.
+
+## General, Agents and Memory layout consolidation — packaged c9d878e2
+
 
 General now groups search/new-tab preferences, picture in picture, and language/
 spellcheck rows; import editors use navigation chevrons. Agents uses the shared
@@ -20,9 +36,11 @@ Both Agents cards now reuse `settings-card`; removed their duplicate surface rul
 Dropdowns reuse control-height and spacing tokens plus one semantic fill token.
 Design ownership is documented in ARCHITECTURE for future changes.
 
-General and Agents were visually reviewed in the local mock renderer inside the
-disposable native app at full viewport. This is source evidence, not packaged
-acceptance. Integrated check passed 4,646 tests / 746 files, typecheck and lint
+General, Agents and Memory were reviewed in packaged c9d878e2 at full viewport.
+Memory rebuild reported the actual empty index status. Saving 30-day retention
+in the disposable empty Profile persisted after refresh. Populated expiry remains
+unverified natively. Agents exposed a CSS ordering issue addressed by the shared
+plain surface follow-up above. Integrated check passed 4,646 tests / 746 files, typecheck and lint
 (`/tmp/aux-agents-controls-check.log`); subsequent layout edits passed typecheck
 and affected General/search, Permissions/attention and dialog checks. Final token
 consolidation passed typecheck (`/tmp/aux-settings-token-check.log`).
@@ -68,13 +86,14 @@ No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-Product **d6e6c016a**, launcher **53737**, app **57774**, runtime **57793**,
-exec **64339**, API port **57712**, disposable Profile **aux-dev-m7OkWl**.
-Log `/tmp/aux-shared-settings-native-build.log`; native build passed in **9m52.23s**
-and runtime staged/booted. CUA **sharedSettingsApp** is live. Preserve launcher
-cleanup ownership. Prior45942/app47141/runtime47159, Profileaux-dev-htWP4i and lock
-retired normally and were verified removed. memoryDocsApp is stale. About confirms
-clean sourced6e6c016afbb1e63bda89e71529fd13ddcd31839, Chromium154.0.8037.98 andABI9021388e….
+Product **c9d878e2**, launcher **58946**, app **62706**, exec **66192**,
+API port **58719**, disposable Profile **aux-dev-pz0B4o**.
+Log `/tmp/aux-settings-layout-native-build.log`; native build passed in **8m52.44s**.
+CUA `layoutSettingsApp` is live. Preserve launcher cleanup ownership. Prior launcher
+53737, its app/runtime, Profile and lock retired normally and were verified removed.
+About confirmed clean source c9d878e2c8e33808968c27e6e893a0bedd9633bc.
+
+The following populated Memory evidence is from earlier disposable previews:
 
 Native acceptance: created synthetic root MEMORY.md through Edit/Save and observed
 Markdown plus actual update time. Imported two fictional paper-garden/workshop
@@ -369,10 +388,11 @@ Reference corpus:182PNG,192TXT and6support files, excluding thumbnails, under
 `/Users/rcourson/Desktop/Aside UI Reference 2026-10-16`. Rescan between batches as
 the owner adds captures. Reopened073overview and075configuration on October17.
 
-The next Memory acceptance must verify the new document browser in the packaged
-app. Broader root/site/routine authority and episodic retention remain incomplete;
-approved-note editing, recall, recovery/Forget and index rebuild have source
-coverage, with the older index already observed natively. See
+Packaged daily-document editing has native evidence; the latest configuration
+layout and retention save/expiry still need native acceptance. Broader root/site/
+routine authority remains incomplete. Approved-note editing, recall, recovery/
+Forget and index rebuild have source coverage and native observations described
+above. See
 [Memory implementation boundary](design/memory-parity-implementation.md).
 Model extraction/usage, errors, file diffs and Dream now also remain open.
 

@@ -345,6 +345,18 @@
   [data-theme="dark"] .settings-content :is(.ui-settings-group > div, .settings-card) {
     border-color: transparent;
   }
+  /* Plain rows own their headings and controls without nesting another card. */
+  .settings-content .field.ui-setting.ui-setting-plain {
+    margin-block: var(--space-7) 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .settings-content .field.ui-setting.ui-setting-plain > :is(.setting-label, .hint) {
+    padding-inline: var(--space-3-5);
+    color: var(--ink-2);
+  }
   @container settings-page (width < 720px) {
     .settings-nav {
       position: absolute;

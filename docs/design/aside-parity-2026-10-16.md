@@ -1,5 +1,14 @@
 # Aside UI parity — October 16, 2026
 
+October17 packaged **c9d878e2**: General grouping, Agents shared selects and
+Memory index status reviewed. Empty-Profile 30-day retention save persisted after
+refresh; populated expiry remains open. Follow-up source batch groups Developers
+and Passwords/Autofill, verifies Aux Vault navigation, and adds a shared plain row
+surface to correct packaged CSS ordering. Integrated 4,646 tests/746 files passed.
+Native patch0053 returns History clear-data dismissal to History; build and native
+cancellation verification pending. Older preview handles below are historical.
+
+
 October17 Settings consolidation: General grouping/import chevrons, shared native
 selects for Agent mode and File access, notification delivery disclosure, and inset
 Memory index status. Removed duplicated Agents card styles in favor of shared

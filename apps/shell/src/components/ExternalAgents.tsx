@@ -1,3 +1,5 @@
+import { SettingsGroup } from "../ui";
+import "./ExternalAgents.css";
 import { CliInstallControl } from "./CliInstallControl";
 import { RemoteDebugging } from "./RemoteDebugging";
 import { staticFieldProps } from "../ui/class-props";
@@ -160,255 +162,267 @@ export function ExternalAgents() {
   };
 
   return (
-    <section className="field external-agents" aria-label="External agents">
-      <div {...auxClassDrawerSectionProps}>Developers</div>
-      <RemoteDebugging />
-      <CliInstallControl />
-      <div {...auxClassDrawerSectionProps}>External agents</div>
-      <p>
-        Connect compatible MCP clients to one saved task or Space through MCP. The client uses its own
-        account and model.
-      </p>
-      <div role="group" {...staticRowProps} aria-label="Detected agent clients">
-        {installations.map((item) => (
-          <span className="hint" key={item.client}>
-            <strong>
-              {item.client === "codex" ? "TOML client" : item.client === "claude" ? "JSON client" : "Editor client"}
-            </strong>{" "}
-            ·{" "}
-            {item.installed
-              ? (item.version ?? (item.error ? "version unavailable" : "installed"))
-              : "not installed"}
-          </span>
-        ))}
-      </div>
-      <span {...staticHintProps}>
-        The connection uses your current Aux agent mode within the selected task or Space and its granted file
-        roots. Stop and Take over are available in Tasks. Connecting saves its private MCP configuration and
-        an Aux skill in your user folder. Use the client’s approval controls for its other tools.
-      </span>
-      <details {...staticFieldProps}>
-        <summary>Tools this token can call</summary>
-        <p {...staticHintProps}>
-          {scopeKind === "task"
-            ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation."
-            : "Workspace-scoped connections can create tasks inside the selected workspace."}{" "}
-          Vault, routines, backups and human review stay in Aux.
-        </p>
-        <label>
-          Filter tools
-          <input
-            aria-label="Filter scoped MCP tools"
-            value={catalogQuery}
-            onChange={(event) => setCatalogQuery(event.target.value)}
-            placeholder="Name or description"
-          />
-        </label>
-        <div className="seg" role="group" aria-label="Tool group">
-          {(["all", "browser", "task", "workspace"] as const).map((value) => (
-            <button
-              key={value}
-              className={catalogGroup === value ? "on" : ""}
-              aria-pressed={catalogGroup === value}
-              onClick={() => setCatalogGroup(value)}
-            >
-              {value === "all" ? "All" : value[0]!.toUpperCase() + value.slice(1)}
-            </button>
-          ))}
-        </div>
-        {catalogGroups.map((group) => (
-          <div className="field" key={group.group}>
-            <div {...auxClassDrawerSectionProps}>{group.label}</div>
-            {group.tools.map((tool) => (
-              <div className="hint" key={tool.name}>
-                <strong>{tool.name}</strong> · {tool.description}
-              </div>
+    <section className="external-agents" aria-label="External agents">
+      <SettingsGroup>
+        <CliInstallControl />
+      </SettingsGroup>
+      <SettingsGroup title="Remote control">
+        <RemoteDebugging />
+      </SettingsGroup>
+      <SettingsGroup title="Skills & MCP">
+        <div className="developer-connection-editor">
+          <p>
+            Connect compatible MCP clients to one saved task or Space through MCP. The client uses its own
+            account and model.
+          </p>
+          <div role="group" {...staticRowProps} aria-label="Detected agent clients">
+            {installations.map((item) => (
+              <span className="hint" key={item.client}>
+                <strong>
+                  {item.client === "codex"
+                    ? "TOML client"
+                    : item.client === "claude"
+                      ? "JSON client"
+                      : "Editor client"}
+                </strong>{" "}
+                ·{" "}
+                {item.installed
+                  ? (item.version ?? (item.error ? "version unavailable" : "installed"))
+                  : "not installed"}
+              </span>
             ))}
           </div>
-        ))}
-        {!catalogGroups.length && <p {...staticHintProps}>No scoped tools match this filter.</p>}
-      </details>
-      <div className="seg" role="group" aria-label="Agent client">
-        {(["codex", "claude", "cursor"] as const).map((value) => (
-          <button
-            key={value}
-            className={client === value ? "on" : ""}
-            aria-pressed={client === value}
-            onClick={() => setClient(value)}
-          >
-            {value === "codex" ? "TOML client" : value === "claude" ? "JSON client" : "Editor client"}
-          </button>
-        ))}
-      </div>
-      {!workspaces.length ? (
-        <output data-block>Create a saved task and workspace before connecting an external agent.</output>
-      ) : (
-        <>
-          <label>
-            Connection name
-            <input
-              aria-label="Connection name"
-              value={name}
-              maxLength={100}
-              onChange={(event) => {
-                setName(event.target.value);
-                setConfig(null);
-              }}
-            />
-          </label>
-          <label>
-            Workspace
-            <select
-              aria-label="Connection workspace"
-              value={workspaceId}
-              onChange={(event) => {
-                setWorkspaceId(event.target.value);
-                setConfig(null);
-              }}
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Scope
-            <select
-              aria-label="Connection scope"
-              value={scopeKind}
-              onChange={(event) => {
-                setScopeKind(event.target.value as "workspace" | "task");
-                setConfig(null);
-              }}
-            >
-              <option value="task">One task</option>
-              <option value="workspace">All tasks in workspace</option>
-            </select>
-          </label>
-          {scopeKind === "task" && (
-            <label>
-              Task
-              <select
-                aria-label="Connection task"
-                value={taskId}
-                onChange={(event) => {
-                  setTaskId(event.target.value);
-                  setConfig(null);
-                }}
-              >
-                {availableTasks.map((task) => (
-                  <option key={task.taskId} value={task.taskId}>
-                    {task.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <button
-            {...auxClassButtonProps}
-            disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
-            onClick={() => void connect()}
-          >
-            Connect Aux to {client === "codex" ? "TOML client" : client === "claude" ? "JSON client" : "Editor client"}
-          </button>
-          <button
-            {...smallButtonProps}
-            disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
-            onClick={() => void create()}
-          >
-            Copy configuration manually
-          </button>
-        </>
-      )}
-      {error && <p {...nativeAlertRoleProps}>{error}</p>}
-      {config && (
-        <>
           <span {...staticHintProps}>
-            {client === "codex"
-              ? "Merge this server entry into the client config.toml."
-              : client === "claude"
-                ? "Merge this server entry into your project .mcp.json or another supported JSON client scope."
-                : "Merge this server entry into ~/.cursor/mcp.json."}{" "}
-            Keep existing entries. This token is shown once; create a replacement if it is lost.
+            The connection uses your current Aux agent mode within the selected task or Space and its granted
+            file roots. Stop and Take over are available in Tasks. Connecting saves its private MCP
+            configuration and an Aux skill in your user folder. Use the client’s approval controls for its
+            other tools.
           </span>
-          <textarea
-            aria-label="Agent configuration"
-            readOnly
-            rows={12}
-            value={snippet}
-            spellCheck={false}
-            className="mono"
-          />
-          <div {...staticRowProps}>
-            <button
-              {...smallButtonProps}
-              onClick={() =>
-                void navigator.clipboard
-                  .writeText(snippet)
-                  .then(() => setMessage("Configuration copied."))
-                  .catch(() => setError("Copy failed. Select and copy the configuration text."))
-              }
-            >
-              Copy configuration
-            </button>
-            <button
-              {...smallButtonProps}
-              onClick={() =>
-                void bridge.openExternal(
-                  client === "codex"
-                    ? "https://developers.openai.com/codex/mcp"
-                    : client === "claude"
-                      ? "https://code.claude.com/docs/en/mcp"
-                      : "https://cursor.com/docs/context/mcp",
-                )
-              }
-            >
-              Client setup guide
-            </button>
-          </div>
-        </>
-      )}
-      {!!connections.length && (
-        <div className="external-agent-connections">
-          <div {...auxClassDrawerSectionProps}>Connections</div>
-          {connections.map((connection) => (
-            <div className="external-agent-row" key={connection.connectionId}>
-              <div className="external-agent-copy">
-                <strong>{connection.name}</strong>
-                <span {...staticHintProps}>
-                  {connection.client === "codex"
-                    ? "TOML client"
-                    : connection.client === "claude"
-                      ? "JSON client"
-                      : "Editor client"}{" "}
-                  · {connectionTarget(connection)}
-                  {connection.lastUsedAt
-                    ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}`
-                    : " · not used yet"}
-                  {connection.revokedAt ? " · revoked" : ""}
-                </span>
+          <details {...staticFieldProps}>
+            <summary>Tools this token can call</summary>
+            <p {...staticHintProps}>
+              {scopeKind === "task"
+                ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation."
+                : "Workspace-scoped connections can create tasks inside the selected workspace."}{" "}
+              Vault, routines, backups and human review stay in Aux.
+            </p>
+            <label>
+              Filter tools
+              <input
+                aria-label="Filter scoped MCP tools"
+                value={catalogQuery}
+                onChange={(event) => setCatalogQuery(event.target.value)}
+                placeholder="Name or description"
+              />
+            </label>
+            <div className="seg" role="group" aria-label="Tool group">
+              {(["all", "browser", "task", "workspace"] as const).map((value) => (
+                <button
+                  key={value}
+                  className={catalogGroup === value ? "on" : ""}
+                  aria-pressed={catalogGroup === value}
+                  onClick={() => setCatalogGroup(value)}
+                >
+                  {value === "all" ? "All" : value[0]!.toUpperCase() + value.slice(1)}
+                </button>
+              ))}
+            </div>
+            {catalogGroups.map((group) => (
+              <div className="field" key={group.group}>
+                <div {...auxClassDrawerSectionProps}>{group.label}</div>
+                {group.tools.map((tool) => (
+                  <div className="hint" key={tool.name}>
+                    <strong>{tool.name}</strong> · {tool.description}
+                  </div>
+                ))}
               </div>
-              {!connection.revokedAt && (
+            ))}
+            {!catalogGroups.length && <p {...staticHintProps}>No scoped tools match this filter.</p>}
+          </details>
+          <div className="seg" role="group" aria-label="Agent client">
+            {(["codex", "claude", "cursor"] as const).map((value) => (
+              <button
+                key={value}
+                className={client === value ? "on" : ""}
+                aria-pressed={client === value}
+                onClick={() => setClient(value)}
+              >
+                {value === "codex" ? "TOML client" : value === "claude" ? "JSON client" : "Editor client"}
+              </button>
+            ))}
+          </div>
+          {!workspaces.length ? (
+            <output data-block>Create a saved task and workspace before connecting an external agent.</output>
+          ) : (
+            <>
+              <label>
+                Connection name
+                <input
+                  aria-label="Connection name"
+                  value={name}
+                  maxLength={100}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setConfig(null);
+                  }}
+                />
+              </label>
+              <label>
+                Workspace
+                <select
+                  aria-label="Connection workspace"
+                  value={workspaceId}
+                  onChange={(event) => {
+                    setWorkspaceId(event.target.value);
+                    setConfig(null);
+                  }}
+                >
+                  {workspaces.map((workspace) => (
+                    <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                      {workspace.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Scope
+                <select
+                  aria-label="Connection scope"
+                  value={scopeKind}
+                  onChange={(event) => {
+                    setScopeKind(event.target.value as "workspace" | "task");
+                    setConfig(null);
+                  }}
+                >
+                  <option value="task">One task</option>
+                  <option value="workspace">All tasks in workspace</option>
+                </select>
+              </label>
+              {scopeKind === "task" && (
+                <label>
+                  Task
+                  <select
+                    aria-label="Connection task"
+                    value={taskId}
+                    onChange={(event) => {
+                      setTaskId(event.target.value);
+                      setConfig(null);
+                    }}
+                  >
+                    {availableTasks.map((task) => (
+                      <option key={task.taskId} value={task.taskId}>
+                        {task.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button
+                {...auxClassButtonProps}
+                disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
+                onClick={() => void connect()}
+              >
+                Connect Aux to{" "}
+                {client === "codex" ? "TOML client" : client === "claude" ? "JSON client" : "Editor client"}
+              </button>
+              <button
+                {...smallButtonProps}
+                disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
+                onClick={() => void create()}
+              >
+                Copy configuration manually
+              </button>
+            </>
+          )}
+          {error && <p {...nativeAlertRoleProps}>{error}</p>}
+          {config && (
+            <>
+              <span {...staticHintProps}>
+                {client === "codex"
+                  ? "Merge this server entry into the client config.toml."
+                  : client === "claude"
+                    ? "Merge this server entry into your project .mcp.json or another supported JSON client scope."
+                    : "Merge this server entry into ~/.cursor/mcp.json."}{" "}
+                Keep existing entries. This token is shown once; create a replacement if it is lost.
+              </span>
+              <textarea
+                aria-label="Agent configuration"
+                readOnly
+                rows={12}
+                value={snippet}
+                spellCheck={false}
+                className="mono"
+              />
+              <div {...staticRowProps}>
                 <button
                   {...smallButtonProps}
-                  disabled={busy}
-                  onClick={() => void revoke(connection.connectionId)}
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(snippet)
+                      .then(() => setMessage("Configuration copied."))
+                      .catch(() => setError("Copy failed. Select and copy the configuration text."))
+                  }
                 >
-                  Revoke
+                  Copy configuration
                 </button>
-              )}
+                <button
+                  {...smallButtonProps}
+                  onClick={() =>
+                    void bridge.openExternal(
+                      client === "codex"
+                        ? "https://developers.openai.com/codex/mcp"
+                        : client === "claude"
+                          ? "https://code.claude.com/docs/en/mcp"
+                          : "https://cursor.com/docs/context/mcp",
+                    )
+                  }
+                >
+                  Client setup guide
+                </button>
+              </div>
+            </>
+          )}
+          {!!connections.length && (
+            <div className="external-agent-connections">
+              <div {...auxClassDrawerSectionProps}>Connections</div>
+              {connections.map((connection) => (
+                <div className="external-agent-row" key={connection.connectionId}>
+                  <div className="external-agent-copy">
+                    <strong>{connection.name}</strong>
+                    <span {...staticHintProps}>
+                      {connection.client === "codex"
+                        ? "TOML client"
+                        : connection.client === "claude"
+                          ? "JSON client"
+                          : "Editor client"}{" "}
+                      · {connectionTarget(connection)}
+                      {connection.lastUsedAt
+                        ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}`
+                        : " · not used yet"}
+                      {connection.revokedAt ? " · revoked" : ""}
+                    </span>
+                  </div>
+                  {!connection.revokedAt && (
+                    <button
+                      {...smallButtonProps}
+                      disabled={busy}
+                      onClick={() => void revoke(connection.connectionId)}
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          <ExternalAgentOversight connections={connections} />
+          {message && <output data-block>{message}</output>}
+          <span {...staticHintProps}>
+            Removing the client entry stops normal use. Revoking it here invalidates the token immediately.
+            Quitting Aux stops the runtime.
+          </span>
         </div>
-      )}
-      <ExternalAgentOversight connections={connections} />
-      {message && <output data-block>{message}</output>}
-      <span {...staticHintProps}>
-        Removing the client entry stops normal use. Revoking it here invalidates the token immediately.
-        Quitting Aux stops the runtime.
-      </span>
+      </SettingsGroup>
     </section>
   );
 }

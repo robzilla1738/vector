@@ -83,29 +83,32 @@ export function RemoteDebugging() {
     }
   };
   return (
-    <div>
-      <SettingsField
-        label="Remote debugging"
-        description="Allow Playwright, Puppeteer and other local CDP clients to control Aux through its loopback port. Off by default."
-        searchTerms={["Developers", "CDP", "Playwright", "Puppeteer", "9222"]}
-      >
-        <Switch
-          aria-label="Remote debugging"
-          checked={state?.enabled ?? false}
-          disabled={
-            busy ||
-            !state?.available ||
-            !state.canChange ||
-            state.state === "starting" ||
-            state.state === "stopping"
-          }
-          onChange={(event) => void change(event.currentTarget.checked)}
-        />
-      </SettingsField>
-      <p role="status" className="hint">
-        {listenerLabel(state)}
-      </p>
-      {error && <p role="alert">{error}</p>}
-    </div>
+    <SettingsField
+      compact
+      label="Remote debugging"
+      description="Allow Playwright, Puppeteer and other local CDP clients to control Aux through its loopback port. Off by default."
+      searchTerms={["Developers", "CDP", "Playwright", "Puppeteer", "9222"]}
+      details={
+        <>
+          <p role="status" className="hint">
+            {listenerLabel(state)}
+          </p>
+          {error && <p role="alert">{error}</p>}
+        </>
+      }
+    >
+      <Switch
+        aria-label="Remote debugging"
+        checked={state?.enabled ?? false}
+        disabled={
+          busy ||
+          !state?.available ||
+          !state.canChange ||
+          state.state === "starting" ||
+          state.state === "stopping"
+        }
+        onChange={(event) => void change(event.currentTarget.checked)}
+      />
+    </SettingsField>
   );
 }

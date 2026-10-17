@@ -375,16 +375,22 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Passwords & Autofill",
-    label: "Personal info",
-    description:
-      "Fill contact and address fields on a form with the context menu or command palette. Passwords and payment details are never stored here.",
-    target: "Personal info",
+    label: "Aux Vault",
+    description: "Save sign-ins and let Aux fill them without exposing passwords to agents.",
+    target: "Aux Vault",
   },
   {
     category: "Passwords & Autofill",
     label: "Saved passwords",
     description: "Manage passwords in Chromium’s Profile store. Passkeys stay managed by Chromium.",
     target: "Saved passwords",
+  },
+  {
+    category: "Passwords & Autofill",
+    label: "Personal info",
+    description:
+      "Fill contact and address fields on a form with the context menu or command palette. Passwords and payment details are never stored here.",
+    target: "Personal info",
   },
   {
     category: "Models",

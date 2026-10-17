@@ -1,0 +1,65 @@
+diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
+--- a/chrome/browser/ui/webui/settings/settings_ui.cc
++++ b/chrome/browser/ui/webui/settings/settings_ui.cc
+@@ -20,6 +20,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/browser_features.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/commerce/shopping_service_factory.h"
+ #include "chrome/browser/compose/compose_enabling.h"
+ #include "chrome/browser/contextual_cueing/features.h"
+@@ -240,6 +241,7 @@
+       content::WebUIDataSource::CreateAndAdd(
+           web_ui->GetWebContents()->GetBrowserContext(),
+           chrome::kChromeUISettingsHost);
++  html_source->AddBoolean("isAux", BUILDFLAG(ENABLE_AUX_SHELL));
+   html_source->OverrideContentSecurityPolicy(
+       network::mojom::CSPDirectiveName::WorkerSrc,
+       "worker-src blob: chrome://resources 'self';");
+diff --git a/chrome/browser/resources/history/side_bar.html.ts b/chrome/browser/resources/history/side_bar.html.ts
+--- a/chrome/browser/resources/history/side_bar.html.ts
++++ b/chrome/browser/resources/history/side_bar.html.ts
+@@ -34,7 +34,9 @@
+   </a>` : ''}
+   <a role="menuitem" id="clear-browsing-data"
+       class="cr-nav-menu-item"
+-      href="chrome://settings/clearBrowserData"
++      href="${loadTimeData.getBoolean('isAux') ?
++          'chrome://settings/clearBrowserData?auxReturn=history' :
++          'chrome://settings/clearBrowserData'}"
+       @click="${this.onClearBrowsingDataClick_}"
+       ?disabled="${this.guestSession_}"
+       title="$i18n{clearBrowsingDataLinkTooltip}">
+diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
+--- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
++++ b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
+@@ -131,6 +131,14 @@
+   }
+ 
+   private onCbdDialogClosed_() {
++    // Aux Library opens this native dialog directly. Keep its dismissal in the
++    // Library instead of exposing unrelated Chromium account/privacy settings.
++    if (loadTimeData.getBoolean('isAux') &&
++        new URLSearchParams(window.location.search).get('auxReturn') ===
++            'history') {
++      window.location.replace('chrome://history/');
++      return;
++    }
+     Router.getInstance().navigateTo(routes.CLEAR_BROWSER_DATA.parent!);
+ 
+     if (this.shouldShowDbdDeletionConfirmationToast_) {
+diff --git a/chrome/browser/resources/history/side_bar.ts b/chrome/browser/resources/history/side_bar.ts
+--- a/chrome/browser/resources/history/side_bar.ts
++++ b/chrome/browser/resources/history/side_bar.ts
+@@ -208,6 +208,10 @@
+   protected onClearBrowsingDataClick_(e: Event) {
+     const browserProxy = BrowserProxyImpl.getInstance();
+     browserProxy.recordAction('InitClearBrowsingData');
++    // Aux follows the Library return route declared on the link.
++    if (loadTimeData.getBoolean('isAux')) {
++      return;
++    }
+     browserProxy.handler.openClearBrowsingDataDialog();
+     e.preventDefault();
+   }
