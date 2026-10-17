@@ -5,6 +5,22 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Compact Settings model menus
+
+Model menu geometry follow-up: reopened references 011 and 061. Settings model
+menus now use a separate compact 192px layout instead of the wider 280px Connect
+menu. Rows use 32px minimum height, keep long model names on one truncated line,
+and place Automatic/Default below the provider choices with a divider. Provider
+submenus retain their existing sizing and keyboard behavior. Connect keeps its
+wider account/API list. The change applies to all shared task/image selectors.
+
+Integrated typecheck/lint and all 4,617 tests across 741 files pass; renderer build
+passes in 2.75s. Logs: `/tmp/aux-model-menu-density-check.log` and
+`/tmp/aux-model-menu-density-build.log`. Visual acceptance remains pending the current
+native preview's return; this source is newer than its compiled `4e5fa2188` shell.
+Launcher 75304/session 72707 remains live linking; no replacement builder was
+started. Reference rescan still finds 380 non-thumbnail files. Full parity is open.
+
 ## Split shortcut evidence reconciliation
 
 Reopened reference 031 and checked current registry, mount handlers and Appearance

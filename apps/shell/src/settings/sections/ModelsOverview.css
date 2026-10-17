@@ -246,3 +246,23 @@
     margin-block: 4px;
   }
 }
+
+@layer overrides {
+  .settings-model-picker.model-choice-picker {
+    width: 192px;
+  }
+  .model-choice-picker .settings-model-options button {
+    min-height: 32px;
+    padding: 6px 8px;
+    line-height: 20px;
+  }
+  .model-choice-picker .settings-model-options button > span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .model-choice-picker .model-choice-default {
+    border-top: var(--hairline) solid var(--line);
+    margin-top: 4px;
+  }
+}

@@ -78,7 +78,7 @@ export function ModelChoice({
     ));
   const control = (close: () => void): ReactNode => (
     <div
-      className="settings-model-picker"
+      className="settings-model-picker model-choice-picker"
       onKeyDown={(event) => {
         if (event.target === search.current) {
           if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
@@ -106,22 +106,6 @@ export function ModelChoice({
         />
       </label>
       <div className="settings-model-options" role="menu" aria-label={`${label} models`}>
-        {automatic !== undefined && (
-          <button
-            type="button"
-            data-model-root
-            role="menuitemradio"
-            aria-checked={automatic}
-            disabled={disabled || pending}
-            onClick={() =>
-              void onChange(undefined).then((ok) => {
-                if (ok) close();
-              })
-            }
-          >
-            {automaticLabel} {automatic && <Check />}
-          </button>
-        )}
         {loading && <p>Loading models…</p>}
         {!loading && !matched.length && <p>No matching models. Use Model settings to enter a model ID.</p>}
         {[...groups].map(([group, models]) =>
@@ -139,6 +123,23 @@ export function ModelChoice({
           ) : (
             <div key={group}>{modelRows(models, close, true)}</div>
           ),
+        )}
+        {automatic !== undefined && (
+          <button
+            className="model-choice-default"
+            type="button"
+            data-model-root
+            role="menuitemradio"
+            aria-checked={automatic}
+            disabled={disabled || pending}
+            onClick={() =>
+              void onChange(undefined).then((ok) => {
+                if (ok) close();
+              })
+            }
+          >
+            {automaticLabel} {automatic && <Check />}
+          </button>
         )}
       </div>
     </div>
