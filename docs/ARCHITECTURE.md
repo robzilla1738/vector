@@ -22,6 +22,13 @@ connection revision; old transports cannot dispatch after a connection change.
 Private windows inherit the declared protocol through the credential-only broker.
 Custom endpoints use inline tool schemas and refuse HTTP redirects.
 
+Quick Ask mounts the ordinary conversation and draft owner. Its empty form uses a
+compact context/send footer; native sizing follows text, context and connection
+notices, then expands for the transcript. The recent-downloads popover and full
+history share one download projection and action implementation. Native snapshots
+and file/transfer controls work without the runtime; the popup does not create
+another download history or separate file-action authority.
+
 Bookmarks, History and Clear History route to Chromium's native WebUI pages.
 The native bookmark model owns folder navigation, selection, editing, clipboard,
 Undo and import/export. Aux branding and appearance apply within those pages.

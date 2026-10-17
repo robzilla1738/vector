@@ -33,7 +33,7 @@ export function QuickAsk({ onExpand }: { onExpand(): void }) {
         }
       }}
     >
-      <div className="quick-ask-panel">
+      <div className="quick-ask-panel popup-material">
         <header className="quick-ask-header">
           <strong title={title}>{title}</strong>
           <IconButton
@@ -58,7 +58,7 @@ export function QuickAsk({ onExpand }: { onExpand(): void }) {
             Connecting to Aux… Your draft stays here.
           </output>
         )}
-        <Conversation embedded composerRef={composer} />
+        <Conversation embedded composerRef={composer} quickAsk={{ onExpand }} />
         <Toasts />
       </div>
     </main>

@@ -272,7 +272,11 @@ async function renderCompact(surface: "Quick Ask" | "Home") {
   // Apply the shipped transcript visibility rules without CSS layers, which jsdom does not parse.
   transcriptStyle.textContent = ["./QuickAsk.css", "./HomeAsk.css"]
     .flatMap((file) =>
-      [...readFileSync(new URL(file, import.meta.url), "utf8").matchAll(/\.(?:quick-ask|home-ask)\s[^{}]*\{[^{}]*\}/g)]
+      [
+        ...readFileSync(new URL(file, import.meta.url), "utf8").matchAll(
+          /\.(?:quick-ask|home-ask)\s[^{}]*\{[^{}]*\}/g,
+        ),
+      ]
         .map(([rule]) => rule)
         .filter((rule) => rule.includes(".conversation-scroll")),
     )
@@ -282,6 +286,19 @@ async function renderCompact(surface: "Quick Ask" | "Home") {
     root.render(surface === "Quick Ask" ? <QuickAsk onExpand={vi.fn()} /> : <HomeAsk onSearch={vi.fn()} />),
   );
 }
+
+it("compact Quick Ask expands with its original draft and keeps the ordinary context trigger", async () => {
+  const expand = vi.fn();
+  await act(async () => root.render(<QuickAsk onExpand={expand} />));
+  const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
+  expect(input.value).toBe("Original question");
+  expect(host.querySelector("[data-quick-ask-compact]")).not.toBeNull();
+  expect(host.querySelector('[aria-label="Add context"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Thinking level"]')).toBeNull();
+  await act(async () => host.querySelector<HTMLButtonElement>(".quick-ask-expand")!.click());
+  expect(expand).toHaveBeenCalledTimes(1);
+  expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Original question");
+});
 
 it.each(["Quick Ask", "Home"] as const)(
   "%s reveals a first pending turn and returns to the blank layout only after it settles",
@@ -300,7 +317,9 @@ it.each(["Quick Ask", "Home"] as const)(
     const scroll = host.querySelector<HTMLElement>(".conversation-scroll")!;
     expect(getComputedStyle(scroll).display).toBe("none");
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
-    expect(useStore.getState().pendingTurns).toMatchObject([{ chatId: "original", goal: "Original question" }]);
+    expect(useStore.getState().pendingTurns).toMatchObject([
+      { chatId: "original", goal: "Original question" },
+    ]);
     expect(scroll.querySelector(".conversation-turn.pending")?.textContent).toContain("Original question");
     expect(scroll.textContent).toContain("Starting…");
     expect(getComputedStyle(scroll).display).not.toBe("none");
@@ -361,7 +380,9 @@ it.each(["Quick Ask", "Home"] as const)(
     );
     await renderCompact(surface);
     const scroll = host.querySelector<HTMLElement>(".conversation-scroll")!;
-    expect(scroll.querySelector('[role="alert"]')?.textContent).toContain("Changed-task messages could not be loaded");
+    expect(scroll.querySelector('[role="alert"]')?.textContent).toContain(
+      "Changed-task messages could not be loaded",
+    );
     expect(getComputedStyle(scroll).display).not.toBe("none");
     failed = false;
     await act(async () => scroll.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());

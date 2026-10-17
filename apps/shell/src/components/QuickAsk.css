@@ -10,7 +10,6 @@
     flex-direction: column;
     min-height: 0;
     border-radius: var(--r-2xl);
-    background: var(--bg-0);
     overflow: hidden;
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--ink-0) 8%, transparent),
@@ -69,40 +68,40 @@
     padding: 0 var(--space-4);
     margin: 0;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-scroll {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-scroll {
     display: none;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-compose {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-compose {
     display: flex;
     flex: 1;
     min-height: 0;
     max-height: none;
-    padding: 4px 6px 2px;
+    padding: 6px;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-compose-content {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-compose-content {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame,
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame-wrap,
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-input,
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .composer-frame,
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .composer-frame-wrap,
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-input,
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-message-field {
     flex: 1;
     min-height: 0;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .composer-frame {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame-wrap,
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .composer-frame-wrap,
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .composer-frame {
     display: flex;
     flex-direction: column;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-message-field {
     align-items: flex-start;
     padding-bottom: 0;
     border: 0;
@@ -110,14 +109,59 @@
     background: transparent;
     box-shadow: none;
   }
-  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field textarea {
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-main .conversation-message-field textarea {
     align-self: stretch;
     flex: 1;
     max-height: none;
-    padding: 8px 8px 44px;
+    padding: 10px 8px 6px;
   }
-  .quick-ask .conversation:not([data-empty-transcript]) .conversation-main .composer-frame {
+  .quick-ask .conversation:not([data-quick-ask-compact]) .conversation-main .composer-frame {
     border-radius: 16px;
+  }
+  .quick-ask-panel:has(.conversation[data-quick-ask-compact]) .quick-ask-header {
+    display: none;
+  }
+  .quick-ask .quick-ask-footer {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 32px;
+    padding: 0 38px 0 2px;
+    gap: var(--space-2);
+    -webkit-app-region: drag;
+  }
+  .quick-ask-footer button {
+    -webkit-app-region: no-drag;
+  }
+  .quick-ask-footer .quick-ask-expand {
+    margin-left: auto;
+    padding: var(--space-1) 0;
+    background: transparent;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+  }
+  .quick-ask-footer .quick-ask-expand:hover {
+    color: var(--ink-0);
+  }
+  .quick-ask .conversation[data-quick-ask-compact] .composer-frame {
+    position: relative;
+  }
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-input,
+  .quick-ask .conversation[data-quick-ask-compact] .conversation-message-field {
+    position: static;
+  }
+  .quick-ask .conversation[data-quick-ask-compact] .composer-send-actions {
+    right: 2px;
+    bottom: 2px;
+  }
+  .quick-ask .conversation[data-quick-ask-compact] .composer-send-actions > button {
+    background: var(--ink-0);
+    color: var(--ink-inverse);
+  }
+  .quick-ask .conversation[data-quick-ask-compact] .composer-send-actions > button:disabled {
+    display: inline-flex;
+    opacity: 0.45;
   }
   @media (prefers-reduced-motion: reduce) {
     .quick-ask-panel {

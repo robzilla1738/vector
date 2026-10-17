@@ -5,6 +5,7 @@ import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { WindowToolbarSlot } from "./WindowToolbarContent";
+import { DownloadsButton } from "./DownloadsButton";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, errToast } from "../store";
 import { deferNamedSurface } from "./DeferredSurface";
@@ -109,6 +110,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
       )}
 
       <div className="tb-right">
+        <DownloadsButton />
         <FeatureSlots slot="toolbarItems" />
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && (
           <button

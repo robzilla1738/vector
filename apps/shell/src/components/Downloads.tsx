@@ -4,13 +4,20 @@ import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./Downloads.css";
 import { useDownloadRenames } from "../features/download-naming/state";
-import { executeCommand } from "../commands";
+import { executeCommand, runCommand } from "../commands";
+import { relativeChatTime } from "../chat-list/relative-chat-time";
 import { memo, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { Download } from "@aux/contracts";
 import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
-import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "../ui/icons";
+import {
+  shellIconClose,
+  shellIconDownloadSm,
+  shellIconSearch,
+  shellIconFolderClosed,
+  shellIconOpen,
+} from "../ui/icons";
 import { canDismissDownload, mergeDownloadSnapshot, visibleDownloads } from "../downloads";
 import {
   staticNumericCountProps as auxClassNumericCountProps,
@@ -58,6 +65,7 @@ const DownloadRow = memo(function DownloadRow({
   dismissDownloads,
   onRetried,
   setOverlay,
+  recent,
 }: {
   id: string;
   busy: string | null;
@@ -67,6 +75,7 @@ const DownloadRow = memo(function DownloadRow({
   dismissDownloads(ids: string[]): Promise<void>;
   onRetried(id: string): void;
   setOverlay: ReturnType<typeof useStore.getState>["setOverlay"];
+  recent: boolean;
 }) {
   const d = useStore((state) => state.downloads.find((item) => item.id === id));
   const rename = useDownloadRenames((state) =>
@@ -97,7 +106,13 @@ const DownloadRow = memo(function DownloadRow({
               : `${fmtSize(d.size)}…`
             : fmtSize(d.size)}
           {" · "}
-          <span className={`dl-state ${d.state}`}>{d.paused ? "Paused" : (STATE[d.state] ?? d.state)}</span>
+          <span className={`dl-state ${d.state}`}>
+            {recent && d.state === "completed"
+              ? relativeChatTime(d.endedAt ?? d.startedAt)
+              : d.paused
+                ? "Paused"
+                : (STATE[d.state] ?? d.state)}
+          </span>
           {d.warning && (
             <span className="dl-warn">
               {" · "}
@@ -175,7 +190,7 @@ const DownloadRow = memo(function DownloadRow({
             {retried ? "Retry requested" : "Retry"}
           </button>
         )}
-        {sourcePage && (
+        {sourcePage && !recent && (
           <button
             {...smallGhostButtonProps}
             title={`Return to ${sourcePage.title || sourcePage.url}`}
@@ -196,6 +211,8 @@ const DownloadRow = memo(function DownloadRow({
           <>
             <button
               {...smallGhostButtonProps}
+              aria-label={recent ? `Open ${d.filename}` : undefined}
+              title={recent ? `Open ${d.filename}` : undefined}
               disabled={busy !== null}
               onClick={() =>
                 void action(
@@ -211,10 +228,12 @@ const DownloadRow = memo(function DownloadRow({
                 )
               }
             >
-              Open
+              {recent ? shellIconOpen : "Open"}
             </button>
             <button
               {...smallGhostButtonProps}
+              aria-label={recent ? `Reveal ${d.filename} in Finder` : undefined}
+              title={recent ? `Reveal ${d.filename} in Finder` : undefined}
               disabled={busy !== null}
               onClick={() =>
                 void action(
@@ -229,7 +248,7 @@ const DownloadRow = memo(function DownloadRow({
                 )
               }
             >
-              Reveal
+              {recent ? shellIconFolderClosed : "Reveal"}
             </button>
           </>
         )}
@@ -250,7 +269,7 @@ const DownloadRow = memo(function DownloadRow({
             Undo rename
           </button>
         )}
-        {canDismissDownload(d) && (
+        {!recent && canDismissDownload(d) && (
           <button
             {...staticSmallIconButtonProps}
             disabled={busy !== null}
@@ -272,7 +291,16 @@ const DownloadRow = memo(function DownloadRow({
 });
 
 /** ⌘⇧J — in-flow shelf under the page with live progress. */
-export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () => void } = {}) {
+export function Downloads({
+  tabUrl,
+  onClose,
+  presentation = "history",
+}: {
+  tabUrl?: string;
+  onClose?: () => void;
+  presentation?: "recent" | "history";
+} = {}) {
+  const recent = presentation === "recent";
   const setOverlay = useStore((s) => s.setOverlay);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -292,11 +320,13 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
         .filter(
           (item) => (tabUrl === undefined || item.tabUrl === tabUrl) && downloadMatches(item, query, filter),
         )
-        .sort(
-          (a, b) =>
-            Number(["started", "progressing"].includes(b.state)) -
-              Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt,
+        .sort((a, b) =>
+          recent
+            ? b.startedAt - a.startedAt
+            : Number(["started", "progressing"].includes(b.state)) -
+                Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt,
         )
+        .slice(0, recent ? 20 : undefined)
         .map((item) => item.id),
     ),
   );
@@ -447,12 +477,16 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     });
 
   return (
-    <section ref={shelfRef} className="shelf slide-up" aria-label="Downloads">
+    <section
+      ref={shelfRef}
+      className={`shelf${recent ? " downloads-recent" : " slide-up"}`}
+      aria-label={recent ? "Recent download history" : "Downloads"}
+    >
       <div className="shelf-head">
-        <span>Downloads</span>
-        <span {...auxClassNumericCountProps}>{itemCount}</span>
+        <span>{recent ? "Recent Download History" : "Downloads"}</span>
+        {!recent && <span {...auxClassNumericCountProps}>{itemCount}</span>}
         <span {...auxClassSpacerProps} />
-        {!!dismissibleIds.length && (
+        {!recent && !!dismissibleIds.length && (
           <button
             {...smallGhostButtonProps}
             disabled={busy !== null}
@@ -462,7 +496,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
             Clear list
           </button>
         )}
-        {!bridge.privateMode && (
+        {!recent && !bridge.privateMode && (
           <button
             {...smallGhostButtonProps}
             aria-expanded={showFolder}
@@ -471,13 +505,15 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
             Save location
           </button>
         )}
-        <button
-          {...smallGhostButtonProps}
-          disabled={loading || busy !== null}
-          onClick={() => setRefresh((value) => value + 1)}
-        >
-          Refresh
-        </button>
+        {!recent && (
+          <button
+            {...smallGhostButtonProps}
+            disabled={loading || busy !== null}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            Refresh
+          </button>
+        )}
         <button
           {...staticSmallIconButtonProps}
           title="Close (Esc)"
@@ -487,38 +523,40 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
           {shellIconClose}
         </button>
       </div>
-      <div className="download-tools">
-        <label className="download-search" data-input-surface>
-          {shellIconSearch}
-          <input
-            ref={searchRef}
-            autoFocus={!!onClose}
-            aria-label="Search downloads"
-            placeholder="Find a download…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <div className="download-filters" role="group" aria-label="Filter downloads">
-          {(
-            [
-              ["all", "All"],
-              ["active", "In progress"],
-              ["finished", "Finished"],
-              ["attention", "Needs attention"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              {...smallGhostButtonProps}
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
+      {!recent && (
+        <div className="download-tools">
+          <label className="download-search" data-input-surface>
+            {shellIconSearch}
+            <input
+              ref={searchRef}
+              autoFocus={!!onClose}
+              aria-label="Search downloads"
+              placeholder="Find a download…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <div className="download-filters" role="group" aria-label="Filter downloads">
+            {(
+              [
+                ["all", "All"],
+                ["active", "In progress"],
+                ["finished", "Finished"],
+                ["attention", "Needs attention"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                {...smallGhostButtonProps}
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {loadError && (
         <p className="download-error" {...nativeAlertRoleProps}>
           Couldn’t refresh downloads. {loadError}{" "}
@@ -615,9 +653,23 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
             dismissDownloads={dismissDownloads}
             onRetried={(id) => setRetried((current) => new Set([...current, id]))}
             setOverlay={setOverlay}
+            recent={recent}
           />
         ))}
       </div>
+      {recent && (
+        <button
+          type="button"
+          className="downloads-history-link"
+          onClick={() => {
+            onClose?.();
+            runCommand("downloads");
+          }}
+        >
+          <span>Full Download History</span>
+          {shellIconOpen}
+        </button>
+      )}
     </section>
   );
 }

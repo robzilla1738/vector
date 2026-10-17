@@ -396,6 +396,7 @@ function isCalendarCitation(url: string): boolean {
 type ConversationProps = {
   chatId?: string | null;
   embedded?: boolean;
+  quickAsk?: { onExpand(): void };
   home?: boolean;
   composerControlsInside?: boolean;
   entryControls?: ReactNode;
@@ -419,6 +420,7 @@ export function Conversation(props: ConversationProps = {}) {
 function ConversationContent({
   chatId: id = null,
   embedded = false,
+  quickAsk,
   home = false,
   composerControlsInside = false,
   entryControls,
@@ -854,11 +856,7 @@ function ConversationContent({
   const contexts = useStore((s) => s.conversationContexts);
   const unsavedDraft = taskModeKnown && !taskModeLocked;
   const defaultContext =
-    bridge.windowKind === "normal" && embedded && !home && unsavedDraft
-      ? "active"
-      : id
-        ? "linked"
-        : "none";
+    bridge.windowKind === "normal" && embedded && !home && unsavedDraft ? "active" : id ? "linked" : "none";
   const contextPage = contexts[id ? draftKey(id) : "new"] ?? defaultContext;
   // Preserve the rail's visible default when this draft moves to a full window.
   useEffect(() => {
@@ -2036,6 +2034,7 @@ function ConversationContent({
     !searchWindow &&
     !earlier;
   const newChat = !embedded && emptyTranscript && !taskBound;
+  const compactQuickAsk = !!quickAsk && emptyTranscript;
   useEffect(() => {
     if (newChat) textareaRef.current?.focus();
   }, [newChat, textareaRef]);
@@ -2510,6 +2509,7 @@ function ConversationContent({
       ref={conversationRoot}
       className={`conversation${embedded ? " conversation-embedded" : ""}${home ? " conversation-home" : ""}${newChat ? " conversation-new" : ""}`}
       data-empty-transcript={emptyTranscript || undefined}
+      data-quick-ask-compact={compactQuickAsk || undefined}
       aria-label={embedded ? "Conversation" : undefined}
       aria-labelledby={embedded ? undefined : "conversation-title"}
     >
@@ -2795,7 +2795,7 @@ function ConversationContent({
                 </section>
               )}
               <ComposerFrame
-                controlsInside={composerControlsInside}
+                controlsInside={compactQuickAsk || composerControlsInside}
                 notices={
                   <>
                     {last && <RunControls runId={last.runId} />}
@@ -2846,13 +2846,27 @@ function ConversationContent({
                   </>
                 }
                 controls={
-                  <div className="composer-footer">
-                    <div className="composer-footer-context">
-                      {composerFooter}
-                      {composerModes}
-                      {!composerFooter && composerActions()}
+                  compactQuickAsk && quickAsk ? (
+                    <div className="composer-footer quick-ask-footer">
+                      {composerContext}
+                      <button
+                        type="button"
+                        className="quick-ask-expand"
+                        title="Open in Aux"
+                        onClick={quickAsk.onExpand}
+                      >
+                        Quick Ask
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="composer-footer">
+                      <div className="composer-footer-context">
+                        {composerFooter}
+                        {composerModes}
+                        {!composerFooter && composerActions()}
+                      </div>
+                    </div>
+                  )
                 }
               >
                 <div className="composer-context">
@@ -3110,19 +3124,21 @@ function ConversationContent({
                       maxLength={live ? 20000 : undefined}
                       disabled={archived || sending || answerPending}
                       placeholder={
-                        effectiveLiveMode === "answer" && answering
-                          ? "Answer Aux’s question…"
-                          : live
-                            ? effectiveLiveMode === "queue"
-                              ? "Send when Aux finishes…"
-                              : "Correct Aux while it works…"
-                            : turns.length
-                              ? "Reply, or give Aux a task…"
-                              : selectedContext && selectedContext.url !== "about:blank"
-                                ? "Ask about this page…"
-                                : home
-                                  ? "Ask Aux a task, @ for context"
-                                  : "Ask anything, @ for context"
+                        compactQuickAsk
+                          ? "Ask Aux"
+                          : effectiveLiveMode === "answer" && answering
+                            ? "Answer Aux’s question…"
+                            : live
+                              ? effectiveLiveMode === "queue"
+                                ? "Send when Aux finishes…"
+                                : "Correct Aux while it works…"
+                              : turns.length
+                                ? "Reply, or give Aux a task…"
+                                : selectedContext && selectedContext.url !== "about:blank"
+                                  ? "Ask about this page…"
+                                  : home
+                                    ? "Ask Aux a task, @ for context"
+                                    : "Ask anything, @ for context"
                       }
                       sendDisabled={
                         archived ||
@@ -3141,11 +3157,11 @@ function ConversationContent({
                       }
                       onChange={setText}
                       onSend={() => void send()}
-                      leading={home ? undefined : composerContext}
+                      leading={home || compactQuickAsk ? undefined : composerContext}
                       inlineControls={home ? entryControls : undefined}
                       textareaRef={textareaRef}
                     >
-                      {home ? null : dictation}
+                      {home || compactQuickAsk ? null : dictation}
                     </ComposerInput>
                   </>
                 )}

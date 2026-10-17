@@ -16,8 +16,10 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
       if (!live || bridge.windowId !== windowId || bridge.windowKind !== "quick-ask") return;
       const conversation = panel.querySelector(".conversation");
       if (!conversation) return;
+      for (const item of panel.querySelectorAll(".composer-context, .composer-footer, .quick-ask-connection"))
+        resize.observe(item);
       const expanded = !conversation.hasAttribute("data-empty-transcript");
-      let draftHeight = 184;
+      let draftHeight = 92;
       if (!expanded) {
         const style = getComputedStyle(textarea);
         const mirror = document.createElement("textarea");
@@ -43,9 +45,14 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
           fieldSizing: "fixed",
         });
         document.body.append(mirror);
-        const header = panel.querySelector<HTMLElement>(".quick-ask-header")?.offsetHeight ?? 40;
+        const header = panel.querySelector<HTMLElement>(".quick-ask-header")?.offsetHeight ?? 0;
         const footer = panel.querySelector<HTMLElement>(".composer-footer")?.offsetHeight ?? 36;
-        draftHeight = Math.max(184, Math.min(360, Math.ceil(header + footer + mirror.scrollHeight + 18)));
+        const context = panel.querySelector<HTMLElement>(".composer-context")?.offsetHeight ?? 0;
+        const notice = panel.querySelector<HTMLElement>(".quick-ask-connection")?.offsetHeight ?? 0;
+        draftHeight = Math.max(
+          92,
+          Math.min(360, Math.ceil(header + footer + context + notice + mirror.scrollHeight + 12)),
+        );
         mirror.remove();
       }
       const key = `${expanded}:${draftHeight}`;
