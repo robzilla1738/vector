@@ -1802,3 +1802,26 @@ isolated retry (1.30s). Final renderer build passed (2.42s). Logs:
 `/tmp/aux-chat-layout-check.log`, `/tmp/aux-chat-layout-retry.log`, and
 `/tmp/aux-chat-layout-build.log`. No runtime source changes. Native preview remains
 `6dba6ccbb` under launcher 4136. Full parity remains incomplete.
+
+## Native consolidation and browser library audit — October 17
+
+Native consolidation started for `2cb93764b` (Memory document/control layout,
+Quick Ask routing guard, and responsive chat cards). Launcher **18613**, session
+**95680**, owns the only build. Log: `/tmp/aux-memory-chat-native.log`. Previous
+launcher 4136 was retired using SIGTERM; both its app 8559 and launcher exited,
+Profile `aux-dev-9V5SsP` was removed, and the plain lock was released before the
+replacement started. Siso 18839/18841 is live linking the framework. No replacement
+app or native visual acceptance is ready yet. Preserve cleanup ownership.
+
+Next native walkthrough: verify About revision; inspect Memory History and note
+panes at wide/narrow widths; open Quick Ask and expand an unsent draft while
+checking the routing toast is absent; inspect chat cards in the actual shell.
+The earlier Profile-organization conflict toast remains an independent open issue.
+
+Browser-library reference audit (164–170): reference 164 is a full History page
+with a left rail, rounded search, date/group tabs and date sections; Aux currently
+uses a 760px modal Library with segmented archive/bookmark/reading/history/closed
+views. History has date ranges and per-entry removal, but no group view. This is
+an explicit remaining layout/behavior gap, not accepted parity. Keep the existing
+command ownership, selection, import and undo behavior when moving these surfaces
+to the referenced page presentation. Native evidence for these views remains open.
