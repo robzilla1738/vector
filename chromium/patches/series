@@ -55,3 +55,4 @@ aux/0054-quick-ask-draft-layout.patch
 aux/0055-active-tab-window-title.patch
 aux/0056-person-navigation-autofill.patch
 aux/0057-native-window-handback-lifecycle.patch
+aux/0058-native-http-redirects.patch

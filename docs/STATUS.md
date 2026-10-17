@@ -20,8 +20,35 @@ Rebased hooks preserve Chromium155's disconnect/destroy lifecycle, deferred
 beforeunload detach, browser element lookup and pause/stop activation restriction.
 Upstream now filters invisible bookmark roots itself, replacing Aux's old hook.
 The window/autofill correction and sticky factory protection are included.
-Native155 compilation and changed-flow acceptance remain pending; the product
-preview remains on154 until its current owner retires and migration is accepted.
+Native155 compilation and changed-flow acceptance remain pending. The154
+preview retired through its original owner; no native app or build is running.
+Area0058 joins the security candidate before compilation.
+
+## Native autofill accepted; redirect correction awaiting build
+
+Nativec366c7dc8 completed its incremental build/link and launched through
+owner79146 in disposable Profileaux-dev-eWrIyF (app85709/runtime API51202).
+The synthetic address flow no longer crashes. Chromium's Save address offer,
+Edit dialog, Cancel return and Save all worked. Reopening the form exposed the
+saved native autofill suggestion and filled every field. Changing the synthetic
+name produced the native Update address offer; Update persisted and the next
+suggestion showed the changed name. Payment-specific prompts remain unobserved.
+
+The same walkthrough isolated a general HTTP redirect defect. A redacted local
+network trace records19same-destination307Delegate redirects after a real302,
+ending with ERR_TOO_MANY_REDIRECTS. The content filter unconditionally passed the
+unchanged destination as an override. Area0058 now forwards an override only
+when policy actually changes the transport destination, and uses Chromium's
+redirect helpers for method/body/header/referrer state. Post-task person
+navigation receipts now also admit their exact redirect hops; all document,
+control-generation and retirement checks remain. Native acceptance follows.
+
+The full integrated check passed typecheck/lint and4,677/4,678tests; the existing
+coder-worktree fixture timed out during compilation. Its single failed case
+passed in isolation in26.40s. Logs: `/tmp/aux-native-window-handback-check.log`
+and `/tmp/aux-native-window-handback-coder-retry.log`. Unchanged TypeScript checks
+are retained for the native-only redirect correction. The original launcher
+retired normally, removing its Profile, app and lock before native edits.
 
 ## Native readiness — window lookup correction awaiting acceptance
 
