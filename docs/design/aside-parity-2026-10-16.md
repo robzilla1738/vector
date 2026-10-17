@@ -1,5 +1,13 @@
 # Aside UI parity — October 16, 2026
 
+Native consolidation started for `c7b770bfe` (Models marks/menu sizing and
+Routines cards). Previous launcher 75304 retired through SIGTERM; app exit and
+removal of disposable Profile `aux-dev-QzFkHv` were verified before replacement.
+The single active launcher is 88765, exec session 10789, log
+`/tmp/aux-routines-models-consolidation.log`. Poll this handle; do not start another
+builder. Pending native walkthrough: populated routine cards/Advanced controls,
+model labels/provider marks/compact menus, and narrow layouts.
+
 Routines hierarchy pass (references 083–084): My routines now has a separate
 heading and Create surface. Saved routines use individual cards with title,
 status and the existing human-readable schedule summary. Review, pause and
