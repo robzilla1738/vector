@@ -5,6 +5,24 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Provider account dialogs
+
+Provider account setup follow-up (reference 059): Connect now exposes searchable
+ChatGPT, OpenRouter and Vercel account entries, plus explicitly labeled Copilot
+catalog setup. Each opens a focused dialog backed by the existing sign-in
+implementation. Opening a dialog does not select a different chat provider or
+start consent. Local-only mode hides account entries/dialogs. Saved accounts are
+filtered to the dialog's provider; pending attempts retain existing cancellation
+and retirement behavior. The detailed settings editor still offers all setup flows.
+
+Local Vite confirms provider search, focused ChatGPT content and Escape returning
+focus to Connect. No sign-in was started and no credentials were accessed.
+Capture: `/tmp/aux-parity-2026-10-16/aux-chatgpt-setup-vite.png`.
+Reference 060 was reopened: its named-provider JSON import is not equivalent to
+Aux's single OpenAI-compatible endpoint. That runtime/data-model gap remains open,
+along with missing subscription adapters, branding and matched-viewport evidence.
+This batch is newer than compiled native shell `286ae0c3b`.
+
 ## Image model menu follow-up
 
 Image model menu follow-up (reference 061): the overview now uses the same

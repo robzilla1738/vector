@@ -176,3 +176,24 @@ it("searches image models and retains the picker on a rejected save", async () =
   expect(save).toHaveBeenLastCalledWith({ imageModel: null });
   expect(document.querySelector('[aria-label="Search models for image-generation model"]')).toBeNull();
 });
+
+it("opens a focused account dialog without changing provider or starting consent", async () => {
+  const save = vi.fn().mockResolvedValue(true);
+  await act(async () => root.render(<ModelsOverview active settings={settings} onSave={save} />));
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Connect model provider"]')!.click(),
+  );
+  const chatgpt = [...document.querySelectorAll<HTMLButtonElement>("dialog button")].find(
+    (button) => button.textContent === "ChatGPT",
+  )!;
+  await act(async () => chatgpt.click());
+  const dialog = document.querySelector('dialog[aria-label="Connect ChatGPT"]')!;
+  expect(dialog.textContent).toContain("Continue with ChatGPT");
+  expect(dialog.textContent).not.toContain("Sign in to OpenRouter");
+  expect(dialog.textContent).not.toContain("Sign in with Vercel");
+  expect(save).not.toHaveBeenCalled();
+  expect(rpc.mock.calls.some(([method]) => method === "models.auth.start")).toBe(false);
+  await act(async () => dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  expect(document.querySelector('dialog[aria-label="Connect ChatGPT"]')).toBeNull();
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Connect model provider");
+});

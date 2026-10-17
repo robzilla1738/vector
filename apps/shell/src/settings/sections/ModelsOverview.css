@@ -223,3 +223,26 @@
     }
   }
 }
+
+@layer components {
+  .model-account-dialog {
+    width: min(480px, calc(100vw - 32px));
+  }
+  .model-account-dialog > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .model-account-dialog h3 {
+    margin: 0;
+    font-weight: var(--fw-medium);
+  }
+  .model-account-dialog p {
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .model-account-dialog button {
+    margin-block: 4px;
+  }
+}

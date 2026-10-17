@@ -1,5 +1,28 @@
 # Aux status — October 16, 2026
 
+Provider account setup follow-up (reference 059): Connect now exposes searchable
+ChatGPT, OpenRouter and Vercel account entries, plus explicitly labeled Copilot
+catalog setup. Each opens a focused dialog backed by the existing sign-in
+implementation. Opening a dialog does not select a different chat provider or
+start consent. Local-only mode hides account entries/dialogs. Saved accounts are
+filtered to the dialog's provider; pending attempts retain existing cancellation
+and retirement behavior. The detailed settings editor still offers all setup flows.
+
+Local Vite confirms provider search, focused ChatGPT content and Escape returning
+focus to Connect. No sign-in was started and no credentials were accessed.
+Capture: `/tmp/aux-parity-2026-10-16/aux-chatgpt-setup-vite.png`.
+Reference 060 was reopened: its named-provider JSON import is not equivalent to
+Aux's single OpenAI-compatible endpoint. That runtime/data-model gap remains open,
+along with missing subscription adapters, branding and matched-viewport evidence.
+This batch is newer than compiled native shell `286ae0c3b`.
+
+Validation: integrated typecheck/lint and 4,617 tests across 741 files passed.
+Final account-dialog checks passed seven tests, final typecheck passed, and renderer
+build passed in 1.84s. Logs: `/tmp/aux-provider-dialogs-check.log`,
+`/tmp/aux-provider-dialogs-final-tests.log`, and `/tmp/aux-provider-dialogs-build.log`.
+Native launcher 60321 was retired with SIGTERM; app 64878 exited and its disposable
+Profile `aux-dev-BlQeyX` was confirmed removed before the next consolidation.
+
 Image model menu follow-up (reference 061): the overview now uses the same
 searchable provider-grouped control as task models. The shared control was
 extracted into `ui/model-choice.tsx`. Image choices use the actual supported

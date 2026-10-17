@@ -28,6 +28,17 @@ import "./ModelsOverview.css";
 import { focusSettingsDestination } from "../search-focus";
 import type { SettingsSearchItem } from "../search";
 
+import { ProviderSignIn, type SignInProvider } from "./ProviderSignIn";
+import { CopilotSignIn } from "./CopilotSignIn";
+
+const accountOptions = [
+  { id: "chatgpt", label: "ChatGPT", group: "Subscription" },
+  { id: "openrouter", label: "OpenRouter", group: "Account" },
+  { id: "vercel", label: "Vercel AI Gateway", group: "Account" },
+  { id: "copilot", label: "GitHub Copilot · catalog setup", group: "Catalog" },
+] as const;
+type AccountProvider = SignInProvider | "copilot";
+
 import { ModelChoice, type ModelOption } from "../../ui/model-choice";
 const roles: { id: AgentModelCategory; label: string; hint: string }[] = [
   { id: "fast", label: "Fast", hint: "Quick chats and lightweight tasks." },
@@ -50,6 +61,7 @@ export function ModelsOverview({
   onSave(patch: Record<string, unknown>): Promise<boolean>;
 }) {
   const [editor, setEditor] = useState(false);
+  const [account, setAccount] = useState<AccountProvider>();
   const [editorTarget, setEditorTarget] = useState<string>();
   const editorReturn = useRef<HTMLElement | null>(null);
   const openEditor = (target?: string) => {
@@ -115,7 +127,8 @@ export function ModelsOverview({
   const provider = (settings.modelProvider as ModelProvider) ?? "gateway";
   useEffect(() => {
     if (!active) setEditor(false);
-  }, [active]);
+    if (!active || settings.localModelsOnly === true) setAccount(undefined);
+  }, [active, settings.localModelsOnly]);
   useEffect(() => {
     if (!active) return;
     let live = true;
@@ -188,7 +201,7 @@ export function ModelsOverview({
         <ModelConnections
           concise
           settings={{ ...settings, modelConnections: connected }}
-          active={active && !editor}
+          active={active && !editor && !account}
           disabled={busy}
           onSave={save}
           onEdit={async (target, focus) => {
@@ -200,12 +213,14 @@ export function ModelsOverview({
           <ConnectModels
             disabled={busy}
             triggerRef={trigger}
+            allowAccounts={settings.localModelsOnly !== true}
+            onAccount={(next) => {
+              editorReturn.current = trigger.current;
+              setAccount(next);
+            }}
             onSelect={async (target) => {
               if (!windowOwner.current()) return;
-              if (
-                (!target || target === provider || (await save({ modelProvider: target }))) &&
-                windowOwner.current()
-              )
+              if ((target === provider || (await save({ modelProvider: target }))) && windowOwner.current())
                 openEditor("Model provider");
             }}
           />
@@ -281,6 +296,26 @@ export function ModelsOverview({
         <button type="button" className="btn ghost model-advanced" onClick={() => openEditor()}>
           Model settings…
         </button>
+        {active && settings.localModelsOnly !== true && account && (
+          <Dialog
+            label={`Connect ${accountOptions.find((option) => option.id === account)!.label}`}
+            className="aux-dialog-surface model-account-dialog"
+            returnFocus={editorReturn}
+            onClose={() => setAccount(undefined)}
+          >
+            <header>
+              <h3>{accountOptions.find((option) => option.id === account)!.label}</h3>
+              <button type="button" className="btn" onClick={() => setAccount(undefined)}>
+                Done
+              </button>
+            </header>
+            {account === "copilot" ? (
+              <CopilotSignIn />
+            ) : (
+              <ProviderSignIn only={account} onConnected={() => onSave({})} />
+            )}
+          </Dialog>
+        )}
         {active && editor && (
           <Dialog
             dialogRef={dialog}
@@ -307,13 +342,20 @@ function ConnectModels({
   disabled,
   triggerRef,
   onSelect,
+  onAccount,
+  allowAccounts,
 }: {
   disabled: boolean;
   triggerRef: import("react").RefObject<HTMLButtonElement | null>;
-  onSelect(provider?: ModelProvider): Promise<void>;
+  onSelect(provider: ModelProvider): Promise<void>;
+  onAccount(provider: AccountProvider): void;
+  allowAccounts: boolean;
 }) {
   const [query, setQuery] = useState("");
   const search = useRef<HTMLInputElement>(null);
+  const accounts = allowAccounts
+    ? accountOptions.filter((option) => option.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : [];
   const providers = ModelProviderSchema.options.filter((provider) =>
     MODEL_PROVIDER_NAMES[provider].toLowerCase().includes(query.trim().toLowerCase()),
   );
@@ -359,21 +401,28 @@ function ConnectModels({
             />
           </label>
           <div className="settings-model-options">
-            {!query && (
-              <>
-                <p>Subscriptions</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    close();
-                    void onSelect();
-                  }}
-                >
-                  Connect an account…
-                </button>
-              </>
-            )}
-            <p>{providers.length ? "API" : "No matching providers"}</p>
+            {["Subscription", "Account", "Catalog"].map((group) => {
+              const matches = accounts.filter((option) => option.group === group);
+              return matches.length ? (
+                <div key={group}>
+                  <p>{group}</p>
+                  {matches.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        close();
+                        onAccount(option.id);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })}
+            {providers.length > 0 && <p>API</p>}
+            {!providers.length && !accounts.length && <p>No matching providers</p>}
             {providers.map((provider) => (
               <button
                 type="button"

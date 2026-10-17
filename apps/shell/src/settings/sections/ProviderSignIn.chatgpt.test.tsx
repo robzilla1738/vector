@@ -39,7 +39,7 @@ it("starts actual ChatGPT account consent and retires the exact pending receipt 
     root = createRoot(host);
   document.body.append(host);
   try {
-    await act(async () => root.render(<ProviderSignIn onConnected={async () => {}} />));
+    await act(async () => root.render(<ProviderSignIn only="chatgpt" onConnected={async () => {}} />));
     const button = [...host.querySelectorAll("button")].find(
       (b) => b.textContent === "Continue with ChatGPT",
     );
@@ -62,20 +62,33 @@ it("reports the Vercel account that actually completed sign-in", async () => {
   const attemptId = "v".repeat(43);
   const onConnected = vi.fn(async () => {});
   mocks.call.mockReset().mockImplementation(async (method: string) => {
-    if (method === "models.auth.start") return {
-      attemptId, provider: "vercel", phase: "pending", expiresAt: Date.now() + 300000,
-      authorizationUrl: "https://vercel.com/oauth/authorize?state=synthetic",
-    };
-    if (method === "models.auth.status") return {
-      attemptId, provider: "vercel", phase: "connected", expiresAt: Date.now() + 300000,
-    };
+    if (method === "models.auth.start")
+      return {
+        attemptId,
+        provider: "vercel",
+        phase: "pending",
+        expiresAt: Date.now() + 300000,
+        authorizationUrl: "https://vercel.com/oauth/authorize?state=synthetic",
+      };
+    if (method === "models.auth.status")
+      return {
+        attemptId,
+        provider: "vercel",
+        phase: "connected",
+        expiresAt: Date.now() + 300000,
+      };
     if (method === "models.auth.accounts" || method === "models.copilot.accounts") return [];
-    if (method === "models.copilot.setup") return {
-      registrationConfigured: false, runtimeInstalled: false, runtimeSupported: false, catalogOnly: true,
-    };
+    if (method === "models.copilot.setup")
+      return {
+        registrationConfigured: false,
+        runtimeInstalled: false,
+        runtimeSupported: false,
+        catalogOnly: true,
+      };
     throw new Error(`Unexpected ${method}`);
   });
-  const host = document.createElement("div"), root = createRoot(host);
+  const host = document.createElement("div"),
+    root = createRoot(host);
   document.body.append(host);
   try {
     await act(async () => root.render(<ProviderSignIn onConnected={onConnected} />));
