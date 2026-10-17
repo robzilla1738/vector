@@ -479,14 +479,14 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Image-generation model",
   },
   {
-    category: "Models",
+    category: "External agents",
     label: "Cloud account",
     description: "",
     target: "Cloud account",
     searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
   },
   {
-    category: "Models",
+    category: "External agents",
     label: "Cloud resource rates",
     description: "Review the rates and session limits for your own Vercel account before saving.",
     target: "Cloud resource rates",
@@ -532,36 +532,8 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Projects",
     label: "Space",
-    description:
-      "Project roots and repository instructions apply only to runs in this Space. Aux Packages are selected per run.",
-    target: "Space",
-  },
-  {
-    category: "Projects",
-    label: "Local folder",
-    description:
-      "Choose an existing folder. Review its canonical path and AGENTS.md before granting access.",
-    target: "Local folder",
-  },
-  {
-    category: "Projects",
-    label: "Projects",
-    description:
-      "Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review.",
-    target: "Projects",
-  },
-  {
-    category: "Projects",
-    label: "Cloud account",
     description: "",
-    target: "Cloud account",
-    searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
-  },
-  {
-    category: "Projects",
-    label: "Cloud resource rates",
-    description: "Review the rates and session limits for your own Vercel account before saving.",
-    target: "Cloud resource rates",
+    target: "Space",
   },
   {
     category: "Quick Ask",

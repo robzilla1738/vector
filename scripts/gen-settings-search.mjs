@@ -12,7 +12,7 @@ const sections = {
   PrivacySecurity: "Site permissions",
   PasswordsAutofill: "Passwords & Autofill",
   Models: "Models",
-  CloudExecution: "Models",
+  CloudExecution: "External agents",
   UsageBudgets: "Usage & Budgets",
   Routines: "Routines",
   Workspaces: "Projects",

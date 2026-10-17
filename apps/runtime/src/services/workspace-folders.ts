@@ -6,6 +6,8 @@ import {
   AuxError,
   WorkspaceFolderReviewSchema,
   WorkspaceFolderSchema,
+  WorkspaceFolderPresentationSchema,
+  type WorkspaceFolderPresentation,
   type WorkspaceFolder,
   type WorkspaceFolderAccess,
   type WorkspaceFolderReview,
@@ -84,7 +86,14 @@ export class WorkspaceFolderService {
       agentsDigest: agents.digest,
       skillsPath: this.skillsPath(canonical),
       reviewDigest: sha(
-        JSON.stringify([workspaceId, canonical, access, agents.digest, identity.dev.toString(), identity.ino.toString()]),
+        JSON.stringify([
+          workspaceId,
+          canonical,
+          access,
+          agents.digest,
+          identity.dev.toString(),
+          identity.ino.toString(),
+        ]),
       ),
     });
   }
@@ -94,6 +103,7 @@ export class WorkspaceFolderService {
     path: string,
     access: WorkspaceFolderAccess,
     expectedDigest: string,
+    presentation: WorkspaceFolderPresentation = {},
   ): WorkspaceFolder {
     const review = this.inspect(workspaceId, path, access);
     if (review.reviewDigest !== expectedDigest)
@@ -102,6 +112,7 @@ export class WorkspaceFolderService {
     if (folders.some((folder) => !folder.archivedAt && folder.path === review.path))
       throw new AuxError("conflict", "This folder is already bound to the Space.");
     const folder = WorkspaceFolderSchema.parse({
+      ...WorkspaceFolderPresentationSchema.parse(presentation),
       ...review,
       agentsPreview: undefined,
       folderId: randomUUID(),

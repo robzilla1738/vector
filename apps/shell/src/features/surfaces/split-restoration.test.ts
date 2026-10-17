@@ -11,6 +11,8 @@ const fixture = vi.hoisted(() => ({
     pages: import("../../store/pages").PageCollection;
   },
   listeners: new Set<() => void>(),
+  settled: new Set<() => void>(),
+  splitPending: false,
   commit: vi.fn(async (..._args: unknown[]) => {}),
   error: vi.fn(),
 }));
@@ -26,6 +28,11 @@ vi.mock("../../store", () => ({
 }));
 vi.mock("./split-actions", () => ({
   commitSplit: fixture.commit,
+  splitOperationPending: () => fixture.splitPending,
+  onSplitOperationsSettled: (listener: () => void) => {
+    fixture.settled.add(listener);
+    return () => fixture.settled.delete(listener);
+  },
   localSplitPage: (id: string) =>
     orderedPages(fixture.state.pages).find(
       (page) =>
@@ -43,6 +50,8 @@ const settle = async () => {
 };
 beforeEach(() => {
   fixture.listeners.clear();
+  fixture.settled.clear();
+  fixture.splitPending = false;
   fixture.commit.mockReset();
   fixture.commit.mockResolvedValue(undefined);
   fixture.error.mockReset();
@@ -112,4 +121,29 @@ it("invalidates queued reconstruction on unmount and reports a live failure once
   expect(fixture.error).toHaveBeenCalledTimes(1);
   expect(fixture.commit).toHaveBeenCalledTimes(2);
   stopAgain();
+});
+
+it("does not reconstruct an intentionally removed pair between native ACK and layout commit", async () => {
+  fixture.splitPending = true;
+  const stop = restoreNativeSplits();
+  publish();
+  expect(fixture.commit).not.toHaveBeenCalled();
+  fixture.state.layout = { ...fixture.state.layout, splitGroups: [] };
+  fixture.splitPending = false;
+  for (const listener of fixture.settled) listener();
+  await settle();
+  expect(fixture.commit).not.toHaveBeenCalled();
+  expect(fixture.error).not.toHaveBeenCalled();
+  stop();
+  expect(fixture.settled.size).toBe(0);
+});
+it("rechecks genuinely missing pairs when the last queued split operation settles", async () => {
+  fixture.splitPending = true;
+  const stop = restoreNativeSplits();
+  expect(fixture.commit).not.toHaveBeenCalled();
+  fixture.splitPending = false;
+  for (const listener of fixture.settled) listener();
+  await settle();
+  expect(fixture.commit).toHaveBeenCalledTimes(1);
+  stop();
 });

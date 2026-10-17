@@ -23,7 +23,11 @@ async function h_workspaces_folders(ctx: MethodCtx): Promise<unknown> {
   if (method === "workspaces.folders.inspect")
     return workspaceFolders.inspect(params.workspaceId, params.path, params.access);
   if (method === "workspaces.folders.add")
-    return workspaceFolders.add(params.workspaceId, params.path, params.access, params.expectedDigest);
+    return workspaceFolders.add(params.workspaceId, params.path, params.access, params.expectedDigest, {
+      name: params.name,
+      icon: params.icon,
+      color: params.color,
+    });
   if (method === "workspaces.folders.list") return workspaceFolders.list(params.workspaceId);
   return workspaceFolders.archive(params.workspaceId, params.folderId);
 }

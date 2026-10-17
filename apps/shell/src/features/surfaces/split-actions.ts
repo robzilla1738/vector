@@ -27,6 +27,15 @@ const changedTabsMessage = "The tabs changed. Try splitting them again.";
 const unavailableTabsMessage = "The split tabs moved or became unavailable.";
 
 let splitOperations: Promise<unknown> = Promise.resolve();
+let pendingSplitOperations = 0;
+const settledListeners = new Set<() => void>();
+export const splitOperationPending = () => pendingSplitOperations > 0;
+export function onSplitOperationsSettled(listener: () => void) {
+  settledListeners.add(listener);
+  return () => {
+    settledListeners.delete(listener);
+  };
+}
 const resizeOrigins = new Map<string, Layout>();
 const nativePair = (group: SplitGroup) => JSON.stringify([group.panes, group.layout, group.ratios[0]]);
 
@@ -57,6 +66,7 @@ export function commitSplit(
   nativePrevious = previous,
   valid = () => true,
 ) {
+  ++pendingSplitOperations;
   const operation = splitOperations.then(async () => {
     if (layout === previous && nativePrevious === previous) return;
     const before = previous.splitGroups ?? [],
@@ -133,8 +143,12 @@ export function commitSplit(
       throw reason;
     }
   });
-  splitOperations = operation.catch(() => {});
-  return operation;
+  const settled = operation.finally(() => {
+    --pendingSplitOperations;
+    if (!pendingSplitOperations) for (const listener of settledListeners) listener();
+  });
+  splitOperations = settled.catch(() => {});
+  return settled;
 }
 
 export async function splitAdd(pageId: string, edge: "left" | "right" | "top" | "bottom" = "right") {

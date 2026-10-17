@@ -1,3 +1,4 @@
+import { CloudExecution } from "../settings/sections/CloudExecution";
 import { lazySection } from "../settings/LazySettingsSection";
 import { staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
@@ -527,6 +528,7 @@ export function Settings() {
           hidden={!visible("External agents")}
         >
           <ExternalAgents active={visible("External agents")} />
+          {visible("External agents") && <CloudExecution />}
         </section>
         {pluginsAvailable && (
           <section

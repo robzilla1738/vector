@@ -1228,3 +1228,27 @@ claiming complete split-flow acceptance. Native compilation does not yet include
 the newer f36e6765e cards or provider menus. All captures live under
 /tmp/aux-parity-2026-10-16. Projects055–057 were inspected: creation, icon/color and
 working-directory parity are still open; no substitute project UI was added.
+
+
+## Projects creation and split transition batch — October 16
+
+References 055–057 reviewed again; recursive reference inventory remains 562 files.
+Projects now opens a Create dialog from a quiet full-width row. Name/icon/color
+metadata is validated and stored with the folder binding, shown in project cards
+and names in composer choices. Nine colors and 24 existing Central Icons form an
+anchored picker with keyboard navigation. The native folder chooser is offered
+only when its host feature is available. Existing folder inspection and exact
+review-digest checks remain; changed instructions require another review.
+Cloud setup moved to Developers and Settings search follows that location.
+
+Observed the new renderer through Vite inside the disposable native app: dialog
+opened, color and globe selection updated, Escape returned to the form. A refresh
+verified final rounded input/select styling (aux-project-create-vite.png). This
+is not native folder-creation acceptance: the mock has no folder RPCs. Default
+managed project-directory creation, the full reference icon grid, exact same-size
+comparison, light/narrow states and native persistent creation remain open.
+
+The Separate race now gates restoration while any split operation is queued or
+in flight; it rechecks when the final operation settles. The full integrated
+check passes 4,596 tests/738 files. Native rapid Separate/re-split acceptance
+remains to be checked in the consolidated build. Overall parity remains open.

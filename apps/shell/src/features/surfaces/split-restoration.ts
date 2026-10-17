@@ -1,5 +1,10 @@
 import { useStore, errToast } from "../../store";
-import { commitSplit, localSplitPage } from "./split-actions";
+import {
+  commitSplit,
+  localSplitPage,
+  splitOperationPending,
+  onSplitOperationsSettled,
+} from "./split-actions";
 
 /** Organization survives restart; recreate its native pair once pages return. */
 export function restoreNativeSplits() {
@@ -8,7 +13,15 @@ export function restoreNativeSplits() {
   const attempted = new Set<string>();
   const restore = () => {
     const state = useStore.getState();
-    if (!live || pending || !state.connected || state.restoringTabs || !state.catalogVersion) return;
+    if (
+      !live ||
+      pending ||
+      splitOperationPending() ||
+      !state.connected ||
+      state.restoringTabs ||
+      !state.catalogVersion
+    )
+      return;
     const pairs = (state.layout.splitGroups ?? []).filter(
       (group) => group.panes.length === 2 && group.panes.every(localSplitPage),
     );
@@ -37,9 +50,11 @@ export function restoreNativeSplits() {
       });
   };
   const off = useStore.subscribe(restore);
+  const offSettled = onSplitOperationsSettled(restore);
   restore();
   return () => {
     live = false;
     off();
+    offSettled();
   };
 }

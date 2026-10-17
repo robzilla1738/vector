@@ -305,6 +305,7 @@ import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import {
   WorkspaceFolderAccessSchema,
+  WorkspaceFolderPresentationSchema,
   WorkspaceFolderReviewSchema,
   WorkspaceFolderSchema,
 } from "./workspace-folders.js";
@@ -1195,6 +1196,7 @@ export const MethodSchemas = {
       path: z.string().min(1).max(4096),
       access: WorkspaceFolderAccessSchema,
       expectedDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      ...WorkspaceFolderPresentationSchema.shape,
     })
     .strict(),
   "workspaces.folders.list": z.object({ workspaceId: id }).strict(),

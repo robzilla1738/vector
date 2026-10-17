@@ -44,7 +44,9 @@ afterEach(() => {
 });
 
 function button(label: string) {
-  const found = [...container.querySelectorAll("button")].find((item) => item.textContent?.trim() === label);
+  const found = [...document.querySelectorAll("button")]
+    .filter((item) => item.textContent?.trim() === label)
+    .at(-1);
   if (!found) throw new Error(`Missing ${label}`);
   return found;
 }
@@ -83,21 +85,30 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
     throw new Error(`Unexpected ${method}`);
   });
   await act(async () => root.render(<WorkspacesSettings active />));
-  const field = container.querySelector<HTMLInputElement>('input[aria-label="Local folder path"]')!;
+  await act(async () => button("Create").click());
+  const name = document.querySelector<HTMLInputElement>("#project-name")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, "Research project");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const field = document.querySelector<HTMLInputElement>('input[aria-label="Local folder path"]')!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, path);
     field.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => button("Review folder").click());
-  expect(container.querySelector('[role="group"][aria-label="Folder access review"]')).not.toBeNull();
-  expect(container.textContent).toContain("Local notes");
-  expect(container.textContent).toContain(path);
-  await act(async () => button("Grant reviewed folder access").click());
+  expect(document.querySelector('[role="group"][aria-label="Folder access review"]')).not.toBeNull();
+  expect(document.body.textContent).toContain("Local notes");
+  expect(document.body.textContent).toContain(path);
+  await act(async () => button("Create").click());
   expect(rpc).toHaveBeenCalledWith("workspaces.folders.add", {
     workspaceId,
     path,
     access: "read",
     expectedDigest: digest,
+    name: "Research project",
+    icon: "folder",
+    color: "neutral",
   });
   expect(container.textContent).toContain(
     "Folder or AGENTS.md changed; access paused. Archive and review again.",

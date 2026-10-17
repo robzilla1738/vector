@@ -1,5 +1,24 @@
 # Aux status — October 16, 2026
 
+October 16 Projects batch: replaced the inline folder-access form with a compact
+Create row and a 512px Create Project dialog, using references 055–057. Project
+names, 24 existing library icons and nine colors persist with reviewed folders;
+composer choices display saved names. Folder selection uses the implemented
+native directory chooser when available. Canonical-path/AGENTS.md review remains
+required before Create grants access. Cloud execution setup now lives in
+Developers, with its search destination corrected. The reference's automatic
+managed working directory and full icon catalog are still outstanding.
+
+Split restoration now waits for queued native split operations to settle, avoiding
+reconstruction of an intentionally separated pair between native ACK and layout
+commit. Regression coverage includes deliberate separation and deferred recovery.
+`npm run check` passes typecheck, lint and 4,596 tests across 738 files. Local Vite
+inspection confirmed dialog layout, icon/color selection and Escape focus return;
+`/tmp/aux-parity-2026-10-16/aux-project-create-vite.png` records the final rounded
+form controls. The Vite mock lacks folder RPCs, so persistence/chooser acceptance
+needs the consolidated native preview. No full-parity or phase completion claimed.
+
+
 
 ## October 16 UI parity review — in progress
 

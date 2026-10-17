@@ -40,7 +40,16 @@ it("binds a reviewed Space folder, pins AGENTS.md, and removes roots on archive"
     expect(() => service.add(workspace.workspaceId, userFolder, "readWrite", review.reviewDigest)).toThrow(
       /Review/,
     );
-    const saved = service.add(workspace.workspaceId, userFolder, "read", review.reviewDigest);
+    const saved = service.add(workspace.workspaceId, userFolder, "read", review.reviewDigest, {
+      name: "Research project",
+      icon: "globe",
+      color: "blue",
+    });
+    expect(service.list(workspace.workspaceId)[0]).toMatchObject({
+      name: "Research project",
+      icon: "globe",
+      color: "blue",
+    });
     expect(service.roots(workspace.workspaceId)).toEqual({ read: [review.path], write: [] });
     expect(service.context(workspace.workspaceId)).toContain("Use the project style.");
     expect(service.context(workspace.workspaceId)).toContain(realpathSync(projectSkills));

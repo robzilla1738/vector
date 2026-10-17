@@ -127,7 +127,7 @@ function ProjectChoices({
           onClick={() => choose(folder.path)}
         >
           {shellIconFolder}
-          <span>{folderName(folder.path)}</span>
+          <span>{folder.name ?? folderName(folder.path)}</span>
           {selected === folder.path && shellIconCheck}
         </button>
       ))}
