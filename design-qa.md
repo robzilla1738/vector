@@ -461,3 +461,15 @@ the exact native Brave template remains checked and the Add menu is bounded at
 19 focused checks pass; full check passes typecheck/lint and 4,551/4,552 tests,
 known coder-worktrees timeout only. Renderer build 2.10s. Native staging of the
 newer source, import selector visual acceptance and full product QA remain open.
+
+## October 16 — shared bookmark-file import
+
+General now has the reference’s separate Import bookmarks entry using the actual
+Library parser/preview/native import. Replaced the old Library implementation and
+styles; preserved its toolbar entry, folders and review. Async file reads/writes
+retire with their window/view. Accepted imports clear the preview before refresh
+so a view-read failure cannot replay them. Import dialogs use 520px width.
+Integrated typecheck/lint pass, 4,560/4,561 tests pass (known coder-worktrees timeout
+only); final 32 affected cases pass; renderer build 2.44s. UI walkthrough with
+the owned synthetic fixture and native staging remain pending. Also reviewed
+023/030; saved Tidy prompt is a real implementation gap, recorded in the ledger.

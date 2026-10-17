@@ -1,0 +1,40 @@
+@layer components {
+  .bookmark-file-setting,
+  .bookmark-file-review {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+  .bookmark-file-setting {
+    gap: 16px;
+  }
+  .bookmark-file-setting > p,
+  .bookmark-file-review > p {
+    margin: 0;
+  }
+  .bookmark-file-review {
+    margin: 16px 0;
+    padding: 14px;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+  }
+  .bookmark-file-review :is(p, li) {
+    overflow-wrap: anywhere;
+  }
+  .bookmark-file-review ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .library .bookmark-file-review {
+    margin: var(--space-2) var(--space-4);
+    background: var(--bg-2);
+  }
+  .bookmark-file-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .bookmark-file-setting > footer {
+    justify-content: flex-end;
+  }
+}

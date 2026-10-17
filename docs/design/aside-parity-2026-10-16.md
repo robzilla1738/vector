@@ -855,3 +855,37 @@ After that walkthrough, the exact owned preview retired normally (launcher exit
 /tmp/aux-general-final-native.log; inspect the same process before any replacement.
 It includes the latest language/menu/import/native-template/default-display source.
 No newest-source native acceptance is claimed until this build and walkthrough.
+
+## General bookmark-file entry and shared Library review
+
+Capture 017’s General surface contains a separate Import bookmarks entry. Added
+that entry using the actual bookmark HTML parser/native bookmarks.import flow,
+shared with Library. Removed Library’s replaced file-read/import implementation
+and its old preview styles. Both entry points preserve folders, preview web URLs
+only, show duplicate/unsupported counts and require an explicit final import.
+The file parser remains inert, bounds files to 5 MB and rejects unsupported
+addresses. Library retains its toolbar Import HTML entry and real folder refresh.
+Import dialogs use the reference’s normalized 520px width.
+
+The shared flow owns file reads and pending writes by window/private/view lifetime.
+Retired reads/acknowledgements cannot publish into a fresh editor. Busy imports
+exclude overlapping controls. A failed native import retains its preview; an
+acknowledged import clears it before refreshing so a refresh failure cannot offer
+a replay of the same accepted file. That failure explicitly says the import
+completed; Settings offers Done. No browser Profile discovery is added.
+
+Initial integrated check: typecheck/lint pass, 4,560/4,561 tests across 732 files
+pass; sole failure is the longstanding coder-worktrees timeout. Added Library
+wiring/fresh-pending checks; final 32 affected cases pass. A synthetic node ID in
+the new Library test was corrected to the native numeric-ID contract. Renderer
+build: 2.44s. Actual UI/file-chooser walkthrough and new-source native staging
+remain pending. The fixture file path is recorded in /tmp/aux-settings-fixture-path
+for owned cleanup; it contains one synthetic example.test bookmark only.
+
+Also opened 023/030: the reference exposes Customize Tidy Tabs with a saved
+300-character prompt. Aux’s actual Overview proposal still accepts pageIds only
+(packages/contracts/src/tidy.ts, apps/runtime/src/agent/tidy.ts) and has no saved
+custom prompt editor. This remains an implementable capability gap, not a mock
+configuration control. Appearance option order and matched native comparison remain
+open. Current native builder 31852 still builds 2425d212a and excludes the new
+bookmark-file source above; do not replace that live builder.

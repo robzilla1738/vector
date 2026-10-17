@@ -563,6 +563,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
+    label: "Import bookmarks",
+    description: "Bring bookmarks and folders from another browser’s HTML export into Aux.",
+    target: "Import bookmarks",
+  },
+  {
+    category: "General",
     label: "About Aux",
     description: "Installed browser version and source revision.",
     target: "About Aux",

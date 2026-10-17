@@ -7,6 +7,7 @@ import { useStore } from "../../store";
 import { shellIconRight } from "../../ui/icons";
 import { SearchEngineSetting, SearchEnginesSetting, type EngineRow } from "../search-engines";
 import { DefaultBrowserSetting } from "../../components/DefaultBrowserSetting";
+import { BookmarkImportSetting } from "../../components/BookmarkFileImport";
 import { ImportDataSetting } from "../../components/ImportDataSetting";
 import { SettingsField as IndexedField } from "../primitives";
 import { DownloadFolderSetting } from "./DownloadFolder";
@@ -118,6 +119,19 @@ export function GeneralSettings({
               action="Import"
             >
               <ImportDataSetting />
+            </SettingsDialogControl>
+          </IndexedField>
+          <IndexedField
+            compact
+            label="Import bookmarks"
+            hint="Bring bookmarks and folders from another browser’s HTML export into Aux."
+          >
+            <SettingsDialogControl
+              active={active && !searching && !subview}
+              label="Import bookmarks"
+              action="Import"
+            >
+              {(close) => <BookmarkImportSetting active={active && !searching && !subview} onClose={close} />}
             </SettingsDialogControl>
           </IndexedField>
         </SettingsGroup>

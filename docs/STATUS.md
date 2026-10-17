@@ -3,6 +3,17 @@
 
 ## October 16 UI parity review — in progress
 
+Newer source adds General’s separate Import bookmarks entry through a shared
+Library/Settings file-preview flow. Replaced Library’s duplicate parser/import UI
+and stale styles. Files stay inert and bounded; preview preserves folders and
+supported URLs, then explicit import uses the existing native method. Window/
+view retirement protects fresh editors. A known accepted import cannot be retried
+merely because its view refresh failed. The synthetic fixture and UI walkthrough
+remain pending. Initial integrated typecheck/lint and 4,560/4,561 tests pass
+(known coder-worktrees timeout only); final 32 affected cases pass. Renderer build
+2.44s. Settings search index now contains 203 fields. This source is newer than
+the 2425d212a native build currently in progress.
+
 Latest source recognizes Chromium-normalized search templates by their exact
 provider origin, search path and q=%s placeholder. Native verification exposed
 Brave’s added source=csChrome parameter: the prior exact-string comparison lost

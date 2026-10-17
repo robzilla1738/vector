@@ -39,3 +39,14 @@
     justify-content: flex-end;
   }
 }
+
+@layer components {
+  .settings-preference-dialog:has(.import-setting, .bookmark-file-setting) {
+    width: 520px;
+    padding: 20px;
+  }
+  .settings-preference-dialog:has(.import-setting, .bookmark-file-setting) > header h3 {
+    font-size: 20px;
+    line-height: 24px;
+  }
+}

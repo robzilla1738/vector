@@ -1711,31 +1711,6 @@
 
   /* Rounded shell clips paint without becoming a hidden horizontal scroller.
    Otherwise focus moving out of the agent rail can scroll the entire shell. */
-  .library-import {
-    margin: var(--space-2) var(--space-4);
-    padding: var(--space-3-5);
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-lg);
-    background: var(--bg-2);
-  }
-  .library-import p {
-    margin: var(--space-2) 0;
-    line-height: 1.5;
-  }
-  .library-import ul {
-    margin: var(--space-2) 0;
-    padding: 0;
-    list-style: none;
-  }
-  .library-import li {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.7;
-  }
-  .library-import .library-tools {
-    padding: var(--space-2) 0 0;
-  }
   .library .library-field {
     margin: var(--space-0) var(--space-4) var(--space-1-5);
     padding: var(--space-2-5) var(--space-3);

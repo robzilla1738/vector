@@ -50,15 +50,11 @@ import {
   shellIconTrash,
 } from "../ui/icons";
 import { bridge, inNativeHost } from "../bridge";
+import { BookmarkImportFileControl, BookmarkImportReview, useBookmarkFileImport } from "./BookmarkFileImport";
 import { RecentlyClosed } from "./RecentlyClosed";
 import { ClearHistory } from "./ClearHistory";
 import { OpenBookmarkFolder } from "./OpenBookmarkFolder";
-import {
-  parseBookmarkFile,
-  exportBookmarkFile,
-  bookmarkWebUrl,
-  MAX_BOOKMARK_FILE_SIZE,
-} from "../bookmark-files";
+import { exportBookmarkFile, bookmarkWebUrl } from "../bookmark-files";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { SkeletonRows } from "./Skeleton";
 import { openPeekLink } from "../peek-link";
@@ -481,7 +477,6 @@ export function Library({
     name: string;
     folder: BookmarkFolder;
   } | null>(null);
-  const [importSource, setImportSource] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyRange, setHistoryRange] = useState("all");
   const [moreHistory, setMoreHistory] = useState(false);
@@ -499,21 +494,35 @@ export function Library({
   const morePending = useRef(false);
   const [failedLoad, setFailedLoad] = useState<"initial" | "more" | null>(null);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [actionBusy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [removed, setRemoved] = useState<RemovedBookmark | null>(null);
   const [editing, setEditing] = useState<BookmarkEditor | null>(null);
-  const [importPreview, setImportPreview] = useState<Awaited<ReturnType<typeof parseBookmarkFile>> | null>(
-    null,
-  );
-  const fileInput = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const results = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const firstSelection = useRef<HTMLButtonElement>(null);
   const firstResult = useRef<HTMLButtonElement>(null);
   const viewButtons = useRef(new Map<View, HTMLButtonElement>());
+  const bookmarkImport = useBookmarkFileImport({
+    active: view === "bookmarks",
+    identity: controlOwner.identity,
+    onCancel: () => search.current?.focus(),
+    onRead: () => {
+      setNotice("");
+      setError("");
+    },
+    onImported: async (receipt, stillCurrent) => {
+      const next = await readBookmarkFolders();
+      if (!stillCurrent()) return;
+      setSnapshot(next);
+      setFolderId("");
+      setQuery("");
+      setNotice(`Imported ${receipt.added} bookmarks. ${receipt.skipped} already saved.`);
+    },
+  });
+  const busy = actionBusy || bookmarkImport.busy;
   useEffect(() => {
     if (selecting) firstSelection.current?.focus();
   }, [selecting]);
@@ -713,7 +722,6 @@ export function Library({
   const displayItems = view === "reading" ? [...unread, ...read] : items;
   const bookmarkPositions = new Map(bookmarks.map((item, index) => [bookmarkKey(item), index]));
   const isSaved = (url: string) => bookmarks.some((item) => item.url === url);
-  const importDuplicates = importPreview?.bookmarks.filter((item) => isSaved(item.url)).length ?? 0;
   const action = useCallback(async (work: () => Promise<void>) => {
     if (actionPending.current) return;
     actionPending.current = true;
@@ -824,10 +832,6 @@ export function Library({
     setSelection([]);
     search.current?.focus();
   }
-  function cancelImport() {
-    setImportPreview(null);
-    search.current?.focus();
-  }
   // Private windows never carry reading-list state, so the view stays hidden there.
   const archive = useFeature("archive");
   const views = VIEWS.filter(
@@ -850,7 +854,7 @@ export function Library({
             event.preventDefault();
             event.stopPropagation();
             if (editing || folderEditor) cancelEditor();
-            else if (importPreview) cancelImport();
+            else if (bookmarkImport.selected) bookmarkImport.cancel();
             else if (selecting) cancelSelection();
             else runClose(event);
           }
@@ -1028,9 +1032,7 @@ export function Library({
                   >
                     {shellIconFolderClosed} New folder
                   </button>
-                  <button {...smallButtonProps} disabled={busy} onClick={() => fileInput.current?.click()}>
-                    Import HTML
-                  </button>
+                  <BookmarkImportFileControl flow={bookmarkImport} disabled={busy} label="Import HTML" />
                   <button
                     {...smallButtonProps}
                     disabled={busy || !snapshot || (!bookmarks.length && !folders.length) || !inNativeHost}
@@ -1053,26 +1055,6 @@ export function Library({
                   >
                     Export HTML
                   </button>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept=".html,.htm,text/html"
-                    hidden
-                    aria-label="Import bookmark file"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      if (!file) return;
-                      setImportPreview(null);
-                      setNotice("");
-                      setImportSource(file.name);
-                      void action(async () => {
-                        if (file.size > MAX_BOOKMARK_FILE_SIZE)
-                          throw new Error("Choose a bookmark HTML file smaller than 5 MB.");
-                        setImportPreview(await parseBookmarkFile(await file.text()));
-                      });
-                    }}
-                  />
                 </>
               )}
               {view === "history" && (
@@ -1224,50 +1206,8 @@ export function Library({
                 </div>
               </section>
             )}
-            {view === "bookmarks" && importPreview && (
-              <section className="library-import" aria-label="Bookmark import preview">
-                <strong>{importPreview.bookmarks.length} web bookmarks ready</strong>
-                <p {...staticHintProps}>
-                  From {importSource} into Bookmarks · {importDuplicates} already saved ·{" "}
-                  {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and
-                  folders.{" "}
-                  {importPreview.skipped > 0
-                    ? `${importPreview.skipped} duplicate or unsupported links skipped.`
-                    : ""}
-                </p>
-                <ul>
-                  {importPreview.bookmarks.slice(0, 4).map((item) => (
-                    <li key={item.url}>
-                      {item.title} <span {...staticHintProps}>{hostOf(item.url)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="library-tools">
-                  <button
-                    {...smallButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void action(async () => {
-                        const result = await call("bookmarks.import", {
-                          bookmarks: importPreview.bookmarks,
-                          folders: importPreview.folders,
-                        });
-                        useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
-                        setSnapshot(await readBookmarkFolders());
-                        setFolderId("");
-                        setImportPreview(null);
-                        setQuery("");
-                        setNotice(`Imported ${result.added} bookmarks. ${result.skipped} already saved.`);
-                      })
-                    }
-                  >
-                    Import bookmarks
-                  </button>
-                  <button {...smallButtonProps} disabled={busy} onClick={cancelImport}>
-                    Cancel import
-                  </button>
-                </div>
-              </section>
+            {view === "bookmarks" && (
+              <BookmarkImportReview flow={bookmarkImport} bookmarks={bookmarks} disabled={busy} />
             )}
             {view === "bookmarks" && (
               <nav className="library-breadcrumbs" aria-label="Bookmark folders">

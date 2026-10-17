@@ -245,3 +245,46 @@ it("opens the selected duplicate folder and keeps browser-only bookmarks out of 
   expect(host.querySelector('[aria-label="Preview Browser settings"]')).toBeNull();
   expect(host.querySelector<HTMLButtonElement>('[aria-label="Remove empty folder"]')!.disabled).toBe(true);
 });
+
+it("uses the shared reviewed bookmark file import and refreshes the real Library", async () => {
+  const imported = {
+    nodeId: "17",
+    url: "https://example.test/imported",
+    title: "Imported synthetic page",
+    folderPath: ["Synthetic folder"],
+  };
+  useStore.setState({ bookmarks: [], overlay: "bookmarks" });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "bookmarks.import") return { added: 1, skipped: 0 };
+    if (method === "bookmarks.list") return [imported];
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<Library />));
+  const file = host.querySelector<HTMLInputElement>('[aria-label="Import bookmark file"]')!;
+  Object.defineProperty(file, "files", {
+    configurable: true,
+    value: [
+      {
+        name: "synthetic.html",
+        size: 200,
+        text: async () =>
+          '<DL><DT><H3>Synthetic folder</H3><DL><DT><A HREF="https://example.test/imported">Imported synthetic page</A></DL></DL>',
+      },
+    ],
+  });
+  await act(async () => file.dispatchEvent(new Event("change", { bubbles: true })));
+  expect(invoke).not.toHaveBeenCalledWith("bookmarks.import", expect.anything());
+  expect(host.querySelector('[aria-label="Bookmark import preview"]')).not.toBeNull();
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent === "Import bookmarks")!
+      .click(),
+  );
+  expect(invoke).toHaveBeenCalledWith("bookmarks.import", {
+    bookmarks: [{ url: imported.url, title: imported.title, folderPath: imported.folderPath }],
+    folders: [["Synthetic folder"]],
+  });
+  expect(useStore.getState().bookmarks).toEqual([imported]);
+  expect(host.querySelector('[aria-label="Bookmark import preview"]')).toBeNull();
+  expect(host.textContent).toContain("Imported 1 bookmarks");
+});
