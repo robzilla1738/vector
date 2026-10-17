@@ -1128,3 +1128,19 @@ uses that two-choice selector and matching row label, preserving readback/error
 handling. Three tests cover Allow→Block, Block→Allow and managed policy. Integrated
 check4,583/4,584 (coder timeout only), renderer2.13s. Native live comparison pending;
 this source postdates builder63412's staged renderer.
+
+Native39f9e3a26/area0044 completed29 steps in8m47.05s (ABI08299a59570b,
+Node26.9). Preview72653/launcher63412, disposable aux-dev-SNBZqr, proved the shared
+bookmark flow end to end: chooser Cancel retains editor; reviewed synthetic HTML
+parses1bookmark/1folder; Import reports1; SDK confirms the exact synthetic URL and
+folder in this disposable Profile. Capture aux-shared-bookmark-import-native-39f9e.png.
+
+Zoom500% writer succeeds but incorrectly scales chrome://aux itself, making the
+shell unusably large. This FAILS native zoom acceptance. Restored100% via the same
+control; captures aux-default-zoom-shell-regression-39f9e.png and
+aux-appearance-restored-native-39f9e.png. Launcher retired normally; both processes
+and disposable Profile cleaned. Area0045 now uses Chromium's scheme/host override
+for chrome://aux at100% before initial navigation and excludes it from saved site
+zoom listings. Applied/reverse-check passes; uncompiled. Next native acceptance:
+500%/25% writes and reopening, shell remains100%, fresh websites honor the default,
+restore100%, no internal Aux entry in website sizes. Do not accept from source alone.

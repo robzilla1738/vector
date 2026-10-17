@@ -15,12 +15,26 @@ coder-worktrees timeout). After adjusting the row presentation for static search
 indexing, final typecheck and all three recorder cases passed; renderer build
 passed in 2.97s. Live visual acceptance remains pending.
 
-Native preview build for source39f9e3a26/area0044 is active under launcher63412,
-exec session20575, log /tmp/aux-appearance-zoom-native.log. It has reached linking;
-the newer inline shortcut renderer is not included in that staged native build.
-Do not replace this builder or clear its lock. Verify zoom endpoints, the latest
-primary Appearance ordering and shared bookmark parsing in its disposable Profile
-when it launches, then inspect the newer shortcut renderer separately.
+Native39f9e3a26/area0044 completed29 steps in8m47.05s, ABI08299a59570b,
+Node26.9. Disposable preview72653 (launcher63412, aux-dev-SNBZqr) passed shared
+bookmark import: chooser Cancel retained the editor, standard HTML preview showed
+one bookmark/one folder, Import reported one, and SDK bookmarks.list confirmed
+exactly the synthetic changed URL in Synthetic parity folder. The TrustedHTML
+parser failure is resolved in the compiled app. Screenshot:
+aux-shared-bookmark-import-native-39f9e.png.
+
+Native zoom acceptance FAILED: selecting500% also magnified the Aux shell itself.
+Restored100% through the native control and captured
+aux-default-zoom-shell-regression-39f9e.png plus
+aux-appearance-restored-native-39f9e.png. Do not accept the zoom slice from schema
+or writer tests. The preview retired through its launcher; both processes ended
+and its disposable Profile was removed.
+
+Area0045 pins chrome://aux at100% using Chromium's nonpersistent scheme/host zoom
+override before initial shell navigation, independently of website default zoom.
+The shell-only entry is excluded from saved website sizes. Applied under the plain
+lock; reverse-apply check passes. Compilation/live endpoint tests remain pending.
+The current shortcut and cookie renderer changes also need live visual acceptance.
 
 Appearance default page zoom now offers 25%–500%, including the upper choices
 in reference025. The renderer, host argument schema and native writer agree on
@@ -29,8 +43,8 @@ registered and applied (reverse-apply check passes). Endpoint writer and schema
 tests pass. Integrated check passed typecheck/lint and 4,581/4,582 tests; the sole
 failure remains the coder-worktrees 60-second timeout. This run also passed the
 final asynchronous bookmark parser UI tests. Renderer build passed in 1.79s.
-Native range acceptance and the newer Appearance/import changes still require
-a fresh disposable preview; the last built app remains native0edb56c33 below.
+Native39f9e3a26 accepted shared import but exposed the shell zoom bug described
+above. Area0045 requires a fresh disposable preview before range acceptance.
 
 Native0edb56c33/area0043 passed29 build steps in9m27.37s. Disposable preview
 56765 (launcher50077, aux-dev-Em2Vio) proved macOS file chooser opens and chooser

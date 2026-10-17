@@ -1,0 +1,39 @@
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -75,6 +75,7 @@
+ #include "components/version_info/channel.h"
+ #include "components/version_info/version_info.h"
+ #include "components/web_modal/web_contents_modal_dialog_manager.h"
++#include "content/public/browser/host_zoom_map.h"
+ #include "content/public/browser/keyboard_event_processing_result.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -275,7 +276,13 @@
+           browser_->GetUnownedUserDataHost(), *extensions_container_);
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+-  web_view->LoadInitialURL(GURL(chrome::kChromeUIAuxURL));
++  // Browser chrome must not inherit the Profile's default website zoom.
++  // Scheme-specific levels survive default changes and are not persisted as
++  // user website preferences. Install this before the first shell navigation.
++  const GURL shell_url(chrome::kChromeUIAuxURL);
++  content::HostZoomMap::GetDefaultForBrowserContext(browser_->GetProfile())
++      ->SetZoomLevelForHostAndScheme(shell_url.GetScheme(), shell_url.GetHost(), 0);
++  web_view->LoadInitialURL(shell_url);
+ #else
+   web_view->LoadInitialURL(GURL(chrome::kChromeUIWebuiBrowserURL));
+ #endif
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -1532,7 +1532,10 @@
+     base::ListValue result;
+     for (const auto& entry : map->GetAllZoomLevels()) {
+       if (entry.mode == content::HostZoomMap::ZOOM_CHANGED_TEMPORARY_ZOOM ||
+-          entry.host.empty()) continue;
++          entry.host.empty() ||
++          (entry.scheme == "chrome" && entry.host == chrome::kChromeUIAuxHost)) {
++        continue;
++      }
+       base::DictValue row;
+       row.Set("origin", key(entry));
+       row.Set("percentage", static_cast<int>(std::round(
