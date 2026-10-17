@@ -3,6 +3,22 @@
 Full parity is not established. The owner requested all captured surfaces, granular
 colors/borders/menus and window chrome, and authorized live Aside inspection.
 
+## Native follow-up and owner composer feedback
+
+Packaged `986b4d070` passed actual toolbar Back/Forward navigation and Cloud initial
+focus. Developers group order passed; its hidden disclosure filter still intercepted
+initial focus. Quick Ask's new method lacked native registration, disabling the
+feature. Both issues have source corrections and require a new packaged check.
+Capture `58-aux-rail-before-controls.png` records the native rail baseline.
+
+Owner screenshots additionally show inconsistent footer arrows and independent
+wrapping in the rail. The next batch standardizes trigger/chevron dimensions,
+keeps context and model/actions grouped at narrow widths, consolidates chat chrome
+into one top bar, and aligns extension management/import/list structure with
+reference 133. The import editor shares the existing permission/review flow and
+filters to extensions. Ref 155 establishes the single chat title in the top bar.
+These are source changes, not completed paired acceptance.
+
 ## Native editor and browser walkthrough — `0ea3c3575`
 
 Captures 50–57 in the existing local audit directory record saved Selection editor,

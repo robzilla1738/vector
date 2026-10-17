@@ -7,7 +7,8 @@ import { pushSettingsPath } from "../settings/routes";
 import { errorMessage } from "../error-message";
 import { moveListFocus } from "../keyboard-list";
 import { Popover } from "../ui/popover";
-import { shellIconCheck, shellIconDown, shellIconFolder } from "../ui/icons";
+import { shellIconCheck, shellIconFolder } from "../ui/icons";
+import { ComposerChevron } from "./ComposerChevron";
 import "./ComposerProjectControl.css";
 
 const folderName = (path: string) => path.split("/").filter(Boolean).at(-1) ?? path;
@@ -28,13 +29,13 @@ export function ComposerProjectControl({
     <Popover
       key={JSON.stringify([draftKey, workspaceId, bridge.windowId, bridge.windowKind])}
       label="Composer project"
-      className="composer-project-trigger"
+      className="composer-control composer-project-trigger"
       disabled={disabled || !workspaceId || choice?.executionTarget === "cloud"}
       trigger={
         <>
           {shellIconFolder}
           <span>{choice?.projectRoot ? folderName(choice.projectRoot) : "Project"}</span>
-          {shellIconDown}
+          <ComposerChevron />
         </>
       }
     >

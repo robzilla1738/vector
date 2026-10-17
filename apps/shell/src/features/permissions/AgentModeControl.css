@@ -1,16 +1,4 @@
 @layer components {
-  .agent-mode-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    white-space: nowrap;
-  }
-  .agent-mode-trigger > .ci {
-    flex: none;
-    width: 16px;
-    height: 16px;
-  }
   .agent-mode-trigger[data-mode="full"] {
     color: var(--warn);
   }
@@ -59,10 +47,5 @@
     font-size: var(--fs-xs);
     line-height: 1.5;
     color: var(--ink-2);
-  }
-  @container (max-width: 420px) {
-    .agent-mode-trigger > .agent-mode-label {
-      display: none;
-    }
   }
 }

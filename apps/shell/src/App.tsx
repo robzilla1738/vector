@@ -42,6 +42,7 @@ import { useToolbarReveal } from "./toolbar-reveal";
 import { spaceThemeStyle } from "./workspace";
 
 import { Toolbar } from "./components/Toolbar";
+import { WindowToolbarProvider } from "./components/WindowToolbarContent";
 import { Stage } from "./components/Stage";
 import { shellIconAlert, shellIconSidebarOpen } from "./ui/icons";
 import { SidebarReveal } from "./components/SidebarReveal";
@@ -330,128 +331,130 @@ export function App() {
     </button>
   );
   return (
-    <div
-      className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${clearNativeBackdrop ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
-      style={
-        {
-          "--sb-w": `${sidebarWidth}px`,
-          "--space-grain": spaceGrain,
-          ...spaceThemeStyle({ theme: spaceTheme }),
-        } as React.CSSProperties
-      }
-      data-overlay={overlay ?? undefined}
-      onKeyDown={(e) => {
-        if (
-          !inNativeHost ||
-          e.defaultPrevented ||
-          (e.key !== "ContextMenu" && !(e.key === "F10" && e.shiftKey))
-        )
-          return;
-        const el = e.target as HTMLElement;
-        if (el.closest(".sidebar, .rail, .menu, input, textarea, [contenteditable]")) return;
-        e.preventDefault();
-        e.stopPropagation();
-        void bridge.contextMenu(useStore.getState().activePageId);
-      }}
-      onContextMenu={(e) => {
-        if (!inNativeHost || e.defaultPrevented) return;
-        const el = e.target as HTMLElement;
-        if (el.closest(".sidebar, .rail, .menu")) return; // those own their menus
-        if (el.closest("input, textarea, [contenteditable]")) return;
-        e.preventDefault();
-        void bridge.contextMenu(useStore.getState().activePageId);
-      }}
-    >
-      {!connected && (
-        <output className="degraded" data-block {...nativePoliteLiveProps}>
-          {shellIconAlert}
-          <span>Runtime reconnecting — tabs keep working</span>
-        </output>
-      )}
-      {horizontal && (
-        <div
-          className="horizontal-chrome"
-          inert={minimal && !toolbarReveal.revealed}
-          aria-hidden={minimal && !toolbarReveal.revealed}
-        >
-          {nativeShowing && sidebarToggle}
-          <HorizontalTabs />
-          <Toolbar />
-        </div>
-      )}
-      <SidebarReveal
-        minimal={minimal}
-        horizontal={horizontal}
-        hidden={sidebar === "hidden"}
-        toolbarHidden={toolbarHidden}
-        peek={sidebarPeek}
-      />
-      <div className="app-body">
-        {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
-        <div
-          className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}
-        >
-          {horizontal && !nativeShowing && sidebarToggle}
-          {!horizontal && <Toolbar hidden={toolbarHidden} />}
-          <div className="main">
-            <div className="stage-wrap">
-              {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}
-              <Stage composerRef={conversationComposer} scrollRef={conversationScroll} />
-              {nativeShowing && linkStatus?.pageId === activePageId && (
-                <output className="link-status" aria-label="Link destination">
-                  {linkStatus.text}
-                </output>
-              )}
-              {overlay === "reader" && <ReaderView />}
-              {peekPageId && <LinkPeek />}
-              {overlay === "settings" && <Settings />}
-              {overlay === "saved-pages" && <SavedPages />}
+    <WindowToolbarProvider>
+      <div
+        className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${clearNativeBackdrop ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+        style={
+          {
+            "--sb-w": `${sidebarWidth}px`,
+            "--space-grain": spaceGrain,
+            ...spaceThemeStyle({ theme: spaceTheme }),
+          } as React.CSSProperties
+        }
+        data-overlay={overlay ?? undefined}
+        onKeyDown={(e) => {
+          if (
+            !inNativeHost ||
+            e.defaultPrevented ||
+            (e.key !== "ContextMenu" && !(e.key === "F10" && e.shiftKey))
+          )
+            return;
+          const el = e.target as HTMLElement;
+          if (el.closest(".sidebar, .rail, .menu, input, textarea, [contenteditable]")) return;
+          e.preventDefault();
+          e.stopPropagation();
+          void bridge.contextMenu(useStore.getState().activePageId);
+        }}
+        onContextMenu={(e) => {
+          if (!inNativeHost || e.defaultPrevented) return;
+          const el = e.target as HTMLElement;
+          if (el.closest(".sidebar, .rail, .menu")) return; // those own their menus
+          if (el.closest("input, textarea, [contenteditable]")) return;
+          e.preventDefault();
+          void bridge.contextMenu(useStore.getState().activePageId);
+        }}
+      >
+        {!connected && (
+          <output className="degraded" data-block {...nativePoliteLiveProps}>
+            {shellIconAlert}
+            <span>Runtime reconnecting — tabs keep working</span>
+          </output>
+        )}
+        {horizontal && (
+          <div
+            className="horizontal-chrome"
+            inert={minimal && !toolbarReveal.revealed}
+            aria-hidden={minimal && !toolbarReveal.revealed}
+          >
+            {nativeShowing && sidebarToggle}
+            <HorizontalTabs />
+            <Toolbar />
+          </div>
+        )}
+        <SidebarReveal
+          minimal={minimal}
+          horizontal={horizontal}
+          hidden={sidebar === "hidden"}
+          toolbarHidden={toolbarHidden}
+          peek={sidebarPeek}
+        />
+        <div className="app-body">
+          {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
+          <div
+            className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}
+          >
+            {horizontal && !nativeShowing && sidebarToggle}
+            {!horizontal && <Toolbar hidden={toolbarHidden} />}
+            <div className="main">
+              <div className="stage-wrap">
+                {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}
+                <Stage composerRef={conversationComposer} scrollRef={conversationScroll} />
+                {nativeShowing && linkStatus?.pageId === activePageId && (
+                  <output className="link-status" aria-label="Link destination">
+                    {linkStatus.text}
+                  </output>
+                )}
+                {overlay === "reader" && <ReaderView />}
+                {peekPageId && <LinkPeek />}
+                {overlay === "settings" && <Settings />}
+                {overlay === "saved-pages" && <SavedPages />}
 
-              {overlay === "tasks" && <Tasks />}
-              {overlay === "downloads" && <Downloads />}
-              {overlay === "inline-assist" && <InlineAssist />}
+                {overlay === "tasks" && <Tasks />}
+                {overlay === "downloads" && <Downloads />}
+                {overlay === "inline-assist" && <InlineAssist />}
+              </div>
             </div>
           </div>
+          {railOpen && (
+            <PaneBoundary label="The assistant">
+              <AgentRail />
+            </PaneBoundary>
+          )}
         </div>
-        {railOpen && (
-          <PaneBoundary label="The assistant">
-            <AgentRail />
-          </PaneBoundary>
-        )}
-      </div>
-      {commandSurface && (
-        <CommandSurface
-          key={commandSurface.sequence}
-          request={commandSurface}
-          executeCommand={executeCommand}
-        />
-      )}
-      {overlay === "observe" && <Inspector />}
-      {overlay === "site" && <SiteControls />}
-      {overlay === "zap" && (
-        <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />
-      )}
-      <HttpAuthPrompt />
-      <TabSwitcher />
-      {vaultOffer && <VaultOfferBanner />}
-      <FeatureSlots slot="overlays" />
-      <Toasts />
-      <Onboarding />
-      {runNotice &&
-        noticePreference === "all" &&
-        !confirming &&
-        !overlay &&
-        (!document.hasFocus() || foregroundRun !== runNotice.runId) && (
-          <RunNoticeBanner
-            notice={runNotice}
-            onDismiss={() => setRunNotice(null)}
-            onReview={(runId) => {
-              setRunNotice(null);
-              useStore.getState().openConversation(runId);
-            }}
+        {commandSurface && (
+          <CommandSurface
+            key={commandSurface.sequence}
+            request={commandSurface}
+            executeCommand={executeCommand}
           />
         )}
-      <BrowsingMemoryWatch />
-    </div>
+        {overlay === "observe" && <Inspector />}
+        {overlay === "site" && <SiteControls />}
+        {overlay === "zap" && (
+          <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />
+        )}
+        <HttpAuthPrompt />
+        <TabSwitcher />
+        {vaultOffer && <VaultOfferBanner />}
+        <FeatureSlots slot="overlays" />
+        <Toasts />
+        <Onboarding />
+        {runNotice &&
+          noticePreference === "all" &&
+          !confirming &&
+          !overlay &&
+          (!document.hasFocus() || foregroundRun !== runNotice.runId) && (
+            <RunNoticeBanner
+              notice={runNotice}
+              onDismiss={() => setRunNotice(null)}
+              onReview={(runId) => {
+                setRunNotice(null);
+                useStore.getState().openConversation(runId);
+              }}
+            />
+          )}
+        <BrowsingMemoryWatch />
+      </div>
+    </WindowToolbarProvider>
   );
 }

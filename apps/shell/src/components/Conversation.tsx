@@ -8,6 +8,7 @@ import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
 import { ChatPreferences } from "../composer/ChatPreferences";
+import { WindowToolbarContent } from "./WindowToolbarContent";
 import { useComposerLayout } from "../composer/use-composer-layout";
 import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
@@ -129,7 +130,6 @@ import {
   staticFieldErrorProps as auxReuseStaticFieldErrorProps,
 } from "../ui/class-props";
 import {
-  nativeAriaHiddenProps as auxReuseNativeAriaHiddenProps,
   nativeButtonTypeProps as auxReuseNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { smallButtonProps as auxReuseSmallButtonProps } from "../ui/button-props";
@@ -295,8 +295,8 @@ const ComposerInput = memo(function ComposerInput({
   );
 });
 
-/** Aside anatomy: mode/model selects sit in a row below the composer card, not inside it. */
-const ComposerControls = memo(function ComposerControls({
+/** Subscribe to the live draft only while its action menu needs the composer context. */
+const ComposerActions = memo(function ComposerActions({
   id,
   answerRunId,
   answerQuestion,
@@ -304,8 +304,6 @@ const ComposerControls = memo(function ComposerControls({
   disabled,
   onChange,
   textareaRef,
-  footer,
-  modes,
 }: {
   id: string | null | undefined;
   answerRunId?: string;
@@ -314,32 +312,24 @@ const ComposerControls = memo(function ComposerControls({
   disabled: boolean;
   onChange(value: string): void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  footer?: ReactNode;
-  modes?: ReactNode;
 }) {
   const text = useStore((s) => draftText(s, id, answerRunId, answerQuestion));
   return (
-    <div className="composer-footer">
-      <div className="composer-footer-context">
-        {footer}
-        {modes}
-        <Popover label="More chat actions" trigger={shellIconMore}>
-          {() => (
-            <div className="chat-run-menu">
-              <FeatureComposer
-                slot="composerActions"
-                composerId={mentionComposerId(id, answerRunId)}
-                workspaceId={workspaceId}
-                textareaRef={textareaRef}
-                value={text}
-                onChange={onChange}
-                disabled={disabled}
-              />
-            </div>
-          )}
-        </Popover>
-      </div>
-    </div>
+    <Popover label="More chat actions" className="composer-actions-trigger" trigger={shellIconMore}>
+      {() => (
+        <div className="chat-run-menu">
+          <FeatureComposer
+            slot="composerActions"
+            composerId={mentionComposerId(id, answerRunId)}
+            workspaceId={workspaceId}
+            textareaRef={textareaRef}
+            value={text}
+            onChange={onChange}
+            disabled={disabled}
+          />
+        </div>
+      )}
+    </Popover>
   );
 });
 
@@ -436,6 +426,7 @@ function ConversationContent({
   composerRef,
   findReturnRef,
 }: ConversationProps) {
+  const toolbarActive = useStore((state) => state.mode === "conversation" && !state.overlay);
   const ownComposerRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = composerRef ?? ownComposerRef;
   useInteractiveComposer(home, textareaRef);
@@ -2175,6 +2166,17 @@ function ConversationContent({
       </Popover>
     </span>
   );
+  const composerActions = (
+    <ComposerActions
+      id={id}
+      answerRunId={answerRunId}
+      answerQuestion={answerQuestion}
+      workspaceId={workspaceContext.workspace?.workspaceId}
+      disabled={archived || sending || answerPending}
+      onChange={setText}
+      textareaRef={textareaRef}
+    />
+  );
   const composerFooter = !taskBound && !answering && (
     <div className="new-chat-options">
       {home ? composerContext : entryControls}
@@ -2187,6 +2189,7 @@ function ConversationContent({
         </span>
       )}
       <ChatPreferences
+        actions={composerActions}
         workspaceId={
           bridge.privateMode ? undefined : id ? workspaceContext.workspace?.workspaceId : draftWorkspaceId
         }
@@ -2490,57 +2493,62 @@ function ConversationContent({
       aria-labelledby={embedded ? undefined : "conversation-title"}
     >
       {!embedded && (
-        <header className="conversation-head">
-          {newChat && (
-            <span className="new-chat-brand">
-              <AuxMark />
-              Aux<span {...auxReuseNativeAriaHiddenProps}>/</span>
+        <WindowToolbarContent active={toolbarActive}>
+          <header className="conversation-head">
+            {newChat && (
+              <span className="new-chat-brand">
+                <AuxMark />
+                Aux
+              </span>
+            )}
+            <h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1>
+            <span className="conversation-title-kind" aria-hidden="true">
+              · Chats
             </span>
-          )}
-          <h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1>
-          <div {...auxReuseStaticSpacerProps} />
-          {last && <NightRunOverflow runId={last.runId} />}{" "}
-          {selectedContext && selectedContext.url !== "about:blank" && (
+            <div {...auxReuseStaticSpacerProps} />
+            {last && <NightRunOverflow runId={last.runId} />}{" "}
+            {selectedContext && selectedContext.url !== "about:blank" && (
+              <ConversationViewAction
+                command="toggle-conversation-browser-preview"
+                current={conversationCurrent}
+                {...auxReuseStaticIconButtonProps}
+                aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"}
+                title="Browser preview"
+                aria-pressed={previewOpen}
+                invoke={() => setPreviewOpen((value) => !value)}
+              >
+                {shellIconGlobe}
+              </ConversationViewAction>
+            )}
+            {turns.length > 0 && (
+              <Tooltip content="Export conversation as Markdown">
+                {(descriptionId) => (
+                  <ConversationViewAction
+                    command="export-conversation-markdown"
+                    current={conversationCurrent}
+                    {...auxReuseStaticIconButtonProps}
+                    disabled={exporting?.owner === conversationCurrent}
+                    aria-describedby={descriptionId}
+                    aria-label="Export conversation as Markdown"
+                    invoke={exportConversation}
+                  >
+                    {shellIconDownloadSm}
+                  </ConversationViewAction>
+                )}
+              </Tooltip>
+            )}
             <ConversationViewAction
-              command="toggle-conversation-browser-preview"
+              command="continue-conversation-in-rail"
               current={conversationCurrent}
               {...auxReuseStaticIconButtonProps}
-              aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"}
-              title="Browser preview"
-              aria-pressed={previewOpen}
-              invoke={() => setPreviewOpen((value) => !value)}
+              title="Continue in side panel"
+              aria-label="Continue in side panel"
+              invoke={() => useStore.getState().showConversationInRail(id)}
             >
-              {shellIconGlobe}
+              {shellIconRail}
             </ConversationViewAction>
-          )}
-          {turns.length > 0 && (
-            <Tooltip content="Export conversation as Markdown">
-              {(descriptionId) => (
-                <ConversationViewAction
-                  command="export-conversation-markdown"
-                  current={conversationCurrent}
-                  {...auxReuseStaticIconButtonProps}
-                  disabled={exporting?.owner === conversationCurrent}
-                  aria-describedby={descriptionId}
-                  aria-label="Export conversation as Markdown"
-                  invoke={exportConversation}
-                >
-                  {shellIconDownloadSm}
-                </ConversationViewAction>
-              )}
-            </Tooltip>
-          )}
-          <ConversationViewAction
-            command="continue-conversation-in-rail"
-            current={conversationCurrent}
-            {...auxReuseStaticIconButtonProps}
-            title="Continue in side panel"
-            aria-label="Continue in side panel"
-            invoke={() => useStore.getState().showConversationInRail(id)}
-          >
-            {shellIconRail}
-          </ConversationViewAction>
-        </header>
+          </header>
+        </WindowToolbarContent>
       )}
       <div className="conversation-body">
         <div className="conversation-main">
@@ -2819,17 +2827,13 @@ function ConversationContent({
                   </>
                 }
                 controls={
-                  <ComposerControls
-                    id={id}
-                    answerRunId={answerRunId}
-                    answerQuestion={answerQuestion}
-                    workspaceId={workspaceContext.workspace?.workspaceId}
-                    disabled={archived || sending || answerPending}
-                    onChange={setText}
-                    textareaRef={textareaRef}
-                    footer={composerFooter}
-                    modes={composerModes}
-                  />
+                  <div className="composer-footer">
+                    <div className="composer-footer-context">
+                      {composerFooter}
+                      {composerModes}
+                      {!composerFooter && composerActions}
+                    </div>
+                  </div>
                 }
               >
                 <div className="composer-context">

@@ -2,37 +2,48 @@
   .chat-preferences {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 4px 8px;
+    gap: var(--space-1);
     flex: 1;
     min-width: 0;
     flex-wrap: wrap;
   }
-  .chat-preferences > :is(select, button) {
-    min-height: 28px;
+  .chat-preferences-context > .composer-project-trigger {
+    flex-shrink: 1;
+  }
+  .chat-preferences-context,
+  .chat-preferences-model {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
     max-width: 100%;
-    padding: 4px 8px;
+  }
+  .chat-preferences-model {
+    margin-left: auto;
+  }
+  :is(.chat-run-options-trigger, .composer-actions-trigger).anchored-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: var(--space-1-5);
     border: 0;
-    border-radius: var(--r-pill);
+    border-radius: var(--r-lg);
     background: transparent;
     color: var(--ink-2);
     box-shadow: none;
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-medium);
   }
-  .chat-preferences > :is(select, button):not(:disabled):hover {
+  :is(.chat-run-options-trigger, .composer-actions-trigger).anchored-trigger:hover {
     background: var(--bg-hover);
     color: var(--ink-0);
   }
-  .chat-run-options-trigger {
-    flex: 0 0 28px;
-    width: 28px;
-    padding: 6px;
-  }
-  .chat-run-options-trigger > .ci {
+  :is(.chat-run-options-trigger, .composer-actions-trigger) > .ci {
     flex: none;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
   .private-ai-disclosure {
     flex-basis: 100%;

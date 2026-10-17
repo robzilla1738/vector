@@ -463,11 +463,57 @@
 }
 
 @layer overrides {
+  .window-toolbar-content:empty {
+    display: none;
+  }
+  .window-toolbar-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    -webkit-app-region: drag;
+  }
+  .toolbar-conversation .toolbar-drag-space {
+    display: none;
+  }
+  .toolbar .conversation-head {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    gap: var(--space-1);
+    padding: 0 var(--space-1-5);
+    color: var(--ink-2);
+    font-size: var(--fs-md);
+  }
+  .toolbar .conversation-head h1 {
+    font: inherit;
+    font-weight: var(--fw-regular);
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .conversation-title-kind {
+    flex: none;
+    color: var(--ink-2);
+    font-weight: var(--fw-regular);
+  }
+  .toolbar .new-chat-brand {
+    flex: none;
+    margin-right: var(--space-1);
+    padding-right: var(--space-2);
+    border-right: var(--hairline) solid var(--ink-3);
+    font-size: inherit;
+  }
+  .toolbar .conversation-head button {
+    -webkit-app-region: no-drag;
+  }
+
   .toolbar-settings {
     background: var(--settings-chrome);
   }
-  .toolbar-settings .tb-left,
-  .toolbar-settings .tb-right {
+  :is(.toolbar-settings, .toolbar-conversation) .tb-left,
+  :is(.toolbar-settings, .toolbar-conversation) .tb-right {
     flex: none;
   }
   .toolbar-breadcrumb {
@@ -495,7 +541,7 @@
   .toolbar-route > span {
     padding-inline: var(--space-1);
   }
-  .toolbar-settings .toolbar-drag-space {
+  :is(.toolbar-settings, .toolbar-conversation) .toolbar-drag-space {
     flex: 1;
   }
 }

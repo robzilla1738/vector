@@ -223,8 +223,15 @@ so the browser sidebar and toolbar remain visually outside the modal content
 area. Anchored Menu and Popover surfaces retain their own placement. New dialogs
 should use this shared shell rather than calculating sidebar offsets independently.
 
+Composer controls share one trigger recipe and chevron across menus and native
+selects. Context controls and model/actions wrap as groups in the rail. The full
+conversation portals its title and actions into the shared window toolbar; overlay
+ownership keeps Settings and the active chat from competing for that slot.
+Extension import reuses the existing reviewed importer with an extension-only
+category filter and loads its editor only on demand.
+
 Settings editors with asynchronously loaded fields transfer initial focus when the
-first editable field becomes available. Keyboard/pointer interaction cancels this
+first visible editable field becomes available, excluding closed disclosures. Keyboard/pointer interaction cancels this
 handoff. External-agent connection drafts stay in one active Settings/window
 lifetime; pending mutations lock client/scope selection and retired results cannot
 install credentials into a replacement editor. Cloud account status has an explicit

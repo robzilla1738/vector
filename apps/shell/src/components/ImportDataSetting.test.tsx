@@ -452,99 +452,109 @@ it("does not publish an old cancellation failure into a newer import and keeps i
   }
 });
 
-it("reviews extension counterparts per item and preserves unselected entries as explicit skips", async () => {
-  rpc.mockReset();
-  const selectedId = "11111111-1111-4111-8111-111111111111";
-  const skippedId = "22222222-2222-4222-8222-222222222222";
-  const reviewId = "33333333-3333-4333-8333-333333333333";
-  rpc.mockImplementation(async (method: string) => {
-    if (method === "import.preview")
-      return {
-        sources: [
-          {
-            id: "firefox",
-            label: "Firefox",
-            profiles: ["Reviewed"],
-            categories: [{ category: "extensions", available: true }],
-            profileCategories: [
-              { profileId: "Reviewed", categories: [{ category: "extensions", available: true }] },
-            ],
-          },
-        ],
-      };
-    if (method === "import.extensions.review")
-      return {
-        reviewId,
-        candidates: [
-          {
-            candidateId: selectedId,
-            name: "Reader",
-            sourceIdentity: "reader@example.org",
-            kind: "firefox",
-            enabled: false,
-            detail: "Choose a counterpart.",
-          },
-          {
-            candidateId: skippedId,
-            name: "No counterpart",
-            sourceIdentity: "other@example.org",
-            kind: "unsupported",
-            detail: "No automatic transfer.",
-          },
-        ],
-      };
-    if (method === "import.run") return { jobId: "reviewed-import" };
-    if (method === "import.status") return { jobId: "reviewed-import", done: true, progress: [] };
-    throw new Error(`Unexpected ${method}`);
-  });
-  const host = document.createElement("div"),
-    root = createRoot(host);
-  try {
-    await act(async () => root.render(<ImportDataSetting />));
-    await act(async () => host.querySelector("button")!.click());
-    const button = (name: string) =>
-      [...host.querySelectorAll<HTMLButtonElement>("button")].find((entry) =>
-        entry.textContent?.startsWith(name),
+it.each([false, true])(
+  "reviews extension counterparts with explicit skips (extensions only: %s)",
+  async (extensionsOnly) => {
+    rpc.mockReset();
+    const selectedId = "11111111-1111-4111-8111-111111111111";
+    const skippedId = "22222222-2222-4222-8222-222222222222";
+    const reviewId = "33333333-3333-4333-8333-333333333333";
+    rpc.mockImplementation(async (method: string) => {
+      if (method === "import.preview")
+        return {
+          sources: [
+            {
+              id: "firefox",
+              label: "Firefox",
+              profiles: ["Reviewed"],
+              categories: [{ category: "extensions", available: true }],
+              profileCategories: [
+                {
+                  profileId: "Reviewed",
+                  categories: [
+                    { category: "extensions", available: true },
+                    { category: "bookmarks", available: true },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+      if (method === "import.extensions.review")
+        return {
+          reviewId,
+          candidates: [
+            {
+              candidateId: selectedId,
+              name: "Reader",
+              sourceIdentity: "reader@example.org",
+              kind: "firefox",
+              enabled: false,
+              detail: "Choose a counterpart.",
+            },
+            {
+              candidateId: skippedId,
+              name: "No counterpart",
+              sourceIdentity: "other@example.org",
+              kind: "unsupported",
+              detail: "No automatic transfer.",
+            },
+          ],
+        };
+      if (method === "import.run") return { jobId: "reviewed-import" };
+      if (method === "import.status") return { jobId: "reviewed-import", done: true, progress: [] };
+      throw new Error(`Unexpected ${method}`);
+    });
+    const host = document.createElement("div"),
+      root = createRoot(host);
+    try {
+      await act(async () => root.render(<ImportDataSetting extensionsOnly={extensionsOnly} />));
+      await act(async () => host.querySelector("button")!.click());
+      expect(host.querySelectorAll(".import-row")).toHaveLength(extensionsOnly ? 1 : 2);
+      const button = (name: string) =>
+        [...host.querySelectorAll<HTMLButtonElement>("button")].find((entry) =>
+          entry.textContent?.startsWith(name),
+        )!;
+      await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+      expect(button("Import selected").disabled).toBe(true);
+      await act(async () => button("Review extensions").click());
+      expect(host.textContent).toContain("No counterpart");
+      const choices = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+      await act(async () => choices[extensionsOnly ? 1 : 2]!.click());
+      expect(button("Import selected").disabled).toBe(true);
+      const input = host.querySelector<HTMLInputElement>(
+        '[aria-label="Chrome Web Store counterpart for Reader"]',
       )!;
-    await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
-    expect(button("Import selected").disabled).toBe(true);
-    await act(async () => button("Review extensions").click());
-    expect(host.textContent).toContain("No counterpart");
-    const choices = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    await act(async () => choices[1]!.click());
-    expect(button("Import selected").disabled).toBe(true);
-    const input = host.querySelector<HTMLInputElement>(
-      '[aria-label="Chrome Web Store counterpart for Reader"]',
-    )!;
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-        input,
-        `https://chromewebstore.google.com/detail/reader/${"a".repeat(32)}`,
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    expect(button("Import selected").disabled).toBe(false);
-    await act(async () => button("Import selected").click());
-    expect(rpc).toHaveBeenCalledWith("import.run", {
-      selections: [
-        {
-          sourceId: "firefox",
-          profileId: "Reviewed",
-          categories: ["extensions"],
-          extensionReview: {
-            reviewId,
-            choices: [
-              { candidateId: selectedId, chromeWebStoreId: "a".repeat(32) },
-              { candidateId: skippedId, skip: true },
-            ],
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+          input,
+          `https://chromewebstore.google.com/detail/reader/${"a".repeat(32)}`,
+        );
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      expect(button("Import selected").disabled).toBe(false);
+      await act(async () => button("Import selected").click());
+      expect(rpc).toHaveBeenCalledWith("import.run", {
+        selections: [
+          {
+            sourceId: "firefox",
+            profileId: "Reviewed",
+            categories: ["extensions"],
+            extensionReview: {
+              reviewId,
+              choices: [
+                { candidateId: selectedId, chromeWebStoreId: "a".repeat(32) },
+                { candidateId: skippedId, skip: true },
+              ],
+            },
           },
-        },
-      ],
-    });
-  } finally {
-    await act(async () => root.unmount());
-  }
-});
+        ],
+      });
+    } finally {
+      await act(async () => root.unmount());
+    }
+  },
+);
 
 it("retires displayed extension choices when a replacement export publishes a new source preview", async () => {
   rpc.mockReset();

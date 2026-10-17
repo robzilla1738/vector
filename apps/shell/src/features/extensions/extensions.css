@@ -8,15 +8,47 @@
   min-inline-size: 0;
 }
 .extension-action-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
 }
 .extension-actions-menu .menu-item {
   gap: 8px;
 }
+.extension-actions-menu {
+  width: 304px;
+  max-width: calc(100vw - 16px);
+}
+.extension-menu-label {
+  padding: var(--space-1-5) var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+}
+.extension-actions-menu .extension-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.extension-menu-row > .menu-item:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.extension-menu-row > .menu-item:first-child > span:not(.ci) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .extension-actions-menu .extension-pin {
-  padding-left: 36px;
+  flex: 0 0 28px;
+  width: 28px;
+  min-height: 28px;
+  padding: var(--space-1-5);
+  justify-content: center;
+  color: var(--ink-2);
+}
+.extension-actions-menu .extension-pin[aria-checked="true"] {
+  color: var(--ink-0);
+  background: var(--bg-hover);
 }
 .extension-panel-surface {
   display: block;

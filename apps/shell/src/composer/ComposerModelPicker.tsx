@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { type ModelCapability } from "@aux/contracts";
 import { Menu } from "../ui/dialog";
-import { shellIconCheck, shellIconDown, shellIconSearch, shellIconOpen } from "../ui/icons";
+import { shellIconCheck, shellIconSearch, shellIconOpen } from "../ui/icons";
+import { ComposerChevron } from "./ComposerChevron";
 import "./ComposerModelPicker.css";
 import { ModelProviderMenu } from "./ModelProviderMenu";
 import { moveMenuFocus } from "../keyboard-list";
@@ -107,7 +108,7 @@ export function ComposerModelPicker({
       <button
         ref={trigger}
         type="button"
-        className="composer-model-picker-trigger"
+        className="composer-control composer-model-picker-trigger"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -124,7 +125,7 @@ export function ComposerModelPicker({
       >
         <ModelProviderMark provider={selectedModel?.provider} />
         <span>{selectedModel?.name ?? modelId ?? "Automatic"}</span>
-        {shellIconDown}
+        <ComposerChevron />
       </button>
       {open && !disabled && (
         <Menu

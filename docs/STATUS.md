@@ -7,6 +7,31 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Composer, window chrome and extensions — current source
+
+Native `986b4d070` built in 8m28.35s and About confirmed the source. Toolbar
+Back/Forward now stay enabled correctly and navigate in both directions. Cloud
+setup initially focuses its token field, and Developers follows the reference group
+order. Its initial focus still targeted a hidden field in a collapsed disclosure;
+the shared focus predicate and editor handoff now skip closed disclosure content.
+Quick Ask was unavailable because its new layout method was absent from native
+registration. Area 0054 now includes that registration; bridge coverage reports
+188 used members with zero missing handlers. Native reacceptance remains pending.
+
+The owner's wide and sidebar composer captures exposed mixed chevrons and controls
+wrapping independently. Project, permission, model and reasoning now share one
+trigger recipe and chevron. Context and model/action groups wrap together; the
+confirmation label stays visible. Full-chat titles/actions share the window toolbar
+instead of adding a second header. Extensions uses compact rows with inline pin
+controls, management/import first, and an extension-only reviewed import editor
+loaded on demand. Existing permission prompts and import receipts remain intact.
+The reference folder still has 182 PNGs. Integrated `npm run check` passed
+typecheck, lint and 4,663 tests / 749 files in 99.07s
+(`/tmp/aux-controls-check.log`). Area 0054 passes reverse-apply verification.
+The original preview launcher 7794 retired normally; app 9125, runtime 9146,
+API listener 52524, temporary Profile `aux-dev-vD5Ku7` and native lock are gone.
+The replacement package is the next required observation.
+
 ## Settings editor behavior and layout follow-up — source
 
 Packaged `0ea3c3575` built in 8m22.98s and About confirmed its source. Native
@@ -39,7 +64,7 @@ full composer controls retain a taller minimum than Aside's 92px draft. This is 
 remaining parity difference, not complete Quick Ask acceptance. Integrated
 `npm run check` passed typecheck/lint and 4,662 tests across 749 files in 95.01s
 (`/tmp/aux-parity-readiness-check.log`). The native patch passes reverse-apply
-verification against the checkout. A new native build remains pending.
+verification against the checkout. Native follow-up evidence and corrections are recorded above.
 
 ## Earlier settings editor source details
 

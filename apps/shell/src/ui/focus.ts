@@ -3,6 +3,10 @@ export function availableForFocus(node: HTMLElement): boolean {
   if (!node.isConnected || node.matches(':disabled, [aria-disabled="true"]')) return false;
   if (node.closest('[inert], [hidden], [aria-hidden="true"]')) return false;
   for (let parent: HTMLElement | null = node; parent; parent = parent.parentElement) {
+    if (parent instanceof HTMLDetailsElement && !parent.open) {
+      const summary = parent.querySelector(":scope > summary");
+      if (!summary?.contains(node)) return false;
+    }
     const style = getComputedStyle(parent);
     if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse")
       return false;

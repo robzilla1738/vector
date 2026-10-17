@@ -5,6 +5,7 @@ import { bridge } from "../bridge";
 import { errorMessage } from "../error-message";
 import { runCommand } from "../commands";
 import { ComposerModelPicker } from "./ComposerModelPicker";
+import { ComposerChevron } from "./ComposerChevron";
 import "./ComposerModelControls.css";
 
 const DEFAULT: {
@@ -109,7 +110,7 @@ export function ComposerModelControls({ draftKey, disabled }: { draftKey: string
           This selected model is not supported for chat. Choose Automatic or a conversational model.
         </span>
       )}
-      <label className="composer-thinking-control">
+      <label className="composer-control composer-thinking-control">
         <select
           aria-label="Thinking level"
           disabled={disabled || selected?.reasoning === "none"}
@@ -125,6 +126,7 @@ export function ComposerModelControls({ draftKey, disabled }: { draftKey: string
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
+        <ComposerChevron />
       </label>
     </div>
   );

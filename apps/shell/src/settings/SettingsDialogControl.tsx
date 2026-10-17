@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "../ui/dialog";
 import { smallButtonProps } from "../ui/button-props";
 import { shellIconClose, shellIconRight } from "../ui/icons";
@@ -36,19 +36,20 @@ export function SettingsDialogControl({
   useEffect(() => {
     if (!active) setOpen(false);
   }, [active]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const content = editor.current;
     const dialog = content?.closest("dialog");
-    if (!open || !active || !content || !dialog || editorFocus.current) return;
+    if (!open || !active || !content || !dialog) return;
     // Async editors may initially have no enabled fields. Hand off their first
     // focus once ready, unless the person has already interacted with the dialog.
-    const observer = new MutationObserver(() => {
+    const focusReadyField = () => {
       const field = [...content.querySelectorAll<HTMLElement>(editorSelector)].find(availableForFocus);
       if (field && dialog.open && topModal() === dialog) {
         stop();
         field.focus({ preventScroll: true });
       }
-    });
+    };
+    const observer = new MutationObserver(focusReadyField);
     const stop = () => {
       observer.disconnect();
       dialog.removeEventListener("keydown", stop, true);
@@ -58,10 +59,11 @@ export function SettingsDialogControl({
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["disabled", "hidden"],
+      attributeFilter: ["disabled", "hidden", "open"],
     });
     dialog.addEventListener("keydown", stop, true);
     dialog.addEventListener("pointerdown", stop, true);
+    focusReadyField();
     return stop;
   }, [open, active]);
   return (

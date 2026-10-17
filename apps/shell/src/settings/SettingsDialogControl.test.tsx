@@ -16,7 +16,15 @@ it("opens the editor on demand, returns focus on Escape, and retires it when the
       mounted();
       return retired;
     }, []);
-    return <input aria-label="Editor value" />;
+    return (
+      <>
+        <details>
+          <summary>Advanced tools</summary>
+          <input aria-label="Hidden filter" />
+        </details>
+        <input aria-label="Editor value" />
+      </>
+    );
   }
   const host = document.createElement("div");
   document.body.append(host);
@@ -40,7 +48,7 @@ it("opens the editor on demand, returns focus on Escape, and retires it when the
       '[role="dialog"][aria-label="Preferred languages"]',
     )!;
     expect(dialog).not.toBeNull();
-    expect(document.activeElement).toBe(dialog.querySelector("input"));
+    expect(document.activeElement).toBe(dialog.querySelector('[aria-label="Editor value"]'));
     await act(async () =>
       dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     );

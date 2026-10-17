@@ -4,6 +4,7 @@ import { executeCommand, runCommand } from "../commands";
 import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
+import { WindowToolbarSlot } from "./WindowToolbarContent";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, errToast } from "../store";
 import { deferNamedSurface } from "./DeferredSurface";
@@ -32,6 +33,9 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
   const settingsRoute = useStore((s) => s.overlay === "settings");
   const settingsPageTitle = useStore((s) => s.settingsPageTitle);
   const mode = useStore((s) => s.mode);
+  const overlay = useStore((s) => s.overlay);
+  const conversationRoute = mode === "conversation" && !overlay;
+  const contentRoute = settingsRoute || conversationRoute;
   const railOpen = useStore((s) => s.railOpen);
   const takingControl = useRef(false);
   const takeControl = async (pageId: string) => {
@@ -52,7 +56,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
 
   const bookmarkPending = useStore((state) => !!page && !!state.bookmarkPending[page.url]);
   const themeColor =
-    web && !page?.navigationError && /^#[0-9a-f]{6}$/.test(page?.themeColor ?? "")
+    web && !contentRoute && !page?.navigationError && /^#[0-9a-f]{6}$/.test(page?.themeColor ?? "")
       ? page!.themeColor
       : undefined;
 
@@ -60,7 +64,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
     <header
       inert={hidden}
       aria-hidden={hidden}
-      className={`toolbar ${settingsRoute ? "toolbar-settings" : ""} ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+      className={`toolbar ${settingsRoute ? "toolbar-settings" : ""} ${conversationRoute ? "toolbar-conversation" : ""} ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={
         themeColor
           ? ({
@@ -98,7 +102,8 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
           </span>
         </div>
       )}
-      {horizontal && !settingsRoute && <CommandBar compact />}
+      <WindowToolbarSlot />
+      {horizontal && !contentRoute && <CommandBar compact />}
       {!horizontal && (
         <div className="toolbar-drag-space" title="Drag to move window" {...auxNativeAriaHiddenProps} />
       )}
@@ -127,8 +132,8 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             {shellIconGear}
           </button>
         )}
-        {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
-        {page && (page.controller === "agent" || page.controller === "external") && (
+        {!contentRoute && page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
+        {!contentRoute && page && (page.controller === "agent" || page.controller === "external") && (
           <button
             {...auxNativeButtonTypeProps}
             className="ctl-chip agent"
@@ -142,7 +147,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             <span className="ctl-take">Take over</span>
           </button>
         )}
-        {!settingsRoute && (
+        {!contentRoute && (
           <button
             className={`icon-btn ${mode === "overview" ? "on" : ""}`}
             title={withShortcut("Tab overview", key("overview"))}
@@ -154,7 +159,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             {shellIconGrid}
           </button>
         )}
-        {!settingsRoute && !bridge.privateMode && (
+        {!contentRoute && !bridge.privateMode && (
           <button
             className={`icon-btn ${bookmarked ? "on" : ""}`}
             title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))}
@@ -167,7 +172,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             {bookmarked ? shellIconBookmarkFill : shellIconBookmark}
           </button>
         )}
-        {!settingsRoute && !bridge.privateMode && (
+        {!contentRoute && !bridge.privateMode && (
           <button
             className={`tb-ask ${railOpen ? "on" : ""}`}
             title={withShortcut("Agent", key("agent-rail"))}

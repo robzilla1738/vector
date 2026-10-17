@@ -3,7 +3,8 @@ import type { AgentMode, AgentPolicySettings } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { AgentModeSchema } from "@aux/contracts/agent-policy";
 import { Menu, useConfirm } from "../../ui/dialog";
-import { shellIconCheck, shellIconDown, shellIconPlay, shellIconShield } from "../../ui/icons";
+import { shellIconCheck, shellIconPlay, shellIconShield } from "../../ui/icons";
+import { ComposerChevron } from "../../composer/ComposerChevron";
 import "./AgentModeControl.css";
 
 /** Setup and Settings share the real mode choice and its explicit Full auto opt-in. */
@@ -104,7 +105,7 @@ export function AgentModeControl({
           <button
             ref={trigger}
             type="button"
-            className="agent-mode-trigger"
+            className="composer-control agent-mode-trigger"
             data-mode={policy.agentMode}
             aria-label="Confirmation mode"
             aria-haspopup="menu"
@@ -117,7 +118,7 @@ export function AgentModeControl({
             <span className="agent-mode-label">
               {choices.find((choice) => choice.mode === policy.agentMode)?.label}
             </span>
-            {shellIconDown}
+            <ComposerChevron />
           </button>
           {menuOpen && active && !disabled && (
             <Menu

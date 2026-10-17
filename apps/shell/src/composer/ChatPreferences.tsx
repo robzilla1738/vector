@@ -13,12 +13,14 @@ import "./ChatPreferences.css";
 
 export function ChatPreferences({
   children,
+  actions,
   draftKey,
   workspaceId,
   activeRunId,
   disabled,
 }: {
   children: ReactNode;
+  actions?: ReactNode;
   draftKey: string;
   workspaceId?: string;
   activeRunId?: string;
@@ -45,80 +47,85 @@ export function ChatPreferences({
   const temporaryMode = temporary || (activeMode !== undefined && activeMode !== policy.agentMode);
   return (
     <div className="chat-preferences">
-      <ComposerProjectControl
-        draftKey={draftKey}
-        workspaceId={workspaceId}
-        disabled={disabled || !connected}
-      />
-      <AgentModeControl
-        compact
-        active={connected}
-        disabled={disabled || !connected}
-        temporary={temporaryMode}
-        policy={{ ...policy, agentMode: effectiveMode }}
-        onSave={async (patch) => {
-          if (temporary) {
-            useStore.getState().setComposerPreferences(draftKey, {
-              ...(preferences ?? { privateTask: false }),
-              agentMode: patch.agentMode,
-            });
-            return true;
-          }
-          try {
-            await call("settings.set", patch);
-            return true;
-          } catch {
-            return false;
-          }
-        }}
-      />
-      <ComposerModelControls draftKey={draftKey} disabled={disabled || !connected} />
-      <Popover label="Run options" className="chat-run-options-trigger" trigger={shellIconGearSm}>
-        {() => (
-          <div className="chat-run-menu">
-            <header>Run options</header>
-            {children}
-            <div className="chat-run-menu-section">
-              <label className="chat-run-scope">
-                <span>This run only</span>
-                <Switch
-                  checked={temporary}
-                  disabled={disabled}
-                  onChange={(event) => {
-                    setThisRunOnly(event.target.checked);
-                    if (!event.target.checked && preferences?.agentMode !== undefined)
-                      useStore
-                        .getState()
-                        .setComposerPreferences(draftKey, { ...preferences, agentMode: undefined });
-                  }}
-                />
-              </label>
-              {temporaryMode && <span className="chat-run-menu-note">Temporary confirmation mode</span>}
-              {activeRunId && (
-                <button
-                  type="button"
-                  disabled={!connected}
-                  onClick={() => {
-                    const original = useStore.getState().confirmation;
-                    void call("safety.grants.revokeRun", { runId: activeRunId })
-                      .then(() => {
-                        if (
-                          original?.turnId === activeRunId &&
-                          ["approval", "touch-id"].includes(original.kind) &&
-                          useStore.getState().confirmation === original
-                        )
-                          useStore.setState({ confirmation: null });
-                      })
-                      .catch((error) => errToast(errorMessage(error)));
-                  }}
-                >
-                  Reset permissions for this run
-                </button>
-              )}
+      <div className="chat-preferences-context">
+        <AgentModeControl
+          compact
+          active={connected}
+          disabled={disabled || !connected}
+          temporary={temporaryMode}
+          policy={{ ...policy, agentMode: effectiveMode }}
+          onSave={async (patch) => {
+            if (temporary) {
+              useStore.getState().setComposerPreferences(draftKey, {
+                ...(preferences ?? { privateTask: false }),
+                agentMode: patch.agentMode,
+              });
+              return true;
+            }
+            try {
+              await call("settings.set", patch);
+              return true;
+            } catch {
+              return false;
+            }
+          }}
+        />
+        <ComposerProjectControl
+          draftKey={draftKey}
+          workspaceId={workspaceId}
+          disabled={disabled || !connected}
+        />
+      </div>
+      <div className="chat-preferences-model">
+        <ComposerModelControls draftKey={draftKey} disabled={disabled || !connected} />
+        <Popover label="Run options" className="chat-run-options-trigger" trigger={shellIconGearSm}>
+          {() => (
+            <div className="chat-run-menu">
+              <header>Run options</header>
+              {children}
+              <div className="chat-run-menu-section">
+                <label className="chat-run-scope">
+                  <span>This run only</span>
+                  <Switch
+                    checked={temporary}
+                    disabled={disabled}
+                    onChange={(event) => {
+                      setThisRunOnly(event.target.checked);
+                      if (!event.target.checked && preferences?.agentMode !== undefined)
+                        useStore
+                          .getState()
+                          .setComposerPreferences(draftKey, { ...preferences, agentMode: undefined });
+                    }}
+                  />
+                </label>
+                {temporaryMode && <span className="chat-run-menu-note">Temporary confirmation mode</span>}
+                {activeRunId && (
+                  <button
+                    type="button"
+                    disabled={!connected}
+                    onClick={() => {
+                      const original = useStore.getState().confirmation;
+                      void call("safety.grants.revokeRun", { runId: activeRunId })
+                        .then(() => {
+                          if (
+                            original?.turnId === activeRunId &&
+                            ["approval", "touch-id"].includes(original.kind) &&
+                            useStore.getState().confirmation === original
+                          )
+                            useStore.setState({ confirmation: null });
+                        })
+                        .catch((error) => errToast(errorMessage(error)));
+                    }}
+                  >
+                    Reset permissions for this run
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </Popover>
+          )}
+        </Popover>
+        {actions}
+      </div>
       {bridge.privateMode && (
         <span
           className="private-ai-disclosure"

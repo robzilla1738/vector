@@ -113,7 +113,7 @@ function completion(job: ImportJobStatus): string {
 }
 
 /** Reviewed sources remain opt-in; receipt recovery never replays an import. */
-export function ImportDataSetting() {
+export function ImportDataSetting({ extensionsOnly = false }: { extensionsOnly?: boolean }) {
   const [exportSource, setExportSource] = useState<BrowserExportSource>("safari");
   const [exportFormat, setExportFormat] = useState<BrowserExportFormat>("safari-archive");
   const [selectionId, setSelectionId] = useState<string>();
@@ -331,7 +331,7 @@ export function ImportDataSetting() {
   const selected: ImportSelection[] = Object.entries(selection).flatMap(([sourceId, profiles]) =>
     Object.entries(profiles).flatMap(([profileId, entries]) => {
       const categories = (Object.entries(entries) as [ImportCategory, boolean][])
-        .filter(([, on]) => on)
+        .filter(([category, on]) => on && (!extensionsOnly || category === "extensions"))
         .map(([category]) => category);
       const reviewed = extensionReviews[reviewKey(sourceId, profileId)];
       const extensionReview =
@@ -427,28 +427,37 @@ export function ImportDataSetting() {
 
   return (
     <div className="import-setting">
-      <p {...staticHintProps}>
-        Choose available data from detected browser Profiles. Nothing is imported until you confirm.
-      </p>
-      <p {...staticHintProps}>
-        Passwords transfer inside the native browser. Extensions reinstall from the Chrome Web Store with
-        their own permission prompts. Cookies and agent permissions are not copied.
-      </p>
-      <details>
-        <summary>Folders and retries</summary>
+      {extensionsOnly ? (
         <p {...staticHintProps}>
-          Imported bookmark folders and pinned tabs retain their source structure. Existing bookmarks are not
-          overwritten. A fresh import can add duplicate bookmarks or tabs.
+          Review extensions from another browser, then choose which to reinstall from the Chrome Web Store.
+          Each extension keeps its own permission prompt. Nothing is installed until you confirm.
         </p>
-      </details>
-      <details>
-        <summary>Keychain and macOS access</summary>
-        <p {...staticHintProps}>
-          Password or encrypted-tab import may ask macOS to unlock the source browser’s Safe Storage key.
-          Check the app and purpose in the system prompt; you can cancel it. Keys and password text stay in
-          the native browser.
-        </p>
-      </details>
+      ) : (
+        <>
+          <p {...staticHintProps}>
+            Choose available data from detected browser Profiles. Nothing is imported until you confirm.
+          </p>
+          <p {...staticHintProps}>
+            Passwords transfer inside the native browser. Extensions reinstall from the Chrome Web Store with
+            their own permission prompts. Cookies and agent permissions are not copied.
+          </p>
+          <details>
+            <summary>Folders and retries</summary>
+            <p {...staticHintProps}>
+              Imported bookmark folders and pinned tabs retain their source structure. Existing bookmarks are
+              not overwritten. A fresh import can add duplicate bookmarks or tabs.
+            </p>
+          </details>
+          <details>
+            <summary>Keychain and macOS access</summary>
+            <p {...staticHintProps}>
+              Password or encrypted-tab import may ask macOS to unlock the source browser’s Safe Storage key.
+              Check the app and purpose in the system prompt; you can cancel it. Keys and password text stay
+              in the native browser.
+            </p>
+          </details>
+        </>
+      )}
       {interrupted && !job?.acknowledged && (
         <label {...staticHintProps}>
           <input
@@ -466,109 +475,114 @@ export function ImportDataSetting() {
           </button>
         </div>
       )}
-      <div {...staticRowProps}>
-        <button
-          {...smallButtonProps}
-          disabled={running || selectingSource || loading}
-          onClick={() => void chooseSource("safari-window")}
-        >
-          Choose a Safari window
-        </button>
-        <span {...staticHintProps}>
-          Safari cannot identify private windows. Review one window in the native sheet before copying its
-          tabs.
-        </span>
-      </div>
-      {selectingSource && (
-        <div {...staticRowProps}>
-          <span {...staticHintProps}>Waiting for the original native browser review…</span>
-          {selectionId && (
+      {!extensionsOnly && (
+        <>
+          <div {...staticRowProps}>
             <button
-              {...smallGhostButtonProps}
-              onClick={() =>
-                void call("import.cancelExport", { selectionId }).catch((e) => setError(errorMessage(e)))
-              }
+              {...smallButtonProps}
+              disabled={running || selectingSource || loading}
+              onClick={() => void chooseSource("safari-window")}
             >
-              Cancel browser selection
+              Choose a Safari window
             </button>
-          )}
-        </div>
-      )}
-      <details>
-        <summary>Choose a browser export</summary>
-        <p {...staticHintProps}>
-          Safari archives offer separate exported history and extension files, plus shared bookmarks and
-          passwords. File names are displayed as exported; Aux does not infer which files belong to the same
-          Safari Profile. For Firefox or another browser, choose its exported bookmarks or passwords.
-          Available Firefox Profiles also expose their saved non-private tabs. To import an exported selection
-          of Firefox tabs, bookmark those tabs and export them as HTML. Safari tabs and cross-browser
-          extension equivalents are not imported by these export formats.
-        </p>
-        <div {...staticRowProps}>
-          <label>
-            Browser{" "}
-            <select
-              aria-label="Export browser"
-              value={exportSource}
-              disabled={running || selectingSource}
-              onChange={(event) => {
-                const parsed = BrowserExportSourceSchema.safeParse(event.target.value);
-                if (parsed.success) {
-                  setExportSource(parsed.data);
-                  if (parsed.data !== "safari" && exportFormat === "safari-archive")
-                    setExportFormat("bookmarks-html");
-                }
-              }}
-            >
-              {BrowserExportSourceSchema.options.map((id) => (
-                <option key={id} value={id}>
-                  {
-                    {
-                      chrome: "Chrome",
-                      arc: "Arc",
-                      safari: "Safari",
-                      firefox: "Firefox",
-                      edge: "Edge",
-                      brave: "Brave",
-                      dia: "Dia",
-                      comet: "Comet",
-                      atlas: "Atlas",
-                    }[id]
+            <span {...staticHintProps}>
+              Safari cannot identify private windows. Review one window in the native sheet before copying its
+              tabs.
+            </span>
+          </div>
+          {selectingSource && (
+            <div {...staticRowProps}>
+              <span {...staticHintProps}>Waiting for the original native browser review…</span>
+              {selectionId && (
+                <button
+                  {...smallGhostButtonProps}
+                  onClick={() =>
+                    void call("import.cancelExport", { selectionId }).catch((e) => setError(errorMessage(e)))
                   }
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Export format{" "}
-            <select
-              aria-label="Browser export format"
-              value={exportFormat}
-              disabled={running || selectingSource}
-              onChange={(event) => {
-                const parsed = BrowserExportFormatSchema.safeParse(event.target.value);
-                if (parsed.success) setExportFormat(parsed.data);
-              }}
-            >
-              {exportSource === "safari" && <option value="safari-archive">Safari archive (ZIP)</option>}
-              <option value="bookmarks-html">Bookmarks (HTML)</option>
-              <option value="passwords-csv">Passwords (CSV)</option>
-              <option value="tabs-html">Chosen tabs bookmarked as HTML</option>
-            </select>
-          </label>
-          <button
-            {...smallButtonProps}
-            disabled={running || selectingSource || loading}
-            onClick={() => void chooseSource("file")}
-          >
-            {selectingSource ? "Waiting for native browser review…" : "Choose export file"}
-          </button>
-        </div>
-        <p {...staticHintProps}>
-          Exports can contain unencrypted passwords. Aux reads the selected file inside the native browser;
-          password text is never sent to the runtime. Delete exported password files when finished.
-        </p>
-      </details>
+                >
+                  Cancel browser selection
+                </button>
+              )}
+            </div>
+          )}
+          <details>
+            <summary>Choose a browser export</summary>
+            <p {...staticHintProps}>
+              Safari archives offer separate exported history and extension files, plus shared bookmarks and
+              passwords. File names are displayed as exported; Aux does not infer which files belong to the
+              same Safari Profile. For Firefox or another browser, choose its exported bookmarks or passwords.
+              Available Firefox Profiles also expose their saved non-private tabs. To import an exported
+              selection of Firefox tabs, bookmark those tabs and export them as HTML. Safari tabs and
+              cross-browser extension equivalents are not imported by these export formats.
+            </p>
+            <div {...staticRowProps}>
+              <label>
+                Browser{" "}
+                <select
+                  aria-label="Export browser"
+                  value={exportSource}
+                  disabled={running || selectingSource}
+                  onChange={(event) => {
+                    const parsed = BrowserExportSourceSchema.safeParse(event.target.value);
+                    if (parsed.success) {
+                      setExportSource(parsed.data);
+                      if (parsed.data !== "safari" && exportFormat === "safari-archive")
+                        setExportFormat("bookmarks-html");
+                    }
+                  }}
+                >
+                  {BrowserExportSourceSchema.options.map((id) => (
+                    <option key={id} value={id}>
+                      {
+                        {
+                          chrome: "Chrome",
+                          arc: "Arc",
+                          safari: "Safari",
+                          firefox: "Firefox",
+                          edge: "Edge",
+                          brave: "Brave",
+                          dia: "Dia",
+                          comet: "Comet",
+                          atlas: "Atlas",
+                        }[id]
+                      }
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Export format{" "}
+                <select
+                  aria-label="Browser export format"
+                  value={exportFormat}
+                  disabled={running || selectingSource}
+                  onChange={(event) => {
+                    const parsed = BrowserExportFormatSchema.safeParse(event.target.value);
+                    if (parsed.success) setExportFormat(parsed.data);
+                  }}
+                >
+                  {exportSource === "safari" && <option value="safari-archive">Safari archive (ZIP)</option>}
+                  <option value="bookmarks-html">Bookmarks (HTML)</option>
+                  <option value="passwords-csv">Passwords (CSV)</option>
+                  <option value="tabs-html">Chosen tabs bookmarked as HTML</option>
+                </select>
+              </label>
+              <button
+                {...smallButtonProps}
+                disabled={running || selectingSource || loading}
+                onClick={() => void chooseSource("file")}
+              >
+                {selectingSource ? "Waiting for native browser review…" : "Choose export file"}
+              </button>
+            </div>
+            <p {...staticHintProps}>
+              Exports can contain unencrypted passwords. Aux reads the selected file inside the native
+              browser; password text is never sent to the runtime. Delete exported password files when
+              finished.
+            </p>
+          </details>
+        </>
+      )}
       {preview && preview.length > 0 && (
         <label className="import-browser-picker">
           <span>Detected browser</span>
@@ -600,8 +614,9 @@ export function ImportDataSetting() {
       )}
       {preview?.length === 0 && (
         <p {...staticHintProps}>
-          No installed browser Profiles were found. Choose an export file or a Safari window to review another
-          source.
+          {extensionsOnly
+            ? "No installed browser Profiles were found."
+            : "No installed browser Profiles were found. Choose an export file or a Safari window to review another source."}
         </p>
       )}
       {(activeSource ? [activeSource] : []).map((source) => (
@@ -624,32 +639,34 @@ export function ImportDataSetting() {
                   : {profile.label ?? profile.profileId}
                 </legend>
               )}
-              {profile.categories.map((entry) => {
-                const usable = entry.available && !entry.blocker;
-                return (
-                  <label className="import-row" key={entry.category}>
-                    <input
-                      {...nativeCheckboxTypeProps}
-                      disabled={!usable || running || loading}
-                      checked={usable && !!selection[source.id]?.[profile.profileId]?.[entry.category]}
-                      onChange={(event) =>
-                        setSelection((current) => ({
-                          ...current,
-                          [source.id]: {
-                            ...current[source.id],
-                            [profile.profileId]: {
-                              ...current[source.id]?.[profile.profileId],
-                              [entry.category]: event.target.checked,
+              {profile.categories
+                .filter((entry) => !extensionsOnly || entry.category === "extensions")
+                .map((entry) => {
+                  const usable = entry.available && !entry.blocker;
+                  return (
+                    <label className="import-row" key={entry.category}>
+                      <input
+                        {...nativeCheckboxTypeProps}
+                        disabled={!usable || running || loading}
+                        checked={usable && !!selection[source.id]?.[profile.profileId]?.[entry.category]}
+                        onChange={(event) =>
+                          setSelection((current) => ({
+                            ...current,
+                            [source.id]: {
+                              ...current[source.id],
+                              [profile.profileId]: {
+                                ...current[source.id]?.[profile.profileId],
+                                [entry.category]: event.target.checked,
+                              },
                             },
-                          },
-                        }))
-                      }
-                    />
-                    <span>{categoryLabel(entry.category)}</span>
-                    <span {...staticHintProps}>{availability(entry)}</span>
-                  </label>
-                );
-              })}
+                          }))
+                        }
+                      />
+                      <span>{categoryLabel(entry.category)}</span>
+                      <span {...staticHintProps}>{availability(entry)}</span>
+                    </label>
+                  );
+                })}
               {profile.categories.some(
                 (entry) => entry.category === "extensions" && entry.available && !entry.blocker,
               ) && (

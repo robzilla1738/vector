@@ -84,3 +84,15 @@ diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui
    if (method == "quickAsk") {
      if (list->size() != 1 || !(*list)[0].is_string()) {
        std::move(callback).Run(false, "", "invalid_argument",
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -115,7 +115,7 @@
+                   "navigationMenu", "contextMenu",
+                   "revealPath", "openPath"});
+   register_shell(AuxShellMethodGroup::kWindow,
+-                 {"quickAsk", "quickAskShortcut", "littleWindow", "externalLinkTarget", "showTabWindow"});
++                 {"quickAsk", "quickAskLayout", "quickAskShortcut", "littleWindow", "externalLinkTarget", "showTabWindow"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+     for (std::string_view name : names)
