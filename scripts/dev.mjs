@@ -68,18 +68,21 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
+      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--debug-native] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
     );
     return;
   }
   const commandIndex = args.indexOf("--");
   let flavor = nativeFlavor;
   const runtimeOnly = args.includes("--runtime-only");
+  const debugNative = args.includes("--debug-native");
   if (runtimeOnly && (commandIndex >= 0 || !args.includes("--temp-profile")))
     throw new Error("Use --runtime-only with --temp-profile and no custom command.");
+  if (debugNative && (commandIndex >= 0 || !args.includes("--temp-profile")))
+    throw new Error("Use --debug-native with --temp-profile and no custom command.");
   if (commandIndex < 0) {
     for (let index = 0; index < args.length; index++) {
-      if (["--temp-profile", "--runtime-only"].includes(args[index])) continue;
+      if (["--temp-profile", "--runtime-only", "--debug-native"].includes(args[index])) continue;
       if (args[index] === "--flavor" && ["dev", "fast"].includes(args[index + 1])) {
         flavor = args[++index];
         continue;
@@ -114,10 +117,14 @@ async function main() {
     const profile = args.includes("--temp-profile")
       ? (temporary = mkdtempSync(join(tmpdir(), "aux-dev-")))
       : join(homedir(), "aux-dev-profile");
-    await run(join(app, "Contents/MacOS/Aux"), [
+    const executable = join(app, "Contents/MacOS/Aux");
+    const launchArgs = [
       `--user-data-dir=${profile}`,
       ...(temporary ? ["--enable-logging=stderr"] : []),
-    ]);
+    ];
+    if (debugNative)
+      await run("lldb", ["-o", "settings set target.disable-aslr false", "-o", "run", "--", executable, ...launchArgs]);
+    else await run(executable, launchArgs);
   } finally {
     if (temporary) rmSync(temporary, { recursive: true, force: true });
     release();
