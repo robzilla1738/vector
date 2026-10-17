@@ -45,7 +45,11 @@ function files(dir) {
 const rendererText = files(renderer)
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
-const called = methods.filter((method) => new RegExp(`\\.\\s*${method}\\b`).test(rendererText));
+const called = methods.filter(
+  (method) =>
+    new RegExp(`\\.\\s*${method}\\b`).test(rendererText) ||
+    new RegExp(`\\.subscribe\\(\\s*["']${method}["']`).test(rendererText),
+);
 const nativeText = readFileSync(registry, "utf8");
 const registrations = [...nativeText.matchAll(/register_shell\([\s\S]*?\{([^}]+)\}\);/g)];
 if (registrations.length < 5) throw new Error("Native shell registration inventory is incomplete");
@@ -84,12 +88,15 @@ if (/if \(method == "capabilities"\)[\s\S]*?auto capabilities = host->Capabiliti
 const bootstrapText = readFileSync(bootstrap, "utf8");
 for (const match of bootstrapText.matchAll(/method === '([^']+)'/g)) handled.add(match[1]);
 
-// Events the bootstrap forwards come from its hostEvents allowlist; any other
-// HostEvents entry currently has no native producer.
+// Native producers can exist without reaching the renderer. Every declared
+// event must also be admitted by the bootstrap, including direct port users.
 const produced = new Set();
 const hostEventsMatch = bootstrapText.match(/hostEvents = new Set\(\[([\s\S]*?)\]\)/);
 if (!hostEventsMatch) throw new Error("Native host event inventory unavailable");
 for (const match of hostEventsMatch[1].matchAll(/'([^']+)'/g)) produced.add(match[1]);
+const unforwarded = Object.keys(HostEvents).filter((event) => !produced.has(event));
+if (unforwarded.length)
+  throw new Error(`Native host drops declared events: ${unforwarded.join(", ")}`);
 
 const missing = called.filter(
   (method) => !local.has(method) && !handled.has(method) && !produced.has(method),

@@ -1,0 +1,11 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -33,6 +33,7 @@
+ const hostEvents = new Set([
+   'onEvent', 'onOmniboxResult', 'onTabsPatch', 'onDictation', 'onSidebarEdge', 'onToolbarEdge',
+   'onOrganizationChanged', 'onShortcut', 'onSiteZoomChanged',
++  'onBookmarksChanged', 'onHistoryChanged', 'onDownloadsRemoved',
+   'onRuntimeStatus', 'onLoading', 'onAudio', 'onDownload',
+   'onHttpAuthChanged', 'onTabsPlacement', 'onQuickAskState',
+   'onPageAction', 'onVaultOffer', 'onLinkStatus', 'onTranslationChanged',

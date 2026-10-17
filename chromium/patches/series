@@ -45,3 +45,4 @@ aux/0044-default-page-zoom-range.patch
 aux/0045-shell-zoom-isolation.patch
 aux/0046-bookmark-window-destinations.patch
 aux/0047-bookmark-clipboard.patch
+aux/0048-library-event-forwarding.patch

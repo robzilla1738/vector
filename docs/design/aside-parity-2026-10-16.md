@@ -1,5 +1,43 @@
 # Aside UI parity — October 16, 2026
 
+Native candidate `479f5a96bcb400dd801f41cc5dd8a9d6edee9a90` built in 9m22.49s
+and was verified in About with ABI
+`9021388efb6b3a3f317178bce1b0794baf2826aa9c132b5bb276b28470fb8c68`,
+Chromium 154.0.8037.98. Live launcher **73597**, exec **88582**, app **74900**,
+disposable Profile **aux-dev-a2hXEY**, runtime API `http://127.0.0.1:54041`.
+Preserve this preview and its cleanup ownership.
+
+Native acceptance: Aux Library Copy/Paste produced a duplicate, Undo paste removed
+only the new bookmark; Cut removed the original and Undo cut restored it. Opening
+that bookmark in split view from an active web page now produced two live panes.
+Root navigation stayed in the rail without duplicate permanent-root list rows.
+No claim is made yet about keyboard context-menu focus or adversarial Undo conflicts.
+
+Direct native pages are viable: chrome://bookmarks opened in a real tab; Organize
+created a synthetic bookmark, native Copy + Cmd-V pasted it and Cmd-Z undid it.
+chrome://history/grouped opened with real By date/By group tabs. History was empty,
+so populated clustering has not been accepted. Built-in pages still need Aux
+branding, palette/menu alignment, promo review, feature opt-out/Private checks
+and navigation integration. Keep Reading/Archived/Recently closed accessible when removing replaced Library code.
+Captures `/tmp/aux-parity-2026-10-16/aux-native-bookmarks-479f5a96b.png`,
+`aux-native-history-grouped-479f5a96b.png`, `aux-bookmark-split-native-479f5a96b.png`.
+
+Native page testing exposed stale sidebar data after bookmark creation. Root cause:
+the host emits onBookmarksChanged/onHistoryChanged but the bootstrap allowlist
+silently dropped them; onDownloadsRemoved was missing too despite native producers.
+Patch 0048 adds these three events. The coverage script now detects direct port
+subscriptions and rejects declared events absent from forwarding. Coverage: 187
+used bridge members, zero missing handlers; all 30 declared events forwarded.
+Native build_ts compiled in 4.26s (first invocation used the nonexistent :build
+target, corrected to :build_ts). Reverse-apply validation passed. This patch is
+source-only relative to the live app; native synchronization acceptance is pending.
+Validation: integrated typecheck/lint and 4,648/4,649 tests passed; the sole failure
+was the existing coder-worktree snapshot test's 60s timeout. Its isolated retry
+passed in 26.20s, without changing that test. No passing suites were repeated.
+Logs `/tmp/aux-library-events-{check,retry}.log` and
+`/tmp/aux-library-events-native-compile-retry.log`.
+
+
 Architecture review, October 17: references 164–170 are actual Chromium History
 and Bookmarks WebUIs (AX URLs chrome://history/grouped and chrome://bookmarks),
 not a combined Library. Before extending the renderer overlay further, inspect
