@@ -30,6 +30,7 @@ export function SettingsField({
   hint,
   description,
   searchTerms = [],
+  searchable = true,
   target,
   compact = false,
   surface = "card",
@@ -42,6 +43,8 @@ export function SettingsField({
   hint?: ReactNode;
   description?: string;
   searchTerms?: readonly string[];
+  /** Dynamic library items are indexed through their containing Settings section. */
+  searchable?: boolean;
   target?: string;
   compact?: boolean;
   surface?: "card" | "plain";
@@ -55,8 +58,8 @@ export function SettingsField({
   return (
     <div
       className={`field ui-setting${compact ? " compact" : ""}${surface === "plain" ? " ui-setting-plain" : ""}${layout === "feature" ? " ui-setting-feature" : ""}`}
-      data-setting={target ?? label}
-      data-settings-field={label}
+      data-setting={searchable ? (target ?? label) : undefined}
+      data-settings-field={searchable ? label : undefined}
       data-settings-description={description ?? (typeof hint === "string" ? hint : "")}
       data-settings-terms={JSON.stringify(searchTerms)}
       tabIndex={-1}

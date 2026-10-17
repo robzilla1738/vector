@@ -600,17 +600,23 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Selection & Capture",
+    label: "Ask about what you select",
+    description:
+      "Select text or capture a region, then ask Aux to explain, translate, or turn it into a draft. You review it before sending.",
+    target: "Selection & Capture overview",
+  },
+  {
+    category: "Selection & Capture",
     label: "Selection actions",
     description:
-      "Order controls the selection menu. Use {text} for quoted text, {code} for quoted code, or {image} for a captured image. No page scripts or template commands run.",
+      "Customize the actions in your selection menu. No page scripts or template commands run.",
     target: "Selection actions",
     searchTerms: ["Lasso", "prompt", "template", "sort", "double tap"],
   },
   {
     category: "Selection & Capture",
     label: "Selection double-tap shortcut",
-    description:
-      "Press the same shortcut twice to request the selection menu. The native handler must ignore held keys; no selection is captured by this settings page.",
+    description: "Press the same shortcut twice to open the selection menu.",
     target: "Selection double-tap shortcut",
   },
   {
@@ -810,6 +816,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     label: "MCP servers",
     description: "",
     target: "MCP servers",
+  },
+  {
+    category: "Connections",
+    label: "Aux Packages",
+    description: "",
+    target: "Aux Packages",
   },
   {
     category: "Connections",

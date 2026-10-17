@@ -26,7 +26,10 @@ focused editor/ownership tests passed. Integrated typecheck and lint passed;
 Those tests now open the real editor, and all six parent ownership tests pass.
 The full run covered747files/4,649tests in97.85s; unchanged tests were not repeated.
 Logs: `/tmp/aux-parity-settings-batch-check.log` and
-`/tmp/aux-parity-parent-owners.log`. Native acceptance is pending.
+`/tmp/aux-parity-parent-owners.log`. The first renderer build caught static search-index generation attempting to index
+installed package names. Dynamic rows now opt out of static field indexing while
+the containing package section remains searchable. Generation and nine affected
+tests passed, as did focused lint. Native acceptance is pending.
 
 ## Popup and editor follow-up — native verified
 

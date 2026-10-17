@@ -143,7 +143,12 @@ function scan(file, category, seen, subview, feature) {
       const attrs = new Map(
         node.attributes.properties.filter(ts.isJsxAttribute).map((attr) => [attr.name.getText(source), attr]),
       );
-      const field = fieldNames.has(node.tagName.getText(source));
+      const searchable = attrs.get("searchable")?.initializer;
+      const dynamic =
+        searchable &&
+        ts.isJsxExpression(searchable) &&
+        searchable.expression?.kind === ts.SyntaxKind.FalseKeyword;
+      const field = fieldNames.has(node.tagName.getText(source)) && !dynamic;
       const names = field
         ? labels(attrs.get("label"))
         : [literal(attrs.get("data-settings-field")) ?? literal(attrs.get("data-setting"))].filter(Boolean);

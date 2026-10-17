@@ -34,7 +34,7 @@ export function AuxPackages() {
     }
   }
   return (
-    <section className="field" aria-label="Aux Packages">
+    <section className="field" aria-label="Aux Packages" data-setting="Aux Packages" tabIndex={-1}>
       <h4>Aux Packages</h4>
       <p>
         Skills, agent profiles and prompt templates for Aux. Select packages per run or choose defaults here.
@@ -43,6 +43,7 @@ export function AuxPackages() {
         {library?.packages.map((item) => (
           <SettingsField
             key={item.name}
+            searchable={false}
             compact
             label={item.name}
             hint={item.description}
