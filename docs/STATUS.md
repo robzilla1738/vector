@@ -7,20 +7,35 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current replacement build
+## Current native preview
 
-Product **0a5a757e0**, launcher **26443**, exec **4789**, log
-`/tmp/aux-home-history-native-build.log`. Launcher is confirmed live. Keep this
-single builder and do not edit renderer/runtime source until staging finishes.
+Product **0a5a757e0**, launcher **26443**, app **27577**, runtime **27591**,
+exec **4789**, API port **51167**, disposable Profile **aux-dev-juErea**.
+Log `/tmp/aux-home-history-native-build.log`; native build passed in **9m22.03s**
+and runtime staging completed. CUA **homeHistoryApp** is live. Preserve this
+launcher's cleanup ownership; there is no pending build. About confirmed clean
+source `0a5a757e0d00e973ad7d3845a9059a33cddb021a`, Chromium154.0.8037.98 and ABI9021388e….
 Prior launcher17093, app18292, runtime18307, Profileaux-dev-c7Z9wr and lock all
-retired normally and were verified removed before replacement. CUA homeSettingsApp
-is stale. No native browser is available until this build launches.
+retired normally and were verified removed before replacement.
 
-Next acceptance: verify About identity, zoom the window, create synthetic chats
-and compare the new Home card hierarchy with001. Compare history composer width
-and background with113, then verify Cmd-T URL acceptance from history reveals the
-new page without clicking its tab. Check narrow/light states in the same preview.
-Do not mark these changes natively accepted until observed in the packaged app.
+Native acceptance at3456×2010: three synthetic real-provider chats completed
+without tools. Search-mode Home shows timestamp/title/reply cards without oversized
+icons or repeated action buttons. Opening Paper garden shows its actual checklist
+conversation. History now has a full-column composer and inherited background.
+From history, Cmd-T plus `http://127.0.0.1:5197` displayed the new page immediately,
+without clicking its tab. The temporary page was closed afterward.
+
+Captures under `/tmp/aux-parity-2026-10-16/`:
+- `aux-home-populated-0a5a757e0.jpg`
+- `aux-home-routines-ask-0a5a757e0.jpg`
+- `aux-history-populated-0a5a757e0.jpg`
+- `aux-history-navigation-0a5a757e0.jpg`
+
+Remaining comparison: Ask mode places Recent work about44CSSpx lower than reference004
+because its composer toolbar adds height; Search mode aligns closely with001.
+Ask also lacks the reference's Tab-to-switch affordance; any hint must have working,
+draft-preserving keyboard behavior. Real image thumbnails and native narrow/light
+states remain open. These observations do not establish full Home parity.
 
 ## Previous accepted native preview (retired)
 
@@ -46,7 +61,7 @@ Captures under `/tmp/aux-parity-2026-10-16/`:
 - `aux-appearance-actions-eabff947d.jpg`
 - `aux-home-populated-eabff947d.jpg`
 
-## Home card source follow-up — not yet packaged
+## Home card follow-up — packaged and observed
 
 Populated native evidence exposed the remaining large mismatch with001: oversized
 chat icons, status badges and repeated action buttons displaced the actual reply.
@@ -58,12 +73,12 @@ to their own card. Old result-button presentation is removed.
 
 Integrated check passed typecheck, lint and **4,625 tests /745 files** in95.78s
 (`/tmp/aux-home-cards-check.log`). Only dead CSS removal and formatting followed.
-This source follow-up is newer than the live eabff947d app. Native acceptance is
-pending. Do not claim complete populated-card parity; real image thumbnails and
-wide/narrow/light comparison remain to verify. Keep the substantial Memory
+Packaged0a5a757e0 confirms the hierarchy and conversation navigation described above.
+Do not claim complete populated-card parity; real image thumbnails and
+narrow/light comparison remain to verify. Keep the substantial Memory
 model/UI batch open per the implementation boundary.
 
-## Related Home/history batch — source checked, replacement building
+## Related Home/history batch — source checked and natively observed
 
 Reference113 comparison found the history composer constrained by the inner896px
 compose-content wrapper even though its outer history column was full width.

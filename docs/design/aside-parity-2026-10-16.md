@@ -2539,3 +2539,28 @@ Replacement ownership:0a5a757e0 launcher26443/session4789, log
 Profileaux-dev-c7Z9wr plus lock retired normally and verified removed.
 CUA homeSettingsApp is stale. Wait on26443; freeze renderer/runtime source until
 staging finishes. Packaged acceptance remains pending.
+
+
+## October 17 — combined Home/history native acceptance
+
+Product0a5a757e0 built in9m22.03s and staged successfully. Live launcher26443,
+app27577, runtime27591, session4789, Profileaux-dev-juErea, API51167;
+CUA homeHistoryApp. About confirms clean0a5a757e0d00e973ad7d3845a9059a33cddb021a
+and Chromium154.0.8037.98. Previous replacement-building entry is superseded.
+
+At3456×2010, three synthetic real-provider chats completed without tools. Home
+Search cards show timestamp, title and actual Markdown reply. Paper garden opens
+its correct checklist conversation. History composer spans its full column and
+inherits the content background. Cmd-T from populated history followed by
+http://127.0.0.1:5197 immediately showed that page, without clicking the new tab;
+the temporary page was then closed. No unchanged broad tests were repeated.
+
+Captures in /tmp/aux-parity-2026-10-16/: aux-home-populated-0a5a757e0.jpg,
+aux-home-routines-ask-0a5a757e0.jpg, aux-history-populated-0a5a757e0.jpg,
+aux-history-navigation-0a5a757e0.jpg.
+
+Newly measured gap: Ask's composer toolbar places Recent work about44CSSpx lower
+than reference004, while Search aligns closely with001. Ask lacks Tab-to-switch;
+adding that hint requires real keyboard behavior and draft preservation. These
+remain implementation follow-ups. Light/narrow states and real image thumbnails
+remain unverified. Full parity and phase completion remain open.
