@@ -1,10 +1,21 @@
 # Channels implementation boundary
 
-Status: implementation remains open. References 091–096 require a separate Channels
+Status: transport and encrypted-storage foundation is implemented; connection
+lifecycle, native pairing, run/reply integration and Settings remain open.
+References 091–096 require a separate Channels
 Settings destination with messenger rows, Add (Slack/Telegram/Discord), and a
 connection dialog containing Options, Pairing and Credentials. Options include
 Paired people only / Everyone, Require mentions in threads, Queue / Steer and
 Reconnect. Personal-assistant cards are a separate integration surface.
+
+`channel-transport.ts` and the three provider modules implement bot identity,
+durable acknowledgement, heartbeat/resume and safe delivery errors. `ChannelStore`
+owns schema 6's encrypted connection, peer, thread, message, outbox and cursor bodies.
+Its per-connection index key stays inside the protected envelope, so reviewed
+recovery preserves lookup identity when Profile encryption keys change. Schema 2–5
+migrations, dedupe/checkpoint atomicity, identity-bound deliveries, interrupted sends
+and actual cross-Profile re-encryption have passing fixtures. No service loads
+messenger credentials or exposes enabled controls yet.
 
 Use a Profile-owned channel service, not the Calendar/MCP catalog or external-agent
 session UI. Existing `CalendarConnectionService` demonstrates native secret storage

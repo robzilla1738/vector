@@ -27,6 +27,7 @@ import {
   TaskEvidenceService,
 } from "@aux/runtime";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
+import { channelTablesForDatabase } from "../../apps/runtime/src/store/db.js";
 import {
   advanceManagedRecoveryGeneration,
   currentManagedRecoveryGeneration,
@@ -57,7 +58,9 @@ async function stagedFixture(version = 3) {
     status: "complete",
     createdAt: Date.now(),
   });
-  if (version === 2)
+  if (version === 2) {
+    for (const table of channelTablesForDatabase(original.db).reverse())
+      original.db.exec(`DROP TABLE ${table}`);
     original.db.exec(`
       DROP TABLE run_start_receipts;
       DROP TABLE coding_process_logs;
@@ -66,6 +69,7 @@ async function stagedFixture(version = 3) {
       DROP TABLE document_snapshots;
       PRAGMA user_version=2;
     `);
+  }
   const backup = await createRuntimeBackup(original, dataDir);
   original.close();
   const changed = new Repo(openDb(dbPath));

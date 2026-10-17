@@ -8,14 +8,16 @@ export function generateRuntimeSchema({ check = false } = {}) {
   const source = readFileSync(new URL("schema.sql", directory), "utf8");
   const sections = {};
   const markers = [
-    ...source.matchAll(/^-- @schema (profile|run_starts|process_logs|private_spend|documents|spend)\s*$/gm),
+    ...source.matchAll(
+      /^-- @schema (profile|run_starts|process_logs|private_spend|documents|channels|spend)\s*$/gm,
+    ),
   ];
   if (
     markers.map((marker) => marker[1]).join(",") !==
-    "profile,run_starts,process_logs,private_spend,documents,spend"
+    "profile,run_starts,process_logs,private_spend,documents,channels,spend"
   )
     throw new Error(
-      "Runtime schema must contain profile, run_starts, process_logs, private_spend, documents and spend sections in order.",
+      "Runtime schema must contain profile, run_starts, process_logs, private_spend, documents, channels and spend sections in order.",
     );
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];

@@ -40,6 +40,7 @@ import {
   SCHEMA_VERSION,
   financialTablesForDatabase,
   documentTablesForDatabase,
+  channelTablesForDatabase,
   discardIncompleteDocumentSnapshots,
 } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
@@ -182,7 +183,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (![2, 3, 4, SCHEMA_VERSION].includes(version))
+    if (![2, 3, 4, 5, SCHEMA_VERSION].includes(version))
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||
@@ -206,6 +207,7 @@ function validateDatabase(path: string) {
       throw new Error("The selected backup contains unsupported executable database schema.");
     financialTablesForDatabase(db);
     documentTablesForDatabase(db);
+    channelTablesForDatabase(db);
     return version;
   } finally {
     db.close();

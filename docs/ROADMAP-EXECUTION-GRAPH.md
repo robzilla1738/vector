@@ -8,8 +8,10 @@ historical pause below. Baseline is clean local main `6f1016d8b`; the accepted
 native/renderer/runtime source is `769ba5f86`. The 4,675-test integrated check and
 native dropdown/rail observations remain valid for unchanged behavior. Full
 browser readiness, the manual 20-task smoke and performance acceptance remain open.
-Current source adds isolated named providers and compact Quick Ask/downloads;
-all4,710tests pass. Native address save/edit/cancel/update and refill are accepted
+Current source adds isolated named providers, compact Quick Ask/downloads,
+model-based Memory extraction and protected channel transport/storage;
+the latest integrated check passed 4,746 tests. Channel pairing/run/reply/Settings
+integration remains open. Native address save/edit/cancel/update and refill are accepted
 on c366c7dc8. Redirect area0058 and compact-window area0059 await native acceptance;
 the isolated155cold build remains active. STATUS is the current build-ownership
 record; older preview entries below are historical.

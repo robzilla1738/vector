@@ -93,6 +93,16 @@ Private AI belongs to the actual Chromium off-the-record Profile. Authenticated 
 
 Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud Preview and human Changes/Logs/Stop/Undo routing are integrated. Process metadata contains bounded summaries; encrypted UTF-8 chunks supply cursor-based history without SDK access. Schema-4 startup conversion removes the replaced embedded log field atomically after original key admission. Cloud code-mode parity and actual cloud workflow acceptance remain pending.
 
+Channel transport implementations own Slack envelope ACKs, Telegram offsets and
+Discord heartbeat/resume state. They admit authenticated provider identities and
+await durable receipt before acknowledgement. Schema 6 separately protects channel
+connections, peers, thread mappings, inputs, outbox receipts and transport cursors.
+Per-connection keyed indexes live outside ciphertext; their random keys remain
+inside the encrypted connection envelope and survive reviewed Profile recovery.
+Interrupted sends remain unknown, and a delivery ID cannot change its recipient.
+This foundation is not yet connected to normal-run admission or enabled Settings
+controls; connection/pairing/reply integration remains open in STATUS.
+
 ## Immutable documents and native receipt exports
 
 Native file intake captures the original selected file once and hashes its bytes.

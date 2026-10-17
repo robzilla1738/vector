@@ -31,6 +31,37 @@ is claimed. CUA bindings from retired previews must not be reused: a stale bindi
 can launch the default Profile. Check the owned app PID and disposable Profile
 argument before creating a new binding. Only disposable Profiles are authorized.
 
+## Channels transport and protected storage — integrated foundation
+
+Slack Socket Mode, Telegram long polling and Discord Gateway now have real,
+independent transport implementations. Bot/app identities bind incoming events;
+provider user IDs identify senders. Slack ACKs and Telegram offsets follow durable
+receipt. Discord checkpoints follow durable frames, resume invalidation clears
+the original session, and missing heartbeat ACKs retire the socket. Retirement
+joins admitted storage work and clears socket timers. Provider errors and socket
+tickets are sanitized; redirects are refused. Telegram leaves existing webhooks
+unchanged. Sends preserve stable delivery IDs, plain text and mention suppression.
+Known rate limits retain provider retry guidance; uncertain acceptance is explicit.
+
+Schema 6 adds six protected channel tables for connections, peers, threads, inputs,
+outbound receipts and cursors. Names, provider identities, content and resume data
+use authenticated encrypted bodies. Per-connection keyed indexes remain opaque
+and survive reviewed cross-Profile recovery. Input deduplication and checkpoints
+commit together. Config revisions retire old queued inputs/replies; interrupted
+sends become unknown rather than replaying. Delivery identities cannot move to
+another recipient or connection. Migration preserves schema 2–5 records and rejects
+unexpected partial schemas. Backup and recovery include the new protected fields.
+
+Integrated `npm run check` passed typecheck, lint and 4,746 tests/756 files in 135.07s
+(`/tmp/aux-channel-foundation-check.log`). The final HTTP 429 body refinement passed
+runtime rebuild and 18 transport tests in 1.09s
+(`/tmp/aux-channel-final-transport-tests.log`). No unchanged full suite was repeated.
+Protocol/storage fixtures and actual cross-Profile recovery passed; no messenger
+credential was read or real message sent. Original-window configuration, native
+secret lifecycle, pairing/revocation, run admission, reply draining and the matched
+Settings surface remain the next integrated batch. Enabled messenger controls
+are not exposed before those paths are connected. Full channel readiness remains open.
+
 ## Model-based Memory extraction — integrated source
 
 The production sentence splitter is replaced by a budget-admitted structured

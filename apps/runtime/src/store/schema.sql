@@ -530,6 +530,39 @@ CREATE TABLE document_segments(
     REFERENCES document_snapshots(owner_kind,owner_id,document_id,snapshot_id) ON DELETE CASCADE
 );
 
+-- @schema channels
+CREATE TABLE channel_connections(
+  connection_id TEXT PRIMARY KEY, revision TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), body TEXT NOT NULL,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE TABLE channel_peers(
+  connection_id TEXT NOT NULL REFERENCES channel_connections(connection_id) ON DELETE CASCADE,
+  peer_key TEXT NOT NULL, body TEXT NOT NULL,
+  PRIMARY KEY(connection_id,peer_key));
+CREATE TABLE channel_threads(
+  connection_id TEXT NOT NULL, peer_key TEXT NOT NULL, thread_key TEXT NOT NULL,
+  task_id TEXT NOT NULL REFERENCES tasks(task_id), body TEXT NOT NULL,
+  PRIMARY KEY(connection_id,peer_key,thread_key),
+  FOREIGN KEY(connection_id,peer_key) REFERENCES channel_peers(connection_id,peer_key) ON DELETE CASCADE);
+CREATE TABLE channel_messages(
+  connection_id TEXT NOT NULL REFERENCES channel_connections(connection_id) ON DELETE CASCADE,
+  message_key TEXT NOT NULL, revision TEXT NOT NULL, peer_key TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('pending','admitting','running','queued','completed','rejected','retired','failed')),
+  run_id TEXT, body TEXT NOT NULL, received_at INTEGER NOT NULL,
+  PRIMARY KEY(connection_id,message_key));
+CREATE INDEX channel_messages_pending ON channel_messages(connection_id,state,received_at);
+CREATE TABLE channel_outbox(
+  delivery_id TEXT PRIMARY KEY,
+  connection_id TEXT NOT NULL REFERENCES channel_connections(connection_id) ON DELETE CASCADE,
+  revision TEXT NOT NULL, peer_key TEXT NOT NULL, run_id TEXT,
+  state TEXT NOT NULL CHECK(state IN ('pending','sending','delivered','failed','unknown')),
+  body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX channel_outbox_pending ON channel_outbox(connection_id,state,created_at);
+CREATE TABLE channel_cursors(
+  connection_id TEXT PRIMARY KEY REFERENCES channel_connections(connection_id) ON DELETE CASCADE,
+  revision TEXT NOT NULL, body TEXT NOT NULL);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,
