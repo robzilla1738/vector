@@ -1,5 +1,13 @@
 # Aux status — October 16, 2026
 
+Native consolidation for `286ae0c3b` is running: launcher 60321, exec session
+43285, log `/tmp/aux-routine-preferences-native.log`. Previous launcher 48050/app
+52745 exited normally and disposable Profile `aux-dev-6yaYYY` was removed before
+replacement. Keep this one builder; do not start another. Pending native checks:
+Agents naming and three-category menu, compact aligned pickers, routine model and
+notification persistence. Live routine delivery and full parity remain open.
+
+
 October 16 routine run preferences (reference 084): Create routine now includes
 Model and Notifications in the grouped timing card. Model-led saved routines also
 expose Run preferences. A blank model follows the default; explicit models persist
