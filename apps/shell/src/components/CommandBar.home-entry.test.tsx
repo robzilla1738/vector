@@ -387,3 +387,26 @@ it("opens the ordinary Ask draft for a suggestion without sending or waiting for
   expect(host.querySelector(".home-ask textarea")).not.toBeNull();
   expect(useStore.getState().agentDraft).toBe("Existing question\n\nSuggest a routine");
 });
+
+it("preserves typed address selection when native focus acknowledges late", async () => {
+  let acknowledge!: () => void;
+  vi.mocked(bridge.focusShell).mockImplementation(
+    () =>
+      new Promise<undefined>((resolve) => {
+        acknowledge = () => resolve(undefined);
+      }),
+  );
+  await render(false);
+  await act(async () => useStore.getState().focusCommandBar("toolbar"));
+  const input = host.querySelector<HTMLInputElement>(".cmdbar input")!;
+  expect(document.activeElement).toBe(input);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "about:blank");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  input.setSelectionRange(5, 5);
+  await act(async () => acknowledge());
+  expect(input.value).toBe("about:blank");
+  expect(input.selectionStart).toBe(5);
+  expect(input.selectionEnd).toBe(5);
+});

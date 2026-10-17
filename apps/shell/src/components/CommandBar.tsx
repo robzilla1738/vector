@@ -336,25 +336,15 @@ export function CommandBar({
     if (surfaceMode === "edit") inputRef.current?.select();
   }, [surfaceMode]);
 
-  // ⌘L and friends land here
-  useEffect(() => {
-    if (!focusRequest) return;
-    if (focusSlot !== slot) return;
+  // Select before typing can arrive; a native acknowledgement must never
+  // reselect a draft the person has already started entering.
+  useLayoutEffect(() => {
+    if (!focusRequest || focusSlot !== slot) return;
     const el = inputRef.current;
     if (!el) return;
-    let active = true;
-    void bridge
-      .focusShell()
-      .then(() => {
-        if (active) {
-          el.focus();
-          el.select();
-        }
-      })
-      .catch(errToast);
-    return () => {
-      active = false;
-    };
+    el.focus();
+    el.select();
+    void bridge.focusShell().catch(errToast);
   }, [focusRequest, focusSlot, slot]);
 
   // The first native catalog adopts this window’s tab after the field mounts.

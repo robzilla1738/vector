@@ -7,35 +7,39 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current native build
+## Current native preview and source follow-up
 
-Product **dd642e5a4**, launcher **8670**, exec **81841**,
-log `/tmp/aux-focus-handoff-native-build.log`. The native checkout is
+Native product **dd642e5a4**, launcher **8670**, app **9769**, runtime **9785**,
+exec **81841**, disposable Profile **aux-dev-2nvFHq**, API port64030.
+Log `/tmp/aux-focus-handoff-native-build.log`; build passed in **9m27.82s**.
+About verified clean source dd642e5a4ca223df20aee336317beedef6414000,
+Chromium154.0.8037.98 and ABI9021388e…. Preserve launcher8670 cleanup ownership.
+CUA binding **focusHandoffApp**. Native checkout:
 `/Users/rcourson/Documents/Code/aux-chromium-product/chromium/src`, output
-`out/AuxFast/Aux.app`. Changed sources compiled; framework link/package and live
-acceptance are pending. Poll this same owner; do not start another builder.
-No renderer/runtime source edits until staging finishes.
+`out/AuxFast/Aux.app`. The previous4140 preview and Profile were retired normally.
 
-The prior launcher4140, app5496, runtime5517, disposable Profileaux-dev-NybYhE
-and lock retired normally and were verified removed before replacement.
-CUA bindings `memoryActivityApp`, `layoutPreviewApp`, and `featureLibraryApp` are
-stale. Confirm the replacement app is running before binding its exact path.
+Patch0052 native acceptance: with native Bookmarks search focused, Cmd-T followed
+immediately by about:blank opened the new tab and left Bookmarks search empty.
+A second test retained the original page query, put draft in the command input,
+and Escape dismissed without clicking and restored focus to the page input.
+Further typing appended to the page query. Hide/raise preserved page input focus.
+This verifies the embedded-page keyboard-ownership correction.
 
-Patch0052 fixes the reproduced native keyboard handoff: a focused Bookmarks search
-kept receiving typing after Cmd-T opened the shell command surface; Escape also
-failed until clicking the shell input. SurfaceEmbed ignored element blur.
-The patch returns ownership to the embedding page only while that child still
-owns focus, excludes window-focus notifications and pending nested focus, and
-explicitly releases the active embed before shell shortcuts/focusShell.
+A separate renderer defect remains in this packaged preview: Cmd-L followed by
+rapid about:blank yields bout:blank, and focus-handoff-check yields
+ocus-handoff-check. After Cmd-L, Cmd-T can also lose the draft prefix. CommandBar's
+focusRequest handler waits for native focusShell then selects again, replacing
+characters that arrived meanwhile. Source follow-up moves focus/select to the
+layout effect and removes delayed selection. A delayed-acknowledgement regression
+check accompanies it. Initial check caught only a test Promise<void> type mismatch;
+corrected to the bridge's undefined result. Integrated check passed typecheck/lint and all4,621tests/744files in99.52s,
+log `/tmp/aux-address-focus-check.log`. Native replacement required
+after source validation/commit; do not claim rapid-typing acceptance for this
+renderer until the replacement is tested.
 
-Next native acceptance: verify About identity, focus Bookmarks search, press Cmd-T
-and type immediately; check Escape without clicking the command field. Also check
-Cmd-L, return to page input and window deactivation/reactivation. The patch is
-**not yet verified in the native app**.
-
-Integrated `npm run check` passed typecheck/lint and all **4,620 tests /744 files**
-in95.67s (`/tmp/aux-focus-handoff-check.log`). No renderer/runtime edits in this
-batch. Do not repeat the passing full suite without a new reason.
+Patch0052 integrated check passed typecheck/lint and4,620tests/744files in95.67s
+(`/tmp/aux-focus-handoff-check.log`). No runtime edits. Original rounded model
+search fix remains accepted; full parity is not complete.
 
 ## Latest accepted behavior
 
