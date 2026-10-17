@@ -1,5 +1,16 @@
 # Aux status — October 16, 2026
 
+Consolidated native candidate **21d7d725c** is building under launcher **81608**,
+exec session **95623**, log `/tmp/aux-native-library-presentation-build.log`.
+Process confirmed live. It includes patches 0048 (Library/download events) and
+0049 (native Library presentation and Private guards). Previous launcher 73597
+received SIGTERM; app 74900 exited, disposable Profile aux-dev-a2hXEY and the
+plain lock were verified removed before replacement. Do not launch a second
+builder or bind the retired app. Next acceptance: About identity, native History/
+Bookmarks styling and menus, bookmark edits updating the sidebar without Library
+refresh, Private route rejection, then public navigation/overlay replacement.
+
+
 Native Library presentation batch is consolidated in area patch
 `chromium/patches/aux/0049-native-library-presentation.patch`. History and Bookmarks
 receive Aux logo slots and scoped light/dark palette variables; Aux selects the
