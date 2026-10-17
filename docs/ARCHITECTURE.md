@@ -1,6 +1,6 @@
 # Aux architecture
 
-The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Packaging supplies official pinned ICU78 data through a fixed app-bundle path before Node initializes. The earlier small-ICU crash is resolved. Current delivery and acceptance evidence belongs in [STATUS](STATUS.md); the competitive execution is paused at the owner’s October 8 wrap-up request, with remaining acceptance recorded.
+The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Packaging supplies official pinned ICU78 data through a fixed app-bundle path before Node initializes. The earlier small-ICU crash is resolved. Current delivery and acceptance evidence belongs in [STATUS](STATUS.md). The owner resumed full UI parity work on October 16; the current reference ledger records implementation and native acceptance gaps.
 
 Aux is a Chromium browser with a trusted `chrome://aux/` React shell and a per-Profile Node runtime. Chromium owns windows, WebContents, tabs, navigation, browser sessions, extensions, history, bookmarks, permissions and the native glass underlay. The shell places page surfaces through SurfaceEmbed and invokes the native host through its packaged Mojo bootstrap.
 
@@ -14,6 +14,14 @@ flowchart TD
   CLI[CLI and MCP clients] <-->|authenticated loopback API| Runtime
   Runtime --> Models[AI Gateway / direct providers]
 ```
+
+Memory Settings uses four routed views under the same retained Space editor:
+Overview, History, Context awareness and Configure. Subpage selection changes the
+visible controls without discarding the editor draft or changing the selected
+Space. The History list selects a stored revision; Restore invokes the existing
+scoped command with that revision's ID. Context controls continue to use the
+separate browsing-title and page-content policies. These views do not add
+extraction telemetry, episodic retention or an index-rebuild API.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 
