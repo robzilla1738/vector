@@ -1,4 +1,5 @@
-import { memoryViews, type MemoryView } from "../settings/routes";
+import type { MemoryView } from "../settings/routes";
+import "./MemorySettings.css";
 import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -113,8 +114,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
   );
   if (bridge.privateMode) return <p {...staticHintProps}>Space memory is unavailable in private browsing.</p>;
   return (
-    <div className="memory-settings">
-      <h2>{memoryViews.find((item) => item.view === view)?.label}</h2>
+    <div className="memory-settings" data-memory-view={view}>
       <p {...staticHintProps}>
         {view === "overview"
           ? "Review saved preferences, project context and notes for this Space."

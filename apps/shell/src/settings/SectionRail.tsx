@@ -209,6 +209,15 @@ export function SectionRail({
                     aria-current={memoryView === view ? "page" : undefined}
                     onClick={() => onOpenMemoryView(view)}
                   >
+                    <span className="settings-category-icon">
+                      {view === "history"
+                        ? shellIconClock
+                        : view === "configure"
+                          ? shellIconGear
+                          : view === "context"
+                            ? shellIconSun
+                            : shellIconModel}
+                    </span>
                     <span className="settings-category-label">{label}</span>
                   </button>
                 ))}

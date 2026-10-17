@@ -4,7 +4,7 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./MemoryItems.css";
 import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
-import { shellIconFolder } from "../ui/icons";
+import { shellIconResult } from "../ui/icons";
 import { MemoryExclusions } from "./MemoryExclusions";
 import { MemoryDocument } from "./MemoryDocument";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
@@ -93,7 +93,7 @@ function MemoryNoteRow({
   return (
     <ListRow
       title={item.content}
-      leading={shellIconFolder}
+      leading={shellIconResult}
       selected={selected}
       description={description}
       openRef={selectRef}
@@ -425,55 +425,57 @@ export function MemoryItems({
           </Select>
         </div>
       )}
-      <div className="memory-items-list">
-        {visibleItems.map((item) => (
-          <MemoryNoteRow
-            key={item.itemId}
-            item={item}
-            selected={selectedId === item.itemId}
-            description={`${noteStatus(item)} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
-            disabled={disabled || busy || !!draft}
-            items={items}
-            persist={persist}
-            edit={edit}
-            validate={(item) => current(item, false)}
-            select={(item) => {
-              current(item, false);
-              detailOpener.current = document.activeElement as HTMLElement;
-              setSelectedId(item.itemId);
-            }}
-          />
-        ))}
+      <div className="memory-note-browser" data-selected={selectedItem ? "true" : undefined}>
+        <div className="memory-items-list">
+          {visibleItems.map((item) => (
+            <MemoryNoteRow
+              key={item.itemId}
+              item={item}
+              selected={selectedId === item.itemId}
+              description={`${noteStatus(item)} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
+              disabled={disabled || busy || !!draft}
+              items={items}
+              persist={persist}
+              edit={edit}
+              validate={(item) => current(item, false)}
+              select={(item) => {
+                current(item, false);
+                detailOpener.current = document.activeElement as HTMLElement;
+                setSelectedId(item.itemId);
+              }}
+            />
+          ))}
+        </div>
+        {!!items.length && !visibleItems.length && (
+          <output {...staticHintProps} data-block>
+            No notes match these filters.
+          </output>
+        )}
+        {selectedItem && (
+          <DetailPane
+            title="Memory note"
+            metadata={noteStatus(selectedItem)}
+            closeRef={closeRef}
+            onClose={closeRun}
+          >
+            <MemoryDocument text={selectedItem.content} />
+            <div className="memory-note-metadata">
+              <span {...auxClassMetadataKeyProps}>Scope</span>
+              <span {...auxClassMetadataValueProps}>This Space</span>
+              <span {...auxClassMetadataKeyProps}>Source</span>
+              <span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span>
+              <span {...auxClassMetadataKeyProps}>Expires</span>
+              <span {...auxClassMetadataValueProps}>
+                {selectedItem.expiresAt === undefined
+                  ? "No expiry"
+                  : new Date(selectedItem.expiresAt).toLocaleDateString()}
+              </span>
+              <span {...auxClassMetadataKeyProps}>Updated</span>
+              <span {...auxClassMetadataValueProps}>{new Date(selectedItem.updatedAt).toLocaleString()}</span>
+            </div>
+          </DetailPane>
+        )}
       </div>
-      {!!items.length && !visibleItems.length && (
-        <output {...staticHintProps} data-block>
-          No notes match these filters.
-        </output>
-      )}
-      {selectedItem && (
-        <DetailPane
-          title="Memory note"
-          metadata={noteStatus(selectedItem)}
-          closeRef={closeRef}
-          onClose={closeRun}
-        >
-          <MemoryDocument text={selectedItem.content} />
-          <div className="memory-note-metadata">
-            <span {...auxClassMetadataKeyProps}>Scope</span>
-            <span {...auxClassMetadataValueProps}>This Space</span>
-            <span {...auxClassMetadataKeyProps}>Source</span>
-            <span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span>
-            <span {...auxClassMetadataKeyProps}>Expires</span>
-            <span {...auxClassMetadataValueProps}>
-              {selectedItem.expiresAt === undefined
-                ? "No expiry"
-                : new Date(selectedItem.expiresAt).toLocaleDateString()}
-            </span>
-            <span {...auxClassMetadataKeyProps}>Updated</span>
-            <span {...auxClassMetadataValueProps}>{new Date(selectedItem.updatedAt).toLocaleString()}</span>
-          </div>
-        </DetailPane>
-      )}
       {!items.length && !draft && (
         <p {...staticHintProps}>No individual notes yet. Aux only saves notes you explicitly add here.</p>
       )}

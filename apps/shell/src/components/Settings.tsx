@@ -223,11 +223,18 @@ export function Settings() {
             Plugins: "Skills & MCP",
           } as const
         )[connectionTab]
-      : category === "Site permissions"
-        ? "Privacy & Security"
-        : category === "Permissions"
-          ? "Agents"
-          : category;
+      : category === "Memory"
+        ? {
+            overview: "Memory",
+            history: "Memory history",
+            context: "Context awareness",
+            configure: "Memory configuration",
+          }[memoryView]
+        : category === "Site permissions"
+          ? "Privacy & Security"
+          : category === "Permissions"
+            ? "Agents"
+            : category;
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
   const results = searchSettings(query, indexedFields).filter(

@@ -1757,3 +1757,26 @@ tab-switch behavior, cleanup controls, direct per-folder grant lists, arbitrary
 tool globs, and the runtime maintenance presentation still need comparison and
 implementation against Aux's supported host behavior. Native preview remains
 `7d913f2ff`; Models, Permissions and focus refinements await consolidation.
+
+## Memory document pane — October 17
+
+Memory document layout batch: History now uses the available Settings pane with
+one page heading and a flat revision-list/document split. Removed repeated field
+headings and nested cards; added icons to Memory subnavigation. Selected individual
+notes now use an adjacent document pane, stacking below the list at narrow widths.
+Existing edit, restore, delete and scope checks remain unchanged.
+
+Validation: integrated check passed (4,623 tests / 743 files, 104.76s); renderer
+build passed (2.58s). Logs: `/tmp/aux-memory-document-layout-check.log` and
+`/tmp/aux-memory-document-layout-build.log`. Populated wide History was reviewed
+using the real component in a temporary synthetic fixture; capture:
+`/tmp/aux-parity-2026-10-16/aux-memory-history-full-pane-vite.png`.
+The fixture files were removed. Integrated source-preview navigation from History
+to General confirmed General retains its normal layout. The preview pipeline
+method is unavailable, so this does not establish real history data acceptance.
+Selected-note and narrow layouts still need visual acceptance; native source
+remains `6dba6ccbb` under launcher 4136/app 8559. Full parity remains open.
+
+An additional native toast appeared after expanding Quick Ask and navigating a
+guest tab: “Profile organization kept changing. Try again.” Investigation remains
+open; it was dismissed for the layout review, not fixed by this batch.
