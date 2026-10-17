@@ -101,7 +101,7 @@ diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/pr
  }
  
  const bookmarks::BookmarkNode* BookmarkBySource(bookmarks::BookmarkModel* model,
-@@ -897,6 +934,121 @@
+@@ -897,6 +934,120 @@
                                             : base::Value())));
  }
  
@@ -124,9 +124,8 @@ diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/pr
 +          Fault("conflict", "The bookmark changed or cannot be cut."));
 +      return;
 +    }
-+    bookmarks::CopyToClipboard(bookmarks_, {node}, false,
-+                               bookmarks::metrics::BookmarkEditSource::kUser,
-+                               profile_->IsOffTheRecord());
++    bookmarks::BookmarkNodeData clipboard_data(node);
++    clipboard_data.WriteToClipboard(profile_->IsOffTheRecord());
 +    if (cut) {
 +      std::move(callback).Run(
 +          ChangeBookmark("bookmarks.entries.remove", params));
@@ -223,7 +222,7 @@ diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/pr
  base::DictValue ProfileLibrary::ChangeBookmark(const std::string& method,
                                                 const base::DictValue& params) {
    if (!profile_->GetPrefs()->GetBoolean(
-@@ -905,6 +1057,40 @@
+@@ -905,6 +1056,40 @@
                   "Bookmark editing is managed by your organization");
    if (method == "bookmarks.entries.restore") {
      const std::string* token = params.FindString("undoToken");
