@@ -1,5 +1,14 @@
 # Aux status — October 16, 2026
 
+Current replacement build: **4b1358c58**, launcher **91436**, exec **57397**,
+log `/tmp/aux-native-library-features-build.log`. Includes patch 0051 and the
+reading/navigation focus corrections. Prior launcher 87016/app 88409 retired
+normally; aux-dev-8h142T and its lock were verified removed before replacement.
+Do not bind the retired app or start another builder. Await this build, verify
+About, then Labs live opt-outs, root visibility and reading-row focus. The accepted
+70b1bd1b5 behavior below is historical evidence, not the latest source acceptance.
+
+
 Live candidate **70b1bd1b5c35689528c35607da547bbd211b9e94** built in 8m33.88s.
 About verified source, Chromium 154.0.8037.98 and unchanged ABI 9021388e….
 Launcher **87016**, app **88409**, exec **92146**, disposable Profile
