@@ -341,6 +341,7 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
   expect(occurrence.status).toBe("running");
   expect(occurrence).toMatchObject({ routineId: active.routineId, revision: active.revision });
   expect(occurrence.occurrenceIdentity).toBeTruthy();
+  expect(repo.getRun(occurrence.runId!)?.config?.routineId).toBe(active.routineId);
   await vi.waitFor(() => expect(repo.getRun(occurrence.runId!)?.status).toBe("completed"));
   await vi.waitFor(() => expect(hooks.invocations(hook.hookId)).toHaveLength(1));
   expect(hooks.invocations(hook.hookId)[0]).toMatchObject({

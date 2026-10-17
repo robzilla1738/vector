@@ -50,7 +50,12 @@ export function useRunAttention() {
         setRunNotice((notice) =>
           current === "off" ||
           readTaskFocusMode() ||
-          (notice && !(notice.kind === "completed" ? kinds.completion : kinds.attention))
+          (notice &&
+            !(notice.kind === "completed"
+              ? notice.routine
+                ? kinds.routine
+                : kinds.completion
+              : kinds.attention))
             ? null
             : notice,
         );

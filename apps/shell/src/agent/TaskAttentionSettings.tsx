@@ -58,7 +58,7 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
   const [lastSound, setLastSound] = useState<TaskSound>(readSelectedTaskSound);
   const [previewing, setPreviewing] = useState(false);
   const [soundError, setSoundError] = useState("");
-  const selected = Number(kinds.attention) + Number(kinds.completion);
+  const selected = Number(kinds.attention) + Number(kinds.completion) + Number(kinds.routine);
   async function preview() {
     setPreviewing(true);
     setSoundError("");
@@ -97,13 +97,17 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
             disabled={!active}
             trigger={
               <>
-                {selected === 2
+                {selected === 3
                   ? "Everything"
                   : selected === 0
                     ? "Off"
-                    : kinds.attention
-                      ? "Needs attention"
-                      : "Task completions"}
+                    : selected === 2
+                      ? "2 types"
+                      : kinds.attention
+                        ? "Needs attention"
+                        : kinds.completion
+                          ? "Task completions"
+                          : "Routine completions"}
                 <ChevronDown />
               </>
             }
@@ -113,7 +117,8 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
                 {(
                   [
                     ["attention", "Needs attention", "Approvals, questions and handoffs"],
-                    ["completion", "Task completions", "Finished tasks, including routines"],
+                    ["completion", "Task completions", "Tasks you start when they finish"],
+                    ["routine", "Routine completions", "Tasks started by routines when they finish"],
                   ] as const
                 ).map(([key, label, hint]) => (
                   <button

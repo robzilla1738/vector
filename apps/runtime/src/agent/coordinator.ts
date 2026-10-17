@@ -201,6 +201,8 @@ export class RunCoordinator {
 
   async start(opts: {
     nightShiftItemId?: string;
+    /** Internal routine provenance, never accepted from public run options. */
+    routineId?: string;
     /** Captured only by the authorized fork_self reservation; never persisted in Run.config. */
     forkTranscript?: ModelMessage[];
     branchSourceRunIds?: string[];
@@ -277,6 +279,7 @@ export class RunCoordinator {
       setId: opts.setId,
       config: {
         nightShiftItemId: opts.nightShiftItemId,
+        routineId: opts.routineId,
         modelId: opts.modelId,
         reasoning: opts.reasoning,
         privateTask: this.deps.privateBrowserProfile || (opts.privateTask ?? false),

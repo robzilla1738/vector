@@ -320,6 +320,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           const prepared = d.tasks.prepareRun(routine.sourceTaskId, details.task.revision);
           const run = await s.runs.start({
             ...prepared,
+            routineId: routine.routineId,
             goal: [
               substituteRoutine(routine.objective, parameters),
               routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,

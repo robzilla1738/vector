@@ -58,7 +58,9 @@ export function searchSettingsIndex<T extends SettingsSearchItem>(
     .map((item, index) => {
       const section = ["Models", "Connections", "External agents", "Vault"].includes(item.category)
         ? `Connections ${item.category}`
-        : item.category;
+        : item.category === "Permissions"
+          ? "Agents Permissions"
+          : item.category;
       const score = tokens.reduce((total, token) => {
         if (total < 0) return -1;
         const best = Math.max(

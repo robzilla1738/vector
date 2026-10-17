@@ -5,6 +5,15 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Routine notification provenance and Agents naming
+
+Reference046 now has all three independent notification types. Runtime-assigned
+routine provenance supports classification without guessing from text; routine
+questions remain under Needs attention. Source and integrated tests pass; native
+and visual acceptance remain OPEN. The visible Agents title/icon now matches the
+reference and search recognizes both Agents and Permissions. Existing route IDs
+remain stable. This follow-up is newer than the active48050 native build.
+
 ## Agent behavior follow-up
 
 References048–049 now have functional Queue/Steer and per-tab/current-chat

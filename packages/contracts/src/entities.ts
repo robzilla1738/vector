@@ -168,6 +168,8 @@ export const RunSchema = z.object({
     .object({
       /** Internal person-queued overnight authority; never accepted from agent/RPC run options. */
       nightShiftItemId: z.string().uuid().optional(),
+      /** Runtime-assigned routine provenance for history and completion notifications. */
+      routineId: z.string().min(1).optional(),
       /** Signed-out isolated task tabs, captured when the task starts. Distinct from private windows. */
       privateTask: z.boolean().optional(),
       agentMode: AgentModeSchema.optional(),

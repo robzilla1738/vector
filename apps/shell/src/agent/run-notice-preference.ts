@@ -68,18 +68,22 @@ export function writeTaskFocusMode(value: boolean): void {
   writeBoolean(FOCUS_KEY, value);
 }
 
-export type TaskNoticeKinds = { attention: boolean; completion: boolean };
+export type TaskNoticeKinds = { attention: boolean; completion: boolean; routine: boolean };
 const KINDS_KEY = "aux.task-notice-kinds";
 const SOUND_KEY = "aux.task-completion-sound";
 const SELECTED_SOUND_KEY = "aux.task-selected-sound";
 let selectedSoundFallback: "soft" | "bell" | "bright" = "soft";
-let kindsFallback: TaskNoticeKinds = { attention: true, completion: true };
+let kindsFallback: TaskNoticeKinds = { attention: true, completion: true, routine: true };
 let soundFallback = "off";
 export function readTaskNoticeKinds(): TaskNoticeKinds {
-  if (readInAppNoticePreference() === "off") return { attention: false, completion: false };
+  if (readInAppNoticePreference() === "off") return { attention: false, completion: false, routine: false };
   try {
     const value = JSON.parse(localStorage.getItem(KINDS_KEY) ?? "{}");
-    return { attention: value?.attention !== false, completion: value?.completion !== false };
+    return {
+      attention: value?.attention !== false,
+      completion: value?.completion !== false,
+      routine: typeof value?.routine === "boolean" ? value.routine : value?.completion !== false,
+    };
   } catch {
     return kindsFallback;
   }
@@ -91,7 +95,7 @@ export function writeTaskNoticeKinds(value: TaskNoticeKinds): void {
   } catch {
     /* Current window fallback. */
   }
-  writeInAppNoticePreference(value.attention || value.completion ? "all" : "off");
+  writeInAppNoticePreference(value.attention || value.completion || value.routine ? "all" : "off");
 }
 export function readTaskSound(): "off" | "soft" | "bell" | "bright" {
   let value = soundFallback;

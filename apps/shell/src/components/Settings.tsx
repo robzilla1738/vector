@@ -222,7 +222,7 @@ export function Settings() {
       : category === "Site permissions"
         ? "Privacy & Security"
         : category === "Permissions"
-          ? "Permissions"
+          ? "Agents"
           : category;
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
@@ -427,7 +427,7 @@ export function Settings() {
         className="settings-scroll"
         ref={scrollRef}
         tabIndex={0}
-        aria-label={searching ? "Settings search results" : `${category} settings`}
+        aria-label={searching ? "Settings search results" : `${sectionTitle} settings`}
       >
         {searching && (
           <div className="settings-search-results">
@@ -464,7 +464,9 @@ export function Settings() {
                   <span className="settings-search-category">
                     {connectionCategories.includes(result.category)
                       ? `Connections · ${result.category === "Connections" ? (servicesAvailable ? "Services" : "Models") : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}`
-                      : result.category}
+                      : result.category === "Permissions"
+                        ? "Agents"
+                        : result.category}
                   </span>
                   <strong>{result.label}</strong>
                   <span>{result.description}</span>

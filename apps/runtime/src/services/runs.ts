@@ -2536,6 +2536,8 @@ export class RunService {
     /** Stable delivery identity for a durable queued message; internal only. */
     deliveryRunId?: string;
     nightShiftItemId?: string;
+    /** Internal routine provenance, never accepted from public run options. */
+    routineId?: string;
     queuedMessageId?: string;
     goal: string;
     defaultWorkspaceId?: string;
@@ -2900,6 +2902,7 @@ export class RunService {
           pageIds: [],
           setId: opts.setId,
           config: {
+            routineId: opts.routineId,
             modelId: opts.modelId,
             reasoning: opts.reasoning,
             privateTask: opts.privateTask,

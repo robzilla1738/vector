@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+October 16 routine-notification follow-up (reference 046): Needs attention,
+Task completions and Routine completions are independently selectable. Runtime
+routine execution, overnight routine execution and saved-step replay now stamp
+routine provenance on their runs; the notification gate checks durable provenance
+rather than titles or task guesses. Public run creation cannot set this field.
+Routine questions still follow Needs attention, independently from completion
+choices. Existing disabled-completion preferences remain disabled during migration.
+The visible settings category, heading, icon and search result labels now say
+Agents; the existing route/category identity remains stable and both Agents and
+Permissions search terms find its fields.
+
+Runtime dist rebuilt before the integrated check: typecheck/lint and all 4,612
+tests across 741 files passed. Final producer/navigation/search checks passed all
+12 tests; renderer build passed in 1.86s and final shell typecheck passed.
+Visual acceptance of the three-choice menu and Agents title is pending. These
+changes postdate the running native consolidation (launcher48050/session93092),
+which is still linking the previous behavior/sound batch. Do not conflate its
+upcoming native acceptance with this newer source. Agent-tab cleanup and full
+surface/phase acceptance remain open.
+
 Native consolidation started for `6f38844cc`: launcher 48050, exec session
 93092, log `/tmp/aux-agent-behavior-native.log`. Previous launcher 34917/app 36707
 exited normally and its disposable Profile was removed before starting. Keep this

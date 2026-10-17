@@ -8,6 +8,7 @@ export type OwnerNotice = {
   title: string;
   body: string;
   tag: string;
+  routine?: boolean;
 };
 export type NoticePreference = "off" | "background" | "all";
 export type NoticeContext = {
@@ -15,7 +16,7 @@ export type NoticeContext = {
   focusMode: boolean;
   windowFocused: boolean;
   foregroundRunId?: string | null;
-  kinds?: { attention: boolean; completion: boolean };
+  kinds?: { attention: boolean; completion: boolean; routine?: boolean };
 };
 export type DurableRunState = { run: Run; suspension?: Suspension | null };
 export type NativeAttentionPayload = {
@@ -150,7 +151,16 @@ export class RunNotificationGate {
       identity = suspension.suspensionId;
     }
     const enabled = getContext().kinds;
-    if (enabled && !(kind === "completed" ? enabled.completion : enabled.attention)) return null;
+    const routine = !!current.run.config?.routineId;
+    if (
+      enabled &&
+      !(kind === "completed"
+        ? routine
+          ? (enabled.routine ?? enabled.completion)
+          : enabled.completion
+        : enabled.attention)
+    )
+      return null;
     const key = `${kind}:${candidate.runId}:${identity}`;
     const now = this.deps.now?.() ?? Date.now();
     if (
@@ -166,6 +176,7 @@ export class RunNotificationGate {
       identity,
       ...COPY[kind],
       tag: `aux-${kind}-${candidate.runId}`,
+      routine,
     };
     this.pending.add(key);
     this.pendingKinds.add(kind);

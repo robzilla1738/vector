@@ -242,3 +242,30 @@ it("filters completions independently from questions and rechecks choices after 
   expect(await questionGate.consider(running, parked, () => settings)).toBeNull();
   expect(emit).toHaveBeenCalledTimes(1);
 });
+
+it("filters routine completions by durable provenance without hiding their questions", async () => {
+  const routine = { ...completed, config: { ...completed.config, routineId: "routine-1" } };
+  const emit = vi.fn();
+  const kinds = { attention: true, completion: false, routine: true };
+  const gate = new RunNotificationGate({ getRun: async () => ({ run: routine }), emit });
+  expect(await gate.consider(running, completed, () => ({ ...context, kinds }))).toMatchObject({
+    routine: true,
+  });
+  const ordinary = new RunNotificationGate({ getRun: async () => ({ run: completed }), emit });
+  expect(await ordinary.consider(running, completed, () => ({ ...context, kinds }))).toBeNull();
+  kinds.completion = true;
+  kinds.routine = false;
+  const muted = new RunNotificationGate({ getRun: async () => ({ run: routine }), emit });
+  expect(await muted.consider(running, completed, () => ({ ...context, kinds }))).toBeNull();
+  const question = new RunNotificationGate({
+    getRun: async () => ({
+      run: { ...parked, config: routine.config },
+      suspension: suspension("approval"),
+    }),
+    emit,
+  });
+  expect(await question.consider(running, parked, () => ({ ...context, kinds }))).toMatchObject({
+    kind: "question",
+    routine: true,
+  });
+});

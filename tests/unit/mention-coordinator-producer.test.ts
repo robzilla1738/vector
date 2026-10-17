@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
-import { PageTargetSchema } from "@aux/contracts";
+import { PageTargetSchema, MethodSchemas } from "@aux/contracts";
 import { RunCoordinator } from "../../apps/runtime/src/agent/coordinator.js";
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { PageService } from "../../apps/runtime/src/services/pages.js";
@@ -173,10 +173,15 @@ it("actual running-loop termination releases its page lease and turn authority",
   const { coordinator, mentions, ownership, ref, repo } = fixture();
   const run = await coordinator.start({
     runId: "live-run",
+    routineId: "routine-origin",
     goal: "Read fixture",
     pageIds: [ref.pageId],
     mentions: [ref],
   });
+  expect(repo.getRun(run.runId)?.config?.routineId).toBe("routine-origin");
+  expect(
+    MethodSchemas["runs.start"].safeParse({ goal: "Ordinary task", routineId: "routine-origin" }).success,
+  ).toBe(false);
   await vi.waitFor(() => {
     expect(repo.getRun(run.runId)?.status).toBe("failed");
     expect(ownership.snapshot()).toEqual({});

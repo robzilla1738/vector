@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import {
   shellIconDownloadSm,
+  shellIconAgent,
   shellIconArchive,
   shellIconChats,
   shellIconClock,
@@ -63,7 +64,7 @@ const items: readonly RailItem[] = [
     icon: shellIconLock,
     gate: "permissions",
   },
-  { label: "Permissions", category: "Permissions", group: "Agent", icon: shellIconChats },
+  { label: "Agents", category: "Permissions", group: "Agent", icon: shellIconAgent },
   { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
   { label: "Models", category: "Connections", group: "Agent", icon: shellIconModel, tab: "Models" },
   {
