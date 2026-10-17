@@ -1,6 +1,7 @@
 import { ContentBlockingSettings } from "./ContentBlocking";
 import { ClearBrowsingData } from "../../components/ClearBrowsingData";
-import { NativePrivacyLink, SavedWebsiteSettings } from "./NativePrivacySettings";
+import { SavedWebsiteSettings } from "./NativePrivacySettings";
+import { NativeSettingsLink } from "../NativeSettingsLink";
 import { SettingsGroup } from "../../ui";
 import { shellIconOpen } from "../../ui/icons";
 import { runCommand } from "../../commands";
@@ -58,14 +59,18 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
           label="Site settings"
           description="Manage site permissions for location, camera, pop-ups, and more."
         >
-          <NativePrivacyLink active={active} destination="content" label="Open site settings" />
+          <NativeSettingsLink active={active} destination="content" label="Open site settings" />
         </SettingsField>
         <SettingsField
           compact
           label="Advanced"
           description="Manage DNS, SSL certificates, and Safe Browsing settings."
         >
-          <NativePrivacyLink active={active} destination="security" label="Open advanced security settings" />
+          <NativeSettingsLink
+            active={active}
+            destination="security"
+            label="Open advanced security settings"
+          />
         </SettingsField>
       </SettingsGroup>
       <SettingsGroup title="Website data">

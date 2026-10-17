@@ -3,6 +3,23 @@
 
 ## October 16 UI parity review — in progress
 
+Appearance now includes Quick Ask in the same common-shortcut recorder, with
+read-only global registration status refreshed after shortcut changes and window
+focus. Disabled, unregistered, conflicting, unavailable and Private states have
+distinct explanations. A stale response cannot overwrite the current registration.
+Extension shortcuts has a compact navigation row to chrome://extensions/shortcuts;
+that route is present in the current Chromium extension navigation source.
+The existing guarded native navigation control is shared with Privacy & Security.
+Direct side-by-side/stacked commands remain unfinished reference031 work.
+
+Full check passed typecheck/lint and 4,589/4,590 tests (existing coder-worktrees
+timeout only). Renderer build passed in3.10s. New status and navigation tests pass.
+These newer Appearance rows still need visual/native acceptance. Native build
+launcher94580, session68095, log /tmp/aux-privacy-consolidated-native.log is alive
+and linking the previously staged b1b4a2544 renderer; it does not include these
+subsequent Appearance changes. Do not start a competing builder or clear its lock.
+The coder-worktrees timeout remains unresolved; its test limit was not changed.
+
 Privacy & Security now has compact Site settings and Advanced navigation rows,
 opening chrome://settings/content and chrome://settings/security. Both destinations
 were inspected in native a8e2a2ea8: permissions/content controls and Safe Browsing,

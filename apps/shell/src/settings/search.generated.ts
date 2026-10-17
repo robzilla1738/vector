@@ -3,6 +3,12 @@ import type { SettingsSearchItem } from "./search";
 export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Appearance",
+    label: "Quick Ask",
+    description: "Open Quick Ask from anywhere with your global shortcut.",
+    target: "Quick Ask",
+  },
+  {
+    category: "Appearance",
     label: "Toggle Sidebar",
     description: "Show or hide the sidebar.",
     target: "Toggle Sidebar",
@@ -73,6 +79,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     label: "All keyboard shortcuts",
     description: "Browse, import and export every command binding.",
     target: "All keyboard shortcuts",
+  },
+  {
+    category: "Appearance",
+    label: "Extension shortcuts",
+    description: "Manage keyboard shortcuts for Aux extensions.",
+    target: "Extension shortcuts",
   },
   {
     category: "Appearance",

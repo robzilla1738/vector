@@ -7,6 +7,12 @@ support the behavior, using Aux identity. This ledger supplements
 
 ## Reference handling
 
+Reference031: Quick Ask now joins the common inline recorder and reports actual
+global registration state. Extension shortcuts has a native navigation row using
+Chromium's implemented /shortcuts route. Source/test checks passed; visual and
+native acceptance remain OPEN. Direct split orientation commands and their rows
+are still missing; this does not establish complete shortcut-card parity.
+
 Latest references040–041 work: Adblock is a separate compact Settings card, with
 a real switch and searchable Configure menu. Configured sources open their editor;
 bundled recommendations prefill a draft and retain explicit download review.

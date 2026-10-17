@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { useStore } from "../../store";
-import { NativePrivacyLink } from "./NativePrivacySettings";
+import { NativeSettingsLink } from "../NativeSettingsLink";
 
 vi.mock("../../bridge", async (original) => ({
   ...(await original<typeof import("../../bridge")>()),
@@ -25,7 +25,7 @@ it("opens native privacy destinations once per pending navigation and disables i
   const root = createRoot(host);
   try {
     await act(async () =>
-      root.render(<NativePrivacyLink active destination="content" label="Open site settings" />),
+      root.render(<NativeSettingsLink active destination="content" label="Open site settings" />),
     );
     const button = host.querySelector("button")!;
     await act(async () => {
@@ -38,18 +38,26 @@ it("opens native privacy destinations once per pending navigation and disables i
     await act(async () => settle());
     await act(async () =>
       root.render(
-        <NativePrivacyLink active={false} destination="security" label="Open advanced security settings" />,
+        <NativeSettingsLink active={false} destination="security" label="Open advanced security settings" />,
       ),
     );
     await act(async () => button.click());
     expect(open).toHaveBeenCalledTimes(1);
     await act(async () =>
       root.render(
-        <NativePrivacyLink active destination="security" label="Open advanced security settings" />,
+        <NativeSettingsLink active destination="security" label="Open advanced security settings" />,
       ),
     );
     await act(async () => button.click());
     expect(open).toHaveBeenLastCalledWith("chrome://settings/security");
+    await act(async () => settle());
+    await act(async () =>
+      root.render(
+        <NativeSettingsLink active destination="extension-shortcuts" label="Open extension shortcuts" />,
+      ),
+    );
+    await act(async () => button.click());
+    expect(open).toHaveBeenLastCalledWith("chrome://extensions/shortcuts");
     await act(async () => settle());
   } finally {
     await act(async () => root.unmount());

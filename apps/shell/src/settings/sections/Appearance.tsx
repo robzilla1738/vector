@@ -1,6 +1,6 @@
 import { Button, SettingsGroup } from "../../ui";
 import { smallGhostButtonProps } from "../../ui/button-props";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
 import { WebsiteSizes } from "../../components/WebsiteSizes";
@@ -10,11 +10,80 @@ import { DefaultPageZoomSetting } from "./DefaultPageZoom";
 import { SidebarOptions, SidebarDetails } from "./SidebarOptions";
 import { SettingsDialogControl } from "../SettingsDialogControl";
 import { TidyTabsSetting } from "./TidyTabs";
-import { bridge } from "../../bridge";
+import { bridge, inNativeHost } from "../../bridge";
+import { errorMessage } from "../../error-message";
+import { NativeSettingsLink } from "../NativeSettingsLink";
 import { AppearanceChoice } from "./AppearanceChoice";
 
-const COMMON_SHORTCUTS = ["sidebar", "overview", "agent-rail", "new-chat", "copy-url"] as const;
-function renderCommonShortcut(id: string, control: ReactNode) {
+const COMMON_SHORTCUTS = ["sidebar", "overview", "agent-rail", "new-chat", "copy-url", "quick-ask"] as const;
+export function QuickAskShortcutField({
+  active,
+  revision,
+  children,
+}: {
+  active: boolean;
+  revision: unknown;
+  children: ReactNode;
+}) {
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof bridge.quickAskShortcut>> | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!active || !inNativeHost || bridge.privateMode) return;
+    let current = true;
+    let request = 0;
+    const read = async () => {
+      const token = ++request;
+      try {
+        const next = await bridge.quickAskShortcut();
+        if (current && token === request) {
+          setStatus(next);
+          setError("");
+        }
+      } catch (reason) {
+        if (current && token === request) {
+          setStatus(null);
+          setError(errorMessage(reason));
+        }
+      }
+    };
+    void read();
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") void read();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      current = false;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [active, revision]);
+  const message = !inNativeHost
+    ? "Available in the Aux desktop app."
+    : bridge.privateMode
+      ? "Configure the global shortcut outside Private mode."
+      : error || status?.error
+        ? `Global shortcut unavailable: ${error || status?.error}`
+        : !status
+          ? "Checking global shortcut registration…"
+          : !status.enabled
+            ? "Global shortcut is disabled. Enable it in Quick Ask settings."
+            : !status.registered
+              ? "The global shortcut is not registered. Retry in Quick Ask settings."
+              : "Open Quick Ask from any app while Aux is running.";
+  return (
+    <SettingsField
+      compact
+      label="Quick Ask"
+      description="Open Quick Ask from anywhere with your global shortcut."
+      hint={message}
+    >
+      {children}
+    </SettingsField>
+  );
+}
+
+function renderCommonShortcut(id: string, control: ReactNode, active: boolean, revision: unknown) {
   switch (id) {
     case "sidebar":
       return (
@@ -50,6 +119,12 @@ function renderCommonShortcut(id: string, control: ReactNode) {
         <SettingsField key={id} compact label="Copy URL" hint="Copy the current page URL.">
           {control}
         </SettingsField>
+      );
+    case "quick-ask":
+      return (
+        <QuickAskShortcutField key={id} active={active} revision={revision}>
+          {control}
+        </QuickAskShortcutField>
       );
   }
 }
@@ -179,7 +254,9 @@ export function AppearanceSettings({
           active={active}
           disabled={bridge.privateMode}
           featuredCommands={showShortcuts ? undefined : COMMON_SHORTCUTS}
-          renderFeaturedCommand={renderCommonShortcut}
+          renderFeaturedCommand={(id, control) =>
+            renderCommonShortcut(id, control, active, settings.shortcutOverrides)
+          }
           value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
           onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
         />
@@ -195,6 +272,19 @@ export function AppearanceSettings({
           >
             {showShortcuts ? "Show common shortcuts" : "Manage shortcuts"}
           </button>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup>
+        <SettingsField
+          compact
+          label="Extension shortcuts"
+          description="Manage keyboard shortcuts for Aux extensions."
+        >
+          <NativeSettingsLink
+            active={active}
+            destination="extension-shortcuts"
+            label="Open extension shortcuts"
+          />
         </SettingsField>
       </SettingsGroup>
       <SettingsGroup title="Websites">
