@@ -1,5 +1,22 @@
 # Aside UI parity — October 16, 2026
 
+Routines hierarchy pass (references 083–084): My routines now has a separate
+heading and Create surface. Saved routines use individual cards with title,
+status and the existing human-readable schedule summary. Review, pause and
+unread-result decisions stay visible; spend caps and missed-run policy move into
+Advanced. A single available Space no longer shows a redundant selector;
+multiple-Space selection remains available. Secondary settings retain access.
+
+The Vite empty state and creation form were inspected. Capture:
+`/tmp/aux-parity-2026-10-16/aux-routines-overview-vite.png`. Populated-card visual
+acceptance remains pending native consolidation: the mock does not implement
+`tasks.create`, so it cannot provide that evidence. Full parity stays open.
+
+Integrated typecheck/lint and 4,617 tests across 741 files passed. After CSS
+cascade/corner refinement and removal of redundant JSX guards, final typecheck
+and renderer build passed (2.25s). Logs: `/tmp/aux-routine-cards-check.log`,
+`/tmp/aux-routine-cards-final-typecheck.log`, `/tmp/aux-routine-cards-final-build.log`.
+
 Model selector sizing follow-up: the generic compact-control cap of 160px
 clipped ordinary model names after provider marks were added. Shared model
 selectors now allow 210px, preserving the adjoining options button and text

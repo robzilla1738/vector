@@ -1,14 +1,29 @@
-@layer components {
-  .routines-settings [data-setting="My routines"] {
+@layer overrides {
+  .settings-content .routines-settings .field[data-setting="My routines"] {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    padding: 0;
+    background: transparent;
+    margin-bottom: 28px;
+    margin-inline: 0;
+    gap: 8px;
+  }
+  .settings-content .routines-settings [data-setting="My routines"] > .setting-label {
+    padding-inline: 12px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-regular);
+  }
+  .routines-settings [data-setting="My routines"] > .hint {
+    padding-inline: 12px;
   }
   .routines-settings [data-setting="My routines"] > .ui-setting-control {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     width: 100%;
+    gap: 12px;
   }
   .routine-create-trigger {
     display: flex;
@@ -116,6 +131,86 @@
     padding: var(--space-2) 0;
     color: var(--ink-2);
     font-size: var(--fs-xs);
+  }
+}
+
+@layer overrides {
+  .settings-content .routines-settings [data-setting="Routine suggestions"] {
+    margin-inline: 0;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+  .settings-content .routines-settings [data-setting="Missed runs and results"] {
+    margin-inline: 0;
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+  }
+  .settings-content .routines-settings [data-setting="My routines"] > .ui-setting-control {
+    margin-top: 0;
+  }
+  .routine-space-filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 12px;
+    color: var(--ink-2);
+  }
+  .routine-space-filter select {
+    width: auto;
+    max-width: 70%;
+  }
+  .routine-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: var(--r-xl);
+    background: var(--surface-secondary);
+    min-width: 0;
+  }
+  .routine-card-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .routine-card-heading h3 {
+    margin: 0;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+  }
+  .routine-state {
+    flex: none;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .routine-card-schedule {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    overflow-wrap: anywhere;
+  }
+  .routine-card-advanced > summary {
+    cursor: pointer;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .routine-card-advanced[open] > summary {
+    margin-bottom: 12px;
+  }
+  .routine-budget-form {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .routine-budget-form > label {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+  .routine-card-advanced > .hint {
+    display: block;
+    margin-block: 8px 16px;
   }
 }
 

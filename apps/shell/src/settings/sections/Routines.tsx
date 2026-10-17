@@ -15,7 +15,11 @@ import type {
 import { call, errToast, useStore } from "../../store";
 import { bridge } from "../../bridge";
 import { openSavedSkill } from "../../task-navigation";
-import { RoutineSchedule, type CalendarTriggerAccounts } from "../../components/RoutineSchedule";
+import {
+  RoutineSchedule,
+  routineScheduleSummary,
+  type CalendarTriggerAccounts,
+} from "../../components/RoutineSchedule";
 import { shellIconPlusSm, shellIconClose } from "../../ui/icons";
 import "./Routines.css";
 import {
@@ -476,38 +480,42 @@ export function RoutinesSettings({ active }: { active: boolean }) {
         >
           {shellIconPlusSm} Create
         </button>
-        <label>
-          Space
-          <select
-            aria-label="Routine Space"
-            value={workspaceId}
-            onChange={(event) => {
-              setWorkspaceId(event.target.value);
-              setOutcome(null);
-              setError("");
-              setCreating(false);
-            }}
-            disabled={!active || loading || !!busyId}
-          >
-            {!workspaceId && <option value="">No Spaces</option>}
-            {workspaces.map((workspace) => (
-              <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                {workspace.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {workspaces.length > 1 && (
+          <label className="routine-space-filter">
+            Space
+            <select
+              aria-label="Routine Space"
+              value={workspaceId}
+              onChange={(event) => {
+                setWorkspaceId(event.target.value);
+                setOutcome(null);
+                setError("");
+                setCreating(false);
+              }}
+              disabled={!active || loading || !!busyId}
+            >
+              {!workspaceId && <option value="">No Spaces</option>}
+              {workspaces.map((workspace) => (
+                <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {loading && <output {...staticHintProps}>Loading routines…</output>}
         {!loading && loadedWorkspace === workspaceId && !visibleRoutines.length && (
           <p {...staticHintProps}>No routines in this Space.</p>
         )}
         {visibleRoutines.map((routine) => (
-          <div className="field" key={routine.routineId}>
-            <strong>{routine.title}</strong>
-            <span {...staticHintProps}>
-              {routine.trigger.kind.replaceAll("_", " ")} ·{" "}
-              {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
-            </span>
+          <article className="routine-card" key={routine.routineId} aria-label={routine.title}>
+            <header className="routine-card-heading">
+              <h3>{routine.title}</h3>
+              <span className="routine-state">
+                {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
+              </span>
+            </header>
+            <p className="routine-card-schedule">{routineScheduleSummary(routine.trigger)}</p>
             <span {...staticHintProps}>
               {routine.replay
                 ? routine.replay.state === "tested"
@@ -584,68 +592,70 @@ export function RoutinesSettings({ active }: { active: boolean }) {
               </button>
             )}
             {!routine.archivedAt && (
-              <form
-                key={`${routine.routineId}:${routine.revision}`}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const input = event.currentTarget.elements.namedItem("spendCapUsd");
-                  if (!(input instanceof HTMLInputElement)) return;
-                  const amount = input.value.trim() ? Number(input.value) : undefined;
-                  if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
-                    setError("Enter a positive model spend cap, or leave it blank for no additional cap.");
-                    return;
-                  }
-                  void changeRoutine(routine, { spendCapUsd: amount ?? null });
-                }}
-              >
-                <label>
-                  Model spend cap (USD, optional)
-                  <input
-                    name="spendCapUsd"
-                    aria-label={`${routine.title} model spend cap`}
-                    {...nativeNumberTypeProps}
-                    placeholder="No additional cap"
-                    min="0.01"
-
-                    step="0.01"
-                    defaultValue={effectiveCap(routine)}
-                    disabled={!!busyId}
-                  />
-                </label>
-                <button {...smallButtonProps} type="submit" disabled={!!busyId}>
-                  Save cap
-                </button>
-              </form>
-            )}
-            {!routine.archivedAt && (
-              <span {...staticHintProps}>
-                Checks recorded model spending before each new run and pauses at this cap. A running model
-                call may go over it; tested browser replays do not call a model.
-              </span>
-            )}
-            {!routine.archivedAt && routine.trigger.kind === "schedule" && (
-              <label>
-                When Aux missed a scheduled time
-                <select
-                  aria-label={`${routine.title} missed run policy`}
-                  value={routine.missedRunPolicy}
-                  disabled={!!busyId}
-                  onChange={(event) =>
-                    void changeRoutine(routine, {
-                      missedRunPolicy: event.target.value as Routine["missedRunPolicy"],
-                    })
-                  }
+              <details className="routine-card-advanced">
+                <summary>Advanced</summary>
+                <form
+                  className="routine-budget-form"
+                  key={`${routine.routineId}:${routine.revision}`}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input = event.currentTarget.elements.namedItem("spendCapUsd");
+                    if (!(input instanceof HTMLInputElement)) return;
+                    const amount = input.value.trim() ? Number(input.value) : undefined;
+                    if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+                      setError("Enter a positive model spend cap, or leave it blank for no additional cap.");
+                      return;
+                    }
+                    void changeRoutine(routine, { spendCapUsd: amount ?? null });
+                  }}
                 >
-                  <option value="record_only">Record missed runs</option>
-                  <option value="run_once_on_wake">Run once when Aux opens</option>
-                </select>
+                  <label>
+                    Model spend cap (USD, optional)
+                    <input
+                      name="spendCapUsd"
+                      aria-label={`${routine.title} model spend cap`}
+                      {...nativeNumberTypeProps}
+                      placeholder="No additional cap"
+                      min="0.01"
+
+                      step="0.01"
+                      defaultValue={effectiveCap(routine)}
+                      disabled={!!busyId}
+                    />
+                  </label>
+                  <button {...smallButtonProps} type="submit" disabled={!!busyId}>
+                    Save cap
+                  </button>
+                </form>
                 <span {...staticHintProps}>
-                  Earlier missed times stay in the results inbox. If a current scheduled time is due, it takes
-                  priority. Writes still wait for review.
+                  Checks recorded model spending before each new run and pauses at this cap. A running model
+                  call may go over it; tested browser replays do not call a model.
                 </span>
-              </label>
+                {routine.trigger.kind === "schedule" && (
+                  <label>
+                    When Aux missed a scheduled time
+                    <select
+                      aria-label={`${routine.title} missed run policy`}
+                      value={routine.missedRunPolicy}
+                      disabled={!!busyId}
+                      onChange={(event) =>
+                        void changeRoutine(routine, {
+                          missedRunPolicy: event.target.value as Routine["missedRunPolicy"],
+                        })
+                      }
+                    >
+                      <option value="record_only">Record missed runs</option>
+                      <option value="run_once_on_wake">Run once when Aux opens</option>
+                    </select>
+                    <span {...staticHintProps}>
+                      Earlier missed times stay in the results inbox. If a current scheduled time is due, it
+                      takes priority. Writes still wait for review.
+                    </span>
+                  </label>
+                )}
+              </details>
             )}
-          </div>
+          </article>
         ))}
       </SettingsField>
       <SettingsField
