@@ -2795,3 +2795,22 @@ Profile. Packaged startup-before-Settings, light/narrow and persistence acceptan
 remain pending. Focused45tests/4files and integrated typecheck/lint plus
 4,675tests/749files passed (101.72s, /tmp/aux-shared-select-check.log).
 Reference rescan182PNG. Full parity is not established.
+
+
+## October17 — packaged native-select acceptance,3db40c683
+
+Native build7m54.18s; About/native/runtime identities agree on clean3db40c683.
+Captures94–101 in /tmp/aux-parity-full-audit verify startup before Settings,
+reasoning/Execution/Agent glass, dark/light Settings,182-language scrolling,
+first-Escape containment and400px/280px composer footers. Native typeahead
+changes selections; cloud disables Agent and local restores it. Synthetic run
+run_mvcshsbe_0p98xw returned AUX READY with Low/local/read_only/Ask first/aux-core
+in the actual runtime config. No page context was sent. Dark restored.
+Already-loaded About Version↔History activations update the native window title.
+
+The populated280px header exposed status text overlapping the expand action;
+source follow-up prevents status/chevron shrinkage and truncates only title text.
+Integrated typecheck/lint and4,675tests/749files passed100.61s
+(/tmp/aux-rail-header-check.log). Replacement acceptance remains pending for
+that correction. This walkthrough
+does not complete full surface parity or the manual20-task browser smoke.

@@ -31,8 +31,34 @@ runtime32403, API58237, disposable Profileaux-dev-EuqoBh and lock are gone.
 Focused validation passed45tests/4files, including actual reasoning selection
 through Send, draft-scoped Execution/Agent/package changes, and nested picker
 keyboard ownership. Integrated `npm run check` passed typecheck, lint and
-4,675 tests / 749 files in101.72s (`/tmp/aux-shared-select-check.log`). Fresh
-packaged acceptance follows; the reference folder remains182PNGs.
+4,675 tests / 749 files in101.72s (`/tmp/aux-shared-select-check.log`). The reference folder remains182PNGs.
+
+Native3db40c683 built in7m54.18s. About/native identity and runtime identity match
+that clean commit. Before Settings was loaded, reasoning and Execution used the
+shared glass picker (captures94–95). Keyboard typeahead changed Execution;
+cloud disabled Agent, returning local re-enabled it. Escape closed the nested
+picker before its containing popup. Light Theme, Settings, a182-language list
+and light Run options passed the same walkthrough (98–101); language editing
+was canceled without changes, and Dark was restored. Full chat→rail preserved
+Low, and400px/280px footer controls fit (96–97).
+
+Synthetic run`run_mvcshsbe_0p98xw` returned exactly AUX READY. Its runtime record
+confirmed reasoning=low, executionTarget=local, agentProfile=read_only,
+agentMode=ask and aux-core, with no page context. This proves selected native
+controls reach the real provider run. Loaded About Version↔History tab switches
+updated the native window title, accepting area0055. Repeated popup and tab
+switches did not reproduce the earlier preview exit.
+
+The280px populated rail review exposed its status label shrinking under the
+expand action. The follow-up keeps status/actions/chevrons fixed and lets title
+text truncate; spacing/button sizes reuse the shared tokens. Integrated check
+passed typecheck, lint and4,675tests/749files in100.61s
+(`/tmp/aux-rail-header-check.log`). This CSS correction needs replacement
+packaged acceptance. The live Aside window also has a bright native glass
+backdrop on the current desktop; no extra dark backing was added to Aux.
+Launcher36642 retired normally; app37763, runtime37777, API59718, disposable
+Profileaux-dev-EnQ6iy and the lock are gone. No diagnostic styles were injected.
+
 
 ## Shared popup material and browser search
 
@@ -53,7 +79,8 @@ typecheck (`/tmp/aux-arrow-typecheck.log`). The rail's compact padding and gap
 now override shared variables, including the reasoning select's chevron offset.
 Popup shadows retain the reference 10% opacity in both appearances. The first
 96fdcf27d build was stopped normally before packaging to include those refinements;
-its lock retired. Spacing and the native title update still need packaged acceptance.
+its lock retired. Packaged3db40c683 accepts spacing and the native title update
+as recorded above.
 
 Native `ed45559fb` built in 8m26.90s. About and runtime both confirmed the same
 clean source identity. The sidebar search button opens dedicated browser search;
