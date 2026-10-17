@@ -2505,3 +2505,31 @@ light/narrow states remain open. Reference corpus unchanged:182PNG/192TXT.
 Validation: npm run check passed typecheck/lint and4,625tests/745files in95.78s
 (/tmp/aux-home-cards-check.log). Existing exact-artifact navigation and draft/focus
 tests passed. Only removed unused excerpt CSS and formatting after the check.
+
+
+## October 17 — history width and foreground navigation
+
+Reference113 and native aux-history-populated-eabff947d.jpg exposed the896px inner
+composer constraint; remove it in the history layout, preserving the full1120px
+column and its padding. History now inherits its parent content background rather
+than repainting opaque bg-0. Shared Markdown typography remains on both history
+and Home previews. Deliverable cards reserve space by limiting their text preview
+to three lines, while retaining the actual result's open target.
+
+Native reproduction: from populated history, Cmd-T and a URL opened a native tab
+but history stayed on screen; clicking the created tab revealed it. Native
+omnibox acceptance must switch the shell to browser mode after a foreground open.
+The correction guards changed window/Profile ownership, mode, conversation,
+overlay and focus request so a delayed acknowledgement cannot replace a newer
+view. Background opens and refused navigation retain the current surface.
+
+Source layout was observed at Vite5197 via the disposable browser (CUA has no
+browser providers). Captures aux-home-cards-live-renderer.jpg and
+aux-history-live-renderer.jpg include an outer native toolbar and synthetic mock
+content. They prove source rendering, not final native parity. The preview tab
+was closed after capture; the Vite server was preserved.
+
+Final integrated validation: typecheck/lint and4,627tests/745files passed in102.70s
+(/tmp/aux-home-navigation-check.log);8native-omnibox tests include the new cases.
+The earlier CSS batch passed4,625tests in96.17s before the additional navigation
+fix. No unchanged broad test campaign is needed for native acceptance.

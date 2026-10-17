@@ -48,6 +48,34 @@ pending. Do not claim complete populated-card parity; real image thumbnails and
 wide/narrow/light comparison remain to verify. Keep the substantial Memory
 model/UI batch open per the implementation boundary.
 
+## Related Home/history batch — source checked, native replacement next
+
+Reference113 comparison found the history composer constrained by the inner896px
+compose-content wrapper even though its outer history column was full width.
+The wrapper now spans that column. History no longer paints an opaque bg-0 over
+the content surface. Shared Markdown typography covers Home and history card
+previews. A Home card with a saved deliverable bounds its text preview to three
+lines so the actual result remains visible and openable.
+
+Native eabff947d also reproduced Cmd-T URL acceptance from history creating a tab
+while leaving history covering it. Native omnibox open previously changed only
+the host tab selection. Its renderer acknowledgement now switches to browser mode
+for foreground navigation, leaving background opens alone and preserving a newer
+view/focus request or owner if acknowledgement is delayed. Regression coverage
+includes suggestion acceptance, refused navigation and a newer chat during a
+pending typed navigation.
+
+Final integrated check passed typecheck/lint and **4,627 tests /745 files** in
+102.70s (`/tmp/aux-home-navigation-check.log`), including the8 native omnibox tests.
+The preceding CSS-only check passed4,625tests in96.17s before the navigation fix.
+
+Local renderer (Vite5197) checked through a page in the disposable native browser:
+`aux-home-cards-live-renderer.jpg` and `aux-history-live-renderer.jpg` under the
+capture directory. These have an extra outer native toolbar and mock data; they
+are source-layout observations, not packaged native acceptance. Reference113
+native before-capture: `aux-history-populated-eabff947d.jpg`. The temporary preview
+tab was closed. No extra browser provider is available through CUA.
+
 ## Previously accepted keyboard corrections
 
 Native patch0052 hands embedded-page focus back to the shell. Renderer3c34b442b

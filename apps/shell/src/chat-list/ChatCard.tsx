@@ -4,7 +4,7 @@ import { draftKey } from "../conversation-drafts";
 import { STATUS_LABEL } from "../run-status";
 import { useStore } from "../store";
 import { relativeChatTime } from "./relative-chat-time";
-import { AnswerPreview } from "../components/surfaces";
+import { AnswerPreview, PlainAnswerPreview } from "../components/surfaces";
 import { ResultExcerpt } from "../components/ResultCard";
 
 export function previewText(item: ConversationSummary, draft?: string) {
@@ -34,7 +34,7 @@ export const ChatCard = memo(function ChatCard({
   const result =
     !hasDraft && artifact?.runId === item.latestRun.runId && !artifact.automaticReport ? artifact : undefined;
   return (
-    <article className="home-card home-chat-card">
+    <article className="home-card home-chat-card" data-has-result={result ? "" : undefined}>
       <div className="home-chat-meta">
         <time
           dateTime={new Date(item.updatedAt).toISOString()}
@@ -52,7 +52,11 @@ export const ChatCard = memo(function ChatCard({
         </button>
       </h3>
       <div className="home-chat-excerpt" inert>
-        <AnswerPreview text={previewText(item, draft)} />
+        {result ? (
+          <PlainAnswerPreview text={previewText(item, draft)} />
+        ) : (
+          <AnswerPreview text={previewText(item, draft)} />
+        )}
       </div>
       {result && (
         <button

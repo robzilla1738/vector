@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { bridge, type OmniboxResult } from "../../bridge";
+import { useStore } from "../../store";
 
 // Monotonic within this shell document, including unmount/remount and retries.
 let nextQueryId = 0;
@@ -90,6 +91,27 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
     retried.current = snapshot;
     setRetry((value) => value + 1);
   }, [isCurrent, snapshot, sameOwner]);
+  const accept = useCallback(
+    async (input: Parameters<(typeof bridge)["omnibox.open"]>[0]) => {
+      const origin = useStore.getState();
+      const accepted = await bridge["omnibox.open"](input);
+      const current = useStore.getState();
+      // Native navigation selects its tab, but the shell must also leave the
+      // chat/history view. A delayed response must not dismiss a newer view.
+      if (
+        accepted &&
+        input.disposition !== "new-background-tab" &&
+        sameOwner() &&
+        current.mode === origin.mode &&
+        current.conversationId === origin.conversationId &&
+        current.overlay === origin.overlay &&
+        current.focusRequest === origin.focusRequest
+      )
+        current.setMode("focus");
+      return accepted;
+    },
+    [sameOwner],
+  );
   const open = useCallback(
     async (
       match: OmniboxResult["items"][number],
@@ -97,22 +119,22 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
     ) => {
       if (!sameOwner() || !isCurrent || !snapshot.items.some((item) => item.id === match.id))
         throw new Error("The browser suggestion changed. Choose it again.");
-      const accepted = await bridge["omnibox.open"]({
+      const accepted = await accept({
         queryId: snapshot.queryId,
         match: { sequenceId: snapshot.sequenceId, index: match.index, url: match.url },
         disposition,
       });
       if (!accepted) throw new Error("The browser suggestion changed. Choose it again.");
     },
-    [isCurrent, snapshot, sameOwner],
+    [isCurrent, snapshot, sameOwner, accept],
   );
   const openInput = useCallback(
     async (disposition: "current-tab" | "new-foreground-tab" | "new-background-tab") => {
       if (!sameOwner() || !isCurrent) throw new Error("The browser query changed. Try again.");
-      if (!(await bridge["omnibox.open"]({ queryId: snapshot.queryId, disposition })))
+      if (!(await accept({ queryId: snapshot.queryId, disposition })))
         throw new Error("The browser query changed. Try again.");
     },
-    [isCurrent, snapshot.queryId, sameOwner],
+    [isCurrent, snapshot.queryId, sameOwner, accept],
   );
   return {
     queryId: isCurrent ? snapshot.queryId : 0,

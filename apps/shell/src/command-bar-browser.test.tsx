@@ -144,6 +144,7 @@ it("refuses older query generations when text returns through A B A", async () =
 });
 it("accepts the native selection identity and disposition without Node browser ranking or history", async () => {
   const fixture = nativeOmniboxFixture([match("Native bookmark", 4)]);
+  useStore.setState({ mode: "conversation", conversationId: "history" });
   const input = await mount();
   await type(input, "bookmark");
   const queryId = fixture.start.mock.calls.at(-1)![0].queryId;
@@ -160,6 +161,7 @@ it("accepts the native selection identity and disposition without Node browser r
     disposition: "new-foreground-tab",
     match: { sequenceId: queryId, index: 4, url: "https://example.test/Native%20bookmark" },
   });
+  expect(useStore.getState().mode).toBe("focus");
   const methods = vi.mocked(bridge.invoke).mock.calls.map(([method]) => method);
   expect(methods).not.toContain("history.list");
   expect(methods).not.toContain("command.ranking.list");
@@ -183,4 +185,32 @@ it("stops the native query when the field closes", async () => {
   await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
   await act(async () => new Promise((resolve) => setTimeout(resolve, 1)));
   expect(fixture.stop).toHaveBeenCalledWith(queryId);
+});
+
+it("does not let delayed native acceptance replace a newer conversation", async () => {
+  const fixture = nativeOmniboxFixture();
+  let finish!: (accepted: boolean) => void;
+  fixture.open.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  useStore.setState({ mode: "conversation", conversationId: "history" });
+  const input = await mount();
+  await type(input, "https://example.test/");
+  await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  await act(async () => useStore.setState({ mode: "conversation", conversationId: "newer-chat" }));
+  await act(async () => finish(true));
+  expect(useStore.getState()).toMatchObject({ mode: "conversation", conversationId: "newer-chat" });
+});
+
+it("keeps history visible when Chromium refuses typed navigation", async () => {
+  const fixture = nativeOmniboxFixture();
+  fixture.open.mockResolvedValue(false);
+  useStore.setState({ mode: "conversation", conversationId: "history" });
+  const input = await mount();
+  await type(input, "https://example.test/");
+  await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  expect(useStore.getState()).toMatchObject({ mode: "conversation", conversationId: "history" });
 });

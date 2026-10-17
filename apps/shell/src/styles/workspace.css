@@ -1061,6 +1061,7 @@
   }
   .conversation-history {
     container: chat-history / inline-size;
+    background: transparent;
   }
   .conversation-history-list {
     overflow: auto;
@@ -1073,6 +1074,9 @@
     width: 100%;
     max-width: none;
     margin-bottom: 14px;
+  }
+  .conversation-history .history-composer .conversation-compose-content {
+    max-width: none;
   }
   .conversation-history .history-composer .conversation .composer-frame {
     padding: 10px 10px 0;
