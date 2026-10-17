@@ -708,3 +708,51 @@ it("uses the browser display name when a native export summary carries only its 
     await act(async () => root.unmount());
   }
 });
+
+it("distinguishes a completed receipt from a fresh export review and labels native source IDs", async () => {
+  rpc.mockReset().mockImplementation(async (method: string) => {
+    if (method === "import.status")
+      return receipt({
+        done: true,
+        progress: [{ ...receipt().progress[0]!, label: "chrome", state: "done", imported: 1 }],
+      });
+    if (method === "import.selectExport") return { selectionId: "fresh-review" };
+    if (method === "import.exportStatus")
+      return {
+        selectionId: "fresh-review",
+        done: true,
+        unknown: false,
+        sources: [
+          {
+            id: "chrome",
+            label: "chrome",
+            profiles: ["Fresh export"],
+            categories: [],
+            profileCategories: [
+              { profileId: "Fresh export", categories: [{ category: "bookmarks", available: true }] },
+            ],
+          },
+        ],
+      };
+    if (method === "import.cancelExport") return {};
+    throw new Error("Unexpected " + method);
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    expect(host.textContent).toContain("Google Chrome · History");
+    expect(host.textContent).not.toContain("Previous import");
+    const choose = [...host.querySelectorAll("button")].find(
+      (button) => button.textContent === "Choose export file",
+    )!;
+    await act(async () => choose.click());
+    expect(host.querySelector('[aria-label="Import progress"] h4')?.textContent).toBe("Previous import");
+    expect(host.textContent).toContain("1 imported");
+    expect(host.textContent).toContain("Fresh export");
+    expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

@@ -760,6 +760,7 @@ export function ImportDataSetting() {
       </div>
       {job && (
         <section aria-label="Import progress">
+          {job.done && preview && <h4>Previous import</h4>}
           <output {...staticHintProps} {...nativePoliteLiveProps}>
             {completion(job)}
           </output>
@@ -769,7 +770,7 @@ export function ImportDataSetting() {
               {job.progress.map((entry) => (
                 <li key={`${entry.source}:${entry.profileId ?? entry.label}:${entry.category}`}>
                   <strong>
-                    {entry.label} · {categoryLabel(entry.category)}
+                    {sourceLabel({ id: entry.source, label: entry.label })} · {categoryLabel(entry.category)}
                   </strong>{" "}
                   — {entry.imported.toLocaleString()} imported
                   {entry.skipped > 0 && ` · ${entry.skipped.toLocaleString()} skipped`}

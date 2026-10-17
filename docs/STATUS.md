@@ -496,3 +496,23 @@ Integrated typecheck/lint pass;4,575/4,577 cases passed. The existing coder-work
 suite then passed all9 cases in1.24s; no CDP source changed. Renderer1.85s. No
 additional unchanged full suite was run. Native area0043 currently compiling
 predates this renderer reordering; do not mistake it for native layout evidence.
+
+
+Import receipt source correction: a completed durable receipt remains visible
+but gains a Previous import heading while a new review is shown. Progress source
+IDs now use the same browser display-name mapping as review selectors, preserving
+custom labels. The regression loads an old completed receipt, reviews a new
+export, verifies both are distinguished and confirms no import was started.
+All15 ImportDataSetting cases pass. Full check: typecheck/lint pass,
+4,577/4,578 cases across733 files pass; only coder-worktrees60s timeout fails.
+The earlier CDP reconnect timeout did not recur. Native50077/area0043 predates
+this receipt/UI change and remains alive linking; fresh live rendering is pending.
+
+Reopened031: the reference shows common keyboard commands inline, including
+sidebar, search tabs, Ask, New task, Copy URL, both split orientations and Mini
+popup, plus Extension shortcuts. Aux currently exposes the full real editor
+behind Manage shortcuts; it needs a shared inline presentation preserving one
+recorder, conflict handling and native shortcut restoration. Do not relabel a
+flip-layout command as a direct split-orientation command or substitute Quick
+Ask for its global shortcut preference. Exact supported command behavior and
+corresponding inline fields need an implementation/verification slice.
