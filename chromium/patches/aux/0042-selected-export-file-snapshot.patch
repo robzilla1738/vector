@@ -1,0 +1,116 @@
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.h b/chrome/browser/ui/aux/browser_profile_snapshot.h
+--- a/chrome/browser/ui/aux/browser_profile_snapshot.h
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.h
+@@ -20,11 +20,13 @@
+ // Decoders may mutate the disposable copy; they never receive original paths.
+ class BrowserProfileSnapshot {
+  public:
++  enum class Scope { kProfile, kSelectedFile };
+   static base::expected<std::unique_ptr<BrowserProfileSnapshot>, std::string>
+   Capture(const base::FilePath& profile, const std::vector<std::string>& files,
+           bool include_sessions, const base::RepeatingCallback<bool()>& cancelled,
+           bool include_firefox_sessions = false,
+-          std::map<std::string, std::string>* firefox_copy_errors = nullptr);
++          std::map<std::string, std::string>* firefox_copy_errors = nullptr,
++          Scope scope = Scope::kProfile);
+   ~BrowserProfileSnapshot();
+   BrowserProfileSnapshot(const BrowserProfileSnapshot&) = delete;
+   BrowserProfileSnapshot& operator=(const BrowserProfileSnapshot&) = delete;
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.cc b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+--- a/chrome/browser/ui/aux/browser_profile_snapshot.cc
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+@@ -24,9 +24,14 @@
+ constexpr int64_t kMaxSnapshotBytes = 1024LL * 1024 * 1024;
+ constexpr size_t kMaxSessionFiles = 256;
+ 
++bool SameIdentity(const struct stat& before, const struct stat& after) {
++  return before.st_dev == after.st_dev && before.st_ino == after.st_ino &&
++         before.st_mode == after.st_mode && before.st_uid == after.st_uid &&
++         before.st_gid == after.st_gid;
++}
++
+ bool SameEntry(const struct stat& before, const struct stat& after) {
+-  return before.st_dev == after.st_dev && before.st_ino == after.st_ino &&
+-         before.st_mode == after.st_mode && before.st_size == after.st_size &&
++  return SameIdentity(before, after) && before.st_size == after.st_size &&
+          before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec &&
+          before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec &&
+          before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec &&
+@@ -49,11 +54,11 @@
+     struct stat current, linked;
+     return fstat(descriptor.get(), &current) == 0 &&
+         (contents ? SameEntry(identity, current) :
+-          identity.st_dev == current.st_dev && identity.st_ino == current.st_ino && identity.st_mode == current.st_mode) &&
++          SameIdentity(identity, current)) &&
+         (leaf.empty() || (fstatat(parent.get(), leaf.c_str(), &linked,
+                                   AT_SYMLINK_NOFOLLOW) == 0 &&
+                          (contents ? SameEntry(identity, linked) :
+-                             identity.st_dev == linked.st_dev && identity.st_ino == linked.st_ino && identity.st_mode == linked.st_mode)));
++                             SameIdentity(identity, linked))));
+   }
+ };
+ BrowserProfileSnapshot::BrowserProfileSnapshot() = default;
+@@ -70,7 +75,11 @@
+                                bool include_sessions,
+                                const base::RepeatingCallback<bool()>& cancelled,
+                                bool include_firefox_sessions,
+-                               std::map<std::string, std::string>* firefox_copy_errors) {
++                               std::map<std::string, std::string>* firefox_copy_errors,
++                               Scope scope) {
++  if (scope == Scope::kSelectedFile &&
++      (files.size() != 1 || include_sessions || include_firefox_sessions))
++    return base::unexpected("Choose one original export file.");
+   if (cancelled.is_null() || cancelled.Run())
+     return base::unexpected("Browser import was cancelled.");
+   auto snapshot = std::unique_ptr<BrowserProfileSnapshot>(new BrowserProfileSnapshot);
+@@ -130,17 +139,22 @@
+     return base::unexpected("A private import snapshot could not be pinned safely.");
+   snapshot->originals_.push_back(std::move(temp_parent));
+   snapshot->originals_.push_back(std::move(temp_directory));
+-  auto retain_directory = [&](int descriptor, int parent = -1, const char* leaf = "") {
++  auto retain_directory = [&](int descriptor, int parent = -1, const char* leaf = "",
++                              bool contents = true) {
+     auto entry = std::make_unique<HeldEntry>();
+     entry->descriptor.reset(HANDLE_EINTR(dup(descriptor)));
+     if (parent >= 0) entry->parent.reset(HANDLE_EINTR(dup(parent)));
+     entry->leaf = leaf;
++    entry->contents = contents;
+     if (!entry->descriptor.is_valid() || fstat(descriptor, &entry->identity) != 0)
+       return false;
+     snapshot->originals_.push_back(std::move(entry));
+     return true;
+   };
+-  if (!retain_directory(root.get()))
++  // A picked file remains bound to its exact leaf. macOS can update directory
++  // access metadata after closing its picker; unrelated directory metadata does
++  // not change that file. Whole-Profile snapshots retain their content checks.
++  if (!retain_directory(root.get(), -1, "", scope == Scope::kProfile))
+     return base::unexpected("The original browser Profile is unavailable.");
+   auto firefox_leaf = [&](const std::string& leaf) {
+     return firefox_copy_errors && (leaf == "places.sqlite" || leaf == "places.sqlite-wal" ||
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -471,7 +471,8 @@
+               auto stopped = base::BindRepeating(
+                   [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, cancelled);
+               const std::string leaf = selected.BaseName().value();
+-              auto snapshot = BrowserProfileSnapshot::Capture(selected.DirName(), {leaf}, false, stopped);
++              auto snapshot = BrowserProfileSnapshot::Capture(selected.DirName(), {leaf}, false, stopped,
++                  false, nullptr, BrowserProfileSnapshot::Scope::kSelectedFile);
+               if (!snapshot.has_value()) return base::unexpected(snapshot.error());
+               if (!base::PathExists((*snapshot)->path().Append(leaf)))
+                 return base::unexpected("The selected export file is unavailable.");
+diff --git a/chrome/browser/ui/aux/browser_export_decode.cc b/chrome/browser/ui/aux/browser_export_decode.cc
+--- a/chrome/browser/ui/aux/browser_export_decode.cc
++++ b/chrome/browser/ui/aux/browser_export_decode.cc
+@@ -78,7 +78,8 @@
+     const base::RepeatingCallback<bool()>& cancelled,
+     const BrowserExportGroup* selected_group) {
+   DecodedBrowserProfile output;
+-  auto snapshot = BrowserProfileSnapshot::Capture(directory, {leaf}, false, cancelled);
++  auto snapshot = BrowserProfileSnapshot::Capture(directory, {leaf}, false, cancelled,
++      false, nullptr, BrowserProfileSnapshot::Scope::kSelectedFile);
+   if (!snapshot.has_value()) {
+     output.snapshot_error = snapshot.error();
+     return output;

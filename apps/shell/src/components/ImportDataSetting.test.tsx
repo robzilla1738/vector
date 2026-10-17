@@ -675,3 +675,36 @@ it("shows an actionable empty browser discovery result", async () => {
     await act(async () => root.unmount());
   }
 });
+
+it("uses the browser display name when a native export summary carries only its source ID", async () => {
+  rpc.mockReset().mockImplementation(async (method: string) => {
+    if (method === "import.preview")
+      return {
+        sources: [
+          {
+            id: "chrome",
+            label: "chrome",
+            profiles: ["Synthetic"],
+            categories: [],
+            profileCategories: [
+              { profileId: "Synthetic", categories: [{ category: "bookmarks", available: true }] },
+            ],
+          },
+        ],
+      };
+    throw new Error("No prior import");
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => host.querySelector("button")!.click());
+    expect(
+      host.querySelector<HTMLSelectElement>('[aria-label="Detected browser"]')!.selectedOptions[0]!
+        .textContent,
+    ).toBe("Google Chrome");
+    expect(host.querySelector(".import-source-head")!.textContent).toBe("Google Chrome");
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

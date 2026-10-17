@@ -473,3 +473,19 @@ Integrated typecheck/lint pass, 4,560/4,561 tests pass (known coder-worktrees ti
 only); final 32 affected cases pass; renderer build 2.44s. UI walkthrough with
 the owned synthetic fixture and native staging remain pending. Also reviewed
 023/030; saved Tidy prompt is a real implementation gap, recorded in the ledger.
+
+## October 16 — native provider/language acceptance and export refusal
+
+Native2425d212a passed (25steps/9m06.34s,217assets). Verified normalized Brave
+checkmark, truthful fresh Search label, bounded Add menu and saved Akan. Export
+source selector populated from only the owned synthetic HTML; native Begin then
+refused a stale preview. SDK confirmed zero bookmarks; no retry. Directory metadata
+appears to invalidate a selected-file review; area0042 adds explicit one-file
+scope while retaining exact file and directory identity/permission guards. Its
+forward/reverse patch checks pass, but native acceptance/mutation refusal remain
+required. Shared bookmark Settings flow has live file-chooser/parser/mock-import
+evidence. Native source fix and shared-flow staging remain open.
+
+Final selected-export slice check: typecheck/lint pass; 4,563/4,564 tests
+across 732 files pass, with only the longstanding coder-worktrees 60-second
+timeout. All 21 focused import cases pass. Native 0042 build is still required.

@@ -26,6 +26,21 @@ import {
   nativePoliteLiveProps,
 } from "../ui/native-attribute-props";
 
+const BROWSER_LABELS: Record<string, string> = {
+  chrome: "Google Chrome",
+  arc: "Arc",
+  safari: "Safari",
+  firefox: "Firefox",
+  edge: "Microsoft Edge",
+  brave: "Brave",
+  dia: "Dia",
+  comet: "Comet",
+  atlas: "Atlas",
+};
+function sourceLabel(source: { id: string; label: string }) {
+  return source.label === source.id ? (BROWSER_LABELS[source.id] ?? source.label) : source.label;
+}
+
 function counterpartId(value: string): string | undefined {
   const trimmed = value.trim();
   if (ChromeWebStoreIdSchema.safeParse(trimmed).success) return trimmed;
@@ -577,7 +592,7 @@ export function ImportDataSetting() {
           >
             {preview.map((source) => (
               <option key={source.id} value={source.id}>
-                {source.label}
+                {sourceLabel(source)}
               </option>
             ))}
           </select>
@@ -592,7 +607,7 @@ export function ImportDataSetting() {
       {(activeSource ? [activeSource] : []).map((source) => (
         <fieldset className="import-source" key={source.id} disabled={running || loading}>
           <legend className="import-source-head">
-            <strong>{source.label}</strong>
+            <strong>{sourceLabel(source)}</strong>
           </legend>
           {(source.profileCategories.length
             ? source.profileCategories

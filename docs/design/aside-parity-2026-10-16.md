@@ -889,3 +889,49 @@ custom prompt editor. This remains an implementable capability gap, not a mock
 configuration control. Appearance option order and matched native comparison remain
 open. Current native builder 31852 still builds 2425d212a and excludes the new
 bookmark-file source above; do not replace that live builder.
+
+## Native 2425d212a and selected-export failure diagnosis
+
+Build passed 25 steps / 9m06.34s, 217 renderer assets, ABI cce8203bcbd0, Node26.9.
+Disposable native verification: fresh Home/General both show Search; Brave remains
+checked after its real normalized URL save; compact Add menu shows alphabetic
+choices, selects Akan and persists it after Save/reopen. Evidence:
+aux-search-native-normalized-2425d.png and aux-language-add-native-2425d.png.
+
+Import: did not use browser discovery. Chose only the owned synthetic HTML via
+native Export browser=Chrome, Bookmarks HTML, chooser and Review export. Real
+Detected browser/category controls populated, initially unchecked. Selecting
+Bookmarks produced Import selected(1). Confirmation refused: native Begin returned
+permission_denied / Refresh the original browser import preview, and the receipt
+truthfully retained unknown completion. Standard SDK bookmarks.list confirmed
+zero total/synthetic bookmarks; no retry. A human-only import.status SDK read was
+correctly denied; no token impersonation was attempted. Evidence before dispatch:
+aux-import-reviewed-native-2425d.png.
+
+The selected file’s size/mtime/ctime stayed unchanged; its directory ctime changed
+while macOS access/provenance attributes appeared. Snapshot code retained the
+whole source directory’s contents metadata even for one human-picked export. This
+is a likely cause of the stale review, to be tested natively. Area 0042 adds an
+explicit kSelectedFile scope at export capture/decoding only; it requires exactly
+one file and no session capture. File identity/content guards stay strict; the
+directory path/identity/mode/uid/gid stay pinned. Whole-Profile snapshots retain
+full contents checks. Exact prior-source forward apply and current-source reverse
+apply checks passed. No broad guard bypass or new importer capability was added.
+Browser export source IDs now use display names in the selector/heading.
+
+Latest bookmark Settings renderer walkthrough used the real native file chooser
+for the same synthetic fixture, then the shared inert parser showed one bookmark,
+one folder and zero existing duplicates. Explicit Import returned Imported1 and
+Done through the mock producer. Capture: aux-bookmark-file-preview-live-4e417.png.
+This verifies current UI/file parsing, not the shared native writer.
+
+The exact preview retired via its original launcher; it returned1 after SIGTERM,
+and its finally cleanup removed the disposable Profile. A new plain-lock command
+then applied 0042, proving the old lock had released; no active lock was cleared.
+Native 0042 compilation, accepted synthetic export, file-mutation refusal and
+shared-flow native acceptance remain required. Source policy conclusions remain
+unproven until those real changed-flow checks pass. Full goal stays active.
+
+Final selected-export slice check: typecheck/lint pass; 4,563/4,564 tests
+across 732 files pass, with only the longstanding coder-worktrees 60-second
+timeout. All 21 focused import cases pass. Native 0042 build is still required.

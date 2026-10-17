@@ -3,6 +3,32 @@
 
 ## October 16 UI parity review — in progress
 
+Native 2425d212a verification is complete for the changed provider/language UI:
+Brave stays checked after the real Chromium URL normalization, fresh Settings and
+Home both show Search, and Add’s bounded alphabetized menu adds/saves Akan across
+reopening. Build passed 25 steps / 9m06.34s, 217 assets, unchanged host ABI.
+The owned preview has retired; its disposable Profile was confirmed removed.
+
+Native export walkthrough used only the owned synthetic bookmark HTML. It
+populated Detected browser and reviewed category controls, then native Begin
+refused the supposedly stale preview. Standard SDK bookmarks.list confirmed zero
+bookmarks, including zero synthetic URLs; the human-only import.status SDK request
+was correctly denied. No retry or owner source Profile discovery was performed.
+The chosen file’s metadata stayed unchanged while its directory ctime changed and
+macOS access/provenance attributes were present. Directory metadata appears to
+invalidate the current broad snapshot guard. Area 0042 adds an explicit selected-
+file scope: one leaf only, strict file checks and pinned directory identity/mode/
+uid/gid; whole-Profile content checks remain. Native build and changed-file refusal
+walkthrough are still required to validate this fix. Patch forward/reverse checks
+pass against exact before/current source. Source IDs now show browser display names.
+
+The shared bookmark-file Settings entry has current renderer evidence: native
+file chooser opened only the owned fixture, inert parser showed one bookmark and
+one preserved folder, explicit Import completed with one item and Done. This
+was the mock renderer’s mutation producer, not a native shared-flow acceptance.
+Evidence: aux-bookmark-file-preview-live-4e417.png. The fixture remains in its
+owned temporary directory for upcoming native tests.
+
 Newer source adds General’s separate Import bookmarks entry through a shared
 Library/Settings file-preview flow. Replaced Library’s duplicate parser/import UI
 and stale styles. Files stay inert and bounded; preview preserves folders and
@@ -36,10 +62,11 @@ and extension choices. Empty discovery explains alternatives. Source discovery
 and import remain opt-in. Populated visual/native selector acceptance and closer
 reference dialog composition remain pending; no owner source Profile was read.
 
-**Native build in progress: `2425d212a`.** The verified preceding preview
-retired normally through its launcher (exit 0). New single launcher PID 31852
-runs `node scripts/dev.mjs --temp-profile`; log /tmp/aux-general-final-native.log.
-Poll this same live builder; do not start a second builder or clear its lock.
+**Last completed native build: `2425d212a`.** Launcher 31852 retired after its
+walkthrough; it returned 1 after SIGTERM, but finally cleanup removed its disposable
+Profile and released the lock. A subsequent plain-lock wrapper applied area 0042
+without clearing any active lock. Next native build must include 0042 and the
+shared bookmark-file entry; do not claim their native acceptance yet.
 
 **Compiled/staged candidate: `9d677b376`.** Native build passed in 26 steps /
 8m45.61s with 217 renderer assets, rebuilt runtime, Node 26.9 and unchanged
@@ -388,3 +415,7 @@ The gallery checks that precise method capability once, independently of Save,
 and reports Copy only after the native image acknowledgement. Source bounds are
 64 MiB encoded and Chromium’s 128 MiB decoded limit; larger originals retain Save.
 Native compilation and clipboard observation remain pending.
+
+Final selected-export slice check: typecheck/lint pass; 4,563/4,564 tests
+across 732 files pass, with only the longstanding coder-worktrees 60-second
+timeout. All 21 focused import cases pass. Native 0042 build is still required.
