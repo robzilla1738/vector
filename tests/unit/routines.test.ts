@@ -1161,6 +1161,8 @@ it("records missed consequential schedules and coalesces missed monitors", async
 });
 
 it("records each missed daily occurrence after downtime without replaying writes", async () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 9, 16, 8, 0));
+  cleanup.push(() => clock.mockRestore());
   const started: string[] = [];
   const f = fixture(async (routine) => {
     started.push(routine.title);
@@ -1192,6 +1194,8 @@ it("records each missed daily occurrence after downtime without replaying writes
 });
 
 it("catches up a missed schedule once when opted in and still holds writes for review", async () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 9, 16, 8, 0));
+  cleanup.push(() => clock.mockRestore());
   const started: string[] = [];
   const f = fixture(async (routine) => {
     started.push(routine.title);
@@ -1230,6 +1234,8 @@ it("catches up a missed schedule once when opted in and still holds writes for r
 });
 
 it("prioritizes a currently due schedule over catch-up", async () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 9, 16, 8, 0));
+  cleanup.push(() => clock.mockRestore());
   const f = fixture();
   const routine = f.routines.create({
     title: "Daily current report",
