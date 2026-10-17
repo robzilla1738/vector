@@ -312,3 +312,42 @@ it("keeps the import file input mounted when Organize closes after choosing a fi
   expect(host.querySelector('input[type="file"]')).toBe(input);
   expect(input.isConnected).toBe(true);
 });
+
+it("refreshes the native bookmark after editing even when no observer event arrives", async () => {
+  const item = { nodeId: "12", url: "https://example.com/one", title: "Original", folderPath: [] };
+  useStore.setState({ bookmarks: [item] });
+  const originalInvoke = vi.mocked(bridge.bookmarksInvoke).getMockImplementation()!;
+  vi.mocked(bridge.bookmarksInvoke).mockImplementation(async (request) => {
+    if (request.method !== "bookmarks.entries.edit") return originalInvoke(request);
+    const result = await originalInvoke({ method: "bookmarks.folders.snapshot", params: {} });
+    if (result.method !== "bookmarks.folders.snapshot") throw new Error("Expected folder snapshot");
+    return {
+      method: "bookmarks.entries.edit",
+      result: {
+        snapshot: result.result,
+        source: {
+          ...request.params.source,
+          title: request.params.title,
+          url: request.params.url,
+        },
+      },
+    };
+  });
+  const read = vi.spyOn(bridge, "invoke").mockResolvedValue([{ ...item, title: "Revised" }]);
+  await act(async () => root.render(<Library />));
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Actions for Original"]')!.click(),
+  );
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Edit Original"]')!.click());
+  const name = host.querySelector<HTMLInputElement>('[aria-label="Bookmark title"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, "Revised");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    name.closest("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(read).toHaveBeenCalledWith("bookmarks.list", {});
+  expect(host.querySelector('[aria-label="Actions for Revised"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Actions for Original"]')).toBeNull();
+});

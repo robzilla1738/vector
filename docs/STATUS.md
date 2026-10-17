@@ -1,5 +1,39 @@
 # Aux status — October 16, 2026
 
+Native consolidation `122155dbee2223d3aa3a9ac73991560511b0a3bd` completed
+(9m20.45s native build) and About confirmed the exact source. Launcher **32186** /
+session **11165** owns app **35867**, disposable Profile **aux-dev-iuwRXZ**, API
+`http://127.0.0.1:63330`. Keep this owner's cleanup; no replacement build started.
+
+Native Library walkthrough: entry, creating a synthetic folder, folder navigation,
+new-bookmark dialog/destination, save, delete and Undo succeeded. Reopening Library
+confirmed the edited title persisted. The search focus border is rounded without
+an inner text rectangle. Evidence:
+`/tmp/aux-parity-2026-10-16/aux-library-native-122155.png`.
+Editing exposed a real stale-row bug: Chromium saved the title but the row kept its
+old source until Library reopened, and the next edit conflicted. Source now
+explicitly refreshes bookmarks after edit acknowledgement, matching other Library
+mutations. The editor also schedules Name focus after its action dialog closes.
+The regression simulates a successful edit with no observer event and verifies the
+new row source. Integrated check: typecheck/lint and 4,630 tests / 745 files passed
+in 96.28s; renderer build 3.35s. Logs `/tmp/aux-library-edit-check.log` and
+`/tmp/aux-library-edit-build.log`. These fixes and the all-root rail correction
+postdate the running native build; native acceptance remains pending. Narrow
+Library evidence and process-restart persistence are still open.
+
+Native Memory Configure switches visually accepted; screenshot:
+`/tmp/aux-parity-2026-10-16/aux-memory-configure-native-122155.png`.
+Quick Ask opened and expanded with its unsent synthetic draft intact. The old
+routing-window error did not appear. However, the delayed notification “Profile
+organization kept changing” reproduced in both the expanded and original windows.
+It is NOT fixed. Investigate `store/organization-persistence.ts` around the bounded
+CAS retry loop next. Capture:
+`/tmp/aux-parity-2026-10-16/aux-quick-ask-expanded-native-122155.png`.
+The synthetic draft was cleared and its expanded window closed; no model request
+was sent, shortcut registered or owner Profile touched. Populated Memory History,
+notes, responsive chat cards and full parity remain unaccepted.
+
+
 Bookmark root-navigation correction: the rail now traverses all native permanent
 roots, including Other bookmarks and Mobile bookmarks, rather than only the
 bookmarks bar's child IDs. Native root titles are retained; roots can collapse,

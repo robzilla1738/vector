@@ -159,6 +159,14 @@ const SavedPageRow = memo(function SavedPageRow({
   setNotice: React.Dispatch<React.SetStateAction<string>>;
   cancelEditor(): void;
 }) {
+  const editTitle = useRef<HTMLInputElement>(null);
+  const isEditing = !!editing;
+  useEffect(() => {
+    if (!isEditing || busy) return;
+    // Let the closing action dialog restore its opener before entering the form.
+    const frame = requestAnimationFrame(() => editTitle.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [isEditing, busy]);
   const canPeek = useFeature("peek");
   useStore((state) => {
     const item = state.bookmarks[position];
@@ -376,6 +384,7 @@ const SavedPageRow = memo(function SavedPageRow({
                   ? { destination: folderDestination(destination) }
                   : {}),
               });
+              useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               setEditing(null);
               setNotice("Bookmark updated.");
             });
@@ -386,7 +395,7 @@ const SavedPageRow = memo(function SavedPageRow({
             <input
               {...staticFieldInputProps}
               aria-label="Bookmark title"
-              autoFocus
+              ref={editTitle}
               disabled={busy}
               value={editing.title}
               maxLength={1000}
