@@ -1,4 +1,4 @@
-import { MemoryClaimDocumentsSchema, MemoryClaimEditParams } from "./memory-pipeline.js";
+import { MemoryClaimDocumentsSchema, MemoryDocumentEditParams } from "./memory-pipeline.js";
 import { TaskReceiptExportParamsSchema, TaskReceiptExportResultSchema } from "./task-receipt-export.js";
 import { DocumentSnapshotSchema, SavedDocumentPageSchema } from "./document-snapshot.js";
 import {
@@ -1473,7 +1473,7 @@ export const MethodSchemas = {
   "memory.pipeline.activity": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.reindex": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.documents": z.object({ workspaceId: id }).strict(),
-  "memory.pipeline.edit": MemoryClaimEditParams,
+  "memory.pipeline.edit": MemoryDocumentEditParams,
   "memory.pipeline.revert": z.object({ workspaceId: id, revisionId: z.string().uuid() }).strict(),
   "memory.pipeline.review": z
     .object({ workspaceId: id, claimId: z.string().uuid(), decision: z.enum(["accept", "discard"]) })
@@ -2261,7 +2261,7 @@ export const ResultSchemas = {
   "memory.pipeline.activity": z.array(MemoryExtractionViewSchema).max(200),
   "memory.pipeline.reindex": z.object({ indexed: z.number().int().nonnegative() }),
   "memory.pipeline.documents": MemoryClaimDocumentsSchema,
-  "memory.pipeline.edit": MemoryClaimSchema,
+  "memory.pipeline.edit": z.array(MemoryClaimSchema).max(200),
   "memory.pipeline.revert": MemoryPipelineOverviewSchema,
   "memory.pipeline.review": z.object({ accepted: z.boolean(), remaining: z.number().int().nonnegative() }),
   "memory.pipeline.overview": MemoryPipelineOverviewSchema,

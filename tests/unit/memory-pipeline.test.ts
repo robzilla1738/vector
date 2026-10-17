@@ -5,6 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventBus, MemoryPipeline, openDb, Repo, TaskService } from "@aux/runtime";
 
+async function editClaim(
+  pipeline: MemoryPipeline,
+  input: { workspaceId: string; expectedGeneration: string | null; claimId: string; text: string },
+) {
+  const { claimId, text, ...owner } = input;
+  return (await pipeline.editDocuments({ ...owner, edits: [{ claimId, text }] }))[0]!;
+}
+
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "aux-memory-pipeline-"));
   const db = openDb(":memory:");
@@ -944,7 +952,7 @@ it("keeps source quotes intact when editing documents and carries owner text thr
     await f.pipeline.review(workspaceId, note!.claimId, "accept");
     const before = await f.pipeline.documents(workspaceId);
     const text = "The revised violet garden contains seven folded leaves.";
-    const edited = await f.pipeline.editClaim({
+    const edited = await editClaim(f.pipeline, {
       workspaceId,
       claimId: note!.claimId,
       expectedGeneration: before.generation,
@@ -958,7 +966,7 @@ it("keeps source quotes intact when editing documents and carries owner text thr
     expect(after.documents[0]!.updatedAt).toBe(edited.ownerEdit!.updatedAt);
     expect(after.generation).not.toBe(before.generation);
     await expect(
-      f.pipeline.editClaim({
+      editClaim(f.pipeline, {
         workspaceId,
         claimId: note!.claimId,
         expectedGeneration: before.generation,
@@ -998,7 +1006,7 @@ it("preserves distinct owner edits when duplicate source notes are consolidated"
     const notes = await f.pipeline.claims(workspaceId);
     for (const [i, note] of notes.entries()) {
       const current = await f.pipeline.documents(workspaceId);
-      await f.pipeline.editClaim({
+      await editClaim(f.pipeline, {
         workspaceId,
         claimId: note.claimId,
         expectedGeneration: current.generation,
@@ -1030,7 +1038,7 @@ it("recomputes contradictions from owner prose without dropping other approved d
     const before = await f.pipeline.documents(workspaceId);
     expect(before.documents.every((document) => document.claim.contradictionIds?.length)).toBe(true);
     const negative = before.documents.find((document) => document.claim.text.includes("not open"))!;
-    const edited = await f.pipeline.editClaim({
+    const edited = await editClaim(f.pipeline, {
       workspaceId,
       claimId: negative.claim.claimId,
       expectedGeneration: before.generation,
@@ -1042,6 +1050,48 @@ it("recomputes contradictions from owner prose without dropping other approved d
     expect(after.documents).toHaveLength(2);
     expect(after.documents.every((document) => !document.claim.contradictionIds?.length)).toBe(true);
     expect((await f.pipeline.overview(workspaceId)).summary).toContain("owner-edited, unverified");
+  } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("saves a daily document atomically and rejects a missing fragment without changing any note", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.save(
+      "daily-source",
+      "The fictional garden has paper flowers.\n\nThe imaginary notebook has a blue cover.",
+    );
+    await f.pipeline.extractRun(workspaceId, "daily-source");
+    for (const note of await f.pipeline.inbox(workspaceId))
+      await f.pipeline.review(workspaceId, note.claimId, "accept");
+    const before = await f.pipeline.documents(workspaceId);
+    expect(before.documents).toHaveLength(2);
+    expect(new Set(before.documents.map((document) => document.path)).size).toBe(1);
+    const edits = before.documents.map((document, index) => ({
+      claimId: document.claim.claimId,
+      text: `Revised fictional note number ${index}.`,
+    }));
+    await expect(
+      f.pipeline.editDocuments({
+        workspaceId,
+        expectedGeneration: before.generation,
+        edits: [edits[0], { ...edits[1], claimId: randomUUID() }],
+      }),
+    ).rejects.toThrow(/no longer available/);
+    expect(await f.pipeline.documents(workspaceId)).toEqual(before);
+    const saved = await f.pipeline.editDocuments({
+      workspaceId,
+      expectedGeneration: before.generation,
+      edits,
+    });
+    expect(saved.map((note) => note.ownerEdit?.text)).toEqual(edits.map((edit) => edit.text));
+    expect(saved.map((note) => note.source)).toEqual(
+      before.documents.map((document) => document.claim.source),
+    );
+    expect(new Set(saved.map((note) => note.ownerEdit?.updatedAt)).size).toBe(1);
   } finally {
     await f.pipeline.close();
     f.close();

@@ -102,9 +102,9 @@ Native acceptance remains pending with the next consolidated build.
 ## Approved-document edit model — October 17
 
 memory.pipeline.documents returns each approved claim with its stable path
-`episodic/YYYY-MM-DD/<claimId>.md`, effective modification time and the encrypted
-workspace generation. memory.pipeline.edit requires that exact generation and
-stores ownerEdit text/revision/time beside, not over, the original quote. Recall,
+`episodic/YYYY-MM-DD.md`, effective modification time and the encrypted
+workspace generation. memory.pipeline.edit accepts an atomic list of changed fragments, requires that
+exact generation, and stores ownerEdit text/revision/time beside, not over, the original quote. Recall,
 handbook and the search index use the effective text with owner-edit attribution;
 source eligibility and exact-quote checks still use original evidence. History
 and recovery carry the edit, while source/claim/all Forget removes it with its
@@ -112,13 +112,20 @@ claim. Reindex cannot overwrite it. Consolidation never merges away distinct own
 edits; editing refreshes contradiction flags without aging or merging other notes.
 
 The generation is the save precondition, including after rollback; the ownerEdit
-revision is descriptive and must not be used alone as a conflict token. A future
-editor must keep the rejected draft and base generation until explicit reload or
-cancel. Paths and source relationships survive edits, and removed claims cannot
+revision is descriptive and must not be used alone as a conflict token. The editor keeps rejected drafts and their base generation until the owner
+explicitly compares and rebases, or cancels. Paths and source relationships survive edits, and removed claims cannot
 be recreated through this edit method.
 
-This implements the approved-note side only. Root MEMORY.md/USER.md/TAXONOMY.md,
-sites/routines and the document-browser UI remain incomplete. Manual Space content
-already has a revision and updatedAt in WorkspaceMemory, and is consumed directly
-by workspaceMemoryText; preserve that authority while integrating it. Do not make
-an independent copy of those notes merely to populate the tree.
+The document browser groups approved fragments into daily files and maps root
+MEMORY.md directly to WorkspaceMemory.content. Its root editor shares the existing
+window-scoped saved draft store, revision checks and workspaces.memory.set; it does
+not create another authoritative copy. Episodic edits remain in memory while the
+Memory view stays mounted and are pruned when Forget removes their source. They
+are not persisted across closing Settings. New fragments are preserved when an
+owner explicitly rebases a daily-file draft. Review/import/Forget and individual
+manual notes remain available through Review and manage notes.
+
+USER.md/TAXONOMY.md and site/routine document authority remain unimplemented. The
+browser exposes no placeholder files for those concepts. Native acceptance of the
+new browser remains pending; renderer/mock observations do not establish runtime
+or final packaged behavior.

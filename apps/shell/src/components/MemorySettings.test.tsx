@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemorySettings } from "./MemorySettings";
@@ -27,6 +27,14 @@ vi.mock("../store", () => ({
     getState: () => mocks.state,
     setState: (value: unknown) => Object.assign(mocks.state, value),
   }),
+}));
+vi.mock("./MemoryDocumentBrowser", () => ({
+  MemoryDocumentBrowser: ({ active, onManage }: { active: boolean; onManage(): void }) => {
+    useEffect(() => {
+      if (active) onManage();
+    }, [active, onManage]);
+    return null;
+  },
 }));
 vi.mock("./SpaceMemoryEditor", () => ({
   SpaceMemoryEditor: ({ memory }: { memory: { workspaceId: string } }) => (

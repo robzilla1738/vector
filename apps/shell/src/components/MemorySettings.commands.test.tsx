@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { COMMANDS, effectiveShortcuts, matchShortcut } from "@aux/contracts";
@@ -28,6 +28,14 @@ vi.mock("../store", () => ({
     getState: () => mocks.state,
     setState: (value: any) => Object.assign(mocks.state, value),
   }),
+}));
+vi.mock("./MemoryDocumentBrowser", () => ({
+  MemoryDocumentBrowser: ({ active, onManage }: { active: boolean; onManage(): void }) => {
+    useEffect(() => {
+      if (active) onManage();
+    }, [active, onManage]);
+    return null;
+  },
 }));
 vi.mock("./SpaceMemoryEditor", () => ({
   SpaceMemoryEditor: ({ memory }: any) => <output>{memory.workspaceId}</output>,

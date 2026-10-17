@@ -115,12 +115,18 @@ export const MemoryClaimDocumentsSchema = z.object({
     )
     .max(200),
 });
-export const MemoryClaimEditParams = z
+export const MemoryDocumentEditParams = z
   .object({
     workspaceId: z.string().min(1),
-    claimId: z.string().uuid(),
     expectedGeneration: z.string().min(1),
-    text: z.string().trim().min(1).max(2000),
+    edits: z
+      .array(z.object({ claimId: z.string().uuid(), text: z.string().trim().min(1).max(2000) }).strict())
+      .min(1)
+      .max(200),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => new Set(value.edits.map((edit) => edit.claimId)).size === value.edits.length,
+    "Edit each note once",
+  );
 export type MemoryClaimDocuments = z.infer<typeof MemoryClaimDocumentsSchema>;

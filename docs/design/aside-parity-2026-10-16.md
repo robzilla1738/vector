@@ -2679,3 +2679,15 @@ typecheck/lint +33focused tests/2files in3.32s, log
 Next: actual browser/editor, root document authority, conflict draft retention,
 matched native evidence. Combine with the configuration layout in a later build;
 f8a63b938 remains live. Full parity remains open.
+
+
+## October 17 — daily Memory browser source batch
+
+Implemented daily approved-note grouping, authoritative root MEMORY.md, modified
+metadata, preview/edit, atomic generation-checked fragment saves, source quotes,
+conflict comparison/rebase and Forget draft pruning. Root drafts reuse the existing
+window-scoped store. Management is a secondary view with stable Space controls.
+No fabricated USER/TAXONOMY/site/routine files. Those authorities and native
+populated/light/narrow evidence remain open. See STATUS for checks and packaging.
+Renderer/mock unavailable-state inspection is not native runtime acceptance.
+Corpus rescan unchanged182PNG/192TXT/6support files (182JPG excluded).

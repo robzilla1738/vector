@@ -270,16 +270,45 @@ preview; no unchanged keyboard campaign was repeated.
   `/tmp/aux-parity-2026-10-16/aux-model-search-rounded-4b1358c58.png`.
 - Zoom25–500% is implemented in patch0044; older50–200% gap entries are historical.
 
+## Memory document browser — source checked, packaging next
+
+Overview now has an episodic daily-file list, MEMORY.md, modification times,
+Markdown preview and Edit/Cancel/Save. Daily edits submit changed fragments in one
+generation-checked encrypted write; original source quotes stay available. Root
+MEMORY.md edits authoritative WorkspaceMemory.content and shares the existing
+saved draft store. Conflicts preserve drafts for comparison and explicit rebase;
+new fragments survive rebase and Forget prunes removed fragments from open drafts.
+Episodic drafts stay in memory while this Settings view is mounted, not across
+closing Settings. Review and manage notes retains the existing import, review,
+Forget, individual notes and Space-selection controls. Those controls stay mounted
+to preserve focus when switching Spaces. USER.md/TAXONOMY.md, sites and routines
+are not fabricated into the tree and remain open work.
+
+Integrated check passed compilation/lint and4,636tests, with3Space-selection focus
+failures in2files (108.90s, /tmp/aux-memory-document-browser-check.log). Fixed the
+remount regression, then compilation/lint and pipeline/editor checks passed; the
+isolated management fixtures were updated to open their new secondary destination.
+Final14tests/3files passed in0.555s, including existing root draft recovery,
+conflict/rebase, batched saves, Forget draft pruning and unavailable-state retry
+(/tmp/aux-memory-document-browser-final-tests.log). Pipeline27tests and existing
+editor22tests passed in the focused run. No unchanged full suite repeated.
+
+The Vite renderer showed the new tree/root editor with the mock pipeline unavailable;
+this is layout/error-state evidence only. Native populated-file editing, light and
+narrow acceptance remain pending. The next package must include this batch plus
+the preceding configuration layout and edit-model commits. Corpus rescan remains
+182PNG/192TXT/6support files, excluding182JPG thumbnails.
+
 ## Remaining work
 
 Reference corpus:182PNG,192TXT and6support files, excluding thumbnails, under
 `/Users/rcourson/Desktop/Aside UI Reference 2026-10-16`. Rescan between batches as
 the owner adds captures. Reopened073overview and075configuration on October17.
 
-The next substantial Memory batch needs the actual editable document tree,
-authoritative owner-edit storage, source attribution, revision conflicts and
-recall integration, with recovery/Forget included. Index health/rebuild and
-retention need real underlying behavior. See
+The next Memory acceptance must verify the new document browser in the packaged
+app. Broader root/site/routine authority and episodic retention remain incomplete;
+approved-note editing, recall, recovery/Forget and index rebuild have source
+coverage, with the older index already observed natively. See
 [Memory implementation boundary](design/memory-parity-implementation.md).
 Model extraction/usage, errors, file diffs and Dream now also remain open.
 

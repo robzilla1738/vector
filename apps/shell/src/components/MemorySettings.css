@@ -1,4 +1,7 @@
 @layer overrides {
+  .memory-settings[hidden] {
+    display: none !important;
+  }
   .memory-settings[data-memory-view="configure"] > .hint {
     display: none;
   }

@@ -40,7 +40,7 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
     return changed(result);
   }
   if (method === "memory.pipeline.documents") return pipeline.documents(params.workspaceId);
-  if (method === "memory.pipeline.edit") return changed(await pipeline.editClaim(params));
+  if (method === "memory.pipeline.edit") return changed(await pipeline.editDocuments(params));
   if (method === "memory.pipeline.sources") return pipeline.sources(params.workspaceId);
   if (method === "memory.pipeline.inbox") return pipeline.inbox(params.workspaceId);
   if (method === "memory.pipeline.claims") return pipeline.claims(params.workspaceId);

@@ -1,4 +1,4 @@
-import { memoryClaimText, MemoryClaimEditParams } from "@aux/contracts";
+import { memoryClaimText, MemoryDocumentEditParams } from "@aux/contracts";
 import {
   buildMemorySearchIndex,
   validMemorySearchIndex,
@@ -933,7 +933,7 @@ export class MemoryPipeline {
       return {
         generation: state.prior?.generation ?? null,
         documents: state.claims.map((claim) => ({
-          path: `episodic/${new Date(claim.capturedAt).toISOString().slice(0, 10)}/${claim.claimId}.md`,
+          path: `episodic/${new Date(claim.capturedAt).toISOString().slice(0, 10)}.md`,
           updatedAt: claim.ownerEdit?.updatedAt ?? claim.capturedAt,
           claim,
         })),
@@ -941,11 +941,15 @@ export class MemoryPipeline {
     });
   }
 
-  async editClaim(raw: unknown) {
+  async editDocuments(raw: unknown) {
     return this.own(async () => {
-      const input = MemoryClaimEditParams.parse(raw);
+      const input = MemoryDocumentEditParams.parse(raw);
       this.requireSpace(input.workspaceId);
-      if (memoryPasteSensitivity(input.text) || memoryContentSensitivityReason(input.text))
+      if (
+        input.edits.some(
+          (edit) => memoryPasteSensitivity(edit.text) || memoryContentSensitivityReason(edit.text),
+        )
+      )
         throw new AuxError(
           "permission_denied",
           "Remove sensitive details before saving this memory document.",
@@ -957,18 +961,20 @@ export class MemoryPipeline {
             "conflict",
             "Memory changed. Review the latest document before saving your draft.",
           );
-        const original = claims.find((claim) => claim.claimId === input.claimId);
-        if (!original) throw new AuxError("not_found", "This memory document is no longer available.");
-        const edited = MemoryClaimSchema.parse({
-          ...original,
-          ownerEdit: {
-            text: input.text,
-            revision: (original.ownerEdit?.revision ?? 0) + 1,
-            updatedAt: Date.now(),
-          },
-        });
+        const edits = new Map(input.edits.map((edit) => [edit.claimId, edit.text]));
+        if (input.edits.some((edit) => !claims.some((claim) => claim.claimId === edit.claimId)))
+          throw new AuxError("not_found", "This memory document is no longer available.");
+        const updatedAt = Date.now();
         const next = markMemoryContradictions(
-          claims.map((claim) => (claim.claimId === input.claimId ? edited : claim)),
+          claims.map((original) => {
+            const text = edits.get(original.claimId);
+            return text === undefined
+              ? original
+              : MemoryClaimSchema.parse({
+                  ...original,
+                  ownerEdit: { text, revision: (original.ownerEdit?.revision ?? 0) + 1, updatedAt },
+                });
+          }),
         );
         await this.writeGeneration(
           input.workspaceId,
@@ -977,7 +983,7 @@ export class MemoryPipeline {
           [...history, this.snapshot(next)].slice(-10),
           prior,
         );
-        return next.find((claim) => claim.claimId === input.claimId)!;
+        return next.filter((claim) => edits.has(claim.claimId));
       });
     });
   }

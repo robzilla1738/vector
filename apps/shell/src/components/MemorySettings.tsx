@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
+import { MemoryDocumentBrowser } from "./MemoryDocumentBrowser";
 import { MemorySettingsControl } from "./MemorySettingsControl";
 import { SpaceMemoryEditor } from "./SpaceMemoryEditor";
 import { SpaceMemory } from "../settings/sections/SpaceMemory";
@@ -24,6 +25,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
   useEffect(() => {
     useStore.setState({ memoryWorkspaceId: null });
   }, []);
+  const [manageNotes, setManageNotes] = useState(false);
   const [query, setQuery] = useState("");
   const [memory, setMemory] = useState<WorkspaceMemory | null>(null);
   const [error, setError] = useState("");
@@ -117,6 +119,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
       key={`editor:${memory.workspaceId}`}
       memory={memory}
       view={view}
+      showOverview={false}
       onSaved={(value) => {
         if (value.workspaceId !== selectedWorkspace.current) return;
         setMemory(value);
@@ -125,8 +128,8 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
     />
   );
   if (bridge.privateMode) return <p {...staticHintProps}>Space memory is unavailable in private browsing.</p>;
-  return (
-    <div className="memory-settings" data-memory-view={view}>
+  const management = (
+    <>
       <p {...staticHintProps}>
         {view === "overview"
           ? "Review saved preferences, project context and notes for this Space."
@@ -246,6 +249,35 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
         </div>
       )}
       {!spaces.length && <p {...staticHintProps}>Create a Space to save shared notes.</p>}
+    </>
+  );
+  return (
+    <div className="memory-settings-host">
+      <div
+        className="memory-settings"
+        data-memory-view={view}
+        hidden={view === "overview" && !manageNotes && !!memory && memory.workspaceId === selectedWorkspaceId}
+      >
+        {view === "overview" && manageNotes && (
+          <button type="button" className="btn sm" onClick={() => setManageNotes(false)}>
+            Back to documents
+          </button>
+        )}
+        {management}
+      </div>
+      {memory && memory.workspaceId === selectedWorkspaceId ? (
+        <MemoryDocumentBrowser
+          key={`${selectedSpaceId}:${memory.workspaceId}`}
+          memory={memory}
+          active={view === "overview" && !manageNotes}
+          onManage={() => setManageNotes(true)}
+          onSaved={(value) => {
+            if (value.workspaceId !== selectedWorkspace.current) return;
+            setMemory(value);
+            if (query.trim()) setRefresh((current) => current + 1);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
