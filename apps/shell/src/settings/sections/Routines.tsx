@@ -1,3 +1,4 @@
+import { SettingsGroup } from "../../ui";
 import { staticFieldErrorProps, staticFieldProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
@@ -658,87 +659,89 @@ export function RoutinesSettings({ active }: { active: boolean }) {
           </article>
         ))}
       </SettingsField>
-      <SettingsField
-        compact
-        label="Routine suggestions"
-        hint="Suggest saved routines from the current task or page. Scans stay on this device and never start a run."
-        searchTerms={["suggestions", "scan frequency", "skills"]}
-      >
-        <select
-          aria-label="Routine suggestion scan frequency"
-          value={scanMode}
-          disabled={scanBusy}
-          onChange={(event) => {
-            setScanBusy(true);
-            setError("");
-            void call("settings.set", { routineSuggestionScan: event.target.value as typeof scanMode })
-              .catch((reason) => setError(errorMessage(reason)))
-              .finally(() => setScanBusy(false));
-          }}
+      <SettingsGroup>
+        <SettingsField
+          compact
+          label="Routine suggestions"
+          hint="Suggest saved routines from the current task or page. Scans stay on this device and never start a run."
+          searchTerms={["suggestions", "scan frequency", "skills"]}
         >
-          <option value="off">Off</option>
-          <option value="context">When context changes</option>
-          <option value="five-minutes">Every 5 minutes</option>
-        </select>
-      </SettingsField>
-      <SettingsField
-        label="Missed runs and results"
-        hint="Missed read-only checks are combined into one run when Aux resumes. Writes wait for review; overlapping runs are blocked."
-        searchTerms={["catch up", "coalesce", "inbox"]}
-      >
-        {!inbox.length && <p {...staticHintProps}>No automatic results in this Space yet.</p>}
-        {visibleInbox.map((item) => (
-          <div className="field" key={item.run.routineRunId}>
-            <strong>{item.title}</strong>
-            <span {...staticHintProps}>
-              {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
-              {item.run.reason ? ` · ${item.run.reason}` : ""}
-            </span>
-            <button
-              {...smallGhostButtonProps}
-              {...auxNativeButtonTypeProps}
-              onClick={() =>
-                void call("routines.get", { routineId: item.run.routineId })
-                  .then(({ routine }) => openSavedSkill(routine))
-                  .catch(errToast)
-              }
-            >
-              Open routine
-            </button>
-            {item.run.runId && (
+          <select
+            aria-label="Routine suggestion scan frequency"
+            value={scanMode}
+            disabled={scanBusy}
+            onChange={(event) => {
+              setScanBusy(true);
+              setError("");
+              void call("settings.set", { routineSuggestionScan: event.target.value as typeof scanMode })
+                .catch((reason) => setError(errorMessage(reason)))
+                .finally(() => setScanBusy(false));
+            }}
+          >
+            <option value="off">Off</option>
+            <option value="context">When context changes</option>
+            <option value="five-minutes">Every 5 minutes</option>
+          </select>
+        </SettingsField>
+        <SettingsField
+          label="Missed runs and results"
+          hint="Missed read-only checks are combined into one run when Aux resumes. Writes wait for review; overlapping runs are blocked."
+          searchTerms={["catch up", "coalesce", "inbox"]}
+        >
+          {!inbox.length && <p {...staticHintProps}>No automatic results in this Space yet.</p>}
+          {visibleInbox.map((item) => (
+            <div className="field" key={item.run.routineRunId}>
+              <strong>{item.title}</strong>
+              <span {...staticHintProps}>
+                {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
+                {item.run.reason ? ` · ${item.run.reason}` : ""}
+              </span>
               <button
                 {...smallGhostButtonProps}
                 {...auxNativeButtonTypeProps}
-                disabled={!!outcomeBusy}
-                onClick={() => {
-                  setOutcomeBusy(item.run.routineRunId);
-                  setError("");
-                  void call("routines.outcome", { routineRunId: item.run.routineRunId })
-                    .then(setOutcome)
-                    .catch((reason) => setError(errorMessage(reason)))
-                    .finally(() => setOutcomeBusy(""));
-                }}
+                onClick={() =>
+                  void call("routines.get", { routineId: item.run.routineId })
+                    .then(({ routine }) => openSavedSkill(routine))
+                    .catch(errToast)
+                }
               >
-                View result
+                Open routine
               </button>
-            )}
-            {outcome?.run.routineRunId === item.run.routineRunId && (
-              <div {...nativePoliteLiveProps} {...staticHintProps}>
-                <div>
-                  Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> ·{" "}
-                  {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}
-                </div>
-                {outcome.criteria.map((entry) => (
-                  <div key={entry.criterion.criterionId}>
-                    {entry.criterion.description}: {entry.status.replaceAll("_", " ")} ·{" "}
-                    {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
+              {item.run.runId && (
+                <button
+                  {...smallGhostButtonProps}
+                  {...auxNativeButtonTypeProps}
+                  disabled={!!outcomeBusy}
+                  onClick={() => {
+                    setOutcomeBusy(item.run.routineRunId);
+                    setError("");
+                    void call("routines.outcome", { routineRunId: item.run.routineRunId })
+                      .then(setOutcome)
+                      .catch((reason) => setError(errorMessage(reason)))
+                      .finally(() => setOutcomeBusy(""));
+                  }}
+                >
+                  View result
+                </button>
+              )}
+              {outcome?.run.routineRunId === item.run.routineRunId && (
+                <div {...nativePoliteLiveProps} {...staticHintProps}>
+                  <div>
+                    Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> ·{" "}
+                    {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </SettingsField>
+                  {outcome.criteria.map((entry) => (
+                    <div key={entry.criterion.criterionId}>
+                      {entry.criterion.description}: {entry.status.replaceAll("_", " ")} ·{" "}
+                      {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </SettingsField>
+      </SettingsGroup>
       {error && (
         <p {...staticHintProps} {...nativeAlertRoleProps}>
           {error}

@@ -1,52 +1,11 @@
 @layer overrides {
-  .settings-content .quick-ask-settings .field.ui-setting[data-setting="Quick Ask window"] {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-    grid-template-rows: auto 1fr auto;
-    gap: 8px 20px;
-    min-height: 172px;
-    padding: 16px;
-    margin: 0 0 32px;
-    border-radius: var(--r-xl);
-  }
-  .settings-content .quick-ask-settings .field.ui-setting[data-setting="Quick Ask window"] > .setting-label {
-    padding: 0;
-    font-size: var(--fs-md);
-  }
-  .settings-content .quick-ask-settings .field.ui-setting[data-setting="Quick Ask window"] > .hint {
-    grid-column: 1;
-    grid-row: 2;
-    padding: 0;
-    align-self: start;
-    font-weight: var(--fw-regular);
-    line-height: 1.5;
-  }
-  .settings-content
-    .quick-ask-settings
-    .field.ui-setting[data-setting="Quick Ask window"]
-    > .ui-setting-control {
-    grid-column: 1;
-    grid-row: 3;
-    justify-self: start;
-    max-width: 100%;
-  }
-  .settings-content
-    .quick-ask-settings
-    .field.ui-setting[data-setting="Quick Ask window"]
-    > .setting-details {
-    grid-column: 2;
-    grid-row: 1 / span 3;
-    padding: 0;
-    display: flex;
-    align-self: stretch;
-  }
   .quick-ask-preview {
     display: grid;
     place-items: center;
     width: 100%;
     min-height: 140px;
     border-radius: var(--r-lg);
-    padding: 16px;
+    padding: var(--space-4);
     background:
       radial-gradient(ellipse at 75% 75%, var(--accent) 0, transparent 65%),
       linear-gradient(135deg, var(--surface-tertiary), var(--surface-primary));
@@ -54,7 +13,7 @@
   .quick-ask-preview-composer {
     width: 100%;
     max-width: 240px;
-    padding: 12px;
+    padding: var(--space-3);
     border: var(--hairline) solid var(--line-strong);
     border-radius: var(--r-xl);
     background: var(--surface-menu);
@@ -65,49 +24,23 @@
   .quick-ask-preview-composer > div {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 16px;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
   }
   .quick-ask-preview-composer > div > span {
     margin-left: auto;
   }
   .quick-ask-preview-composer svg {
-    width: 12px;
-    height: 12px;
+    width: var(--space-3);
+    height: var(--space-3);
   }
   .quick-ask-preview-composer i {
     display: grid;
     place-items: center;
-    width: 20px;
-    height: 20px;
+    width: var(--space-5);
+    height: var(--space-5);
     border-radius: var(--r-pill);
     background: var(--ink-0);
     color: var(--surface-menu);
-  }
-  .settings-content .quick-ask-settings [data-setting="Global shortcut"] {
-    margin-inline: 0;
-    border-radius: var(--r-xl) var(--r-xl) 0 0;
-  }
-  .settings-content .quick-ask-settings [data-setting="Keyboard shortcut"] {
-    margin-inline: 0;
-    border-radius: 0 0 var(--r-xl) var(--r-xl);
-  }
-  .settings-content
-    .quick-ask-settings:not(:has([data-setting="Keyboard shortcut"]))
-    [data-setting="Global shortcut"] {
-    border-radius: var(--r-xl);
-  }
-  @container settings-content (width < 440px) {
-    .settings-content .quick-ask-settings .field.ui-setting[data-setting="Quick Ask window"] {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .settings-content
-      .quick-ask-settings
-      .field.ui-setting[data-setting="Quick Ask window"]
-      > .setting-details {
-      grid-column: 1;
-      grid-row: 4;
-      margin-top: 8px;
-    }
   }
 }

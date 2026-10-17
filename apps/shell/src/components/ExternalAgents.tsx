@@ -163,9 +163,7 @@ export function ExternalAgents() {
 
   return (
     <section className="external-agents" aria-label="External agents">
-      <SettingsGroup>
-        <CliInstallControl />
-      </SettingsGroup>
+      <CliInstallControl />
       <SettingsGroup title="Remote control">
         <RemoteDebugging />
       </SettingsGroup>

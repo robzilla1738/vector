@@ -7,6 +7,20 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Shared feature cards and Settings tokens — source
+
+CLI and Quick Ask now reuse the same responsive feature-card layout in
+SettingsField. Quick Ask shortcut rows and Routine preferences use SettingsGroup
+instead of title-dependent corner rules. Shared Settings spacing, text sizes and
+weights use the existing design scale; unique reference geometry remains explicit.
+Removed the replaced Quick Ask layout and per-page group styling. The CLI preview
+shows the real supported `aux open` command; installation behavior is unchanged.
+
+Integrated check passed 4,646 tests / 746 files, typecheck and lint in 96.48s
+(`/tmp/aux-settings-feature-check.log`). Subsequent grouping passed typecheck and
+six affected tests across three files. Renderer build passed. Native/source visual
+review of these latest feature cards is pending; current build targets a51e5a915.
+
 ## Developers, Passwords and shared surfaces — source
 
 Developers now uses shared CLI, Remote control and Skills & MCP groups. Passwords
@@ -389,7 +403,8 @@ Reference corpus:182PNG,192TXT and6support files, excluding thumbnails, under
 the owner adds captures. Reopened073overview and075configuration on October17.
 
 Packaged daily-document editing has native evidence; the latest configuration
-layout and retention save/expiry still need native acceptance. Broader root/site/
+layout and retention save passed in the empty c9d878e2 Profile; populated expiry
+still needs native acceptance. Broader root/site/
 routine authority remains incomplete. Approved-note editing, recall, recovery/
 Forget and index rebuild have source coverage and native observations described
 above. See

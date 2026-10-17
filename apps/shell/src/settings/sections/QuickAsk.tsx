@@ -7,7 +7,7 @@ import { bridge, inNativeHost } from "../../bridge";
 import { useSettingsStatusOwner } from "./use-settings-status-owner";
 import { useShortcutLabels } from "../../use-shortcut-label";
 import { SettingsField, SettingsSection } from "../primitives";
-import { Switch } from "../../ui";
+import { SettingsGroup, Switch } from "../../ui";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
@@ -79,7 +79,7 @@ export function QuickAskSettings({
   return (
     <SettingsSection name="Quick Ask" hidden={!active} className="quick-ask-settings">
       <SettingsField
-        compact
+        layout="feature"
         label="Chat with Aux anytime"
         target="Quick Ask window"
         hint="Open a compact chat, then expand it into a full browser window without losing the draft."
@@ -107,47 +107,49 @@ export function QuickAskSettings({
         </button>
       </SettingsField>
       {status && (
-        <SettingsField
-          compact
-          label="Global shortcut"
-          hint={
-            <>
-              Open from any app with <kbd>{key("quick-ask")}</kbd> while Aux is running. Other apps and their
-              contents are not captured.
-            </>
-          }
-          searchTerms={["keyboard", "shortcut", "hotkey"]}
-        >
-          <Switch
-            controlRef={toggleRef}
-            aria-label="Enable Quick Ask global shortcut"
-            disabled={busy || !inNativeHost}
-            checked={status.enabled}
-            onChange={(event) => run("toggle-quick-ask-shortcut", event)}
-          />
-        </SettingsField>
-      )}
-      {status?.enabled && (
-        <SettingsField compact label="Keyboard shortcut" hint="Set a global shortcut for Quick Ask.">
-          <ShortcutsSetting
-            active={active}
-            commandId="quick-ask"
-            disabled={busy || !inNativeHost || privateMode}
-            value={(settings.shortcutOverrides ?? {}) as ShortcutOverrides}
-            onSave={async (shortcutOverrides) => {
-              const owner = getOwner();
-              if (!current(owner) || !inNativeHost || privateMode) return false;
-              if (!(await onSave({ shortcutOverrides }))) return false;
-              if (!current(owner)) return true;
-              read(
-                owner,
-                () => bridge.quickAskShortcut(),
-                (value) => value,
-              );
-              return true;
-            }}
-          />
-        </SettingsField>
+        <SettingsGroup>
+          <SettingsField
+            compact
+            label="Global shortcut"
+            hint={
+              <>
+                Open from any app with <kbd>{key("quick-ask")}</kbd> while Aux is running. Other apps and
+                their contents are not captured.
+              </>
+            }
+            searchTerms={["keyboard", "shortcut", "hotkey"]}
+          >
+            <Switch
+              controlRef={toggleRef}
+              aria-label="Enable Quick Ask global shortcut"
+              disabled={busy || !inNativeHost}
+              checked={status.enabled}
+              onChange={(event) => run("toggle-quick-ask-shortcut", event)}
+            />
+          </SettingsField>
+          {status.enabled && (
+            <SettingsField compact label="Keyboard shortcut" hint="Set a global shortcut for Quick Ask.">
+              <ShortcutsSetting
+                active={active}
+                commandId="quick-ask"
+                disabled={busy || !inNativeHost || privateMode}
+                value={(settings.shortcutOverrides ?? {}) as ShortcutOverrides}
+                onSave={async (shortcutOverrides) => {
+                  const owner = getOwner();
+                  if (!current(owner) || !inNativeHost || privateMode) return false;
+                  if (!(await onSave({ shortcutOverrides }))) return false;
+                  if (!current(owner)) return true;
+                  read(
+                    owner,
+                    () => bridge.quickAskShortcut(),
+                    (value) => value,
+                  );
+                  return true;
+                }}
+              />
+            </SettingsField>
+          )}
+        </SettingsGroup>
       )}
       {(error || status?.error) && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>

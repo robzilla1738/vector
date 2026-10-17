@@ -200,7 +200,9 @@ triggers and native picker styling for Settings and portaled dialogs. Keep nativ
 select keyboard behavior and use the shared focus/dismissal handling.
 
 Use `SettingsField` for searchable labeled rows, `SettingsGroup` or `settings-card`
-for grouped surfaces, and `SettingsDialogControl` for editors. Do not duplicate card
+for grouped surfaces, and `SettingsDialogControl` for editors. `SettingsField`
+provides `surface="plain"` for unboxed sections and `layout="feature"` for the shared
+illustrated feature card used by CLI and Quick Ask. Do not duplicate card
 fills, borders or select geometry in page styles: translucent nested fills compound
 and drift between themes. Page CSS should describe layout unique to that page.
 Add semantic tokens only for a distinct reusable role; reuse existing scale tokens
