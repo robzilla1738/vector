@@ -396,7 +396,11 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                   </div>
                 ))}
               </details>
-              <div className="settings-editor-fields" role="group" aria-label="Server connection">
+              <div
+                className="settings-editor-fields inline-labels"
+                role="group"
+                aria-label="Server connection"
+              >
                 <label>
                   Server name
                   <input
@@ -517,7 +521,7 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                   </>
                 )}
                 <button
-                  {...auxClassButtonProps}
+                  className="btn primary"
                   {...auxNativeButtonTypeProps}
                   disabled={
                     busy ||

@@ -4,7 +4,7 @@
     gap: var(--space-3);
   }
 
-  .outbound-mcp :is(.mcp-register, .mcp-server-card) {
+  .outbound-mcp .mcp-server-card {
     background: var(--settings-card);
     border: 1px solid var(--line);
     border-radius: var(--r-xl);
@@ -59,7 +59,7 @@
   }
 
   @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
-    .outbound-mcp :is(.mcp-register, .mcp-server-card) {
+    .outbound-mcp .mcp-server-card {
       background: var(--bg-0);
     }
   }
@@ -82,6 +82,9 @@
   .mcp-add-editor .mcp-official-connections p {
     margin: var(--space-1) 0;
     color: var(--ink-2);
+  }
+  .mcp-add-editor .settings-editor-fields > .btn.primary {
+    justify-self: end;
   }
   .mcp-add-editor label {
     display: grid;

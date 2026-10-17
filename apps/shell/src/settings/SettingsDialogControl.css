@@ -15,6 +15,16 @@
   .settings-editor-fields > label > :is(input, select, textarea) {
     width: 100%;
   }
+  .settings-editor-fields.inline-labels > label:not(.settings-editor-checkbox) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr);
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+  @container (width < 400px) {
+    .settings-editor-fields.inline-labels > label:not(.settings-editor-checkbox) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
   .settings-editor-checkbox {
     display: flex;
     align-items: center;
@@ -58,6 +68,7 @@
     color: var(--ink-0);
   }
   .settings-preference-editor {
+    container-type: inline-size;
     min-width: 0;
     color: var(--ink-1);
     font-size: var(--fs-sm);

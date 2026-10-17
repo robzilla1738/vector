@@ -211,7 +211,10 @@ The5c4a43a07 preview retired normally through original launcher **92379**.
 App **93690**, API **49536**, disposable Profile **aux-dev-ZXr486** and the native
 lock were verified absent. CUA binding `settingsBatchApp` is stale. Its final
 capture49 confirmed password editor focus/dismissal geometry and exposed cramped
-transfer buttons, now corrected in source. The next integrated preview is pending.
+transfer buttons, now corrected in source. The first replacement build (launcher98844) was retired normally during early
+compilation to fold in reference-derived neutral primary-button tokens,384/512px
+dialog widths and MCP label alignment. Its builder and lock were verified absent.
+The consolidated replacement preview is pending.
 Never embed the full mock renderer inside Aux.
 
 The following populated Memory evidence is from earlier disposable previews:

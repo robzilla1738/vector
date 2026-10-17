@@ -237,3 +237,8 @@ Selection and Night shift save owners recognize an exact pending broadcast befor
 the request ACK without treating it as another window's edit. This does not admit
 unrelated saved revisions or revive retired window/Private owners; success still
 requires the original command acknowledgement.
+
+Primary buttons use neutral semantic foreground/background tokens in both themes,
+matching the reference's primary control role. Brand/link/selection accents remain
+separate. Regular dialogs are384px and wide setup dialogs512px; fields can use the
+shared inline-label layout, which stacks within narrow editor containers.

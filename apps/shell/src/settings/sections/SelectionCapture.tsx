@@ -177,7 +177,6 @@ function ActionRow({
       <SettingsDialogControl
         active={active}
         defaultOpen={defaultOpen}
-        size="wide"
         label={`Edit ${action.name || "action"}`}
         action="⋯"
       >
@@ -232,6 +231,20 @@ function ActionRow({
             >
               ↓
             </PreferenceAction>
+          </div>
+          <textarea
+            aria-label={`Action ${index + 1} template`}
+            maxLength={2000}
+            rows={3}
+            value={action.template}
+            disabled={disabled}
+            onChange={(event) => change(action.id, { template: event.target.value })}
+          />
+          <p className="hint">
+            Use {"{text}"} for quoted text, {"{code}"} for code, or {"{image}"} for a capture. Edits stay in
+            this draft until you save Selection &amp; Capture.
+          </p>
+          <div className="settings-editor-actions">
             <PreferenceAction
               command="preview-selection-action"
               scopeId={scopeId}
@@ -252,18 +265,6 @@ function ActionRow({
               Remove
             </PreferenceAction>
           </div>
-          <textarea
-            aria-label={`Action ${index + 1} template`}
-            maxLength={2000}
-            rows={3}
-            value={action.template}
-            disabled={disabled}
-            onChange={(event) => change(action.id, { template: event.target.value })}
-          />
-          <p className="hint">
-            Use {"{text}"} for quoted text, {"{code}"} for code, or {"{image}"} for a capture. Edits stay in
-            this draft until you save Selection &amp; Capture.
-          </p>
           {previewContent}
           {saveControls}
         </div>

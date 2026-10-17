@@ -272,14 +272,14 @@
     shape-rendering: geometricPrecision;
   }
   .btn.primary {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--button-primary);
+    color: var(--button-primary-ink);
     box-shadow: none;
     font-weight: var(--fw-medium);
   }
   .btn.primary:hover {
     filter: none;
-    background: color-mix(in srgb, var(--accent) 86%, var(--ink-1));
+    background: color-mix(in oklab, var(--button-primary) 90%, transparent);
   }
   .btn.ghost {
     background: transparent;

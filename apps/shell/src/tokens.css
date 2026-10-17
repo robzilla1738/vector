@@ -101,7 +101,7 @@
     --space-8: 40px;
     --space-9: 56px;
     --dialog-width: 384px;
-    --dialog-width-wide: 560px;
+    --dialog-width-wide: 512px;
 
     /* Exact geometry for reference-derived tab joins and inset surfaces. */
     --r-exact-sm: 4px;
@@ -310,6 +310,8 @@
     --brand: #38bdf8;
     --accent: var(--brand);
     --accent-ink: #171717;
+    --button-primary: oklch(98.5% 0 0 / 85%);
+    --button-primary-ink: oklch(14.5% 0 0 / 85%);
     --accent-soft: color-mix(in srgb, var(--brand) 16%, transparent);
     --accent-line: color-mix(in srgb, var(--brand) 32%, transparent);
     --ring: color-mix(in srgb, var(--brand) 8%, transparent);
@@ -447,6 +449,8 @@
     --line: rgb(0 0 0 / 10%);
     --line-strong: rgb(0 0 0 / 15%);
     --brand: #0ea5e9;
+    --button-primary: oklch(14.5% 0 0 / 95%);
+    --button-primary-ink: oklch(98.5% 0 0 / 95%);
     --focus-line: rgb(0 0 0 / 55%);
     --selection: color-mix(in srgb, var(--brand) 22%, transparent);
     --diff-add: color-mix(in srgb, var(--ok) 16%, transparent);
