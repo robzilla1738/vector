@@ -1059,6 +1059,9 @@
   .settings-content .appearance-preferences .drawer-section {
     display: none;
   }
+  .conversation-history {
+    container: chat-history / inline-size;
+  }
   .conversation-history-list {
     overflow: auto;
     margin: 0 auto;
@@ -1241,14 +1244,12 @@
   .history-items.grid .history-conversation-wrap {
     min-width: 0;
     aspect-ratio: 1;
-    border: 0;
+    border: 1px solid var(--line);
     border-radius: var(--r-xl);
     background: var(--surface-secondary);
-    box-shadow: var(--shadow-card);
   }
   .history-items.grid .history-conversation-wrap:hover {
     background: var(--surface-primary);
-    box-shadow: var(--shadow-pop);
   }
   .history-items.grid .history-conversation {
     position: absolute;
@@ -1284,7 +1285,10 @@
     top: var(--space-1);
     right: var(--space-1);
   }
-  .history-card-preview {
+  .history-card-preview.home-excerpt {
+    display: block;
+    -webkit-line-clamp: unset;
+    mask-image: linear-gradient(var(--mask-opaque) 85%, transparent);
     position: absolute;
     top: 58px;
     left: var(--space-3);
@@ -1301,12 +1305,23 @@
   .history-items.grid .history-rename input {
     width: 100%;
   }
-  @media (width < 1024px) {
+  .history-card-preview .answer-markdown {
+    color: inherit;
+  }
+  @container chat-history (width < 800px) {
+    .history-items.grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @container chat-history (width < 620px) {
     .history-items.grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
-  @media (width < 640px) {
+  @container chat-history (width < 440px) {
+    .conversation-history-list {
+      padding-inline: var(--space-2);
+    }
     .history-items.grid {
       grid-template-columns: 1fr;
     }

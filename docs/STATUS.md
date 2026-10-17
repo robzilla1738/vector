@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+Chat History cards (references 112/114/117): card columns now follow the actual
+chat pane width instead of the whole browser window, with four/three/two/one
+columns as space decreases. Narrow list/search layout uses the same container.
+Cards use a quiet border instead of elevated shadows. Removed the inherited
+two-line home-excerpt clamp so card previews fill their available height, with
+muted text and a bottom fade, as in the reference.
+
+Reviewed real ChatList/ChatExcerpt components with synthetic data at 860, 580 and
+360px pane widths; saved `/tmp/aux-parity-2026-10-16/aux-chat-card-responsive-vite.png`.
+Temporary fixture files were removed. This is source component evidence, not
+integrated native acceptance. Reference 114's Status/Projects submenu structure
+still differs from Aux's active/archive and Space filter; it remains open.
+
+Validation: typecheck/lint passed; full test run had 4,622 passes and one 30s
+native CDP reconnect timeout. The unchanged CDP suite passed all nine tests on
+isolated retry (1.30s). Final renderer build passed (2.42s). Logs:
+`/tmp/aux-chat-layout-check.log`, `/tmp/aux-chat-layout-retry.log`, and
+`/tmp/aux-chat-layout-build.log`. No runtime source changes. Native preview remains
+`6dba6ccbb` under launcher 4136. Full parity remains incomplete.
+
 Memory document layout batch: History now uses the available Settings pane with
 one page heading and a flat revision-list/document split. Removed repeated field
 headings and nested cards; added icons to Memory subnavigation. Selected individual
