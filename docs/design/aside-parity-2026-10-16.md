@@ -1,5 +1,31 @@
 # Aside UI parity — October 16, 2026
 
+Bookmark context-menu follow-up: the Library row now opens its actions on
+right-click, ContextMenu or Shift+F10, and uses the shared semantic Menu surface.
+Overflow ArrowDown/ArrowUp opens the first/last enabled action. Shared menu
+navigation supplies arrows, Home/End, typeahead, Escape and Tab behavior; closing
+returns focus to the originating row control. Disabled/selection states close
+and detach row actions. Bookmark editor inputs retain their native text menus.
+The previous dialog-only Popover implementation was removed.
+
+Validation: typecheck/lint passed. The full check passed 741 suites / 4,598 tests;
+seven suites failed to load dependency-cache files during overlapping Vitest
+runs. Sequential retry passed all seven / 46 tests in 1.93s. A focused context-menu
+regression passed (keyboard and pointer entry, disabled action skipping, End,
+Escape focus return, busy dismissal and native input context preservation).
+Its first run exposed jsdom's missing scrollIntoView; the test now stubs/restores
+that browser API and passes without unhandled errors. Final typecheck passed;
+renderer build 2.13s. Logs `/tmp/aux-bookmark-context-{check,retry,focused,types,build}.log`.
+Avoid overlapping Vitest runs against the shared cache.
+
+This follow-up postdates candidate 03e1dc205 and still needs native visual
+acceptance. Current launcher 59717 / session 56581 remains live; linker 60319
+confirmed active at launcher elapsed 4m27s. Do not restart or modify the compiling
+native checkout. Existing native candidate still needs sort/undo and group/split
+walkthrough. Corpus rescan found 182 PNGs and 192 text files (ten text-only native
+menu inventories), plus six index/metadata files; no missing image assumption.
+Clipboard and separate native Library routes remain open; full parity incomplete.
+
 Bookmark menu destination batch (reference 170): source now orders Edit/Delete,
 Private window, new tab group, new tab, new window and split view, with Preview
 last and a separator between editing and navigation. Clipboard actions remain

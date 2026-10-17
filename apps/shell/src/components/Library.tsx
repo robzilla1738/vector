@@ -168,6 +168,7 @@ const SavedPageRow = memo(function SavedPageRow({
   cancelEditor(): void;
 }) {
   const editTitle = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const isEditing = !!editing;
   useEffect(() => {
     if (!isEditing || busy) return;
@@ -228,6 +229,7 @@ const SavedPageRow = memo(function SavedPageRow({
   );
   return (
     <div
+      ref={rowRef}
       className={`library-item${selected ? " selected" : ""}${view === "reading" && item.readAt ? " read" : ""}`}
     >
       {view === "bookmarks" && selecting && (
@@ -271,6 +273,7 @@ const SavedPageRow = memo(function SavedPageRow({
         ) : null}
       </button>
       <SavedPageActions
+        rowRef={rowRef}
         title={title}
         menu={view === "bookmarks"}
         hidden={view === "bookmarks" && selecting}
