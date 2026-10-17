@@ -21,7 +21,8 @@ becomes horizontal in narrow panes. It retains the original scoped Library
 commands and native storage methods. The covered stage is inert while the browser
 chrome remains accessible; Close and Escape leave the page without a modal scrim
 or focus trap. Bookmarks adds a collapsible folder tree using native node IDs and
-child order, synchronized with the breadcrumb and results. Compact bookmark rows
+child order across the bookmarks bar and the other permanent roots, synchronized
+with the breadcrumb and results. Compact bookmark rows
 use page-session icons and an anchored action dialog for preview, edit and delete;
 reading-list controls retain their inline presentation. An Organize menu owns
 bookmark creation, selection and import/export; the file input remains mounted

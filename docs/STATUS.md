@@ -1,5 +1,18 @@
 # Aux status — October 16, 2026
 
+Bookmark root-navigation correction: the rail now traverses all native permanent
+roots, including Other bookmarks and Mobile bookmarks, rather than only the
+bookmarks bar's child IDs. Native root titles are retained; roots can collapse,
+and external selection still reveals ancestors. Selected folders use the accent
+pill treatment from reference 168, with Aux's brand token.
+Validation: integrated typecheck/lint and all 4,629 tests across 745 files passed
+in 98.36s; renderer build passed in 2.97s. Logs:
+`/tmp/aux-bookmark-roots-check.log`, `/tmp/aux-bookmark-roots-build.log`.
+Native acceptance is pending: active launcher 32186/session 11165 is still linking
+source 122155dbe and predates this follow-up. Do not restart it or claim the root
+correction is in that build. The next consolidation must include this source.
+
+
 Native Library consolidation is running for source `122155dbe`: launcher **32186**,
 exec session **11165**, log `/tmp/aux-library-consolidated-native.log`.
 The previous launcher 18613 was retired with SIGTERM; launcher/app 22360 exited,

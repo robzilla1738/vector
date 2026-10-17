@@ -1922,3 +1922,28 @@ build instead of starting another. Build completion and native acceptance remain
 pending. Next walkthrough: About source, Library entry, new folder/bookmark,
 row edit/delete/undo and persistence, search radius and narrow layout; then the
 previously pending Memory/Quick Ask/chat-card acceptance.
+
+History group-view audit (reference 165): this is Chromium's journey-cluster
+view, with query labels spanning visits to different sites, per-cluster actions,
+hide-item controls and paginated results. Aux's `HistoryEntrySchema` currently
+contains only URL/title/pageId/visitedAt and `history-methods.ts` has no cluster
+query or hide operation. Date or hostname grouping cannot stand in for this.
+The pinned Chromium checkout provides `HistoryClustersServiceFactory` and
+`history_clusters::QueryClustersState::LoadNextBatchOfClusters`; its existing
+`HistoryClustersHandler` is the reference for query reset, continuation and
+HideVisits. The service factory is original-Profile-only for regular Profiles;
+any Aux bridge integration must preserve private-window isolation and cannot
+redirect private queries to owner history. No cluster service integration or
+native acceptance is claimed in this audit.
+
+Bookmark root-navigation correction: the rail now traverses all native permanent
+roots, including Other bookmarks and Mobile bookmarks, rather than only the
+bookmarks bar's child IDs. Native root titles are retained; roots can collapse,
+and external selection still reveals ancestors. Selected folders use the accent
+pill treatment from reference 168, with Aux's brand token.
+Validation: integrated typecheck/lint and all 4,629 tests across 745 files passed
+in 98.36s; renderer build passed in 2.97s. Logs:
+`/tmp/aux-bookmark-roots-check.log`, `/tmp/aux-bookmark-roots-build.log`.
+Native acceptance is pending: active launcher 32186/session 11165 is still linking
+source 122155dbe and predates this follow-up. Do not restart it or claim the root
+correction is in that build. The next consolidation must include this source.

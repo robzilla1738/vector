@@ -209,9 +209,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .library-folder-destination:is(:hover, [aria-current="location"]) {
+  .library-folder-destination:hover {
     background: var(--bg-hover);
     color: var(--ink-0);
+  }
+  .library-folder-destination[aria-current="location"] {
+    border-radius: var(--r-pill);
+    background: var(--accent);
+    color: var(--on-accent);
   }
   .library-page[data-view="history"] .library-day {
     padding: 20px 16px;

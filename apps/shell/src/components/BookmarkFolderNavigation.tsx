@@ -25,7 +25,12 @@ export function BookmarkFolderNavigation({
     setCollapsed((previous) => new Set([...previous].filter((id) => !parents.has(id))));
   }, [snapshot, selectedId]);
   const byId = new Map(snapshot.folders.map((item) => [item.nodeId, item]));
-  const root = byId.get(snapshot.rootId);
+  const roots = [
+    snapshot.rootId,
+    ...snapshot.folders
+      .filter((folder) => folder.parentId === null && folder.nodeId !== snapshot.rootId)
+      .map((folder) => folder.nodeId),
+  ];
   const renderFolder = (id: string, ancestors: Set<string>): ReactNode => {
     const folder = byId.get(id);
     if (!folder || ancestors.has(id)) return null;
@@ -77,17 +82,7 @@ export function BookmarkFolderNavigation({
   };
   return (
     <nav className="library-folder-navigation" aria-label="Browse bookmark folders">
-      <button
-        type="button"
-        className="library-folder-destination"
-        disabled={disabled}
-        aria-current={selectedId === snapshot.rootId ? "location" : undefined}
-        onClick={() => onSelect(snapshot.rootId)}
-      >
-        {shellIconFolderClosed}
-        <span>Bookmarks</span>
-      </button>
-      <ul>{root?.childIds.map((id) => renderFolder(id, new Set([snapshot.rootId])))}</ul>
+      <ul>{roots.map((id) => renderFolder(id, new Set()))}</ul>
     </nav>
   );
 }

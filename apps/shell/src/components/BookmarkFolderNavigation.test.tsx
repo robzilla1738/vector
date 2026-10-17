@@ -81,9 +81,21 @@ it("keeps same-named folders distinct and reveals a selected descendant after na
   await act(async () => sameNames[0]!.click());
   expect(select).toHaveBeenCalledWith("2");
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Collapse Research"]')!.click());
-  expect(host.querySelector("ul ul")?.hasAttribute("hidden")).toBe(true);
+  expect(
+    host
+      .querySelector('[aria-label="Expand Research"]')
+      ?.closest("li")
+      ?.querySelector("ul")
+      ?.hasAttribute("hidden"),
+  ).toBe(true);
   await render("4");
-  expect(host.querySelector("ul ul")?.hasAttribute("hidden")).toBe(false);
+  expect(
+    host
+      .querySelector('[aria-label="Collapse Research"]')
+      ?.closest("li")
+      ?.querySelector("ul")
+      ?.hasAttribute("hidden"),
+  ).toBe(false);
   expect(host.querySelector('[aria-current="location"]')?.textContent).toBe("Sources");
 });
 it("does not navigate while a bookmark mutation is pending", async () => {
@@ -96,4 +108,56 @@ it("does not navigate while a bookmark mutation is pending", async () => {
     button.click();
   }
   expect(select).not.toHaveBeenCalled();
+});
+
+it("includes Chromium's separate permanent roots and their descendants", async () => {
+  const select = vi.fn();
+  const nativeSnapshot: BookmarkFolderSnapshot = {
+    ...snapshot,
+    folders: [
+      ...snapshot.folders,
+      {
+        nodeId: "5",
+        parentId: null,
+        index: 0,
+        title: "Other bookmarks",
+        path: ["Other bookmarks"],
+        permanent: true,
+        childIds: ["6"],
+      },
+      {
+        nodeId: "6",
+        parentId: "5",
+        index: 0,
+        title: "Saved research",
+        path: ["Other bookmarks", "Saved research"],
+        permanent: false,
+        childIds: [],
+      },
+      {
+        nodeId: "7",
+        parentId: null,
+        index: 0,
+        title: "Mobile bookmarks",
+        path: ["Mobile bookmarks"],
+        permanent: true,
+        childIds: [],
+      },
+    ],
+  };
+  await act(async () =>
+    root.render(
+      <BookmarkFolderNavigation
+        snapshot={nativeSnapshot}
+        selectedId="6"
+        disabled={false}
+        onSelect={select}
+      />,
+    ),
+  );
+  expect(host.querySelector("nav > ul")?.children).toHaveLength(3);
+  const buttons = [...host.querySelectorAll<HTMLButtonElement>(".library-folder-destination")];
+  await act(async () => buttons.find((button) => button.textContent === "Mobile bookmarks")!.click());
+  expect(select).toHaveBeenCalledWith("7");
+  expect(host.querySelector('[aria-current="location"]')?.textContent).toBe("Saved research");
 });
