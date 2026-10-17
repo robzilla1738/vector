@@ -1,5 +1,40 @@
 # Aside UI parity — October 16, 2026
 
+Native consolidation and walkthrough: `6dba6ccbba8af3285595111b1a8f2e91845db5b6`
+compiled successfully in 8m22.12s and is verified in About. Launcher **4136** /
+session **59138** now owns app **8559**, disposable Profile **aux-dev-9V5SsP**,
+API `http://127.0.0.1:58624`. Preserve this launcher's cleanup ownership. Build log:
+`/tmp/aux-memory-navigation-native.log`.
+
+Native evidence: Memory subpages navigate correctly; browser Back returned from
+Configure to Overview with an unsaved synthetic draft intact. Saved that draft,
+imported and approved one synthetic note using local preview only, inspected its
+formatted History document, restored it, selected the earlier revision, and
+confirmed both revisions survived Settings Reload. Quick Ask's new card rendered;
+Open Quick Ask launched the compact window, and Open in Aux preserved an unsent
+synthetic draft. No provider inference, owner Profile or personal data was used.
+Captures under `/tmp/aux-parity-2026-10-16/`:
+`aux-memory-history-native-6dba.png`, `aux-quick-ask-native-6dba.png`,
+`aux-quick-ask-expanded-draft-native-6dba.png`.
+
+The walkthrough exposed a real Quick Ask startup toast: “Routing requires an
+owned regular Aux window.” The link-routing boot listener drained regular-window
+receipts in compact windows. It now starts only in normal, non-private windows;
+native authorization remains unchanged. Four regression cases cover compact/
+private exclusion and normal receipt synchronization/cleanup. A second finding:
+`.memory-space-list` flex styling overrode its hidden attribute. The explicit
+hidden rule now suppresses the redundant one-Space selector. The source-preview
+Memory switches and hidden selector were visually verified; capture
+`aux-memory-switches-vite.png`.
+
+Validation for these fixes: integrated typecheck/lint and 4,623 tests across 743
+files passed (109.63s); renderer build passed in 2.68s. Logs:
+`/tmp/aux-compact-routing-check.log`, `/tmp/aux-compact-routing-build.log`.
+The routing guard, hidden-selector fix and switch styling are newer than the
+running native shell. The missing-toast acceptance needs later native
+consolidation. Global-shortcut registration, narrow native Memory, the document
+tree/metrics/retention gaps and full Aside parity remain open.
+
 Memory control presentation (reference 077): Space memory use, extraction,
 browsing memory and page-content recall now use the shared switch appearance.
 Within Memory Settings, enable rows have rounded surfaces with the switch aligned

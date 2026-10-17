@@ -28,6 +28,8 @@ export const mount: FeatureMount = {
   settingsSections: [{ category: "Link Routing", component: RoutingSettings }],
   overlays: [RoutingOverlay],
   boot: () => {
+    // Routing receipts belong to regular browser windows, never compact surfaces.
+    if (bridge.windowKind !== "normal" || bridge.privateMode) return;
     let live = true,
       running = false,
       again = false;

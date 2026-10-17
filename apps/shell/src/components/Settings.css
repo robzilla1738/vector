@@ -54,6 +54,9 @@
     min-width: 0;
     max-width: 100%;
   }
+  .memory-space-list[hidden] {
+    display: none;
+  }
   .memory-space-list > .btn {
     min-width: 0;
     max-width: 100%;
