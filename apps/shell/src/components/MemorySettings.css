@@ -52,18 +52,27 @@
   }
 
   .memory-index-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px;
+    gap: 12px 16px;
+    padding: 14px 10px 10px;
     margin-bottom: 24px;
     border-radius: var(--r-lg);
     background: var(--surface-secondary);
-    border-bottom: 3px solid var(--line);
   }
-  .memory-index-card[data-ready="true"] {
-    border-bottom-color: var(--ok);
+  .memory-index-card::after {
+    content: "";
+    grid-column: 1 / -1;
+    height: 4px;
+    border-radius: var(--r-pill);
+    background: var(--line);
+  }
+  .memory-index-card[data-ready="true"]::after {
+    background: var(--ok);
+  }
+  .memory-index-card > div {
+    padding-inline: 4px;
   }
   .memory-index-card strong {
     font-size: var(--fs-md);

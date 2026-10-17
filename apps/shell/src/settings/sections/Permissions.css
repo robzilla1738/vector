@@ -62,7 +62,7 @@
     color: var(--ink-2);
     font-size: var(--fs-sm);
     font-weight: var(--fw-regular);
-    margin: 28px 12px 10px;
+    margin: var(--space-7) 0 var(--space-2-5);
   }
   .settings-content .permissions-settings > h3:first-child {
     margin-top: 0;
@@ -229,14 +229,6 @@
   .settings-content .permissions-settings .field.ui-setting.compact > .ui-setting-control {
     max-width: none;
   }
-  .settings-content .permissions-settings .seg {
-    width: auto;
-    max-width: 100%;
-  }
-  .settings-content .permissions-settings .seg button {
-    white-space: nowrap;
-    text-transform: none;
-  }
   .permission-file-details {
     margin-top: 8px;
     color: var(--ink-2);
@@ -248,19 +240,6 @@
   .permission-file-details p {
     margin-top: 8px;
     line-height: 1.5;
-  }
-  @media (max-width: 1000px) {
-    .settings-content .permissions-settings .field.ui-setting.compact[data-setting="Agent mode"] {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .settings-content
-      .permissions-settings
-      .field.ui-setting.compact[data-setting="Agent mode"]
-      > .ui-setting-control {
-      grid-column: 1;
-      grid-row: auto;
-      justify-self: start;
-    }
   }
 }
 
@@ -274,21 +253,5 @@
     ) {
     margin-block: 20px 0;
     border-radius: var(--r-lg);
-  }
-}
-
-@layer overrides {
-  .agent-behavior-card {
-    background: var(--surface-secondary);
-    border-radius: var(--r-lg);
-    overflow: hidden;
-  }
-  .settings-content .agent-behavior-card > .field {
-    border-radius: 0;
-    margin: 0;
-    background: transparent;
-  }
-  .agent-behavior-card > .field + .field {
-    border-top: 1px solid var(--line);
   }
 }

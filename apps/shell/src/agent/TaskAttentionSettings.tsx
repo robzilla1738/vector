@@ -86,7 +86,7 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
   return (
     <div className="task-attention-settings">
       <h3>Chat</h3>
-      <div className="task-attention-card">
+      <div className="settings-card">
         <Field
           compact
           label="Task notifications"
@@ -198,35 +198,40 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
             onChange={(event) => writeTaskSound(event.target.checked ? lastSound : "off")}
           />
         </Field>
-        <Field
-          compact
-          label="System task notifications"
-          hint="Also show generic alerts on this Mac while Aux is in the background. Task content stays in Aux."
-        >
-          <AttentionSwitch
-            command="toggle-system-task-notices"
-            label="System task notifications"
-            disabled={!active}
-            checked={system}
-            read={readSystemTaskNotices}
-            write={writeSystemTaskNotices}
-          />
-        </Field>
-        <Field
-          compact
-          label="Focus Mode"
-          hint="Pause task notices and sounds. Pending questions remain in Home and Tasks."
-        >
-          <AttentionSwitch
-            command="toggle-task-focus-mode"
-            label="Focus Mode"
-            disabled={!active}
-            checked={focus}
-            read={readTaskFocusMode}
-            write={writeTaskFocusMode}
-          />
-        </Field>
       </div>
+      <details className="task-notification-details">
+        <summary>Notification delivery</summary>
+        <div className="settings-card">
+          <Field
+            compact
+            label="System task notifications"
+            hint="Also show generic alerts on this Mac while Aux is in the background. Task content stays in Aux."
+          >
+            <AttentionSwitch
+              command="toggle-system-task-notices"
+              label="System task notifications"
+              disabled={!active}
+              checked={system}
+              read={readSystemTaskNotices}
+              write={writeSystemTaskNotices}
+            />
+          </Field>
+          <Field
+            compact
+            label="Focus Mode"
+            hint="Pause task notices and sounds. Pending questions remain in Home and Tasks."
+          >
+            <AttentionSwitch
+              command="toggle-task-focus-mode"
+              label="Focus Mode"
+              disabled={!active}
+              checked={focus}
+              read={readTaskFocusMode}
+              write={writeTaskFocusMode}
+            />
+          </Field>
+        </div>
+      </details>
     </div>
   );
 }

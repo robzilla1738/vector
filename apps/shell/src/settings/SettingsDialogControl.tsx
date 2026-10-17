@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "../ui/dialog";
 import { smallButtonProps } from "../ui/button-props";
-import { shellIconClose } from "../ui/icons";
+import { shellIconClose, shellIconRight } from "../ui/icons";
 import "./SettingsDialogControl.css";
 
 /** Compact settings entry; the existing editor mounts only while its dialog is open. */
@@ -9,12 +9,14 @@ export function SettingsDialogControl({
   active,
   label,
   action,
+  navigation = false,
   children,
   showClose = typeof children !== "function",
 }: {
   active: boolean;
   label: string;
   action: string;
+  navigation?: boolean;
   children: ReactNode | ((close: () => void) => ReactNode);
   showClose?: boolean;
 }) {
@@ -27,6 +29,7 @@ export function SettingsDialogControl({
     <>
       <button
         {...smallButtonProps}
+        className={navigation ? "icon-btn" : smallButtonProps.className}
         ref={trigger}
         type="button"
         aria-label={label}
@@ -35,7 +38,7 @@ export function SettingsDialogControl({
         disabled={!active}
         onClick={() => setOpen(true)}
       >
-        {action}
+        {navigation ? shellIconRight : action}
       </button>
       {open && active && (
         <Dialog

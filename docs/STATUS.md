@@ -7,7 +7,27 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Shared Settings control parity — local renderer, not packaged
+## General, Agents and Memory layout consolidation — source
+
+General now groups search/new-tab preferences, picture in picture, and language/
+spellcheck rows; import editors use navigation chevrons. Agents uses the shared
+select styling for File access and Agent mode, keeps their existing confirmation
+and revision checks, and groups the related behavior controls. Notification delivery
+details remain available in a disclosure. Memory configuration uses an inset index
+status line. Profiles uses the existing person icon.
+
+Both Agents cards now reuse `settings-card`; removed their duplicate surface rules.
+Dropdowns reuse control-height and spacing tokens plus one semantic fill token.
+Design ownership is documented in ARCHITECTURE for future changes.
+
+General and Agents were visually reviewed in the local mock renderer inside the
+disposable native app at full viewport. This is source evidence, not packaged
+acceptance. Integrated check passed 4,646 tests / 746 files, typecheck and lint
+(`/tmp/aux-agents-controls-check.log`); subsequent layout edits passed typecheck
+and affected General/search, Permissions/attention and dialog checks. Final token
+consolidation passed typecheck (`/tmp/aux-settings-token-check.log`).
+
+## Shared Settings control parity — packaged d6e6c016a
 
 The owner requested substantial batches focused on 1:1 Aside design parity.
 One shared stylesheet now covers single-choice dropdowns across Settings and
@@ -24,8 +44,10 @@ menu, and Escape closing only the picker while preserving Settings/the dialog.
 The visual pass found and fixed Escape leaking into parent dismissal handlers.
 Captures: aux-settings-shared-picker-dark.jpg, aux-settings-shared-picker-light.jpg,
 aux-settings-shared-picker-dialog.jpg under /tmp/aux-parity-2026-10-16/.
-This is renderer evidence, not packaged acceptance or full parity. Native product
-remains498b9a550; launcher45942 retains ownership. Reference rescan182PNG/192TXT.
+Native d6e6c016a also passed Theme picker rendering and Escape preserving Settings.
+Retention showed Never forget / 30 days / 90 days, opened the shorter-retention
+confirmation, and Cancel preserved the existing policy. Saving/expiry native
+acceptance remains pending. Reference rescan182PNG/192TXT. No full-parity claim.
 
 The combined batch also completes the pending source implementation of episodic
 retention: Never forget (default),30days,90days. A shorter choice requires an
@@ -35,24 +57,24 @@ MEMORY.md stays. Existing extraction watermarks prevent reimport. New recall
 withholds expired notes before idle cleanup. Cleanup runs at startup/idle through
 the same recovery-generation and derivative invalidation path as Forget, including
 when extraction is paused. Offline exported packages remain outside this cleanup.
-Native retention acceptance remains pending.
+Native retention save/expiry acceptance remains pending.
 
 Validation: integrated retention check passed4,645tests/746files in102.51s
 (/tmp/aux-retention-check.log). After policy conflict and shared control changes,
 typecheck/lint and86affected tests in6files passed in2.08s
 (/tmp/aux-settings-controls-check.log). Final typecheck and3dismissal tests passed,
 including native-picker Escape ownership (/tmp/aux-settings-controls-final.log).
-No unchanged full suite repeated; no native rebuild for this source-only batch.
+No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-Product **498b9a550**, launcher **45942**, app **47141**, runtime **47159**,
-exec **11272**, API port **55283**, disposable Profile **aux-dev-htWP4i**.
-Log `/tmp/aux-memory-documents-native-build.log`; native build passed in **9m10.29s**
-and runtime staged/booted. CUA **memoryDocsApp** is live. Preserve launcher cleanup
-ownership. Prior34011/app35335/runtime35351, Profileaux-dev-Q8EcMu and lock retired
-normally and were verified removed. memoryIndexApp is stale. About confirms clean
-source498b9a55031c8cb8e3c789968a9987330d6e6da1, Chromium154.0.8037.98 andABI9021388e….
+Product **d6e6c016a**, launcher **53737**, app **57774**, runtime **57793**,
+exec **64339**, API port **57712**, disposable Profile **aux-dev-m7OkWl**.
+Log `/tmp/aux-shared-settings-native-build.log`; native build passed in **9m52.23s**
+and runtime staged/booted. CUA **sharedSettingsApp** is live. Preserve launcher
+cleanup ownership. Prior45942/app47141/runtime47159, Profileaux-dev-htWP4i and lock
+retired normally and were verified removed. memoryDocsApp is stale. About confirms
+clean sourced6e6c016afbb1e63bda89e71529fd13ddcd31839, Chromium154.0.8037.98 andABI9021388e….
 
 Native acceptance: created synthetic root MEMORY.md through Edit/Save and observed
 Markdown plus actual update time. Imported two fictional paper-garden/workshop

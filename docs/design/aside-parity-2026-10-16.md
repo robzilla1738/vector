@@ -1,5 +1,14 @@
 # Aside UI parity — October 16, 2026
 
+October17 Settings consolidation: General grouping/import chevrons, shared native
+selects for Agent mode and File access, notification delivery disclosure, and inset
+Memory index status. Removed duplicated Agents card styles in favor of shared
+Settings cards; control geometry uses existing scale tokens and a semantic fill.
+General/Agents renderer inspection passed; integrated check 4,646tests/746files.
+Packaged d6e6c016a passed Theme dropdown Escape ownership and retention confirmation
+Cancel. Current layout source is newer than that package. See STATUS for ownership
+and remaining native acceptance.
+
 October17 Home/Settings source batch: Recent work spacing152→100px; Configure and
 Import dialog triggers have bordered button surfaces; Home gains the upper-right
 Profile/settings entry with actual Aux Profiles, Usage & Budgets and Settings

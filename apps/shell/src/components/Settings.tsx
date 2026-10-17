@@ -229,7 +229,7 @@ export function Settings() {
             overview: "Memory",
             history: "Memory history",
             context: "Context awareness",
-            configure: "Memory configuration",
+            configure: "Configure memories",
           }[memoryView]
         : category === "Site permissions"
           ? "Privacy & Security"
@@ -509,6 +509,17 @@ export function Settings() {
         />
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
         {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
+        <GeneralSettings
+          active={category === "General"}
+          searching={searching}
+          subview={subview}
+          settings={settings}
+          onSave={set}
+          onOpenEditor={openEditor}
+          editorViews={editorViews}
+          refreshVersion={refreshVersion}
+          onIndexChange={setGeneralIndexVersion}
+        />
         <FeatureSettings
           category={
             !searching && !subview && (category !== "Connections" || connectionTab === "Services")
@@ -590,17 +601,6 @@ export function Settings() {
           active={visible("Passwords & Autofill")}
           settings={settings}
           onSave={set}
-        />
-        <GeneralSettings
-          active={category === "General"}
-          searching={searching}
-          subview={subview}
-          settings={settings}
-          onSave={set}
-          onOpenEditor={openEditor}
-          editorViews={editorViews}
-          refreshVersion={refreshVersion}
-          onIndexChange={setGeneralIndexVersion}
         />
       </div>
     </SettingsShell>

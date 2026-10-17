@@ -65,7 +65,7 @@ export function GeneralSettings({
           <IndexedField
             compact
             label="New tab mode"
-            hint="Choose whether a new tab starts with Search or the Ask composer. Private windows always start with Search."
+            hint="Open new tabs in Search or Ask. Private windows use Search."
           >
             <select
               aria-label="New tab mode"
@@ -76,6 +76,8 @@ export function GeneralSettings({
               <option value="ask">Ask</option>
             </select>
           </IndexedField>
+        </SettingsGroup>
+        <SettingsGroup>
           <IndexedField
             compact
             label="Automatic picture in picture"
@@ -83,18 +85,12 @@ export function GeneralSettings({
           >
             <PictureInPictureSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField
-            compact
-            label="Spell check"
-            hint="Check spelling as you type in websites and the browser."
-          >
-            <SpellCheckSetting active={active && !searching && !subview} />
-          </IndexedField>
         </SettingsGroup>
-        <SettingsGroup title="Languages">
+        <SettingsGroup>
           <IndexedField
             compact
-            label="Languages"
+            label="Preferred languages"
+            target="Languages"
             hint="Choose the languages websites receive in order of preference. The app language follows macOS."
           >
             <SettingsDialogControl
@@ -105,17 +101,25 @@ export function GeneralSettings({
               {(close) => <LanguagesSetting active={active && !searching && !subview} onClose={close} />}
             </SettingsDialogControl>
           </IndexedField>
+          <IndexedField
+            compact
+            label="Spell check"
+            hint="Check spelling as you type in websites and the browser."
+          >
+            <SpellCheckSetting active={active && !searching && !subview} />
+          </IndexedField>
         </SettingsGroup>
         <SettingsGroup title="Import">
           <IndexedField
             compact
             label="Import browser data"
-            hint="Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed."
+            hint="Preview and import bookmarks, history, and tabs from another browser."
           >
             <SettingsDialogControl
               active={active && !searching && !subview}
               label="Import browser data"
               action="Import"
+              navigation
             >
               <ImportDataSetting />
             </SettingsDialogControl>
@@ -129,6 +133,7 @@ export function GeneralSettings({
               active={active && !searching && !subview}
               label="Import bookmarks"
               action="Import"
+              navigation
             >
               {(close) => <BookmarkImportSetting active={active && !searching && !subview} onClose={close} />}
             </SettingsDialogControl>

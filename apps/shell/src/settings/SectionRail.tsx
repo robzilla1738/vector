@@ -14,6 +14,7 @@ import {
   shellIconLock,
   shellIconModel,
   shellIconResult,
+  shellIconPerson,
   shellIconSun,
 } from "../ui/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
@@ -41,7 +42,7 @@ interface RailItem {
 const items: readonly RailItem[] = [
   { label: "General", category: "General", group: "Personal", icon: shellIconGear },
   { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
-  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconChats, gate: "profiles" },
+  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconPerson, gate: "profiles" },
   { label: "Usage & Budgets", category: "Usage & Budgets", group: "Personal", icon: shellIconModel },
   {
     label: "Downloads",

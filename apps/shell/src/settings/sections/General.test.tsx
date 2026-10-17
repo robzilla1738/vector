@@ -45,7 +45,7 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
         "About Aux",
         "Spell check",
         "On startup",
-        "Languages",
+        "Preferred languages",
         "Automatic picture in picture",
         "Keep Aux running in the background",
         "Keyword engines",

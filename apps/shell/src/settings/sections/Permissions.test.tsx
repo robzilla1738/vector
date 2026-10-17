@@ -15,6 +15,13 @@ afterEach(async () => {
   host.remove();
   vi.unstubAllGlobals();
 });
+async function choose(label: string, value: string) {
+  const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
 const settings = { agentMode: "auto", agentPolicyRevision: 7, agentPolicies: [] };
 it("shows actual Auto defaults and keeps person-only categories unavailable", async () => {
   await act(async () => root.render(<PermissionsSettings active settings={settings} onSave={vi.fn()} />));
@@ -26,7 +33,9 @@ it("shows actual Auto defaults and keeps person-only categories unavailable", as
     true,
   );
   expect(host.querySelector<HTMLSelectElement>('[aria-label="CAPTCHA permission"]')!.disabled).toBe(true);
-  expect(host.querySelector('[aria-label="Agent mode"] [aria-checked="true"]')!.textContent).toBe("Auto");
+  expect(
+    host.querySelector<HTMLSelectElement>('select[aria-label="Agent mode"]')!.selectedOptions[0]!.textContent,
+  ).toBe("Auto");
 });
 it("writes category policies separately with the original revision", async () => {
   const save = vi.fn().mockResolvedValue(true);
@@ -44,11 +53,7 @@ it("writes category policies separately with the original revision", async () =>
 it("requires the Skip confirmation opt-in before saving mode", async () => {
   const save = vi.fn().mockResolvedValue(true);
   await act(async () => root.render(<PermissionsSettings active settings={settings} onSave={save} />));
-  await act(async () =>
-    [...host.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
-      .find((button) => button.textContent === "Skip confirmation")!
-      .click(),
-  );
+  await choose("Agent mode", "full");
   expect(save).not.toHaveBeenCalled();
   expect(document.body.textContent).toContain("without asking or Touch ID");
   await act(async () =>
@@ -70,12 +75,11 @@ it("saves file access with its own revision and no agent-policy mutation", async
       />,
     ),
   );
-  expect(host.querySelector('[aria-label="File access"] [aria-checked="true"]')!.textContent).toBe("Guard");
-  await act(async () =>
-    [...host.querySelectorAll<HTMLButtonElement>('[aria-label="File access"] [role="radio"]')]
-      .find((button) => button.textContent === "Read-only")!
-      .click(),
-  );
+  expect(
+    host.querySelector<HTMLSelectElement>('select[aria-label="File access"]')!.selectedOptions[0]!
+      .textContent,
+  ).toBe("Guard");
+  await choose("File access", "read-only");
   expect(save).toHaveBeenCalledExactlyOnceWith({ fileAccessMode: "read-only", fileAccessRevision: 11 });
 });
 it("requires explicit Full file access opt-in before saving", async () => {
@@ -89,11 +93,7 @@ it("requires explicit Full file access opt-in before saving", async () => {
       />,
     ),
   );
-  await act(async () =>
-    [...host.querySelectorAll<HTMLButtonElement>('[aria-label="File access"] [role="radio"]')]
-      .find((button) => button.textContent === "Full")!
-      .click(),
-  );
+  await choose("File access", "full");
   expect(save).not.toHaveBeenCalled();
   expect(document.body.textContent).toContain("credentials and permission data remain protected");
   await act(async () =>
@@ -108,11 +108,7 @@ it.each(["inactive", "revision"])("retires a Full file opt-in when its %s owner 
   const save = vi.fn().mockResolvedValue(true);
   const initial = { ...settings, fileAccessMode: "guard", fileAccessRevision: 3 };
   await act(async () => root.render(<PermissionsSettings active settings={initial} onSave={save} />));
-  await act(async () =>
-    [...host.querySelectorAll<HTMLButtonElement>('[aria-label="File access"] [role="radio"]')]
-      .find((button) => button.textContent === "Full")!
-      .click(),
-  );
+  await choose("File access", "full");
   await act(async () =>
     root.render(
       <PermissionsSettings

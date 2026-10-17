@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentPolicyCategorySchema, AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
-import { FileAccessSettingsSchema } from "@aux/contracts/api";
+import { FileAccessModeSchema, FileAccessSettingsSchema } from "@aux/contracts/api";
 import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } from "@aux/contracts";
 import { SettingsField, SettingsSection } from "../primitives";
 import { Popover } from "../../ui/popover";
@@ -8,7 +8,6 @@ import { Plus } from "../../ui/icons";
 import { AgentBehaviorSettings } from "./AgentBehavior";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { PolicyGroups } from "../../features/permissions/PolicyGroups";
-import { Segmented } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
 import { smallButtonProps } from "../../ui/button-props";
 import { staticHintProps } from "../../ui/class-props";
@@ -168,8 +167,46 @@ export function PermissionsSettings({
   return (
     <SettingsSection name="Permissions" hidden={!active} className="permissions-settings">
       {!bridge.privateMode && <TaskAttentionSettings active={active} />}
-      <h3>Agent access</h3>
-      <div className="agent-behavior-card">
+      <div className="settings-card">
+        <SettingsField
+          compact
+          label="File access"
+          hint="Choose which files Aux can read and change."
+          description="Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode."
+          details={
+            <details className="permission-file-details">
+              <summary>What each access mode allows</summary>
+              <p>
+                Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects,
+                and reviewed writable Space folders. Read-only keeps user files unchanged; Aux can still write
+                its own scratch files and artifacts. Full reads and writes Home and reviewed external folders.
+                Credentials and permission data remain protected in every mode.
+              </p>
+            </details>
+          }
+          searchTerms={[
+            "guard",
+            "read-only",
+            "full",
+            "filesystem",
+            "sandbox",
+            "SSH",
+            "Keychain",
+            "sensitive folders",
+          ]}
+        >
+          <select
+            aria-label="File access"
+            value={fileAccess.fileAccessMode}
+            disabled={!active || busy}
+            onChange={(event) => void changeFileAccess(FileAccessModeSchema.parse(event.target.value))}
+          >
+            <option value="read-only">Read only</option>
+            <option value="guard">Guard</option>
+            <option value="full">Full access</option>
+          </select>
+        </SettingsField>
+        <AgentBehaviorSettings active={active} settings={settings} onSave={onSave} />
         <SettingsField
           compact
           label="Agent mode"
@@ -179,47 +216,8 @@ export function PermissionsSettings({
           <AgentModeControl active={active} disabled={busy} policy={policy} onSave={onSave} />
         </SettingsField>
         {error && <p role="alert">{error}</p>}
-        <AgentBehaviorSettings active={active} settings={settings} onSave={onSave} />
       </div>
       <h3>File permissions</h3>
-      <SettingsField
-        compact
-        label="File access"
-        hint="Choose which files Aux can read and change."
-        description="Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode."
-        details={
-          <details className="permission-file-details">
-            <summary>What each access mode allows</summary>
-            <p>
-              Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and
-              reviewed writable Space folders. Read-only keeps user files unchanged; Aux can still write its
-              own scratch files and artifacts. Full reads and writes Home and reviewed external folders.
-              Credentials and permission data remain protected in every mode.
-            </p>
-          </details>
-        }
-        searchTerms={[
-          "guard",
-          "read-only",
-          "full",
-          "filesystem",
-          "sandbox",
-          "SSH",
-          "Keychain",
-          "sensitive folders",
-        ]}
-      >
-        <Segmented<FileAccessSettings["fileAccessMode"]>
-          label="File access"
-          value={fileAccess.fileAccessMode}
-          onChange={(mode) => void changeFileAccess(mode)}
-          items={[
-            { value: "guard", label: "Guard", disabled: busy },
-            { value: "read-only", label: "Read-only", disabled: busy },
-            { value: "full", label: "Full", disabled: busy },
-          ]}
-        />
-      </SettingsField>
       <SettingsField compact label="Local folders" hint="Review the folders shared with Aux in each Space.">
         <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
           Manage folders

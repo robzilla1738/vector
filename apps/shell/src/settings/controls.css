@@ -8,12 +8,12 @@
     gap: var(--space-2);
     min-width: 0;
     max-width: 100%;
-    min-height: 32px;
-    height: 32px;
-    padding: 5px 10px;
+    min-height: var(--control-h-lg);
+    height: var(--control-h-lg);
+    padding: calc((var(--control-h-lg) - 20px) / 2 - var(--hairline)) var(--space-2-5);
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--ink-0) 4%, transparent);
+    background: var(--settings-control-fill);
     color: var(--ink-0);
     box-shadow: none;
     font: inherit;
@@ -28,8 +28,8 @@
     max-height: min(360px, calc(100dvh - 24px));
     overflow: auto;
     overscroll-behavior: contain;
-    padding: 6px;
-    margin-block: 4px;
+    padding: var(--space-1-5);
+    margin-block: var(--space-1);
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-xl);
     background: var(--surface-menu);
@@ -52,8 +52,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    min-height: 32px;
-    padding: 6px 10px;
+    min-height: var(--control-h-lg);
+    padding: var(--space-1-5) var(--space-2-5);
     border: 0;
     border-radius: var(--r-md);
     background: transparent;
@@ -92,11 +92,11 @@
     cursor: default;
   }
   .settings-content .ui-setting-control .anchored-trigger {
-    min-height: 32px;
-    padding: 5px 10px;
+    min-height: var(--control-h-lg);
+    padding: calc((var(--control-h-lg) - 20px) / 2 - var(--hairline)) var(--space-2-5);
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--ink-0) 4%, transparent);
+    background: var(--settings-control-fill);
     color: var(--ink-0);
     font-size: var(--fs-sm);
     line-height: 20px;

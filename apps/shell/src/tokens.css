@@ -152,6 +152,8 @@
 
     --control-h: 28px;
     --control-h-lg: 32px;
+    /* Shared Settings control fill follows the current foreground in both themes. */
+    --settings-control-fill: color-mix(in srgb, var(--ink-0) 4%, transparent);
     --control-h-hero: 48px;
     --hit: 32px;
     --chip-h: 24px;

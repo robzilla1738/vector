@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentMode, AgentPolicySettings } from "@aux/contracts";
 import { bridge } from "../../bridge";
-import { Segmented } from "../../ui";
+import { AgentModeSchema } from "@aux/contracts/agent-policy";
 import { Menu, useConfirm } from "../../ui/dialog";
 import { shellIconCheck, shellIconDown, shellIconPlay, shellIconShield } from "../../ui/icons";
 import "./AgentModeControl.css";
@@ -154,16 +154,16 @@ export function AgentModeControl({
           )}
         </>
       ) : (
-        <Segmented<AgentMode>
-          label="Agent mode"
+        <select
+          aria-label="Agent mode"
           value={policy.agentMode}
-          onChange={(mode) => void change(mode)}
-          items={[
-            { value: "auto", label: "Auto", disabled: disabled || busy },
-            { value: "ask", label: "Ask first", disabled: disabled || busy },
-            { value: "full", label: "Skip confirmation", disabled: disabled || busy },
-          ]}
-        />
+          disabled={!active || disabled || busy}
+          onChange={(event) => void change(AgentModeSchema.parse(event.target.value))}
+        >
+          <option value="ask">Ask first</option>
+          <option value="auto">Auto</option>
+          <option value="full">Skip confirmation</option>
+        </select>
       )}
       {error && <p role="alert">{error}</p>}
       {confirmation}

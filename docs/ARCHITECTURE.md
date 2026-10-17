@@ -191,3 +191,18 @@ Trusted header filtering receives the actual network endpoint, or for a pure cac
 Native History and download dismissal use the original browser Profile directly. Download dismissal retains file bytes and live transfer ownership; ordered updates prevent stale snapshots from restoring dismissed completed rows. Space presentation is native browser state, while workspace identity comes only from authenticated runtime mappings. Tracker exceptions share the existing durable native blocking snapshot. Downloaded source updates carry the original policy generation and controls; they cannot overwrite a later human change. Browser exception controls remain available without Node.
 
 Configured model destinations retain the original account, connection revision, run and cancellation checks. Managed restrictions, explicit policy and handoffs apply before the default model-admission decision. A genuinely unsent model request can park through its own continuation; it is not represented by an invented tool call. Stop retires that continuation with the original run.
+
+## Settings design ownership
+
+Settings uses the shared spacing, radius, typography and control-size tokens in
+`apps/shell/src/tokens.css`. `settings/controls.css` owns single-choice dropdown
+triggers and native picker styling for Settings and portaled dialogs. Keep native
+select keyboard behavior and use the shared focus/dismissal handling.
+
+Use `SettingsField` for searchable labeled rows, `SettingsGroup` or `settings-card`
+for grouped surfaces, and `SettingsDialogControl` for editors. Do not duplicate card
+fills, borders or select geometry in page styles: translucent nested fills compound
+and drift between themes. Page CSS should describe layout unique to that page.
+Add semantic tokens only for a distinct reusable role; reuse existing scale tokens
+for ordinary spacing and sizes. Reference-specific geometry may remain explicit
+when it is genuinely unique.

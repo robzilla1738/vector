@@ -187,13 +187,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Permissions",
-    label: "Agent mode",
-    description: "Choose when Aux asks before taking action.",
-    target: "Agent mode",
-    searchTerms: ["auto", "ask first", "full auto", "Touch ID"],
-  },
-  {
-    category: "Permissions",
     label: "File access",
     description:
       "Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode.",
@@ -208,6 +201,13 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
       "Keychain",
       "sensitive folders",
     ],
+  },
+  {
+    category: "Permissions",
+    label: "Agent mode",
+    description: "Choose when Aux asks before taking action.",
+    target: "Agent mode",
+    searchTerms: ["auto", "ask first", "full auto", "Touch ID"],
   },
   {
     category: "Permissions",
@@ -636,8 +636,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "General",
     label: "New tab mode",
-    description:
-      "Choose whether a new tab starts with Search or the Ask composer. Private windows always start with Search.",
+    description: "Open new tabs in Search or Ask. Private windows use Search.",
     target: "New tab mode",
   },
   {
@@ -649,22 +648,21 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
-    label: "Spell check",
-    description: "Check spelling as you type in websites and the browser.",
-    target: "Spell check",
-  },
-  {
-    category: "General",
-    label: "Languages",
+    label: "Preferred languages",
     description:
       "Choose the languages websites receive in order of preference. The app language follows macOS.",
     target: "Languages",
   },
   {
     category: "General",
+    label: "Spell check",
+    description: "Check spelling as you type in websites and the browser.",
+    target: "Spell check",
+  },
+  {
+    category: "General",
     label: "Import browser data",
-    description:
-      "Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed.",
+    description: "Preview and import bookmarks, history, and tabs from another browser.",
     target: "Import browser data",
   },
   {

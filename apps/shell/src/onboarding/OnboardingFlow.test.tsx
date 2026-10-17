@@ -458,14 +458,17 @@ it("offers the real Auto mode in the AI step and saves only the original policy 
     agentPolicies: [],
   };
   await render(initial("model"));
-  expect(document.querySelector('[aria-label="Agent mode"] [aria-checked="true"]')!.textContent).toBe("Auto");
+  expect(
+    document.querySelector<HTMLSelectElement>('select[aria-label="Agent mode"]')!.selectedOptions[0]!
+      .textContent,
+  ).toBe("Auto");
   expect(document.body.textContent).toContain("Ask first is the default");
   expect(document.querySelector('button[aria-label*="permissions"]')).toBeNull();
-  await act(async () =>
-    [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Agent mode"] [role="radio"]')]
-      .find((button) => button.textContent === "Ask first")!
-      .click(),
-  );
+  await act(async () => {
+    const mode = document.querySelector<HTMLSelectElement>('select[aria-label="Agent mode"]')!;
+    mode.value = "ask";
+    mode.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   expect(rpc).toHaveBeenCalledWith("settings.set", { agentMode: "ask", agentPolicyRevision: 8 });
   expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "runs.start")).toBe(false);
 });
