@@ -13,6 +13,7 @@ import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
+import { MemoryHistory } from "../../components/MemoryHistory";
 import { MemoryDocument } from "../../components/MemoryDocument";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
@@ -594,13 +595,11 @@ function SpaceMemoryContent({
             >
               Memory history · {history.length} revisions
             </PipelineControl>
-            {history.map((revision) => (
-              <div className="field" key={revision.revisionId}>
-                <p>
-                  {new Date(revision.capturedAt).toLocaleString()} · {revision.claimCount} notes
-                </p>
-                <MemoryDocument text={revision.summary || "No approved notes."} />
+            <MemoryHistory
+              revisions={history}
+              restore={(revision) => (
                 <PipelineControl
+                  key={revision.revisionId}
                   command="restore-space-memory-revision"
                   scopeId={`${workspaceId}:${revision.revisionId}`}
                   disabled={busy}
@@ -613,8 +612,8 @@ function SpaceMemoryContent({
                 >
                   Restore this revision
                 </PipelineControl>
-              </div>
-            ))}
+              )}
+            />
           </details>
         </>
       )}

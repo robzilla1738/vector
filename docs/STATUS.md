@@ -1,5 +1,27 @@
 # Aux status — October 16, 2026
 
+Memory history presentation (reference 074): replaced the repeated full-revision
+stack with a selectable revision list and one document detail pane. Dates, note
+counts and source counts use existing revision data. Restore remains bound to
+the selected revision through the existing scoped command, and selection falls
+back to the first available revision when a refresh removes the prior one.
+Below 560px content width, the bounded list stacks above the document.
+
+Validation: `npm run check` passed typecheck, lint and 4,618 tests across 742
+files (93.01s); renderer build passed in 2.26s. A regression verifies selection,
+restore targeting, removed-revision fallback and the empty state. Logs:
+`/tmp/aux-memory-history-check.log`, `/tmp/aux-memory-history-build.log`.
+Wide/narrow rendering and revision switching were inspected using a temporary
+Vite fixture with synthetic notes and a disabled Restore action; the fixture was
+removed afterward. Captures: `/tmp/aux-parity-2026-10-16/aux-memory-history-wide-vite.png`
+and `aux-memory-history-narrow-vite.png`. This also visually checks the shared
+Memory document headings, paragraphs and lists, but is not an integrated native
+Memory acceptance. The native shell remains `c7b770bfe` under launcher 88765.
+
+Memory nested navigation, document tree and extraction metrics remain open;
+the revision browser is inside the existing history disclosure. Reference rescan
+still finds 380 non-thumbnail files. Full parity is not complete.
+
 Quick Ask presentation pass (reference 103): the page now starts with a
 split introduction card, compact composer illustration and the existing Open
 Quick Ask action. The enable/shortcut rows form a separate rounded group; when
