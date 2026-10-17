@@ -152,6 +152,7 @@ export class SpaceMemoryStore {
     files: Map<string, string>,
     history: MemoryRevision[],
     prior: MemoryGeneration | null,
+    beforeCommit?: () => void,
   ) {
     const generation = `g-${randomUUID()}`;
     const keyName = this.keyName(workspaceId, generation);
@@ -233,6 +234,7 @@ export class SpaceMemoryStore {
       if ((await this.secrets.readSecret(keyName)).value !== factor.toString("base64"))
         throw new Error("Space memory key could not be confirmed.");
       this.repo.transaction(() => {
+        beforeCommit?.();
         if (this.generation(workspaceId)?.generation !== prior?.generation)
           throw new AuxError("conflict", "Space memory changed while its generation was prepared.");
         previous = this.rows(workspaceId);

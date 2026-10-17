@@ -31,6 +31,37 @@ is claimed. CUA bindings from retired previews must not be reused: a stale bindi
 can launch the default Profile. Check the owned app PID and disposable Profile
 argument before creating a new binding. Only disposable Profiles are authorized.
 
+## Model-based Memory extraction — integrated source
+
+The production sentence splitter is replaced by a budget-admitted structured
+request on the selected connection's fast route. It selects at most20exact quotes
+from32,000report characters, without tools. Original source eligibility and the
+review inbox remain; source-run tokens/costs are never reused as extraction usage.
+The operation records its own model invoices, input/output/cache usage, known or
+estimated cost, duration and safe failure codes. History shows proposed notes and
+an original-control retry for failures. Completed sources retain watermarks;
+failed requests can retry without duplicating successful notes.
+
+Per-Space queues preserve simultaneous completions. Source content/eligibility,
+policy, model generation and operation lease are checked before dispatch and at
+the actual encrypted publication point. Pause/shutdown cancel uncommitted work
+while joining native key writes. Forget all cancels/joins active and queued
+sources and records their retirement so a later extraction cannot revive them.
+Activity remains encrypted and follows recovery and Forget. Retired direct model
+transports now mark their pre-network refusal as undispatched for budget accounting.
+
+Integrated `npm run check` passed typecheck, lint and4,719tests/754files in126.16s
+(`/tmp/aux-model-memory-integrated-check.log`). The final queue refinement passed
+runtime rebuild and38focused tests in2.43s; Forget retirement passed rebuild and
+54focused tests in2.51s (`/tmp/aux-model-memory-forget-tests.log`). Extraction/UI
+metadata and original Settings controls passed39tests in2.24s. The RPC result
+declaration is split into typed domains to avoid TypeScript's oversized-inference
+limit while preserving validators. No unchanged full suite was repeated.
+
+Real-provider extraction and native populated/error/light/narrow comparison remain
+pending. USER/TAXONOMY/site/routine document authority, actual file diffs and Dream
+remain open; proposed-note disclosures are not file-change receipts.
+
 ## Compact Quick Ask and recent downloads — integrated source
 
 Quick Ask uses the same conversation/draft owner with a92px draft floor, real
@@ -148,7 +179,7 @@ source is newer than those accepted previews.
   stock155, plus actual provider prompt/token/cache/latency evidence. Run phase
   performance acceptance without reusing unmatched154stock numbers.
 - R5: supported subscription setup/inference; combined provider picker; Memory
-  USER/TAXONOMY/site/routine authority, model extraction/usage/errors/diffs/Dream;
+  USER/TAXONOMY/site/routine authority, real-model extraction acceptance, file diffs/Dream;
   real channel persistence/transports/pairing/replies; standalone routine lifecycle;
   cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification
   acceptance. See the implementation boundaries in `docs/design/`.

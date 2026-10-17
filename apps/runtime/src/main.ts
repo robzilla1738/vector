@@ -30,6 +30,7 @@ import { readRuntimeIdentity } from "./api/runtime-identity.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore, contentMemoryExcerpt } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
+import { extractMemoryNotes } from "./services/memory-extractor.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 import { McpOAuthService } from "./services/mcp-oauth.js";
 import { OutboundMcpService } from "./services/outbound-mcp.js";
@@ -443,7 +444,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         : undefined,
     memoryPipeline: () =>
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
-        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID)
+        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID, {
+            generation: () => runtimeServices.settings.modelCacheGeneration(),
+            extract: (input) => {
+              const settings = runtimeServices.settings;
+              return extractMemoryNotes(
+                {
+                  repo,
+                  budget: accountBudget,
+                  model: settings.model(),
+                  modelId: settings.agentRoute("fast").modelId,
+                  models: settings.registryModels(),
+                },
+                input,
+              );
+            },
+          })
         : undefined,
     pages: () =>
       new PageService({

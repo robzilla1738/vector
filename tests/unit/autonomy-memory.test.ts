@@ -1,3 +1,4 @@
+import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,7 +56,7 @@ it("consolidates the real protected pipeline under a lease, rebuilds recall, and
       return { value: secrets.get(name)! };
     },
   };
-  const pipeline = new MemoryPipeline(repo, native, "fixture");
+  const pipeline = new MemoryPipeline(repo, native, "fixture", fixtureMemoryExtractor);
   try {
     pipeline.setPolicy(workspace.workspaceId, false);
     await expect(pipeline.consolidate(workspace.workspaceId)).rejects.toThrow(/Enable/);

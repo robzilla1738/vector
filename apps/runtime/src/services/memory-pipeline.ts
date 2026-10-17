@@ -46,6 +46,7 @@ import type { NativeBridge } from "../native.js";
 import { consolidateMemoryClaims, markMemoryContradictions } from "./night-memory.js";
 import { SpaceMemoryStore, type MemoryGeneration, type MemoryRevision } from "./space-memory-store.js";
 import { renderObservation } from "./observation-render.js";
+import type { MemoryExtractor, MemoryExtractionResult } from "./memory-extractor.js";
 
 export type RecoverySpaceMemory = {
   workspaceId: string;
@@ -66,6 +67,10 @@ export class MemoryPipeline {
   private closing?: Promise<void>;
   private updates = new Set<Promise<unknown>>();
   private pending = new Set<Promise<unknown>>();
+  private extractions = new Map<string, AbortController>();
+  private extractionQueues = new Map<string, Promise<unknown>>();
+  private extractionEpochs = new Map<string, object>();
+  private extractionSources = new Map<string, Set<string>>();
   private pastePreviews = new Map<
     string,
     {
@@ -78,6 +83,7 @@ export class MemoryPipeline {
     private repo: Repo,
     secrets: Secrets,
     profileId: string,
+    private readonly extractor?: MemoryExtractor,
   ) {
     if (!profileId) throw new Error("Memory pipeline requires a Profile identity.");
     this.storage = new SpaceMemoryStore(repo, secrets, profileId);
@@ -86,6 +92,7 @@ export class MemoryPipeline {
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
+    for (const controller of this.extractions.values()) controller.abort();
     for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
     this.pastePreviews.clear();
     // Rejected work is still joined: keep the original operation error with its caller.
@@ -108,7 +115,7 @@ export class MemoryPipeline {
     return pending;
   }
 
-  private leased<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
+  private leased<T>(workspaceId: string, work: (checkLease: () => void) => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new AuxError("cancelled", "Space memory updates are closed."));
     const update = this.updateWithLease(workspaceId, work);
     this.updates.add(update);
@@ -119,7 +126,10 @@ export class MemoryPipeline {
     return update;
   }
 
-  private async updateWithLease<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
+  private async updateWithLease<T>(
+    workspaceId: string,
+    work: (checkLease: () => void) => Promise<T>,
+  ): Promise<T> {
     const owner = randomUUID();
     const now = Date.now();
     this.repo.db
@@ -130,8 +140,15 @@ export class MemoryPipeline {
       .run(workspaceId, owner, now + 5 * 60_000);
     if (claimed.changes !== 1)
       throw new AuxError("conflict", "Space memory is being updated. Try again after it finishes.");
+    const checkLease = () => {
+      const lease = this.repo.db
+        .prepare("SELECT owner,expires_at FROM memory_pipeline_leases WHERE workspace_id=?")
+        .get(workspaceId) as { owner: string; expires_at: number } | undefined;
+      if (this.closed || lease?.owner !== owner || lease.expires_at <= Date.now())
+        throw new AuxError("cancelled", "The original Space memory operation retired.");
+    };
     try {
-      return await work();
+      return await work(checkLease);
     } finally {
       this.repo.db
         .prepare("DELETE FROM memory_pipeline_leases WHERE workspace_id=? AND owner=?")
@@ -160,7 +177,12 @@ export class MemoryPipeline {
   setPolicy(workspaceId: string, enabled: boolean) {
     if (this.closed) throw new AuxError("cancelled", "Space memory is closed.");
     const policy = MemoryPipelinePolicySchema.parse({ ...this.policy(workspaceId), workspaceId, enabled });
-    if (!enabled) this.clearPastePreviews(workspaceId);
+    if (!enabled) {
+      this.clearPastePreviews(workspaceId);
+      this.extractions.get(workspaceId)?.abort();
+      if (this.extractionQueues.has(workspaceId)) this.extractionEpochs.set(workspaceId, {});
+      else this.extractionEpochs.delete(workspaceId);
+    }
     this.repo.setSetting(`memoryPipelinePolicy:${workspaceId}`, policy);
     return policy;
   }
@@ -558,6 +580,7 @@ export class MemoryPipeline {
     prior: MemoryGeneration | null,
     imports?: MemoryPasteReceipt[],
     activity?: MemoryExtraction[],
+    beforeCommit?: () => void,
   ) {
     const previous =
       imports === undefined || activity === undefined ? await this.readClaims(workspaceId) : null;
@@ -573,7 +596,7 @@ export class MemoryPipeline {
       ["handbook.md.enc", this.handbook(claims)],
       ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
     ]);
-    await this.storage.write(workspaceId, files, history, prior);
+    await this.storage.write(workspaceId, files, history, prior, beforeCommit);
   }
 
   private clearPastePreviews(workspaceId: string) {
@@ -788,15 +811,37 @@ export class MemoryPipeline {
     });
   }
 
-  async extractRun(workspaceId: string, runId: string, trigger: MemoryExtraction["trigger"] = "manual") {
-    return this.own(() => this.extractRunOwned(workspaceId, runId, trigger));
+  extractRun(workspaceId: string, runId: string, trigger: MemoryExtraction["trigger"] = "manual") {
+    const previous = this.extractionQueues.get(workspaceId);
+    const epoch = this.extractionEpochs.get(workspaceId) ?? {};
+    this.extractionEpochs.set(workspaceId, epoch);
+    const sources = this.extractionSources.get(workspaceId) ?? new Set<string>();
+    sources.add(runId);
+    this.extractionSources.set(workspaceId, sources);
+    const pending = this.own(async () => {
+      // A failed source keeps its own error; the next completed source must still run.
+      await previous?.catch(() => {});
+      if (this.extractionEpochs.get(workspaceId) !== epoch)
+        throw new AuxError("cancelled", "The original memory extraction queue retired.");
+      return this.extractRunOwned(workspaceId, runId, trigger);
+    });
+    this.extractionQueues.set(workspaceId, pending);
+    const finish = () => {
+      if (this.extractionQueues.get(workspaceId) === pending) {
+        this.extractionQueues.delete(workspaceId);
+        this.extractionSources.delete(workspaceId);
+        this.extractionEpochs.delete(workspaceId);
+      }
+    };
+    void pending.then(finish, finish);
+    return pending;
   }
 
   private async extractRunOwned(workspaceId: string, runId: string, trigger: MemoryExtraction["trigger"]) {
     const started = performance.now();
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory extraction first.");
-    return this.leased(workspaceId, async () => {
+    return this.leased(workspaceId, async (checkLease) => {
       const run = this.repo.getRun(runId);
       if (!run || run.status !== "completed" || run.config?.contextWorkspaceId !== workspaceId)
         throw new AuxError("conflict", "Only a completed run from this Space can be extracted.");
@@ -811,10 +856,11 @@ export class MemoryPipeline {
           .get(workspaceId, runId)
       )
         return { extracted: 0 };
-      const report = this.report(run) ?? "";
+      const sourceReport = this.report(run);
+      const report = sourceReport ?? "";
       const { claims, inbox, history, prior, activity } = await this.readClaims(workspaceId);
       if (
-        activity.some((entry) => entry.sourceRunId === runId) ||
+        activity.some((entry) => entry.sourceRunId === runId && entry.status !== "failed") ||
         [...claims, ...inbox].some((claim) => claim.sourceRunId === runId)
       ) {
         this.repo.db
@@ -824,14 +870,42 @@ export class MemoryPipeline {
           .run(workspaceId, runId, Date.now());
         return { extracted: 0 };
       }
-      const at = Date.now();
-      const additions = report
-        .split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z])/u)
-        .map((text) => text.trim())
-        .filter((text) => text.length >= 20)
-        .slice(0, 20)
-        .map((text) => {
-          const quote = text.slice(0, 2000);
+      const controller = new AbortController();
+      if (inbox.length >= 200)
+        throw new AuxError(
+          "conflict",
+          "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
+        );
+      const modelGeneration = this.extractor?.generation();
+      const checkCurrent = () => {
+        controller.signal.throwIfAborted();
+        checkLease();
+        const current = this.repo.getRun(runId);
+        if (
+          !this.policy(workspaceId).enabled ||
+          !current ||
+          current.status !== "completed" ||
+          current.config?.contextWorkspaceId !== workspaceId ||
+          !this.sourceEligible(workspaceId, current) ||
+          this.report(current) !== sourceReport ||
+          this.extractor?.generation() !== modelGeneration
+        )
+          throw new AuxError("cancelled", "The original memory source or extraction setting changed.");
+      };
+      this.extractions.set(workspaceId, controller);
+      try {
+        const selection: MemoryExtractionResult = this.extractor
+          ? await this.extractor.extract({ report, signal: controller.signal, checkCurrent })
+          : { quotes: [], status: "failed" as const, errorCode: "model_unavailable" as const };
+        checkCurrent();
+        const at = Date.now();
+        if (
+          selection.quotes.some(
+            (quote) => !report.includes(quote) || quote.length < 20 || quote.length > 2000,
+          )
+        )
+          throw new AuxError("invalid_params", "Memory extraction returned an unverified source quote.");
+        const additions = selection.quotes.map((quote) => {
           return MemoryClaimSchema.parse({
             claimId: randomUUID(),
             sourceRunId: runId,
@@ -840,34 +914,40 @@ export class MemoryPipeline {
             source: { kind: "run-report", quote, quoteSha256: sha(quote) },
           });
         });
-      if (inbox.length + additions.length > 200)
-        throw new AuxError(
-          "conflict",
-          "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
+        if (inbox.length + additions.length > 200)
+          throw new AuxError(
+            "conflict",
+            "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
+          );
+        const operation = MemoryExtractionSchema.parse({
+          activityId: randomUUID(),
+          sourceRunId: runId,
+          capturedAt: at,
+          durationMs: Math.max(0, performance.now() - started),
+          trigger,
+          candidateIds: additions.map((claim) => claim.claimId),
+          ...selection,
+        });
+        await this.writeGeneration(
+          workspaceId,
+          claims,
+          [...inbox, ...additions],
+          history,
+          prior,
+          undefined,
+          [...activity, operation].slice(-200),
+          checkCurrent,
         );
-      const operation = MemoryExtractionSchema.parse({
-        activityId: randomUUID(),
-        sourceRunId: runId,
-        capturedAt: at,
-        durationMs: Math.max(0, performance.now() - started),
-        trigger,
-        candidateIds: additions.map((claim) => claim.claimId),
-      });
-      await this.writeGeneration(
-        workspaceId,
-        claims,
-        [...inbox, ...additions],
-        history,
-        prior,
-        undefined,
-        [...activity, operation].slice(-200),
-      );
-      this.repo.db
-        .prepare(
-          "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
-        )
-        .run(workspaceId, runId, at);
-      return { extracted: additions.length };
+        if (selection.status !== "failed")
+          this.repo.db
+            .prepare(
+              "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
+            )
+            .run(workspaceId, runId, at);
+        return { extracted: additions.length };
+      } finally {
+        if (this.extractions.get(workspaceId) === controller) this.extractions.delete(workspaceId);
+      }
     });
   }
 
@@ -920,11 +1000,30 @@ export class MemoryPipeline {
   async activity(workspaceId: string) {
     return this.own(async () => {
       this.requireSpace(workspaceId);
-      const { activity } = await this.readClaims(workspaceId);
+      const { activity, claims, inbox } = await this.readClaims(workspaceId);
+      const notes = new Map([...claims, ...inbox].map((claim) => [claim.claimId, claim]));
+      const accepted = new Set(claims.map((claim) => claim.claimId));
       return [...activity].reverse().flatMap((entry) => {
         const run = this.repo.getRun(entry.sourceRunId);
         return run?.config?.contextWorkspaceId === workspaceId && this.sourceEligible(workspaceId, run)
-          ? [{ ...entry, title: run.goal }]
+          ? [
+              {
+                ...entry,
+                title: run.goal,
+                proposals: entry.candidateIds.flatMap((claimId) => {
+                  const claim = notes.get(claimId);
+                  return claim
+                    ? [
+                        {
+                          claimId,
+                          quote: claim.text,
+                          state: accepted.has(claimId) ? ("accepted" as const) : ("pending" as const),
+                        },
+                      ]
+                    : [];
+                }),
+              },
+            ]
           : [];
       });
     });
@@ -1190,6 +1289,16 @@ export class MemoryPipeline {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
     this.clearPastePreviews(input.workspaceId);
+    const interruptedSources =
+      input.all && expiredBefore === undefined
+        ? [...(this.extractionSources.get(input.workspaceId) ?? [])]
+        : [];
+    if (interruptedSources.length) {
+      this.extractionEpochs.set(input.workspaceId, {});
+      this.extractions.get(input.workspaceId)?.abort();
+      // Join key writes before Forget acquires its own generation lease.
+      await this.extractionQueues.get(input.workspaceId)?.catch(() => {});
+    }
     return this.leased(input.workspaceId, async () => {
       const { claims, inbox, history, prior, activity } = await this.readClaims(input.workspaceId);
       const universe = [...claims, ...inbox, ...history.flatMap((revision) => revision.claims)];
@@ -1242,7 +1351,7 @@ export class MemoryPipeline {
           !entry.candidateIds.some((id) => forgottenIds.has(id) || id === input.claimId),
       );
       const activityRemoved = activity.length - retainedActivity.length;
-      if (forgotten || activityRemoved) {
+      if (forgotten || activityRemoved || interruptedSources.length) {
         await beforeRemoval?.();
         const sanitized = history.map((revision) => ({ ...revision, claims: revision.claims.filter(keep) }));
         await this.writeGeneration(
@@ -1254,6 +1363,16 @@ export class MemoryPipeline {
           undefined,
           retainedActivity,
         );
+        const retiredSources = new Set(interruptedSources);
+        if (input.all && expiredBefore === undefined)
+          for (const entry of activity) retiredSources.add(entry.sourceRunId);
+        if (input.sourceRunId) retiredSources.add(input.sourceRunId);
+        for (const runId of retiredSources)
+          this.repo.db
+            .prepare(
+              "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
+            )
+            .run(input.workspaceId, runId, Date.now());
       }
       return { forgotten, activityRemoved, remaining: remaining.length + pending.length };
     });

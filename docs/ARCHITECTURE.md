@@ -42,12 +42,22 @@ Aux surface. Reading items use native bookmark data and keep row focus when thei
 read state moves them between groups. Browser chrome remains usable around this
 surface, and the replaced combined Library implementation has been removed.
 
-Memory extraction activity is committed atomically with candidate notes in the encrypted
-Space-memory generation. It records local processing duration, source identity,
-trigger and extracted candidate IDs, with a 200-operation limit. Recovery and Forget
-include these records; source titles are resolved only while their run remains
-eligible. Activity and recovery revisions are separate History views. Local extraction
-does not claim model token or cost usage.
+Memory extraction selects exact quotes from a bounded completed report using the
+selected connection's fast route. The model has no tools; verified source quotes
+enter the existing review inbox before recall. Per-Space queues preserve simultaneous
+completions. Original source, policy, model generation and lease are checked before
+dispatch and again inside encrypted generation publication. Pause and shutdown
+cancel uncommitted extraction while joining accepted native key writes.
+Forget all retires and joins active/queued sources before publishing its own
+generation, retaining their watermarks so delayed work cannot restore them.
+
+The extraction has its own financial reservation and model invoices. Activity stores
+actual extraction tokens/cache/cost, duration and safe failure codes independently
+of the source run's usage. Failed attempts remain retryable; completed sources keep
+deduplication watermarks. The encrypted generation commits notes and activity
+together, with200operations. Recovery and Forget include the records; proposed
+quotes are resolved only from remaining notes while their source remains eligible.
+Activity and recovery revisions remain separate History views.
 
 Memory Settings uses four routed views under the same retained Space editor:
 Overview, History, Context awareness and Configure. Subpage selection changes the
@@ -55,7 +65,9 @@ visible controls without discarding the editor draft or changing the selected
 Space. History defaults to extraction activity; Recovery revisions retains Restore
 through the existing scoped command and original revision ID. Context controls
 continue to use separate browsing-title and page-content policies. Model-based
-extraction telemetry, episodic retention and index rebuilding remain unimplemented.
+extraction now has source telemetry and safe retries. Episodic retention and the
+approved-note index are implemented; broader document authority, file diffs and
+Dream behavior remain open. Current native evidence belongs in STATUS.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 

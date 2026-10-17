@@ -73,8 +73,32 @@ export const MemoryExtractionSchema = z.object({
   durationMs: z.number().nonnegative(),
   trigger: z.enum(["manual", "run-completed"]),
   candidateIds: z.array(z.string().uuid()).max(20),
+  status: z.enum(["completed", "failed"]).optional(),
+  modelId: z.string().min(1).max(500).optional(),
+  inputTokens: z.number().nonnegative().optional(),
+  outputTokens: z.number().nonnegative().optional(),
+  cachedInputTokens: z.number().nonnegative().optional(),
+  costUsd: z.number().nonnegative().optional(),
+  costEstimated: z.boolean().optional(),
+  errorCode: z
+    .enum(["model_unavailable", "inference_failed", "invalid_output", "budget_exceeded"])
+    .optional(),
 });
-export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({ title: z.string() });
+export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({
+  title: z.string(),
+  proposals: z
+    .array(
+      z
+        .object({
+          claimId: z.string().uuid(),
+          quote: z.string().max(2000),
+          state: z.enum(["pending", "accepted"]),
+        })
+        .strict(),
+    )
+    .max(20)
+    .optional(),
+});
 export type MemoryExtraction = z.infer<typeof MemoryExtractionSchema>;
 export type MemoryExtractionView = z.infer<typeof MemoryExtractionViewSchema>;
 

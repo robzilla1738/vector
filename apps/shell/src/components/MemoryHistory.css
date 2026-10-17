@@ -1,4 +1,14 @@
 @layer overrides {
+  .memory-activity-quote {
+    margin: var(--space-2) 0;
+    padding: var(--space-2) var(--space-3);
+    border-left: 2px solid var(--line);
+    color: var(--ink-1);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
   .memory-history-browser {
     display: grid;
     grid-template-columns: minmax(160px, 28%) minmax(0, 1fr);

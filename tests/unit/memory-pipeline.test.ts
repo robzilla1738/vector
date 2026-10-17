@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventBus, MemoryPipeline, openDb, Repo, TaskService } from "@aux/runtime";
+import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
 
 async function editClaim(
   pipeline: MemoryPipeline,
@@ -13,7 +14,7 @@ async function editClaim(
   return (await pipeline.editDocuments({ ...owner, edits: [{ claimId, text }] }))[0]!;
 }
 
-function fixture() {
+function fixture(extractor = fixtureMemoryExtractor) {
   const directory = mkdtempSync(join(tmpdir(), "aux-memory-pipeline-"));
   const db = openDb(":memory:");
   const repo = new Repo(db);
@@ -34,7 +35,7 @@ function fixture() {
       return { value: secrets.get(name)! };
     },
   };
-  const pipeline = new MemoryPipeline(repo, native, "profile-one");
+  const pipeline = new MemoryPipeline(repo, native, "profile-one", extractor);
   const save = (runId: string, report: string) =>
     repo.saveRun({
       runId,
@@ -61,6 +62,168 @@ function fixture() {
     },
   };
 }
+
+it("retains failed model activity without a completion watermark and permits an exact-source retry", async () => {
+  let failed = true;
+  const extract = vi.fn(async (input: Parameters<typeof fixtureMemoryExtractor.extract>[0]) =>
+    failed
+      ? {
+          quotes: [],
+          status: "failed" as const,
+          errorCode: "inference_failed" as const,
+          modelId: "synthetic-model",
+        }
+      : fixtureMemoryExtractor.extract(input),
+  );
+  const f = fixture({ ...fixtureMemoryExtractor, extract });
+  try {
+    f.save("retry-memory", "This synthetic note is useful for future workshop planning.");
+    await f.pipeline.extractRun(f.workspace.workspaceId, "retry-memory");
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
+    expect(await f.pipeline.activity(f.workspace.workspaceId)).toMatchObject([
+      { status: "failed", errorCode: "inference_failed" },
+    ]);
+    expect(f.db.prepare("SELECT run_id FROM memory_pipeline_watermarks").all()).toEqual([]);
+    failed = false;
+    await f.pipeline.extractRun(f.workspace.workspaceId, "retry-memory");
+    await f.pipeline.extractRun(f.workspace.workspaceId, "retry-memory");
+    expect(extract).toHaveBeenCalledTimes(2);
+    expect(await f.pipeline.activity(f.workspace.workspaceId)).toMatchObject([
+      { status: "completed" },
+      { status: "failed" },
+    ]);
+    const [note] = await f.pipeline.inbox(f.workspace.workspaceId);
+    expect((await f.pipeline.activity(f.workspace.workspaceId))[0]!.proposals).toMatchObject([
+      { state: "pending", quote: note!.text },
+    ]);
+    await f.pipeline.review(f.workspace.workspaceId, note!.claimId, "accept");
+    expect((await f.pipeline.activity(f.workspace.workspaceId))[0]!.proposals).toMatchObject([
+      { state: "accepted" },
+    ]);
+    await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "retry-memory" });
+    expect(await f.pipeline.activity(f.workspace.workspaceId)).toEqual([]);
+  } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("queues simultaneous completed sources in the same Space without dropping the second extraction", async () => {
+  let release!: () => void, entered!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let calls = 0;
+  const f = fixture({
+    ...fixtureMemoryExtractor,
+    extract: async (input) => {
+      calls++;
+      if (calls === 1) {
+        entered();
+        await gate;
+      }
+      return fixtureMemoryExtractor.extract(input);
+    },
+  });
+  try {
+    f.save("first-memory", "The first synthetic project has a weekly review.");
+    f.save("second-memory", "The second synthetic project has a monthly workshop.");
+    const first = f.pipeline.extractRun(f.workspace.workspaceId, "first-memory");
+    await started;
+    const second = f.pipeline.extractRun(f.workspace.workspaceId, "second-memory");
+    expect(calls).toBe(1);
+    release();
+    expect(await Promise.all([first, second])).toEqual([{ extracted: 1 }, { extracted: 1 }]);
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toHaveLength(2);
+    expect(await f.pipeline.activity(f.workspace.workspaceId)).toHaveLength(2);
+  } finally {
+    release();
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("Forget all cancels and joins active/queued extraction and prevents either source from reappearing", async () => {
+  let release!: () => void, entered!: () => void, signal: AbortSignal | undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let calls = 0;
+  const f = fixture({
+    ...fixtureMemoryExtractor,
+    extract: async (input) => {
+      calls++;
+      signal = input.signal;
+      entered();
+      await gate;
+      input.signal.throwIfAborted();
+      return fixtureMemoryExtractor.extract(input);
+    },
+  });
+  try {
+    f.save("forgotten-active", "This active extraction must never return after the owner forgets it.");
+    f.save("forgotten-queued", "This queued extraction must also retire with the original Forget.");
+    const first = f.pipeline.extractRun(f.workspace.workspaceId, "forgotten-active");
+    await started;
+    const second = f.pipeline.extractRun(f.workspace.workspaceId, "forgotten-queued");
+    const results = Promise.allSettled([first, second]);
+    const forgetting = f.pipeline.forget({ workspaceId: f.workspace.workspaceId, all: true });
+    expect(signal?.aborted).toBe(true);
+    release();
+    await forgetting;
+    expect((await results).map((result) => result.status)).toEqual(["rejected", "rejected"]);
+    expect(calls).toBe(1);
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
+    expect(await f.pipeline.activity(f.workspace.workspaceId)).toEqual([]);
+    expect(await f.pipeline.extractRun(f.workspace.workspaceId, "forgotten-active")).toEqual({
+      extracted: 0,
+    });
+    expect(await f.pipeline.extractRun(f.workspace.workspaceId, "forgotten-queued")).toEqual({
+      extracted: 0,
+    });
+    expect(calls).toBe(1);
+  } finally {
+    release();
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it.each(["memory-paused", "model-changed"])(
+  "refuses late model notes when %s during encrypted preparation",
+  async (change) => {
+    let generation = "original";
+    const f = fixture({ ...fixtureMemoryExtractor, generation: () => generation });
+    const store = f.native.storeSecret.bind(f.native);
+    let changed = false;
+    f.native.storeSecret = async (name, value) => {
+      await store(name, value);
+      if (!changed && name.startsWith("mem_") && value) {
+        changed = true;
+        if (change === "memory-paused") f.pipeline.setPolicy(f.workspace.workspaceId, false);
+        else generation = "replacement";
+      }
+      return { ok: true };
+    };
+    try {
+      f.save("late-memory", "This late synthetic memory must not be admitted after retirement.");
+      await expect(f.pipeline.extractRun(f.workspace.workspaceId, "late-memory")).rejects.toThrow();
+      expect(changed).toBe(true);
+      expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
+      expect(await f.pipeline.activity(f.workspace.workspaceId)).toEqual([]);
+      expect(f.db.prepare("SELECT run_id FROM memory_pipeline_watermarks").all()).toEqual([]);
+    } finally {
+      await f.pipeline.close();
+      f.close();
+    }
+  },
+);
 
 it("extracts completed Space runs by default while respecting explicit pause and exposes bounded progressive views", async () => {
   const f = fixture();
@@ -786,7 +949,7 @@ it("does not extract a private chat into durable Space memory", async () => {
   }
 });
 
-it("joins an accepted native memory-key write before shutdown and refuses new updates", async () => {
+it("joins an accepted native key write while cancelling uncommitted extraction at shutdown", async () => {
   const f = fixture();
   let release!: () => void;
   let accepted!: () => void;
@@ -821,12 +984,11 @@ it("joins an accepted native memory-key write before shutdown and refuses new up
     });
     expect(f.db.prepare("SELECT COUNT(*) AS count FROM memory_pipeline_leases").get()).toEqual({ count: 1 });
     release();
-    expect(await extraction).toEqual({ extracted: 1 });
+    await expect(extraction).rejects.toMatchObject({ name: "AbortError" });
     await closing;
     expect(f.db.prepare("SELECT COUNT(*) AS count FROM memory_pipeline_leases").get()).toEqual({ count: 0 });
-    expect(f.db.prepare("SELECT run_id FROM memory_pipeline_watermarks").get()).toEqual({
-      run_id: "held-memory-run",
-    });
+    expect(f.db.prepare("SELECT run_id FROM memory_pipeline_watermarks").get()).toBeUndefined();
+    expect(f.db.prepare("SELECT name FROM memory_files").all()).toEqual([]);
   } finally {
     release();
     await f.pipeline.close();

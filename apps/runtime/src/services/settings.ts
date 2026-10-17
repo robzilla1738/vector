@@ -92,6 +92,7 @@ import {
   modelCallBudget,
   modelCallCost,
   modelUndispatched,
+  markModelUndispatched,
   attemptsOf,
   type ModelAttempt,
   type ModelClient,
@@ -2461,7 +2462,11 @@ export class SettingsService {
     const generation = this.modelCacheGeneration();
     const network = fetch;
     const currentFetch: typeof fetch = (input, init) => {
-      this.assertModelGeneration(generation);
+      try {
+        this.assertModelGeneration(generation);
+      } catch (error) {
+        throw markModelUndispatched(error);
+      }
       return network(input, init);
     };
     if (provider !== "gateway") {

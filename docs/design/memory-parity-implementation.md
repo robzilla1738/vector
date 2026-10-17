@@ -1,23 +1,30 @@
 # Memory parity implementation boundary
 
 References 072–077 were reopened on October 17. The current nested navigation
-matches the destinations. The new local-extraction activity implementation records
-actual duration, trigger and note count separately from recovery revisions. The
-daily-document browser is now packaged; broader document authority and the complete
-model-extraction workflow remain open.
+matches the destinations. Model-based quote selection, its own usage/cost records,
+safe failure/retry history and proposed-note disclosures are implemented in source.
+The daily-document browser has earlier native evidence; real-model extraction and
+broader document authority still need native acceptance.
 
 | Reference | Required behavior | Current implementation |
 | --- | --- | --- |
 | 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Daily approved-note files and authoritative MEMORY.md now editable; USER/TAXONOMY/site/routine authorities remain open |
-| 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Local-extraction activity plus a separate Recovery revisions view; model usage, errors, file diffs and Dream now remain open |
+| 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Model quote selection with extraction-owned usage/cost, safe failures/retries and proposed notes is source-implemented. Recovery revisions stay separate. Real model/native acceptance, file diffs and Dream remain open |
 | 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; approved owner edits rebuild the same index; broader document indexing remains open; Never forget/30/90-day retention is implemented in source with confirmation, policy conflict checks and idle cleanup, pending native acceptance |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
 
 Source findings:
 
-- `MemoryPipeline.extractRunOwned` currently splits a completed report into quoted
-  candidate claims. It does not invoke a model. Do not borrow the source run's
-  token/cost totals and present them as extraction usage.
+- `memory-extractor.ts` makes one budget-admitted structured request on the fast
+  route over at most32,000report characters. It accepts at most20exact quotes,
+  without tools. The old production sentence splitter is removed. Actual usage
+  and invoices belong to the extraction, never the source run's totals.
+- Per-Space queues serialize completed sources. Source eligibility, report content,
+  connection generation and operation lease are checked through the actual encrypted
+  publication point. Pause/shutdown fence uncommitted output and join native key
+  writes; failed model attempts do not create completion watermarks.
+  Forget all cancels/joins original active and queued sources and preserves their
+  retirement watermarks, including a source cancelled before any note was saved.
 - `MemoryPipeline.historyOwned` returns reversible snapshots of claims. Retain
   this recovery facility separately when adding extraction history.
 - `SpaceMemoryStore` stores encrypted logical files and history under one

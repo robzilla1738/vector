@@ -1915,8 +1915,8 @@ export const MethodDefinitions = Object.fromEntries(
   };
 };
 
-/** Wire shapes for the result column — used for typing, validated server-side. */
-export const ResultSchemas = {
+/** Keep result domains separate so declaration generation does not expand one oversized inferred type. */
+const AgentResultSchemas = {
   ...BrowserRuntimeResultSchemas,
   "agent.tabs.list": z.array(z.object({ pageId: id, title: z.string(), url: z.string() }).strict()),
   "agent.js.run": AgentJsResult,
@@ -2140,6 +2140,9 @@ export const ResultSchemas = {
   "vault.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "vault.update": VaultItemSchema,
   "vault.secretMatches": z.object({ matches: z.boolean() }),
+} as const;
+
+const AutomationResultSchemas = {
   "routines.list": z.array(RoutineSchema),
   "goals.create": GoalSchema,
   "goals.get": GoalSchema,
@@ -2306,6 +2309,9 @@ export const ResultSchemas = {
     fetchedAt: z.number().int().nonnegative(),
   }),
   "connectors.catalog": ConnectorCatalogSchema,
+} as const;
+
+const BrowserAndRunResultSchemas = {
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),
@@ -2419,6 +2425,9 @@ export const ResultSchemas = {
   "runs.list": z.array(RunSchema),
   "runs.context.get": ConversationContextSchema,
   "runs.context.set": ConversationContextSchema,
+} as const;
+
+const ConversationAndCodingResultSchemas = {
   "conversations.list": z.array(ConversationSummarySchema),
   "conversations.prepared": z.array(PreparedConversationSchema),
   "conversations.get": z.union([ConversationSummarySchema, ConversationBranchMetadataSchema]).nullable(),
@@ -2661,6 +2670,9 @@ export const ResultSchemas = {
   "history.projectDelta": z.object({ accepted: z.boolean(), sequence: z.number().int().nonnegative() }),
   ...HistoryResultSchemas,
   ...BookmarkResultSchemas,
+} as const;
+
+const NativeLibraryResultSchemas = {
   "downloads.list": z.array(DownloadSchema),
   "downloads.projectNative": z.object({ accepted: z.boolean() }),
   "downloads.remove": z.object({ removed: z.array(z.string()) }),
@@ -2704,6 +2716,19 @@ export const ResultSchemas = {
   "traces.counters": z.record(z.string(), z.number()),
   "runtime.describe": z.unknown(),
 } as const;
+
+/** Wire shapes for the result column — used for typing, validated server-side. */
+export const ResultSchemas: typeof AgentResultSchemas &
+  typeof AutomationResultSchemas &
+  typeof BrowserAndRunResultSchemas &
+  typeof ConversationAndCodingResultSchemas &
+  typeof NativeLibraryResultSchemas = {
+  ...AgentResultSchemas,
+  ...AutomationResultSchemas,
+  ...BrowserAndRunResultSchemas,
+  ...ConversationAndCodingResultSchemas,
+  ...NativeLibraryResultSchemas,
+};
 
 export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;
 export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)[M]>;

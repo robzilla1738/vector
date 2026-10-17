@@ -784,7 +784,34 @@ function SpaceMemoryContent({
             </button>
           </div>
           {!snapshot && !error && <p role="status">Loading memory history…</p>}
-          {snapshot && historyView === "activity" && <MemoryActivity entries={activity} />}
+          {snapshot && historyView === "activity" && (
+            <MemoryActivity
+              entries={activity}
+              retry={(entry) => (
+                <PipelineControl
+                  command="extract-space-memory-source"
+                  scopeId={`${workspaceId}:${entry.activityId}`}
+                  disabled={busy || !enabled}
+                  onError={report}
+                  action={() => {
+                    assertCurrent();
+                    if (
+                      activity.filter(
+                        (original) =>
+                          original.activityId === entry.activityId && original.status === "failed",
+                      ).length !== 1
+                    )
+                      throw new Error("Choose the current failed extraction.");
+                    return act(() =>
+                      call("memory.pipeline.extractRun", { workspaceId, runId: entry.sourceRunId }),
+                    );
+                  }}
+                >
+                  Try again
+                </PipelineControl>
+              )}
+            />
+          )}
           {snapshot && historyView === "revisions" && (
             <MemoryHistory
               revisions={history}

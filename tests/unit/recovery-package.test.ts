@@ -1,3 +1,4 @@
+import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes } from "node:crypto";
@@ -183,7 +184,7 @@ async function fixture() {
     title: "Protected article",
     text: "Protected article memory for a second Profile.",
   });
-  const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId);
+  const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId, fixtureMemoryExtractor);
   memory.setPolicy(space.workspaceId, true);
   await memory.extractRun(space.workspaceId, "recovery-run");
   const targetDb = openDb(join(targetDir, "state.sqlite"));
