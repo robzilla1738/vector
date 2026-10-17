@@ -69,6 +69,7 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
         "memory.pipeline.inbox",
         "memory.pipeline.claims",
         "memory.pipeline.history",
+        "memory.pipeline.activity",
       ].includes(method)
     )
       return [];
@@ -149,6 +150,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
       return pending || approved ? [] : [{ runId: "run-1", goal: "Research", endedAt: 1 }];
     if (method === "memory.pipeline.inbox") return pending ? [note] : [];
     if (method === "memory.pipeline.claims") return approved ? [note] : [];
+    if (method === "memory.pipeline.activity") return [];
     if (method === "memory.pipeline.history")
       return approved
         ? [
@@ -192,6 +194,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   });
   expect(container.textContent).toContain("0 pending notes · 1 approved notes");
   expect(container.querySelector(".memory-document")?.textContent).toContain(note.text);
+  await act(async () => button("Recovery revisions").click());
   await act(async () => button("Restore this revision").click());
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.revert", {
     workspaceId,
@@ -232,6 +235,7 @@ it("offers UI-confirmed Forget for a source present only in history", async () =
     if (method === "memory.pipeline.policy") return { workspaceId, enabled: true };
     if (method === "memory.pipeline.overview")
       return { workspaceId, enabled: true, summary: "", claimCount: 0, sourceCount: 0 };
+    if (method === "memory.pipeline.activity") return [];
     if (method === "memory.pipeline.history")
       return historical
         ? [
@@ -286,6 +290,7 @@ it("requires UI confirmation before forgetting all pending and historical notes"
     if (method === "memory.pipeline.policy") return { workspaceId, enabled: true };
     if (method === "memory.pipeline.overview")
       return { workspaceId, enabled: true, summary: "", claimCount: 0, sourceCount: 0 };
+    if (method === "memory.pipeline.activity") return [];
     if (method === "memory.pipeline.history")
       return forgotten
         ? []

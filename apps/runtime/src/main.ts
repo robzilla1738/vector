@@ -2974,9 +2974,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const runId = run.runId;
     extractingRuns.add(runId);
     void runtimeServices.memoryPipeline
-      .extractRun(workspaceId, runId)
-      .then((result) => {
-        if (!closed && result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
+      .extractRun(workspaceId, runId, "run-completed")
+      .then(() => {
+        if (!closed) events.emit("workspace.memory.updated", { workspaceId, runId });
       })
       .catch(() => {
         if (!closed) events.emit("memory.pipeline.failed", { workspaceId, runId });

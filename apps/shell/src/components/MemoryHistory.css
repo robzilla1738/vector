@@ -32,10 +32,10 @@
     font: inherit;
   }
   .memory-history-list button:hover {
-    background: var(--surface-secondary);
+    background: var(--bg-hover);
   }
   .memory-history-list button[aria-current] {
-    background: var(--surface-tertiary);
+    background: var(--bg-active);
     color: var(--ink-0);
   }
   .memory-history-list button span,
@@ -73,5 +73,62 @@
     .memory-history-detail {
       padding: 16px;
     }
+  }
+}
+
+@layer overrides {
+  .memory-history-views {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 12px;
+  }
+  .memory-history-views button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
+  }
+  .memory-history-views button[aria-pressed="true"] {
+    background: var(--bg-active);
+    color: var(--ink-0);
+  }
+  .memory-activity-date {
+    margin: 12px 10px 6px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+  .memory-activity-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    font-weight: var(--fw-medium);
+  }
+  .memory-activity-metadata {
+    margin: 8px 0 20px;
+  }
+  .memory-activity-metadata > div {
+    display: grid;
+    grid-template-columns: minmax(112px, 24%) minmax(0, 1fr);
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .memory-activity-metadata dt {
+    color: var(--ink-2);
+  }
+  .memory-activity-metadata dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .memory-activity-outcome {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: var(--ink-2);
+    line-height: 1.6;
   }
 }

@@ -29,6 +29,13 @@ bookmark creation, selection and import/export; the file input remains mounted
 outside the menu so dismissal does not interrupt file selection. Grouped History and
 separate browser page routes remain parity gaps; History currently groups by date.
 
+Memory extraction activity is committed atomically with candidate notes in the encrypted
+Space-memory generation. It records local processing duration, source identity,
+trigger and extracted candidate IDs, with a 200-operation limit. Recovery and Forget
+include these records; source titles are resolved only while their run remains
+eligible. Activity and recovery revisions are separate History views. Local extraction
+does not claim model token or cost usage.
+
 Memory Settings uses four routed views under the same retained Space editor:
 Overview, History, Context awareness and Configure. Subpage selection changes the
 visible controls without discarding the editor draft or changing the selected

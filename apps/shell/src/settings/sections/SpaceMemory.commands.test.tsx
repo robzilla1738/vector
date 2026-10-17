@@ -116,6 +116,7 @@ function response(method: string, params: { workspaceId: string; enabled?: boole
   if (method === "memory.pipeline.inbox") return [note];
   if (method === "memory.pipeline.claims") return [approved];
   if (method === "memory.pipeline.history") return [revision];
+  if (method === "memory.pipeline.activity") return [];
   if (method === "memory.pipeline.setPolicy") {
     enabled = !!params.enabled;
     return { workspaceId: params.workspaceId, enabled };
@@ -210,6 +211,11 @@ it("actual review/revert/import/history controls retain original claim and revis
   });
   await click("toggle-space-memory-history");
   expect(host.querySelector("details")!.open).toBe(true);
+  await act(async () =>
+    [...host.querySelectorAll("button")]
+      .find((button) => button.textContent === "Recovery revisions")!
+      .click(),
+  );
   await click("restore-space-memory-revision");
   expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.revert", {
     workspaceId: "space",

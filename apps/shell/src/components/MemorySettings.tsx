@@ -119,7 +119,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
         {view === "overview"
           ? "Review saved preferences, project context and notes for this Space."
           : view === "history"
-            ? "Browse saved memory revisions and restore an earlier summary."
+            ? "Review extraction activity and recover earlier memory revisions."
             : view === "context"
               ? "Choose which browsing information Aux can remember in this Space."
               : "Control how this Space saves memory and uses it in future replies."}

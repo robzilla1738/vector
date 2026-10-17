@@ -1,5 +1,30 @@
 # Aux status — October 16, 2026
 
+Source batch: Memory History now opens a dated extraction-activity list and detail
+pane, with Recovery revisions retained as a separate view. Records contain actual
+local extraction duration, manual/completed-chat trigger and candidate identities;
+no model token/cost figures are invented. Successful and no-change extractions are
+committed with notes in encrypted `activity.json.enc`, bounded to 200 records.
+Restart, recovery export/import, extraction deduplication and source/claim/all
+Forget include activity; activity-only removal also refreshes managed recovery.
+The read API is Aux-WebUI-only and rechecks source eligibility before displaying
+its title. Existing pre-activity generations remain readable without fabricated
+history. Document tree, model-based extraction/usage, errors, file diffs, index
+status and episodic retention remain open.
+
+Validation: integrated check passed typecheck/lint and 4,619/4,620 tests in104.26s.
+One descendant-Forget expectation omitted the new removed activity count; corrected
+it, then typecheck/lint and all56 tests in the three affected suites passed.
+Renderer build2.19s. No passing full suite repeated. Logs
+`/tmp/aux-memory-activity-{check,retry,renderer}.log` and final typecheck/lint logs.
+Synthetic Vite preview checked selection, dated grouping, no-change detail, wide
+dark and narrow light layout. Final narrow light capture:
+`/tmp/aux-parity-2026-10-16/aux-memory-activity-narrow-light-vite.png`.
+Wide capture predates the final stronger active-row color. Temporary fixture files
+were removed and its tab closed. Native Memory activity acceptance is pending;
+the live preview below still contains the previous runtime and renderer.
+
+
 Live layout preview built successfully in **9m10.20s**. Launcher **95514**,
 app **96859**, runtime **96875**, exec **35247**, disposable Profile
 **aux-dev-cVMdy3**, runtime API `http://127.0.0.1:58795`.

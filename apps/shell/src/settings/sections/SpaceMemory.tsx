@@ -14,6 +14,8 @@ import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
+import { MemoryActivity } from "../../components/MemoryActivity";
+import type { MemoryExtractionView } from "@aux/contracts";
 import { MemoryHistory } from "../../components/MemoryHistory";
 import { MemoryDocument } from "../../components/MemoryDocument";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
@@ -35,6 +37,7 @@ type PipelineSnapshot = {
   inbox: MemoryClaim[];
   claims: MemoryClaim[];
   history: Revision[];
+  activity: MemoryExtractionView[];
 };
 class PipelineScope {
   constructor(readonly owner: unknown) {}
@@ -229,9 +232,11 @@ function SpaceMemoryContent({
     inbox = [],
     claims = [],
     history = [],
+    activity = [],
   } = snapshot ?? {};
   const [showPasteImport, setShowPasteImport] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyView, setHistoryView] = useState<"activity" | "revisions">("activity");
   const [sourceId, setSourceId] = useState("");
   const [pending, setPending] = useState<{ scope: PipelineScope; operation: object } | null>(null);
   const [error, setError] = useState("");
@@ -264,6 +269,7 @@ function SpaceMemoryContent({
       ...inbox.map((note) => note.sourceRunId),
       ...claims.map((note) => note.sourceRunId),
       ...history.flatMap((revision) => revision.sourceRunIds),
+      ...activity.map((entry) => entry.sourceRunId),
     ]),
   ];
   const refresh = useCallback(async () => {
@@ -276,15 +282,16 @@ function SpaceMemoryContent({
       call("memory.pipeline.inbox", { workspaceId }),
       call("memory.pipeline.claims", { workspaceId }),
       call("memory.pipeline.history", { workspaceId }),
+      call("memory.pipeline.activity", { workspaceId }),
     ]).catch((reason) => {
       if (scope.isRequest(request) && ownsWorkspace() && !bridge.privateMode) throw reason;
       return null;
     });
     if (!result || !scope.isRequest(request) || bridge.privateMode || !ownsWorkspace()) return;
-    const [policy, overview, sources, inbox, claims, history] = result;
+    const [policy, overview, sources, inbox, claims, history, activity] = result;
     if (policy.workspaceId !== workspaceId || overview.workspaceId !== workspaceId)
       throw new Error("The Space memory response changed its original workspace.");
-    const next = { enabled: policy.enabled, overview, sources, inbox, claims, history };
+    const next = { enabled: policy.enabled, overview, sources, inbox, claims, history, activity };
     if (!ownsWorkspace() || !scope.publish(request, next)) return;
     setSnapshot({ scope, value: next });
     setPending(null);
@@ -347,7 +354,7 @@ function SpaceMemoryContent({
         assertCurrent();
         return act(async () => {
           const result = await call("memory.pipeline.forget", { workspaceId, ...request });
-          if (current() && result.forgotten) setNeedsFreshBackup(true);
+          if (current() && (result.forgotten || result.activityRemoved)) setNeedsFreshBackup(true);
           return result;
         });
       })(),
@@ -575,7 +582,8 @@ function SpaceMemoryContent({
                 </PipelineControl>
               </div>
             ))}
-            {(claims.length > 0 ||
+            {(activity.length > 0 ||
+              claims.length > 0 ||
               inbox.length > 0 ||
               history.some((revision) => revision.claimCount > 0)) && (
               <PipelineControl
@@ -587,7 +595,7 @@ function SpaceMemoryContent({
                 action={() =>
                   forget(
                     { all: true },
-                    "All pending and approved notes, including copies in restorable revisions, will be removed. This cannot be undone.",
+                    "All pending and approved notes, extraction activity and copies in restorable revisions will be removed. This cannot be undone.",
                   )
                 }
               >
@@ -611,11 +619,28 @@ function SpaceMemoryContent({
                 setHistoryOpen((value) => !value);
               }}
             >
-              Memory history · {history.length} revisions
+              Memory history · {activity.length} extractions
             </PipelineControl>
           )}
-          {!snapshot && !error && <p role="status">Loading memory revisions…</p>}
-          {snapshot && (
+          <div className="memory-history-views" role="group" aria-label="Memory history view">
+            <button
+              type="button"
+              aria-pressed={historyView === "activity"}
+              onClick={() => setHistoryView("activity")}
+            >
+              Activity
+            </button>
+            <button
+              type="button"
+              aria-pressed={historyView === "revisions"}
+              onClick={() => setHistoryView("revisions")}
+            >
+              Recovery revisions
+            </button>
+          </div>
+          {!snapshot && !error && <p role="status">Loading memory history…</p>}
+          {snapshot && historyView === "activity" && <MemoryActivity entries={activity} />}
+          {snapshot && historyView === "revisions" && (
             <MemoryHistory
               revisions={history}
               restore={(revision) => (

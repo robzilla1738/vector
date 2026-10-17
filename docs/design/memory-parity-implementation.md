@@ -1,13 +1,14 @@
 # Memory parity implementation boundary
 
 References 072–077 were reopened on October 17. The current nested navigation
-matches the destinations, but neither the document browser nor extraction history
-is implemented by the current notes/revision UI. Keep these gaps open.
+matches the destinations. The new local-extraction activity implementation records
+actual duration, trigger and note count separately from recovery revisions. The
+document browser and complete model-extraction workflow remain open.
 
 | Reference | Required behavior | Current implementation |
 | --- | --- | --- |
 | 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Space notes editor, approved claims and search; no document identities or editable tree |
-| 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Revision snapshots with claim/source counts and Restore; these are recovery history, not extraction activity |
+| 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Local-extraction activity plus a separate Recovery revisions view; model usage, errors, file diffs and Dream now remain open |
 | 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Extraction policy and consolidation controls; no corresponding index status or episodic retention model |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
 

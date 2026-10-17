@@ -152,7 +152,7 @@ it("forgets a claim that exists only in an older revision and preserves the pre-
     expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.summary).toContain("violet");
     expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.sourceRunIds).toContain("run-two");
     expect(await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-two" })).toEqual(
-      { forgotten: 1, remaining: 1 },
+      { forgotten: 1, activityRemoved: 1, remaining: 1 },
     );
     const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
@@ -182,7 +182,7 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
       workspaceId: f.workspace.workspaceId,
       sourceRunId: "run-one",
     });
-    expect(forgotten).toEqual({ forgotten: 1, remaining: 1 });
+    expect(forgotten).toEqual({ forgotten: 1, activityRemoved: 1, remaining: 1 });
     expect(f.secrets.has(oldKey)).toBe(false);
     const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect(await restarted.search(f.workspace.workspaceId, "amber")).toEqual([]);
@@ -190,6 +190,7 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
     expect((await restarted.overview(f.workspace.workspaceId)).summary).not.toContain("amber");
     expect(await restarted.forget({ workspaceId: f.workspace.workspaceId, all: true })).toEqual({
       forgotten: 1,
+      activityRemoved: 1,
       remaining: 0,
     });
     expect(
@@ -601,6 +602,7 @@ it("scrubs descendants from current memory and history when a source claim is fo
     );
     expect(await f.pipeline.forget({ workspaceId, claimId: source.claimId })).toEqual({
       forgotten: 2,
+      activityRemoved: 1,
       remaining: 0,
     });
     const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
@@ -698,7 +700,9 @@ it("restores the CAS generation when another writer publishes and rolls back dur
     const prior = state.prior!;
     const deferred = () => {
       let resolve!: () => void;
-      const promise = new Promise<void>((done) => { resolve = done; });
+      const promise = new Promise<void>((done) => {
+        resolve = done;
+      });
       return { promise, resolve };
     };
     const published = deferred();
@@ -818,6 +822,71 @@ it("joins an accepted native memory-key write before shutdown and refuses new up
   } finally {
     release();
     await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("persists measured extraction activity with its notes, restores it, and forgets it without re-extraction", async () => {
+  const f = fixture();
+  const destination = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.save("activity-source", "The synthetic project uses a weekly review cadence.");
+    await f.pipeline.extractRun(workspaceId, "activity-source", "run-completed");
+    const [entry] = await f.pipeline.activity(workspaceId);
+    expect(entry).toMatchObject({
+      sourceRunId: "activity-source",
+      title: "Research",
+      trigger: "run-completed",
+    });
+    expect(entry!.durationMs).toBeGreaterThanOrEqual(0);
+    expect(entry!.candidateIds).toEqual((await f.pipeline.inbox(workspaceId)).map((note) => note.claimId));
+    expect(
+      JSON.stringify(f.db.prepare("SELECT content FROM memory_files WHERE name='activity.json.enc'").all()),
+    ).not.toContain("activity-source");
+    await f.pipeline.extractRun(workspaceId, "activity-source");
+    f.pipeline.setPolicy(workspaceId, false);
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
+    expect(await restarted.activity(workspaceId)).toEqual([entry]);
+    const snapshot = await restarted.recoverySnapshot();
+    expect(snapshot[0]!.activity).toHaveLength(1);
+    destination.repo.db
+      .prepare("UPDATE workspaces SET workspace_id=? WHERE workspace_id=?")
+      .run(workspaceId, destination.workspace.workspaceId);
+    destination.repo.saveRun(f.repo.getRun("activity-source")!);
+    await destination.pipeline.importRecoverySnapshot(snapshot);
+    expect(await destination.pipeline.activity(workspaceId)).toEqual([entry]);
+    expect(await restarted.forget({ workspaceId, sourceRunId: "activity-source" })).toMatchObject({
+      activityRemoved: 1,
+      forgotten: 1,
+    });
+    expect(await restarted.activity(workspaceId)).toEqual([]);
+    restarted.setPolicy(workspaceId, true);
+    expect(await restarted.extractRun(workspaceId, "activity-source")).toEqual({ extracted: 0 });
+    expect(await restarted.activity(workspaceId)).toEqual([]);
+  } finally {
+    f.close();
+    destination.close();
+  }
+});
+
+it("records no-change extraction without inventing notes and clears its activity on Forget all", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.save("short-report", "Done.");
+    expect(await f.pipeline.extractRun(workspaceId, "short-report")).toEqual({ extracted: 0 });
+    expect(await f.pipeline.activity(workspaceId)).toMatchObject([
+      { sourceRunId: "short-report", candidateIds: [] },
+    ]);
+    expect(await f.pipeline.inbox(workspaceId)).toEqual([]);
+    expect(await f.pipeline.forget({ workspaceId, all: true })).toEqual({
+      forgotten: 0,
+      activityRemoved: 1,
+      remaining: 0,
+    });
+    expect(await f.pipeline.activity(workspaceId)).toEqual([]);
+  } finally {
     f.close();
   }
 });

@@ -189,6 +189,7 @@ export const RuntimeMethodPolicy = {
   "memory.pipeline.inbox": { feature: "memory", auth: "standard" },
   "memory.pipeline.claims": { feature: "memory", auth: "standard" },
   "memory.pipeline.history": { feature: "memory", auth: "standard" },
+  "memory.pipeline.activity": { feature: "memory", auth: "aux-webui" },
   "memory.pipeline.revert": { feature: "memory", auth: "standard" },
   "memory.pipeline.review": { feature: "memory", auth: "standard" },
   "memory.pipeline.overview": { feature: "memory", auth: "standard" },

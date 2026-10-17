@@ -6,6 +6,8 @@ import { lstatSync, readFileSync } from "node:fs";
 import {
   AuxError,
   MemoryClaimSchema,
+  MemoryExtractionSchema,
+  type MemoryExtraction,
   MemoryPipelineForgetParams,
   MemoryPipelineInboxSchema,
   MemoryPipelineOverviewSchema,
@@ -44,6 +46,7 @@ export type RecoverySpaceMemory = {
   history: MemoryRevision[];
   verifiedFiles: string[];
   imports?: MemoryPasteReceipt[];
+  activity?: MemoryExtraction[];
 };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
@@ -320,6 +323,7 @@ export class MemoryPipeline {
         claims: [] as MemoryClaim[],
         inbox: [] as MemoryClaim[],
         imports: [] as MemoryPasteReceipt[],
+        activity: [] as MemoryExtraction[],
       };
     const parse = (name: string) => {
       const value = state.files.get(name);
@@ -331,6 +335,10 @@ export class MemoryPipeline {
       claims: MemoryClaimSchema.array().max(200).parse(parse("claims.json.enc")),
       inbox: MemoryPipelineInboxSchema.parse(parse("inbox.json.enc")),
       imports: MemoryPasteReceiptSchema.array().max(20).parse(parse("imports.json.enc")),
+      // Generations predating extraction activity have no operation records.
+      activity: MemoryExtractionSchema.array()
+        .max(200)
+        .parse(state.files.has("activity.json.enc") ? parse("activity.json.enc") : []),
     };
   }
 
@@ -377,6 +385,7 @@ export class MemoryPipeline {
         "inbox.json.enc",
         "history.json.enc",
         "imports.json.enc",
+        ...(state.files.has("activity.json.enc") ? ["activity.json.enc"] : []),
         ...derived.keys(),
       ].sort();
       if (JSON.stringify([...state.files.keys()].sort()) !== JSON.stringify(files))
@@ -391,6 +400,7 @@ export class MemoryPipeline {
         history: state.history,
         verifiedFiles: files,
         imports: state.imports,
+        ...(state.files.has("activity.json.enc") ? { activity: state.activity } : {}),
       });
     }
     if (this.currentStateDigest() !== generationDigest)
@@ -425,11 +435,15 @@ export class MemoryPipeline {
         "summary.md.enc",
         "handbook.md.enc",
         ...(space.imports !== undefined ? ["imports.json.enc"] : []),
+        ...(space.activity !== undefined ? ["activity.json.enc"] : []),
         ...claims.map((claim) => `rollouts/${claim.claimId}.json.enc`),
       ].sort();
       if (JSON.stringify(space.verifiedFiles) !== JSON.stringify(expected))
         throw new Error("Recovery Space memory inventory changed.");
-      await this.writeGeneration(space.workspaceId, claims, inbox, history, null, imports);
+      const activity = MemoryExtractionSchema.array()
+        .max(200)
+        .parse(space.activity ?? []);
+      await this.writeGeneration(space.workspaceId, claims, inbox, history, null, imports, activity);
     }
   }
 
@@ -477,12 +491,17 @@ export class MemoryPipeline {
     history: MemoryRevision[],
     prior: MemoryGeneration | null,
     imports?: MemoryPasteReceipt[],
+    activity?: MemoryExtraction[],
   ) {
-    const receipts = imports ?? (await this.readClaims(workspaceId)).imports;
+    const previous =
+      imports === undefined || activity === undefined ? await this.readClaims(workspaceId) : null;
+    const receipts = imports ?? previous!.imports;
+    const operations = activity ?? previous!.activity;
     const files = new Map<string, string>([
       ["claims.json.enc", JSON.stringify(claims)],
       ["inbox.json.enc", JSON.stringify(inbox)],
       ["imports.json.enc", JSON.stringify(receipts)],
+      ["activity.json.enc", JSON.stringify(MemoryExtractionSchema.array().max(200).parse(operations))],
       ["summary.md.enc", this.summary(claims)],
       ["handbook.md.enc", this.handbook(claims)],
       ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
@@ -702,11 +721,12 @@ export class MemoryPipeline {
     });
   }
 
-  async extractRun(workspaceId: string, runId: string) {
-    return this.own(() => this.extractRunOwned(workspaceId, runId));
+  async extractRun(workspaceId: string, runId: string, trigger: MemoryExtraction["trigger"] = "manual") {
+    return this.own(() => this.extractRunOwned(workspaceId, runId, trigger));
   }
 
-  private async extractRunOwned(workspaceId: string, runId: string) {
+  private async extractRunOwned(workspaceId: string, runId: string, trigger: MemoryExtraction["trigger"]) {
+    const started = performance.now();
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory extraction first.");
     return this.leased(workspaceId, async () => {
@@ -724,10 +744,12 @@ export class MemoryPipeline {
           .get(workspaceId, runId)
       )
         return { extracted: 0 };
-      const report = this.report(run);
-      if (!report?.trim()) return { extracted: 0 };
-      const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
-      if ([...claims, ...inbox].some((claim) => claim.sourceRunId === runId)) {
+      const report = this.report(run) ?? "";
+      const { claims, inbox, history, prior, activity } = await this.readClaims(workspaceId);
+      if (
+        activity.some((entry) => entry.sourceRunId === runId) ||
+        [...claims, ...inbox].some((claim) => claim.sourceRunId === runId)
+      ) {
         this.repo.db
           .prepare(
             "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
@@ -751,13 +773,28 @@ export class MemoryPipeline {
             source: { kind: "run-report", quote, quoteSha256: sha(quote) },
           });
         });
-      if (!additions.length) return { extracted: 0 };
       if (inbox.length + additions.length > 200)
         throw new AuxError(
           "conflict",
           "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
         );
-      await this.writeGeneration(workspaceId, claims, [...inbox, ...additions], history, prior);
+      const operation = MemoryExtractionSchema.parse({
+        activityId: randomUUID(),
+        sourceRunId: runId,
+        capturedAt: at,
+        durationMs: Math.max(0, performance.now() - started),
+        trigger,
+        candidateIds: additions.map((claim) => claim.claimId),
+      });
+      await this.writeGeneration(
+        workspaceId,
+        claims,
+        [...inbox, ...additions],
+        history,
+        prior,
+        undefined,
+        [...activity, operation].slice(-200),
+      );
       this.repo.db
         .prepare(
           "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
@@ -811,6 +848,19 @@ export class MemoryPipeline {
   private async claimsOwned(workspaceId: string): Promise<MemoryClaim[]> {
     if (!this.policy(workspaceId).enabled) return [];
     return (await this.readClaims(workspaceId)).claims;
+  }
+
+  async activity(workspaceId: string) {
+    return this.own(async () => {
+      this.requireSpace(workspaceId);
+      const { activity } = await this.readClaims(workspaceId);
+      return [...activity].reverse().flatMap((entry) => {
+        const run = this.repo.getRun(entry.sourceRunId);
+        return run?.config?.contextWorkspaceId === workspaceId && this.sourceEligible(workspaceId, run)
+          ? [{ ...entry, title: run.goal }]
+          : [];
+      });
+    });
   }
 
   async history(workspaceId: string) {
@@ -991,7 +1041,7 @@ export class MemoryPipeline {
     this.requireSpace(input.workspaceId);
     this.clearPastePreviews(input.workspaceId);
     return this.leased(input.workspaceId, async () => {
-      const { claims, inbox, history, prior } = await this.readClaims(input.workspaceId);
+      const { claims, inbox, history, prior, activity } = await this.readClaims(input.workspaceId);
       const universe = [...claims, ...inbox, ...history.flatMap((revision) => revision.claims)];
       const forgottenIds = new Set(
         universe
@@ -1034,7 +1084,14 @@ export class MemoryPipeline {
       const remaining = claims.filter(keep);
       const pending = inbox.filter(keep);
       const forgotten = forgottenIds.size;
-      if (forgotten) {
+      const retainedActivity = activity.filter(
+        (entry) =>
+          !input.all &&
+          entry.sourceRunId !== input.sourceRunId &&
+          !entry.candidateIds.some((id) => forgottenIds.has(id) || id === input.claimId),
+      );
+      const activityRemoved = activity.length - retainedActivity.length;
+      if (forgotten || activityRemoved) {
         await beforeRemoval?.();
         const sanitized = history.map((revision) => ({ ...revision, claims: revision.claims.filter(keep) }));
         await this.writeGeneration(
@@ -1043,9 +1100,11 @@ export class MemoryPipeline {
           pending,
           [...sanitized, this.snapshot(remaining)].slice(-10),
           prior,
+          undefined,
+          retainedActivity,
         );
       }
-      return { forgotten, remaining: remaining.length + pending.length };
+      return { forgotten, activityRemoved, remaining: remaining.length + pending.length };
     });
   }
 }

@@ -45,6 +45,18 @@ export const MemoryPipelineRevisionSchema = z.object({
   summary: z.string().max(2000),
   sourceRunIds: z.array(z.string().min(1)).max(200),
 });
+export const MemoryExtractionSchema = z.object({
+  activityId: z.string().uuid(),
+  sourceRunId: z.string().min(1),
+  capturedAt: z.number().int().nonnegative(),
+  durationMs: z.number().nonnegative(),
+  trigger: z.enum(["manual", "run-completed"]),
+  candidateIds: z.array(z.string().uuid()).max(20),
+});
+export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({ title: z.string() });
+export type MemoryExtraction = z.infer<typeof MemoryExtractionSchema>;
+export type MemoryExtractionView = z.infer<typeof MemoryExtractionViewSchema>;
+
 export const MemoryPipelineOverviewSchema = z.object({
   workspaceId: z.string().min(1),
   enabled: z.boolean(),
@@ -66,6 +78,7 @@ export const MemoryPipelineForgetParams = z
   );
 export const MemoryPipelineForgetResultSchema = z.object({
   forgotten: z.number().int().nonnegative(),
+  activityRemoved: z.number().int().nonnegative(),
   remaining: z.number().int().nonnegative(),
 });
 export type MemoryClaim = z.infer<typeof MemoryClaimSchema>;
