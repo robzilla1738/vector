@@ -21,8 +21,12 @@ now align with the surrounding groups.
 The integrated check passed 4,640 tests and found six stylesheet-fixture failures
 in four files after moving the rules. Updated those fixtures to read the shared
 stylesheet and actual tokens; all 54 affected tests in five files passed. Renderer
-build passed (`/tmp/aux-control-standards-build.log`). Final typecheck/lint follows
-in `/tmp/aux-controls-final-check.log`. Native acceptance of this source is pending.
+build passed (`/tmp/aux-control-standards-build.log`). Final typecheck/lint passed
+in `/tmp/aux-controls-final-check.log`. Packaged 1ab8c11b2 shows the shared controls
+in General and Appearance, including light/dark theme selection. Quick Ask feature
+card and shortcut grouping were visually reviewed. Narrow layouts and populated
+pill states remain pending. Composite search inputs are excluded from standalone
+input borders to preserve the shared outer focus surface.
 
 The local mock preview was briefly embedded inside Aux for source inspection,
 which duplicated browser sidebars. It has been closed and the visible app returned
@@ -41,7 +45,8 @@ Integrated check passed 4,646 tests / 746 files, typecheck and lint in 96.48s
 (`/tmp/aux-settings-feature-check.log`). Subsequent grouping passed typecheck and
 six affected tests across three files. Renderer build passed. CLI and Quick Ask
 feature cards were reviewed in the local renderer after a full refresh; alignment
-was corrected. Packaged acceptance remains pending.
+was corrected. Packaged Quick Ask was reviewed in 1ab8c11b2; packaged CLI feature
+card acceptance remains pending.
 
 ## Developers, Passwords and shared surfaces — packaged a51e5a915
 
@@ -124,13 +129,16 @@ No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-Product **a51e5a915**, launcher **63746**, app **67654**, runtime **67669**,
-exec **69315**, API port **59755**, disposable Profile **aux-dev-e5H1uw**.
-Log `/tmp/aux-settings-library-native-build.log`; native build passed in **9m32.48s**.
-CUA `groupedSettingsApp` is live on native Quick Ask. Previous launcher58946,
-app62706/runtime62722, disposable Profile and lock retired normally and were verified
-removed. About confirms a51e5a9153ff87a5a7e67346fc86008c61bbbc1e. Latest source
-contains the subsequent shared feature-card/control/token consolidation.
+Product **1ab8c11b2**, launcher **72801**, app **73957**, runtime **73986**,
+exec **49462**, API port **60858**, disposable Profile **aux-dev-fFDRPr**.
+Log `/tmp/aux-controls-final-native-build.log`; native build passed in **6m59.15s**.
+CUA `standardControlsApp` is live on native Quick Ask, with one browser sidebar.
+About confirms 1ab8c11b22f959e81470dc2504ff65c04494cf3b. General, Quick Ask and
+Appearance light/dark controls were inspected; Dark was restored. Previous launcher
+63746, app67654/runtime67669, disposable Profile and lock retired normally and were
+verified removed. The intermediate 522cbfe97 build was retired through its launcher
+before rebuilding the composite-input follow-up. Never embed the full mock renderer
+inside the user-visible native preview again.
 
 The following populated Memory evidence is from earlier disposable previews:
 

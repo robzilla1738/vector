@@ -6,8 +6,11 @@ Tool permissions surface observed. New source consolidates Settings/dialog butto
 inputs, title typography and pill geometry; removes replaced recipes and groups the
 remaining permission cards. Full source check exposed stylesheet fixtures tied to
 old locations; all54 affected tests pass after using the shared rules/tokens.
-Latest native control acceptance pending; user-visible mock preview closed because
-embedding the whole renderer inside Aux duplicated its browser sidebars.
+Packaged **1ab8c11b2** built in 6m59.15s and confirms the source in About. General,
+Quick Ask feature-card/group alignment and Appearance light/dark controls inspected.
+Dark restored; native Quick Ask left open with one browser sidebar. Narrow layouts,
+populated pills and the packaged CLI card remain pending. The mock preview was
+removed because embedding the whole renderer inside Aux duplicated browser sidebars.
 
 
 October17 packaged **c9d878e2**: General grouping, Agents shared selects and
