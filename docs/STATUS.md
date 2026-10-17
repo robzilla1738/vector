@@ -7,6 +7,27 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Native readiness acceptance — address-save crash open
+
+Nativeba8bdd8f4 compiled successfully in14m44.12s after the callback/importer
+call-site corrections. The disposable preview loaded the synthetic local address
+form and accepted keyboard input. Submitting it terminated the native browser;
+the repeated logging-enabled reproduction also terminated. No matching current
+macOS diagnostic report or fatal log was produced, so the older morning crash
+reports are not assigned as its cause. Autofill and browser handback acceptance
+remain open.
+
+The UI tool restarted Aux without the disposable Profile argument after the
+first exit. That process was stopped immediately; no further UI inspection or
+action used it. Subsequent checks inspect the owned PID before reading UI state.
+The normal disposable launchers cleaned their Profiles/locks after each failure.
+Native stderr logging and an optional `--debug-native` mode now stay within the
+same launcher and cleanup owner; debugging requires `--temp-profile`.
+The current LLDB reproduction is paused at macOS Developer Tools authorization,
+with launcher69145 owning its disposable Profile and plain lock. This is an OS
+permission request, not product acceptance. The separate Chromium155 checkout
+has completed dependency sync/hooks; patch replay is in progress there.
+
 ## Compact provider tool schemas — source
 
 OpenAI and Anthropic tool calls now use the SDK's shared local JSON-schema
