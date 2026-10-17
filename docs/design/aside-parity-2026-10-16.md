@@ -1,5 +1,32 @@
 # Aside UI parity — October 16, 2026
 
+Native Library presentation batch is consolidated in area patch
+`chromium/patches/aux/0049-native-library-presentation.patch`. History and Bookmarks
+receive Aux logo slots and scoped light/dark palette variables; Aux selects the
+reference-era WebUI layout and bookmark menu ordering instead of Chromium's
+2026 refresh/menu simplification. Private-window menu labels use Aux wording.
+History navigation says Aux history. Google bookmark/history account promotions,
+the synced-tabs navigation entry and Chrome bookmark help link are omitted in Aux;
+managed-profile notices remain. Native bookmark/History data operations, clustering,
+selection, clipboard and Undo implementations are retained.
+
+Both WebUI configs now reject Aux off-the-record contexts so direct internal URLs
+cannot expose persistent Library pages in Private windows. Non-Aux behavior is
+preserved by the build flag. This policy and all visual changes need acceptance
+in the next consolidated native app; neither public entry points nor the existing
+Library overlay have been replaced yet. Feature opt-out integration and accessible
+Reading/Archived/Recently closed destinations remain prerequisites for replacement.
+
+Validation: Bookmarks and History TypeScript/resource builds and both WebUI C++
+objects compiled. First C++ compile caught unreachable-code warnings from constant
+build-flag ternaries; explicit preprocessor branches fixed them. Final private-guard
+compile passed in 13.79s. Patch reverse-apply check passed. Integrated
+`npm run check` passed typecheck/lint and all 4,649 tests / 749 files in 103.64s.
+Logs `/tmp/aux-native-library-presentation-{check,compile,compile-retry}.log`,
+`/tmp/aux-native-library-history-final-compile.log`,
+`/tmp/aux-native-library-private-compile.log`.
+
+
 Native candidate `479f5a96bcb400dd801f41cc5dd8a9d6edee9a90` built in 9m22.49s
 and was verified in About with ABI
 `9021388efb6b3a3f317178bce1b0794baf2826aa9c132b5bb276b28470fb8c68`,

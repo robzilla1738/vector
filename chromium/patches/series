@@ -46,3 +46,4 @@ aux/0045-shell-zoom-isolation.patch
 aux/0046-bookmark-window-destinations.patch
 aux/0047-bookmark-clipboard.patch
 aux/0048-library-event-forwarding.patch
+aux/0049-native-library-presentation.patch
