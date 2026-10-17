@@ -40,6 +40,18 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
+    label: "Website sizes",
+    description: "",
+    target: "Website sizes",
+  },
+  {
+    category: "Appearance",
+    label: "Keyboard shortcuts",
+    description: "Change browser and app shortcuts.",
+    target: "Keyboard shortcuts",
+  },
+  {
+    category: "Appearance",
     label: "Interface text",
     description: "Adjust the text size in Aux.",
     target: "Interface text",
@@ -70,33 +82,21 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
-    label: "Website sizes",
-    description: "",
-    target: "Website sizes",
-  },
-  {
-    category: "Appearance",
-    label: "Keyboard shortcuts",
-    description: "Change browser and app shortcuts.",
-    target: "Keyboard shortcuts",
-  },
-  {
-    category: "Appearance",
     label: "New tab position",
     description: "Choose where new tabs are added in the sidebar.",
     target: "New tab position",
   },
   {
     category: "Appearance",
-    label: "Recent chats in sidebar",
-    description: "How many recent chats to show in the sidebar.",
-    target: "Recent chats in sidebar",
-  },
-  {
-    category: "Appearance",
     label: "Customize sidebar",
     description: "Choose which sections appear above your tabs.",
     target: "Customize sidebar",
+  },
+  {
+    category: "Appearance",
+    label: "Recent chats in sidebar",
+    description: "How many recent chats to show in the sidebar.",
+    target: "Recent chats in sidebar",
   },
   {
     category: "Appearance",

@@ -480,3 +480,19 @@ Area0043 integrated check: typecheck/lint pass,4,576/4,577 tests across733
 files pass; only the existing coder-worktrees timeout fails. All5 Dialog cases,
 including descendant-cancel regression, pass. Renderer build passes3.03s.
 Native chooser forwarding is source/patch verified only until compiled launch.
+
+
+Appearance source now follows023’s primary card sequence: new tab position,
+Customize sidebar, Recent chats; then a separate Tabs card for switcher order and
+Tidy. Extracted SidebarDetails so Aux-specific keep-open, toolbar, width and
+expanded-section controls no longer interrupt the shared rows. All existing
+controls remain available below Websites/shortcuts and Window details. This is
+source layout progress, not a completed native Appearance comparison. Keyboard
+shortcuts still need031’s inline common-command presentation. Reference025 also
+shows zoom through500%; current contract/UI is50–200, a remaining native/API gap.
+
+Integrated typecheck/lint pass;4,575/4,577 cases passed. The existing coder-worktrees
+60s timeout and a native-cdp-broker reconnect30s timeout failed. The isolated CDP
+suite then passed all9 cases in1.24s; no CDP source changed. Renderer1.85s. No
+additional unchanged full suite was run. Native area0043 currently compiling
+predates this renderer reordering; do not mistake it for native layout evidence.

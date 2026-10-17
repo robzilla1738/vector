@@ -7,7 +7,7 @@ import { WebsiteSizes } from "../../components/WebsiteSizes";
 import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from "../../ui-font-size";
 import { SettingsField, SettingsSection } from "../primitives";
 import { DefaultPageZoomSetting } from "./DefaultPageZoom";
-import { SidebarOptions } from "./SidebarOptions";
+import { SidebarOptions, SidebarDetails } from "./SidebarOptions";
 import { SettingsDialogControl } from "../SettingsDialogControl";
 import { TidyTabsSetting } from "./TidyTabs";
 import { bridge } from "../../bridge";
@@ -95,8 +95,11 @@ export function AppearanceSettings({
         </SettingsField>
       </div>
 
-      <SettingsGroup title="Tabs & sidebar">
+      <div className="settings-card appearance-sidebar-card">
         <SidebarOptions active={active} settings={settings} onSave={onSave} />
+      </div>
+
+      <SettingsGroup title="Tabs">
         <SettingsField compact label="Tab switcher order" hint="Choose how Control-Tab moves between tabs.">
           <select
             aria-label="Tab switcher order"
@@ -130,6 +133,27 @@ export function AppearanceSettings({
         </SettingsField>
       </SettingsGroup>
 
+      <SettingsGroup title="Websites & shortcuts">
+        <SettingsField label="Website sizes">
+          <WebsiteSizes />
+        </SettingsField>
+        <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts.">
+          <button
+            {...smallGhostButtonProps}
+            aria-expanded={showShortcuts}
+            onClick={() => setShowShortcuts((value) => !value)}
+          >
+            {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
+          </button>
+          {showShortcuts && (
+            <ShortcutsSetting
+              active={active}
+              value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
+              onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
+            />
+          )}
+        </SettingsField>
+      </SettingsGroup>
       <SettingsGroup title="Window details">
         <SettingsField compact label="Interface text" hint="Adjust the text size in Aux.">
           <select
@@ -209,26 +233,8 @@ export function AppearanceSettings({
           </Button>
         </SettingsField>
       </SettingsGroup>
-      <SettingsGroup title="Websites & shortcuts">
-        <SettingsField label="Website sizes">
-          <WebsiteSizes />
-        </SettingsField>
-        <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts.">
-          <button
-            {...smallGhostButtonProps}
-            aria-expanded={showShortcuts}
-            onClick={() => setShowShortcuts((value) => !value)}
-          >
-            {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
-          </button>
-          {showShortcuts && (
-            <ShortcutsSetting
-              active={active}
-              value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
-              onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
-            />
-          )}
-        </SettingsField>
+      <SettingsGroup title="Sidebar details">
+        <SidebarDetails settings={settings} onSave={onSave} />
       </SettingsGroup>
     </SettingsSection>
   );

@@ -23,14 +23,8 @@ export function SidebarOptions({
   settings: Record<string, unknown>;
   onSave: (patch: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const sidebar = useStore((state) => state.sidebar);
-  const autoHide = settings.toolbarAutoHide !== false;
   const vertical = settings.tabLayout !== "horizontal";
   const bookmarksVisible = settings.sidebarBookmarksVisible !== false;
-  const width = useStore((state) => state.sidebarWidth);
-  const open = useStore((state) => state.sidebarSections);
-  const setWidth = useStore((state) => state.setSidebarWidth);
-  const toggle = useStore((state) => state.toggleSidebarSection);
   const [menuOpen, setMenuOpen] = useState(false);
   const [savingBookmarks, setSavingBookmarks] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -54,23 +48,6 @@ export function SidebarOptions({
             >
               <option value="top">At top</option>
               <option value="bottom">At bottom</option>
-            </select>
-          </SettingsField>
-          <SettingsField
-            compact
-            label="Recent chats in sidebar"
-            hint="How many recent chats to show in the sidebar."
-          >
-            <select
-              aria-label="Recent chats in sidebar"
-              value={Number(settings.sidebarRecentChatLimit ?? 3)}
-              onChange={(event) => void onSave({ sidebarRecentChatLimit: Number(event.target.value) })}
-            >
-              {[3, 5, 10].map((count) => (
-                <option key={count} value={count}>
-                  {count} chats
-                </option>
-              ))}
             </select>
           </SettingsField>
           <SettingsField
@@ -128,6 +105,23 @@ export function SidebarOptions({
               </Menu>
             )}
           </SettingsField>
+          <SettingsField
+            compact
+            label="Recent chats in sidebar"
+            hint="How many recent chats to show in the sidebar."
+          >
+            <select
+              aria-label="Recent chats in sidebar"
+              value={Number(settings.sidebarRecentChatLimit ?? 3)}
+              onChange={(event) => void onSave({ sidebarRecentChatLimit: Number(event.target.value) })}
+            >
+              {[3, 5, 10].map((count) => (
+                <option key={count} value={count}>
+                  {count} chats
+                </option>
+              ))}
+            </select>
+          </SettingsField>
         </>
       ) : (
         <SettingsField compact label="Shrink tabs to fit" hint="Tabs shrink to fit as the tab bar fills up.">
@@ -140,6 +134,26 @@ export function SidebarOptions({
           />
         </SettingsField>
       )}
+    </>
+  );
+}
+
+export function SidebarDetails({
+  settings,
+  onSave,
+}: {
+  settings: Record<string, unknown>;
+  onSave: (patch: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const sidebar = useStore((state) => state.sidebar);
+  const width = useStore((state) => state.sidebarWidth);
+  const open = useStore((state) => state.sidebarSections);
+  const setWidth = useStore((state) => state.setSidebarWidth);
+  const toggle = useStore((state) => state.toggleSidebarSection);
+  const autoHide = settings.toolbarAutoHide !== false;
+  const bookmarksVisible = settings.sidebarBookmarksVisible !== false;
+  return (
+    <>
       <SettingsField
         compact
         label="Keep sidebar open"
