@@ -7,6 +7,32 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Native autofill accepted; redirect correction awaiting build
+
+Nativec366c7dc8 completed its incremental build/link and launched through
+owner79146 in disposable Profileaux-dev-eWrIyF (app85709/runtime API51202).
+The synthetic address flow no longer crashes. Chromium's Save address offer,
+Edit dialog, Cancel return and Save all worked. Reopening the form exposed the
+saved native autofill suggestion and filled every field. Changing the synthetic
+name produced the native Update address offer; Update persisted and the next
+suggestion showed the changed name. Payment-specific prompts remain unobserved.
+
+The same walkthrough isolated a general HTTP redirect defect. A redacted local
+network trace records19same-destination307Delegate redirects after a real302,
+ending with ERR_TOO_MANY_REDIRECTS. The content filter unconditionally passed the
+unchanged destination as an override. Area0058 now forwards an override only
+when policy actually changes the transport destination, and uses Chromium's
+redirect helpers for method/body/header/referrer state. Post-task person
+navigation receipts now also admit their exact redirect hops; all document,
+control-generation and retirement checks remain. Native acceptance follows.
+
+The full integrated check passed typecheck/lint and4,677/4,678tests; the existing
+coder-worktree fixture timed out during compilation. Its single failed case
+passed in isolation in26.40s. Logs: `/tmp/aux-native-window-handback-check.log`
+and `/tmp/aux-native-window-handback-coder-retry.log`. Unchanged TypeScript checks
+are retained for the native-only redirect correction. The original launcher
+retired normally, removing its Profile, app and lock before native edits.
+
 ## Native readiness — window lookup correction awaiting acceptance
 
 The local minidump identifies the repeatable address-save SIGSEGV at

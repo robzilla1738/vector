@@ -1,0 +1,53 @@
+diff --git a/chrome/browser/ui/aux/content_filter_network.cc b/chrome/browser/ui/aux/content_filter_network.cc
+index 815725c..273904a 100644
+--- a/chrome/browser/ui/aux/content_filter_network.cc
++++ b/chrome/browser/ui/aux/content_filter_network.cc
+@@ -29,6 +29,7 @@
+ #include "net/http/http_response_headers.h"
+ #include "net/http/http_util.h"
+ #include "net/url_request/redirect_info.h"
++#include "net/url_request/redirect_util.h"
+ #include "services/network/public/cpp/resource_request.h"
+ #include "services/network/public/cpp/self_deleting_url_loader_factory.h"
+ #include "services/network/public/cpp/url_loader_completion_status.h"
+@@ -321,11 +322,23 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+       }
+       next = *decision->rewritten_url;
+     }
+-    request_.url = next;
+-    request_.method = method;
++    auto redirect = *pending_redirect_;
++    const std::optional<GURL> override_url =
++        next == redirect.new_url ? std::nullopt : std::make_optional(next);
++    redirect.new_url = next;
++    bool clear_body = false;
++    net::RedirectUtil::UpdateHttpRequest(
++        request_.url, request_.method, redirect, updates.removed_headers,
++        updates.modified_headers, &request_.headers, &clear_body);
++    updates.Apply(request_.headers, request_.cors_exempt_headers);
++    if (clear_body) {
++      request_.request_body = nullptr;
++    }
++    request_.UpdateOnRedirect(redirect);
+     ++dispatch_generation_;
+     pending_redirect_.reset();
+-    target_->FollowRedirect(std::move(updates), next);
++    // An unchanged override becomes a fresh internal redirect in NetworkService.
++    target_->FollowRedirect(std::move(updates), override_url);
+     if (pending_completion_) {
+       OnComplete(*pending_completion_);
+     }
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+index 506148c..9b526f1 100644
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -1157,7 +1157,8 @@ bool EgressController::AllowsPersonNavigation(
+     const EgressRequestContext& context) const {
+   const auto& receipt = context.person_navigation;
+   if (!receipt || !receipt->admitted || !receipt->page ||
+-      receipt->page_id != context.page_id || context.kind != "navigation" ||
++      receipt->page_id != context.page_id ||
++      (context.kind != "navigation" && context.kind != "redirect") ||
+       context.ambiguous) {
+     return false;
+   }
