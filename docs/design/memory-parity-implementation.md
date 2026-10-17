@@ -3,13 +3,14 @@
 References 072–077 were reopened on October 17. The current nested navigation
 matches the destinations. The new local-extraction activity implementation records
 actual duration, trigger and note count separately from recovery revisions. The
-document browser and complete model-extraction workflow remain open.
+daily-document browser is now packaged; broader document authority and the complete
+model-extraction workflow remain open.
 
 | Reference | Required behavior | Current implementation |
 | --- | --- | --- |
-| 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Space notes editor, approved claims and search; no document identities or editable tree |
+| 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Daily approved-note files and authoritative MEMORY.md now editable; USER/TAXONOMY/site/routine authorities remain open |
 | 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Local-extraction activity plus a separate Recovery revisions view; model usage, errors, file diffs and Dream now remain open |
-| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; editable-document indexing and episodic retention remain open |
+| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; approved owner edits rebuild the same index; broader document indexing and episodic retention remain open |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
 
 Source findings:
@@ -126,6 +127,6 @@ owner explicitly rebases a daily-file draft. Review/import/Forget and individual
 manual notes remain available through Review and manage notes.
 
 USER.md/TAXONOMY.md and site/routine document authority remain unimplemented. The
-browser exposes no placeholder files for those concepts. Native acceptance of the
-new browser remains pending; renderer/mock observations do not establish runtime
-or final packaged behavior.
+browser exposes no placeholder files for those concepts. Native498b9a550 acceptance covers root saving, two-fragment daily editing, original
+quote preservation, reindex/refresh persistence and dark/light populated views.
+Narrow comparison and the subsequent toolbar refinement remain unverified natively.

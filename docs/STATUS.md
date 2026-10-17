@@ -9,38 +9,42 @@ retired and old gaps may have been resolved by later entries.
 
 ## Current native preview
 
-Product **f8a63b938**, launcher **34011**, app **35335**, runtime **35351**,
-exec **63143**, API port **52797**, disposable Profile **aux-dev-Q8EcMu**.
-Log `/tmp/aux-memory-index-native-build.log`; native build passed in **9m47.99s**,
-runtime staged and booted. CUA **memoryIndexApp** is live. Preserve launcher cleanup
-ownership. Prior26443/app27577/runtime27591 and Profileaux-dev-juErea plus lock
-retired normally and were verified removed. homeHistoryApp is stale.
-About confirms clean source f8a63b9380e6a30f838db531a58f7e6eba6089b4,
-Chromium154.0.8037.98 and ABI9021388e….
+Product **498b9a550**, launcher **45942**, app **47141**, runtime **47159**,
+exec **11272**, API port **55283**, disposable Profile **aux-dev-htWP4i**.
+Log `/tmp/aux-memory-documents-native-build.log`; native build passed in **9m10.29s**
+and runtime staged/booted. CUA **memoryDocsApp** is live. Preserve launcher cleanup
+ownership. Prior34011/app35335/runtime35351, Profileaux-dev-Q8EcMu and lock retired
+normally and were verified removed. memoryIndexApp is stale. About confirms clean
+source498b9a55031c8cb8e3c789968a9987330d6e6da1, Chromium154.0.8037.98 andABI9021388e….
 
-Native acceptance: Ask → Tab → Search → Tab → Ask preserves the full unfinished
-draft and focuses the right input. Cleared the synthetic draft afterward. Empty
-Ask/Routines spacing now aligns closely with004 at3456×2010 versus3424×1978.
-Memory Configure starts with Index not built. Rebuild shows Running normally,
-actual update time and0chunks. Pausing disables Rebuild; enabling preserves the
-index and time. Imported one1,215-character fictional garden note through local
-paste preview/review and accepted it as explicitly unverified personal context.
-Configuration then reports3chunks from that one approved note. Rebuild retains3
-and advances update time. No provider call was needed for this acceptance.
+Native acceptance: created synthetic root MEMORY.md through Edit/Save and observed
+Markdown plus actual update time. Imported two fictional paper-garden/workshop
+notes through local preview/review; accepted both as unverified personal context.
+One dated file contains both notes. Edited both in a single Save, observed changed
+prose and updated time, then expanded both original-source disclosures: original
+quotes remained intact. Rebuild reported2chunks and advanced index time; refresh
+and reopening preserved both edited daily notes and root content. Management/back
+navigation works. No provider call was needed. Observed populated dark and light
+layouts; restoredDark. Narrow acceptance remains open.
 
 Captures under `/tmp/aux-parity-2026-10-16/`:
-- `aux-ask-routines-f8a63b938.jpg`
-- `aux-memory-index-empty-f8a63b938.jpg`
-- `aux-memory-index-populated-f8a63b938.jpg`
+- `aux-memory-daily-edited-498b9a550.jpg`
+- `aux-memory-config-flat-native-498b9a550.jpg`
+- `aux-memory-daily-light-498b9a550.jpg`
 
-Reference075 still exposes a configuration layout mismatch: the index is nested
-below the manual-memory switch and a large Space memory explanation/card. Next
-visual correction should lead with the index card and group both actual settings
-below it, preserving their distinct behavior and DOM/keyboard order. Avoid merely
-reordering nested wrappers with CSS. Native light/narrow comparison remains open.
-No complete Memory/phase/full-parity claim.
+Reference073 comparison exposed the redundant large Memory heading above the
+file toolbar and truncated words in derived note headings. Source follow-up moves
+Close into the file toolbar, hides the redundant heading only for the visible
+Memory browser, adds folder expansion indicators, shortens the tree heading and
+uses word-boundary ellipses. Layout selectors now exclude hidden Settings sections.
+Typecheck and14affected tests passed in0.700s (/tmp/aux-memory-chrome-check.log).
+Renderer inspection confirmed the single toolbar and functioning replacement Close
+action; capture aux-memory-toolbar-renderer.jpg. Its mock pipeline is unavailable,
+so this does not add native runtime evidence. Closed the renderer inspection tab.
+This small follow-up is not yet packaged; combine it with the next substantive
+batch rather than rebuilding unchanged native code again immediately.
 
-## Memory configuration layout follow-up — not yet packaged
+## Memory configuration layout — packaged in498b9a550
 
 Source now leads with the index under Memory, followed by one Settings group.
 The pipeline and manual-memory controls retain their existing distinct behavior;
@@ -56,13 +60,14 @@ unavailable-state layout observations, not working-index native acceptance.
 Captures `aux-memory-config-flat-renderer.jpg` and
 `aux-memory-config-flat-light-renderer.jpg` under the capture directory. Restored
 mock Dark, closed that temporary tab and restored native sidebar. Productf8a63b938
-remains live. Package this follow-up with the next substantial source batch.
+was live at that renderer review. This layout is now packaged and observed in498b9a550.
 
 Layout `npm run check` passed typecheck/lint and4,631tests/745files in109.59s
 (`/tmp/aux-memory-layout-check.log`). The subsequent read-error correction passed
 typecheck/lint plus40focused tests in3files, including a new recovery-from-failure
 case (`/tmp/aux-memory-retry-check.log`). No unchanged full suite was repeated.
-Native light/narrow comparison and healthy-state verification of this layout
+Native light/narrow configuration comparison remains open; healthy-state verification
+now passed in498b9a550. Earlier source-only notes below are historical. Further comparison
 remain open; renderer evidence is not a claim of complete Memory parity.
 
 ## Approved-document editing foundation — source only
@@ -270,7 +275,7 @@ preview; no unchanged keyboard campaign was repeated.
   `/tmp/aux-parity-2026-10-16/aux-model-search-rounded-4b1358c58.png`.
 - Zoom25–500% is implemented in patch0044; older50–200% gap entries are historical.
 
-## Memory document browser — source checked, packaging next
+## Memory document browser — packaged in498b9a550
 
 Overview now has an episodic daily-file list, MEMORY.md, modification times,
 Markdown preview and Edit/Cancel/Save. Daily edits submit changed fragments in one

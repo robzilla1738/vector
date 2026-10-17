@@ -271,6 +271,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
           memory={memory}
           active={view === "overview" && !manageNotes}
           onManage={() => setManageNotes(true)}
+          onClose={() => useStore.getState().setOverlay(null)}
           onSaved={(value) => {
             if (value.workspaceId !== selectedWorkspace.current) return;
             setMemory(value);

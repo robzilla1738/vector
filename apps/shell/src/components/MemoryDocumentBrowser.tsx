@@ -5,11 +5,21 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { errorMessage } from "../error-message";
 import { MemoryDocument } from "./MemoryDocument";
-import { shellIconFolder, shellIconFolderClosed } from "../ui/icons";
+import {
+  shellIconFolder,
+  shellIconFolderClosed,
+  shellIconClose,
+  shellIconUp,
+  shellIconDown,
+} from "../ui/icons";
 import "./MemoryDocumentBrowser.css";
 
 type Draft = { revision: number; generation: string | null; texts: Record<string, string> };
 const ROOT = "MEMORY.md";
+function noteHeading(text: string) {
+  const line = text.split("\n")[0] ?? "";
+  return line.length > 72 ? `${line.slice(0, 72).replace(/\s+\S*$/, "")}…` : line;
+}
 
 /** The document view edits authoritative Space content and provenance-preserving approved notes. */
 export function MemoryDocumentBrowser({
@@ -17,11 +27,13 @@ export function MemoryDocumentBrowser({
   onSaved,
   active,
   onManage,
+  onClose,
 }: {
   memory: WorkspaceMemory;
   onSaved(memory: WorkspaceMemory): void;
   active: boolean;
   onManage(): void;
+  onClose(): void;
 }) {
   const workspaceId = memory.workspaceId;
   const layout = useStore((state) => state.layout);
@@ -207,7 +219,7 @@ export function MemoryDocumentBrowser({
       <section className="memory-document-entry" key={note.claim.claimId}>
         <h3>
           {new Date(note.claim.capturedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
-          {memoryClaimText(note.claim).split("\n")[0]!.slice(0, 72)}
+          {noteHeading(memoryClaimText(note.claim))}
         </h3>
         <MemoryDocument text={memoryClaimText(note.claim)} />
         {showSource && (
@@ -250,14 +262,17 @@ export function MemoryDocumentBrowser({
         }}
       >
         <div className="memory-tree-heading">
-          {shellIconFolder} <span>Memory documents</span>
+          {shellIconFolder} <span>Documents</span>
         </div>
         <details
           open={expanded}
           onToggle={(event) => setExpanded(event.currentTarget.open)}
           className="memory-document-folder"
         >
-          <summary>{shellIconFolderClosed} episodic</summary>
+          <summary>
+            {expanded ? shellIconFolder : shellIconFolderClosed} episodic{" "}
+            <span className="memory-folder-chevron">{expanded ? shellIconUp : shellIconDown}</span>
+          </summary>
           {!documents ? (
             <span className="hint">{documentError ? "Unavailable" : "Loading…"}</span>
           ) : !paths.length ? (
@@ -328,6 +343,15 @@ export function MemoryDocumentBrowser({
               Edit
             </button>
           )}
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Close settings"
+            title="Close (Esc)"
+            onClick={onClose}
+          >
+            {shellIconClose}
+          </button>
         </header>
         <div className="memory-document-body">
           {storageError && rootDraft && (

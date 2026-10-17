@@ -2691,3 +2691,19 @@ No fabricated USER/TAXONOMY/site/routine files. Those authorities and native
 populated/light/narrow evidence remain open. See STATUS for checks and packaging.
 Renderer/mock unavailable-state inspection is not native runtime acceptance.
 Corpus rescan unchanged182PNG/192TXT/6support files (182JPG excluded).
+
+
+## October 17 — native daily-document acceptance,498b9a550
+
+Build9m10.29s, launcher45942/app47141/runtime47159, API55283, Profileaux-dev-htWP4i,
+exec11272; memoryDocsApp live. Prior34011 normally retired with app/runtime/Profile/
+lock removal verified. About confirms clean498b9a550. RootMarkdownSave and two-note
+import/review→dailyfile→Edit both→Save succeeded. Original quotes remained intact
+beneath owner-edited disclosures. Rebuild retained2chunks and advanced index time;
+refresh/reopen preserved root and daily edits. Native dark/light populated capture
+and configuration capture are listed inSTATUS. RestoredDark; narrow remains open.
+
+Source follow-up addresses extra Memory H1 row, visible Close placement, folder
+expansion indicator and partial-word heading truncation; scopes browser layout to
+the visible Settings section. Typecheck+14affected tests passed0.700s. Follow-up
+not yet packaged. No fullMemory/fullparity/phase-completion claim.

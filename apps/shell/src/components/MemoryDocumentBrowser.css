@@ -1,17 +1,25 @@
 @layer overrides {
-  .settings-content:has(.memory-document-browser) {
+  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) {
     padding: 0;
   }
-  .settings-content:has(.memory-document-browser) > :not(.settings-outline) {
+  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser)
+    > :not(.settings-outline) {
     max-width: none;
   }
-  .settings-content:has(.memory-document-browser) .settings-scroll {
+  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) .settings-scroll {
     padding: 0;
+  }
+  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) .drawer-head {
+    display: none;
+  }
+  .memory-folder-chevron {
+    margin-left: auto;
+    display: flex;
   }
   .memory-document-browser {
     display: grid;
     grid-template-columns: minmax(180px, 20%) minmax(0, 1fr);
-    min-height: calc(100vh - 70px);
+    min-height: calc(100vh - 42px);
   }
   .memory-document-browser > nav {
     border-right: 1px solid var(--line);

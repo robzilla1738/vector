@@ -66,7 +66,9 @@ afterEach(async () => {
 });
 const render = () =>
   act(async () =>
-    root.render(<MemoryDocumentBrowser memory={memory} onSaved={saved} active onManage={() => {}} />),
+    root.render(
+      <MemoryDocumentBrowser memory={memory} onSaved={saved} active onManage={() => {}} onClose={() => {}} />,
+    ),
   );
 async function click(text: string) {
   await act(async () =>
