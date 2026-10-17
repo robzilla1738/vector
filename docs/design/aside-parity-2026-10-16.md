@@ -12,10 +12,24 @@ are unchanged. Settings search retains the Quick Ask window destination.
 Integrated typecheck/lint and 4,617 tests across 741 files passed. Final renderer
 build passed in 2.45s after CSS refinement. Logs:
 `/tmp/aux-quick-ask-card-check.log`, `/tmp/aux-quick-ask-card-final-build.log`.
-Visual acceptance is pending: the single native build still runs under launcher
-88765/session 10789, currently generating debug symbols. It compiles `c7b770bfe`,
-so Memory document rendering and this card require Vite inspection after launch
-and later native consolidation. Full parity remains open.
+The native consolidation completed at `c7b770bfe`: launcher 88765/session
+10789 owns app 95564 with disposable Profile `aux-dev-VQvSoS`. Native review
+confirmed rounded model-search focus without the square inner outline, provider
+marks, compact model menus and readable labels that stack at narrow widths.
+A synthetic paused routine showed the revised card hierarchy; its $1 spend cap
+survived Settings Reload. The routine was never resumed or run. Captures:
+`/tmp/aux-parity-2026-10-16/aux-model-menu-native-c7b.png`,
+`aux-models-stacked-native-c7b.png`, and `aux-routine-card-native-c7b.png`.
+
+Quick Ask was inspected in the Vite guest at wide and narrow content widths.
+Its hero selectors now outrank generic compact-field rules, keeping the action
+under the introduction and allowing the illustration to span the narrow card.
+The CSS-only correction passed the renderer build in 2.03s; unchanged tests were
+not repeated (`/tmp/aux-quick-ask-cascade-build.log`). Narrow capture:
+`/tmp/aux-parity-2026-10-16/aux-quick-ask-narrow-vite.png`.
+Memory document rendering and Quick Ask are newer than the native shell and
+still require native consolidation; Memory visual acceptance is pending.
+Full parity remains open.
 
 Memory reference review (072, 074, 075): approved summaries, revision
 summaries and selected saved notes now share formatted document rendering instead
