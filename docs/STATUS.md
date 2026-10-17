@@ -1,15 +1,44 @@
 # Aux status — October 16, 2026
 
-Current build: **70b1bd1b5**, launcher **87016**, exec **92146**, log
-`/tmp/aux-native-library-routes-build.log`. Includes native routes, SavedPages and
-0050 Private History redirect correction. Launcher 81608 was normally retired;
-app 82974 exited and its disposable Profile/lock were removed before replacement.
-Do not bind the retired app or start a second builder. Current source checks,
-renderer build and affected retries pass; 0050 native object compiled in 8.70s
-and reverse-apply validation passed. Next: await build, inspect new destinations,
-SavedPages focus/layout, Private History rejection and then Labs native opt-outs.
-Reference rescan unchanged: 182 PNG, 192 TXT, six supporting files.
+Live candidate **70b1bd1b5c35689528c35607da547bbd211b9e94** built in 8m33.88s.
+About verified source, Chromium 154.0.8037.98 and unchanged ABI 9021388e….
+Launcher **87016**, app **88409**, exec **92146**, disposable Profile
+**aux-dev-8h142T**, runtime API `http://127.0.0.1:56877`.
+Log `/tmp/aux-native-library-routes-build.log`. Preserve launcher cleanup ownership.
 
+Native acceptance: toolbar Bookmarks opens chrome://bookmarks; Cmd-Y opens native
+History; Clear History opens chrome://settings/clearBrowserData (cancelled without
+deleting data). More exposes Reading list and saved tabs; all three retained
+reading/archive/recently closed views render and focus their rounded search field.
+Adding a reading item and marking it read updates the correct group. Direct Private
+History now stays in its Private window and shows a rejected page; Cmd-Y there
+also does not open persistent History. Private window closed normally afterward.
+Captures `/tmp/aux-parity-2026-10-16/aux-saved-pages-70b1bd1b5.png` and
+`aux-private-history-70b1bd1b5.png`. Native Settings still exposes Chromium/Google
+wording through Clear History; that presentation remains to be reviewed.
+
+Next source batch, area patch **0051-native-library-feature-preferences.patch**:
+cache only folders/splitView/privateWindows booleans from normal-profile runtime
+settings events in browser preferences. Native Bookmarks seeds and observes those
+preferences, hides opted-out actions immediately, and rechecks deferred opens.
+Private runtimes cannot overwrite the normal Profile cache. Defaults remain on.
+The combined native bookmark model and Aux sidebar now honor permanent-node
+visibility, hiding empty Mobile/Managed roots while retaining populated roots.
+Native Library delayed opens preserve newer window kind/overlay ownership.
+Reading-list row moves restore focus to their new action trigger (or search after
+removal), while preserving newer external focus. This correction was found during
+the live mark-read walkthrough and awaits consolidated native acceptance.
+
+Validation: 0051 Bookmarks TypeScript/resources and changed C++ objects compiled
+in 51.95s; reverse-apply check passed. Integrated `npm run check` passed all 4,618
+tests / 744 files in 101.94s. Subsequent focus correction passed typecheck/lint and
+12 reading/navigation focus tests. No full suite was repeated for that correction.
+Logs `/tmp/aux-native-library-features-{compile,check}.log`,
+`/tmp/aux-reading-focus-{typecheck,lint,check}.log`.
+Next native acceptance: Labs opt-outs with an already-open bookmark page, cache
+retention without runtime, empty/populated roots and reading-row focus. Full UI
+parity, populated History groups, light/narrow comparisons and phase smoke/perf
+remain incomplete.
 
 Native candidate **21d7d725cfce93aa84a5762c3bfc381d01ee6603** built and launched
 under launcher **81608**, app **82974**, disposable Profile **aux-dev-UFpGbW**,

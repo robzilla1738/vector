@@ -43,22 +43,27 @@ it("rejects persistent data in Private and Little windows before opening a page"
   await expect(openNativeLibrary("clear")).rejects.toThrow("full Aux");
   expect(newTab).not.toHaveBeenCalled();
 });
-it("does not dismiss another window's surface after a delayed open", async () => {
-  bridge.privateMode = false;
-  bridge.windowKind = "normal";
-  let finish!: (value: ReturnType<typeof makePage>) => void;
-  useStore.setState({
-    newTab: vi.fn(
-      () =>
-        new Promise<ReturnType<typeof makePage>>((resolve) => {
-          finish = resolve;
-        }),
-    ),
-    overlay: "saved-pages",
-  });
-  const opening = openNativeLibrary("history");
-  bridge.windowId = "another-window";
-  finish(makePage(0));
-  await opening;
-  expect(useStore.getState().overlay).toBe("saved-pages");
-});
+it.each(["window", "kind", "overlay"] as const)(
+  "preserves newer %s ownership after a delayed open",
+  async (changed) => {
+    bridge.privateMode = false;
+    bridge.windowKind = "normal";
+    let finish!: (value: ReturnType<typeof makePage>) => void;
+    useStore.setState({
+      newTab: vi.fn(
+        () =>
+          new Promise<ReturnType<typeof makePage>>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+      overlay: "saved-pages",
+    });
+    const opening = openNativeLibrary("history");
+    if (changed === "window") bridge.windowId = "another-window";
+    if (changed === "kind") bridge.windowKind = "little";
+    if (changed === "overlay") useStore.setState({ overlay: "settings" });
+    finish(makePage(0));
+    await opening;
+    expect(useStore.getState().overlay).toBe(changed === "overlay" ? "settings" : "saved-pages");
+  },
+);

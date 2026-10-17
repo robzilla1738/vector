@@ -13,9 +13,16 @@ export async function openNativeLibrary(view: keyof typeof routes) {
   if (!inNativeHost) throw new Error("Browser Library pages are available in the Aux desktop app.");
   if (bridge.windowKind === "little") throw new Error("Open a full Aux window to use the browser Library.");
   const windowId = bridge.windowId;
+  const windowKind = bridge.windowKind;
   const state = useStore.getState();
   const page = await state.newTab(routes[view]);
   if (!page) throw new Error("The browser page could not be opened. Try again.");
-  if (bridge.windowId === windowId && !bridge.privateMode) useStore.getState().setOverlay(null);
+  if (
+    bridge.windowId === windowId &&
+    bridge.windowKind === windowKind &&
+    !bridge.privateMode &&
+    useStore.getState().overlay === state.overlay
+  )
+    useStore.getState().setOverlay(null);
   return page;
 }

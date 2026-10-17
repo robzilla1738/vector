@@ -1,5 +1,16 @@
 # Aside UI parity — October 16, 2026
 
+October 17 Library integration acceptance: candidate 70b1bd1b5 verified in About.
+Toolbar/shortcuts open actual native Bookmarks, History and data-deletion controls;
+Reading/Archived/Recently closed remain accessible with rounded search focus.
+Native mark-read moves the saved item to Read. Private History URL and Cmd-Y stay
+isolated after patch 0050. Source patch 0051 now mirrors three Library Labs opt-outs
+into native preferences and hides invisible permanent bookmark roots; source also
+preserves newer overlay ownership and restores focus after reading-row moves.
+Native compilation and 4,618 integrated tests pass. These latest fixes still need
+consolidated native acceptance; full parity remains open.
+
+
 October 17 native Library follow-up: candidate 21d7d725c verified in About.
 Aux logo/dark native Bookmarks styling, original bookmark menu order, immediate
 sidebar synchronization after native creation and native History navigation accepted.

@@ -54,7 +54,7 @@ function ReadingRow({
     if (current()) useStore.setState({ bookmarks: items });
   }
   return (
-    <div ref={row} className={`library-item${item.readAt ? " read" : ""}`}>
+    <div ref={row} data-reading-key={keyOf(item)} className={`library-item${item.readAt ? " read" : ""}`}>
       <button
         className="library-open"
         disabled={busy}
@@ -202,7 +202,7 @@ export function SavedPages({
       live = false;
     };
   }, [effectiveView, revision]);
-  function action(work: () => Promise<void>) {
+  function action(work: () => Promise<void>, focusKey?: string) {
     if (!current() || pending.current) return;
     pending.current = true;
     setBusy(true);
@@ -214,7 +214,19 @@ export function SavedPages({
       })
       .finally(() => {
         pending.current = false;
-        if (current()) setBusy(false);
+        if (current()) {
+          setBusy(false);
+          if (focusKey)
+            requestAnimationFrame(() => {
+              if (!current() || document.activeElement !== document.body) return;
+              const row = [...(root.current?.querySelectorAll<HTMLElement>("[data-reading-key]") ?? [])].find(
+                (element) => element.dataset.readingKey === focusKey,
+              );
+              const target =
+                row?.querySelector<HTMLButtonElement>(".library-bookmark-more") ?? search.current;
+              if (target && availableForFocus(target)) target.focus();
+            });
+        }
       });
   }
   function open(item: SavedPage, background = false, trigger?: HTMLElement) {
@@ -385,7 +397,7 @@ export function SavedPages({
                         key={keyOf(item)}
                         item={item}
                         busy={busy}
-                        action={action}
+                        action={(work) => action(work, keyOf(item))}
                         open={open}
                         current={current}
                       />
