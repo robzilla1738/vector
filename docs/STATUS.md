@@ -1,5 +1,15 @@
 # Aux status — October 16, 2026
 
+October 16 Channels review: references 091–096 expose an unimplemented messenger
+surface, including Slack/Telegram/Discord connections, peer pairing, per-channel
+mention/follow-up rules and reconnect. Current Calendar/MCP grants and developer
+client connections are not equivalent. The active parity ledger now records the
+source evidence and implementation dependencies; all six references remain open.
+No product source changed or tests repeated during this audit. Native launcher
+60321/session 43285 and linker 60972 are confirmed live on the existing build;
+continue polling this handle for the pending native walkthrough.
+
+
 October 16 routine model-menu follow-up: the flat list is replaced by the shared
 searchable provider-grouped model picker. Thinking choices Auto/Low/Medium/High
 persist with each routine and feed normal/overnight starts; clearing the value

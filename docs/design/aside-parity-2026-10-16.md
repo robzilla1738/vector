@@ -5,6 +5,35 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Channels audit — references 091–096
+
+Reviewed all six captures against current source. This is an implementation gap,
+not a rename of Connected services or Developers:
+
+| Reference | Required surface/behavior | Current evidence |
+| --- | --- | --- |
+| 091 | Channels introduction, messenger rows with enable/manage, personal assistants | No Channels route or messenger connection collection. Connected services currently reviews Calendar and outbound MCP. |
+| 092 | Add menu: Slack, Telegram, Discord | No messenger transport adapters or credential setup in runtime/contracts. The Slack skill is browser guidance, not a bot transport. |
+| 093 | Per-connection Options/Pairing/Credentials dialog, thread mentions, reconnect | No matching persisted connection configuration or transport lifecycle. |
+| 094 | Paired people only / Everyone access | External-agent bearer connections are task/workspace scoped developer clients, not authenticated messenger identities. These scopes cannot substitute for pairing. |
+| 095 | Queue / Steer per connection | Composer follow-up preference exists, but there is no inbound thread-to-run dispatcher to apply it. |
+| 096 | Paired-person list and per-person actions | No messenger pairing records, admission/revocation flow or paired-user UI. |
+
+Source evidence: `packages/contracts/src/connectors.ts` has Calendar/MCP variants;
+`apps/runtime/src/services/connectors.ts` derives those entries from existing
+provider authority. `apps/shell/src/components/ExternalAgents.tsx` manages developer
+clients, while `ReviewedConnectors.tsx` manages task grants for connected services.
+Neither implements the reference's channel semantics. No messenger credentials
+were read and no messages were sent during this audit.
+
+Implementation order: durable messenger connections and authenticated peer pairing;
+transport lifecycle/deduplication and thread-to-chat routing; per-channel mentions,
+follow-up admission and reconnect; then the reference's list/add/settings/pairing
+surfaces using actual runtime state. Keep Stop/Take over and existing effect review
+in the run path. Add real transport-backed controls rather than enabled mock rows.
+The personal-assistant cards require separate capability evidence before wiring.
+All six references remain OPEN; this audit does not narrow the full parity goal.
+
 ## Routine model and delivery controls
 
 Reference084 now has functional Model and Notifications rows in source and Vite.
