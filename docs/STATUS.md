@@ -1,5 +1,13 @@
 # Aux status — October 16, 2026
 
+Consolidated native build started from `03e1dc205` with bookmark sort/undo,
+menu ordering and group/split destinations. Launcher **59717**, exec session
+**56581**, log `/tmp/aux-bookmark-arrangements-native.log`. Process confirmed live
+at 7s. Preserve this launcher's ownership and poll this session; do not start a
+second builder. Previous launcher 52233 retired via SIGTERM; app 56049 exited,
+Profile aux-dev-GXRhpY disappeared and native lock release was verified before
+replacement. Native walkthrough remains pending for this candidate.
+
 Bookmark menu destination batch (reference 170): source now orders Edit/Delete,
 Private window, new tab group, new tab, new window and split view, with Preview
 last and a separator between editing and navigation. Clipboard actions remain
