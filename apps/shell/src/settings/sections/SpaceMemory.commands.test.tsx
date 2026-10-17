@@ -441,3 +441,25 @@ it("an older fulfilled mismatched reply cannot report error after a fresh GET pu
   expect(host.querySelector('[role="alert"]')).toBeNull();
   expect(host.textContent).toContain("Original report note");
 });
+
+it("rebuilds the current Space index and refreshes its measured status", async () => {
+  let rebuilt = false;
+  mocks.call.mockImplementation(async (method, params) => {
+    if (method === "memory.pipeline.reindex") {
+      rebuilt = true;
+      return { indexed: 3 };
+    }
+    const value = response(method, params);
+    return method === "memory.pipeline.overview" && rebuilt
+      ? { ...value, index: { status: "ready", updatedAt: 1700000000000, chunkCount: 3 } }
+      : value;
+  });
+  await act(async () => root.render(<SpaceMemory workspaceId="space" view="configure" />));
+  const card = host.querySelector('[aria-label="Memory search index"]')!;
+  expect(card.textContent).toContain("Index not built");
+  await act(async () => card.querySelector("button")!.click());
+  expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.reindex", { workspaceId: "space" });
+  expect(card.textContent).toContain("Running normally");
+  expect(card.textContent).toContain("3 chunks");
+  expect(card.querySelector("time")!.getAttribute("datetime")).toBe("2023-11-14T22:13:20.000Z");
+});

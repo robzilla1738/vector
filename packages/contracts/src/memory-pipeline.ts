@@ -63,6 +63,13 @@ export const MemoryPipelineOverviewSchema = z.object({
   summary: z.string().max(10_000),
   claimCount: z.number().int().nonnegative(),
   sourceCount: z.number().int().nonnegative(),
+  index: z
+    .object({
+      status: z.enum(["ready", "not-built", "needs-rebuild"]),
+      updatedAt: z.number().int().nonnegative().nullable(),
+      chunkCount: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export const MemoryPipelineForgetParams = z
   .object({

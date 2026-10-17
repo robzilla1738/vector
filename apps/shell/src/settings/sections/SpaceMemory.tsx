@@ -368,6 +368,50 @@ function SpaceMemoryContent({
     >
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <div hidden={!!view && view !== "configure"}>
+        <section
+          className="memory-index-card"
+          aria-label="Memory search index"
+          data-ready={enabled && overview?.index?.status === "ready"}
+        >
+          <div>
+            <strong>
+              {!snapshot
+                ? "Reading memory index…"
+                : !enabled
+                  ? "Memory paused"
+                  : overview?.index?.status === "ready"
+                    ? "Running normally"
+                    : overview?.index?.status === "needs-rebuild"
+                      ? "Rebuild needed"
+                      : "Index not built"}
+            </strong>
+            <p className="hint">
+              {enabled && overview?.index?.updatedAt != null ? (
+                <>
+                  Updated{" "}
+                  <time dateTime={new Date(overview.index.updatedAt).toISOString()}>
+                    {new Date(overview.index.updatedAt).toLocaleString()}
+                  </time>
+                  {`, ${overview.index.chunkCount} ${overview.index.chunkCount === 1 ? "chunk" : "chunks"} from approved notes`}
+                </>
+              ) : (
+                "Search index for approved notes in this Space."
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn sm"
+            disabled={!snapshot || !enabled || busy || bridge.privateMode}
+            onClick={() => {
+              void (async () => {
+                await act(() => call("memory.pipeline.reindex", { workspaceId }));
+              })().catch(report);
+            }}
+          >
+            {busy ? "Working…" : "Rebuild"}
+          </button>
+        </section>
         <label className="memory-use-toggle" htmlFor={enabledId}>
           <PipelineControl
             inputId={enabledId}

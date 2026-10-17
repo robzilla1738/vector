@@ -890,3 +890,45 @@ it("records no-change extraction without inventing notes and clears its activity
     f.close();
   }
 });
+
+it("indexes real encrypted chunks, survives restart and rebuild, and removes forgotten source text", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    expect((await f.pipeline.overview(workspaceId)).index).toMatchObject({
+      status: "not-built",
+      chunkCount: 0,
+    });
+    f.save("chunked-source", `Amber ${"notebook detail ".repeat(70)}violet finish`);
+    await f.pipeline.extractRun(workspaceId, "chunked-source");
+    const [note] = await f.pipeline.inbox(workspaceId);
+    await f.pipeline.review(workspaceId, note!.claimId, "accept");
+    const status = (await f.pipeline.overview(workspaceId)).index!;
+    expect(status.status).toBe("ready");
+    expect(status.chunkCount).toBeGreaterThan(1);
+    expect(status.updatedAt).toBeGreaterThan(0);
+    expect(await f.pipeline.search(workspaceId, "amber violet")).toHaveLength(1);
+    expect(
+      JSON.stringify(
+        f.db.prepare("SELECT content FROM memory_files WHERE name='search-index.json.enc'").all(),
+      ),
+    ).not.toContain("notebook detail");
+    await f.pipeline.close();
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
+    try {
+      expect((await restarted.overview(workspaceId)).index).toEqual(status);
+      expect(await restarted.reindex(workspaceId)).toEqual({ indexed: status.chunkCount });
+      const snapshot = await restarted.recoverySnapshot();
+      expect(snapshot[0]!.verifiedFiles).toContain("search-index.json.enc");
+      expect(snapshot[0]!.searchIndex!.chunks.length).toBe(status.chunkCount);
+      await restarted.forget({ workspaceId, sourceRunId: "chunked-source" });
+      expect(await restarted.search(workspaceId, "amber violet")).toEqual([]);
+      expect((await restarted.overview(workspaceId)).index).toMatchObject({ status: "ready", chunkCount: 0 });
+      expect(JSON.stringify(await restarted.recoverySnapshot())).not.toContain("notebook detail");
+    } finally {
+      await restarted.close();
+    }
+  } finally {
+    f.close();
+  }
+});

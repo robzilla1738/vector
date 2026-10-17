@@ -1,3 +1,9 @@
+import {
+  buildMemorySearchIndex,
+  validMemorySearchIndex,
+  searchMemoryIndex,
+  type MemorySearchIndex,
+} from "./memory-search-index.js";
 import { readWorkspaceMemory } from "./workspace-memory.js";
 import { currentSpaceMemory, spaceMemoryDigest } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
@@ -47,6 +53,7 @@ export type RecoverySpaceMemory = {
   verifiedFiles: string[];
   imports?: MemoryPasteReceipt[];
   activity?: MemoryExtraction[];
+  searchIndex?: MemorySearchIndex;
 };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
@@ -380,12 +387,16 @@ export class MemoryPipeline {
           (claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const,
         ),
       ]);
+      const searchIndex = this.searchIndex(state.files, state.claims);
+      if (state.files.has("search-index.json.enc") && !searchIndex)
+        throw new Error("Recovery Space-memory search index differs from its claims.");
       const files = [
         "claims.json.enc",
         "inbox.json.enc",
         "history.json.enc",
         "imports.json.enc",
         ...(state.files.has("activity.json.enc") ? ["activity.json.enc"] : []),
+        ...(searchIndex ? ["search-index.json.enc"] : []),
         ...derived.keys(),
       ].sort();
       if (JSON.stringify([...state.files.keys()].sort()) !== JSON.stringify(files))
@@ -400,6 +411,7 @@ export class MemoryPipeline {
         history: state.history,
         verifiedFiles: files,
         imports: state.imports,
+        ...(searchIndex ? { searchIndex } : {}),
         ...(state.files.has("activity.json.enc") ? { activity: state.activity } : {}),
       });
     }
@@ -436,10 +448,13 @@ export class MemoryPipeline {
         "handbook.md.enc",
         ...(space.imports !== undefined ? ["imports.json.enc"] : []),
         ...(space.activity !== undefined ? ["activity.json.enc"] : []),
+        ...(space.searchIndex !== undefined ? ["search-index.json.enc"] : []),
         ...claims.map((claim) => `rollouts/${claim.claimId}.json.enc`),
       ].sort();
       if (JSON.stringify(space.verifiedFiles) !== JSON.stringify(expected))
         throw new Error("Recovery Space memory inventory changed.");
+      if (space.searchIndex !== undefined && !validMemorySearchIndex(space.searchIndex, claims))
+        throw new Error("Recovery Space-memory search index differs from its claims.");
       const activity = MemoryExtractionSchema.array()
         .max(200)
         .parse(space.activity ?? []);
@@ -499,6 +514,7 @@ export class MemoryPipeline {
     const operations = activity ?? previous!.activity;
     const files = new Map<string, string>([
       ["claims.json.enc", JSON.stringify(claims)],
+      ["search-index.json.enc", JSON.stringify(buildMemorySearchIndex(claims))],
       ["inbox.json.enc", JSON.stringify(inbox)],
       ["imports.json.enc", JSON.stringify(receipts)],
       ["activity.json.enc", JSON.stringify(MemoryExtractionSchema.array().max(200).parse(operations))],
@@ -916,7 +932,7 @@ export class MemoryPipeline {
       const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
       // writeGeneration rebuilds encrypted summary, handbook and rollout projections from authoritative encrypted claims.
       await this.writeGeneration(workspaceId, claims, inbox, history, prior);
-      return { indexed: claims.length };
+      return { indexed: buildMemorySearchIndex(claims).chunks.length };
     });
   }
 
@@ -983,6 +999,15 @@ export class MemoryPipeline {
     return this.own(() => this.overviewOwned(workspaceId));
   }
 
+  private searchIndex(files: Map<string, string>, claims: MemoryClaim[]) {
+    try {
+      const raw = files.get("search-index.json.enc");
+      return raw ? validMemorySearchIndex(JSON.parse(raw), claims) : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async overviewOwned(workspaceId: string) {
     const policy = this.policy(workspaceId);
     if (!policy.enabled)
@@ -993,8 +1018,14 @@ export class MemoryPipeline {
         claimCount: 0,
         sourceCount: 0,
       });
-    const { claims } = await this.readClaims(workspaceId);
+    const { claims, files } = await this.readClaims(workspaceId);
+    const index = this.searchIndex(files, claims);
     return MemoryPipelineOverviewSchema.parse({
+      index: {
+        status: index ? "ready" : files.has("search-index.json.enc") ? "needs-rebuild" : "not-built",
+        updatedAt: index?.updatedAt ?? null,
+        chunkCount: index?.chunks.length ?? 0,
+      },
       workspaceId,
       enabled: true,
       summary: this.summary(
@@ -1019,14 +1050,16 @@ export class MemoryPipeline {
       .filter((term) => term.length > 1)
       .slice(0, 8);
     if (!terms.length) return [];
-    const { claims } = await this.readClaims(workspaceId);
+    const { claims, files } = await this.readClaims(workspaceId);
+    const index = this.searchIndex(files, claims) ?? buildMemorySearchIndex(claims);
+    const matchingIds = searchMemoryIndex(index, terms);
     return claims
       .filter(
         (claim) =>
           !claim.contradictionIds?.length &&
           this.eligibleForRecall(workspaceId, claim) &&
           !memoryContentSensitivityReason(claim.text) &&
-          terms.every((term) => claim.text.toLocaleLowerCase().includes(term)),
+          matchingIds.has(claim.claimId),
       )
       .slice(-20)
       .reverse();

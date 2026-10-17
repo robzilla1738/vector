@@ -2584,3 +2584,24 @@ rendering evidence only. Package with the next native batch;0a5a757e0 stays live
 Integrated check: typecheck/lint and4,629tests/745files passed in95.79s, log
 /tmp/aux-home-ask-check.log. Reference rescan unchanged182PNG/192TXT/6support.
 Native light/narrow and image thumbnails remain open; no full-parity claim.
+
+
+## October 17 — Memory configuration index foundation
+
+Reference075 reopened. Added real encrypted search chunks, source digest and
+update time to approved-note generations. Search uses token postings reconstructed
+from overlapping chunks, retaining live source eligibility, contradiction and
+sensitivity checks. Recovery validates the exact derivative; restore rebuilds;
+Forget regenerates without removed text. Missing legacy indexes report not-built
+while remaining searchable through a transient rebuild. Invalid derivatives report
+needs-rebuild and cannot be exported as valid recovery data.
+
+Configuration now shows health/update/chunk count and a real Rebuild action. The
+count explicitly describes approved notes. No fabricated episodic retention or
+editable document tree is exposed. Those requirements remain open.
+
+Integrated check passed typecheck/lint and4,631tests/745files in95.94s, including
+new encrypted index/restart/rebuild/Forget and UI refresh evidence plus existing
+recovery tests. Log /tmp/aux-memory-index-check.log. Generated authorization was
+refreshed after the first compile identified the missing method. Native packaging
+and comparison with075 remain pending; combine with the Ask follow-up.

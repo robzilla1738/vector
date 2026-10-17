@@ -113,6 +113,7 @@ export const RuntimeMethodFeatures = {
   "memory.pipeline.claims": feature5,
   "memory.pipeline.history": feature5,
   "memory.pipeline.activity": feature5,
+  "memory.pipeline.reindex": feature5,
   "memory.pipeline.revert": feature5,
   "memory.pipeline.review": feature5,
   "memory.pipeline.overview": feature5,

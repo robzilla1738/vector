@@ -9,7 +9,7 @@ document browser and complete model-extraction workflow remain open.
 | --- | --- | --- |
 | 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Space notes editor, approved claims and search; no document identities or editable tree |
 | 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Local-extraction activity plus a separate Recovery revisions view; model usage, errors, file diffs and Dream now remain open |
-| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Extraction policy and consolidation controls; no corresponding index status or episodic retention model |
+| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; editable-document indexing and episodic retention remain open |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
 
 Source findings:
@@ -76,3 +76,24 @@ claim count as chunks without actual chunking. Episodic retention applies to dai
 observations and their revisions, preserving root owner notes and extraction
 watermarks so a forgotten source cannot silently reappear. Its deletion/recovery
 semantics must be integrated before exposing the selector from references075–076.
+
+
+## Approved-note index foundation — October 17
+
+The pipeline now writes an encrypted search-index.json.enc derivative in every
+new generation. It stores512-character chunks with64-character overlap, source
+claim IDs, a digest of authoritative approved text and its actual rebuild time.
+Search reconstructs chunked notes into token postings, then retains live source,
+contradiction and sensitivity checks. Terms can match separate chunks of a note.
+Older generations without the derivative remain searchable through an in-memory
+rebuild and report not-built; inconsistent derivatives report needs-rebuild.
+Recovery requires an exact derivative match, reseals restored text and rebuilds
+its index. Forget regenerates chunks from remaining approved text. No removed
+note text is kept in the current index or its exported recovery inventory.
+
+Memory configuration now shows approved-note index health, update time, chunk
+count and a real Rebuild action. This does not establish the root/episodic/site/
+routine document model described above. Future owner-authored documents must join
+these authoritative consumers and recovery/Forget semantics; this claim-backed
+index is not a substitute for the required document browser or episodic retention.
+Native acceptance remains pending with the next consolidated build.

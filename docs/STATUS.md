@@ -59,6 +59,29 @@ separate nine-minute build for spacing alone.
 (`/tmp/aux-home-ask-check.log`). Reference rescan remains182PNG/192TXT/6support.
 Full parity, image thumbnails and native light/narrow comparison remain open.
 
+## Memory index batch — source checked, packaging next
+
+Memory now persists encrypted512-character search chunks with64-character overlap,
+a digest of approved source text and a real update time. Search uses these chunks
+and still checks current source eligibility, contradictions and sensitivity.
+Rebuild rewrites the derivative; older absent indexes report not-built while
+searching through a transient rebuild. Recovery validates the derivative against
+claims, then reseals/rebuilds at restore. Forget regenerates it without removed
+text. Configuration exposes actual status, update time, approved-note chunk count
+and Rebuild, with paused/loading/error states.
+
+`npm run check` passed typecheck/lint and **4,631 tests /745 files** in95.94s
+(`/tmp/aux-memory-index-check.log`). Added evidence covers multiple chunks per note,
+cross-chunk search, encryption, restart, rebuild, recovery inventory, source Forget
+and the configuration Rebuild/refresh action. Existing recovery-package tests pass.
+The initial compile caught stale generated authorization, corrected by regenerating
+host bindings. Only explanatory text and removal of unrelated formatting followed.
+
+This adds the approved-note index foundation. Editable documents, indexing those
+future documents, model extraction and episodic retention remain incomplete.
+See [Memory implementation boundary](design/memory-parity-implementation.md).
+Native observation of this batch and the preceding Ask changes is still required.
+
 ## Previous accepted native preview (retired)
 
 Product **eabff947d**, launcher **17093**, app **18292**, runtime **18307**,
