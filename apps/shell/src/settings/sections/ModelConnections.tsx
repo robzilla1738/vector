@@ -10,6 +10,7 @@ import {
   type ModelConnectionStatus,
 } from "@aux/contracts";
 import { toast, errToast } from "../../store";
+import { ModelProviderMark } from "../../ui/model-provider";
 import { ActionMenu } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
 import { ModelChoice } from "../../ui/model-choice";
@@ -349,6 +350,7 @@ function ProviderConnectionRow({
   const name = MODEL_PROVIDER_NAMES[connection.provider];
   return (
     <div {...staticRowProps} data-provider={connection.provider}>
+      <ModelProviderMark provider={connection.provider} />
       <div {...auxClassGrowProps}>
         <strong>
           {name}

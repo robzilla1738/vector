@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { MODEL_PROVIDER_NAMES } from "@aux/contracts";
+import { ModelProviderMark, modelProviderName } from "./model-provider";
 import { Popover } from "./popover";
 import { Check, ChevronDown, Search } from "./icons";
 import { ActionMenu, type MenuAction } from "./index";
@@ -10,7 +10,6 @@ import "../composer/ComposerModelPicker.css";
 import "../settings/sections/ModelsOverview.css";
 
 export type ModelOption = { id: string; name?: string; provider?: string; textGeneration?: boolean };
-const providerNames: Record<string, string> = { ...MODEL_PROVIDER_NAMES, meta: "Meta", alibaba: "Alibaba" };
 
 export function ModelChoice({
   label,
@@ -45,7 +44,7 @@ export function ModelChoice({
   const selected = options.find((model) => model.id === value);
   const name = selected?.name ?? value.split("/").at(-1) ?? "Choose model";
   const matched = options.filter((model) =>
-    `${model.id} ${model.name ?? ""} ${providerNames[model.provider ?? ""] ?? ""}`
+    `${model.id} ${model.name ?? ""} ${modelProviderName(model.provider ?? "")}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
@@ -72,6 +71,7 @@ export function ModelChoice({
           })
         }
       >
+        <ModelProviderMark provider={model.provider} />
         <span>{model.name ?? model.id}</span>
         {!automatic && value === model.id && <Check />}
       </button>
@@ -128,7 +128,8 @@ export function ModelChoice({
           group && !query.trim() ? (
             <ModelProviderMenu
               key={group}
-              label={providerNames[group] ?? group}
+              provider={group}
+              label={modelProviderName(group)}
               open={providerOpen === group}
               onOpen={() => setProviderOpen(group)}
               onClose={() => setProviderOpen(null)}
@@ -153,6 +154,7 @@ export function ModelChoice({
           initialFocusRef={search}
           trigger={
             <>
+              <ModelProviderMark provider={selected?.provider} />
               <span>{name || "Choose model"}</span>
               <ChevronDown />
             </>

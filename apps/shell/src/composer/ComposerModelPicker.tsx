@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { MODEL_PROVIDER_NAMES, type ModelCapability } from "@aux/contracts";
+import { type ModelCapability } from "@aux/contracts";
 import { Menu } from "../ui/dialog";
 import { shellIconCheck, shellIconDown, shellIconSearch, shellIconOpen } from "../ui/icons";
 import "./ComposerModelPicker.css";
 import { ModelProviderMenu } from "./ModelProviderMenu";
 import { moveMenuFocus } from "../keyboard-list";
 
-const PROVIDER_NAMES: Record<string, string> = { ...MODEL_PROVIDER_NAMES, meta: "Meta", alibaba: "Alibaba" };
+import { ModelProviderMark, modelProviderName } from "../ui/model-provider";
 
 /** Presentation only; RunOptions owns the catalog and validates every selection. */
 export function ComposerModelPicker({
@@ -55,7 +55,7 @@ export function ComposerModelPicker({
       setProviderOpen(null);
     }
   }, [disabled]);
-  const providerName = (provider: string) => PROVIDER_NAMES[provider] ?? provider;
+  const providerName = modelProviderName;
   const filter = query.trim().toLocaleLowerCase();
   const matches = (text: string) => !filter || text.toLocaleLowerCase().includes(filter);
   const visible = models.filter((model) =>
@@ -97,6 +97,7 @@ export function ComposerModelPicker({
         title={model.name ? `${model.name} · ${model.id}` : model.id}
         onClick={() => choose(model.id)}
       >
+        <ModelProviderMark provider={model.provider} />
         <span>{model.name ?? model.id}</span>
         {modelId === model.id && shellIconCheck}
       </button>
@@ -121,6 +122,7 @@ export function ComposerModelPicker({
           }
         }}
       >
+        <ModelProviderMark provider={selectedModel?.provider} />
         <span>{selectedModel?.name ?? modelId ?? "Automatic"}</span>
         {shellIconDown}
       </button>
@@ -208,6 +210,7 @@ export function ComposerModelPicker({
               !filter && provider !== "Models" ? (
                 <ModelProviderMenu
                   key={provider}
+                  provider={provider}
                   label={providerName(provider)}
                   open={providerOpen === provider}
                   onOpen={() => setProviderOpen(provider)}

@@ -5,6 +5,24 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Provider identifiers
+
+Provider marks follow-up: bundled ten unmodified monochrome marks from
+`@lobehub/icons-static-svg@1.95.1` with source/package metadata and the upstream
+MIT license under `apps/shell/src/assets/model-providers`. Composer model choices,
+routine model controls, shared Settings task/image selectors, provider submenus,
+connected-provider rows and Connect choices now use the same decorative mark
+component. Known labels are shared; unknown providers retain their text without
+an invented logo. Marks inherit the surface ink and require no network requests.
+
+Integrated typecheck/lint and all 4,617 tests across 741 files pass; renderer
+build passes in 2.78s. Logs: `/tmp/aux-provider-marks-check.log` and
+`/tmp/aux-provider-marks-build.log`. Visual acceptance is still OPEN: launcher 75304
+and session 72707 remain live, linking the earlier `4e5fa2188` consolidation.
+Do not start another builder or launch the owner's Profile. Inspect these newer
+assets through Vite after the disposable native preview returns. This is source
+progress, not native or full parity acceptance.
+
 ## Provider account dialogs
 
 Provider account setup follow-up (reference 059): Connect now exposes searchable

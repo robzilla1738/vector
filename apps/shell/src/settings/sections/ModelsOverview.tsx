@@ -29,6 +29,7 @@ import { focusSettingsDestination } from "../search-focus";
 import type { SettingsSearchItem } from "../search";
 
 import { ProviderSignIn, type SignInProvider } from "./ProviderSignIn";
+import { ModelProviderMark } from "../../ui/model-provider";
 import { CopilotSignIn } from "./CopilotSignIn";
 
 const accountOptions = [
@@ -415,7 +416,8 @@ function ConnectModels({
                         onAccount(option.id);
                       }}
                     >
-                      {option.label}
+                      <ModelProviderMark provider={option.id} />
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -432,7 +434,8 @@ function ConnectModels({
                   void onSelect(provider);
                 }}
               >
-                {MODEL_PROVIDER_NAMES[provider]}
+                <ModelProviderMark provider={provider} />
+                <span>{MODEL_PROVIDER_NAMES[provider]}</span>
               </button>
             ))}
           </div>

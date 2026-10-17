@@ -1,16 +1,19 @@
 import { useLayoutEffect, useRef, useId, type ReactNode } from "react";
+import { ModelProviderMark } from "../ui/model-provider";
 import { moveMenuFocus } from "../keyboard-list";
 import { shellIconRight } from "../ui/icons";
 
 /** A submenu stays inside the owning native dialog's focus and dismissal scope. */
 export function ModelProviderMenu({
   label,
+  provider,
   open,
   onOpen,
   onClose,
   children,
 }: {
   label: string;
+  provider?: string;
   open: boolean;
   onOpen(): void;
   onClose(): void;
@@ -75,6 +78,7 @@ export function ModelProviderMenu({
           focusChoices();
         }}
       >
+        <ModelProviderMark provider={provider} />
         <span>{label}</span>
         {shellIconRight}
       </button>
