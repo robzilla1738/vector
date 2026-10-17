@@ -1,4 +1,32 @@
 @layer overrides {
+  .memory-settings[data-memory-view="configure"] > .hint {
+    display: none;
+  }
+  .memory-configuration > h4 {
+    margin: 0 14px 10px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+  }
+  .memory-configuration .memory-index-card {
+    margin-bottom: 36px;
+  }
+  .memory-config-settings {
+    overflow: hidden;
+    border-radius: var(--r-lg);
+    background: var(--surface-secondary);
+  }
+  .memory-settings .memory-config-settings .memory-use-toggle {
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .memory-config-settings .space-memory-editor {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+
   .memory-index-card {
     display: flex;
     align-items: center;

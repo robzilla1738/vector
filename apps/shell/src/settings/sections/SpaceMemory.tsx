@@ -168,10 +168,12 @@ class DecisionControls {
 export function SpaceMemory({
   workspaceId,
   includePasteImport = true,
+  configurationControls,
   view,
 }: {
   workspaceId: string;
   includePasteImport?: boolean;
+  configurationControls?: ReactNode;
   view?: MemoryView;
 }) {
   const layout = useStore((state) => state.layout);
@@ -189,6 +191,7 @@ export function SpaceMemory({
       key={JSON.stringify([workspaceId, owners[0]!.id])}
       workspaceId={workspaceId}
       includePasteImport={includePasteImport}
+      configurationControls={configurationControls}
       view={view}
     />
   );
@@ -196,10 +199,12 @@ export function SpaceMemory({
 function SpaceMemoryContent({
   workspaceId,
   includePasteImport,
+  configurationControls,
   view,
 }: {
   workspaceId: string;
   includePasteImport: boolean;
+  configurationControls?: ReactNode;
   view?: MemoryView;
 }) {
   const layout = useStore((state) => state.layout);
@@ -361,70 +366,103 @@ function SpaceMemoryContent({
       current,
     );
   }
+  const indexCard = (
+    <section
+      className="memory-index-card"
+      aria-label="Memory search index"
+      data-ready={enabled && overview?.index?.status === "ready"}
+    >
+      <div>
+        <strong>
+          {!snapshot
+            ? error
+              ? "Index unavailable"
+              : "Reading memory index…"
+            : !enabled
+              ? "Memory paused"
+              : overview?.index?.status === "ready"
+                ? "Running normally"
+                : overview?.index?.status === "needs-rebuild"
+                  ? "Rebuild needed"
+                  : "Index not built"}
+        </strong>
+        <p className="hint">
+          {enabled && overview?.index?.updatedAt != null ? (
+            <>
+              Updated{" "}
+              <time dateTime={new Date(overview.index.updatedAt).toISOString()}>
+                {new Date(overview.index.updatedAt).toLocaleString()}
+              </time>
+              {`, ${overview.index.chunkCount} ${overview.index.chunkCount === 1 ? "chunk" : "chunks"} from approved notes`}
+            </>
+          ) : (
+            "Search index for approved notes in this Space."
+          )}
+        </p>
+      </div>
+      <button
+        type="button"
+        className="btn sm"
+        disabled={(!snapshot && !error) || (!!snapshot && !enabled) || busy || bridge.privateMode}
+        onClick={() => {
+          void (async () => {
+            if (!snapshot) {
+              await refresh();
+              return;
+            }
+            await act(() => call("memory.pipeline.reindex", { workspaceId }));
+          })().catch((reason) => {
+            if (!snapshot && scope.active && ownsWorkspace() && !bridge.privateMode)
+              setError(errorMessage(reason));
+            else report(reason);
+          });
+        }}
+      >
+        {busy ? "Working…" : !snapshot && error ? "Retry" : "Rebuild"}
+      </button>
+    </section>
+  );
+  const pipelineToggle = (
+    <label className="memory-use-toggle" htmlFor={enabledId}>
+      <PipelineControl
+        inputId={enabledId}
+        command="toggle-space-memory-pipeline"
+        scopeId={workspaceId}
+        kind="checkbox"
+        checked={enabled}
+        disabled={!snapshot || busy || bridge.privateMode}
+        onError={report}
+        action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}
+      />
+      <span>
+        Enable memory for this Space
+        <small>Create review notes from eligible chats and use accepted notes in later replies.</small>
+      </span>
+    </label>
+  );
+  if (view === "configure")
+    return (
+      <div className="memory-configuration">
+        {error && <p {...nativeAlertRoleProps}>{error}</p>}
+        <h4>Memory</h4>
+        {indexCard}
+        <h4>Settings</h4>
+        <div className="memory-config-settings">
+          {pipelineToggle}
+          {configurationControls}
+        </div>
+        {confirmation}
+      </div>
+    );
   return (
     <SettingsField
       label="Space memory"
       hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory stays local and is on by default. Sensitive pages and private chats are excluded. Pause or forget it here."
     >
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
-      <div hidden={!!view && view !== "configure"}>
-        <section
-          className="memory-index-card"
-          aria-label="Memory search index"
-          data-ready={enabled && overview?.index?.status === "ready"}
-        >
-          <div>
-            <strong>
-              {!snapshot
-                ? "Reading memory index…"
-                : !enabled
-                  ? "Memory paused"
-                  : overview?.index?.status === "ready"
-                    ? "Running normally"
-                    : overview?.index?.status === "needs-rebuild"
-                      ? "Rebuild needed"
-                      : "Index not built"}
-            </strong>
-            <p className="hint">
-              {enabled && overview?.index?.updatedAt != null ? (
-                <>
-                  Updated{" "}
-                  <time dateTime={new Date(overview.index.updatedAt).toISOString()}>
-                    {new Date(overview.index.updatedAt).toLocaleString()}
-                  </time>
-                  {`, ${overview.index.chunkCount} ${overview.index.chunkCount === 1 ? "chunk" : "chunks"} from approved notes`}
-                </>
-              ) : (
-                "Search index for approved notes in this Space."
-              )}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn sm"
-            disabled={!snapshot || !enabled || busy || bridge.privateMode}
-            onClick={() => {
-              void (async () => {
-                await act(() => call("memory.pipeline.reindex", { workspaceId }));
-              })().catch(report);
-            }}
-          >
-            {busy ? "Working…" : "Rebuild"}
-          </button>
-        </section>
-        <label className="memory-use-toggle" htmlFor={enabledId}>
-          <PipelineControl
-            inputId={enabledId}
-            command="toggle-space-memory-pipeline"
-            scopeId={workspaceId}
-            kind="checkbox"
-            checked={enabled}
-            disabled={!snapshot || busy || bridge.privateMode}
-            onError={report}
-            action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}
-          />
-          <span>Enable memory for this Space</span>
-        </label>
+      <div hidden={!!view}>
+        {indexCard}
+        {pipelineToggle}
       </div>
       <div hidden={!!view && view !== "overview"}>
         {includePasteImport && (

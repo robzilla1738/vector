@@ -463,3 +463,18 @@ it("rebuilds the current Space index and refreshes its measured status", async (
   expect(card.textContent).toContain("3 chunks");
   expect(card.querySelector("time")!.getAttribute("datetime")).toBe("2023-11-14T22:13:20.000Z");
 });
+
+it("offers a real retry after configuration cannot read Memory", async () => {
+  mocks.call.mockRejectedValue(new Error("Memory temporarily unavailable"));
+  await act(async () => root.render(<SpaceMemory workspaceId="space" view="configure" />));
+  const card = host.querySelector('[aria-label="Memory search index"]')!;
+  expect(card.textContent).toContain("Index unavailable");
+  const retry = card.querySelector("button")!;
+  expect(retry.disabled).toBe(false);
+  expect(retry.textContent).toBe("Retry");
+  mocks.call.mockImplementation(async (method, params) => response(method, params));
+  await act(async () => retry.click());
+  expect(card.textContent).toContain("Index not built");
+  expect(host.textContent).not.toContain("Memory temporarily unavailable");
+  expect(mocks.call).not.toHaveBeenCalledWith("memory.pipeline.reindex", expect.anything());
+});

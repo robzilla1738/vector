@@ -40,6 +40,31 @@ below it, preserving their distinct behavior and DOM/keyboard order. Avoid merel
 reordering nested wrappers with CSS. Native light/narrow comparison remains open.
 No complete Memory/phase/full-parity claim.
 
+## Memory configuration layout follow-up — not yet packaged
+
+Source now leads with the index under Memory, followed by one Settings group.
+The pipeline and manual-memory controls retain their existing distinct behavior;
+manual controls are composed below the pipeline toggle in actual DOM order.
+The nested Space memory card, long repeated explanation and redundant single-Space
+heading are removed from Configure. Overview and other Memory views retain their
+existing controls. An initial read failure now shows Index unavailable and a real
+Retry action; successful retry clears the error without invoking Rebuild.
+
+Local Vite renderer layout observed in dark and light modes through a disposable
+native tab. Its mock has no memory.pipeline.policy implementation, so these are
+unavailable-state layout observations, not working-index native acceptance.
+Captures `aux-memory-config-flat-renderer.jpg` and
+`aux-memory-config-flat-light-renderer.jpg` under the capture directory. Restored
+mock Dark, closed that temporary tab and restored native sidebar. Productf8a63b938
+remains live. Package this follow-up with the next substantial source batch.
+
+Layout `npm run check` passed typecheck/lint and4,631tests/745files in109.59s
+(`/tmp/aux-memory-layout-check.log`). The subsequent read-error correction passed
+typecheck/lint plus40focused tests in3files, including a new recovery-from-failure
+case (`/tmp/aux-memory-retry-check.log`). No unchanged full suite was repeated.
+Native light/narrow comparison and healthy-state verification of this layout
+remain open; renderer evidence is not a claim of complete Memory parity.
+
 ## Previous Home/history native preview (retired)
 
 Product **0a5a757e0**, launcher **26443**, app **27577**, runtime **27591**,

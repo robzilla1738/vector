@@ -112,6 +112,18 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
       }),
     [],
   );
+  const editor = memory && (
+    <SpaceMemoryEditor
+      key={`editor:${memory.workspaceId}`}
+      memory={memory}
+      view={view}
+      onSaved={(value) => {
+        if (value.workspaceId !== selectedWorkspace.current) return;
+        setMemory(value);
+        if (query.trim()) setRefresh((current) => current + 1);
+      }}
+    />
+  );
   if (bridge.privateMode) return <p {...staticHintProps}>Space memory is unavailable in private browsing.</p>;
   return (
     <div className="memory-settings" data-memory-view={view}>
@@ -199,7 +211,7 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
           </output>
         )}
       </div>
-      {space && <h4>{space.name}</h4>}
+      {space && (view !== "configure" || spaces.length > 1) && <h4>{space.name}</h4>}
       {loading && !memory && (
         <output {...staticHintProps} data-block>
           Loading saved notes…
@@ -222,21 +234,15 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
           </MemorySettingsControl>
         </p>
       )}
-      {memory && (
-        <SpaceMemoryEditor
-          key={`editor:${memory.workspaceId}`}
-          memory={memory}
-          view={view}
-          onSaved={(value) => {
-            if (value.workspaceId !== selectedWorkspace.current) return;
-            setMemory(value);
-            if (query.trim()) setRefresh((current) => current + 1);
-          }}
-        />
-      )}
+      {view !== "configure" && editor}
       {space?.workspaceId && (
         <div hidden={view === "context"}>
-          <SpaceMemory key={`pipeline:${space.workspaceId}`} workspaceId={space.workspaceId} view={view} />
+          <SpaceMemory
+            key={`pipeline:${space.workspaceId}`}
+            workspaceId={space.workspaceId}
+            view={view}
+            configurationControls={view === "configure" ? editor : undefined}
+          />
         </div>
       )}
       {!spaces.length && <p {...staticHintProps}>Create a Space to save shared notes.</p>}

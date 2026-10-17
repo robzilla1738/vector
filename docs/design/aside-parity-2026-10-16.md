@@ -2637,3 +2637,26 @@ manual-memory switch and long pipeline explanation. Flatten the configuration
 presentation with index first and actual settings below, preserving DOM/keyboard
 order and both existing behaviors. Light/narrow remains open. Document tree,
 episodic retention, model extraction and full parity remain incomplete.
+
+
+## October 17 — flattened Memory configuration and read recovery
+
+Source now follows075's hierarchy: Memory heading/index first, Settings group
+below. Both actual toggles remain, with their original behavior and DOM/keyboard
+order. The manual editor is composed into Configure below the pipeline toggle;
+the redundant parent card, repeated explanation and single-Space heading are
+removed there. Other Memory destinations keep their controls.
+
+The local mock lacks pipeline methods and exposed an incorrect endless-reading
+label after failure. Configure now says Index unavailable and offers Retry, which
+re-reads and clears the error without rebuilding. Focused test covers that path.
+Dark/light renderer captures: aux-memory-config-flat-renderer.jpg and
+aux-memory-config-flat-light-renderer.jpg in /tmp/aux-parity-2026-10-16/. They
+show unavailable-state source layout with an outer native toolbar, not working
+native index acceptance. Mock Dark restored; comparison tab closed; native sidebar
+restored. Nativef8a63b938 remains live; package this with the next substantial batch.
+
+Validation: layout check typecheck/lint +4,631tests/745files in109.59s, log
+/tmp/aux-memory-layout-check.log. After the read-error correction, typecheck/lint
+and40focused tests/3files pass, log /tmp/aux-memory-retry-check.log. No repeated
+unchanged full suite. Native healthy/light/narrow comparison remains open.
