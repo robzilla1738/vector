@@ -124,7 +124,8 @@
     border-radius: var(--r-lg);
     overflow: hidden;
   }
-  .routine-preferences > label {
+  .routine-preferences > label,
+  .routine-preferences > .routine-model-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -132,7 +133,7 @@
     min-height: 44px;
     padding: 8px 12px;
   }
-  .routine-preferences > label + label {
+  .routine-preferences > label {
     border-top: var(--hairline) solid var(--line);
   }
   .routine-preferences select {
@@ -160,5 +161,31 @@
     padding: 8px 12px;
     color: var(--ink-2);
     font-size: var(--fs-xs);
+  }
+}
+
+@layer overrides {
+  .routine-model-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    max-width: 75%;
+  }
+  .routine-model-controls .composer-model-picker-trigger {
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .routine-model-controls > select {
+    width: auto;
+    flex: none;
+    max-width: 96px;
+    color: var(--ink-2);
+  }
+  @media (max-width: 480px) {
+    .routine-model-controls {
+      flex-wrap: wrap;
+    }
   }
 }

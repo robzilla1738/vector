@@ -2,8 +2,19 @@ import { useEffect, useState } from "react";
 import { isTextModelCandidate } from "@aux/contracts/model-registry";
 import { call } from "../../store";
 import { Switch } from "../../ui";
+import type { ModelCapability } from "@aux/contracts";
+import { ComposerModelPicker } from "../../composer/ComposerModelPicker";
 
-export type RoutinePreferences = { modelId?: string; notifications?: boolean };
+export type RoutinePreferences = {
+  modelId?: string;
+  notifications?: boolean;
+  reasoning?: "low" | "medium" | "high";
+};
+export type RoutinePreferencePatch = {
+  modelId?: string | null;
+  notifications?: boolean;
+  reasoning?: "low" | "medium" | "high" | null;
+};
 
 /** Run choices are saved with the routine, independently of its task's authority. */
 export function RoutinePreferencesFields({
@@ -13,9 +24,9 @@ export function RoutinePreferencesFields({
 }: {
   value: RoutinePreferences;
   disabled: boolean;
-  onChange(patch: { modelId?: string | null; notifications?: boolean }): void;
+  onChange(patch: RoutinePreferencePatch): void;
 }) {
-  const [models, setModels] = useState<{ id: string; name?: string }[]>([]);
+  const [models, setModels] = useState<ModelCapability[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -39,25 +50,43 @@ export function RoutinePreferencesFields({
   }, [attempt]);
   return (
     <div className="routine-preferences">
-      <label>
-        Model
-        <select
-          aria-label="Routine model"
-          value={value.modelId ?? ""}
-          disabled={disabled || loading}
-          onChange={(event) => onChange({ modelId: event.target.value || null })}
-        >
-          <option value="">{loading ? "Loading models…" : "Default model"}</option>
-          {value.modelId && !models.some((model) => model.id === value.modelId) && (
-            <option value={value.modelId}>{value.modelId} · unavailable</option>
-          )}
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name ?? model.id}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="routine-model-row">
+        <span>Model</span>
+        <div className="routine-model-controls">
+          <ComposerModelPicker
+            label="Routine model"
+            models={models}
+            modelId={value.modelId}
+            selectedModel={models.find((model) => model.id === value.modelId)}
+            unsupported={false}
+            disabled={disabled}
+            loading={loading}
+            error={failed ? "Try loading the catalog again." : undefined}
+            onRetry={() => setAttempt((current) => current + 1)}
+            onChange={(modelId) =>
+              onChange({
+                modelId: modelId ?? null,
+                ...(models.find((model) => model.id === modelId)?.reasoning === "none"
+                  ? { reasoning: null }
+                  : {}),
+              })
+            }
+          />
+          <select
+            aria-label="Routine thinking level"
+            value={value.reasoning ?? ""}
+            disabled={disabled || models.find((model) => model.id === value.modelId)?.reasoning === "none"}
+            onChange={(event) =>
+              onChange({ reasoning: (event.target.value || null) as RoutinePreferencePatch["reasoning"] })
+            }
+          >
+            <option value="">Auto</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
       <label title="Completion alerts for this routine. Requests needing your attention remain visible.">
         Notifications
         <Switch

@@ -13,7 +13,12 @@ when expanded. Normal/overnight starts receive the model choice, and normal,
 overnight and saved-step runs capture completion delivery preference. Approval
 requests remain visible. Tests cover persistence, clearing, unrelated edits,
 creation retry, durable capture and completion opt-out. STATUS records evidence.
-Native acceptance and exact model menu/reasoning presentation remain OPEN.
+The subsequent source batch reuses the searchable provider-grouped picker and
+adds persisted Auto/Low/Medium/High reasoning, including explicit non-reasoning
+model handling. Typecheck/lint, recovered integrated tests and renderer build pass.
+Visual/native acceptance of this newer presentation remains OPEN while the prior
+native consolidation links; brand icons and broader matched-viewport comparison
+are still outstanding.
 
 ## Routine notification provenance and Agents naming
 

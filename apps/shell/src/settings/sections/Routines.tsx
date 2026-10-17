@@ -22,6 +22,7 @@ import {
   RoutinePreferencesFields,
   RoutinePreferencesEditor,
   type RoutinePreferences,
+  type RoutinePreferencePatch,
 } from "./RoutinePreferences";
 import { SettingsField, SettingsSection } from "../primitives";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";
@@ -214,9 +215,7 @@ function CreateRoutineDialog({
           {shellIconClose}
         </button>
       </div>
-      <p {...staticHintProps}>
-        New routines start paused. Review and resume them when you’re ready.
-      </p>
+      <p {...staticHintProps}>New routines start paused. Review and resume them when you’re ready.</p>
       <label>
         Title
         <input
@@ -264,6 +263,7 @@ function CreateRoutineDialog({
                 ...current,
                 ...patch,
                 modelId: patch.modelId === null ? undefined : (patch.modelId ?? current.modelId),
+                reasoning: patch.reasoning === null ? undefined : (patch.reasoning ?? current.reasoning),
               }))
             }
           />
@@ -428,10 +428,8 @@ export function RoutinesSettings({ active }: { active: boolean }) {
 
   async function changeRoutine(
     routine: Routine,
-    patch: {
+    patch: RoutinePreferencePatch & {
       spendCapUsd?: number | null;
-      modelId?: string | null;
-      notifications?: boolean;
       paused?: boolean;
       missedRunPolicy?: Routine["missedRunPolicy"];
       presenceGuardExempt?: boolean;

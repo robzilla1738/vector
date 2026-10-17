@@ -324,6 +324,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
             routineId: routine.routineId,
             routineNotifications: routine.notifications,
             modelId: routine.modelId,
+            reasoning: routine.reasoning,
             goal: [
               substituteRoutine(routine.objective, parameters),
               routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,

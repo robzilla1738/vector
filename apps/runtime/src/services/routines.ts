@@ -451,9 +451,10 @@ export class RoutineService {
   }
 
   update(
-    input: Omit<Partial<RoutineDefinition>, "spendCapUsd" | "modelId"> & {
+    input: Omit<Partial<RoutineDefinition>, "spendCapUsd" | "modelId" | "reasoning"> & {
       spendCapUsd?: number | null;
       modelId?: string | null;
+      reasoning?: "low" | "medium" | "high" | null;
       routineId: string;
       expectedRevision: number;
       activationReviewed?: boolean;
@@ -489,6 +490,7 @@ export class RoutineService {
     const next: Routine = {
       ...current,
       ...patch,
+      reasoning: input.reasoning === null ? undefined : (input.reasoning ?? current.reasoning),
       modelId: input.modelId === null ? undefined : (input.modelId ?? current.modelId),
       spendCapUsd: input.spendCapUsd === null ? undefined : (input.spendCapUsd ?? current.spendCapUsd),
       parameters: input.parameters ?? current.parameters,

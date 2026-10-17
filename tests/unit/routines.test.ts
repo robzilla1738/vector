@@ -1928,10 +1928,12 @@ it("persists routine model and delivery choices without resetting them on unrela
     routineId: created.routineId,
     expectedRevision: created.revision,
     modelId: "openai/test-model",
+    reasoning: "high",
     notifications: false,
   });
   expect(routines.get(chosen.routineId).routine).toMatchObject({
     modelId: "openai/test-model",
+    reasoning: "high",
     notifications: false,
   });
   const renamed = routines.update({
@@ -1939,13 +1941,15 @@ it("persists routine model and delivery choices without resetting them on unrela
     expectedRevision: chosen.revision,
     title: "Renamed",
   });
-  expect(renamed).toMatchObject({ modelId: "openai/test-model", notifications: false });
+  expect(renamed).toMatchObject({ modelId: "openai/test-model", reasoning: "high", notifications: false });
   const reset = routines.update({
     routineId: renamed.routineId,
     expectedRevision: renamed.revision,
     modelId: null,
+    reasoning: null,
     notifications: true,
   });
   expect(reset.modelId).toBeUndefined();
+  expect(reset.reasoning).toBeUndefined();
   expect(reset.notifications).toBe(true);
 });

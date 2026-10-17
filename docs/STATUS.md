@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+October 16 routine model-menu follow-up: the flat list is replaced by the shared
+searchable provider-grouped model picker. Thinking choices Auto/Low/Medium/High
+persist with each routine and feed normal/overnight starts; clearing the value
+restores automatic reasoning. Models explicitly declaring no reasoning clear and
+disable that choice. Catalog model IDs now accept the same 500-character bound as
+the model registry. The shared picker accepts a contextual accessible name and an
+optional Settings action; composer behavior retains its existing defaults.
+
+Runtime dist rebuilt. Integrated typecheck/lint passed; 738 test files passed with
+4,609 tests, while three suites failed to load a shared Vite cache module. Those
+three suites passed all six tests on an isolated retry. Final creation/control
+checks passed four tests, including non-reasoning reset and retry persistence.
+Renderer build passed in 3.13s. Logs: `/tmp/aux-routine-model-menu-check.log`,
+`/tmp/aux-routine-model-menu-recovery-tests.log`, and
+`/tmp/aux-routine-model-menu-final-tests.log`. Avoid concurrent Vitest runs sharing
+this cache. Visual acceptance of this newer menu is pending: native builder 60321
+is still linking the previous `286ae0c3b` renderer, and no alternate browser surface
+is available. Do not launch another builder or the owner's real Profile.
+
+
 Native consolidation for `286ae0c3b` is running: launcher 60321, exec session
 43285, log `/tmp/aux-routine-preferences-native.log`. Previous launcher 48050/app
 52745 exited normally and disposable Profile `aux-dev-6yaYYY` was removed before

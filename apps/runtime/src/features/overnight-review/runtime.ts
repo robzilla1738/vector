@@ -65,6 +65,7 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
               routineId: routine.routineId,
               routineNotifications: routine.notifications,
               modelId: routine.modelId,
+              reasoning: routine.reasoning,
               deliveryRunId: authority.runId,
               nightShiftItemId: authority.itemId,
               goal: substituteParameters(routine.objective, parameters),

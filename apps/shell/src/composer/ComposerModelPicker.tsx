@@ -21,6 +21,7 @@ export function ComposerModelPicker({
   onRetry,
   onChange,
   onSettings,
+  label = "Composer model",
 }: {
   models: readonly ModelCapability[];
   modelId?: string;
@@ -29,8 +30,9 @@ export function ComposerModelPicker({
   disabled: boolean;
   loading: boolean;
   error?: string;
-  onSettings(): void;
-  onRequest(): void;
+  label?: string;
+  onSettings?(): void;
+  onRequest?(): void;
   onRetry(): void;
   onChange(modelId: string | undefined): void;
 }) {
@@ -105,7 +107,7 @@ export function ComposerModelPicker({
         ref={trigger}
         type="button"
         className="composer-model-picker-trigger"
-        aria-label="Composer model"
+        aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
@@ -114,7 +116,7 @@ export function ComposerModelPicker({
         onClick={() => {
           if (open) close();
           else {
-            onRequest();
+            onRequest?.();
             setOpen(true);
           }
         }}
@@ -223,20 +225,22 @@ export function ComposerModelPicker({
               ),
             )}
           </div>
-          <button
-            type="button"
-            role="menuitem"
-            data-model-root
-            className="composer-model-settings"
-            onMouseEnter={() => setProviderOpen(null)}
-            onClick={() => {
-              close();
-              onSettings();
-            }}
-          >
-            <span>Settings</span>
-            {shellIconOpen}
-          </button>
+          {onSettings && (
+            <button
+              type="button"
+              role="menuitem"
+              data-model-root
+              className="composer-model-settings"
+              onMouseEnter={() => setProviderOpen(null)}
+              onClick={() => {
+                close();
+                onSettings();
+              }}
+            >
+              <span>Settings</span>
+              {shellIconOpen}
+            </button>
+          )}
         </Menu>
       )}
     </>

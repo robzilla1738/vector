@@ -162,7 +162,8 @@ export const RoutineDefinitionSchema = z.object({
   calendarGrantIds: z.array(z.string().uuid()).max(20).default([]),
   outputHint: z.string().max(400).optional(),
   /** Omitted model follows the current default; notifications default to enabled. */
-  modelId: text.max(200).optional(),
+  modelId: text.max(500).optional(),
+  reasoning: z.enum(["low", "medium", "high"]).optional(),
   notifications: z.boolean().optional(),
   description: z.string().trim().max(2000).optional(),
   icon: z.string().trim().max(200).optional(),
@@ -390,7 +391,8 @@ export const RoutineRunOutcomeSchema = z.object({
 });
 export const RoutineCreateParams = RoutineDefinitionSchema;
 export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
-  modelId: text.max(200).nullable().optional(),
+  modelId: text.max(500).nullable().optional(),
+  reasoning: z.enum(["low", "medium", "high"]).nullable().optional(),
   spendCapUsd: z.number().positive().nullable().optional(),
   // A partial edit must not apply create-time defaults to omitted fields. In
   // particular, changing a trigger must never resume a paused Skill or clear

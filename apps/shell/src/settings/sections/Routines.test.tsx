@@ -5,6 +5,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RoutinesSettings } from "./Routines";
 
 vi.mock("../../ui/dialog", () => ({
+  Menu: ({ children, label }: { children: ReactNode; label: string }) => (
+    <div role="menu" aria-label={label}>
+      {children}
+    </div>
+  ),
   Dialog: ({ children, label }: { children: ReactNode; label: string }) => (
     <div role="dialog" aria-label={label}>
       {children}
@@ -149,7 +154,12 @@ it("creates a paused prompt routine with a real source task and reuses the task 
     if (method === "workspaces.list") return [{ workspaceId: "workspace-1", name: "Research" }];
     if (["routines.list", "routines.inbox", "tasks.list"].includes(method)) return [];
     if (method === "models.list")
-      return { models: [{ id: "openai/test", name: "Test model", textGeneration: true }] };
+      return {
+        models: [
+          { id: "openai/test", name: "Test model", textGeneration: true },
+          { id: "basic/test", name: "Basic model", textGeneration: true, reasoning: "none" },
+        ],
+      };
     if (method === "tasks.create") return task;
     if (method === "routines.create") {
       if (++routineAttempt === 1) throw new Error("Synthetic save failure");
@@ -158,7 +168,18 @@ it("creates a paused prompt routine with a real source task and reuses the task 
     throw new Error(`Unexpected ${method}`);
   });
   await createPromptForm();
-  change("Routine model", "openai/test");
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Routine model"]')!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('button[value="openai/test"]')!.click());
+  change("Routine thinking level", "high");
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Routine model"]')!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('button[value="basic/test"]')!.click());
+  const thinking = container.querySelector<HTMLSelectElement>('[aria-label="Routine thinking level"]')!;
+  expect(thinking.value).toBe("");
+  expect(thinking.disabled).toBe(true);
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Routine model"]')!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('button[value="openai/test"]')!.click());
+  expect(thinking.disabled).toBe(false);
+  change("Routine thinking level", "high");
   await act(async () =>
     container.querySelector<HTMLInputElement>('[aria-label="Routine completion notifications"]')!.click(),
   );
@@ -181,6 +202,7 @@ it("creates a paused prompt routine with a real source task and reuses the task 
     "routines.create",
     expect.objectContaining({
       modelId: "openai/test",
+      reasoning: "high",
       notifications: false,
       sourceTaskId: task.taskId,
       sourceTaskRevision: 1,
