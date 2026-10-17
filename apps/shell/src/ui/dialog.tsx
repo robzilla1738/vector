@@ -15,7 +15,7 @@ import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
 import { availableControls, availableForFocus } from "./focus";
 import { acquireFloatingSidebarLock } from "../floating-sidebar";
-import { ownsFocus } from "./focus";
+import { ownsFocus, nativePickerOpen } from "./focus";
 import { ownedDialogs, topModal } from "./modal-stack";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
 import { staticButtonProps as auxClassButtonProps } from "./class-props";
@@ -65,7 +65,13 @@ export function Dialog({
       aria-modal="true"
       aria-describedby={descriptionId}
       onKeyDown={(event) => {
-        if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          nativePickerOpen(event.target)
+        )
+          return;
         event.preventDefault();
         event.stopPropagation();
         onClose();

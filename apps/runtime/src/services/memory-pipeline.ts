@@ -16,6 +16,7 @@ import {
   MemoryExtractionSchema,
   type MemoryExtraction,
   MemoryPipelineForgetParams,
+  MemoryRetentionParams,
   MemoryPipelineInboxSchema,
   MemoryPipelineOverviewSchema,
   ObservationSchema,
@@ -143,25 +144,69 @@ export class MemoryPipeline {
       throw new AuxError("not_found", "Space does not exist.");
   }
 
-  policy(workspaceId: string) {
+  policy(workspaceId: string): { workspaceId: string; enabled: boolean; retentionDays?: 0 | 30 | 90 } {
     this.requireSpace(workspaceId);
     const value = this.repo.getSetting<unknown>(`memoryPipelinePolicy:${workspaceId}`);
-    if (!readWorkspaceMemory(this.repo, workspaceId).enabled) return { workspaceId, enabled: false };
-    if (value === undefined && !this.repo.hasSetting(`memoryPipelinePolicy:${workspaceId}`))
-      return { workspaceId, enabled: true };
     const saved = MemoryPipelinePolicySchema.safeParse(value);
-    return saved.success && saved.data.workspaceId === workspaceId
-      ? saved.data
-      : { workspaceId, enabled: false };
+    const policy =
+      value === undefined && !this.repo.hasSetting(`memoryPipelinePolicy:${workspaceId}`)
+        ? { workspaceId, enabled: true }
+        : saved.success && saved.data.workspaceId === workspaceId
+          ? saved.data
+          : { workspaceId, enabled: false };
+    return readWorkspaceMemory(this.repo, workspaceId).enabled ? policy : { ...policy, enabled: false };
   }
 
   setPolicy(workspaceId: string, enabled: boolean) {
     if (this.closed) throw new AuxError("cancelled", "Space memory is closed.");
-    const policy = MemoryPipelinePolicySchema.parse({ workspaceId, enabled });
-    this.requireSpace(workspaceId);
+    const policy = MemoryPipelinePolicySchema.parse({ ...this.policy(workspaceId), workspaceId, enabled });
     if (!enabled) this.clearPastePreviews(workspaceId);
     this.repo.setSetting(`memoryPipelinePolicy:${workspaceId}`, policy);
     return policy;
+  }
+
+  private retained(workspaceId: string, claim: MemoryClaim, now = Date.now()) {
+    const days = this.policy(workspaceId).retentionDays ?? 0;
+    return days === 0 || claim.capturedAt > now - days * 86_400_000;
+  }
+
+  async setRetention(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
+    return this.own(async () => {
+      const input = MemoryRetentionParams.parse(raw);
+      this.requireSpace(input.workspaceId);
+      const saved = MemoryPipelinePolicySchema.parse(
+        this.repo.getSetting(`memoryPipelinePolicy:${input.workspaceId}`) ?? {
+          workspaceId: input.workspaceId,
+          enabled: true,
+        },
+      );
+      if (
+        saved.workspaceId !== input.workspaceId ||
+        (saved.retentionDays ?? 0) !== input.expectedRetentionDays
+      )
+        throw new AuxError("conflict", "Memory retention changed. Review the current setting and try again.");
+      if (input.retentionDays)
+        await this.forgetOwned(
+          { workspaceId: input.workspaceId, all: true },
+          beforeRemoval,
+          Date.now() - input.retentionDays * 86_400_000,
+        );
+      this.repo.setSetting(`memoryPipelinePolicy:${input.workspaceId}`, {
+        ...saved,
+        retentionDays: input.retentionDays,
+      });
+      return this.policy(input.workspaceId);
+    });
+  }
+
+  async expire(workspaceId: string, beforeRemoval?: () => void | Promise<void>) {
+    return this.own(async () => {
+      const days = this.policy(workspaceId).retentionDays ?? 0;
+      if (days)
+        return this.forgetOwned({ workspaceId, all: true }, beforeRemoval, Date.now() - days * 86_400_000);
+      const state = await this.readClaims(workspaceId);
+      return { forgotten: 0, activityRemoved: 0, remaining: state.claims.length + state.inbox.length };
+    });
   }
 
   private sourceEligible(workspaceId: string, run: Run): boolean {
@@ -283,6 +328,7 @@ export class MemoryPipeline {
   }
 
   private eligibleForRecall(workspaceId: string, claim: MemoryClaim): boolean {
+    if (!this.retained(workspaceId, claim)) return false;
     if (claim.source?.kind === "owner-paste")
       return (
         claim.source.verification === "unverified-owner-note" &&
@@ -913,7 +959,7 @@ export class MemoryPipeline {
         claims,
         Date.now(),
         (claim) => this.eligibleForRecall(workspaceId, claim),
-        90 * 24 * 60 * 60_000,
+        Number.POSITIVE_INFINITY,
       );
       const revision = this.snapshot(claims);
       await this.writeGeneration(workspaceId, consolidated, inbox, [...history, revision].slice(-10), prior);
@@ -1136,7 +1182,11 @@ export class MemoryPipeline {
     return this.own(() => this.forgetOwned(raw, beforeRemoval));
   }
 
-  private async forgetOwned(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
+  private async forgetOwned(
+    raw: unknown,
+    beforeRemoval?: () => void | Promise<void>,
+    expiredBefore?: number,
+  ) {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
     this.clearPastePreviews(input.workspaceId);
@@ -1145,10 +1195,11 @@ export class MemoryPipeline {
       const universe = [...claims, ...inbox, ...history.flatMap((revision) => revision.claims)];
       const forgottenIds = new Set(
         universe
-          .filter(
-            (claim) =>
-              input.all ||
-              (input.claimId ? claim.claimId === input.claimId : claim.sourceRunId === input.sourceRunId),
+          .filter((claim) =>
+            expiredBefore !== undefined
+              ? claim.capturedAt <= expiredBefore
+              : input.all ||
+                (input.claimId ? claim.claimId === input.claimId : claim.sourceRunId === input.sourceRunId),
           )
           .map((claim) => claim.claimId),
       );
@@ -1186,7 +1237,7 @@ export class MemoryPipeline {
       const forgotten = forgottenIds.size;
       const retainedActivity = activity.filter(
         (entry) =>
-          !input.all &&
+          (expiredBefore !== undefined ? entry.capturedAt > expiredBefore : !input.all) &&
           entry.sourceRunId !== input.sourceRunId &&
           !entry.candidateIds.some((id) => forgottenIds.has(id) || id === input.claimId),
       );

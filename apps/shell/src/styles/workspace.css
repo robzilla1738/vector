@@ -479,8 +479,7 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  .settings-content .field input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
-  .settings-content select {
+  .settings-content .field input:not([type="range"]):not([type="checkbox"]):not([type="radio"]) {
     background: var(--bg-2);
     border: 1px solid var(--line-strong);
     border-radius: 7px;

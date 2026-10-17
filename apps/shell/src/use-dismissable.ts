@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { nativePickerOpen } from "./ui/focus";
 
 /**
  * One Escape stack for menus, popovers and dialogs: the most recently opened
@@ -9,7 +10,8 @@ import { useEffect, useRef } from "react";
 const layers: { dismiss: () => void }[] = [];
 
 function onKeyDown(event: KeyboardEvent) {
-  if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+  if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || nativePickerOpen(event.target))
+    return;
   const top = layers.at(-1);
   if (!top) return;
   event.preventDefault();

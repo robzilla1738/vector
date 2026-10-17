@@ -107,6 +107,8 @@ export const RuntimeMethodFeatures = {
   "memory.paste.status": feature5,
   "memory.pipeline.policy": feature5,
   "memory.pipeline.setPolicy": feature5,
+  "memory.pipeline.setRetention": feature5,
+  "memory.pipeline.expire": feature5,
   "memory.pipeline.extractRun": feature5,
   "memory.pipeline.sources": feature5,
   "memory.pipeline.inbox": feature5,

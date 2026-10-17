@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { dispatchShortcut as dispatchCommandShortcut } from "../commands";
 import { createTabSwitcher } from "../tab-switcher";
 import { finishTabPreview } from "../tab-switcher-state";
+import { nativePickerOpen } from "../ui/focus";
 
 type Shortcut = {
   key: string;
@@ -27,7 +28,7 @@ export function useShellShortcuts(findInput: RefObject<HTMLInputElement | null>)
   // renderer-side keys (when the shell itself has focus)
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.isComposing) return;
+      if (e.defaultPrevented || e.isComposing || nativePickerOpen(e.target)) return;
       if (e.metaKey || e.ctrlKey) {
         const st = useStore.getState();
         const def = matchShortcut(

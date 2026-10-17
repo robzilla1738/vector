@@ -24,3 +24,7 @@ export function ownsFocus(owner: HTMLElement | null): boolean {
   const active = document.activeElement;
   return active === document.body || active === null || !!owner?.contains(active);
 }
+/** A customizable native select owns Escape until its picker closes. */
+export function nativePickerOpen(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest("select")?.matches(":open");
+}

@@ -10,7 +10,7 @@ model-extraction workflow remain open.
 | --- | --- | --- |
 | 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Daily approved-note files and authoritative MEMORY.md now editable; USER/TAXONOMY/site/routine authorities remain open |
 | 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Local-extraction activity plus a separate Recovery revisions view; model usage, errors, file diffs and Dream now remain open |
-| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; approved owner edits rebuild the same index; broader document indexing and episodic retention remain open |
+| 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; approved owner edits rebuild the same index; broader document indexing remains open; Never forget/30/90-day retention is implemented in source with confirmation, policy conflict checks and idle cleanup, pending native acceptance |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
 
 Source findings:

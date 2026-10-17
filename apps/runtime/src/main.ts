@@ -3252,6 +3252,24 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let memoryExpiry: NodeJS.Timeout | undefined;
   let contentExpiry: NodeJS.Timeout | undefined;
   let contentPruning: Promise<void> | undefined;
+  let episodicPruning: Promise<void> | undefined;
+  const pruneEpisodic = () => {
+    if (closed || episodicPruning) return episodicPruning;
+    episodicPruning = (async () => {
+      for (const { workspaceId } of repo.listWorkspaces()) {
+        if (closed) break;
+        try {
+          if (!runtimeServices.memoryPipeline?.policy(workspaceId).retentionDays) continue;
+          await invoke("memory.pipeline.expire", { workspaceId }, { external: false });
+        } catch {
+          console.error("Episodic memory cleanup failed");
+        }
+      }
+    })().finally(() => {
+      episodicPruning = undefined;
+    });
+    return episodicPruning;
+  };
   const pruneContent = () => {
     if (closed || contentPruning) return contentPruning;
     contentPruning = (async () => {
@@ -3322,8 +3340,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         console.error("Retention cleanup failed");
       }
       void pruneContent();
+      void pruneEpisodic();
       memoryExpiry = setInterval(() => {
         if (closed || !isRuntimeIdle(repo)) return;
+        void pruneEpisodic();
         try {
           runtimeServices.browsingMemory.prune();
         } catch {
@@ -3370,6 +3390,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           serviceContainer.peek("documentSnapshots")?.close(),
           serviceContainer.peek("artifacts")?.exports.close(),
           (async () => {
+            await episodicPruning;
             await serviceContainer.peek("memoryPipeline")?.close();
             await serviceContainer.peek("contentMemory")?.close();
           })(),

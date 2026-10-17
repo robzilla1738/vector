@@ -1,4 +1,4 @@
-import { memoryClaimText } from "@aux/contracts";
+import { memoryClaimText, MemoryRetentionDaysSchema } from "@aux/contracts";
 import type { MemoryView } from "../routes";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
@@ -33,6 +33,7 @@ type Revision = {
 
 type PipelineSnapshot = {
   enabled: boolean;
+  retentionDays?: 0 | 30 | 90;
   overview: MemoryPipelineOverview;
   sources: Source[];
   inbox: MemoryClaim[];
@@ -233,6 +234,7 @@ function SpaceMemoryContent({
   const snapshot = snapshotState?.scope === scope ? snapshotState.value : null;
   const {
     enabled = false,
+    retentionDays = 0,
     overview = null,
     sources = [],
     inbox = [],
@@ -297,7 +299,16 @@ function SpaceMemoryContent({
     const [policy, overview, sources, inbox, claims, history, activity] = result;
     if (policy.workspaceId !== workspaceId || overview.workspaceId !== workspaceId)
       throw new Error("The Space memory response changed its original workspace.");
-    const next = { enabled: policy.enabled, overview, sources, inbox, claims, history, activity };
+    const next = {
+      enabled: policy.enabled,
+      retentionDays: policy.retentionDays ?? 0,
+      overview,
+      sources,
+      inbox,
+      claims,
+      history,
+      activity,
+    };
     if (!ownsWorkspace() || !scope.publish(request, next)) return;
     setSnapshot({ scope, value: next });
     setPending(null);
@@ -367,6 +378,56 @@ function SpaceMemoryContent({
       current,
     );
   }
+  function changeRetention(days: 0 | 30 | 90) {
+    assertCurrent();
+    return guardCommandCompletion(
+      (async () => {
+        if (
+          days &&
+          (!retentionDays || days < retentionDays) &&
+          !(await confirm({
+            title: "Limit episodic memory retention?",
+            description: `Notes older than ${days} days, including edits and their recovery history, will be removed now and during idle cleanup. Root Space notes stay saved. Older managed backups will stop restoring once notes expire; copied offline recovery packages remain usable.`,
+            confirmLabel: `Keep ${days} days`,
+            cancelLabel: "Keep current retention",
+            danger: true,
+          }))
+        )
+          return;
+        assertCurrent();
+        return act(() =>
+          call("memory.pipeline.setRetention", {
+            workspaceId,
+            retentionDays: days,
+            expectedRetentionDays: retentionDays,
+          }),
+        );
+      })(),
+      current,
+    );
+  }
+  const retentionControl = (
+    <label className="memory-retention-control">
+      <span>
+        Episodic memory retention<small>How long to keep daily notes and their recovery history.</small>
+      </span>
+      <select
+        aria-label="Episodic memory retention"
+        value={retentionDays}
+        disabled={!snapshot || busy || bridge.privateMode}
+        onChange={(event) => {
+          const value = event.target.value;
+          void Promise.resolve()
+            .then(() => changeRetention(MemoryRetentionDaysSchema.parse(Number(value))))
+            .catch(report);
+        }}
+      >
+        <option value={0}>Never forget</option>
+        <option value={30}>30 days</option>
+        <option value={90}>90 days</option>
+      </select>
+    </label>
+  );
   const indexCard = (
     <section
       className="memory-index-card"
@@ -450,6 +511,7 @@ function SpaceMemoryContent({
         <h4>Settings</h4>
         <div className="memory-config-settings">
           {pipelineToggle}
+          {retentionControl}
           {configurationControls}
         </div>
         {confirmation}

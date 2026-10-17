@@ -6,6 +6,7 @@ import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
 import "./Settings.css";
 import "../settings/shell.css";
+import "../settings/controls.css";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, errToast } from "../store";

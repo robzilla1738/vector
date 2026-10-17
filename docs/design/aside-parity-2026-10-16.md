@@ -2707,3 +2707,40 @@ Source follow-up addresses extra Memory H1 row, visible Close placement, folder
 expansion indicator and partial-word heading truncation; scopes browser layout to
 the visible Settings section. Typecheck+14affected tests passed0.700s. Follow-up
 not yet packaged. No fullMemory/fullparity/phase-completion claim.
+
+## Shared Settings control parity — local renderer, not packaged
+
+The owner requested substantial batches focused on 1:1 Aside design parity.
+One shared stylesheet now covers single-choice dropdowns across Settings and
+portaled dialogs: 32px rounded triggers, paired chevrons, quieter fills, rounded
+scrollable menus, trailing checkmarks, disabled states and keyboard focus. Native
+select semantics, command refs, labels and change handlers are preserved. Removed
+conflicting Settings select overrides. Simple single-select rows automatically use
+the compact label/control layout; labels and hints use regular weight. Custom
+popover triggers share the same dimensions and border treatment.
+
+Observed in the local Vite renderer inside the existing disposable Aux preview:
+General, Appearance dark/light, keyboard Theme selection, long Preferred languages
+menu, and Escape closing only the picker while preserving Settings/the dialog.
+The visual pass found and fixed Escape leaking into parent dismissal handlers.
+Captures: aux-settings-shared-picker-dark.jpg, aux-settings-shared-picker-light.jpg,
+aux-settings-shared-picker-dialog.jpg under /tmp/aux-parity-2026-10-16/.
+This is renderer evidence, not packaged acceptance or full parity. Native product
+remains498b9a550; launcher45942 retains ownership. Reference rescan182PNG/192TXT.
+
+The combined batch also completes the pending source implementation of episodic
+retention: Never forget (default),30days,90days. A shorter choice requires an
+explicit confirmation tied to the loaded policy. Expiry removes approved/pending
+notes, owner edits and recoverable history using original capture time; root
+MEMORY.md stays. Existing extraction watermarks prevent reimport. New recall
+withholds expired notes before idle cleanup. Cleanup runs at startup/idle through
+the same recovery-generation and derivative invalidation path as Forget, including
+when extraction is paused. Offline exported packages remain outside this cleanup.
+Native retention acceptance remains pending.
+
+Validation: integrated retention check passed4,645tests/746files in102.51s
+(/tmp/aux-retention-check.log). After policy conflict and shared control changes,
+typecheck/lint and86affected tests in6files passed in2.08s
+(/tmp/aux-settings-controls-check.log). Final typecheck and3dismissal tests passed,
+including native-picker Escape ownership (/tmp/aux-settings-controls-final.log).
+No unchanged full suite repeated; no native rebuild for this source-only batch.

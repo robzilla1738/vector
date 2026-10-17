@@ -184,6 +184,8 @@ export const RuntimeMethodPolicy = {
   "memory.paste.status": { feature: "memory", auth: "aux-webui" },
   "memory.pipeline.policy": { feature: "memory", auth: "standard" },
   "memory.pipeline.setPolicy": { feature: "memory", auth: "standard" },
+  "memory.pipeline.setRetention": { feature: "memory", auth: "aux-webui" },
+  "memory.pipeline.expire": { feature: "memory", auth: "standard" },
   "memory.pipeline.extractRun": { feature: "memory", auth: "standard" },
   "memory.pipeline.sources": { feature: "memory", auth: "standard" },
   "memory.pipeline.inbox": { feature: "memory", auth: "standard" },

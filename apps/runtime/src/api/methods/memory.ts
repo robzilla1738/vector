@@ -11,6 +11,8 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   if (
     [
       "memory.pipeline.setPolicy",
+      "memory.pipeline.setRetention",
+      "memory.pipeline.expire",
       "memory.pipeline.reindex",
       "memory.pipeline.edit",
       "memory.pipeline.revert",
@@ -55,13 +57,19 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
   let advanced = false;
   let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
-  let result: Awaited<ReturnType<typeof pipeline.forget>>;
+  let result: Awaited<ReturnType<typeof pipeline.forget>> | ReturnType<typeof pipeline.policy>;
   try {
-    result = await pipeline.forget(params, async () => {
+    const beforeRemoval = async () => {
       generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
       advanced = true;
       await s.contentMemory?.invalidateDerivatives();
-    });
+    };
+    result =
+      method === "memory.pipeline.setRetention"
+        ? await pipeline.setRetention(params, beforeRemoval)
+        : method === "memory.pipeline.expire"
+          ? await pipeline.expire(params.workspaceId, beforeRemoval)
+          : await pipeline.forget(params, beforeRemoval);
   } catch (error) {
     if (advanced)
       throw new AuxError(
@@ -70,7 +78,8 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
       );
     throw error;
   }
-  const response = result.forgotten || result.activityRemoved ? changed(result) : result;
+  const response =
+    "enabled" in result || result.forgotten || result.activityRemoved ? changed(result) : result;
   if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
   return response;
 }
@@ -102,6 +111,8 @@ export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
   "memory.paste.status": h_memory_paste_status,
   "memory.pipeline.policy": h_memory_pipeline_policy,
   "memory.pipeline.setPolicy": h_memory_pipeline_policy,
+  "memory.pipeline.setRetention": h_memory_pipeline_policy,
+  "memory.pipeline.expire": h_memory_pipeline_policy,
   "memory.pipeline.extractRun": h_memory_pipeline_policy,
   "memory.pipeline.sources": h_memory_pipeline_policy,
   "memory.pipeline.inbox": h_memory_pipeline_policy,

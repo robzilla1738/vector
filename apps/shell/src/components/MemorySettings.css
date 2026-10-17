@@ -1,4 +1,25 @@
 @layer overrides {
+  .memory-retention-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .memory-retention-control > span {
+    min-width: 0;
+  }
+  .memory-retention-control small {
+    display: block;
+    color: var(--ink-2);
+    margin-top: 4px;
+  }
+  .memory-retention-control select {
+    flex: none;
+    max-width: 45%;
+  }
+
   .memory-settings[hidden] {
     display: none !important;
   }

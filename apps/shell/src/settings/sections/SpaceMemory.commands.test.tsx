@@ -478,3 +478,52 @@ it("offers a real retry after configuration cannot read Memory", async () => {
   expect(host.textContent).not.toContain("Memory temporarily unavailable");
   expect(mocks.call).not.toHaveBeenCalledWith("memory.pipeline.reindex", expect.anything());
 });
+
+it("confirms shorter episodic retention and saves the original Space policy", async () => {
+  let retentionDays = 0;
+  mocks.call.mockImplementation(async (method, params) => {
+    if (method === "memory.pipeline.setRetention") retentionDays = params.retentionDays;
+    if (method === "memory.pipeline.policy" || method === "memory.pipeline.setRetention")
+      return { workspaceId: params.workspaceId, enabled, retentionDays };
+    return response(method, params);
+  });
+  await act(async () => root.render(<SpaceMemory workspaceId="space" view="configure" />));
+  const select = host.querySelector<HTMLSelectElement>('[aria-label="Episodic memory retention"]')!;
+  expect(select.value).toBe("0");
+  await act(async () => {
+    select.value = "30";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(mocks.call.mock.calls.some(([method]) => method === "memory.pipeline.setRetention")).toBe(false);
+  await click("confirm-forget-space-memory");
+  expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.setRetention", {
+    workspaceId: "space",
+    retentionDays: 30,
+    expectedRetentionDays: 0,
+  });
+  expect(select.value).toBe("30");
+  await act(async () => {
+    select.value = "0";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.setRetention", {
+    workspaceId: "space",
+    retentionDays: 0,
+    expectedRetentionDays: 30,
+  });
+});
+
+it("does not apply a retention choice after its confirmation snapshot is replaced", async () => {
+  await act(async () => root.render(<SpaceMemory workspaceId="space" view="configure" />));
+  const select = host.querySelector<HTMLSelectElement>('[aria-label="Episodic memory retention"]')!;
+  await act(async () => {
+    select.value = "90";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    for (const listener of mocks.listeners)
+      listener({ type: "workspace.memory.updated", payload: { workspaceId: "space" } });
+  });
+  await click("confirm-forget-space-memory");
+  expect(mocks.call.mock.calls.some(([method]) => method === "memory.pipeline.setRetention")).toBe(false);
+});

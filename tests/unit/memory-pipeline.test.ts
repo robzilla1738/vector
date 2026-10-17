@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1093,6 +1093,106 @@ it("saves a daily document atomically and rejects a missing fragment without cha
     );
     expect(new Set(saved.map((note) => note.ownerEdit?.updatedAt)).size).toBe(1);
   } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("expires daily notes and recovery history while preserving root notes, receipts and extraction watermarks", async () => {
+  const f = fixture();
+  const now = Date.now();
+  const time = vi.spyOn(Date, "now").mockReturnValue(now - 31 * 86_400_000);
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    const tasks = new TaskService(f.repo, new EventBus(f.repo));
+    tasks.setWorkspaceMemory(
+      workspaceId,
+      tasks.workspaceMemory(workspaceId).revision,
+      "Permanent root notebook context",
+    );
+    f.save(
+      "old-episode",
+      "The fictional amber garden had paper flowers.\n\nThe old paper box contained blue leaves.",
+    );
+    await f.pipeline.extractRun(workspaceId, "old-episode");
+    const [approved] = await f.pipeline.inbox(workspaceId);
+    await f.pipeline.review(workspaceId, approved!.claimId, "accept");
+    const before = await f.pipeline.documents(workspaceId);
+    time.mockReturnValue(now);
+    await editClaim(f.pipeline, {
+      workspaceId,
+      claimId: approved!.claimId,
+      expectedGeneration: before.generation,
+      text: "A recent owner edit of an old daily note.",
+    });
+    f.save("new-episode", "The new imaginary garden contains violet paper stars.");
+    await f.pipeline.extractRun(workspaceId, "new-episode");
+    const fresh = (await f.pipeline.inbox(workspaceId)).find((note) => note.sourceRunId === "new-episode")!;
+    await f.pipeline.review(workspaceId, fresh.claimId, "accept");
+    const removing = vi.fn();
+    expect(
+      await f.pipeline.setRetention({ workspaceId, retentionDays: 30, expectedRetentionDays: 0 }, removing),
+    ).toMatchObject({
+      retentionDays: 30,
+    });
+    expect(removing).toHaveBeenCalledOnce();
+    await expect(
+      f.pipeline.setRetention({ workspaceId, retentionDays: 90, expectedRetentionDays: 0 }, removing),
+    ).rejects.toThrow("Memory retention changed");
+    expect(f.pipeline.policy(workspaceId).retentionDays).toBe(30);
+    expect(removing).toHaveBeenCalledOnce();
+    expect((await f.pipeline.documents(workspaceId)).documents.map((note) => note.claim.sourceRunId)).toEqual(
+      ["new-episode"],
+    );
+    expect(await f.pipeline.inbox(workspaceId)).toEqual([]);
+    const recovery = JSON.stringify(await f.pipeline.recoverySnapshot());
+    expect(recovery).not.toContain("old-episode");
+    expect(recovery).not.toContain("recent owner edit");
+    expect(tasks.workspaceMemory(workspaceId).content).toBe("Permanent root notebook context");
+    expect((await f.pipeline.extractRun(workspaceId, "old-episode")).extracted).toBe(0);
+    expect((await f.pipeline.overview(workspaceId)).index?.chunkCount).toBe(1);
+    f.pipeline.setPolicy(workspaceId, false);
+    expect(f.pipeline.policy(workspaceId).retentionDays).toBe(30);
+    time.mockReturnValue(now + 31 * 86_400_000);
+    expect((await f.pipeline.expire(workspaceId)).forgotten).toBe(1);
+    expect((await f.pipeline.documents(workspaceId)).documents).toEqual([]);
+    expect(tasks.workspaceMemory(workspaceId).content).toBe("Permanent root notebook context");
+  } finally {
+    time.mockRestore();
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("keeps Never forget notes through consolidation and withholds expired recall before idle deletion", async () => {
+  const f = fixture();
+  const now = Date.now();
+  const time = vi.spyOn(Date, "now").mockReturnValue(now - 120 * 86_400_000);
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.save("lasting-episode", "The fictional violet notebook contains green paper stars.");
+    await f.pipeline.extractRun(workspaceId, "lasting-episode");
+    await f.pipeline.review(workspaceId, (await f.pipeline.inbox(workspaceId))[0]!.claimId, "accept");
+    time.mockReturnValue(now);
+    await f.pipeline.consolidate(workspaceId);
+    expect((await f.pipeline.documents(workspaceId)).documents).toHaveLength(1);
+    expect((await f.pipeline.expire(workspaceId)).forgotten).toBe(0);
+    await expect(
+      f.pipeline.setRetention({ workspaceId, retentionDays: 30, expectedRetentionDays: 0 }, () => {
+        throw new Error("backup invalidation failed");
+      }),
+    ).rejects.toThrow("backup invalidation failed");
+    expect(f.pipeline.policy(workspaceId).retentionDays ?? 0).toBe(0);
+    expect((await f.pipeline.documents(workspaceId)).documents).toHaveLength(1);
+    f.repo.setSetting(`memoryPipelinePolicy:${workspaceId}`, {
+      workspaceId,
+      enabled: true,
+      retentionDays: 90,
+    });
+    expect(await f.pipeline.search(workspaceId, "violet notebook")).toEqual([]);
+    expect((await f.pipeline.overview(workspaceId)).summary).toBe("");
+  } finally {
+    time.mockRestore();
     await f.pipeline.close();
     f.close();
   }

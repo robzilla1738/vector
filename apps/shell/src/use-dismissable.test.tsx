@@ -80,3 +80,24 @@ it("leaves Escape to a field that already handled it", () => {
     act(() => root.unmount());
   }
 });
+
+it("lets a native picker close before dismissing its surrounding layer", () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.createElement("div"));
+  const dismiss = vi.fn();
+  const select = document.body.appendChild(document.createElement("select"));
+  // JSDOM has no native picker; Chromium supplies this open state.
+  const open = vi.spyOn(select, "matches").mockReturnValue(true);
+  try {
+    act(() => root.render(<Layer open onDismiss={dismiss} />));
+    expect(escape(select).defaultPrevented).toBe(false);
+    expect(dismiss).not.toHaveBeenCalled();
+    open.mockReturnValue(false);
+    expect(escape(select).defaultPrevented).toBe(true);
+    expect(dismiss).toHaveBeenCalledOnce();
+  } finally {
+    open.mockRestore();
+    select.remove();
+    act(() => root.unmount());
+  }
+});

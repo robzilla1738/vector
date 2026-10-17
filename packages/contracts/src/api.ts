@@ -1,4 +1,4 @@
-import { MemoryClaimDocumentsSchema, MemoryDocumentEditParams } from "./memory-pipeline.js";
+import { MemoryClaimDocumentsSchema, MemoryDocumentEditParams, MemoryRetentionParams } from "./memory-pipeline.js";
 import { TaskReceiptExportParamsSchema, TaskReceiptExportResultSchema } from "./task-receipt-export.js";
 import { DocumentSnapshotSchema, SavedDocumentPageSchema } from "./document-snapshot.js";
 import {
@@ -1464,7 +1464,9 @@ export const MethodSchemas = {
   "memory.paste.commit": MemoryPasteCommitParams,
   "memory.paste.status": MemoryPasteStatusParams,
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
-  "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
+  "memory.pipeline.setPolicy": MemoryPipelinePolicySchema.omit({ retentionDays: true }),
+  "memory.pipeline.setRetention": MemoryRetentionParams,
+  "memory.pipeline.expire": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.extractRun": z.object({ workspaceId: id, runId: id }).strict(),
   "memory.pipeline.sources": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.inbox": z.object({ workspaceId: id }).strict(),
@@ -2253,6 +2255,8 @@ export const ResultSchemas = {
   "memory.paste.status": z.array(MemoryPasteStatusSchema).max(20),
   "memory.pipeline.policy": MemoryPipelinePolicySchema,
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
+  "memory.pipeline.setRetention": MemoryPipelinePolicySchema,
+  "memory.pipeline.expire": MemoryPipelineForgetResultSchema,
   "memory.pipeline.extractRun": z.object({ extracted: z.number().int().nonnegative() }),
   "memory.pipeline.sources": z.array(MemoryPipelineSourceSchema),
   "memory.pipeline.inbox": MemoryPipelineInboxSchema,

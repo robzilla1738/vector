@@ -1,7 +1,20 @@
 import { z } from "zod";
 
+export const MemoryRetentionDaysSchema = z.union([z.literal(0), z.literal(30), z.literal(90)]);
+export const MemoryRetentionParams = z
+  .object({
+    workspaceId: z.string().min(1),
+    retentionDays: MemoryRetentionDaysSchema,
+    expectedRetentionDays: MemoryRetentionDaysSchema,
+  })
+  .strict();
+
 export const MemoryPipelinePolicySchema = z
-  .object({ workspaceId: z.string().min(1), enabled: z.boolean() })
+  .object({
+    workspaceId: z.string().min(1),
+    enabled: z.boolean(),
+    retentionDays: MemoryRetentionDaysSchema.optional(),
+  })
   .strict();
 export const MemoryClaimSchema = z.object({
   claimId: z.string().uuid(),

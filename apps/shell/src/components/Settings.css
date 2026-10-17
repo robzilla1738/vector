@@ -511,10 +511,6 @@
     box-shadow: none;
     font-size: var(--fs-sm);
   }
-  .settings-content select {
-    appearance: auto;
-    padding-right: var(--space-7);
-  }
   .settings-content textarea {
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
