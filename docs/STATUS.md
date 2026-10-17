@@ -7,6 +7,38 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Named custom model providers — integrated source
+
+Models Settings now supports named JSON providers with independent destinations,
+keys, model catalogs, role choices and disconnect/remove actions. The four
+declared transports are OpenAI Chat Completions, OpenAI Responses, Anthropic
+Messages and Google Generative AI. Credentials leave the imported JSON before
+configuration persistence and use separate OS entries bound to endpoint/protocol.
+Changed destinations cannot silently reuse an old key. Anonymous authentication
+must be explicit; local-only policy still excludes remote providers.
+
+Settings writes bind the current connection revision, active tasks prevent
+connection changes, and previously acquired transports refuse later dispatch
+after retirement. Private inference inherits the declared protocol through the
+credential-only broker. Custom transports retain inline tool schemas, suppress
+authentication when requested and refuse redirects. Explicit reasoning choices
+reach the supported protocol fields. The shared dialog, buttons, popup material
+and typography tokens serve add/edit and original-control removal reviews.
+
+Runtime dist was rebuilt. Integrated `npm run check` passed typecheck, lint and
+4,705tests/751files in136.45s, including all four SDK wire formats, anonymous
+headers, redirect refusal, connection/key isolation and private routing.
+The final removal-review refinement passed renderer typecheck and4dialog tests
+in0.922s. Logs: `/tmp/aux-custom-provider-integrated-check.log` and
+`/tmp/aux-custom-provider-final-ui-tests.log`. Native acceptance and real-provider
+inference remain pending. The native UI control service currently reports
+`Sky Computer Use native pipe startup failed`; no live Aside comparison is
+claimed for this batch. Chromium155 continues its separate cold build.
+
+The composer still uses the selected connection's catalog; a combined picker
+across saved connections remains separate work. Supported subscription setup,
+Memory, channels, routines and cloud acceptance remain open under R5.
+
 ## Native autofill accepted; redirect correction awaiting build
 
 Nativec366c7dc8 completed its incremental build/link and launched through

@@ -11,6 +11,7 @@ import {
   registerPrivateProviderBroker,
 } from "../../apps/runtime/dist/services/private-provider.js";
 import { PrivateProviderDescriptorSchema } from "@aux/contracts/private-provider";
+import { CustomModelApiSchema } from "@aux/contracts";
 import type {
   PrivateProviderDescriptor,
   PrivateProviderRequest,
@@ -45,6 +46,77 @@ const descriptor: PrivateProviderDescriptor = {
   models: [{ id: "fixture-model", source: "configured" }],
   localModelsOnly: false,
 };
+for (const api of CustomModelApiSchema.options) {
+  it.each([true, false])(
+    `preserves custom ${api} protocol and authentication=%s in private inference`,
+    async (authHeader) => {
+      const selected = PrivateProviderDescriptorSchema.parse({
+        ...descriptor,
+        provider: "openai-compatible",
+        customApi: api,
+        customAuthHeader: authHeader,
+        endpoint: "https://custom.example.test/v1",
+      });
+      const requests: PrivateProviderRequest[] = [];
+      const network = vi.fn<typeof fetch>(async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        expect(url.origin).toBe("https://custom.example.test");
+        expect(url.pathname).toBe(
+          {
+            "openai-completions": "/v1/chat/completions",
+            "openai-responses": "/v1/responses",
+            "anthropic-messages": "/v1/messages",
+            "google-generative-ai": "/v1/models/fixture-model:streamGenerateContent",
+          }[api],
+        );
+        const headers = new Headers(init?.headers);
+        const header =
+          api === "anthropic-messages"
+            ? "x-api-key"
+            : api === "google-generative-ai"
+              ? "x-goog-api-key"
+              : "authorization";
+        expect(headers.get(header)).toBe(
+          authHeader
+            ? header === "authorization"
+              ? "Bearer synthetic-private-key"
+              : "synthetic-private-key"
+            : null,
+        );
+        expect(["authorization", "x-api-key", "x-goog-api-key"].filter((name) => headers.has(name))).toEqual(
+          authHeader ? [header] : [],
+        );
+        expect(init?.redirect).toBe("error");
+        expect(String(init?.body)).toContain("Private content stays at the endpoint");
+        return Response.json({ error: { message: "Synthetic inference refusal" } }, { status: 401 });
+      });
+      const connection = new PrivateProviderConnection(
+        selected,
+        async (request) => {
+          requests.push(request);
+          return {
+            operation: "credential",
+            revision: selected.revision,
+            accessToken: "synthetic-private-key",
+          };
+        },
+        network,
+      );
+      cleanups.push(() => connection.close());
+      await expect(
+        connection
+          .model(() => {})
+          .generateText({
+            modelId: "fixture-model",
+            maxAttempts: 1,
+            prompt: "Private content stays at the endpoint",
+          }),
+      ).rejects.toThrow();
+      expect(network).toHaveBeenCalledTimes(1);
+      expect(requests).toEqual([{ operation: "credential", revision: selected.revision }]);
+    },
+  );
+}
 it("adopts the selected loaded environment connection without persisting its key or changing normal preferences", async () => {
   const normal = settings({
     AI_GATEWAY_API_KEY: "synthetic-environment-key",

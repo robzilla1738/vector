@@ -59,6 +59,7 @@ export * from "./bridge.js";
 export * from "./ipc-channel.js";
 
 export * from "./model-providers.js";
+export * from "./custom-model-providers.js";
 export * from "./model-registry.js";
 export * from "./site-adapters.js";
 

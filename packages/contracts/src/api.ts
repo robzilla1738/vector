@@ -106,7 +106,8 @@ import {
   ZapSitePolicySchema,
   ZapUpdateParamsSchema,
 } from "./zap.js";
-import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
+import { ModelProviderSchema, ModelCredentialSchema, CustomModelProviderIdSchema } from "./model-providers.js";
+import { CustomModelProviderSchema } from "./custom-model-providers.js";
 import { z } from "zod";
 import { CoderRecoveryInspectionSchema } from "./coder-worktrees.js";
 import { AutofillProfileSchema } from "./autofill.js";
@@ -917,6 +918,10 @@ export const SettingsSetParams = z.object({
     .optional(),
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
+  customModelProvider: CustomModelProviderSchema.optional(),
+  customModelProviderId: CustomModelProviderIdSchema.nullable().optional(),
+  removeCustomModelProviderId: CustomModelProviderIdSchema.optional(),
+  expectedModelConnectionRevision: z.string().min(1).max(160).optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
   imageModel: ImageModelSchema.nullable().optional(),
   localModelsOnly: z.boolean().optional(),

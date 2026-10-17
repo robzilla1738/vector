@@ -14,6 +14,11 @@ import { VercelAccounts, VercelRegistrationSchema, type VercelRegistration } fro
 import { vercelModelClient } from "../agent/vercel-model.js";
 import { copilotModelClient } from "../agent/copilot-model.js";
 import { ModelCapabilitySchema } from "@aux/contracts/model-registry";
+import {
+  CustomModelProviderSchema,
+  CustomModelApiSchema,
+  type CustomModelProvider,
+} from "@aux/contracts/custom-model-providers";
 import type { CopilotServices } from "./copilot-services.js";
 import type { CopilotAccount } from "./copilot-account.js";
 import { FoundationModelsClient, type UtilityRoute, type NetworkUtilityRoute } from "./foundation-models.js";
@@ -51,6 +56,20 @@ import {
   type ShortcutOverrides,
 } from "@aux/contracts";
 import { z } from "zod";
+const CustomCredentialSchema = z
+  .object({
+    version: z.literal(1),
+    endpoint: z.string().url(),
+    api: CustomModelApiSchema,
+    key: z.string().min(1).max(16384),
+  })
+  .strict();
+type StoredModelKey = {
+  raw?: string;
+  key?: string;
+  endpoint?: string;
+  api?: z.infer<typeof CustomModelApiSchema>;
+};
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import {
   MODEL_REGISTRY,
@@ -113,7 +132,12 @@ export interface Settings extends Pick<
   disabledModelProviders?: ModelProvider[];
   imageModel?: ImageModel | null;
   localModelsOnly?: boolean;
-  modelCredential?: { provider: ModelProvider; key: string };
+  modelCredential?: { provider: ModelProvider; key: string; connectionId?: string };
+  customModelProvider?: CustomModelProvider;
+  customModelProviderId?: string | null;
+  removeCustomModelProviderId?: string;
+  customModelProviders?: CustomModelProvider[];
+  expectedModelConnectionRevision?: string;
   compatibleEndpoint?: string;
   providerModels?: Partial<
     Record<ModelProvider, { plannerModel?: string; recoveryModel?: string; visionModel?: string }>
@@ -233,11 +257,12 @@ export class SettingsService {
   private native: NativeBridge | null = null;
   private foundationModels: FoundationModelsClient | undefined;
   private savedKey: string | undefined;
-  private directKeys: Partial<Record<ModelProvider, string>> = {};
-  private directErrors: Partial<Record<ModelProvider, string>> = {};
+  private directKeys = new Map<string, StoredModelKey>();
+  private directErrors = new Map<string, string>();
   private credentialError: string | undefined;
   private writes: Promise<unknown> = Promise.resolve();
-  private initializedCredentials = new Set<ModelProvider>();
+  private initializedCredentials = new Set<string>();
+  private customProviderCache?: CustomModelProvider[];
 
   constructor(
     private repo: Repo,
@@ -402,10 +427,7 @@ export class SettingsService {
     else if (vercel) accessToken = await (await this.vercelAccounts()).accessToken(vercel);
     else {
       const key = this.selectedKey();
-      if (
-        !key &&
-        !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()))
-      )
+      if (!key && !(provider === "openai-compatible" && this.compatibleAuthenticationOptional()))
         throw new AuxError("cancelled", "The original provider credential is unavailable.");
       accessToken = key ?? "aux-local";
     }
@@ -462,15 +484,17 @@ export class SettingsService {
     if (
       authentication === "api-key" &&
       !this.selectedKey() &&
-      !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()))
+      !(provider === "openai-compatible" && this.compatibleAuthenticationOptional())
     )
       return null;
     return PrivateProviderDescriptorSchema.parse({
       revision: this.privateProviderRevision(),
       provider,
+      customApi: this.customProvider()?.api,
+      customAuthHeader: this.customProvider()?.authHeader,
       authentication,
       credentialSource:
-        authentication !== "api-key" || (provider === "gateway" ? this.savedKey : this.directKeys[provider])
+        authentication !== "api-key" || (provider === "gateway" ? this.savedKey : this.directKey(provider))
           ? "saved"
           : this.selectedKey()
             ? "environment"
@@ -594,20 +618,26 @@ export class SettingsService {
     return load;
   }
 
-  private async readCredential(provider: ModelProvider): Promise<void> {
-    if (!this.native?.available() || this.discoveryClosed || this.initializedCredentials.has(provider))
-      return;
+  private async readCredential(
+    provider: ModelProvider,
+    connectionId: string | null = this.customProviderId() ?? null,
+  ): Promise<void> {
+    const name = this.credentialName(provider, connectionId);
+    if (!this.native?.available() || this.discoveryClosed || this.initializedCredentials.has(name)) return;
     try {
-      const { value } = await this.native.readSecret(
-        provider === "gateway" ? "gatewayApiKey" : `modelKey-${provider}`,
-      );
+      const { value } = await this.native.readSecret(name);
       if (this.discoveryClosed) return;
       if (provider === "gateway") {
         this.savedKey = value;
         this.credentialError = undefined;
       } else {
-        this.directKeys[provider] = value;
-        delete this.directErrors[provider];
+        const saved: StoredModelKey = { raw: value, key: value };
+        if (provider === "openai-compatible" && connectionId && value) {
+          const custom = CustomCredentialSchema.parse(JSON.parse(value));
+          Object.assign(saved, custom);
+        }
+        this.directKeys.set(name, saved);
+        this.directErrors.delete(name);
       }
     } catch {
       if (this.discoveryClosed) return;
@@ -615,11 +645,13 @@ export class SettingsService {
         this.credentialError =
           "Saved credential is unavailable. Unlock the OS credential store or re-enter the key in Settings.";
       else
-        this.directErrors[provider] =
-          "Saved credential is unavailable. Re-enter this provider's key in Settings.";
+        this.directErrors.set(
+          name,
+          "Saved credential is unavailable. Re-enter this provider's key in Settings.",
+        );
     }
     if (this.discoveryClosed) return;
-    this.initializedCredentials.add(provider);
+    this.initializedCredentials.add(name);
     if (provider === "gateway" && this.repo.getSetting("vercelHostId")) {
       try {
         await this.vercelAccounts();
@@ -638,7 +670,7 @@ export class SettingsService {
 
   get(key: keyof Settings): unknown {
     if (key === "gatewayApiKey" || key === "modelCredential") return undefined;
-    return this.repo.getSetting(key) ?? this.fileSettings[key];
+    return this.repo.hasSetting(key) ? this.repo.getSetting(key) : this.fileSettings[key];
   }
 
   all(): Settings & {
@@ -676,6 +708,8 @@ export class SettingsService {
           : undefined),
       localModelsOnly: this.localModelsOnly(),
       modelProvider: this.modelProvider(),
+      customModelProviders: this.customProviders(),
+      customModelProviderId: this.customProviderId() ?? null,
       modelConnectionRevision: this.inheritedProvider()?.descriptor.revision ?? this.modelCacheGeneration(),
       modelAuthentication:
         this.inheritedProvider()?.descriptor.authentication ??
@@ -712,7 +746,7 @@ export class SettingsService {
                 : this.env.AI_GATEWAY_API_KEY
                   ? "environment"
                   : "none"
-              : this.directKeys[this.modelProvider()]
+              : this.directKey(this.modelProvider())
                 ? "saved"
                 : this.selectedKey()
                   ? "environment"
@@ -728,7 +762,7 @@ export class SettingsService {
               ? "Sign in to ChatGPT again to unlock this account."
               : this.modelProvider() === "gateway"
                 ? this.credentialError
-                : this.directErrors[this.modelProvider()],
+                : this.directErrors.get(this.credentialName(this.modelProvider())),
       modelEndpoint:
         this.inheritedProvider()?.descriptor.endpoint ??
         (this.copilotSelection()
@@ -748,7 +782,7 @@ export class SettingsService {
               this.modelOverride ||
               (this.plannerModel() &&
                 (this.selectedKey() ||
-                  localCompatible ||
+                  (this.modelProvider() === "openai-compatible" && this.compatibleAuthenticationOptional()) ||
                   (this.modelProvider() === "openai" && this.chatgptConnected()) ||
                   (this.modelProvider() === "gateway" && this.vercelConnected())) &&
                 (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
@@ -883,6 +917,25 @@ export class SettingsService {
   private async save(patch: Settings, check?: () => Promise<void>): Promise<{ ok: true }> {
     await check?.();
     const next: Settings = { ...patch };
+    const expectedConnectionRevision = next.expectedModelConnectionRevision;
+    const namedConnectionChange =
+      next.customModelProvider !== undefined ||
+      next.customModelProviderId !== undefined ||
+      next.removeCustomModelProviderId !== undefined ||
+      (next.modelCredential?.provider === "openai-compatible" &&
+        !!(next.modelCredential.connectionId ?? this.customProviderId()));
+    if (namedConnectionChange && expectedConnectionRevision === undefined)
+      throw new AuxError(
+        "conflict",
+        "Reload the current model connection before changing a custom provider.",
+      );
+    if (
+      expectedConnectionRevision !== undefined &&
+      expectedConnectionRevision !==
+        (this.inheritedProvider()?.descriptor.revision ?? this.modelCacheGeneration())
+    )
+      throw new AuxError("conflict", "Model connections changed in another window. Reload before saving.");
+    delete next.expectedModelConnectionRevision;
     if (next.fileAccessMode !== undefined) {
       if (Object.keys(next).some((key) => !["fileAccessMode", "fileAccessRevision"].includes(key)))
         throw new AuxError("invalid_params", "Save file access separately from other settings.");
@@ -938,21 +991,66 @@ export class SettingsService {
       );
       if (conflict) throw new AuxError("conflict", conflict);
     }
+    let customProviders = this.customProviders();
+    let customId = this.customProviderId();
+    const removedCustomId = next.removeCustomModelProviderId;
+    if (removedCustomId !== undefined) {
+      if (Object.keys(next).length !== 1)
+        throw new AuxError("invalid_params", "Remove a custom provider separately from other settings.");
+      if (!customProviders.some((provider) => provider.id === removedCustomId))
+        throw new AuxError("not_found", "This custom provider no longer exists.");
+      customProviders = customProviders.filter((provider) => provider.id !== removedCustomId);
+      next.customModelProviders = customProviders;
+      delete next.removeCustomModelProviderId;
+      if (customId === removedCustomId) {
+        customId = undefined;
+        next.customModelProviderId = null;
+        if (this.modelProvider() === "openai-compatible") next.modelProvider = "gateway";
+      }
+    }
+    if (next.customModelProvider) {
+      const definition = CustomModelProviderSchema.parse(next.customModelProvider);
+      definition.baseUrl = normalizeCompatibleEndpoint(definition.baseUrl);
+      const existing = customProviders.find((provider) => provider.id === definition.id);
+      const merged = CustomModelProviderSchema.parse({ ...existing, ...definition });
+      customProviders = [...customProviders.filter((provider) => provider.id !== merged.id), merged];
+      next.customModelProviders = CustomModelProviderSchema.array().max(50).parse(customProviders);
+      delete next.customModelProvider;
+    }
+    if (next.compatibleEndpoint !== undefined && next.customModelProviderId === undefined)
+      next.customModelProviderId = null;
+    if (next.customModelProviderId !== undefined) {
+      customId = next.customModelProviderId ?? undefined;
+      if (customId && !customProviders.some((provider) => provider.id === customId))
+        throw new AuxError("not_found", "This custom provider no longer exists.");
+      if (customId) next.modelProvider = "openai-compatible";
+    }
+    if (
+      next.modelCredential?.connectionId &&
+      (next.modelCredential.provider !== "openai-compatible" ||
+        !customProviders.some((provider) => provider.id === next.modelCredential?.connectionId))
+    )
+      throw new AuxError("invalid_params", "Choose the named custom provider for this credential.");
     if (next.modelCredential && next.gatewayApiKey !== undefined)
       throw new Error("Save one provider credential at a time.");
-    const connectionChange = [
-      "localModelsOnly",
-      "modelProvider",
-      "modelCredential",
-      "modelConnection",
-      "imageModel",
-      "gatewayApiKey",
-      "compatibleEndpoint",
-      "plannerModel",
-      "recoveryModel",
-      "visionModel",
-      "agentModelRoutes",
-    ].some((key) => key in next);
+    if (next.agentModelRoutes !== undefined)
+      next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
+    const connectionChange =
+      [
+        "localModelsOnly",
+        "modelProvider",
+        "modelCredential",
+        "modelConnection",
+        "customModelProviders",
+        "customModelProviderId",
+        "imageModel",
+        "gatewayApiKey",
+        "compatibleEndpoint",
+        "plannerModel",
+        "recoveryModel",
+        "visionModel",
+        "agentModelRoutes",
+      ].some((key) => key in next) || removedCustomId !== undefined;
     if (
       connectionChange &&
       this.repo.db
@@ -971,22 +1069,64 @@ export class SettingsService {
     if (next.imageModel !== undefined) next.imageModel = ImageModelSchema.nullable().parse(next.imageModel);
     if (next.modelConnection) {
       const change = ModelConnectionChangeSchema.parse(next.modelConnection);
-      const disabled = new Set(ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []));
-      if (change.enabled) disabled.delete(change.provider);
-      else disabled.add(change.provider);
-      next.disabledModelProviders = [...disabled];
+      if (change.provider === "openai-compatible" && customId) {
+        customProviders = customProviders.map((definition) =>
+          definition.id === customId ? { ...definition, enabled: change.enabled } : definition,
+        );
+        next.customModelProviders = customProviders;
+      } else {
+        const disabled = new Set(ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []));
+        if (change.enabled) disabled.delete(change.provider);
+        else disabled.add(change.provider);
+        next.disabledModelProviders = [...disabled];
+      }
       delete next.modelConnection;
     }
     if (next.compatibleEndpoint !== undefined)
       next.compatibleEndpoint = normalizeCompatibleEndpoint(next.compatibleEndpoint);
+    const custom =
+      selectedProvider === "openai-compatible"
+        ? customProviders.find((provider) => provider.id === customId)
+        : undefined;
+    if (custom) {
+      const updated = { ...custom };
+      for (const key of ["plannerModel", "recoveryModel", "visionModel", "agentModelRoutes"] as const) {
+        if (next[key] === undefined) continue;
+        Object.assign(updated, { [key]: next[key] });
+        delete next[key];
+      }
+      next.customModelProviders = customProviders.map((provider) =>
+        provider.id === updated.id ? CustomModelProviderSchema.parse(updated) : provider,
+      );
+    } else if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
+      const current = this.get("providerAgentModelRoutes") as
+        Settings["providerAgentModelRoutes"] | undefined;
+      next.providerAgentModelRoutes = { ...current, [selectedProvider]: next.agentModelRoutes };
+      delete next.agentModelRoutes;
+    }
+    if (selectedProvider !== "gateway" && !custom) {
+      const profiles = (this.get("providerModels") as Settings["providerModels"]) ?? {};
+      const profile = { ...profiles[selectedProvider] };
+      for (const key of ["plannerModel", "recoveryModel", "visionModel"] as const) {
+        if (next[key] !== undefined) {
+          profile[key] = next[key];
+          delete next[key];
+        }
+      }
+      next.providerModels = { ...profiles, [selectedProvider]: profile };
+    }
     if (connectionChange) {
-      await this.readCredential(selectedProvider);
-      if (next.modelCredential) await this.readCredential(next.modelCredential.provider);
+      await this.readCredential(selectedProvider, customId ?? null);
+      if (next.modelCredential)
+        await this.readCredential(
+          next.modelCredential.provider,
+          next.modelCredential.connectionId ?? customId ?? null,
+        );
       if (next.gatewayApiKey !== undefined) await this.readCredential("gateway");
       await check?.();
     }
     if (next.modelCredential) {
-      const { provider, key } = next.modelCredential;
+      const { provider, key, connectionId } = next.modelCredential;
       if (provider === "gateway") await this.writeGatewayKey(key);
       else {
         if (!this.native?.available())
@@ -995,50 +1135,68 @@ export class SettingsService {
           );
         if (key === "••••••••")
           throw new Error("Enter the actual key; a masked placeholder cannot be saved.");
-        const previous = this.directKeys[provider];
+        const name = this.credentialName(provider, connectionId ?? customId ?? null);
+        const previous = this.directKeys.get(name);
+        const custom =
+          provider === "openai-compatible"
+            ? customProviders.find((definition) => definition.id === (connectionId ?? customId))
+            : undefined;
+        const raw =
+          key && custom
+            ? JSON.stringify(
+                CustomCredentialSchema.parse({ version: 1, endpoint: custom.baseUrl, api: custom.api, key }),
+              )
+            : key;
         await check?.();
-        await this.native.storeSecret(`modelKey-${provider}`, key);
+        await this.native.storeSecret(name, raw);
         if (check) {
           try {
             await check();
           } catch (error) {
             // The serialized settings queue holds this write receipt until rollback.
-            await this.native.storeSecret(`modelKey-${provider}`, previous ?? "");
+            await this.native.storeSecret(name, previous?.raw ?? "");
             throw error;
           }
         }
-        this.directKeys[provider] = key || undefined;
-        delete this.directErrors[provider];
+        this.directKeys.set(name, {
+          raw: raw || undefined,
+          key: key || undefined,
+          endpoint: custom?.baseUrl,
+          api: custom?.api,
+        });
+        this.directErrors.delete(name);
       }
       delete next.modelCredential;
       if (provider === "openai") this.repo.setSetting("chatgptActiveAccount", null);
       if (provider === "gateway") this.repo.setSetting("vercelActiveAccount", null);
     }
+    if (removedCustomId !== undefined) {
+      if (!this.native?.available())
+        throw new AuxError(
+          "backend_unavailable",
+          "Remove this provider in the desktop to clear its saved credential.",
+        );
+      const name = this.credentialName("openai-compatible", removedCustomId);
+      await check?.();
+      await this.native.storeSecret(name, "");
+      this.directKeys.delete(name);
+      this.directErrors.delete(name);
+      this.initializedCredentials.delete(name);
+    }
     if (next.gatewayApiKey !== undefined) this.repo.setSetting("vercelActiveAccount", null);
-    if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
-      const current = this.get("providerAgentModelRoutes") as
-        Settings["providerAgentModelRoutes"] | undefined;
-      next.providerAgentModelRoutes = { ...current, [selectedProvider]: next.agentModelRoutes };
-      delete next.agentModelRoutes;
-    }
-    if (selectedProvider !== "gateway") {
-      const profile = { ...this.profiles()[selectedProvider] };
-      for (const key of ["plannerModel", "recoveryModel", "visionModel"] as const) {
-        if (next[key] !== undefined) {
-          profile[key] = next[key];
-          delete next[key];
-        }
-      }
-      next.providerModels = { ...this.profiles(), [selectedProvider]: profile };
-    }
-    if (next.agentModelRoutes !== undefined)
-      next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (patch.gatewayApiKey !== undefined || patch.modelCredential?.provider === "gateway") {
       this.privateImage?.controller.abort();
       this.privateImage = undefined;
     }
-    if (this.privateProvider && (patch.gatewayApiKey !== undefined || patch.modelCredential !== undefined)) {
+    if (
+      this.privateProvider &&
+      (patch.gatewayApiKey !== undefined ||
+        patch.modelCredential !== undefined ||
+        patch.customModelProvider !== undefined ||
+        patch.customModelProviderId !== undefined ||
+        removedCustomId !== undefined)
+    ) {
       await this.privateProvider.close();
       this.privateProvider = undefined;
     }
@@ -1069,6 +1227,7 @@ export class SettingsService {
         this.repo.setSetting(k, v);
       }
     });
+    if (connectionChange) this.customProviderCache = undefined;
     if (connectionChange) this.connectionChanged();
     // persist non-secret prefs to settings.json for transparency
     const { gatewayApiKey, ...rest } = next;
@@ -1124,6 +1283,8 @@ export class SettingsService {
   }
   /** Existing model choices remain the category defaults; explicit routes can tune model and effort. */
   private routeOverrides(): Settings["agentModelRoutes"] {
+    const custom = this.customProvider();
+    if (custom) return custom.agentModelRoutes ?? {};
     const provider = this.modelProvider();
     const stored =
       provider === "gateway"
@@ -2104,6 +2265,8 @@ export class SettingsService {
   registryModels(): readonly ModelCapability[] {
     const inherited = this.inheritedProvider();
     if (inherited) return inherited.descriptor.models;
+    const custom = this.customProvider();
+    if (custom) return custom.models;
     const copilot = this.copilotSelection();
     if (this.hasCopilotSelection()) return copilot?.models ?? [];
     if (this.modelProvider() === "openai" && this.activeChatgptAccount())
@@ -2290,27 +2453,33 @@ export class SettingsService {
       provider === "gateway"
         ? this.gatewayKey()
         : (this.selectedKey() ??
-          (provider === "openai-compatible" && isLoopbackCompatibleEndpoint(endpoint)
+          (provider === "openai-compatible" && this.compatibleAuthenticationOptional()
             ? "aux-local"
             : undefined));
     if (!key || !this.plannerModel() || (provider === "openai-compatible" && !endpoint)) return null;
+    if (this.gatewayClient) return this.gatewayClient;
+    const generation = this.modelCacheGeneration();
+    const network = fetch;
+    const currentFetch: typeof fetch = (input, init) => {
+      this.assertModelGeneration(generation);
+      return network(input, init);
+    };
     if (provider !== "gateway") {
-      if (!this.gatewayClient) this.gatewayClient = directModelClient(provider, key, undefined, endpoint);
+      this.gatewayClient = directModelClient(provider, key, currentFetch, endpoint, this.customProvider());
       return this.gatewayClient;
     }
-    if (!this.gatewayClient) {
-      const t = Number(this.env.AUX_MODEL_STREAM_IDLE_TIMEOUT_MS);
-      const only = this.env.AUX_GATEWAY_ONLY?.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      this.gatewayClient = new GatewayModelClient(key, {
-        streamIdleTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
-        only: only?.length ? only : undefined,
-        models: () => this.mergedCatalog,
-        candidatesFor: (id) => this.candidatesForModel(id),
-        allowedModelId: this.env.AUX_BENCH_MODEL_PIN || undefined,
-      });
-    }
+    const t = Number(this.env.AUX_MODEL_STREAM_IDLE_TIMEOUT_MS);
+    const only = this.env.AUX_GATEWAY_ONLY?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    this.gatewayClient = new GatewayModelClient(key, {
+      gatewayFetch: currentFetch,
+      streamIdleTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
+      only: only?.length ? only : undefined,
+      models: () => this.mergedCatalog,
+      candidatesFor: (id) => this.candidatesForModel(id),
+      allowedModelId: this.env.AUX_BENCH_MODEL_PIN || undefined,
+    });
     return this.gatewayClient;
   }
 
@@ -2328,7 +2497,7 @@ export class SettingsService {
   private assertModelGeneration(generation: string): void {
     if (this.discoveryClosed) throw new AuxError("cancelled", "Model discovery is closed.");
     if (this.modelCacheGeneration() !== generation)
-      throw new AuxError("cancelled", "The model account changed during discovery.");
+      throw new AuxError("cancelled", "The model connection changed. Use its current configuration.");
   }
   private async loadModels(generation: string): Promise<{
     models: ModelCapability[];
@@ -2350,6 +2519,13 @@ export class SettingsService {
         localServers: await this.localServers(),
       };
     const provider = this.modelProvider();
+    const custom = this.customProvider();
+    if (custom)
+      return {
+        models: this.localModelsOnly() && !isLoopbackCompatibleEndpoint(custom.baseUrl) ? [] : custom.models,
+        source: "configured",
+        localServers: await this.localServers(),
+      };
     const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
     if (chatgptId && !this.localModelsOnly() && this.connectionEnabled(provider)) {
       await this.refreshChatgptModels(chatgptId, generation);
@@ -2444,7 +2620,7 @@ export class SettingsService {
     }
     const local = await this.localServers();
     this.assertModelGeneration(generation);
-    const server = this.connectionEnabled("openai-compatible")
+    const server = this.builtInConnectionEnabled("openai-compatible")
       ? local.find((entry) => entry.models.some(isTextModelCandidate))
       : undefined;
     const localModel = server?.models.find(isTextModelCandidate);
@@ -2652,10 +2828,48 @@ export class SettingsService {
     }
   }
 
+  private customProviders(): CustomModelProvider[] {
+    return (this.customProviderCache ??= CustomModelProviderSchema.array()
+      .max(50)
+      .parse(this.get("customModelProviders") ?? []));
+  }
+  private customProviderId(): string | undefined {
+    const id = this.get("customModelProviderId");
+    return typeof id === "string" && this.customProviders().some((provider) => provider.id === id)
+      ? id
+      : undefined;
+  }
+  private customProvider(): CustomModelProvider | undefined {
+    if (this.modelProvider() !== "openai-compatible") return;
+    return this.customProviders().find((provider) => provider.id === this.customProviderId());
+  }
+  private credentialName(
+    provider: ModelProvider,
+    connectionId: string | null = this.customProviderId() ?? null,
+  ): string {
+    if (provider === "gateway") return "gatewayApiKey";
+    return provider === "openai-compatible" && connectionId
+      ? `modelKey-custom-${createHash("sha256").update(connectionId).digest("hex").slice(0, 40)}`
+      : `modelKey-${provider}`;
+  }
+  private directKey(provider: ModelProvider): string | undefined {
+    const saved = this.directKeys.get(this.credentialName(provider));
+    if (provider === "openai-compatible" && this.customProviderId()) {
+      const custom = this.customProviders().find((definition) => definition.id === this.customProviderId());
+      if (saved?.endpoint !== custom?.baseUrl || saved?.api !== custom?.api) return;
+    }
+    return saved?.key;
+  }
+  private compatibleAuthenticationOptional(): boolean {
+    const custom = this.customProvider();
+    return custom ? !custom.authHeader : isLoopbackCompatibleEndpoint(this.compatibleEndpoint());
+  }
   modelProvider(): ModelProvider {
     return ModelProviderSchema.parse(this.get("modelProvider") ?? "gateway");
   }
   compatibleEndpoint(): string | undefined {
+    const custom = this.customProviders().find((provider) => provider.id === this.customProviderId());
+    if (custom) return custom.baseUrl;
     const value = this.get("compatibleEndpoint");
     if (typeof value !== "string" || !value) return undefined;
     try {
@@ -2665,17 +2879,36 @@ export class SettingsService {
     }
   }
   private profiles(): NonNullable<Settings["providerModels"]> {
-    return (this.get("providerModels") as Settings["providerModels"]) ?? {};
+    const profiles = (this.get("providerModels") as Settings["providerModels"]) ?? {};
+    const custom = this.customProvider();
+    if (!custom) return profiles;
+    const plannerModel = custom.plannerModel ?? custom.models[0]!.id;
+    return {
+      ...profiles,
+      "openai-compatible": {
+        plannerModel,
+        recoveryModel: custom.recoveryModel ?? plannerModel,
+        visionModel: custom.visionModel ?? plannerModel,
+      },
+    };
   }
   private selectedKey(): string | undefined {
     const provider = this.modelProvider();
     if (!this.connectionEnabled(provider)) return undefined;
+    if (this.customProvider()?.authHeader === false) return undefined;
     return provider === "gateway"
       ? this.savedKey || this.env.AI_GATEWAY_API_KEY
-      : this.directKeys[provider] || this.env[PROVIDER_ENV[provider]];
+      : this.directKey(provider) || (this.customProvider() ? undefined : this.env[PROVIDER_ENV[provider]]);
   }
 
   connectionEnabled(provider: ModelProvider): boolean {
+    const custom =
+      provider === "openai-compatible"
+        ? this.customProviders().find((definition) => definition.id === this.customProviderId())
+        : undefined;
+    return custom ? custom.enabled : this.builtInConnectionEnabled(provider);
+  }
+  private builtInConnectionEnabled(provider: ModelProvider): boolean {
     return !ModelProviderSchema.array()
       .parse(this.get("disabledModelProviders") ?? [])
       .includes(provider);
@@ -2700,9 +2933,13 @@ export class SettingsService {
       const vercel = provider === "gateway" && this.activeVercelAccount();
       const subscription = provider === "openai" && this.activeChatgptAccount();
       const saved =
-        vercel || subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
+        vercel || subscription || (provider === "gateway" ? this.savedKey : this.directKey(provider));
       const environment =
-        provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
+        provider === "gateway"
+          ? this.env.AI_GATEWAY_API_KEY
+          : provider === "openai-compatible" && this.customProviderId()
+            ? undefined
+            : this.env[PROVIDER_ENV[provider]];
       return ModelConnectionStatusSchema.parse({
         provider,
         selected: provider === this.modelProvider(),
@@ -2714,7 +2951,7 @@ export class SettingsService {
             ? this.chatgptCredentialError
             : provider === "gateway"
               ? this.credentialError
-              : this.directErrors[provider]),
+              : this.directErrors.get(this.credentialName(provider))),
         localEndpoint:
           provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
       });

@@ -1,5 +1,6 @@
 import type { createOpenAI } from "@ai-sdk/openai";
-import type { ModelProvider } from "@aux/contracts";
+import { AuxError, type ModelProvider, type CustomModelProvider } from "@aux/contracts";
+import type { ModelCapability } from "@aux/contracts/model-registry";
 import { GatewayModelClient } from "./gateway-client.js";
 
 export const DIRECT_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "openai-compatible"] as const;
@@ -81,33 +82,73 @@ export function directModelClient(
   apiKey: string,
   fetchOverride?: typeof fetch,
   compatibleEndpoint?: string,
+  configuration?: Pick<CustomModelProvider, "api" | "authHeader"> & { models: readonly ModelCapability[] },
 ) {
-  if (provider === "openai-compatible" || provider === "openrouter") {
-    const baseURL =
-      provider === "openrouter"
-        ? PROVIDER_ENDPOINT.openrouter
-        : normalizeCompatibleEndpoint(compatibleEndpoint ?? "");
+  const api =
+    configuration?.api ??
+    (provider === "anthropic"
+      ? "anthropic-messages"
+      : provider === "google"
+        ? "google-generative-ai"
+        : provider === "openai"
+          ? "openai-responses"
+          : "openai-completions");
+  const baseURL =
+    provider === "openai-compatible"
+      ? normalizeCompatibleEndpoint(compatibleEndpoint ?? "")
+      : providerEndpoint(provider);
+  const family =
+    api === "anthropic-messages" ? "anthropic" : api === "google-generative-ai" ? "google" : "openai";
+  const network = fetchOverride ?? fetch;
+  const base = new URL(baseURL);
+  const configuredFetch: typeof fetch | undefined = configuration
+    ? async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (
+          url.origin !== base.origin ||
+          !(url.pathname === base.pathname || url.pathname.startsWith(base.pathname.replace(/\/$/, "") + "/"))
+        )
+          throw new AuxError("permission_denied", "Inference changed its configured provider destination.");
+        const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+        if (!configuration.authHeader) {
+          headers.delete("authorization");
+          headers.delete("x-api-key");
+          headers.delete("x-goog-api-key");
+        }
+        return network(input, { ...init, headers, redirect: "error" });
+      }
+    : fetchOverride;
+  const options = {
+    apiKey: configuration?.authHeader === false ? "aux-anonymous" : apiKey,
+    baseURL,
+    fetch: configuredFetch,
+  };
+  const models = configuration
+    ? () => configuration.models.map((model) => ({ ...model, provider: family }))
+    : undefined;
+  const toolSchemas = configuration ? ("inline" as const) : ("provider-default" as const);
+  const tag = configuration ? family : provider;
+  if (api === "openai-completions" || api === "openai-responses") {
     const sdk = memo(async () =>
-      (await import("@ai-sdk/openai")).createOpenAI({
-        apiKey,
-        baseURL,
-        fetch: fetchOverride,
-        name: provider,
-      }),
+      (await import("@ai-sdk/openai")).createOpenAI({ ...options, name: provider }),
     );
     return new GatewayModelClient(apiKey, {
-      model: (id) => lazyModel(provider, id, async () => (await sdk()).chat(id)),
+      model: (id) =>
+        lazyModel(tag, id, async () =>
+          api === "openai-completions" ? (await sdk()).chat(id) : (await sdk()).responses(id),
+        ),
+      models,
+      toolSchemas,
     });
   }
-  const options = { apiKey, baseURL: PROVIDER_ENDPOINT[provider], fetch: fetchOverride };
   const sdk = memo(async () =>
-    provider === "openai"
-      ? (await import("@ai-sdk/openai")).createOpenAI(options)
-      : provider === "anthropic"
-        ? (await import("@ai-sdk/anthropic")).createAnthropic(options)
-        : (await import("@ai-sdk/google")).createGoogle(options),
+    api === "anthropic-messages"
+      ? (await import("@ai-sdk/anthropic")).createAnthropic(options)
+      : (await import("@ai-sdk/google")).createGoogle(options),
   );
   return new GatewayModelClient(apiKey, {
-    model: (id) => lazyModel(provider, id, async () => (await sdk())(id)),
+    model: (id) => lazyModel(tag, id, async () => (await sdk())(id)),
+    models,
+    toolSchemas,
   });
 }

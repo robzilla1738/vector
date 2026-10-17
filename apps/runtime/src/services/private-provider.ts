@@ -277,9 +277,13 @@ export class PrivateProviderConnection {
               headers.delete("authorization");
               headers.delete("x-api-key");
               headers.delete("x-goog-api-key");
-              if (descriptor.provider === "anthropic") headers.set("x-api-key", key);
-              else if (descriptor.provider === "google") headers.set("x-goog-api-key", key);
-              else headers.set("authorization", `Bearer ${key}`);
+              if (descriptor.customAuthHeader !== false) {
+                if (descriptor.provider === "anthropic" || descriptor.customApi === "anthropic-messages")
+                  headers.set("x-api-key", key);
+                else if (descriptor.provider === "google" || descriptor.customApi === "google-generative-ai")
+                  headers.set("x-goog-api-key", key);
+                else headers.set("authorization", `Bearer ${key}`);
+              }
               return network(input, {
                 ...init,
                 headers,
@@ -303,6 +307,13 @@ export class PrivateProviderConnection {
                   "aux-private-transport",
                   transport,
                   descriptor.endpoint,
+                  descriptor.customApi
+                    ? {
+                        api: descriptor.customApi,
+                        authHeader: descriptor.customAuthHeader ?? true,
+                        models: descriptor.models,
+                      }
+                    : undefined,
                 );
         }
         const value = await use(client, signal);

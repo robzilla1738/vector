@@ -15,6 +15,13 @@ flowchart TD
   Runtime --> Models[AI Gateway / direct providers]
 ```
 
+Named custom model providers keep their own endpoint, protocol, models, role
+defaults and enabled state. Their keys live in separate OS credential entries
+bound to the normalized destination and protocol. Settings writes use the current
+connection revision; old transports cannot dispatch after a connection change.
+Private windows inherit the declared protocol through the credential-only broker.
+Custom endpoints use inline tool schemas and refuse HTTP redirects.
+
 Bookmarks, History and Clear History route to Chromium's native WebUI pages.
 The native bookmark model owns folder navigation, selection, editing, clipboard,
 Undo and import/export. Aux branding and appearance apply within those pages.

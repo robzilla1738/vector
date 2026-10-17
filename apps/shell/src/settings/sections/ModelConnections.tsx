@@ -216,18 +216,22 @@ export function ModelConnections({
         {!parsed.success ? (
           <p {...staticHintProps}>Provider management is unavailable until the runtime reconnects.</p>
         ) : (
-          parsed.data.map((connection) => (
-            <ProviderConnectionRow
-              key={connection.provider}
-              connection={connection}
-              owner={owner}
-              disabled={disabled || busy}
-              onEdit={onEdit}
-              work={work}
-              remove={remove}
-              toggleConnection={toggleConnection}
-            />
-          ))
+          parsed.data
+            .filter(
+              (connection) => connection.provider !== "openai-compatible" || !settings.customModelProviderId,
+            )
+            .map((connection) => (
+              <ProviderConnectionRow
+                key={connection.provider}
+                connection={connection}
+                owner={owner}
+                disabled={disabled || busy}
+                onEdit={onEdit}
+                work={work}
+                remove={remove}
+                toggleConnection={toggleConnection}
+              />
+            ))
         )}
         {error && <p {...nativeAlertRoleProps}>{error}</p>}
       </SettingsField>

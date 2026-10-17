@@ -3,20 +3,23 @@ import { PrivateCloudRequestSchema, PrivateCloudResultSchema } from "./private-c
 import { PrivateBudgetRequestSchema, PrivateBudgetResultSchema } from "./private-budget.js";
 import { ImageModelSchema } from "./model-connections.js";
 import { ModelProviderSchema } from "./model-providers.js";
+import { CustomModelApiSchema } from "./custom-model-providers.js";
 import { AgentModelRoutesSettingSchema, ModelCapabilitySchema } from "./model-registry.js";
 const revision = z.string().min(1).max(160);
 export const PrivateProviderDescriptorSchema = z
   .object({
     revision,
     provider: ModelProviderSchema,
+    customApi: CustomModelApiSchema.optional(),
+    customAuthHeader: z.boolean().optional(),
     authentication: z.enum(["api-key", "chatgpt", "vercel", "copilot"]),
     credentialSource: z.enum(["saved", "environment", "none"]),
     endpoint: z.string().url(),
     accountId: z.string().max(160).optional(),
     teamId: z.string().max(500).optional(),
-    plannerModel: z.string().max(300),
-    recoveryModel: z.string().max(300).optional(),
-    visionModel: z.string().max(300).optional(),
+    plannerModel: z.string().max(500),
+    recoveryModel: z.string().max(500).optional(),
+    visionModel: z.string().max(500).optional(),
     agentModelRoutes: AgentModelRoutesSettingSchema,
     models: ModelCapabilitySchema.array(),
     localModelsOnly: z.boolean(),
