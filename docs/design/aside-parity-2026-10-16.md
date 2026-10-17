@@ -1,5 +1,40 @@
 # Aside UI parity — October 16, 2026
 
+Native candidate `03e1dc20513b9441fb120b86c30459a7c4690d79` built successfully
+in 9m39.11s and was verified in About (Chromium 154.0.8037.98;
+ABI c791d36afba5add46ccd2945dcc37acffe88fba766bcaebe1cc626df9aaf0b75).
+Launcher **59717** / session **56581** now owns app **63674**, disposable Profile
+**aux-dev-R84mt4**, API `http://127.0.0.1:51978`. Keep this preview alive; do not
+restart its launcher or force-clear its lock.
+
+Native walkthrough: created synthetic Zulu and Alpha bookmarks. Sort by name
+changed their order to Alpha/Zulu; Undo sort restored Zulu/Alpha. Open in new tab
+group opened the saved URL and showed a named Zulu reference group with one tab.
+Split action was disabled on the new-tab home surface, enabled with an actual
+page active, but failed immediately after opening its new tab. The original tab
+remained active, the new tab was retained, and Library reported partial failure.
+This is a failed split acceptance, not a completed destination verification.
+Captures in `/tmp/aux-parity-2026-10-16/`:
+`aux-bookmark-sort-native-03e1dc205.png`,
+`aux-bookmark-group-native-03e1dc205.png`,
+`aux-bookmark-split-not-ready-native-03e1dc205.png`.
+
+Source fix for the observed split readiness race: subscribe to catalog changes
+until the returned native tab is displayable instead of rejecting its initial
+blank/loading state. Bound the wait to ten seconds; cancel on originating
+window/Space/active-tab changes, moved/owned/closed tabs, crash or navigation error.
+Use the latest layout after readiness and preserve the opened tab on failure.
+Known home-surface bookmarks are rejected before opening. Regression covers
+late readiness and cancellation when the user switches tabs, in addition to
+existing saved-node, moved-window/Space and partial-failure coverage.
+Validation for readiness fix: typecheck/lint and 4,647 tests / 749 files passed
+in 104.87s; renderer build 3.49s. Logs
+`/tmp/aux-bookmark-split-readiness-check.log` and
+`/tmp/aux-bookmark-split-readiness-build.log`.
+This fix and context-menu commit 4da7fd878 postdate the running native candidate;
+both still need native walkthrough. Clipboard and separate Library routes remain
+open, and full parity remains incomplete.
+
 Bookmark context-menu follow-up: the Library row now opens its actions on
 right-click, ContextMenu or Shift+F10, and uses the shared semantic Menu surface.
 Overflow ArrowDown/ArrowUp opens the first/last enabled action. Shared menu

@@ -4,6 +4,41 @@ import { useStore } from "./store";
 import { addPane } from "./workspace";
 import { commitSplit, localSplitPage } from "./features/surfaces/split-actions";
 import { isLocal } from "./tab-window-transfer";
+import { isHomeAddress } from "./chrome";
+
+function waitForSplitPage(pageId: string, spaceId: string, valid: () => boolean) {
+  return new Promise<void>((resolve, reject) => {
+    let unsubscribe = () => {};
+    const finish = (error?: Error) => {
+      clearTimeout(timer);
+      unsubscribe();
+      if (error) reject(error);
+      else resolve();
+    };
+    const check = () => {
+      const state = useStore.getState();
+      const page = state.pages.byId[pageId];
+      if (
+        !valid() ||
+        !page ||
+        !isLocal(page) ||
+        page.ownedByRuntime ||
+        page.controller !== "none" ||
+        state.layout.tabSpace[pageId] !== spaceId
+      )
+        return finish(new Error("The tabs changed while the bookmark was opening."));
+      if (page.navigationError || page.viewStatus === "crashed")
+        return finish(new Error("The bookmark page could not be loaded."));
+      if (localSplitPage(pageId)) finish();
+    };
+    const timer = setTimeout(
+      () => finish(new Error("The bookmark page is not ready to split. Try again from its tab.")),
+      10000,
+    );
+    unsubscribe = useStore.subscribe(check);
+    check();
+  });
+}
 
 /** Keep the native saved-node check before arranging the newly opened tab. */
 export async function openBookmarkDestination(
@@ -19,6 +54,8 @@ export async function openBookmarkDestination(
     useStore.getState().layout.activeSpaceId === spaceId;
   if (destination === "split" && (!primary || !localSplitPage(primary)))
     throw new Error("Choose an available browser tab to split with this bookmark.");
+  if (destination === "split" && isHomeAddress(item.url))
+    throw new Error("Choose a bookmark with a browser page to open in split view.");
   const result = await openBookmark(item, "background", undefined, spaceId);
   // Never close an acknowledged tab on a later arrangement failure: it may
   // already contain navigation or user work. Report the partial result instead.
@@ -42,11 +79,13 @@ export async function openBookmarkDestination(
       state.moveTabs([result.pageId], spaceId, { name: item.title.trim() || "New group" });
     } else {
       const valid = () => current() && useStore.getState().activePageId === primary;
-      if (!valid() || !primary || !localSplitPage(result.pageId))
+      await waitForSplitPage(result.pageId, spaceId, valid);
+      const ready = useStore.getState();
+      if (!valid() || !primary || !localSplitPage(primary))
         throw new Error("The tabs changed or cannot be split.");
-      const next = addPane(state.layout, primary, result.pageId, "right");
-      if (next === state.layout) throw new Error("A split holds up to four tabs in the same Space.");
-      await commitSplit(next, state.layout, state.layout, valid);
+      const next = addPane(ready.layout, primary, result.pageId, "right");
+      if (next === ready.layout) throw new Error("A split holds up to four tabs in the same Space.");
+      await commitSplit(next, ready.layout, ready.layout, valid);
     }
     if (!current()) throw new Error("The window or Space changed.");
     await useStore.getState().activate(result.pageId);

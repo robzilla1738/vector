@@ -5,16 +5,19 @@ import { normalizePages } from "./store/pages";
 import type { PageTarget } from "@aux/contracts";
 const mocks = vi.hoisted(() => ({
   open: vi.fn(),
-  snapshot: vi.fn(),
+  subscribe: vi.fn(),
+  unsubscribe: vi.fn(),
+  splitReady: true,
   split: vi.fn(),
   state: {} as any,
   bridge: { windowId: "own", privateMode: false, windowKind: "normal", tabsSnapshot: vi.fn() },
 }));
 vi.mock("./bridge", () => ({ bridge: mocks.bridge }));
 vi.mock("./bookmark-folders", () => ({ openBookmark: mocks.open }));
-vi.mock("./store", () => ({ useStore: { getState: () => mocks.state } }));
+vi.mock("./store", () => ({ useStore: { getState: () => mocks.state, subscribe: mocks.subscribe } }));
 vi.mock("./features/surfaces/split-actions", () => ({
-  localSplitPage: (id: string) => mocks.state.pages.byId[id],
+  localSplitPage: (id: string) =>
+    id === "opened" && !mocks.splitReady ? undefined : mocks.state.pages.byId[id],
   commitSplit: mocks.split,
 }));
 import { openBookmarkDestination } from "./bookmark-destinations";
@@ -38,6 +41,8 @@ const page = (pageId: string): PageTarget => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.bridge.windowId = "own";
+  mocks.splitReady = true;
+  mocks.subscribe.mockReturnValue(mocks.unsubscribe);
   const layout = emptyLayout();
   layout.tabSpace = { primary: layout.activeSpaceId, opened: layout.activeSpaceId };
   mocks.state = {
@@ -97,4 +102,28 @@ it("does not move a newly opened bookmark back after its Space changes", async (
   await expect(openBookmarkDestination(item, "group")).rejects.toThrow("no longer available");
   expect(mocks.state.moveTabs).not.toHaveBeenCalled();
   expect(mocks.state.activate).not.toHaveBeenCalled();
+});
+
+it("waits for the opened bookmark to become a displayable native page before splitting", async () => {
+  mocks.splitReady = false;
+  const operation = openBookmarkDestination(item, "split");
+  await vi.waitFor(() => expect(mocks.subscribe).toHaveBeenCalledOnce());
+  expect(mocks.split).not.toHaveBeenCalled();
+  mocks.splitReady = true;
+  mocks.subscribe.mock.calls[0]![0]();
+  await operation;
+  expect(mocks.split).toHaveBeenCalledOnce();
+  expect(mocks.unsubscribe).toHaveBeenCalledOnce();
+  expect(mocks.state.activate).toHaveBeenCalledWith("opened");
+});
+it("cancels the readiness wait when the user changes tabs", async () => {
+  mocks.splitReady = false;
+  const operation = openBookmarkDestination(item, "split");
+  const rejected = expect(operation).rejects.toThrow("tabs changed");
+  await vi.waitFor(() => expect(mocks.subscribe).toHaveBeenCalledOnce());
+  mocks.state.activePageId = "different";
+  mocks.subscribe.mock.calls[0]![0]();
+  await rejected;
+  expect(mocks.split).not.toHaveBeenCalled();
+  expect(mocks.unsubscribe).toHaveBeenCalledOnce();
 });
