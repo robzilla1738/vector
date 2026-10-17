@@ -478,3 +478,78 @@
     min-width: 0;
   }
 }
+
+@layer components {
+  .library-page[data-view="bookmarks"] .library-item {
+    min-height: 48px;
+    padding: 2px 12px;
+    background: var(--surface-secondary);
+  }
+  .library-page[data-view="bookmarks"] .library-item:first-child {
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .library-page[data-view="bookmarks"] .library-item:last-child {
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
+  .library-page[data-view="bookmarks"] .library-item:only-child {
+    border-radius: var(--r-lg);
+  }
+  .library-page[data-view="bookmarks"] .library-item:is(:hover, :focus-within) {
+    background: var(--bg-hover);
+  }
+  .library-page[data-view="bookmarks"] .library-open {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 40%);
+    align-items: center;
+    gap: 16px;
+    min-height: 40px;
+  }
+  .library-page[data-view="bookmarks"] .library-open:hover {
+    background: transparent;
+  }
+  .library-bookmark-icon,
+  .library-bookmark-icon :is(img, svg, span) {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    color: var(--ink-2);
+  }
+  .library-page[data-view="bookmarks"] .library-open > .hint {
+    grid-column: 2 / -1;
+  }
+  .library-bookmark-more {
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    flex: none;
+  }
+  .library-bookmark-more > svg {
+    transform: rotate(90deg);
+  }
+  .library-bookmark-actions {
+    display: grid;
+    gap: 4px;
+  }
+  .library-bookmark-actions .icon-btn {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    height: auto;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+  }
+  @container library-page (max-width: 680px) {
+    .library-page[data-view="bookmarks"] .library-open {
+      grid-template-columns: 20px minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 4px;
+    }
+    .library-page[data-view="bookmarks"] .library-url {
+      grid-column: 2;
+    }
+  }
+}

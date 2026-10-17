@@ -6,6 +6,8 @@ import { errorMessage } from "../error-message";
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
+import { SavedPageActions } from "./SavedPageActions";
+import { FavIcon } from "./SiteTile";
 import { BookmarkFolderNavigation } from "./BookmarkFolderNavigation";
 import { backgroundLink } from "../browser-links";
 import { readReaderArticle } from "../reader-article";
@@ -171,6 +173,9 @@ const SavedPageRow = memo(function SavedPageRow({
       : "";
   });
   const item = useStore.getState().bookmarks[position];
+  const favicon = useStore((state) =>
+    orderedPages(state.pages).find((page) => page.url === item?.url)?.favicon,
+  );
   const offlinePage = useStore((state) =>
     view === "reading"
       ? orderedPages(state.pages).find(
@@ -211,6 +216,11 @@ const SavedPageRow = memo(function SavedPageRow({
         }}
         title={`${title} — ${item.url}`}
       >
+        {view === "bookmarks" && (
+          <span className="library-bookmark-icon" aria-hidden="true">
+            <FavIcon url={item.url} src={favicon} size="sm" />
+          </span>
+        )}
         <span className="library-row-heading">
           <span className="library-title">{title}</span>
         </span>
@@ -219,7 +229,7 @@ const SavedPageRow = memo(function SavedPageRow({
           <span {...staticHintProps}>{item.folderPath.join(" / ")}</span>
         ) : null}
       </button>
-      <div className="library-actions" hidden={view === "bookmarks" && selecting}>
+      <SavedPageActions title={title} menu={view === "bookmarks"} hidden={view === "bookmarks" && selecting} disabled={busy}>
         {canPeek && bookmarkWebUrl(item.url) && (
           <button
             {...staticSmallIconButtonProps}
@@ -232,6 +242,7 @@ const SavedPageRow = memo(function SavedPageRow({
             }}
           >
             {shellIconSearch}
+            {view === "bookmarks" && <span>Preview link</span>}
           </button>
         )}
         {view === "bookmarks" ? (
@@ -250,6 +261,7 @@ const SavedPageRow = memo(function SavedPageRow({
               }
             >
               {shellIconPencil}
+              <span>Edit</span>
             </button>
             <button
               {...staticSmallIconButtonProps}
@@ -270,6 +282,7 @@ const SavedPageRow = memo(function SavedPageRow({
               }
             >
               {shellIconTrash}
+              <span>Delete</span>
             </button>
           </>
         ) : (
@@ -339,7 +352,7 @@ const SavedPageRow = memo(function SavedPageRow({
             </button>
           </>
         )}
-      </div>
+      </SavedPageActions>
       {view === "bookmarks" && editing && (
         <form
           className="library-edit"

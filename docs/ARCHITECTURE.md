@@ -21,7 +21,9 @@ becomes horizontal in narrow panes. It retains the original scoped Library
 commands and native storage methods. The covered stage is inert while the browser
 chrome remains accessible; Close and Escape leave the page without a modal scrim
 or focus trap. Bookmarks adds a collapsible folder tree using native node IDs and
-child order, synchronized with the breadcrumb and results. Grouped History and
+child order, synchronized with the breadcrumb and results. Compact bookmark rows
+use page-session icons and an anchored action dialog for preview, edit and delete;
+reading-list controls retain their inline presentation. Grouped History and
 separate browser page routes remain parity gaps; History currently groups by date.
 
 Memory Settings uses four routed views under the same retained Space editor:

@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+Bookmark row/action batch (reference 168/170): saved bookmarks now use compact
+rows with site icons (existing page-session favicon only, otherwise a globe),
+inline title/address columns and a shared rounded results surface. Narrow panes
+move addresses below titles. One overflow control replaces the permanent
+preview/edit/delete icon strip; the existing handlers and delete undo are retained.
+The shared anchored dialog supplies dismissal/focus return; arrow keys navigate
+available actions. Reading-list controls retain their existing presentation.
+
+Validation: `npm run check` passed typecheck/lint and all 4,626 tests across 744
+files (93.15s). Renderer build passed in 2.07s. Logs:
+`/tmp/aux-bookmark-rows-check.log`, `/tmp/aux-bookmark-rows-build.log`.
+The source fixture was reviewed in the disposable native browser; opening the
+menu and choosing Edit displayed the correct bookmark form. Capture:
+`/tmp/aux-parity-2026-10-16/aux-bookmark-row-actions-vite.png`.
+Fixture files were removed. Native integration and narrow visual acceptance remain
+open. Organize-menu parity, clipboard actions and alternate open destinations are
+still incomplete; this is not full bookmark-manager parity. Active native launcher
+18613/app 22360 remains on source 2cb93764b and retains cleanup ownership.
+
+
 Bookmark folder navigation follow-up: the Library now includes a collapsible
 folder tree using native node IDs and child order. Selecting a folder updates the
 breadcrumb and results; external navigation reveals collapsed ancestors, and

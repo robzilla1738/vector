@@ -65,8 +65,9 @@ it("updates the changed bookmark row without losing its sibling or edit action",
   expect(host.textContent).not.toContain("Second bookmark");
   expect(host.textContent).toContain("First bookmark");
 
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Actions for Renamed bookmark"]')!.click());
   await act(async () =>
-    host.querySelector<HTMLButtonElement>('[aria-label="Edit Renamed bookmark"]')!.click(),
+    document.querySelector<HTMLButtonElement>('[aria-label="Edit Renamed bookmark"]')!.click(),
   );
   expect(host.querySelector<HTMLInputElement>('[aria-label="Bookmark title"]')?.value).toBe(
     "Renamed bookmark",
@@ -116,7 +117,8 @@ it("closes Library when a bookmark opens in Peek", async () => {
     },
   });
   await act(async () => root.render(<Library />));
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Preview Story"]')!.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Actions for Story"]')!.click());
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Preview Story"]')!.click());
   expect(useStore.getState().overlay).toBeNull();
   expect(useStore.getState().peekPageId).toMatch(/^p_peek_/);
 });
