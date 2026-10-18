@@ -50,6 +50,7 @@ export default function HomeAsk({
     );
   }, [firstFrame]);
   const focusRequest = useStore((state) => state.focusRequest);
+  const focusSlot = useStore((state) => state.focusSlot);
   const railOpen = useStore((state) => state.railOpen);
   const consumedPrompt = useRef<HomePromptRequest | null>(null);
   useLayoutEffect(() => {
@@ -64,7 +65,7 @@ export default function HomeAsk({
     onPromptConsumed?.(promptRequest);
   }, [promptRequest, onPromptConsumed, chatId, railOpen, searchCurrent]);
   useEffect(() => {
-    if (railOpen) return;
+    if (railOpen || (focusRequest > 0 && focusSlot !== "hero")) return;
     let active = true;
     const previous = document.activeElement;
     void bridge
@@ -79,7 +80,7 @@ export default function HomeAsk({
     return () => {
       active = false;
     };
-  }, [focusRequest, railOpen]);
+  }, [focusRequest, focusSlot, railOpen]);
   useEffect(
     () =>
       bridge.onEvent((event) => {

@@ -86,6 +86,82 @@ it("opens fresh regular Home in the reference Search entry", async () => {
   expect(modeButton("Search").getAttribute("aria-pressed")).toBe("true");
   expect(bridge.invoke).not.toHaveBeenCalledWith("settings.set", expect.anything());
 });
+it("keeps native Cmd-L on the address field while Home Ask remains mounted", async () => {
+  const newTab = vi.fn().mockResolvedValue("destination");
+  const startRun = vi.fn();
+  useStore.setState({
+    settings: { homeEntryMode: "ask" },
+    focusRequest: 0,
+    activePageId: null,
+    newTab,
+    startRun,
+  });
+  await act(async () => {
+    await import("./HomeAsk");
+    root.render(
+      <>
+        <CommandBar compact />
+        <CommandBar hero />
+      </>,
+    );
+  });
+  const composer = host.querySelector<HTMLTextAreaElement>(".home-ask textarea")!;
+  expect(document.activeElement).toBe(composer);
+  await act(async () => {
+    dispatchShortcut({ commandId: "open-address", key: "", meta: false, shift: false, alt: false });
+  });
+  expect(useStore.getState().focusSlot).toBe("toolbar");
+  const address = host.querySelector<HTMLInputElement>('.cmdbar.compact input[role="combobox"]')!;
+  expect(document.activeElement).toBe(address);
+  const url = "http://127.0.0.1:4810/records";
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(address, url);
+    address.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => address.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  expect(newTab).toHaveBeenCalledExactlyOnceWith(url);
+  expect(startRun).not.toHaveBeenCalled();
+  await act(async () => modeButton("Search").click());
+  await act(async () => modeButton("Ask").click());
+  expect(useStore.getState().focusSlot).toBe("hero");
+  expect(document.activeElement).toBe(host.querySelector(".home-ask textarea"));
+});
+it("does not let an earlier Home Ask focus acknowledgement reclaim a newer address request", async () => {
+  const pending: (() => void)[] = [];
+  vi.mocked(bridge.focusShell).mockImplementation(
+    () => new Promise<undefined>((resolve) => pending.push(() => resolve(undefined))),
+  );
+  useStore.setState({ settings: { homeEntryMode: "ask" }, focusRequest: 0 });
+  await act(async () => {
+    await import("./HomeAsk");
+    root.render(
+      <>
+        <CommandBar compact />
+        <CommandBar hero />
+      </>,
+    );
+  });
+  expect(pending).toHaveLength(1);
+  await act(async () => {
+    dispatchShortcut({ commandId: "open-address", key: "", meta: false, shift: false, alt: false });
+  });
+  const address = host.querySelector<HTMLInputElement>('.cmdbar.compact input[role="combobox"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+      address,
+      "http://127.0.0.1:4810/records",
+    );
+    address.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  address.setSelectionRange(7, 7);
+  await act(async () => pending[0]!());
+  expect(document.activeElement).toBe(address);
+  expect(address.value).toBe("http://127.0.0.1:4810/records");
+  expect(address.selectionStart).toBe(7);
+  await act(async () => pending.slice(1).forEach((resolve) => resolve()));
+  expect(document.activeElement).toBe(address);
+  expect(address.selectionStart).toBe(7);
+});
 it.each([
   { mode: "search", selector: ".cmdbar input", other: "ask" },
   { mode: "ask", selector: ".home-ask textarea", other: "search" },

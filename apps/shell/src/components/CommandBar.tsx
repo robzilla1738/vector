@@ -982,6 +982,7 @@ export function CommandBar({
   }, [sel]);
 
   const switchEntryMode = (next: "search" | "ask") => {
+    useStore.getState().focusCommandBar("hero");
     if (next === "ask") {
       if (val) useStore.getState().setAgentDraft(val);
       // Consume search text once; later mode switches resume the same durable draft.

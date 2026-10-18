@@ -16,7 +16,12 @@ vi.mock("../store", () => ({
   errToast: fixture.errToast,
   useStore: Object.assign(
     (select: (state: unknown) => unknown) =>
-      select({ railOpen: fixture.railOpen, focusRequest: fixture.focusRequest, connected: false }),
+      select({
+        railOpen: fixture.railOpen,
+        focusRequest: fixture.focusRequest,
+        focusSlot: "hero",
+        connected: false,
+      }),
     { getState: () => ({ agentDraft: fixture.draft, connected: false }) },
   ),
 }));
