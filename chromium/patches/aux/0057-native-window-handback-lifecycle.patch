@@ -200,7 +200,7 @@ index 5c412a5..f1c9e7d 100644
    int navigation_generation_ = 0;
    std::string page_change_url_;
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 758de1f..b7770e3 100644
+index c09d9d4..f26cb99 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -94,6 +94,7 @@
@@ -211,7 +211,7 @@ index 758de1f..b7770e3 100644
  #include "chrome/browser/ui/color/chrome_color_id.h"
  #include "chrome/browser/ui/dialogs/browser_dialogs.h"
  #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
-@@ -1165,12 +1166,24 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
+@@ -1173,12 +1174,24 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
    // level NativeView.
    if (const auto* widget = views::Widget::GetTopLevelWidgetForNativeView(
            web_contents->GetNativeView())) {

@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
-index a79df1d..e46bd05 100644
+index 359dba0..3761b9c 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
 @@ -3,6 +3,16 @@
@@ -64,7 +64,7 @@ index a79df1d..e46bd05 100644
  }
  
  void AutoPictureInPictureTabHelper::MaybeScheduleAsyncTasks() {
-@@ -661,6 +707,23 @@ void AutoPictureInPictureTabHelper::MaybeStartOrStopObservers() {
+@@ -662,6 +708,23 @@ void AutoPictureInPictureTabHelper::MaybeStartOrStopObservers() {
  
  bool AutoPictureInPictureTabHelper::IsEligibleForAutoPictureInPicture(
      bool should_record_blocking_metrics) {
@@ -88,7 +88,7 @@ index a79df1d..e46bd05 100644
    // Don't try to autopip if picture-in-picture is currently disabled.
    if (PictureInPictureWindowManager::GetInstance()
            ->IsPictureInPictureDisabled()) {
-@@ -730,6 +793,11 @@ bool AutoPictureInPictureTabHelper::IsEligibleForAutoPictureInPicture(
+@@ -731,6 +794,11 @@ bool AutoPictureInPictureTabHelper::IsEligibleForAutoPictureInPicture(
  }
  
  bool AutoPictureInPictureTabHelper::MeetsVideoPlaybackConditions() const {
@@ -100,7 +100,7 @@ index a79df1d..e46bd05 100644
    return has_audio_focus_ && is_playing_ && WasRecentlyAudible() &&
           has_safe_url_ && MeetsMediaEngagementConditions();
  }
-@@ -972,6 +1040,19 @@ bool AutoPictureInPictureTabHelper::AreAutoPictureInPicturePreconditionsMet()
+@@ -973,6 +1041,19 @@ bool AutoPictureInPictureTabHelper::AreAutoPictureInPicturePreconditionsMet()
    return clock_->NowTicks() < auto_picture_in_picture_activation_time_;
  }
  
@@ -121,7 +121,7 @@ index a79df1d..e46bd05 100644
      permissions::PermissionDecisionAutoBlockerBase* auto_blocker) {
    auto_blocker_ = auto_blocker;
 diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
-index 496945d..1578c50 100644
+index 6510bde..1b36d74 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
 @@ -5,7 +5,9 @@
@@ -337,7 +337,7 @@ index 7c1e9e9..90f7e81 100644
    std::optional<media_session::MediaPosition> GetPosition(
        int player_id) const override;
 diff --git a/content/browser/media/session/media_session_impl.cc b/content/browser/media/session/media_session_impl.cc
-index 7c443c0..ebe8a26 100644
+index 148b732..adf76d4 100644
 --- a/content/browser/media/session/media_session_impl.cc
 +++ b/content/browser/media/session/media_session_impl.cc
 @@ -2,6 +2,7 @@
@@ -364,7 +364,7 @@ index 7c443c0..ebe8a26 100644
    last_auto_picture_in_picture_info_.reset();
  }
  
-@@ -1319,7 +1322,7 @@ void MediaSessionImpl::EnterPictureInPicture() {
+@@ -1326,7 +1329,7 @@ void MediaSessionImpl::EnterPictureInPicture() {
          blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
              blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
                  blink::mojom::MediaSessionEnterPictureInPictureReason::
@@ -373,7 +373,7 @@ index 7c443c0..ebe8a26 100644
      uma_helper_.RecordEnterPictureInPicture(
          MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredManual);
      return;
-@@ -1352,12 +1355,190 @@ void MediaSessionImpl::EnterAutoPictureInPicture() {
+@@ -1359,12 +1362,190 @@ void MediaSessionImpl::EnterAutoPictureInPicture() {
        blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
            blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
                blink::mojom::MediaSessionEnterPictureInPictureReason::
@@ -565,7 +565,7 @@ index 7c443c0..ebe8a26 100644
  void MediaSessionImpl::SaveVideoFrame() {
    if (!IsVideoFrameAvailable()) {
      return;
-@@ -1889,6 +2070,7 @@ base::WeakPtr<MediaSessionImpl> MediaSessionImpl::GetWeakPtr() {
+@@ -1899,6 +2080,7 @@ base::WeakPtr<MediaSessionImpl> MediaSessionImpl::GetWeakPtr() {
  }
  
  void MediaSessionImpl::RebuildAndNotifyActionsChanged() {
@@ -573,7 +573,7 @@ index 7c443c0..ebe8a26 100644
    std::set<media_session::mojom::MediaSessionAction> actions =
        routed_service_ ? routed_service_->actions()
                        : std::set<media_session::mojom::MediaSessionAction>();
-@@ -2295,31 +2477,11 @@ bool MediaSessionImpl::CanEnterBrowserInitiatedAutomaticPictureInPicture()
+@@ -2305,31 +2487,11 @@ bool MediaSessionImpl::CanEnterBrowserInitiatedAutomaticPictureInPicture()
      return false;
    }
  
@@ -610,7 +610,7 @@ index 7c443c0..ebe8a26 100644
  }
  
  void MediaSessionImpl::RecordBrowserInitiatedAutomaticPictureInPictureUkm(
-@@ -2352,9 +2514,17 @@ void MediaSessionImpl::MaybeEnterBrowserInitiatedAutomaticPictureInPicture() {
+@@ -2362,9 +2524,17 @@ void MediaSessionImpl::MaybeEnterBrowserInitiatedAutomaticPictureInPicture() {
      return;
    }
  
@@ -705,7 +705,7 @@ index 41ef57c..88edfee 100644
    // Records the UKM for browser-initiated automatic picture-in-picture.
    void RecordBrowserInitiatedAutomaticPictureInPictureUkm(bool is_dry_run);
 diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
-index c9ee3da..870d11c 100644
+index 4cd4319..da4bc51 100644
 --- a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
 +++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
 @@ -2,6 +2,7 @@
@@ -716,7 +716,7 @@ index c9ee3da..870d11c 100644
  #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
  
  #include <utility>
-@@ -30,6 +31,7 @@ struct PictureInPictureServiceImpl::PendingSession {
+@@ -39,6 +40,7 @@ struct PictureInPictureServiceImpl::PendingSession {
        StartSessionCallback callback);
    ~PendingSession();
  
@@ -724,7 +724,7 @@ index c9ee3da..870d11c 100644
    uint32_t player_id;
    mojo::PendingAssociatedRemote<media::mojom::MediaPlayer> player_remote;
    viz::SurfaceId surface_id;
-@@ -90,6 +92,38 @@ void PictureInPictureServiceImpl::StartSession(
+@@ -99,6 +101,38 @@ void PictureInPictureServiceImpl::StartSession(
    }
  }
  
@@ -763,7 +763,7 @@ index c9ee3da..870d11c 100644
  void PictureInPictureServiceImpl::StartSessionInternal(
      std::unique_ptr<PictureInPictureServiceImpl::PendingSession>
          pending_session,
-@@ -104,7 +138,8 @@ void PictureInPictureServiceImpl::StartSessionInternal(
+@@ -117,7 +151,8 @@ void PictureInPictureServiceImpl::StartSessionInternal(
        std::move(pending_session->player_remote), pending_session->surface_id,
        pending_session->natural_size, pending_session->show_play_pause_button,
        std::move(pending_session->observer), pending_session->source_bounds,
@@ -818,7 +818,7 @@ index 056b3e2..03aa191 100644
                              std::optional<ImmersiveOptions> immersive_options);
  
 diff --git a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
-index f163d55..9a53acc 100644
+index 18dd68b..55cc5f9 100644
 --- a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
 +++ b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
 @@ -2,6 +2,7 @@
@@ -829,7 +829,7 @@ index f163d55..9a53acc 100644
  #include "content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h"
  
  #include <set>
-@@ -295,7 +296,8 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
+@@ -299,7 +300,8 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
      const gfx::Rect& source_bounds,
      std::optional<content::ImmersiveOptions> immersive_options,
      mojo::PendingRemote<blink::mojom::PictureInPictureSession>* session_remote,
@@ -839,7 +839,7 @@ index f163d55..9a53acc 100644
    if (window_) {
      // We shouldn't be switching between standard and immersive
      // Picture-in-Picture modes if a window already exists. Immersive mode is
-@@ -314,6 +316,19 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
+@@ -318,6 +320,19 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
    WebContentsDelegate* delegate = web_contents()->GetDelegate();
    if (delegate && (IsImmersive() ? delegate->IsImmersivePlaybackEnabled()
                                   : delegate->IsPictureInPictureEnabled())) {
@@ -996,10 +996,10 @@ index 8dcfa93..61cce3c 100644
  
  // Implemented by the MediaWebContentsObserver. The remote lives in the renderer
 diff --git a/third_party/blink/common/frame/user_activation_state.cc b/third_party/blink/common/frame/user_activation_state.cc
-index b4e18ad..b8bd0f7 100644
+index a962817..32adcc2 100644
 --- a/third_party/blink/common/frame/user_activation_state.cc
 +++ b/third_party/blink/common/frame/user_activation_state.cc
-@@ -30,6 +30,7 @@ bool IsRestricted(UserActivationNotificationType notification_type) {
+@@ -34,6 +34,7 @@ UserActivationState::UserActivationState()
  
  void UserActivationState::Activate(
      UserActivationNotificationType notification_type) {
@@ -1008,7 +1008,7 @@ index b4e18ad..b8bd0f7 100644
    last_activation_was_restricted_ = IsRestricted(notification_type);
    ActivateTransientState();
 diff --git a/third_party/blink/public/common/frame/user_activation_state.h b/third_party/blink/public/common/frame/user_activation_state.h
-index 4f1ab42..c84dd2e 100644
+index 263c465..3fe876e 100644
 --- a/third_party/blink/public/common/frame/user_activation_state.h
 +++ b/third_party/blink/public/common/frame/user_activation_state.h
 @@ -5,6 +5,8 @@
@@ -1020,7 +1020,7 @@ index 4f1ab42..c84dd2e 100644
  #include "base/time/time.h"
  #include "base/time/time_override.h"
  #include "third_party/blink/public/common/common_export.h"
-@@ -123,6 +125,8 @@ class BLINK_COMMON_EXPORT UserActivationState {
+@@ -120,6 +122,8 @@ class BLINK_COMMON_EXPORT UserActivationState {
    // recently been activated and the transient state hasn't been consumed yet.
    bool IsActive() const;
  
@@ -1029,9 +1029,9 @@ index 4f1ab42..c84dd2e 100644
    // Consumes the transient activation state if available, and returns |true| if
    // successfully consumed.
    bool ConsumeIfActive();
-@@ -148,6 +152,7 @@ class BLINK_COMMON_EXPORT UserActivationState {
+@@ -152,6 +156,7 @@ class BLINK_COMMON_EXPORT UserActivationState {
  
-   bool IsActiveInternal() const;
+   mojom::UserActivationNotificationType EffectiveNotificationType() const;
  
 +  uint64_t activation_generation_ = 0;
    bool has_been_active_ = false;
@@ -1120,7 +1120,7 @@ index b3f24ba..f81ec11 100644
    virtual void EnterPictureInPictureImmersive(
        HTMLVideoElement& video_element) = 0;
 diff --git a/third_party/blink/renderer/core/html/media/html_media_element.h b/third_party/blink/renderer/core/html/media/html_media_element.h
-index f028964..32aa259 100644
+index ba9f4cb..415a552 100644
 --- a/third_party/blink/renderer/core/html/media/html_media_element.h
 +++ b/third_party/blink/renderer/core/html/media/html_media_element.h
 @@ -30,6 +30,7 @@
@@ -1139,7 +1139,7 @@ index f028964..32aa259 100644
  
  namespace gfx {
  class Size;
-@@ -665,8 +667,15 @@ class CORE_EXPORT HTMLMediaElement
+@@ -668,8 +670,15 @@ class CORE_EXPORT HTMLMediaElement
    void RequestSeekForward(base::TimeDelta seek_time) override;
    void RequestSeekBackward(base::TimeDelta seek_time) override;
    void RequestSeekTo(base::TimeDelta seek_time) override;
@@ -1156,10 +1156,10 @@ index f028964..32aa259 100644
    void SetVolumeMultiplier(double multiplier) override;
    void SetPersistentState(bool persistent) override {}
 diff --git a/third_party/blink/renderer/core/html/media/html_video_element.cc b/third_party/blink/renderer/core/html/media/html_video_element.cc
-index e07540f..824a217 100644
+index f811ed6..f591695 100644
 --- a/third_party/blink/renderer/core/html/media/html_video_element.cc
 +++ b/third_party/blink/renderer/core/html/media/html_video_element.cc
-@@ -599,7 +599,7 @@ void HTMLVideoElement::ResetCache(TimerBase*) {
+@@ -621,7 +621,7 @@ void HTMLVideoElement::ResetCache(TimerBase*) {
    cached_draw_info_.reset();
  }
  
@@ -1168,7 +1168,7 @@ index e07540f..824a217 100644
    auto* layout_video = DynamicTo<LayoutVideo>(GetLayoutObject());
    LocalFrameView* view = GetDocument().View();
    gfx::Rect viewport_rect;
-@@ -611,6 +611,9 @@ gfx::Size HTMLVideoElement::GetVisualSizeInDIPs() const {
+@@ -633,6 +633,9 @@ gfx::Size HTMLVideoElement::GetVisualSizeInDIPs() const {
      viewport_rect = BoundsInWidget();
    }
  
@@ -1178,7 +1178,7 @@ index e07540f..824a217 100644
    gfx::Size dip_size = viewport_rect.size();
    LocalFrame* frame = GetDocument().GetFrame();
    if (auto* widget = frame ? frame->GetWidgetForLocalRoot() : nullptr) {
-@@ -714,8 +717,12 @@ void HTMLVideoElement::LogPictureInPictureSizeMetrics(
+@@ -736,8 +739,12 @@ void HTMLVideoElement::LogPictureInPictureSizeMetrics(
  
  void HTMLVideoElement::RequestEnterPictureInPicture(
      const std::optional<gfx::Size>& min_size) {
@@ -1192,7 +1192,7 @@ index e07540f..824a217 100644
  
    if (min_size.has_value()) {
      LogPictureInPictureSizeMetrics(meets_constraint);
-@@ -729,6 +736,33 @@ void HTMLVideoElement::RequestEnterPictureInPicture(
+@@ -751,6 +758,33 @@ void HTMLVideoElement::RequestEnterPictureInPicture(
        .EnterPictureInPicture(this, /*promise=*/nullptr);
  }
  
@@ -1227,10 +1227,10 @@ index e07540f..824a217 100644
    GetWebMediaPlayer()->RequestMediaRemoting();
  }
 diff --git a/third_party/blink/renderer/core/html/media/html_video_element.h b/third_party/blink/renderer/core/html/media/html_video_element.h
-index 867eee4..7b68615 100644
+index 9f5dd5d..e39432b 100644
 --- a/third_party/blink/renderer/core/html/media/html_video_element.h
 +++ b/third_party/blink/renderer/core/html/media/html_video_element.h
-@@ -240,6 +240,10 @@ class CORE_EXPORT HTMLVideoElement final
+@@ -248,6 +248,10 @@ class CORE_EXPORT HTMLVideoElement final
    // interface, fully implemented in the parent class HTMLMediaElement.
    void RequestEnterPictureInPicture(
        const std::optional<gfx::Size>& min_size) final;
@@ -1241,7 +1241,7 @@ index 867eee4..7b68615 100644
    void RequestMediaRemoting() final;
    void RequestVisibility(RequestVisibilityCallback request_visibility_cb) final;
  
-@@ -267,7 +271,8 @@ class CORE_EXPORT HTMLVideoElement final
+@@ -275,7 +279,8 @@ class CORE_EXPORT HTMLVideoElement final
  
    // Returns the visual size of the video element in DIPs, taking into account
    // page zoom and CSS transforms.
@@ -1410,7 +1410,7 @@ index 56c97b5..540316b 100644
        HTMLVideoElement*,
        bool is_immersive,
 diff --git a/third_party/blink/renderer/modules/mediasession/media_session.cc b/third_party/blink/renderer/modules/mediasession/media_session.cc
-index 8c95e01..9a5d390 100644
+index 05765dc..bbd69d8 100644
 --- a/third_party/blink/renderer/modules/mediasession/media_session.cc
 +++ b/third_party/blink/renderer/modules/mediasession/media_session.cc
 @@ -2,6 +2,7 @@
@@ -1421,13 +1421,19 @@ index 8c95e01..9a5d390 100644
  #include "third_party/blink/renderer/modules/mediasession/media_session.h"
  
  #include <memory>
-@@ -427,9 +428,23 @@ void MediaSession::DidReceiveAction(
+@@ -427,15 +428,26 @@ void MediaSession::DidReceiveAction(
    LocalDOMWindow* window = GetSupplementable()->DomWindow();
    if (!window)
      return;
--  LocalFrame::NotifyUserActivation(
--      window->GetFrame(),
--      mojom::blink::UserActivationNotificationType::kInteraction);
+-  // Do not grant user activation for pause or stop actions. Pausing or stopping
+-  // media never requires user activation and should not allow websites to
+-  // trigger restricted APIs (e.g. popups or clipboard access) via pause events
+-  // or system/accessory actions like removing headphones.
+-  if (action != media_session::mojom::blink::MediaSessionAction::kPause &&
+-      action != media_session::mojom::blink::MediaSessionAction::kStop) {
+-    LocalFrame::NotifyUserActivation(
+-        window->GetFrame(),
+-        mojom::blink::UserActivationNotificationType::kInteraction);
 +  const bool automatic_pip = details && details->is_enter_picture_in_picture() &&
 +      details->get_enter_picture_in_picture()->requires_current_authority &&
 +      details->get_enter_picture_in_picture()->reason ==
@@ -1438,16 +1444,19 @@ index 8c95e01..9a5d390 100644
 +            details->get_enter_picture_in_picture()->automatic_ticket.value_or(
 +                base::UnguessableToken()));
 +  } else {
-+    LocalFrame::NotifyUserActivation(
-+        window->GetFrame(),
-+        mojom::blink::UserActivationNotificationType::kInteraction);
++    // Pause and stop must not grant activation to restricted website APIs.
++    if (action != media_session::mojom::blink::MediaSessionAction::kPause &&
++        action != media_session::mojom::blink::MediaSessionAction::kStop) {
++      LocalFrame::NotifyUserActivation(
++          window->GetFrame(),
++          mojom::blink::UserActivationNotificationType::kInteraction);
++    }
 +    if (action == MediaSessionAction::kEnterPictureInPicture)
 +      PictureInPictureController::From(*window->document())
 +          .ClearAutomaticPictureInPictureContext();
-+  }
+   }
  
    auto v8_action = MojomActionToActionEnum(action);
- 
 diff --git a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
 index 9e3a48c..bdc9e06 100644
 --- a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc

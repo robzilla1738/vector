@@ -32,7 +32,7 @@ index 89348f2..25f2e3f 100644
  }
  // LINT.ThenChange(//chrome/common/chrome_isolated_world_ids.h)
 diff --git a/chrome/browser/app_controller_mac.mm b/chrome/browser/app_controller_mac.mm
-index 608f350..e9d7461 100644
+index cb1b5aa..677bc70 100644
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
 @@ -43,7 +43,12 @@
@@ -56,7 +56,7 @@ index 608f350..e9d7461 100644
  #include "chrome/browser/ui/browser_live_tab_context.h"
  #include "chrome/browser/ui/browser_mac.h"
  #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-@@ -135,6 +141,12 @@
+@@ -137,6 +143,12 @@
  #include "extensions/browser/extension_registry.h"
  #include "extensions/browser/extension_system.h"
  #include "extensions/buildflags/buildflags.h"
@@ -69,7 +69,7 @@ index 608f350..e9d7461 100644
  #include "net/base/apple/url_conversions.h"
  #include "net/base/filename_util.h"
  #include "ui/base/base_window.h"
-@@ -675,6 +687,9 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -678,6 +690,9 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
  };
  
  @implementation AppController {
@@ -79,7 +79,7 @@ index 608f350..e9d7461 100644
    // Manages the state of the command menu items.
    std::unique_ptr<CommandUpdater> _menuState;
  
-@@ -1297,6 +1312,17 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -1300,6 +1315,17 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
    }
  
    [self setUpdateCheckInterval];
@@ -97,7 +97,7 @@ index 608f350..e9d7461 100644
  
    // If enabled, keep Chrome alive when apps are open instead of quitting all
    // apps.
-@@ -1576,10 +1602,96 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -1579,10 +1605,96 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
    return [self safeProfileForNewWindows:unsafeLastProfile] ? YES : NO;
  }
  
@@ -194,7 +194,7 @@ index 608f350..e9d7461 100644
    BOOL enable = NO;
    // Whether the profile is loaded and opening a new browser window is allowed.
    BOOL canOpenNewBrowser = [self canOpenNewBrowser];
-@@ -2053,6 +2165,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -2056,6 +2168,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
  }
  
  - (void)application:(NSApplication*)sender openURLs:(NSArray<NSURL*>*)urls {
@@ -205,7 +205,7 @@ index 608f350..e9d7461 100644
    StartupTabs startupTabs;
    for (NSURL* url in urls) {
      // Handle the google-chrome:// scheme (and chromium://).
-@@ -2068,11 +2184,13 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -2071,11 +2187,13 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
          startupTabs.emplace_back(gurl, /*is_untrusted_launch=*/true);
        }
      } else {
@@ -221,7 +221,7 @@ index 608f350..e9d7461 100644
    if (!startupTabs.empty()) {
      [self openStartupTabsReplacingNTP:std::move(startupTabs)];
    }
-@@ -2632,8 +2750,9 @@ void UpdateProfileInUse(Profile* profile) {
+@@ -2635,8 +2753,9 @@ void UpdateProfileInUse(Profile* profile) {
    [AppController.sharedController setLastProfile:profile];
  }
  
@@ -232,7 +232,7 @@ index 608f350..e9d7461 100644
    if (!profile)
      return;  // No suitable profile to open the URLs, do nothing.
    // Prefer a regular (non-incognito) profile
-@@ -2645,6 +2764,41 @@ void OpenStartupTabsInBrowserWithProfile(const StartupTabs& tabs,
+@@ -2648,6 +2767,41 @@ void OpenStartupTabsInBrowserWithProfile(const StartupTabs& tabs,
    // window, not in PWA/app windows which cannot accept new tabs.
    BrowserWindowInterface* browser =
        ProfileBrowserCollection::GetForProfile(profile)->FindTabbedBrowser();
@@ -275,7 +275,7 @@ index 608f350..e9d7461 100644
    content::WebContents* startupContent = nullptr;
    if (browser && browser->GetTabStripModel()->count() == 1) {
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 033f22b..b866773 100644
+index 1904577..ea08946 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
 @@ -72,6 +72,7 @@
@@ -308,7 +308,7 @@ index 033f22b..b866773 100644
  #include "chrome/common/channel_info.h"
  #include "chrome/common/chrome_constants.h"
  #include "chrome/common/chrome_content_client.h"
-@@ -888,6 +904,20 @@ bool IsIsolatedWebAppUrl(const GURL& url) {
+@@ -898,6 +914,20 @@ bool IsIsolatedWebAppUrl(const GURL& url) {
  }
  #endif
  
@@ -329,7 +329,7 @@ index 033f22b..b866773 100644
  // Handles the rewriting of the new tab page URL based on group policy.
  bool HandleNewTabPageLocationOverride(
      GURL* url,
-@@ -1769,6 +1799,12 @@ content::StoragePartitionConfig
+@@ -1793,6 +1823,12 @@ content::StoragePartitionConfig
  ChromeContentBrowserClient::GetStoragePartitionConfigForSite(
      content::BrowserContext* browser_context,
      const GURL& site) {
@@ -342,7 +342,7 @@ index 033f22b..b866773 100644
    // Default to the browser-wide storage partition and override based on |site|
    // below.
    content::StoragePartitionConfig default_storage_partition_config =
-@@ -2865,6 +2901,25 @@ void MaybeAppendBlinkSettingsSwitchForFieldTrial(
+@@ -2888,6 +2924,25 @@ void MaybeAppendBlinkSettingsSwitchForFieldTrial(
                                    base::JoinString(blink_settings, ","));
  }
  
@@ -368,7 +368,7 @@ index 033f22b..b866773 100644
  }  // namespace
  
  void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
-@@ -2950,6 +3005,16 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
+@@ -2973,6 +3028,16 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
      if (process) {
        Profile* profile =
            Profile::FromBrowserContext(process->GetBrowserContext());
@@ -385,7 +385,7 @@ index 033f22b..b866773 100644
        PrefService* prefs = profile->GetPrefs();
        PrefService* local_state = g_browser_process->local_state();
        // Currently this pref is only registered if applied via a policy.
-@@ -4330,6 +4395,68 @@ bool ChromeContentBrowserClient::IsPopupBypassAllowed(
+@@ -4356,6 +4421,68 @@ bool ChromeContentBrowserClient::IsPopupBypassAllowed(
    return false;
  }
  
@@ -454,7 +454,7 @@ index 033f22b..b866773 100644
  bool ChromeContentBrowserClient::CanCreateWindow(
      RenderFrameHost* opener,
      const GURL& opener_url,
-@@ -4346,6 +4473,8 @@ bool ChromeContentBrowserClient::CanCreateWindow(
+@@ -4372,6 +4499,8 @@ bool ChromeContentBrowserClient::CanCreateWindow(
      bool* no_javascript_access) {
    DCHECK_CURRENTLY_ON(BrowserThread::UI);
    DCHECK(opener);
@@ -463,7 +463,7 @@ index 033f22b..b866773 100644
  
    content::WebContents* web_contents =
        content::WebContents::FromRenderFrameHost(opener);
-@@ -5000,6 +5129,11 @@ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
+@@ -5042,6 +5171,11 @@ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
      part->BrowserURLHandlerCreated(handler);
    }
  
@@ -475,7 +475,7 @@ index 033f22b..b866773 100644
    // Handler to rewrite chrome://about and chrome://sync URLs.
    handler->AddHandlerPair(&HandleChromeAboutAndChromeSyncRewrite,
                            BrowserURLHandler::null_handler());
-@@ -5511,11 +5645,29 @@ void ChromeContentBrowserClient::RemovePresentationObserver(
+@@ -5570,11 +5704,29 @@ void ChromeContentBrowserClient::RemovePresentationObserver(
  
  void ChromeContentBrowserClient::CreateThrottlesForNavigation(
      content::NavigationThrottleRegistry& registry) {
@@ -505,7 +505,7 @@ index 033f22b..b866773 100644
    CreateAndAddChromeThrottlesForCommitWithoutUrlLoader(registry);
  }
  
-@@ -5525,6 +5677,14 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
+@@ -5584,6 +5736,14 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
      content::CommitDeferringCondition::NavigationType navigation_type) {
    std::vector<std::unique_ptr<content::CommitDeferringCondition>> conditions;
  
@@ -520,7 +520,7 @@ index 033f22b..b866773 100644
  #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
    MaybeAddCondition(
        safe_browsing::MaybeCreateCommitDeferringCondition(*navigation_handle),
-@@ -6031,6 +6191,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
+@@ -6111,6 +6271,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
      result.push_back(std::move(contextual_tasks_throttle));
    }
  
@@ -529,7 +529,7 @@ index 033f22b..b866773 100644
    return result;
  }
  
-@@ -6066,6 +6228,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
+@@ -6146,6 +6308,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
      result.push_back(std::move(contextual_tasks_throttle));
    }
  
@@ -538,7 +538,7 @@ index 033f22b..b866773 100644
    return result;
  }
  
-@@ -6073,6 +6237,11 @@ mojo::PendingRemote<network::mojom::URLLoaderFactory>
+@@ -6153,6 +6317,11 @@ mojo::PendingRemote<network::mojom::URLLoaderFactory>
  ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
      const std::string& scheme,
      content::FrameTreeNodeId frame_tree_node_id) {
@@ -550,7 +550,7 @@ index 033f22b..b866773 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) || BUILDFLAG(IS_CHROMEOS) || \
      !BUILDFLAG(IS_ANDROID)
    content::WebContents* web_contents =
-@@ -6606,6 +6775,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6686,6 +6855,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
      network::mojom::URLLoaderFactoryOverridePtr* factory_override,
      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
      bool is_for_network_service) {
@@ -567,7 +567,7 @@ index 033f22b..b866773 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    auto* web_request_api =
        extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
-@@ -6637,6 +6816,48 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6717,6 +6896,48 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        frame, type == URLLoaderFactoryType::kNavigation, request_initiator,
        isolation_info, factory_builder);
  
@@ -616,7 +616,7 @@ index 033f22b..b866773 100644
  #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
    if (disable_secure_dns) {
      WebContents* web_contents = WebContents::FromRenderFrameHost(frame);
-@@ -6682,6 +6903,31 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6762,6 +6983,31 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        browser_context, header_client);
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // BUILDFLAG(IS_CHROMEOS)
@@ -648,7 +648,7 @@ index 033f22b..b866773 100644
  }
  
  std::vector<std::unique_ptr<content::URLLoaderRequestInterceptor>>
-@@ -6750,6 +6996,126 @@ ChromeContentBrowserClient::
+@@ -6830,6 +7076,126 @@ ChromeContentBrowserClient::
    return prefetch_handler;
  }
  
@@ -775,7 +775,7 @@ index 033f22b..b866773 100644
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
      content::RenderFrameHost* frame) {
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-@@ -6821,6 +7187,14 @@ void ChromeContentBrowserClient::WillCreateWebTransport(
+@@ -6901,6 +7267,14 @@ void ChromeContentBrowserClient::WillCreateWebTransport(
      mojo::PendingRemote<network::mojom::WebTransportHandshakeClient>
          handshake_client,
      WillCreateWebTransportCallback callback) {
@@ -790,7 +790,7 @@ index 033f22b..b866773 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    DCHECK_CURRENTLY_ON(BrowserThread::UI);
    // TODO(crbug.com/40195467): Add a unit test which calls
-@@ -7298,6 +7672,47 @@ ChromeContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
+@@ -7377,6 +7751,47 @@ ChromeContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
    return base::ScopedClosureRunner();
  }
  
@@ -838,7 +838,7 @@ index 033f22b..b866773 100644
  media::PictureInPictureEventsInfo::AutoPipInfo
  ChromeContentBrowserClient::GetAutoPipInfo(
      const content::WebContents& web_contents) const {
-@@ -8484,6 +8899,8 @@ void ChromeContentBrowserClient::OnKeepaliveTimerFired(
+@@ -8558,6 +8973,8 @@ void ChromeContentBrowserClient::OnKeepaliveTimerFired(
  
  bool ChromeContentBrowserClient::ShouldPreconnectNavigation(
      content::RenderFrameHost* render_frame_host) {
@@ -848,7 +848,7 @@ index 033f22b..b866773 100644
        render_frame_host->GetBrowserContext();
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
-index 2ea677f..b2e0192 100644
+index 4bd6004..19031db 100644
 --- a/chrome/browser/chrome_content_browser_client.h
 +++ b/chrome/browser/chrome_content_browser_client.h
 @@ -483,6 +483,23 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
@@ -1298,7 +1298,7 @@ index 0000000..6292ea4
 +
 +#endif  // CHROME_BROWSER_UI_AUX_WEBMCP_H_
 diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
-index 258f996..e15ecdf 100644
+index 5029e26..c475bdf 100644
 --- a/chrome/browser/ui/navigator/browser_navigator.cc
 +++ b/chrome/browser/ui/navigator/browser_navigator.cc
 @@ -22,6 +22,17 @@
@@ -1319,7 +1319,7 @@ index 258f996..e15ecdf 100644
  #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
  #include "chrome/browser/platform_util.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
-@@ -581,6 +592,60 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
+@@ -601,6 +612,60 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
      params->initiating_profile = source_browser->GetProfile();
    }
    DCHECK(params->initiating_profile);
@@ -1402,10 +1402,10 @@ index 494d358..179937e 100644
  
  using StartupTabs = std::vector<StartupTab>;
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
-index 4de5112..3b32898 100644
+index 3b1e2e3..f0308cd 100644
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
-@@ -137,6 +137,9 @@
+@@ -133,6 +133,9 @@
  #include "components/permissions/features.h"
  #include "components/permissions/permission_recovery_success_rate_tracker.h"
  #include "components/permissions/permission_request_manager.h"
@@ -1415,7 +1415,7 @@ index 4de5112..3b32898 100644
  #include "components/safe_browsing/content/browser/async_check_tracker.h"
  #include "components/safe_browsing/content/browser/safe_browsing_navigation_observer.h"
  #include "components/safe_browsing/content/browser/ui_manager.h"
-@@ -541,6 +544,10 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
+@@ -542,6 +545,10 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
      pm_registry->SetPageType(web_contents, performance_manager::PageType::kTab);
    }
    permissions::PermissionRequestManager::CreateForWebContents(web_contents);
@@ -1426,29 +1426,6 @@ index 4de5112..3b32898 100644
    permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
        web_contents);
    // The PopupBlockerTabHelper has an implicit dependency on
-diff --git a/chrome/browser/ui/views/global_error_bubble_view.cc b/chrome/browser/ui/views/global_error_bubble_view.cc
-index e87e8bf..211b893 100644
---- a/chrome/browser/ui/views/global_error_bubble_view.cc
-+++ b/chrome/browser/ui/views/global_error_bubble_view.cc
-@@ -42,9 +42,15 @@
- GlobalErrorBubbleViewBase* GlobalErrorBubbleViewBase::ShowStandardBubbleView(
-     BrowserWindowInterface* browser,
-     const base::WeakPtr<GlobalErrorWithStandardBubble>& error) {
--  auto* control = BrowserView::GetBrowserViewForBrowser(browser)
--                      ->toolbar_button_provider()
--                      ->GetAppMenuControl();
-+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-+  // Aux's shell has no toolbar button provider. Anchoring this bubble on the
-+  // app menu null-derefs, so keep the error recorded and skip the view.
-+  auto* provider =
-+      browser_view ? browser_view->toolbar_button_provider() : nullptr;
-+  if (!provider) {
-+    return nullptr;
-+  }
-+  auto* control = provider->GetAppMenuControl();
-   views::BubbleAnchor anchor =
-       control ? control->GetAnchor() : views::BubbleAnchor();
-   GlobalErrorBubbleView* bubble_view = new GlobalErrorBubbleView(
 diff --git a/chrome/common/chrome_content_client.cc b/chrome/common/chrome_content_client.cc
 index a972831..2afff54 100644
 --- a/chrome/common/chrome_content_client.cc
@@ -1537,10 +1514,10 @@ index c5b742e..2cd64ea 100644
    SetWindowFeatures(blink.mojom.WindowFeatures window_features);
  
 diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
-index 02f4820..bf43f3a 100644
+index 6c42a31..05619ad 100644
 --- a/chrome/renderer/chrome_content_renderer_client.cc
 +++ b/chrome/renderer/chrome_content_renderer_client.cc
-@@ -942,7 +942,11 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
+@@ -969,7 +969,11 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
    if (base::FeatureList::IsEnabled(surface_embed::features::kSurfaceEmbed)) {
      GURL url = render_frame->GetWebFrame()->GetDocument().Url();
      if (url.SchemeIs(content::kChromeUIScheme) &&
@@ -1554,7 +1531,7 @@ index 02f4820..bf43f3a 100644
          return true;
        }
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
-index 1dc2c64..1eece57 100644
+index 6f3034c..2bb3e65 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
 @@ -3,6 +3,9 @@
@@ -1575,7 +1552,7 @@ index 1dc2c64..1eece57 100644
  #include "chrome/renderer/actor/journal.h"
  #include "chrome/renderer/actor/tool_executor.h"
  #include "chrome/renderer/benchmarking_bindings.h"
-@@ -67,6 +71,7 @@
+@@ -69,6 +73,7 @@
  #include "third_party/blink/public/platform/web_url_request.h"
  #include "third_party/blink/public/web/web_console_message.h"
  #include "third_party/blink/public/web/web_document.h"
@@ -1583,15 +1560,15 @@ index 1dc2c64..1eece57 100644
  #include "third_party/blink/public/web/web_document_loader.h"
  #include "third_party/blink/public/web/web_element.h"
  #include "third_party/blink/public/web/web_frame_content_dumper.h"
-@@ -82,6 +87,7 @@
+@@ -85,6 +90,7 @@
  #include "ui/gfx/codec/webp_codec.h"
  #include "ui/gfx/geometry/size_f.h"
  #include "url/gurl.h"
 +#include "url/origin.h"
+ #include "url/url_constants.h"
  
  #if !BUILDFLAG(IS_ANDROID)
- #include "chrome/renderer/accessibility/read_anything/read_anything_app_controller.h"
-@@ -129,6 +135,11 @@ const char kImageJpeg[] = "image/jpeg";
+@@ -133,6 +139,11 @@ const char kImageJpeg[] = "image/jpeg";
  const char kImagePng[] = "image/png";
  const char kImageWebp[] = "image/webp";
  
@@ -1603,7 +1580,7 @@ index 1dc2c64..1eece57 100644
  #if BUILDFLAG(IS_ANDROID)
  base::Lock& GetFrameHeaderMapLock() {
    static base::NoDestructor<base::Lock> s;
-@@ -216,6 +227,14 @@ ChromeRenderFrameObserver::ChromeRenderFrameObserver(
+@@ -226,6 +237,14 @@ ChromeRenderFrameObserver::ChromeRenderFrameObserver(
            &ChromeRenderFrameObserver::OnRenderFrameObserverRequest,
            base::Unretained(this)));
  
@@ -1618,7 +1595,7 @@ index 1dc2c64..1eece57 100644
    // Don't do anything else for subframes.
    if (!render_frame->IsMainFrame())
      return;
-@@ -317,7 +336,63 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+@@ -327,7 +346,63 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
    }
  }
  
@@ -1735,7 +1712,7 @@ index 80e224f..dbfaa04 100644
  
    service_manager::BinderRegistry registry_;
 diff --git a/content/browser/renderer_host/model_context_user_data.cc b/content/browser/renderer_host/model_context_user_data.cc
-index b424361..a3ab9de 100644
+index 1544dab..555c365 100644
 --- a/content/browser/renderer_host/model_context_user_data.cc
 +++ b/content/browser/renderer_host/model_context_user_data.cc
 @@ -6,6 +6,8 @@
@@ -1755,9 +1732,9 @@ index b424361..a3ab9de 100644
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/web_contents.h"
  #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/script_tools/script_tool_utils.h"
  #include "url/origin.h"
- 
-@@ -81,6 +86,27 @@ void ModelContextUserData::Bind(
+@@ -82,6 +87,27 @@ void ModelContextUserData::Bind(
    user_data->receiver_.Bind(std::move(receiver));
  }
  
@@ -1785,7 +1762,7 @@ index b424361..a3ab9de 100644
  void ModelContextUserData::BindModelContext(
      mojo::PendingRemote<blink::mojom::ModelContext> model_context) {
    if (model_context_remote_.is_bound()) {
-@@ -522,4 +548,106 @@ base::WeakPtr<ModelContextPageUserData> ModelContextPageUserData::GetWeakPtr() {
+@@ -532,4 +558,106 @@ base::WeakPtr<ModelContextPageUserData> ModelContextPageUserData::GetWeakPtr() {
    return weak_factory_.GetWeakPtr();
  }
  
@@ -1893,7 +1870,7 @@ index b424361..a3ab9de 100644
 +
  }  // namespace content
 diff --git a/content/browser/renderer_host/model_context_user_data.h b/content/browser/renderer_host/model_context_user_data.h
-index 480c0d2..5709675 100644
+index 14ca7e8..6d5f708 100644
 --- a/content/browser/renderer_host/model_context_user_data.h
 +++ b/content/browser/renderer_host/model_context_user_data.h
 @@ -146,6 +146,13 @@ class CONTENT_EXPORT ModelContextUserData
@@ -1911,10 +1888,10 @@ index 480c0d2..5709675 100644
    friend class DocumentUserData<ModelContextUserData>;
    friend class ModelContextPageUserData;
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index 57a6345..89364df 100644
+index 447cd91..394ff78 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
-@@ -6940,6 +6940,24 @@ bool NavigationRequest::ShouldDispatchPageSwapEvent() const {
+@@ -6997,6 +6997,24 @@ bool NavigationRequest::ShouldDispatchPageSwapEvent() const {
    return !did_fire_page_swap_;
  }
  
@@ -1939,7 +1916,7 @@ index 57a6345..89364df 100644
  void NavigationRequest::CommitNavigation() {
    TRACE_EVENT("navigation", "NavigationRequest::CommitNavigation",
                perfetto::Flow::FromPointer(this));
-@@ -7345,6 +7363,15 @@ void NavigationRequest::CommitNavigation() {
+@@ -7388,6 +7406,15 @@ void NavigationRequest::CommitNavigation() {
    // cross-site-ness, therefore just sanitize unilaterally.
    SanitizeRedirectsForCommit(common_params, commit_params);
  
@@ -1955,7 +1932,7 @@ index 57a6345..89364df 100644
    GetRenderFrameHost()->CommitNavigation(
        this, std::move(common_params), std::move(commit_params),
        std::move(response_head), std::move(response_body_),
-@@ -12664,6 +12691,31 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactoryUnchecked() {
+@@ -12719,6 +12746,31 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactoryUnchecked() {
  
    // In cases not covered above, URLLoaderFactory should be associated with the
    // origin of |common_params.url| and/or |common_params.initiator_origin|.
@@ -1988,10 +1965,10 @@ index 57a6345..89364df 100644
        common_params().url,
        common_params().initiator_origin.value_or(url::Origin()));
 diff --git a/content/browser/renderer_host/navigation_request.h b/content/browser/renderer_host/navigation_request.h
-index 63ae86f..f014e58 100644
+index 921d4c8..db6fedf 100644
 --- a/content/browser/renderer_host/navigation_request.h
 +++ b/content/browser/renderer_host/navigation_request.h
-@@ -3691,6 +3691,14 @@ class CONTENT_EXPORT NavigationRequest
+@@ -3705,6 +3705,14 @@ class CONTENT_EXPORT NavigationRequest
    // value is available.
    std::optional<url::Origin> tentative_data_origin_to_commit_;
  
@@ -2007,10 +1984,10 @@ index 63ae86f..f014e58 100644
    // - ready to commit if this navigation is associated with a ViewTransition.
    // - unload old document if there is no ViewTransition opt-in.
 diff --git a/content/browser/renderer_host/render_widget_host_impl.cc b/content/browser/renderer_host/render_widget_host_impl.cc
-index 5d7ac29..90ce66e 100644
+index 043cc52..32cc471 100644
 --- a/content/browser/renderer_host/render_widget_host_impl.cc
 +++ b/content/browser/renderer_host/render_widget_host_impl.cc
-@@ -108,6 +108,7 @@
+@@ -110,6 +110,7 @@
  #include "content/public/browser/render_widget_host_observer.h"
  #include "content/public/browser/storage_partition.h"
  #include "content/public/browser/tracked_element_observer.h"
@@ -2018,7 +1995,7 @@ index 5d7ac29..90ce66e 100644
  #include "content/public/common/content_client.h"
  #include "content/public/common/content_constants.h"
  #include "content/public/common/content_features.h"
-@@ -498,7 +499,51 @@ RenderWidgetHostImpl::RenderWidgetHostImpl(
+@@ -522,7 +523,51 @@ RenderWidgetHostImpl::RenderWidgetHostImpl(
    }
  }
  
@@ -2070,7 +2047,7 @@ index 5d7ac29..90ce66e 100644
    base::ScopedUmaHistogramTimer histogram_timer(
        "Navigation.RenderWidgetHostDestructor");
    CHECK(!self_owned_);
-@@ -1664,6 +1709,28 @@ void RenderWidgetHostImpl::ForwardMouseEventWithLatencyInfo(
+@@ -1691,6 +1736,28 @@ void RenderWidgetHostImpl::ForwardMouseEventWithLatencyInfo(
    }
  
    input::MouseEventWithLatencyInfo mouse_with_latency(mouse_event, latency);
@@ -2099,7 +2076,7 @@ index 5d7ac29..90ce66e 100644
    GetRenderInputRouter()->DispatchInputEventWithLatencyInfo(
        mouse_with_latency.event, &mouse_with_latency.latency,
        &mouse_with_latency.event.GetModifiableEventLatencyMetadata());
-@@ -2177,6 +2244,14 @@ void RenderWidgetHostImpl::ShowContextMenuAtPoint(
+@@ -2202,6 +2269,14 @@ void RenderWidgetHostImpl::ShowContextMenuAtPoint(
    }
  }
  
@@ -2114,7 +2091,7 @@ index 5d7ac29..90ce66e 100644
  void RenderWidgetHostImpl::InsertVisualStateCallback(
      VisualStateCallback callback) {
    if (!blink_frame_widget_) {
-@@ -2346,6 +2421,7 @@ void RenderWidgetHostImpl::OnUpdateDragOperation(
+@@ -2371,6 +2446,7 @@ void RenderWidgetHostImpl::OnUpdateDragOperation(
  }
  
  void RenderWidgetHostImpl::RendererExited() {
@@ -2122,7 +2099,7 @@ index 5d7ac29..90ce66e 100644
    if (!renderer_widget_created_) {
      return;
    }
-@@ -2554,6 +2630,36 @@ void RenderWidgetHostImpl::OnMouseEventAck(
+@@ -2579,6 +2655,36 @@ void RenderWidgetHostImpl::OnMouseEventAck(
      const input::MouseEventWithLatencyInfo& mouse_event,
      blink::mojom::InputEventResultSource ack_source,
      blink::mojom::InputEventResultState ack_result) {
@@ -2159,7 +2136,7 @@ index 5d7ac29..90ce66e 100644
    GetRenderInputRouter()->GetLatencyTracker()->OnInputEventAck(
        mouse_event.event, &mouse_event.latency, ack_result);
    NotifyObserversOfInputEventAcks(ack_source, ack_result, mouse_event.event);
-@@ -2653,6 +2759,7 @@ void RenderWidgetHostImpl::OnInputEventAckTimeout(
+@@ -2679,6 +2785,7 @@ void RenderWidgetHostImpl::OnInputEventAckTimeout(
      return;
    }
  
@@ -2168,7 +2145,7 @@ index 5d7ac29..90ce66e 100644
        RendererIsUnresponsiveReason::kOnInputEventAckTimeout,
        base::BindRepeating(
 diff --git a/content/browser/renderer_host/render_widget_host_impl.h b/content/browser/renderer_host/render_widget_host_impl.h
-index bb016ee..2fbed33 100644
+index f6d6eb3..5451fd7 100644
 --- a/content/browser/renderer_host/render_widget_host_impl.h
 +++ b/content/browser/renderer_host/render_widget_host_impl.h
 @@ -265,6 +265,9 @@ class CONTENT_EXPORT RenderWidgetHostImpl
@@ -2189,7 +2166,7 @@ index bb016ee..2fbed33 100644
    void SetHungRendererDelay(const base::TimeDelta& delay) override;
    void SetReadyForInputCallbackForTesting(base::OnceClosure callback);
  
-@@ -1121,6 +1125,11 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+@@ -1127,6 +1131,11 @@ class CONTENT_EXPORT RenderWidgetHostImpl
    virtual void NotifyNewContentRenderingTimeoutForTesting() {}
  
    // virtual for testing.
@@ -2214,7 +2191,7 @@ index c84b71b..574c1b6 100644
  }
  // LINT.ThenChange(//content/public/common/isolated_world_ids.h)
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
-index 6499e2f..494b0ca 100644
+index 7fb5b3d..be134c0 100644
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
 @@ -49,6 +49,7 @@
@@ -2303,7 +2280,7 @@ index 6499e2f..494b0ca 100644
  ContentBrowserClient::GetAutoPipInfo(const WebContents& web_contents) const {
    return media::PictureInPictureEventsInfo::AutoPipInfo();
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
-index 933ff42..13099c9 100644
+index e2eeec5..ad92cef 100644
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
 @@ -4,6 +4,7 @@
@@ -2512,7 +2489,7 @@ index 4e528cb..5d2bb90 100644
                                          base::Location creator_location)
      : CreateParams(context, nullptr, creator_location) {}
 diff --git a/content/public/browser/web_contents.h b/content/public/browser/web_contents.h
-index 9b35134..0de8c4e 100644
+index 286c611..3c860d8 100644
 --- a/content/public/browser/web_contents.h
 +++ b/content/public/browser/web_contents.h
 @@ -1069,6 +1069,10 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
@@ -2543,10 +2520,10 @@ index ea7489e..03d06d2 100644
  // LINT.ThenChange(//content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java)
  }  // namespace content
 diff --git a/third_party/blink/renderer/core/frame/frame.h b/third_party/blink/renderer/core/frame/frame.h
-index 3a90f88..fe6e9a4 100644
+index 1dce5c5..1eaa245 100644
 --- a/third_party/blink/renderer/core/frame/frame.h
 +++ b/third_party/blink/renderer/core/frame/frame.h
-@@ -241,6 +241,10 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
+@@ -245,6 +245,10 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
      return user_activation_state_.IsActive();
    }
  

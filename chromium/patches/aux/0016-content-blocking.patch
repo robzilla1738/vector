@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/chrome_browser_interface_binders.cc b/chrome/browser/chrome_browser_interface_binders.cc
-index ae2d778..05d30a7 100644
+index 2a4a679..9a63f38 100644
 --- a/chrome/browser/chrome_browser_interface_binders.cc
 +++ b/chrome/browser/chrome_browser_interface_binders.cc
 @@ -36,6 +36,9 @@
@@ -12,7 +12,7 @@ index ae2d778..05d30a7 100644
  #include "chrome/common/pref_names.h"
  #include "chrome/services/speech/buildflags/buildflags.h"
  #include "components/autofill/content/browser/content_autofill_client.h"
-@@ -457,6 +460,9 @@ void BindCredentialManager(
+@@ -447,6 +450,9 @@ void BindCredentialManager(
  void PopulateChromeFrameBinders(
      mojo::BinderMapWithContext<content::RenderFrameHost*>* map,
      content::RenderFrameHost* render_frame_host) {
@@ -328,7 +328,7 @@ index 41f5ad1..e021eb8 100644
    int32_t out_result = future.Get<0>();
    std::optional<net::HttpRequestHeaders> out_headers = future.Get<1>();
 diff --git a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
-index a30faeb..6d4aefe 100644
+index 4fb8aaa..e8ecdf5 100644
 --- a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
 +++ b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
 @@ -13,6 +13,7 @@
@@ -340,9 +340,9 @@ index a30faeb..6d4aefe 100644
  #include "chrome/grit/aim_eligibility_extension_resources.h"
  #include "chrome/grit/browser_resources.h"
 @@ -36,6 +37,10 @@ namespace extensions {
- 
  bool IsComponentExtensionAllowlisted(const std::string& extension_id) {
    constexpr auto kAllowed = base::MakeFixedFlatSet<std::string_view>({
+       extension_misc::kAimEligibilityExtensionId,
 +#if BUILDFLAG(ENABLE_AUX_ISOLATED_WORLDS)
 +      // Public pinned replacement assets only; no scripts or browser permissions.
 +      aux::kContentFilterResourceExtensionId,
@@ -351,7 +351,7 @@ index a30faeb..6d4aefe 100644
        extension_misc::kGlicExtensionId,
        extension_misc::kInAppPaymentsSupportAppId,
 diff --git a/chrome/browser/extensions/component_loader.cc b/chrome/browser/extensions/component_loader.cc
-index e926dac..cea77ea 100644
+index 80927be..0f75233 100644
 --- a/chrome/browser/extensions/component_loader.cc
 +++ b/chrome/browser/extensions/component_loader.cc
 @@ -3,6 +3,7 @@
@@ -362,7 +362,7 @@ index e926dac..cea77ea 100644
  
  #include <optional>
  #include <string>
-@@ -538,6 +539,15 @@ void ComponentLoader::AddDefaultComponentExtensions(
+@@ -685,6 +686,15 @@ void ComponentLoader::AddDefaultComponentExtensions(
  #endif  // BUILDFLAG(IS_CHROMEOS)
  
    if (!skip_session_components) {
@@ -379,10 +379,10 @@ index e926dac..cea77ea 100644
  #if BUILDFLAG(IS_CHROMEOS)
      AddChromeApp();
 diff --git a/chrome/browser/net/websocket_browsertest.cc b/chrome/browser/net/websocket_browsertest.cc
-index 5577cd1..21047d5 100644
+index 5785c9c..391747d 100644
 --- a/chrome/browser/net/websocket_browsertest.cc
 +++ b/chrome/browser/net/websocket_browsertest.cc
-@@ -1183,10 +1183,15 @@ class TestTrustedHeaderClient : public network::mojom::TrustedHeaderClient {
+@@ -1212,10 +1212,15 @@ class TestTrustedHeaderClient : public network::mojom::TrustedHeaderClient {
        : quit_(std::move(quit)) {}
  
    // network::mojom::TrustedHeaderClient:
@@ -399,7 +399,7 @@ index 5577cd1..21047d5 100644
    }
  
    // network::mojom::TrustedHeaderClient:
-@@ -1195,10 +1200,12 @@ class TestTrustedHeaderClient : public network::mojom::TrustedHeaderClient {
+@@ -1224,10 +1229,12 @@ class TestTrustedHeaderClient : public network::mojom::TrustedHeaderClient {
                           const std::optional<net::SSLInfo>& ssl_info,
                           OnHeadersReceivedCallback callback) override {
      on_headers_received_ssl_info_ = ssl_info;
@@ -412,7 +412,7 @@ index 5577cd1..21047d5 100644
    std::optional<net::SSLInfo> on_headers_received_ssl_info_;
    base::OnceClosure quit_;
  };
-@@ -1227,6 +1234,9 @@ IN_PROC_BROWSER_TEST_F(WebSocketBrowserTest, TrustedHeaderClientSSLInfo) {
+@@ -1256,6 +1263,9 @@ IN_PROC_BROWSER_TEST_F(WebSocketBrowserTest, TrustedHeaderClientSSLInfo) {
    std::optional<net::SSLInfo> ssl_info =
        header_client_impl->on_headers_received_ssl_info_;
  
@@ -423,10 +423,10 @@ index 5577cd1..21047d5 100644
    ASSERT_TRUE(ssl_info->is_valid());
    ASSERT_FALSE(net::IsCertStatusError(ssl_info->cert_status));
 diff --git a/chrome/browser/site_token_provider/site_token_header_client.cc b/chrome/browser/site_token_provider/site_token_header_client.cc
-index 6611eeb..475fb25 100644
+index e29294a..f55b71f 100644
 --- a/chrome/browser/site_token_provider/site_token_header_client.cc
 +++ b/chrome/browser/site_token_provider/site_token_header_client.cc
-@@ -103,6 +103,20 @@ SiteTokenHeaderClient::SiteTokenHeaderClient(
+@@ -86,6 +86,20 @@ SiteTokenHeaderClient::SiteTokenHeaderClient(
  
  SiteTokenHeaderClient::~SiteTokenHeaderClient() = default;
  
@@ -447,7 +447,7 @@ index 6611eeb..475fb25 100644
  void SiteTokenHeaderClient::OnBeforeSendHeaders(
      const GURL& request_url,
      const net::HttpRequestHeaders& headers,
-@@ -115,10 +129,11 @@ void SiteTokenHeaderClient::OnBeforeSendHeaders(
+@@ -98,10 +112,11 @@ void SiteTokenHeaderClient::OnBeforeSendHeaders(
                  &SiteTokenHeaderClient::OnTargetBeforeSendHeadersComplete,
                  weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                  request_url, headers),
@@ -461,7 +461,7 @@ index 6611eeb..475fb25 100644
    }
  }
  
-@@ -147,9 +162,11 @@ void SiteTokenHeaderClient::OnTargetBeforeSendHeadersComplete(
+@@ -130,9 +145,11 @@ void SiteTokenHeaderClient::OnTargetBeforeSendHeadersComplete(
      const net::HttpRequestHeaders& original_headers,
      int32_t result,
      const std::optional<net::HttpRequestHeaders>& headers,
@@ -475,7 +475,7 @@ index 6611eeb..475fb25 100644
      return;
    }
  
-@@ -163,7 +180,7 @@ void SiteTokenHeaderClient::OnTargetBeforeSendHeadersComplete(
+@@ -146,7 +163,7 @@ void SiteTokenHeaderClient::OnTargetBeforeSendHeadersComplete(
    }
  
    std::move(callback).Run(net::OK, final_headers,
@@ -485,7 +485,7 @@ index 6611eeb..475fb25 100644
  
  }  // namespace site_token_provider
 diff --git a/chrome/browser/site_token_provider/site_token_header_client.h b/chrome/browser/site_token_provider/site_token_header_client.h
-index 3976dbf..b559a44 100644
+index 5005e91..bbca9e9 100644
 --- a/chrome/browser/site_token_provider/site_token_header_client.h
 +++ b/chrome/browser/site_token_provider/site_token_header_client.h
 @@ -38,6 +38,10 @@ class SiteTokenHeaderClient : public network::mojom::TrustedHeaderClient {
@@ -264845,13 +264845,13 @@ index 0000000..f2de735
 +
 +#endif  // CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
 diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-index f949b9e..08f3c2a 100644
+index 62b07dc..02b67ce 100644
 --- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-@@ -7,6 +7,10 @@
- #include "build/android_buildflags.h"
+@@ -8,6 +8,10 @@
  #include "build/branding_buildflags.h"
  #include "build/build_config.h"
+ #include "chrome/browser/browser_actuator/internals/browser_actuator_internals_ui.h"
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +#include "chrome/browser/ui/aux/semantic_filter_ui.h"
@@ -264859,7 +264859,7 @@ index f949b9e..08f3c2a 100644
  #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
  #include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_ui.h"
  #include "chrome/browser/glic/host/glic_ui.h"
-@@ -394,6 +398,9 @@ void RegisterChromeWebUIConfigs() {
+@@ -411,6 +415,9 @@ void RegisterChromeWebUIConfigs() {
    map.AddWebUIConfig(std::make_unique<WebNNInternalsUIConfig>());
    map.AddWebUIConfig(std::make_unique<IndigoInternalsUIConfig>());
    map.AddWebUIConfig(std::make_unique<WebUIBrowserUIConfig>());
@@ -265761,18 +265761,18 @@ index 9fa3c53..9572cfb 100644
  
    // Initializes a factory with a GURL, which is useful if this factory will
 diff --git a/content/browser/devtools/devtools_url_loader_interceptor.cc b/content/browser/devtools/devtools_url_loader_interceptor.cc
-index 7839b10..ad3a9ef 100644
+index 677daaf..3a66e3e 100644
 --- a/content/browser/devtools/devtools_url_loader_interceptor.cc
 +++ b/content/browser/devtools/devtools_url_loader_interceptor.cc
-@@ -32,6 +32,7 @@
- #include "content/public/browser/storage_partition.h"
+@@ -34,6 +34,7 @@
  #include "content/public/common/child_process_id_util.h"
  #include "content/public/common/content_client.h"
+ #include "mojo/public/cpp/bindings/message.h"
 +#include "mojo/public/cpp/bindings/callback_helpers.h"
  #include "mojo/public/cpp/bindings/receiver.h"
  #include "mojo/public/cpp/bindings/receiver_set.h"
  #include "mojo/public/cpp/bindings/self_owned_receiver.h"
-@@ -387,10 +388,15 @@ class NoOpHeaderClient final : public network::mojom::TrustedHeaderClient {
+@@ -389,10 +390,15 @@ class NoOpHeaderClient final : public network::mojom::TrustedHeaderClient {
    NoOpHeaderClient& operator=(const NoOpHeaderClient&) = delete;
    ~NoOpHeaderClient() override = default;
  
@@ -265789,7 +265789,7 @@ index 7839b10..ad3a9ef 100644
    }
  
    void OnHeadersReceived(const std::string& headers,
-@@ -526,6 +532,9 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
+@@ -527,6 +533,9 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
    void OnComplete(const network::URLLoaderCompletionStatus& status) override;
  
    // network::mojom::TrustedHeaderClient methods
@@ -265799,7 +265799,7 @@ index 7839b10..ad3a9ef 100644
    void OnBeforeSendHeaders(const GURL& request_url,
                             const net::HttpRequestHeaders& headers,
                             OnBeforeSendHeadersCallback callback) override;
-@@ -540,7 +549,8 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
+@@ -541,7 +550,8 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
        OnBeforeSendHeadersCallback original_callback,
        int result_from_target,
        const std::optional<net::HttpRequestHeaders>& headers_from_target,
@@ -265809,7 +265809,7 @@ index 7839b10..ad3a9ef 100644
  
    void StartLoadingResponseBody(mojo::ScopedDataPipeConsumerHandle body);
  
-@@ -2081,6 +2091,24 @@ void InterceptionJob::OnTargetHeaderClientDisconnect() {
+@@ -2209,6 +2219,24 @@ void InterceptionJob::OnTargetHeaderClientDisconnect() {
    header_client_.reset();
  }
  
@@ -265834,7 +265834,7 @@ index 7839b10..ad3a9ef 100644
  void InterceptionJob::OnBeforeSendHeaders(
      const GURL& request_url,
      const net::HttpRequestHeaders& headers,
-@@ -2099,7 +2127,7 @@ void InterceptionJob::OnBeforeSendHeaders(
+@@ -2227,7 +2255,7 @@ void InterceptionJob::OnBeforeSendHeaders(
  
    if (!headers_override_ ||
        !headers_override_->overridden_cookie().has_value()) {
@@ -265843,7 +265843,7 @@ index 7839b10..ad3a9ef 100644
      return;
    }
  
-@@ -2113,7 +2141,7 @@ void InterceptionJob::OnBeforeSendHeaders(
+@@ -2241,7 +2269,7 @@ void InterceptionJob::OnBeforeSendHeaders(
    net::HttpRequestHeaders final_headers = headers;
    final_headers.SetHeader(net::HttpRequestHeaders::kCookie,
                            headers_override_->overridden_cookie().value());
@@ -265852,7 +265852,7 @@ index 7839b10..ad3a9ef 100644
  }
  
  void InterceptionJob::OnHeadersReceived(
-@@ -2139,19 +2167,22 @@ void InterceptionJob::OnTargetHeaderClientBeforeSendHeadersComplete(
+@@ -2267,19 +2295,22 @@ void InterceptionJob::OnTargetHeaderClientBeforeSendHeadersComplete(
      OnBeforeSendHeadersCallback original_callback,
      int result_from_target,
      const std::optional<net::HttpRequestHeaders>& headers_from_target,
@@ -265878,7 +265878,7 @@ index 7839b10..ad3a9ef 100644
      return;
    }
  
-@@ -2167,7 +2198,8 @@ void InterceptionJob::OnTargetHeaderClientBeforeSendHeadersComplete(
+@@ -2295,7 +2326,8 @@ void InterceptionJob::OnTargetHeaderClientBeforeSendHeadersComplete(
    final_headers.SetHeader(net::HttpRequestHeaders::kCookie,
                            headers_override_->overridden_cookie().value());
    std::move(original_callback)
@@ -265889,7 +265889,7 @@ index 7839b10..ad3a9ef 100644
  
  void InterceptionJob::OnAuthRequest(
 diff --git a/content/common/frame.mojom b/content/common/frame.mojom
-index a657a6a..196d766 100644
+index 82b9823..15fe3b0 100644
 --- a/content/common/frame.mojom
 +++ b/content/common/frame.mojom
 @@ -4,6 +4,7 @@
@@ -265935,7 +265935,7 @@ index 777084a..b125600 100644
    virtual void DidCreateDocumentElement() {}
    // TODO(dgozman): replace next two methods with DidFinishNavigation.
 diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
-index 822048a..53ce8da 100644
+index b844982..89258e2 100644
 --- a/content/renderer/render_frame_impl.cc
 +++ b/content/renderer/render_frame_impl.cc
 @@ -157,6 +157,7 @@
@@ -265958,7 +265958,7 @@ index 822048a..53ce8da 100644
    frame_->CommitNavigation(std::move(navigation_params),
                             std::move(document_state));
    // The commit can result in this frame being removed.
-@@ -4328,6 +4334,15 @@ void RenderFrameImpl::RunScriptsAtDocumentIdle() {
+@@ -4331,6 +4337,15 @@ void RenderFrameImpl::RunScriptsAtDocumentIdle() {
    // ContentClient might have deleted |this| by now!
  }
  
@@ -265974,7 +265974,7 @@ index 822048a..53ce8da 100644
  void RenderFrameImpl::DidHandleOnloadEvents() {
    for (auto& observer : observers_) {
      observer.DidHandleOnloadEvents();
-@@ -7078,6 +7093,10 @@ WebView* RenderFrameImpl::CreateNewWindow(
+@@ -7079,6 +7094,10 @@ WebView* RenderFrameImpl::CreateNewWindow(
      const blink::WebURL& base_url) {
    consumed_user_gesture = false;
    mojom::CreateNewWindowParamsPtr params = mojom::CreateNewWindowParams::New();
@@ -265986,10 +265986,10 @@ index 822048a..53ce8da 100644
    // The user activation check is done at the browser process through
    // |frame_host->CreateNewWindow()| call below.  But the extensions case
 diff --git a/content/renderer/render_frame_impl.h b/content/renderer/render_frame_impl.h
-index fc10f0a..c26efed 100644
+index eb45d9e..fc9519a 100644
 --- a/content/renderer/render_frame_impl.h
 +++ b/content/renderer/render_frame_impl.h
-@@ -552,6 +552,7 @@ class CONTENT_EXPORT RenderFrameImpl
+@@ -551,6 +551,7 @@ class CONTENT_EXPORT RenderFrameImpl
    void RunScriptsAtDocumentReady() override;
    void RunScriptsAtDocumentIdle() override;
    void DidHandleOnloadEvents() override;
@@ -266129,7 +266129,7 @@ index c9031ba..fee88ad 100644
                             const net::HttpRequestHeaders& headers,
                             OnBeforeSendHeadersCallback callback) override;
 diff --git a/net/BUILD.gn b/net/BUILD.gn
-index 9db60a2..3f5056b 100644
+index 54a4095..7f92e17 100644
 --- a/net/BUILD.gn
 +++ b/net/BUILD.gn
 @@ -159,6 +159,8 @@ component("net") {
@@ -266362,10 +266362,10 @@ index c1c0e2e..9da5ed0 100644
    // The value of the ACCEPT_CH HTTP2/3 frame, as pulled in through ALPS.
    //
 diff --git a/net/dns/dns_task_results_manager.cc b/net/dns/dns_task_results_manager.cc
-index 91a02aa..d50bd67 100644
+index f090441..2cdc21a 100644
 --- a/net/dns/dns_task_results_manager.cc
 +++ b/net/dns/dns_task_results_manager.cc
-@@ -93,6 +93,7 @@ struct DnsTaskResultsManager::PerDomainResult {
+@@ -94,6 +94,7 @@ struct DnsTaskResultsManager::PerDomainResult {
    PerDomainResult(const PerDomainResult&) = delete;
    PerDomainResult& operator=(const PerDomainResult&) = delete;
  
@@ -266373,7 +266373,7 @@ index 91a02aa..d50bd67 100644
    std::vector<IPEndPoint> ipv4_endpoints;
    std::vector<IPEndPoint> ipv6_endpoints;
  
-@@ -159,6 +160,17 @@ void DnsTaskResultsManager::ProcessDnsTransactionResults(
+@@ -181,6 +182,19 @@ void DnsTaskResultsManager::ProcessDnsTransactionResults(
              GetOrCreatePerDomainResult(result->domain_name());
          for (const auto& ip_endpoint : result->AsData().endpoints()) {
            CHECK_EQ(ip_endpoint.port(), 0);
@@ -266388,19 +266388,21 @@ index 91a02aa..d50bd67 100644
 +                  .insert(*owner);
 +            }
 +          }
-           // TODO(crbug.com/41493696): This will eventually need to handle
-           // DnsQueryType::HTTPS to support getting ipv{4,6}hints.
++          // TODO(crbug.com/41493696): This will eventually need to handle
++          // DnsQueryType::HTTPS to support getting ipv{4,6}hints.
            if (ip_endpoint.address().IsIPv4()) {
-@@ -305,6 +317,8 @@ void DnsTaskResultsManager::UpdateEndpoints() {
+             per_domain_result.ipv4_endpoints.emplace_back(ip_endpoint.address(),
+                                                           host_.GetPort());
+@@ -390,6 +404,8 @@ void DnsTaskResultsManager::UpdateEndpoints() {
        ServiceEndpoint endpoint;
-       endpoint.ipv4_endpoints = per_domain_result->ipv4_endpoints;
-       endpoint.ipv6_endpoints = per_domain_result->ipv6_endpoints;
+       endpoint.ipv4_endpoints = ipv4_endpoints;
+       endpoint.ipv6_endpoints = ipv6_endpoints;
 +      endpoint.metadata.dns_canonical_names =
 +          per_domain_result->dns_canonical_names;
        new_endpoints.emplace_back(std::move(endpoint));
      } else {
-       for (const auto& [unused_, metadata] : per_domain_result->metadatas) {
-@@ -320,6 +334,8 @@ void DnsTaskResultsManager::UpdateEndpoints() {
+       for (const auto& [priority, metadata] : per_domain_result->metadatas) {
+@@ -405,6 +421,8 @@ void DnsTaskResultsManager::UpdateEndpoints() {
          // the current logic doesn't do that. To handle it correctly we need to
          // go though an alias tree for the domain name.
          endpoint.metadata = metadata;
@@ -266600,10 +266602,10 @@ index ba131c5..a73192d 100644
  
  int HttpBasicStream::InitializeStream(bool can_send_early,
 diff --git a/net/http/http_cache_transaction.cc b/net/http/http_cache_transaction.cc
-index 4fe7e55..d850214 100644
+index 13dfe38..e05d324 100644
 --- a/net/http/http_cache_transaction.cc
 +++ b/net/http/http_cache_transaction.cc
-@@ -3584,11 +3584,15 @@ int HttpCache::Transaction::DoConnectedCallback() {
+@@ -3636,11 +3636,15 @@ int HttpCache::Transaction::DoConnectedCallback() {
  
    auto type = response_.WasFetchedViaProxy() ? TransportType::kCachedFromProxy
                                               : TransportType::kCached;
@@ -266625,7 +266627,7 @@ index 4fe7e55..d850214 100644
  
  int HttpCache::Transaction::DoConnectedCallbackComplete(int result) {
 diff --git a/net/http/http_network_transaction.cc b/net/http/http_network_transaction.cc
-index c3fc06e..85f51a9 100644
+index 1788baf..6d96dfb 100644
 --- a/net/http/http_network_transaction.cc
 +++ b/net/http/http_network_transaction.cc
 @@ -1222,6 +1222,13 @@ int HttpNetworkTransaction::DoConnectedCallback() {
@@ -266971,10 +266973,10 @@ index d827275..fd0faaf 100644
  
  bool HttpStreamPool::JobController::MaybeStartAlternativeJob() {
 diff --git a/net/quic/quic_chromium_client_session.cc b/net/quic/quic_chromium_client_session.cc
-index b2ae405..c391c40 100644
+index 3373d33..10a233a 100644
 --- a/net/quic/quic_chromium_client_session.cc
 +++ b/net/quic/quic_chromium_client_session.cc
-@@ -706,6 +706,13 @@ bool QuicChromiumClientSession::Handle::WasEverUsed() const {
+@@ -701,6 +701,13 @@ bool QuicChromiumClientSession::Handle::WasEverUsed() const {
    return session_->WasConnectionEverUsed();
  }
  
@@ -266988,7 +266990,7 @@ index b2ae405..c391c40 100644
  const std::set<std::string>&
  QuicChromiumClientSession::Handle::GetDnsAliasesForSessionKey(
      const QuicSessionKey& key) const {
-@@ -4361,6 +4368,14 @@ void QuicChromiumClientSession::SendPing() {
+@@ -4332,6 +4339,14 @@ void QuicChromiumClientSession::SendPing() {
    return connection()->SendPing();
  }
  
@@ -267004,10 +267006,10 @@ index b2ae405..c391c40 100644
  QuicChromiumClientSession::GetDnsAliasesForSessionKey(
      const QuicSessionKey& key) const {
 diff --git a/net/quic/quic_chromium_client_session.h b/net/quic/quic_chromium_client_session.h
-index 64fd6db..696ee73 100644
+index e3a5be8..8f8446f 100644
 --- a/net/quic/quic_chromium_client_session.h
 +++ b/net/quic/quic_chromium_client_session.h
-@@ -31,6 +31,7 @@
+@@ -32,6 +32,7 @@
  #include "base/values.h"
  #include "net/base/completion_once_callback.h"
  #include "net/base/connection_migration_information.h"
@@ -267015,7 +267017,7 @@ index 64fd6db..696ee73 100644
  #include "net/base/ech_mode.h"
  #include "net/base/load_timing_info.h"
  #include "net/base/load_timing_internal_info.h"
-@@ -325,6 +326,8 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
+@@ -312,6 +313,8 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
      // particular order.
      const std::set<std::string>& GetDnsAliasesForSessionKey(
          const QuicSessionKey& key) const;
@@ -267024,7 +267026,7 @@ index 64fd6db..696ee73 100644
  
      // Returns the largest payload that will fit into a single MESSAGE frame at
      // any point during the connection.  This assumes the version and
-@@ -1007,6 +1010,8 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
+@@ -974,6 +977,8 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
    // order.
    const std::set<std::string>& GetDnsAliasesForSessionKey(
        const QuicSessionKey& key) const;
@@ -267054,10 +267056,10 @@ index f3e5d83..cd5d3bc 100644
    return OK;
  }
 diff --git a/net/quic/quic_session_pool.cc b/net/quic/quic_session_pool.cc
-index 9e7b130..4eb4fdc 100644
+index 4034cbd..2c0df45 100644
 --- a/net/quic/quic_session_pool.cc
 +++ b/net/quic/quic_session_pool.cc
-@@ -860,14 +860,19 @@ QuicSessionPool::HasMatchingIpSessionForServiceEndpoint(
+@@ -873,14 +873,19 @@ QuicSessionPool::HasMatchingIpSessionForServiceEndpoint(
      const std::set<std::string>& dns_aliases,
      bool use_dns_aliases,
      bool log_negative_result) {
@@ -267084,7 +267086,7 @@ index 9e7b130..4eb4fdc 100644
  }
  
  int QuicSessionPool::RequestSession(
-@@ -1632,6 +1637,45 @@ const std::set<std::string>& QuicSessionPool::GetDnsAliasesForSessionKey(
+@@ -1645,6 +1650,45 @@ const std::set<std::string>& QuicSessionPool::GetDnsAliasesForSessionKey(
    return it->second;
  }
  
@@ -267130,7 +267132,7 @@ index 9e7b130..4eb4fdc 100644
  void QuicSessionPool::ActivateSessionForTesting(
      std::unique_ptr<QuicChromiumClientSession> new_session) {
    QuicChromiumClientSession* session = new_session.get();
-@@ -2736,6 +2780,7 @@ void QuicSessionPool::ActivateAndMapSessionToAliasKey(
+@@ -2749,6 +2793,7 @@ void QuicSessionPool::ActivateAndMapSessionToAliasKey(
      QuicSessionAliasKey key,
      std::set<std::string> dns_aliases) {
    active_sessions_[key.session_key()] = session;
@@ -267138,7 +267140,7 @@ index 9e7b130..4eb4fdc 100644
    dns_aliases_by_session_key_[key.session_key()] = std::move(dns_aliases);
    session_aliases_[session].insert(std::move(key));
  }
-@@ -2744,6 +2789,7 @@ void QuicSessionPool::UnmapSessionFromSessionAliases(
+@@ -2757,6 +2802,7 @@ void QuicSessionPool::UnmapSessionFromSessionAliases(
      QuicChromiumClientSession* session) {
    for (const auto& key : session_aliases_[session]) {
      dns_aliases_by_session_key_.erase(key.session_key());
@@ -267319,10 +267321,10 @@ index 20067b3..3459798 100644
    }
  
 diff --git a/net/spdy/spdy_session.cc b/net/spdy/spdy_session.cc
-index db8fcac..79660a1 100644
+index 7740ebc..87dc3db 100644
 --- a/net/spdy/spdy_session.cc
 +++ b/net/spdy/spdy_session.cc
-@@ -1542,6 +1542,11 @@ int SpdySession::GetPeerAddress(IPEndPoint* address) const {
+@@ -1539,6 +1539,11 @@ int SpdySession::GetPeerAddress(IPEndPoint* address) const {
    return ERR_SOCKET_NOT_CONNECTED;
  }
  
@@ -267645,7 +267647,7 @@ index 4967f03..6d65dbd 100644
    std::string referrer_;
    ReferrerPolicy referrer_policy_ =
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 30923eb..e9edb3b 100644
+index f93d02b..635a400 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -688,6 +688,9 @@ void URLRequestHttpJob::NotifyBeforeStartTransactionCallback(
@@ -267658,7 +267660,7 @@ index 30923eb..e9edb3b 100644
    if (result == OK) {
      StartTransactionInternal();
    } else {
-@@ -1218,7 +1221,45 @@ void URLRequestHttpJob::ProcessStrictTransportSecurityHeader() {
+@@ -1231,7 +1234,45 @@ void URLRequestHttpJob::ProcessStrictTransportSecurityHeader() {
    }
  }
  
@@ -267704,7 +267706,7 @@ index 30923eb..e9edb3b 100644
    TRACE_EVENT0(NetTracingCategory(), "URLRequestHttpJob::OnStartCompleted");
    RecordTimer();
  
-@@ -1254,8 +1295,15 @@ void URLRequestHttpJob::OnStartCompleted(int result) {
+@@ -1267,8 +1308,15 @@ void URLRequestHttpJob::OnStartCompleted(int result) {
        OnCallToDelegate(NetLogEventType::NETWORK_DELEGATE_HEADERS_RECEIVED);
        preserve_fragment_on_redirect_url_ = std::nullopt;
        IPEndPoint endpoint;
@@ -267750,10 +267752,10 @@ index 1d0123b..ae68de5 100644
  
  int WebSocketBasicHandshakeStream::InitializeStream(
 diff --git a/net/websockets/websocket_stream.cc b/net/websockets/websocket_stream.cc
-index f9f0fa2..b665325 100644
+index c56b0a9..1784555 100644
 --- a/net/websockets/websocket_stream.cc
 +++ b/net/websockets/websocket_stream.cc
-@@ -428,9 +428,12 @@ void Delegate::OnReceivedRedirect(URLRequest* request,
+@@ -427,9 +427,12 @@ void Delegate::OnReceivedRedirect(URLRequest* request,
    // is only internal.
    GURL::Replacements replacements;
    replacements.SetSchemeStr("wss");
@@ -267769,10 +267771,10 @@ index f9f0fa2..b665325 100644
      DLOG(FATAL) << "Unauthorized WebSocket redirect to "
                  << redirect_info.new_method << " "
 diff --git a/services/network/network_context_unittest.cc b/services/network/network_context_unittest.cc
-index 8e3522b..d8b9c0a 100644
+index a4478f1..796c78f 100644
 --- a/services/network/network_context_unittest.cc
 +++ b/services/network/network_context_unittest.cc
-@@ -8018,6 +8018,11 @@ class TestURLLoaderHeaderClient : public mojom::TrustedURLLoaderHeaderClient {
+@@ -8080,6 +8080,11 @@ class TestURLLoaderHeaderClient : public mojom::TrustedURLLoaderHeaderClient {
      TestHeaderClient& operator=(const TestHeaderClient&) = delete;
  
      // network::mojom::TrustedHeaderClient:
@@ -267784,7 +267786,7 @@ index 8e3522b..d8b9c0a 100644
      void OnBeforeSendHeaders(const GURL& request_url,
                               const net::HttpRequestHeaders& headers,
                               OnBeforeSendHeadersCallback callback) override {
-@@ -8026,7 +8031,7 @@ class TestURLLoaderHeaderClient : public mojom::TrustedURLLoaderHeaderClient {
+@@ -8088,7 +8093,7 @@ class TestURLLoaderHeaderClient : public mojom::TrustedURLLoaderHeaderClient {
          new_headers.SetHeader(name, value);
        }
        std::move(callback).Run(on_before_send_headers_result_, new_headers,
@@ -267793,7 +267795,7 @@ index 8e3522b..d8b9c0a 100644
      }
  
      void OnHeadersReceived(const std::string& headers,
-@@ -8316,6 +8321,11 @@ class HangingTestURLLoaderHeaderClient
+@@ -8378,6 +8383,11 @@ class HangingTestURLLoaderHeaderClient
      TestHeaderClient& operator=(const TestHeaderClient&) = delete;
  
      // network::mojom::TrustedHeaderClient:
@@ -267805,7 +267807,7 @@ index 8e3522b..d8b9c0a 100644
      void OnBeforeSendHeaders(const GURL& request_url,
                               const net::HttpRequestHeaders& headers,
                               OnBeforeSendHeadersCallback callback) override {
-@@ -8337,7 +8347,7 @@ class HangingTestURLLoaderHeaderClient
+@@ -8399,7 +8409,7 @@ class HangingTestURLLoaderHeaderClient
        net::HttpRequestHeaders new_headers = std::move(saved_request_headers_);
        new_headers.SetHeader("foo", "bar");
        std::move(saved_on_before_send_headers_callback_)
@@ -267838,10 +267840,10 @@ index e41cbdd..67ae983 100644
    }
  #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 diff --git a/services/network/public/cpp/BUILD.gn b/services/network/public/cpp/BUILD.gn
-index 3627055..aa5cd75 100644
+index 1a96b81..1229069 100644
 --- a/services/network/public/cpp/BUILD.gn
 +++ b/services/network/public/cpp/BUILD.gn
-@@ -110,6 +110,7 @@ component("cpp") {
+@@ -117,6 +117,7 @@ component("cpp") {
      "local_network_access_check_result.h",
      "net_adapters.cc",
      "net_adapters.h",
@@ -267898,7 +267900,7 @@ index 0000000..5f0cd51
 +}  // namespace network
 +#endif
 diff --git a/services/network/public/mojom/network_context.mojom b/services/network/public/mojom/network_context.mojom
-index 379770f..110a3c1 100644
+index 1470ee8..abe2979 100644
 --- a/services/network/public/mojom/network_context.mojom
 +++ b/services/network/public/mojom/network_context.mojom
 @@ -182,13 +182,25 @@ interface CustomProxyConfigClient {
@@ -267942,7 +267944,7 @@ index 379770f..110a3c1 100644
  
  // Interface to allow modifying the full request and response headers. This
 diff --git a/services/network/url_loader.cc b/services/network/url_loader.cc
-index cbf7f70..17814fa 100644
+index 729337b..8f27230 100644
 --- a/services/network/url_loader.cc
 +++ b/services/network/url_loader.cc
 @@ -42,6 +42,7 @@
@@ -267953,7 +267955,7 @@ index cbf7f70..17814fa 100644
  #include "mojo/public/cpp/bindings/shared_remote.h"
  #include "mojo/public/cpp/system/simple_watcher.h"
  #include "net/base/completion_once_callback.h"
-@@ -108,6 +109,7 @@
+@@ -107,6 +108,7 @@
  #include "services/network/public/cpp/resource_request.h"
  #include "services/network/public/cpp/sri_message_signatures.h"
  #include "services/network/public/cpp/synthetic_response_util.h"
@@ -267961,7 +267963,7 @@ index cbf7f70..17814fa 100644
  #include "services/network/public/mojom/client_security_state.mojom.h"
  #include "services/network/public/mojom/cookie_access_observer.mojom.h"
  #include "services/network/public/mojom/cookie_manager.mojom.h"
-@@ -857,7 +859,50 @@ int URLLoader::OnConnected(net::URLRequest* url_request,
+@@ -856,7 +858,50 @@ int URLLoader::OnConnected(net::URLRequest* url_request,
                             const net::TransportInfo& info,
                             net::CompletionOnceCallback callback) {
    DCHECK_EQ(url_request, url_request_.get());
@@ -268012,7 +268014,7 @@ index cbf7f70..17814fa 100644
    // Delegate the LNA check to the interceptor.
    net::Error net_error = local_network_access_interceptor_.OnConnected(
        url_request_->url(), info,
-@@ -1839,7 +1884,8 @@ int URLLoader::OnBeforeStartTransaction(
+@@ -1838,7 +1883,8 @@ int URLLoader::OnBeforeStartTransaction(
      header_client_->OnBeforeSendHeaders(
          url_request_->url(), *used_headers,
          base::BindOnce(&URLLoader::OnBeforeSendHeadersComplete,
@@ -268022,7 +268024,7 @@ index cbf7f70..17814fa 100644
      return net::ERR_IO_PENDING;
    }
  
-@@ -2364,10 +2410,25 @@ void URLLoader::ResumeStart() {
+@@ -2363,10 +2409,25 @@ void URLLoader::ResumeStart() {
  }
  
  void URLLoader::OnBeforeSendHeadersComplete(
@@ -268150,7 +268152,7 @@ index 9d90423..5c61489 100644
  
    void StartLoad(base::WeakPtr<URLLoader> loader);
 diff --git a/services/network/websocket.cc b/services/network/websocket.cc
-index c1a9892..537e84b 100644
+index 878af0d..70c7a8e 100644
 --- a/services/network/websocket.cc
 +++ b/services/network/websocket.cc
 @@ -26,6 +26,7 @@
@@ -268161,7 +268163,7 @@ index c1a9892..537e84b 100644
  #include "net/base/auth.h"
  #include "net/base/io_buffer.h"
  #include "net/base/ip_endpoint.h"
-@@ -50,6 +51,7 @@
+@@ -51,6 +52,7 @@
  #include "services/network/public/cpp/features.h"
  #include "services/network/public/cpp/ip_address_space_util.h"
  #include "services/network/public/cpp/local_network_access_check_result.h"
@@ -268169,7 +268171,7 @@ index c1a9892..537e84b 100644
  #include "services/network/public/mojom/url_loader_network_service_observer.mojom.h"
  #include "services/network/throttling/throttling_controller.h"
  #include "services/network/throttling/throttling_network_interceptor.h"
-@@ -183,7 +185,11 @@ class WebSocket::WebSocketEventHandler final
+@@ -184,7 +186,11 @@ class WebSocket::WebSocketEventHandler final
        std::optional<net::AuthCredentials>* credentials) override;
  
   private:
@@ -268181,7 +268183,7 @@ index c1a9892..537e84b 100644
  };
  
  WebSocket::WebSocketEventHandler::WebSocketEventHandler(WebSocket* impl)
-@@ -266,6 +272,56 @@ int WebSocket::WebSocketEventHandler::OnURLRequestConnected(
+@@ -267,6 +273,56 @@ int WebSocket::WebSocketEventHandler::OnURLRequestConnected(
      net::URLRequest* request,
      const net::TransportInfo& info,
      net::CompletionOnceCallback callback) {
@@ -268238,7 +268240,7 @@ index c1a9892..537e84b 100644
    // Grab Metrics first, then do actual LNA checks.
    if (impl_->url_loader_network_observer_ &&
        impl_->required_ip_address_space_ == mojom::IPAddressSpace::kUnknown) {
-@@ -706,13 +762,16 @@ bool WebSocket::AllowCookies(const GURL& url) const {
+@@ -707,13 +763,16 @@ bool WebSocket::AllowCookies(const GURL& url) const {
  }
  
  int WebSocket::OnBeforeStartTransaction(
@@ -268257,7 +268259,7 @@ index c1a9892..537e84b 100644
      return net::ERR_IO_PENDING;
    }
    return net::OK;
-@@ -722,11 +781,12 @@ int WebSocket::OnHeadersReceived(
+@@ -723,11 +782,12 @@ int WebSocket::OnHeadersReceived(
      net::CompletionOnceCallback callback,
      const net::HttpResponseHeaders* original_response_headers,
      scoped_refptr<net::HttpResponseHeaders>* override_response_headers,
@@ -268271,7 +268273,7 @@ index c1a9892..537e84b 100644
          base::BindOnce(&WebSocket::OnHeadersReceivedComplete,
                         weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                         override_response_headers,
-@@ -1059,14 +1119,26 @@ void WebSocket::OnAuthRequiredComplete(
+@@ -1062,14 +1122,26 @@ void WebSocket::OnAuthRequiredComplete(
  }
  
  void WebSocket::OnBeforeSendHeadersComplete(
@@ -268343,7 +268345,7 @@ index 850c54a..4963d86 100644
        net::CompletionOnceCallback callback,
        scoped_refptr<net::HttpResponseHeaders>* out_headers,
 diff --git a/third_party/blink/common/BUILD.gn b/third_party/blink/common/BUILD.gn
-index 37ca8d4..20f234d 100644
+index 8e635b0..3aaef2a 100644
 --- a/third_party/blink/common/BUILD.gn
 +++ b/third_party/blink/common/BUILD.gn
 @@ -178,6 +178,7 @@ source_set("common") {
@@ -268355,10 +268357,10 @@ index 37ca8d4..20f234d 100644
      "input/web_mouse_wheel_event.cc",
      "input/web_pointer_event.cc",
 diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
-index d2881c7..17e6a81 100644
+index 5a5d9a6..77eda27 100644
 --- a/third_party/blink/public/common/BUILD.gn
 +++ b/third_party/blink/public/common/BUILD.gn
-@@ -178,6 +178,7 @@ source_set("headers") {
+@@ -179,6 +179,7 @@ source_set("headers") {
      "input/web_input_event.h",
      "input/web_input_event_attribution.h",
      "input/web_keyboard_event.h",
@@ -268367,7 +268369,7 @@ index d2881c7..17e6a81 100644
      "input/web_mouse_wheel_event.h",
      "input/web_pointer_event.h",
 diff --git a/third_party/blink/public/web/web_local_frame_client.h b/third_party/blink/public/web/web_local_frame_client.h
-index 87b019d..113b28c 100644
+index 93ad527..c7fffb5 100644
 --- a/third_party/blink/public/web/web_local_frame_client.h
 +++ b/third_party/blink/public/web/web_local_frame_client.h
 @@ -442,6 +442,9 @@ class BLINK_EXPORT WebLocalFrameClient {
@@ -268381,7 +268383,7 @@ index 87b019d..113b28c 100644
    // The frame's document and all of its subresources succeeded to load.
    virtual void DidFinishLoad() {}
 diff --git a/third_party/blink/renderer/core/frame/local_frame_client.h b/third_party/blink/renderer/core/frame/local_frame_client.h
-index b869212..d11dcdb 100644
+index 5052635..2a7a7ad 100644
 --- a/third_party/blink/renderer/core/frame/local_frame_client.h
 +++ b/third_party/blink/renderer/core/frame/local_frame_client.h
 @@ -151,6 +151,7 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
@@ -268393,7 +268395,7 @@ index b869212..d11dcdb 100644
        WebHistoryCommitType,
        bool is_synchronously_committed,
 diff --git a/third_party/blink/renderer/core/frame/local_frame_client_impl.cc b/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
-index 5b8f94c..ed71b7a 100644
+index 51e6a9d..053322f 100644
 --- a/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
 +++ b/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
 @@ -422,6 +422,12 @@ void LocalFrameClientImpl::DispatchDidLoadResourceFromMemoryCache(
@@ -268410,10 +268412,10 @@ index 5b8f94c..ed71b7a 100644
    if (web_frame_->Client()) {
      web_frame_->Client()->DidHandleOnloadEvents();
 diff --git a/third_party/blink/renderer/core/frame/local_frame_client_impl.h b/third_party/blink/renderer/core/frame/local_frame_client_impl.h
-index c0402f3..0d1770a 100644
+index 10d76a2..6d3b599 100644
 --- a/third_party/blink/renderer/core/frame/local_frame_client_impl.h
 +++ b/third_party/blink/renderer/core/frame/local_frame_client_impl.h
-@@ -96,6 +96,7 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
+@@ -95,6 +95,7 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
    void DispatchDidLoadResourceFromMemoryCache(const ResourceRequest&,
                                                const ResourceResponse&) override;
    void DispatchDidHandleOnloadEvents() override;

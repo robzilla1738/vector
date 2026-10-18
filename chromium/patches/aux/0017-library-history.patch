@@ -2806,10 +2806,10 @@ index 0000000..e7b6613
 +
 +#endif // CHROME_BROWSER_UI_AUX_PROFILE_LIBRARY_H_
 diff --git a/components/history/core/browser/history_database.cc b/components/history/core/browser/history_database.cc
-index 29e0bc1..0b91abc 100644
+index 3ba9d3f..3faa441 100644
 --- a/components/history/core/browser/history_database.cc
 +++ b/components/history/core/browser/history_database.cc
-@@ -49,6 +49,27 @@ const char kMayContainForeignVisits[] = "may_contain_foreign_visits";
+@@ -48,6 +48,27 @@ const char kMayContainForeignVisits[] = "may_contain_foreign_visits";
  const char kDeleteForeignVisitsUntilId[] = "delete_foreign_visits_until_id";
  const char kKnownToSyncVisitsExist[] = "known_to_sync_visits_exist";
  
@@ -2837,7 +2837,7 @@ index 29e0bc1..0b91abc 100644
  // Logs a migration failure to UMA and logging. The return value will be
  // what to return from ::Init (to simplify the call sites). Migration failures
  // are almost always fatal since the database can be in an inconsistent state.
-@@ -67,6 +88,68 @@ sql::InitStatus LogInitFailure(HistoryDatabase::InitStep what) {
+@@ -66,6 +87,68 @@ sql::InitStatus LogInitFailure(HistoryDatabase::InitStep what) {
  
  }  // namespace
  
@@ -2907,7 +2907,7 @@ index 29e0bc1..0b91abc 100644
      DownloadInterruptReason download_interrupt_reason_none,
      DownloadInterruptReason download_interrupt_reason_crash)
 diff --git a/components/history/core/browser/history_database.h b/components/history/core/browser/history_database.h
-index 6b09790..090890c 100644
+index 7b2bf7a..5dc8e75 100644
 --- a/components/history/core/browser/history_database.h
 +++ b/components/history/core/browser/history_database.h
 @@ -6,6 +6,8 @@
@@ -2919,9 +2919,9 @@ index 6b09790..090890c 100644
  #include <unordered_map>
  #include <utility>
  #include <vector>
-@@ -256,6 +258,18 @@ class HistoryDatabase : public DownloadDatabase,
-   // Returns the sub-database used for storing Sync metadata for History.
-   HistorySyncMetadataDatabase* GetHistoryMetadataDB();
+@@ -262,6 +264,18 @@ class HistoryDatabase : public DownloadDatabase,
+   // Returns the sub-database used for storing Sync metadata for Journeys.
+   journeys::JourneysSyncMetadataDatabase* GetJourneysMetadataDB();
  
 +  // Browser history identity is (whole millisecond, URL), matching the
 +  // presentation cursor. Work stays on the history sequence; no DB is exposed.

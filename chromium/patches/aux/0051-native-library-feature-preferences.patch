@@ -1,16 +1,8 @@
---- a/chrome/browser/ui/aux/profile_prefs.h
-+++ b/chrome/browser/ui/aux/profile_prefs.h
-@@ -15,6 +15,7 @@
- inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
- inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
- inline constexpr char kMemorySaverMinutesPref[] = "aux.memory_saver_minutes";
-+inline constexpr char kLibraryFeatureOverridesPref[] = "aux.library_feature_overrides";
- inline constexpr char kDismissedDownloadsPref[] = "aux.dismissed_downloads";
- }  // namespace aux
- 
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index be1ea55..b392d0d 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -1822,6 +1822,7 @@
+@@ -1775,6 +1775,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
    registry->RegisterBooleanPref(aux::kKeepRuntimeInBackgroundPref, false);
    registry->RegisterIntegerPref(aux::kMemorySaverMinutesPref, 30);
    registry->RegisterDictionaryPref(aux::kDismissedDownloadsPref);
@@ -18,6 +10,120 @@
    registry->RegisterListPref(aux::kHealthSamplesPref);
    registry->RegisterIntegerPref(aux::kHealthSessionsPref, 0);
    registry->RegisterIntegerPref(aux::kHealthCrashesPref, 0);
+diff --git a/chrome/browser/resources/bookmarks/command_manager.ts b/chrome/browser/resources/bookmarks/command_manager.ts
+index 22582d4..38924fe 100644
+--- a/chrome/browser/resources/bookmarks/command_manager.ts
++++ b/chrome/browser/resources/bookmarks/command_manager.ts
+@@ -19,6 +19,7 @@ import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_
+ import type {CrLazyRenderLitElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
+ import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+ import {assert, assertNotReached, assertNotReachedCase} from 'chrome://resources/js/assert.js';
++import {addWebUiListener, removeWebUiListener, sendWithPromise} from 'chrome://resources/js/cr.js';
+ import {EventTracker} from 'chrome://resources/js/event_tracker.js';
+ import {KeyboardShortcutList} from 'chrome://resources/js/keyboard_shortcut_list.js';
+ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+@@ -94,10 +95,40 @@ export class BookmarksCommandManagerElement extends
+   private shortcuts_: Map<Command, KeyboardShortcutList> = new Map();
+   private eventTracker_: EventTracker = new EventTracker();
+ 
++  private auxFeatureListener_: ReturnType<typeof addWebUiListener>|null = null;
++  private auxFeatureRevision_ = 0;
++
++  private auxFeatureEnabled_(command: Command): boolean {
++    if (!loadTimeData.getBoolean('isAux')) return true;
++    const feature = command === Command.OPEN_NEW_GROUP ? 'folders' :
++        command === Command.OPEN_SPLIT_VIEW ? 'splitView' :
++        command === Command.OPEN_INCOGNITO ? 'privateWindows' : null;
++    return !feature || loadTimeData.getBoolean('auxFeature_' + feature);
++  }
++
+   override connectedCallback() {
+     super.connectedCallback();
+     assert(instance === null);
+     instance = this;
++    if (loadTimeData.getBoolean('isAux')) {
++      const apply = (features: Record<string, boolean>) => {
++        if (!this.isConnected) return;
++        for (const feature of ['folders', 'splitView', 'privateWindows']) {
++          loadTimeData.overrideValues({['auxFeature_' + feature]: features[feature] !== false});
++        }
++        if (this.menuSource_ !== MenuSource.NONE) this.closeCommandMenu();
++        this.requestUpdate();
++      };
++      const revision = this.auxFeatureRevision_;
++      this.auxFeatureListener_ = addWebUiListener('aux-library-features-changed',
++          (features: Record<string, boolean>) => {
++            this.auxFeatureRevision_++;
++            apply(features);
++          });
++      sendWithPromise<Record<string, boolean>>('getAuxLibraryFeatures').then(features => {
++        if (revision === this.auxFeatureRevision_) apply(features);
++      });
++    }
+ 
+     this.updateFromStore();
+ 
+@@ -149,6 +180,9 @@ export class BookmarksCommandManagerElement extends
+   override disconnectedCallback() {
+     super.disconnectedCallback();
+     instance = null;
++    this.auxFeatureRevision_++;
++    if (this.auxFeatureListener_) removeWebUiListener(this.auxFeatureListener_);
++    this.auxFeatureListener_ = null;
+     this.eventTracker_.removeAll();
+     this.menuIds_.clear();
+     this.shortcuts_.clear();
+@@ -242,6 +276,7 @@ export class BookmarksCommandManagerElement extends
+   }
+ 
+   protected isCommandVisible_(command: Command, itemIds: Set<string>): boolean {
++    if (!this.auxFeatureEnabled_(command)) return false;
+     switch (command) {
+       case Command.EDIT:
+         return itemIds.size === 1 && this.globalCanEdit_;
+@@ -291,6 +326,7 @@ export class BookmarksCommandManagerElement extends
+   }
+ 
+   protected isCommandEnabled_(command: Command, itemIds: Set<string>): boolean {
++    if (!this.auxFeatureEnabled_(command)) return false;
+     const state = this.getState();
+     switch (command) {
+       case Command.EDIT:
+@@ -578,6 +614,7 @@ export class BookmarksCommandManagerElement extends
+     }
+ 
+     const openBookmarkIdsCallback = () => {
++      if (!this.auxFeatureEnabled_(command)) return;
+       const state = this.getState();
+       const legacyIds = ids.map(id => getLegacyId(state.nodes[id]));
+       const incognito = command === Command.OPEN_INCOGNITO ||
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+index 75492bc..3a4f8dd 100644
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -661,7 +661,7 @@ ProfileLibrary::RootAliases() const {
+   }
+   auto add = [&](const bookmarks::BookmarkNode *root,
+                  const std::string &preferred) {
+-    if (!root) {
++    if (!root || !root->IsVisible()) {
+       return;
+     }
+     std::string label = preferred;
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+index b81f75e..a35d2fa 100644
+--- a/chrome/browser/ui/aux/profile_prefs.h
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -15,6 +15,7 @@ inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_
+ inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
+ inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
+ inline constexpr char kMemorySaverMinutesPref[] = "aux.memory_saver_minutes";
++inline constexpr char kLibraryFeatureOverridesPref[] = "aux.library_feature_overrides";
+ inline constexpr char kDismissedDownloadsPref[] = "aux.dismissed_downloads";
+ }  // namespace aux
+ 
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 755b8a9..143f96f 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -69,6 +69,7 @@
@@ -28,7 +134,7 @@
  #include "chrome/browser/ui/aux/profile_search_engine.h"
  #include "chrome/browser/ui/aux/readable_capture.h"
  #include "chrome/browser/ui/aux/runtime_host.h"
-@@ -737,6 +738,22 @@
+@@ -737,6 +738,22 @@ void AuxRuntimeHost::NotifyNavigationError(const std::string& page_id,
  
  void AuxRuntimeHost::OnRuntimeNote(std::string type, std::string payload_json) {
    if (type == "event") {
@@ -51,6 +157,8 @@
      observers_.Notify("onEvent", payload_json);
    }
  }
+diff --git a/chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc b/chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc
+index 69d181e..0cd9343 100644
 --- a/chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc
 +++ b/chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc
 @@ -10,6 +10,10 @@
@@ -64,7 +172,7 @@
  #include "chrome/browser/enterprise/isolated_mode/isolated_mode_settings_service_factory.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/buildflags.h"
-@@ -44,6 +48,41 @@
+@@ -45,6 +49,41 @@
  
  namespace {
  
@@ -106,7 +214,7 @@
  void AddLocalizedString(content::WebUIDataSource* source,
                          const std::string& message,
                          int id) {
-@@ -61,6 +100,10 @@
+@@ -62,6 +101,10 @@ content::WebUIDataSource* CreateAndAddBookmarksUIHTMLSource(Profile* profile) {
    source->AddBoolean("isAux", BUILDFLAG(ENABLE_AUX_SHELL));
  #if BUILDFLAG(ENABLE_AUX_SHELL)
    source->AddString("auxAttribute", "data-aux");
@@ -117,7 +225,7 @@
  #else
    source->AddString("auxAttribute", "");
  #endif
-@@ -240,6 +283,9 @@
+@@ -241,6 +284,9 @@ BookmarksUI::BookmarksUI(content::WebUI* web_ui)
    web_ui->AddMessageHandler(std::move(plural_string_handler));
  
    web_ui->AddMessageHandler(std::make_unique<BookmarksMessageHandler>());
@@ -127,119 +235,3 @@
    web_ui->AddMessageHandler(std::make_unique<MetricsHandler>());
  }
  
---- a/chrome/browser/resources/bookmarks/command_manager.ts
-+++ b/chrome/browser/resources/bookmarks/command_manager.ts
-@@ -19,6 +19,7 @@
- import type {CrLazyRenderLitElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
- import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
- import {assert, assertNotReached, assertNotReachedCase} from 'chrome://resources/js/assert.js';
-+import {addWebUiListener, removeWebUiListener, sendWithPromise} from 'chrome://resources/js/cr.js';
- import {EventTracker} from 'chrome://resources/js/event_tracker.js';
- import {KeyboardShortcutList} from 'chrome://resources/js/keyboard_shortcut_list.js';
- import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-@@ -94,10 +95,40 @@
-   private shortcuts_: Map<Command, KeyboardShortcutList> = new Map();
-   private eventTracker_: EventTracker = new EventTracker();
- 
-+  private auxFeatureListener_: ReturnType<typeof addWebUiListener>|null = null;
-+  private auxFeatureRevision_ = 0;
-+
-+  private auxFeatureEnabled_(command: Command): boolean {
-+    if (!loadTimeData.getBoolean('isAux')) return true;
-+    const feature = command === Command.OPEN_NEW_GROUP ? 'folders' :
-+        command === Command.OPEN_SPLIT_VIEW ? 'splitView' :
-+        command === Command.OPEN_INCOGNITO ? 'privateWindows' : null;
-+    return !feature || loadTimeData.getBoolean('auxFeature_' + feature);
-+  }
-+
-   override connectedCallback() {
-     super.connectedCallback();
-     assert(instance === null);
-     instance = this;
-+    if (loadTimeData.getBoolean('isAux')) {
-+      const apply = (features: Record<string, boolean>) => {
-+        if (!this.isConnected) return;
-+        for (const feature of ['folders', 'splitView', 'privateWindows']) {
-+          loadTimeData.overrideValues({['auxFeature_' + feature]: features[feature] !== false});
-+        }
-+        if (this.menuSource_ !== MenuSource.NONE) this.closeCommandMenu();
-+        this.requestUpdate();
-+      };
-+      const revision = this.auxFeatureRevision_;
-+      this.auxFeatureListener_ = addWebUiListener('aux-library-features-changed',
-+          (features: Record<string, boolean>) => {
-+            this.auxFeatureRevision_++;
-+            apply(features);
-+          });
-+      sendWithPromise<Record<string, boolean>>('getAuxLibraryFeatures').then(features => {
-+        if (revision === this.auxFeatureRevision_) apply(features);
-+      });
-+    }
- 
-     this.updateFromStore();
- 
-@@ -149,6 +180,9 @@
-   override disconnectedCallback() {
-     super.disconnectedCallback();
-     instance = null;
-+    this.auxFeatureRevision_++;
-+    if (this.auxFeatureListener_) removeWebUiListener(this.auxFeatureListener_);
-+    this.auxFeatureListener_ = null;
-     this.eventTracker_.removeAll();
-     this.menuIds_.clear();
-     this.shortcuts_.clear();
-@@ -242,6 +276,7 @@
-   }
- 
-   protected isCommandVisible_(command: Command, itemIds: Set<string>): boolean {
-+    if (!this.auxFeatureEnabled_(command)) return false;
-     switch (command) {
-       case Command.EDIT:
-         return itemIds.size === 1 && this.globalCanEdit_;
-@@ -291,6 +326,7 @@
-   }
- 
-   protected isCommandEnabled_(command: Command, itemIds: Set<string>): boolean {
-+    if (!this.auxFeatureEnabled_(command)) return false;
-     const state = this.getState();
-     switch (command) {
-       case Command.EDIT:
-@@ -578,6 +614,7 @@
-     }
- 
-     const openBookmarkIdsCallback = () => {
-+      if (!this.auxFeatureEnabled_(command)) return;
-       const state = this.getState();
-       const legacyIds = ids.map(id => getLegacyId(state.nodes[id]));
-       const incognito = command === Command.OPEN_INCOGNITO ||
---- a/chrome/browser/ui/bookmarks/combined_bookmarks_view.cc
-+++ b/chrome/browser/ui/bookmarks/combined_bookmarks_view.cc
-@@ -3,6 +3,7 @@
- // found in the LICENSE file.
- 
- #include "chrome/browser/ui/bookmarks/combined_bookmarks_view.h"
-+#include "chrome/browser/buildflags.h"
- 
- #include <inttypes.h>
- 
-@@ -61,6 +62,9 @@
-   if (parent == synthetic_root_node_.get()) {
-     std::vector<const bookmarks::BookmarkNode*> children;
-     for (const auto& child : model_->root_node()->children()) {
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+      if (!child->IsVisible()) continue;
-+#endif
-       children.push_back(child.get());
-     }
-     return children;
---- a/chrome/browser/ui/aux/profile_library.cc
-+++ b/chrome/browser/ui/aux/profile_library.cc
-@@ -661,7 +661,7 @@
-   }
-   auto add = [&](const bookmarks::BookmarkNode *root,
-                  const std::string &preferred) {
--    if (!root) {
-+    if (!root || !root->IsVisible()) {
-       return;
-     }
-     std::string label = preferred;

@@ -46,6 +46,15 @@ registered/applied but uncompiled icon compression and native image Copy. No
 additional build, benchmark or test campaign is scheduled by this wrap-up.
 
 
+## October 17 local consolidation
+
+All completed implementation, including the Chromium 155 candidate and shared
+popup glass/sidebar motion, now lives on local `main`. Development continues
+there. Consolidation does not establish native acceptance: the earlier crash,
+matched Aside comparisons and full browser smoke remain open in
+[STATUS](STATUS.md) and [the execution graph](ROADMAP-EXECUTION-GRAPH.md).
+No push, distribution or release is part of this checkpoint.
+
 ## North star: what Aux feels like after this plan
 
 - **Instant.** Aux opens as fast as stock Chromium, typing in the command bar paints the same frame, and pages prerender before Enter.

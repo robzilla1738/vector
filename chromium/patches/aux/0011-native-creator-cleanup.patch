@@ -235,7 +235,7 @@ index 0000000..7ed97e7
 +}  // namespace aux
 +#endif
 diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
-index 9e27bdc..4a91345 100644
+index d3fa7ee..94a1eff 100644
 --- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 +++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 @@ -13,6 +13,7 @@
@@ -246,12 +246,13 @@ index 9e27bdc..4a91345 100644
  #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
  #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
  #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
-@@ -45,10 +46,15 @@
- #include "chrome/browser/ui/tab_dialogs.h"
+@@ -46,11 +47,16 @@
  #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
  #include "chrome/browser/ui/tabs/tab_strip_model.h"
 +#include "chrome/browser/ui/tabs/tab_close_types_data.h"
  #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+ #include "chrome/browser/ui/unload_controller.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
  #include "chrome/browser/ui/views/frame/contents_web_view.h"
  #include "chrome/browser/ui/views/status_bubble_views.h"
@@ -262,7 +263,7 @@ index 9e27bdc..4a91345 100644
  #include "chrome/browser/ui/web_applications/app_browser_controller.h"
  #include "chrome/browser/web_applications/web_app_provider.h"
  #include "chrome/browser/web_applications/web_app_registrar.h"
-@@ -764,6 +770,28 @@ void BrowserWebContentsDelegate::LoadingStateChanged(
+@@ -769,6 +775,28 @@ void BrowserWebContentsDelegate::LoadingStateChanged(
        source, should_show_loading_ui);
  }
  
@@ -291,7 +292,7 @@ index 9e27bdc..4a91345 100644
  void BrowserWebContentsDelegate::CloseContents(content::WebContents* source) {
    if (unload_controller_->CanCloseContents(source)) {
      chrome::CloseWebContents(&browser_.get(), source, true);
-@@ -795,6 +823,15 @@ void BrowserWebContentsDelegate::UpdateTargetURL(content::WebContents* source,
+@@ -800,6 +828,15 @@ void BrowserWebContentsDelegate::UpdateTargetURL(content::WebContents* source,
                                                   const GURL& url) {
    std::vector<StatusBubble*> status_bubbles =
        browser_ui_controller_->GetStatusBubbles();
@@ -307,7 +308,7 @@ index 9e27bdc..4a91345 100644
    for (StatusBubble* status_bubble : status_bubbles) {
      StatusBubbleViews* status_bubble_views =
          static_cast<StatusBubbleViews*>(status_bubble);
-@@ -822,6 +859,18 @@ void BrowserWebContentsDelegate::ContentsMouseEvent(
+@@ -827,6 +864,18 @@ void BrowserWebContentsDelegate::ContentsMouseEvent(
    // Mouse motion events update the status bubble, if it exists.
    std::vector<StatusBubble*> status_bubbles =
        browser_ui_controller_->GetStatusBubbles();
@@ -326,7 +327,7 @@ index 9e27bdc..4a91345 100644
    for (StatusBubble* status_bubble : status_bubbles) {
      StatusBubbleViews* status_bubble_views =
          static_cast<StatusBubbleViews*>(status_bubble);
-@@ -871,6 +920,44 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
+@@ -876,6 +925,44 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
                                          proceed_to_fire_unload);
  }
  
@@ -372,7 +373,7 @@ index 9e27bdc..4a91345 100644
      content::WebContents* source) {
    // Navigations in background tabs shouldn't change the focus state of the
 diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
-index 05a9d7f..62304d6 100644
+index aad7c7d..ee1c451 100644
 --- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
 +++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
 @@ -129,6 +129,9 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
@@ -397,7 +398,7 @@ index 05a9d7f..62304d6 100644
    bool ShouldFocusPageAfterCrash(content::WebContents* source) override;
    void ShowRepostFormWarningDialog(content::WebContents* source) override;
 diff --git a/chrome/browser/ui/unload_controller.cc b/chrome/browser/ui/unload_controller.cc
-index 6ac2d32..fd7131e 100644
+index 201af07..9e97b92 100644
 --- a/chrome/browser/ui/unload_controller.cc
 +++ b/chrome/browser/ui/unload_controller.cc
 @@ -10,6 +10,10 @@
@@ -411,7 +412,7 @@ index 6ac2d32..fd7131e 100644
  #include "chrome/browser/devtools/devtools_window.h"
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/download/download_core_service_factory.h"
-@@ -275,6 +279,20 @@ bool UnloadController::ShouldRunUnloadEventsHelper(
+@@ -276,6 +280,20 @@ bool UnloadController::ShouldRunUnloadEventsHelper(
  }
  
  bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
@@ -432,7 +433,7 @@ index 6ac2d32..fd7131e 100644
    // If a tab unload handler indicates that beforeunload handling should be
    // skipped (for example, because the user already confirmed closing the tab
    // via a custom task confirmation dialog), return false immediately. This
-@@ -292,6 +310,14 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
+@@ -293,6 +311,14 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
    }
  
    if (handler_to_show) {
@@ -447,7 +448,7 @@ index 6ac2d32..fd7131e 100644
      if (handler_to_show->ShowCustomConfirmation(
              contents,
              base::BindOnce(&UnloadController::OnCustomConfirmationClosed,
-@@ -344,6 +370,30 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
+@@ -345,6 +371,30 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
      // them. Once they have fired, we'll get a message back saying whether
      // to proceed closing the page or not, which sends us back to this method
      // with the NeedToFireBeforeUnloadOrUnloadEvents bit cleared.
@@ -479,11 +480,11 @@ index 6ac2d32..fd7131e 100644
      return true;
    }
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
-index 7a7812c..f8ec44f 100644
+index d1169b1..243fc66 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
-@@ -8,7 +8,11 @@
- #include "chrome/browser/ui/browser.h"
+@@ -7,7 +7,11 @@
+ #include "base/logging.h"
  #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 +#include "chrome/common/webui_url_constants.h"
@@ -494,7 +495,7 @@ index 7a7812c..f8ec44f 100644
  #include "content/public/browser/web_contents.h"
  #include "content/public/browser/web_contents_observer.h"
  #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
-@@ -48,6 +52,21 @@ content::WebContents* WebUIBrowserWebContentsDelegate::OpenURLFromTab(
+@@ -47,6 +51,21 @@ content::WebContents* WebUIBrowserWebContentsDelegate::OpenURLFromTab(
      const content::OpenURLParams& params,
      base::OnceCallback<void(content::NavigationHandle&)>
          navigation_handle_callback) {
@@ -517,10 +518,10 @@ index 7a7812c..f8ec44f 100644
                                       std::move(navigation_handle_callback));
  }
 diff --git a/content/browser/renderer_host/render_frame_host_delegate.h b/content/browser/renderer_host/render_frame_host_delegate.h
-index 47ec9c6..0e0fd06 100644
+index 6b11b24..d4b5b33 100644
 --- a/content/browser/renderer_host/render_frame_host_delegate.h
 +++ b/content/browser/renderer_host/render_frame_host_delegate.h
-@@ -758,6 +758,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
+@@ -763,6 +763,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
  
    // Called by the main frame to close the current tab/window.
    virtual void Close(RenderFrameHostImpl* render_frame_host) {}
@@ -531,10 +532,10 @@ index 47ec9c6..0e0fd06 100644
    // True if the delegate is currently showing a JavaScript dialog.
    virtual bool IsJavaScriptDialogShowing() const;
 diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
-index 0356398..38859d5 100644
+index 2a4625e..bd89517 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.cc
 +++ b/content/browser/renderer_host/render_frame_host_impl.cc
-@@ -298,6 +298,7 @@
+@@ -304,6 +304,7 @@
  #include "third_party/blink/public/common/frame/fenced_frame_sandbox_flags.h"
  #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
  #include "third_party/blink/public/common/frame/frame_policy.h"
@@ -542,7 +543,7 @@ index 0356398..38859d5 100644
  #include "third_party/blink/public/common/loader/inter_process_time_ticks_converter.h"
  #include "third_party/blink/public/common/loader/resource_type_util.h"
  #include "third_party/blink/public/common/messaging/transferable_message.h"
-@@ -7193,6 +7194,10 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7136,6 +7137,10 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
  
    bool showed_dialog = has_shown_beforeunload_dialog_;
  
@@ -553,7 +554,7 @@ index 0356398..38859d5 100644
    // Resets beforeunload waiting state.
    is_waiting_for_beforeunload_completion_ = false;
    has_shown_beforeunload_dialog_ = false;
-@@ -7209,7 +7214,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7152,7 +7157,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
        [](base::WeakPtr<RenderFrameHostImpl> self,
           const base::TimeTicks& before_unload_end_time, bool proceed,
           bool unload_ack_is_for_navigation, bool for_legacy,
@@ -563,7 +564,7 @@ index 0356398..38859d5 100644
          if (!self) {
            return;
          }
-@@ -7222,7 +7228,11 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7165,7 +7171,11 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
                                                     before_unload_end_time,
                                                     for_legacy, showed_dialog);
          } else {
@@ -576,7 +577,7 @@ index 0356398..38859d5 100644
          }
        },
        // The overhead of the browser->renderer IPC may be non trivial. Account
-@@ -7232,7 +7242,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7175,7 +7185,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
        weak_ptr_factory_.GetWeakPtr(),
        before_unload_end_time - browser_to_renderer_ipc_time_delta, proceed,
        unload_ack_is_for_navigation_,
@@ -586,7 +587,7 @@ index 0356398..38859d5 100644
  
    if (is_frame_being_destroyed) {
      CHECK(proceed);
-@@ -7842,8 +7853,15 @@ bool RenderFrameHostImpl::HasStickyUserActivationForHistoryIntervention()
+@@ -7785,8 +7796,15 @@ bool RenderFrameHostImpl::HasStickyUserActivationForHistoryIntervention()
  }
  
  void RenderFrameHostImpl::ClosePage(
@@ -604,7 +605,7 @@ index 0356398..38859d5 100644
    // This path is taken when tab/window close is initiated by either the
    // browser process or via a window.close() call through a proxy. In both
    // cases, we need to tell the main frame's renderer process to run unload
-@@ -7866,24 +7884,32 @@ void RenderFrameHostImpl::ClosePage(
+@@ -7809,24 +7827,32 @@ void RenderFrameHostImpl::ClosePage(
  
    if (IsRenderFrameLive() && !IsPageReadyToBeClosed()) {
      close_timeout_ = std::make_unique<input::TimeoutMonitor>(
@@ -644,7 +645,7 @@ index 0356398..38859d5 100644
    if (close_timeout_) {
      close_timeout_->Stop();
      close_timeout_.reset();
-@@ -7919,7 +7945,8 @@ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
+@@ -7862,7 +7888,8 @@ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
      return;
    }
  
@@ -654,7 +655,7 @@ index 0356398..38859d5 100644
  }
  
  bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
-@@ -7935,13 +7962,20 @@ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
+@@ -7878,13 +7905,20 @@ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
  }
  
  void RenderFrameHostImpl::ClosePageTimeout(
@@ -678,7 +679,7 @@ index 0356398..38859d5 100644
  }
  
  void RenderFrameHostImpl::SetWindowRect(const gfx::Rect& bounds,
-@@ -10652,6 +10686,79 @@ void RenderFrameHostImpl::CreateNewWindow(
+@@ -10625,6 +10659,79 @@ void RenderFrameHostImpl::CreateNewWindow(
      return;
    }
  
@@ -758,7 +759,7 @@ index 0356398..38859d5 100644
    // Otherwise, consume user activation before we proceed. In particular, it is
    // important to do this before we return from the |opener_suppressed| case
    // below.
-@@ -12395,6 +12502,16 @@ void RenderFrameHostImpl::Stop() {
+@@ -12418,6 +12525,16 @@ void RenderFrameHostImpl::Stop() {
    GetAssociatedLocalFrame()->StopLoading();
  }
  
@@ -775,7 +776,7 @@ index 0356398..38859d5 100644
  void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
                                                 bool is_reload) {
    TRACE_EVENT("navigation", "RenderFrameHostImpl::DispatchBeforeUnload",
-@@ -12437,9 +12554,12 @@ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
+@@ -12460,9 +12577,12 @@ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
      // Dispatch the ACK to prevent re-entrancy.
      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
          FROM_HERE,
@@ -792,10 +793,10 @@ index 0356398..38859d5 100644
    }
  
 diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/browser/renderer_host/render_frame_host_impl.h
-index 7bd838f..7f4ae89 100644
+index 7e846e4..1dd880e 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.h
 +++ b/content/browser/renderer_host/render_frame_host_impl.h
-@@ -1461,6 +1461,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -1310,6 +1310,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
    // corresponds to tab close and not a navigation, |is_reload| should be
    // false.
    void DispatchBeforeUnload(BeforeUnloadType type, bool is_reload);
@@ -803,7 +804,7 @@ index 7bd838f..7f4ae89 100644
  
    // Simulate beforeunload completion callback on behalf of renderer if it's
    // unrenresponsive.
-@@ -3233,6 +3234,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -3039,6 +3040,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
    void ClosePage(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -814,7 +815,7 @@ index 7bd838f..7f4ae89 100644
  
    // When true, indicates that the unload handlers have already executed (e.g.,
    // after receiving a ClosePage ACK) or that they should be ignored. This is
-@@ -3689,6 +3694,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -3505,6 +3510,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
    // mojom::FrameHost:
    void CreateNewWindow(mojom::CreateNewWindowParamsPtr params,
                         CreateNewWindowCallback callback) override;
@@ -828,7 +829,7 @@ index 7bd838f..7f4ae89 100644
    void GetKeepAliveHandleFactory(
        mojo::PendingReceiver<blink::mojom::KeepAliveHandleFactory> receiver)
        override;
-@@ -4444,6 +4456,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4284,6 +4296,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
    void ClosePageIgnoringUnloadEvents(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -839,7 +840,7 @@ index 7bd838f..7f4ae89 100644
  
    // Called when this frame's page has started closing via ClosePage(), and the
    // timer for running unload events has expired. The `source` parameter
-@@ -4455,6 +4471,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4295,6 +4311,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
    void ClosePageTimeout(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -850,7 +851,7 @@ index 7bd838f..7f4ae89 100644
  
    // Perform pre-conditions checks on RenderFrameHost lifecycle state and fenced
    // frame properties that are common for `SendFencedFrameReportingBeacon()` and
-@@ -4816,6 +4836,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4659,6 +4679,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
    // TODO(clamy): Remove this boolean and add one more state to the state
    // machine.
    bool is_waiting_for_beforeunload_completion_ = false;
@@ -860,7 +861,7 @@ index 7bd838f..7f4ae89 100644
    // Valid only when |is_waiting_for_beforeunload_completion_| is true. This
    // indicates whether a subsequent request to launch a modal dialog should be
 diff --git a/content/browser/renderer_host/render_frame_host_manager.cc b/content/browser/renderer_host/render_frame_host_manager.cc
-index f840f24..9549855 100644
+index bccbce4..0aa91e0 100644
 --- a/content/browser/renderer_host/render_frame_host_manager.cc
 +++ b/content/browser/renderer_host/render_frame_host_manager.cc
 @@ -104,6 +104,15 @@
@@ -876,10 +877,10 @@ index f840f24..9549855 100644
 +}
 +
 +
- using LifecycleStateImpl = RenderFrameHostImpl::LifecycleStateImpl;
  using perfetto::protos::pbzero::ChromeTrackEvent;
  
-@@ -978,6 +987,14 @@ void RenderFrameHostManager::SetIsLoading(bool is_loading) {
+ namespace {
+@@ -972,6 +981,14 @@ void RenderFrameHostManager::SetIsLoading(bool is_loading) {
  }
  
  void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
@@ -894,7 +895,7 @@ index f840f24..9549855 100644
    // If beforeunload was dispatched as part of preparing this frame for
    // attaching an inner delegate, continue attaching now.
    if (is_attaching_inner_delegate()) {
-@@ -990,9 +1007,19 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
+@@ -984,9 +1001,19 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
      return;
    }
  
@@ -916,7 +917,7 @@ index f840f24..9549855 100644
    if (proceed_to_fire_unload) {
      // If we're about to close the tab and there's a speculative RFH, cancel it.
      // Otherwise, if the navigation in the speculative RFH completes before the
-@@ -1005,8 +1032,9 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
+@@ -999,8 +1026,9 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
      // TODO(crbug.com/40252524): This is not always browser-initiated, so
      // we should track whether the close is browser or renderer-initiated and
      // use that here.
@@ -929,10 +930,10 @@ index f840f24..9549855 100644
  }
  
 diff --git a/content/browser/renderer_host/render_frame_host_manager.h b/content/browser/renderer_host/render_frame_host_manager.h
-index b175efa..8a72c52 100644
+index bccc510..918d4b8 100644
 --- a/content/browser/renderer_host/render_frame_host_manager.h
 +++ b/content/browser/renderer_host/render_frame_host_manager.h
-@@ -211,6 +211,10 @@ class CONTENT_EXPORT RenderFrameHostManager {
+@@ -212,6 +212,10 @@ class CONTENT_EXPORT RenderFrameHostManager {
      virtual void BeforeUnloadFiredFromRenderManager(
          bool proceed,
          bool* proceed_to_fire_unload) = 0;
@@ -943,7 +944,7 @@ index b175efa..8a72c52 100644
      virtual void CancelModalDialogsForRenderManager() = 0;
      virtual void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) = 0;
      virtual void NotifySwappedFromRenderManager(
-@@ -410,6 +414,9 @@ class CONTENT_EXPORT RenderFrameHostManager {
+@@ -411,6 +415,9 @@ class CONTENT_EXPORT RenderFrameHostManager {
    //      in which case beforeunload is triggered in the current frame. This
    //      only happens for child frames.
    void BeforeUnloadCompleted(bool proceed);
@@ -954,10 +955,10 @@ index b175efa..8a72c52 100644
    // Called when a renderer's frame navigates.
    void DidNavigateFrame(
 diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
-index c6d3b30..4ffc19c 100644
+index 6d6d094..e2822ef 100644
 --- a/content/browser/web_contents/web_contents_impl.cc
 +++ b/content/browser/web_contents/web_contents_impl.cc
-@@ -3316,6 +3316,11 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
+@@ -3323,6 +3323,11 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
    return false;
  }
  
@@ -969,7 +970,7 @@ index c6d3b30..4ffc19c 100644
  void WebContentsImpl::DispatchBeforeUnload(bool auto_cancel) {
    OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::DispatchBeforeUnload",
                          "auto_cancel", auto_cancel);
-@@ -5608,6 +5613,7 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5617,6 +5622,7 @@ FrameTree* WebContentsImpl::CreateNewWindow(
    TRACE_EVENT2("browser,content,navigation", "WebContentsImpl::CreateNewWindow",
                 "opener", opener, "params", params);
    DCHECK(opener);
@@ -977,7 +978,7 @@ index c6d3b30..4ffc19c 100644
  
    // Block Document Picture-in-Picture window creation if the delegate reports
    // that the OS currently prevents it (e.g., Android in app fullscreen).
-@@ -5661,6 +5667,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5671,6 +5677,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
      }
      web_contents_impl->is_popup_ =
          params.disposition == WindowOpenDisposition::NEW_POPUP;
@@ -988,7 +989,7 @@ index c6d3b30..4ffc19c 100644
      return &web_contents_impl->GetPrimaryFrameTree();
    }
  
-@@ -5766,6 +5776,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5776,6 +5786,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
  
    // Sets the newly created WebContents WindowOpenDisposition.
    new_contents_impl->original_window_open_disposition_ = params.disposition;
@@ -999,7 +1000,7 @@ index c6d3b30..4ffc19c 100644
  
    // If the new frame has a name, make sure any SiteInstances that can find
    // this named frame have proxies for it.  Must be called after
-@@ -9631,6 +9645,28 @@ void WebContentsImpl::NotifyOnJavaScriptDialogDismiss(
+@@ -9670,6 +9684,28 @@ void WebContentsImpl::NotifyOnJavaScriptDialogDismiss(
    javascript_dialog_dismiss_notifier_->NotifyOnDismiss(std::move(callback));
  }
  
@@ -1028,7 +1029,7 @@ index c6d3b30..4ffc19c 100644
  void WebContentsImpl::Close(RenderFrameHostImpl* render_frame_host) {
    if (GuestPageHolderImpl* guest_holder =
            GuestPageHolderImpl::FromRenderFrameHost(*render_frame_host)) {
-@@ -11291,6 +11327,23 @@ void WebContentsImpl::RendererResponsive(
+@@ -11330,6 +11366,23 @@ void WebContentsImpl::RendererResponsive(
    }
  }
  
@@ -1053,7 +1054,7 @@ index c6d3b30..4ffc19c 100644
      bool proceed,
      bool* proceed_to_fire_unload) {
 diff --git a/content/browser/web_contents/web_contents_impl.h b/content/browser/web_contents/web_contents_impl.h
-index e0e8ed5..0a6e833 100644
+index c2c99af..e6d8647 100644
 --- a/content/browser/web_contents/web_contents_impl.h
 +++ b/content/browser/web_contents/web_contents_impl.h
 @@ -513,6 +513,8 @@ class CONTENT_EXPORT WebContentsImpl
@@ -1084,7 +1085,7 @@ index e0e8ed5..0a6e833 100644
    void RunBeforeUnloadConfirm(
        RenderFrameHostImpl* render_frame_host,
        bool is_reload,
-@@ -1279,6 +1286,10 @@ class CONTENT_EXPORT WebContentsImpl
+@@ -1282,6 +1289,10 @@ class CONTENT_EXPORT WebContentsImpl
    void BeforeUnloadFiredFromRenderManager(
        bool proceed,
        bool* proceed_to_fire_unload) override;
@@ -1096,7 +1097,7 @@ index e0e8ed5..0a6e833 100644
    void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) override;
    void NotifySwappedFromRenderManager(RenderFrameHostImpl* old_frame,
 diff --git a/content/public/browser/web_contents_delegate.cc b/content/public/browser/web_contents_delegate.cc
-index 5159cb2..384c674 100644
+index 2de5b33..d4acdc9 100644
 --- a/content/public/browser/web_contents_delegate.cc
 +++ b/content/public/browser/web_contents_delegate.cc
 @@ -33,6 +33,16 @@
@@ -1117,7 +1118,7 @@ index 5159cb2..384c674 100644
  
  WebContents* WebContentsDelegate::OpenURLFromTab(
 diff --git a/content/public/browser/web_contents_delegate.h b/content/public/browser/web_contents_delegate.h
-index c3d8d88..902e113 100644
+index 5c742e1..fad388d 100644
 --- a/content/public/browser/web_contents_delegate.h
 +++ b/content/public/browser/web_contents_delegate.h
 @@ -5,6 +5,8 @@

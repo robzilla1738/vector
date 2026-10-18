@@ -6,6 +6,24 @@ Full Aside parity and browser readiness remain active and incomplete on local
 retired preview handles are in [historical status](STATUS-HISTORY-2026-10-17.md).
 Older entries there are not current operating instructions.
 
+## Local main consolidation — October 17
+
+All completed readiness implementation is consolidated on local `main`, including
+Chromium 155.0.8059.85, its rebased native areas and build fixes from
+`codex/chromium-155-security`. The product branch's named providers and shared
+tool schemas were already integrated; main also retains subsequent authority fixes.
+The isolated preview remains frozen at its original source and ownership below.
+No stable Chromium checkout was reset, and nothing was pushed or released.
+The consolidation check passed typecheck, lint and all 4,784 tests across 762
+files in 95.15s (`/tmp/aux-main-consolidation-check.log`). Application, runtime,
+launcher and native source match the compiled candidate; only current docs differ.
+No redundant native rebuild was needed for this source-identical consolidation.
+
+This consolidation changes the development baseline, not its acceptance status.
+The unresolved SIGTRAP, native visual comparison, migration and browser smoke
+checks remain open. Use the matching 155 source for future native builds; the
+older 154 product/stock trees are not matching build or benchmark inputs.
+
 ## Current build ownership
 
 The current local preview is the isolated155candidate `a22cc01b2`, containing
@@ -35,7 +53,7 @@ frame is unresolved. The trap did not recur during these startup/retirement
 observations. The first155storage-factor timeout also has no established cause;
 subsequent fresh Profiles started without it and no timeout workaround was added.
 This is build/startup/retirement evidence, not migration or full-browser acceptance.
-Root main remains pinned154; stable product/stock checkouts are unchanged.
+Root main is now pinned to 155.0.8059.85; stable product/stock checkouts are unchanged.
 
 Native UI control is unavailable: Sky reports a native-pipe startup error, and
 CUA initialization references a removed browser plugin26.1013.31256 while the
@@ -67,8 +85,7 @@ stays immediate and reduced motion disables layout/reveal transitions.
 A final override pass removed the sidebar-address and Settings model-picker
 rules that disabled blur, along with separate tab-switcher/omnibox recipes.
 The narrow right-rail overlay uses the shared material; docked rails retain native
-window glass. The interrupted candidate builder12589 retired before native
-compilation so this complete source can be frozen for one build.
+window glass. The complete source was compiled in the 35-step native build recorded above.
 
 The final integrated `npm run check` passed typecheck, lint and all4,784tests/
 762files in91.75s (`/tmp/aux-final-popup-overrides-check.log`), including the
