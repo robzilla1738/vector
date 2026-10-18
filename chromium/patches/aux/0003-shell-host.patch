@@ -4075,3 +4075,52 @@ index 711d4bb..48be603 100644
  }
  
  if (load_webui_from_disk) {
+diff --git a/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc b/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
+--- a/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
++++ b/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/webui_browser/webui_stub_location_bar.h"
+ 
+ #include "base/notimplemented.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -15,6 +16,7 @@
+ #include "chrome/browser/ui/views/permissions/chip/webui_permission_dashboard.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "ui/views/bubble/bubble_border.h"
++#include "ui/views/widget/widget.h"
+ 
+ WebUIStubLocationBar::WebUIStubLocationBar(WebUIBrowserWindow* window)
+     : LocationBar(chrome::BrowserCommandController::From(window->browser())),
+@@ -108,6 +110,14 @@
+ std::optional<bubble_anchor_util::AnchorConfiguration>
+ WebUIStubLocationBar::GetChipAnchor() {
+   ui::TrackedElement* location_button = GetAnchorOrNull();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Aux owns its toolbar DOM and does not register Webium's location icon.
++  // Use the original native window, as other WebUI bubbles already do.
++  if (!location_button) {
++    return {{views::BubbleAnchor(window_->widget()->GetContentsView()),
++             std::nullopt, views::BubbleBorder::TOP_LEFT}};
++  }
++#endif
+   return {{views::BubbleAnchor(location_button), std::nullopt,
+            views::BubbleBorder::TOP_LEFT}};
+ }
+@@ -142,8 +152,14 @@
+ }
+ 
+ bool WebUIStubLocationBar::IsDrawn() const {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Aux's toolbar does not host the native permission chip or its animation
++  // callbacks. Let Chromium show its ordinary permission bubble directly.
++  return false;
++#else
+   NOTIMPLEMENTED();
+   return true;
++#endif
+ }
+ 
+ bool WebUIStubLocationBar::IsFullscreen() const {
