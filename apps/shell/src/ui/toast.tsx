@@ -1,4 +1,4 @@
-import { Button, IconButton } from "./index";
+import { Button, IconButton } from "./button";
 import { useEffect, useState } from "react";
 import { shellIconAlert, shellIconCheck, shellIconClose } from "./icons";
 import "./toast.css";

@@ -15,6 +15,29 @@ jobs and immutable originals; image references; generated native window ownershi
 Google/MCP/search adapters; and separate selected-app desktop capture. Capture is
 off by default, with no apps selected or OCR permission granted in development.
 
+Current source fixes the reproduced Settings address-acceptance transition by
+retiring only the still-owned foreground overlay after a successful native reply.
+Window, route, view and newer editor interaction fence delayed replies. Background
+opens and refused requests preserve the original view and durable Memory drafts.
+Desktop final shutdown now joins original reads/starts/serialized changes and closes
+recall even after a failed stop. Only structural closure of the original authenticated
+native channel skips the impossible final stop request; live pause/Forget errors
+remain failures. This source correction awaits current native retirement evidence.
+Toast now imports the unchanged canonical buttons through their narrow leaf: matched
+production fixtures remove8,852 startup JS bytes with identical CSS, at a1,129-byte
+total-JS increase. A combined current production/native measurement remains pending.
+[The integration record](evidence/aside-navigation-shutdown-2026-10-18.json) separates
+source, tests, measured private builds and native observations.
+
+Deeper current-source review reproduced four Memory gaps: a global1,000-run cutoff
+can hide eligible sessions in another Space; empty reports can count toward Dream;
+owner proposal acceptance can mutate text before key preparation succeeds; and source
+retirement during preparation can escape the last publication check. Corrections
+and failure fixtures are in progress. Dream is not accepted from source presence or
+earlier passing tests. Further granular captured-surface audits have also identified
+remaining Home/menu/Settings/selection layout differences; native all-surface parity
+remains open.
+
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
 byte-upload/completion protocols. Schema12 protects transfer manifests and private
@@ -80,9 +103,11 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated check passes typecheck, lint and all **5,621tests across
-844files** in100.83s. Runtime dist was rebuilt before tests.
-Log: `/tmp/aux-docs-rich-integrated-check.log`.
+The latest integrated check passes typecheck, lint and all **5,640tests across
+846files** in105.17s. Runtime dist was rebuilt before tests.
+Log: `/tmp/aux-navigation-shutdown-integrated-check.log`.
+The preceding rich-Docs slice passed5,621tests/844files in100.83s
+(`/tmp/aux-docs-rich-integrated-check.log`).
 The preceding connector/schema slice passed5,593tests/843files after repairing an
 unconditional transfer-body startup scan and a resolver-versus-dispatch fixture
 assumption. Its exact reviews and scope are recorded in

@@ -118,6 +118,15 @@ write authority stays retired. Cached structural MCP tool proof determines local
 availability; it neither grants OAuth authority nor probes credentials/network during
 model preparation. Dispatch retains fresh authenticated provider checks.
 
+Native address acceptance retires its original foreground overlay through the
+ordinary shell path. Window, route, view and subsequent editor-interaction ownership
+prevent a late reply from dismissing newer work. Background navigation does not
+close Settings. Final desktop-context shutdown synchronously closes admission, joins
+original attachment/start and serialized operations, then stops capture and closes
+recall. A permanently closed original RpcChannel proves the native disconnect path
+owns producer retirement; this exception applies only to final shutdown. Live pause
+and Forget still require the actual stop acknowledgement and retain failures.
+
 Selected-app desktop context is a separate encrypted local source service, off by
 default. Ordinary Memory enablement grants no desktop access. Native accessibility
 text and separately permitted local OCR retain explicit app selection, original

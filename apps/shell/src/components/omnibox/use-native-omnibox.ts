@@ -93,22 +93,58 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
   }, [isCurrent, snapshot, sameOwner]);
   const accept = useCallback(
     async (input: Parameters<(typeof bridge)["omnibox.open"]>[0]) => {
-      const origin = useStore.getState();
-      const accepted = await bridge["omnibox.open"](input);
-      const current = useStore.getState();
-      // Native navigation selects its tab, but the shell must also leave the
-      // chat/history view. A delayed response must not dismiss a newer view.
-      if (
-        accepted &&
-        input.disposition !== "new-background-tab" &&
-        sameOwner() &&
-        current.mode === origin.mode &&
-        current.conversationId === origin.conversationId &&
-        current.overlay === origin.overlay &&
-        current.focusRequest === origin.focusRequest
-      )
-        current.setMode("focus");
-      return accepted;
+      const origin = useStore.getState(),
+        path = window.location.href;
+      const ownsView = () => {
+        const current = useStore.getState();
+        return (
+          sameOwner() &&
+          window.location.href === path &&
+          current.mode === origin.mode &&
+          current.conversationId === origin.conversationId &&
+          current.overlay === origin.overlay &&
+          current.focusRequest === origin.focusRequest &&
+          (origin.overlay !== "settings" ||
+            (current.settingsPageTitle === origin.settingsPageTitle &&
+              current.settingsCategory === origin.settingsCategory))
+        );
+      };
+      let retired = false;
+      const unsubscribe = useStore.subscribe(() => {
+        if (!ownsView()) retired = true;
+      });
+      const retireRoute = () => {
+        retired = true;
+      };
+      const retireEditor = (event: Event) => {
+        if (
+          origin.overlay === "settings" &&
+          event.target instanceof Element &&
+          event.target.closest(".settings-page")
+        )
+          retired = true;
+      };
+      window.addEventListener("popstate", retireRoute);
+      document.addEventListener("input", retireEditor, true);
+      document.addEventListener("pointerdown", retireEditor, true);
+      document.addEventListener("keydown", retireEditor, true);
+      try {
+        const accepted = await bridge["omnibox.open"](input);
+        // Native acceptance bypasses activate(); reveal its foreground page through the same ordinary overlay retirement.
+        // A newer route/editor remains owned by the user even if an earlier native acknowledgement arrives later.
+        if (accepted && input.disposition !== "new-background-tab" && !retired && ownsView()) {
+          const current = useStore.getState();
+          if (current.overlay !== "find") current.setOverlay(null);
+          current.setMode("focus");
+        }
+        return accepted;
+      } finally {
+        unsubscribe();
+        window.removeEventListener("popstate", retireRoute);
+        document.removeEventListener("input", retireEditor, true);
+        document.removeEventListener("pointerdown", retireEditor, true);
+        document.removeEventListener("keydown", retireEditor, true);
+      }
     },
     [sameOwner],
   );

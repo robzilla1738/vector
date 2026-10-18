@@ -26,6 +26,8 @@ import type { DesktopContextStore } from "./desktop-context-store.js";
 export type DesktopContextDependencies = {
   store: DesktopContextStore;
   native: DesktopContextNativePort;
+  /** Final shutdown only: the original authenticated native channel has permanently closed. */
+  nativeOwnerDisconnected?(): boolean;
   settings(): DesktopContextSettings;
   saveSettings(settings: DesktopContextSettings): void;
   workspaceEligible(workspaceId: string): boolean;
@@ -58,6 +60,8 @@ export class DesktopContextService {
   private work = new Set<{ controller: AbortController; done: Promise<unknown> }>();
   private recent = new Map<string, { text: string; at: number }>();
   private polling?: Promise<void>;
+  private starting = new Set<Promise<void>>();
+  private closing?: Promise<void>;
   constructor(private readonly deps: DesktopContextDependencies) {}
   private now() {
     return this.deps.now?.() ?? Date.now();
@@ -66,9 +70,21 @@ export class DesktopContextService {
     return DesktopContextSettingsSchema.parse(this.deps.settings());
   }
   private enqueue<T>(action: () => Promise<T>): Promise<T> {
-    const pending = this.serial.then(action, action);
+    const guarded = () => {
+      this.checkOpen();
+      return action();
+    };
+    const pending = this.serial.then(guarded, guarded);
     this.serial = pending.catch(() => {});
     return pending;
+  }
+  private checkOpen() {
+    if (this.closed) throw new AuxError("cancelled", "Desktop context is closed.");
+  }
+  private async checkOwner(checkOwner: () => Promise<void>) {
+    this.checkOpen();
+    await checkOwner();
+    this.checkOpen();
   }
   private check(
     epoch: number,
@@ -203,8 +219,21 @@ export class DesktopContextService {
       .slice(0, 200);
   }
   /** No prompting on startup. Native saved consent must match before attaching. */
-  async start() {
+  start(): Promise<void> {
+    const pending = this.startOwned();
+    this.starting.add(pending);
+    void pending.finally(() => this.starting.delete(pending)).catch(() => {});
+    return pending;
+  }
+  private async startOwned() {
+    this.checkOpen();
+    const epoch = this.epoch;
+    const check = () => {
+      this.checkOpen();
+      if (this.epoch !== epoch) fail("Original desktop startup was retired.");
+    };
     await this.deps.store.retireKeys();
+    check();
     const settings = this.settings();
     if (
       settings.enabled &&
@@ -213,20 +242,35 @@ export class DesktopContextService {
       this.deps.workspaceEligible(settings.workspaceId)
     )
       await this.deps.native.attach(settings);
+    check();
     this.retiring = false;
   }
   async reconcilePolicy() {
+    this.checkOpen();
     await this.retire();
     await this.start();
   }
-  private async retire() {
+  private abortWork() {
     this.retiring = true;
     this.epoch++;
     this.recent.clear();
     this.recall.invalidate();
-    for (const entry of this.work) entry.controller.abort();
-    await this.deps.native.stop();
-    await Promise.allSettled([...this.work].map((entry) => entry.done));
+    const original = [...this.work];
+    for (const entry of original) entry.controller.abort();
+    return original.map((entry) => entry.done);
+  }
+  private async retire(finalShutdown = false) {
+    const original = this.abortWork();
+    const disconnected = () => finalShutdown && this.deps.nativeOwnerDisconnected?.() === true;
+    try {
+      if (!disconnected()) await this.deps.native.stop();
+    } catch (error) {
+      // Only the original transport's permanent close proves the producer retired.
+      // Live pause/Forget and ordinary backend failures still need a stop receipt.
+      if (!disconnected()) throw error;
+    } finally {
+      await Promise.allSettled(original);
+    }
   }
   async configure(
     expectedRevision: number,
@@ -245,17 +289,17 @@ export class DesktopContextService {
         );
       if (settings.workspaceId && !this.deps.workspaceEligible(settings.workspaceId))
         throw new AuxError("permission_denied", "Choose an available normal Space.");
-      await checkOwner();
+      await this.checkOwner(checkOwner);
       await this.retire();
-      await checkOwner();
+      await this.checkOwner(checkOwner);
       if (previous.workspaceId) await this.deps.beforeChange?.({ workspaceId: previous.workspaceId });
-      await checkOwner();
+      await this.checkOwner(checkOwner);
       if (previous.workspaceId) {
         for (const app of previous.selectedApps.filter(
           (app) => !settings.selectedApps.some((selected) => selected.bundleId === app.bundleId),
         ))
           await this.deps.store.forgetScope(previous.workspaceId, app.bundleId, async () => {
-            await checkOwner();
+            await this.checkOwner(checkOwner);
             await this.deps.beforeRemoval({
               workspaceId: previous.workspaceId!,
               appBundleIds: [app.bundleId],
@@ -264,7 +308,8 @@ export class DesktopContextService {
       }
       try {
         const status = await this.deps.native.configure(settings, ownerToken);
-        await checkOwner();
+        this.checkOpen();
+        await this.checkOwner(checkOwner);
         if (
           this.settings().revision !== expectedRevision ||
           status.configurationRevision !== settings.revision
@@ -301,9 +346,9 @@ export class DesktopContextService {
       (kind === "ocr-picker" && !settings.ocrEnabled)
     )
       fail();
-    await checkOwner();
+    await this.checkOwner(checkOwner);
     await this.deps.native.permission(kind, expectedRevision, ownerToken);
-    await checkOwner();
+    await this.checkOwner(checkOwner);
     if (this.settings().revision !== expectedRevision) fail();
     return this.snapshot();
   }
@@ -689,12 +734,13 @@ export class DesktopContextService {
     checkOwner: () => Promise<void> = async () => {},
     ownerToken = "",
   ) {
+    this.checkOpen();
     await this.retire();
     return this.enqueue(async () => {
-      await checkOwner();
+      await this.checkOwner(checkOwner);
       if (this.settings().revision !== expectedRevision) fail();
       const beforeRemoval = async () => {
-        await checkOwner();
+        await this.checkOwner(checkOwner);
         const appBundleIds = appBundleId
           ? [appBundleId]
           : captureId
@@ -716,13 +762,15 @@ export class DesktopContextService {
       // Forget leaves native collection stopped. The owner must explicitly resume it.
       const current = this.settings();
       const settings = { ...current, revision: current.revision + 1, paused: true };
-      await checkOwner();
+      await this.checkOwner(checkOwner);
       await this.deps.native.configure(settings, ownerToken);
+      this.checkOpen();
       this.deps.saveSettings(settings);
       return { removed, ...(await this.snapshot()) };
     });
   }
   async expire() {
+    this.checkOpen();
     if (!this.deps.store.expiredCount(this.now())) return { removed: 0 };
     await this.retire();
     return this.enqueue(async () => {
@@ -746,12 +794,31 @@ export class DesktopContextService {
     });
   }
   async retireWorkspace(workspaceId: string) {
+    this.checkOpen();
     if (this.settings().workspaceId === workspaceId) await this.retire();
   }
-  async shutdown() {
+  shutdown(): Promise<void> {
+    if (this.closing) return this.closing;
     this.closed = true;
-    await this.retire();
-    await this.serial;
-    await this.recall.close();
+    this.abortWork();
+    this.closing = (async () => {
+      const failures: unknown[] = [];
+      // A prior configure/attach must settle before the final stop; it cannot
+      // re-enable capture after that stop has been acknowledged.
+      await Promise.allSettled([this.serial, ...this.starting]);
+      try {
+        await this.retire(true);
+      } catch (error) {
+        failures.push(error);
+      }
+      try {
+        await this.recall.close();
+      } catch (error) {
+        failures.push(error);
+      }
+      if (failures.length === 1) throw failures[0];
+      if (failures.length) throw new AggregateError(failures, "Desktop context shutdown awaits cleanup.");
+    })();
+    return this.closing;
   }
 }

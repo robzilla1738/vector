@@ -402,6 +402,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     blocking: ContentBlockingService | null;
     commandRanking: CommandRankingStore;
   };
+  const desktopNativeChannel = channel;
   const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
     filesystem: () =>
@@ -500,6 +501,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new DesktopContextService({
             store: new DesktopContextStore(repo, native, env.AUX_BROWSER_PROFILE_ID),
+            nativeOwnerDisconnected: () => desktopNativeChannel?.isClosed() === true,
             native: new DesktopContextNativeAdapter(native, async () =>
               Boolean(
                 (await nativeIdentity?.catch(() => undefined))?.methods.includes("native.desktopContext"),

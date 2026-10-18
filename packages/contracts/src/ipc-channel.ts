@@ -51,6 +51,11 @@ export class RpcChannel {
     this.noteHandlers.push(handler);
   }
 
+  /** Permanent state of this original transport, never inferred from an RPC error. */
+  isClosed(): boolean {
+    return this.closed;
+  }
+
   call<T = unknown>(method: string, params?: unknown, timeoutMs = 30_000): Promise<T> {
     if (this.closed)
       return Promise.reject(new AuxError("backend_unavailable", `${this.label}: channel closed`));
