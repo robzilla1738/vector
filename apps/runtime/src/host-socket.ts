@@ -5,6 +5,8 @@ import type { Transport } from "@aux/contracts";
 
 export const AUX_HOST_PROTOCOL = "aux-host-v1";
 export const MAX_HOST_FRAME_BYTES = 16 * 1024 * 1024;
+export const MAX_HOST_OUTGOING_BYTES = 2 * MAX_HOST_FRAME_BYTES;
+export const HOST_OUTPUT_DEADLINE_MS = 5_000;
 
 export interface HostSocketTransport extends Transport {
   close(): void;
@@ -32,22 +34,54 @@ export function connectHostSocket(
     let buffer = "";
     let authenticated = false;
     let closed = false;
+    let closing = false;
+    let outputDeadline: ReturnType<typeof setTimeout> | undefined;
     let messageCallback: ((message: unknown) => void) | null = null;
     const closeCallbacks = new Set<() => void>();
     const pending: unknown[] = [];
     const timer = setTimeout(() => fail(new Error("Aux host socket handshake timed out")), timeoutMs);
 
     const fail = (error: Error) => {
+      closing = true;
       clearTimeout(timer);
+      clearTimeout(outputDeadline);
       socket.destroy();
       if (!authenticated) reject(error);
     };
+    const boundOutput = () => {
+      outputDeadline ??= setTimeout(
+        () => fail(new Error("Aux host output did not drain or close in time")),
+        HOST_OUTPUT_DEADLINE_MS,
+      );
+      outputDeadline.unref();
+    };
+    const drained = () => {
+      if (!closing && socket.writableLength === 0) {
+        clearTimeout(outputDeadline);
+        outputDeadline = undefined;
+      }
+    };
+    socket.on("drain", drained);
     const transport: HostSocketTransport = {
       send(message) {
-        if (closed || !authenticated) throw new Error("Aux host socket is closed");
+        if (closed || closing || !authenticated) throw new Error("Aux host socket is closed");
         const frame = `${JSON.stringify(message)}\n`;
-        if (Buffer.byteLength(frame) > MAX_HOST_FRAME_BYTES) throw new Error("Aux host frame is too large");
-        socket.write(frame);
+        const bytes = Buffer.byteLength(frame);
+        if (bytes > MAX_HOST_FRAME_BYTES || socket.writableLength + bytes > MAX_HOST_OUTGOING_BYTES) {
+          const error = new Error("Aux host outgoing byte limit exceeded");
+          fail(error);
+          throw error;
+        }
+        try {
+          const accepted = socket.write(Buffer.from(frame, "utf8"), (error) => {
+            if (error) fail(error);
+            else drained();
+          });
+          if (!accepted || socket.writableLength > 0) boundOutput();
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error("Aux host socket write failed"));
+          throw error;
+        }
       },
       onMessage(callback) {
         messageCallback = callback;
@@ -55,7 +89,10 @@ export function connectHostSocket(
         // startup methods before delivering requests bundled with the handshake.
         const backlog = pending.splice(0);
         queueMicrotask(() => {
-          if (!closed) for (const message of backlog) messageCallback?.(message);
+          for (const message of backlog) {
+            if (closed || closing) break;
+            messageCallback?.(message);
+          }
         });
       },
       onClose(callback) {
@@ -63,6 +100,9 @@ export function connectHostSocket(
         else closeCallbacks.add(callback);
       },
       close() {
+        if (closed || closing) return;
+        closing = true;
+        boundOutput();
         socket.end();
       },
     };
@@ -74,12 +114,14 @@ export function connectHostSocket(
       );
     });
     socket.on("data", (chunk: string) => {
+      if (closing) return;
       buffer += chunk;
       if (Buffer.byteLength(buffer) > MAX_HOST_FRAME_BYTES) {
         fail(new Error("Aux host frame is too large"));
         return;
       }
       for (let end = buffer.indexOf("\n"); end >= 0; end = buffer.indexOf("\n")) {
+        if (closing) break;
         const line = buffer.slice(0, end);
         buffer = buffer.slice(end + 1);
         if (!line) continue;
@@ -114,6 +156,8 @@ export function connectHostSocket(
     socket.on("error", fail);
     socket.on("close", () => {
       clearTimeout(timer);
+      clearTimeout(outputDeadline);
+      closing = true;
       closed = true;
       if (!authenticated) reject(new Error("Aux host socket closed before authentication"));
       for (const callback of closeCallbacks) callback();

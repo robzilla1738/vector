@@ -66,7 +66,13 @@ export class RpcChannel {
         reject(new AuxError("condition_timeout", `${this.label}: ${method} timed out`));
       }, timeoutMs);
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
-      this.transport.send({ kind: "req", id, method, params });
+      try {
+        this.transport.send({ kind: "req", id, method, params });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 
@@ -75,23 +81,35 @@ export class RpcChannel {
     this.transport.send({ kind: "note", type, payload });
   }
 
+  /** A failed original reply cannot be retried as another response or acknowledged locally. */
+  private respond(frame: Frame) {
+    if (this.closed) return;
+    try {
+      this.transport.send(frame);
+    } catch {
+      /* The original peer receives no ACK; its receipt/timeout remains authoritative. */
+    }
+  }
+
   private async onFrame(f: Frame) {
+    if (this.closed) return;
     if (f.kind === "req" && f.id !== undefined && f.method) {
       const handler = this.handlers.get(f.method);
       if (!handler) {
-        this.transport.send({
+        this.respond({
           kind: "res",
           id: f.id,
           error: toErrorPayload(new AuxError("not_found", "Unknown method")),
         });
         return;
       }
+      let response: Frame;
       try {
-        const result = await handler(f.params);
-        this.transport.send({ kind: "res", id: f.id, result });
-      } catch (e) {
-        this.transport.send({ kind: "res", id: f.id, error: toErrorPayload(e) });
+        response = { kind: "res", id: f.id, result: await handler(f.params) };
+      } catch (error) {
+        response = { kind: "res", id: f.id, error: toErrorPayload(error) };
       }
+      this.respond(response);
       return;
     }
     if (f.kind === "res" && f.id !== undefined) {

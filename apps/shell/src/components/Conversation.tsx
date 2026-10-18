@@ -3157,7 +3157,7 @@ function ConversationContent({
                     <RunContext
                       key={last.runId}
                       runId={last.runId}
-                      active={last.status === "running"}
+                      status={last.status}
                       disabled={archived}
                     />
                   )}
