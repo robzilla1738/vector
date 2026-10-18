@@ -231,28 +231,6 @@
 }
 
 @layer components {
-  .cb-pop {
-    transform-origin: top center;
-    animation: omnibox-reveal 160ms var(--ease-out) both;
-  }
-  @keyframes omnibox-reveal {
-    from {
-      opacity: 0;
-      transform: translateY(-4px) scaleY(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .cb-pop {
-      animation: none;
-    }
-  }
-}
-
-@layer components {
   .cb-results-footer {
     flex-wrap: wrap;
     align-items: center;

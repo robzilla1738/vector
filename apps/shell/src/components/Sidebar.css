@@ -614,12 +614,6 @@
 }
 
 @layer overrides {
-  :root .sidebar-address .cmdbar.compact .cb-pop {
-    background: var(--bg-1);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    animation: omnibox-reveal 160ms var(--ease-out) both;
-  }
   .sidebar-address .cb-pop::before,
   .sidebar-address .cb-pop::after {
     content: none;
@@ -629,10 +623,5 @@
   }
   .sidebar-address .cb-source-options > summary {
     white-space: nowrap;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    :root .sidebar-address .cmdbar.compact .cb-pop {
-      animation: none;
-    }
   }
 }

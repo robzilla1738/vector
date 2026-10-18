@@ -6,10 +6,6 @@
     margin: 0;
     padding: 4px;
     border-radius: 16px;
-    background: var(--tab-switcher);
-    box-shadow: var(--shadow-pop), var(--line-inset);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
   }
   .tab-switcher::backdrop {
     background: transparent;
@@ -73,12 +69,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    .aux-native-dialog.tab-switcher {
-      background: var(--surface-menu);
-      backdrop-filter: none;
-    }
   }
   @media (forced-colors: active) {
     .aux-native-dialog.tab-switcher {

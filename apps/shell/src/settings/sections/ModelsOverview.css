@@ -116,8 +116,6 @@
     white-space: nowrap;
   }
   :root .aux-native-dialog.anchored-panel:has(> .settings-model-picker) {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     overflow: visible;
     width: auto;
   }

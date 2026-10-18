@@ -311,7 +311,6 @@
     --chrome-surface: #121212;
     --search-field: #3c3c3c;
     --hover-card: #18181b;
-    --tab-switcher: #171717b3;
     --frame-inactive: #1f2020;
     --frame-active: #3c3c3c;
     --glass: rgb(23 23 23 / 94%);
@@ -470,7 +469,6 @@
     --location-bar: #fff;
     --search-field: #f3f4f6;
     --hover-card: #fff;
-    --tab-switcher: rgb(255 255 255 / 70%);
     --switch-off: #e5e5e5;
     --frame-inactive: #f3f4f6;
     --frame-active: #fff;
