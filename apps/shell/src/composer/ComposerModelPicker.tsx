@@ -211,6 +211,7 @@ export function ComposerModelPicker({
               !filter && provider !== "Models" ? (
                 <ModelProviderMenu
                   key={provider}
+                  menuAnchor={trigger}
                   provider={provider}
                   label={providerName(provider)}
                   open={providerOpen === provider}

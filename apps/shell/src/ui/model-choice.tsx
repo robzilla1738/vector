@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { ModelProviderMark, modelProviderName } from "./model-provider";
 import { Popover } from "./popover";
 import { Check, ChevronDown, Search } from "./icons";
@@ -40,6 +40,10 @@ export function ModelChoice({
 }) {
   const [query, setQuery] = useState("");
   const search = useRef<HTMLInputElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const attachTrigger = useCallback((node: HTMLButtonElement | null) => {
+    trigger.current = node;
+  }, []);
   const [providerOpen, setProviderOpen] = useState<string | null>(null);
   const selected = options.find((model) => model.id === value);
   const name = selected?.name ?? value.split("/").at(-1) ?? "Choose model";
@@ -112,6 +116,7 @@ export function ModelChoice({
           group && !query.trim() ? (
             <ModelProviderMenu
               key={group}
+              menuAnchor={trigger}
               provider={group}
               label={modelProviderName(group)}
               open={providerOpen === group}
@@ -149,6 +154,7 @@ export function ModelChoice({
       <div className="settings-model-control">
         <Popover
           label={`${label} selection`}
+          triggerControl={attachTrigger}
           align="end"
           className="settings-model-trigger"
           disabled={disabled}

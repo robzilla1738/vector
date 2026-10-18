@@ -46,6 +46,11 @@ export function ChatPreferences({
   return (
     <div className="chat-preferences">
       <div className="chat-preferences-context">
+        <ComposerProjectControl
+          draftKey={draftKey}
+          workspaceId={workspaceId}
+          disabled={disabled || !connected}
+        />
         <AgentModeControl
           compact
           active={connected}
@@ -67,11 +72,6 @@ export function ChatPreferences({
               return false;
             }
           }}
-        />
-        <ComposerProjectControl
-          draftKey={draftKey}
-          workspaceId={workspaceId}
-          disabled={disabled || !connected}
         />
       </div>
       <div className="chat-preferences-model">

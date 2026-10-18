@@ -126,7 +126,7 @@ export function AgentModeControl({
               className="agent-mode-menu"
               anchor={trigger}
               returnFocus={trigger}
-              placement="above-start"
+              placement="auto-start"
               onClose={() => setMenuOpen(false)}
             >
               <p className="agent-mode-menu-label">
