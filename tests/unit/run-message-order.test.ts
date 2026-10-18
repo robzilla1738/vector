@@ -4,6 +4,7 @@ import { EventBus, openDb, Repo } from "@aux/runtime";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 import { presentRun } from "../../apps/runtime/src/services/run-presentation.js";
 import { redactedPageRecallConfig } from "@aux/contracts/portable-page-recall";
+import { queuedSourceHash } from "../../apps/runtime/dist/services/queue-context.js";
 
 const queues: RunMessageQueue[] = [];
 const databases: ReturnType<typeof openDb>[] = [];
@@ -64,6 +65,44 @@ function fixture(
 }
 
 describe("revision-bound durable queue order", () => {
+  it.each<Partial<Run>>([
+    { pageIds: ["changed-page"] },
+    { config: { contextPageRefs: [{ pageId: "page", url: "https://changed.test", documentEpoch: 2 }] } },
+    { config: { contextAttachmentIds: ["changed-document"] } },
+    { config: { contextMemoryIds: ["changed-memory"] } },
+    { config: { mentions: [{ kind: "connector", connectorId: "changed-connector" }] } },
+    { config: { externalConnectionId: "changed-connection" } },
+    { config: { externalParentRunId: "changed-parent" } },
+    { config: { accountLabels: ["changed-account"] } },
+    { config: { xGrantIds: [] } },
+    { config: { googleGrantIds: [] } },
+    { config: { calendarGrantIds: [] } },
+  ])("rejects a changed original source or authority: %j", (change) => {
+    const f = fixture();
+    f.add("a");
+    f.add("b");
+    const order = f.queue.order("chat");
+    const original = f.repo.getRun("original")!;
+    const changed = {
+      ...original,
+      ...change,
+      config: { ...original.config, ...change.config },
+    };
+    expect(queuedSourceHash(changed)).not.toBe(queuedSourceHash(original));
+    f.repo.saveRun(changed);
+    expect(() =>
+      f.queue.reorder({ chatId: "chat", expectedRevision: order.revision, messageIds: ["b", "a"] }),
+    ).toThrow(/changed/i);
+    expect(() =>
+      f.queue.reorder({
+        chatId: "chat",
+        expectedRevision: f.queue.order("chat").revision,
+        messageIds: ["b", "a"],
+      }),
+    ).toThrow(/source/i);
+    expect(f.queue.list("chat").map((message) => message.messageId)).toEqual(["a", "b"]);
+  });
+
   it("moves complete payload identities atomically and restores the order after restart", () => {
     const f = fixture();
     const first = f.add("first", "Draft with the original attachments"),

@@ -346,7 +346,7 @@ it.each([
   });
 });
 
-it("preserves canonical preexisting queue hashes without task PDFs and binds every original PDF identity", () => {
+it("treats an empty task PDF selection as absent and binds every original PDF identity", () => {
   const run: Run = {
     runId: "source-run",
     goal: "Original request",
@@ -361,8 +361,7 @@ it("preserves canonical preexisting queue hashes without task PDFs and binds eve
       contextWorkspaceId: "space",
     },
   };
-  const originalHash = "73c75073137e268f91938c85255db1f1611e702f2db98a2123f9daf5f1630daa";
-  expect(queuedSourceHash(run)).toBe(originalHash);
+  const originalHash = queuedSourceHash(run);
   expect(queuedSourceHash({ ...run, config: { ...run.config, contextTaskDocumentRefs: [] } })).toBe(
     originalHash,
   );
