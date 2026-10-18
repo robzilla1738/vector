@@ -3,6 +3,7 @@ import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName, WorkspaceMemory } from "@aux/contracts";
 import { normalWindowOwner } from "./normal-window-owner.js";
 import { AuxError, MethodSchemas } from "@aux/contracts";
+import { memoryOrigin } from "@aux/contracts/memory-context";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
 import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
@@ -99,9 +100,20 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let result: Awaited<ReturnType<typeof store.setPolicy>>;
     try {
-      result = await store.setPolicy(params.workspaceId, params.policy, () => {
+      result = await store.setPolicy(params.workspaceId, params.policy, async () => {
         generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
         advanced = true;
+        const allowedOrigins = params.policy.allowedOrigins.map(memoryOrigin);
+        if (
+          !params.policy.enabled ||
+          (prior.originScope === "safe-sites" &&
+            (params.policy.originScope ?? "safe-sites") !== "safe-sites") ||
+          params.policy.retentionDays < prior.retentionDays ||
+          prior.allowedOrigins.some((origin) => !allowedOrigins.includes(origin))
+        ) {
+          await s.runs.retireArticleTransferSources(params.workspaceId);
+          await revokeArticleRuns(params.workspaceId);
+        }
       });
     } catch (error) {
       if (advanced)
@@ -143,9 +155,11 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let forgotten: number;
     try {
-      forgotten = await store.forget(params.workspaceId, params.memoryId, () => {
+      forgotten = await store.forget(params.workspaceId, params.memoryId, async () => {
         generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
         advanced = true;
+        await s.runs.retireArticleTransferSources(params.workspaceId, params.memoryId);
+        await revokeArticleRuns(params.workspaceId, params.memoryId);
       });
     } catch (error) {
       if (advanced)
@@ -155,7 +169,6 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
         );
       throw error;
     }
-    await revokeArticleRuns(params.workspaceId, params.memoryId);
     await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });

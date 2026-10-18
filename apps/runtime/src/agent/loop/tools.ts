@@ -1,3 +1,4 @@
+import { ConnectorFileUploadInputSchema } from "@aux/contracts/connector-file-upload";
 import { SheetsNavigationInputSchema } from "@aux/contracts/site-adapters";
 import { DesktopContextSearchSchema, DesktopContextReadSchema } from "@aux/contracts/desktop-context";
 import { XToolInputSchema, type XOperation } from "@aux/contracts/x";
@@ -883,6 +884,18 @@ export function buildToolManifest(selection: ToolOperationSelection = {}): LoopT
       inputSchema: PageSummaryInputSchema,
       execute: async (raw, ctx) =>
         need(ctx.deps.pageSummary, "page_summary")(PageSummaryInputSchema.parse(raw)),
+    },
+    connector_file_upload: {
+      available: (deps) => !!deps.connectorFileUpload,
+      description:
+        "Upload an original selected PDF/DOCX through the current captured official Notion or Slack connector. Use the server ID from its mcp: mention and an exact attachment/task_document reference. Only returned supported upload tools and immutable admitted bytes are accepted. Allocation, actual byte upload and optional Slack completion have separate normal authority and durable receipts. Continue only the original opaque transfer ID after review. Inspect never sends bytes. Unsupported instructions and uncertain writes never replay. Notion uploaded does not mean a page or comment was changed. No arbitrary paths, URLs, headers, base64 or account selection.",
+      byline: "Aux governed connector file transfer",
+      inputSchema: ConnectorFileUploadInputSchema,
+      execute: (raw, ctx) =>
+        need(
+          ctx.deps.connectorFileUpload,
+          "connector_file_upload",
+        )(ConnectorFileUploadInputSchema.parse(raw)),
     },
     sheets_navigation: {
       available: (deps) => !!deps.sheetsNavigation,

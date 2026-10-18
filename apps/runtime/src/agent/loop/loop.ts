@@ -1,3 +1,4 @@
+import { prepareToolInputSchema, type ToolSchemaMode } from "../tool-input-schema.js";
 import { MentionUnavailable } from "../turn-mentions.js";
 import { AuxError } from "@aux/contracts";
 import { z } from "zod";
@@ -30,7 +31,7 @@ import { parseLooseJson } from "./tools.js";
  * side effects and replaying is never needed.
  */
 export interface AgentLoopOptions {
-  model: Pick<ModelClient, "toolCallStep">;
+  model: Pick<ModelClient, "toolCallStep" | "toolSchemaMode">;
   modelSource?: import("../model-client.js").ModelCallSource;
   contextOwner?: ConversationContextOwner;
   projectTranscript?: (messages: ModelMessage[]) => ModelMessage[];
@@ -114,11 +115,16 @@ function modelAdmissionPark(error: unknown, opts: AgentLoopOptions): LoopPark | 
 }
 const modelToolsCache = new WeakMap<
   LoopToolManifest,
-  { tools: Record<string, { description: string; inputSchema: z.ZodType }>; bytes: number }
+  Map<
+    ToolSchemaMode,
+    { tools: Record<string, { description: string; inputSchema: z.ZodType }>; bytes: number }
+  >
 >();
 
-export function modelTools(manifest: LoopToolManifest) {
-  const cached = modelToolsCache.get(manifest);
+export function modelTools(manifest: LoopToolManifest, mode: ToolSchemaMode = "inline") {
+  let modes = modelToolsCache.get(manifest);
+  if (!modes) modelToolsCache.set(manifest, (modes = new Map()));
+  const cached = modes.get(mode);
   if (cached) return cached;
   const tools = Object.fromEntries(
     Object.entries(manifest).map(([name, tool]) => [
@@ -131,13 +137,13 @@ export function modelTools(manifest: LoopToolManifest) {
       Object.entries(tools).map(([name, tool]) => ({
         name,
         description: tool.description,
-        schema: z.toJSONSchema(tool.inputSchema),
+        schema: prepareToolInputSchema(tool.inputSchema, mode).jsonSchema,
       })),
     ),
     "utf8",
   );
   const result = { tools, bytes };
-  modelToolsCache.set(manifest, result);
+  modes.set(mode, result);
   return result;
 }
 
@@ -389,7 +395,8 @@ async function runAgentLoopOwned(
       webmcp: opts.webmcp === true,
     });
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS;
-  const sdk = modelTools(tools);
+  const toolSchemaMode = model.toolSchemaMode?.(opts.modelId, opts.maxAttempts) ?? "inline";
+  const sdk = modelTools(tools, toolSchemaMode);
   const initialUser = messages.find((message) => message.role === "user");
   const query =
     initialUser?.role === "user" &&
@@ -600,6 +607,7 @@ async function runAgentLoopOwned(
         system,
         messages: requestMessages,
         tools: callTools,
+        toolSchemaMode,
         signal: opts.signal,
         source: opts.modelSource,
         providerOptions: opts.providerOptions,

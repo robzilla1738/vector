@@ -47,7 +47,7 @@ export class RunMessageQueue {
     private events: EventBus,
     private start: (message: RunMessage) => Promise<Run>,
     private canSteer: (runId: string) => boolean,
-    private signalSteer: (runId: string) => void,
+    private signalSteer: (runId: string) => void | Promise<void>,
   ) {
     this.sendJournal = new SendJournal(repo.db, repo.columnCipher);
     this.unsubscribe = events.subscribe((event) => {
@@ -325,7 +325,7 @@ export class RunMessageQueue {
             { run: this.repo.getRun(message.targetRunId)! },
             message.targetRunId,
           );
-          this.signalSteer(message.targetRunId);
+          await this.signalSteer(message.targetRunId);
         }
         return message;
       },

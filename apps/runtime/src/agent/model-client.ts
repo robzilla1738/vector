@@ -1,3 +1,4 @@
+import type { ToolSchemaMode } from "./tool-input-schema.js";
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
 import {
@@ -264,6 +265,9 @@ export interface ModelClient {
     sessionId?: string;
   }): Promise<TextCallResult>;
 
+  /** Pure current-route schema mode; the prepared mode stays fixed across a failover family. */
+  toolSchemaMode?(modelId: string, maxAttempts?: 1): ToolSchemaMode;
+
   /**
    * One step of the v2 tool-call loop (S5): the model sees the durable
    * transcript plus the client-side tool specs and returns either text or
@@ -273,6 +277,7 @@ export interface ModelClient {
    * reports capability_unsupported.
    */
   toolCallStep?(opts: {
+    toolSchemaMode?: ToolSchemaMode;
     /** Full text received so far for this provider attempt; retries replace prior previews. */
     onText?: (text: string) => void;
     modelId: string;

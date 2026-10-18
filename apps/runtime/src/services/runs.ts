@@ -65,7 +65,10 @@ import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { ConversationImages } from "./conversation-images.js";
 import { RunMessageQueue } from "./run-messages.js";
 import { TaskService } from "./tasks.js";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { isReadOnlyProfile } from "../agent/permissions.js";
+import type { RunControl } from "../agent/coordinator.js";
+import type { ConnectorUploadOwner } from "./connector-file-transfers.js";
 import {
   EventTypes,
   newResultId,
@@ -246,6 +249,8 @@ export class RunService {
   private closed = false;
   private readonly startReceipts: RunStartReceipts;
   private ownedOperations = new Set<Promise<unknown>>();
+  private connectorOwnerNonces = new WeakMap<object, string>();
+  private connectorMentionNonces = new WeakMap<RunControl, { turn: symbol; nonce: string }>();
   private readonly idleCompactions: IdleConversationCompactions;
 
   private ownOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -584,35 +589,39 @@ export class RunService {
         retireCompactions: (chatId) => this.retireConversationCompactions(chatId),
         cancelQueue: (chatId) => this.messages.cancelForChat(chatId),
         purgeBranches: () => this.branches.purgeRevoked(),
+        connectorFileTransferLifecycle: this.deps.connectorFileTransferLifecycle,
       },
       scope,
       { cancelOnly },
     );
   }
 
-  /** Withdraw article-derived answers while retaining financial and effect recovery records. */
-  async redactForgottenArticleOutputs(workspaceId: string): Promise<number> {
-    const rows = this.deps.repo.db.prepare("SELECT run_id AS runId FROM runs").all() as { runId: string }[];
-    const runs = rows
-      .map((row) => this.deps.repo.getRun(row.runId)!)
-      .map((run) => ({ runId: run.runId, config: (run.config ?? {}) as NonNullable<Run["config"]> }));
+  private articleDerivedRuns(workspaceId: string, memoryId?: string, missingOnly = false) {
+    const rows = this.deps.repo.db.prepare("SELECT run_id FROM runs").all() as { run_id: string }[];
+    const runs = rows.flatMap(({ run_id }) => {
+      const run = this.deps.repo.getRun(run_id);
+      return run ? [{ runId: run.runId, config: run.config ?? {} }] : [];
+    });
     const owners = new Map(
       (
         this.deps.repo.db
-          .prepare("SELECT artifact_id AS artifactId,run_id AS runId FROM artifacts")
-          .all() as { artifactId: string; runId: string }[]
-      ).map((row) => [row.artifactId, row.runId]),
+          .prepare("SELECT artifact_id,run_id FROM artifacts WHERE run_id IS NOT NULL")
+          .all() as {
+          artifact_id: string;
+          run_id: string;
+        }[]
+      ).map((row) => [row.artifact_id, row.run_id]),
     );
     for (const run of runs)
-      for (const artifactId of run.config.revokedArtifactIds ?? [])
-        if (!owners.has(artifactId)) owners.set(artifactId, run.runId);
+      for (const id of run.config?.revokedArtifactIds ?? []) if (!owners.has(id)) owners.set(id, run.runId);
     const seeds = new Set(
       runs
         .filter(
           (run) =>
-            run.config.contextWorkspaceId === workspaceId &&
-            run.config.contextMemoryIds?.length &&
-            (run.config.contextMemoryRevoked ||
+            run.config?.contextWorkspaceId === workspaceId &&
+            run.config.contextMemoryIds?.some((id) => !memoryId || id === memoryId) &&
+            (!missingOnly ||
+              run.config.contextMemoryRevoked ||
               run.config.contextMemoryIds.some(
                 (id) =>
                   !this.deps.repo.db
@@ -622,7 +631,49 @@ export class RunService {
         )
         .map((run) => run.runId),
     );
-    const affected = derivedPageRecallRunIds(runs, seeds, owners);
+    const configs = runs.map((run) => ({
+      runId: run.runId,
+      config: {
+        ...run.config,
+        contextRunIds: [...(run.config.contextRunIds ?? []), ...(run.config.branchSourceRunIds ?? [])],
+      },
+    }));
+    let affected = derivedPageRecallRunIds(configs, seeds, owners);
+    const expanded = new Set<string>();
+    while ([...affected].some((id) => !expanded.has(id))) {
+      for (const id of affected) {
+        if (expanded.has(id)) continue;
+        for (const child of lineageRuns(this.deps.repo, id)) {
+          seeds.add(child);
+          expanded.add(child);
+        }
+      }
+      affected = derivedPageRecallRunIds(configs, seeds, owners);
+    }
+    return { runs, affected };
+  }
+
+  /** Revoke exact article-derived owners before source/key deletion; terminal transfer bodies also retire. */
+  async retireArticleTransferSources(workspaceId: string, memoryId?: string): Promise<void> {
+    const { affected } = this.articleDerivedRuns(workspaceId, memoryId);
+    const active = [...affected].filter(
+      (id) => !TERMINAL_RUN_STATUSES.has(this.deps.repo.getRun(id)?.status ?? "failed"),
+    );
+    // Fence every original owner synchronously, before joining the first held transport.
+    for (const id of active) {
+      const control = this.coordinator.controls.get(id);
+      control?.abort.abort();
+      control?.dispatchAbort?.abort();
+      this.setRunControls.get(id)?.cancel();
+      this.retirePendingAuthority(id);
+    }
+    for (const id of active) await this.cancel(id, "A selected saved article is being forgotten.");
+    await this.deps.connectorFileTransferLifecycle?.([...affected], "forget");
+  }
+
+  /** Withdraw article-derived answers while retaining financial and effect recovery records. */
+  async redactForgottenArticleOutputs(workspaceId: string): Promise<number> {
+    const { runs, affected } = this.articleDerivedRuns(workspaceId, undefined, true);
     const revokedArtifacts = new Set<string>(),
       affectedChats = new Set<string>();
     for (const run of runs) {
@@ -632,6 +683,13 @@ export class RunService {
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId }))
         revokedArtifacts.add(artifact.artifactId);
     }
+    // Retire all original work, including transfer records of terminal descendants, before source-body deletion.
+    for (const runId of affected) {
+      const run = this.deps.repo.getRun(runId);
+      if (run && !TERMINAL_RUN_STATUSES.has(run.status))
+        await this.cancel(runId, "A selected saved article was forgotten.");
+    }
+    await this.deps.connectorFileTransferLifecycle?.([...affected], "forget");
     // Edited copies are durable conversation documents, not run artifacts.
     // Remove only copies whose explicit source result is being revoked.
     for (const chatId of affectedChats) {
@@ -1472,6 +1530,10 @@ export class RunService {
       /** S5 tool-loop backends (decide()-gated web tools) — main.ts wires them. */
       agentLoop?: import("../agent/loop/host.js").AgentLoopHostDeps;
       desktopContextSources?: DesktopContextRunSources;
+      connectorFileTransferLifecycle?: (
+        runIds: readonly string[],
+        mode: "retire" | "forget",
+      ) => Promise<void>;
       browserEgress?: import("../safety/browser-egress.js").BrowserEgress;
       tracer?: {
         start(
@@ -1695,7 +1757,13 @@ export class RunService {
       deps.events,
       (message) => this.startQueuedMessage(message),
       (runId) => this.coordinator.controls.has(runId),
-      (runId) => this.coordinator.steer(runId),
+      async (runId) => {
+        this.retirePendingAuthority(runId);
+        this.coordinator.steer(runId);
+        await this.ownOperation(
+          () => this.deps.connectorFileTransferLifecycle?.([runId], "retire") ?? Promise.resolve(),
+        );
+      },
     );
     deps.events.subscribe((event) => {
       if (event.type !== EventTypes.RunStatus || !event.runId) return;
@@ -2889,6 +2957,141 @@ export class RunService {
       };
       checkCurrent();
       return operation(run, signal, checkCurrent);
+    });
+  }
+
+  captureConnectorUploadOwner(runId: string): ConnectorUploadOwner & { identity: string } {
+    const run = this.deps.repo.getRun(runId),
+      control = this.coordinator.controls.get(runId);
+    if (
+      !run ||
+      !control ||
+      !control.dispatchAbort ||
+      this.closed ||
+      this.deps.privateBrowserProfile ||
+      run.config?.implementation !== "agent-loop" ||
+      !run.config.taskId ||
+      !run.config.taskRevision ||
+      !run.config.contextWorkspaceId
+    )
+      throw new AuxError(
+        "permission_denied",
+        "An original live Aux task is required for connector file transfer.",
+      );
+    const dispatch = control.dispatchAbort.signal;
+    const signal = AbortSignal.any([control.abort.signal, dispatch]);
+    const turn = this.deps.turnMentions.capture(runId);
+    const nonce = (owner: object) => {
+      let value = this.connectorOwnerNonces.get(owner);
+      if (!value) {
+        value = randomUUID();
+        this.connectorOwnerNonces.set(owner, value);
+      }
+      return value;
+    };
+    let mention = this.connectorMentionNonces.get(control);
+    if (!mention || mention.turn !== turn) {
+      mention = { turn, nonce: randomUUID() };
+      this.connectorMentionNonces.set(control, mention);
+    }
+    const authority = () => {
+      const current = this.deps.repo.getRun(runId);
+      if (
+        !current ||
+        current.status !== "running" ||
+        this.closed ||
+        control.paused ||
+        this.coordinator.controls.get(runId) !== control ||
+        control.dispatchAbort?.signal !== dispatch ||
+        this.deps.turnMentions.capture(runId) !== turn ||
+        current.config?.contextMemoryRevoked ||
+        current.config?.desktopContextRetired
+      )
+        throw new AuxError("cancelled", "The original connector file run owner retired.");
+      signal.throwIfAborted();
+      this.checkSetSource(runId);
+      const ancestry = runAncestry(this.deps.repo, runId, true).map((id) => {
+        const source = this.deps.repo.getRun(id)!;
+        if (
+          source.config?.privateTask ||
+          isReadOnlyProfile(source.config?.subagentProfile) ||
+          source.config?.contextMemoryRevoked ||
+          source.config?.desktopContextRetired
+        )
+          throw new AuxError(
+            "permission_denied",
+            "Private or read-only sources cannot upload connector files.",
+          );
+        const {
+          checkpoint: _checkpoint,
+          contextCompaction: _compaction,
+          documentAdmissions: _admissions,
+          waitingPhrase: _waiting,
+          queuedMessageContexts: _queued,
+          ...config
+        } = source.config ?? {};
+        return { runId: id, goal: source.goal, pageIds: source.pageIds, config };
+      });
+      const allowed = current.config?.agentProfile?.tools;
+      if (allowed && !allowed.includes("*") && !allowed.includes("connector_file_upload"))
+        throw new AuxError("permission_denied", "This agent profile cannot upload connector files.");
+      const task = this.deps.repo.db
+        .prepare("SELECT task_id,workspace_id,revision,state FROM tasks WHERE task_id=?")
+        .get(current.config?.taskId ?? "") as
+        { task_id: string; workspace_id: string; revision: number; state: string } | undefined;
+      if (
+        !task ||
+        task.state !== "open" ||
+        task.revision !== current.config?.taskRevision ||
+        task.workspace_id !== current.config.contextWorkspaceId
+      )
+        throw new AuxError("ref_stale", "The original upload task or Space revision retired.");
+      const generation = this.deps.agentLoop?.modelGeneration?.();
+      if (!generation)
+        throw new AuxError("capability_unsupported", "The original model connection is unavailable.");
+      return createHash("sha256")
+        .update(
+          JSON.stringify([
+            nonce(control),
+            nonce(dispatch),
+            mention.nonce,
+            ancestry,
+            task,
+            generation,
+            this.deps.settings.modelCacheGeneration(),
+            this.deps.settings.agentPolicy().agentPolicyRevision,
+            this.deps.repo.getSetting(`conversationWorkspace:${current.config?.chatId ?? runId}`),
+          ]),
+        )
+        .digest("hex");
+    };
+    const identity = authority();
+    return {
+      run: structuredClone(run),
+      signal,
+      identity,
+      checkCurrent: () => {
+        if (authority() !== identity)
+          throw new AuxError("ref_stale", "The original connector file source or authority changed.");
+      },
+    };
+  }
+
+  connectorFileOperation<T>(
+    input: { runId: string; signal: AbortSignal; checkOwner(): void },
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.ownOperation(async () => {
+      const owner = this.captureConnectorUploadOwner(input.runId);
+      const check = () => {
+        input.signal.throwIfAborted();
+        input.checkOwner();
+        owner.checkCurrent();
+      };
+      check();
+      const result = await operation();
+      check();
+      return result;
     });
   }
 
@@ -4427,6 +4630,7 @@ export class RunService {
     for (const control of this.setRunControls.values()) control.cancel();
     const preserved = new Set(active.filter((id) => !!recoverablePark(this.deps.repo, id)));
     const retirement = this.coordinator.close();
+    const transferRetirement = this.deps.connectorFileTransferLifecycle?.(active, "retire");
     const roots = new Set<string>();
     const lineageFailures: unknown[] = [];
     for (const id of active) {
@@ -4440,6 +4644,7 @@ export class RunService {
     }
     this.closing = Promise.allSettled([
       retirement,
+      ...(transferRetirement ? [transferRetirement] : []),
       idleRetirement,
       ...[...roots]
         .filter((root) => !preserved.has(root))
@@ -4581,11 +4786,15 @@ export class RunService {
     setControl?.beginCancellation();
     try {
       const children = lineageRuns(this.deps.repo, runId).filter((id) => id !== runId);
-      for (const child of children) {
-        this.retirePendingAuthority(child);
-        this.coordinator.interruptForTakeover(child);
+      for (const id of [runId, ...children]) {
+        const control = this.coordinator.controls.get(id);
+        control?.abort.abort();
+        control?.dispatchAbort?.abort();
       }
+      for (const id of [runId, ...children]) this.retirePendingAuthority(id);
+      for (const child of children) this.coordinator.interruptForTakeover(child);
       this.setRunControls.get(runId)?.cancel();
+      await this.deps.connectorFileTransferLifecycle?.([runId, ...children], "retire");
       await Promise.all(
         children
           .filter(
@@ -4595,7 +4804,6 @@ export class RunService {
           )
           .map((id) => this.cancel(id, reason)),
       );
-      this.retirePendingAuthority(runId);
       if (externalRetirement) await externalRetirement;
       else if (this.externalUtilityOperations.has(runId)) await this.retireExternalUtilityOperations(runId);
       return await withRunDispatchMutation(
@@ -4650,6 +4858,7 @@ export class RunService {
     this.retirePendingAuthority(runId);
     this.coordinator.interruptForTakeover(runId);
     this.setRunControls.get(runId)?.pause();
+    await this.deps.connectorFileTransferLifecycle?.([runId], "retire");
     return withRunDispatchMutation(
       this.deps.repo,
       async () => {

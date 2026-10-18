@@ -1,3 +1,4 @@
+import { prepareToolInputSchema, type ToolSchemaMode } from "./tool-input-schema.js";
 import type { LanguageModel, ModelMessage } from "ai";
 import type { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
@@ -319,23 +320,10 @@ export class GatewayModelClient implements ModelClient {
    * failover hop. A chain whose head isn't the requested model still starts
    * at the requested candidate when it appears later in the chain.
    */
-  private async withFailover<
-    R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
-    O extends {
-      modelId: string;
-      reasoning?: CallOpts["reasoning"];
-      signal?: AbortSignal;
-      singleCandidate?: boolean;
-    },
-  >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
-    if (this.allowedModelId && opts.modelId !== this.allowedModelId)
-      throw new AuxError(
-        "permission_denied",
-        `Model ${opts.modelId} is outside this benchmark's authorized model pin.`,
-      );
+  private routes(opts: { modelId: string; reasoning?: CallOpts["reasoning"] }): readonly AgentModelRoute[] {
     const chain = this.candidatesFor?.(opts.modelId) ?? [];
     const at = chain.findIndex((c) => c.modelId === opts.modelId);
-    const seq: readonly AgentModelRoute[] = this.allowedModelId
+    return this.allowedModelId
       ? [
           {
             modelId: this.allowedModelId,
@@ -350,6 +338,40 @@ export class GatewayModelClient implements ModelClient {
               reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium",
             },
           ];
+  }
+
+  toolSchemaMode(modelId: string, maxAttempts?: 1): ToolSchemaMode {
+    const routes = this.routes({ modelId });
+    const candidates = maxAttempts === 1 ? routes.slice(0, 1) : routes;
+    return this.toolSchemas === "provider-default" &&
+      candidates.every((route) => {
+        const model = this.directModel ? this.resolveModel(route.modelId) : undefined;
+        const provider = this.directModel
+          ? typeof model === "object"
+            ? model.provider
+            : undefined
+          : modelCapabilities(route.modelId, this.capabilities())?.provider;
+        return provider === "anthropic" || provider === "openai";
+      })
+      ? "references"
+      : "inline";
+  }
+
+  private async withFailover<
+    R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
+    O extends {
+      modelId: string;
+      reasoning?: CallOpts["reasoning"];
+      signal?: AbortSignal;
+      singleCandidate?: boolean;
+    },
+  >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
+    if (this.allowedModelId && opts.modelId !== this.allowedModelId)
+      throw new AuxError(
+        "permission_denied",
+        `Model ${opts.modelId} is outside this benchmark's authorized model pin.`,
+      );
+    const seq = this.routes(opts);
     const prior: ModelAttempt[] = [];
     for (let i = 0; i < (opts.singleCandidate ? 1 : seq.length); i++) {
       const c = seq[i]!;
@@ -717,6 +739,7 @@ export class GatewayModelClient implements ModelClient {
    * caller, never hidden inside the SDK loop.
    */
   async toolCallStep(opts: {
+    toolSchemaMode?: ToolSchemaMode;
     onText?: (text: string) => void;
     modelId: string;
     system: string;
@@ -730,12 +753,27 @@ export class GatewayModelClient implements ModelClient {
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
     await this.loadSdk();
-    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
-      this.toolCallStepInner(o),
+    const mode = opts.toolSchemaMode ?? this.toolSchemaMode(opts.modelId, opts.maxAttempts);
+    if (mode === "references" && this.toolSchemaMode(opts.modelId, opts.maxAttempts) !== mode)
+      throw markModelUndispatched(
+        new AuxError(
+          "capability_unsupported",
+          "The original model route no longer supports its prepared tool schemas.",
+        ),
+      );
+    try {
+      for (const spec of Object.values(opts.tools)) prepareToolInputSchema(spec.inputSchema, mode);
+    } catch (error) {
+      throw markModelUndispatched(error);
+    }
+    return this.withFailover(
+      { ...opts, toolSchemaMode: mode, singleCandidate: opts.maxAttempts === 1 },
+      (o) => this.toolCallStepInner(o),
     );
   }
 
   private async toolCallStepInner(opts: {
+    toolSchemaMode?: ToolSchemaMode;
     onText?: (text: string) => void;
     modelId: string;
     system: string;
@@ -748,18 +786,12 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
-    const { streamText, tool, zodSchema } = await this.loadSdk();
+    const { streamText, tool } = await this.loadSdk();
     const started = Date.now();
     const names = Object.keys(opts.tools);
     const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
     const { cacheTools, ...request } = this.directRequest(opts, maxOut);
     const lastTool = names.at(-1);
-    const provider = this.gateway
-      ? modelCapabilities(opts.modelId, this.capabilities())?.provider
-      : (request.model as { provider?: string }).provider;
-    // Compatible servers may not resolve local schema references.
-    const useReferences =
-      this.toolSchemas === "provider-default" && (provider === "anthropic" || provider === "openai");
     const tools = Object.fromEntries(
       names.map((name) => {
         const spec = opts.tools[name]!;
@@ -767,7 +799,7 @@ export class GatewayModelClient implements ModelClient {
           name,
           tool({
             ...(spec.description ? { description: spec.description } : {}),
-            inputSchema: zodSchema(spec.inputSchema, { useReferences }),
+            inputSchema: prepareToolInputSchema(spec.inputSchema, opts.toolSchemaMode),
             ...(cacheTools && name === lastTool
               ? { providerOptions: { anthropic: { cacheControl: ANTHROPIC_CACHE_CONTROL } } }
               : {}),

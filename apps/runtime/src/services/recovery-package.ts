@@ -10,6 +10,7 @@ import {
 import {
   googleTablesForDatabase,
   xTablesForDatabase,
+  connectorTransferTablesForDatabase,
   channelTablesForDatabase,
   financialTablesForDatabase,
 } from "../store/db.js";
@@ -21,7 +22,12 @@ import { DatabaseSync } from "node:sqlite";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
-import { encryptedFieldsForDatabase, FieldCodec } from "../store/field-codec.js";
+import {
+  verifyConnectorTransferRecord,
+  type ConnectorTransferRow,
+  encryptedFieldsForDatabase,
+  FieldCodec,
+} from "../store/field-codec.js";
 import { recodeTaskEvidenceProtection } from "../store/task-evidence-protection.js";
 import { transformDocumentFields, documentFieldTables } from "../store/document-fields.js";
 import { ContentMemoryStore, type RecoveryPageMemory } from "./content-memory.js";
@@ -210,6 +216,16 @@ function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encryp
         throw new Error("Protected X grant indexes do not match the original record.");
     }
   }
+  if (connectorTransferTablesForDatabase(db).length) {
+    for (const row of db.prepare("SELECT * FROM connector_file_transfers").all() as ConnectorTransferRow[]) {
+      verifyConnectorTransferRecord(
+        row,
+        direction === "decrypt"
+          ? row.body
+          : cipher.decrypt("connector_file_transfers", JSON.stringify([row.transfer_id]), "body", row.body),
+      );
+    }
+  }
   if (direction === "decrypt")
     db.prepare("DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3')").run();
   else
@@ -331,6 +347,33 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     db.prepare("UPDATE x_task_grants SET revoked_at=? WHERE revoked_at IS NULL").run(at);
     // Jobs belong to the source Profile's native namespace; recovery never accesses its Keychain.
     db.prepare("DELETE FROM x_credential_jobs").run();
+  }
+
+  if (connectorTransferTablesForDatabase(db).length) {
+    for (const row of db.prepare("SELECT * FROM connector_file_transfers").all() as ConnectorTransferRow[]) {
+      const original = verifyConnectorTransferRecord(row, row.body);
+      let state = original.state;
+      if (state === "running") state = "uncertain";
+      if (state === "prepared" || state === "waiting") state = "retired";
+      const record = {
+        ...original,
+        state,
+        approval: undefined,
+        updatedAt: at,
+        ...(state !== original.state
+          ? {
+              error:
+                "Recovered transfer authority is retired. Inspect the retained phase receipts; no write was replayed.",
+            }
+          : {}),
+      };
+      db.prepare("UPDATE connector_file_transfers SET state=?,body=?,updated_at=? WHERE transfer_id=?").run(
+        state,
+        JSON.stringify(record),
+        at,
+        row.transfer_id,
+      );
+    }
   }
 
   for (const table of [

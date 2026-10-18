@@ -1,3 +1,4 @@
+import { ConnectorFileTransferRecordSchema } from "@aux/contracts/connector-file-upload";
 import { createHash, createHmac } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { NativeBridge } from "../native.js";
@@ -5,6 +6,7 @@ import { ProtectedStore } from "../services/protected-store.js";
 import { protectLegacyTaskEvidence, taskEvidenceProtection } from "./task-evidence-protection.js";
 import {
   channelTablesForDatabase,
+  connectorTransferTablesForDatabase,
   documentTablesForDatabase,
   googleTablesForDatabase,
   xTablesForDatabase,
@@ -20,6 +22,7 @@ type Secrets = Pick<NativeBridge, "readSecret" | "storeSecret"> & {
 
 /** Runtime content and account metadata use this codec. Memory owns its generation keys. */
 export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  connector_file_transfers: ["body"],
   subagents: ["body"],
   runs: ["goal", "config", "status_message", "result", "error", "failure"],
   run_messages: ["text", "context_page_refs", "mentions", "error"],
@@ -54,12 +57,13 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
 /** Restorable v2/v3 snapshots predate the separate encrypted process log table. */
 export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_FIELDS {
   const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
-  if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(version))
+  if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(version))
     throw new Error("Unsupported encrypted database schema.");
   documentTablesForDatabase(db);
   desktopTablesForDatabase(db);
   const google = googleTablesForDatabase(db);
   const x = xTablesForDatabase(db);
+  const transfers = connectorTransferTablesForDatabase(db);
   const channels = channelTablesForDatabase(db);
   const evidence = taskEvidenceProtection(db);
   if (evidence && evidence.cursor !== null)
@@ -67,6 +71,7 @@ export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_F
   return Object.fromEntries(
     Object.entries(ENCRYPTED_FIELDS).filter(
       ([table]) =>
+        (table !== "connector_file_transfers" || transfers.includes(table)) &&
         (version >= 4 || table !== "coding_process_logs") &&
         (version >= 5 || !["document_snapshots", "document_segments"].includes(table)) &&
         (version >= 10 || table !== "document_source_chunks") &&
@@ -159,4 +164,37 @@ export async function initializeFieldCodec(
   if (!initialized) db.prepare("INSERT INTO aux_meta(key,value) VALUES('field_codec_v3','1')").run();
   await protectLegacyTaskEvidence(db, codec);
   return codec;
+}
+
+export type ConnectorTransferRow = {
+  transfer_id: string;
+  run_id: string;
+  state: string;
+  body: string;
+  updated_at: number;
+};
+
+/** Clear indexes never substitute for the original authenticated job manifest. */
+export function verifyConnectorTransferRecord(row: ConnectorTransferRow, body: string) {
+  const record = ConnectorFileTransferRecordSchema.parse(JSON.parse(body));
+  if (
+    record.transferId !== row.transfer_id ||
+    record.runId !== row.run_id ||
+    record.state !== row.state ||
+    record.updatedAt !== row.updated_at
+  )
+    throw new Error("Protected connector transfer indexes do not match the original record.");
+  return record;
+}
+
+export function authenticateConnectorTransfers(db: DatabaseSync, codec?: FieldCodec): void {
+  if (!connectorTransferTablesForDatabase(db).length) return;
+  const rows = db.prepare("SELECT * FROM connector_file_transfers").all() as ConnectorTransferRow[];
+  for (const row of rows) {
+    if (!codec) throw new Error("Connector transfers require the original protected Profile key.");
+    verifyConnectorTransferRecord(
+      row,
+      codec.decrypt("connector_file_transfers", JSON.stringify([row.transfer_id]), "body", row.body),
+    );
+  }
 }

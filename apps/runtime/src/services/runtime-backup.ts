@@ -44,12 +44,17 @@ import {
   desktopTablesForDatabase,
   googleTablesForDatabase,
   xTablesForDatabase,
+  connectorTransferTablesForDatabase,
   channelTablesForDatabase,
   discardIncompleteDocumentSnapshots,
 } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
-import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
+import {
+  authenticateConnectorTransfers,
+  encryptedFieldsForDatabase,
+  type FieldCodec,
+} from "../store/field-codec.js";
 import { authenticateTaskEvidenceProtection } from "../store/task-evidence-protection.js";
 import { transformDocumentFields, protectLegacyDocumentCollections } from "../store/document-fields.js";
 import { minimizedObservationArtifactBytes } from "./observation-artifact-minimization.js";
@@ -146,6 +151,7 @@ type BackupManifest = {
 
 /** Authenticate every protected value before publishing a copy or pending restore. */
 function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
+  authenticateConnectorTransfers(db, cipher);
   const marker = db.prepare("SELECT value FROM aux_meta WHERE key='field_codec_v3'").get();
   if (!marker) return;
   if (!cipher)
@@ -187,7 +193,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (![2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION].includes(version))
+    if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION].includes(version))
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||
@@ -215,6 +221,7 @@ function validateDatabase(path: string) {
     desktopTablesForDatabase(db);
     googleTablesForDatabase(db);
     xTablesForDatabase(db);
+    connectorTransferTablesForDatabase(db);
     return version;
   } finally {
     db.close();

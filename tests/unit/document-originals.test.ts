@@ -9,7 +9,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { type Run } from "@aux/contracts";
 import { DOCUMENT_SOURCE_CHUNK_BYTES } from "@aux/contracts/document-original";
 import { documentSnapshotDigestInput } from "@aux/contracts/document-snapshot";
-import { Repo, openDb } from "@aux/runtime";
+import { Repo, openDb, SCHEMA_VERSION } from "@aux/runtime";
 import { DocumentSnapshots, type DocumentOwner } from "../../apps/runtime/src/services/document-snapshots.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
@@ -276,7 +276,7 @@ function historicalDatabase(forged: boolean) {
   const path = join(directory, "state.sqlite"),
     db = openDb(path);
   db.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks; PRAGMA user_version=9",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks; PRAGMA user_version=9",
   );
   if (forged) db.exec("CREATE TABLE document_source_forged(secret TEXT)");
   db.close();
@@ -284,7 +284,7 @@ function historicalDatabase(forged: boolean) {
 }
 it("migrates an authentic schema9 database to encrypted original-byte support", () => {
   const migrated = openDb(historicalDatabase(false));
-  expect(migrated.prepare("PRAGMA user_version").get()).toEqual({ user_version: 11 });
+  expect(migrated.prepare("PRAGMA user_version").get()).toEqual({ user_version: SCHEMA_VERSION });
   migrated.close();
 });
 it("refuses a forged historical source table before changing the database", () => {

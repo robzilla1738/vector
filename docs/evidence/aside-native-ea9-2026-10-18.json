@@ -1,0 +1,256 @@
+{
+  "program": "Aside adoption",
+  "status": "limited current native observations; acceptance remains open",
+  "sourceCommit": "ea9a82ecfb95572920ba28a9c2421570c8a49e5d",
+  "nativeVersion": "155.0.8059.85",
+  "nativeArea": 66,
+  "nativeBuild": {
+    "passed": true,
+    "steps": 761,
+    "elapsedSeconds": 1008.16,
+    "log": "/tmp/aux-ea9a82-native-debug.log"
+  },
+  "identity": {
+    "nativeAndRuntimeClean": true,
+    "hostMethods": 278,
+    "runtimeMethods": 500,
+    "schema": 11,
+    "hostAbiPrefix": "550bdeb5fbbd",
+    "frameworkUuid": "4C4C44E0-5555-3144-A170-DEAA25981C06",
+    "matchingFrameworkAndDwarfPreserved": "/tmp/aux-ea9-native-symbols"
+  },
+  "profile": "disposable; retired by original launcher after Aux menu Quit and debugger quit",
+  "dimensions": {
+    "matchedReferenceLogical": [
+      1712,
+      989
+    ],
+    "narrowLogical": [
+      854,
+      989
+    ],
+    "quickEmptyLogical": [
+      440,
+      92
+    ],
+    "quickSixLineDraftLogical": [
+      440,
+      180
+    ]
+  },
+  "observed": [
+    "Home Search/Ask, General and Quick Ask settings at matched logical bounds; dark/light states captured where listed",
+    "Quick Ask context menu opens in both themes; Escape returns exact opener; unsupported cross-window capture commands disabled with Open in Aux handoff",
+    "Six-line unsent draft survives Open in Aux with ordinary composer focus and is restored on reopening Quick Ask",
+    "Actual native image picker, local image review and attachment; Open in Aux preserves admitted image reference without provider upload or sending",
+    "Memory empty tree dark/light and light narrow; Left collapse, Right expand, Down traversal and End focus/scroll; no Dream invoked",
+    "MCP solid dialog and native select; two Escape presses close select then dialog and return respective original openers; no registration changes",
+    "Unconfigured Google/X/Calendar connection controls disabled; separate scope disclosures and heading/content shared scroll",
+    "Synthetic failed chat archived then restored; dark/light/narrow rows and cancel-only Delete review; Escape returns row ellipsis and preserves record",
+    "Normal page link, Back and Forward navigation on a local fixture",
+    "Same original runtime SIGSTOP: page-link navigation, Back, Forward, Reload and Find Jordan with 1 of 1; Reload independently increments fixture root request count from 3 to 4; runtime resumed without replacement"
+  ],
+  "issues": [
+    {
+      "issue": "Native omnibox acceptance while Settings is open loads the underlying page but leaves Settings painted",
+      "proof": "settings-url-navigation-overlay.jpg and .txt",
+      "state": "source repair and current native re-observation pending"
+    },
+    {
+      "issue": "Synthetic default-route request fails before inference with tools.47.custom.input_schema.type: Field required",
+      "model": "anthropic/claude-sonnet-5.5",
+      "state": "object-root/provider conversion correction in next runtime slice; current native runtime does not contain correction",
+      "usage": "input/output/cache/cost unknown; not zero and not a passed smoke task"
+    }
+  ],
+  "crash": {
+    "originalCause": "unresolved",
+    "currentIdleObservationSeconds": 253,
+    "zeroUiActionsDuringIdle": true,
+    "originalCrashNotReproducedInIdleObservation": true,
+    "note": "No inference from absent recurrence; new binary UUID must not symbolize old dump"
+  },
+  "limitations": [
+    "No all-182-surface parity claim; no 400px native viewport; narrow window is 854px rather than renderer fixture 900px",
+    "Archive second-line wrapping threshold not reached; populated Memory activity/diffs/Dream and real accounts remain unobserved",
+    "No live Google/LinkedIn input, third-party message, OAuth registration or MCP upload",
+    "No matched stock performance or default-route 20-task acceptance; no daily-use readiness",
+    "Captured images contain synthetic disposable development data and remain local temporary evidence",
+    "Accessibility contrast/transparency overrides and IME continuity remain open"
+  ],
+  "captures": [
+    {
+      "path": "/tmp/aux-ea9-native/appearance-light-1712.jpg",
+      "sha256": "8548e01cca4e4755bb7b27c79b1c2c66d24a0c5f1feb20301d16697924e86b95"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-delete-review-light-narrow.jpg",
+      "sha256": "c5b3ad16e4d64e75b0ab8fbe66ed0e38355294f93c7a68bef0fec51ec4061998"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-menu-light-narrow.jpg",
+      "sha256": "3084ab4865fdd243830319ba16e4b4155b59543ec66e3ee76587992f008f9da5"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-populated-dark-1712.jpg",
+      "sha256": "a0fb781cb72c99451cc6cdc45546ea9bf3caea99ec8a2898f4a1c078e69303a1"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-populated-dark-narrow.jpg",
+      "sha256": "37dce4a36c1e4ae95ed4e2e9e0a285a4a2ffeb81c6249af10dcfec10f1bb82f2"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-populated-light-narrow.jpg",
+      "sha256": "942f020c008c0adbb27e33efc5f5cbe2c7d84b8a785bfd53f369a236193093ba"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/archive-restored-empty-dark-1712.jpg",
+      "sha256": "fc17d517edb2cb39871dac959513ae80f33747c0cf50035c986201f6798f8d05"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/connections-scrolled-permissions-dark-1712.jpg",
+      "sha256": "96c758e857573e9c2ffa698eca74d541151e1a702cf095c54a0086285a174ff6"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/connections-unconfigured-dark-1712.jpg",
+      "sha256": "cab9f69a27db5aebc8b98b79a1df30b2c346e7383a334f641f10d4d591d31a37"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/connections-unconfigured-light-1712.jpg",
+      "sha256": "8808ee0767d74f39f8dea15b6140941620241095fb116cf7031ac0ed9e1983d0"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/general-dark-1712.jpg",
+      "sha256": "a8c371d923429efb912897cc4041c101582e2f582fa85337ee67663d2e84fced"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/home-ask-dark-1712.jpg",
+      "sha256": "06894f27b5ec321bd02aa09b54e38398ab7d0a26710384f8c1307aa2f5b5562f"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/home-search-dark-1712.jpg",
+      "sha256": "023c99c8a71634fefdb0c045847eb70b300061dfe69f812abfcecebed317cff9"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/mcp-dialog-dark-1712.jpg",
+      "sha256": "6bf11138f4e8ccb48fd41118425c6ae6325f52db5b3b5b7b7c72294087c34db0"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/mcp-dialog-light-narrow.jpg",
+      "sha256": "afda13031a115cdc0589c9171c05967db1cbf3e085891ee717fe45d1b36839a8"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/mcp-empty-dark-1712.jpg",
+      "sha256": "aa13f8064468339b524f8a86c8e7cf6574f01585b743223d9a97e8ee67b59171"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/mcp-empty-light-narrow.jpg",
+      "sha256": "08eef21d9039c80a5e7593762af0a85d994fdd96c840c591421e74662fab0558"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/mcp-select-dark-1712.jpg",
+      "sha256": "19032947b4e969dc2c8fd57f1533fd792b7acf1c543ef8e76a8398b5081d2003"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/memory-empty-dark-1712.jpg",
+      "sha256": "07e8934204bf5a6ae8787fdd78f3ce7882d9a608062b3006ea38a500b88d247d"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/memory-empty-light-1712.jpg",
+      "sha256": "e3d1db487c7eeb7437126b20a2deef9ac81c3bcefe332739b1d0fdfc3083ea06"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/memory-empty-light-narrow.jpg",
+      "sha256": "049c2697f959364ba567e52abc7803afb97dd3cc2303d70bed25a4cd2aca7362"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/memory-history-empty-dark-1712.jpg",
+      "sha256": "f36fa95d16d2166c0fd78df1695ebe173dbc83f94982785db872ff32b05190fe"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/memory-keyboard-end-light-narrow.jpg",
+      "sha256": "e0b50093e4ceb8ea28f8dfa3df3262e5394c247771ec73fcf4290b170b240568"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-context-dark.jpg",
+      "sha256": "89df70b52eea05522785f178e57cd7dca52d93bdcdeb6c7bb71504b3ba5f8bf8"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-context-light.jpg",
+      "sha256": "b04ca81d58779b409e1cc01af8e13e85d8c72b04dfdebf44091812f8eca70f13"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-empty-dark-440x92.jpg",
+      "sha256": "444762c9790d7136838e95d177ecbe9f97288a302ed558af90bea201e1654d64"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-empty-light-440x92.jpg",
+      "sha256": "3c8c6bf0388f114a56a7299e3ca431c64c0581257c5a9dc9e17095d0c5e6c807"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-handback-preserved-draft-dark.jpg",
+      "sha256": "1c59602a6a43d6129254f8f13553e9c80c2de7d1bd30e8735f0ebf1320beff58"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-image-attached-light.jpg",
+      "sha256": "e72697585db39acc2e49a14bb298736adca45900a63d924c5e6528526c6e98c5"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-image-handback-light.jpg",
+      "sha256": "5791e81df4f40d291f7152655372847e2e9110cd95c7a8a43cbfc6545d3d7f3e"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-local-image-review-light.jpg",
+      "sha256": "5ca1b5075d2fc2a29e3bb833f9da4caf9297f9bc0dea1211aee93522741a5abe"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-long-draft-dark-440x180.jpg",
+      "sha256": "ce55c39baa62520a9f7ae4e7d6519a29b314130d04eb1779959deb91dde8bc28"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-model-schema-failure-dark.jpg",
+      "sha256": "303e98747ba4e71ff90f10ce8b88bdd804acf11235a7c94c028d685942ab457f"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-restored-draft-light-440x180.jpg",
+      "sha256": "3e970e8713d944d58f5ebba3bfe9e00dad0c5e543599f2476094cbed45bec243"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-settings-dark-1712.jpg",
+      "sha256": "466f52f1efd5db2ae6ce2834d306bf47778b5e2d97c04036a6b556843d153f87"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-settings-light-1712.jpg",
+      "sha256": "cab3a588f6944a21db5ee8e0454f012fb0c05b005d1c6915d4fbf7a5c869637f"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/quick-settings-light-narrow.jpg",
+      "sha256": "4aa0af765abd0600c9cb5141a3c91284d1cb7574224656cd0e661e0cea9e9ea3"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/runtime-paused-find.jpg",
+      "sha256": "6769599b0fa18b9380b177928cd95bbbf81000b6d3f11f6e30a9747188739d60"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/settings-url-navigation-overlay.jpg",
+      "sha256": "0abe8989f4b3823f01f1bdfae1bb9e3e586eadedbe3d08b1e41b724e2145374f"
+    },
+    {
+      "path": "/tmp/aux-ea9-native/skills-empty-dark-1712.jpg",
+      "sha256": "44e39c4ef9ba87f9a4d4c64b7e7c30f966d563b7b78a4ab43113bd515aad832c"
+    }
+  ],
+  "retirement": {
+    "browserExitStatus": 0,
+    "originalLauncherExited": true,
+    "profileRemoved": true,
+    "plainLockRemoved": true,
+    "warning": "Runtime native-authority retirement reported desktop-context stop after host channel closed; shutdown ordering remains to investigate",
+    "processIds": {
+      "launcher": 24934,
+      "debugger": 34389,
+      "browser": 34448,
+      "runtime": 34470
+    }
+  }
+}

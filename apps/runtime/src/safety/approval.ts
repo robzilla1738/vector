@@ -277,6 +277,56 @@ export class ApprovalStore {
     };
   }
 
+  /** Retire only an un-emitted replacement request; this is not a user decision or a grant change. */
+  retireUnemittedRequest(
+    approvalId: string,
+    owner: { runId: string; turnId: string; threadId: string },
+    invocationDigest: string,
+  ): boolean {
+    const row = this.db
+      .prepare(
+        "SELECT action_json,fingerprint,turn_id,thread_id,lifetime,state,decision FROM safety_approval_requests WHERE approval_id=?",
+      )
+      .get(approvalId) as
+      | {
+          action_json: string;
+          fingerprint: string;
+          turn_id: string;
+          thread_id: string;
+          lifetime: string;
+          state: string;
+          decision: string | null;
+        }
+      | undefined;
+    if (
+      !row ||
+      row.state !== "pending" ||
+      row.decision !== null ||
+      row.lifetime !== "turn" ||
+      row.turn_id !== owner.turnId ||
+      row.thread_id !== owner.threadId
+    )
+      return false;
+    const action = this.parseAction(row.action_json, approvalId);
+    if (
+      action.runId !== owner.runId ||
+      action.turnId !== owner.turnId ||
+      action.threadId !== owner.threadId ||
+      action.invocationDigest !== invocationDigest ||
+      fingerprint(action, "turn") !== row.fingerprint
+    )
+      return false;
+    return (
+      Number(
+        this.db
+          .prepare(
+            "UPDATE safety_approval_requests SET state='cancelled' WHERE approval_id=? AND state='pending' AND decision IS NULL AND lifetime='turn' AND turn_id=? AND thread_id=? AND fingerprint=? AND action_json=?",
+          )
+          .run(approvalId, owner.turnId, owner.threadId, row.fingerprint, row.action_json).changes,
+      ) === 1
+    );
+  }
+
   pending(
     threadId: string,
     now = Date.now(),

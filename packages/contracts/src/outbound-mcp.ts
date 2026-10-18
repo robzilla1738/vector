@@ -42,6 +42,15 @@ export const OutboundMcpServerSchema = z.object({
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
+  /** Successful structural discovery only; not current OAuth/account or write authority. */
+  fileUpload: z
+    .object({
+      catalogDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      allocationTool: z.enum(["notion-create-file-upload", "slack_get_file_upload_url"]),
+      completionTool: z.literal("slack_complete_file_upload").optional(),
+    })
+    .strict()
+    .optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -70,6 +79,7 @@ export const OutboundMcpToolSchema = z.object({
   enabled: z.boolean(),
   description: z.string().optional(),
   inputSchema: z.record(z.string(), z.unknown()),
+  outputSchema: z.record(z.string(), z.unknown()).optional(),
   annotations: z
     .object({
       readOnlyHint: z.boolean().optional(),

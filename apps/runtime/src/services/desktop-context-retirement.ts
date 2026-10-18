@@ -20,6 +20,7 @@ export async function retireDesktopContextOutputs(
     retireCompactions(chatId: string): Promise<void>;
     cancelQueue(chatId: string): void;
     purgeBranches(): void;
+    connectorFileTransferLifecycle?: (runIds: readonly string[], mode: "retire" | "forget") => Promise<void>;
   },
   scope: DesktopContextRemoval,
   options: { cancelOnly?: boolean } = {},
@@ -92,6 +93,7 @@ export async function retireDesktopContextOutputs(
       !["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status)
     )
       await deps.cancel(run.runId);
+  await deps.connectorFileTransferLifecycle?.([...affected], options.cancelOnly ? "retire" : "forget");
   if (options.cancelOnly) return affected.size;
   const revoked = new Set<string>();
   for (const runId of affected)

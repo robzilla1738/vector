@@ -1,0 +1,259 @@
+{
+  "program": "Aside adoption",
+  "status": "source integrated and full check passed; new native acceptance pending",
+  "baseline": "ea9a82ecfb95572920ba28a9c2421570c8a49e5d",
+  "schema": 12,
+  "sourceProofs": [
+    {
+      "path": "/tmp/aux-integrated-mcp-schema-ea9.patch",
+      "sha256": "803cd8fbf35cdf33824dc2a94c7844f10afebe013d41893dabc407b0c4238ba7"
+    },
+    {
+      "path": "/tmp/aux-connector-startup-no-scan.patch",
+      "sha256": "fc358f023b5d4f76c1e06a3973e34a077c2665e3d1b638298a8285e207725996"
+    }
+  ],
+  "finalSourceFiles": [
+    {
+      "path": "apps/runtime/package.json",
+      "sha256": "1651b4fad4b597e89911a8f48fe5279c302cfaebf6e30c6dfbbf1fb6184b7e4b"
+    },
+    {
+      "path": "apps/runtime/src/agent/gateway-client.ts",
+      "sha256": "7a68e003c092ee8b51d551f4ffcf85a925911688c92adeaac3ebd956dfb9446b"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/host.ts",
+      "sha256": "9766508b1cbcc9cefc52fa47ee223480a86fc5e0c9158565ac4c41ad94616f5b"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/loop.ts",
+      "sha256": "ee9198b3d4cd4c29dbd09940e419759c00c012edfb14da384949d0074544129c"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/tools.ts",
+      "sha256": "76368710c56b8a31f62633eb36a5692c4009eefc1765d3489090f8d1e9910f80"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/types.ts",
+      "sha256": "3b632941a12867263ccce98172afef674f772694942422718ff3037f63b4cb86"
+    },
+    {
+      "path": "apps/runtime/src/agent/model-client.ts",
+      "sha256": "94d153bcae54a5912239c36d7dd36fa7125d22d3b5e61655638c3bd6e1545819"
+    },
+    {
+      "path": "apps/runtime/src/agent/tool-input-schema.ts",
+      "sha256": "54cde5d417bd38e793ebb1741aa30cf8b3568c7eeb27c13cb3e0c9d7bedfe2da"
+    },
+    {
+      "path": "apps/runtime/src/api/methods/workspaces.ts",
+      "sha256": "8e3cdcc041d201c976fbe975809e82b7f28cf072035618245c168401cc7e10f3"
+    },
+    {
+      "path": "apps/runtime/src/main.ts",
+      "sha256": "e07689f766b28dae097bb4267cf0e64358e8f28c7781e69d36d978e5c2c5bf35"
+    },
+    {
+      "path": "apps/runtime/src/safety/approval.ts",
+      "sha256": "2865df59713b1dde09a58d98d0a822aff14a548365cfc48979695958498af0a9"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-file-capability.ts",
+      "sha256": "b1018b18315e991127137a2a4cc3e3c6342fbe1695db6d4384cfe1d98c4a2599"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-file-transfers.ts",
+      "sha256": "7c68b844dbe3ec378cd7576bb4358faaa1042f0fd47ad554b64fa1f80848cee7"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-authorization.ts",
+      "sha256": "cc984a61c521137027e386aec95611000fda7b088c044f62870338e1e81a539a"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-availability.ts",
+      "sha256": "15ba51ff98f3c8bad4c48dc335606331f6de8242a68b9aeecf1c67734093814f"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-network.ts",
+      "sha256": "901f79f27298fcec9d10e6c9b9213804044968a123f92cc129a63e7b5aa1bd0b"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-provider.ts",
+      "sha256": "afc2855fbbfad252711ee6d0170337a464c8510e420daf3ddf4c8140536f20ba"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-sources.ts",
+      "sha256": "921c978a42801ebe865b6f88daef3a32a105ab9115e06a24b2d6c46f82568806"
+    },
+    {
+      "path": "apps/runtime/src/services/connector-upload-store.ts",
+      "sha256": "db09bb030c7c226d4478b177a672027c1d95347adb39f39c2b712e383bae3840"
+    },
+    {
+      "path": "apps/runtime/src/services/desktop-context-retirement.ts",
+      "sha256": "1283b6722147a83012b599431c996f2cc826a2305ef533ff7e171069faee49e4"
+    },
+    {
+      "path": "apps/runtime/src/services/outbound-mcp.ts",
+      "sha256": "fa4822a7739685af112dc73c059eee6623f2216d0e8706bcded4102d6ef5e567"
+    },
+    {
+      "path": "apps/runtime/src/services/pdf-sources.ts",
+      "sha256": "b06bcaf18016048edcdd4b16d084a3bd0d824fee61a1806e209a49788db95f42"
+    },
+    {
+      "path": "apps/runtime/src/services/recovery-package.ts",
+      "sha256": "0dc42792982e6889a3f69e17dfb12f832f568b20045e7bb479832f07a7580ba5"
+    },
+    {
+      "path": "apps/runtime/src/services/run-messages.ts",
+      "sha256": "c94635c49fcd0ba9068a6ba6f19f9539c686fac38515cc947cef0aabede51c9f"
+    },
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "sha256": "6b64c4b64a98ae0b5841347ede9dd7db5405ceda2475c2abfe975913fefc3b89"
+    },
+    {
+      "path": "apps/runtime/src/services/runtime-backup.ts",
+      "sha256": "1490be74f6c6478dfcd3dc1d9d6a2c730a6eb654170bfbdf7f30e091281eae42"
+    },
+    {
+      "path": "apps/runtime/src/services/selected-document-source.ts",
+      "sha256": "96fc6ee8d7ce5d8cfcb108f0ba030e38939fe88d0ae76d5af3ed8e147ce814ff"
+    },
+    {
+      "path": "apps/runtime/src/store/db.ts",
+      "sha256": "71ebb74ad40a8f9fb9fa7090cd487c00f450d0addad863cc7f6b6b9b17a50c5c"
+    },
+    {
+      "path": "apps/runtime/src/store/field-codec.ts",
+      "sha256": "d50d8f24317361d3bf5e09f87dcf7c45a8f4a72fc153aadf57d0af511733827c"
+    },
+    {
+      "path": "apps/runtime/src/store/schema.generated.json",
+      "sha256": "4645afabd54204af8d341152fd547e2548ce7360fd4942b3ac3fcb33782c3f46"
+    },
+    {
+      "path": "apps/runtime/src/store/schema.sql",
+      "sha256": "b82aa8106aff16cad1dc7854d1b810140475fd06873536631038f6a33d557d72"
+    },
+    {
+      "path": "packages/contracts/src/connector-file-upload.ts",
+      "sha256": "4b6bb0647d03fe54ad06c6967750494208e90f309b6c90fa06224cd57465c888"
+    },
+    {
+      "path": "packages/contracts/src/outbound-mcp.ts",
+      "sha256": "1dc5c29199ed5625ef148efa71c4054e19a1d645ee74e3d4cbb4a6d269331ccd"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "87147c9ed898e5a9b5f7404203aacf2d6fa1c070477bc366b633f656c15664a0"
+    },
+    {
+      "path": "scripts/gen-runtime-schema.mjs",
+      "sha256": "b40d281f5a50d2d56a7a46fef8168fd833c3d08cf97789e228411489cd22e11a"
+    },
+    {
+      "path": "tests/unit/agent-routing.test.ts",
+      "sha256": "501dfd2589f5904c217352ed71ea07a986bf2bbf3caaab67e95a7242744c298e"
+    },
+    {
+      "path": "tests/unit/connector-file-capability.test.ts",
+      "sha256": "ed41a85a0288dcef2fbfd379fcdaa92b8c7706868fde0cd8842da7cce30fcf40"
+    },
+    {
+      "path": "tests/unit/connector-file-transfers.test.ts",
+      "sha256": "77da0a41a09709881321c3bf0bb9047165a963ad7c2f194ecaf2513bbdf6ddf0"
+    },
+    {
+      "path": "tests/unit/connector-upload-availability.test.ts",
+      "sha256": "3a123a2b0752a1ab4faeac1723845da1e195ea7e2dc0c324271034ec0dfc4c00"
+    },
+    {
+      "path": "tests/unit/connector-upload-network.test.ts",
+      "sha256": "1acf86e19ed548e8871de8bf173237ae3f3cbd25cc541c1278ed02f14f5751d7"
+    },
+    {
+      "path": "tests/unit/connector-upload-run-owner.test.ts",
+      "sha256": "d870a6b3434318f33837cfd93ebdd1ee97b11d6cd00e897d1340938e309e3ee7"
+    },
+    {
+      "path": "tests/unit/connector-upload-sources.test.ts",
+      "sha256": "824af93b4ec7ccc612230376f4a9aa6c9674de4b891156d1d52c2f98097e8141"
+    },
+    {
+      "path": "tests/unit/connector-upload-storage.test.ts",
+      "sha256": "2f738d3c36fc8117691cf4c64c0787a758e6b1a94338fa6d72a6048540e4b2ae"
+    },
+    {
+      "path": "tests/unit/database-schema.test.ts",
+      "sha256": "62898f7ed04a1c4212971f62b1404734e772a5d879b82aa35e98f4cd90362ecb"
+    },
+    {
+      "path": "tests/unit/document-originals.test.ts",
+      "sha256": "a0b5926adc8e2e2930e2444adbc9e47adc15d010d67cdec5ea97e17adb5520cd"
+    },
+    {
+      "path": "tests/unit/google-storage.test.ts",
+      "sha256": "0697beee4e950c426d6eaa4c69728ca82530d1a7d10ec1a7db89d10cba8abb87"
+    },
+    {
+      "path": "tests/unit/memory-recovery-methods.test.ts",
+      "sha256": "032dbd52726650b2710e771e628bc6e5ae33035a7a5a67515bc7132e8f6b4549"
+    },
+    {
+      "path": "tests/unit/runtime-restore.test.ts",
+      "sha256": "403760560a588a1b5c7f57daa8e818510d846ff2a3ad90dbf46ee2745e32aa31"
+    },
+    {
+      "path": "tests/unit/tool-input-schema.test.ts",
+      "sha256": "c8ed21d5d0fe9c534a969c0ca36d845299ccb3227cbc0a07848ed7a23357fd67"
+    },
+    {
+      "path": "tests/unit/x-storage.test.ts",
+      "sha256": "45c64afb9286579b4fb139fb7e91ac6f3825a40bdcd2604d6ca5106047181297"
+    }
+  ],
+  "fullCheck": {
+    "command": "npm run check",
+    "passed": true,
+    "tests": 5593,
+    "files": 843,
+    "durationSeconds": 110.52,
+    "runtimeDistRebuiltBeforeTests": true,
+    "log": "/tmp/aux-mcp-schema-integrated-check3.log"
+  },
+  "priorFailuresResolved": [
+    "conditional assertion lint rule: unconditional Slack completion-authority fixture",
+    "codec initialization full body authentication and startup terminal-history decryption: actual indexed active-only retirement; store/export/recovery authentication retained",
+    "provider factory lookup count: assert actual doStream dispatch once and no fallback route"
+  ],
+  "independentReviews": [
+    "/tmp/aux-mcp-upload-v3-independent-review.json",
+    "/tmp/aux-mcp-upload-v4-publication-review.json",
+    "/tmp/aux-mcp-upload-v4-independent-review.json",
+    "/tmp/aux-mcp-integrated-glue-review.json",
+    "/tmp/aux-measurement-provider-schema-independent-review.json"
+  ],
+  "implemented": [
+    "original admitted immutable PDF/DOCX bytes, bounded at20MiB",
+    "concrete Notion multipart and Slack allocate/upload/complete protocols with original run/task/Space/source/OAuth identity and phase-specific governed reviews",
+    "encrypted manifests, private upload instructions, receipts and uncertain outcomes; no automatic write replay",
+    "source retirement/Forget and derived article closure join original transfers before publication or removal",
+    "full-schema and authenticated read/export/recovery validation; restored authority retired",
+    "cached structural tool availability without pre-inference credential/network probes; actual dispatch keeps fresh OAuth checks",
+    "object-only union schemas preserve original SDK/Zod validation and exact prepared accounting across supported route modes"
+  ],
+  "primaryReferences": [
+    "https://developers.notion.com/guides/mcp/mcp-supported-tools",
+    "https://docs.slack.dev/ai/slack-mcp-server/",
+    "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+  ],
+  "limitations": [
+    "No OAuth registrations or live third-party file uploads; unknown live Notion allocation shapes fail before byte dispatch",
+    "Metadata foreign-key checks still inspect clear ownership indexes; whole boot is not claimed constant-time",
+    "Clean ea9a82ec native candidate does not contain this source slice; live default-route correction remains pending",
+    "No completed manual20-task smoke, matched-stock performance, all-surface parity or daily-use readiness"
+  ]
+}

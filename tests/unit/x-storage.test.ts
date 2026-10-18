@@ -19,7 +19,7 @@ it("migrates schema10 preserving Google and source documents while adding only e
   const file = path(),
     old = openDb(file);
   old.exec(
-    "DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;PRAGMA user_version=10;INSERT INTO kv VALUES('marker','kept')",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;PRAGMA user_version=10;INSERT INTO kv VALUES('marker','kept')",
   );
   expect(encryptedFieldsForDatabase(old)).not.toHaveProperty("x_accounts");
   old.close();
@@ -41,7 +41,7 @@ it("rejects unexpected historical X tables before mutation", () => {
   const file = path(),
     db = openDb(file);
   db.exec(
-    "DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;CREATE TABLE x_accounts(sentinel TEXT);INSERT INTO x_accounts VALUES('kept');PRAGMA user_version=10",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;CREATE TABLE x_accounts(sentinel TEXT);INSERT INTO x_accounts VALUES('kept');PRAGMA user_version=10",
   );
   db.close();
   expect(() => openDb(file)).toThrow(/historical database schema/);

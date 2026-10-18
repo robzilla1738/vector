@@ -80,6 +80,9 @@ export interface WebToolContext {
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
+  connectorFileUpload?: (
+    input: import("@aux/contracts/connector-file-upload").ConnectorFileUploadInput,
+  ) => Promise<LoopToolResult>;
   xOperation?: (
     input: import("@aux/contracts/x").XToolInput,
     ctx: LoopToolContext,

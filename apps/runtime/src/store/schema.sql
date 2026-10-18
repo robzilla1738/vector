@@ -604,6 +604,17 @@ CREATE INDEX idx_x_task_grants_task ON x_task_grants(task_id,task_revision,revok
 CREATE INDEX idx_x_task_grants_connection ON x_task_grants(connection_id,revoked_at);
 CREATE TABLE x_credential_jobs(job_id TEXT PRIMARY KEY,connection_id TEXT NOT NULL,body TEXT NOT NULL,created_at INTEGER NOT NULL);
 
+-- @schema connector_uploads
+CREATE TABLE connector_file_transfers(
+  transfer_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+  state TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_at REAL NOT NULL
+);
+CREATE INDEX idx_connector_file_transfers_run ON connector_file_transfers(run_id,state);
+CREATE INDEX idx_connector_file_transfers_state ON connector_file_transfers(state,transfer_id);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

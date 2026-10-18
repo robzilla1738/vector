@@ -15,21 +15,42 @@ jobs and immutable originals; image references; generated native window ownershi
 Google/MCP/search adapters; and separate selected-app desktop capture. Capture is
 off by default, with no apps selected or OCR permission granted in development.
 
+The integrated runtime slice implements selected-original PDF/DOCX file
+transfers through the concrete supported Notion multipart and Slack allocation/
+byte-upload/completion protocols. Schema12 protects transfer manifests and private
+upload instructions, binds actual run/source/account/OAuth generations, and keeps
+uncertain writes inspect-only. Startup retires only actionable transfers in indexed
+100-row batches; completed history is not decrypted at boot. Codec key/marker
+initialization remains independent of retained bodies. Strict database foreign-key
+inventory checks still inspect clear ownership indexes; this is not a constant-time
+whole-boot claim. Backup/recovery authenticate complete protected records, and
+recovery never resumes write authority. Stop, Take over, article Forget and shutdown
+join the original transfers before retiring their sources. Unknown provider upload
+shapes remain unsupported; no real account/file upload is claimed.
+
+Object-root tool unions now publish the root object constraint without removing
+branches, references or original validation. Context accounting and SDK transport
+prepare the same schema representation for the original route, including failover
+and compaction. Independent SDK tests cover the full canonical manifest and direct/
+Gateway modes. The native default-route failure still needs fresh staging and a
+real provider attempt. Registration-only capabilities never imply an active account.
+
 The current follow-on slice adds original-run desktop model-source admission and
 retirement, X public-PKCE accounts and governed operations, DOM-only LinkedIn
 research/workflow preparation, the unified Memory workspace and compact connection
-controls. New account records/grants/cleanup jobs use encrypted schema11 and
+controls. Account records/grants/cleanup jobs introduced in schema11 remain encrypted, and
 recovery restores inactive authority. The owner explicitly chose to keep OAuth
 registration setup explicit and finish adapters/fixture tests. No working connection
 is simulated; no real third-party message has been sent.
 
-A separate working native-context slice extends LinkedIn with typed original-owner
+The committed native-context slice extends LinkedIn with typed original-owner
 prepare/apply input proof. Its consolidated area0066 is source-proven. All49 real
 Blink input cases and nine Mac retirement/Cocoa-acknowledgement/BFCache cases pass
 without retries or skips. The first41-case Blink run exposed missing real widget
 focus in three new fixtures; corrected native focus setup and eight additional
 exact-text insertion cases pass. The focused runners built in9m27.59s after the
-fixture correction. The full application has not yet been rebuilt with0066.
+fixture correction. The clean ea9a82ec application subsequently built all761 steps
+in16m48.16s with0066; current native observations are recorded below.
 The integrated TypeScript route now keeps immutable original backend nodes
 through actual one-time approval and creates a separate short-lived input ticket
 only at dispatch. Accepted review cannot re-resolve a replacement target or
@@ -41,7 +62,9 @@ Unsupported contexts and uncertain outcomes never acquire automatic replay.
 
 Startup validation and utility glyphs now follow their actual feature boundaries.
 The current production renderer measures **617 KB startup JS /212 KB CSS /3,081 KB total
-JS** using actual boot/preload/static closure traversal. Canonical command routing
+JS** at the earlier renderer checkpoint using actual boot/preload/static closure traversal.
+The clean ea9a82ec production rebuild measures617/212/3,083KB respectively;
+its total optional JavaScript supersedes the earlier3,081KB measurement. Canonical command routing
 and shortcut bindings stay synchronous; labels and Settings metadata load lazily.
 The authored registry generates the ordered startup projection before build,
 typecheck and the original native launcher. Matched production builds reduce
@@ -57,11 +80,17 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated check passes typecheck, lint and all **5,458tests across
-835files** in96.87s. Runtime dist was rebuilt before tests. This includes the
+The latest integrated check passes typecheck, lint and all **5,593tests across
+843files** in110.52s. Runtime dist was rebuilt before tests. This includes the
 repaired Quick Ask handback/queue fixtures, native-context approval continuation,
 accessible Sheets selection/navigation and named offline MCP/Google cases.
-Log: `/tmp/aux-native-context-sheets-integrated-check.log`. Native runner results
+Log: `/tmp/aux-mcp-schema-integrated-check3.log`. The first attempt stopped on
+a conditional-test lint error; the next full run exposed two historical-body startup
+scans and a resolver-versus-dispatch fixture assumption. The repaired check retains
+constant-time codec initialization, actual one-attempt provider dispatch assertions
+and complete transfer read/export/recovery verification.
+[Transfer/schema integration evidence](evidence/aside-connectors-schema12-2026-10-18.json)
+records the exact scope and reviews. Native runner results
 and source replay are recorded separately in
 [the native-context evidence](evidence/aside-native-context-2026-10-18.json).
 
@@ -83,7 +112,9 @@ no live Google selection or navigation observation is claimed. MCP review now
 labels active registrations Registered, since registration alone does not prove
 OAuth or tool discovery. New offline Google service and named Notion/Slack SDK
 fixtures cover dispatch, partial errors, retirement and uncertain writes. They
-do not establish live connectivity or an actual file-byte upload.
+do not establish live connectivity. The protected file-transfer slice adds
+actual immutable-byte dispatch against protocol fixtures; current Notion/Slack
+account compatibility and live file uploads remain unverified.
 
 The working Sheets navigation adapter now captures the original visible Name
 box and accessible grid, binds an exact bounded A1 target, and dispatches through
@@ -109,7 +140,9 @@ capture/source commands. It preserves selected refs/drafts for review and refuse
 new browser choices before new-run, queue, steer or answer acknowledgement. Plain
 text followups may retain their original run's existing page authority. No new
 cross-window source producer is advertised; the corrected packaged interaction
-still awaits staging. Its final focused cases cover menu dismissal before expansion.
+has now been observed on the clean ea9a82ec native build: the menu opens,
+Escape returns its opener, and handback preserves multiline drafts and an admitted
+local image. Its focused cases also cover menu dismissal before expansion.
 The separately reproduced catalog snapshot/patch race has10passing actual-store
 regressions and retains command revision rejection with zero write replay.
 
@@ -157,11 +190,38 @@ assertion text or faulting code bytes were recorded. The cause remains unresolve
 [the sanitized crash evidence](evidence/aside-original-155-crash-2026-10-18.json)
 records the exact identity and limits. The report was preserved unchanged.
 
-The latest original launcher71243/app71389/runtime71405 retired normally through
-application-menu Quit; its disposable Profile and plain lock are gone. Earlier
-interactive debugger SIGINT retirements were deliberate diagnostic interruptions,
-not reproduced application crashes. Only the specifically authorized Crashpad
-report was decoded; no other owner Profile data was read or changed.
+The earlier launcher71243/app71389/runtime71405 retired normally through
+application-menu Quit. Its Profile and lock are gone; earlier interactive debugger
+SIGINT retirements were deliberate interruptions. Only the specifically authorized
+Crashpad report was decoded; no other owner Profile data was read or changed.
+
+The clean ea9a82ec candidate built761steps in16m48.16s and launched with native
+and runtime identities matching the commit, schema11,278 host methods and500
+runtime methods. Its matching framework/DWARF UUID is preserved for any new
+failure; it cannot symbolize the older dump. A253-second initial idle observation
+with no UI actions did not reproduce the old crash. This does not resolve its cause.
+
+Current native comparisons include matched1712×989 and narrow854×989 logical
+windows, Quick Ask440×92 empty and440×180 with a six-line draft, both-theme
+context menus, Memory tree keyboard behavior, MCP dialog/select focus return,
+unconfigured connection disclosures/shared scroll and reversible synthetic-chat
+archive/restore. Actual local image intake and Open in Aux preserve the admitted
+image. No provider upload or real third-party write was performed. Page navigation,
+Back, Forward, independently witnessed Reload and Find also work while the same
+original runtime is SIGSTOPped; it resumes without a replacement child.
+
+Two concrete failures remain: accepting a native address while Settings is open
+loads the page underneath without closing Settings, and a synthetic request through
+the actual default anthropic/claude-sonnet-5.5 route fails before inference because
+one published tool schema lacks a root object type. The latter has a source
+correction in the next runtime slice; neither failure is accepted as fixed in this
+native build. Provider usage/cost are unknown, and this is not a passed smoke task.
+[The current native evidence](evidence/aside-native-ea9-2026-10-18.json) records
+captures, identities, observed states and remaining limits. The original launcher
+retired the preview after Aux menu Quit and debugger quit: browser exit0, original
+Profile and plain lock removed. Runtime shutdown still reported a desktop-context
+stop acknowledgement after the original host channel closed; that cleanup ordering
+requires a narrow fix and fresh retirement observation.
 
 ## Validation and remaining acceptance
 

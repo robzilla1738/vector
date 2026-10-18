@@ -53,7 +53,7 @@ current follow-on source. Exact prepared schema bytes and actual optional-tool
 publication now cover saved/idle compaction and captured operation grants.
 Canonical Select ownership and remaining compact Settings roles are integrated;
 utility glyph modules and generated synchronous command routing reduce measured
-startup JS to617KB. CSS measures212KB and total optional JS3,081KB; all byte targets
+startup JS to617KB. CSS measures212KB and current total optional JS3,083KB; all byte targets
 remain open. Isolated work completes typed LinkedIn native recipient/editor proof
 and remaining matched UI observations.
 Skills/MCP/activity geometry and the Quick Ask context admission/scroll fixes are
@@ -69,21 +69,33 @@ Foundation7806e41fc, capability07199225f and owned-services34117c740 have limite
 155 native observations. Area0065 is compiled; follow-on native Tab Search,
 Cmd-L/navigation/Back/Find and isolated Reload during original-runtime pause work.
 Quick Ask92px empty/long-draft expansion and unified empty Memory tree render;
-the corrected Quick Ask context opener still needs current native observation.
+the corrected Quick Ask context opener, focus return and draft/image handback
+now have clean ea9a82ec native observations in both themes.
 Main-window live context has no original Quick caller admission: source now offers
 Open in Aux, preserves drafts and fences new/queued/steered browser choices.
 A genuine cross-window source producer remains an explicit implementation gap. Native build identity
 is34117+dirty, not a clean10d3 combined build. The original preview retired normally.
 Area0066 now has a complete source replay proof plus49 passing actual Blink
 input cases and nine passing Mac retirement/acknowledgement cases, without
-retries or skips. Its full application rebuild and live workflow observation
-remain next. One AppKit sharing-indicator negative-geometry path is diagnosed;
+retries or skips. Its full application rebuild passed761steps in16m48.16s at clean ea9a82ec;
+live third-party workflow observation remains open. One AppKit sharing-indicator negative-geometry path is diagnosed;
 the older155 SIGTRAP remains unresolved. The owner authorized crash-report-only
 inspection; the exact original155 dump is identified, and its mismatched framework
 UUID prevents direct symbolization with the current rebuilt symbols.
-Matching155 stock requires its full compile; no paired
+The clean current native preview also reproduced a Settings/omnibox overlay
+transition failure and a default-route tool-schema rejection. Their source fixes
+and current native verification remain active. Matching155 stock requires its full compile; no paired
 timing result exists. Source, compiled objects, observed current behavior and
 accepted outcomes stay separate. See STATUS for exact evidence.
+
+The integrated runtime slice adds original-source Notion/Slack file-byte protocols,
+encrypted schema12 transfers and recovery, exact run/OAuth/source retirement and
+pre-removal article Forget joins. Tool-schema publication/accounting share actual
+SDK conversion and preserve object-union validation. Codecs no longer decrypt
+completed transfer history at boot; strict ownership-index checks remain. Fixtures
+and independent reviews do not establish live account compatibility. Next current
+native acceptance must verify the default-route schema correction and Settings
+navigation fix before the manual20-task smoke.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

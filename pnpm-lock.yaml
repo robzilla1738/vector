@@ -89,6 +89,9 @@ importers:
       '@ai-sdk/openai':
         specifier: 4.0.60
         version: 4.0.60(zod@4.5.4)
+      '@ai-sdk/provider-utils':
+        specifier: 5.0.36
+        version: 5.0.36(zod@4.5.4)
       '@aux/chromium-driver':
         specifier: workspace:*
         version: link:../../packages/chromium-driver

@@ -63,6 +63,20 @@ import { toolResultsMessage, type LoopToolDeps, type LoopToolResult, type ModelM
  * steers into the transcript, and finishes the run.
  */
 export interface AgentLoopHostDeps {
+  connectorFileUploadReady?: (input: {
+    runId: string;
+    signal: AbortSignal;
+    checkOwner(): void;
+  }) => Promise<boolean>;
+  connectorFileUpload?: (input: {
+    runId: string;
+    input: import("@aux/contracts/connector-file-upload").ConnectorFileUploadInput;
+    signal: AbortSignal;
+    checkOwner(): void;
+  }) => Promise<
+    | import("@aux/contracts/connector-file-upload").ConnectorFileUploadResult
+    | { park: import("./types.js").LoopPark }
+  >;
   modelGeneration?: () => string;
   codingFiles?: CodingFilesService;
   codingProcesses?: CodingProcesses;
@@ -2718,6 +2732,58 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     signal,
     checkOwner: recallOwner({ runId, threadId, turnId: runId }),
   });
+  const refreshConnectorUpload = async () => {
+    deps.connectorFileUpload = undefined;
+    const backend = self.deps.agentLoop;
+    const latest = self.get(runId);
+    const allowedTools = latest.config?.agentProfile?.tools;
+    if (
+      (allowedTools && !allowedTools.includes("*") && !allowedTools.includes("connector_file_upload")) ||
+      !backend?.connectorFileUploadReady ||
+      !backend.connectorFileUpload ||
+      !latest.config?.taskId ||
+      !latest.config.taskRevision ||
+      self.deps.readOnly ||
+      latest.config.privateTask ||
+      isReadOnlyProfile(latest.config.subagentProfile)
+    )
+      return;
+    const originalSignal = signal;
+    const generation = backend.modelGeneration?.();
+    const checkOwner = () => {
+      if (
+        originalSignal.aborted ||
+        signal !== originalSignal ||
+        self.controls.get(runId) !== c ||
+        steerPending() ||
+        backend.modelGeneration?.() !== generation
+      )
+        throw new AuxError("cancelled", "The original connector file turn retired.");
+      self.deps.checkRunSource?.(runId);
+      self.deps.turnMentions.skills(runId);
+    };
+    checkOwner();
+    try {
+      const ready = await backend.connectorFileUploadReady({ runId, signal: originalSignal, checkOwner });
+      checkOwner();
+      if (ready)
+        deps.connectorFileUpload = async (input) => {
+          checkOwner();
+          const result = await backend.connectorFileUpload!({
+            runId,
+            input,
+            signal: originalSignal,
+            checkOwner,
+          });
+          checkOwner();
+          return "park" in result ? result : { output: result };
+        };
+    } catch {
+      // Optional unconfigured/unsupported connections do not block ordinary model tools.
+      checkOwner();
+    }
+  };
+
   const makeOpts = (): AgentLoopOptions => {
     // A pending assistant tool call must receive its result before any user context.
     publishModelContext();
@@ -3408,6 +3474,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         }
         let outcome: AgentLoopOutcome;
         try {
+          await refreshConnectorUpload();
           outcome = hasResume
             ? await resumeAgentLoop(makeOpts(), resumeAnswer)
             : await runAgentLoop(makeOpts());

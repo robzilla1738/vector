@@ -71,13 +71,51 @@ live in the encrypted workspace record beside the independent root. Normal-windo
 proof and the workspace revision own every mutation; removal reviews an exact
 body/revision and retires derived context and older managed recovery generations.
 Search/recall include these bodies within the existing bounded Space budget; they
-grant no execution authority. Site/routine documents, file diffs and Dream remain open. Current native evidence belongs in STATUS.
+grant no execution authority. Site and routine documents now share the encrypted
+authoritative document model. Dream records its own admitted model operation and
+usage, consolidates generated material, and proposes changes to owner-authored
+documents. File-change records bind before/after revisions; Revert refuses later
+edits. History uses50-entry pages. Unified retrieval preserves heading-aware
+chunks, original revision/line ranges and source eligibility through publication;
+local semantic ranking has an explicit lexical fallback. Native populated
+Dream/diff acceptance remains open in STATUS.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 
 The runtime’s services coordinate agent execution, snapshots, policy decisions, durable effect receipts, artifacts, memory, routines and external tools. Observed element references are scoped to page and document epochs. Navigation or takeover invalidates earlier authority; Stop and Take over must fence in-flight work. Model and page content remain untrusted.
 
 The loopback API uses a bearer token stored in the Profile runtime directory. CLI and MCP are clients of the same runtime policy rather than alternate authorities. Secrets are held by native secret storage; stored sensitive values use protected SQLite adapters. Task evidence JSON is sealed against its actual SQLite sequence and its record identity is checked on read. New writes allocate that sequence with an empty field and seal the body in the same transaction, without writing plaintext. Existing evidence converts once through authenticated resumable keyset progress before AI service admission; completed startup checks only its protected completion marker. Backup and cross-Profile recovery authenticate and translate the marker and row protection together.
+
+The existing agent loop now compacts bounded context without deleting the complete
+encrypted transcript. Summary publication binds an exact transcript boundary and
+revision; independently retained constraints, task state, sources, approvals and
+unresolved effects survive compaction. Steering, cancellation, model/Space changes
+and Forget retire the original publication. Queue edits atomically move text,
+attachments and source references against the original queued-message revision;
+delivery fences further edits. Provider transport and context accounting prepare
+the same tool-schema representation, retaining the original runtime validation.
+
+Selected-original connector uploads use the existing governed tool dispatcher and
+durable effect ledger. Notion's supported multipart instructions and Slack's
+allocation/upload/completion phases retain original source bytes, account and OAuth
+generation, original run/task/Space, and separate reviewable phase intents. Encrypted
+schema12 jobs retain private instructions; publication rechecks source eligibility,
+and uncertain sends never replay. Forget joins dependent original transfers before
+source/key removal. Startup retires actionable jobs through a state index in bounded
+batches; protected bodies are authenticated on actual store reads and explicit
+backup/recovery, rather than decrypted for every historical job at boot. Restored
+write authority stays retired. Cached structural MCP tool proof determines local
+availability; it neither grants OAuth authority nor probes credentials/network during
+model preparation. Dispatch retains fresh authenticated provider checks.
+
+Selected-app desktop context is a separate encrypted local source service, off by
+default. Ordinary Memory enablement grants no desktop access. Native accessibility
+text and separately permitted local OCR retain explicit app selection, original
+consent/generation and window provenance, with14-day retention. Pause, app removal,
+permission changes, lock and Forget retire affected captures and derived model
+work; no raw-keystroke path exists. This does not grant Quick Ask cross-window
+page authority: unsupported live browser choices use Open in Aux with the same
+ordinary draft and admitted attachment ownership.
 
 Aux owns the agent loop; provider SDKs supply model transport rather than an embedded foreign agent runtime. Execution chooses the saved local or cloud target for the original turn; cloud SDK loading is deferred until that target is used. Resource admission uses the original run family, usage limits and reviewed account quote before a money decision. Provider stop acknowledgements settle retained resource receipts; ambiguous creation or cleanup stays unresolved. A typed resource handoff can switch the original family to local execution only after original-window proof and cleanup of every family resource. A provably unsent review retains its exact creation promise but cannot dispatch after the handoff. Shutdown synchronously retires active run proofs, controls and Set schedulers, then joins their original execution tasks and pending review continuations before closing cloud resources and the repository. Accepted leased Space-memory updates join their actual native key writes, durable watermark and lease release before repository closure; closing admission cannot abort an accepted write halfway through publication. Secrets remain in native credential storage.
 
@@ -135,6 +173,15 @@ and admits neither network loading nor document scripts. Extraction, read and
 release retain the original window, runtime generation and cancellation identity.
 A release joins the corresponding pending read before ownership is retired.
 Formats come from bytes and package structure; filenames are display labels.
+The isolated utility also performs bounded PDF render/text/fields/fill/merge/split/
+rotate jobs over immutable admitted originals. Operation receipts retain source
+hashes, page mappings and saved outputs. Forms require supported AcroForm types
+and verification of both saved values and rendered appearances; encrypted, XFA,
+signature and script-dependent mutation paths are refused. Original files remain
+unchanged. Reference-image generation similarly uses admitted MIME-verified image
+artifacts and current provider capabilities, with existing reservations, receipts
+and cancellation ownership.
+
 
 One DocumentSnapshots service owns encrypted schema-5 manifests and bounded text
 segments. Conversation attachments and historical task evidence share its strict
@@ -166,8 +213,9 @@ encoded bodies through the renderer. Original document/window proof, a retained
 file read, isolated decode and a clipboard sequence witness govern publication.
 It preserves a newer human clipboard, retains private-Profile provenance, and
 retires its exact decoder/claim on cancellation. Copy has its own precise native
-method capability and does not disable existing Save. This implementation is in
-source; the current built 272-method app predates it.
+method capability and does not disable existing Save. The clean ea9a82ec application compiles this implementation and advertises278
+host methods. Native stored-image Copy itself still requires its specific current
+interaction observation; capability count is not behavior acceptance.
 
 ## Browser chrome and chat surfaces
 

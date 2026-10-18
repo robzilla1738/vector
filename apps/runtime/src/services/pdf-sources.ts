@@ -1,17 +1,12 @@
+import { selectedDocument } from "./selected-document-source.js";
 import { setImmediate } from "node:timers/promises";
 import { documentOriginalFence } from "./document-originals.js";
 import { createHash } from "node:crypto";
 import { open } from "node:fs/promises";
-import {
-  AuxError,
-  TaskEvidenceSchema,
-  type Run,
-  type AttachmentReference,
-  type TaskDocumentReference,
-} from "@aux/contracts";
+import { AuxError, type Run } from "@aux/contracts";
 import { DOCUMENT_JOB_SOURCE_LIMIT, type PdfSource } from "@aux/contracts/document-jobs";
 import type { Repo } from "../store/repo.js";
-import type { DocumentSnapshots, DocumentOwner } from "./document-snapshots.js";
+import type { DocumentSnapshots } from "./document-snapshots.js";
 import type { ConversationDocuments } from "./conversation-documents.js";
 
 export type AdmittedPdfSource = {
@@ -26,80 +21,6 @@ export type PdfSourceDependencies = {
   documents: DocumentSnapshots;
   attachments: ConversationDocuments;
 };
-
-function selectedDocument(
-  deps: PdfSourceDependencies,
-  input: Exclude<PdfSource, { kind: "artifact" }>,
-  owner: { run: Run },
-  checkCurrent: () => void,
-) {
-  let reference: AttachmentReference | TaskDocumentReference;
-  let documentOwner: DocumentOwner;
-  let assertSource: () => void;
-  if (input.kind === "attachment") {
-    const matches = (owner.run.config?.contextAttachmentRefs ?? []).filter(
-      (item) => item.attachmentId === input.attachmentId,
-    );
-    if (matches.length !== 1)
-      throw new AuxError("permission_denied", "Choose a PDF attachment admitted to this original turn.");
-    const selected = matches[0]!;
-    reference = selected;
-    documentOwner = { kind: "conversation", ownerId: selected.chatId, documentId: selected.attachmentId };
-    assertSource = () => {
-      checkCurrent();
-      if (
-        !deps.repo
-          .getRun(owner.run.runId)
-          ?.config?.contextAttachmentRefs?.some((item) => JSON.stringify(item) === JSON.stringify(selected))
-      )
-        throw new AuxError("ref_stale", "The original PDF attachment selection retired.");
-      const record = deps.attachments.referenceMetadata(selected);
-      if (record.removed || !record.included)
-        throw new AuxError("ref_stale", "The original PDF attachment was removed or deselected.");
-    };
-  } else {
-    const matches = (owner.run.config?.contextTaskDocumentRefs ?? []).filter(
-      (item) => item.evidenceId === input.evidenceId,
-    );
-    if (matches.length !== 1)
-      throw new AuxError(
-        "permission_denied",
-        "Choose current PDF evidence admitted with this task revision.",
-      );
-    const selected = matches[0]!;
-    reference = selected;
-    documentOwner = { kind: "task", ownerId: selected.taskId, documentId: selected.evidenceId };
-    assertSource = () => {
-      checkCurrent();
-      const current = deps.repo.getRun(owner.run.runId);
-      const task = deps.repo.db
-        .prepare("SELECT revision,state FROM tasks WHERE task_id=?")
-        .get(selected.taskId) as { revision: number; state: string } | undefined;
-      if (
-        current?.config?.taskId !== selected.taskId ||
-        current.config.taskRevision !== selected.taskRevision ||
-        task?.state !== "open" ||
-        task.revision !== selected.taskRevision ||
-        !current.config.contextTaskDocumentRefs?.some(
-          (item) => JSON.stringify(item) === JSON.stringify(selected),
-        )
-      )
-        throw new AuxError("ref_stale", "The admitted task document revision or authority retired.");
-      const row = deps.repo.db
-        .prepare("SELECT seq,json FROM task_evidence WHERE evidence_id=? AND task_id=? AND task_revision=?")
-        .get(selected.evidenceId, selected.taskId, selected.taskRevision) as
-        { seq: number; json: string } | undefined;
-      const evidence =
-        row &&
-        TaskEvidenceSchema.parse(
-          JSON.parse(deps.repo.revealRecordField("task_evidence", [row.seq], "json", row.json)),
-        );
-      if (evidence?.kind !== "document_snapshot" || evidence.document?.sha256 !== selected.sha256)
-        throw new AuxError("ref_stale", "The admitted task PDF evidence was removed or changed.");
-    };
-  }
-  return { reference, documentOwner, assertSource };
-}
 
 /** Only a selected immutable reference or a run-owned artifact grants PDF bytes. */
 export async function withPdfSources<T>(

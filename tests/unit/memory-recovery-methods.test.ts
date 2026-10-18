@@ -31,7 +31,7 @@ function fixture() {
         repo,
         settings: { all: () => ({ dataDir }) },
         events,
-        runs: { redactForgottenArticleOutputs: vi.fn() },
+        runs: { redactForgottenArticleOutputs: vi.fn(), retireArticleTransferSources: vi.fn() },
         checkpointDeletedData: vi.fn(),
         ...extra,
       },
@@ -176,12 +176,14 @@ it("wires saved-article Forget and policy removals through the recovery guard", 
       policy: vi
         .fn()
         .mockReturnValue({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] }),
-      forget: vi.fn(async (_space: string, _memoryId: string | undefined, advance: () => void) => {
-        advance();
-        return 1;
-      }),
-      setPolicy: vi.fn(async (_space: string, policy: object, advance: () => void) => {
-        advance();
+      forget: vi.fn(
+        async (_space: string, _memoryId: string | undefined, advance: () => void | Promise<void>) => {
+          await advance();
+          return 1;
+        },
+      ),
+      setPolicy: vi.fn(async (_space: string, policy: object, advance: () => void | Promise<void>) => {
+        await advance();
         return policy;
       }),
     };

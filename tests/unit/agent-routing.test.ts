@@ -99,11 +99,13 @@ describe("route chains", () => {
 describe("runtime failover", () => {
   it("a funded Goal tool call stops after its reserved primary model attempt", async () => {
     const resolved: string[] = [];
+    const dispatched: string[] = [];
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);
         return new MockLanguageModelV4({
           doStream: async () => {
+            dispatched.push(id);
             throw apiError(429);
           },
         });
@@ -123,7 +125,8 @@ describe("runtime failover", () => {
         maxAttempts: 1,
       }),
     ).rejects.toThrow(/429/);
-    expect(resolved).toEqual([MUSE]);
+    expect([...new Set(resolved)]).toEqual([MUSE]);
+    expect(dispatched).toEqual([MUSE]);
   });
 
   it("a benchmark model pin refuses a 429 fallback to another model", async () => {

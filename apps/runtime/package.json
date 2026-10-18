@@ -30,6 +30,7 @@
     "@ai-sdk/gateway": "4.0.75",
     "@ai-sdk/google": "4.0.64",
     "@ai-sdk/openai": "4.0.60",
+    "@ai-sdk/provider-utils": "5.0.36",
     "@aux/chromium-driver": "workspace:*",
     "@aux/contracts": "workspace:*",
     "@aux/filter-lists": "workspace:*",
@@ -53,8 +54,8 @@
     "vega": "6.4.0",
     "vega-lite": "6.4.3",
     "ws": "8.21.3",
-    "zod": "catalog:",
-    "yaml": "2.8.1"
+    "yaml": "2.8.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

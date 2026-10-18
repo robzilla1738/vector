@@ -73,6 +73,7 @@ async function stagedFixture(version = 3) {
     for (const table of channelTablesForDatabase(original.db).reverse())
       original.db.exec(`DROP TABLE ${table}`);
     original.db.exec(`
+      DROP TABLE connector_file_transfers;
       DROP TABLE run_start_receipts;
       DROP TABLE coding_process_logs;
       DROP TABLE private_spend;

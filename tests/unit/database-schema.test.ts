@@ -213,7 +213,7 @@ describe("fresh schema", () => {
     });
     repo.setSetting("owner-choice", "preserved");
     previous.exec(
-      "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+      "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
     );
     for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
     for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
@@ -332,7 +332,7 @@ it("adds opaque account receipts to an existing development schema4 Profile", ()
   const { path } = fixture();
   const db = track(openDb(path));
   db.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
@@ -352,7 +352,7 @@ it("adds protected channel storage to schema5 without changing existing records"
   const db = track(openDb(path));
   db.prepare("INSERT INTO kv VALUES('retained','schema5 value')").run();
   db.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
@@ -371,7 +371,7 @@ it("preserves a historical database with unexpected partial channel tables", () 
   const { path } = fixture();
   const db = track(openDb(path));
   db.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
@@ -390,7 +390,7 @@ it("adds protected attachment storage to a valid schema6 without replacing exist
   const { path } = fixture();
   const previous = track(openDb(path));
   previous.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
@@ -411,7 +411,7 @@ it("preserves malformed schema6 without applying the attachment migration", () =
   const { path } = fixture();
   const previous = track(openDb(path));
   previous.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
@@ -431,7 +431,7 @@ it("validates the protected document schema before applying an unrelated attachm
   const { path } = fixture();
   const previous = track(openDb(path));
   previous.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
@@ -451,7 +451,7 @@ it("adds separate encrypted desktop context tables to valid schema7 without chan
   const { path } = fixture();
   const previous = track(openDb(path));
   previous.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
@@ -468,7 +468,7 @@ it("refuses partial desktop schema before mutating a historical database", () =>
   const { path } = fixture();
   const previous = track(openDb(path));
   previous.exec(
-    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
   );
   for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);

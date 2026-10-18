@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION].includes(version)) throw incompatible();
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION].includes(version)) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -52,6 +52,7 @@ export function openDb(path: string): DatabaseSync {
       desktopTablesForDatabase(db);
       googleTablesForDatabase(db);
       xTablesForDatabase(db);
+      connectorTransferTablesForDatabase(db);
       if (version < 7 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name='channel_attachments'").get())
         throw incompatible();
       if (version < 6 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name LIKE 'channel_%'").get())
@@ -88,6 +89,7 @@ export function openDb(path: string): DatabaseSync {
       if (version < 9) applySchema(db, [schema.google, "PRAGMA user_version=9"]);
       if (version < 10) applySchema(db, [schema.document_sources, "PRAGMA user_version=10"]);
       if (version < 11) applySchema(db, [schema.x, "PRAGMA user_version=11"]);
+      if (version < 12) applySchema(db, [schema.connector_uploads, "PRAGMA user_version=12"]);
     } else {
       applySchema(db, [
         schema.profile,
@@ -100,12 +102,14 @@ export function openDb(path: string): DatabaseSync {
         schema.google,
         schema.document_sources,
         schema.x,
+        schema.connector_uploads,
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
     desktopTablesForDatabase(db);
     googleTablesForDatabase(db);
     xTablesForDatabase(db);
+    connectorTransferTablesForDatabase(db);
     channelTablesForDatabase(db);
     if (!financialTablesForDatabase(db).length) applySchema(db, [schema.private_spend]);
     if (path !== ":memory:") chmodSync(path, 0o600);
@@ -187,7 +191,7 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Document tables do not match the historical database schema.");
     return [];
   }
-  if (![5, 6, 7, 8, 9, 10, 11].includes(version) || found.length !== tables.length)
+  if (![5, 6, 7, 8, 9, 10, 11, 12].includes(version) || found.length !== tables.length)
     throw new Error("The protected document schema is incomplete.");
   const expected = [
     "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,state:0,manifest:0",
@@ -231,7 +235,7 @@ export function channelTablesForDatabase(db: DatabaseSync): string[] {
     return [];
   }
   if (
-    ![6, 7, 8, 9, 10, 11].includes(version) ||
+    ![6, 7, 8, 9, 10, 11, 12].includes(version) ||
     found.length !== tables.length ||
     found.some((table) => !tables.includes(table))
   )
@@ -274,7 +278,7 @@ export function desktopTablesForDatabase(db: DatabaseSync): string[] {
     return [];
   }
   if (
-    ![8, 9, 10, 11].includes(version) ||
+    ![8, 9, 10, 11, 12].includes(version) ||
     found.length !== Object.keys(expected).length ||
     found.some((table) => !Object.hasOwn(expected, table))
   )
@@ -299,7 +303,7 @@ export function googleTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Google grant tables do not match the historical database schema.");
     return [];
   }
-  if (![9, 10, 11].includes(version) || found.length !== 1 || found[0] !== "google_task_grants")
+  if (![9, 10, 11, 12].includes(version) || found.length !== 1 || found[0] !== "google_task_grants")
     throw new Error("Protected Google grant inventory is incomplete.");
   const columns = db.prepare("PRAGMA table_info(google_task_grants)").all() as { name: string; pk: number }[];
   if (
@@ -340,7 +344,7 @@ export function documentSourceTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Original document tables do not match the historical schema.");
     return [];
   }
-  if (![10, 11].includes(version) || found.length !== 1 || found[0]?.name !== "document_source_chunks")
+  if (![10, 11, 12].includes(version) || found.length !== 1 || found[0]?.name !== "document_source_chunks")
     throw new Error("The protected original document schema is incomplete.");
   const columns = db.prepare("PRAGMA table_info(document_source_chunks)").all() as {
     name: string;
@@ -378,7 +382,7 @@ export function xTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("X tables do not match the historical database schema.");
     return [];
   }
-  if (version !== 11 || found.join(",") !== "x_accounts,x_credential_jobs,x_task_grants")
+  if (![11, 12].includes(version) || found.join(",") !== "x_accounts,x_credential_jobs,x_task_grants")
     throw new Error("Protected X account inventory is incomplete.");
   const expected = {
     x_accounts: "connection_id:1,user_id_lookup:0,body:0,revoked_at:0",
@@ -434,4 +438,68 @@ export function xTablesForDatabase(db: DatabaseSync): string[] {
       throw new Error("Protected X grant indexes differ.");
   }
   return found;
+}
+
+/** Reject incomplete or unexpected upload storage before migrating any historical database. */
+export function connectorTransferTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const found = db
+    .prepare(
+      "SELECT name FROM sqlite_schema WHERE type='table' AND name GLOB 'connector_file_*' ORDER BY name",
+    )
+    .all() as { name: string }[];
+  if (version < 12) {
+    if (found.length)
+      throw new Error("Connector transfer tables do not match the historical database schema.");
+    return [];
+  }
+  if (version !== 12 || found.length !== 1 || found[0]?.name !== "connector_file_transfers")
+    throw new Error("Protected connector transfer inventory is incomplete.");
+  const columns = db.prepare("PRAGMA table_info(connector_file_transfers)").all() as {
+    name: string;
+    pk: number;
+    type: string;
+    notnull: number;
+  }[];
+  if (
+    columns.map((column) => `${column.name}:${column.type}:${column.pk}:${column.notnull}`).join(",") !==
+    "transfer_id:TEXT:1:0,run_id:TEXT:0:1,state:TEXT:0:1,body:TEXT:0:1,updated_at:REAL:0:1"
+  )
+    throw new Error("Protected connector transfer row identity differs.");
+  const links = db.prepare("PRAGMA foreign_key_list(connector_file_transfers)").all() as {
+    from: string;
+    table: string;
+    to: string;
+    on_delete: string;
+  }[];
+  if (
+    links.length !== 1 ||
+    links[0]?.from !== "run_id" ||
+    links[0]?.table !== "runs" ||
+    links[0]?.to !== "run_id" ||
+    links[0]?.on_delete !== "CASCADE"
+  )
+    throw new Error("Protected connector transfer retirement differs.");
+  const indexes = db.prepare("PRAGMA index_list(connector_file_transfers)").all() as {
+    name: string;
+    unique: number;
+    partial: number;
+  }[];
+  for (const [name, columns] of [
+    ["idx_connector_file_transfers_run", "run_id,state"],
+    ["idx_connector_file_transfers_state", "state,transfer_id"],
+  ]) {
+    const index = indexes.find((index) => index.name === name);
+    const indexed = db.prepare(`PRAGMA index_info(${name})`).all() as { name: string }[];
+    if (
+      !index ||
+      index.unique !== 0 ||
+      index.partial !== 0 ||
+      indexed.map((column) => column.name).join(",") !== columns
+    )
+      throw new Error("Protected connector transfer indexes differ.");
+  }
+  if (db.prepare("PRAGMA foreign_key_check(connector_file_transfers)").get())
+    throw new Error("Protected connector transfer original run is missing.");
+  return ["connector_file_transfers"];
 }

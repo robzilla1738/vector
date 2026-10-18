@@ -19,7 +19,9 @@ it("migrates schema8 through current Google/document storage atomically while pr
   const file = path(),
     db = openDb(file);
   db.prepare("INSERT INTO kv VALUES('marker','retained')").run();
-  db.exec("DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks");
+  db.exec(
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+  );
   for (const table of googleTablesForDatabase(db)) db.exec(`DROP TABLE ${table}`);
   db.exec("PRAGMA user_version=8");
   expect(encryptedFieldsForDatabase(db)).not.toHaveProperty("google_task_grants");
@@ -38,7 +40,7 @@ it("preserves a historical database with unexpected Google tables without applyi
   const file = path(),
     db = openDb(file);
   db.exec(
-    "DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;DROP TABLE document_source_chunks;DROP TABLE google_task_grants;CREATE TABLE google_task_grants(sentinel TEXT);INSERT INTO google_task_grants VALUES('kept');PRAGMA user_version=8",
+    "DROP TABLE connector_file_transfers; DROP TABLE x_task_grants;DROP TABLE x_accounts;DROP TABLE x_credential_jobs;DROP TABLE document_source_chunks;DROP TABLE google_task_grants;CREATE TABLE google_task_grants(sentinel TEXT);INSERT INTO google_task_grants VALUES('kept');PRAGMA user_version=8",
   );
   db.close();
   expect(() => openDb(file)).toThrow(/Google grant tables/);

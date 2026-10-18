@@ -1,3 +1,4 @@
+import { discoveredFileUploadCapability } from "./connector-file-capability.js";
 import { createHash, randomUUID } from "node:crypto";
 import { open, realpath } from "node:fs/promises";
 import { Client, type Transport } from "@modelcontextprotocol/client";
@@ -49,6 +50,7 @@ export class OutboundMcpService {
   constructor(
     private repo: Repo,
     private transportProvider?: McpTransportProvider,
+    private authorityEpoch?: (server: OutboundMcpServer) => number | undefined,
   ) {
     repo.db
       .prepare("UPDATE outbound_mcp_calls SET status='uncertain',ended_at=? WHERE status='invoking'")
@@ -147,10 +149,13 @@ export class OutboundMcpService {
   }
 
   revoke(serverId: string): OutboundMcpServer {
-    this.get(serverId);
+    const server = this.get(serverId);
+    server.state = "revoked";
+    server.fileUpload = undefined;
+    server.updatedAt = Date.now();
     this.repo.db
-      .prepare("UPDATE outbound_mcp_servers SET state='revoked',updated_at=? WHERE server_id=?")
-      .run(Date.now(), serverId);
+      .prepare("UPDATE outbound_mcp_servers SET state='revoked',body=?,updated_at=? WHERE server_id=?")
+      .run(JSON.stringify(server), server.updatedAt, serverId);
     this.cancelActive(serverId);
     this.repo.db.prepare("DELETE FROM outbound_mcp_bundles WHERE server_id=?").run(serverId);
     return this.get(serverId);
@@ -183,6 +188,7 @@ export class OutboundMcpService {
   /** Credential replacement retires durable connector captures as well as live transports. */
   invalidateAuthorization(serverId: string): void {
     const server = this.get(serverId);
+    server.fileUpload = undefined;
     server.toolsRevision += 1;
     server.updatedAt = Date.now();
     this.saveServer(server);
@@ -294,58 +300,107 @@ export class OutboundMcpService {
     }
   }
 
-  async listTools(serverId: string) {
+  /** Signed byte transfers share this original live connection's retirement and token epoch. */
+  async withAuthority<T>(
+    serverId: string,
+    toolName: string,
+    context: { workspaceId: string; taskId: string; revision: number },
+    signal: AbortSignal,
+    action: (authority: {
+      server: OutboundMcpServer;
+      oauthEpoch: number;
+      signal: AbortSignal;
+      checkCurrent(): void;
+    }) => Promise<T>,
+  ): Promise<T> {
+    const server = this.get(serverId);
+    this.checkCall(server, toolName, context);
+    const oauthEpoch = this.authorityEpoch?.(server);
+    if (oauthEpoch === undefined || !Number.isSafeInteger(oauthEpoch) || oauthEpoch < 0)
+      throw new AuxError(
+        "capability_unsupported",
+        "This connection has no original OAuth authority epoch for file transfers.",
+      );
+    return this.connected(
+      server,
+      async (_client, joined) => {
+        const checkCurrent = () => {
+          joined.throwIfAborted();
+          this.checkCall(server, toolName, context);
+          if (this.authorityEpoch?.(server) !== oauthEpoch)
+            throw new AuxError("permission_denied", "The original connector upload account changed.");
+        };
+        checkCurrent();
+        const result = await action({ server, oauthEpoch, signal: joined, checkCurrent });
+        checkCurrent();
+        return result;
+      },
+      signal,
+    );
+  }
+
+  async listTools(serverId: string, externalSignal?: AbortSignal) {
     const server = this.get(serverId);
     if (server.state !== "active") throw new AuxError("permission_denied", "MCP connection is not active.");
-    return this.connected(server, async (client, signal) => {
-      const tools = [];
-      const cursors = new Set<string>();
-      let cursor: string | undefined;
-      do {
-        const page = await client.listTools(cursor ? { cursor } : undefined, { signal });
-        tools.push(...page.tools);
-        if (Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
-          throw new AuxError("invalid_params", "MCP tool catalog exceeds the metadata limit.");
-        cursor = page.nextCursor;
-        if (cursor && cursors.has(cursor))
-          throw new AuxError("invalid_params", "MCP catalog pagination repeated.");
-        if (cursor) cursors.add(cursor);
-      } while (cursor);
-      const current = this.get(serverId);
-      if (current.state !== "active" || current.toolsRevision !== server.toolsRevision)
-        throw new AuxError("conflict", "MCP tool access changed while listing tools.");
-      const catalog = tools.map((tool) =>
-        OutboundMcpToolSchema.parse({
-          name: tool.name,
-          enabled: !current.disabledTools.includes(tool.name),
-          description: tool.description?.slice(0, 2000),
-          inputSchema: tool.inputSchema,
-          annotations: tool.annotations,
-          effect: officialMcpEffect(current.source, tool.name, tool.annotations),
-        }),
-      );
-      const names = [...new Set(catalog.map((tool) => tool.name))].sort();
-      if (names.length !== catalog.length)
-        throw new AuxError("invalid_params", "MCP tool catalog contains duplicate names.");
-      const catalogDigest = createHash("sha256")
-        .update(
-          JSON.stringify(
-            catalog
-              .map(({ enabled: _enabled, ...tool }) => tool)
-              .sort((a, b) => a.name.localeCompare(b.name)),
-          ),
-        )
-        .digest("hex");
-      if (catalogDigest !== current.catalogDigest) {
-        current.catalogDigest = catalogDigest;
-        current.toolNames = names;
-        current.toolsRevision += 1;
-        current.updatedAt = Date.now();
-        this.saveServer(current);
-        this.cancelActive(serverId);
-      }
-      return catalog;
-    });
+    return this.connected(
+      server,
+      async (client, signal) => {
+        const tools = [];
+        const cursors = new Set<string>();
+        let cursor: string | undefined;
+        do {
+          const page = await client.listTools(cursor ? { cursor } : undefined, { signal });
+          tools.push(...page.tools);
+          if (Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
+            throw new AuxError("invalid_params", "MCP tool catalog exceeds the metadata limit.");
+          cursor = page.nextCursor;
+          if (cursor && cursors.has(cursor))
+            throw new AuxError("invalid_params", "MCP catalog pagination repeated.");
+          if (cursor) cursors.add(cursor);
+        } while (cursor);
+        const current = this.get(serverId);
+        if (current.state !== "active" || current.toolsRevision !== server.toolsRevision)
+          throw new AuxError("conflict", "MCP tool access changed while listing tools.");
+        const catalog = tools.map((tool) =>
+          OutboundMcpToolSchema.parse({
+            name: tool.name,
+            enabled: !current.disabledTools.includes(tool.name),
+            description: tool.description?.slice(0, 2000),
+            inputSchema: tool.inputSchema,
+            ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
+            annotations: tool.annotations,
+            effect: officialMcpEffect(current.source, tool.name, tool.annotations),
+          }),
+        );
+        const names = [...new Set(catalog.map((tool) => tool.name))].sort();
+        if (names.length !== catalog.length)
+          throw new AuxError("invalid_params", "MCP tool catalog contains duplicate names.");
+        const catalogDigest = createHash("sha256")
+          .update(
+            JSON.stringify(
+              catalog
+                .map(({ enabled: _enabled, ...tool }) => tool)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+            ),
+          )
+          .digest("hex");
+        const fileUpload = discoveredFileUploadCapability(current.source, catalog, catalogDigest);
+        if (
+          catalogDigest !== current.catalogDigest ||
+          JSON.stringify(fileUpload) !== JSON.stringify(current.fileUpload)
+        ) {
+          current.fileUpload = fileUpload;
+          current.catalogDigest = catalogDigest;
+          current.toolNames = names;
+          current.toolsRevision += 1;
+          current.updatedAt = Date.now();
+          this.saveServer(current);
+          this.cancelActive(serverId);
+        }
+        return catalog;
+      },
+      externalSignal,
+    );
   }
 
   async callTool(

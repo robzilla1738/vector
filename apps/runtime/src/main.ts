@@ -1,3 +1,9 @@
+import { ConnectorFileTransfers } from "./services/connector-file-transfers.js";
+import { ConnectorUploadStore } from "./services/connector-upload-store.js";
+import { connectorUploadAuthorizer } from "./services/connector-upload-authorization.js";
+import { connectorUploadAvailable } from "./services/connector-upload-availability.js";
+import { allocationTool } from "./services/connector-upload-provider.js";
+import { officialMcpProvider } from "./services/official-mcp.js";
 import { nativeGoogleAttachmentInspector } from "./services/google-attachments.js";
 import { DesktopContextRunSources } from "./services/desktop-context-run-sources.js";
 import { XAccountService } from "./services/x-accounts.js";
@@ -309,6 +315,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const repo = new Repo(db, columnCipher);
   try {
     await migrateCodingProcessLogs(repo);
+    if (columnCipher) new ConnectorUploadStore(repo).retireRestored();
+    else if (repo.db.prepare("SELECT 1 FROM connector_file_transfers LIMIT 1").get())
+      throw new Error("Connector file records require protected storage before startup.");
     privateSession?.seedSettings(repo);
     privateStartupPhase("settings");
   } catch (error) {
@@ -317,6 +326,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     throw error;
   }
   let closed = false;
+  const checkUploadConnector = (runId: string, serverId: string, toolName: string) => {
+    const permission = runtimeServices.turnMentions.requireConnector(runId, `mcp:${serverId}`, toolName);
+    if (permission.status !== "available") throw new AuxError("permission_denied", permission.reason);
+  };
   let cliInstallTail = Promise.resolve();
   const cliInstallWork = new Set<Promise<unknown>>();
   const agentInstallWork = new Set<Promise<unknown>>();
@@ -357,6 +370,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     mcpOAuth: McpOAuthService;
     mcpTransportProvider: ReturnType<typeof createMcpTransportProvider>;
     outboundMcp: OutboundMcpService;
+    connectorFileTransfers: ConnectorFileTransfers;
     hooks: HookService;
     calendar: CalendarConnectionService;
     xAccounts: XAccountService;
@@ -738,7 +752,40 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     sets: () => new SetService(repo, events, runtimeServices.pages),
     mcpOAuth: () => new McpOAuthService(native),
     mcpTransportProvider: () => createMcpTransportProvider(runtimeServices.mcpOAuth),
-    outboundMcp: () => new OutboundMcpService(repo, runtimeServices.mcpTransportProvider),
+    outboundMcp: () =>
+      new OutboundMcpService(repo, runtimeServices.mcpTransportProvider, (server) =>
+        server.source.kind === "remote" && server.source.auth === "oauth"
+          ? runtimeServices.mcpOAuth.authorizationGeneration({
+              ...server,
+              source: { ...server.source, auth: "oauth" },
+            })
+          : undefined,
+      ),
+    connectorFileTransfers: () =>
+      new ConnectorFileTransfers({
+        repo,
+        documents: runtimeServices.documentSnapshots,
+        attachments: runtimeServices.runs.documents,
+        mcp: runtimeServices.outboundMcp,
+        writes: runtimeServices.durableWrites,
+        owner: (runId) => runtimeServices.runs.captureConnectorUploadOwner(runId),
+        checkConnector: checkUploadConnector,
+        authorize: connectorUploadAuthorizer({
+          decide: decideDeps,
+          gate: runtimeServices.safetyGate,
+          context: (runId) => {
+            const owner = runtimeServices.runs.captureConnectorUploadOwner(runId);
+            return {
+              profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+              turnId: runId,
+              threadId: owner.run.config?.chatId ?? runId,
+              checkCurrent: owner.checkCurrent,
+            };
+          },
+          retireUnemittedApproval: (approvalId, owner, digest) =>
+            runtimeServices.approvals.retireUnemittedRequest(approvalId, owner, digest),
+        }),
+      }),
     hooks: () =>
       new HookService(repo, (handler, workspaceId) => {
         if (handler.type === "command") {
@@ -1009,6 +1056,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     documentSnapshots: () => new DocumentSnapshots(repo),
     runs: () => {
       const runs = new RunService({
+        connectorFileTransferLifecycle: async (runIds, mode) => {
+          const transfers = serviceContainer.peek("connectorFileTransfers");
+          if (transfers) await transfers[mode](runIds);
+          else if (mode === "forget" && columnCipher) {
+            const store = new ConnectorUploadStore(repo);
+            for (const runId of runIds) store.remove(runId);
+          }
+        },
         documentSnapshots: runtimeServices.documentSnapshots,
         desktopContextSources: runtimeServices.desktopContextSources,
         privateBrowserProfile: !!privateSession,
@@ -2400,6 +2455,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
     desktopContextProject: async (messages, budget, owner) =>
       runtimeServices.desktopContextSources?.project(messages, budget, owner) ?? messages,
+    connectorFileUploadReady: async (input) => {
+      if (!columnCipher || privateSession) return false;
+      return connectorUploadAvailable(
+        {
+          repo,
+          documents: runtimeServices.documentSnapshots,
+          attachments: runtimeServices.runs.documents,
+          mcp: runtimeServices.outboundMcp,
+          owner: (runId) => runtimeServices.runs.captureConnectorUploadOwner(runId),
+          checkConnector: checkUploadConnector,
+        },
+        input,
+      );
+    },
+    connectorFileUpload: (input) =>
+      runtimeServices.runs.connectorFileOperation(input, async () => {
+        const transfers = runtimeServices.connectorFileTransfers;
+        const saved =
+          input.input.action === "start" ? undefined : transfers.store.get(input.input.transferId);
+        if (saved && saved.runId !== input.runId)
+          throw new AuxError("permission_denied", "The connector transfer belongs to another original run.");
+        const serverId = input.input.action === "start" ? input.input.serverId : saved!.serverId;
+        const provider = officialMcpProvider(runtimeServices.outboundMcp.get(serverId).source);
+        if (!provider)
+          throw new AuxError("capability_unsupported", "The original official connector is unavailable.");
+        return runtimeServices.turnMentions.useConnector(
+          input.runId,
+          `mcp:${serverId}`,
+          allocationTool(provider),
+          () => transfers.invoke(input.runId, input.input),
+        );
+      }),
     pdfSources: (input) =>
       runtimeServices.runs.pdfOperation(input, (run, signal, checkCurrent) =>
         listPdfSources(
@@ -3959,6 +4046,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           serviceContainer.peek("codingProcesses")?.close(),
           serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("browserImport")?.close(),
+          serviceContainer.peek("connectorFileTransfers")?.close(),
           serviceContainer.peek("documentSnapshots")?.close(),
           serviceContainer.peek("artifacts")?.exports.close(),
           (async () => {
@@ -4068,6 +4156,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       { stage: "google-operations", run: () => serviceContainer.peek("google")?.close() },
       { stage: "calendar", run: () => serviceContainer.peek("calendar")?.close() },
       { stage: "google-accounts", run: () => serviceContainer.peek("googleAccounts")?.close() },
+      {
+        stage: "connector-file-transfers",
+        run: () => serviceContainer.peek("connectorFileTransfers")?.close(),
+      },
       {
         stage: "mcp-oauth",
         run: () => {
