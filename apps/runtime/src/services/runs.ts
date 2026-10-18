@@ -1,3 +1,5 @@
+import { inspectLegacyArticleHistory, type LegacyArticleInspection } from "./legacy-memory-retirement.js";
+import type { ContentRemovalCheck } from "./content-memory.js";
 import { desktopSourceRuns } from "./desktop-context-run-sources.js";
 import { projectRunWorkTrace } from "./run-work-trace.js";
 import { retireDesktopContextOutputs, type DesktopContextRemoval } from "./desktop-context-retirement.js";
@@ -621,7 +623,23 @@ export class RunService {
     );
   }
 
-  private articleDerivedRuns(workspaceId: string, memoryId?: string, missingOnly = false) {
+  private readonly articleRemovalProofs = new WeakMap<
+    ContentRemovalCheck,
+    {
+      workspaceId: string;
+      legacy: LegacyArticleInspection;
+      committed: boolean;
+      affected: ReadonlySet<string>;
+    }
+  >();
+
+  private articleDerivedRuns(
+    workspaceId: string,
+    memoryId?: string,
+    missingOnly = false,
+    legacy: ReadonlySet<string> = new Set(),
+    dependentRunIds?: (originals: ReadonlySet<string>) => ReadonlySet<string>,
+  ) {
     const rows = this.deps.repo.db.prepare("SELECT run_id FROM runs").all() as { run_id: string }[];
     const runs = rows.flatMap(({ run_id }) => {
       const run = this.deps.repo.getRun(run_id);
@@ -656,6 +674,7 @@ export class RunService {
         )
         .map((run) => run.runId),
     );
+    for (const id of legacy) seeds.add(id);
     const configs = runs.map((run) => ({
       runId: run.runId,
       config: {
@@ -665,7 +684,15 @@ export class RunService {
     }));
     let affected = derivedPageRecallRunIds(configs, seeds, owners);
     const expanded = new Set<string>();
-    while ([...affected].some((id) => !expanded.has(id))) {
+    for (;;) {
+      if (affected.size > 4096)
+        throw new AuxError(
+          "backend_unavailable",
+          "Article retirement dependency closure exceeds its run budget.",
+        );
+      const previous = affected;
+      for (const id of dependentRunIds?.(affected) ?? []) seeds.add(id);
+      affected = derivedPageRecallRunIds(configs, new Set([...affected, ...seeds]), owners);
       for (const id of affected) {
         if (expanded.has(id)) continue;
         for (const child of protectedRunFamily(this.deps.repo, new Set([id]))) {
@@ -673,18 +700,16 @@ export class RunService {
           expanded.add(child);
         }
       }
-      affected = derivedPageRecallRunIds(configs, seeds, owners);
+      affected = derivedPageRecallRunIds(configs, new Set([...affected, ...seeds]), owners);
+      if (affected.size === previous.size) break;
     }
     return { runs, affected };
   }
 
-  /** Revoke exact article-derived owners before source/key deletion; terminal transfer bodies also retire. */
-  async retireArticleTransferSources(workspaceId: string, memoryId?: string): Promise<void> {
-    const { affected } = this.articleDerivedRuns(workspaceId, memoryId);
+  private async joinArticleRuns(affected: ReadonlySet<string>) {
     const active = [...affected].filter(
       (id) => !TERMINAL_RUN_STATUSES.has(this.deps.repo.getRun(id)?.status ?? "failed"),
     );
-    // Fence every original owner synchronously, before joining the first held transport.
     for (const id of active) {
       const control = this.coordinator.controls.get(id);
       control?.abort.abort();
@@ -697,9 +722,151 @@ export class RunService {
     await this.deps.connectorFileTransferLifecycle?.([...affected], "forget");
   }
 
+  private async retireArticleEpisodes(runIds: ReadonlySet<string>) {
+    const owners = [...runIds].flatMap((runId) => {
+      const workspaceId = this.deps.repo.getRun(runId)?.config?.contextWorkspaceId;
+      return workspaceId ? [{ runId, workspaceId }] : [];
+    });
+    for (const { runId, workspaceId } of owners) {
+      if (this.closed) throw new AuxError("cancelled", "The original article retirement owner closed.");
+      if (!this.deps.memoryPipeline) {
+        if (
+          this.deps.repo.db
+            .prepare("SELECT 1 FROM memory_files WHERE workspace_id=? LIMIT 1")
+            .get(workspaceId)
+        )
+          throw new AuxError(
+            "backend_unavailable",
+            "Authenticate original Space Memory before retiring generated article episodes.",
+          );
+        continue;
+      }
+      await this.deps.memoryPipeline.forget({ workspaceId, sourceRunId: runId }, undefined, true);
+    }
+  }
+
+  private articleSourceFingerprint(workspaceId: string, memoryId?: string) {
+    return createHash("sha256")
+      .update(
+        JSON.stringify(
+          this.deps.repo.db
+            .prepare(
+              "SELECT memory_id,profile_id,workspace_id,source_key,origin,ciphertext,captured_at,expires_at FROM content_memory WHERE workspace_id=? AND (? IS NULL OR memory_id=?) ORDER BY memory_id",
+            )
+            .all(workspaceId, memoryId ?? null, memoryId ?? null),
+        ),
+      )
+      .digest("hex");
+  }
+
+  /** Revoke exact article-derived owners before source/key deletion; terminal transfer bodies also retire. */
+  retireArticleTransferSources(
+    workspaceId: string,
+    memoryId?: string,
+    afterRetirement?: () => Promise<void>,
+  ): Promise<ContentRemovalCheck> {
+    return this.ownOperation(async () => {
+      const owner = () => {
+        if (this.closed) throw new AuxError("cancelled", "The original article retirement owner closed.");
+      };
+      const sourceFingerprint = () => this.articleSourceFingerprint(workspaceId, memoryId);
+      const originalSources = sourceFingerprint();
+      const transcript = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher);
+      await this.joinArticleRuns(this.articleDerivedRuns(workspaceId, memoryId).affected);
+      const first = await inspectLegacyArticleHistory(
+        this.deps.repo,
+        transcript,
+        { workspaceId, memoryId },
+        owner,
+      );
+      const { affected } = this.articleDerivedRuns(
+        workspaceId,
+        memoryId,
+        false,
+        first.runIds,
+        first.dependentRunIds,
+      );
+      first.check();
+      await this.joinArticleRuns(affected);
+      first.check();
+      await this.retireArticleEpisodes(affected);
+      first.check();
+      await afterRetirement?.();
+      owner();
+      first.check();
+      const legacy = await inspectLegacyArticleHistory(
+        this.deps.repo,
+        transcript,
+        { workspaceId, memoryId },
+        owner,
+      );
+      if ([...legacy.runIds].some((id) => !affected.has(id)) || sourceFingerprint() !== originalSources)
+        throw new AuxError(
+          "conflict",
+          "Article sources changed while retirement was joined; no complete removal was confirmed.",
+        );
+      const proof = { workspaceId, legacy, committed: false, affected };
+      let checked = false;
+      const check: ContentRemovalCheck = (scope) => {
+        owner();
+        if (scope && (scope.workspaceId !== workspaceId || scope.memoryId !== memoryId))
+          throw new AuxError("conflict", "The original article removal scope differs from this operation.");
+        if (
+          proof.committed ||
+          !this.articleRemovalProofs.has(check) ||
+          sourceFingerprint() !== originalSources
+        )
+          throw new AuxError("conflict", "The original article removal proof changed or was consumed.");
+        legacy.check();
+        if (scope) checked = true;
+      };
+      check.committed = () => {
+        if (!checked || proof.committed || !this.articleRemovalProofs.has(check))
+          throw new AuxError("conflict", "The original article removal was not committed exactly once.");
+        proof.committed = true;
+      };
+      this.articleRemovalProofs.set(check, proof);
+      check();
+      return check;
+    });
+  }
+
   /** Withdraw article-derived answers while retaining financial and effect recovery records. */
-  async redactForgottenArticleOutputs(workspaceId: string): Promise<number> {
-    const { runs, affected } = this.articleDerivedRuns(workspaceId, undefined, true);
+  async redactForgottenArticleOutputs(
+    workspaceId: string,
+    originalRemoval?: ContentRemovalCheck,
+    options?: { discoverMissingLegacy: true },
+  ): Promise<number> {
+    const proof = originalRemoval && this.articleRemovalProofs.get(originalRemoval);
+    if (originalRemoval && (!proof || proof.workspaceId !== workspaceId || !proof.committed))
+      throw new AuxError("conflict", "The original article removal proof is unavailable or uncommitted.");
+    proof?.legacy.check();
+    if (originalRemoval) this.articleRemovalProofs.delete(originalRemoval);
+    const transcript = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher);
+    const owner = () => {
+      if (this.closed) throw new AuxError("cancelled", "The original article retirement owner closed.");
+    };
+    const sources = options ? this.articleSourceFingerprint(workspaceId) : undefined;
+    const missing = options
+      ? await inspectLegacyArticleHistory(this.deps.repo, transcript, { workspaceId }, owner)
+      : undefined;
+    const legacySeeds = new Set(proof?.legacy.runIds);
+    for (const exposure of missing?.exposures ?? [])
+      if (
+        !this.deps.repo.db
+          .prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?")
+          .get(workspaceId, exposure.sourceId.slice(5))
+      )
+        legacySeeds.add(exposure.runId);
+    missing?.check();
+    for (const id of missing?.dependentRunIds(legacySeeds) ?? []) legacySeeds.add(id);
+    const { runs, affected } = this.articleDerivedRuns(
+      workspaceId,
+      undefined,
+      true,
+      legacySeeds,
+      (missing ?? proof?.legacy)?.dependentRunIds,
+    );
     const revokedArtifacts = new Set<string>(),
       affectedChats = new Set<string>();
     for (const run of runs) {
@@ -709,13 +876,24 @@ export class RunService {
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId }))
         revokedArtifacts.add(artifact.artifactId);
     }
-    // Retire all original work, including transfer records of terminal descendants, before source-body deletion.
-    for (const runId of affected) {
-      const run = this.deps.repo.getRun(runId);
-      if (run && !TERMINAL_RUN_STATUSES.has(run.status))
-        await this.cancel(runId, "A selected saved article was forgotten.");
+    await this.joinArticleRuns(affected);
+    if (missing) {
+      missing.check();
+      await this.retireArticleEpisodes(affected);
+      missing.check();
+      const current = await inspectLegacyArticleHistory(this.deps.repo, transcript, { workspaceId }, owner);
+      if (
+        sources !== this.articleSourceFingerprint(workspaceId) ||
+        current.runIds.size !== missing.runIds.size ||
+        [...current.runIds].some((id) => !missing.runIds.has(id))
+      )
+        throw new AuxError(
+          "conflict",
+          "The original expired article source or transcript scope changed; cleanup is incomplete.",
+        );
+      current.check();
     }
-    await this.deps.connectorFileTransferLifecycle?.([...affected], "forget");
+    proof?.legacy.check();
     // Edited copies are durable conversation documents, not run artifacts.
     // Remove only copies whose explicit source result is being revoked.
     for (const chatId of affectedChats) {

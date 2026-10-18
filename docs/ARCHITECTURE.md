@@ -158,9 +158,14 @@ Explicit Memory tools persist their actual encrypted results. Before publication
 returned page identities/revisions/hashes must resolve to the original eligible
 capture; its canonical references join the run without replacing earlier refs.
 Only genuine new coordinator starts receive the encrypted admission-version marker.
-Unmarked legacy Memory work details fail closed; bounded historical discovery,
-legacy model-context refusal and extracted-note retirement remain a separate
-unfinished correction, rather than an inferred or backfilled grant.
+Unmarked legacy Memory work details and model/fork/compaction reuse fail closed.
+Explicit Forget and portable-copy owners use bounded authenticated message/park
+inspection, original tool-call receipts and exact historical source identities for
+retirement only. No historical proof backfills source refs or a new admission.
+The 4096 stored run/orphan-ID cap applies globally before Space filtering; row,
+history and byte limits refuse incomplete inspection rather than certify a prefix.
+An opaque per-operation proof rechecks the original scope, source rows and history
+inside the actual deletion transaction before post-removal cleanup can proceed.
 
 Protected-source retirement follows authenticated Set/subagent reservations and
 their original execution family. Historical reads register every bounded source
@@ -172,6 +177,19 @@ Undo and invoice records; article cleanup retains its distinct transcript policy
 Portable export/stage removes dependent output even for an active desktop source
 whose capture is omitted, reusing the live transcript projection. These source
 rules and encrypted-store fixtures do not establish current native acceptance.
+
+Article retirement alternates authenticated family/config/artifact relationships
+with exact typed episodic/site/routine result dependencies until their bounded
+closure is stable. Live Forget joins original work and removes derived claim,
+document, Dream/history and index bodies through the existing Memory generation.
+Exact owner edits remain inspectable as typed sourceRetired records, excluded from
+recall and generated/model views; independent owner documents remain separate.
+Portable transcript cleanup does not yet remove article-derived quotes from the
+CURRENT independent Memory generation preserved during ordinary restore. Its
+[detached generation ownership design](design/aside-memory-restore-ownership.md)
+is pending implementation. Legacy derived notes can also remain recall-eligible
+after article expiry before discovery; the separate
+[source admission design](design/aside-memory-source-admission.md) remains pending.
 
 Conversation documents preserve complete metadata collections with separately encrypted immutable bodies and previews. Accepted turns store exact chat/attachment/content-hash references. Provider requests resolve relevant excerpts one body at a time under the remaining input budget and original cancellation/source fences; raw document context is not copied into new durable run configurations. Used sources survive removal for exact retries and branches; source-chat deletion and Forget retire the corresponding bodies and references. Historical inline collections convert atomically on first access rather than blocking startup with a full scan.
 

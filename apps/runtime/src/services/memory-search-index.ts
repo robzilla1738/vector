@@ -15,7 +15,9 @@ export type MemorySearchIndex = z.infer<typeof MemorySearchIndexSchema>;
 
 /** Bounded overlapping chunks, derived only from the authoritative approved notes. */
 export function buildMemorySearchIndex(claims: MemoryClaim[], updatedAt = Date.now()): MemorySearchIndex {
-  const sources = claims.map((claim) => ({ claimId: claim.claimId, text: memoryClaimText(claim) }));
+  const sources = claims
+    .filter((claim) => !claim.sourceRetired)
+    .map((claim) => ({ claimId: claim.claimId, text: memoryClaimText(claim) }));
   return {
     version: 1,
     updatedAt,

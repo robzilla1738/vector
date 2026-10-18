@@ -25,6 +25,11 @@ import {
 } from "./local-memory-embeddings.js";
 import { ProtectedStore } from "./protected-store.js";
 
+/** Internal original-removal proof, never supplied through a public API or model input. */
+export type ContentRemovalScope = { workspaceId: string; memoryId?: string };
+export type ContentRemovalCheck = ((scope?: ContentRemovalScope) => void) & { committed?: () => void };
+type BeforeContentRemoval = () => void | ContentRemovalCheck | Promise<void | ContentRemovalCheck>;
+
 const DAY = 86_400_000;
 const MAX_TEXT_BYTES = 64 * 1024;
 const MAX_PAGES_PER_SPACE = 500;
@@ -353,7 +358,7 @@ export class ContentMemoryStore {
   async setPolicy(
     workspaceId: string,
     policy: Policy,
-    beforeRemoval?: () => void | Promise<void>,
+    beforeRemoval?: BeforeContentRemoval,
   ): Promise<Policy> {
     return this.own(() => this.setPolicyOwned(workspaceId, policy, beforeRemoval));
   }
@@ -361,7 +366,7 @@ export class ContentMemoryStore {
   private async setPolicyOwned(
     workspaceId: string,
     policy: Policy,
-    beforeRemoval?: () => void | Promise<void>,
+    beforeRemoval?: BeforeContentRemoval,
   ): Promise<Policy> {
     this.requireSpace(workspaceId);
     this.retireSemantic(workspaceId);
@@ -396,6 +401,7 @@ export class ContentMemoryStore {
         expires,
         () => this.repo.setSetting(policyKey(workspaceId), next),
         beforeRemoval,
+        { kind: "policy", scope: { workspaceId } },
       );
       this.retireIndexes(workspaceId);
       return next;
@@ -873,7 +879,10 @@ export class ContentMemoryStore {
       ) as Row[];
     if (!rows.length) {
       await this.retirePendingFactors();
-      return empty();
+      if (retired()) return empty();
+      this.indexes.set(workspaceId, index);
+      if (this.indexes.size > MAX_INDEXED_SPACES) this.retireIndexes(this.indexes.keys().next().value!);
+      return index;
     }
     let key: Buffer;
     try {
@@ -1729,7 +1738,7 @@ export class ContentMemoryStore {
   async forget(
     workspaceId: string,
     memoryId?: string,
-    beforeRemoval?: () => void | Promise<void>,
+    beforeRemoval?: BeforeContentRemoval,
   ): Promise<number> {
     return this.own(() => this.forgetOwned(workspaceId, memoryId, beforeRemoval));
   }
@@ -1737,7 +1746,7 @@ export class ContentMemoryStore {
   private async forgetOwned(
     workspaceId: string,
     memoryId?: string,
-    beforeRemoval?: () => void | Promise<void>,
+    beforeRemoval?: BeforeContentRemoval,
   ): Promise<number> {
     return this.serialized(async () => {
       this.requireSpace(workspaceId);
@@ -1746,6 +1755,7 @@ export class ContentMemoryStore {
         undefined,
         undefined,
         beforeRemoval,
+        { kind: "forget", scope: { workspaceId, memoryId } },
       );
       if (removed) this.indexes.clear();
       return removed;
@@ -1756,7 +1766,8 @@ export class ContentMemoryStore {
     select: (row: Row & { workspace_id: string }) => boolean,
     expiryFor: (row: Row & { workspace_id: string }) => number = (row) => row.expires_at,
     onCommit: () => void = () => {},
-    beforeRemoval?: () => void | Promise<void>,
+    beforeRemoval?: BeforeContentRemoval,
+    removal?: { kind: "forget" | "policy"; scope: ContentRemovalScope },
   ): Promise<number> {
     this.retireSemantic();
     this.retireIndexes();
@@ -1774,22 +1785,29 @@ export class ContentMemoryStore {
         .all(this.profileId) as (Row & { workspace_id: string })[];
     let rows = query();
     if (!rows.some(select) && !hasDerivatives) {
+      const finalCheck = removal?.kind === "forget" ? await beforeRemoval?.() : undefined;
       this.repo.transaction(() => {
+        if (typeof finalCheck === "function") finalCheck(removal?.scope);
         const update = this.repo.db.prepare("UPDATE content_memory SET expires_at=? WHERE memory_id=?");
         for (const row of rows)
           if (expiryFor(row) !== row.expires_at) update.run(expiryFor(row), row.memory_id);
         onCommit();
       });
+      if (typeof finalCheck === "function") finalCheck.committed?.();
       await this.retirePendingFactors();
       return 0;
     }
-    await beforeRemoval?.();
+    const finalCheck = await beforeRemoval?.();
     const oldKey = await this.key();
     const oldFactor = this.factorName();
     rows = query();
     const removed = rows.filter(select);
     if (!removed.length && !hasDerivatives) {
-      this.repo.transaction(onCommit);
+      this.repo.transaction(() => {
+        if (typeof finalCheck === "function") finalCheck(removal?.scope);
+        onCommit();
+      });
+      if (typeof finalCheck === "function") finalCheck.committed?.();
       return 0;
     }
     const retained = rows
@@ -1818,6 +1836,7 @@ export class ContentMemoryStore {
       throw new Error("A new page-memory factor could not be confirmed.");
     try {
       this.repo.transaction(() => {
+        if (typeof finalCheck === "function") finalCheck(removal?.scope);
         const remove = this.repo.db.prepare("DELETE FROM content_memory WHERE profile_id=? AND memory_id=?");
         for (const row of removed)
           if (remove.run(this.profileId, row.memory_id).changes !== 1)
@@ -1843,6 +1862,7 @@ export class ContentMemoryStore {
     }
     this.keyPromise = Promise.resolve(nextKey);
     this.indexes.clear();
+    if (typeof finalCheck === "function") finalCheck.committed?.();
     await this.retirePendingFactors();
     return removed.length;
   }

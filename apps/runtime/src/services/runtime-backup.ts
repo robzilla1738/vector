@@ -1,3 +1,6 @@
+import { inspectLegacyArticleHistory } from "./legacy-memory-retirement.js";
+import { TranscriptStore } from "../agent/loop/transcript.js";
+import { ConversationBranches } from "./conversation-branches.js";
 import { retireDesktopTranscript } from "./desktop-context-retirement.js";
 import {
   currentSpaceMemory,
@@ -346,6 +349,16 @@ export async function createRuntimeBackup(
       if (repo.columnCipher) protectLegacyDocumentCollections(sanitized, repo.columnCipher);
       omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
+      const copied = new Repo(sanitized, repo.columnCipher);
+      const legacy = await inspectLegacyArticleHistory(
+        copied,
+        new TranscriptStore(sanitized, repo.columnCipher),
+        {},
+        () => {
+          opts.interrupt?.();
+          assertManagedRecoveryGeneration(dataDir, recoveryGeneration);
+        },
+      );
       sanitizePortablePageRecall(
         sanitized,
         repo.columnCipher,
@@ -355,7 +368,16 @@ export async function createRuntimeBackup(
           retireProtectedGeneratedTask(copied, runId, source);
           if (source === "desktop") retireDesktopTranscript(copied, runId);
         },
+        () => {
+          legacy.check();
+          return legacy.runIds;
+        },
+        (originals) => {
+          legacy.check();
+          return legacy.dependentRunIds(originals);
+        },
       );
+      new ConversationBranches(copied).purgeRevoked();
       if (repo.columnCipher && sanitized.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get())
         sanitized
           .prepare(
@@ -772,6 +794,10 @@ async function stageRuntimeRestoreSource(
       if (preservedMemory) retainSpaceMemory(staged, preservedMemory);
       else omitDerivedAndSpaceMemory(staged);
       staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
+      const copied = new Repo(staged, cipher);
+      const legacy = await inspectLegacyArticleHistory(copied, new TranscriptStore(staged, cipher), {}, () =>
+        assertManagedRecoveryGeneration(dataDir, manifest.recoveryGeneration),
+      );
       omittedArtifacts = sanitizePortablePageRecall(
         staged,
         cipher,
@@ -781,7 +807,16 @@ async function stageRuntimeRestoreSource(
           retireProtectedGeneratedTask(copied, runId, source);
           if (source === "desktop") retireDesktopTranscript(copied, runId);
         },
+        () => {
+          legacy.check();
+          return legacy.runIds;
+        },
+        (originals) => {
+          legacy.check();
+          return legacy.dependentRunIds(originals);
+        },
       );
+      new ConversationBranches(copied).purgeRevoked();
       const rows = staged
         .prepare(
           "SELECT artifact_id AS artifactId,page_id AS pageId,media_type AS mediaType,path FROM artifacts",

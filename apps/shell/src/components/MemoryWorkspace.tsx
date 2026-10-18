@@ -462,6 +462,7 @@ function MemoryWorkspaceBody({
           <section aria-label={`Edit ${document.path}`}>
             <p className="hint">
               {document.authoredBy} · revision {document.revision}
+              {document.sourceRetired ? " · original source retired · excluded from recall" : ""}
             </p>
             <p className="hint">
               Saving makes this owner-written. Generated synthesis and original source quotes remain separate.

@@ -16,43 +16,52 @@ export const MemoryPipelinePolicySchema = z
     retentionDays: MemoryRetentionDaysSchema.optional(),
   })
   .strict();
-export const MemoryClaimSchema = z.object({
-  claimId: z.string().uuid(),
-  sourceRunId: z.string().min(1),
-  contradictionIds: z.array(z.string().uuid()).max(200).optional(),
-  mergedClaimIds: z.array(z.string().uuid()).max(200).optional(),
-  text: z.string().min(1).max(2000),
-  capturedAt: z.number().int().nonnegative(),
-  ownerEdit: z
-    .object({
-      text: z.string().trim().min(1).max(2000),
-      revision: z.number().int().positive(),
-      updatedAt: z.number().int().nonnegative(),
-    })
-    .strict()
-    .optional(),
-  /** Exact source quote: report evidence or explicitly unverified owner-pasted context. Older encrypted notes remain readable. */
-  source: z
-    .discriminatedUnion("kind", [
-      z
-        .object({
-          kind: z.literal("run-report"),
-          quote: z.string().min(1).max(2000),
-          quoteSha256: z.string().regex(/^[a-f0-9]{64}$/),
-        })
-        .strict(),
-      z
-        .object({
-          kind: z.literal("owner-paste"),
-          importId: z.string().uuid(),
-          quote: z.string().min(1).max(2000),
-          quoteSha256: z.string().regex(/^[a-f0-9]{64}$/),
-          verification: z.literal("unverified-owner-note"),
-        })
-        .strict(),
-    ])
-    .optional(),
-});
+export const MemoryClaimSchema = z
+  .object({
+    claimId: z.string().uuid(),
+    sourceRunId: z.string().min(1),
+    contradictionIds: z.array(z.string().uuid()).max(200).optional(),
+    mergedClaimIds: z.array(z.string().uuid()).max(200).optional(),
+    text: z.string().min(1).max(2000),
+    capturedAt: z.number().int().nonnegative(),
+    /** Owner-authored edit retained for inspection only after original generated source retirement. */
+    sourceRetired: z.object({ at: z.number().int().nonnegative() }).strict().optional(),
+    ownerEdit: z
+      .object({
+        text: z.string().trim().min(1).max(2000),
+        revision: z.number().int().positive(),
+        updatedAt: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
+    /** Exact source quote: report evidence or explicitly unverified owner-pasted context. Older encrypted notes remain readable. */
+    source: z
+      .discriminatedUnion("kind", [
+        z
+          .object({
+            kind: z.literal("run-report"),
+            quote: z.string().min(1).max(2000),
+            quoteSha256: z.string().regex(/^[a-f0-9]{64}$/),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal("owner-paste"),
+            importId: z.string().uuid(),
+            quote: z.string().min(1).max(2000),
+            quoteSha256: z.string().regex(/^[a-f0-9]{64}$/),
+            verification: z.literal("unverified-owner-note"),
+          })
+          .strict(),
+      ])
+      .optional(),
+  })
+  .refine(
+    (claim) =>
+      !claim.sourceRetired ||
+      (!!claim.ownerEdit && !claim.source && claim.text === "Original source retired."),
+    "A retired source retains only its exact owner edit and a fixed retirement marker.",
+  );
 export const MemoryPipelineInboxSchema = z.array(MemoryClaimSchema).max(200);
 export const MemoryPipelineSourceSchema = z.object({
   runId: z.string().min(1),

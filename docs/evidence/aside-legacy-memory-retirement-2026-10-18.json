@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "productionBaseline": "599198322983fc874de90a885190c378d9b9d6de",
+  "nativeCandidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "nativeStaged": false,
+  "series": [
+    {
+      "stage": "v1",
+      "patch": "/tmp/aux-legacy-article-retirement-99-v1.patch",
+      "sha256": "d8efece40f3b69bda402d5420162fc5d129e0314bee459705f986cca909a84e4",
+      "files": 19
+    },
+    {
+      "stage": "v2",
+      "patch": "/tmp/aux-legacy-article-retirement-99-v2-delta.patch",
+      "sha256": "abf281485bd99ffdfa43673cd6e4fb62168b3ced6acdbc7526ffe0e222b6b5c9",
+      "files": 4
+    },
+    {
+      "stage": "v3",
+      "patch": "/tmp/aux-legacy-article-retirement-99-v3-delta.patch",
+      "sha256": "8f90d90215f13c5ad01f584daafacbcab61592d15f61fd0c0352fc1f806cb0e5",
+      "files": 3
+    }
+  ],
+  "finalSourcePostimages": {
+    "apps/runtime/src/agent/loop/legacy-recall.ts": "778ae7ae9629d24d4eae04d528585582ec15aec494ff2723c9c2d236ae597d09",
+    "apps/runtime/src/agent/loop/original-task-message.ts": "298ccbb7587edc4e8040d129449233fdb3a95c2800766a9ca8c39c190f3eee85",
+    "apps/runtime/src/agent/loop/transcript.ts": "18b24085f55e9f24017cba60e45416439a7767a18fcd437cf07c8945fe751026",
+    "apps/runtime/src/api/methods/workspaces.ts": "48fa8a74474a3d2e98b62089b9dc19498d55e0e9132981123082061c5ce8d8eb",
+    "apps/runtime/src/main.ts": "0b33c857a2574a37422403469d1293d4a6b84fcd54dca81bdcc291b6a1fa6685",
+    "apps/runtime/src/services/content-memory.ts": "97feb5137ed28f303453c6625619f239cdbede14ff9414640483ce5ea20ce12d",
+    "apps/runtime/src/services/legacy-memory-retirement.ts": "e1b49533a878441dd8eb0e0d72613b8180262fe5db6fc4807563a27fb87589cd",
+    "apps/runtime/src/services/memory-pipeline.ts": "0b080dbcb3824488fd3efeeb4178b0a963172ced139b0fc345af128b1a28adfd",
+    "apps/runtime/src/services/memory-search-index.ts": "3f363d23fc1affb0650df9341ffef66d5f7992f860d155e57a8963072c5c7b80",
+    "apps/runtime/src/services/runs.ts": "aa8a70ec101d63f910af87301bb14a9fe57f2ca1805cc5126ca63e5f09aff246",
+    "apps/runtime/src/services/runtime-backup.ts": "005f783866028f897d41152ca0358d5254b4ca938435a98b5f08bd26d3e3ae46",
+    "apps/shell/src/components/MemoryDocumentBrowser.tsx": "ac35555cab5fd15e2aac891e1c95c34736150c1ee94b4dd2b47a210f391c53b5",
+    "apps/shell/src/components/MemoryWorkspace.tsx": "43e99ea3651a72cf436dea2b5cda9c1508667e786bfc2b5765f0d355a2f31a11",
+    "packages/contracts/src/memory-documents.ts": "c8a0ea3c1e51873eb95e5b45f50c55334f588177e3d0b8355036c53949345255",
+    "packages/contracts/src/memory-pipeline.ts": "e84ddcf3ad816cd57703f0ea37fef7c4f293356ad2681c8120c0131faa617f9d",
+    "packages/contracts/src/portable-page-recall.ts": "23a900f7a7ab842524e03f133dc440c43913285f21dc723a7687e0f3222eefee",
+    "tests/unit/content-memory.test.ts": "8a8b94aa1d563c75f1da306f579e620faed0b7bb43d8927f809f193c97ee2308",
+    "tests/unit/legacy-recall-projection.test.ts": "fe08832c222b8c905b4f68b4a15675f413378865b661e451ab5b700cf03ce1c1",
+    "tests/unit/memory-article-provenance.test.ts": "9537e049a14805aa4e8dcc97fa12abacbb1a096ab7a401f430a0c0434cb811f2",
+    "tests/unit/connector-upload-run-owner.test.ts": "5234014a77bc250b5981881d87b0244e3b3f38789719a06a33a7c30a879fff05"
+  },
+  "rootApplyProof": {
+    "path": "/tmp/aux-legacy-article-root-series-apply-proof-2026-10-18.json",
+    "sha256": "b1034dacbd0420b98e02af5947e97b22cd45be0d09741a6083610e47e8f95b4a",
+    "all19PreAndPostimagesVerified": true
+  },
+  "changes": [
+    "Bounded authenticated retirement-only discovery of original Memory call/result/park and ledger pairs; historical source tuples do not grant new current reads.",
+    "Legacy model/fork/compaction refusal without action replay, captured-reference backfill or admission-marker backfill.",
+    "Opaque operation-specific removal proof binds original target scope, source rows, run authority and encrypted history at the actual synchronous deletion transaction.",
+    "Synchronous abort and original read/transfer/extraction joins before final retirement snapshots; explicit absent-source Forget and actual-removed prune discovery.",
+    "Monotonic bounded fixed point combines typed note dependencies with authenticated family/config/artifact relationships in live Forget, redaction and portable transcript cleanup.",
+    "Live generated claims/documents/Dream/history/index cleanup preserves exact owner edits as inspectable sourceRetired records excluded from model views.",
+    "Unstarted/consumed branch cleanup uses original prefix/receipt identity; unrelated owner requests/documents/families/drafts preserved.",
+    "Empty ContentMemory index publication uses original epoch/generation/policy/source fences."
+  ],
+  "interfaces": {
+    "newPublicMethods": 0,
+    "sqlMigration": false,
+    "newNativeAbi": false,
+    "publicResultContractAddition": "Optional invariant-checked sourceRetired:{at:number} on MemoryClaim and MemoryDocumentRecord; visible in two existing Memory controls."
+  },
+  "bounds": {
+    "storedRunAndOrphanIdsGlobalBeforeSpaceFiltering": 4096,
+    "transcriptRowBytes": 1048576,
+    "transcriptBytesPerRun": 67108864,
+    "aggregateTranscriptBytes": 268435456,
+    "aggregateTranscriptRows": 262144,
+    "ledgerRowsPerRun": 16384,
+    "ledgerSerializedBytesPerRun": 1048576,
+    "copiedLineageDepth": 32,
+    "messagePartsOrParkedOutcomes": 256,
+    "typedEdges": 262144,
+    "closureRuns": 4096,
+    "limitOutcome": "Unavailable/conflict, never truncated or declared clean."
+  },
+  "independentReviews": [
+    {
+      "path": "/tmp/aux-legacy-memory-v1-independent-review.json",
+      "sha256": "00446a1f40e19645c6161890c388e9a2caecfd3d0c71bd53c637585e61cc141e",
+      "result": "changes requested; actual L1 family-to-typed-receiver regression failed against frozen v1"
+    },
+    {
+      "path": "/tmp/aux-legacy-memory-v2-v3-independent-review.json",
+      "sha256": "1968c72fe8103b702d1c0befe2e0d78562b2d20be1a529ea7d546afdcc6dd6ae",
+      "result": "scoped clearance; L1 closed in v2+v3, K1/K2 remain open"
+    },
+    {
+      "path": "/tmp/aux-legacy-connector-fixture-v4-independent-review.json",
+      "sha256": "906ab8dd01540a4edb448b442e01ab7d4e75f1f77bdc251e552c32f5938fb27a",
+      "result": "No blocking fixture correction findings; subagent case models fork provenance, not full spawn chat-routing acceptance."
+    }
+  ],
+  "privateValidation": {
+    "v1": "Fresh runtime/shell/tests types;152/152 additional affected cases. Own focused82/83 diagnostic plus corrected selected1/1 before freeze, not a single83pass command.",
+    "v2": "Fresh runtime/test types; actual producer fixed. Broader67/68 identified root/dependent callback-role defect; v3 corrects it.",
+    "v3": "Fresh runtime/test types; one wholly passing68/68 command across45provenance,13restore,8projection,2savedcontext;13.38s. Scoped lint and format pass.",
+    "handoff": {
+      "path": "/tmp/aux-legacy-article-retirement-99-v3-handoff.md",
+      "sha256": "fdda23b32bdd35fde8498825adb990808d6bf66f3763f87e032f5e34fece922d"
+    },
+    "seriesProof": {
+      "path": "/tmp/aux-legacy-article-retirement-99-v3-series-proof.json",
+      "sha256": "b79af574904512809a84053366847d7726da5ca264e959b0a97f3dd9523ff40c"
+    }
+  },
+  "rootIntegratedCheck": {
+    "command": "npm run check",
+    "status": "passed after reviewed fixture-only correction",
+    "runtimeDist": "rebuilt by initial typecheck before tests",
+    "initial": {
+      "status": "failed",
+      "log": "/tmp/aux-legacy-memory-integrated-check-2026-10-18.log",
+      "sha256": "7672872e5bdd519d3aeacf9e9fec9507b8d895d3706f6d1508fc50629f15629f",
+      "passed": 5750,
+      "failed": 4,
+      "testFilesPassed": 851,
+      "testFilesFailed": 1,
+      "testSeconds": 122.51,
+      "typecheck": "passed",
+      "lint": "passed;570 preexisting warnings unchanged ignoring only source line/column",
+      "failureScope": "connector-upload-run-owner.test.ts: two old exact repeated-call counts; branch/subagent fixtures missing canonical original receipt/prefix and own task boundary. No production behavior weakened."
+    },
+    "retry": {
+      "status": "passed",
+      "log": "/tmp/aux-legacy-memory-integrated-check-retry-2026-10-18.log",
+      "sha256": "17db3f2a113d28754b590ec6d502bff85eeec2d56c3338bbf7fc8a5e7ae585c3",
+      "passed": 5754,
+      "failed": 0,
+      "testFilesPassed": 852,
+      "testFilesFailed": 0,
+      "testSeconds": 137.02,
+      "typecheck": "passed; runtime dist rebuilt before tests",
+      "lint": "passed;570 advisory warnings unchanged",
+      "coderWorktrees": {
+        "passed": 3,
+        "testMs": [
+          56164,
+          53958,
+          24481
+        ],
+        "originalDeadlineMs": 60000,
+        "fileMs": 134604,
+        "deadlinesChanged": false
+      },
+      "warningComparison": {
+        "path": "/tmp/aux-legacy-memory-lint-retry-comparison-2026-10-18.json",
+        "sha256": "6134d31839a3bbb60ccc5bf376a35f02c07c2b4c09c5f8458ecf7505b1a26c55",
+        "same": true
+      }
+    }
+  },
+  "remaining": [
+    {
+      "id": "K1",
+      "status": "open",
+      "issue": "Ordinary restore preserves CURRENT independent Memory generation; raw article-derived quote can remain after copied run/transcript sanitation. Normal staged forget would retire a factor still owned by live DB.",
+      "design": "docs/design/aside-memory-restore-ownership.md",
+      "designSha256": "d31ed107d25837c23299994cea780b7fb3855c4e9d7b28719685de5c37c30620",
+      "repro": "/tmp/aux-legacy-article-retirement-99-v1/portable-episode-baseline.log",
+      "reproSha256": "be2076a4bd1c31b652250149789b4f783c9a62cf883122ec53b7e29b4e8e75ab",
+      "evidenceScope": "Actual encrypted export/stage/apply; passing deliberate gap assertion is not a remediation test."
+    },
+    {
+      "id": "K2",
+      "status": "open",
+      "issue": "Accepted legacy derived note may remain model-recall eligible after original article expiry before discovery.",
+      "design": "docs/design/aside-memory-source-admission.md",
+      "designSha256": "433d6e0088d0cca5e3174e6c222169c80bd1de9b14afeeb95021ee12c385fe8b",
+      "repro": "/tmp/aux-legacy-memory-v1-expired-episode-repro.log",
+      "reproSha256": "36161ca763c3a1e1b83bf568a2d55f6ce97429fe08530aed55f056ced62cf2bb",
+      "evidenceScope": "Actual pipeline recall after disposable SQL expires_at=0; not natural-clock/prune/native observation."
+    },
+    {
+      "id": "native",
+      "status": "open",
+      "issue": "Current source staging, Memory populated native observations, default-route20task smoke, crash resolution and matching-stock performance remain separate."
+    }
+  ],
+  "errorSurface": "Direct API sanitizer intentionally retains generic conflict; no arbitrary diagnostics allowed. Actual model-loop refusal stores safe NewChat guidance; native rendering unobserved.",
+  "stockBuildInterruption": {
+    "originalLauncherPid": 64061,
+    "signal": "SIGINT to original owner only",
+    "completedDynamicSteps": 11246,
+    "elapsed": "36m53.93s",
+    "cleanup": "Original child process group joined; plain lock removed normally. No Profile or app staging involved.",
+    "classification": "intentional interruption for quiet source check, not compile error or acceptance"
+  },
+  "completion": "A5 and full adoption program remain active and incomplete.",
+  "fixtureCorrection": {
+    "stage": "v4-fixtures",
+    "productionSourceChanges": false,
+    "files": [
+      {
+        "path": "tests/unit/connector-upload-run-owner.test.ts",
+        "before": "d870a6b3434318f33837cfd93ebdd1ee97b11d6cd00e897d1340938e309e3ee7",
+        "after": "5234014a77bc250b5981881d87b0244e3b3f38789719a06a33a7c30a879fff05",
+        "beforeBytes": 24703,
+        "afterBytes": 26682
+      }
+    ],
+    "patch": {
+      "path": "/tmp/aux-legacy-article-retirement-99-v4-fixtures.patch",
+      "sha256": "8988c4bdfda644786f2f6c5144334523d23b8314611013a3bb0b85a00761aec8"
+    },
+    "review": {
+      "path": "/tmp/aux-legacy-connector-fixture-v4-independent-review.json",
+      "sha256": "906ab8dd01540a4edb448b442e01ab7d4e75f1f77bdc251e552c32f5938fb27a"
+    },
+    "focusedCheck": {
+      "log": "/tmp/aux-legacy-memory-connector-focused-2026-10-18.log",
+      "sha256": "9ba1cea089794b993ea1ca2e22d4a34f3d789f7f39469479a705473f252d8ba2",
+      "passed": 30,
+      "failed": 0,
+      "testFiles": 1,
+      "testDurationMs": 668,
+      "totalSeconds": 10.1
+    }
+  }
+}

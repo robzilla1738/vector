@@ -26,9 +26,16 @@ export const MemoryDocumentRecordSchema = z
     contentSha256: hash,
     authoredBy: z.enum(["owner", "generated"]),
     updatedAt: z.number().int().nonnegative(),
+    /** Anomalous owner content remains visible, but no source-derived automatic recall survives. */
+    sourceRetired: z.object({ at: z.number().int().nonnegative() }).strict().optional(),
     sourceRefs: z.array(MemorySourceReferenceSchema).max(200),
   })
-  .strict();
+  .strict()
+  .refine(
+    (document) =>
+      !document.sourceRetired || (document.authoredBy === "owner" && document.sourceRefs.length === 0),
+    "Retired source documents preserve only independent owner content.",
+  );
 export const MemoryDreamChangeSchema = z
   .object({
     changeId: z.string().uuid(),

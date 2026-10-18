@@ -414,7 +414,7 @@ export class MemoryPipeline {
   }
 
   private eligibleForRecall(workspaceId: string, claim: MemoryClaim): boolean {
-    if (!this.retained(workspaceId, claim)) return false;
+    if (claim.sourceRetired || !this.retained(workspaceId, claim)) return false;
     if (claim.source?.kind === "owner-paste")
       return (
         claim.source.verification === "unverified-owner-note" &&
@@ -649,7 +649,10 @@ export class MemoryPipeline {
   private summary(claims: MemoryClaim[]): string {
     const latest = [...claims]
       .filter(
-        (claim) => !claim.contradictionIds?.length && !memoryContentSensitivityReason(memoryClaimText(claim)),
+        (claim) =>
+          !claim.sourceRetired &&
+          !claim.contradictionIds?.length &&
+          !memoryContentSensitivityReason(memoryClaimText(claim)),
       )
       .sort((a, b) => (b.ownerEdit?.updatedAt ?? b.capturedAt) - (a.ownerEdit?.updatedAt ?? a.capturedAt))
       .slice(0, 4);
@@ -678,7 +681,7 @@ export class MemoryPipeline {
             claim.source?.kind === "owner-paste"
               ? `Owner-pasted note (unverified), import: ${claim.source.importId}`
               : `Source run: ${claim.sourceRunId}`
-          }${claim.ownerEdit ? "\nOwner-edited text (unverified):" : ""}\n${memoryClaimText(claim)}`,
+          }${claim.sourceRetired ? "\nOriginal source retired; owner edit retained for inspection only, excluded from recall." : ""}${claim.ownerEdit ? "\nOwner-edited text (unverified):" : ""}\n${memoryClaimText(claim)}`,
       )
       .join("\n\n");
   }
@@ -1220,12 +1223,15 @@ export class MemoryPipeline {
       throw new AuxError("permission_denied", "Enable Space memory before consolidation.");
     return this.leased(workspaceId, async () => {
       const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
-      const consolidated = consolidateMemoryClaims(
-        claims,
-        Date.now(),
-        (claim) => this.eligibleForRecall(workspaceId, claim),
-        Number.POSITIVE_INFINITY,
-      );
+      const consolidated = [
+        ...claims.filter((claim) => claim.sourceRetired),
+        ...consolidateMemoryClaims(
+          claims.filter((claim) => !claim.sourceRetired),
+          Date.now(),
+          (claim) => this.eligibleForRecall(workspaceId, claim),
+          Number.POSITIVE_INFINITY,
+        ),
+      ];
       const revision = this.snapshot(claims);
       await this.writeGeneration(workspaceId, consolidated, inbox, [...history, revision].slice(-10), prior);
       return {
@@ -1656,6 +1662,7 @@ export class MemoryPipeline {
 
   private documentEligible(workspaceId: string, document: MemoryDocumentRecord, claims: MemoryClaim[]) {
     return (
+      !document.sourceRetired &&
       this.targetEligible(workspaceId, document.target) &&
       !memoryContentSensitivityReason(document.content) &&
       (document.authoredBy === "owner" ||
@@ -1999,7 +2006,9 @@ export class MemoryPipeline {
         ...ownerDocuments,
         ...[...targets].map(([path]) => ({
           path,
-          content: prepared.state.documents.find((document) => document.path === path)?.content ?? "",
+          content:
+            prepared.state.documents.find((document) => document.path === path && !document.sourceRetired)
+              ?.content ?? "",
         })),
       ];
       const modelInputGeneration = expectedGeneration;
@@ -2680,22 +2689,29 @@ export class MemoryPipeline {
     });
   }
 
-  async forget(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
-    return this.own(() => this.forgetOwned(raw, beforeRemoval));
+  async forget(raw: unknown, beforeRemoval?: () => void | Promise<void>, retiredSource = false) {
+    return this.own(() => this.forgetOwned(raw, beforeRemoval, undefined, retiredSource));
   }
 
   private async forgetOwned(
     raw: unknown,
     beforeRemoval?: () => void | Promise<void>,
     expiredBefore?: number,
+    retiredSource = false,
   ) {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
     this.clearPastePreviews(input.workspaceId);
     const interruptedSources =
-      input.all && expiredBefore === undefined
-        ? [...(this.extractionSources.get(input.workspaceId) ?? [])]
-        : [];
+      expiredBefore !== undefined
+        ? []
+        : input.all
+          ? [...(this.extractionSources.get(input.workspaceId) ?? [])]
+          : retiredSource &&
+              input.sourceRunId &&
+              this.extractionSources.get(input.workspaceId)?.has(input.sourceRunId)
+            ? [input.sourceRunId]
+            : [];
     if (interruptedSources.length) {
       this.extractionEpochs.set(input.workspaceId, {});
       this.extractions.get(input.workspaceId)?.abort();
@@ -2755,7 +2771,27 @@ export class MemoryPipeline {
         }
       }
       const keep = (claim: MemoryClaim) => !forgottenIds.has(claim.claimId);
-      const remaining = claims.filter(keep);
+      const retiredAt = Date.now();
+      const preservedOwnerEdits = retiredSource
+        ? [...claims, ...inbox]
+            .filter((claim) => forgottenIds.has(claim.claimId) && claim.ownerEdit)
+            .map((claim) =>
+              MemoryClaimSchema.parse({
+                ...claim,
+                text: "Original source retired.",
+                source: undefined,
+                sourceRetired: { at: retiredAt },
+                contradictionIds: undefined,
+                mergedClaimIds: undefined,
+              }),
+            )
+        : [];
+      const remaining = [...claims.filter(keep), ...preservedOwnerEdits];
+      if (remaining.length > 200)
+        throw new AuxError(
+          "conflict",
+          "Retained owner edits exceed the inspection document limit; no source retirement was committed.",
+        );
       const pending = inbox.filter(keep);
       const forgotten = forgottenIds.size;
       const retainedActivity = activity.filter(
@@ -2764,13 +2800,14 @@ export class MemoryPipeline {
           entry.sourceRunId !== input.sourceRunId &&
           !entry.candidateIds.some((id) => forgottenIds.has(id) || id === input.claimId),
       );
-      const keptDocuments = documents.filter(
-        (document) =>
-          !forgetAll &&
-          !document.sourceRefs.some(
-            (ref) => forgottenIds.has(ref.claimId) || ref.sourceRunId === input.sourceRunId,
-          ),
-      );
+      const keptDocuments = documents.flatMap((document) => {
+        const affected = document.sourceRefs.some(
+          (ref) => forgottenIds.has(ref.claimId) || ref.sourceRunId === input.sourceRunId,
+        );
+        if (retiredSource && document.authoredBy === "owner")
+          return [affected ? { ...document, sourceRefs: [], sourceRetired: { at: retiredAt } } : document];
+        return !forgetAll && !affected ? [document] : [];
+      });
       const forgottenRunIds = new Set(
         universe.filter((claim) => forgottenIds.has(claim.claimId)).map((claim) => claim.sourceRunId),
       );

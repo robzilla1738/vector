@@ -75,8 +75,11 @@ the corrected Quick Ask context opener, focus return and draft/image handback
 now have clean ea9a82ec native observations in both themes.
 Main-window live context has no original Quick caller admission: source now offers
 Open in Aux, preserves drafts and fences new/queued/steered browser choices.
-A genuine cross-window source producer remains an explicit implementation gap. Native build identity
-is34117+dirty, not a clean10d3 combined build. The original preview retired normally.
+The current Aside Mini review demonstrates Profile/mode binding, not an initial
+cross-window page selector. A new native grant is optional and outside that
+demonstrated parity target; current supported context/focus/handback acceptance
+remains open. The earlier34117+dirty preview retired normally; the current clean
+compiled candidate is99d6203af below, without the subsequent runtime corrections.
 Area0066 now has a complete source replay proof plus49 passing actual Blink
 input cases and nine passing Mac retirement/acknowledgement cases, without
 retries or skips. Its full application rebuild passed761steps in16m48.16s at clean ea9a82ec;
@@ -147,10 +150,20 @@ desktop-source export/stage now uses the same live transcript projection when
 original captures are omitted. Independent reviews and actual encrypted-store/
 export/stage/apply fixtures pass; the integrated source check passes5,724tests/
 852files in138.56s with dist rebuilt first. These
-changes are not in the compiled candidate. Bounded legacy article-result discovery,
-continuation refusal and derived Memory-note retirement remain private. A5/A6/
-work-details/native acceptance stays open; see
-[retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json).
+changes are not in the compiled candidate. The follow-on legacy slice adds bounded
+authenticated call/result/park discovery, model-context refusal, exact removal
+proofs and live derived-note retirement with inspectable owner edits. Its corrected
+closure alternates typed Memory dependencies and authenticated run families for
+live Forget and portable transcript cleanup. Original patch/review failures remain
+recorded. The integrated check passes5,754tests/852files in137.02s with dist
+rebuilt first and unchanged570 advisory warnings; current native acceptance stays
+open. A5 still requires the
+[expired-source admission correction](design/aside-memory-source-admission.md)
+and [physical restore generation ownership](design/aside-memory-restore-ownership.md).
+These are designs, not implemented or accepted capabilities. A5/A6/work-details
+acceptance stays open; see
+[retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json) and
+[the legacy correction](evidence/aside-legacy-memory-retirement-2026-10-18.json).
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

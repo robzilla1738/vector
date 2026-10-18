@@ -1,3 +1,4 @@
+import type { ContentRemovalCheck } from "../../services/content-memory.js";
 import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName, WorkspaceMemory } from "@aux/contracts";
@@ -99,6 +100,7 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let advanced = false;
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let result: Awaited<ReturnType<typeof store.setPolicy>>;
+    let retirement: ContentRemovalCheck | undefined;
     try {
       result = await store.setPolicy(params.workspaceId, params.policy, async () => {
         generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
@@ -111,10 +113,13 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
           params.policy.retentionDays < prior.retentionDays ||
           prior.allowedOrigins.some((origin) => !allowedOrigins.includes(origin))
         ) {
-          await s.runs.retireArticleTransferSources(params.workspaceId);
-          await revokeArticleRuns(params.workspaceId);
+          retirement = await s.runs.retireArticleTransferSources(params.workspaceId, undefined, () =>
+            revokeArticleRuns(params.workspaceId),
+          );
+          return retirement;
         }
       });
+      await s.runs.redactForgottenArticleOutputs(params.workspaceId, retirement);
     } catch (error) {
       if (advanced)
         throw new AuxError(
@@ -130,7 +135,6 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
       prior.allowedOrigins.some((origin) => !result.allowedOrigins.includes(origin))
     )
       await revokeArticleRuns(params.workspaceId);
-    await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", {
       workspaceId: params.workspaceId,
@@ -154,13 +158,17 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let advanced = false;
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let forgotten: number;
+    let retirement: ContentRemovalCheck | undefined;
     try {
       forgotten = await store.forget(params.workspaceId, params.memoryId, async () => {
         generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
         advanced = true;
-        await s.runs.retireArticleTransferSources(params.workspaceId, params.memoryId);
-        await revokeArticleRuns(params.workspaceId, params.memoryId);
+        retirement = await s.runs.retireArticleTransferSources(params.workspaceId, params.memoryId, () =>
+          revokeArticleRuns(params.workspaceId, params.memoryId),
+        );
+        return retirement;
       });
+      await s.runs.redactForgottenArticleOutputs(params.workspaceId, retirement);
     } catch (error) {
       if (advanced)
         throw new AuxError(
@@ -169,7 +177,6 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
         );
       throw error;
     }
-    await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);

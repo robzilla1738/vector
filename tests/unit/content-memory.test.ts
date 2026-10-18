@@ -1063,3 +1063,42 @@ it("refuses original historical article proof after an explicit source exclusion
     code: "permission_denied",
   });
 });
+
+it("publishes empty article indexes under the original fence across capture and final Forget", async () => {
+  const f = fixture();
+  const signal = new AbortController().signal;
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toEqual([]);
+  const saved = await f.memory.saveEligible({
+    workspaceId: f.workspace.workspaceId,
+    pageId: "new-page",
+    documentEpoch: 1,
+    url: "https://example.test/workshop",
+    title: "Workshop",
+    text: "The synthetic workshop is open on Tuesday.",
+  });
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toMatchObject([
+    { sourceId: `page:${saved.memoryId}`, text: saved.text },
+  ]);
+  await f.memory.forget(f.workspace.workspaceId, saved.memoryId);
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toEqual([]);
+  await f.memory.setPolicy(f.workspace.workspaceId, {
+    enabled: false,
+    retentionDays: 30,
+    allowedOrigins: [],
+  });
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toEqual([]);
+  await f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: [] });
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toEqual([]);
+});
+it("refuses an empty index whose original Space policy changes before publication", async () => {
+  const f = fixture();
+  const signal = new AbortController().signal;
+  const pending = f.memory.recallDocuments(f.workspace.workspaceId, signal);
+  await f.memory.setPolicy(f.workspace.workspaceId, {
+    enabled: false,
+    retentionDays: 30,
+    allowedOrigins: [],
+  });
+  await expect(pending).rejects.toMatchObject({ name: "AbortError", code: "ABORT_ERR" });
+  expect(await f.memory.recallDocuments(f.workspace.workspaceId, signal)).toEqual([]);
+});

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
-import type { Run } from "@aux/contracts";
+import { SubagentSchema, SubagentGroupSchema, type Run } from "@aux/contracts";
+import { randomUUID } from "node:crypto";
 import { openDb } from "@aux/runtime/database";
 import { Repo } from "@aux/runtime/repository";
 import { TranscriptStore, type ModelMessage } from "@aux/runtime";
@@ -127,20 +128,48 @@ it("proves an exact subagent fork after its original parent continued, and refus
   transcript.append(child.runId, [...transcript.load(parent.runId), task(child), answer]);
   transcript.append(parent.runId, [{ role: "assistant", content: "Later parent turn" }]);
   db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('workspace','Research',1)").run();
+  const groupId = randomUUID(),
+    agentId = randomUUID();
+  const group = SubagentGroupSchema.parse({
+    groupId,
+    parentRunId: parent.runId,
+    workspaceId: "workspace",
+    state: "active",
+    createdAt: 1,
+    deadlineAt: 0,
+    timeBudgetMs: 0,
+    tokenBudget: 0,
+    costBudgetUsd: 0,
+  });
+  const agent = SubagentSchema.parse({
+    agentId,
+    groupId,
+    runId: child.runId,
+    sourceRunId: parent.runId,
+    goal: child.goal,
+    profile: "research",
+    pageIds: [],
+    tokenAllocation: 0,
+    costAllocationUsd: 0,
+    maxModelCalls: 0,
+    state: "completed",
+    createdAt: 1,
+  });
   db.prepare(
-    "INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,state,body,created_at) VALUES('group',?,'workspace','active','{}',1)",
-  ).run(parent.runId);
+    "INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,state,body,created_at) VALUES(?,?,'workspace','active',?,1)",
+  ).run(groupId, parent.runId, JSON.stringify(group));
   db.prepare(
-    "INSERT INTO subagents(agent_id,group_id,reserved_run_id,run_id,state,body,created_at) VALUES('agent','group',?,?,'completed',?,1)",
-  ).run(child.runId, child.runId, JSON.stringify({ sourceRunId: parent.runId }));
+    "INSERT INTO subagents(agent_id,group_id,reserved_run_id,run_id,state,body,created_at) VALUES(?,?,?,?,'completed',?,1)",
+  ).run(agentId, groupId, child.runId, child.runId, JSON.stringify(agent));
   expect(projectLegacyRecall(repo, transcript, child.runId)).toEqual([
     task(parent),
     answer,
     task(child),
     answer,
   ]);
-  db.prepare("UPDATE subagents SET body=? WHERE agent_id='agent'").run(
-    JSON.stringify({ sourceRunId: "missing" }),
+  db.prepare("UPDATE subagents SET body=? WHERE agent_id=?").run(
+    JSON.stringify({ ...agent, sourceRunId: "missing" }),
+    agentId,
   );
   expect(() => projectLegacyRecall(repo, transcript, child.runId)).toThrow("Use New Chat");
   expect(transcript.load(child.runId)).toContainEqual(recalled);

@@ -12,6 +12,7 @@ import {
   RunService,
   SetService,
   TaskService,
+  TranscriptStore,
 } from "@aux/runtime";
 import type { PageService, SettingsService } from "@aux/runtime";
 import { ArtifactStore } from "../../apps/runtime/src/services/artifacts.js";
@@ -21,6 +22,8 @@ import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memo
 import { workspacesMethods } from "../../apps/runtime/src/api/methods/workspaces.js";
 import type { MethodCtx } from "../../apps/runtime/src/api/methods/context.js";
 import { createHash, randomBytes } from "node:crypto";
+import { ConversationBranches } from "../../apps/runtime/src/services/conversation-branches.js";
+import { originalTask } from "../../apps/runtime/src/agent/loop/original-task-message.js";
 import { setMemberSourceDigest } from "../../apps/runtime/src/services/set-member-lineage.js";
 const closes: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -463,6 +466,7 @@ it("awaits original transfer retirement and exact terminal descendants before th
   );
   let removedTransfers = false;
   const beforeRemoval: boolean[] = [];
+  const forgetObservations: { ids: Set<string>; sourcePresent: boolean }[] = [];
   f.lifecycle.mockImplementation(async (ids, mode) => {
     expect(ids).not.toContain("unrelated-source");
     expect(f.original.signal.aborted).toBe(true);
@@ -475,7 +479,15 @@ it("awaits original transfer retirement and exact terminal descendants before th
       entered.resolve();
       await joined;
     }
-    if (mode === "forget") removedTransfers = true;
+    if (mode === "forget") {
+      forgetObservations.push({
+        ids: new Set(ids),
+        sourcePresent: !!f.repo.db
+          .prepare("SELECT 1 FROM content_memory WHERE memory_id=?")
+          .get(f.article.memoryId),
+      });
+      removedTransfers = true;
+    }
   });
   const operation = f.handler("workspaces.contentMemory.forget", {
     workspaceId: f.space.workspaceId,
@@ -490,12 +502,11 @@ it("awaits original transfer retirement and exact terminal descendants before th
   await operation;
   expect(beforeRemoval.length).toBeGreaterThan(0);
   expect(beforeRemoval.every(Boolean)).toBe(true);
-  expect(f.lifecycle.mock.calls.filter(([, mode]) => mode === "forget").map(([ids]) => new Set(ids))).toEqual(
-    [
-      new Set([root.runId, "terminal-source", "terminal-child"]),
-      new Set([root.runId, "terminal-source", "terminal-child"]),
-    ],
-  );
+  expect(forgetObservations.length).toBeGreaterThanOrEqual(2);
+  for (const observation of forgetObservations)
+    expect(observation.ids).toEqual(new Set([root.runId, "terminal-source", "terminal-child"]));
+  expect(forgetObservations[0]!.sourcePresent).toBe(true);
+  expect(forgetObservations.at(-1)!.sourcePresent).toBe(false);
   expect(
     f.repo.db.prepare("SELECT 1 FROM content_memory WHERE memory_id=?").get(f.article.memoryId),
   ).toBeUndefined();
@@ -589,13 +600,28 @@ it.each(["branch", "Set", "subagent"])(
     const f = await articleFixture(),
       parent = f.repo.getRun(f.run.runId)!,
       childId = "original-derived-child",
-      now = Date.now();
+      now = Date.now(),
+      transcript = new TranscriptStore(f.repo.db, f.repo.columnCipher);
+    transcript.append(parent.runId, [originalTask(parent)]);
     const config = {
       ...parent.config,
       contextMemoryIds: [],
       contextRunIds: [],
       ...(kind === "branch" ? { branchSourceRunIds: [parent.runId] } : {}),
     };
+    if (kind === "branch") {
+      // Use the real draft writer and its immutable receipt/prefix. Only a
+      // completed turn can produce a branch; the child is a later completed turn.
+      f.repo.saveRun({ ...parent, status: "completed" });
+      const draft = await new ConversationBranches(f.repo).create(
+        parent.runId,
+        "branch",
+        "fixture-window",
+        async () => {},
+      );
+      config.chatId = draft.chatId;
+    }
+    if (kind === "subagent") config.subagentProfile = "default";
     if (kind === "Set") {
       const source = {
         parentRunId: parent.runId,
@@ -636,10 +662,16 @@ it.each(["branch", "Set", "subagent"])(
     f.repo.saveRun({
       ...parent,
       runId: childId,
+      goal: "Original child",
       status: "completed",
       result: { report: "Exact descendant generated answer" },
       config,
     });
+    if (kind === "branch" || kind === "subagent")
+      transcript.append(childId, [
+        ...transcript.forkPrefix(parent.runId, f.repo),
+        originalTask(f.repo.getRun(childId)!),
+      ]);
     if (kind === "subagent") {
       const group = SubagentGroupSchema.parse({
         groupId: randomUUID(),
@@ -677,13 +709,25 @@ it.each(["branch", "Set", "subagent"])(
         )
         .run(agent.agentId, group.groupId, childId, childId, JSON.stringify(agent), agent.state, now);
     }
+    const forgetObservations: { ids: Set<string>; sourcePresent: boolean }[] = [];
+    f.lifecycle.mockImplementation(async (ids, mode) => {
+      if (mode === "forget")
+        forgetObservations.push({
+          ids: new Set(ids),
+          sourcePresent: !!f.repo.db
+            .prepare("SELECT 1 FROM content_memory WHERE memory_id=?")
+            .get(f.article.memoryId),
+        });
+    });
     await f.handler("workspaces.contentMemory.forget", {
       workspaceId: f.space.workspaceId,
       memoryId: f.article.memoryId,
     });
-    expect(
-      f.lifecycle.mock.calls.filter(([, mode]) => mode === "forget").map(([ids]) => new Set(ids)),
-    ).toEqual([new Set([parent.runId, childId]), new Set([parent.runId, childId])]);
+    expect(forgetObservations.length).toBeGreaterThanOrEqual(2);
+    for (const observation of forgetObservations)
+      expect(observation.ids).toEqual(new Set([parent.runId, childId]));
+    expect(forgetObservations[0]!.sourcePresent).toBe(true);
+    expect(forgetObservations.at(-1)!.sourcePresent).toBe(false);
     expect(f.repo.getRun(childId)?.result).toBeUndefined();
     expect(f.repo.getRun(childId)?.config?.contextMemoryRevoked).toBe(true);
   },

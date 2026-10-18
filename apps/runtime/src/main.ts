@@ -3919,7 +3919,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         if (closed) return;
         for (const workspaceId of pruned?.workspaceIds ?? []) {
           if (closed) return;
-          await runtimeServices.runs.redactForgottenArticleOutputs(workspaceId);
+          await runtimeServices.runs.redactForgottenArticleOutputs(workspaceId, undefined, {
+            discoverMissingLegacy: true,
+          });
         }
         if (pruned?.workspaceIds.length) privacyCheckpoint.request();
       } catch {

@@ -1,4 +1,6 @@
-import { AuxError, type Run } from "@aux/contracts";
+import { originalTask } from "./original-task-message.js";
+import { assertLegacyMemoryContext } from "../../services/legacy-memory-retirement.js";
+import { AuxError } from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
 import type { TranscriptStore } from "./transcript.js";
 import type { ModelMessage } from "./types.js";
@@ -17,21 +19,6 @@ function candidate(message: ModelMessage): boolean {
 
 function same(left: ModelMessage | undefined, right: ModelMessage | undefined): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-/** Frozen task writer paired with the former durable recall writer, not a text-prefix guess. */
-function originalTask(run: Run): ModelMessage {
-  return {
-    role: "user",
-    content: [
-      `Task: ${run.goal}`,
-      run.config?.instructions ? `Instructions (human-authored): ${run.config.instructions}` : "",
-      run.config?.context ? `Context: ${run.config.context}` : "",
-      run.pageIds.length ? `Pages in scope: ${run.pageIds.join(", ")}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n"),
-  };
 }
 
 function resetRequired(): never {
@@ -53,6 +40,7 @@ export function projectLegacyRecall(
   runId: string,
   messages = transcript.load(runId),
 ): ModelMessage[] {
+  assertLegacyMemoryContext(repo, transcript, runId, messages);
   if (!messages.some(candidate)) return messages;
   const proofs = new Map<string, Set<number>>();
   const visiting = new Set<string>();

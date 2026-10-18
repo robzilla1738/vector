@@ -11,6 +11,7 @@ type RecallConfig = {
   desktopContextRetired?: boolean;
   desktopContextQuotes?: unknown[];
   contextRunIds?: string[];
+  branchSourceRunIds?: string[];
   contextArtifactIds?: string[];
   contextSourceArtifactIds?: string[];
   contextImageArtifactIds?: string[];
@@ -43,6 +44,7 @@ export function derivedPageRecallRunIds(
     const config = run.config;
     const sourceRuns = [
       ...(config.contextRunIds ?? []),
+      ...(config.branchSourceRunIds ?? []),
       ...(config.retryOfRunId ? [config.retryOfRunId] : []),
     ];
     const sourceArtifacts = [
@@ -98,6 +100,8 @@ export function sanitizePortablePageRecall(
   cipher?: PortableRecallCipher,
   protectedFamily?: (runIds: ReadonlySet<string>) => ReadonlySet<string>,
   retireGeneratedTask?: (runId: string, source: "article" | "desktop") => void,
+  legacyArticleSources?: () => ReadonlySet<string>,
+  legacyArticleDependents?: (originals: ReadonlySet<string>) => ReadonlySet<string>,
 ): Set<string> {
   const has = (table: string) =>
     !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table);
@@ -111,6 +115,7 @@ export function sanitizePortablePageRecall(
   const affectedChats = new Set<string>();
   db.exec("BEGIN");
   try {
+    const legacySources = legacyArticleSources?.() ?? new Set<string>();
     sanitizeOperationInputSamples(db);
     if (has("runs")) {
       const rows = db.prepare("SELECT run_id AS runId, config FROM runs").all() as {
@@ -152,9 +157,18 @@ export function sanitizePortablePageRecall(
           )
           .map((row) => row.runId),
       );
+      for (const runId of legacySources) seeds.add(runId);
       const expand = (seeds: Set<string>) => {
         let affected = derivedPageRecallRunIds(parsed, seeds, owners);
         for (;;) {
+          if (affected.size > 4096)
+            throw new Error("Portable source retirement dependency closure exceeds its run budget.");
+          const previous = affected;
+          affected = derivedPageRecallRunIds(
+            parsed,
+            new Set([...affected, ...(legacyArticleDependents?.(affected) ?? [])]),
+            owners,
+          );
           if (!protectedFamily) {
             for (const id of affected) {
               const setReceipt =
@@ -175,21 +189,23 @@ export function sanitizePortablePageRecall(
                   "Protected run families require authenticated runtime lineage for portable cleanup.",
                 );
             }
-            break;
+            if (affected.size === previous.size) break;
+            continue;
           }
           const family = protectedFamily(affected);
           const expanded = derivedPageRecallRunIds(parsed, new Set([...affected, ...family]), owners);
-          if (expanded.size === affected.size) break;
+          if (expanded.size === previous.size) break;
           affected = expanded;
         }
         return affected;
       };
       const articleAffected = expand(
-        new Set(
-          parsed
+        new Set([
+          ...legacySources,
+          ...parsed
             .filter((row) => row.config.contextMemoryRefs?.length || row.config.contextMemoryIds?.length)
             .map((row) => row.runId),
-        ),
+        ]),
       );
       const desktopAffected = expand(
         new Set(
@@ -199,6 +215,15 @@ export function sanitizePortablePageRecall(
         ),
       );
       const affected = expand(seeds);
+      if (!legacyArticleSources && has("run_transcript")) {
+        const histories = db.prepare("SELECT DISTINCT run_id FROM run_transcript").all() as {
+          run_id: string;
+        }[];
+        if (histories.some((row) => !affected.has(row.run_id)))
+          throw new Error(
+            "Uninspected legacy transcripts require authenticated runtime retirement inspection before portable publication.",
+          );
+      }
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
         const desktopRetired = desktopAffected.has(row.runId);

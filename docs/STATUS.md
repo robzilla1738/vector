@@ -131,9 +131,32 @@ original capture is omitted, using the live transcript projection. Actual encryp
 store/export/stage/apply fixtures and independent reviews cover these changes;
 the integrated check passes all5,724tests/852files. They are not in the compiled `99d6203af`.
 [Retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json)
-separates those gates. Older typed Memory results without admitted source refs
-still require bounded legacy discovery, model-context refusal and retirement of
-extracted Memory notes; that follow-up remains private and incomplete.
+separates those gates.
+
+The follow-on source slice adds bounded authenticated legacy call/result/park
+discovery, refusal before model/fork/compaction reuse and an exact per-operation
+source-removal proof. Live Forget also retires extracted Memory quotes, generated
+documents, Dream/history and indexes while preserving exact owner edits for
+inspection. Typed note dependencies and authenticated Set/subagent/config/artifact
+relationships expand together until stable. Independent review reproduced a missed
+receiver through a Set-parent report; the correction covers live Forget and actual
+export/stage/apply transcript cleanup, preserving unrelated families and owner
+documents. Empty article indexes now publish under the original source fences.
+These changes are not staged in the native candidate.
+[The legacy integration record](evidence/aside-legacy-memory-retirement-2026-10-18.json)
+preserves the exact three-patch production series, original review failures and
+reviewed fixture correction. After rebuilding dist, the integrated check passes
+all5,754tests/852files in137.02s; typechecking passes and the570 advisory lint
+warnings are unchanged. The first check's four fixture failures remain recorded.
+
+Two Memory gaps remain open: a legacy derived note can still be recalled after its
+article expires before explicit discovery, and ordinary restore can retain its
+generated quote inside CURRENT independent Space Memory. The
+[admission design](design/aside-memory-source-admission.md) and
+[restore ownership design](design/aside-memory-restore-ownership.md) specify the
+remaining implementations; neither design is a completed fix. The latter must
+preserve live generation factors until apply rather than erase shared keys from
+a staged database. A5 and integrated readiness remain incomplete.
 
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/

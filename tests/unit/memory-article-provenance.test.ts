@@ -1,3 +1,9 @@
+import { SpaceMemoryStore } from "../../apps/runtime/dist/services/space-memory-store.js";
+import { toErrorPayload } from "@aux/contracts";
+import { inspectLegacyArticleHistory } from "../../apps/runtime/dist/services/legacy-memory-retirement.js";
+import { projectLegacyRecall } from "../../apps/runtime/dist/agent/loop/legacy-recall.js";
+import { toolResultsMessage } from "../../apps/runtime/dist/agent/loop/types.js";
+import { ConversationBranches } from "../../apps/runtime/dist/services/conversation-branches.js";
 import {
   createRuntimeBackup,
   stageRuntimeRestore,
@@ -58,16 +64,20 @@ afterEach(async () => {
   for (const close of cleanup.splice(0)) await close();
   vi.restoreAllMocks();
 });
-async function fixture() {
+async function fixture(
+  dreamer?: import("../../apps/runtime/dist/services/memory-dream.js").MemoryDreamer,
+  beforeRead?: (signal: AbortSignal) => Promise<void>,
+  profileId = "recall-provenance",
+) {
   const directory = mkdtempSync(join(tmpdir(), "aux-recall-provenance-"));
-  const native = profileSecrets("recall-provenance").native;
+  const native = profileSecrets(profileId).native;
   const db = openDb(":memory:");
-  const repo = new Repo(db, await initializeFieldCodec(db, native, "recall-provenance"));
+  const repo = new Repo(db, await initializeFieldCodec(db, native, profileId));
   const events = new EventBus(repo);
   const tasks = new TaskService(repo, events);
   const workspaceId = tasks.createWorkspace("Original article Space").workspaceId;
-  const memory = new ContentMemoryStore(repo, native, "recall-provenance");
-  const pipeline = new MemoryPipeline(repo, native, "recall-provenance", fixtureMemoryExtractor, undefined, {
+  const memory = new ContentMemoryStore(repo, native, profileId);
+  const pipeline = new MemoryPipeline(repo, native, profileId, fixtureMemoryExtractor, dreamer, {
     pages: (id, signal) => memory.recallDocuments(id, signal),
     history: () => [],
   });
@@ -97,12 +107,18 @@ async function fixture() {
     documentSnapshots: new DocumentSnapshots(repo),
     sets,
     contentMemory: memory,
+    memoryPipeline: pipeline,
     nativeAvailable: () => false,
     agentLoop: {
       modelGeneration: () => settings.modelCacheGeneration(),
       memorySearch: (query, ctx) => pipeline.recall({ ...query, workspaceId }, ctx.signal, ctx.checkOwner),
-      memoryReadSource: (input, ctx) =>
-        pipeline.readSource({ ...input, workspaceId }, ctx.signal, ctx.checkOwner),
+      memoryReadSource: async (input, ctx) => {
+        if (beforeRead) {
+          if (!ctx.signal) throw new Error("The original fixture Memory read signal is missing.");
+          await beforeRead(ctx.signal);
+        }
+        return pipeline.readSource({ ...input, workspaceId }, ctx.signal, ctx.checkOwner);
+      },
     },
   });
   cleanup.push(async () => {
@@ -151,6 +167,7 @@ async function fixture() {
 async function recallArticle(
   f: Awaited<ReturnType<typeof fixture>>,
   options: {
+    kinds?: ("page" | "episodic")[];
     parked?: boolean;
     beforeFirstModel?: () => Promise<void>;
     afterSearch?: () => Promise<void>;
@@ -183,14 +200,14 @@ async function recallArticle(
         ? {
             toolCallId: "search",
             toolName: "memory_search",
-            input: { queries: ["quartz workshop"], kinds: ["page"], mode: "lexical" },
+            input: { queries: ["quartz workshop"], kinds: options.kinds ?? ["page"], mode: "lexical" },
           }
         : step === 2
           ? options.secondSearch
             ? {
                 toolCallId: "search-again",
                 toolName: "memory_search",
-                input: { queries: ["quartz workshop"], kinds: ["page"], mode: "lexical" },
+                input: { queries: ["quartz workshop"], kinds: options.kinds ?? ["page"], mode: "lexical" },
               }
             : { toolCallId: "read", toolName: "memory_read", input: input! }
           : options.parked && step === 3
@@ -203,7 +220,7 @@ async function recallArticle(
               ? {
                   toolCallId: "later-search",
                   toolName: "memory_search",
-                  input: { queries: ["quartz workshop"], kinds: ["page"], mode: "lexical" },
+                  input: { queries: ["quartz workshop"], kinds: options.kinds ?? ["page"], mode: "lexical" },
                 }
               : {
                   toolCallId: `done-${step}`,
@@ -397,15 +414,18 @@ it("keeps ordinary chat without Memory calls readable without source restriction
   ).toMatchObject({ calls: [{ output: expect.stringContaining("Original ordinary result") }] });
 });
 
-it("never backfills the creation proof when a legacy parked run resumes and recalls again", async () => {
+it("refuses legacy parked continuation before another model request or provenance backfill", async () => {
   const f = await fixture();
   await recallArticle(f, { parked: true });
   const run = f.repo.getRun("recall-run")!;
   f.repo.saveRun({ ...run, config: { ...run.config, memoryRecallAdmissionVersion: undefined } });
+  const requests = vi.mocked(f.model.toolCallStep).mock.calls.length;
   await f.runs.coordinator.answer("recall-run", "Continue");
-  await vi.waitFor(() => expect(f.repo.getRun("recall-run")?.status).toBe("completed"), { timeout: 5000 });
+  await vi.waitFor(() => expect(f.repo.getRun("recall-run")?.status).toBe("failed"), { timeout: 5000 });
+  expect(vi.mocked(f.model.toolCallStep).mock.calls.length).toBe(requests);
+  expect(f.repo.getRun("recall-run")?.error).toContain("Use New Chat");
   expect(f.repo.getRun("recall-run")?.config?.memoryRecallAdmissionVersion).toBeUndefined();
-  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain("later-search");
+  expect(JSON.stringify(f.transcript.load("recall-run"))).not.toContain("later-search");
   await expect(f.runs.workTrace("recall-run", undefined, async () => {})).rejects.toThrow(/legacy Memory/);
 });
 it("refuses same-ID replacement captures without overwriting earlier admitted provenance", async () => {
@@ -552,8 +572,19 @@ it("joins held Set-parent work and retires actual article family while preservin
       /authenticated runtime lineage/,
     );
     expect(new TranscriptStore(copy.db, copy.columnCipher).load("set-parent")).not.toEqual([]);
+    const legacy = await inspectLegacyArticleHistory(copy, new TranscriptStore(copy.db, copy.columnCipher));
+    const inspected = () => {
+      legacy.check();
+      return legacy.runIds;
+    };
     expect(() =>
-      sanitizePortablePageRecall(copy.db, copy.columnCipher, (ids) => protectedRunFamily(copy, ids)),
+      sanitizePortablePageRecall(
+        copy.db,
+        copy.columnCipher,
+        (ids) => protectedRunFamily(copy, ids),
+        undefined,
+        inspected,
+      ),
     ).toThrow(/Generated protected tasks/);
     expect(new TranscriptStore(copy.db, copy.columnCipher).load("set-parent")).not.toEqual([]);
     sanitizePortablePageRecall(
@@ -563,6 +594,7 @@ it("joins held Set-parent work and retires actual article family while preservin
       (id) => {
         retireProtectedGeneratedTask(copy, id);
       },
+      inspected,
     );
     for (const id of ["set-parent", "sibling", "recall-run"])
       expect(new TranscriptStore(copy.db, copy.columnCipher).load(id)).toEqual([]);
@@ -721,12 +753,20 @@ it("uses validated encrypted subagent membership for child article retirement an
   await backup(f.repo.db, path);
   const copy = new Repo(openDb(path), f.repo.columnCipher);
   try {
+    const inspected = await inspectLegacyArticleHistory(
+      copy,
+      new TranscriptStore(copy.db, copy.columnCipher),
+    );
     sanitizePortablePageRecall(
       copy.db,
       copy.columnCipher,
       (ids) => protectedRunFamily(copy, ids),
       (id) => {
         retireProtectedGeneratedTask(copy, id);
+      },
+      () => {
+        inspected.check();
+        return inspected.runIds;
       },
     );
     expect(copy.getRun("recall-run")?.goal).toBe("Saved-article-derived task retired");
@@ -1366,12 +1406,20 @@ it("joins actual child desktop Forget with a held parent read and retires only a
   await backup(f.repo.db, path);
   const copy = new Repo(openDb(path), f.repo.columnCipher);
   try {
+    const inspected = await inspectLegacyArticleHistory(
+      copy,
+      new TranscriptStore(copy.db, copy.columnCipher),
+    );
     sanitizePortablePageRecall(
       copy.db,
       copy.columnCipher,
       (ids) => protectedRunFamily(copy, ids),
       (id, source) => {
         retireProtectedGeneratedTask(copy, id, source);
+      },
+      () => {
+        inspected.check();
+        return inspected.runIds;
       },
     );
     expect(copy.getRun("desktop-child")?.goal).toBe("Desktop-source-derived task retired");
@@ -1630,4 +1678,927 @@ it("retires active desktop-only output in the actual source-omitting portable ba
   expect(f.repo.getRun(parentId)?.config?.contextMemoryRevoked).toBeUndefined();
   expect(existsSync(output.path)).toBe(true);
   expect(f.repo.getRun(childId)?.goal).toBe("Separate desktop reminder");
+});
+
+it("retires legacy typed article output and extracted episode through the original Forget owner", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  f.repo.saveRun({
+    runId: "legacy-episode",
+    goal: "Original owner request",
+    pageIds: [],
+    status: "completed",
+    createdAt: 1,
+    config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+    result: { report: f.article.text },
+  });
+  const result = await f.pipeline.recall({
+    workspaceId: f.workspaceId,
+    queries: ["quartz workshop"],
+    kinds: ["page"],
+    mode: "lexical",
+  });
+  expect(result.matches).toHaveLength(1);
+  f.repo.db
+    .prepare("INSERT INTO run_tool_calls VALUES(?,?,?,?)")
+    .run("legacy-episode", "legacy-search", "memory_search", 1);
+  const call = {
+    type: "tool-call" as const,
+    toolCallId: "legacy-search",
+    toolName: "memory_search",
+    input: { queries: ["quartz workshop"], kinds: ["page"], mode: "lexical" },
+  };
+  f.transcript.append("legacy-episode", [
+    { role: "user", content: "Original owner request" },
+    { role: "assistant", content: [call] },
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          output: { type: "json", value: result as never },
+        },
+      ],
+    },
+  ]);
+  expect((await f.pipeline.extractRun(f.workspaceId, "legacy-episode")).extracted).toBe(1);
+  expect(await f.pipeline.inbox(f.workspaceId)).toHaveLength(1);
+  let proof: Awaited<ReturnType<RunService["retireArticleTransferSources"]>> | undefined;
+  await f.memory.forget(f.workspaceId, f.article.memoryId, async () => {
+    proof = await f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId);
+    return proof;
+  });
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId, proof);
+  expect(await f.pipeline.inbox(f.workspaceId)).toHaveLength(0);
+  expect(f.transcript.load("legacy-episode")).toEqual([]);
+  expect(f.repo.getRun("legacy-episode")?.result).toBeUndefined();
+});
+
+async function legacyArticle(
+  f: Awaited<ReturnType<typeof fixture>>,
+  runId = "legacy-source",
+  options: { read?: boolean; parked?: boolean; workspaceId?: string } = {},
+) {
+  const workspaceId = options.workspaceId ?? f.workspaceId;
+  const search = await f.pipeline.recall({
+    workspaceId,
+    queries: ["quartz workshop"],
+    kinds: ["page"],
+    mode: "lexical",
+  });
+  const match = search.matches[0]!;
+  const name = options.read ? "memory_read" : "memory_search";
+  const input = options.read
+    ? {
+        sourceId: match.sourceId,
+        revision: match.revision,
+        sha256: match.sha256,
+        startLine: 1,
+        limitLines: 1,
+      }
+    : { queries: ["quartz workshop"], kinds: ["page"], mode: "lexical" };
+  const output = options.read ? await f.pipeline.readSource({ ...input, workspaceId }) : search;
+  f.repo.saveRun({
+    runId,
+    goal: "Original owner request",
+    pageIds: [],
+    status: "completed",
+    createdAt: Date.now(),
+    endedAt: Date.now(),
+    config: { implementation: "agent-loop", contextWorkspaceId: workspaceId },
+    result: { report: f.article.text },
+  });
+  const call = { type: "tool-call" as const, toolCallId: `call:${runId}`, toolName: name, input };
+  f.repo.db.prepare("INSERT INTO run_tool_calls VALUES(?,?,?,?)").run(runId, call.toolCallId, name, 1);
+  f.transcript.append(runId, [
+    { role: "user", content: "Original owner request" },
+    { role: "assistant", content: [call] },
+  ]);
+  if (options.parked)
+    f.transcript.park(runId, {
+      toolCallId: "pending-action",
+      toolName: "act",
+      pendingResults: [
+        { toolCallId: call.toolCallId, toolName: name, output },
+        { toolCallId: "pending-action", toolName: "act", parked: true },
+      ],
+    });
+  else
+    f.transcript.append(runId, [
+      toolResultsMessage([{ toolCallId: call.toolCallId, toolName: name, output }]),
+    ]);
+  return { runId, call, input, output, match };
+}
+async function forgetLegacy(
+  f: Awaited<ReturnType<typeof fixture>>,
+  memoryId: string | undefined = f.article.memoryId,
+) {
+  let proof: Awaited<ReturnType<RunService["retireArticleTransferSources"]>> | undefined;
+  const count = await f.memory.forget(f.workspaceId, memoryId, async () => {
+    proof = await f.runs.retireArticleTransferSources(f.workspaceId, memoryId);
+    return proof;
+  });
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId, proof);
+  return { count, proof };
+}
+
+it.each([false, true])(
+  "recognizes only exact encrypted original search/read pairs (read=%s), without admission",
+  async (read) => {
+    const f = await fixture();
+    const source = await legacyArticle(f, "original", { read });
+    const before = f.repo.getRun(source.runId)!.config;
+    const proof = await inspectLegacyArticleHistory(f.repo, f.transcript, {
+      workspaceId: f.workspaceId,
+      memoryId: f.article.memoryId,
+    });
+    expect([...proof.runIds]).toEqual([source.runId]);
+    expect(proof.exposures[0]).toMatchObject({
+      workspaceId: f.workspaceId,
+      sourceId: `page:${f.article.memoryId}`,
+      revision: source.match.revision,
+      sha256: source.match.sha256,
+    });
+    expect(f.repo.getRun(source.runId)!.config).toEqual(before);
+    expect(() => projectLegacyRecall(f.repo, f.transcript, source.runId)).toThrow("older chat");
+    expect(() => f.transcript.forkPrefix(source.runId, f.repo)).toThrow("older chat");
+    expect(f.transcript.load(source.runId)).toHaveLength(3);
+  },
+);
+it("inspects parked successful results and retires them without executing the pending action", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f, "parked-legacy", { parked: true });
+  expect((await inspectLegacyArticleHistory(f.repo, f.transcript)).runIds.has(source.runId)).toBe(true);
+  expect(f.transcript.load(source.runId)).toHaveLength(2);
+  await forgetLegacy(f);
+  expect(f.transcript.openPark(source.runId)).toBeUndefined();
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM action_intents").get()).toEqual({ n: 0 });
+});
+it("permits the identical completed park result once, but refuses a replaced result", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f, "resolved-park", { parked: true });
+  f.transcript.append(source.runId, [
+    toolResultsMessage([
+      { toolCallId: source.call.toolCallId, toolName: source.call.toolName, output: source.output },
+    ]),
+  ]);
+  expect((await inspectLegacyArticleHistory(f.repo, f.transcript)).runIds.has(source.runId)).toBe(true);
+  f.transcript.append(source.runId, [
+    toolResultsMessage([
+      { toolCallId: source.call.toolCallId, toolName: source.call.toolName, output: source.output },
+    ]),
+  ]);
+  await expect(forgetLegacy(f)).rejects.toThrow("duplicated or replaced");
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+});
+it.each(["ledger", "pair", "truncated", "wrong-read"])(
+  "refuses incomplete legacy evidence before Forget changes sources: %s",
+  async (defect) => {
+    const f = await fixture();
+    const source = await legacyArticle(f, "incomplete", { read: defect === "wrong-read" });
+    if (defect === "ledger") f.repo.db.prepare("DELETE FROM run_tool_calls WHERE run_id=?").run(source.runId);
+    if (defect === "pair")
+      f.repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND seq=1").run(source.runId);
+    if (defect === "truncated") {
+      f.repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND seq=2").run(source.runId);
+      f.transcript.append(source.runId, [
+        toolResultsMessage([
+          { toolCallId: source.call.toolCallId, toolName: source.call.toolName, output: "{truncated}" },
+        ]),
+      ]);
+    }
+    if (defect === "wrong-read") {
+      f.repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND seq=2").run(source.runId);
+      f.transcript.append(source.runId, [
+        toolResultsMessage([
+          {
+            toolCallId: source.call.toolCallId,
+            toolName: source.call.toolName,
+            output: { ...source.output, revision: "a".repeat(64) },
+          },
+        ]),
+      ]);
+    }
+    const prior = await f.memory.get(f.workspaceId, f.article.memoryId);
+    await expect(forgetLegacy(f)).rejects.toThrow("Legacy Memory retirement is unavailable");
+    expect(await f.memory.get(f.workspaceId, f.article.memoryId)).toEqual(prior);
+    expect(f.repo.getRun(source.runId)?.result).toBeDefined();
+  },
+);
+it("keeps human text and another original Space outside article retirement", async () => {
+  const f = await fixture();
+  await legacyArticle(f);
+  const other = new TaskService(f.repo, f.events).createWorkspace("Separate original Space").workspaceId;
+  await f.memory.saveEligible({
+    workspaceId: other,
+    pageId: "other-space-page",
+    documentEpoch: 1,
+    url: "https://article.test/other-space",
+    title: "Other Space workshop",
+    text: f.article.text,
+  });
+  const foreign = await legacyArticle(f, "separate-space", { workspaceId: other });
+  f.repo.saveRun({
+    runId: "human-only",
+    goal: f.article.text,
+    pageIds: [],
+    status: "completed",
+    createdAt: 1,
+    config: { contextWorkspaceId: f.workspaceId },
+    result: { report: "Independent human answer" },
+  });
+  f.transcript.append("human-only", [
+    { role: "user", content: f.article.text },
+    { role: "assistant", content: "Independent human answer" },
+  ]);
+  await forgetLegacy(f);
+  expect(f.transcript.load(foreign.runId)).toHaveLength(3);
+  expect(f.transcript.load("human-only")).toHaveLength(2);
+  expect(f.repo.getRun("human-only")?.goal).toBe(f.article.text);
+});
+it("retires historical exposure after same-ID recapture and independent factor rotation", async () => {
+  const f = await fixture();
+  const original = await legacyArticle(f);
+  const other = await f.memory.saveEligible({
+    workspaceId: f.workspaceId,
+    pageId: "other",
+    documentEpoch: 1,
+    url: "https://article.test/other",
+    title: "Other article",
+    text: "A separate synthetic article has no relationship to this conversation.",
+  });
+  await f.memory.forget(f.workspaceId, other.memoryId);
+  const current = await f.memory.saveEligible({
+    workspaceId: f.workspaceId,
+    pageId: "source-page",
+    documentEpoch: 2,
+    url: f.article.url,
+    title: "New capture",
+    text: "The recaptured workshop changed to Friday.",
+  });
+  expect(current.memoryId).toBe(f.article.memoryId);
+  const source = (
+    await f.pipeline.recall({
+      workspaceId: f.workspaceId,
+      queries: ["Friday"],
+      kinds: ["page"],
+      mode: "lexical",
+    })
+  ).matches[0]!;
+  expect(source.revision).not.toBe(original.match.revision);
+  expect(source.sha256).not.toBe(original.match.sha256);
+  await forgetLegacy(f);
+  expect(f.transcript.load(original.runId)).toEqual([]);
+  expect(f.repo.getRun(original.runId)?.config?.memoryRecallAdmissionVersion).toBeUndefined();
+});
+it("explicit zero-row Forget discovers legacy results while ordinary no-op cleanup stays scan-free", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  await f.memory.forget(f.workspaceId, f.article.memoryId);
+  const scan = vi.spyOn(TranscriptStore.prototype, "retirementPages");
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId);
+  expect(scan).not.toHaveBeenCalled();
+  const outcome = await forgetLegacy(f);
+  expect(outcome.count).toBe(0);
+  expect(f.transcript.load(source.runId)).toEqual([]);
+  await expect(f.runs.redactForgottenArticleOutputs(f.workspaceId, outcome.proof)).rejects.toThrow(
+    "unavailable or uncommitted",
+  );
+  await forgetLegacy(f); // Durable old execution receipts are not mistaken for fresh unresolved outputs.
+});
+it("binds one-use proofs to their original operation and detects source/row replacement", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const proof = await f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId);
+  await expect(f.runs.redactForgottenArticleOutputs(f.workspaceId, proof)).rejects.toThrow(
+    "unavailable or uncommitted",
+  );
+  f.transcript.append(source.runId, [{ role: "assistant", content: "A replacement row arrived." }]);
+  await expect(f.memory.forget(f.workspaceId, f.article.memoryId, () => proof)).rejects.toThrow(
+    "transcript changed",
+  );
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+  const sourceProof = await f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId);
+  await f.memory.saveEligible({
+    workspaceId: f.workspaceId,
+    pageId: "source-page",
+    documentEpoch: 3,
+    url: f.article.url,
+    title: "Replaced source",
+    text: "The source changed during the owned operation.",
+  });
+  await expect(f.memory.forget(f.workspaceId, f.article.memoryId, () => sourceProof)).rejects.toThrow(
+    "proof changed",
+  );
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+});
+it("refuses oversized rows or cancelled inspection without changing any original row", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const cancel = new AbortController();
+  await expect(
+    inspectLegacyArticleHistory(f.repo, f.transcript, {}, () => {
+      cancel.abort();
+      cancel.signal.throwIfAborted();
+    }),
+  ).rejects.toThrow();
+  f.transcript.append(source.runId, [{ role: "user", content: "x".repeat(1024 * 1024) }]);
+  await expect(forgetLegacy(f)).rejects.toThrow("bounded retirement inspection");
+  expect(f.repo.getRun(source.runId)?.result).toBeDefined();
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+});
+it("preserves exact separately authored edits in inspectable tombstones, never in recall or Dream input", async () => {
+  const consolidate = vi.fn(
+    async (input: import("../../apps/runtime/dist/services/memory-dream.js").MemoryDreamInput) => {
+      input.checkCurrent();
+      return { status: "completed" as const, changes: [] };
+    },
+  );
+  const f = await fixture({ generation: () => "fixture-dream", consolidate });
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const source = await legacyArticle(f);
+  await f.pipeline.extractRun(f.workspaceId, source.runId);
+  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  await f.pipeline.editDocuments({
+    workspaceId: f.workspaceId,
+    expectedGeneration: (await f.pipeline.documents(f.workspaceId)).generation,
+    edits: [
+      { claimId: claim.claimId, text: "My independent owner correction stays available for inspection." },
+    ],
+  });
+  const original = (await f.pipeline.documents(f.workspaceId)).documents[0]!.claim.ownerEdit;
+  const document = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://article.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent site instructions written by the owner.",
+  });
+  await forgetLegacy(f);
+  const documents = await f.pipeline.documents(f.workspaceId);
+  expect(documents.documents).toHaveLength(1);
+  expect(documents.documents[0]!.claim).toMatchObject({
+    claimId: claim.claimId,
+    text: "Original source retired.",
+    ownerEdit: original,
+    sourceRetired: { at: expect.any(Number) },
+  });
+  expect(documents.documents[0]!.claim.source).toBeUndefined();
+  expect((await f.pipeline.overview(f.workspaceId)).summary).not.toContain(original!.text);
+  const recovered = await f.pipeline.recoverySnapshot();
+  expect(JSON.stringify(recovered)).not.toContain("The quartz workshop meets");
+  expect(
+    recovered[0]!.searchIndex?.chunks.some((chunk) => JSON.stringify(chunk).includes(original!.text)),
+  ).toBeFalsy();
+  expect((await f.pipeline.documentList(f.workspaceId)).documents).toEqual([document.document]);
+  expect(
+    (
+      await f.pipeline.recall({
+        workspaceId: f.workspaceId,
+        queries: ["owner correction"],
+        kinds: ["episodic"],
+        mode: "lexical",
+      })
+    ).matches,
+  ).toEqual([]);
+  await f.pipeline.consolidate(f.workspaceId);
+  expect((await f.pipeline.documents(f.workspaceId)).documents[0]?.claim.ownerEdit).toEqual(original);
+  await f.pipeline.dream(f.workspaceId);
+  expect(consolidate).toHaveBeenCalledOnce();
+  expect(JSON.stringify(consolidate.mock.calls[0]![0])).not.toContain(original!.text);
+  expect((await f.pipeline.dreamActivity(f.workspaceId)).entries[0]?.sourceRunIds).toEqual([]);
+  const destination = await fixture(undefined, undefined, "different-disposable-profile");
+  destination.repo.db
+    .prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES(?,?,?)")
+    .run(f.workspaceId, "Restored owner Space", Date.now());
+  await destination.pipeline.importRecoverySnapshot(recovered);
+  expect((await destination.pipeline.documents(f.workspaceId)).documents[0]?.claim.ownerEdit).toEqual(
+    original,
+  );
+  expect((await destination.pipeline.overview(f.workspaceId)).summary).not.toContain(original!.text);
+  const restoredClaim = (await destination.pipeline.recoverySnapshot()).find(
+    (space) => space.workspaceId === f.workspaceId,
+  )!.claims[0]!;
+  expect(restoredClaim.sourceRetired).toBeDefined();
+  expect(restoredClaim.source).toBeUndefined();
+  const cipher = (repo: Repo) =>
+    repo.db
+      .prepare("SELECT content FROM memory_files WHERE workspace_id=? AND name='claims.json.enc'")
+      .get(f.workspaceId)?.content;
+  expect(cipher(destination.repo)).not.toBe(cipher(f.repo));
+  await f.pipeline.forget({ workspaceId: f.workspaceId, claimId: claim.claimId });
+  expect((await f.pipeline.documents(f.workspaceId)).documents).toEqual([]);
+});
+it("portable copy and restore retire exact legacy branch drafts while preserving unrelated human drafts", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  // Reproduce the historical branch writer directly: current branch creation correctly refuses old Memory input.
+  const branch = "old-article-draft";
+  f.repo.createConversationDraft(branch, "Legacy branch", false);
+  f.repo.setSetting(`conversationBranch:${branch}`, {
+    sourceRunId: source.runId,
+    sourceRunIds: [source.runId],
+    mode: "branch",
+    windowId: "original-window",
+  });
+  f.transcript.append(
+    `conversation-branch:${branch}`,
+    f.transcript.forkEntries(source.runId).map((entry) => entry.message),
+  );
+  f.repo.saveRun({
+    runId: "consumed-old-branch",
+    goal: "Separate owner follow-up",
+    pageIds: [],
+    status: "completed",
+    createdAt: Date.now(),
+    config: {
+      implementation: "agent-loop",
+      contextWorkspaceId: f.workspaceId,
+      chatId: branch,
+      branchSourceRunIds: [source.runId],
+    },
+    result: { report: f.article.text },
+  });
+  f.transcript.append("consumed-old-branch", [
+    ...f.transcript.forkEntries(source.runId).map((entry) => entry.message),
+    { role: "user", content: "Task: Separate owner follow-up" },
+  ]);
+  f.repo.saveRun({
+    runId: "plain-source",
+    goal: "Keep this original human request.",
+    pageIds: [],
+    status: "completed",
+    createdAt: 1,
+    config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+  });
+  f.transcript.append("plain-source", [{ role: "user", content: "Keep this original human request." }]);
+  const plain = await new ConversationBranches(f.repo).create(
+    "plain-source",
+    "branch",
+    "original-window",
+    async () => {},
+  );
+  const exported = await createRuntimeBackup(f.repo, f.directory);
+  const copy = new Repo(
+    new DatabaseSync(join(exported.path, "state.sqlite"), { readOnly: true }),
+    f.repo.columnCipher,
+  );
+  try {
+    expect(new TranscriptStore(copy.db, copy.columnCipher).load(source.runId)).toEqual([]);
+    expect(new TranscriptStore(copy.db, copy.columnCipher).load("consumed-old-branch")).toEqual([]);
+    expect(copy.getRun("consumed-old-branch")?.goal).toBe("Separate owner follow-up");
+    expect(
+      copy.db.prepare("SELECT 1 FROM run_transcript WHERE run_id=?").get(`conversation-branch:${branch}`),
+    ).toBeUndefined();
+    expect(copy.getSetting(`conversationBranch:${branch}`)).toMatchObject({ revoked: true });
+    expect(
+      new TranscriptStore(copy.db, copy.columnCipher).load(`conversation-branch:${plain.chatId}`),
+    ).toHaveLength(1);
+  } finally {
+    copy.close();
+  }
+  const restoredPath = join(f.directory, "legacy-restored.sqlite");
+  await backup(f.repo.db, restoredPath);
+  await stageRuntimeRestore(f.directory, exported.path, f.repo.columnCipher, f.pipeline);
+  await applyPendingRuntimeRestore(f.directory, restoredPath);
+  const restored = new Repo(openDb(restoredPath), f.repo.columnCipher);
+  try {
+    expect(
+      restored.db.prepare("SELECT 1 FROM run_transcript WHERE run_id=?").get(`conversation-branch:${branch}`),
+    ).toBeUndefined();
+    expect(restored.getSetting(`conversationBranch:${branch}`)).toMatchObject({ revoked: true });
+    expect(new TranscriptStore(restored.db, restored.columnCipher).load("consumed-old-branch")).toEqual([]);
+    expect(
+      new TranscriptStore(restored.db, restored.columnCipher).load(`conversation-branch:${plain.chatId}`),
+    ).toHaveLength(1);
+  } finally {
+    restored.close();
+  }
+  expect(f.transcript.load(source.runId)).toHaveLength(3);
+  expect(f.transcript.load(`conversation-branch:${branch}`)).toHaveLength(3);
+});
+it("refuses a conflicting historical branch prefix before publishing any portable backup", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  f.repo.createConversationDraft("tampered-draft", "Draft", false);
+  f.repo.setSetting("conversationBranch:tampered-draft", {
+    sourceRunId: source.runId,
+    sourceRunIds: [source.runId],
+    mode: "branch",
+    windowId: "original-window",
+  });
+  f.transcript.append("conversation-branch:tampered-draft", [
+    { role: "user", content: "A different human request must never be guessed away." },
+  ]);
+  await expect(createRuntimeBackup(f.repo, f.directory)).rejects.toThrow("copied branch prefix changed");
+  expect(f.transcript.load("conversation-branch:tampered-draft")).toHaveLength(1);
+});
+
+it("does not reuse another article's opaque proof or overwrite overlapping operation scope", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const other = await f.memory.saveEligible({
+    workspaceId: f.workspaceId,
+    pageId: "other",
+    documentEpoch: 1,
+    url: "https://article.test/unrelated",
+    title: "Other",
+    text: "A separate article remains independent from this task.",
+  });
+  const first = await f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId);
+  const second = await f.runs.retireArticleTransferSources(f.workspaceId, other.memoryId);
+  await expect(f.memory.forget(f.workspaceId, other.memoryId, () => first)).rejects.toThrow("scope differs");
+  expect(await f.memory.get(f.workspaceId, other.memoryId)).not.toBeNull();
+  await f.memory.forget(f.workspaceId, f.article.memoryId, () => first);
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId, first);
+  expect(f.transcript.load(source.runId)).toEqual([]);
+  await expect(f.memory.forget(f.workspaceId, other.memoryId, () => second)).rejects.toThrow("proof changed");
+  expect(await f.memory.get(f.workspaceId, other.memoryId)).not.toBeNull();
+});
+it("discovers only actually pruned legacy page exposures when the original prune owner opts in", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const source = await legacyArticle(f);
+  await f.pipeline.extractRun(f.workspaceId, source.runId);
+  f.repo.db.prepare("UPDATE content_memory SET expires_at=0 WHERE memory_id=?").run(f.article.memoryId);
+  const pruned = await f.memory.prune();
+  expect(pruned.workspaceIds).toEqual([f.workspaceId]);
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId, undefined, { discoverMissingLegacy: true });
+  expect(f.transcript.load(source.runId)).toEqual([]);
+  expect(await f.pipeline.inbox(f.workspaceId)).toEqual([]);
+});
+
+it("refuses original Space/model replacement during a yielded encrypted transcript scan", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const other = new TaskService(f.repo, f.events).createWorkspace("Replacement Space").workspaceId;
+  let checks = 0;
+  await expect(
+    inspectLegacyArticleHistory(f.repo, f.transcript, { workspaceId: f.workspaceId }, () => {
+      if (++checks === 2) {
+        const current = f.repo.getRun(source.runId)!;
+        f.repo.saveRun({
+          ...current,
+          config: { ...current.config, contextWorkspaceId: other, modelId: "replacement-model" },
+        });
+      }
+    }),
+  ).rejects.toThrow("run scope changed during transcript paging");
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+  expect(f.transcript.load(source.runId)).toHaveLength(3);
+});
+it("all-page Forget covers absent old captures in its original Space without clearing owner documents", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const doc = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://article.test" },
+    expectedGeneration: null,
+    content: "Independent owner instructions.",
+  });
+  let proof: Awaited<ReturnType<RunService["retireArticleTransferSources"]>> | undefined;
+  await f.memory.forget(
+    f.workspaceId,
+    undefined,
+    async () => (proof = await f.runs.retireArticleTransferSources(f.workspaceId)),
+  );
+  await f.runs.redactForgottenArticleOutputs(f.workspaceId, proof);
+  expect(f.transcript.load(source.runId)).toEqual([]);
+  expect((await f.pipeline.documentList(f.workspaceId)).documents).toEqual([doc.document]);
+});
+
+it("blocks actual idle compaction and new branch creation before model dispatch for legacy Memory", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  await expect(
+    f.runs.branch(source.runId, "branch", "original-window", async () => {}),
+  ).rejects.toMatchObject({
+    code: "conflict",
+  });
+  const generate = vi.spyOn(f.model, "generateText");
+  const authorize = vi.fn(async () => {});
+  const stats = f.runs.contextStats(source.runId);
+  const queued = await f.runs.compactIdleContext(source.runId, stats.revision, {
+    nativeTurnContext: "original-fixture-user",
+    checkOwner: async () => {},
+    authorize,
+    route: {
+      kind: "network",
+      model: f.model,
+      modelId: stats.modelId,
+      provider: "gateway",
+      destination: "https://ai-gateway.vercel.sh",
+    },
+  });
+  expect(queued.compaction.status).toBe("queued");
+  await vi.waitFor(() => expect(f.runs.contextStats(source.runId).compaction.status).toBe("failed"));
+  expect(generate).not.toHaveBeenCalled();
+  expect(authorize).not.toHaveBeenCalled();
+  expect(f.repo.getRun(source.runId)?.config?.memoryRecallAdmissionVersion).toBeUndefined();
+  expect(f.transcript.load(source.runId)).toHaveLength(3);
+});
+
+it("retires actual episodic search/read into a separate modern chat after original article Forget", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const original = await legacyArticle(f);
+  await f.pipeline.extractRun(f.workspaceId, original.runId);
+  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const independent = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://article.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent owner instructions for the site.",
+  });
+  await recallArticle(f, { kinds: ["episodic"] });
+  const run = f.repo.getRun("recall-run")!;
+  expect(run.config?.memoryRecallAdmissionVersion).toBe(1);
+  expect(run.config?.contextMemoryRefs).toBeUndefined();
+  expect(run.config?.contextRunIds).toBeUndefined();
+  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain(claim.claimId);
+  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain("The quartz workshop meets");
+  const exported = await createRuntimeBackup(f.repo, f.directory);
+  const destination = join(f.directory, "downstream-retired.sqlite");
+  await backup(f.repo.db, destination);
+  await stageRuntimeRestore(f.directory, exported.path, f.repo.columnCipher, f.pipeline);
+  await applyPendingRuntimeRestore(f.directory, destination);
+  const restored = new Repo(openDb(destination), f.repo.columnCipher);
+  const restoredPipeline = new MemoryPipeline(
+    restored,
+    f.native,
+    "recall-provenance",
+    fixtureMemoryExtractor,
+  );
+  try {
+    expect(new TranscriptStore(restored.db, restored.columnCipher).load("recall-run")).toEqual([]);
+    expect(new TranscriptStore(restored.db, restored.columnCipher).load(original.runId)).toEqual([]);
+    expect(restored.getRun("recall-run")?.config?.contextMemoryRevoked).toBe(true);
+    expect(restored.getRun(original.runId)?.goal).toBe("Original owner request");
+    expect((await restoredPipeline.documentList(f.workspaceId)).documents).toEqual([independent.document]);
+  } finally {
+    await restoredPipeline.close();
+    restored.close();
+  }
+  expect(f.transcript.load("recall-run")).not.toEqual([]);
+  await forgetLegacy(f);
+  expect(await f.pipeline.claims(f.workspaceId)).toEqual([]);
+  expect(f.transcript.load("recall-run")).toEqual([]);
+  expect(f.repo.getRun("recall-run")?.config?.contextMemoryRevoked).toBe(true);
+  expect(() => f.runs.contextStats("recall-run")).toThrow("retired by Forget");
+});
+
+it("aborts and joins the original held modern Memory read before inspecting and forgetting its admitted article", async () => {
+  let enter!: () => void, release!: () => void, signal: AbortSignal | undefined;
+  const entered = new Promise<void>((done) => (enter = done)),
+    gate = new Promise<void>((done) => (release = done));
+  const f = await fixture(undefined, async (original) => {
+    signal = original;
+    enter();
+    await gate;
+    original.throwIfAborted();
+  });
+  const running = recallArticle(f, { expectedStatus: "cancelled" });
+  await entered;
+  expect(f.repo.getRun("recall-run")?.config?.contextMemoryIds).toEqual([f.article.memoryId]);
+  const removal = forgetLegacy(f);
+  await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+  expect(await f.memory.get(f.workspaceId, f.article.memoryId)).not.toBeNull();
+  release();
+  await removal;
+  await running;
+  expect(f.transcript.load("recall-run")).toEqual([]);
+  expect(f.repo.getRun("recall-run")?.config?.contextMemoryRevoked).toBe(true);
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM action_intents").get()).toEqual({ n: 0 });
+});
+it("exports fully retired consumed branches without replay and refuses retained partial branch ciphertext", async () => {
+  const f = await fixture();
+  const original = await legacyArticle(f);
+  const chatId = "retired-consumed";
+  f.repo.createConversationDraft(chatId, "Old branch", false);
+  f.repo.setSetting(`conversationBranch:${chatId}`, {
+    sourceRunId: original.runId,
+    sourceRunIds: [original.runId],
+    mode: "branch",
+    windowId: "original-window",
+  });
+  f.repo.saveRun({
+    runId: "retired-branch",
+    goal: "Keep this original owner follow-up",
+    pageIds: [],
+    status: "completed",
+    createdAt: Date.now(),
+    config: {
+      implementation: "agent-loop",
+      contextWorkspaceId: f.workspaceId,
+      chatId,
+      branchSourceRunIds: [original.runId],
+    },
+    result: { report: f.article.text },
+  });
+  f.transcript.append("retired-branch", [
+    ...f.transcript.load(original.runId),
+    { role: "user", content: "Task: Keep this original owner follow-up" },
+  ]);
+  await forgetLegacy(f);
+  expect(f.transcript.load("retired-branch")).toEqual([]);
+  expect(f.repo.getRun("retired-branch")?.goal).toBe("Keep this original owner follow-up");
+  const exported = await createRuntimeBackup(f.repo, f.directory);
+  expect(existsSync(join(exported.path, "state.sqlite"))).toBe(true);
+  f.transcript.append("retired-branch", [
+    { role: "user", content: "Partial retained history is not certified clean." },
+  ]);
+  await expect(createRuntimeBackup(f.repo, f.directory)).rejects.toThrow("partially retired branch history");
+  expect(f.transcript.load("retired-branch")).toHaveLength(1);
+});
+
+it("preserves anomalous owner document content with retired provenance and supports ordinary explicit reaffirmation", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const original = await legacyArticle(f);
+  await f.pipeline.extractRun(f.workspaceId, original.runId);
+  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const created = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://article.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Exact separate owner instructions must remain inspectable.",
+  });
+  const store = new SpaceMemoryStore(f.repo, f.native, "recall-provenance");
+  const current = await store.read(f.workspaceId);
+  const anomalous = {
+    ...created.document!,
+    sourceRefs: [
+      { claimId: claim.claimId, sourceRunId: original.runId, quoteSha256: claim.source!.quoteSha256 },
+    ],
+  };
+  current.files.set("documents.json.enc", JSON.stringify([anomalous]));
+  await store.write(f.workspaceId, current.files, current.history, current.prior);
+  await forgetLegacy(f);
+  const after = await f.pipeline.documentList(f.workspaceId),
+    retained = after.documents[0]!;
+  expect(retained).toMatchObject({
+    ...created.document,
+    sourceRefs: [],
+    sourceRetired: { at: expect.any(Number) },
+  });
+  expect(
+    (
+      await f.pipeline.recall({
+        workspaceId: f.workspaceId,
+        queries: ["separate owner instructions"],
+        kinds: ["site"],
+        mode: "lexical",
+      })
+    ).matches,
+  ).toEqual([]);
+  const reaffirmed = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    documentId: retained.documentId,
+    target: retained.target,
+    expectedGeneration: after.generation,
+    expectedRevision: retained.revision,
+    content: retained.content,
+  });
+  expect(reaffirmed.document?.sourceRetired).toBeUndefined();
+  expect(reaffirmed.document?.content).toBe(retained.content);
+  expect(
+    (
+      await f.pipeline.recall({
+        workspaceId: f.workspaceId,
+        queries: ["separate owner instructions"],
+        kinds: ["site"],
+        mode: "lexical",
+      })
+    ).matches,
+  ).toHaveLength(1);
+});
+it("keeps legacy model-reset diagnostics out of sanitized public API error fields", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  let refusal: unknown;
+  try {
+    projectLegacyRecall(f.repo, f.transcript, source.runId);
+  } catch (error) {
+    refusal = error;
+  }
+  expect(refusal).toMatchObject({ code: "conflict", detail: { contextResetRequired: true } });
+  const wire = toErrorPayload(refusal);
+  expect(wire.code).toBe("conflict");
+  expect(wire.detail).toBeUndefined();
+  expect(wire.message).not.toContain("Use New Chat");
+});
+
+it("retires typed episodic receivers after authenticated family expansion in live Forget and portable restore", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const child = await legacyArticle(f, "family-article-child");
+  const parentId = "family-report-parent";
+  f.repo.saveRun({
+    runId: parentId,
+    goal: "Original human family task",
+    pageIds: [],
+    status: "completed",
+    createdAt: Date.now(),
+    endedAt: Date.now(),
+    config: {
+      implementation: "agent-loop",
+      contextWorkspaceId: f.workspaceId,
+      memoryRecallAdmissionVersion: 1,
+    },
+    result: { report: f.article.text },
+  });
+  const set = await f.sets.create({ name: "Review family", source: "urls", urls: [f.article.url] });
+  setReceipt(f, set.setId, f.repo.listMembers(set.setId)[0]!.memberId, child.runId, parentId);
+  expect((await f.pipeline.extractRun(f.workspaceId, parentId)).extracted).toBe(1);
+  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  expect(claim.sourceRunId).toBe(parentId);
+  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const ownerDocument = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://independent.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent owner instructions stay unchanged.",
+  });
+  for (const id of ["independent-family-parent", "independent-family-child"])
+    f.repo.saveRun({
+      runId: id,
+      goal: "Independent original human task",
+      pageIds: [],
+      status: "completed",
+      createdAt: Date.now(),
+      endedAt: Date.now(),
+      config: {
+        implementation: "agent-loop",
+        contextWorkspaceId: f.workspaceId,
+        memoryRecallAdmissionVersion: 1,
+      },
+      result: { report: "Independent family report." },
+    });
+  const independentSet = await f.sets.create({
+    name: "Independent family",
+    source: "urls",
+    urls: ["https://independent.test"],
+  });
+  setReceipt(
+    f,
+    independentSet.setId,
+    f.repo.listMembers(independentSet.setId)[0]!.memberId,
+    "independent-family-child",
+    "independent-family-parent",
+  );
+  f.transcript.append("independent-family-parent", [
+    { role: "user", content: "Preserve unrelated human history." },
+  ]);
+  await recallArticle(f, { kinds: ["episodic"] });
+  expect(f.repo.getRun("recall-run")?.config?.contextMemoryIds).toBeUndefined();
+  expect(f.repo.getRun("recall-run")?.config?.contextRunIds).toBeUndefined();
+  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain(claim.claimId);
+  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain(f.article.text);
+  const exported = await createRuntimeBackup(f.repo, f.directory);
+  const destination = join(f.directory, "family-receiver-retired.sqlite");
+  await backup(f.repo.db, destination);
+  await stageRuntimeRestore(f.directory, exported.path, f.repo.columnCipher, f.pipeline);
+  await applyPendingRuntimeRestore(f.directory, destination);
+  const restored = new Repo(openDb(destination), f.repo.columnCipher);
+  const restoredPipeline = new MemoryPipeline(
+    restored,
+    f.native,
+    "recall-provenance",
+    fixtureMemoryExtractor,
+  );
+  try {
+    const transcript = new TranscriptStore(restored.db, restored.columnCipher);
+    expect(transcript.load("recall-run")).toEqual([]);
+    expect(transcript.load(parentId)).toEqual([]);
+    expect(transcript.load(child.runId)).toEqual([]);
+    expect(restored.getRun("recall-run")?.config?.contextMemoryRevoked).toBe(true);
+    expect(restored.getRun(parentId)?.goal).toBe("Original human family task");
+    expect(restored.getRun("recall-run")?.config?.desktopContextRetired).toBeUndefined();
+    expect(restored.getRun(parentId)?.config?.desktopContextRetired).toBeUndefined();
+    expect(transcript.load("independent-family-parent")).toEqual([
+      { role: "user", content: "Preserve unrelated human history." },
+    ]);
+    expect(restored.getRun("independent-family-child")?.result?.report).toBe("Independent family report.");
+    expect((await restoredPipeline.documentList(f.workspaceId)).documents).toEqual([ownerDocument.document]);
+  } finally {
+    await restoredPipeline.close();
+    restored.close();
+  }
+  expect(JSON.stringify(f.transcript.load("recall-run"))).toContain(f.article.text);
+  await forgetLegacy(f);
+  expect(f.transcript.load(child.runId)).toEqual([]);
+  expect(f.transcript.load(parentId)).toEqual([]);
+  expect(await f.pipeline.claims(f.workspaceId)).toEqual([]);
+  expect(f.transcript.load("recall-run")).toEqual([]);
+  expect(f.repo.getRun("recall-run")?.config?.contextMemoryRevoked).toBe(true);
+  expect(f.transcript.load("independent-family-parent")).toEqual([
+    { role: "user", content: "Preserve unrelated human history." },
+  ]);
+  expect(f.repo.getRun("independent-family-child")?.result?.report).toBe("Independent family report.");
+  expect((await f.pipeline.documentList(f.workspaceId)).documents).toEqual([ownerDocument.document]);
+  expect(() => f.runs.contextStats("recall-run")).toThrow("retired by Forget");
 });

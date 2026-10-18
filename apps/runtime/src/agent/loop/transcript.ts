@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { AuxError } from "@aux/contracts";
 import type { FieldCodec } from "../../store/field-codec.js";
 import { withSecureDelete } from "../../store/db.js";
 import type { DatabaseSync } from "node:sqlite";
@@ -37,6 +39,26 @@ export interface ParkedCall {
     | { toolCallId: string; toolName: string; output: unknown }
     | { toolCallId: string; toolName: string; parked: true }
   )[];
+}
+
+/** Matches the original fork writer: an incomplete tool step is never copied. */
+export function closedTranscriptEntries(entries: { seq: number; message: ModelMessage }[]) {
+  const messages = entries.map((entry) => entry.message);
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index]!;
+    if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
+    const pending = new Set(
+      message.content.filter((part) => part.type === "tool-call").map((part) => part.toolCallId),
+    );
+    if (!pending.size) continue;
+    for (let resultIndex = index + 1; resultIndex < messages.length; resultIndex++) {
+      const result = messages[resultIndex]!;
+      if (result.role !== "tool") break;
+      for (const part of result.content) if (part.type === "tool-result") pending.delete(part.toolCallId);
+    }
+    if (pending.size) return entries.slice(0, index);
+  }
+  return entries;
 }
 
 export class TranscriptStore {
@@ -86,23 +108,7 @@ export class TranscriptStore {
 
   /** Raw immutable prefix, retaining source seqs for exact historical lineage proof. */
   forkEntries(runId: string): { seq: number; message: ModelMessage }[] {
-    const entries = this.entries(runId);
-    const messages = entries.map((entry) => entry.message);
-    for (let index = 0; index < messages.length; index++) {
-      const message = messages[index]!;
-      if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
-      const pending = new Set(
-        message.content.filter((part) => part.type === "tool-call").map((part) => part.toolCallId),
-      );
-      if (!pending.size) continue;
-      for (let resultIndex = index + 1; resultIndex < messages.length; resultIndex++) {
-        const result = messages[resultIndex]!;
-        if (result.role !== "tool") break;
-        for (const part of result.content) if (part.type === "tool-result") pending.delete(part.toolCallId);
-      }
-      if (pending.size) return entries.slice(0, index);
-    }
-    return entries;
+    return closedTranscriptEntries(this.entries(runId));
   }
 
   /** A new fork never copies durable legacy recall into another model context. */
@@ -135,14 +141,73 @@ export class TranscriptStore {
       .all(runId, beforeSeq ?? Number.MAX_SAFE_INTEGER) as { seq: number; message: string }[];
     const page = rows.slice(0, 80);
     return {
-      entries: page
-        .reverse()
-        .map((row) => ({
-          seq: row.seq,
-          message: this.decode<ModelMessage>(runId, row.seq, "message", row.message),
-        })),
+      entries: page.reverse().map((row) => ({
+        seq: row.seq,
+        message: this.decode<ModelMessage>(runId, row.seq, "message", row.message),
+      })),
       earlierSequence: rows.length > 80 ? page[0]!.seq : undefined,
     };
+  }
+
+  /** Explicit retirement only: bounded authenticated message AND parked-result inspection. */
+  *retirementPages(runId: string): Generator<{
+    rows: { seq: number; kind: "message" | "park"; value: unknown }[];
+    fingerprint: string;
+    bytes: number;
+  }> {
+    const rowLimit = 1024 * 1024;
+    let after = -1,
+      total = 0;
+    const digest = createHash("sha256");
+    const first = this.db.prepare("SELECT MIN(seq) AS seq FROM run_transcript WHERE run_id=?").get(runId) as {
+      seq: number | null;
+    };
+    if (first.seq !== null && (!Number.isSafeInteger(first.seq) || first.seq < 0))
+      throw new AuxError("permission_denied", "Legacy Memory history has invalid row identities.");
+    for (;;) {
+      const rows = this.db
+        .prepare(
+          `SELECT seq,kind,
+        CASE WHEN length(CAST(message AS BLOB))<=? THEN message END AS message,
+        CASE WHEN length(CAST(park AS BLOB))<=? THEN park END AS park,
+        length(CAST(coalesce(message,'') AS BLOB))+length(CAST(coalesce(park,'') AS BLOB)) AS bytes,
+        message IS NOT NULL AS has_message, park IS NOT NULL AS has_park
+        FROM run_transcript WHERE run_id=? AND seq>? ORDER BY seq LIMIT 64`,
+        )
+        .all(rowLimit, rowLimit, runId, after) as {
+        seq: number;
+        kind: string;
+        message: string | null;
+        park: string | null;
+        bytes: number;
+        has_message: number;
+        has_park: number;
+      }[];
+      if (!rows.length) return;
+      const page = rows.map((row) => {
+        const column: "park" | "message" = row.kind === "park" ? "park" : "message";
+        const encoded = row[column];
+        total += row.bytes;
+        if (
+          !Number.isSafeInteger(row.seq) ||
+          row.seq <= after ||
+          !["message", "park"].includes(row.kind) ||
+          row.bytes > rowLimit ||
+          total > 64 * 1024 * 1024 ||
+          row.has_message + row.has_park !== 1 ||
+          (column === "message" ? !row.has_message : !row.has_park) ||
+          typeof encoded !== "string"
+        )
+          throw new AuxError(
+            "permission_denied",
+            "Legacy Memory history exceeds its bounded retirement inspection.",
+          );
+        digest.update(JSON.stringify([row.seq, row.kind, encoded]));
+        after = row.seq;
+        return { seq: row.seq, kind: column, value: this.decode<unknown>(runId, row.seq, column, encoded) };
+      });
+      yield { rows: page, fingerprint: digest.copy().digest("hex"), bytes: total };
+    }
   }
 
   messageAfter(runId: string, sequence: number): ModelMessage | undefined {

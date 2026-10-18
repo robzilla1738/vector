@@ -369,11 +369,13 @@ function MemoryDocumentBrowserBody({
         {showSource && (
           <details className="memory-source-quote">
             <summary>
-              {note.claim.ownerEdit
-                ? "Owner-edited · original source"
-                : note.claim.source?.kind === "owner-paste"
-                  ? "Owner-pasted · unverified source"
-                  : "Original source quote"}
+              {note.claim.sourceRetired
+                ? "Owner-edited · original source retired · excluded from recall"
+                : note.claim.ownerEdit
+                  ? "Owner-edited · original source"
+                  : note.claim.source?.kind === "owner-paste"
+                    ? "Owner-pasted · unverified source"
+                    : "Original source quote"}
             </summary>
             <p>{note.claim.source?.quote ?? note.claim.text}</p>
             <small>{note.claim.sourceRunId}</small>
