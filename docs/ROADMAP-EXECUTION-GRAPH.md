@@ -119,7 +119,10 @@ Measured optional Dialog extraction, Filter split Update controls and durable
 work-trace/turn navigation are integrated with reviewed source and fixtures.
 Trace loads only on disclosure and retires held/cached data on canonical Space
 changes; exact source Forget joins original reads before removal. Its generated
-native producer row and all current UI observations remain open. No unbuilt result
+native producer row and all current UI observations remain open. The optional
+widget CSS boundary preserves shared controls and all122 rules while saving
+10,653 startup CSS bytes in matched private renderer builds. Final cumulative
+source passes all5,707tests/851files; packaged performance remains separate. No unbuilt result
 is treated as native acceptance.
 
 Workers must not edit another reserved surface or start native builds. Focused

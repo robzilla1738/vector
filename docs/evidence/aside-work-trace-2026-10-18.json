@@ -61,7 +61,22 @@
       "durationSeconds": 7.8,
       "log": "/tmp/aux-work-trace-v4-renderer-check.log"
     },
-    "currentNative": "not observed"
+    "currentNative": "not observed",
+    "subsequentFinalIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5707,
+      "testFilesPassed": 851,
+      "durationSeconds": 124.79,
+      "log": "/tmp/aux-startup-control-css-integrated-check.log",
+      "scope": "Final trace v1\u2013v4 and the control CSS slice, plus all preceding integrated source."
+    },
+    "generatedBindingsCheck": {
+      "command": "node scripts/gen-host-bindings.mjs --check",
+      "result": "278 host methods,30 events,hash550bdeb5fbbd; current generated row matches reviewed metadata."
+    }
   },
   "nativeIntegration": {
     "handAuthoredAreaRequired": false,

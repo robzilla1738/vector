@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from "react";
-import "./ui.css";
+import "./control.css";
 
 export function Button({
   tone = "default",

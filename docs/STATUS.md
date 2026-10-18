@@ -40,6 +40,16 @@ eager API registry/provider SDK remains. These measured private outputs do not
 establish current packaged timing, memory or byte-target completion.
 [Startup evidence](evidence/aside-startup-dialog-2026-10-18.json) records the tradeoff.
 
+The optional widget stylesheet now loads with its actual lazy UI/Settings owners.
+Original button sizes/glyphs and the global input-surface radius stay eager in one
+canonical control foundation. All122 original rules/layers/declarations are
+preserved exactly once. A private matched renderer Vite build reduces startup CSS
+from217,445 to206,792bytes (10,653bytes); startup JS rises79bytes, total JS1,211bytes
+and total CSS19bytes. Full packaged/native measurements remain separate; the
+remaining byte targets are not met.
+[Control CSS evidence](evidence/aside-startup-control-css-2026-10-18.json) records
+actual owners, cascade proof and the complete tradeoff.
+
 The current Memory correction selects eligible completed sessions within their
 original Space before bounded keyset paging and excludes empty reports. It fences
 original source reports at model admission and final publication. Owner proposal
@@ -187,13 +197,14 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The work-trace v1–v3 integrated check passes typecheck/lint and all5,707tests across
-851files in122.69s. The final two-file v4 pagination gate then passes all13 actual
-transcript renderer cases; this is not described as a single final-v4 full run.
-Runtime dist was rebuilt before the integrated check. Logs:
-`/tmp/aux-work-trace-integrated-check.log` and `/tmp/aux-work-trace-v4-renderer-check.log`.
-The preceding Filter check passes all5,683tests/850files in115.37s; the Dialog check
-passes all5,673tests/849files in123.24s, including provider-envelope and Memory fixes.
+The latest integrated control-CSS check passes typecheck/lint and all5,707tests
+across851files in124.79s, including the final trace v1–v4 source. Runtime dist was
+rebuilt first. Log: `/tmp/aux-startup-control-css-integrated-check.log`.
+The preceding v1–v3 trace check passes5,707tests in122.69s, followed by13/13 final
+pagination-gate cases; its earlier scope remains explicit in evidence. Filter
+passes5,683tests/850files, and Dialog passes5,673tests/849files. Provider-envelope,
+Memory, Filter, final work-details and shared control changes now have a wholly
+green combined source check; native functionality still requires the current build.
 The preceding native-menu check passed5,671tests; two unchanged coder-worktree
 cases hit60s limits, then their unchanged isolated file passed3/3 in74.01s.
 The preceding provider check passed5,672tests; one unchanged delayed-exec300ms

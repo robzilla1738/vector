@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-18",
+  "integrationBase": "bc9c5d7ec",
+  "status": "source_private_matched_production_and_integrated_checks_pass_native_pending",
+  "patch": {
+    "path": "/tmp/aux-measurement-startup-05ee35-css-v1.patch",
+    "sha256": "bbc2879cedf7716fcf6d90824bc102e8f9d57289c4e09a8fd252c58a04ca02c0",
+    "paths": 4
+  },
+  "sourceProof": {
+    "path": "/tmp/aux-measurement-startup-05ee35-css-v1-proof.json",
+    "sha256": "9ae4f16e4e37bf9b77254927fa68a697584f661333c2b3fd532ec3fdc25d2336",
+    "rules": 122,
+    "method": "Every original selector/layer/media/ordered declaration appears exactly once across unchanged remaining kit and extracted foundation; exact original bodies preserved."
+  },
+  "independentReview": {
+    "path": "/tmp/aux-startup-control-css-v1-independent-review.json",
+    "sha256": "9ab9e91b044f23f279cdc526a1b0b5756a9fc20b0ad3d8da53c308b4da02ea6f",
+    "blockers": 0
+  },
+  "changes": [
+    "Eager canonical Button imports only original control size/glyph overrides and global data-input-surface radius. Remaining optional widget kit stays in canonical UI index and explicit lazy Settings root. Replaced rules deleted, not duplicated.",
+    "No component behavior, token, selector, declaration, layer, media condition or source validation change; shared source/order/contextual/accessibility relationships reviewed.",
+    "Whole global agent/workspace/surface styles remain eager because they mix required and optional roles; no blind deferral or custom loader. Unused floating Surface role is unchanged."
+  ],
+  "privateMatchedRendererViteClosure": {
+    "baseline": "Exact05ee35 plus frozen Dialog extraction; not the newly packaged native candidate.",
+    "startupCssBeforeBytes": 217445,
+    "startupCssAfterBytes": 206792,
+    "startupCssChangeBytes": -10653,
+    "startupJsBeforeBytes": 618598,
+    "startupJsAfterBytes": 618677,
+    "startupJsChangeBytes": 79,
+    "totalCssBeforeBytes": 452816,
+    "totalCssAfterBytes": 452835,
+    "totalJsBeforeBytes": 3164539,
+    "totalJsAfterBytes": 3165750,
+    "mainCssBytes": 194210,
+    "mainCssHashUnchanged": true,
+    "appCssBeforeBytes": 23235,
+    "appCssAfterBytes": 12582,
+    "method": "Unchanged production Vite config + canonical actual boot/preload/static closure, final emitted file sizes after preload rewriting.",
+    "targetStatus": "Byte targets remain unmet; no native timing/memory/readiness implication."
+  },
+  "validation": {
+    "authorRendererTestsPassed": 86,
+    "authorFilesPassed": 13,
+    "authorTypes": "pass",
+    "authorLint": "pass; same three baseline advisory warnings",
+    "rootIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5707,
+      "testFilesPassed": 851,
+      "durationSeconds": 124.79,
+      "log": "/tmp/aux-startup-control-css-integrated-check.log",
+      "scope": "Final trace v1\u2013v4 and the control CSS slice, plus all preceding integrated source."
+    },
+    "currentNative": "not observed"
+  },
+  "remaining": [
+    "Current full native build/first-paint and all-state both-theme/narrow comparison.",
+    "Current packaged production byte report and matching-stock performance remain separate."
+  ]
+}

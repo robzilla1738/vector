@@ -4,6 +4,7 @@ import { lazySection } from "../settings/LazySettingsSection";
 import { staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
+import "../ui/ui.css";
 import "./Settings.css";
 import "../settings/shell.css";
 import "../settings/controls.css";
@@ -41,7 +42,9 @@ const ExternalAgents = lazySection(async () => (await import("./ExternalAgents")
 const PluginsPanel = lazySection(async () => (await import("./PluginsPanel")).PluginsPanel);
 const Extensions = lazySection(async () => (await import("./Extensions")).Extensions);
 const VaultSettings = lazySection(async () => (await import("./VaultSettings")).VaultSettings);
-const XConnections = lazySection(async () => (await import("../settings/sections/XConnections")).XConnections);
+const XConnections = lazySection(
+  async () => (await import("../settings/sections/XConnections")).XConnections,
+);
 const GoogleConnections = lazySection(
   async () => (await import("../settings/sections/GoogleConnections")).GoogleConnections,
 );
@@ -556,7 +559,14 @@ export function Settings() {
               {connectorsAvailable && (
                 <>
                   <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
-                  <div id="connection-x" tabIndex={-1} ref={(node) => { if (node) connectorSections.current.set("x", node); else connectorSections.current.delete("x"); }}>
+                  <div
+                    id="connection-x"
+                    tabIndex={-1}
+                    ref={(node) => {
+                      if (node) connectorSections.current.set("x", node);
+                      else connectorSections.current.delete("x");
+                    }}
+                  >
                     <XConnections active={visible("Connections")} />
                   </div>
                   <div
