@@ -306,6 +306,35 @@ it("keeps heading and exact line ranges and rejects stale search/read identity a
     }),
   ).rejects.toMatchObject({ code: "conflict" });
 });
+it("refuses an oversized UTF-8 source line instead of returning a zero-progress read cursor", async () => {
+  const text = "# Synthetic source\n" + "界".repeat(30_000);
+  const source: MemoryRecallSource = {
+    sourceId: "page:large-line",
+    kind: "page",
+    path: "synthetic.md",
+    title: "Synthetic source",
+    text,
+    revision: "1",
+    sha256: sha(text),
+    updatedAt: Date.now(),
+    sourceRefs: [],
+  };
+  const f = fixture(undefined, { pages: async () => [source], history: () => [] });
+  const request = {
+    workspaceId: f.workspaceId,
+    sourceId: source.sourceId,
+    revision: source.revision,
+    sha256: source.sha256,
+  };
+  const first = await f.pipeline.readSource(request);
+  expect(first).toMatchObject({ text: "# Synthetic source", startLine: 1, endLine: 1, nextLine: 2 });
+  await expect(f.pipeline.readSource({ ...request, startLine: first.nextLine })).rejects.toMatchObject({
+    code: "invalid_params",
+    message:
+      "The requested line exceeds the Memory source read byte limit. Choose another line or a bounded search excerpt.",
+  });
+});
+
 it("labels a local embedding outage as lexical fallback without sending text remotely", async () => {
   vi.spyOn(LocalMemoryEmbeddings.prototype, "discover").mockRejectedValue(
     new AuxError("backend_unavailable", "Unavailable"),

@@ -2874,7 +2874,10 @@ export class MemoryPipeline {
       const selected: string[] = [];
       let bytes = 0;
       for (const line of lines.slice(input.startLine - 1, input.startLine - 1 + input.limitLines)) {
-        if (bytes + Buffer.byteLength(line) > 65536) break;
+        if (bytes + Buffer.byteLength(line) > 65536) {
+          if (!selected.length) throw new AuxError("invalid_params", memoryReadNoContentErrors.oversizedLine);
+          break;
+        }
         selected.push(line);
         bytes += Buffer.byteLength(line) + 1;
       }

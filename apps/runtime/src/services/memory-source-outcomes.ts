@@ -2,6 +2,8 @@
 export const memoryReadNoContentErrors = {
   changed: "This Memory source changed or is no longer eligible. Search again.",
   outside: "The requested line is outside this source.",
+  oversizedLine:
+    "The requested line exceeds the Memory source read byte limit. Choose another line or a bounded search excerpt.",
   retired: "The source changed while reading.",
 } as const;
 export const memorySearchFallbackReasons = {
