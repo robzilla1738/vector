@@ -10,7 +10,6 @@
     gap: var(--space-2);
   }
   .settings-content .routines-settings [data-setting="My routines"] > .setting-label {
-    padding-inline: var(--space-3);
     color: var(--ink-2);
     font-size: var(--fs-md);
     font-weight: 550;
@@ -37,6 +36,9 @@
     background: var(--settings-card);
     color: var(--ink-2);
     text-align: left;
+  }
+  .settings-content .ui-setting-control > .routine-create-trigger {
+    max-width: none;
   }
   .routine-create-trigger:hover {
     background: var(--surface-primary);
