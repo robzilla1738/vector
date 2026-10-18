@@ -454,6 +454,65 @@ it("counts five eligible sessions for idle Dream and records a real no-change ou
   expect(operation).toMatchObject({ trigger: "idle", status: "no-change", changes: [] });
   expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ due: false, eligibleSessions: 0 });
 });
+it.each(["failed", "cancelled"] as const)(
+  "retains unprocessed Dream sessions after %s and backs off automatic retries for 24 hours",
+  async (outcome) => {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const consolidate = vi.fn<MemoryDreamer["consolidate"]>(async () => {
+      if (outcome === "cancelled") throw new AuxError("cancelled", "Synthetic cancellation");
+      return { status: "failed", changes: [], errorCode: "inference_failed" };
+    });
+    const f = fixture({
+      generation: () => "one",
+      consolidate,
+    });
+    for (let index = 0; index < 5; index++) await f.source();
+    now++;
+    expect(await f.pipeline.dream(f.workspaceId, "idle")).toMatchObject({ status: outcome });
+    expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 5, due: false });
+    expect(await f.pipeline.dreamIdle()).toEqual([]);
+    expect(consolidate).toHaveBeenCalledTimes(1);
+    now += 86400000 - 1;
+    expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 5, due: false });
+    now++;
+    expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 5, due: true });
+    now += 14 * 86400000;
+    expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 0, due: false });
+  },
+);
+it("permits manual Dream during failure backoff and consumes sessions only after no-change success", async () => {
+  let now = Date.now(),
+    fail = true;
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const f = fixture({
+    generation: () => "one",
+    consolidate: async () =>
+      fail
+        ? { status: "failed", changes: [], errorCode: "inference_failed" }
+        : { status: "completed", changes: [] },
+  });
+  for (let index = 0; index < 5; index++) await f.source();
+  now++;
+  await f.pipeline.dream(f.workspaceId, "idle");
+  expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 5, due: false });
+  fail = false;
+  now++;
+  expect(await f.pipeline.dream(f.workspaceId, "manual")).toMatchObject({ status: "no-change" });
+  expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 0, due: false });
+});
+it("makes one eligible session due after 24 hours and expires it after 14 days", async () => {
+  let now = Date.now();
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const f = fixture();
+  await f.source();
+  now += 86400000 - 1;
+  expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 1, due: false });
+  now++;
+  expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 1, due: true });
+  now += 13 * 86400000;
+  expect(await f.pipeline.dreamStatus(f.workspaceId)).toMatchObject({ eligibleSessions: 0, due: false });
+});
 it("cancels and joins the original read-by-ID source operation when its Memory owner retires", async () => {
   let started!: () => void;
   const began = new Promise<void>((resolve) => {

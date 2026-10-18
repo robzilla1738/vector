@@ -1968,9 +1968,19 @@ export class MemoryPipeline {
             this.dreamWork.get(workspaceId)?.operationId === operation.operationId,
         ) ?? null;
       const last = state.dreams.findLast((operation) => operation.status !== "running");
+      // Only successful consolidation consumes sessions. Failed or cancelled
+      // attempts retain them, but wait one daily cadence before an idle retry
+      // so maintenance cannot repeatedly spend on the same failed input.
+      const processed = state.dreams.findLast((operation) =>
+        ["completed", "no-change"].includes(operation.status),
+      );
+      const retryAfter =
+        last && ["failed", "cancelled"].includes(last.status)
+          ? (last.endedAt ?? last.startedAt) + 86400000
+          : 0;
       const sessions = await this.eligibleDreamSessions(
         workspaceId,
-        last?.startedAt ?? 0,
+        processed?.startedAt ?? 0,
         state.retiredSources,
       );
       const oldest = sessions.reduce((at, run) => Math.min(at, run.endedAt ?? Date.now()), Date.now());
@@ -1981,8 +1991,9 @@ export class MemoryPipeline {
         due:
           this.policy(workspaceId).enabled &&
           !this.dreamWork.has(workspaceId) &&
+          Date.now() >= retryAfter &&
           sessions.length > 0 &&
-          (sessions.length >= 5 || Date.now() - (last?.startedAt ?? oldest) >= 86400000),
+          (sessions.length >= 5 || Date.now() - (processed?.startedAt ?? oldest) >= 86400000),
       };
     });
   }
