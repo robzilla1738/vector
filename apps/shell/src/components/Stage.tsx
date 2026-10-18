@@ -159,7 +159,32 @@ export const Stage = memo(
               : [],
     );
     useEffect(() => {
-      if (inNativeHost) void bridge.setStageVisible(JSON.parse(visibleIds) as string[]).catch(errToast);
+      if (!inNativeHost) return;
+      let current = true;
+      const original = useStore.getState();
+      const windowId = bridge.windowId;
+      const ids = JSON.parse(visibleIds) as string[];
+      // Visibility belongs to WebContents, not a document revision. A same-tab
+      // navigation does not retire a genuine current presentation refusal.
+      const sources = ids.map((id) => original.pages.byId[id]);
+      void bridge.setStageVisible(ids).catch((error) => {
+        const state = useStore.getState();
+        if (
+          current &&
+          bridge.windowId === windowId &&
+          state.activePageId === original.activePageId &&
+          state.mode === original.mode &&
+          state.overlay === original.overlay &&
+          sources.every((source, index) => {
+            const page = state.pages.byId[ids[index]!];
+            return source && page && page.windowId === source.windowId;
+          })
+        )
+          errToast(error);
+      });
+      return () => {
+        current = false;
+      };
     }, [visibleIds]);
     useEffect(
       () => () => {

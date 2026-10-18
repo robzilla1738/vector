@@ -55,8 +55,10 @@ it("retries a page-free turn without offering to attach a subsequently selected 
   await act(async () => button.click());
   expect(retry).toHaveBeenCalledExactlyOnceWith("original");
 });
-it("retains explicit selected-tab recovery when a genuine original website is missing", async () => {
-  useStore.setState((state) => ({ runs: state.runs.map((run) => ({ ...run, pageIds: ["missing"] })) }));
+it("retains explicit selected-tab recovery when a failed turn's genuine original website is missing", async () => {
+  useStore.setState((state) => ({
+    runs: state.runs.map((run) => ({ ...run, status: "failed", pageIds: ["missing"] })),
+  }));
   await act(async () =>
     root.render(<RunPanel runId="original" conversation latest retryPageId="selected" controlsInComposer />),
   );
@@ -189,6 +191,7 @@ it("updates original-source retry availability when its document changes after r
 
 it("refuses a multi-source retry subset even when both old protected copies remain", async () => {
   protectedContext();
+  useStore.setState((state) => ({ runs: state.runs.map((run) => ({ ...run, status: "failed" })) }));
   const second = makePage(3, {
     pageId: "second-source",
     ownedByRuntime: false,
@@ -252,6 +255,7 @@ it.each(["session", "document"] as const)(
   "shows changed original %s context without calling a still-open tab unavailable",
   async (change) => {
     const { source, copy } = protectedContext();
+    useStore.setState((state) => ({ runs: state.runs.map((run) => ({ ...run, status: "failed" })) }));
     useStore.setState((state) => ({
       pages: normalizePages(
         orderedPages(state.pages)
@@ -289,6 +293,7 @@ it.each(["session", "document"] as const)(
 
 it("reports mixed missing and changed original tabs without offering a retry subset", async () => {
   const { source, copy } = protectedContext();
+  useStore.setState((state) => ({ runs: state.runs.map((run) => ({ ...run, status: "failed" })) }));
   useStore.setState((state) => ({
     pages: normalizePages(
       orderedPages(state.pages)
@@ -307,4 +312,79 @@ it("reports mixed missing and changed original tabs without offering a retry sub
   expect(host.textContent).toContain("Original tabs are missing");
   expect(host.textContent).not.toContain("Retry in selected tab");
   expect(host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!.disabled).toBe(true);
+});
+
+it("keeps a successful navigated answer complete and requires explicit fresh-context rerun instead of showing a failure", async () => {
+  const { source, copy } = protectedContext();
+  const targetUrl = "https://original.test/next";
+  useStore.setState((state) => ({
+    pages: normalizePages(
+      orderedPages(state.pages)
+        .filter((page) => page.pageId !== copy.pageId)
+        .map((page) =>
+          page.pageId === source.pageId ? { ...page, url: targetUrl, documentEpoch: 4 } : page,
+        ),
+    ),
+    steps: {
+      original: [
+        {
+          stepId: "navigation",
+          runId: "original",
+          pageId: source.pageId,
+          op: "navigate",
+          inputs: { url: targetUrl },
+          startedAt: 1,
+          outcome: {
+            stepId: "navigation",
+            op: "navigate",
+            status: "ok",
+            startedAt: 1,
+            durationMs: 1,
+            effect: "observed",
+            receipt: {
+              remoteConfirmed: false,
+              uncertain: false,
+              dispatchedBeforeTakeover: false,
+              identity: { pageId: source.pageId, documentEpoch: 4 },
+            },
+          },
+        },
+      ],
+    },
+  }));
+  await act(async () =>
+    root.render(
+      <RunPanel runId="original" conversation latest retryPageId={source.pageId} controlsInComposer />,
+    ),
+  );
+  expect(host.textContent).toContain("Hello back");
+  expect(host.textContent).not.toContain("The original tab context changed");
+  expect(host.querySelector(".run-failure")).toBeNull();
+  expect(host.querySelector(".conversation-context-note")?.textContent).toContain("current browser context");
+  const originalRetry = host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!;
+  expect(originalRetry.disabled).toBe(true);
+  await act(async () => originalRetry.click());
+  expect(retry).not.toHaveBeenCalled();
+  const fresh = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Run again in selected tab",
+  )!;
+  await act(async () => fresh.click());
+  expect(retry).toHaveBeenCalledExactlyOnceWith("original", source.pageId);
+});
+
+it("keeps completed multi-tab context guidance neutral without offering a partial rerun", async () => {
+  useStore.setState((state) => ({
+    runs: state.runs.map((run) => ({ ...run, pageIds: ["missing-one", "missing-two"] })),
+  }));
+  await act(async () =>
+    root.render(<RunPanel runId="original" conversation latest retryPageId="selected" controlsInComposer />),
+  );
+  expect(host.textContent).toContain("This finished turn used 2 tabs");
+  expect(host.textContent).not.toContain("Original tabs are missing");
+  expect(host.querySelector(".run-failure")).toBeNull();
+  expect(
+    [...host.querySelectorAll("button")].some((button) => button.textContent === "Run again in selected tab"),
+  ).toBe(false);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!.disabled).toBe(true);
+  expect(retry).not.toHaveBeenCalled();
 });

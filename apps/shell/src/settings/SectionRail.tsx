@@ -2,24 +2,43 @@ import { memoryViews, type MemoryView } from "./routes";
 import type { RefObject } from "react";
 import {
   shellIconDownloadSm,
-  shellIconAgent,
   shellIconArchive,
-  shellIconChats,
-  shellIconClock,
   shellIconCode,
   shellIconCube,
   shellIconExtension,
   shellIconGear,
   shellIconGlobe,
+  shellIconGrid,
+  shellIconSliders,
+  shellIconFilter,
   shellIconLock,
   shellIconModel,
   shellIconResult,
   shellIconPerson,
-  shellIconSun,
 } from "../ui/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
 import {
   settingsIconAppearance,
+  settingsIconProfiles,
+  settingsIconUsage,
+  settingsIconUsageActive,
+  settingsIconArchivedActive,
+  settingsIconGeneral,
+  settingsIconPrivacy,
+  settingsIconAgents,
+  settingsIconAgentsActive,
+  settingsIconModelsActive,
+  settingsIconSkills,
+  settingsIconSkillsActive,
+  settingsIconAwareness,
+  settingsIconAwarenessActive,
+  settingsIconChannels,
+  settingsIconChannelsActive,
+  settingsIconDevelopers,
+  settingsIconDevelopersActive,
+  settingsIconOverviewActive,
+  settingsIconHistory,
+  settingsIconHistoryActive,
   settingsIconProjects,
   settingsIconProjectsActive,
   settingsIconPasswords,
@@ -53,10 +72,29 @@ interface RailItem {
 }
 
 const items: readonly RailItem[] = [
-  { label: "General", category: "General", group: "Personal", icon: shellIconGear },
+  {
+    label: "General",
+    category: "General",
+    group: "Personal",
+    icon: settingsIconGeneral,
+    activeIcon: shellIconGear,
+  },
   { label: "Appearance", category: "Appearance", group: "Personal", icon: settingsIconAppearance },
-  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconPerson, gate: "profiles" },
-  { label: "Usage & Budgets", category: "Usage & Budgets", group: "Personal", icon: shellIconModel },
+  {
+    label: "Profiles",
+    category: "Profiles",
+    group: "Personal",
+    icon: settingsIconProfiles,
+    activeIcon: shellIconPerson,
+    gate: "profiles",
+  },
+  {
+    label: "Usage & Budgets",
+    category: "Usage & Budgets",
+    group: "Personal",
+    icon: settingsIconUsage,
+    activeIcon: settingsIconUsageActive,
+  },
   {
     label: "Downloads",
     category: "Downloads",
@@ -76,10 +114,17 @@ const items: readonly RailItem[] = [
     label: "Privacy & Security",
     category: "Site permissions",
     group: "Personal",
-    icon: shellIconLock,
+    icon: settingsIconPrivacy,
+    activeIcon: shellIconLock,
     gate: "permissions",
   },
-  { label: "Agents", category: "Permissions", group: "Agent", icon: shellIconAgent },
+  {
+    label: "Agents",
+    category: "Permissions",
+    group: "Agent",
+    icon: settingsIconAgents,
+    activeIcon: settingsIconAgentsActive,
+  },
   {
     label: "Projects",
     category: "Projects",
@@ -87,12 +132,20 @@ const items: readonly RailItem[] = [
     icon: settingsIconProjects,
     activeIcon: settingsIconProjectsActive,
   },
-  { label: "Models", category: "Connections", group: "Agent", icon: shellIconCube, tab: "Models" },
+  {
+    label: "Models",
+    category: "Connections",
+    group: "Agent",
+    icon: shellIconCube,
+    activeIcon: settingsIconModelsActive,
+    tab: "Models",
+  },
   {
     label: "Skills & MCP",
     category: "Connections",
     group: "Agent",
-    icon: shellIconExtension,
+    icon: settingsIconSkills,
+    activeIcon: settingsIconSkillsActive,
     tab: "Plugins",
     gate: "plugins",
   },
@@ -108,7 +161,8 @@ const items: readonly RailItem[] = [
     label: "Desktop context",
     category: "Desktop context",
     group: "Agent",
-    icon: shellIconResult,
+    icon: settingsIconAwareness,
+    activeIcon: settingsIconAwarenessActive,
     gate: "desktopContext",
   },
   { label: "Memory", category: "Memory", group: "Agent", icon: shellIconModel, gate: "memory" },
@@ -135,7 +189,13 @@ const items: readonly RailItem[] = [
     activeIcon: settingsIconRoutinesActive,
     gate: "automations",
   },
-  { label: "Channels", category: "Channels", group: "Features", icon: shellIconChats },
+  {
+    label: "Channels",
+    category: "Channels",
+    group: "Features",
+    icon: settingsIconChannels,
+    activeIcon: settingsIconChannelsActive,
+  },
   {
     label: "Quick Ask",
     category: "Quick Ask",
@@ -148,7 +208,8 @@ const items: readonly RailItem[] = [
     label: "Developers",
     category: "Connections",
     group: "Features",
-    icon: shellIconCode,
+    icon: settingsIconDevelopers,
+    activeIcon: settingsIconDevelopersActive,
     tab: "Agents",
   },
   {
@@ -159,8 +220,21 @@ const items: readonly RailItem[] = [
     gate: "extensions",
   },
   { label: "Labs", category: "Labs", group: "Features", icon: shellIconGear },
-  { label: "Archived chats", category: "Archived chats", group: "Archived", icon: shellIconArchive },
+  {
+    label: "Archived chats",
+    category: "Archived chats",
+    group: "Archived",
+    icon: shellIconArchive,
+    activeIcon: settingsIconArchivedActive,
+  },
 ];
+
+const memoryIcons: Record<MemoryView, { icon: React.ReactNode; activeIcon: React.ReactNode }> = {
+  overview: { icon: shellIconGrid, activeIcon: settingsIconOverviewActive },
+  history: { icon: settingsIconHistory, activeIcon: settingsIconHistoryActive },
+  context: { icon: settingsIconAwareness, activeIcon: settingsIconAwarenessActive },
+  configure: { icon: shellIconSliders, activeIcon: shellIconFilter },
+};
 
 export function SectionRail({
   category,
@@ -254,13 +328,7 @@ export function SectionRail({
                     onClick={() => onOpenMemoryView(view)}
                   >
                     <span className="settings-category-icon">
-                      {view === "history"
-                        ? shellIconClock
-                        : view === "configure"
-                          ? shellIconGear
-                          : view === "context"
-                            ? shellIconSun
-                            : shellIconModel}
+                      {memoryView === view ? memoryIcons[view].activeIcon : memoryIcons[view].icon}
                     </span>
                     <span className="settings-category-label">{label}</span>
                   </button>

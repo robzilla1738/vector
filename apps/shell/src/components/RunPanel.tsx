@@ -371,6 +371,7 @@ export const RunPanel = memo(function RunPanel({
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
   const live = isLive(run);
+  const completed = run.status === "completed" && !run.failure;
   const working = ["queued", "planning", "running"].includes(run.status);
   const showSteps = stepsExpanded ?? (working && !stream);
   const originalPages = run.pageIds.map((id) => runPages.find((p) => p.pageId === id));
@@ -546,16 +547,27 @@ export const RunPanel = memo(function RunPanel({
         !retryAvailable &&
         retryPage &&
         (!run.failure || run.failure.retryable) && (
-          <section className="run-failure" {...nativeStatusRoleProps}>
-            <div className="run-failure-copy">
-              <strong>
-                {originalTabsMissing ? "The original tab is unavailable" : "The original tab context changed"}
-              </strong>
-              <p>
-                Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same;
-                its browser context is captured again.
-              </p>
-            </div>
+          <section
+            className={completed ? "conversation-context-note" : "run-failure"}
+            {...nativeStatusRoleProps}
+          >
+            {completed ? (
+              <span>
+                Run again with {retryPage.title || retryPage.url} using its current browser context.
+              </span>
+            ) : (
+              <div className="run-failure-copy">
+                <strong>
+                  {originalTabsMissing
+                    ? "The original tab is unavailable"
+                    : "The original tab context changed"}
+                </strong>
+                <p>
+                  Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same;
+                  its browser context is captured again.
+                </p>
+              </div>
+            )}
             <RunPanelAction
               command="retry-run-selected-tab"
               run={run}
@@ -563,21 +575,31 @@ export const RunPanel = memo(function RunPanel({
               disabled={readOnly || retrying}
               invoke={() => retryRun(run.runId, retryPage.pageId)}
             >
-              {retrying ? "Retrying…" : "Retry in selected tab"}
+              {retrying ? "Retrying…" : completed ? "Run again in selected tab" : "Retry in selected tab"}
             </RunPanelAction>
           </section>
         )}
       {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && (
-        <section className="run-failure" {...nativeStatusRoleProps}>
-          <div className="run-failure-copy">
-            <strong>
-              {originalTabsMissing ? "Original tabs are missing" : "Original tab context changed"}
-            </strong>
-            <p>
-              This turn used {run.pageIds.length} tabs. Review their context in a new turn. Aux will not retry
-              a subset or reuse changed context.
-            </p>
-          </div>
+        <section
+          className={completed ? "conversation-context-note" : "run-failure"}
+          {...nativeStatusRoleProps}
+        >
+          {completed ? (
+            <span>
+              This finished turn used {run.pageIds.length} tabs. Start a new turn to review their current
+              context.
+            </span>
+          ) : (
+            <div className="run-failure-copy">
+              <strong>
+                {originalTabsMissing ? "Original tabs are missing" : "Original tab context changed"}
+              </strong>
+              <p>
+                This turn used {run.pageIds.length} tabs. Review their context in a new turn. Aux will not
+                retry a subset or reuse changed context.
+              </p>
+            </div>
+          )}
         </section>
       )}
       {!controlsInComposer && <RunControls runId={runId} compact />}

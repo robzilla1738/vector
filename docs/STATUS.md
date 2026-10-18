@@ -8,6 +8,14 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
+retires obsolete Stage error publication, presents completed-chat context changes
+neutrally, and adopts the remaining source-proven Settings/Memory icon roles.
+Its real producer regressions fail three cases before the fix and pass all37
+cases across four affected renderer files afterward. The integrated check passes6,100tests/866files in108.40s, with no
+concurrent native compiler and runtime dist rebuilt before tests. These changes and fullscreen shortcut correction are not yet compiled
+into the native app; the last observed7b85 preview is retired normally. Work continues on local main.
+
 The latest [fullscreen and Settings integration](evidence/aside-fullscreen-settings-integration-2026-10-18.json)
 passes **6,097 tests across 866 files** in 103.05s, with 581 lint advisories and no
 type/lint errors. Runtime dist was rebuilt first, without a native compiler.

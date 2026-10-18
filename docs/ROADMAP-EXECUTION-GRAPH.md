@@ -59,8 +59,11 @@ prove original-page answer resumption, immediate mute publication, visible
 permission denial flows,92px Quick Ask, tab-search paint/input and native
 beforeunload paths. Fullscreen exposes42px reservation and hidden-field Cmd-L
 focus defects; their peer-reviewed source correction is integrated but awaits
-checks/build/native observation. The completed-chat context notice and native
-Settings-close stage toast remain open. A fresh complete20 campaign follows
+checks/build/native observation. The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
+passes6,100tests/866files, retaining current native refusal while retiring stale
+error publication and presenting successful-turn reruns neutrally. Source-exact
+remaining Settings/Memory glyph roles are integrated. Native observations of
+these corrections remain open. A fresh complete20 campaign follows
 changed-flow acceptance.
 
 The retired clean7d native candidate has bounded denial/media/file/bookmark

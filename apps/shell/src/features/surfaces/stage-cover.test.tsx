@@ -8,6 +8,7 @@ const fixture = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   visible: vi.fn(async () => {}),
   command: vi.fn(),
+  errors: vi.fn(),
   resolve: vi.fn(async (id: string) => `native-${id}`),
   invoke: vi.fn(() => new Promise<never>(() => {})),
 }));
@@ -26,7 +27,12 @@ vi.mock("../../bridge", () => ({
 vi.mock("../../commands", () => ({ runCommand: fixture.command }));
 vi.mock("../../store", async () => {
   const { create } = await import("zustand");
-  return { useStore: create(() => fixture.state), call: vi.fn(), tabCommand: vi.fn(), errToast: vi.fn() };
+  return {
+    useStore: create(() => fixture.state),
+    call: vi.fn(),
+    tabCommand: vi.fn(),
+    errToast: fixture.errors,
+  };
 });
 // A deferred agent surface must never become a prerequisite for ordinary browsing.
 vi.mock("../permissions/SuspensionPrompt", () => new Promise(() => {}));
@@ -264,6 +270,77 @@ it("attaches a native page while the runtime and agent surface remain unresponsi
   } finally {
     await act(async () => root.unmount());
     node.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("retires a closed selection's delayed native refusal while still reporting a refusal for the current stage", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const refusal = new Error("forbidden: Stage pages must belong to this window");
+  let rejectOriginal!: (error: unknown) => void;
+  fixture.visible.mockReset();
+  fixture.errors.mockClear();
+  fixture.visible.mockImplementationOnce(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectOriginal = reject;
+      }),
+  );
+  fixture.visible.mockResolvedValue(undefined);
+  const original = page("settings-native-tab");
+  const layout = emptyLayout();
+  useStore.setState(
+    {
+      pages: normalizePages([original]),
+      activePageId: original.pageId,
+      layout,
+      mode: "focus",
+      overlay: null,
+      settings: {},
+      confirmation: null,
+    } as never,
+    true,
+  );
+  const node = document.createElement("div");
+  document.body.append(node);
+  const root = createRoot(node);
+  try {
+    await act(async () => root.render(<Stage />));
+    expect(fixture.visible).toHaveBeenCalledWith([original.pageId]);
+    // The actual tab-removal/Settings transition retires that original request.
+    // Reject in the same update batch, before an effect-cleanup-only fence can run.
+    await act(async () => {
+      useStore.setState({ pages: normalizePages([]), activePageId: null, overlay: "settings" });
+      rejectOriginal(refusal);
+      await Promise.resolve();
+    });
+    expect(fixture.errors).not.toHaveBeenCalled();
+    expect(fixture.visible).toHaveBeenLastCalledWith([]);
+    let rejectCurrent!: (error: unknown) => void;
+    fixture.visible.mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectCurrent = reject;
+        }),
+    );
+    await act(async () =>
+      useStore.setState({
+        pages: normalizePages([original]),
+        activePageId: original.pageId,
+        overlay: null,
+      }),
+    );
+    await act(async () => {
+      useStore.setState({ pages: normalizePages([{ ...original, documentEpoch: 2 }]) });
+      rejectCurrent(refusal);
+    });
+    expect(fixture.errors).toHaveBeenCalledExactlyOnceWith(refusal);
+  } finally {
+    await act(async () => root.unmount());
+    node.remove();
+    fixture.visible.mockReset();
+    fixture.visible.mockResolvedValue(undefined);
+    setSurfaceState({ dragging: null, picker: false, edge: null });
     vi.unstubAllGlobals();
   }
 });

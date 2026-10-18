@@ -1,0 +1,53 @@
+{
+  "atUTC": "2026-10-18T21:25:08.112846+00:00",
+  "base": "7d0564bba10f8e657e0550f1f9df1afb3a07ad09",
+  "status": "Integrated source/checks passed; native compilation and changed-flow acceptance pending",
+  "changes": [
+    "Retire obsolete asynchronous Stage visibility error publication after original effect/window/selection/overlay/page ownership changes; genuine current refusal survives same-tab document change. Native guard unchanged.",
+    "Successful completed chats use neutral current-context rerun presentation; original retry disabled check and explicit selected-tab retry authorization remain. Failed/stopped recovery remains.",
+    "Use source-exact outlined/filled utility roles across General, Profiles, Usage, Privacy, Agents, Models, Skills, Desktop, Channels, Developers, Archive and four Memory subviews. RetainAux branding, labels, routes and selection predicates."
+  ],
+  "sourceManifest": {
+    "path": "/tmp/aux-stage-context-ui-followup-7b85-v1/final-manifest.json",
+    "sha256": "d84b278d151d8dfd323c4b4dda8fc6420ebae374504030b7d4f655b80f4cf0d1"
+  },
+  "focused": {
+    "before": "19pass/3fail; three intended new producer regressions",
+    "after": "37pass/4files/1.06s",
+    "types": "noEmit pass",
+    "native": "none"
+  },
+  "railManifests": [
+    {
+      "path": "/tmp/aux-ui-audit-7b85-2026-10-18/settings-rail-remaining-v1-manifest.json",
+      "sha256": "07faa308ce1ec81e49fee0998d2ea6162801e9b4bc7cea4353cd576e6db10cd7"
+    },
+    {
+      "path": "/tmp/aux-ui-audit-7b85-2026-10-18/settings-rail-three-role-addendum-v1-manifest.json",
+      "sha256": "46655902c6229695a49b060a96f3548c6e9673036fd55434b92a77bea1f33074"
+    }
+  ],
+  "observations": {
+    "path": "/tmp/aux-ui-audit-7b85-2026-10-18/post-fix-observations-v1.json",
+    "sha256": "e53adf0dbf52830461c4fdb3c0a3a3ed8ac99569c50d14d70701c7a30b11f2b3",
+    "scope": "17actual images/13reference rows; boundedgeometry/glyph observations only;0whole-rowacceptance",
+    "correction": "/tmp/aux-ui-audit-7b85-2026-10-18/post-fix-draft-length-correction-v1.json"
+  },
+  "format": "RootPrettier adjusts rail-icons.tsx only after exact proposal application; no intentional SVG path changes.",
+  "limits": [
+    "Actual native stage toast lacks rejected request IDs: stale publication reproduced, but exact observed toast attribution not proven.",
+    "No latest glyph selected-state/full parity acceptance.",
+    "Latest native app remains7b85/DD, retired; fullscreen and these renderer changes not yet compiled into candidate."
+  ],
+  "integrated": {
+    "command": "npm run check",
+    "session": 63876,
+    "exit": 0,
+    "tests": 6100,
+    "files": 866,
+    "seconds": 108.4,
+    "log": "/tmp/aux-stage-context-rail-integrated-check-2026-10-18.log",
+    "nativeCompilerConcurrent": false,
+    "runtimeDistRebuiltBeforeTests": true
+  }
+}
