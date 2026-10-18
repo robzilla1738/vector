@@ -45,6 +45,33 @@ async function processHasMarker(pid: number, processId: string): Promise<boolean
   }
 }
 
+/** Inventory witnesses absence; it never grants authority over a numeric PGID. */
+async function retireProcessGroup(pid: number, signalOriginal: () => void): Promise<void> {
+  const deadline = Date.now() + 2000;
+  while (true) {
+    // The closure can signal only its actual still-live ChildProcess, not a
+    // reconstructed group after its leader was reaped.
+    signalOriginal();
+    const { stdout } = await execute("/bin/ps", ["-A", "-o", "pid=,pgid=,uid="], {
+      timeout: 2000,
+      maxBuffer: 4 * 1024 * 1024,
+      encoding: "utf8",
+    });
+    let present = false;
+    for (const line of stdout.split("\n")) {
+      if (!line.trim()) continue;
+      const fields = line.trim().split(/\s+/).map(Number);
+      if (fields.length !== 3 || fields.some((value) => !Number.isSafeInteger(value) || value < 0))
+        throw new AuxError("operation_uncertain", "Original process-group inventory is invalid.");
+      present ||= fields[1] === pid;
+    }
+    if (!present) return;
+    if (Date.now() >= deadline)
+      throw new AuxError("operation_uncertain", "Original process-group termination is not acknowledged.");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
 /** Process ownership is an execution receipt, never permission to replay a command. */
 export class CodingProcesses extends CodingProcessLedger {
   private readonly owned = new Map<string, OwnedProcess>();
@@ -183,6 +210,27 @@ export class CodingProcesses extends CodingProcessLedger {
     let writing: Promise<unknown> = Promise.resolve();
     let logError: unknown;
     let launchError: Error | undefined;
+    let childExited = false;
+    let stopRequested = false;
+    let workJoined = false;
+    let attemptFailed = false;
+    let completion: Promise<void> | undefined;
+    let closingLog: Promise<void> | undefined;
+    const makeWaiter = () => {
+      let resolve!: () => void;
+      let reject!: (error: unknown) => void;
+      const promise = new Promise<void>((yes, no) => {
+        resolve = yes;
+        reject = no;
+      });
+      void promise.catch(() => {});
+      return { promise, resolve, reject };
+    };
+    let waiter = makeWaiter();
+    let resolveClosed!: () => void;
+    const closed = new Promise<void>((resolve) => {
+      resolveClosed = resolve;
+    });
     const output = { stdout: "", stderr: "" };
     let outputTruncated = false;
     const recordOutput = (channel: "stdout" | "stderr", chunk: Buffer) => {
@@ -205,23 +253,106 @@ export class CodingProcesses extends CodingProcessLedger {
           .then(() => log.write(clipped))
           .catch((error) => {
             logError = error;
-            kill();
+            beginRetirement();
           });
     };
     child.stdout?.on("data", (chunk: Buffer) => recordOutput("stdout", chunk));
     child.stderr?.on("data", (chunk: Buffer) => recordOutput("stderr", chunk));
-    const kill = () => {
-      if (!child.pid) return;
+    const saveFromCallback = () => {
+      try {
+        this.save(receipt);
+      } catch (error) {
+        logError ??= error;
+      }
+    };
+    const signalOriginal = () => {
+      if (!child.pid || childExited || child.exitCode !== null || child.signalCode !== null) return;
       try {
         process.kill(-child.pid, "SIGKILL");
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
+          receipt.state = "uncertain";
+          saveFromCallback();
+        }
       }
     };
+    const joinLog = () => (closingLog ??= writing.then(() => log.close()));
+    const waitClosed = async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          closed,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(
+                  new AuxError(
+                    "operation_uncertain",
+                    "Original process pipes have not acknowledged closure.",
+                  ),
+                ),
+              2000,
+            );
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const beginRetirement = () => {
+      if (completion) return;
+      const originalWaiter = waiter;
+      // Publish the one original attempt before callbacks/signals can reenter.
+      completion = Promise.resolve()
+        .then(async () => {
+          if (child.pid) await retireProcessGroup(child.pid, signalOriginal);
+          await waitClosed();
+          await joinLog();
+          workJoined = true;
+          if (launchError) throw launchError;
+          if (logError) throw logError;
+          if (this.options.artifacts) {
+            const file = await open(logPath, "r");
+            try {
+              const artifact = this.options.artifacts.save({
+                runId: context.runId,
+                label: `process-${processId}.log`,
+                mediaType: "text/plain",
+                buffer: await file.readFile(),
+              });
+              receipt.artifactId = artifact.artifactId;
+            } finally {
+              await file.close();
+            }
+          }
+          // A Stop during asynchronous artifact work remains uncertain until all
+          // original work joins; terminal publication uses the latest stop intent.
+          receipt.state = stopRequested ? "stopped" : receipt.exitCode === 0 ? "completed" : "failed";
+          this.save(receipt);
+          this.owned.delete(processId);
+        })
+        .then(originalWaiter.resolve, (error: unknown) => {
+          clearInterval(monitor);
+          attemptFailed = !workJoined;
+          receipt.state = workJoined ? "failed" : "uncertain";
+          if (workJoined) this.owned.delete(processId);
+          let failure = error;
+          try {
+            this.save(receipt);
+          } catch (saveError) {
+            failure = new AggregateError(
+              [error, saveError],
+              "Original process cleanup and receipt publication failed.",
+            );
+          }
+          originalWaiter.reject(failure);
+        });
+    };
     const abort = () => {
-      receipt.state = "stopped";
-      this.save(receipt);
-      kill();
+      stopRequested = true;
+      receipt.state = "uncertain";
+      saveFromCallback();
+      beginRetirement();
     };
     const monitor = setInterval(() => {
       try {
@@ -234,67 +365,47 @@ export class CodingProcesses extends CodingProcessLedger {
       }
     }, 250);
     monitor.unref();
-    const stopped = new Promise<void>((resolve, reject) => {
-      child.once("error", (error) => {
-        launchError = error;
-        receipt.state = "failed";
-        this.save(receipt);
-      });
-      child.once("close", (exitCode, signal) => {
-        clearInterval(monitor);
-        // The leader can exit while its detached descendants are still running.
-        kill();
-        receipt.state = receipt.state === "stopped" ? "stopped" : exitCode === 0 ? "completed" : "failed";
-        receipt.exitCode = exitCode;
-        receipt.signal = signal;
-        receipt.endedAt = Date.now();
-        receipt.stdout = output.stdout;
-        receipt.stderr = output.stderr;
-        receipt.outputTruncated = outputTruncated;
-        this.save(receipt);
-        context.signal?.removeEventListener("abort", abort);
-        void writing
-          .then(async () => {
-            await log.close();
-            if (launchError) throw launchError;
-            if (logError) throw logError;
-            if (this.options.artifacts) {
-              const file = await open(logPath, "r");
-              try {
-                const artifact = this.options.artifacts.save({
-                  runId: context.runId,
-                  label: `process-${processId}.log`,
-                  mediaType: "text/plain",
-                  buffer: await file.readFile(),
-                });
-                receipt.artifactId = artifact.artifactId;
-                this.save(receipt);
-              } finally {
-                await file.close();
-              }
-            }
-          })
-          .then(
-            () => {
-              this.owned.delete(processId);
-              resolve();
-            },
-            (error) => {
-              receipt.state = "failed";
-              this.save(receipt);
-              this.owned.delete(processId);
-              reject(error);
-            },
-          );
-      });
+    child.once("error", (error) => {
+      launchError = error;
+      receipt.state = "failed";
+      saveFromCallback();
     });
-    // A background completion is retained for the caller even before it next waits.
-    void stopped.catch(() => {});
+    child.once("exit", () => {
+      childExited = true;
+      clearInterval(monitor);
+      // Descendants may still hold pipes. Start bounded absence verification
+      // now, independently of the later ChildProcess close event.
+      beginRetirement();
+    });
+    child.once("close", (exitCode, signal) => {
+      childExited = true;
+      clearInterval(monitor);
+      context.signal?.removeEventListener("abort", abort);
+      receipt.exitCode = exitCode;
+      receipt.signal = signal;
+      receipt.endedAt = Date.now();
+      receipt.stdout = output.stdout;
+      receipt.stderr = output.stderr;
+      receipt.outputTruncated = outputTruncated;
+      resolveClosed();
+      // Even after a refused attempt, the actual pipe owner closes its log.
+      void joinLog().catch((error) => {
+        logError ??= error;
+      });
+      beginRetirement();
+    });
     this.owned.set(processId, {
       runId: context.runId,
-      stopped,
+      get stopped() {
+        return waiter.promise;
+      },
       stop: (reason) => {
         if (reason === "timeout") receipt.timedOut = true;
+        if (attemptFailed) {
+          attemptFailed = false;
+          completion = undefined;
+          waiter = makeWaiter();
+        }
         abort();
       },
     });
@@ -323,7 +434,7 @@ export class CodingProcesses extends CodingProcessLedger {
       return receipt;
     } catch (error) {
       abort();
-      await stopped;
+      await waiter.promise;
       throw error;
     }
   }
@@ -403,7 +514,10 @@ export class CodingProcesses extends CodingProcessLedger {
       owned.stop();
       await owned.stopped;
     }
-    return this.status(processId, runId);
+    const receipt = this.status(processId, runId);
+    if (["starting", "running", "uncertain"].includes(receipt.state))
+      throw new AuxError("operation_uncertain", "Original process termination has not been reconciled.");
+    return receipt;
   }
   async closeRun(runId: string): Promise<void> {
     await this.ready;
@@ -437,17 +551,91 @@ export class CodingProcesses extends CodingProcessLedger {
     if (this.closed || context.signal?.aborted) throw new AuxError("cancelled", "Process execution stopped.");
     this.options.checkOwner(context);
   }
+  private retainRecoveredDebt(receipt: CodingProcessReceipt, pid: number): void {
+    const original = JSON.stringify(receipt);
+    const check = () => {
+      const row = this.options.repo.db
+        .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE process_id=? AND run_id=?")
+        .get(receipt.processId, receipt.runId) as { process_id: string; receipt: string } | undefined;
+      if (!row || JSON.stringify(this.decode(row)) !== original)
+        throw new AuxError("operation_uncertain", "Original recovered process receipt changed.");
+    };
+    let stopped: Promise<void> = Promise.reject(
+      new AuxError("operation_uncertain", "Original recovered process retirement is not acknowledged."),
+    );
+    void stopped.catch(() => {});
+    let attempt: Promise<void> | undefined;
+    this.owned.set(receipt.processId, {
+      runId: receipt.runId,
+      get stopped() {
+        return stopped;
+      },
+      stop: () => {
+        if (attempt) return;
+        // There is no live ChildProcess authority after recovery. An explicit
+        // retry can witness absence only; it must never signal a numeric PGID.
+        stopped = attempt = Promise.resolve()
+          .then(async () => {
+            check();
+            await retireProcessGroup(pid, () => {});
+            check();
+            this.assertLocal(receipt);
+            const log = await open(receipt.logPath, "r");
+            let digest: string;
+            try {
+              digest = createHash("sha256")
+                .update(await log.readFile())
+                .digest("hex");
+            } finally {
+              await log.close();
+            }
+            check();
+            const retired = {
+              ...receipt,
+              state: "interrupted" as const,
+              logDigest: digest,
+              reconciledAt: Date.now(),
+              endedAt: receipt.endedAt ?? Date.now(),
+            };
+            this.save(retired);
+            this.owned.delete(receipt.processId);
+          })
+          .finally(() => {
+            attempt = undefined;
+          });
+        void stopped.catch(() => {});
+      },
+    });
+  }
   private async recover(): Promise<void> {
     const rows = this.options.repo.db
-      .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE state IN ('starting','running')")
+      .prepare(
+        "SELECT process_id,receipt FROM coding_process_receipts WHERE state IN ('starting','running','uncertain')",
+      )
       .all() as unknown as { process_id: string; receipt: string }[];
     for (const row of rows) {
       const receipt = this.decode(row);
       if (receipt.execution) continue;
-      if (!["starting", "running"].includes(receipt.state)) continue;
+      if (!["starting", "running", "uncertain"].includes(receipt.state)) continue;
       let pid = receipt.pid;
       const actual = pid ? await processIdentity(pid) : undefined;
       const matchesRecorded = !!actual && !!receipt.identity && actual === receipt.identity;
+      if (receipt.state === "uncertain") {
+        if (pid) {
+          // Only the existing exact known live leader check can justify one
+          // initial recovery signal. Every later attempt is absence-only,
+          // including when that leader has already gone but its group remains.
+          if (matchesRecorded && (await processIdentity(pid)) === receipt.identity) {
+            try {
+              process.kill(-pid, "SIGKILL");
+            } catch (error) {
+              if (!["ESRCH", "EPERM"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+            }
+          }
+          this.retainRecoveredDebt(receipt, pid);
+        }
+        continue;
+      }
       if (!matchesRecorded && (!pid || !(await processHasMarker(pid, receipt.processId)))) {
         const result = await execute("/bin/ps", ["-axo", "pid=,pgid=,command="], { encoding: "utf8" });
         const line = result.stdout
