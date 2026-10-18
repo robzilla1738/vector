@@ -843,3 +843,30 @@ describe("code-mode REPL", () => {
     expect(String(spawned.value)).toMatch(/unavailable|unsupported/i);
   });
 });
+
+it("exposes a strict ID-only artifact bridge and honors its profile policy before reading", async () => {
+  const pool = new ReplPool();
+  cleanup.push(() => pool.disposeAll());
+  const read = vi.fn(async () => ({
+    output: { content: "amount\n10", artifact: { artifactId: "art-csv" } },
+  }));
+  const allowed = deps({ readArtifactText: read });
+  const result = await pool.eval(allowed, 'await artifacts.readText({artifactId:"art-csv"})');
+  expect(out(result).value).toMatchObject({ content: "amount\n10" });
+  expect(read).toHaveBeenCalledWith({ artifactId: "art-csv" });
+  await expect(
+    pool.eval(allowed, 'artifacts.readText({artifactId:"art-csv",runId:"other",path:"/"})'),
+  ).rejects.toMatchObject({ code: "invalid_params" });
+  expect(read).toHaveBeenCalledOnce();
+  const denied = deps({
+    readArtifactText: read,
+    allowHostCall: (name) => {
+      if (name === "artifactReadText")
+        throw new AuxError("permission_denied", "This profile does not permit read_artifact_text");
+    },
+  });
+  await expect(pool.eval(denied, 'artifacts.readText({artifactId:"art-csv"})')).rejects.toThrow(
+    "does not permit read_artifact_text",
+  );
+  expect(read).toHaveBeenCalledOnce();
+});

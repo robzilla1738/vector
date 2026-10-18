@@ -1,3 +1,4 @@
+import { resultFilename } from "../../services/text-result.js";
 import { SheetsWorkflows, confirmSheetsSelection, sheetsInputsUndispatched } from "../sheets-workflows.js";
 import { taskMessage } from "./task-message.js";
 import { X_OPERATIONS } from "@aux/contracts/x";
@@ -107,6 +108,13 @@ export interface AgentLoopHostDeps {
     signal: AbortSignal;
     checkOwner: () => void;
   }) => Promise<void>;
+  readArtifactText?: (
+    input: import("@aux/contracts/artifact-text").ArtifactTextInput & {
+      runId: string;
+      signal: AbortSignal;
+      checkOwner(): void;
+    },
+  ) => Promise<import("@aux/contracts/artifact-text").ArtifactTextResult>;
   pdfReady?: () => boolean;
   pdfSources?: (input: {
     offset?: number;
@@ -987,6 +995,33 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             };
           }
         : undefined,
+    readArtifactText: self.deps.agentLoop?.readArtifactText
+      ? async (input) => {
+          const read = self.deps.agentLoop?.readArtifactText;
+          if (!read) throw new AuxError("capability_unsupported", "Artifact text reading is unavailable.");
+          const original = self.get(runId);
+          const checkOwner = () => {
+            const current = self.get(runId);
+            if (
+              signal.aborted ||
+              self.controls.get(runId) !== c ||
+              c.paused ||
+              current.status !== "running" ||
+              current.createdAt !== original.createdAt ||
+              current.config?.messageRevision !== original.config?.messageRevision ||
+              current.config?.taskId !== original.config?.taskId ||
+              current.config?.taskRevision !== original.config?.taskRevision ||
+              current.config?.contextMemoryRevoked
+            )
+              throw new AuxError("cancelled", "The original artifact request lost its run authority.");
+            self.deps.checkRunSource?.(runId);
+          };
+          checkOwner();
+          const result = await read({ ...input, runId, signal, checkOwner });
+          checkOwner();
+          return { output: result };
+        }
+      : undefined,
     pdfSources: self.deps.agentLoop?.pdfSources
       ? async (input) => {
           const list = self.deps.agentLoop?.pdfSources;
@@ -1122,26 +1157,26 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           ? { ...step, op: "check" }
           : step,
       );
-      // Typing into an observed rich-text field focuses it itself. A preceding
-      // click has no reliable write receipt and can strand the whole batch as
-      // uncertain even when the text change is observed. Reject before either
-      // action is dispatched so the model can issue the single type action.
-      const firstStep = steps[0];
-      const secondStep = steps[1];
-      const focusClick =
-        steps.length === 2 &&
-        firstStep?.op === "click" &&
-        secondStep?.op === "type" &&
-        firstStep.target === secondStep.target &&
-        safeObs.content.elements.some(
-          (element) => element.ref === firstStep.target && element.tag === "div",
-        ) &&
-        safeObs.content.formFields.some((field) => field.ref === firstStep.target);
+      // Filling or typing into an observed rich-text field focuses it itself.
+      // A preceding bare focus click has no reliable write receipt. Scan the
+      // whole batch before dispatch so an earlier setter cannot run first.
+      const focusClick = steps.some((step, index) => {
+        const nextStep = steps[index + 1];
+        return (
+          step.op === "click" &&
+          (!step.button || step.button === "left") &&
+          !step.expect?.length &&
+          (nextStep?.op === "type" || nextStep?.op === "fill") &&
+          step.target === nextStep.target &&
+          safeObs.content.elements.some((element) => element.ref === step.target && element.tag === "div") &&
+          safeObs.content.formFields.some((field) => field.ref === step.target)
+        );
+      });
       if (focusClick)
         return {
           output: {
             rejected:
-              "This rich-text field can be typed directly. Issue one type action on the same target; no action was dispatched.",
+              "This rich-text field can be filled or typed directly. Remove its preceding focus click and retry the batch; no action was dispatched.",
           },
         };
       const dispatchStartedAt = Date.now();
@@ -1388,10 +1423,26 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             op: outcome.op,
             status: outcome.status,
             detail: outcome.detail,
+            ...(outcome.artifactIds?.length ? { artifactIds: outcome.artifactIds } : {}),
             ...(outcome.error ? { error: `${outcome.error.code}: ${outcome.error.message}` } : {}),
             ...(outcome.before !== undefined ? { before: outcome.before } : {}),
             ...(outcome.extracted !== undefined ? { extracted: outcome.extracted } : {}),
           })),
+          artifacts: [...new Set(gate.result.steps.flatMap((outcome) => outcome.artifactIds ?? []))].flatMap(
+            (artifactId) => {
+              const artifact = self.deps.repo.getArtifact(artifactId);
+              if (!artifact || artifact.runId !== runId || artifact.status !== "complete") return [];
+              return [
+                {
+                  artifactId,
+                  filename: resultFilename(artifactId, artifact.path),
+                  mediaType: artifact.mediaType,
+                  size: artifact.size,
+                  status: artifact.status,
+                },
+              ];
+            },
+          ),
           ...(gate.result.error ? { error: gate.result.error } : {}),
           ...(self.durable.unresolved(runId).length
             ? { uncertainIntentIds: self.durable.unresolved(runId).map((intent) => intent.id) }
@@ -2089,6 +2140,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     runId,
     signal,
     outputDir: self.deps.agentLoop?.repl?.outputDir,
+    readArtifactText: deps.readArtifactText,
     tabs: async () =>
       run.config?.mentions?.length
         ? self.deps.turnMentions.list(runId, self.deps.pages.list({}))
@@ -2404,6 +2456,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           codingName ??
           (
             {
+              artifactReadText: "read_artifact_text",
               observe: "snapshot",
               capture: "snapshot",
               findRef: "snapshot",
@@ -2466,12 +2519,16 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               "conflict",
               "The resumed code diverged from its recorded host calls; inspect receipts and re-plan remaining work.",
             );
-          return self.deps.repo.revealRecordField(
+          const response = self.deps.repo.revealRecordField(
             "coding_repl_calls",
             [runId, toolCallId, ordinal],
             "response",
             existing.response,
           );
+          // Replaying a cached read must not revive a removed, forgotten or changed source.
+          if (name === "artifactReadText" && (await execute()) !== response)
+            throw new AuxError("ref_stale", "The original artifact read is no longer available for replay.");
+          return response;
         }
         if (restoringRepl)
           throw new AuxError(

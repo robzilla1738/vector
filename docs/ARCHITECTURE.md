@@ -164,6 +164,16 @@ The legacy JSON planner, Electron migration and standalone drivers have been rem
 
 Native socket events replace periodic bridge polling. Chromium owns background tab discarding and native bookmark identities, so human browser controls do not require Node. Model context is a bounded projection of the complete durable transcript. Exact capture references bind selected saved articles; relevant excerpts use the remaining provider input budget after required plans, receipts and images. Automatic recall warms cooperatively and enters only ephemeral provider messages. It does not append plaintext recall into the durable transcript.
 
+Downloaded text is available to the agent through `read_artifact_text` and the
+same bounded REPL `artifacts.readText` operation. `act` returns actual admitted
+artifact IDs and metadata. The reader accepts an ID, an optional hash-bound cursor
+and an 8 KiB page limit; the original captured run supplies ownership. It refuses
+other-run, retired, incomplete, binary and oversized sources, verifies UTF-8 and
+rechecks source eligibility and metadata after asynchronous reads and before
+publication. Durable REPL read replay revalidates the source rather than reviving
+removed data. It uses the existing ArtifactStore without another plaintext copy;
+this is not an artifact-storage encryption migration.
+
 Explicit Memory tools persist their actual encrypted results. Before publication,
 returned page identities/revisions/hashes must resolve to the original eligible
 capture; its canonical references join the run without replacing earlier refs.

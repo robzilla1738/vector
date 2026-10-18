@@ -2515,6 +2515,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           () => transfers.invoke(input.runId, input.input),
         );
       }),
+    readArtifactText: ({ runId, signal, checkOwner, ...input }) =>
+      runtimeServices.artifacts.readText(input, { runId, signal, checkCurrent: checkOwner }),
     pdfSources: (input) =>
       runtimeServices.runs.pdfOperation(input, (run, signal, checkCurrent) =>
         listPdfSources(

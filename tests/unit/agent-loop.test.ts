@@ -126,6 +126,7 @@ describe("runAgentLoop (S5)", () => {
       "history_search",
       "subagent",
       "read_file",
+      "read_artifact_text",
       "notification",
       "write_todos",
     ])
@@ -988,7 +989,7 @@ describe("TranscriptStore misc", () => {
 // ---------- runToolLoop: the coordinator host (engine "agent-loop") ----------
 
 import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
-import { EventBus, Repo, RunCoordinator } from "@aux/runtime";
+import { ArtifactStore, EventBus, Repo, RunCoordinator } from "@aux/runtime";
 
 const pageObs = (): Observation =>
   ({
@@ -1583,87 +1584,273 @@ describe("runToolLoop (S5 host integration)", () => {
     );
   });
 
-  it("rejects a redundant rich-text focus click before dispatch, then types directly", async () => {
-    const before = {
-      ...pageObs(),
-      content: {
-        ...pageObs().content,
-        text: "Bio (rich text)",
-        elements: [{ ref: "r12", tag: "div", name: "Bio (rich text)", frame: "main" }],
-        formFields: [{ ref: "r12", label: "Bio (rich text)", value: "" }],
-      },
-    } as Observation;
-    const after = {
-      ...before,
-      revision: 2,
-      content: {
-        ...before.content,
-        text: "Bio (rich text)\nDesign systems for teams",
-        formFields: [{ ref: "r12", label: "Bio (rich text)", value: "Design systems for teams" }],
-      },
-    } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      {
-        toolCalls: [
-          {
-            toolCallId: "b1",
-            toolName: "act",
-            input: {
-              steps: [
-                { id: "click", op: "click", target: "r12" },
-                { id: "type", op: "type", target: "r12", value: "Design systems for teams" },
-              ],
-            },
-          },
-        ],
-      },
-      {
-        toolCalls: [
-          {
-            toolCallId: "b2",
-            toolName: "act",
-            input: {
-              steps: [{ id: "type-only", op: "type", target: "r12", value: "Design systems for teams" }],
-            },
-          },
-        ],
-      },
-      { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Bio entered" } }] },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((step) => ({
-        stepId: step.id,
-        op: step.op,
-        status: "ok" as const,
-        startedAt: 1,
-        durationMs: 1,
-        effect: "observed" as const,
-        before: { value: "" },
-        after: { value: "Design systems for teams" },
-        receipt: {
-          observed: "control value changed after action",
-          remoteConfirmed: false,
-          uncertain: false,
-          dispatchedBeforeTakeover: false,
+  it.each([
+    { write: "type", prefix: false, suffix: false },
+    { write: "fill", prefix: false, suffix: false },
+    { write: "type", prefix: true, suffix: false },
+    { write: "fill", prefix: true, suffix: false },
+    { write: "type", prefix: false, suffix: true },
+    { write: "fill", prefix: false, suffix: true },
+    { write: "type", prefix: true, suffix: true },
+    { write: "fill", prefix: true, suffix: true },
+  ] as const)(
+    "rejects a rich-text focus click before $write without partial dispatch (prefix=$prefix, suffix=$suffix)",
+    async ({ write, prefix, suffix }) => {
+      const before = {
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          text: "Bio (rich text)",
+          elements: [
+            { ref: "r12", tag: "div", name: "Bio (rich text)", frame: "main" },
+            ...["r2", "r3", "r4", "r6", "r7", "r11", "r14"].map((ref) => ({
+              ref,
+              tag: "input",
+              frame: "main",
+            })),
+          ],
+          formFields: [{ ref: "r12", label: "Bio (rich text)", value: "" }],
         },
-      }));
-      for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
-      return { status: "completed", steps, observation: after };
-    });
-    h.pages.observe.mockResolvedValue(before);
-    const run = await h.coordinator.start({
-      goal: "Enter the bio",
-      pageIds: ["p1"],
-      chatId: "chat-1",
-    });
-    await settle(h.repo, run.runId);
-    expect(h.pages.execute).toHaveBeenCalledOnce();
-    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(["type"]);
-    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("no action was dispatched");
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
-      { status: "confirmed" },
-    ]);
-  });
+      } as Observation;
+      const after = {
+        ...before,
+        revision: 2,
+        content: {
+          ...before.content,
+          text: "Bio (rich text)\nDesign systems for teams",
+          formFields: [
+            {
+              ref: "r12",
+              label: "Bio (rich text)",
+              value: "Design systems for teams",
+            },
+          ],
+        },
+      } as Observation;
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "b1",
+              toolName: "act",
+              input: {
+                steps: [
+                  ...(prefix
+                    ? [
+                        {
+                          id: "name",
+                          op: "fill",
+                          target: "r2",
+                          value: "Morgan Vale",
+                        },
+                        {
+                          id: "email",
+                          op: "fill",
+                          target: "r3",
+                          value: "morgan@example.com",
+                        },
+                        {
+                          id: "role",
+                          op: "select",
+                          target: "r4",
+                          value: "Designer",
+                        },
+                        {
+                          id: "department",
+                          op: "type",
+                          target: "r6",
+                          value: "Virtual Design",
+                        },
+                        { id: "preference", op: "check", target: "r7" },
+                        { id: "plan", op: "check", target: "r11" },
+                      ]
+                    : []),
+                  { id: "click", op: "click", target: "r12" },
+                  {
+                    id: "write",
+                    op: write,
+                    target: "r12",
+                    value: "Design systems for teams",
+                  },
+                  ...(suffix
+                    ? [
+                        {
+                          id: "date",
+                          op: "fill",
+                          target: "r14",
+                          value: "2026-10-15",
+                        },
+                      ]
+                    : []),
+                ],
+              },
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              toolCallId: "b2",
+              toolName: "act",
+              input: {
+                steps: [
+                  {
+                    id: "write-only",
+                    op: write,
+                    target: "r12",
+                    value: "Design systems for teams",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              toolCallId: "done",
+              toolName: "submit_result",
+              input: { report: "Bio entered" },
+            },
+          ],
+        },
+      ]);
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const steps = program.steps.map((step) => ({
+          stepId: step.id,
+          op: step.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+          effect: "observed" as const,
+          before: { value: "" },
+          after: { value: "Design systems for teams" },
+          receipt: {
+            observed: "control value changed after action",
+            remoteConfirmed: false,
+            uncertain: false,
+            dispatchedBeforeTakeover: false,
+          },
+        }));
+        for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
+        return { status: "completed", steps, observation: after };
+      });
+      h.pages.observe.mockResolvedValue(before);
+      const run = await h.coordinator.start({
+        goal: "Enter the bio",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+      });
+      await settle(h.repo, run.runId);
+      expect(h.pages.execute).toHaveBeenCalledOnce();
+      expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual([write]);
+      expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("no action was dispatched");
+      expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
+        { status: "confirmed" },
+      ]);
+    },
+  );
+
+  it.each([
+    {
+      kind: "standalone",
+      steps: [{ id: "click", op: "click", target: "r12" }],
+    },
+    {
+      kind: "nonadjacent",
+      steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "other", op: "fill", target: "r2", value: "name" },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+    {
+      kind: "different-ref",
+      steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "write", op: "fill", target: "r2", value: "name" },
+      ],
+    },
+    {
+      kind: "postcondition",
+      steps: [
+        {
+          id: "click",
+          op: "click",
+          target: "r12",
+          expect: [{ kind: "textVisible", text: "Editor opened" }],
+        },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+    {
+      kind: "right-click",
+      steps: [
+        { id: "click", op: "click", target: "r12", button: "right" },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+    {
+      kind: "button",
+      steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+    {
+      kind: "link",
+      steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+    {
+      kind: "unobserved-field",
+      steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "write", op: "type", target: "r12", value: "bio" },
+      ],
+    },
+  ] satisfies { kind: string; steps: PlanStep[] }[])(
+    "does not reject distinct $kind clicks as redundant rich-text focus",
+    async ({ kind, steps }) => {
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps } }],
+        },
+        { text: "Action dispatched" },
+      ]);
+      const h = coordinatorHarness(model);
+      h.pages.observe.mockResolvedValue({
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          elements: [
+            {
+              ref: "r12",
+              tag: kind === "button" ? "button" : kind === "link" ? "a" : "div",
+              frame: "main",
+            },
+            { ref: "r2", tag: "input", frame: "main" },
+          ],
+          formFields: kind === "unobserved-field" ? [] : [{ ref: "r12", label: "Bio", value: "" }],
+        },
+      } as Observation);
+      const run = await h.coordinator.start({
+        goal: "Use the editor",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+      });
+      await settle(h.repo, run.runId);
+      expect(h.pages.execute).toHaveBeenCalledOnce();
+      expect(h.pages.execute.mock.calls[0]?.[0].steps.map(({ id: _id, ...step }) => step)).toEqual(
+        steps.map(({ id: _id, ...step }) => step),
+      );
+      expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).not.toContain(
+        "no action was dispatched",
+      );
+    },
+  );
 
   it("gives a goal program visible body text and headings without browser-title or element duplicates", async () => {
     const model = new MockModelClient().scriptToolSteps([
@@ -3232,4 +3419,284 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "navigated" });
   });
+});
+
+describe("run-owned downloaded text affordance", () => {
+  it.each(["tool", "repl"])(
+    "keeps the native download artifact ID and reads its CSV through %s without Bash",
+    async (surface) => {
+      const dir = mkdtempSync(join(tmpdir(), "aux-agent-artifact-"));
+      cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "download",
+              toolName: "act",
+              input: { steps: [{ id: "download", op: "navigate", url: "http://x.test/rec-10.csv" }] },
+            },
+          ],
+        },
+      ]);
+      let artifactId = "";
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const artifact = artifacts.save({
+          runId: ctx!.runId,
+          pageId: "p1",
+          label: "rec-10-data.csv",
+          mediaType: "text/plain",
+          buffer: Buffer.from("item,amount\na,4\nb,6\n"),
+        });
+        artifactId = artifact.artifactId;
+        const step = program.steps[0]!;
+        const outcome: StepOutcome = {
+          stepId: step.id,
+          op: step.op,
+          status: "ok",
+          startedAt: 1,
+          durationMs: 1,
+          effect: "observed",
+          artifactIds: [artifactId],
+          detail: "downloaded rec-10-data.csv",
+          receipt: {
+            observed: "downloaded rec-10-data.csv",
+            remoteConfirmed: false,
+            uncertain: false,
+            dispatchedBeforeTakeover: false,
+          },
+        };
+        ctx?.onStep?.(outcome, step);
+        return { status: "completed", steps: [outcome], artifactIds: [artifactId], observation: pageObs() };
+      });
+      const artifacts = new ArtifactStore(dir, h.repo, h.coordinator.deps.events);
+      const read = vi.fn(
+        async ({
+          runId,
+          signal,
+          checkOwner,
+          ...input
+        }: Parameters<
+          NonNullable<
+            import("../../apps/runtime/src/agent/loop/host.js").AgentLoopHostDeps["readArtifactText"]
+          >
+        >[0]) => artifacts.readText(input, { runId, signal, checkCurrent: checkOwner }),
+      );
+      h.coordinator.deps.agentLoop = { readArtifactText: read };
+      const next = model.toolCallStep.bind(model);
+      const modelViews: { tools: string[]; messages: string }[] = [];
+      let calls = 0;
+      model.toolCallStep = async (options) => {
+        modelViews.push({ tools: Object.keys(options.tools), messages: JSON.stringify(options.messages) });
+        if (++calls === 2) {
+          model.scriptToolSteps([
+            {
+              toolCalls: [
+                {
+                  toolCallId: "read",
+                  toolName: surface === "tool" ? "read_artifact_text" : "repl",
+                  input:
+                    surface === "tool"
+                      ? { artifactId }
+                      : {
+                          code: `const downloaded = await artifacts.readText({artifactId:${JSON.stringify(artifactId)}}); display(downloaded);`,
+                        },
+                },
+              ],
+            },
+            {
+              toolCalls: [{ toolCallId: "finish", toolName: "submit_result", input: { report: "Total 10" } }],
+            },
+          ]);
+        }
+        return next(options);
+      };
+      const run = await h.coordinator.start({ goal: "Download the CSV and sum amount", pageIds: ["p1"] });
+      expect(await settle(h.repo, run.runId)).toMatchObject({
+        status: "completed",
+        result: { report: "Total 10" },
+      });
+      expect(read).toHaveBeenCalledOnce();
+      expect(read.mock.calls[0]?.[0].runId).toBe(run.runId);
+      expect(modelViews).toHaveLength(3);
+      expect(modelViews[1]!.tools).toContain("read_artifact_text");
+      expect(modelViews[1]!.messages).toContain(artifactId);
+      expect(modelViews[1]!.messages).toContain('"artifactIds"');
+      expect(modelViews[1]!.messages).toContain('"mediaType":"text/plain"');
+      expect(modelViews[1]!.messages).not.toContain(dir);
+      expect(modelViews[2]!.messages).toContain("item,amount");
+      expect(modelViews[2]!.messages).toContain("untrusted_artifact");
+      expect(h.pages.execute).toHaveBeenCalledOnce();
+      expect(h.coordinator.suspensions.pending(run.runId)).toBeUndefined();
+      const transcript = JSON.stringify(new TranscriptStore(h.db).load(run.runId));
+      expect(transcript).not.toContain('"toolName":"bash"');
+    },
+  );
+
+  it("checks original owner again after the artifact backend returns", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          { toolCallId: "read", toolName: "read_artifact_text", input: { artifactId: "known-artifact" } },
+        ],
+      },
+      { text: "Cannot read a retired source" },
+    ]);
+    const h = coordinatorHarness(model);
+    h.coordinator.deps.agentLoop = {
+      readArtifactText: async ({ runId }) => {
+        const run = h.repo.getRun(runId)!;
+        h.repo.saveRun({ ...run, config: { ...run.config, contextMemoryRevoked: true } });
+        h.coordinator.controls.get(runId)!.abort.abort();
+        return {
+          source: "untrusted_artifact",
+          artifact: {
+            artifactId: "known-artifact",
+            filename: "fixture.csv",
+            mediaType: "text/plain",
+            size: 11,
+            status: "complete",
+          },
+          sha256: "0".repeat(64),
+          offset: 0,
+          content: "SECRET-TEST",
+          eof: true,
+        };
+      },
+    };
+    const run = await h.coordinator.start({ goal: "Read the existing result", pageIds: [] });
+    await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.config?.contextMemoryRevoked).toBe(true));
+    await h.coordinator.close();
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).not.toContain("SECRET-TEST");
+  });
+});
+
+it("revalidates an artifact on an actual durable REPL replay instead of reviving its cached bytes", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "aux-artifact-replay-"));
+  cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+  const model = new MockModelClient().scriptToolSteps([
+    {
+      toolCalls: [
+        {
+          toolCallId: "download",
+          toolName: "act",
+          input: { steps: [{ id: "download", op: "navigate", url: "http://x.test/fixture.csv" }] },
+        },
+      ],
+    },
+  ]);
+  let artifactId = "";
+  const h = coordinatorHarness(model, (program) => {
+    const runId = h.repo.listRuns()[0]!.runId;
+    artifactId = artifacts.save({
+      runId,
+      label: "fixture.csv",
+      mediaType: "text/plain",
+      buffer: Buffer.from("REPLAY-SOURCE-SECRET"),
+    }).artifactId;
+    return {
+      status: "completed",
+      steps: [
+        {
+          stepId: program.steps[0]!.id,
+          op: "navigate",
+          status: "ok",
+          startedAt: 1,
+          durationMs: 1,
+          effect: "observed",
+          artifactIds: [artifactId],
+        },
+      ],
+      observation: pageObs(),
+    };
+  });
+  const artifacts = new ArtifactStore(dir, h.repo, h.coordinator.deps.events);
+  const read = vi.fn<
+    NonNullable<import("../../apps/runtime/src/agent/loop/host.js").AgentLoopHostDeps["readArtifactText"]>
+  >(async ({ runId, signal, checkOwner, ...input }) =>
+    artifacts.readText(input, { runId, signal, checkCurrent: checkOwner }),
+  );
+  h.coordinator.deps.agentLoop = { readArtifactText: read };
+  const next = model.toolCallStep.bind(model);
+  const latestToolResults: (string | undefined)[] = [];
+  let calls = 0;
+  model.toolCallStep = async (options) => {
+    latestToolResults.push(JSON.stringify(options.messages.findLast((message) => message.role === "tool")));
+    if (++calls === 2) {
+      const replay = {
+        toolCallId: "same-original-read",
+        toolName: "repl",
+        input: { code: `display(artifacts.readText({artifactId:${JSON.stringify(artifactId)}}))` },
+      };
+      model.scriptToolSteps([
+        { toolCalls: [replay] },
+        { toolCalls: [replay] },
+        {
+          toolCalls: [
+            {
+              toolCallId: "finish",
+              toolName: "submit_result",
+              input: { report: "The original artifact was removed; no replacement read." },
+            },
+          ],
+        },
+      ]);
+    }
+    if (calls === 3) h.repo.db.prepare("DELETE FROM artifacts WHERE artifact_id=?").run(artifactId);
+    return next(options);
+  };
+  const run = await h.coordinator.start({
+    goal: "Read a downloaded text once, then inspect deletion",
+    pageIds: ["p1"],
+  });
+  expect(await settle(h.repo, run.runId)).toMatchObject({ status: "completed" });
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(latestToolResults).toHaveLength(4);
+  expect(latestToolResults[3]).toContain("no longer available for replay");
+  expect(latestToolResults[3]).not.toContain("REPLAY-SOURCE-SECRET");
+  expect(h.pages.execute).toHaveBeenCalledOnce();
+});
+
+it("the real REPL profile mapping cannot expand into artifact reads", async () => {
+  const model = new MockModelClient().scriptToolSteps([
+    {
+      toolCalls: [
+        {
+          toolCallId: "repl-read",
+          toolName: "repl",
+          input: { code: 'artifacts.readText({artifactId:"known"})' },
+        },
+      ],
+    },
+    {
+      toolCalls: [
+        {
+          toolCallId: "finish",
+          toolName: "submit_result",
+          input: { report: "Artifact reading is unavailable to this profile" },
+        },
+      ],
+    },
+  ]);
+  const h = coordinatorHarness(model);
+  const read =
+    vi.fn<
+      NonNullable<import("../../apps/runtime/src/agent/loop/host.js").AgentLoopHostDeps["readArtifactText"]>
+    >();
+  h.coordinator.deps.agentLoop = { readArtifactText: read };
+  const run = await h.coordinator.start({
+    goal: "Read a known artifact",
+    pageIds: [],
+    agentProfile: {
+      name: "restricted",
+      prompt: "Only use the listed tools.",
+      tools: ["repl", "submit_result"],
+      workspace: "shared",
+      packages: [],
+    },
+  });
+  expect(await settle(h.repo, run.runId)).toMatchObject({ status: "completed" });
+  expect(read).not.toHaveBeenCalled();
+  expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain(
+    "does not permit read_artifact_text",
+  );
 });

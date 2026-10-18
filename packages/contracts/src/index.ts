@@ -1,4 +1,5 @@
 export * from "./ids.js";
+export * from "./artifact-text.js";
 export * from "./channels.js";
 export * from "./environment.js";
 export * from "./errors.js";

@@ -11,6 +11,7 @@ import {
   type ResultCitation,
 } from "@aux/contracts";
 import { z } from "zod";
+import { ArtifactTextInputSchema, type ArtifactTextInput } from "@aux/contracts/artifact-text";
 import type { LoopPark, LoopToolResult } from "./types.js";
 
 /**
@@ -73,6 +74,7 @@ export interface ReplHostDeps {
   step(pageId: string, step: unknown, ordinal?: number): Promise<LoopToolResult>;
   /** Cookie-free fetch through decide() — returns `{park}` on `ask`. */
   fetch(url: string): Promise<LoopToolResult>;
+  readArtifactText?(input: ArtifactTextInput): Promise<LoopToolResult>;
   codingTool?(name: string, input: unknown, ordinal: number): Promise<LoopToolResult>;
   replay?(name: string, params: string, ordinal: number, execute: () => Promise<string>): Promise<string>;
   allowHostCall?(name: string, params: string): void;
@@ -133,7 +135,7 @@ function checkSource(code: string): void {
  */
 function normalizeBridgeAwaits(code: string): string {
   const bridgeCall =
-    /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|(?:fs|proc|coder)\.[A-Za-z]+)\s*\(/;
+    /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|(?:fs|proc|coder|artifacts)\.[A-Za-z]+)\s*\(/;
   let output = "";
   let i = 0;
   let quote = "";
@@ -384,6 +386,9 @@ const annotatedScreenshot = () => __aux_invoke("capture", { pageId: __aux_page }
 const display = (value) => { __aux_displayed.push(value); return __aux_invoke("display", { value }); };
 const sleep = (ms) => __aux_invoke("sleep", { ms });
 const fetch = (url) => __aux_invoke("fetch", { url });
+const artifacts = Object.freeze({
+  readText: (input) => __aux_invoke("artifactReadText", input),
+});
 const fs = Object.freeze({
   state: (spec) => __aux_invoke("coding", { name: "coding_state", input: spec || {} }),
   readFile: (path, range) => __aux_invoke("coding", { name: "read_file", input: { path, ...(range || {}) } }),
@@ -539,6 +544,14 @@ class ReplSession {
     try {
       const parsed = params ? JSON.parse(params) : {};
       switch (name) {
+        case "artifactReadText": {
+          if (!this.deps.readArtifactText)
+            throw new AuxError("capability_unsupported", "Artifact text reading is unavailable in this run.");
+          const result = await this.deps.readArtifactText(ArtifactTextInputSchema.parse(parsed));
+          if (!("output" in result))
+            throw new AuxError("conflict", "Artifact text reading did not return bytes.");
+          return ok(result.output);
+        }
         case "tabs":
           return ok(await this.deps.tabs());
         case "openTab": {

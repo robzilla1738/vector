@@ -96,6 +96,9 @@ export interface LoopToolDeps {
   calendarEvents?: (
     input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">,
   ) => Promise<LoopToolResult>;
+  readArtifactText?: (
+    input: import("@aux/contracts/artifact-text").ArtifactTextInput,
+  ) => Promise<LoopToolResult>;
   pdfSources?: (input: { offset?: number; limit?: number }) => Promise<LoopToolResult>;
   processPdf?: (input: import("@aux/contracts/document-jobs").PdfToolInput) => Promise<LoopToolResult>;
   generateImage?: (input: {
