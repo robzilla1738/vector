@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-18",
+  "integrationBase": "bad3ab44b",
+  "status": "source_and_integrated_fixtures_pass_current_native_pending",
+  "reference": "043-security-filter-actions-expanded.png (JPEG bytes; original dimensions3424x1978 verified in source ledger)",
+  "patch": {
+    "path": "/tmp/aux-filter-actions-05ee-v2.patch",
+    "sha256": "e0a5e402f204b190d88616caeafb7dade149e7664a92797c958747eb4374acc6",
+    "paths": 7
+  },
+  "independentReview": {
+    "path": "/tmp/aux-measurement-filter-v2-independent-review.json",
+    "sha256": "0fa34d22b2cddb915b59992e6325a0ed4575c6f23f7b5226be773f88b3820da9",
+    "blockers": 0
+  },
+  "changes": [
+    "32px split Configure/Filter actions control; actual existing Update uses canonical Menu. Catalog288px width and288px maximum scroll preserve narrow-height cap.",
+    "One required Settings-owned controller replaces duplicate manager state and owns the original native status/pending/write path. Ref lock refuses same-tick duplicates; exact original lease/read sequence fences retired callbacks and late results. Original native work settles and resynchronizes replacement owner, without write replay.",
+    "Keyboard open/search/escape/return focus, actual partial source failures and compilation warnings, unavailable/disabled and pending states retain real editor/review drafts. Validation errors preserve the latest native status instead of stale render state."
+  ],
+  "intentionalCapabilityDifference": "Reference Cache clear/Debug actions have no independently proven working Aux route and are not fabricated. This slice exposes only existing Update.",
+  "validation": {
+    "author": "Fresh runtime dependencies and renderer types pass;14 final changed cases plus10 retained previously passing base cases, not a single24-case run.",
+    "rootIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5683,
+      "testFilesPassed": 850,
+      "durationSeconds": 115.37,
+      "log": "/tmp/aux-filter-actions-integrated-check.log"
+    },
+    "native": "not observed on current source"
+  },
+  "remaining": [
+    "Current normal/narrow,both-theme split/catalog/search/menu focus geometry.",
+    "Actual disposable native filtering engine Update partial/failure and original-owner retirement."
+  ]
+}

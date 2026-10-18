@@ -2,83 +2,47 @@ import { BUNDLED_FILTER_SOURCES } from "@aux/contracts/filter-defaults.generated
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
-import { errorMessage } from "../error-message";
 import "./FilterListManager.css";
-import { useEffect, useRef, useState } from "react";
+import { errorMessage } from "../error-message";
+import { useState } from "react";
 import { filterSourceUrl } from "@aux/contracts";
-import { bridge, type FilterListStatus } from "../bridge";
+import type { FilterListsController } from "./use-filter-lists";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
-
-const messageOf = (reason: unknown) => errorMessage(reason);
 
 /** Real native subscription status; unavailable builds never claim filtering. */
 export type FilterSourceDraft = { name: string; url: string; kind: "adblock" | "hosts" };
 
 export function FilterListManager({
+  controller,
   initialSelectedId = "",
   initialSource,
-  onBusyChange,
 }: {
+  controller: FilterListsController;
   initialSelectedId?: string;
   initialSource?: FilterSourceDraft;
-  onBusyChange?(busy: boolean): void;
-} = {}) {
-  const [status, setStatus] = useState<FilterListStatus | null>(null);
+}) {
+  const { status, busy, error, notice } = controller;
   const [selectedId, setSelectedId] = useState(initialSelectedId);
   const [name, setName] = useState(initialSource?.name ?? "");
   const [url, setUrl] = useState(initialSource?.url ?? "");
   const [kind, setKind] = useState<"adblock" | "hosts">(initialSource?.kind ?? "adblock");
   const [review, setReview] = useState<{ name: string; url: string; kind: "adblock" | "hosts" } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const pending = useRef(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const selected = status?.sources.find((source) => source.id === selectedId);
+  const selected = status?.sources.find((source) => source.id === selectedId) ?? status?.sources[0];
   const compilationWarning = status?.compilationWarnings.find(
     (warning) => warning.sourceId === selected?.id && warning.sourceSha256 === selected?.meta?.sha256,
   );
-  const unavailable = status?.backend === "unavailable";
-
-  const refresh = async () => {
-    const next = await bridge.filterLists();
-    setStatus(next);
-    setSelectedId((current) =>
-      next.sources.some((source) => source.id === current) ? current : (next.sources[0]?.id ?? ""),
-    );
-    return next;
-  };
-  useEffect(() => {
-    void refresh().catch((reason) => setError(messageOf(reason)));
-  }, []);
-
-  const action = async (work: () => Promise<void>) => {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    onBusyChange?.(true);
-    setError("");
-    setNotice("");
-    try {
-      await work();
-    } catch (reason) {
-      setError(messageOf(reason));
-    } finally {
-      pending.current = false;
-      setBusy(false);
-      onBusyChange?.(false);
-    }
-  };
+  const unavailable = !status || status.backend === "unavailable";
 
   const inspect = () => {
     try {
       const normalized = filterSourceUrl(url.trim());
       const label = name.trim().slice(0, 120) || new URL(normalized).hostname;
       setReview({ name: label, url: normalized, kind });
-      setError("");
+      controller.reportError("");
     } catch (reason) {
-      setError(messageOf(reason));
+      controller.reportError(errorMessage(reason));
     }
   };
 
@@ -100,7 +64,7 @@ export function FilterListManager({
             <button
               key={source.id}
               {...auxNativeButtonTypeProps}
-              aria-current={selectedId === source.id ? "true" : undefined}
+              aria-current={selected?.id === source.id ? "true" : undefined}
               onClick={() => setSelectedId(source.id)}
             >
               <strong>{source.name}</strong>
@@ -154,30 +118,14 @@ export function FilterListManager({
                 <button
                   {...smallButtonProps}
                   disabled={busy || unavailable}
-                  onClick={() =>
-                    void action(async () => {
-                      await bridge.setFilterSourceEnabled(selected.id, !selected.enabled);
-                      await refresh();
-                      setNotice(
-                        selected.enabled
-                          ? "List paused for new requests and documents. Reload an open page to clear changes already applied."
-                          : "List enabled. Check its update status above.",
-                      );
-                    })
-                  }
+                  onClick={() => void controller.toggle(selected)}
                 >
                   {selected.enabled ? "Pause list" : "Enable list"}
                 </button>
                 <button
                   {...smallGhostButtonProps}
                   disabled={busy || unavailable}
-                  onClick={() =>
-                    void action(async () => {
-                      await bridge.removeFilterSource(selected.id);
-                      await refresh();
-                      setNotice("List removed from this browser.");
-                    })
-                  }
+                  onClick={() => void controller.remove(selected.id)}
                 >
                   Remove list
                 </button>
@@ -236,13 +184,7 @@ export function FilterListManager({
           <button
             {...smallGhostButtonProps}
             disabled={busy || unavailable || !status?.sources.length}
-            onClick={() =>
-              void action(async () => {
-                const next = await bridge.updateFilters();
-                setStatus(next);
-                setNotice("Enabled lists checked. Review any source errors above.");
-              })
-            }
+            onClick={() => void controller.update()}
           >
             Update enabled lists
           </button>
@@ -263,18 +205,16 @@ export function FilterListManager({
             <div {...staticRowProps}>
               <button
                 {...smallButtonProps}
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    await bridge.addFilterSource(review.name, review.url, review.kind);
-                    const next = await refresh();
+                disabled={busy || unavailable}
+                onClick={() => {
+                  void controller.add(review).then((next) => {
+                    if (!next) return;
                     setSelectedId(next.sources.find((source) => source.url === review.url)?.id ?? "");
                     setReview(null);
                     setName("");
                     setUrl("");
-                    setNotice("List added. Review its download status above.");
-                  })
-                }
+                  });
+                }}
               >
                 Add selected list
               </button>

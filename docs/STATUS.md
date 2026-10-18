@@ -29,7 +29,7 @@ total-JS increase. A combined current production/native measurement remains pend
 [The integration record](evidence/aside-navigation-shutdown-2026-10-18.json) separates
 source, tests, measured private builds and native observations.
 
-The optional native Dialog lifecycle now lives in one canonical narrow module.
+The shared native Dialog lifecycle now lives in one canonical narrow module.
 Its three eager consumers no longer retain optional Menu/AlertDialog code in
 startup. Exact matched production builds at05ee35 reduce startup JavaScript from
 622,887 to618,598bytes (4,289bytes), with identical217,445-byte CSS; total emitted
@@ -67,6 +67,15 @@ late replies cannot close a replacement editor. Custom-provider JSON retains the
 reference672px exception and288–384px editor. Native verification remains pending.
 [The renderer integration record](evidence/aside-ui-parity-2026-10-18.json) records
 exact patches, reviews, tests and remaining reference gaps.
+
+Filter Configure now has the reference split action control and a real Update
+menu. One required Settings-owned controller replaces duplicate manager status/
+pending/write state. Exact leases and read generations fence retired callbacks
+and stale replies; source failures, unavailable results and editor drafts remain
+visible. The catalog uses288px width/scroll maximum and canonical menu roles.
+Cache-clear/Debug have no proven Aux route and are not fabricated. Current native
+geometry and engine behavior remain open.
+[Filter evidence](evidence/aside-filter-actions-2026-10-18.json) records the bounds.
 
 Task notification types now use the canonical288px menu and checkbox rows,
 with actual three-choice preferences,2px title/description spacing and existing
@@ -163,9 +172,11 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated Dialog check passes typecheck/lint and all5,673tests across
-849files in123.24s, including provider-envelope and Memory corrections. Runtime
-dist was rebuilt first. Log: `/tmp/aux-startup-dialog-integrated-check.log`.
+The latest integrated Filter check passes typecheck/lint and all5,683tests across
+850files in115.37s. The preceding Dialog check passes all5,673tests/849files in
+123.24s, including provider-envelope and Memory corrections. Runtime dist was
+rebuilt first. Logs: `/tmp/aux-filter-actions-integrated-check.log` and
+`/tmp/aux-startup-dialog-integrated-check.log`.
 The preceding native-menu check passed5,671tests; two unchanged coder-worktree
 cases hit60s limits, then their unchanged isolated file passed3/3 in74.01s.
 The preceding provider check passed5,672tests; one unchanged delayed-exec300ms

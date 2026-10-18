@@ -1,11 +1,45 @@
 @layer components {
-  .filter-configure {
-    display: inline-flex;
-    align-items: center;
+  .filter-configure-control {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-end;
     gap: var(--space-2);
   }
+  .filter-configure-control > :is(p, output) {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .filter-configure-group {
+    display: inline-flex;
+    max-width: 100%;
+    isolation: isolate;
+  }
+  .filter-configure-group > .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .filter-configure-group > .btn:last-child {
+    margin-left: calc(-1 * var(--hairline));
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .filter-configure-group > .btn:focus-visible {
+    z-index: 1;
+  }
+  .filter-configure-group > .filter-actions-trigger {
+    width: 32px;
+    min-width: 32px;
+    padding-inline: 0;
+  }
+  .filter-actions-menu {
+    min-width: 96px;
+  }
+  .filter-actions-menu > .menu-item {
+    width: 100%;
+  }
   .filter-settings-menu {
-    width: 290px;
+    width: 288px;
   }
   .filter-settings-search {
     display: flex;
@@ -20,7 +54,7 @@
     background: transparent;
   }
   .filter-settings-options {
-    max-height: min(340px, 55vh);
+    max-height: min(288px, 55vh);
     overflow: auto;
   }
   .filter-settings-options > p:not(.menu-label) {

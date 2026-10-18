@@ -1,84 +1,150 @@
 import { useEffect, useRef, useState } from "react";
 import { BUNDLED_FILTER_SOURCES } from "@aux/contracts/filter-defaults.generated";
-import { bridge, type FilterListStatus } from "../../bridge";
-import { errorMessage } from "../../error-message";
 import { FilterListManager, type FilterSourceDraft } from "../../components/FilterListManager";
 import { Dialog, Menu } from "../../ui/dialog";
-import { shellIconDown, shellIconPlusSm, shellIconSearch } from "../../ui/icons";
+import {
+  shellIconDown,
+  shellIconPlusSm,
+  shellIconSearch,
+  shellIconReloadSm,
+  shellIconFilter,
+} from "../../ui/icons";
+import { useFilterLists } from "../../components/use-filter-lists";
 import "./FilterSettings.css";
 
 export function FilterSettings({ active }: { active: boolean }) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const actionTrigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<"catalog" | "actions" | null>(null);
+  const [actionsAtEnd, setActionsAtEnd] = useState(false);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<FilterListStatus | null>(null);
-  const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
+  const lists = useFilterLists(active);
+  const { status, busy, error, notice } = lists;
   const [editor, setEditor] = useState<{ id?: string; source?: FilterSourceDraft } | null>(null);
-  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!active) {
-      setOpen(false);
+      setOpen(null);
       if (!busy) setEditor(null);
     }
   }, [active, busy]);
-  useEffect(() => {
-    if (!active) return;
-    let current = true;
-    void bridge
-      .filterLists()
-      .then((next) => {
-        if (current) {
-          setStatus(next);
-          setError("");
-        }
-      })
-      .catch((reason) => {
-        if (current) setError(errorMessage(reason));
-      });
-    return () => {
-      current = false;
-    };
-  }, [active, open, retry]);
   const matches = (name: string) => name.toLowerCase().includes(query.trim().toLowerCase());
   const configured = status?.sources.filter((source) => matches(source.name)) ?? [];
   const recommended = BUNDLED_FILTER_SOURCES.filter(
     (source) => !status?.sources.some((saved) => saved.url === source.url) && matches(source.name),
   );
+  function openCatalog() {
+    if (!active || busy) return;
+    setQuery("");
+    void lists.refresh();
+    setOpen("catalog");
+  }
   function edit(value: NonNullable<typeof editor>) {
-    setOpen(false);
+    setOpen(null);
     setEditor(value);
   }
   function closeEditor() {
     if (busy) return;
     setEditor(null);
-    setRetry((value) => value + 1);
+    void lists.refresh();
   }
   return (
     <>
-      <button
-        ref={trigger}
-        className="btn filter-configure"
-        disabled={!active}
-        aria-label="Configure filters"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => {
-          setQuery("");
-          setOpen(true);
-        }}
-      >
-        Configure {shellIconDown}
-      </button>
-      {open && (
+      <div className="filter-configure-control">
+        <div className="filter-configure-group" role="group" aria-label="Filter configuration">
+          <button
+            type="button"
+            ref={trigger}
+            className="btn filter-configure"
+            disabled={!active || busy}
+            aria-label="Configure filters"
+            aria-haspopup="menu"
+            aria-expanded={open === "catalog"}
+            onClick={openCatalog}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              openCatalog();
+            }}
+          >
+            {shellIconFilter} Configure
+          </button>
+          <button
+            type="button"
+            ref={actionTrigger}
+            className="btn filter-actions-trigger"
+            aria-label="Filter actions"
+            aria-haspopup="menu"
+            aria-expanded={open === "actions"}
+            disabled={!active}
+            aria-busy={busy || undefined}
+            onClick={() => {
+              setActionsAtEnd(false);
+              setOpen("actions");
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              setActionsAtEnd(event.key === "ArrowUp");
+              setOpen("actions");
+            }}
+          >
+            {shellIconDown}
+          </button>
+        </div>
+        {!editor && (
+          <>
+            {busy && <output className="hint">Applying filter changes…</output>}
+            {error && (
+              <p className="hint" role="alert">
+                {error}
+              </p>
+            )}
+            {notice && <output className="hint">{notice}</output>}
+            {!!notice && status?.sources.some((source) => source.meta?.error) && (
+              <output className="hint">
+                Some lists could not update. Open Configure to review their source errors.
+              </output>
+            )}
+            {!!notice && !!status?.compilationWarnings.length && (
+              <output className="hint">
+                Some rules were rejected. Open Configure to review compilation warnings.
+              </output>
+            )}
+          </>
+        )}
+      </div>
+      {open === "actions" && (
+        <Menu
+          label="Filter actions"
+          anchor={actionTrigger}
+          returnFocus={actionTrigger}
+          atEnd={actionsAtEnd}
+          className="ctx-menu filter-actions-menu"
+          onClose={() => setOpen(null)}
+        >
+          <button
+            type="button"
+            className="menu-item"
+            role="menuitem"
+            disabled={!active || busy || !status?.sources.length || status.backend === "unavailable"}
+            onClick={() => {
+              setOpen(null);
+              void lists.update();
+            }}
+          >
+            {shellIconReloadSm} Update
+          </button>
+        </Menu>
+      )}
+      {open === "catalog" && (
         <Menu
           label="Configure filters"
           anchor={trigger}
           returnFocus={trigger}
           initialFocusRef={search}
           className="filter-settings-menu"
-          onClose={() => setOpen(false)}
+          onClose={() => setOpen(null)}
         >
           <label data-input-surface className="filter-settings-search">
             {shellIconSearch}
@@ -106,7 +172,7 @@ export function FilterSettings({ active }: { active: boolean }) {
             {error && (
               <div role="alert">
                 <p>{error}</p>
-                <button className="menu-item" role="menuitem" onClick={() => setRetry((value) => value + 1)}>
+                <button className="menu-item" role="menuitem" onClick={() => void lists.refresh()}>
                   Retry
                 </button>
               </div>
@@ -121,7 +187,7 @@ export function FilterSettings({ active }: { active: boolean }) {
                 onClick={() => edit({ id: source.id })}
               >
                 <span>{source.name}</span>
-                <small>{source.enabled ? "Enabled" : "Paused"}</small>
+                <small>{source.meta?.error ? "Update failed" : source.enabled ? "Enabled" : "Paused"}</small>
               </button>
             ))}
             {!!recommended.length && <p className="menu-label">Recommended</p>}
@@ -154,11 +220,7 @@ export function FilterSettings({ active }: { active: boolean }) {
           className="filter-settings-dialog"
         >
           <h3>Manage filters</h3>
-          <FilterListManager
-            initialSelectedId={editor.id}
-            initialSource={editor.source}
-            onBusyChange={setBusy}
-          />
+          <FilterListManager controller={lists} initialSelectedId={editor.id} initialSource={editor.source} />
           <button className="btn" disabled={busy} onClick={closeEditor}>
             Done
           </button>

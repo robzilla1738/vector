@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FilterListManager } from "./FilterListManager";
+import { useFilterLists } from "./use-filter-lists";
 
 const api = vi.hoisted(() => ({
   filterLists: vi.fn(),
@@ -27,6 +28,11 @@ const source = {
     sha256: "b".repeat(64),
   },
 };
+
+function ManagedFilters() {
+  const controller = useFilterLists(true);
+  return <FilterListManager controller={controller} />;
+}
 
 function button(label: string) {
   const found = [...container.querySelectorAll("button")].find((item) => item.textContent?.trim() === label);
@@ -75,7 +81,7 @@ it("requires review before adding a source and lets the user pause it", async ()
     sources = [{ ...source, enabled: false }];
     return sources;
   });
-  await act(async () => root.render(<FilterListManager />));
+  await act(async () => root.render(<ManagedFilters />));
   await flush();
   write("Filter list name", "Research list");
   write("Filter list URL", source.url);
@@ -98,7 +104,7 @@ it("states native unavailability and disables filter mutations", async () => {
     compilationWarnings: [],
     cosmeticBackend: "unavailable",
   });
-  await act(async () => root.render(<FilterListManager />));
+  await act(async () => root.render(<ManagedFilters />));
   await flush();
   expect(container.textContent).toContain("Native filtering unavailable");
   expect(button("Review list").hasAttribute("disabled")).toBe(true);
@@ -113,7 +119,7 @@ it("offers full Standard and Hosts formats with truthful native scope", async ()
     cosmeticBackend: "native_user_styles",
   });
   api.addFilterSource.mockResolvedValue([]);
-  await act(async () => root.render(<FilterListManager />));
+  await act(async () => root.render(<ManagedFilters />));
   await flush();
   const select = container.querySelector<HTMLSelectElement>('[aria-label="Filter list type"]')!;
   expect(select.value).toBe("adblock");
@@ -129,5 +135,49 @@ it("offers full Standard and Hosts formats with truthful native scope", async ()
     "lists.example.test",
     "https://lists.example.test/filters.txt",
     "adblock",
+  );
+});
+
+it("preserves the reviewed source and disables Add when an original held update reports native unavailability", async () => {
+  const available = {
+    sources: [source],
+    backend: "ublock_origin",
+    compilationWarnings: [],
+    cosmeticBackend: "native_user_styles",
+  };
+  api.filterLists.mockResolvedValue(available);
+  let finish!: (value: unknown) => void;
+  api.updateFilters.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  await act(async () => root.render(<ManagedFilters />));
+  write("Filter list name", "Keep reviewed draft");
+  write("Filter list URL", "https://lists.example.test/keep.txt");
+  await act(async () => button("Review list").click());
+  expect(container.querySelector('[aria-label="Review filter source"]')?.textContent).toContain(
+    "Keep reviewed draft",
+  );
+  await act(async () => button("Update enabled lists").click());
+  expect(button("Add selected list").disabled).toBe(true);
+  await act(async () => {
+    finish({ ...available, backend: "unavailable" });
+  });
+  expect(container.textContent).toContain("Native filtering unavailable");
+  expect(container.querySelector('[aria-label="Review filter source"]')?.textContent).toContain(
+    "https://lists.example.test/keep.txt",
+  );
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Filter list name"]')!.value).toBe(
+    "Keep reviewed draft",
+  );
+  expect(button("Add selected list").disabled).toBe(true);
+  await act(async () => button("Add selected list").click());
+  expect(api.addFilterSource).not.toHaveBeenCalled();
+  expect(api.updateFilters).toHaveBeenCalledTimes(1);
+  act(() => button("Cancel").click());
+  expect(container.querySelector('[aria-label="Review filter source"]')).toBeNull();
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Filter list URL"]')!.value).toBe(
+    "https://lists.example.test/keep.txt",
   );
 });
