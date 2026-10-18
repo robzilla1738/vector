@@ -4062,8 +4062,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         .peek("channels")
         ?.close()
         .catch(() => {});
-      process.off("SIGTERM", onTerminationSignal);
-      process.off("SIGINT", onTerminationSignal);
       process.off("unhandledRejection", onUnhandledRejection);
       process.off("uncaughtException", onUncaughtException);
     },
@@ -4297,11 +4295,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   await runtimeServices.pages.restoreTabs().catch(() => {});
 
   bootPhase("restored-tabs");
+  let publicClose: Promise<void> | undefined;
   return {
     port,
     token,
     invoke: (m, p) => invoke(m, p),
-    close: shutdown,
+    close: () =>
+      (publicClose ??= shutdown().finally(() => {
+        // Native owner loss and signals use shutdown directly: their handlers
+        // must remain installed until joined retirement exits the process.
+        // Embedded callers restore listener ownership only after close settles.
+        process.off("SIGTERM", onTerminationSignal);
+        process.off("SIGINT", onTerminationSignal);
+      })),
   };
 }
 
