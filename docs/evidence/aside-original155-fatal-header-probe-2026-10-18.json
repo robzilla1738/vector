@@ -1,0 +1,38 @@
+{
+  "scope": "Only exact Chromium fatal/check source-location headers in the one recorded faulting-thread stack; no diagnostic body or arbitrary strings emitted",
+  "reportSha256": "cad4197c5c1f9d28240b787086d738be50f4f64533749aaca3708142f48de84e",
+  "faultingThreadId": 6015943,
+  "stackBytesChecked": 26544,
+  "fatalMarkerOccurrences": 0,
+  "fatalSourceLocations": [],
+  "checkSourceLocations": [],
+  "sourceWriter": "pinned Chromium155 base/logging.cc HandleFatal() aliases1024-byte diagnostic; base/check.cc DumpWithoutCrashing aliases BuildCrashString",
+  "crashResolved": false,
+  "unchangedSizeAndMtime": true,
+  "version": 1,
+  "date": "2026-10-18",
+  "helper": {
+    "path": "/tmp/aux-original155-system-symbols/inspect-fatal-location.py",
+    "sha256": "db29458c4c55ee8f0365cb88a1a255ad3847b2fab85efee0937789f94a0af83f"
+  },
+  "writerSource": [
+    {
+      "path": "base/logging.cc",
+      "pinnedBase": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "sha256": "f8af905b1e6e07532f5ab45f037bec61a323dc77bbc8e5e1d222514371ee3013",
+      "matchesPinnedBase": true
+    },
+    {
+      "path": "base/check.cc",
+      "pinnedBase": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "sha256": "cead9bd6bad693693d767b42c9f144f369ee2af7ab064f9e5c9a010f76f627eb",
+      "matchesPinnedBase": true
+    }
+  ],
+  "limitations": [
+    "No exact fatal/check source-location header occurs in the26544-byte recorded faulting stack. This is a bounded negative result, not proof that no assertion occurred.",
+    "Official/optimized crash paths and omitted memory may contain no diagnostic text. The original framework/dSYM UUID remains necessary for exact native attribution.",
+    "Only known static diagnostic headers were matched; no arbitrary stack strings, assertion bodies, register values or other thread memory were emitted.",
+    "The one authorized dump was opened read-only for this distinct probe, with its full original SHA256 and size/mtime verified unchanged; no other Profile data or process was accessed."
+  ]
+}

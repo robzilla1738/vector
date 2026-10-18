@@ -339,6 +339,13 @@ cross-window source producer is advertised; the corrected packaged interaction
 has now been observed on the clean ea9a82ec native build: the menu opens,
 Escape returns its opener, and handback preserves multiline drafts and an admitted
 local image. Its focused cases also cover menu dismissal before expansion.
+The [current Aside source/capture scope review](evidence/aside-quick-ask-reference-scope-2026-10-18.json)
+confirms103/104 are Settings states, with no observed live Mini popup. The newest
+Mini route binds Profile/mode, and tab mentions require an existing session;
+it does not demonstrate an initial explicit cross-window page selector. The
+proposed new native grant is optional, unimplemented and outside this demonstrated
+parity target. Supported Quick Ask context/focus/handback still needs current
+native acceptance.
 The separately reproduced catalog snapshot/patch race has10passing actual-store
 regressions and retains command revision rejection with zero write replay.
 
@@ -393,6 +400,12 @@ remain unsymbolized; neither a geometry cause nor a fix follows from this result
 records the identity checks and original callsite addresses. This diagnostic used
 sanitized metadata and an owned system-library process, without reopening the raw
 dump, attaching to an owner process or reading other Profile data.
+A separate [fatal-header probe](evidence/aside-original155-fatal-header-probe-2026-10-18.json)
+checked only Chromium's known diagnostic source-location format in the recorded
+26,544-byte faulting stack. No matching header was present. It emitted no stack
+strings, assertion body or runtime values, and verified the authorized report's
+original hash/size/mtime unchanged. This bounded negative result does not rule out
+an optimized assertion or resolve the original trap.
 
 The earlier launcher71243/app71389/runtime71405 retired normally through
 application-menu Quit. Its Profile and lock are gone; earlier interactive debugger
@@ -466,6 +479,13 @@ archives and connected services, plus native-picker keyboard behavior in Chrome1
 They do not establish native all-surface parity. Every captured reference surface,
 loading/error/disabled/focus state, IME/first-input continuity and accessibility
 mode still needs its appropriate current-source observation.
+The [complete native walkthrough](design/aside-native-walkthrough.md) groups all192
+references into26 routes, retaining182 original images and10 text-only menus.
+[Its preparation record](evidence/aside-native-walkthrough-plan-2026-10-18.json)
+pins75 current source hashes. All192 comparisons remain unexecuted; no preparation
+row is a pass. Automatic browser-import discovery must remain closed until an
+owned-source protocol is established: a temporary Profile does not isolate HOME,
+and Cancel cannot undo discovery reads. Synthetic file import is a separate route.
 
 Matching155 stock source/flags and benchmark patch are prepared and source-proven,
 but the full stock compile has not completed. No paired performance result exists.

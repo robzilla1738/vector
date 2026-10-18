@@ -1,0 +1,182 @@
+{
+  "scope": "Read-only supplied local reference evidence; no runtime or live behavior verification.",
+  "extensionVersion": "1.26.1004.147",
+  "files": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/manifest.json",
+      "bytes": 3055,
+      "sha256": "96bccbcaa1edf39fc5f7b8d9d0bff148d007c9e4eb108fdc054eb4f38cabe926"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/minipopup.html",
+      "bytes": 4779,
+      "sha256": "2e449e3736e20e918e39572e85d08217ee80e91488e26852afe016903f6ff88c"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/minipopup-DPUMcPSU.js",
+      "bytes": 19490,
+      "sha256": "b3cc1d56f7efc9c55804857c006aed6c6717b76499d325a31114acb334d3ee75"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/mini-popup-DLprmZ6Y.js",
+      "bytes": 3187,
+      "sha256": "29a02facb0474bc3ff70ff0efc0ba4aa41505a4c222c9afe8937579933f06283"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/session-composer-C1LC__k9.js",
+      "bytes": 335263,
+      "sha256": "0f5bbc8a46a74701819798451d890dd399e114bf9d6113b159939a9409f6a60d"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/browser-binding-CgpE3Gqc.js",
+      "bytes": 3675,
+      "sha256": "ce553cba0fb6b79a558c853352c4830866107174b7c0c39d6c187c4a61df18ef"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/extension-main-BpNz-QDT.js",
+      "bytes": 80951,
+      "sha256": "98d241fc9af3498dc5d8cec28be532a17839b97f66e3048adb9a96fd91d3e607"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/provider-BQqR28dt.js",
+      "bytes": 515656,
+      "sha256": "f2afe8b441101dcc93e117d7e59ab1054005992746f0a728ff83a3605c1e24c6"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/permission-selector-Au1DO5Wn.js",
+      "bytes": 17744,
+      "sha256": "8379bf735a03df81722080dfc8f6df3ac570a86c4e31b73d1bfcc02d23e494c3"
+    },
+    {
+      "path": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/README.md",
+      "bytes": 4995,
+      "sha256": "9fc3236307de324198f7e630248c8b8a9c1ca8b3dd37910a16622fef5cf29796"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/evidence/aside-ui-original-image-review-2026-10-18.json",
+      "bytes": 290852,
+      "sha256": "b7292ae079209d4f49153626296e8f6e23a522f8ffb9bcb675fd20fbb0772e86"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/binary/api-segments/asideMiniPopup.json",
+      "bytes": 1888,
+      "sha256": "f2bba39a5b1629f5f985b6c7223be1d3f2b5928673e2b8a199b98ddb9350653e"
+    }
+  ],
+  "observations": [
+    {
+      "id": 14,
+      "title": "Composer context mention",
+      "status": "captured",
+      "observedState": "Composer context mention",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/014-composer-context-mention.png",
+      "imageSha256": "a36f9c23e6eefb15ab872a5b8e639dd6486b7c9a400554f5cad5e8387f79ca20",
+      "actuallyViewed": true
+    },
+    {
+      "id": 77,
+      "title": "Settings context awareness",
+      "status": "captured",
+      "observedState": "Settings context awareness",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/077-settings-context-awareness.png",
+      "imageSha256": "08878bb1c406ec13b4f6b9eb602ad64af652b73ead7b0be5725df475b3edc1bb",
+      "actuallyViewed": true
+    },
+    {
+      "id": 103,
+      "title": "Settings mini popup",
+      "status": "captured",
+      "observedState": "Settings mini popup",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/103-settings-mini-popup.png",
+      "imageSha256": "6f11cf9bac8d73ff9d5aa8aaa06266e90f921517067f32f8f2ece5c858117ba2",
+      "actuallyViewed": true
+    },
+    {
+      "id": 104,
+      "title": "Mini popup shortcut attempt settings remain",
+      "status": "supplemental",
+      "observedState": "Mini popup shortcut attempt settings remain",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/104-mini-popup-shortcut-attempt-settings-remain.png",
+      "imageSha256": "1d9d7a33f7d5855cc86b6fa1464c3592222f7a704e8e51258abd6cb2fc7a454c",
+      "actuallyViewed": true
+    },
+    {
+      "id": 105,
+      "title": "Settings lasso",
+      "status": "captured",
+      "observedState": "Settings lasso",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/105-settings-lasso.png",
+      "imageSha256": "b3a74f65907a2774c7b40d8eb3a119b599b715881e85bacf987a161423a66f02",
+      "actuallyViewed": true
+    },
+    {
+      "id": 108,
+      "title": "Lasso shortcut action dropdown",
+      "status": "captured",
+      "observedState": "Lasso shortcut action dropdown",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/108-lasso-shortcut-action-dropdown.png",
+      "imageSha256": "21bc2c7006cb6299a57b1dcd34fc5c76fced262fb848d27a1eded925ca0a6187",
+      "actuallyViewed": true
+    },
+    {
+      "id": 118,
+      "title": "Chat detail open",
+      "status": "captured",
+      "observedState": "Chat detail open",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/118-chat-detail-open.png",
+      "imageSha256": "9a6e99efa7b8947c04cfa34bc85b3337ef9f830722f105f2dadf1508db17da53",
+      "actuallyViewed": true
+    },
+    {
+      "id": 122,
+      "title": "Chat sidepanel add menu attempt",
+      "status": "supplemental",
+      "observedState": "Chat sidepanel add menu attempt",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/122-chat-sidepanel-add-menu-attempt.png",
+      "imageSha256": "0ba76e6d5943c0e5df7a5b02ad965bf1d951fb6ef72e110872dbd5bb0a6685de",
+      "actuallyViewed": true
+    },
+    {
+      "id": 123,
+      "title": "Chat new side chat",
+      "status": "captured",
+      "observedState": "Chat new side chat",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/123-chat-new-side-chat.png",
+      "imageSha256": "bf9943c56f0d7924af965e4cc22dce9b8528e1faf7ee938bc40d5abee1764de7",
+      "actuallyViewed": true
+    },
+    {
+      "id": 126,
+      "title": "Chat inline image reference",
+      "status": "captured",
+      "observedState": "Chat inline image reference",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/126-chat-inline-image-reference.png",
+      "imageSha256": "3f7b3b0e0585106f101bd325fbc425106619aa1e4dd91a599b612d52df171c0b",
+      "actuallyViewed": true
+    },
+    {
+      "id": 156,
+      "title": "Chat skill mention picker",
+      "status": "captured",
+      "observedState": "Chat skill mention picker",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/156-chat-skill-mention-picker.png",
+      "imageSha256": "b5dfcd6efe3ebf43a9dea31ac75fcd0dde84436b7f0f0dfc6ad6432bcb9e121b",
+      "actuallyViewed": true
+    },
+    {
+      "id": 157,
+      "title": "Chat composer options",
+      "status": "captured",
+      "observedState": "Chat composer options",
+      "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/157-chat-composer-options.png",
+      "imageSha256": "11bc588ea39a015d6be86303d9107cd742dfad6ea281d1d592fcd2fbcac5689a",
+      "actuallyViewed": true
+    }
+  ],
+  "conclusion": "Supplied current Mini source supports compact/file/folder/existing-session tab context and handoff; neither supplied observed captures nor initial Mini binding demonstrates an explicit cross-window page selector. Aux retains supported local context/Open in Aux; no new native source-grant implementation is claimed or required by this evidence.",
+  "scopeReport": {
+    "path": "/tmp/aux-measurement-quick-ask-aside-scope-conclusion-2026-10-18.md",
+    "sha256": "483d9e86ffd679f2f488d5c15fa00d3351e26b4989064220b485ec056d041fd1"
+  },
+  "noNewImageViewsOrNativeActions": true
+}

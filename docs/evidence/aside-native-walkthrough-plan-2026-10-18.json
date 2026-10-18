@@ -1,0 +1,387 @@
+{
+  "version": 1,
+  "sourceHead": "599198322983fc874de90a885190c378d9b9d6de",
+  "status": "Preparation only; all192 reference comparisons unexecuted",
+  "counts": {
+    "references": 192,
+    "availableOriginalImages": 182,
+    "textOnly": 10,
+    "captured": 170,
+    "supplemental": 12,
+    "unexecuted": 192
+  },
+  "walkthrough": {
+    "path": "docs/design/aside-native-walkthrough.md",
+    "sha256": "a8ecf3b853b2aa75a07cc3d17ed1a91bf6cd15d7c2469e757bbc48d75f6c3715"
+  },
+  "fullFrozenMatrix": {
+    "path": "/tmp/aux-native-ui-192-walkthrough-599198322-v2.json",
+    "sha256": "9c7fc1be2698596793beb14f1c4cf3d8108594c0aa842f6a727c7e95690e4dde"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/evidence/aside-ui-original-image-review-2026-10-18.json",
+      "sha256": "b7292ae079209d4f49153626296e8f6e23a522f8ffb9bcb675fd20fbb0772e86"
+    },
+    {
+      "path": "/tmp/aux-ui-completeness-2026-10-18-v1.json",
+      "sha256": "ce713a31168f9840c0f4be56e296e8edc854e5b4182a961381aa96191a44a943"
+    },
+    {
+      "path": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/manifest.json",
+      "sha256": "8d8003155728d81ebe012869c4d434e3a72e3f2abc8a2f6a008043ef34383b44"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/evidence/aside-ui-reference-refresh-2026-10-18.json",
+      "sha256": "ce03d06def4046903671404dc8712185e8df32b044296fc0e4513da556400f23"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/design/aside-adoption.md",
+      "sha256": "fc5193a6e6904e5eb16647d01c2718d2b4e0877b9fcaf9ae2a0b5cf91117ccc5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/routes.ts",
+      "sha256": "639e3fe19039c48aab33798e955acaec431fc8091436b13624d5024d92b050f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/SectionRail.tsx",
+      "sha256": "1a04690aff28c60bfb4ec8ead85213b57edabf5c85ab0df7d7a5185fe3f73a3c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/native-library.ts",
+      "sha256": "dd21ffc68a2c35771d10d58120aec47b38932b23d050e07890c43836bc536947"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/NativeSettingsLink.tsx",
+      "sha256": "bc20a811025196053e9d4a4741dced1cf3f8b1feb125275b4e2dbf47658f2858"
+    },
+    {
+      "path": "/tmp/aux-browser-readiness-99d6203af-checklist.md",
+      "sha256": "88695e68529c13b559167002c74feb417900dc93b9f340c6928e4c443ce1b5f6"
+    },
+    {
+      "path": "/tmp/aux-measurement-quick-ask-aside-scope-conclusion-2026-10-18.md",
+      "sha256": "483d9e86ffd679f2f488d5c15fa00d3351e26b4989064220b485ec056d041fd1"
+    },
+    {
+      "path": "/tmp/aux-measurement-quick-ask-aside-scope-evidence-2026-10-18.json",
+      "sha256": "d8ccc5d8a7f40af9ee88cffe6f772e26314a5fed6a47c9a1621984f3cef13076"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/chat-list/ChatCard.tsx",
+      "sha256": "31c347d018c342e2e1c4f8bfe06b94a77173da0061de88d2f6f484483cd15cd2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/chat-list/ChatHistory.tsx",
+      "sha256": "4f1d38dc337012306187f838d913370be61e3ea52af70e9bca6460712037337a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/chat-list/ChatList.tsx",
+      "sha256": "d3d8a9d108a1583ce6cd4060a84f8b1cf1544c6db899e9eefe4b1612d0ac9f94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/chat-list/RecentWork.tsx",
+      "sha256": "746ac4059b6a0b3b8695ea2d32c5d0a7614865fa61e0b83e59422996ef6995fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/AuxPackages.tsx",
+      "sha256": "0f4742986a01293af31160cb91fcc9bfd2db35b0c96b8b0c5757c88534928714"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/CliInstallControl.tsx",
+      "sha256": "13c61f2e693040b57070cada53c1ae89eac3d0234d84e9e63e617fccd8abcce0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/Conversation.tsx",
+      "sha256": "efdad260a71cae36698d501c8705b9f9631807f466176dccb927bcc6eab73780"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/ConversationTurn.tsx",
+      "sha256": "5f139fe85e8c717a059b96244f9a1921acb76dec1602df08b6e5a9817d9c9509"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/Downloads.css",
+      "sha256": "a1e50995077d33d423d02a38699b0765e6590d1def9d994d9e418ef2525fddc6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/Downloads.tsx",
+      "sha256": "21520404aea2c65e796c2c712b2082daa42cc8aca5eb46e5542189a2e449d024"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/Extensions.tsx",
+      "sha256": "d4b9a99d7a9881fe6017c9e2967245c74f313854d915eb149ff28b8ea34bb21d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/ExternalAgents.css",
+      "sha256": "2d884e6bb6f23fa4d0ca65d7ba8d5095f04efab1c36e062384b6c2dc2896aca4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/ExternalAgents.tsx",
+      "sha256": "82427061f108709488f7546a567b39e0ce03d2a00bdabf0aafe1482368d9206f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/HomeAsk.css",
+      "sha256": "5db1b13998fa9c9b175a488e0e40534b319a5960ab5ea42524f22eb51c7e1dbb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "c2564ef8f371ad36c0487ac23566de63dd1db266712173a83d352a1e9f299220"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/McpOAuthSetup.tsx",
+      "sha256": "ef9cc0fb7f5cc85c21449bf21265e3201cefabee7fd3115f093fdc20578272e0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/MemoryDocumentBrowser.css",
+      "sha256": "ff582316b35d9aa34c4f427c101d3db09af88600baa09963307743e2339520d9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/MemoryDocumentBrowser.tsx",
+      "sha256": "9b2232e7434546637cb9166efc4496b0aafceeec3eae5515d8a13618dc152df9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/MemorySettings.tsx",
+      "sha256": "8de7e9018efa8832b85f0ed1f9b0ea477b3bad4c90cfc70624f0a8c35f56cc38"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/MemoryWorkspace.tsx",
+      "sha256": "221ad7730c9befad8f8788371d8e067e35907a8341590faa2cb25f58415b4f40"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/OutboundMcpSettings.tsx",
+      "sha256": "2fe2163c5d6749f7f515be2826beb398359ca54a034bdc4e9903e4a872da3e3b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/PasswordTransferSetting.tsx",
+      "sha256": "7e6aead4fa30eb0e4baf2f24f908138fbc52a8c73fb2e916b883fc6d697f00eb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/PluginsPanel.tsx",
+      "sha256": "9027ee20468b1a5b4fe8b8008403e47a1e427adbc317e08aea58d1bd032d9bba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/ProfileSwitcher.tsx",
+      "sha256": "453dd22b42acbfcbc7acb4e248749108146d5958df89c0ffe5fbe687035c82d6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/QuickAsk.css",
+      "sha256": "05dab36a1609a3520023096090c1f6cf1edb680d8894721c27a21511410691f0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/QuickAsk.tsx",
+      "sha256": "725ee646019f610b3903df87285d432808651f28a650ff714284fc8db2a39a5b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/RemoteDebugging.tsx",
+      "sha256": "60895054f6d9f9d6afc74d1e4715d5717b5daa2b447acab0fbcb4a96f29a2b8b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/RoutineSchedule.tsx",
+      "sha256": "589ec37221de01000252ee3950c0c6813351da828f8d1e92e4f6d3bebc6946ce"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/RunPanel.tsx",
+      "sha256": "ace2348f1bc76609861342c0ee928de193731713013a57a716d5143d1ed78c99"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/Sidebar.tsx",
+      "sha256": "43d84ca922c4577595ece803223241d18f3889b63e9c111465255f5473e62571"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "sha256": "280bc9364b5a06c85587ea5ceb8d837de361e90a933c42b093e921ab675b35d5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/StepTimeline.tsx",
+      "sha256": "4da1e24333608b22a16ce8d953b925071e4c5d69ae673e6811534b78a392c34f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/composer/Composer.css",
+      "sha256": "02d1089179c91ba5b4799597f6f8d7a13c184111a37d1e9fbb0cebdf13df61e0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/composer/ModelProviderMenu.tsx",
+      "sha256": "987676afe719487a63e2ddead65788477a97ebf932d4a4e97976c7d7876658b4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/native-library.ts",
+      "sha256": "dd21ffc68a2c35771d10d58120aec47b38932b23d050e07890c43836bc536947"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/NativeSettingsLink.tsx",
+      "sha256": "bc20a811025196053e9d4a4741dced1cf3f8b1feb125275b4e2dbf47658f2858"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/SectionRail.tsx",
+      "sha256": "1a04690aff28c60bfb4ec8ead85213b57edabf5c85ab0df7d7a5185fe3f73a3c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/SettingsDialogControl.tsx",
+      "sha256": "45230711d489fab82e1fa0342e35b31c3d76465e7631b1ec91dbea484a6b32ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/routes.ts",
+      "sha256": "639e3fe19039c48aab33798e955acaec431fc8091436b13624d5024d92b050f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/AgentBehavior.tsx",
+      "sha256": "33c9bad888cb6f1f289f99ab607b38d6655981eb849066d0175e2ea9efb1ffd1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Appearance.tsx",
+      "sha256": "6173c2f1227af2fa71004d89e6ec8edd0f5945b6209775bddb6b3ace2e28a3ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "sha256": "5472f24f8526adaec0489e17bc66e30aa3437623bfc9fdacb88ae5456aaeb812"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/BackgroundRuntime.tsx",
+      "sha256": "15720c8282ad11508a973b5c3f3b930548462417dfa8fd2b7e92fa25c7fe2646"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/ChannelEditor.tsx",
+      "sha256": "d69b685b038f4980b510d572d6c4ae0b33672bf401c626fc1ceb0d5e6dd358e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Channels.css",
+      "sha256": "301e08fed899d36b8291bb5685472d6a1adb3150335f187bd3c7ee50e60e046d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Channels.tsx",
+      "sha256": "5e4d68f3db4204226d9df9a5e0f8bdff877c27d3ad0be1dbd3cc7a18a4b1c396"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/CookieControls.tsx",
+      "sha256": "4115f5fad47db5dd5b485f10753254d64a0a8547e2a413e003d600f69a098310"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/CreateProject.tsx",
+      "sha256": "503aee70e9d95f3087977b9f60887526b36383a02847fb7c55ff8a83d0f4caf7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/CustomModelProviders.tsx",
+      "sha256": "93ac27302f6273be3abf9e1d4d6e1ca138c3012b391fca3c77e6894925159100"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/DesktopContext.css",
+      "sha256": "fd28d404e9d8e8db26b46d98e9a64683522a9705010a80849a7bbaafe7119064"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/DesktopContext.tsx",
+      "sha256": "27d6be5a89afadef19a0a8ce48890623fb6dd972d05bbfea8ee6d6fa8740821f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/FilterSettings.tsx",
+      "sha256": "cd80253570de8e61331733ad5d19ffdcdff42aa6d3f4cb98d1a99234ec341cde"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/General.tsx",
+      "sha256": "619913248ba1128f788e6deca6a7bfa6cb67ae13b8bd6b0379e4739b8f11e818"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Languages.tsx",
+      "sha256": "d4dd417e424252828c4a1978015cb920fd93c34bc21b72eb944124ca622232b8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/ModelConnections.tsx",
+      "sha256": "8df525cfa5b609dd13e9e5f4e9a5206300b9191f4b1a2a8acf2b72b3303287b9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/ModelsOverview.tsx",
+      "sha256": "ab3bf029c880db3dd3ab12b3c01f0926800b828d9eda70529d8c4d3146ea16f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "sha256": "5914d5abdf1360715c60c4d9eda6907e3b22cb306f35753e1704288a3c978b13"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Permissions.tsx",
+      "sha256": "4331986dc3cfa71a3c64e4bb1cb4c48de6c566a442acc539e3e0253c0574d36d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/PrivacySecurity.tsx",
+      "sha256": "2f147adca796c3e2673a0ee4a7c481710518dadccf54c0ba54c9e43adb0466d5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Profiles.tsx",
+      "sha256": "fcbc79800f656e41782532797d3049389c10641180452a7138aab6ac8bb0a710"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/ProjectIdentity.tsx",
+      "sha256": "2eb18b78ffb2df5a8067f8dd170d11b2818047e9fa7499e41b33f1c30127be87"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/QuickAsk.tsx",
+      "sha256": "754440399d813a90436b3df3089fc1ea01796564099990f3adff3a8165b0adcc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/RoutinePreferences.tsx",
+      "sha256": "a5a1859b76b2661a46039405cdf8477a1624bd08546d78570e1a8d6aed7c35aa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Routines.css",
+      "sha256": "4ea1b089e3643bbe28c0204bc9e8f7f7e8ad38cc7c4daa7be9a328ed5fa4b7d2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Routines.tsx",
+      "sha256": "5033893ad65adf53d30277702c5b7c1ad9a09c8f54c4d1273bdd07a91d95eb3e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/SelectionCapture.css",
+      "sha256": "f27131becef125cada7839982242a81c4b4b2dc760392216a6d2db1935abaf66"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sha256": "227a31f8607020d554a7321dffd4b528e9b626ea31dc97892d7007a974718a86"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/SidebarOptions.tsx",
+      "sha256": "af2bda7bae0a2dfe0f222f428ccb9ab9c1bc142ace4b2d7855cfacf09cd000f6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/TidyTabs.tsx",
+      "sha256": "59e6e3a183b785cc62e124fb29b1d3d4c8117fd05ce5c56a48d5fd833e849e4a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "sha256": "a6d3d2f95382d95cb529a0dec9cbc6053099f85d776e2a6b121e3464a70ad9ff"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/Workspaces.tsx",
+      "sha256": "79303b68780d23e6845464f37f0fa537f247ba7f988f69a54eb652dd31cb1d0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/styles/sidebar.css",
+      "sha256": "f03300c061d0e4d180782dad573bec9816724582fbb47ea64f104f47b466cbd5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/src/styles/workspace.css",
+      "sha256": "7bca9e9665555aaeda7f4be1df293a3bfc9cd81274d19b6c7c0b12b609637771"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/chromium/patches/aux/0002-branding-signing.patch",
+      "sha256": "aba3d2c3019cb8f18494fce7a0c0856b892904e7b6b9dc03a69e0b4e5a9472e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/chromium/patches/aux/0067-native-chat-split-menus.patch",
+      "sha256": "feda89e7539557ad58b201d8c69aaf3db3dd21cc832cb2329fcf69b12b770d39"
+    }
+  ],
+  "rootVerifiedSourceHashes": 75,
+  "corrections": [
+    "References020/021 automatic import discovery must not open against owner HOME; Cancel does not prevent source metadata reads. Explicit syntheticHTML import is a separate route requiring a proven discovery-free protocol.",
+    "References103/104 show Settings, not an observed live Mini popup. No initial cross-window page selection grant is required or claimed from this evidence."
+  ],
+  "nativeActionsPerformed": false,
+  "acceptanceEvidence": null,
+  "supersedesUnexecutedPreparation": {
+    "json": "/tmp/aux-native-ui-192-walkthrough-599198322-v1.json",
+    "jsonSha256": "33bef92b11dc7a8cedc98d7a2ed0da1ff409c836ee7b7c66c15cbc60a4abf3b1",
+    "markdown": "/tmp/aux-native-ui-192-walkthrough-599198322-v1.md",
+    "markdownSha256": "c561902648a0d2b55f0d19b91e79030808818d226e3d948c0a1695a9ac98502a",
+    "rule": "v1 is immutable historical preparation, superseded only for corrected walkthrough instructions; no reference/source hashes changed."
+  }
+}
