@@ -420,8 +420,8 @@
   :root .rail-inner,
   :root select:not([multiple]):not([size])::picker(select) {
     background: var(--popup-tint);
-    backdrop-filter: blur(var(--blur-popup)) saturate(var(--popup-saturation));
-    -webkit-backdrop-filter: blur(var(--blur-popup)) saturate(var(--popup-saturation));
+    backdrop-filter: blur(var(--blur-popup));
+    -webkit-backdrop-filter: blur(var(--blur-popup));
     color: var(--ink-0);
     border: 0;
     box-shadow: var(--popup-shadow);
@@ -429,8 +429,19 @@
   }
   /* Fade the composed surface rather than animating its blur or moving anchors. */
   :root .popup-material {
-    --ink-2: var(--popup-ink-secondary);
+    --ink-2: var(--popup-ink-readable);
+  }
+  :root .popup-material,
+  :root .solid-popover {
     animation: popup-reveal var(--t-popup) var(--ease-emphasized);
+  }
+  :root .solid-popover {
+    background: var(--surface-menu);
+    color: var(--ink-0);
+    border: 0;
+    box-shadow: var(--solid-popover-shadow, var(--shadow-dialog));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   @keyframes popup-reveal {
     from {
@@ -464,8 +475,10 @@
   }
   @media (forced-colors: active) {
     :root .popup-material,
+    :root .solid-popover,
     :root .rail-inner,
     :root select:not([multiple]):not([size])::picker(select) {
+      --ink-2: GrayText;
       background: Canvas;
       color: CanvasText;
       border: 1px solid CanvasText;
@@ -476,7 +489,13 @@
   }
   @media (prefers-contrast: more) {
     :root .popup-material {
-      --popup-ink-secondary: var(--ink-0);
+      --popup-ink-readable: var(--ink-0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root .popup-material,
+    :root .solid-popover {
+      animation: none;
     }
   }
 }

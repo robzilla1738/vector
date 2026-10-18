@@ -1,4 +1,5 @@
-import { MethodSchemas, type MethodParams, type MethodResult, type Run } from "@aux/contracts";
+import type { MethodParams, MethodResult, Run } from "@aux/contracts";
+import { RunsReconcileStartParams } from "@aux/contracts/run-start";
 import { bridge } from "./bridge";
 
 const PREFIX = "aux.pending-run-start.v1:";
@@ -67,7 +68,7 @@ export function readStartAttempt(key: string): StartAttempt | null {
       typeof raw.intent !== "string"
     )
       return null;
-    const parsed = MethodSchemas["runs.reconcileStart"].safeParse(raw.request);
+    const parsed = RunsReconcileStartParams.safeParse(raw.request);
     if (!parsed.success || parsed.data.privateTask || (key !== "new" && parsed.data.chatId !== key))
       return null;
     if (current?.request.requestId === parsed.data.requestId) return current;

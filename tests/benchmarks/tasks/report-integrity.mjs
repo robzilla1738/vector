@@ -29,6 +29,75 @@ export function modelAttribution(events) {
   return { runtimeModel, modelCallEvents: calls.length, modelIds };
 }
 
+/** Read every event page; a missing token count cannot establish a cache ratio. */
+export async function readRunMetrics(rpc, runId) {
+  let cursor = 0,
+    streamId,
+    inputTokens = 0,
+    outputTokens = 0,
+    cachedInputTokens = 0,
+    inputComplete = true,
+    outputComplete = true,
+    cacheComplete = true,
+    suspensions = 0,
+    takeovers = 0,
+    ledgerDuplicates = 0;
+  const calls = [];
+  const tokenCount = (value) => Number.isSafeInteger(value) && value >= 0;
+  for (;;) {
+    const page = await rpc("runs.events", { runId, sinceSeq: cursor, limit: 2000, streamId });
+    if (
+      page.resync ||
+      typeof page.streamId !== "string" ||
+      !page.streamId ||
+      !Array.isArray(page.events) ||
+      !Number.isSafeInteger(page.lastSeq) ||
+      page.lastSeq < cursor ||
+      (streamId !== undefined && streamId !== page.streamId)
+    )
+      throw new Error("Run event history is incomplete");
+    streamId = page.streamId;
+    for (const event of page.events) {
+      if (!Number.isSafeInteger(event.seq) || event.seq <= cursor || event.seq > page.lastSeq)
+        throw new Error("Run event history is incomplete");
+      const payload = event.payload ?? {};
+      if (event.type === "model.call") {
+        calls.push({ type: event.type, payload: { modelId: payload.modelId } });
+        const cached = payload.providerMetadata?.usage?.cachedInputTokens;
+        if (tokenCount(payload.inputTokens)) inputTokens += payload.inputTokens;
+        else inputComplete = false;
+        if (tokenCount(payload.outputTokens)) outputTokens += payload.outputTokens;
+        else outputComplete = false;
+        if (tokenCount(cached) && tokenCount(payload.inputTokens) && cached <= payload.inputTokens)
+          cachedInputTokens += cached;
+        else cacheComplete = false;
+      }
+      if (event.type === "run.status" && payload.status === "needs_input") suspensions++;
+      if (event.type === "page.takeover") takeovers++;
+      if (
+        event.type === "step.finished" &&
+        /No new action was executed/.test(JSON.stringify(payload.error ?? ""))
+      )
+        ledgerDuplicates++;
+    }
+    if (page.lastSeq === cursor) break;
+    cursor = page.lastSeq;
+  }
+  return {
+    tokens: calls.length && inputComplete && outputComplete ? inputTokens + outputTokens : null,
+    inputTokens: calls.length && inputComplete ? inputTokens : null,
+    cachedInputTokens: calls.length && cacheComplete ? cachedInputTokens : null,
+    cachedInputRatio:
+      calls.length && inputComplete && cacheComplete && inputTokens > 0
+        ? cachedInputTokens / inputTokens
+        : null,
+    suspensions,
+    interventions: suspensions + takeovers,
+    ledgerDuplicates,
+    ...modelAttribution(calls),
+  };
+}
+
 /** A gate candidate still needs a separately reviewed comparable baseline. */
 export function candidateReadiness({
   suiteName,

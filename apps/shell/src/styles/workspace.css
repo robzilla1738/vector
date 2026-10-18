@@ -1240,19 +1240,14 @@
   }
   .history-items.grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: var(--space-4);
     padding: 0 var(--space-3) var(--space-5);
   }
   .history-items.grid .history-conversation-wrap {
     min-width: 0;
     aspect-ratio: 1;
-    border: 1px solid var(--line);
-    border-radius: var(--r-xl);
-    background: var(--surface-secondary);
-  }
-  .history-items.grid .history-conversation-wrap:hover {
-    background: var(--surface-primary);
+    overflow: hidden;
   }
   .history-items.grid .history-conversation {
     position: absolute;
@@ -1281,6 +1276,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
     opacity: 0.8;
   }
   .history-items.grid .history-actions {
@@ -1298,6 +1295,9 @@
     right: var(--space-3);
     bottom: var(--space-3);
     pointer-events: none;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
   }
   .history-items.grid .history-rename {
     position: relative;
@@ -1311,22 +1311,19 @@
   .history-card-preview .answer-markdown {
     color: inherit;
   }
-  @container chat-history (width < 800px) {
-    .history-items.grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  @container chat-history (width < 620px) {
+  @container chat-history (width >= 640px) {
     .history-items.grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container chat-history (width >= 1024px) {
+    .history-items.grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
   @container chat-history (width < 440px) {
     .conversation-history-list {
       padding-inline: var(--space-2);
-    }
-    .history-items.grid {
-      grid-template-columns: 1fr;
     }
     .history-search {
       height: 36px;

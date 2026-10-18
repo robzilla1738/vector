@@ -2,10 +2,43 @@
 import { act, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { deferSurface } from "./DeferredSurface";
+import { deferSurface, preloadWhenIdle } from "./DeferredSurface";
 
 vi.mock("../store", () => ({ useStore: { getState: () => ({ setOverlay: vi.fn(), setMode: vi.fn() }) } }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+it("yields optional prefetch to input work and cancels the remaining queue on retirement", () => {
+  const callbacks = new Map<number, IdleRequestCallback>();
+  let nextId = 0;
+  vi.stubGlobal("requestIdleCallback", (callback: IdleRequestCallback) => {
+    callbacks.set(++nextId, callback);
+    return nextId;
+  });
+  vi.stubGlobal("cancelIdleCallback", (id: number) => callbacks.delete(id));
+  const first = vi.fn(),
+    second = vi.fn(),
+    third = vi.fn();
+  const idle = (remaining: number, didTimeout = false) => {
+    const [id, callback] = callbacks.entries().next().value!;
+    callbacks.delete(id);
+    callback({ didTimeout, timeRemaining: () => remaining });
+  };
+  try {
+    const cancel = preloadWhenIdle([{ preload: first }, { preload: second }, { preload: third }]);
+    idle(2);
+    expect(first).not.toHaveBeenCalled();
+    idle(12);
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).not.toHaveBeenCalled();
+    idle(0, true);
+    expect(second).toHaveBeenCalledOnce();
+    cancel();
+    expect(callbacks.size).toBe(0);
+    expect(third).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
 
 it("retries a failed module without remounting the surrounding browser", async () => {
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});

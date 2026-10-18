@@ -2370,7 +2370,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             durationMs: a.durationMs,
             inputTokens: a.inputTokens,
             outputTokens: a.outputTokens,
-            ...(a.cachedInputTokens ? { cachedInputTokens: a.cachedInputTokens } : {}),
+            ...(a.cachedInputTokens !== undefined ? { cachedInputTokens: a.cachedInputTokens } : {}),
             ...(a.providerMetadata ? { providerMetadata: a.providerMetadata } : {}),
             ...(a.error ? { error: a.error } : {}),
           });
@@ -2384,7 +2384,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           durationMs: step.durationMs,
           inputTokens: step.inputTokens,
           outputTokens: step.outputTokens,
-          ...(step.cachedInputTokens ? { cachedInputTokens: step.cachedInputTokens } : {}),
+          ...(step.cachedInputTokens !== undefined ? { cachedInputTokens: step.cachedInputTokens } : {}),
           ...(step.providerMetadata ? { providerMetadata: step.providerMetadata } : {}),
           ...(step.error ? { error: step.error } : {}),
         });
@@ -2438,7 +2438,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             durationMs: attempt.durationMs,
             inputTokens: attempt.inputTokens,
             outputTokens: attempt.outputTokens,
-            ...(attempt.cachedInputTokens ? { cachedInputTokens: attempt.cachedInputTokens } : {}),
+            ...(attempt.cachedInputTokens !== undefined ? { cachedInputTokens: attempt.cachedInputTokens } : {}),
             ...(attempt.providerMetadata ? { providerMetadata: attempt.providerMetadata } : {}),
             error: attempt.error ?? "model attempt failed before a usable response",
           });

@@ -16,7 +16,8 @@ import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/short
 import type { AuxBridge } from "./bridge";
 import { requireAuxMethod } from "@aux/contracts/method-feature";
 import type { AuxFeatureOverrides } from "@aux/contracts/aux-features";
-import { MethodSchemas, type MethodName, type MethodResult, type RpcArgs } from "@aux/contracts/api";
+import type { MethodName, MethodResult, RpcArgs } from "@aux/contracts/api";
+import { DownloadsRemoveParams } from "@aux/contracts/downloads";
 import { installNativeDownloadCollection } from "./downloads";
 import { createHostClient, type HostValidation } from "./host/client.generated";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
@@ -155,7 +156,7 @@ export function installChromiumBridge(
       }
       if (method === "downloads.list") return downloadsSnapshot() as Promise<MethodResult<M>>;
       if (method === "downloads.remove") {
-        const { ids } = MethodSchemas["downloads.remove"].parse(params[0]);
+        const { ids } = DownloadsRemoveParams.parse(params[0]);
         return dismissDownloads(ids) as Promise<MethodResult<M>>;
       }
       if (isNativeHistoryMethod(method)) {

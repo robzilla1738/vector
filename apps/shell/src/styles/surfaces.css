@@ -217,36 +217,6 @@
   .reader-view > .findbar {
     margin: 0 var(--space-6) var(--space-2);
   }
-  .settings-search-results > .hint {
-    display: block;
-    margin: 0 0 18px;
-  }
-  .settings-search-result {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 5px;
-    padding: var(--space-4) var(--space-3);
-    text-align: left;
-    border-bottom: var(--hairline) solid var(--line);
-    border-radius: var(--r-md);
-  }
-  .settings-search-result:hover {
-    background: var(--bg-1);
-  }
-  .settings-search-result strong {
-    font-size: var(--fs-md);
-    font-weight: var(--fw-medium);
-    color: var(--ink-0);
-  }
-  .settings-search-result > span {
-    font-size: var(--fs-xs);
-    color: var(--ink-2);
-    line-height: 1.5;
-  }
-  .settings-search-result .settings-search-category {
-    font-size: var(--fs-2xs);
-  }
   .settings-content [data-setting] {
     scroll-margin-block: var(--space-6);
   }
@@ -896,7 +866,7 @@
   .aux-home .aux-mark {
     width: 64px;
     height: 64px;
-    margin: 0 auto clamp(var(--space-6), 4vh, var(--space-8));
+    margin: 0 auto 48px;
     flex-shrink: 0;
     background: var(--ink-0);
     opacity: 0.12;
@@ -914,16 +884,14 @@
     border-radius: var(--r-2xl);
     corner-shape: round;
     background: var(--surface-primary);
-    box-shadow:
-      0 0 0 1px var(--border-surface),
-      0 20px 25px -5px var(--shadow-tint),
-      0 8px 10px -6px var(--shadow-tint);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--t-fast) var(--ease-out);
   }
-  .aux-home .cmdbar.hero:has(input:focus-visible) {
+  .aux-home .cmdbar.hero:has(input:focus) {
     border: 0;
     outline: none;
     box-shadow:
-      0 0 0 1px var(--line),
+      0 0 0 1px var(--border-surface),
       0 20px 25px -5px var(--shadow-tint),
       0 8px 10px -6px var(--shadow-tint);
   }
@@ -996,16 +964,9 @@
     grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
     gap: var(--space-4);
   }
-  .home-card {
+  .home-card,
+  .history-items.grid .history-conversation-wrap {
     position: relative;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    aspect-ratio: 1;
-    min-height: 0;
-    overflow: hidden;
     border: 0;
     border-radius: var(--r-xl);
     background: var(--surface-secondary);
@@ -1013,12 +974,23 @@
     transition:
       background var(--t-fast) var(--ease-in-out),
       box-shadow var(--t-fast) var(--ease-in-out);
+  }
+  .home-card {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-3);
+    aspect-ratio: 1;
+    min-height: 0;
+    overflow: hidden;
     -webkit-user-select: none;
     user-select: none;
   }
-  .home-card:hover {
+  .home-card:hover,
+  .history-items.grid .history-conversation-wrap:hover {
     background: var(--surface-primary);
-    box-shadow: var(--shadow-pop);
+    box-shadow: var(--shadow-lg);
   }
   .home-chat-card {
     gap: var(--space-1);
@@ -1029,14 +1001,16 @@
     gap: var(--space-2);
     color: var(--ink-2);
     font-size: var(--fs-xs);
-    line-height: 1.4;
+    line-height: 16px;
+    font-weight: var(--fw-medium);
   }
   .home-chat-excerpt {
     min-height: 0;
     overflow: hidden;
     color: var(--ink-2);
     font-size: var(--fs-xs);
-    line-height: 1.4;
+    line-height: 16px;
+    font-weight: var(--fw-medium);
   }
   .home-chat-card[data-has-result] .home-chat-excerpt {
     display: -webkit-box;
@@ -1113,6 +1087,9 @@
     font-weight: var(--fw-medium);
   }
   .home-card h3 {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    line-height: 20px;
     display: -webkit-box;
     overflow: hidden;
     -webkit-line-clamp: 1;
@@ -1489,11 +1466,6 @@
   }
   .sb-foot .sb-space {
     margin-right: auto;
-  }
-  .home-card h3 {
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-semibold);
-    line-height: 20px;
   }
   .home-card-open {
     text-align: left;

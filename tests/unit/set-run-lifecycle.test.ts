@@ -28,6 +28,8 @@ import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
 import type { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
+import { usageFields, withAttempts } from "../../apps/runtime/src/agent/model-client.js";
+import { readRunMetrics } from "../benchmarks/tasks/report-integrity.mjs";
 
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((res) => {
@@ -2358,6 +2360,69 @@ it("a Set source edit during observation withholds the document before any effec
   expect(h.state.executed).toBe(0);
   expect(h.repo.listMembers(set.setId)[0]?.error).toMatch(/approved source changed/);
   expect(h.turnMentions.has(runId)).toBe(false);
+});
+
+it.each([80, 0, undefined])("preserves provider cache usage %s through retries, invoices, events and benchmark metrics", async (cached) => {
+  const model = new MockModelClient().scriptToolSteps([{ text: "Complete." }]);
+  model.inputTokens = 100;
+  model.outputTokens = 20;
+  const original = model.toolCallStep.bind(model);
+  vi.spyOn(model, "toolCallStep").mockImplementation(async (input) => ({
+    ...(await original(input)),
+    ...usageFields({ inputTokens: 100, outputTokens: 20, inputTokenDetails: { cacheReadTokens: cached } }),
+    providerMetadata: { usage: { cacheWriteTokens: 9 } },
+    retries: [{
+      durationMs: 1,
+      ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }),
+      error: "Unusable response",
+    }],
+  }));
+  const h = harness({ model });
+  try {
+    const run = await h.runs.start({ goal: "Reply briefly" });
+    expect((await untilTerminal(h.repo, run.runId)).status).toBe("completed");
+    const invoices = h.repo.listModelCalls(run.runId);
+    expect(invoices).toHaveLength(2);
+    expect(invoices[0]?.providerMetadata?.usage).toEqual({ cachedInputTokens: 0 });
+    expect(invoices[1]?.providerMetadata?.usage).toEqual({
+      cacheWriteTokens: 9,
+      ...(cached === undefined ? {} : { cachedInputTokens: cached }),
+    });
+    const metrics = await readRunMetrics(
+      async (_method: string, params: { sinceSeq: number; streamId?: string }) =>
+        h.events.since(params.sinceSeq, 2000, run.runId, params.streamId),
+      run.runId,
+    );
+    expect(metrics).toMatchObject({
+      inputTokens: 200,
+      tokens: 220,
+      cachedInputTokens: cached ?? null,
+      cachedInputRatio: cached === undefined ? null : cached / 200,
+      modelCallEvents: 2,
+    });
+  } finally {
+    await h.runs.close();
+    h.repo.close();
+  }
+});
+
+it("retains explicit zero cache usage on a failed provider attempt", async () => {
+  const model = new MockModelClient();
+  vi.spyOn(model, "toolCallStep").mockRejectedValue(withAttempts(
+    new AuxError("model_error", "Provider unavailable"),
+    [{ durationMs: 1, ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }) }],
+  ));
+  const h = harness({ model });
+  try {
+    const run = await h.runs.start({ goal: "Reply briefly" });
+    expect((await untilTerminal(h.repo, run.runId)).status).toBe("failed");
+    expect(h.repo.listModelCalls(run.runId)).toMatchObject([
+      { inputTokens: 100, outputTokens: 0, providerMetadata: { usage: { cachedInputTokens: 0 } } },
+    ]);
+  } finally {
+    await h.runs.close();
+    h.repo.close();
+  }
 });
 
 it("answers and retries a page-free chat without reading or creating a browser page", async () => {

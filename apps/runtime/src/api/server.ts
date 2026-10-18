@@ -10,6 +10,16 @@ export type InvokeFn = (method: string, params: unknown, client: ClientContext) 
 /** Largest accepted /rpc or WS request body. Programs top out well under this. */
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
+const MAX_BUFFERED_BYTES = 1_000_000;
+const HEARTBEAT_MS = 30_000;
+type SocketEntry = {
+  client: ClientContext;
+  scopedToken?: string;
+  backlog?: { frames: string[]; bytes: number };
+  alive: boolean;
+  closeTimer?: ReturnType<typeof setTimeout>;
+};
+
 /**
  * Loopback JSON-RPC + event stream. Token-authed; the token lives in the
  * data dir next to the port so the desktop shell and CLI can find it.
@@ -23,7 +33,9 @@ export class ApiServer {
   private server: Server;
   private wss: WebSocketServer;
   /** backlog buffers live frames while a resuming socket replays its cursor. */
-  private sockets = new Map<WebSocket, { client: ClientContext; scopedToken?: string; backlog?: string[] }>();
+  private sockets = new Map<WebSocket, SocketEntry>();
+  private heartbeat: ReturnType<typeof setInterval>;
+  private unsubscribe: () => void;
   /**
    * Readiness gate (06-T): the port binds before the service tree finishes
    * building so early callers get a real answer instead of ECONNREFUSED —
@@ -88,7 +100,19 @@ export class ApiServer {
       const scopedToken = client.scope ? (bearer ?? queryToken ?? undefined) : undefined;
       this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume, scopedToken));
     });
-    this.opts.events.subscribe((e) => this.broadcast(e));
+    this.unsubscribe = this.opts.events.subscribe((e) => this.broadcast(e));
+    this.heartbeat = setInterval(() => {
+      for (const [ws, entry] of this.sockets) {
+        if (!this.liveSocket(ws, entry)) continue;
+        if (!entry.alive) {
+          ws.terminate();
+          continue;
+        }
+        entry.alive = false;
+        ws.ping();
+      }
+    }, HEARTBEAT_MS);
+    this.heartbeat.unref();
   }
 
   listen(port = 0): Promise<number> {
@@ -150,27 +174,37 @@ export class ApiServer {
     resume?: { afterSeq: number; streamId?: string },
     scopedToken?: string,
   ) {
-    const entry: { client: ClientContext; scopedToken?: string; backlog?: string[] } = {
+    const entry: SocketEntry = {
       client,
       scopedToken,
+      alive: true,
     };
-    if (resume) entry.backlog = [];
+    if (resume) entry.backlog = { frames: [], bytes: 0 };
     this.sockets.set(ws, entry);
-    ws.on("close", () => this.sockets.delete(ws));
+    ws.on("close", () => {
+      clearTimeout(entry.closeTimer);
+      this.sockets.delete(ws);
+    });
+    ws.on("error", () => ws.terminate());
+    ws.on("pong", () => {
+      entry.alive = true;
+    });
     ws.on("message", async (data) => {
       if (!this.liveSocket(ws, entry)) return;
       let msg: unknown;
       try {
         msg = JSON.parse(String(data));
       } catch {
-        ws.send(JSON.stringify({ error: { code: "invalid_params", message: "bad JSON" } }));
+        this.send(ws, entry, JSON.stringify({ error: { code: "invalid_params", message: "bad JSON" } }));
         return;
       }
       const out = await this.dispatch(msg, client);
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(out));
+      this.send(ws, entry, JSON.stringify(out));
     });
     // Stream hello anchors every socket: identity + head at connect.
-    ws.send(
+    this.send(
+      ws,
+      entry,
       JSON.stringify({
         kind: "hello",
         streamId: this.opts.events.streamId,
@@ -190,6 +224,7 @@ export class ApiServer {
    */
   private static readonly REPLAY_LIMIT = 10_000;
   private liveSocket(ws: WebSocket, entry: { client: ClientContext; scopedToken?: string }): boolean {
+    if (ws.readyState !== ws.OPEN) return false;
     if (!entry.client.scope) return true;
     const fresh = entry.scopedToken ? this.opts.authorizeScopedToken?.(entry.scopedToken) : null;
     if (
@@ -201,11 +236,25 @@ export class ApiServer {
     ws.close(1008, "Connection expired or revoked");
     return false;
   }
-  private resume(
-    ws: WebSocket,
-    entry: { client: ClientContext; scopedToken?: string; backlog?: string[] },
-    resume: { afterSeq: number; streamId?: string },
-  ) {
+
+  private retireSlowSocket(ws: WebSocket, entry: SocketEntry) {
+    entry.backlog = undefined;
+    ws.close(1013, "Output limit exceeded; reconnect and resynchronize");
+    entry.closeTimer = setTimeout(() => ws.terminate(), 5000);
+    entry.closeTimer.unref();
+  }
+
+  private send(ws: WebSocket, entry: SocketEntry, frame: string): boolean {
+    if (!this.liveSocket(ws, entry)) return false;
+    if (ws.bufferedAmount + Buffer.byteLength(frame) > MAX_BUFFERED_BYTES) {
+      this.retireSlowSocket(ws, entry);
+      return false;
+    }
+    ws.send(frame);
+    return true;
+  }
+
+  private resume(ws: WebSocket, entry: SocketEntry, resume: { afterSeq: number; streamId?: string }) {
     const visible = (e: AuxEvent) =>
       !entry.client.scope || (!!this.opts.filterEvent && this.opts.filterEvent(entry.client, e));
     let cursor = resume.afterSeq;
@@ -221,16 +270,23 @@ export class ApiServer {
       );
       if (ws.readyState !== ws.OPEN) return;
       if (out.resync) {
-        ws.send(JSON.stringify({ kind: "resync", streamId: out.streamId, lastSeq: out.lastSeq }));
+        this.send(
+          ws,
+          entry,
+          JSON.stringify({ kind: "resync", streamId: out.streamId, lastSeq: out.lastSeq }),
+        );
         lastSeq = out.lastSeq;
         break;
       }
-      for (const e of out.events) if (visible(e)) ws.send(JSON.stringify({ event: e }));
+      for (const e of out.events)
+        if (visible(e) && !this.send(ws, entry, JSON.stringify({ event: e }))) return;
       lastSeq = out.lastSeq;
       replayed += out.events.length;
       if (out.events.length < 2000) break;
       if (replayed >= ApiServer.REPLAY_LIMIT) {
-        ws.send(
+        this.send(
+          ws,
+          entry,
           JSON.stringify({
             kind: "resync",
             streamId: this.opts.events.streamId,
@@ -242,12 +298,12 @@ export class ApiServer {
       }
       cursor = out.lastSeq;
     }
-    const backlog = entry.backlog ?? [];
+    const backlog = entry.backlog?.frames ?? [];
     entry.backlog = undefined;
     for (const frame of backlog) {
       if (!this.liveSocket(ws, entry)) return;
       const seq = (JSON.parse(frame) as { event: AuxEvent }).event.seq;
-      if (seq > lastSeq) ws.send(frame);
+      if (seq > lastSeq && !this.send(ws, entry, frame)) return;
     }
   }
 
@@ -260,8 +316,15 @@ export class ApiServer {
       // get nothing rather than the global firehose.
       if (entry.client.scope && (!this.opts.filterEvent || !this.opts.filterEvent(entry.client, e))) continue;
       frame ??= JSON.stringify({ event: e });
-      if (entry.backlog) entry.backlog.push(frame);
-      else ws.send(frame);
+      if (entry.backlog) {
+        const bytes = Buffer.byteLength(frame);
+        if (entry.backlog.bytes + bytes > MAX_BUFFERED_BYTES) {
+          this.retireSlowSocket(ws, entry);
+          continue;
+        }
+        entry.backlog.bytes += bytes;
+        entry.backlog.frames.push(frame);
+      } else this.send(ws, entry, frame);
     }
   }
 
@@ -337,7 +400,10 @@ export class ApiServer {
   }
 
   async close() {
-    for (const ws of this.sockets.keys()) ws.close();
+    clearInterval(this.heartbeat);
+    this.unsubscribe();
+    for (const ws of this.sockets.keys()) ws.terminate();
+    await new Promise<void>((resolve) => this.wss.close(() => resolve()));
     await new Promise((r) => this.server.close(() => r(undefined)));
   }
 }

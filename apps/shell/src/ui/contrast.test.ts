@@ -17,11 +17,16 @@ function color(sheet: string, name: string): Color {
     return { channels: expanded.match(/.{2}/g)!.map((channel) => parseInt(channel, 16) / 255), alpha: 1 };
   }
   const rgb = value.match(/^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)(%)?\)$/);
-  if (!rgb) throw new Error(`Unsupported color ${value}`);
-  return {
-    channels: rgb.slice(1, 4).map((channel) => Number(channel) / 255),
-    alpha: Number(rgb[4]) / (rgb[5] ? 100 : 1),
-  };
+  if (rgb)
+    return {
+      channels: rgb.slice(1, 4).map((channel) => Number(channel) / 255),
+      alpha: Number(rgb[4]) / (rgb[5] ? 100 : 1),
+    };
+  const neutral = value.match(/^oklch\(([\d.]+)% 0 0(?: \/ ([\d.]+))?\)$/);
+  if (!neutral) throw new Error(`Unsupported color ${value}`);
+  const linear = (Number(neutral[1]) / 100) ** 3;
+  const channel = linear <= 0.0031308 ? 12.92 * linear : 1.055 * linear ** (1 / 2.4) - 0.055;
+  return { channels: [channel, channel, channel], alpha: Number(neutral[2] ?? 1) };
 }
 
 function ratio(ink: Color, material: Color, underlay: number) {

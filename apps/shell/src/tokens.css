@@ -71,7 +71,7 @@
     --fs-2xl: calc(var(--ui-font-size) + 9px);
     --fs-3xl: calc(var(--ui-font-size) + 15px);
     --fs-page-title: calc(var(--ui-font-size) + 10px);
-    --fs-dialog-title: calc(var(--ui-font-size) + 6px);
+    --fs-dialog-title: calc(var(--ui-font-size) + 4px);
 
     --lh-tight: 1.25;
     --lh-normal: 1.5;
@@ -160,12 +160,13 @@
     --control-h: 28px;
     --control-h-lg: 32px;
     /* Shared Settings control fill follows the current foreground in both themes. */
-    --settings-nav-width: 216px;
-    --settings-content-width: 636px;
+    --settings-nav-width: clamp(144px, 30vw, 208px);
+    --settings-content-width: 672px;
     --settings-content-top: 64px;
     --settings-outline-step: 10px;
     --menu-radius: var(--r-xl);
-    --menu-item-radius: var(--r-control);
+    --popover-radius: var(--r-2xl);
+    --menu-item-radius: var(--r-lg);
     --menu-padding: var(--space-1-5);
     --model-menu-width: 192px;
     --model-submenu-width: 208px;
@@ -205,8 +206,7 @@
     --blur-24: 24px;
     --blur-64: 64px;
     --blur-glass-floating: 4px;
-    --blur-popup: var(--blur-16);
-    --popup-saturation: 125%;
+    --blur-popup: var(--blur-8);
     --composer-rail-min-height: 84px;
     --composer-context-width: 180px;
     --composer-context-height: 44px;
@@ -319,17 +319,19 @@
     --stage-bg: var(--bg-0);
     --stage-frame: var(--frame-inactive);
 
-    --ink-0: rgb(255 255 255 / 85%);
-    --ink-1: rgb(255 255 255 / 75%);
-    --ink-2: rgb(255 255 255 / 55%);
-    --ink-3: rgb(255 255 255 / 25%);
-    --ink-4: rgb(255 255 255 / 20%);
-    --ink-5: rgb(255 255 255 / 5%);
+    --foreground: oklch(98.5% 0 0);
+    --ink-0: oklch(98.5% 0 0 / 0.85);
+    --ink-1: oklch(98.5% 0 0 / 0.75);
+    --ink-secondary: oklch(98.5% 0 0 / 0.55);
+    --ink-2: oklch(98.5% 0 0 / 0.55);
+    --ink-3: oklch(98.5% 0 0 / 0.25);
+    --ink-4: oklch(98.5% 0 0 / 0.2);
+    --ink-5: oklch(98.5% 0 0 / 0.05);
     --ink-disabled: rgb(255 255 255 / 45%);
     --ink-active-hint: rgb(255 255 255 / 50%);
     --ink-inverse: rgb(0 0 0 / 95%);
-    --line: rgb(255 255 255 / 10%);
-    --line-strong: rgb(255 255 255 / 15%);
+    --line: oklch(98.5% 0 0 / 0.1);
+    --line-strong: oklch(98.5% 0 0 / 0.15);
     --border-surface: var(--line-strong);
     --line-inset: inset 0 0 0 var(--hairline) var(--line);
     --glass-border-ring: var(--line-inset);
@@ -376,9 +378,12 @@
     --agent-soft: var(--bg-3);
     --agent-line: var(--line-strong);
 
-    --surface-primary: rgb(255 255 255 / 8%);
-    --surface-secondary: rgb(255 255 255 / 6%);
-    --surface-tertiary: rgb(255 255 255 / 4%);
+    --surface-primary: oklch(98.5% 0 0 / 0.08);
+    --surface-secondary: oklch(98.5% 0 0 / 0.06);
+    --surface-tertiary: oklch(98.5% 0 0 / 0.04);
+    --surface-primary-foreground: oklch(98.5% 0 0 / 0.85);
+    --surface-secondary-foreground: oklch(98.5% 0 0 / 0.55);
+    --surface-tertiary-foreground: oklch(98.5% 0 0 / 0.25);
     --card-tile-hi: rgb(255 255 255 / 10%);
     --card-tile-lo: rgb(255 255 255 / 50%);
     --card-tile-ink: #fff;
@@ -389,16 +394,21 @@
     --surface-panel: var(--bg-1);
     --surface-card: var(--surface-primary);
     --surface-sidebar: var(--sb-bg);
-    --surface-popover: var(--bg-2);
+    --surface-popover: var(--surface-menu);
     --surface-menu: #262626;
     --popup-tint: rgb(38 38 38 / 80%);
-    --popup-ink-secondary: rgb(255 255 255 / 68%);
+    --popup-ink-secondary: oklch(98.5% 0 0 / 0.55);
+    /* Readable text needs more opacity over the full permitted glass underlay. */
+    --popup-ink-readable: oklch(98.5% 0 0 / 0.68);
     --popup-ring: rgb(0 0 0 / 80%);
     --popup-inner-ring: rgb(255 255 255 / 10%);
     --popup-shadow-tint: rgb(0 0 0 / 10%);
     --popup-shadow:
       inset 0 0 0 1px var(--popup-inner-ring), 0 0 0 var(--hairline) var(--popup-ring),
       0 10px 15px -3px var(--popup-shadow-tint), 0 4px 6px -4px var(--popup-shadow-tint);
+    --popup-shadow-xl:
+      inset 0 0 0 1px var(--popup-inner-ring), 0 0 0 var(--hairline) var(--popup-ring),
+      0 20px 25px -5px var(--popup-shadow-tint), 0 8px 10px -6px var(--popup-shadow-tint);
     --surface-input: var(--surface-primary);
     --border: var(--line);
     --panel: var(--surface-panel);
@@ -412,6 +422,9 @@
     --shadow-card:
       0 0 0 var(--hairline) var(--border-surface), 0 4px 6px -1px var(--shadow-tint),
       0 2px 4px -2px var(--shadow-tint);
+    --shadow-lg:
+      0 0 0 var(--hairline) var(--border-surface), 0 10px 15px -3px var(--shadow-tint),
+      0 4px 6px -4px var(--shadow-tint);
     --shadow-pop:
       0 0 0 var(--hairline) var(--border-surface), 0 20px 25px -5px var(--shadow-tint),
       0 8px 10px -6px var(--shadow-tint);
@@ -459,8 +472,9 @@
     --bg-2: #fff;
     --surface-menu: #fff;
     --popup-tint: rgb(255 255 255 / 80%);
-    --popup-ink-secondary: rgb(0 0 0 / 68%);
-    --popup-ring: rgb(0 0 0 / 19%);
+    --popup-ink-secondary: oklch(14.5% 0 0 / 0.55);
+    --popup-ink-readable: oklch(14.5% 0 0 / 0.68);
+    --popup-ring: oklch(14.5% 0 0 / 0.2);
     --popup-inner-ring: rgb(255 255 255 / 80%);
     --bg-3: #f3f4f6;
     --bg-hover: rgb(0 0 0 / 10%);
@@ -475,17 +489,20 @@
     --glass: rgb(255 255 255 / 94%);
     --glass-strong: rgb(255 255 255 / 95%);
     --scrim: rgb(0 0 0 / 18%);
-    --ink-0: rgb(0 0 0 / 95%);
-    --ink-1: rgb(0 0 0 / 75%);
-    --ink-2: rgb(0 0 0 / 55%);
-    --ink-3: rgb(0 0 0 / 25%);
-    --ink-4: rgb(0 0 0 / 20%);
-    --ink-5: rgb(0 0 0 / 5%);
+    --foreground: oklch(14.5% 0 0);
+    --ink-0: oklch(14.5% 0 0 / 0.95);
+    --ink-1: oklch(14.5% 0 0 / 0.75);
+    --ink-secondary: oklch(14.5% 0 0 / 0.55);
+    /* The neutral reference ink needs this body-text lift to retain 4.5:1. */
+    --ink-2: oklch(14.5% 0 0 / 0.58);
+    --ink-3: oklch(14.5% 0 0 / 0.25);
+    --ink-4: oklch(14.5% 0 0 / 0.2);
+    --ink-5: oklch(14.5% 0 0 / 0.05);
     --ink-disabled: rgb(0 0 0 / 45%);
     --ink-active-hint: rgb(0 0 0 / 50%);
     --ink-inverse: rgb(255 255 255 / 95%);
-    --line: rgb(0 0 0 / 10%);
-    --line-strong: rgb(0 0 0 / 15%);
+    --line: oklch(14.5% 0 0 / 0.1);
+    --line-strong: oklch(14.5% 0 0 / 0.15);
     --brand: #0ea5e9;
     --button-primary: oklch(14.5% 0 0 / 95%);
     --button-primary-ink: oklch(98.5% 0 0 / 95%);
@@ -508,6 +525,9 @@
     --surface-primary: #fff;
     --surface-secondary: rgb(255 255 255 / 85%);
     --surface-tertiary: rgb(255 255 255 / 55%);
+    --surface-primary-foreground: oklch(14.5% 0 0 / 0.85);
+    --surface-secondary-foreground: oklch(14.5% 0 0 / 0.55);
+    --surface-tertiary-foreground: oklch(14.5% 0 0 / 0.25);
     --card-tile-hi: rgb(0 0 0 / 6%);
     --card-tile-lo: rgb(0 0 0 / 12%);
     --card-tile-ink: var(--ink-0);

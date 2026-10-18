@@ -64,7 +64,7 @@ for (const [theme, sheet] of [
   const strong = tokenColor(sheet, "glass-strong");
   const floating = tokenColor(sheet, "floating-sidebar-surface");
   const popup = tokenColor(sheet, "popup-tint");
-  const popupInk = tokenColor(sheet, "popup-ink-secondary");
+  const popupInk = tokenColor(sheet, "popup-ink-readable");
   for (const [surface, material, foreground] of [
     ["glass", glass, ink],
     ["strong glass", strong, ink],

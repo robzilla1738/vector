@@ -62,9 +62,9 @@
   }
   .home-ask .conversation-message-field > textarea {
     min-height: 32px;
-    padding: 6px 8px;
+    padding: 4px 8px;
     font-size: var(--fs-lg);
-    line-height: 20px;
+    line-height: 24px;
     font-weight: var(--fw-medium);
   }
   .home-ask .conversation-message-field > .composer-send-actions {

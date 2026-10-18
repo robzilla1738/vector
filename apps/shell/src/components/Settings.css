@@ -374,14 +374,14 @@
     background: var(--surface-secondary);
     color: var(--ink-2);
   }
-  .settings-search-box > svg {
-    width: 14px;
-    height: 14px;
+  .settings-search-box > :is(svg, .ci) {
+    width: 16px;
+    height: 16px;
     flex: none;
   }
   .settings-search-box input {
     min-width: 0;
-    height: 32px;
+    height: 30px;
     padding: 0;
     margin: 0;
     background: none;
@@ -416,18 +416,43 @@
   .settings-content .field :is(input:not([type="checkbox"]):not([type="range"]), select) {
     border-radius: var(--r-lg);
   }
-  .settings-search-results > div {
-    display: grid;
-    gap: var(--space-2);
+  .settings-search-popup {
+    position: fixed;
+    width: 224px;
+    max-width: calc(100vw - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: var(--z-modal);
+  }
+  .settings-search-results {
+    padding: var(--space-1);
+    border-radius: var(--r-xl);
+    --solid-popover-shadow: var(--shadow-pop);
+  }
+  .settings-search-results > p {
+    padding: var(--space-2);
+    margin: 0;
   }
   .settings-search-result {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 40px;
     border: 0;
-    padding: var(--space-4);
-    border-radius: var(--r-xl);
-    background: var(--surface-secondary);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--r-lg);
+    background: transparent;
+    text-align: left;
+    font-size: var(--fs-sm);
+    line-height: 16px;
+  }
+  .settings-search-result strong {
+    font-weight: var(--fw-medium);
   }
   .settings-search-result:hover {
-    background: var(--surface-primary);
+    background: var(--bg-hover);
   }
   .settings-search-result:focus-visible {
     outline: 2px solid var(--focus-line);
@@ -468,7 +493,8 @@
   }
   .settings-search-result .settings-search-category {
     color: var(--ink-2);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
+    line-height: 16px;
   }
   @keyframes settings-search-highlight {
     0%,

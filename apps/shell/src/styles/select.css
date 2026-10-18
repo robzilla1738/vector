@@ -4,7 +4,7 @@
   select:where(:not([multiple]):not([size])) {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-1-5);
     min-width: 0;
     max-width: 100%;
     min-height: var(--control-h-lg);
@@ -16,7 +16,8 @@
     color: var(--ink-0);
     box-shadow: none;
     font: inherit;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
     line-height: 20px;
     cursor: default;
   }
@@ -35,31 +36,31 @@
     overscroll-behavior: contain;
     padding: var(--menu-padding);
     margin-block: var(--space-1);
-    border-radius: var(--menu-radius);
+    border-radius: var(--popover-radius);
     corner-shape: superellipse(var(--squircle-factor));
     color: var(--ink-0);
     font: inherit;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
   }
   select:not([multiple]):not([size])::picker-icon {
     content: "";
     flex: none;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     margin-inline-start: auto;
     background: var(--ink-2);
-    /* Central Icons ChevronDown, matching the shared composer/menu icon. */
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 10L11.2929 13.2929C11.6834 13.6834 12.3166 13.6834 12.7071 13.2929L16 10' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17.2929 8.79289C17.6834 8.40237 18.3164 8.40237 18.707 8.79289C19.0975 9.18342 19.0975 9.81643 18.707 10.207L12.707 16.207C12.3164 16.5975 11.6834 16.5975 11.2929 16.207L5.29289 10.207C4.90237 9.81643 4.90237 9.18342 5.29289 8.79289C5.68342 8.40237 6.31643 8.40237 6.70696 8.79289L11.9999 14.0859L17.2929 8.79289Z'/%3E%3C/svg%3E")
       center / contain no-repeat;
   }
   select:not([multiple]):not([size]) option {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-1-5);
     min-height: var(--control-h-lg);
-    padding: var(--space-1-5) var(--space-2-5);
+    padding: var(--space-1-5) 40px var(--space-1-5) var(--space-2);
     border: 0;
-    border-radius: var(--menu-item-radius);
+    border-radius: var(--r-xl);
     outline: none;
     box-shadow: none;
     background: transparent;
@@ -71,8 +72,10 @@
   select:not([multiple]):not([size]) option::checkmark {
     content: "✓";
     font-size: var(--fs-xs);
-    order: 1;
-    margin-inline-start: auto;
+    position: absolute;
+    inset-inline-end: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--ink-1);
   }
   select:not([multiple]):not([size]) optgroup {

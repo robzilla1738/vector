@@ -28,7 +28,6 @@ import {
   type SettingsRoute,
 } from "../settings/routes";
 import { availableForFocus, ownsFocus } from "../ui/focus";
-import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
 import { featureAvailable } from "../feature-availability";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
@@ -64,7 +63,9 @@ const UsageBudgetsSettings = lazySection(
 const RoutinesSettings = lazySection(
   async () => (await import("../settings/sections/Routines")).RoutinesSettings,
 );
-const ChannelsSettings = lazySection(async () => (await import("../settings/sections/Channels")).ChannelsSettings);
+const ChannelsSettings = lazySection(
+  async () => (await import("../settings/sections/Channels")).ChannelsSettings,
+);
 const WorkspacesSettings = lazySection(
   async () => (await import("../settings/sections/Workspaces")).WorkspacesSettings,
 );
@@ -240,8 +241,8 @@ export function Settings() {
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
   useEffect(() => {
-    useStore.setState({ settingsPageTitle: searching ? "Search settings" : (subview ?? sectionTitle) });
-  }, [sectionTitle, subview, searching]);
+    useStore.setState({ settingsPageTitle: subview ?? sectionTitle });
+  }, [sectionTitle, subview]);
   const results = searchSettings(query, indexedFields).filter(
     (result) =>
       (!result.feature || featureAvailable(result.feature as import("@aux/contracts").AuxFeature)) &&
@@ -259,8 +260,7 @@ export function Settings() {
       (extensionsAvailable || result.category !== "Extensions"),
   );
   const visible = (name: string) =>
-    !searching &&
-    (connectionCategories.includes(name)
+    connectionCategories.includes(name)
       ? category === "Connections" &&
         connectionTab ===
           (name === "Models"
@@ -270,7 +270,7 @@ export function Settings() {
               : name === "Vault"
                 ? "Vault"
                 : "Services")
-      : category === name && !subview);
+      : category === name && !subview;
   const [destination, setDestination] = useState<SettingsDestination | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -311,7 +311,7 @@ export function Settings() {
 
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [category, query, connectionTab, memoryView, subview]);
+  }, [category, connectionTab, memoryView, subview]);
 
   useLayoutEffect(() => {
     if (refreshVersion) {
@@ -410,204 +410,203 @@ export function Settings() {
             setQuery("");
             if (scrollRef.current) scrollRef.current.scrollTop = 0;
           }}
+          searchResults={
+            searching && (
+              <div
+                className="settings-search-results solid-popover"
+                role="group"
+                aria-label="Settings search results"
+              >
+                {!results.length && <p {...staticHintProps}>No settings found for “{query.trim()}”.</p>}
+                {results.map((result) => (
+                  <button
+                    type="button"
+                    key={`${result.category}:${result.label}`}
+                    ref={result === results[0] ? firstSearchResult : undefined}
+                    className="settings-search-result"
+                    title={result.description}
+                    onClick={() => {
+                      openCategory(
+                        result.category,
+                        result.category === "Connections" &&
+                          ["Plugins", "MCP servers"].includes(result.target ?? "")
+                          ? "Plugins"
+                          : undefined,
+                      );
+                      setQuery("");
+                      setSubview(
+                        result.subview ??
+                          (result.category === "General" &&
+                          ["Keyword engines", "Task data backup"].includes(result.target ?? "")
+                            ? result.target!
+                            : null),
+                      );
+                      setDestination(result);
+                    }}
+                  >
+                    <strong>{result.label}</strong>
+                    <span className="settings-search-category">
+                      {result.category === "Permissions" ? "Agents" : result.category}
+                      {result.target && result.target !== result.label ? ` › ${result.target}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )
+          }
         />
       }
     >
-      <div className="drawer-head">
-        {subview && !searching && (
-          <button
-            {...staticIconButtonProps}
-            aria-label="Back to General settings"
-            onClick={() => {
-              setSubview(null);
-              requestAnimationFrame(() => subviewOrigin.current?.focus());
-            }}
-          >
-            {shellIconBack}
-          </button>
-        )}
-        <div className="settings-heading">
-          <h1>{searching ? "Search settings" : (subview ?? sectionTitle)}</h1>
-          {(searching || subview) && (
-            <p>{searching ? "Find a preference across all categories." : "General settings"}</p>
-          )}
-        </div>
-        <span {...auxClassSpacerProps} />
-        {saved && <output className="saved">{shellIconCheck} Saved</output>}
-        <button
-          {...staticIconButtonProps}
-          title="Close (Esc)"
-          aria-label="Close settings"
-          onClick={() => setOverlay(null)}
-        >
-          {shellIconClose}
-        </button>
-      </div>
-
       <div
         role="group"
         className="settings-scroll"
         ref={scrollRef}
         tabIndex={0}
-        aria-label={searching ? "Settings search results" : `${sectionTitle} settings`}
+        aria-label={`${sectionTitle} settings`}
       >
-        {searching && (
-          <div className="settings-search-results">
-            <output {...staticHintProps} data-block>
-              {results.length
-                ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}`
-                : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}
-            </output>
-            <div onKeyDown={(event) => moveListFocus(event, "button")}>
-              {results.map((result) => (
-                <button
-                  key={`${result.category}:${result.label}`}
-                  ref={result === results[0] ? firstSearchResult : undefined}
-                  className="settings-search-result"
-                  onClick={() => {
-                    openCategory(
-                      result.category,
-                      result.category === "Connections" &&
-                        ["Plugins", "MCP servers"].includes(result.target ?? "")
-                        ? "Plugins"
-                        : undefined,
-                    );
-                    setQuery("");
-                    setSubview(
-                      result.subview ??
-                        (result.category === "General" &&
-                        ["Keyword engines", "Task data backup"].includes(result.target ?? "")
-                          ? result.target!
-                          : null),
-                    );
-                    setDestination(result);
-                  }}
-                >
-                  <span className="settings-search-category">
-                    {connectionCategories.includes(result.category)
-                      ? `Connections · ${result.category === "Connections" ? (servicesAvailable ? "Services" : "Models") : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}`
-                      : result.category === "Permissions"
-                        ? "Agents"
-                        : result.category}
-                  </span>
-                  <strong>{result.label}</strong>
-                  <span>{result.description}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {memoryAvailable && (
-          <section tabIndex={-1} hidden={!visible("Memory")}>
-            <MemorySettings active={visible("Memory")} view={memoryView} />
-          </section>
-        )}
-        {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
-        <ModelsOverview
-          active={visible("Models")}
-          settings={settings}
-          onSave={set}
-          destination={destination?.category === "Models" ? destination : null}
-          onDestinationHandled={() => setDestination(null)}
-        />
-        <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
-        {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
-        <ChannelsSettings active={visible("Channels")} />
-        <GeneralSettings
-          active={category === "General"}
-          searching={searching}
-          subview={subview}
-          settings={settings}
-          onSave={set}
-          onOpenEditor={openEditor}
-          editorViews={editorViews}
-          refreshVersion={refreshVersion}
-          onIndexChange={setGeneralIndexVersion}
-        />
-        <FeatureSettings
-          category={
-            !searching && !subview && (category !== "Connections" || connectionTab === "Services")
-              ? category
-              : null
-          }
-        />
-        <WorkspacesSettings active={visible("Projects")} />
-        <QuickAskSettings active={visible("Quick Ask")} settings={settings} onSave={set} />
-        <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
-        <ArchivedChatsSettings active={visible("Archived chats")} />
-        {servicesAvailable && (
-          <section
-            id="connection-panel-Services"
-            aria-label="Connected services"
-            hidden={!visible("Connections")}
-          >
-            {connectorsAvailable && (
-              <>
-                <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
-                <div
-                  id="connection-calendar"
-                  data-setting="Google Calendar"
-                  ref={(node) => {
-                    if (node) connectorSections.current.set("calendar", node);
-                    else connectorSections.current.delete("calendar");
-                  }}
-                  tabIndex={-1}
-                >
-                  <CalendarConnections active={visible("Connections")} />
-                </div>
-              </>
+        <div className="settings-main">
+          <div className="drawer-head">
+            {subview && (
+              <button
+                {...staticIconButtonProps}
+                aria-label="Back to General settings"
+                onClick={() => {
+                  setSubview(null);
+                  requestAnimationFrame(() => subviewOrigin.current?.focus());
+                }}
+              >
+                {shellIconBack}
+              </button>
             )}
-          </section>
-        )}
-        {vaultAvailable && (
-          <section tabIndex={-1} id="connection-panel-Vault" aria-label="Vault" hidden={!visible("Vault")}>
-            <VaultSettings active={visible("Vault")} />
-          </section>
-        )}
-        <section
-          tabIndex={-1}
-          id="connection-panel-Agents"
-          aria-label="Developers and external agents"
-          hidden={!visible("External agents")}
-        >
-          <ExternalAgents active={visible("External agents")} />
-          {visible("External agents") && <CloudExecution />}
-        </section>
-        {pluginsAvailable && (
+            <div className="settings-heading">
+              <h1>{subview ?? sectionTitle}</h1>
+              {subview && <p>General settings</p>}
+            </div>
+            <span {...auxClassSpacerProps} />
+            {saved && <output className="saved">{shellIconCheck} Saved</output>}
+            <button
+              {...staticIconButtonProps}
+              title="Close (Esc)"
+              aria-label="Close settings"
+              onClick={() => setOverlay(null)}
+            >
+              {shellIconClose}
+            </button>
+          </div>
+
+          {memoryAvailable && (
+            <section tabIndex={-1} hidden={!visible("Memory")}>
+              <MemorySettings active={visible("Memory")} view={memoryView} />
+            </section>
+          )}
+          {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
+          <ModelsOverview
+            active={visible("Models")}
+            settings={settings}
+            onSave={set}
+            destination={destination?.category === "Models" ? destination : null}
+            onDestinationHandled={() => setDestination(null)}
+          />
+          <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
+          {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
+          <ChannelsSettings active={visible("Channels")} />
+          <GeneralSettings
+            active={category === "General"}
+            searching={false}
+            subview={subview}
+            settings={settings}
+            onSave={set}
+            onOpenEditor={openEditor}
+            editorViews={editorViews}
+            refreshVersion={refreshVersion}
+            onIndexChange={setGeneralIndexVersion}
+          />
+          <FeatureSettings
+            category={
+              !subview && (category !== "Connections" || connectionTab === "Services") ? category : null
+            }
+          />
+          <WorkspacesSettings active={visible("Projects")} />
+          <QuickAskSettings active={visible("Quick Ask")} settings={settings} onSave={set} />
+          <SelectionCaptureSettings
+            active={visible("Selection & Capture")}
+            settings={settings}
+            onSave={set}
+          />
+          <ArchivedChatsSettings active={visible("Archived chats")} />
+          {servicesAvailable && (
+            <section
+              id="connection-panel-Services"
+              aria-label="Connected services"
+              hidden={!visible("Connections")}
+            >
+              {connectorsAvailable && (
+                <>
+                  <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
+                  <div
+                    id="connection-calendar"
+                    data-setting="Google Calendar"
+                    ref={(node) => {
+                      if (node) connectorSections.current.set("calendar", node);
+                      else connectorSections.current.delete("calendar");
+                    }}
+                    tabIndex={-1}
+                  >
+                    <CalendarConnections active={visible("Connections")} />
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+          {vaultAvailable && (
+            <section tabIndex={-1} id="connection-panel-Vault" aria-label="Vault" hidden={!visible("Vault")}>
+              <VaultSettings active={visible("Vault")} />
+            </section>
+          )}
           <section
             tabIndex={-1}
-            id="connection-panel-Plugins"
-            aria-label="Skills and MCP"
-            hidden={searching || category !== "Connections" || connectionTab !== "Plugins"}
+            id="connection-panel-Agents"
+            aria-label="Developers and external agents"
+            hidden={!visible("External agents")}
           >
-            <div data-setting="Plugins" tabIndex={-1}>
-              <PluginsPanel
-                destination={destination?.category === "Connections" ? destination.target : undefined}
-                active={!searching && category === "Connections" && connectionTab === "Plugins"}
-              />
-            </div>
+            <ExternalAgents active={visible("External agents")} />
+            {visible("External agents") && <CloudExecution />}
           </section>
-        )}
-        {extensionsAvailable && (
-          <section tabIndex={-1} hidden={!visible("Extensions")}>
-            <Extensions active={visible("Extensions")} />
-          </section>
-        )}
+          {pluginsAvailable && (
+            <section
+              tabIndex={-1}
+              id="connection-panel-Plugins"
+              aria-label="Skills and MCP"
+              hidden={category !== "Connections" || connectionTab !== "Plugins"}
+            >
+              <div data-setting="Plugins" tabIndex={-1}>
+                <PluginsPanel
+                  destination={destination?.category === "Connections" ? destination.target : undefined}
+                  active={category === "Connections" && connectionTab === "Plugins"}
+                />
+              </div>
+            </section>
+          )}
+          {extensionsAvailable && (
+            <section tabIndex={-1} hidden={!visible("Extensions")}>
+              <Extensions active={visible("Extensions")} />
+            </section>
+          )}
 
-        <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
-        <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
-        {profilesAvailable && (
-          <section hidden={!visible("Profiles")}>
-            <ProfilesSettings active={visible("Profiles")} />
-          </section>
-        )}
-        <PermissionsSettings active={visible("Permissions")} settings={settings} onSave={set} />
-        <PasswordsAutofillSettings
-          active={visible("Passwords & Autofill")}
-          settings={settings}
-          onSave={set}
-        />
+          <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
+          <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
+          {profilesAvailable && (
+            <section hidden={!visible("Profiles")}>
+              <ProfilesSettings active={visible("Profiles")} />
+            </section>
+          )}
+          <PermissionsSettings active={visible("Permissions")} settings={settings} onSave={set} />
+          <PasswordsAutofillSettings
+            active={visible("Passwords & Autofill")}
+            settings={settings}
+            onSave={set}
+          />
+        </div>
       </div>
     </SettingsShell>
   );

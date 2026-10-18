@@ -1,5 +1,66 @@
 # Aux competitive execution graph
 
+## October 17 complete Aside adoption — executing
+
+The owner approved and requested execution of [the adoption specification](design/aside-adoption.md).
+Starting source is clean local main `ce4b6a69c`. Existing R1–R6/RF acceptance
+requirements below remain open; this program adds outcomes rather than retiring
+their unfinished gates. Initial native owner 19445/app 19611 and disposable Profile `aux-dev-BWXBny`
+retired normally. The next native candidate must use the matching 155 checkout
+and the existing launcher; never clear an active lock.
+
+```mermaid
+flowchart LR
+  A1[Truthful measurements and startup graph] --> A9[Integrated daily-use acceptance]
+  A2[Shared UI roles and icons] --> A3[Complete surface parity]
+  A3 --> A9
+  A4[Compaction queues and bounded streaming] --> A9
+  A5[Memory documents Dream and retrieval] --> A6[Opt-in selected-app context]
+  A5 --> A9
+  A6 --> A9
+  A7[Channels routines PDFs and images] --> A9
+  A8[Supported app connections and search] --> A9
+  R1 -. native acceptance .-> A9
+  R2 -. native acceptance .-> A9
+  R3 -. browser acceptance .-> A9
+```
+
+Solid edges are implementation/integration prerequisites. Dashed edges preserve
+the earlier acceptance gates. A3 uses A2's shared UI vocabulary. A6 uses A5's
+source identity, encrypted retention and retrieval. A4/A7/A8 can be implemented
+independently against coordinated contracts; their native acceptance uses the
+single build/launch owner. No completion percentage or unmeasured timing is implied.
+
+| Outcome | State                          | Implementation and acceptance                                                                                                                                                                                                |
+| ------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1      | active                         | Correct boot-root/preload bytes and positive/zero/unknown cache usage; remove broad startup schemas; bounded idle prefetch. Verify fixtures and actual production bytes before claiming improvement.                         |
+| A2      | active                         | Reference semantic tokens, 8px popup glass, distinct solid dialog/tooltip/search roles, exact controls, drag switches and utility glyphs. Focused interaction checks plus native appearance remain separate.                 |
+| A3      | active                         | Home, single-scroll Settings, narrow model submenus, shared chat cards, Memory tree, chrome, libraries and every captured surface/state. Current native comparison is required.                                              |
+| A4      | ready                          | Durable revision-bound compaction/context UI, queue reorder and bounded streams/native asynchronous dispatch. Preserve unresolved effects, cancellation and exact owners.                                                    |
+| A5      | ready                          | Authoritative site/routine documents, heading-aware multi-query retrieval, Dream/diffs/revert, retention/Forget/recovery. Owner documents receive proposals rather than automatic rewrites.                                  |
+| A6      | waiting on A5                  | Separate off-by-default macOS selected-app visible-text/selection capture; local OCR separately enabled; no raw-key recording; explicit permissions, pause, 14-day retention and Forget.                                     |
+| A7      | ready                          | Channel commands/attachments/voice, semantic routine suggestions, seven isolated PDF jobs, reference-image generation and masked capture fallback. Real artifacts/receipts and partial failures required.                    |
+| A8      | ready                          | Shared account primitives, Google REST, Notion/eligible Slack MCP, X REST, governed LinkedIn/browser paths and structured Gateway/image search. Registrations and actual granted capabilities remain explicit prerequisites. |
+| A9      | waiting on integrated outcomes | Current 155 crash/browser acceptance, all reference surfaces in matched themes/widths/states, matching-stock perf and default-route 20-task smoke at least18/20. No source-only completion.                                  |
+
+### Current reservations and integration
+
+One integrator owns docs, coordinated contracts/main wiring, migrations, native
+source/patches, builder/launcher and local commits. Initial source workers own:
+
+- A1: budget scripts/tests, cache accounting and narrow run-start/download schema extraction.
+- A2: tokens and shared primitive styles/behavior, popup class ownership.
+- A3: Settings/Home/cards, Memory tree and nested model menus.
+- Integrator: utility glyphs, execution record and native ownership inspection.
+
+Workers must not edit another reserved surface or start native builds. Focused
+checks precede handoff; one integrated `npm run check` runs per coherent slice.
+Runtime edits rebuild dist before tests. After integration, dispatch the next
+ready outcome with exact ownership. Commit only reviewed slice files on local
+main. Run phase perf and the required manual smoke without repeating unchanged
+successful checks. Account setup and unavailable native control do not justify
+invented evidence or lowering the acceptance targets.
+
 ## October 17 readiness execution — active
 
 The owner authorized completing the readiness audit's six substantial batches,
@@ -35,15 +96,15 @@ flowchart LR
   R3 --> RF
 ```
 
-| Batch | State | Outcome and acceptance |
-| --- | --- | --- |
-| R1 | active | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations. |
-| R2 | active | Official155.0.8059.85 with59areas compiled and launched, then trapped. Latest main is compiled at a22cc01b2; fresh startup and debugger-target retirement pass. The owner-requested consolidation places the 155 pin and native fixes on local main. Diagnose the earlier SIGTRAP and accept native changed flows before claiming migration readiness. Preserve stable product/stock checkouts. |
-| R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
-| R4 | active | Shared tool schemas halve the known SDK payload bytes; actual provider token/cache/latency and valid paired native startup/interaction/memory measurements against matching stock remain. |
-| R5 | active | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Accept live channel transport/pairing/reply/native flows; implement personal-assistant capabilities; supported subscription setup; Memory root/automatic document authority, real-note extraction and file-diff/Dream flows (approved-note restore review is integrated); routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
-| R6 | active | Compact Quick Ask/download popup source is integrated. Complete native compilation, matched light/dark, normal/narrow and populated/error/focus comparisons across browser chrome, Settings, chat and libraries using the current corpus. |
-| RF | waiting on integrated batches | All scoped implementation and native acceptance complete, current evidence recorded, no unresolved daily-use blocker. Distribution, signing/notarization, sync and other platforms remain separate scope. |
+| Batch | State                         | Outcome and acceptance                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1    | active                        | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations.                                                                                                                                       |
+| R2    | active                        | Official155.0.8059.85 with59areas compiled and launched, then trapped. Latest main is compiled at a22cc01b2; fresh startup and debugger-target retirement pass. The owner-requested consolidation places the 155 pin and native fixes on local main. Diagnose the earlier SIGTRAP and accept native changed flows before claiming migration readiness. Preserve stable product/stock checkouts.                                                                                                                        |
+| R3    | waiting on R1/R2              | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations.                                                                                                                                                                                                                                                               |
+| R4    | active                        | Shared tool schemas halve the known SDK payload bytes; actual provider token/cache/latency and valid paired native startup/interaction/memory measurements against matching stock remain.                                                                                                                                                                                                                                                                                                                              |
+| R5    | active                        | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Accept live channel transport/pairing/reply/native flows; implement personal-assistant capabilities; supported subscription setup; Memory root/automatic document authority, real-note extraction and file-diff/Dream flows (approved-note restore review is integrated); routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
+| R6    | active                        | Compact Quick Ask/download popup source is integrated. Complete native compilation, matched light/dark, normal/narrow and populated/error/focus comparisons across browser chrome, Settings, chat and libraries using the current corpus.                                                                                                                                                                                                                                                                              |
+| RF    | waiting on integrated batches | All scoped implementation and native acceptance complete, current evidence recorded, no unresolved daily-use blocker. Distribution, signing/notarization, sync and other platforms remain separate scope.                                                                                                                                                                                                                                                                                                              |
 
 One executor owns source integration, the native tree, builder and launcher/plain
 lock. Retire the current preview through its original launcher before replacing

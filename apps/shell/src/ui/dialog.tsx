@@ -63,7 +63,7 @@ export function Dialog({
       ref={ref}
       tabIndex={-1}
       role={kind}
-      className={`aux-native-dialog popup-material${placement === "stage" ? " aux-stage-dialog" : ""} ${className}`}
+      className={`aux-native-dialog ${placement === "stage" ? "solid-popover aux-stage-dialog" : "popup-material"} ${className}`}
       aria-label={label}
       aria-modal="true"
       aria-describedby={descriptionId}

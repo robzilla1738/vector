@@ -104,7 +104,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
           <span
             ref={bubble}
             id={id}
-            className="ui-tooltip popup-material"
+            className="ui-tooltip solid-popover"
             role="tooltip"
             onPointerEnter={enter}
             onPointerLeave={leave}

@@ -1,3 +1,5 @@
+import { PageContextRefSchema } from "./page-context.js";
+export { PageContextRefSchema, type PageContextRef } from "./page-context.js";
 import { DocumentAdmissionsSchema } from "./document-citation.js";
 import { CapturedSourceSchema } from "./captured-source.js";
 import { z } from "zod";
@@ -78,18 +80,6 @@ export const PageTargetSchema = z.object({
   routeReason: z.string().optional(),
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
-
-/** A user-selected live page at the moment it was attached to a conversation. */
-export const PageContextRefSchema = z
-  .object({
-    pageId: z.string().min(1).max(200),
-    url: z.string().min(1).max(8192),
-    documentEpoch: z.number().int().nonnegative(),
-    sessionId: z.string().max(200).optional(),
-    selectedAt: z.number().int().nonnegative().optional(),
-  })
-  .strict();
-export type PageContextRef = z.infer<typeof PageContextRefSchema>;
 
 /** Metadata captured for one completed page response. Response bodies stay in the artifact store. */
 export const ResponseRecordSchema = z.object({

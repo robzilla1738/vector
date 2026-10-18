@@ -108,8 +108,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("uses the Aside alpha palette and translucent window material", () => {
     const dark = block("dark");
     expect(dark).toMatch(/--bg-window:\s*#17171780/);
-    expect(dark).toMatch(/--ink-0:\s*rgb\(255 255 255 \/ 85%\)/);
-    expect(block("light")).toMatch(/--ink-0:\s*rgb\(0 0 0 \/ 95%\)/);
+    expectCss(dark).toContain("--ink-0: oklch(98.5% 0 0 / .85);");
+    expectCss(block("light")).toContain("--ink-0: oklch(14.5% 0 0 / .95);");
     expect(dark).toMatch(/--floating-sidebar-surface:\s*#232323/);
     expect(dark).not.toMatch(/--bg-window:\s*#000000/);
   });
@@ -153,7 +153,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
     expectCss(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
     expectCss(styles).toContain(
-      ":root select:not([multiple]):not([size])::picker(select) { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup)) saturate(var(--popup-saturation));",
+      ":root select:not([multiple]):not([size])::picker(select) { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup));",
     );
     expectCss(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
     expect(styles).toMatch(/\.folder-kids\s*\{[^}]*overflow:\s*hidden/s);
@@ -383,7 +383,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
       ".settings-nav button[data-category] { display: flex; align-items: center; gap: var(--space-2);",
     );
     expectCss(navigation).toContain("height: 32px;");
-    expectCss(navigation).toContain("border-radius: var(--r-control);");
+    expectCss(navigation).toContain("border-radius: var(--r-lg);");
     expectCss(navigation).not.toContain("box-shadow:");
     expectCss(settingsCss).toContain(
       ".settings-content .field.ui-setting:not(.field.ui-setting + .field.ui-setting) { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }",

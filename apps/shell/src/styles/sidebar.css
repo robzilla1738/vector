@@ -576,7 +576,8 @@
     padding: var(--space-1) var(--space-2-5);
     border-radius: var(--r-lg);
     color: var(--ink-0);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    line-height: 20px;
     transition: background var(--t-fast) var(--ease-out);
   }
   .menu-item:not(:disabled):hover,
@@ -586,7 +587,7 @@
   }
   .menu-item:disabled,
   .menu-item[aria-disabled="true"] {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: default;
   }
   .menu-item > kbd {
@@ -625,13 +626,14 @@
   .menu-sep {
     height: var(--hairline);
     background: var(--line);
-    margin: var(--space-1) var(--space-2);
+    margin: var(--space-1) calc(-1 * var(--space-1));
   }
   .menu-label {
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
     color: var(--ink-2);
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2-5);
+    letter-spacing: var(--tracking-wide);
   }
   .scrim-soft {
     position: fixed;

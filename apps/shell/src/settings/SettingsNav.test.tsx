@@ -15,17 +15,14 @@ async function mount(searching = false) {
   document.body.append(host);
   const root = createRoot(host),
     searchInput = createRef<HTMLInputElement>();
-  const result = document.createElement("button");
-  result.textContent = "Search result";
-  document.body.append(result);
   const firstSearchResult = createRef<HTMLButtonElement>();
-  firstSearchResult.current = result;
   const onOpenCategory = vi.fn();
+  const onQueryChange = vi.fn();
   await act(async () =>
     root.render(
       <SettingsNav
         query=""
-        onQueryChange={() => {}}
+        onQueryChange={onQueryChange}
         category="General"
         connectionTab="Models"
         searching={searching}
@@ -44,6 +41,11 @@ async function mount(searching = false) {
         firstSearchResult={firstSearchResult}
         searchInput={searchInput}
         onOpenCategory={onOpenCategory}
+        searchResults={
+          <button className="settings-search-result" ref={firstSearchResult}>
+            Search result
+          </button>
+        }
       />,
     ),
   );
@@ -55,7 +57,17 @@ async function mount(searching = false) {
     await act(async () => target.dispatchEvent(event));
     return event;
   };
-  return { root, rail, buttons, key, input: searchInput.current!, result, onOpenCategory };
+  if (firstSearchResult.current) firstSearchResult.current.scrollIntoView = vi.fn();
+  return {
+    root,
+    rail,
+    buttons,
+    key,
+    input: searchInput.current!,
+    result: firstSearchResult.current!,
+    onOpenCategory,
+    onQueryChange,
+  };
 }
 
 it("follows actual horizontal/vertical rail layout after a resize without activating a category", async () => {
@@ -93,6 +105,12 @@ it("preserves search editing/results focus and modified category chords in eithe
       expect(document.activeElement).toBe(f.input);
       await f.key(f.input, "ArrowDown");
       expect(document.activeElement).toBe(f.result);
+      await f.key(f.result, "ArrowUp");
+      expect(document.activeElement).toBe(f.input);
+      await f.key(f.input, "ArrowDown");
+      await f.key(f.result, "Escape");
+      expect(document.activeElement).toBe(f.input);
+      expect(f.onQueryChange).toHaveBeenLastCalledWith("");
       f.buttons[0]!.focus();
       expect(
         (await f.key(f.buttons[0]!, direction === "row" ? "ArrowRight" : "ArrowDown", { metaKey: true }))

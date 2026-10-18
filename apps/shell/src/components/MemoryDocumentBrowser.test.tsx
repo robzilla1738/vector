@@ -128,6 +128,38 @@ it("groups daily notes and submits changed fragments together while showing orig
     ],
   });
 });
+it("navigates folder parents and children without changing the selected document", async () => {
+  await render();
+  const folder = host.querySelector<HTMLElement>('summary[role="treeitem"]')!;
+  const rootDocument = host.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')!;
+  const daily = host.querySelector<HTMLElement>('[role="treeitem"][aria-level="2"]')!;
+  const key = async (value: string) =>
+    act(async () => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true }),
+      );
+    });
+  await act(async () => rootDocument.focus());
+  await key("Home");
+  expect(document.activeElement).toBe(folder);
+  await key("ArrowRight");
+  expect(document.activeElement).toBe(daily);
+  await key("ArrowLeft");
+  expect(document.activeElement).toBe(folder);
+  await key("ArrowLeft");
+  expect(folder.getAttribute("aria-expanded")).toBe("false");
+  await key("ArrowDown");
+  expect(document.activeElement).toBe(rootDocument);
+  expect(rootDocument.getAttribute("aria-selected")).toBe("true");
+  expect(host.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
+  await key("Home");
+  await key("ArrowRight");
+  expect(folder.getAttribute("aria-expanded")).toBe("true");
+  expect(document.activeElement).toBe(folder);
+  await key("ArrowRight");
+  expect(document.activeElement).toBe(daily);
+  expect(daily.getAttribute("aria-selected")).toBe("false");
+});
 it("preserves conflicting drafts, includes newly added notes on rebase, and purges forgotten fragments", async () => {
   await render();
   await click("2026-10-17.md");

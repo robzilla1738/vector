@@ -1,15 +1,9 @@
 @layer overrides {
-  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) {
-    padding: 0;
-  }
-  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser)
-    > :not(.settings-outline) {
+  .settings-main:has(> section:not([hidden]) .memory-document-browser) {
     max-width: none;
-  }
-  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) .settings-scroll {
     padding: 0;
   }
-  .settings-content:has(.settings-scroll > section:not([hidden]) .memory-document-browser) .drawer-head {
+  .settings-main:has(> section:not([hidden]) .memory-document-browser) .drawer-head {
     display: none;
   }
   .memory-folder-chevron {
@@ -46,20 +40,38 @@
   .memory-document-folder summary {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
+    height: 32px;
+    min-height: 32px;
     text-align: left;
-    padding: 8px 10px;
-    border-radius: var(--r-md);
+    padding: 4px 8px;
+    border-radius: var(--r-lg);
     color: var(--ink-1);
     font-size: var(--fs-md);
-    overflow-wrap: anywhere;
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .memory-document-browser nav button > span:not(.ci) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .memory-document-browser [role="treeitem"]:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: -2px;
+  }
+  .memory-document-browser nav button > .ci {
+    width: 16px;
+    height: 16px;
+    flex: none;
   }
   .memory-document-folder summary {
     cursor: pointer;
   }
   .memory-document-folder button {
-    padding-left: 24px !important;
+    padding-left: 22px;
   }
   .memory-document-folder .hint {
     display: block;

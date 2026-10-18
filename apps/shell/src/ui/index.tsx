@@ -55,7 +55,7 @@ export function Button({
     <button
       {...props}
       type={type}
-      data-control-size={typeof size === "number" ? size : size === "small" ? 24 : 32}
+      data-control-size={typeof size === "number" ? size : size === "small" ? 28 : 32}
       className={`btn${tone === "default" ? "" : ` ${tone}`}${size === "small" ? " sm" : ""} ${className}`.trim()}
     />
   );
@@ -282,10 +282,40 @@ export function SettingsGroup({ title, children }: { title?: string; children: R
 
 export function Switch({
   controlRef,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onLostPointerCapture,
+  onClickCapture,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role"> & {
   controlRef?: (node: HTMLInputElement | null) => void;
 }) {
+  const drag = useRef<{
+    input: HTMLInputElement;
+    pointerId: number;
+    x: number;
+    checked: boolean;
+    center: number;
+    moved: boolean;
+  }>(undefined);
+  const suppressClick = useRef(false);
+  const reset = (input: HTMLInputElement) => {
+    drag.current = undefined;
+    input.removeAttribute("data-dragging");
+    input.style.removeProperty("--switch-thumb-center");
+  };
+  useLayoutEffect(() => {
+    const current = drag.current;
+    if (
+      current &&
+      (props.disabled || props.readOnly || (props.checked !== undefined && props.checked !== current.checked))
+    ) {
+      suppressClick.current = current.moved;
+      reset(current.input);
+    }
+  }, [props.disabled, props.readOnly, props.checked]);
   return (
     <input
       {...props}
@@ -293,6 +323,81 @@ export function Switch({
       {...nativeCheckboxTypeProps}
       role="switch"
       className={`ui-switch ${props.className ?? ""}`}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.isPrimary === false ||
+          props.disabled ||
+          props.readOnly ||
+          drag.current
+        )
+          return;
+        suppressClick.current = false;
+        drag.current = {
+          input: event.currentTarget,
+          pointerId: event.pointerId,
+          x: event.clientX,
+          checked: event.currentTarget.checked,
+          center: event.currentTarget.checked ? 26 : 14,
+          moved: false,
+        };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event);
+        const current = drag.current;
+        if (!current || current.pointerId !== event.pointerId || event.defaultPrevented) return;
+        const delta = event.clientX - current.x;
+        if (!current.moved && Math.abs(delta) <= 3) return;
+        current.moved = true;
+        current.center = Math.max(14, Math.min(26, (current.checked ? 26 : 14) + delta));
+        event.preventDefault();
+        event.currentTarget.setAttribute("data-dragging", "");
+        event.currentTarget.style.setProperty("--switch-thumb-center", `${current.center}px`);
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event);
+        const current = drag.current;
+        if (!current || current.pointerId !== event.pointerId) return;
+        const input = event.currentTarget;
+        reset(input);
+        if (input.hasPointerCapture?.(event.pointerId)) input.releasePointerCapture(event.pointerId);
+        if (!current.moved) return;
+        suppressClick.current = true;
+        const nextChecked = current.center >= 20;
+        if (
+          !event.defaultPrevented &&
+          !input.disabled &&
+          !input.readOnly &&
+          input.checked === current.checked &&
+          input.checked !== nextChecked
+        )
+          input.click();
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event);
+        if (drag.current?.pointerId !== event.pointerId) return;
+        suppressClick.current = drag.current.moved;
+        reset(event.currentTarget);
+      }}
+      onLostPointerCapture={(event) => {
+        onLostPointerCapture?.(event);
+        if (drag.current?.pointerId !== event.pointerId) return;
+        suppressClick.current = drag.current.moved;
+        reset(event.currentTarget);
+      }}
+      onClickCapture={(event) => {
+        // A drag commits through the checkbox's native click; consume its trailing pointer click.
+        if (suppressClick.current && event.detail > 0) {
+          suppressClick.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClickCapture?.(event);
+      }}
     />
   );
 }

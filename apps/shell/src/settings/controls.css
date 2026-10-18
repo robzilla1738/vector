@@ -6,11 +6,13 @@
     height: auto;
     max-width: 100%;
     padding: var(--space-1-5) var(--space-2-5);
+    gap: var(--space-1-5);
     border: var(--hairline) solid transparent;
     border-radius: var(--r-lg);
     box-shadow: none;
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-regular);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
     white-space: normal;
     overflow-wrap: anywhere;
   }
@@ -28,7 +30,8 @@
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
     box-shadow: none;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
   }
   :is(.settings-content, .aux-native-dialog)
     textarea:not(:where([data-input-surface], .ui-search-field, .ui-input-group) > *) {
@@ -36,7 +39,8 @@
     border-radius: var(--r-lg);
     padding: var(--space-3);
     box-shadow: none;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
   }
   :is(.settings-content, .aux-native-dialog)
     :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea):not(
@@ -56,7 +60,8 @@
     border-radius: var(--r-lg);
     background: var(--settings-control-fill);
     color: var(--ink-0);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
     line-height: 20px;
   }
   .settings-content .ui-setting-control .anchored-trigger:not(:disabled):is(:hover, [aria-expanded="true"]) {

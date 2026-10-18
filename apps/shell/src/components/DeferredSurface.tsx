@@ -188,15 +188,26 @@ export function deferSurface<Props extends object>(
 
 /** Warm deferred chunks once the shell has painted and gone idle. */
 export function preloadWhenIdle(surfaces: readonly { preload(): void }[]) {
-  const run = () => {
-    for (const surface of surfaces) surface.preload();
+  let index = 0;
+  let cancelled = false;
+  let idle: number | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const schedule = () => {
+    if (cancelled || index === surfaces.length) return;
+    if (typeof requestIdleCallback === "function") idle = requestIdleCallback(run, { timeout: 3000 });
+    else timer = setTimeout(() => run(), 1500);
   };
-  if (typeof requestIdleCallback === "function") {
-    const id = requestIdleCallback(run, { timeout: 3000 });
-    return () => cancelIdleCallback(id);
-  }
-  const timer = setTimeout(run, 1500);
-  return () => clearTimeout(timer);
+  const run = (deadline?: IdleDeadline) => {
+    if (cancelled) return;
+    if (!deadline || deadline.didTimeout || deadline.timeRemaining() >= 8) surfaces[index++]?.preload();
+    schedule();
+  };
+  schedule();
+  return () => {
+    cancelled = true;
+    if (idle !== undefined) cancelIdleCallback(idle);
+    clearTimeout(timer);
+  };
 }
 
 /** Preserve the original deferred boundary while sharing its named-module adapter. */

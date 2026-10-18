@@ -1,5 +1,17 @@
 # Aux v3: the fast, free, powerful AI browser
 
+**October 17 complete Aside adoption — executing:** the owner approved the
+[measured adoption specification](design/aside-adoption.md), including exact
+component geometry/material roles, utility icon silhouettes, semantic compaction,
+Memory documents/Dream/retrieval, richer channels/routines, PDF/image workflows,
+supported app integrations and separately opt-in selected-app desktop context.
+The measured reference now supersedes earlier visual differences, including
+16px/125% popup material: reference popups use 8px blur without added saturation,
+while dialogs/tooltips retain their distinct solid material. Aux identity,
+accessibility, authority, durable effects and runtime-independent browsing remain.
+The [execution graph](ROADMAP-EXECUTION-GRAPH.md) tracks implementation and native
+acceptance separately. No complete-browser or full-parity claim is made.
+
 **October 16 full UI parity review:** the owner resumed work on local `main`
 against the growing screenshot folder at
 `~/Desktop/Aside UI Reference 2026-10-16`. This supersedes the October 12 pause.

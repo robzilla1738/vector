@@ -1,7 +1,7 @@
 {
   "bundle": {
     "startupEntries": ["index.html"],
-    "bootDynamicImports": "^assets/App-",
+    "bootModules": ["main", "App", "chromium-bridge", "first-frame-owner"],
     "startupJsKb": 490,
     "startupCssKb": 180,
     "totalJsKb": 1800

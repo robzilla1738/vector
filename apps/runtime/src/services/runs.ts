@@ -2117,10 +2117,17 @@ export class RunService {
     const c: Omit<ModelCall, "callId" | "createdAt"> & { runId: string } = {
       ...call,
       ...modelCallCost(call.modelId, call, this.deps.settings.registryModels()),
-      ...(cachedInputTokens
-        ? { providerMetadata: { ...call.providerMetadata, usage: { cachedInputTokens } } }
-        : {}),
     };
+    if (cachedInputTokens !== undefined) {
+      const usage = call.providerMetadata?.usage;
+      c.providerMetadata = {
+        ...call.providerMetadata,
+        usage: {
+          ...(usage && typeof usage === "object" && !Array.isArray(usage) ? usage : {}),
+          cachedInputTokens,
+        },
+      };
+    }
     const provider = this.deps.settings.modelProvider?.() ?? "gateway";
     const settings = (this.deps.settings as unknown as { all?: () => { modelEndpoint?: string } }).all?.();
     let destination: string | undefined;

@@ -150,6 +150,7 @@
     cursor: pointer;
     flex: none;
     overflow: visible;
+    touch-action: pan-y;
     transition: background-color var(--t-layout) var(--ease-out);
   }
   input.ui-switch::after {
@@ -169,6 +170,14 @@
   }
   input.ui-switch:checked::after {
     transform: translateX(12px);
+  }
+  input.ui-switch[data-dragging]::after {
+    width: 36px;
+    height: 24px;
+    top: -2px;
+    left: calc(var(--switch-thumb-center) - 18px);
+    transform: none;
+    transition: none;
   }
   input.ui-switch:disabled {
     opacity: 0.5;
@@ -626,6 +635,27 @@
   :is(.btn, .icon-btn)[data-control-size] {
     height: var(--kit-control-height);
     min-height: var(--kit-control-height);
+  }
+  .btn[data-control-size="24"] {
+    font-size: var(--fs-xs);
+    gap: var(--space-1);
+  }
+  .btn.sm,
+  .btn[data-control-size="28"] {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 var(--space-2);
+    font-size: calc(var(--ui-font-size) - 1.2px);
+    gap: var(--space-1);
+  }
+  .btn[data-control-size="24"] > :is(svg, .ci) {
+    width: 12px;
+    height: 12px;
+  }
+  .btn.sm > :is(svg, .ci),
+  .btn[data-control-size="28"] > :is(svg, .ci) {
+    width: 14px;
+    height: 14px;
   }
   .icon-btn[data-control-size] {
     width: var(--kit-control-height);

@@ -29,19 +29,18 @@ describe("Central Icons", () => {
       expect(markup).not.toMatch(/lucide|<image|<script|https?:\/\/(?!www.w3.org)/);
     }
   });
-  it("preserves stroke geometry and the three-dot menu glyph", () => {
-    expect(renderToStaticMarkup(shellIconSearch)).toContain('stroke-width="1.5"');
-    expect(renderToStaticMarkup(shellIconMore).match(/<rect/g)).toHaveLength(3);
+  it("uses optically filled search and menu utility silhouettes", () => {
+    expect(renderToStaticMarkup(shellIconSearch)).toContain('fill="currentColor"');
+    expect(renderToStaticMarkup(shellIconMore)).toContain('fill="currentColor"');
   });
   it("lets the microphone retain its size beside an icon-only label", () => {
     const markup = renderToStaticMarkup(<Mic width={15} height={15} />);
     expect(markup).toContain('width="15"');
     expect(markup).toContain('height="15"');
   });
-  it("draws a stroke cross for close and stop, not the X brand mark", () => {
+  it("shares the utility close cross with stop", () => {
     const close = renderToStaticMarkup(shellIconClose);
-    expect(close).toContain('stroke-width="1.5"');
-    expect(close).toContain("M6.25 6.25L17.75 17.75");
+    expect(close).toContain('fill="currentColor"');
     expect(close).not.toContain("M17.5652");
     expect(close).toBe(renderToStaticMarkup(shellIconStop));
   });
@@ -50,7 +49,7 @@ describe("Central Icons", () => {
     expect(renderToStaticMarkup(shellIconCircle)).not.toContain("16.625");
     expect(renderToStaticMarkup(shellIconAlert)).toContain("M2.79693 16.2276");
     expect(renderToStaticMarkup(shellIconAlert)).not.toContain("M2.75 20.25L6.37938");
-    expect(renderToStaticMarkup(shellIconUnplug)).toContain("M15.25 6.25V2.75");
+    expect(renderToStaticMarkup(shellIconUnplug)).toContain('fill="currentColor"');
     expect(renderToStaticMarkup(shellIconUnplug)).not.toContain("M18.5 19.0615");
   });
   it("uses one Central sidebar glyph for open, collapse and the menu action", () => {

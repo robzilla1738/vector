@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useId, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useId, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ModelProviderMark } from "../ui/model-provider";
 import { moveMenuFocus } from "../keyboard-list";
-import { shellIconRight } from "../ui/icons";
+import { shellIconLeft, shellIconRight } from "../ui/icons";
 
 /** A submenu stays inside the owning native dialog's focus and dismissal scope. */
 export function ModelProviderMenu({
@@ -22,13 +23,36 @@ export function ModelProviderMenu({
   const trigger = useRef<HTMLButtonElement>(null);
   const submenu = useRef<HTMLDivElement>(null);
   const enter = useRef(false);
+  const returning = useRef(false);
+  const [narrow, setNarrow] = useState(() => window.innerWidth <= 640);
+  const [menuRoot, setMenuRoot] = useState<HTMLElement | null>(null);
+  const owner = narrow ? menuRoot : null;
+  const attachTrigger = useCallback((button: HTMLButtonElement | null) => {
+    trigger.current = button;
+    if (button) setMenuRoot(button.closest<HTMLElement>(".composer-model-picker"));
+  }, []);
   const id = useId();
+  useEffect(() => {
+    const resize = () => setNarrow(window.innerWidth <= 640);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
   useLayoutEffect(() => {
     if (!open) return;
     const panel = submenu.current;
     const button = trigger.current;
     if (!panel || !button) return;
+    const hidden = owner
+      ? [...owner.children]
+          .filter((child): child is HTMLElement => child instanceof HTMLElement && child !== panel)
+          .map((child) => ({ child, hidden: child.hidden, inert: child.inert }))
+      : [];
+    for (const { child } of hidden) {
+      child.hidden = true;
+      child.inert = true;
+    }
     const place = () => {
+      if (owner) return;
       const rect = button.getBoundingClientRect();
       const width = panel.offsetWidth;
       const right = rect.right + 8;
@@ -52,8 +76,16 @@ export function ModelProviderMenu({
       observer?.disconnect();
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
+      for (const entry of hidden) {
+        entry.child.hidden = entry.hidden;
+        entry.child.inert = entry.inert;
+      }
+      if (returning.current) {
+        returning.current = false;
+        button.focus();
+      }
     };
-  }, [open]);
+  }, [open, owner]);
   const focusChoices = () => {
     enter.current = true;
     onOpen();
@@ -62,17 +94,47 @@ export function ModelProviderMenu({
       enter.current = false;
     }
   };
+  const closeChoices = () => {
+    returning.current = true;
+    onClose();
+  };
+  const panel = open && (
+    <div
+      ref={submenu}
+      id={id}
+      role="menu"
+      tabIndex={-1}
+      aria-label={`${label} models`}
+      className={`composer-model-list composer-model-submenu${owner ? " composer-model-submenu-nested" : " popup-material"}`}
+      onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing || event.key === "Tab") return;
+        event.stopPropagation();
+        if (event.key === "Escape" || event.key === "ArrowLeft") {
+          event.preventDefault();
+          closeChoices();
+        } else moveMenuFocus(event);
+      }}
+    >
+      {owner && (
+        <button type="button" role="menuitem" className="composer-model-submenu-back" onClick={closeChoices}>
+          {shellIconLeft}
+          <span>{label}</span>
+        </button>
+      )}
+      {children}
+    </div>
+  );
   return (
     <>
       <button
-        ref={trigger}
+        ref={attachTrigger}
         type="button"
         role="menuitem"
         data-model-root
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        onPointerMove={onOpen}
+        onPointerMove={narrow ? undefined : onOpen}
         onClick={focusChoices}
         onKeyDown={(event) => {
           if (event.key !== "ArrowRight" || event.nativeEvent.isComposing) return;
@@ -85,26 +147,7 @@ export function ModelProviderMenu({
         <span>{label}</span>
         {shellIconRight}
       </button>
-      {open && (
-        <div
-          ref={submenu}
-          id={id}
-          role="menu"
-          aria-label={`${label} models`}
-          className="composer-model-submenu popup-material"
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing || event.key === "Tab") return;
-            event.stopPropagation();
-            if (event.key === "Escape" || event.key === "ArrowLeft") {
-              event.preventDefault();
-              onClose();
-              trigger.current?.focus();
-            } else moveMenuFocus(event);
-          }}
-        >
-          {children}
-        </div>
-      )}
+      {owner ? createPortal(panel, owner) : panel}
     </>
   );
 }

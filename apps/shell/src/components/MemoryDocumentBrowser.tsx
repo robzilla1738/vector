@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   OWNER_MEMORY_DOCUMENT_PATHS,
   memoryClaimText,
@@ -10,6 +10,7 @@ import { useMemoryDrafts } from "../memory-drafts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { errorMessage } from "../error-message";
+import { availableForFocus } from "../ui/focus";
 import { ActionMenu, Dialog } from "../ui";
 import { MemoryDocument } from "./MemoryDocument";
 import {
@@ -18,6 +19,7 @@ import {
   shellIconClose,
   shellIconUp,
   shellIconDown,
+  shellIconResult,
 } from "../ui/icons";
 import "./MemoryDocumentBrowser.css";
 
@@ -82,6 +84,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
   }, [owner, identities, workspaceId, windowId]);
   const [documents, setDocuments] = useState<MemoryClaimDocuments | null>(null);
   const [selected, setSelected] = useState(ROOT);
+  const [focused, setFocused] = useState(ROOT);
   const [newDocuments, setNewDocuments] = useState<OwnerMemoryDocument["path"][]>([]);
   const [removing, setRemoving] = useState<{
     path: OwnerMemoryDocument["path"];
@@ -96,6 +99,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
   const [documentError, setDocumentError] = useState("");
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(true);
+  const episodicGroupId = useId();
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   useEffect(() => {
@@ -169,6 +173,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
   const ownerPaths = OWNER_MEMORY_DOCUMENT_PATHS.filter(
     (path) => newDocuments.includes(path) || memory.documents?.some((document) => document.path === path),
   );
+  const treeFocus = [ROOT, "episodic", ...paths, ...ownerPaths].includes(focused) ? focused : ROOT;
   const path =
     selected === ROOT || paths.includes(selected) || ownerPaths.some((path) => path === selected)
       ? selected
@@ -352,13 +357,27 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
         aria-label="Memory documents"
         ref={navigation}
         onKeyDown={(event) => {
-          if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-          const controls = [...navigation.current!.querySelectorAll<HTMLElement>("button, summary")].filter(
-            (element) => element.getClientRects().length,
+          if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+          if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="treeitem"]')].filter(
+            availableForFocus,
           );
           const index = controls.indexOf(event.target as HTMLElement);
           if (index < 0) return;
           event.preventDefault();
+          const current = controls[index]!;
+          const folder = current.closest("details");
+          if (event.key === "ArrowRight") {
+            if (current.tagName !== "SUMMARY") return;
+            if (!expanded) setExpanded(true);
+            else folder?.querySelector<HTMLElement>('[role="group"] [role="treeitem"]')?.focus();
+            return;
+          }
+          if (event.key === "ArrowLeft") {
+            if (current.tagName === "SUMMARY") setExpanded(false);
+            else folder?.querySelector("summary")?.focus();
+            return;
+          }
           controls[
             event.key === "Home"
               ? 0
@@ -371,61 +390,97 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
         <div className="memory-tree-heading">
           {shellIconFolder} <span>Documents</span>
         </div>
-        <details
-          open={expanded}
-          onToggle={(event) => setExpanded(event.currentTarget.open)}
-          className="memory-document-folder"
-        >
-          <summary>
-            {expanded ? shellIconFolder : shellIconFolderClosed} episodic{" "}
-            <span className="memory-folder-chevron">{expanded ? shellIconUp : shellIconDown}</span>
-          </summary>
-          {!documents ? (
-            <span className="hint">{documentError ? "Unavailable" : "Loading…"}</span>
-          ) : !paths.length ? (
-            <span className="hint">No approved chat notes yet.</span>
-          ) : (
-            paths.map((item) => (
-              <button
-                type="button"
-                key={item}
-                aria-current={path === item ? "page" : undefined}
-                onClick={() => {
-                  setSelected(item);
-                  setError("");
-                }}
-              >
-                {item.split("/").at(-1)}
-                {drafts[item] ? " •" : ""}
-              </button>
-            ))
-          )}
-        </details>
-        <button
-          type="button"
-          aria-current={path === ROOT ? "page" : undefined}
-          onClick={() => {
-            setSelected(ROOT);
-            setError("");
-          }}
-        >
-          {ROOT}
-          {rootDraft ? " •" : ""}
-        </button>
-        {ownerPaths.map((ownerPath) => (
+        <div role="tree" aria-label="Saved Memory documents">
+          <details
+            role="none"
+            open={expanded}
+            onToggle={(event) => setExpanded(event.currentTarget.open)}
+            className="memory-document-folder"
+          >
+            <summary
+              role="treeitem"
+              aria-expanded={expanded}
+              aria-level={1}
+              aria-owns={episodicGroupId}
+              tabIndex={treeFocus === "episodic" ? 0 : -1}
+              onFocus={() => setFocused("episodic")}
+            >
+              {expanded ? shellIconFolder : shellIconFolderClosed} episodic{" "}
+              <span className="memory-folder-chevron">{expanded ? shellIconUp : shellIconDown}</span>
+            </summary>
+            <div role="group" id={episodicGroupId}>
+              {!documents ? (
+                <span className="hint">{documentError ? "Unavailable" : "Loading…"}</span>
+              ) : !paths.length ? (
+                <span className="hint">No approved chat notes yet.</span>
+              ) : (
+                paths.map((item) => (
+                  <button
+                    type="button"
+                    key={item}
+                    role="treeitem"
+                    aria-level={2}
+                    aria-selected={path === item}
+                    tabIndex={treeFocus === item ? 0 : -1}
+                    onFocus={() => setFocused(item)}
+                    aria-current={path === item ? "page" : undefined}
+                    onClick={() => {
+                      setSelected(item);
+                      setError("");
+                    }}
+                  >
+                    {shellIconResult}
+                    <span>
+                      {item.split("/").at(-1)}
+                      {drafts[item] ? " •" : ""}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </details>
           <button
             type="button"
-            key={ownerPath}
-            aria-current={path === ownerPath ? "page" : undefined}
+            role="treeitem"
+            aria-level={1}
+            aria-selected={path === ROOT}
+            tabIndex={treeFocus === ROOT ? 0 : -1}
+            onFocus={() => setFocused(ROOT)}
+            aria-current={path === ROOT ? "page" : undefined}
             onClick={() => {
-              setSelected(ownerPath);
+              setSelected(ROOT);
               setError("");
             }}
           >
-            {ownerPath}
-            {drafts[ownerPath] ? " •" : ""}
+            {shellIconResult}
+            <span>
+              {ROOT}
+              {rootDraft ? " •" : ""}
+            </span>
           </button>
-        ))}
+          {ownerPaths.map((ownerPath) => (
+            <button
+              type="button"
+              key={ownerPath}
+              role="treeitem"
+              aria-level={1}
+              aria-selected={path === ownerPath}
+              tabIndex={treeFocus === ownerPath ? 0 : -1}
+              onFocus={() => setFocused(ownerPath)}
+              aria-current={path === ownerPath ? "page" : undefined}
+              onClick={() => {
+                setSelected(ownerPath);
+                setError("");
+              }}
+            >
+              {shellIconResult}
+              <span>
+                {ownerPath}
+                {drafts[ownerPath] ? " •" : ""}
+              </span>
+            </button>
+          ))}
+        </div>
         {ownerPaths.length < OWNER_MEMORY_DOCUMENT_PATHS.length && (
           <div className="memory-document-add">
             <ActionMenu

@@ -234,6 +234,80 @@ describe("ApiServer over WebSocket", () => {
     expect((bad.error as { code: string }).code).toBe("invalid_params");
     ws.close();
   });
+
+  it("retires a slow consumer without interrupting a healthy stream or durable reconnect", async () => {
+    const bounded = new ApiServer({ token: TOKEN, events, invoke: async () => ({ ready: true }) });
+    const port = await bounded.listen();
+    bounded.setReady();
+    try {
+      const slow = await connect(`ws://127.0.0.1:${port}/ws?token=${TOKEN}`);
+      const nativeSocket = [...(bounded as unknown as { wss: { clients: Set<object> } }).wss.clients][0]!;
+      Object.defineProperty(nativeSocket, "bufferedAmount", { get: () => 1_000_000 });
+      const healthy = await connect(`ws://127.0.0.1:${port}/ws?token=${TOKEN}`);
+      const closed = new Promise<number>((resolve) => {
+        slow.onclose = (event) => resolve(event.code);
+      });
+      const delivered = new Promise<Record<string, unknown>>((resolve) => {
+        healthy.onmessage = (event) => {
+          const frame = JSON.parse(String(event.data)) as Record<string, unknown>;
+          if (frame.event) resolve(frame);
+        };
+      });
+      const event = events.emit("settings.changed", { category: "bounded-stream" });
+      expect(await closed).toBe(1013);
+      expect(await delivered).toMatchObject({ event: { seq: event.seq } });
+      expect(events.since(event.seq - 1).events.some((entry) => entry.seq === event.seq)).toBe(true);
+      const reply = await roundtrip(
+        healthy,
+        JSON.stringify({ id: 81, method: "pages.list", params: {} }),
+        81,
+      );
+      expect(reply).toMatchObject({ id: 81, result: { ready: true } });
+      healthy.close();
+    } finally {
+      await bounded.close();
+    }
+  });
+
+  it("rechecks a scoped authority after an asynchronous RPC before publishing its result", async () => {
+    let live = true;
+    let finish!: () => void;
+    let started!: () => void;
+    const invoked = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gated = new ApiServer({
+      token: TOKEN,
+      events,
+      authorizeScopedToken: () =>
+        live ? { external: true, connectionId: "c1", scope: { kind: "workspace", workspaceId: "w1" } } : null,
+      invoke: async () => {
+        started();
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return { privateResult: true };
+      },
+    });
+    const port = await gated.listen();
+    gated.setReady();
+    try {
+      const ws = await connect(`ws://127.0.0.1:${port}/ws?token=scoped`);
+      const replies: unknown[] = [];
+      ws.onmessage = (event) => replies.push(JSON.parse(String(event.data)));
+      const closed = new Promise<number>((resolve) => {
+        ws.onclose = (event) => resolve(event.code);
+      });
+      ws.send(JSON.stringify({ id: 82, method: "pages.list", params: {} }));
+      await invoked;
+      live = false;
+      finish();
+      expect(await closed).toBe(1008);
+      expect(replies).not.toContainEqual(expect.objectContaining({ id: 82 }));
+    } finally {
+      await gated.close();
+    }
+  });
 });
 
 describe("event stream resume (D9)", () => {

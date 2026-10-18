@@ -117,6 +117,33 @@
     padding: var(--menu-padding);
     border-radius: var(--menu-radius);
   }
+  .composer-model-submenu-nested {
+    position: relative;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    animation: model-submenu-enter var(--t-popup) var(--ease-out);
+  }
+  .composer-model-submenu .composer-model-submenu-back {
+    margin-bottom: var(--space-1);
+    border-bottom: var(--hairline) solid var(--line);
+    border-radius: 0;
+    font-weight: var(--fw-medium);
+  }
+  @keyframes model-submenu-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .composer-model-submenu-nested {
+      animation: none;
+    }
+  }
   .composer-model-list button[aria-expanded="true"] {
     background: var(--bg-hover);
     color: var(--ink-0);

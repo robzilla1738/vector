@@ -28,8 +28,9 @@
     gap: var(--space-4);
   }
   .aux-dialog-surface h3 {
-    font-size: var(--fs-lg);
+    font-size: var(--fs-dialog-title);
     font-weight: var(--fw-medium);
+    line-height: 1.375;
     letter-spacing: var(--tracking-tight);
   }
   .aux-observation-dialog {
@@ -88,7 +89,7 @@
     width: min(384px, calc(100vw - 32px));
     max-height: calc(100dvh - 32px);
     overflow: auto;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-5) var(--space-6);
     border-radius: var(--r-2xl);
   }
   .ui-alert-dialog :is(h3, p) {
@@ -96,7 +97,9 @@
   }
   .ui-alert-dialog h3 {
     margin: 0;
-    font-size: var(--fs-lg);
+    font-size: var(--fs-dialog-title);
+    font-weight: var(--fw-medium);
+    line-height: 1.375;
   }
   .ui-alert-dialog p {
     margin: var(--space-3) 0 var(--space-5);

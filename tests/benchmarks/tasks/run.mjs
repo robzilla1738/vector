@@ -54,7 +54,7 @@ import {
   benchmarkInfrastructureFailure,
   candidateReadiness,
   corpusFingerprint,
-  modelAttribution,
+  readRunMetrics,
   summarizeIntents,
 } from "./report-integrity.mjs";
 
@@ -842,40 +842,13 @@ async function durableIntentsForRun(dataDir, runId) {
 
 async function metricsForRun(rpc, runId) {
   try {
-    const events = await rpc("runs.events", { runId, limit: 2000 });
-    const list = Array.isArray(events) ? events : (events.events ?? []);
-    let total = 0,
-      inputTokens = 0,
-      cachedInputTokens = 0;
-    let suspensions = 0;
-    let takeovers = 0;
-    let ledgerDuplicates = 0;
-    const attribution = modelAttribution(list);
-    for (const e of list) {
-      const p = e.payload ?? {};
-      if (e.type === "model.call") {
-        total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
-        inputTokens += p.inputTokens ?? 0;
-        cachedInputTokens += p.cachedInputTokens ?? 0;
-      }
-      if (e.type === "run.status" && p.status === "needs_input") suspensions++;
-      if (e.type === "page.takeover") takeovers++;
-      if (e.type === "step.finished" && /No new action was executed/.test(JSON.stringify(p.error ?? "")))
-        ledgerDuplicates++;
-    }
-    return {
-      tokens: total || null,
-      inputTokens: inputTokens || null,
-      cachedInputTokens,
-      cachedInputRatio: inputTokens ? cachedInputTokens / inputTokens : null,
-      suspensions,
-      interventions: suspensions + takeovers,
-      ledgerDuplicates,
-      ...attribution,
-    };
+    return await readRunMetrics(rpc, runId);
   } catch {
     return {
       tokens: null,
+      inputTokens: null,
+      cachedInputTokens: null,
+      cachedInputRatio: null,
       suspensions: null,
       interventions: null,
       ledgerDuplicates: null,

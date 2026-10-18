@@ -1,10 +1,36 @@
 # Aux status — October 17, 2026
 
 Full Aside parity and browser readiness remain active and incomplete on local
-`main`. [ROADMAP](ROADMAP.md) records owner decisions; the active R1–R6 work is in
+`main`. [ROADMAP](ROADMAP.md) records owner decisions; the active adoption A1–A9 and readiness R1–R6 work is in
 [the execution graph](ROADMAP-EXECUTION-GRAPH.md). Detailed earlier evidence and
 retired preview handles are in [historical status](STATUS-HISTORY-2026-10-17.md).
 Older entries there are not current operating instructions.
+
+## Aside adoption foundation — October 17
+
+The approved full program is recorded in [the adoption specification](design/aside-adoption.md).
+The first source slice corrects startup bundle traversal and cache usage accounting,
+removes broad runtime validation from initial browser code, bounds idle prefetch and
+WebSocket queues, and adds liveness/authority checks. Shared tokens, popup material
+roles, controls, drag switches and 45 utility silhouettes now follow the reference.
+Home spacing, single-scroll Settings, shared chat cards, Memory tree navigation and
+narrow nested model menus have source implementation and focused tests.
+
+The integrated check passed typecheck and lint, with 4,800 tests passing and three
+obsolete glyph-path assertions failing. The six-test icon file passed after those
+assertions were updated for the adopted filled utility glyphs. No product source
+changed after that integrated run. Evidence: `/tmp/aux-aside-foundation-check.log`.
+This is source verification, not full native appearance or capability acceptance.
+Compaction, Dream, desktop context, PDF jobs, richer channels and app adapters remain
+in progress. The corrected report on the prior emitted assets is 873 KB startup JS
+and 213 KB CSS; production bytes must be measured again after the new renderer build.
+
+The previous launcher 19445, app 19611, debugger 19593 and runtime 19612 retired
+through the app's normal Quit. Its disposable Profile and plain lock were removed
+by the original owner. CUA native inspection works again. The next candidate uses
+the matching 155 checkout, now also the launcher's default. No active owner exists
+at this record; do not reuse the retired app binding. The old unresolved SIGTRAP
+still needs diagnosis, and no current native parity or daily-use readiness is claimed.
 
 ## Local main consolidation — October 17
 
@@ -12,7 +38,7 @@ All completed readiness implementation is consolidated on local `main`, includin
 Chromium 155.0.8059.85, its rebased native areas and build fixes from
 `codex/chromium-155-security`. The product branch's named providers and shared
 tool schemas were already integrated; main also retains subsequent authority fixes.
-The isolated preview remains frozen at its original source and ownership below.
+The isolated preview was subsequently retired normally as recorded above.
 No stable Chromium checkout was reset, and nothing was pushed or released.
 The consolidation check passed typecheck, lint and all 4,784 tests across 762
 files in 95.15s (`/tmp/aux-main-consolidation-check.log`). Application, runtime,
@@ -26,7 +52,7 @@ older 154 product/stock trees are not matching build or benchmark inputs.
 
 ## Current build ownership
 
-The current local preview is the isolated155candidate `a22cc01b2`, containing
+The retired local preview was the isolated155candidate `a22cc01b2`, containing
 main through `d494c0688` (owner documents and final popup/motion overrides).
 Source is `/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`,
 official155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`, with59areas.
@@ -40,8 +66,8 @@ found all four target processes gone and the lock absent
 the earlier orphaned-target behavior did not recur. That Profile was removed.
 
 The same compiled native/renderer assets were reopened with the standard launcher
-and ABI-checked runtime staging. Current owner is19445, app19611, disposable
-Profile`aux-dev-BWXBny`; the app remains under LLDB for crash capture. Runtime Ready
+and ABI-checked runtime staging. Its final owner was19445, app19611, disposable
+Profile`aux-dev-BWXBny`; it was observed under LLDB for crash capture before retirement. Runtime Ready
 took82.42ms. The receipt `/tmp/aux-155-popup-preview-runtime.json` verifies matching
 native/runtime commit, a clean runtime tree,462API methods and the new owner-
 document method. All273product host methods are advertised; the274thgenerated
@@ -55,11 +81,10 @@ subsequent fresh Profiles started without it and no timeout workaround was added
 This is build/startup/retirement evidence, not migration or full-browser acceptance.
 Root main is now pinned to 155.0.8059.85; stable product/stock checkouts are unchanged.
 
-Native UI control is unavailable: Sky reports a native-pipe startup error, and
-CUA initialization references a removed browser plugin26.1013.31256 while the
-installed bundle is26.1013.40934. Resetting the kernel did not restore control.
-No current live Aside/Aux visual comparison is claimed. Never reuse retired app
-bindings: verify the owned app PID and disposable Profile before any new binding.
+Native UI control was unavailable during the earlier observation. CUA initialization
+now succeeds; that earlier tool failure is historical. No current live Aside/Aux
+visual comparison is claimed. Never reuse retired app bindings: verify the owned
+app PID and disposable Profile before any new binding.
 
 Local fixture96158 serves POST→303,302navigation and a synthetic test-card form
 at `http://127.0.0.1:4826`; no form fields are logged. No payment was made and no

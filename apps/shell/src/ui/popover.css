@@ -26,6 +26,7 @@
     color: var(--ink-0);
   }
   .anchored-panel {
+    --popup-shadow: var(--popup-shadow-xl);
     position: fixed;
     inset: auto;
     margin: 0;
@@ -35,9 +36,9 @@
     overflow: auto;
     overscroll-behavior: contain;
     padding: var(--space-2);
-    border-radius: var(--menu-radius);
+    border-radius: var(--popover-radius);
     color: var(--ink-0);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
   }
   .anchored-panel::backdrop {
     backdrop-filter: none;
@@ -53,7 +54,7 @@
   }
   .anchored-panel input[type="search"] {
     width: 100%;
-    min-height: calc(var(--control-h-lg) + var(--space-1));
+    min-height: var(--control-h-lg);
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
     padding: var(--space-2);
@@ -83,11 +84,11 @@
     font-weight: var(--fw-medium);
   }
   .anchored-panel :is(.home-tools-menu button, .composer-actions button) {
-    min-height: calc(var(--control-h-lg) + var(--space-1));
+    min-height: var(--control-h-lg);
     width: 100%;
     text-align: left;
     justify-content: flex-start;
-    padding: var(--space-2) var(--space-2-5);
+    padding: var(--space-1) var(--space-2-5);
     border-radius: var(--menu-item-radius);
     color: var(--ink-1);
     background: transparent;
@@ -102,9 +103,9 @@
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: calc(var(--control-h-lg) + var(--space-1));
+    min-height: var(--control-h-lg);
     justify-content: flex-start;
-    padding: var(--space-2) var(--space-2-5);
+    padding: var(--space-1) var(--space-2-5);
     border-radius: var(--menu-item-radius);
     background: transparent;
     color: var(--ink-1);

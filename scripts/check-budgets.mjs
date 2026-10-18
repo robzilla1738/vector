@@ -11,6 +11,7 @@
 import { readFileSync, statSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startupBundle } from "./bundle-budget.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const budgets = JSON.parse(readFileSync(join(root, "scripts/budgets.json"), "utf8"));
@@ -28,24 +29,7 @@ if (mode === "bundle") {
   const dist = join(root, "apps/shell/dist");
   const manifest = JSON.parse(readFileSync(join(dist, ".vite/manifest.json"), "utf8"));
   const size = (file) => statSync(join(dist, file)).size;
-  // Everything the shell must download before its first interactive paint:
-  // the entry, its static imports, and the boot-critical chunks it imports
-  // dynamically on startup (App), plus their static imports.
-  const seen = new Set();
-  const js = new Set();
-  const css = new Set();
-  const visit = (key) => {
-    if (seen.has(key)) return;
-    seen.add(key);
-    const chunk = manifest[key];
-    if (!chunk) return;
-    js.add(chunk.file);
-    for (const c of chunk.css ?? []) css.add(c);
-    for (const i of chunk.imports ?? []) visit(i);
-    for (const i of chunk.dynamicImports ?? []) if (bootDynamic.test(manifest[i]?.file ?? "")) visit(i);
-  };
-  const bootDynamic = new RegExp(budgets.bundle.bootDynamicImports);
-  for (const key of budgets.bundle.startupEntries) visit(key);
+  const { js, css } = startupBundle(manifest, budgets.bundle, readFileSync(join(dist, "index.html"), "utf8"));
   const kb = (n) => Math.round(n / 1024);
   const startupJs = [...js].reduce((n, f) => n + size(f), 0);
   const startupCss = [...css].reduce((n, f) => n + size(f), 0);

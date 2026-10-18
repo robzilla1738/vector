@@ -1,6 +1,6 @@
 import type { MemoryView } from "./routes";
 import { SearchField } from "../ui";
-import type { RefObject } from "react";
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { moveListFocus } from "../keyboard-list";
 import { SectionRail } from "./SectionRail";
 import type { ConnectionTab } from "./routes";
@@ -28,6 +28,7 @@ export function SettingsNav({
   firstSearchResult,
   searchInput,
   onOpenCategory,
+  searchResults,
 }: {
   query: string;
   onQueryChange: (query: string) => void;
@@ -51,12 +52,50 @@ export function SettingsNav({
   firstSearchResult: RefObject<HTMLButtonElement | null>;
   searchInput: RefObject<HTMLInputElement | null>;
   onOpenCategory: (category: string, tab?: ConnectionTab) => void;
+  searchResults?: ReactNode;
 }) {
+  const results = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = results.current;
+    const input = searchInput.current;
+    if (!searching || !panel || !input) return;
+    const place = () => {
+      const anchor = input.closest(".settings-search-box")!.getBoundingClientRect();
+      panel.style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - 232))}px`;
+      panel.style.top = `${anchor.bottom + 4}px`;
+      panel.style.maxHeight = `${Math.max(40, window.innerHeight - anchor.bottom - 12)}px`;
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [searching, searchInput]);
   return (
     <nav
       className="settings-nav"
       aria-label="Settings categories"
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onQueryChange("");
+      }}
       onKeyDown={(event) => {
+        if (searching && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onQueryChange("");
+          searchInput.current?.focus();
+          return;
+        }
+        if (results.current?.contains(event.target as Node)) {
+          event.stopPropagation();
+          if (event.key === "ArrowUp" && event.target === firstSearchResult.current) {
+            event.preventDefault();
+            searchInput.current?.focus();
+          } else moveListFocus(event, ".settings-search-result");
+          return;
+        }
         const rail = event.currentTarget.querySelector(".settings-category-list");
         moveListFocus(
           event,
@@ -83,12 +122,17 @@ export function SettingsNav({
           }
         }}
       />
+      {searching && (
+        <div ref={results} className="settings-search-popup">
+          {searchResults}
+        </div>
+      )}
       <SectionRail
         category={category}
         connectionTab={connectionTab}
         memoryView={memoryView}
         onOpenMemoryView={onOpenMemoryView}
-        searching={searching}
+        searching={false}
         memoryAvailable={memoryAvailable}
         downloadNamingAvailable={downloadNamingAvailable}
         profilesAvailable={profilesAvailable}

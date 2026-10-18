@@ -164,15 +164,15 @@ export function App() {
   useEffect(
     () =>
       preloadWhenIdle([
-        Conversation,
-        AnswerPreview,
+        Sidebar,
         CommandSurface,
         Downloads,
         SiteControls,
         FindBar,
-        Sidebar,
         ChatSidebar,
         AgentRail,
+        Conversation,
+        AnswerPreview,
       ]),
     [],
   );

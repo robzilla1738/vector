@@ -17,7 +17,8 @@
     color: var(--ink-0);
     font-size: var(--fs-xs);
     font-weight: var(--fw-regular);
-    line-height: var(--lh-normal);
+    line-height: 16px;
+    --solid-popover-shadow: var(--shadow-md);
     pointer-events: auto;
   }
   :root[data-theme="light"] .ui-tooltip {

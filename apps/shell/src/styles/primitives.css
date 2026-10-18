@@ -225,13 +225,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-1);
-    height: var(--control-h);
-    padding: 0 var(--space-3);
-    border-radius: var(--r-md);
+    gap: var(--space-1-5);
+    height: var(--control-h-lg);
+    padding: 0 var(--space-2-5);
+    border-radius: var(--r-lg);
     background: var(--bg-2);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-regular);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
     color: var(--ink-0);
     box-shadow: var(--line-inset), var(--shadow-sm);
     white-space: nowrap;
@@ -240,7 +241,7 @@
     background: var(--bg-3);
   }
   .btn:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     pointer-events: none;
   }
   .ci {
@@ -297,10 +298,10 @@
     background: var(--err-soft);
   }
   .btn.sm {
-    height: var(--chip-h);
+    height: var(--control-h);
     padding: 0 var(--space-2);
-    font-size: var(--fs-xs);
-    border-radius: var(--r-md);
+    font-size: calc(var(--ui-font-size) - 1.2px);
+    border-radius: var(--r-lg);
   }
   .btn svg {
     flex: none;

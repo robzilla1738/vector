@@ -52,6 +52,8 @@
     margin: 0;
     min-width: 0;
     overflow-wrap: anywhere;
+    font-size: var(--fs-dialog-title);
+    line-height: 1.375;
   }
   .settings-preference-dialog > header button {
     display: grid;
@@ -91,6 +93,6 @@
   }
   .settings-preference-dialog:has(.import-setting, .bookmark-file-setting) > header h3 {
     font-size: var(--fs-dialog-title);
-    line-height: 24px;
+    line-height: 1.375;
   }
 }
