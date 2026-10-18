@@ -31,6 +31,7 @@ import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore, contentMemoryExcerpt } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
 import { extractMemoryNotes } from "./services/memory-extractor.js";
+import { dreamMemory } from "./services/memory-dream.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 import { McpOAuthService } from "./services/mcp-oauth.js";
 import { OutboundMcpService } from "./services/outbound-mcp.js";
@@ -147,6 +148,7 @@ import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
 import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { ChannelService } from "./services/channels.js";
+import { nativeImageIntake } from "./services/native-image-intake.js";
 import { pollCalendarRoutines } from "./services/calendar-routine-poll.js";
 import { ZapService } from "./services/zap.js";
 import { ContentBlockingService } from "./services/content-blocking.js";
@@ -446,22 +448,52 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         : undefined,
     memoryPipeline: () =>
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
-        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID, {
-            generation: () => runtimeServices.settings.modelCacheGeneration(),
-            extract: (input) => {
-              const settings = runtimeServices.settings;
-              return extractMemoryNotes(
-                {
-                  repo,
-                  budget: accountBudget,
-                  model: settings.model(),
-                  modelId: settings.agentRoute("fast").modelId,
-                  models: settings.registryModels(),
-                },
-                input,
-              );
+        ? new MemoryPipeline(
+            repo,
+            native,
+            env.AUX_BROWSER_PROFILE_ID,
+            {
+              generation: () => runtimeServices.settings.modelCacheGeneration(),
+              extract: (input) => {
+                const settings = runtimeServices.settings;
+                return extractMemoryNotes(
+                  {
+                    repo,
+                    budget: accountBudget,
+                    model: settings.model(),
+                    modelId: settings.agentRoute("fast").modelId,
+                    models: settings.registryModels(),
+                  },
+                  input,
+                );
+              },
             },
-          })
+            {
+              generation: () => runtimeServices.settings.modelCacheGeneration(),
+              consolidate: (input) => {
+                const settings = runtimeServices.settings;
+                return dreamMemory(
+                  {
+                    repo,
+                    budget: accountBudget,
+                    model: settings.model(),
+                    modelId: settings.agentRoute("fast").modelId,
+                    models: settings.registryModels(),
+                  },
+                  input,
+                );
+              },
+            },
+            {
+              pages: (workspaceId, signal) =>
+                runtimeServices.contentMemory?.recallDocuments(workspaceId, signal) ?? Promise.resolve([]),
+              history: (workspaceId) => {
+                const state = runtimeServices.browsingMemory.get(workspaceId);
+                return state.policy.enabled ? state.pages : [];
+              },
+              changed: (workspaceId) => events.emit("workspace.memory.updated", { workspaceId }),
+            },
+          )
         : undefined,
     pages: () =>
       new PageService({
@@ -604,6 +636,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         sessions: runtimeServices.externalSessions,
         runs: runtimeServices.runs,
         tasks: runtimeServices.tasks,
+        models: {
+          list: async () => (await runtimeServices.settings.listModels()).models,
+          default: () => runtimeServices.settings.plannerModel(),
+          generation: () => runtimeServices.settings.modelCacheGeneration(),
+        },
+        intake: {
+          documents: runtimeServices.runs.documents,
+          images: runtimeServices.runs.images,
+          ...(channel ? { normalizeImage: nativeImageIntake(native) } : {}),
+        },
       }),
     calendar: () =>
       new CalendarConnectionService({
@@ -2014,7 +2056,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     generateImage: (input) =>
       runtimeServices.runs.generateImage({
         ...input,
-        authorize: async (runId) => {
+        authorize: async (runId, references) => {
           input.checkOwner();
           const run = repo.getRun(runId);
           if (!run) throw new AuxError("cancelled", "The original image run ended.");
@@ -2038,6 +2080,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
                   "image-generation",
                   runId,
                   input.prompt,
+                  references,
                   runtimeServices.settings.imageModel(),
                   runtimeServices.settings.modelCacheGeneration(),
                 ]),
@@ -2301,16 +2344,57 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       });
     },
     memorySearch: async (query, ctx) => {
-      const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
-      if (!ws || !runtimeServices.contentMemory) return [];
-      const hits = await runtimeServices.contentMemory.search(ws, query, 8);
-      for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
-      return hits.map((hit) => ({
-        title: hit.title,
-        url: hit.url,
-        text: hit.snippet,
-        capturedAt: hit.capturedAt,
-      }));
+      if (!ctx.checkOwner || !ctx.signal)
+        throw new AuxError("permission_denied", "Memory recall requires its original execution owner.");
+      const workspaceId = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
+      const check = () => {
+        ctx.checkOwner!();
+        const run = repo.getRun(ctx.runId);
+        if (
+          !workspaceId ||
+          run?.status !== "running" ||
+          run.config?.contextWorkspaceId !== workspaceId ||
+          run.config?.privateTask ||
+          repo.conversationPrivateTask(run.config?.chatId ?? run.runId)
+        )
+          throw new AuxError(
+            "permission_denied",
+            "Memory recall is unavailable for this original task or Space.",
+          );
+      };
+      check();
+      const pipeline = runtimeServices.memoryPipeline;
+      if (!pipeline)
+        throw new AuxError("capability_unsupported", "Protected Memory requires the native browser.");
+      const result = await pipeline.recall({ ...query, workspaceId }, ctx.signal, check);
+      check();
+      for (const hit of result.matches) browserEgress?.protect(ctx.runId, hit.text, "memory");
+      return result;
+    },
+    memoryReadSource: async (input, ctx) => {
+      if (!ctx.checkOwner || !ctx.signal)
+        throw new AuxError("permission_denied", "Memory reads require their original execution owner.");
+      const workspaceId = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
+      const check = () => {
+        ctx.checkOwner!();
+        const run = repo.getRun(ctx.runId);
+        if (
+          !workspaceId ||
+          run?.status !== "running" ||
+          run.config?.contextWorkspaceId !== workspaceId ||
+          run.config?.privateTask ||
+          repo.conversationPrivateTask(run.config?.chatId ?? run.runId)
+        )
+          throw new AuxError("permission_denied", "This Memory source lost its original task or Space.");
+      };
+      check();
+      const pipeline = runtimeServices.memoryPipeline;
+      if (!pipeline)
+        throw new AuxError("capability_unsupported", "Protected Memory requires the native browser.");
+      const result = await pipeline.readSource({ ...input, workspaceId }, ctx.signal, check);
+      check();
+      browserEgress?.protect(ctx.runId, result.text, "memory");
+      return result;
     },
     // 06-X notification — a durable notice on the run's event stream.
     notify: async ({ text }, ctx) => {
@@ -3380,7 +3464,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       void pruneEpisodic();
       memoryExpiry = setInterval(() => {
         if (closed || !isRuntimeIdle(repo)) return;
-        void pruneEpisodic();
+        void Promise.resolve(pruneEpisodic())
+          .then(async () => {
+            if (!closed && isRuntimeIdle(repo)) await runtimeServices.memoryPipeline?.dreamIdle();
+          })
+          .catch(() => console.error("Memory consolidation failed"));
         try {
           runtimeServices.browsingMemory.prune();
         } catch {
@@ -3610,8 +3698,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     stopNativeDeviceConfirmation?.();
     stopNativeProjectPreview?.();
     stopPrivateProviderBroker?.();
-    if (!closed)
-      void shutdown().then(
+    const wasClosed = closed;
+    const stopping = shutdown("native-owner-disconnected");
+    if (!wasClosed)
+      void stopping.then(
         () => process.exit(0),
         () => process.exit(1),
       );

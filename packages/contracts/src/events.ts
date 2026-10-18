@@ -32,6 +32,7 @@ export const EventTypes = {
   StepFinished: "step.finished",
   /** Throttled streaming text of the run's answer/status message: { runId, text (so far), seq }. */
   RunAnswerDelta: "run.answer.delta",
+  RunContextChanged: "run.context.changed",
   SetUpdated: "set.updated",
   MemberUpdated: "member.updated",
   ResultAdded: "result.added",

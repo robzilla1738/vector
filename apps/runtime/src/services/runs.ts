@@ -1,3 +1,9 @@
+import { queuedSourceHash } from "./queue-context.js";
+import { initialContextStats } from "../agent/loop/compaction.js";
+import { modelTools } from "../agent/loop/loop.js";
+import { buildToolManifest } from "../agent/loop/tools.js";
+import { buildSystemPrompt } from "../agent/loop/prompt.js";
+import type { RunContextStats } from "@aux/contracts/context-compaction";
 import { documentCitationEvidence } from "../agent/loop/document-admissions.js";
 import type { DocumentAdmissionRecipe } from "@aux/contracts/document-citation";
 import { MEMORY_WINDOW } from "../safety/egress-projection.js";
@@ -17,7 +23,7 @@ import { SuspensionStore } from "../safety/suspensions.js";
 import { closeCreatedPage } from "./close-created-page.js";
 import { browserContextPage } from "./browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "./overnight-authority.js";
-import { AgentImageTools, IMAGE_RESERVATION_USD } from "../agent/image-tools.js";
+import { AgentImageTools, IMAGE_RESERVATION_USD, type ImageReferenceIdentity } from "../agent/image-tools.js";
 import { accountableUtilityModel } from "./utility-model.js";
 import type { UtilityRoute } from "./foundation-models.js";
 import { WaitingPhraseSchema, GoalSchema, SubagentSchema, SubagentGroupSchema } from "@aux/contracts";
@@ -711,6 +717,95 @@ export class RunService {
     return { chatId, historyEnabled: preference.historyEnabled, entries };
   }
 
+  contextStats(runId: string): RunContextStats {
+    const run = this.coordinator.get(runId);
+    if (run.config?.contextMemoryRevoked)
+      throw new AuxError("permission_denied", "This context was retired by Forget.");
+    this.checkSetSource(runId);
+    if (run.config?.contextCompaction) return run.config.contextCompaction.stats;
+    const modelId = run.config?.modelId ?? this.deps.settings.agentRoute("standard").modelId;
+    const limits = this.deps.agentLoop?.modelLimits?.(modelId);
+    return initialContextStats(
+      runId,
+      modelId,
+      new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher).load(runId),
+      {
+        contextTokens: limits?.contextTokens,
+        maxOutputTokens: limits?.maxOutputTokens ?? 4_000,
+        system: buildSystemPrompt({
+          hasPage: !!run.pageIds.length,
+          webEnabled: true,
+          hasProject: !!run.config?.projectRoot,
+        }),
+        toolsBytes: modelTools(buildToolManifest()).bytes,
+      },
+    );
+  }
+
+  compactContext(runId: string, expectedRevision: number): RunContextStats {
+    const run = this.coordinator.get(runId);
+    const control = this.coordinator.controls.get(runId);
+    const stats = this.contextStats(runId);
+    if (
+      this.closed ||
+      !control ||
+      control.abort.signal.aborted ||
+      control.paused ||
+      run.status !== "running" ||
+      run.config?.implementation !== "agent-loop"
+    )
+      throw new AuxError("conflict", "Compact context during an active Aux conversation turn.");
+    if (stats.revision !== expectedRevision)
+      throw new AuxError("conflict", "The context changed. Review its current usage before compacting.");
+    control.contextCompaction ??= {};
+    if (control.contextCompaction.pending || control.contextCompaction.active)
+      throw new AuxError("conflict", "Context compaction is already queued or running.");
+    const request = { id: randomUUID(), reason: "manual" as const, cancel: new AbortController() };
+    control.contextCompaction.pending = request;
+    control.contextCompaction.skippedHash = undefined;
+    const next: RunContextStats = {
+      ...stats,
+      revision: stats.revision + 1,
+      updatedAt: Date.now(),
+      compaction: {
+        id: request.id,
+        reason: "manual",
+        status: "queued",
+        message: "Waiting for the next safe model boundary.",
+      },
+    };
+    run.config = { ...run.config, contextCompaction: { ...run.config?.contextCompaction, stats: next } };
+    this.deps.repo.saveRun(run);
+    this.deps.events.emit(EventTypes.RunContextChanged, { ...next }, runId);
+    return next;
+  }
+
+  cancelContextCompaction(runId: string, compactionId: string): RunContextStats {
+    const stats = this.contextStats(runId);
+    const control = this.coordinator.controls.get(runId)?.contextCompaction;
+    const request = control?.active ?? control?.pending;
+    if (!request || request.id !== compactionId)
+      throw new AuxError("conflict", "This compaction is no longer pending or active.");
+    request.cancel.abort(new AuxError("cancelled", "The person cancelled context compaction."));
+    if (control?.active) return stats;
+    control!.pending = undefined;
+    const run = this.coordinator.get(runId);
+    const next: RunContextStats = {
+      ...stats,
+      revision: stats.revision + 1,
+      updatedAt: Date.now(),
+      compaction: {
+        ...stats.compaction,
+        status: "cancelled",
+        message: "Compaction cancelled; original history preserved.",
+      },
+    };
+    run.config = { ...run.config, contextCompaction: { ...run.config?.contextCompaction, stats: next } };
+    this.deps.repo.saveRun(run);
+    this.deps.events.emit(EventTypes.RunContextChanged, { ...next }, runId);
+    return next;
+  }
+
   setContext(opts: {
     chatId: string;
     historyEnabled?: boolean;
@@ -1118,6 +1213,10 @@ export class RunService {
         for (const reference of references) deps.browserEgress?.protect(run.runId, reference.text, "memory");
         return references;
       },
+      contextAuthority: () => [
+        deps.settings.modelCacheGeneration(),
+        deps.settings.agentPolicy().agentPolicyRevision,
+      ],
       model: () => deps.settings.model(),
       defaultModel: () => deps.settings.agentRoute("standard").modelId,
       checkBudget: async ({ runId, requiredUsd }) => {
@@ -1274,6 +1373,27 @@ export class RunService {
       );
   }
 
+  private checkQueuedDelivery(messageId: string, deliveryRunId: string, chatId: string, text: string): void {
+    const message = this.deps.repo.getRunMessage(messageId);
+    const target = message && this.deps.repo.getRun(message.targetRunId);
+    const captured = target?.config?.queuedMessageContexts?.[messageId];
+    if (
+      !message ||
+      !target ||
+      !captured ||
+      message.status !== "delivering" ||
+      message.deliveryRunId !== deliveryRunId ||
+      message.chatId !== chatId ||
+      target.config?.chatId !== chatId ||
+      message.text !== text ||
+      captured.chatId !== chatId ||
+      captured.targetRunId !== target.runId ||
+      target.config.contextMemoryRevoked ||
+      captured.sourceHash !== queuedSourceHash(target)
+    )
+      throw new AuxError("ref_stale", "The queued message or its original source changed before delivery.");
+  }
+
   private async startQueuedMessage(message: RunMessage): Promise<Run> {
     const target = this.deps.repo.getRun(message.targetRunId);
     if (!target || target.config?.chatId !== message.chatId)
@@ -1289,6 +1409,28 @@ export class RunService {
         "permission_denied",
         "This turn used a forgotten saved article. Start a new turn with current sources.",
       );
+    const captured = target.config.queuedMessageContexts?.[message.messageId];
+    if (
+      !captured ||
+      captured.chatId !== message.chatId ||
+      captured.targetRunId !== target.runId ||
+      captured.targetMessageRevision !== (target.config.messageRevision ?? 0) ||
+      captured.sourceHash !== queuedSourceHash(target)
+    )
+      throw new AuxError(
+        "ref_stale",
+        "The queued message's exact source snapshot is unavailable or changed. Review and resend it.",
+      );
+    for (const reference of captured.attachmentRefs) this.documents.referenceMetadata(reference);
+    if (captured.memoryRefs.length) {
+      if (!captured.workspaceId) throw new AuxError("ref_stale", "The queued article Space is unavailable.");
+      await this.requireCapturedSources(captured.workspaceId, captured.memoryRefs);
+    }
+    this.images.forRun({
+      ...target,
+      config: { ...target.config, contextImageArtifactIds: captured.imageArtifactIds },
+    });
+    this.checkQueuedDelivery(message.messageId, message.deliveryRunId, message.chatId, message.text);
     const taskId = target.config.taskId;
     const taskRevision = target.config.taskRevision;
     if (taskId && taskRevision === undefined)
@@ -1324,6 +1466,39 @@ export class RunService {
       contextMemoryRefs: target.config.contextMemoryRefs,
       contextWorkspaceId: target.config.contextWorkspaceId,
       mentions: message.mentions,
+      contextSnapshot: true,
+      context: budgetSections(
+        [
+          { text: target.config.context, priority: 0 },
+          {
+            text: this.context(message.chatId)
+              .entries.filter((entry) => entry.included)
+              .reverse()
+              .map((entry) => `"${entry.goal.slice(0, 400)}" → ${entry.summary}`)
+              .join("\n"),
+            priority: 1,
+          },
+        ],
+        CONTEXT_CHARS,
+      ),
+      instructions: target.config.instructions,
+      contextRunIds: [
+        ...new Set([
+          ...(target.config.contextRunIds ?? []),
+          ...this.context(message.chatId)
+            .entries.filter((entry) => entry.included)
+            .map((entry) => entry.runId),
+        ]),
+      ],
+      contextAttachmentRefs: captured.attachmentRefs,
+      contextAttachmentIds: target.config.contextAttachmentIds,
+      contextImageArtifactIds: captured.imageArtifactIds,
+      contextArtifactIds: target.config.contextArtifactIds,
+      contextSourceArtifactIds: target.config.contextSourceArtifactIds,
+      contextDocumentEvidence: target.config.contextDocumentEvidence,
+      contextArtifactEvidence: target.config.contextArtifactEvidence,
+      contextWorkspaceRevision: captured.workspaceRevision,
+      contextBrowsingMemory: target.config.contextBrowsingMemory,
       ...(prepared
         ? {
             accountLabels: target.config.accountLabels ?? [],
@@ -1402,6 +1577,7 @@ export class RunService {
   imageOperation<T>(
     input: {
       prompt: string;
+      referenceImageArtifactIds?: string[];
       taskId?: string;
       expectedRevision?: number;
       nativeTurnContext: string;
@@ -1409,7 +1585,33 @@ export class RunService {
     },
     operation: (runId: string, signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
-    return this.generationOperation({ ...input, kind: "image" }, operation);
+    return this.generationOperation({ ...input, kind: "image" }, async (runId, signal) => {
+      if (input.referenceImageArtifactIds?.length) {
+        if (!input.taskId)
+          throw new AuxError(
+            "permission_denied",
+            "Reference images require their original saved task conversation.",
+          );
+        const task = new TaskService(this.deps.repo, this.deps.events).get(input.taskId);
+        const chatId = task.conversationId ?? `task:${task.taskId}`;
+        const current = this.deps.repo.getRun(runId)!;
+        const admitted = {
+          ...current,
+          config: {
+            ...current.config,
+            chatId,
+            contextWorkspaceId: task.workspaceId,
+            contextImageArtifactIds: this.images.selected(chatId),
+          },
+        };
+        this.images.referencesForRun(admitted, input.referenceImageArtifactIds);
+        this.deps.repo.saveRun({
+          ...admitted,
+          config: { ...admitted.config, contextImageArtifactIds: [...input.referenceImageArtifactIds] },
+        });
+      }
+      return operation(runId, signal);
+    });
   }
 
   utilityClient(input: {
@@ -1866,9 +2068,10 @@ export class RunService {
   generateImage(input: {
     runId: string;
     prompt: string;
+    referenceImageArtifactIds?: string[];
     signal: AbortSignal;
     checkOwner: () => void | Promise<void>;
-    authorize: (runId: string) => Promise<void>;
+    authorize: (runId: string, references: readonly ImageReferenceIdentity[]) => Promise<void>;
   }): ReturnType<AgentImageTools["generate"]> {
     return this.ownOperation(() => this.generateImageOwned(input));
   }
@@ -1881,6 +2084,12 @@ export class RunService {
     const run = this.deps.repo.getRun(input.runId);
     const control = this.coordinator.controls.get(input.runId);
     if (!run || !control) throw new AuxError("permission_denied", "A live original image run is required.");
+    const references = this.images.referencesForRun(run, input.referenceImageArtifactIds ?? []);
+    const referenceIdentities = references.map(({ artifactId, sha256, mediaType }) => ({
+      artifactId,
+      sha256,
+      mediaType,
+    }));
     const modelId = this.deps.settings.imageModel();
     if (!modelId) throw new AuxError("permission_denied", "Image generation is off in Settings.");
     const generation = this.deps.settings.modelCacheGeneration();
@@ -1902,6 +2111,10 @@ export class RunService {
         this.deps.settings.agentPolicy().agentPolicyRevision !== policyRevision
       )
         throw new AuxError("cancelled", "The original image request or account changed.");
+      this.images.referencesForRun(
+        current,
+        references.map((item) => item.artifactId),
+      );
       if (run.config?.taskId) {
         const task = new TaskService(this.deps.repo, this.deps.events).get(run.config.taskId);
         if (task.state !== "open" || task.revision !== run.config.taskRevision)
@@ -1964,7 +2177,7 @@ export class RunService {
     };
     try {
       await checkOwner();
-      await input.authorize(input.runId);
+      await input.authorize(input.runId, referenceIdentities);
       await checkOwner();
       releaseCall = await this.reserveFamilyCall(input.runId);
       while (true) {
@@ -2027,7 +2240,7 @@ export class RunService {
             releaseCall = undefined;
             await this.coordinator.pauseForBudget(input.runId, error.budget);
             await checkOwner();
-            await input.authorize(input.runId);
+            await input.authorize(input.runId, referenceIdentities);
             await checkOwner();
             releaseCall = await this.reserveFamilyCall(input.runId);
             continue;
@@ -2056,7 +2269,7 @@ export class RunService {
             requiredUsd: IMAGE_RESERVATION_USD,
           });
           await checkOwner();
-          await input.authorize(input.runId);
+          await input.authorize(input.runId, referenceIdentities);
           await checkOwner();
           releaseCall = await this.reserveFamilyCall(input.runId);
         }
@@ -2076,13 +2289,17 @@ export class RunService {
         this.deps.artifacts,
         ledger,
         modelId,
-      ).generate(input.prompt, {
-        runId: input.runId,
-        taskId: run.config?.taskId,
-        signal,
-        checkOwner,
-        recordReceipt: settle,
-      });
+      ).generate(
+        input.prompt,
+        {
+          runId: input.runId,
+          taskId: run.config?.taskId,
+          signal,
+          checkOwner,
+          recordReceipt: settle,
+        },
+        references,
+      );
     } catch (error) {
       // A refusal before AgentImageTools establishes dispatch has proved zero provider spend.
       if (callId && !receiptRecorded && !toolkitStarted)
@@ -2774,7 +2991,7 @@ export class RunService {
             .images.filter((item) => item.included)
             .map(
               (item, index) =>
-                `REFERENCE IMAGE ${index + 1}: ${item.filename}; captured ${new Date(item.createdAt).toISOString()}${item.sourceUrl ? `; source ${item.sourceUrl}` : ""}. Historical reference, not a live page.`,
+                `REFERENCE IMAGE ${index + 1}: ${item.filename}; artifact ID ${item.artifactId}; captured ${new Date(item.createdAt).toISOString()}${item.sourceUrl ? `; source ${item.sourceUrl}` : ""}. Historical reference, not a live page.`,
             )
             .join("\n")
         : undefined;
@@ -2956,6 +3173,11 @@ export class RunService {
       }
     }
     this.checkExternalSource(opts);
+    if (opts.queuedMessageId) {
+      if (!opts.deliveryRunId || !opts.chatId)
+        throw new AuxError("conflict", "The queued delivery identity is missing.");
+      this.checkQueuedDelivery(opts.queuedMessageId, opts.deliveryRunId, opts.chatId, opts.goal);
+    }
     return this.coordinator.start({
       ...opts,
       runId: opts.deliveryRunId,

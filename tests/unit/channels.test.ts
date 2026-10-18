@@ -74,6 +74,8 @@ async function fixture() {
         externalConnectionId: input.externalConnectionId,
         externalParentRunId: input.externalParentRunId,
         messageRevision: 0,
+        modelId: input.modelId,
+        reasoning: input.reasoning,
         contextPageRefs: input.contextPageRefs ?? [],
       },
     };
@@ -168,6 +170,14 @@ async function fixture() {
     sessions,
     runs,
     tasks,
+    models: {
+      list: async () => [
+        { id: "fixture/model-a", name: "Model A", reasoning: "supported", source: "configured" },
+        { id: "fixture/model-b", name: "Model B", reasoning: "supported", source: "configured" },
+      ],
+      default: () => "fixture/model-a",
+      generation: () => "model-generation-1",
+    },
     transport,
   });
   cleanup.push(async () => {
@@ -531,5 +541,71 @@ describe("normal Profile messenger ownership", () => {
     const id = f.start.mock.calls[0]![0].deliveryRunId!;
     expect(f.repo.getRun(id)?.status).toBe("cancelled");
     expect(f.sends).toEqual([]);
+  });
+});
+
+describe("scoped channel commands and interactive configuration", () => {
+  it("persists future model/effort preferences and consumes only an original peer's delivered button", async () => {
+    const f = await fixture();
+    const connection = await f.save("everyone");
+    await f.receive(inbound(1, "/model"));
+    await vi.waitFor(() => expect(f.sends).toHaveLength(1));
+    expect(f.start).not.toHaveBeenCalled();
+    const button = f.sends[0]!.reply!.buttons!.find((button) => button.command === "/model fixture/model-b")!;
+    await f.receive(inbound(2, "", { interaction: { actionId: button.actionId, providerMessageId: "1" } }));
+    await vi.waitFor(() => expect(f.sends).toHaveLength(2));
+    expect(f.sends[1]!.text).toContain("fixture/model-b");
+    await f.receive(inbound(3, "/effort high"));
+    await vi.waitFor(() => expect(f.sends).toHaveLength(3));
+    await f.receive(inbound(4, "Perform the original task"));
+    await vi.waitFor(() => expect(f.start).toHaveBeenCalledOnce());
+    expect(f.start.mock.calls[0]![0]).toMatchObject({ modelId: "fixture/model-b", reasoning: "high" });
+    await f.receive(
+      inbound(5, "", { peerId: "201", interaction: { actionId: button.actionId, providerMessageId: "1" } }),
+    );
+    await vi.waitFor(() => expect(f.sends).toHaveLength(4));
+    expect(f.sends[3]!.text).toMatch(/expired|changed conversation/);
+    expect(f.start).toHaveBeenCalledOnce();
+    expect(
+      f.service.store
+        .deliveries(connection.connectionId)[0]!
+        .reply!.buttons!.find((item) => item.actionId === button.actionId)?.usedBy,
+    ).toBeTruthy();
+  });
+  it("reports actual zero and unknown usage only for the original conversation", async () => {
+    const f = await fixture();
+    await f.save("everyone");
+    await f.receive(inbound(1));
+    await vi.waitFor(() => expect(f.start).toHaveBeenCalledOnce());
+    const run = f.repo.getRun(f.start.mock.calls[0]![0].deliveryRunId!)!;
+    f.repo.saveModelCall({
+      callId: randomUUID(),
+      runId: run.runId,
+      role: "agent",
+      modelId: "fixture/model-a",
+      durationMs: 3,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      costEstimated: false,
+      createdAt: Date.now(),
+    });
+    f.repo.saveModelCall({
+      callId: randomUUID(),
+      runId: run.runId,
+      role: "agent",
+      modelId: "fixture/model-a",
+      durationMs: 3,
+      costEstimated: true,
+      createdAt: Date.now(),
+    });
+    await f.receive(inbound(2, "/usage"));
+    await vi.waitFor(() => expect(f.sends).toHaveLength(1));
+    expect(f.sends[0]!.text).toContain("0 observed; 1 unknown");
+    expect(f.sends[0]!.text).toContain("$0.0000");
+    await f.receive(inbound(3, "/sessions", { conversationId: "301" }));
+    await vi.waitFor(() => expect(f.sends).toHaveLength(2));
+    expect(f.sends[1]!.text).toBe("This conversation has no sessions yet.");
+    expect(f.sends[1]!.text).not.toContain(run.runId);
   });
 });

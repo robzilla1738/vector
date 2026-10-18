@@ -252,6 +252,12 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     db.prepare(
       "UPDATE channel_messages SET state='retired' WHERE state IN ('pending','admitting','running','queued')",
     ).run();
+    if (channelTablesForDatabase(db).includes("channel_attachments"))
+      // A dispatched provider transcription has no replay authority in a new
+      // Profile. Preserve the original bytes and uncertain outcome for review.
+      db.prepare(
+        "UPDATE channel_attachments SET state='unknown',updated_at=? WHERE state='transcribing'",
+      ).run(at);
     db.prepare(
       "UPDATE channel_outbox SET state=CASE WHEN state='sending' THEN 'unknown' ELSE 'failed' END,updated_at=? WHERE state IN ('pending','sending')",
     ).run(at);

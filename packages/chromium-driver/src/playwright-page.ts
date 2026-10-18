@@ -1,3 +1,4 @@
+import { errors } from "playwright-core";
 import { createHash, randomUUID } from "node:crypto";
 import { extractElements } from "./extract-script.js";
 import type {
@@ -1537,23 +1538,87 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult> {
     await this.navigationCommitted();
-    // A model-visible screenshot must not carry typed credentials, card data,
-    // tokens, or text from an unlabeled editor. Playwright resolves each
-    // locator in its own frame, including out-of-process child frames. If a
-    // frame cannot be masked, screenshot() fails closed instead of retrying raw.
+    const epoch = this.documentEpoch;
+    const url = this.page.url();
+    const current = () => {
+      if (!this.isAttached() || this.documentEpoch !== epoch || this.page.url() !== url)
+        throw new AuxError("target_detached", "The original screenshot document retired.");
+    };
+    const before = await this.page.evaluate(() => ({
+      width: innerWidth,
+      height: innerHeight,
+      scale: devicePixelRatio || 1,
+      x: scrollX,
+      y: scrollY,
+      documentWidth: Math.max(
+        innerWidth,
+        document.documentElement.scrollWidth,
+        document.body?.scrollWidth ?? 0,
+      ),
+      documentHeight: Math.max(
+        innerHeight,
+        document.documentElement.scrollHeight,
+        document.body?.scrollHeight ?? 0,
+      ),
+    }));
+    current();
     const editable =
       "input:not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select, [contenteditable]:not([contenteditable='false'])";
-    const mask = this.page.frames().map((frame) => frame.locator(editable).filter({ visible: true }));
-    const buffer = await this.page.screenshot({
-      fullPage: opts?.fullPage ?? false,
-      type: "png",
-      mask,
-      maskColor: "#242424",
-    });
-    const meta = await this.page
-      .evaluate(() => ({ w: innerWidth, h: innerHeight, s: devicePixelRatio || 1 }))
-      .catch(() => ({ w: 0, h: 0, s: 1 }));
-    return { buffer, width: meta.w, height: meta.h, scale: meta.s };
+    const capture = (fullPage: boolean) => {
+      current();
+      // Resolve masks again on fallback; never retry a failed capture without masking.
+      const mask = this.page.frames().map((frame) => frame.locator(editable).filter({ visible: true }));
+      return this.page.screenshot({ fullPage, type: "png", mask, maskColor: "#242424", timeout: 10_000 });
+    };
+    let fullPage = opts?.fullPage ?? false;
+    let fallbackReason: ScreenshotResult["fallbackReason"];
+    if (
+      fullPage &&
+      (before.documentWidth * before.scale > 16_384 ||
+        before.documentHeight * before.scale > 16_384 ||
+        before.documentWidth * before.documentHeight * before.scale ** 2 > 64_000_000)
+    ) {
+      fullPage = false;
+      fallbackReason = "texture_limit";
+    }
+    let buffer: Buffer;
+    try {
+      buffer = await capture(fullPage);
+    } catch (error) {
+      current();
+      if (!fullPage) throw error;
+      if (error instanceof errors.TimeoutError) fallbackReason = "timeout";
+      else if (
+        error instanceof Error &&
+        /texture|image is too large|maximum.*(?:size|dimension)|exceeds.*(?:size|dimension)/i.test(
+          error.message,
+        )
+      )
+        fallbackReason = "texture_limit";
+      else throw error;
+      fullPage = false;
+      buffer = await capture(false);
+    }
+    current();
+    if (buffer.length < 24 || buffer.toString("hex", 0, 8) !== "89504e470d0a1a0a")
+      throw new AuxError("backend_unavailable", "The screenshot did not return valid PNG bytes.");
+    const width = buffer.readUInt32BE(16) / before.scale;
+    const height = buffer.readUInt32BE(20) / before.scale;
+    return {
+      buffer,
+      width,
+      height,
+      scale: before.scale,
+      viewport: { width: before.width, height: before.height, scale: before.scale },
+      extent: {
+        kind: fullPage ? "fullPage" : "viewport",
+        x: fullPage ? 0 : before.x,
+        y: fullPage ? 0 : before.y,
+        width,
+        height,
+      },
+      ...(fallbackReason ? { fallbackReason } : {}),
+    };
   }
 
   /** One small evaluate on the main frame; cache only when child DOM cannot enter the observation. */

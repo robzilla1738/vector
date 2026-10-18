@@ -563,6 +563,13 @@ CREATE TABLE channel_cursors(
   connection_id TEXT PRIMARY KEY REFERENCES channel_connections(connection_id) ON DELETE CASCADE,
   revision TEXT NOT NULL, body TEXT NOT NULL);
 
+-- @schema channel_attachments
+CREATE TABLE channel_attachments(
+  connection_id TEXT NOT NULL, message_key TEXT NOT NULL, attachment_key TEXT NOT NULL,
+  state TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  PRIMARY KEY(connection_id,message_key,attachment_key),
+  FOREIGN KEY(connection_id,message_key) REFERENCES channel_messages(connection_id,message_key) ON DELETE CASCADE);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

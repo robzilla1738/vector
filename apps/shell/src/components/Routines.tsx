@@ -704,26 +704,27 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             <section {...staticFieldProps} aria-label="Repeated task suggestions">
               <strong>Repeated work you could make a Skill</strong>
               <p {...staticHintProps}>
-                These saved tasks completed at least three times. Review creates a paused Skill; it never
+                Related eligible work completed at least three times. Review creates a paused Skill; it never
                 starts work automatically.
               </p>
               {candidates.map((candidate) => (
                 <button
-                  key={candidate.taskId}
+                  key={candidate.candidateId}
                   {...smallGhostButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
-                      const routine = await call("routines.fromResult", {
-                        taskId: candidate.taskId,
-                        runId: candidate.runId,
-                        title: candidate.title,
+                      const routine = await call("routines.draftFromCandidate", {
+                        workspaceId: workspaceId!,
+                        candidateId: candidate.candidateId,
                       });
                       await refresh(routine.routineId);
                     })
                   }
                 >
-                  {candidate.title} · {candidate.completedRuns} completed runs · Review
+                  {candidate.title} · {candidate.completedRuns} completed runs ·{" "}
+                  {candidate.discoveryMethod === "semantic" ? "Local semantic match" : "Keyword match"} ·
+                  Review
                 </button>
               ))}
             </section>

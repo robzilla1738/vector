@@ -261,7 +261,9 @@ export class PageDiagnostics {
       documentEpoch: epoch,
       url,
       capturedAt: Date.now(),
-      viewport: { width: shot.width, height: shot.height, scale: shot.scale },
+      viewport: shot.viewport ?? { width: shot.width, height: shot.height, scale: shot.scale },
+      ...(shot.extent ? { extent: shot.extent } : {}),
+      ...(shot.fallbackReason ? { fallbackReason: shot.fallbackReason } : {}),
       imageWidth,
       imageHeight,
     };
@@ -299,8 +301,6 @@ export class PageDiagnostics {
       live.target.agentIsolation
     )
       throw new AuxError("permission_denied", "This tab is unavailable for person capture.");
-    if (opts?.fullPage)
-      throw new AuxError("capability_unsupported", "Native page capture supports the visible viewport only.");
     const capture = this.pages.deps.native.personCapture;
     if (!this.pages.deps.native.available() || !capture)
       throw new AuxError("backend_unavailable", "Native page capture is unavailable.");
@@ -362,6 +362,8 @@ export class PageDiagnostics {
       url: original.url,
       capturedAt: Date.now(),
       viewport: { width: shot.width, height: shot.height, scale: shot.scale },
+      extent: { kind: "viewport" as const, width: shot.width, height: shot.height },
+      ...(opts?.fullPage ? { fallbackReason: "native_viewport_only" as const } : {}),
       imageWidth: limited.width,
       imageHeight: limited.height,
     };

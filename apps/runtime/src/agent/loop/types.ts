@@ -2,6 +2,12 @@ import type { BashSeatbeltInput } from "./bash.js";
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
 import type { BrowserResultCitation, ResultCitation, SuspensionKind } from "@aux/contracts";
+import type {
+  MemoryRecallQuery,
+  MemoryRecallResult,
+  MemoryReadSourceInput,
+  MemoryReadSourceResult,
+} from "@aux/contracts/memory-documents";
 
 /**
  * The provider-agnostic message type is the SDK's `ModelMessage` — a
@@ -75,7 +81,10 @@ export interface LoopToolDeps {
   calendarEvents?: (
     input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">,
   ) => Promise<LoopToolResult>;
-  generateImage?: (input: { prompt: string }) => Promise<LoopToolResult>;
+  generateImage?: (input: {
+    prompt: string;
+    referenceImageArtifactIds?: string[];
+  }) => Promise<LoopToolResult>;
   /** Observe a page: the observation renderer's text becomes the tool output. */
   observe?: (input: {
     pageId: string;
@@ -156,11 +165,15 @@ export interface LoopToolDeps {
     message: string;
     entries: { url: string; title: string; pageId?: string; visitedAt: number }[];
   }>;
-  /** Protected page-memory search under the run's workspace policy (06-X memory_search). */
+  /** Unified protected recall. Space identity always comes from the original run. */
   memorySearch?: (
-    query: string,
-    ctx: { runId: string; threadId: string; turnId: string },
-  ) => Promise<{ title: string; url: string; text: string; capturedAt: number }[]>;
+    query: Omit<MemoryRecallQuery, "workspaceId">,
+    ctx: { runId: string; threadId: string; turnId: string; signal?: AbortSignal; checkOwner?: () => void },
+  ) => Promise<MemoryRecallResult>;
+  memoryReadSource?: (
+    input: Omit<MemoryReadSourceInput, "workspaceId">,
+    ctx: { runId: string; threadId: string; turnId: string; signal?: AbortSignal; checkOwner?: () => void },
+  ) => Promise<MemoryReadSourceResult>;
   /** Subagent cells (06-Y): spawn/wait/send/cancel for the manifest tools. */
   subagents?: {
     spawnCell?: (

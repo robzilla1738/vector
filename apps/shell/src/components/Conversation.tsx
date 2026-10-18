@@ -50,6 +50,8 @@ import { ComposerFrame } from "../ui";
 import { Tooltip } from "../ui/tooltip";
 import { Menu } from "../ui/dialog";
 import { ConversationContext } from "./ConversationContext";
+import { RunContext } from "./RunContext";
+import type { QueueOrder } from "@aux/contracts/queue-order";
 import { BrowserContextTray } from "./BrowserContextTray";
 import { Dictation } from "./Dictation";
 import { ImageSnapshot } from "./ImageSnapshot";
@@ -491,6 +493,9 @@ function ConversationContent({
   const conversationCurrent = useConversationOwner(id, connected);
   const contextControls = useConversationContextControls(conversationCurrent);
   const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
+  const [queueOrder, setQueueOrder] = useState<QueueOrder | null>(null);
+  const [reorderingQueue, setReorderingQueue] = useState(false);
+  const draggedQueueMessage = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     if (!id) return;
@@ -969,6 +974,9 @@ function ConversationContent({
   const [messageRefresh, setMessageRefresh] = useState(0);
   useEffect(() => {
     setQueuedMessages([]);
+    setQueueOrder(null);
+    setReorderingQueue(false);
+    draggedQueueMessage.current = null;
     setMessageError("");
     queueAttemptRef.current = null;
   }, [id]);
@@ -978,10 +986,11 @@ function ConversationContent({
       refreshVersion = 0;
     const refresh = () => {
       const version = ++refreshVersion;
-      void call("runs.messages.list", { chatId: id, runIds: JSON.parse(messageRunIds) })
-        .then((messages) => {
+      void Promise.all([call("runs.messages.list", { chatId: id, runIds: JSON.parse(messageRunIds) }), call("runs.messages.order", { chatId: id })])
+        .then(([messages, order]) => {
           if (current && version === refreshVersion) {
             setQueuedMessages(messages);
+            setQueueOrder(order ?? null);
             setMessageError("");
           }
         })
@@ -2327,6 +2336,23 @@ function ConversationContent({
   const queued = queuedMessages.filter(
     (message) => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status),
   );
+  const reorderQueued = async (messageId: string, targetId: string) => {
+    if (!id || !queueOrder || reorderingQueue || archived || !conversationCurrent()) return;
+    const originalOwner = conversationCurrent;
+    const from = queueOrder.messageIds.indexOf(messageId), to = queueOrder.messageIds.indexOf(targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const messageIds = [...queueOrder.messageIds];
+    messageIds.splice(to, 0, messageIds.splice(from, 1)[0]!);
+    setReorderingQueue(true);
+    try {
+      const order = await call("runs.messages.reorder", { chatId: id, expectedRevision: queueOrder.revision, messageIds });
+      if (!originalOwner()) return;
+      setQueueOrder(order);
+      setMessageRefresh((value) => value + 1);
+    } catch (reason) {
+      if (originalOwner()) { errToast(reason); setMessageRefresh((value) => value + 1); }
+    } finally { if (originalOwner()) setReorderingQueue(false); }
+  };
   const closedPage = !linked && !!last?.pageIds.length;
   const openPreview = (where: "tab" | "split") => {
     if (!previewCurrent() || !selectedContext)
@@ -2767,9 +2793,17 @@ function ConversationContent({
                     Up next <span {...auxReuseStaticNumericCountProps}>{queued.length}</span>
                   </header>
                   <ol>
-                    {queued.map((message) => (
-                      <li key={message.messageId} data-message-id={message.messageId}>
+                    {queued.map((message, index) => (
+                      <li key={message.messageId} data-message-id={message.messageId}
+                        draggable={!archived && !reorderingQueue && !!queueOrder && queued.every((item) => item.status !== "delivering")}
+                        onDragStart={(event) => { draggedQueueMessage.current = message.messageId; event.dataTransfer.setData("text/plain", message.messageId); event.dataTransfer.effectAllowed = "move"; }}
+                        onDragEnd={() => { draggedQueueMessage.current = null; }}
+                        onDragOver={(event) => { if (draggedQueueMessage.current) event.preventDefault(); }}
+                        onDrop={(event) => { event.preventDefault(); const source = draggedQueueMessage.current; draggedQueueMessage.current = null; if (source) void reorderQueued(source, message.messageId); }}
+                      >
                         <p>{message.text}</p>
+                        {message.context && (message.context.attachmentRefs.length > 0 || message.context.imageArtifactIds.length > 0) &&
+                          <small>{message.context.attachmentRefs.length} documents · {message.context.imageArtifactIds.length} images captured with this message</small>}
                         <div className="queued-message-state">
                           <span role={message.status === "needs_attention" ? "alert" : undefined}>
                             {message.status === "needs_attention"
@@ -2780,6 +2814,14 @@ function ConversationContent({
                           </span>
                           {message.status !== "delivering" && (
                             <>
+                              {queued.length > 1 && queueOrder && <>
+                                <button {...auxReuseNativeButtonTypeProps} aria-label={`Move queued message ${index + 1} up`}
+                                  disabled={archived || reorderingQueue || index === 0 || queued.some((item) => item.status === "delivering")}
+                                  onClick={() => { if (index > 0) void reorderQueued(message.messageId, queued[index - 1]!.messageId); }}>Move up</button>
+                                <button {...auxReuseNativeButtonTypeProps} aria-label={`Move queued message ${index + 1} down`}
+                                  disabled={archived || reorderingQueue || index === queued.length - 1 || queued.some((item) => item.status === "delivering")}
+                                  onClick={() => { if (index + 1 < queued.length) void reorderQueued(message.messageId, queued[index + 1]!.messageId); }}>Move down</button>
+                              </>}
                               <ConversationQueuedControls
                                 message={message}
                                 current={conversationCurrent}
@@ -2997,6 +3039,9 @@ function ConversationContent({
                       disabled={contextLocked || archived}
                       onBusy={setHistorySaving}
                     />
+                  )}
+                  {last?.config?.implementation === "agent-loop" && (
+                    <RunContext key={last.runId} runId={last.runId} active={last.status === "running"} disabled={archived} />
                   )}
                   {imageTray}
                 </div>

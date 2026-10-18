@@ -37,6 +37,7 @@ vi.mock("./MemoryDocumentBrowser", () => ({
     return null;
   },
 }));
+vi.mock("./MemoryWorkbench", () => ({ MemoryWorkbench: () => null }));
 vi.mock("./SpaceMemoryEditor", () => ({
   SpaceMemoryEditor: ({ memory }: any) => <output>{memory.workspaceId}</output>,
 }));

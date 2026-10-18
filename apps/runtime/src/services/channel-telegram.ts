@@ -3,6 +3,7 @@ import type { ChannelCredentials, ChannelInbound } from "@aux/contracts/channels
 import { ChannelInboundSchema } from "@aux/contracts/channels";
 import {
   channelJson,
+  channelBinary,
   ChannelTransportError,
   type ChannelNetwork,
   type ChannelTransport,
@@ -22,6 +23,14 @@ const entitySchema = z.object({
   length: z.number().int().nonnegative(),
   user: z.object({ id: numericId }).optional(),
 });
+const fileSchema = z.object({
+  file_id: z.string().min(1).max(160),
+  file_unique_id: z.string().optional(),
+  file_name: z.string().optional(),
+  mime_type: z.string().optional(),
+  file_size: z.number().int().nonnegative().safe().optional(),
+  duration: z.number().nonnegative().optional(),
+});
 const messageSchema = z.object({
   message_id: numericId,
   from: personSchema.optional(),
@@ -29,6 +38,12 @@ const messageSchema = z.object({
   chat: z.object({ id: numericId, type: z.string() }),
   text: z.string().optional(),
   entities: z.array(entitySchema).optional(),
+  caption: z.string().optional(),
+  caption_entities: z.array(entitySchema).optional(),
+  document: fileSchema.optional(),
+  audio: fileSchema.optional(),
+  voice: fileSchema.optional(),
+  photo: z.array(fileSchema).max(10).optional(),
   message_thread_id: numericId.optional(),
   is_topic_message: z.boolean().optional(),
   reply_to_message: z.object({ from: z.object({ id: numericId }).optional() }).optional(),
@@ -91,12 +106,18 @@ export async function telegramTransport(
       input.ready();
       while (!input.signal.aborted) {
         const updates = z
-          .array(z.object({ update_id: z.number().int().nonnegative(), message: z.unknown().optional() }))
+          .array(
+            z.object({
+              update_id: z.number().int().nonnegative(),
+              message: z.unknown().optional(),
+              callback_query: z.unknown().optional(),
+            }),
+          )
           .max(100)
           .safeParse(
             await api(
               "getUpdates",
-              { offset, limit: 100, timeout: 25, allowed_updates: ["message"] },
+              { offset, limit: 100, timeout: 25, allowed_updates: ["message", "callback_query"] },
               input.signal,
             ),
           );
@@ -106,18 +127,18 @@ export async function telegramTransport(
           if (update.update_id < offset) continue;
           let message: ChannelInbound | null = null;
           const parsed = messageSchema.safeParse(update.message);
-          if (
-            parsed.success &&
-            parsed.data.from &&
-            !parsed.data.from.is_bot &&
-            !parsed.data.sender_chat &&
-            parsed.data.text
-          ) {
+          if (parsed.success && parsed.data.from && !parsed.data.from.is_bot && !parsed.data.sender_chat) {
             const value = parsed.data,
               from = parsed.data.from;
-            const text = value.text!;
+            const text = value.text ?? value.caption ?? "";
+            const files = [
+              value.document && { ...value.document, kind: "document" },
+              value.audio && { ...value.audio, kind: "audio" },
+              value.voice && { ...value.voice, kind: "audio" },
+              value.photo?.at(-1) && { ...value.photo.at(-1)!, kind: "image", mime_type: "image/jpeg" },
+            ].filter((item) => !!item);
             const mentioned =
-              value.entities?.some(
+              (value.entities ?? value.caption_entities)?.some(
                 (entity) =>
                   (entity.type === "text_mention" && String(entity.user?.id) === identity.botId) ||
                   (entity.type === "mention" &&
@@ -139,6 +160,16 @@ export async function telegramTransport(
                   ? String(value.message_thread_id)
                   : undefined,
               text,
+              attachments: files.map((file) => ({
+                attachmentId: file.file_id,
+                filename: (
+                  file.file_name?.trim() || `${file.kind}-${file.file_unique_id ?? file.file_id}`
+                ).slice(0, 255),
+                kind: file.kind,
+                mediaType: file.mime_type,
+                byteLength: file.file_size,
+                durationSeconds: file.duration,
+              })),
               direct: value.chat.type === "private",
               mentioned,
               inThread:
@@ -147,12 +178,63 @@ export async function telegramTransport(
             });
             if (inbound.success) message = inbound.data;
           }
+          const callback = z
+            .object({
+              id: z.string().min(1).max(150),
+              from: personSchema,
+              message: messageSchema,
+              data: z.string().uuid(),
+            })
+            .safeParse(update.callback_query);
+          if (
+            callback.success &&
+            !callback.data.from.is_bot &&
+            !callback.data.message.sender_chat &&
+            String(callback.data.message.from?.id) === identity.botId
+          ) {
+            const value = callback.data;
+            message = {
+              messageId: `action:${value.id}`,
+              peerId: String(value.from.id),
+              peerName: value.from.first_name.slice(0, 200),
+              conversationId: String(value.message.chat.id),
+              threadId:
+                value.message.is_topic_message && value.message.message_thread_id !== undefined
+                  ? String(value.message.message_thread_id)
+                  : undefined,
+              text: "",
+              direct: true,
+              mentioned: true,
+              inThread: value.message.is_topic_message === true,
+              interaction: { actionId: value.data, providerMessageId: String(value.message.message_id) },
+            };
+          }
           const next = update.update_id + 1;
           await input.receive(message, { provider: "telegram", offset: next });
+          if (callback.success)
+            await api("answerCallbackQuery", { callback_query_id: callback.data.id }, input.signal, "send");
           offset = next;
         }
       }
       input.signal.throwIfAborted();
+    },
+    async downloadAttachment(_message, attachment, requestSignal) {
+      const file = z
+        .object({ file_id: z.string(), file_path: z.string().min(1) })
+        .safeParse(await api("getFile", { file_id: attachment.attachmentId }, requestSignal));
+      if (
+        !file.success ||
+        file.data.file_id !== attachment.attachmentId ||
+        !/^[A-Za-z0-9_./-]+$/.test(file.data.file_path) ||
+        file.data.file_path.split("/").includes("..")
+      )
+        throw new ChannelTransportError("identity");
+      return channelBinary(
+        network,
+        new URL(`https://api.telegram.org/file/bot${credentials.botToken}/${file.data.file_path}`),
+        {},
+        requestSignal,
+      );
     },
     async send(input, requestSignal) {
       const result = z.object({ message_id: numericId }).safeParse(
@@ -161,6 +243,13 @@ export async function telegramTransport(
           {
             chat_id: input.conversationId,
             text: input.text,
+            reply_markup: input.reply?.buttons?.length
+              ? {
+                  inline_keyboard: input.reply.buttons.map((button) => [
+                    { text: button.label, callback_data: button.actionId },
+                  ]),
+                }
+              : undefined,
             message_thread_id: input.threadId ? Number(input.threadId) : undefined,
             reply_parameters: input.replyToMessageId
               ? {

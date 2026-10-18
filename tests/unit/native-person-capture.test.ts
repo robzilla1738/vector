@@ -88,11 +88,17 @@ it("routes the actual driverless runtime capture through the fixed original nati
   expect(result.dataUrl).toMatch(/^data:image\/png;base64,/);
   expect(result).toMatchObject({ width: 20, height: 20, documentEpoch: 0, url: f.original.target.url });
 });
-it("refuses missing host, full-page and controlled pages before dispatch", async () => {
+it("reports a native masked viewport fallback when full-page capture is unavailable", async () => {
   const f = fixture();
-  await expect(f.diagnostics.capture(f.pageId, { fullPage: true })).rejects.toMatchObject({
-    code: "capability_unsupported",
+  expect(await f.diagnostics.capture(f.pageId, { fullPage: true })).toMatchObject({
+    fallbackReason: "native_viewport_only",
+    extent: { kind: "viewport", width: 20, height: 20 },
+    viewport: { width: 20, height: 20, scale: 1 },
   });
+  expect(f.host).toHaveBeenCalledOnce();
+});
+it("refuses missing host and controlled pages before dispatch", async () => {
+  const f = fixture();
   f.original.target.controller = "agent";
   await expect(f.diagnostics.capture(f.pageId)).rejects.toMatchObject({ code: "target_detached" });
   f.original.target.controller = "human";

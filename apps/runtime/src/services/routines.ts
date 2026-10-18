@@ -21,6 +21,8 @@ import { readSkillDocument, serializeSkillDocument } from "./skill-document.js";
 import { skillReplayProofDigest } from "./skill-replay.js";
 
 import { parseRoutine, parseRun } from "./routines/records.js";
+import { LocalMemoryEmbeddings } from "./local-memory-embeddings.js";
+import type { RoutineDiscoveryDependencies, RoutineDiscoveryCandidate } from "./routines/suggestions.js";
 import { scanRoutineCandidates } from "./routines/suggestions.js";
 import { RoutineScheduler } from "./routines/scheduler.js";
 import { validateRecurrence } from "./routines/recurrence.js";
@@ -41,6 +43,7 @@ export class RoutineService {
       | Promise<{ chatId?: string; runId?: string } | { chatId?: string; runId?: string }>
       | { chatId?: string; runId?: string },
     private stopWork?: (runId: string) => Promise<void> | void,
+    private discovery?: RoutineDiscoveryDependencies,
   ) {
     // SQLite's built-in lower() only folds ASCII; match the Skill search UI.
     this.repo.db.function("aux_routine_lower", { deterministic: true }, (text) =>
@@ -274,9 +277,67 @@ export class RoutineService {
     return this.resultInbox().compare(...args);
   }
 
+  private discoveryEmbeddings?: LocalMemoryEmbeddings;
+  private discoveryPreviews = new Map<string, RoutineDiscoveryCandidate>();
   scan(input: { workspaceId: string; limit?: number }) {
-    this.requireWorkspace(input.workspaceId);
-    return scanRoutineCandidates(this.repo, input.workspaceId, input.limit);
+    return this.own(async () => {
+      this.requireWorkspace(input.workspaceId);
+      if (!this.discovery || this.closed) return [];
+      this.discoveryEmbeddings ??= new LocalMemoryEmbeddings(this.discovery.request);
+      const result = await scanRoutineCandidates({
+        repo: this.repo,
+        workspaceId: input.workspaceId,
+        limit: input.limit ?? 5,
+        deps: this.discovery,
+        embeddings: this.discoveryEmbeddings,
+        signal: this.cancellation.signal,
+      });
+      if (this.closed) throw new AuxError("cancelled", "Skill discovery closed.");
+      for (const [id, preview] of this.discoveryPreviews)
+        if (preview.candidate.expiresAt <= Date.now() || preview.snapshot.workspaceId === input.workspaceId)
+          this.discoveryPreviews.delete(id);
+      for (const preview of result) {
+        if (this.discoveryPreviews.size >= 100)
+          this.discoveryPreviews.delete(this.discoveryPreviews.keys().next().value!);
+        this.discoveryPreviews.set(preview.candidate.candidateId, preview);
+      }
+      return result.map((preview) => preview.candidate);
+    });
+  }
+  draftFromCandidate(input: { workspaceId: string; candidateId: string }) {
+    return this.own(async () => {
+      const preview = this.discoveryPreviews.get(input.candidateId);
+      if (
+        !this.discovery ||
+        !preview ||
+        preview.snapshot.workspaceId !== input.workspaceId ||
+        preview.candidate.expiresAt <= Date.now() ||
+        this.closed
+      )
+        throw new AuxError(
+          "conflict",
+          "This suggestion expired. Discover fresh suggestions before creating a draft.",
+        );
+      await this.discovery.memory.assertDiscoverySnapshot(preview.snapshot);
+      if (this.closed) throw new AuxError("cancelled", "Skill discovery closed.");
+      for (const source of preview.candidate.supportingRuns) {
+        const task = this.requireSourceTask(source.taskId, input.workspaceId);
+        if (task.revision !== source.taskRevision)
+          throw new AuxError("conflict", "A supporting task changed. Discover fresh suggestions.");
+      }
+      const candidate = preview.candidate;
+      const routine = this.fromResult({
+        taskId: candidate.taskId,
+        runId: candidate.runId,
+        title: candidate.title,
+        reviewRequired: true,
+        trigger: { kind: "manual" },
+        supportingRuns: candidate.supportingRuns,
+      });
+      this.discoveryPreviews.delete(input.candidateId);
+      this.events.emit("routine.updated", { routine });
+      return routine;
+    });
   }
 
   get(routineId: string): { routine: Routine; runs: RoutineRun[] } {
@@ -300,6 +361,7 @@ export class RoutineService {
       missedRunPolicy?: Routine["missedRunPolicy"];
       presenceGuardExempt?: boolean;
       activationReview?: Routine["activationReview"];
+      supportingRuns?: Routine["supportingRuns"];
     },
   ): Routine {
     this.requireWorkspace(input.workspaceId);
@@ -350,6 +412,7 @@ export class RoutineService {
     parameters?: Routine["parameters"];
     trigger?: RoutineTrigger;
     reviewRequired?: boolean;
+    supportingRuns?: Routine["supportingRuns"];
   }): Routine {
     const taskRow = this.repo.db
       .prepare("SELECT json,workspace_id FROM tasks WHERE task_id=?")
@@ -391,6 +454,7 @@ export class RoutineService {
       workspaceId: taskRow.workspace_id,
       sourceTaskId: input.taskId,
       sourceRunId: run?.runId,
+      supportingRuns: input.supportingRuns,
       parameters: input.parameters ?? [],
       siteOrigins: origins.slice(0, 20),
       accountLabels: [],
@@ -861,8 +925,13 @@ export class RoutineService {
     this.closed = true;
     this.unsubscribe();
     this.cancellation.abort();
+    this.discoveryPreviews.clear();
     // Accepted launches still own their original receipts until startWork acknowledges them.
-    this.closing = Promise.allSettled([this.scheduler?.close(), ...this.pendingWork]).then((results) => {
+    this.closing = Promise.allSettled([
+      this.scheduler?.close(),
+      this.discoveryEmbeddings?.close(),
+      ...this.pendingWork,
+    ]).then((results) => {
       const failures = results
         .filter((result): result is PromiseRejectedResult => result.status === "rejected")
         .map((result) => result.reason);

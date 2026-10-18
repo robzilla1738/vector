@@ -25,8 +25,9 @@ function price(value: unknown): number | undefined {
 function textGeneration(model: Record<string, unknown>, provider: ModelProvider): boolean | undefined {
   if (provider === "gateway") {
     if (model.type === "language") return true;
-    if (typeof model.type === "string" && ["embedding", "reranking", "image", "video"].includes(model.type))
-      return false;
+    // Gateway publishes several modalities in one catalog. Only language models
+    // can serve this route; an unfamiliar explicit type is not a text promise.
+    if (typeof model.type === "string") return false;
   }
   const advertised =
     provider === "google"

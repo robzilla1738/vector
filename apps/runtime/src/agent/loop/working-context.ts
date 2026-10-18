@@ -21,6 +21,7 @@ const READ_TOOLS = new Set([
   "bg_logs",
   "history_search",
   "memory_search",
+  "memory_read",
   "websearch",
   "webfetch",
   "package_skill",
@@ -51,6 +52,10 @@ const EVIDENCE_FIELDS = new Set([
   "title",
   "quote",
   "locator",
+  "sourceId",
+  "chunkId",
+  "startLine",
+  "endLine",
   "sha256",
   "status",
   "state",
@@ -91,7 +96,7 @@ function toolValue(output: unknown): unknown {
 }
 
 /** Preserve every source/effect reference, including nested collections, without truncating IDs. */
-function retainedEvidence(value: unknown): unknown {
+export function retainedEvidence(value: unknown): unknown {
   if (Array.isArray(value)) {
     const entries = value.map(retainedEvidence).filter((entry) => entry !== undefined);
     return entries.length ? entries : undefined;
@@ -110,7 +115,7 @@ function retainedEvidence(value: unknown): unknown {
   return Object.keys(evidence).length ? evidence : undefined;
 }
 
-function hasUnresolvedEffect(value: unknown): boolean {
+export function hasUnresolvedEffect(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasUnresolvedEffect);
   const record = object(value);
   if (!record) return false;
@@ -158,7 +163,7 @@ function elidedValue(value: unknown, toolCallId: string, toolName: string): unkn
 }
 
 /** Serialized UTF-8 bytes / 3 is an estimate, not a provider tokenizer. */
-function messageTokens(message: ModelMessage): number {
+export function messageTokens(message: ModelMessage): number {
   if (message.role !== "user" || !Array.isArray(message.content)) return Math.ceil(bytes(message) / 3);
   let images = 0;
   const content = message.content.map((part) => {
@@ -178,7 +183,7 @@ export interface WorkingContextOptions {
 }
 
 /** Pure request projection: durable messages and protected instructions never change. */
-export function prepareWorkingContext(
+export function projectWorkingContext(
   messages: ModelMessage[],
   options: WorkingContextOptions,
 ): {
@@ -315,6 +320,13 @@ export function prepareWorkingContext(
     }
     if (estimatedInputTokens <= inputBudgetTokens) return result();
   }
+  return result();
+}
+
+export function prepareWorkingContext(messages: ModelMessage[], options: WorkingContextOptions) {
+  const result = projectWorkingContext(messages, options);
+  if (result.estimatedInputTokens <= result.inputBudgetTokens) return result;
+  const { estimatedInputTokens, inputBudgetTokens } = result;
   throw new AuxError(
     "model_error",
     `The working context needs approximately ${estimatedInputTokens.toLocaleString("en-US")} input tokens; ` +

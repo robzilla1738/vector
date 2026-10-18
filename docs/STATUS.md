@@ -23,14 +23,73 @@ changed after that integrated run. Evidence: `/tmp/aux-aside-foundation-check.lo
 This is source verification, not full native appearance or capability acceptance.
 Compaction, Dream, desktop context, PDF jobs, richer channels and app adapters remain
 in progress. The corrected report on the prior emitted assets is 873 KB startup JS
-and 213 KB CSS; production bytes must be measured again after the new renderer build.
+and 213 KB CSS; the rebuilt foundation measurement is recorded below.
 
-The previous launcher 19445, app 19611, debugger 19593 and runtime 19612 retired
-through the app's normal Quit. Its disposable Profile and plain lock were removed
-by the original owner. CUA native inspection works again. The next candidate uses
-the matching 155 checkout, now also the launcher's default. No active owner exists
-at this record; do not reuse the retired app binding. The old unresolved SIGTRAP
-still needs diagnosis, and no current native parity or daily-use readiness is claimed.
+Foundation source is committed locally as `7806e41fc`. The rebuilt production
+renderer measures **741 KB startup JavaScript / 214 KB CSS / 2,918 KB total
+JavaScript** using actual boot/preload/static closure traversal. The 490/180/1,800
+KB targets remain unmet; these bytes are not startup timing evidence.
+
+The 26-step Chromium155 foundation build passed in8m38.08s
+(`/tmp/aux-aside-foundation-native.log`). Its disposable launcher39142/app42802
+advertised source7806e41fc and the prior274-method ABI. Runtime Ready84.7ms is a
+single startup observation, not a cold-performance benchmark. Native Home and
+Settings were inspected: Home spacing, Settings heading/body scroll ownership and
+solid search results work in the observed dark state. Current bounds were
+1728×1005 logical pixels versus the reference1712×989, so exact-bounds, both-theme,
+narrow and all-state comparison remains open. Captures are under
+`/tmp/aux-aside-7806-native/`.
+
+The foundation preview retired through Aux's application-menu Quit. Its original
+launcher/app, disposable Profile `aux-dev-zBc4rt` and plain lock retired normally.
+Runtime shutdown reported a late powerRelease against its already closed native
+channel. The next source slice explicitly distinguishes disconnected-owner cleanup,
+and native retirement ends the original power assertion before admitting another
+connection. Changed-flow native verification remains pending.
+
+## Conversations, Memory and automation — integrating
+
+Source adds exact-boundary semantic compaction, hydrated context occupancy and
+controls; revision-bound queued-message order with immutable admitted context;
+authoritative site/routine Memory documents; Dream/proposals/diffs/revert; unified
+heading/line-aware recall; scoped channel commands/interactions and encrypted
+per-file attachment originals; snapshot-bound routine drafts; admitted image
+references; and masked full-page screenshot fallback with actual extent/reason.
+All continue through existing authority, encryption, accounting and retirement.
+
+The integrated `npm run check` now passes typecheck, lint and **4,878 tests across
+776 files** (`/tmp/aux-aside-capabilities-check3.log`,86.22s unit suite). The earlier
+full attempt found missing required methods in test fixtures, deferred handoff
+context published after its boundary, late source-revocation accounting and a
+recovered-answer status transition. These were corrected without permissive
+production fallbacks. The changed210 conversation/lifecycle tests pass separately;
+all three long worktree fixtures also pass without timeout changes. The Memory
+activity region now has a named accessibility role. Five masked screenshot
+integration tests pass in a real headless browser; this is separate from native155
+appearance acceptance.
+
+Native area0060 contains async dispatch, bounded outgoing transport, connection
+power retirement and isolated image normalization. It passed an incremental native
+build in35steps/8m03.15s (`/tmp/aux-aside-native-async-compile2.log`) after replacing
+two rejected unsafe pointer expressions with bounded spans. The six-path area
+replays exactly from the preceding59 patches and reverse-checks against current155
+source (proof `/tmp/aux-aside-native-area-proof.json`). Native ABI is275methods/
+30events/hash`cf5a4db25bd7`. The diagnostic build predates the clean source commit
+and new renderer packaging; live changed-flow verification remains pending. Its
+original builder51531 has retired and its lock is absent. Use the existing launcher
+for the next disposable clean candidate, and do not clear an active lock.
+
+Manual compaction currently requires a running agent-loop turn; completed, paused
+and waiting turns expose read-only context statistics. Idle-chat compaction remains
+an explicit follow-up. Source, compilation, native observation and full program
+acceptance remain separate evidence.
+
+Configured voice transcription, isolated native byte document intake/seven PDF jobs,
+selected-app desktop context, connected-app adapters, remaining UI states, default
+20-task smoke, matching155stock performance and earlier SIGTRAP diagnosis remain
+open. Account-only background Memory model routes still require a supported
+background admission source and honestly refuse without one; API-key/local routes
+use existing admission. No real channel messages, pushes or releases were made.
 
 ## Local main consolidation — October 17
 
@@ -50,7 +109,7 @@ The unresolved SIGTRAP, native visual comparison, migration and browser smoke
 checks remain open. Use the matching 155 source for future native builds; the
 older 154 product/stock trees are not matching build or benchmark inputs.
 
-## Current build ownership
+## Earlier readiness build ownership — historical
 
 The retired local preview was the isolated155candidate `a22cc01b2`, containing
 main through `d494c0688` (owner documents and final popup/motion overrides).
@@ -90,13 +149,13 @@ Local fixture96158 serves POST→303,302navigation and a synthetic test-card for
 at `http://127.0.0.1:4826`; no form fields are logged. No payment was made and no
 real messenger message sent. Earlier ownership/probe notes are historical.
 
-## Shared popup glass and fluid motion — integrated source
+## Shared popup glass and fluid motion
 
-Every shared Dialog now uses popup material, including stage dialogs and floating
-inspectors. Model-provider submenus, mention suggestions, citation previews,
+Shared dialogs use solid popover material, including stage dialogs and floating
+inspectors. Glass remains specific to menus, selects and appropriate popovers. Model-provider submenus, mention suggestions, citation previews,
 tooltips, reader contents and notifications now use the same recipe as anchored
-menus, command search and native-select pickers. The shared backing,16px blur,
-125% saturation, edge/shadow pair and secondary text tokens own their appearance;
+menus, command search and native-select pickers. The shared80% backing,8px blur,
+no added saturation, edge/shadow pair and secondary text tokens own their appearance;
 replaced opaque surfaces and duplicate material/entrance rules were removed.
 Reduced-transparency, forced-colors and increased-contrast modes retain explicit
 fallbacks. OS-owned menus keep their native material.
@@ -112,7 +171,7 @@ rules that disabled blur, along with separate tab-switcher/omnibox recipes.
 The narrow right-rail overlay uses the shared material; docked rails retain native
 window glass. The complete source was compiled in the 35-step native build recorded above.
 
-The final integrated `npm run check` passed typecheck, lint and all4,784tests/
+The earlier readiness integrated `npm run check` passed typecheck, lint and all4,784tests/
 762files in91.75s (`/tmp/aux-final-popup-overrides-check.log`), including the
 corrected debugger setting. Raw CSS colors outside tokens remain0.
 The contrast check now evaluates actual popup material instead of a removed CSS

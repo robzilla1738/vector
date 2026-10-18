@@ -7,6 +7,9 @@ import type { AgentConnectionService, ScopedExternalClient } from "./agent-conne
 import type { ExternalSessionService } from "./external-sessions.js";
 import type { RunService } from "./runs.js";
 import type { TaskService } from "./tasks.js";
+import { intakeChannelMessage, type ChannelIntakeDependencies } from "./channel-intake.js";
+import { channelCommand, executeChannelCommand, type ChannelModels } from "./channel-commands.js";
+import type { ChannelReply } from "@aux/contracts/channels";
 import { ChannelStore, type StoredChannelMessage, type StoredChannelPeer } from "./channel-store.js";
 
 const activeRuns = new Set<string>(["queued", "planning", "running", "paused", "needs_input"]);
@@ -19,30 +22,11 @@ type Dependencies = {
   runs: RunService;
   connections: AgentConnectionService;
   sessions: ExternalSessionService;
+  models?: ChannelModels;
+  intake?: ChannelIntakeDependencies;
   deliveryReady(connectionId: string): void;
   failed(connectionId: string): void;
 };
-
-function command(message: ChannelInbound, connection: ChannelConnection): "pair" | "stop" | undefined {
-  let text = message.text.trim();
-  for (const mention of [
-    `<@${connection.identity.botId}>`,
-    `<@!${connection.identity.botId}>`,
-    `@${connection.identity.username ?? ""}`,
-  ]) {
-    if (mention !== "@" && text.toLowerCase().startsWith(`${mention.toLowerCase()} `))
-      text = text.slice(mention.length).trim();
-  }
-  for (const value of ["pair", "stop"] as const) {
-    if (
-      text === `/${value}` ||
-      (connection.identity.username &&
-        text.toLowerCase() === `/${value}@${connection.identity.username.toLowerCase()}`)
-    )
-      return value;
-  }
-  return undefined;
-}
 
 function replyChunks(text: string, limit: number): string[] {
   const suffix = "\n\nOpen this task in Aux for the complete result.";
@@ -176,7 +160,7 @@ export class ChannelRunService {
         this.deps.store.receive(connection, null, cursor);
         return;
       }
-      const action = command(message, connection);
+      const action = channelCommand(message, connection)?.name;
       if (
         action !== "pair" &&
         peer?.authorityId &&
@@ -285,14 +269,14 @@ export class ChannelRunService {
   ) {
     this.assertConversation(connection, message, peer, run);
     if (run.runId === message.deliveryRunId) {
-      if (run.goal !== message.message.text)
+      if (run.goal !== (message.preparedText ?? message.message.text))
         throw new AuxError("permission_denied", "The original channel request changed.");
       return;
     }
     const followUp = this.deps.repo.getRunMessage(message.messageUuid);
     if (
       !followUp ||
-      followUp.text !== message.message.text ||
+      followUp.text !== (message.preparedText ?? message.message.text) ||
       followUp.chatId !== run.config?.chatId ||
       (followUp.mode === "queue" ? followUp.deliveryRunId !== run.runId : followUp.targetRunId !== run.runId)
     )
@@ -301,8 +285,14 @@ export class ChannelRunService {
         "This reply does not belong to the originating channel request.",
       );
   }
-  private addReply(connection: ChannelConnection, message: StoredChannelMessage, text: string) {
+  private addReply(
+    connection: ChannelConnection,
+    message: StoredChannelMessage,
+    text: string,
+    reply?: ChannelReply,
+  ) {
     const limit = connection.provider === "discord" ? 1900 : 3500;
+    let first = true;
     for (const chunk of replyChunks(text, limit)) {
       const now = Date.now();
       this.deps.store.saveDelivery({
@@ -315,10 +305,12 @@ export class ChannelRunService {
         threadId: message.message.threadId,
         replyToMessageId: message.message.messageId,
         text: chunk,
+        ...(reply && first ? { reply } : {}),
         state: "pending",
         createdAt: now,
         updatedAt: now,
       });
+      first = false;
     }
   }
   private async drain(owner: Owner) {
@@ -348,7 +340,7 @@ export class ChannelRunService {
       if (message.state === "pending") {
         try {
           await this.admit(owner, peer, message);
-        } catch {
+        } catch (error) {
           this.current(owner);
           const outstanding = store
             .messages(connection.connectionId, ["pending", "admitting"])
@@ -358,7 +350,11 @@ export class ChannelRunService {
               this.addReply(
                 connection,
                 message,
-                "This request needs attention in Aux before it can continue.",
+                (channelCommand(message.message, connection) || message.message.interaction) &&
+                  error instanceof AuxError &&
+                  ["invalid_params", "conflict", "capability_unsupported"].includes(error.code)
+                  ? error.message
+                  : "This request needs attention in Aux before it can continue.",
               );
               store.saveMessage({ ...message, state: "failed" });
             });
@@ -446,7 +442,7 @@ export class ChannelRunService {
     const client = this.client(connection, peer);
     const key = this.threadKey(connection, message.message);
     let thread = store.thread(connection.connectionId, peer.peerKey, key);
-    if (command(message.message, connection) === "stop") {
+    if (channelCommand(message.message, connection)?.name === "stop") {
       if (thread?.lastRunId) {
         const run = this.deps.repo.getRun(thread.lastRunId);
         if (run) {
@@ -482,12 +478,141 @@ export class ChannelRunService {
           taskId: task.taskId,
           conversationId: message.message.conversationId,
           threadId: message.message.threadId,
+          preferencesRevision: 0,
         };
         store.saveThread(connection.connectionId, peer.peerKey, key, created);
         return created;
       });
     }
+    let request = message.message;
+    const interaction = request.interaction;
+    let sourceDelivery: ReturnType<ChannelStore["deliveries"]>[number] | undefined;
+    if (interaction) {
+      sourceDelivery = store
+        .deliveries(connection.connectionId, ["delivered"])
+        .find(
+          (delivery) =>
+            delivery.revision === connection.revision &&
+            delivery.peerKey === peer.peerKey &&
+            delivery.conversationId === request.conversationId &&
+            delivery.threadId === request.threadId &&
+            delivery.providerMessageId === interaction.providerMessageId &&
+            delivery.reply?.buttons?.some((button) => button.actionId === interaction.actionId),
+        );
+      const button = sourceDelivery?.reply?.buttons?.find((item) => item.actionId === interaction.actionId);
+      if (
+        !button ||
+        button.usedBy ||
+        button.expiresAt <= Date.now() ||
+        button.preferencesRevision !== thread.preferencesRevision
+      )
+        throw new AuxError(
+          "conflict",
+          "This channel action expired or belongs to a changed conversation. Request the command again.",
+        );
+      request = { ...request, text: button.command };
+    }
+    const action = channelCommand(request, connection);
+    if (action && action.name !== "pair" && action.name !== "stop") {
+      const result = await executeChannelCommand({
+        command: action,
+        repo: this.deps.repo,
+        models: this.deps.models,
+        connection,
+        authorityId: peer.authorityId!,
+        thread,
+        checkCurrent: () => {
+          this.current(owner);
+          this.client(connection, peer);
+        },
+      });
+      this.current(owner);
+      this.client(connection, peer);
+      const currentThread = store.thread(connection.connectionId, peer.peerKey, key);
+      if (currentThread?.preferencesRevision !== thread.preferencesRevision)
+        throw new AuxError("conflict", "The conversation preferences changed. Request the command again.");
+      this.deps.repo.transaction(() => {
+        store.saveThread(connection.connectionId, peer.peerKey, key, result.thread);
+        if (sourceDelivery && interaction)
+          store.saveDelivery({
+            ...sourceDelivery,
+            reply: {
+              ...sourceDelivery.reply,
+              buttons: sourceDelivery.reply?.buttons?.map((button) =>
+                button.actionId === interaction.actionId ? { ...button, usedBy: message.messageKey } : button,
+              ),
+            },
+            updatedAt: Date.now(),
+          });
+        this.addReply(connection, message, result.text, result.reply);
+        store.saveMessage({ ...message, state: "completed" });
+      });
+      this.deps.deliveryReady(connection.connectionId);
+      return;
+    }
     const target = thread.lastRunId ? this.deps.repo.getRun(thread.lastRunId) : undefined;
+    if (
+      target &&
+      activeRuns.has(target.status) &&
+      (message.message.attachments?.length || thread.modelId || thread.reasoning)
+    ) {
+      this.assertConversation(connection, message, peer, target);
+      if (this.deps.intake && message.message.attachments?.length)
+        await intakeChannelMessage({
+          deps: this.deps.intake,
+          store,
+          connection,
+          message,
+          chatId: taskConversationId(thread.taskId),
+          parentRunId: parent,
+          signal: owner.signal,
+          mode: "capture",
+          checkCurrent: () => {
+            this.current(owner);
+            this.client(connection, peer);
+          },
+        });
+      // A fresh turn admits these exact originals after current work; an immutable text queue cannot acquire later sources.
+      return;
+    }
+    if (message.message.attachments?.length && !message.preparedText) {
+      if (!this.deps.intake)
+        throw new AuxError(
+          "capability_unsupported",
+          "Attachment intake is unavailable. The source message is retained.",
+        );
+      const outcome = await intakeChannelMessage({
+        deps: this.deps.intake,
+        store,
+        connection,
+        message,
+        chatId: taskConversationId(thread.taskId),
+        parentRunId: parent,
+        signal: owner.signal,
+        checkCurrent: () => {
+          this.current(owner);
+          this.client(connection, peer);
+        },
+      });
+      this.current(owner);
+      if (!outcome.usable) {
+        this.deps.repo.transaction(() => {
+          this.addReply(
+            connection,
+            message,
+            outcome.failures.join("\n") || "No attachment could be admitted. Originals are retained.",
+          );
+          store.saveMessage({ ...message, state: "completed" });
+        });
+        this.deps.deliveryReady(connection.connectionId);
+        return;
+      }
+      message = {
+        ...message,
+        preparedText: outcome.text || "Inspect the attached source and describe its contents.",
+      };
+      store.saveMessage(message);
+    }
     if (target && activeRuns.has(target.status)) {
       this.assertConversation(connection, message, peer, target);
       if (target.config?.externalParentRunId !== parent)
@@ -496,13 +621,13 @@ export class ChannelRunService {
         messageId: message.messageUuid,
         runId: target.runId,
         chatId: taskConversationId(thread.taskId),
-        text: message.message.text,
+        text: message.preparedText ?? message.message.text,
         pageIds: target.pageIds,
         contextPageRefs: target.config?.contextPageRefs ?? [],
         expectedRevision: target.config?.messageRevision ?? 0,
       };
       const queued =
-        connection.options.followUp === "steer"
+        connection.options.followUp === "steer" && !message.message.attachments?.length
           ? await this.deps.runs.messages.steer(input)
           : this.deps.runs.messages.queue(input);
       this.current(owner);
@@ -521,7 +646,9 @@ export class ChannelRunService {
     try {
       const run = await this.deps.runs.start({
         ...this.deps.tasks.prepareRun(task.taskId, task.revision, undefined, parent),
-        goal: message.message.text,
+        goal: message.preparedText ?? message.message.text,
+        modelId: thread.modelId,
+        reasoning: thread.reasoning,
         executionTarget: "local",
         deliveryRunId: message.deliveryRunId,
         externalConnectionId: client.connectionId,

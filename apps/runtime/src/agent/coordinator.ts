@@ -47,6 +47,7 @@ import { DEFAULT_MAX_STEPS, TERMINAL_STATUSES } from "./run-state.js";
 export { markUnconfirmedWrites, verifyResultCitations, NAV_OPS } from "./result-verification.js";
 
 export interface RunControl {
+  contextCompaction?: import("./loop/compaction.js").ContextCompactionControl;
   abort: AbortController;
   paused: boolean;
   dispatchAbort?: AbortController;
@@ -78,6 +79,7 @@ const TAKEOVER_INTERRUPTION = Symbol("trusted run takeover interruption");
 export interface CoordinatorDeps {
   accountBudget?: import("../services/private-budget.js").PrivateBudgetClient;
   modelCatalog?: () => readonly import("@aux/contracts/model-registry").ModelCapability[];
+  contextAuthority?: () => unknown;
   onDeadline?: (runId: string) => void;
   prepareSources?: (run: Run, signal: AbortSignal) => Promise<void>;
   checkRunSource?: (runId: string) => void;

@@ -212,6 +212,7 @@ function harness(url = "https://source.test/") {
     return actualToolCall(input);
   });
   const settings = {
+    modelCacheGeneration: () => repo.getSetting<string>("modelCacheGeneration") ?? "fixture-original-model",
     maxWorkers: () => 2,
     perOrigin: () => 2,
     maxModelCalls: () => 4,

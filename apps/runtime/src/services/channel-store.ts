@@ -7,6 +7,8 @@ import {
   ChannelFailureCodeSchema,
   ChannelInboundSchema,
   ChannelPeerSchema,
+  ChannelReplySchema,
+  ChannelAttachmentSchema,
   type ChannelConnection,
   type ChannelCursor,
   type ChannelInbound,
@@ -27,6 +29,9 @@ const threadSchema = z
     lastRunId: z.string().optional(),
     conversationId: z.string().min(1),
     threadId: z.string().optional(),
+    preferencesRevision: z.number().int().nonnegative().default(0),
+    modelId: z.string().min(1).max(500).optional(),
+    reasoning: z.enum(["low", "medium", "high"]).optional(),
   })
   .strict();
 export type ChannelThread = z.infer<typeof threadSchema>;
@@ -37,6 +42,7 @@ const messageBody = z
     deliveryRunId: z.string().min(1),
     authorityId: z.string().uuid().optional(),
     needsInputNotified: z.boolean().default(false),
+    preparedText: z.string().max(40000).optional(),
   })
   .strict();
 type MessageBody = z.infer<typeof messageBody>;
@@ -57,6 +63,7 @@ const deliveryBody = z
     threadId: z.string().optional(),
     replyToMessageId: z.string().optional(),
     text: z.string().min(1),
+    reply: ChannelReplySchema.optional(),
     providerMessageId: z.string().optional(),
     errorCode: ChannelFailureCodeSchema.optional(),
     retryAt: z.number().nonnegative().optional(),
@@ -69,6 +76,30 @@ export type StoredChannelDelivery = z.infer<typeof deliveryBody> & {
   peerKey: string;
   runId?: string;
   state: "pending" | "sending" | "delivered" | "failed" | "unknown";
+  createdAt: number;
+  updatedAt: number;
+};
+const attachmentBody = z
+  .object({
+    source: ChannelAttachmentSchema,
+    bytesBase64: z.string().max(26_666_668).optional(),
+    sha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    mediaType: z.string().max(100).optional(),
+    attachmentId: z.string().optional(),
+    imageId: z.string().optional(),
+    transcript: z.string().max(20000).optional(),
+    modelId: z.string().optional(),
+    error: z.string().max(500).optional(),
+  })
+  .strict();
+export type StoredChannelAttachment = z.infer<typeof attachmentBody> & {
+  connectionId: string;
+  messageKey: string;
+  attachmentKey: string;
+  state: "captured" | "ready" | "failed" | "transcribing" | "unknown";
   createdAt: number;
   updatedAt: number;
 };
@@ -180,7 +211,7 @@ export class ChannelStore {
       this.repo.db.prepare("DELETE FROM channel_connections WHERE connection_id=?").run(connectionId),
     );
   }
-  key(connectionId: string, kind: "peer" | "thread" | "message", value: string) {
+  key(connectionId: string, kind: "peer" | "thread" | "message" | "attachment", value: string) {
     const envelope = this.envelope(connectionId);
     if (!envelope) throw new AuxError("not_found", "Channel connection does not exist.");
     return createHmac("sha256", Buffer.from(envelope.lookupKey, "base64"))
@@ -242,7 +273,7 @@ export class ChannelStore {
       .get(connectionId, peerKey, threadKey) as { body: string } | undefined;
     return row && this.decode("channel_threads", [connectionId, peerKey, threadKey], row.body, threadSchema);
   }
-  saveThread(connectionId: string, peerKey: string, threadKey: string, value: ChannelThread) {
+  saveThread(connectionId: string, peerKey: string, threadKey: string, value: z.input<typeof threadSchema>) {
     const thread = threadSchema.parse(value);
     this.repo.db
       .prepare(
@@ -383,6 +414,7 @@ export class ChannelStore {
             messageUuid: message.messageUuid,
             deliveryRunId: message.deliveryRunId,
             needsInputNotified: message.needsInputNotified,
+            preparedText: message.preparedText,
             authorityId: message.authorityId,
           }),
         ),
@@ -391,6 +423,67 @@ export class ChannelStore {
         message.revision,
       );
     if (result.changes !== 1) throw new AuxError("conflict", "The original channel message changed.");
+  }
+  attachments(connectionId: string, messageKey: string): StoredChannelAttachment[] {
+    const rows = this.repo.db
+      .prepare(
+        "SELECT * FROM channel_attachments WHERE connection_id=? AND message_key=? ORDER BY created_at,attachment_key",
+      )
+      .all(connectionId, messageKey) as {
+      attachment_key: string;
+      state: StoredChannelAttachment["state"];
+      body: string;
+      created_at: number;
+      updated_at: number;
+    }[];
+    return rows.map((row) => ({
+      ...this.decode(
+        "channel_attachments",
+        [connectionId, messageKey, row.attachment_key],
+        row.body,
+        attachmentBody,
+      ),
+      connectionId,
+      messageKey,
+      attachmentKey: row.attachment_key,
+      state: row.state,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+  saveAttachment(record: StoredChannelAttachment) {
+    const original = this.repo.db
+      .prepare(
+        `SELECT m.state,m.revision,c.revision AS connection_revision,c.enabled FROM channel_messages m JOIN channel_connections c ON c.connection_id=m.connection_id WHERE m.connection_id=? AND m.message_key=?`,
+      )
+      .get(record.connectionId, record.messageKey) as
+      { state: string; revision: string; connection_revision: string; enabled: number } | undefined;
+    if (
+      !original ||
+      !["pending", "admitting", "running", "queued"].includes(original.state) ||
+      !original.enabled ||
+      original.revision !== original.connection_revision
+    )
+      throw new AuxError("cancelled", "The attachment's original channel message retired.");
+    const { connectionId, messageKey, attachmentKey, state, createdAt, updatedAt, ...body } = record;
+    this.repo.db
+      .prepare(
+        `INSERT INTO channel_attachments(connection_id,message_key,attachment_key,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
+      ON CONFLICT(connection_id,message_key,attachment_key) DO UPDATE SET state=excluded.state,body=excluded.body,updated_at=excluded.updated_at`,
+      )
+      .run(
+        connectionId,
+        messageKey,
+        attachmentKey,
+        state,
+        this.encode(
+          "channel_attachments",
+          [connectionId, messageKey, attachmentKey],
+          attachmentBody.parse(body),
+        ),
+        createdAt,
+        updatedAt,
+      );
   }
   deliveries(connectionId: string, states?: StoredChannelDelivery["state"][]): StoredChannelDelivery[] {
     if (states && !states.length) return [];
@@ -417,6 +510,7 @@ export class ChannelStore {
       threadId: value.threadId,
       replyToMessageId: value.replyToMessageId,
       text: value.text,
+      reply: value.reply,
       providerMessageId: value.providerMessageId,
       errorCode: value.errorCode,
       retryAt: value.retryAt,
@@ -457,6 +551,9 @@ export class ChannelStore {
       );
   }
   recover() {
+    this.repo.db
+      .prepare("UPDATE channel_attachments SET state='unknown',updated_at=? WHERE state='transcribing'")
+      .run(Date.now());
     // A process can die after provider acceptance. Keep the ambiguity; never replay an uncertain send.
     this.repo.db
       .prepare("UPDATE channel_outbox SET state='unknown',updated_at=? WHERE state='sending'")

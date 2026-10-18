@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (![2, 3, 4, 5, SCHEMA_VERSION].includes(version)) throw incompatible();
+      if (![2, 3, 4, 5, 6, SCHEMA_VERSION].includes(version)) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -46,6 +46,10 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
+      if (version >= 5) documentTablesForDatabase(db);
+      if (version >= 6) channelTablesForDatabase(db);
+      if (version < 7 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name='channel_attachments'").get())
+        throw incompatible();
       if (version < 6 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name LIKE 'channel_%'").get())
         throw incompatible();
       if (
@@ -75,6 +79,7 @@ export function openDb(path: string): DatabaseSync {
         applySchema(db, [schema.documents, "PRAGMA user_version=5"]);
       }
       if (version < 6) applySchema(db, [schema.channels, "PRAGMA user_version=6"]);
+      if (version < 7) applySchema(db, [schema.channel_attachments, "PRAGMA user_version=7"]);
     } else {
       applySchema(db, [
         schema.profile,
@@ -82,6 +87,7 @@ export function openDb(path: string): DatabaseSync {
         schema.process_logs,
         schema.documents,
         schema.channels,
+        schema.channel_attachments,
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
@@ -165,7 +171,7 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Document tables do not match the historical database schema.");
     return [];
   }
-  if (![5, 6].includes(version) || found.length !== tables.length)
+  if (![5, 6, 7].includes(version) || found.length !== tables.length)
     throw new Error("The protected document schema is incomplete.");
   const expected = [
     "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,state:0,manifest:0",
@@ -191,16 +197,28 @@ export function channelTablesForDatabase(db: DatabaseSync): string[] {
     channel_outbox:
       "delivery_id:1,connection_id:0,revision:0,peer_key:0,run_id:0,state:0,body:0,created_at:0,updated_at:0",
     channel_cursors: "connection_id:1,revision:0,body:0",
+    ...(version >= 7
+      ? {
+          channel_attachments:
+            "connection_id:1,message_key:2,attachment_key:3,state:0,body:0,created_at:0,updated_at:0",
+        }
+      : {}),
   };
   const tables = Object.keys(expected);
-  const found = tables.filter((table) =>
-    db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table),
-  );
+  const found = (
+    db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name LIKE 'channel_%'").all() as {
+      name: string;
+    }[]
+  ).map((row) => row.name);
   if (version < 6) {
     if (found.length) throw new Error("Channel tables do not match the historical database schema.");
     return [];
   }
-  if (version !== 6 || found.length !== tables.length)
+  if (
+    ![6, 7].includes(version) ||
+    found.length !== tables.length ||
+    found.some((table) => !tables.includes(table))
+  )
     throw new Error("The protected channel schema is incomplete.");
   for (const [table, identity] of Object.entries(expected)) {
     const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];

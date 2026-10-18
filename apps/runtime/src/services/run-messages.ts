@@ -1,3 +1,6 @@
+import { captureQueuedContext, queuedSourceHash } from "./queue-context.js";
+import { createHash } from "node:crypto";
+import type { QueueOrder } from "@aux/contracts/queue-order";
 import { withRunAuthorityMutation } from "./overnight-authority.js";
 import {
   AuxError,
@@ -57,6 +60,66 @@ export class RunMessageQueue {
   list(chatId: string): RunMessage[] {
     return this.repo.listRunMessages(chatId);
   }
+  order(chatId: string): QueueOrder {
+    const messages = this.repo.pendingRunMessages(chatId).filter((message) => message.mode === "queue");
+    const snapshot = messages.map((message) => ({
+      message,
+      target: (() => {
+        const run = this.repo.getRun(message.targetRunId);
+        return run ? queuedSourceHash(run) : undefined;
+      })(),
+      delivery: this.repo.getRun(message.deliveryRunId)?.status,
+    }));
+    return {
+      chatId,
+      messageIds: messages.map((message) => message.messageId),
+      revision: createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"),
+    };
+  }
+
+  reorder(input: { chatId: string; expectedRevision: string; messageIds: string[] }): QueueOrder {
+    const result = this.repo.transaction(() => {
+      const original = this.order(input.chatId);
+      if (!original.messageIds.length)
+        throw new AuxError("conflict", "There are no waiting messages to reorder.");
+      if (original.revision !== input.expectedRevision)
+        throw new AuxError(
+          "conflict",
+          "The queue or its original context changed. Review the current queue.",
+        );
+      if (this.repo.getConversation(input.chatId)?.archived)
+        throw new AuxError("conflict", "Restore this conversation before reordering its messages.");
+      if (
+        input.messageIds.length !== original.messageIds.length ||
+        new Set(input.messageIds).size !== input.messageIds.length ||
+        input.messageIds.some((id) => !original.messageIds.includes(id))
+      )
+        throw new AuxError("conflict", "Reorder the exact current pending messages.");
+      for (const id of input.messageIds) {
+        const message = this.repo.getRunMessage(id)!;
+        const target = this.repo.getRun(message.targetRunId);
+        if (
+          message.chatId !== input.chatId ||
+          !target ||
+          target.config?.chatId !== input.chatId ||
+          target.config.contextMemoryRevoked ||
+          !message.context ||
+          message.context.targetRunId !== target.runId ||
+          message.context.chatId !== input.chatId ||
+          message.context.sourceHash !== queuedSourceHash(target) ||
+          message.status === "delivering" ||
+          this.repo.getRun(message.deliveryRunId)
+        )
+          throw new AuxError("conflict", "A queued message started delivery or its original source retired.");
+      }
+      this.repo.setSetting(`conversationQueueOrder:${input.chatId}`, input.messageIds);
+      return this.order(input.chatId);
+    });
+    this.events.emit("conversation.messages.changed", { chatId: input.chatId, revision: result.revision });
+    this.schedule(input.chatId);
+    return result;
+  }
+
   messageStatus(nonce: string): SendRecord | undefined {
     const message = this.repo.getRunMessage(nonce);
     if (message) this.syncJournal(message);
@@ -133,6 +196,15 @@ export class RunMessageQueue {
           "The selected browser context changed. Update it through the saved task after this run finishes.",
         );
       }
+      const context = captureQueuedContext(target);
+      target.config = {
+        ...target.config,
+        queuedMessageContexts: {
+          ...target.config.queuedMessageContexts,
+          [input.messageId]: context,
+        },
+      };
+      this.repo.saveRun(target);
       const at = Date.now();
       return this.repo.insertRunMessage({
         messageId: input.messageId,
@@ -369,6 +441,9 @@ export class RunMessageQueue {
         this.changed(this.repo.updateRunMessage(message.messageId, "delivered"));
         if (active.has(run.status)) return;
       } catch (error) {
+        const current = this.repo.getRunMessage(message.messageId);
+        if (!current) return;
+        if (current.status === "cancelled") continue;
         const text = error instanceof Error ? error.message : String(error);
         this.changed(this.repo.updateRunMessage(message.messageId, "needs_attention", text));
         return;

@@ -1,3 +1,4 @@
+import type { RuntimeShutdownReasonReader } from "../../services/runtime-shutdown.js";
 import { overnightRoot } from "../../services/run-lineage.js";
 import { AuxError } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
@@ -8,8 +9,8 @@ export function installNightShift(s: Services, service: NightShiftService) {
   if (instances.has(s)) throw new AuxError("conflict", "This Profile already has Night shift.");
   instances.set(s, service);
   byRepo.set(s.repo, service);
-  return async () => {
-    await service.close();
+  return async (reason?: RuntimeShutdownReasonReader) => {
+    await service.close(reason);
     instances.delete(s);
     byRepo.delete(s.repo);
   };

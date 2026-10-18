@@ -1,3 +1,4 @@
+import type { RuntimeShutdownReasonReader } from "./runtime-shutdown.js";
 import { runRoot } from "./run-lineage.js";
 import { withOvernightAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
@@ -447,7 +448,7 @@ export class NightShiftService {
       );
     }
   }
-  async close() {
+  async close(reason: RuntimeShutdownReasonReader = () => "local") {
     this.closed = true;
     for (const item of this.list())
       if (["running", "parked"].includes(item.status)) {
@@ -460,6 +461,6 @@ export class NightShiftService {
           item.runId,
         );
       }
-    await this.runtime.releaseActivity();
+    if (reason() !== "native-owner-disconnected") await this.runtime.releaseActivity();
   }
 }

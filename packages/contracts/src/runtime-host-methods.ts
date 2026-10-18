@@ -1,3 +1,4 @@
+import { NativeImageNormalizeParams, NativeImageNormalizeResult } from "./image-normalize.js";
 import { DocumentReadParamsSchema, DocumentReadResultSchema } from "./document-intake.js";
 import { PrivateRuntimeRequestSchema, PrivateRuntimeResultSchema } from "./private-provider.js";
 import {
@@ -238,11 +239,7 @@ export const RuntimeHostMethods = {
     z.object({ token: z.string().uuid() }).strict(),
     TurnSourceContextSchema,
   ),
-  "native.organizationSnapshot": runtime(
-    "core",
-    z.object({}).strict(),
-    ProfileOrganizationSnapshotSchema,
-  ),
+  "native.organizationSnapshot": runtime("core", z.object({}).strict(), ProfileOrganizationSnapshotSchema),
   "native.bookmarksInvoke": runtime(
     "core",
     z.object({ method: str, params: z.unknown() }).strict(),
@@ -366,6 +363,7 @@ export const RuntimeHostMethods = {
     accepted,
   ),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
+  "native.imageNormalize": runtime("core", NativeImageNormalizeParams, NativeImageNormalizeResult),
   "native.personCapture": runtime("core", NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema),
   "native.personReadContext": runtime(
     "core",

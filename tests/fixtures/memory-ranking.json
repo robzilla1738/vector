@@ -1,0 +1,9 @@
+{
+  "query": "workshop",
+  "candidates": [
+    { "id": "recent-weak", "path": "notes/general.md", "semantic": 0.5, "ageDays": 0 },
+    { "id": "older-strong", "path": "notes/reference.md", "semantic": 0.95, "ageDays": 60 },
+    { "id": "older-relevant-path", "path": "sites/workshop.md", "semantic": 0.8, "ageDays": 60 }
+  ],
+  "expectedOrder": ["older-relevant-path", "older-strong", "recent-weak"]
+}

@@ -1,5 +1,8 @@
 import { AuxError } from "@aux/contracts";
 
+export type RuntimeShutdownReason = "local" | "native-owner-disconnected";
+export type RuntimeShutdownReasonReader = () => RuntimeShutdownReason;
+
 /** Persists admission closure after the retirement barrier itself is released. */
 export class RuntimeShutdownAdmission {
   private shuttingDown = false;
@@ -23,12 +26,14 @@ export function runtimeShutdown(deps: {
   disconnectAuthority(): void;
   stopMessages(): Promise<void>;
   markInterrupted(): Promise<void>;
-  stopFeatures(): Promise<void>;
+  stopFeatures(reason: RuntimeShutdownReasonReader): Promise<void>;
   cleanup: readonly { stage: string; run(): void | Promise<void> }[];
   reportFailure(stage: string, error: unknown): void;
-}): () => Promise<void> {
+}): (reason?: RuntimeShutdownReason) => Promise<void> {
+  let shutdownReason: RuntimeShutdownReason = "local";
   let shutdown: Promise<void> | undefined;
-  return () => {
+  return (reason = "local") => {
+    if (reason === "native-owner-disconnected") shutdownReason = reason;
     if (shutdown) return shutdown;
     // Publish ownership before callbacks can re-enter shutdown.
     let resolve!: () => void, reject!: (error: unknown) => void;
@@ -58,7 +63,7 @@ export function runtimeShutdown(deps: {
       await attempt("egress-close", deps.closeEgress);
       await attempt("message-stop", deps.stopMessages);
       if (retired) await attempt("run-interruption", deps.markInterrupted);
-      await attempt("feature-stop", deps.stopFeatures);
+      await attempt("feature-stop", () => deps.stopFeatures(() => shutdownReason));
       for (const cleanup of deps.cleanup) await attempt(cleanup.stage, cleanup.run);
       if (failures.length)
         reject(new AggregateError(failures, "Runtime shutdown did not complete every authority boundary."));

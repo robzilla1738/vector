@@ -43,13 +43,16 @@ export class ConversationImages {
         .map(({ sha256, removed, ...item }) => item),
     };
   }
-  add(opts: {
-    chatId: string;
-    filename: string;
-    dataUrl: string;
-    sourceUrl?: string;
-    sourcePage?: PageContextRef;
-  }) {
+  add(
+    opts: {
+      chatId: string;
+      filename: string;
+      dataUrl: string;
+      sourceUrl?: string;
+      sourcePage?: PageContextRef;
+    },
+    onAdded?: (image: ConversationImage) => void,
+  ) {
     this.mutable(opts.chatId);
     const records = this.records(opts.chatId),
       visible = records.filter((item) => !item.removed);
@@ -112,7 +115,10 @@ export class ConversationImages {
       sha256: digest(buffer),
     };
     try {
-      this.repo.setSetting(key(opts.chatId), [...records, record]);
+      this.repo.transaction(() => {
+        this.repo.setSetting(key(opts.chatId), [...records, record]);
+        onAdded?.(record);
+      });
     } catch (error) {
       this.repo.db.prepare("DELETE FROM artifacts WHERE artifact_id=?").run(artifact.artifactId);
       this.artifacts.removeFiles([artifact.path]);
@@ -181,6 +187,26 @@ export class ConversationImages {
     return this.records(chatId)
       .filter((item) => item.included && !item.removed)
       .map((item) => item.artifactId);
+  }
+  /** Only the original run's captured image identities can leave through image generation. */
+  referencesForRun(run: Run, artifactIds: readonly string[]) {
+    if (artifactIds.length > 4 || new Set(artifactIds).size !== artifactIds.length)
+      throw new AuxError("invalid_params", "Choose up to four distinct captured reference images.");
+    const admitted = new Set(run.config?.contextImageArtifactIds ?? []);
+    const records = this.records(run.config?.chatId ?? run.runId);
+    return artifactIds.map((artifactId) => {
+      if (!admitted.has(artifactId))
+        throw new AuxError("permission_denied", "The reference image was not admitted to this original run.");
+      const record = records.find((item) => item.artifactId === artifactId);
+      if (!record) throw new AuxError("not_found", "The captured reference image is no longer available.");
+      const pixels = this.pixels(record);
+      return {
+        artifactId,
+        sha256: record.sha256,
+        mediaType: "image/png",
+        bytes: Uint8Array.from(Buffer.from(pixels.slice("data:image/png;base64,".length), "base64")),
+      };
+    });
   }
   forRun(run: Run): string[] {
     const ids = run.config?.contextImageArtifactIds ?? [];

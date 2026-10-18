@@ -1,5 +1,6 @@
 import { codingToolManifest } from "./coding-tools.js";
 import { PageSummaryInputSchema } from "@aux/contracts/page-summary";
+import { MemoryRecallQuerySchema, MemoryDocumentMethodSchemas } from "@aux/contracts/memory-documents";
 import { z } from "zod";
 import {
   AuxError,
@@ -464,22 +465,35 @@ export function buildToolManifest(): LoopToolManifest {
 
   const memorySearch: LoopTool = {
     description:
-      "Search this workspace's protected page memory — pages you were allowed to remember. " +
-      "Returns ranked snippets; empty when recall is off for this workspace.",
-    byline: "Aux content memory",
-    inputSchema: z.object({ query: z.string().min(1).max(500) }),
+      "Search eligible saved documents, site/routine memory, pages and history in this run's Space. " +
+      "Use multiple queries and optional date/domain filters. Results include exact source identities, " +
+      "revisions and line ranges; use memory_read for bounded full-source reads. Lexical fallback is labelled.",
+    byline: "Aux Memory",
+    inputSchema: MemoryRecallQuerySchema.omit({ workspaceId: true }),
     execute: async (raw, ctx) => {
-      const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
+      const query = MemoryRecallQuerySchema.omit({ workspaceId: true }).parse(raw);
       return {
-        output: {
-          memories: await need(ctx.deps.memorySearch, "memory_search")(query, {
-            runId: ctx.runId,
-            threadId: ctx.threadId,
-            turnId: ctx.turnId,
-          }),
-        },
+        output: await need(ctx.deps.memorySearch, "memory_search")(query, {
+          runId: ctx.runId,
+          threadId: ctx.threadId,
+          turnId: ctx.turnId,
+          signal: ctx.signal,
+        }),
       };
     },
+  };
+
+  const memoryRead: LoopTool = {
+    description:
+      "Read eligible Memory source lines by the exact sourceId, revision and sha256 returned by memory_search. Search again if a source changed.",
+    byline: "Aux Memory",
+    inputSchema: MemoryDocumentMethodSchemas["memory.pipeline.readSource"].omit({ workspaceId: true }),
+    execute: async (raw, ctx) => ({
+      output: await need(ctx.deps.memoryReadSource, "memory_read")(
+        MemoryDocumentMethodSchemas["memory.pipeline.readSource"].omit({ workspaceId: true }).parse(raw),
+        { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId, signal: ctx.signal },
+      ),
+    }),
   };
 
   const subagent: LoopTool = {
@@ -723,14 +737,24 @@ export function buildToolManifest(): LoopToolManifest {
     },
     image_generate: {
       description:
-        "Generate an image from a prompt and save its artifact in this conversation. Uses the original run’s model and spend budgets.",
+        "Generate or edit an image from a prompt and optional reference images already admitted to this run. Save the actual output artifact in this conversation. Uses the original run’s model and spend budgets.",
       byline: "Aux image generation",
-      inputSchema: z.object({ prompt: z.string().trim().min(1).max(4_000) }),
+      inputSchema: z.object({
+        prompt: z.string().trim().min(1).max(4_000),
+        referenceImageArtifactIds: z.array(z.string().min(1)).max(4).optional(),
+      }),
       execute: async (raw, ctx) =>
         need(
           ctx.deps.generateImage,
           "image_generate",
-        )(z.object({ prompt: z.string().trim().min(1).max(4_000) }).parse(raw)),
+        )(
+          z
+            .object({
+              prompt: z.string().trim().min(1).max(4_000),
+              referenceImageArtifactIds: z.array(z.string().min(1)).max(4).optional(),
+            })
+            .parse(raw),
+        ),
     },
     get_time: getTime,
     snapshot,
@@ -755,6 +779,7 @@ export function buildToolManifest(): LoopToolManifest {
     },
     history_search: historySearch,
     memory_search: memorySearch,
+    memory_read: memoryRead,
     subagent,
     subagent_wait: subagentWait,
     subagent_send: subagentSend,

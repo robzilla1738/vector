@@ -1,3 +1,4 @@
+import type { MemoryRecallSource } from "@aux/contracts/memory-documents";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { setImmediate as idle } from "node:timers/promises";
 import {
@@ -1431,6 +1432,50 @@ export class ContentMemoryStore {
     } finally {
       this.historyControllers.delete(controller);
     }
+  }
+
+  /** Internal bounded source projection; complete article text never crosses the renderer catalog API. */
+  async recallDocuments(workspaceId: string, signal: AbortSignal): Promise<MemoryRecallSource[]> {
+    return this.own(async () => {
+      if (!this.policy(workspaceId).enabled || !readWorkspaceMemory(this.repo, workspaceId).enabled)
+        return [];
+      const index = await this.index(workspaceId, signal);
+      const check = () => {
+        signal.throwIfAborted();
+        if (
+          this.closed ||
+          this.indexes.get(workspaceId) !== index ||
+          !this.policy(workspaceId).enabled ||
+          readWorkspaceMemory(this.repo, workspaceId).revision !== index.revision
+        )
+          throw new AuxError("cancelled", "Saved article sources changed during recall.");
+      };
+      const sources: MemoryRecallSource[] = [];
+      let bytes = 0;
+      for (const indexed of [...index.rows.values()].sort((a, b) => b.capturedAt - a.capturedAt)) {
+        check();
+        const body = await this.readIndexedPage(indexed);
+        check();
+        if (!body) continue;
+        const size = Buffer.byteLength(body.text);
+        if (bytes + size > 8 * 1024 * 1024) break;
+        bytes += size;
+        sources.push({
+          sourceId: `page:${body.memoryId}`,
+          kind: "page",
+          path: body.url,
+          title: body.title.slice(0, 500),
+          text: body.text,
+          revision: indexed.sourceVersion,
+          sha256: createHash("sha256").update(body.text).digest("hex"),
+          updatedAt: body.capturedAt,
+          url: body.url,
+          sourceRefs: [],
+        });
+      }
+      check();
+      return sources;
+    });
   }
 
   /** Catalog metadata pages never decrypt complete articles into the renderer. */

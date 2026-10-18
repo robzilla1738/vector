@@ -1,3 +1,4 @@
+import type { RuntimeShutdownReasonReader } from "../../services/runtime-shutdown.js";
 import { deferRuntimeWork, isRuntimeIdle } from "../../services/idle.js";
 import { AuxError, createClock } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
@@ -49,10 +50,10 @@ export function boot(s: Services) {
       tick();
     },
   );
-  return async () => {
+  return async (reason?: RuntimeShutdownReasonReader) => {
     cancelIdle();
     clearInterval(timer);
     removeBudget();
-    await remove();
+    await remove(reason);
   };
 }

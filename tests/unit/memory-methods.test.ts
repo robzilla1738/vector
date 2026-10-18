@@ -29,7 +29,7 @@ it("refreshes and revokes active context after successful Memory changes only", 
       method,
       params: { workspaceId: "space-1", claimId: "11669024-a817-444b-bafa-7622510e51a2", decision: "accept" },
       revokeWorkspaceContext,
-      s: { repo, memoryPipeline: { review, forget }, events: { emit } },
+      s: { repo, memoryPipeline: { review, forget, retireWorkspace: vi.fn() }, events: { emit } },
     }) as unknown as Parameters<NonNullable<(typeof memoryMethods)[typeof method]>>[0];
 
   await memoryMethods["memory.pipeline.review"]!(context("memory.pipeline.review"));
@@ -80,6 +80,7 @@ it("keeps Forget successful but marks recovery incomplete when fresh issuance ca
         s: {
           repo,
           memoryPipeline: {
+            retireWorkspace: vi.fn(),
             forget: async (_params: unknown, beforeRemoval: () => void) => {
               beforeRemoval();
               return { forgotten: 1, remaining: 0 };
@@ -118,7 +119,7 @@ it("advances the managed backup generation before a nonempty pipeline Forget", a
       revokeWorkspaceContext: vi.fn(),
       s: {
         repo,
-        memoryPipeline: { forget },
+        memoryPipeline: { forget, retireWorkspace: vi.fn() },
         settings: { all: () => ({ dataDir }) },
         events: { emit: vi.fn() },
       },

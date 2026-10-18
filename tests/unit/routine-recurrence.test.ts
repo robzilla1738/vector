@@ -31,6 +31,7 @@ function pendingLaunch() {
 function fixture(
   start?: ConstructorParameters<typeof RoutineService>[2],
   stop?: ConstructorParameters<typeof RoutineService>[3],
+  discovery?: ConstructorParameters<typeof RoutineService>[4],
 ) {
   const db = openDb(":memory:");
   const repo = new Repo(db),
@@ -44,7 +45,7 @@ function fixture(
     criteria: [{ criterionId: "report-read", description: "Report reviewed", verification: "manual" }],
     resources: [],
   });
-  const routines = new RoutineService(repo, events, start, stop);
+  const routines = new RoutineService(repo, events, start, stop, discovery);
   let retired = false;
   const retire = async () => {
     if (retired) return;
@@ -128,7 +129,7 @@ it("waits for exact original run cancellation when a routine pauses during launc
   expect((await pending)[0]).toMatchObject({ runId: "original-only", status: "cancelled" });
   expect(stop).toHaveBeenCalledExactlyOnceWith("original-only");
 });
-it("suggests only repeated completed work from the current saved task revision", () => {
+it("does not publish routine discovery without a functioning Memory eligibility owner", async () => {
   const f = fixture();
   for (let index = 0; index < 3; index++)
     f.repo.saveRun({
@@ -144,11 +145,7 @@ it("suggests only repeated completed work from the current saved task revision",
         contextWorkspaceId: f.workspace.workspaceId,
       },
     });
-  expect(f.routines.scan({ workspaceId: f.workspace.workspaceId })).toMatchObject([
-    { taskId: f.task.taskId, completedRuns: 3, runId: "completed-2" },
-  ]);
-  f.create({ kind: "manual" });
-  expect(f.routines.scan({ workspaceId: f.workspace.workspaceId })).toEqual([]);
+  expect(await f.routines.scan({ workspaceId: f.workspace.workspaceId })).toEqual([]);
 });
 it("keeps routine caps explicit and allows the person to remove them", () => {
   const f = fixture();

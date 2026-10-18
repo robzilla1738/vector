@@ -1,3 +1,4 @@
+import { CHANNEL_MAX_ATTACHMENT_BYTES } from "@aux/contracts/channels";
 import type { RawData } from "ws";
 import type {
   ChannelCredentials,
@@ -5,6 +6,8 @@ import type {
   ChannelFailureCode,
   ChannelIdentity,
   ChannelInbound,
+  ChannelReply,
+  ChannelAttachment,
 } from "@aux/contracts/channels";
 
 export class ChannelTransportError extends Error {
@@ -22,6 +25,7 @@ export type ChannelDelivery = {
   threadId?: string;
   replyToMessageId?: string;
   text: string;
+  reply?: ChannelReply;
 };
 export type ChannelReceiver = {
   signal: AbortSignal;
@@ -33,6 +37,11 @@ export type ChannelReceiver = {
 export type ChannelTransport = {
   identity: ChannelIdentity;
   messageLength: number;
+  downloadAttachment?(
+    message: ChannelInbound,
+    attachment: ChannelAttachment,
+    signal: AbortSignal,
+  ): Promise<{ bytes: Uint8Array; mediaType: string }>;
   run(input: ChannelReceiver): Promise<void>;
   send(input: ChannelDelivery, signal: AbortSignal): Promise<{ messageId: string }>;
 };
@@ -49,6 +58,59 @@ export type ChannelSocketStream = {
   on(event: "error", listener: (error: Error) => void): unknown;
   on(event: "close", listener: (code: number) => void): unknown;
 };
+
+/** Credential-bearing source errors never escape the original transport. */
+export async function channelBinary(
+  network: ChannelNetwork,
+  url: URL,
+  init: RequestInit,
+  signal: AbortSignal,
+) {
+  let response: Response;
+  try {
+    response = await (network.fetch ?? fetch)(url, {
+      ...init,
+      redirect: "error",
+      signal: AbortSignal.any([signal, AbortSignal.timeout(35_000)]),
+    });
+  } catch {
+    signal.throwIfAborted();
+    throw new ChannelTransportError("network");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new ChannelTransportError("invalid_response");
+  try {
+    if (!response.ok)
+      throw new ChannelTransportError(
+        response.status === 401 ? "authentication" : response.status === 403 ? "scope" : "network",
+      );
+    const declared = Number(response.headers.get("content-length"));
+    if (declared > CHANNEL_MAX_ATTACHMENT_BYTES) throw new ChannelTransportError("invalid_response");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      signal.throwIfAborted();
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > CHANNEL_MAX_ATTACHMENT_BYTES) throw new ChannelTransportError("invalid_response");
+      chunks.push(part.value);
+    }
+    if (!size) throw new ChannelTransportError("invalid_response");
+    return {
+      bytes: Uint8Array.from(Buffer.concat(chunks)),
+      mediaType: (response.headers.get("content-type") ?? "application/octet-stream")
+        .split(";")[0]!
+        .trim()
+        .toLowerCase(),
+    };
+  } catch (error) {
+    signal.throwIfAborted();
+    throw error instanceof ChannelTransportError ? error : new ChannelTransportError("network");
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}
 
 export async function channelJson(
   network: ChannelNetwork,

@@ -21,6 +21,8 @@ import type { AgentConnectionService } from "./agent-connections.js";
 import type { ExternalSessionService } from "./external-sessions.js";
 import type { RunService } from "./runs.js";
 import type { TaskService } from "./tasks.js";
+import type { ChannelIntakeDependencies } from "./channel-intake.js";
+import type { ChannelModels } from "./channel-commands.js";
 import { ChannelRunService } from "./channel-runs.js";
 import { ChannelStore, type StoredChannelDelivery, type StoredChannelPeer } from "./channel-store.js";
 import { ChannelTransportError, createChannelTransport, type ChannelTransport } from "./channel-transport.js";
@@ -48,6 +50,8 @@ type Dependencies = {
   sessions: ExternalSessionService;
   runs: RunService;
   tasks: TaskService;
+  models?: ChannelModels;
+  intake?: Omit<ChannelIntakeDependencies, "download">;
   transport?: (credentials: ChannelCredentials, signal: AbortSignal) => Promise<ChannelTransport>;
 };
 const secretSchema = z
@@ -88,6 +92,30 @@ export class ChannelService {
     this.workflow = new ChannelRunService({
       ...deps,
       store: this.store,
+      intake: deps.intake
+        ? {
+            ...deps.intake,
+            download: async (connection, message, attachment, signal) => {
+              const entry = this.active.get(connection.connectionId);
+              if (!entry?.transport?.downloadAttachment || !entry.network)
+                throw new AuxError(
+                  "capability_unsupported",
+                  "This channel transport cannot download attachments.",
+                );
+              this.current(entry);
+              const original = entry.transport;
+              const result = await original.downloadAttachment!(
+                message,
+                attachment,
+                AbortSignal.any([signal, entry.network.signal]),
+              );
+              this.current(entry);
+              if (entry.transport !== original)
+                throw new AuxError("cancelled", "The original attachment transport changed.");
+              return result;
+            },
+          }
+        : undefined,
       deliveryReady: (id) => this.flush(id),
       failed: (id) => {
         const entry = this.active.get(id);

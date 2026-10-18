@@ -487,3 +487,161 @@ describe("messenger transport authority and delivery", () => {
     expect(f.calls.filter((call) => ["sendMessage", "messages"].includes(call.method))).toHaveLength(1);
   });
 });
+
+describe("authenticated channel media and interactive replies", () => {
+  it("admits media-only Telegram messages and acknowledges callbacks only after their durable receipt", async () => {
+    const actionId = randomUUID(),
+      seen: ChannelInbound[] = [];
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { controller, input } = receiver(async (message) => {
+      if (message) {
+        seen.push(message);
+        if (message.interaction) await held;
+      }
+    });
+    const f = fixture("telegram", (method, body) => {
+      if (method === "getUpdates") {
+        if (body.offset === 0)
+          return {
+            ok: true,
+            result: [
+              {
+                update_id: 1,
+                message: {
+                  message_id: 50,
+                  from: { id: 200, is_bot: false, first_name: "Person" },
+                  chat: { id: 300, type: "private" },
+                  voice: {
+                    file_id: "voice-file",
+                    file_unique_id: "voice-unique",
+                    mime_type: "audio/ogg",
+                    file_size: 20,
+                    duration: 2,
+                  },
+                },
+              },
+              {
+                update_id: 2,
+                callback_query: {
+                  id: "callback-1",
+                  from: { id: 200, is_bot: false, first_name: "Person" },
+                  message: {
+                    message_id: 51,
+                    from: { id: 100, is_bot: true, first_name: "Bot" },
+                    chat: { id: 300, type: "private" },
+                  },
+                  data: actionId,
+                },
+              },
+            ],
+          };
+        controller.abort();
+        return { ok: true, result: [] };
+      }
+      if (method === "answerCallbackQuery") return { ok: true, result: true };
+      return undefined;
+    });
+    const transport = await createChannelTransport(telegram, input.signal, f.network),
+      running = transport.run(input).catch(() => {});
+    await vi.waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen[0]).toMatchObject({ text: "", attachments: [{ attachmentId: "voice-file", kind: "audio" }] });
+    expect(seen[1]).toMatchObject({ peerId: "200", interaction: { actionId, providerMessageId: "51" } });
+    expect(f.calls.filter((call) => call.method === "answerCallbackQuery")).toHaveLength(0);
+    release();
+    await running;
+    expect(f.calls.filter((call) => call.method === "answerCallbackQuery")).toHaveLength(1);
+  });
+  it("keeps Slack file metadata and emits provider buttons with a readable fallback", async () => {
+    const f = fixture("slack"),
+      seen: ChannelInbound[] = [];
+    const { controller, input } = receiver(async (message) => {
+      if (message) seen.push(message);
+    });
+    const transport = await createChannelTransport(slack, input.signal, f.network),
+      running = transport.run(input).catch(() => {});
+    await vi.waitFor(() => expect(f.socket.listenerCount("message")).toBe(1));
+    slackHello(f.socket);
+    slackEvent(f.socket, "file-event", {
+      text: "",
+      subtype: "file_share",
+      files: [{ id: "F1", name: "report.pdf", mimetype: "application/pdf", size: 20 }],
+    });
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toMatchObject({
+      text: "",
+      attachments: [{ attachmentId: "F1", filename: "report.pdf", kind: "document" }],
+    });
+    const actionId = randomUUID();
+    await transport.send(
+      {
+        deliveryId: randomUUID(),
+        conversationId: "C1",
+        text: "Use /effort high",
+        reply: {
+          buttons: [
+            {
+              actionId,
+              label: "High",
+              command: "/effort high",
+              expiresAt: Date.now() + 1000,
+              preferencesRevision: 0,
+            },
+          ],
+        },
+      },
+      input.signal,
+    );
+    const sent = f.calls.find((call) => call.method === "chat.postMessage")!.body;
+    expect(sent.text).toBe("Use /effort high");
+    expect(JSON.stringify(sent.blocks)).toContain(actionId);
+    expect(JSON.stringify(sent.blocks)).not.toContain('"command"');
+    controller.abort();
+    await running;
+  });
+  it("keeps Discord voice attachment identity in a real thread", async () => {
+    const f = fixture("discord"),
+      seen: ChannelInbound[] = [];
+    const { controller, input } = receiver(async (message) => {
+      if (message) seen.push(message);
+    });
+    const transport = await createChannelTransport(discord, input.signal, f.network),
+      running = transport.run(input).catch(() => {});
+    await vi.waitFor(() => expect(f.socket.listenerCount("message")).toBe(1));
+    discordHello(f.socket);
+    discordReady(f.socket);
+    f.socket.frame({
+      op: 0,
+      t: "MESSAGE_CREATE",
+      s: 2,
+      d: {
+        id: "500",
+        channel_id: "600",
+        guild_id: "400",
+        author: { id: "200", username: "Person" },
+        content: "",
+        mentions: [{ id: "100" }],
+        attachments: [
+          {
+            id: "700",
+            filename: "voice.ogg",
+            size: 20,
+            content_type: "audio/ogg",
+            url: "https://cdn.discordapp.com/attachments/600/700/voice.ogg",
+            duration_secs: 2,
+          },
+        ],
+      },
+    });
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toMatchObject({
+      conversationId: "300",
+      threadId: "600",
+      attachments: [{ attachmentId: "700", kind: "audio", durationSeconds: 2 }],
+    });
+    controller.abort();
+    await running;
+  });
+});

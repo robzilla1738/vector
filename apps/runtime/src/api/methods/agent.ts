@@ -24,53 +24,126 @@ async function h_agent_pageSummary(ctx: MethodCtx): Promise<unknown> {
     const connectionId = client.connectionId;
     const scope = ctx.scope;
     const taskRead = ctx.taskRead;
-    if (!connectionId || !scope || !taskRead || !run?.config?.taskId || run.config.externalConnectionId !== connectionId)
+    if (
+      !connectionId ||
+      !scope ||
+      !taskRead ||
+      !run?.config?.taskId ||
+      run.config.externalConnectionId !== connectionId
+    )
       throw new AuxError("permission_denied", "The original scoped task read is required for this summary.");
     const taskId = run.config.taskId;
     const taskRevision = run.config.taskRevision;
     const proof = structuredClone(taskRead.provenance);
     const originalPage = s.pages.get(pageId);
-    const original = { sessionId: originalPage.sessionId, epoch: originalPage.documentEpoch, url: originalPage.url };
+    const original = {
+      sessionId: originalPage.sessionId,
+      epoch: originalPage.documentEpoch,
+      url: originalPage.url,
+    };
     const checkSource = () => {
       const current = s.repo.getRun(runId);
-      if (ctx.externalRunId !== runId || !current || current.status !== "running" || current.config?.externalConnectionId !== connectionId || current.config.externalRetirementPending ||
-          current.config.taskId !== taskId || current.config.taskRevision !== taskRevision ||
-          !s.agentConnections?.isLive({ external: true, connectionId, scope }))
+      if (
+        ctx.externalRunId !== runId ||
+        !current ||
+        current.status !== "running" ||
+        current.config?.externalConnectionId !== connectionId ||
+        current.config.externalRetirementPending ||
+        current.config.taskId !== taskId ||
+        current.config.taskRevision !== taskRevision ||
+        !s.agentConnections?.isLive({ external: true, connectionId, scope })
+      )
         throw new AuxError("cancelled", "The original external summary session retired.");
       ctx.requireScopedTask(scope, taskId);
       ctx.requireScopedPage(scope, pageId, connectionId);
       taskRead.check();
       const page = s.pages.get(pageId);
-      if (proof.taskId !== taskId || proof.taskRevision !== taskRevision || proof.pageId !== pageId || proof.sessionId !== original.sessionId || proof.documentEpoch !== original.epoch ||
-          page.sessionId !== original.sessionId || page.documentEpoch !== original.epoch || page.url !== original.url || page.viewStatus === "detached" || page.viewStatus === "crashed")
+      if (
+        proof.taskId !== taskId ||
+        proof.taskRevision !== taskRevision ||
+        proof.pageId !== pageId ||
+        proof.sessionId !== original.sessionId ||
+        proof.documentEpoch !== original.epoch ||
+        page.sessionId !== original.sessionId ||
+        page.documentEpoch !== original.epoch ||
+        page.url !== original.url ||
+        page.viewStatus === "detached" ||
+        page.viewStatus === "crashed"
+      )
         throw new AuxError("ref_stale", "The authorized summary document changed.");
     };
     checkSource();
-    return ctx.withExternalPage(pageId, async () => {
-      const checkOwner = () => {
-        checkSource();
-        const lease = s.runs.pageOwnership.snapshot()[pageId];
-        if (lease?.actor !== "external" || lease.runId !== runId || lease.connectionId !== connectionId || lease.taskId !== taskId)
-          throw new AuxError("permission_denied", "The original external summary page lease retired.");
-      };
-      return s.runs.externalUtilitySession(runId, checkOwner, async signal => {
-        checkOwner();
-        const observation = structuredClone(await s.pages.observe(pageId, {}));
-        checkOwner();
-        const result = await s.runs.summarizePage({ runId, observation: redactObservation(observation), focus, signal, checkOwner,
-          externalSource: { connectionId, taskRead: { provenance: proof, check: checkOwner } },
-          authorize: async route => {
-            checkOwner();
-            if (route.kind === "on-device") throw new AuxError("capability_unsupported", "External summaries have no native Foundation Models grant.");
-            await ctx.decideEgress({ url: new URL(route.destination), action: "agent.pageSummary", dataClasses: memoryContentSensitivityReason(observation.content.text) ? ["sensitive"] : ["none"], provenance: "page", actor: "external_token", taskId, connectionId, threadId: run.config?.chatId ?? runId, runId,
-              invocationDigest: createHash("sha256").update(JSON.stringify(["external-page-summary", runId, connectionId, proof, observation.observationId, observation.revision, focus ?? "", route.modelId, s.settings.modelCacheGeneration()])).digest("hex") });
-            checkOwner();
-          },
+    return ctx.withExternalPage(
+      pageId,
+      async () => {
+        const checkOwner = () => {
+          checkSource();
+          const lease = s.runs.pageOwnership.snapshot()[pageId];
+          if (
+            lease?.actor !== "external" ||
+            lease.runId !== runId ||
+            lease.connectionId !== connectionId ||
+            lease.taskId !== taskId
+          )
+            throw new AuxError("permission_denied", "The original external summary page lease retired.");
+        };
+        return s.runs.externalUtilitySession(runId, checkOwner, async (signal) => {
+          checkOwner();
+          const observation = structuredClone(await s.pages.observe(pageId, {}));
+          checkOwner();
+          const result = await s.runs.summarizePage({
+            runId,
+            observation: redactObservation(observation),
+            focus,
+            signal,
+            checkOwner,
+            externalSource: { connectionId, taskRead: { provenance: proof, check: checkOwner } },
+            authorize: async (route) => {
+              checkOwner();
+              if (route.kind === "on-device")
+                throw new AuxError(
+                  "capability_unsupported",
+                  "External summaries have no native Foundation Models grant.",
+                );
+              await ctx.decideEgress({
+                url: new URL(route.destination),
+                action: "agent.pageSummary",
+                dataClasses: memoryContentSensitivityReason(observation.content.text)
+                  ? ["sensitive"]
+                  : ["none"],
+                provenance: "page",
+                actor: "external_token",
+                taskId,
+                connectionId,
+                threadId: run.config?.chatId ?? runId,
+                runId,
+                invocationDigest: createHash("sha256")
+                  .update(
+                    JSON.stringify([
+                      "external-page-summary",
+                      runId,
+                      connectionId,
+                      proof,
+                      observation.observationId,
+                      observation.revision,
+                      focus ?? "",
+                      route.modelId,
+                      s.settings.modelCacheGeneration(),
+                    ]),
+                  )
+                  .digest("hex"),
+              });
+              checkOwner();
+            },
+          });
+          checkOwner();
+          return result;
         });
-        checkOwner();
-        return result;
-      });
-    }, taskId, false, "none");
+      },
+      taskId,
+      false,
+      "none",
+    );
   }
   const control = s.runs.coordinator.controls.get(runId);
   if (!run || run.status !== "running")
@@ -85,14 +158,20 @@ async function h_agent_pageSummary(ctx: MethodCtx): Promise<unknown> {
   if (!originalToken || !requestToken || !sourceContext)
     throw new AuxError("capability_unsupported", "Page summaries require an original native Aux window.");
   if (ctx.scope) {
-    if (!run.config?.taskId) throw new AuxError("permission_denied", "A task-scoped summary requires its original task.");
+    if (!run.config?.taskId)
+      throw new AuxError("permission_denied", "A task-scoped summary requires its original task.");
     ctx.requireScopedTask(ctx.scope, run.config.taskId);
     ctx.requireScopedPage(ctx.scope, pageId, client.connectionId);
   }
   const original = await sourceContext(originalToken);
   const checkOwner = async () => {
     const currentRun = s.repo.getRun(runId);
-    if (control.abort.signal.aborted || s.runs.coordinator.controls.get(runId) !== control || control.paused || currentRun?.status !== "running")
+    if (
+      control.abort.signal.aborted ||
+      s.runs.coordinator.controls.get(runId) !== control ||
+      control.paused ||
+      currentRun?.status !== "running"
+    )
       throw new AuxError("cancelled", "The original summary task ended.");
     const current = await sourceContext(requestToken);
     const saved = await sourceContext(originalToken);
@@ -101,13 +180,31 @@ async function h_agent_pageSummary(ctx: MethodCtx): Promise<unknown> {
     s.runs.coordinator.pageSourceCheck(runId, pageId)();
   };
   await checkOwner();
-  const observation = await s.runs.coordinator.usePage(runId, pageId, "read", () => s.pages.observe(pageId, {}));
+  const observation = await s.runs.coordinator.usePage(runId, pageId, "read", () =>
+    s.pages.observe(pageId, {}),
+  );
   await checkOwner();
-  return s.runs.summarizePage({ runId, observation: redactObservation(observation), focus, signal: control.abort.signal, checkOwner,
+  return s.runs.summarizePage({
+    runId,
+    observation: redactObservation(observation),
+    focus,
+    signal: control.abort.signal,
+    checkOwner,
     cache: pageDerivativeCache(s, [pageId]),
     authorize: async (route) => {
       await checkOwner();
-      if (route.kind !== "on-device") await ctx.decideEgress({ url: new URL(route.destination), action: "agent.pageSummary", dataClasses: memoryContentSensitivityReason(observation.content.text) ? ["sensitive"] : ["none"], provenance: "page", actor: client.external ? "external_token" : "user", taskId: run.config?.taskId, connectionId: client.connectionId, threadId: run.config?.chatId ?? runId, runId });
+      if (route.kind !== "on-device")
+        await ctx.decideEgress({
+          url: new URL(route.destination),
+          action: "agent.pageSummary",
+          dataClasses: memoryContentSensitivityReason(observation.content.text) ? ["sensitive"] : ["none"],
+          provenance: "page",
+          actor: client.external ? "external_token" : "user",
+          taskId: run.config?.taskId,
+          connectionId: client.connectionId,
+          threadId: run.config?.chatId ?? runId,
+          runId,
+        });
       await checkOwner();
     },
   });
@@ -221,7 +318,12 @@ async function h_agent_utility_intent(ctx: MethodCtx): Promise<unknown> {
   try {
     const result = await desktopUtility(
       ctx,
-      { text: ctx.params.text, action: "agent.utility.intent", signal: AbortSignal.timeout(150), bestEffort: true },
+      {
+        text: ctx.params.text,
+        action: "agent.utility.intent",
+        signal: AbortSignal.timeout(150),
+        bestEffort: true,
+      },
       (model, modelId) =>
         model.generateStructured({
           modelId,
@@ -392,7 +494,10 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (!s.settings.imageModel())
     throw new AuxError("permission_denied", "Image generation is off in Settings.");
-  const authorize = (runId: string) =>
+  const authorize = (
+    runId: string,
+    references: readonly import("../../agent/image-tools.js").ImageReferenceIdentity[],
+  ) =>
     ctx
       .decideEgress({
         url: new URL("https://ai-gateway.vercel.sh"),
@@ -408,6 +513,7 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
               "image-generation",
               runId,
               params.prompt,
+              references,
               s.settings.imageModel(),
               s.settings.modelCacheGeneration(),
             ]),
@@ -417,32 +523,43 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
       .then(() => {});
   if (ctx.externalRunId) {
     const runId = ctx.externalRunId;
-    return s.runs.externalUtilitySession(runId, () => {
-      const original = s.repo.getRun(runId);
-      if (!client.connectionId || original?.config?.externalConnectionId !== client.connectionId || original.status !== "running" || original.config.externalRetirementPending || !ctx.scope || !s.agentConnections?.isLive({ external: true, connectionId: client.connectionId, scope: ctx.scope }))
-        throw new AuxError("cancelled", "The original image connection retired.");
-    }, (signal) =>
-      s.runs.generateImage({
-        runId,
-        prompt: params.prompt,
-        signal,
-        checkOwner: () => {
-          const run = s.repo.getRun(runId);
-          const connection = s.repo.db
-            .prepare("SELECT revoked_at,expires_at FROM agent_connections WHERE connection_id=?")
-            .get(client.connectionId ?? "") as
-            { revoked_at: number | null; expires_at: number | null } | undefined;
-          if (
-            !run ||
-            run.config?.externalConnectionId !== client.connectionId ||
-            !connection ||
-            connection.revoked_at !== null ||
-            (connection.expires_at !== null && connection.expires_at <= Date.now())
-          )
-            throw new AuxError("cancelled", "The original image connection changed.");
-        },
-        authorize,
-      }),
+    return s.runs.externalUtilitySession(
+      runId,
+      () => {
+        const original = s.repo.getRun(runId);
+        if (
+          !client.connectionId ||
+          original?.config?.externalConnectionId !== client.connectionId ||
+          original.status !== "running" ||
+          original.config.externalRetirementPending ||
+          !ctx.scope ||
+          !s.agentConnections?.isLive({ external: true, connectionId: client.connectionId, scope: ctx.scope })
+        )
+          throw new AuxError("cancelled", "The original image connection retired.");
+      },
+      (signal) =>
+        s.runs.generateImage({
+          runId,
+          prompt: params.prompt,
+          referenceImageArtifactIds: params.referenceImageArtifactIds,
+          signal,
+          checkOwner: () => {
+            const run = s.repo.getRun(runId);
+            const connection = s.repo.db
+              .prepare("SELECT revoked_at,expires_at FROM agent_connections WHERE connection_id=?")
+              .get(client.connectionId ?? "") as
+              { revoked_at: number | null; expires_at: number | null } | undefined;
+            if (
+              !run ||
+              run.config?.externalConnectionId !== client.connectionId ||
+              !connection ||
+              connection.revoked_at !== null ||
+              (connection.expires_at !== null && connection.expires_at <= Date.now())
+            )
+              throw new AuxError("cancelled", "The original image connection changed.");
+          },
+          authorize,
+        }),
     );
   }
   if (client.external || !client.nativeTurnContext || !s.native?.turnSourceContext)
@@ -457,12 +574,21 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
   return s.runs.imageOperation(
     {
       prompt: params.prompt,
+      referenceImageArtifactIds: params.referenceImageArtifactIds,
       taskId: params.taskId,
       expectedRevision: params.expectedRevision,
       nativeTurnContext: token,
       checkOwner,
     },
-    (runId, signal) => s.runs.generateImage({ runId, prompt: params.prompt, signal, checkOwner, authorize }),
+    (runId, signal) =>
+      s.runs.generateImage({
+        runId,
+        prompt: params.prompt,
+        referenceImageArtifactIds: params.referenceImageArtifactIds,
+        signal,
+        checkOwner,
+        authorize,
+      }),
   );
 }
 async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
@@ -474,11 +600,22 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
     const live = tasks.get(task.taskId);
     if (live.revision !== task.revision || live.state !== "open" || live.sourceOrigin !== task.sourceOrigin)
       throw new AuxError("ref_stale", "The original task changed while creating its owned tab.");
-    if (ctx.scope && client.connectionId && s.agentConnections && !s.agentConnections.isLive({external: true, connectionId: client.connectionId, scope: ctx.scope}))
+    if (
+      ctx.scope &&
+      client.connectionId &&
+      s.agentConnections &&
+      !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope: ctx.scope })
+    )
       throw new AuxError("permission_denied", "The original connection retired while creating its tab.");
     if (ctx.externalRunId) {
       const owner = s.repo.getRun(ctx.externalRunId);
-      if (!owner || owner.status !== "running" || !owner.config || owner.config.externalConnectionId !== client.connectionId || owner.config.externalRetirementPending)
+      if (
+        !owner ||
+        owner.status !== "running" ||
+        !owner.config ||
+        owner.config.externalConnectionId !== client.connectionId ||
+        owner.config.externalRetirementPending
+      )
         throw new AuxError("permission_denied", "The original external task turn retired.");
     }
   };
@@ -528,9 +665,14 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
           }
         : {}),
     });
-    try { current(); }
-    catch (error) {
-      await turnTabs.close(client.connectionId ?? (client.external ? "owner" : "internal"), task.taskId, opened.pageId);
+    try {
+      current();
+    } catch (error) {
+      await turnTabs.close(
+        client.connectionId ?? (client.external ? "owner" : "internal"),
+        task.taskId,
+        opened.pageId,
+      );
       throw error;
     }
     if (ctx.externalRunId) s.turnMentions.created(ctx.externalRunId, opened.pageId);

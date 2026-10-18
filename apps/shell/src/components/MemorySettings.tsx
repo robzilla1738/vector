@@ -1,3 +1,4 @@
+import { MemoryWorkbench } from "./MemoryWorkbench";
 import type { MemoryView } from "../settings/routes";
 import "./MemorySettings.css";
 import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
@@ -279,6 +280,15 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
           }}
         />
       ) : null}
+      {memory &&
+        memory.workspaceId === selectedWorkspaceId &&
+        (view === "overview" || view === "history") && (
+          <MemoryWorkbench
+            memory={memory}
+            active={view === "history" || !manageNotes}
+            historyOnly={view === "history"}
+          />
+        )}
     </div>
   );
 }

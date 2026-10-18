@@ -237,6 +237,7 @@ async function h_workspaces_memory_get(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
+  await ctx.s.memoryPipeline?.retireWorkspace(ctx.params.workspaceId);
   if (["workspaces.memory.set"].includes(ctx.method))
     return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_memory_set(ctx));
   return retired_h_workspaces_memory_set(ctx);
@@ -285,6 +286,8 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
       );
     throw error;
   }
+  if (removesText || removesItem || addsExclusion)
+    await s.memoryPipeline?.retireOwnerDerivatives(params.workspaceId);
   await s.contentMemory?.invalidateDerivatives();
   await revokeWorkspaceContext(params.workspaceId, false);
   await s.runs.redactForgottenArticleOutputs(params.workspaceId);
@@ -295,6 +298,7 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
 async function h_workspaces_memory_setDocument(ctx: MethodCtx): Promise<unknown> {
   const owner = await normalWindowOwner(ctx);
   const input = MethodSchemas["workspaces.memory.setDocument"].parse(ctx.params);
+  await ctx.s.memoryPipeline?.retireWorkspace(input.workspaceId);
   return withRunAuthorityMutation(ctx.s.repo, async () => {
     await owner.current();
     const prior = ctx.tasks.workspaceMemory(input.workspaceId);
@@ -317,6 +321,8 @@ async function h_workspaces_memory_setDocument(ctx: MethodCtx): Promise<unknown>
         );
       throw error;
     }
+    if (previous && (input.content === null || !input.content.includes(previous.content)))
+      await ctx.s.memoryPipeline?.retireOwnerDerivatives(input.workspaceId);
     await ctx.s.contentMemory?.invalidateDerivatives();
     await ctx.revokeWorkspaceContext(input.workspaceId, false);
     await ctx.s.runs.redactForgottenArticleOutputs(input.workspaceId);

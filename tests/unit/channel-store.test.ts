@@ -29,7 +29,25 @@ async function fixture() {
       { criterionId: "response", description: "Respond to the synthetic request", verification: "manual" },
     ],
   });
-  return { repo, db, task, ...seedChannel(repo, workspace.workspaceId, task.taskId) };
+  const seeded = seedChannel(repo, workspace.workspaceId, task.taskId);
+  seeded.store.saveMessage({ ...seeded.savedMessage, state: "pending" });
+  seeded.store.saveAttachment({
+    connectionId: seeded.connection.connectionId,
+    messageKey: seeded.savedMessage.messageKey,
+    attachmentKey: seeded.store.key(seeded.connection.connectionId, "attachment", "fixture"),
+    source: {
+      attachmentId: "fixture-file",
+      filename: "Protected attachment.txt",
+      kind: "document",
+      mediaType: "text/plain",
+    },
+    state: "ready",
+    bytesBase64: Buffer.from("Protected original attachment").toString("base64"),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  seeded.store.saveMessage({ ...seeded.savedMessage, state: "completed" });
+  return { repo, db, task, ...seeded };
 }
 
 describe("durable protected messenger records", () => {
@@ -38,7 +56,7 @@ describe("durable protected messenger records", () => {
     const tables = Object.keys(encryptedFieldsForDatabase(f.db)).filter((table) =>
       table.startsWith("channel_"),
     );
-    expect(tables).toHaveLength(6);
+    expect(tables).toHaveLength(7);
     for (const table of tables) {
       const rows = f.db.prepare(`SELECT * FROM ${table}`).all();
       expect(rows).toHaveLength(1);
@@ -123,6 +141,7 @@ describe("durable protected messenger records", () => {
       "channel_messages",
       "channel_outbox",
       "channel_cursors",
+      "channel_attachments",
     ])
       expect(
         f.db.prepare(`SELECT count(*) n FROM ${table} WHERE connection_id=?`).get(f.connection.connectionId),

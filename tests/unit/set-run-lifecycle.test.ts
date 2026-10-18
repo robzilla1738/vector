@@ -139,6 +139,7 @@ function harness(
   const sets = new SetService(repo, events, pages);
   let maxWorkers = opts.maxWorkers ?? 8;
   const settings = {
+    modelCacheGeneration: () => repo.getSetting<string>("modelCacheGeneration") ?? "fixture-original-model",
     maxWorkers: () => maxWorkers,
     perOrigin: () => 8,
     maxModelCalls: () => 0,
@@ -1751,7 +1752,7 @@ describe("saved task queued follow-ups", () => {
     expect(RunsQueueParams.safeParse(input).success).toBe(true);
     const queued = h.runs.messages.queue(input);
     if (revoked) connections.revoke(connection.connectionId);
-    const finished = { ...target, status: "completed" as const, endedAt: Date.now() };
+    const finished = { ...h.repo.getRun(target.runId)!, status: "completed" as const, endedAt: Date.now() };
     h.repo.saveRun(finished);
     h.events.emit(EventTypes.RunUpdated, { run: finished }, target.runId);
     try {
@@ -1791,8 +1792,9 @@ describe("saved task queued follow-ups", () => {
       }),
     ).toThrow(/context changed/i);
     const queued = h.runs.messages.queue(input);
-    h.repo.saveRun({ ...h.target, status: "completed", endedAt: Date.now() });
-    h.events.emit(EventTypes.RunUpdated, { run: { ...h.target, status: "completed" } }, h.target.runId);
+    const finished = { ...h.repo.getRun(h.target.runId)!, status: "completed" as const, endedAt: Date.now() };
+    h.repo.saveRun(finished);
+    h.events.emit(EventTypes.RunUpdated, { run: finished }, h.target.runId);
     await vi.waitFor(() => expect(h.repo.getRunMessage(queued.messageId)?.status).toBe("delivered"));
     const delivered = h.repo.getRun(queued.deliveryRunId)!;
     expect(delivered).toMatchObject({
@@ -2362,56 +2364,65 @@ it("a Set source edit during observation withholds the document before any effec
   expect(h.turnMentions.has(runId)).toBe(false);
 });
 
-it.each([80, 0, undefined])("preserves provider cache usage %s through retries, invoices, events and benchmark metrics", async (cached) => {
-  const model = new MockModelClient().scriptToolSteps([{ text: "Complete." }]);
-  model.inputTokens = 100;
-  model.outputTokens = 20;
-  const original = model.toolCallStep.bind(model);
-  vi.spyOn(model, "toolCallStep").mockImplementation(async (input) => ({
-    ...(await original(input)),
-    ...usageFields({ inputTokens: 100, outputTokens: 20, inputTokenDetails: { cacheReadTokens: cached } }),
-    providerMetadata: { usage: { cacheWriteTokens: 9 } },
-    retries: [{
-      durationMs: 1,
-      ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }),
-      error: "Unusable response",
-    }],
-  }));
-  const h = harness({ model });
-  try {
-    const run = await h.runs.start({ goal: "Reply briefly" });
-    expect((await untilTerminal(h.repo, run.runId)).status).toBe("completed");
-    const invoices = h.repo.listModelCalls(run.runId);
-    expect(invoices).toHaveLength(2);
-    expect(invoices[0]?.providerMetadata?.usage).toEqual({ cachedInputTokens: 0 });
-    expect(invoices[1]?.providerMetadata?.usage).toEqual({
-      cacheWriteTokens: 9,
-      ...(cached === undefined ? {} : { cachedInputTokens: cached }),
-    });
-    const metrics = await readRunMetrics(
-      async (_method: string, params: { sinceSeq: number; streamId?: string }) =>
-        h.events.since(params.sinceSeq, 2000, run.runId, params.streamId),
-      run.runId,
-    );
-    expect(metrics).toMatchObject({
-      inputTokens: 200,
-      tokens: 220,
-      cachedInputTokens: cached ?? null,
-      cachedInputRatio: cached === undefined ? null : cached / 200,
-      modelCallEvents: 2,
-    });
-  } finally {
-    await h.runs.close();
-    h.repo.close();
-  }
-});
+it.each([80, 0, undefined])(
+  "preserves provider cache usage %s through retries, invoices, events and benchmark metrics",
+  async (cached) => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Complete." }]);
+    model.inputTokens = 100;
+    model.outputTokens = 20;
+    const original = model.toolCallStep.bind(model);
+    vi.spyOn(model, "toolCallStep").mockImplementation(async (input) => ({
+      ...(await original(input)),
+      ...usageFields({ inputTokens: 100, outputTokens: 20, inputTokenDetails: { cacheReadTokens: cached } }),
+      providerMetadata: { usage: { cacheWriteTokens: 9 } },
+      retries: [
+        {
+          durationMs: 1,
+          ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }),
+          error: "Unusable response",
+        },
+      ],
+    }));
+    const h = harness({ model });
+    try {
+      const run = await h.runs.start({ goal: "Reply briefly" });
+      expect((await untilTerminal(h.repo, run.runId)).status).toBe("completed");
+      const invoices = h.repo.listModelCalls(run.runId);
+      expect(invoices).toHaveLength(2);
+      expect(invoices[0]?.providerMetadata?.usage).toEqual({ cachedInputTokens: 0 });
+      expect(invoices[1]?.providerMetadata?.usage).toEqual({
+        cacheWriteTokens: 9,
+        ...(cached === undefined ? {} : { cachedInputTokens: cached }),
+      });
+      const metrics = await readRunMetrics(
+        async (_method: string, params: { sinceSeq: number; streamId?: string }) =>
+          h.events.since(params.sinceSeq, 2000, run.runId, params.streamId),
+        run.runId,
+      );
+      expect(metrics).toMatchObject({
+        inputTokens: 200,
+        tokens: 220,
+        cachedInputTokens: cached ?? null,
+        cachedInputRatio: cached === undefined ? null : cached / 200,
+        modelCallEvents: 2,
+      });
+    } finally {
+      await h.runs.close();
+      h.repo.close();
+    }
+  },
+);
 
 it("retains explicit zero cache usage on a failed provider attempt", async () => {
   const model = new MockModelClient();
-  vi.spyOn(model, "toolCallStep").mockRejectedValue(withAttempts(
-    new AuxError("model_error", "Provider unavailable"),
-    [{ durationMs: 1, ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }) }],
-  ));
+  vi.spyOn(model, "toolCallStep").mockRejectedValue(
+    withAttempts(new AuxError("model_error", "Provider unavailable"), [
+      {
+        durationMs: 1,
+        ...usageFields({ inputTokens: 100, outputTokens: 0, inputTokenDetails: { cacheReadTokens: 0 } }),
+      },
+    ]),
+  );
   const h = harness({ model });
   try {
     const run = await h.runs.start({ goal: "Reply briefly" });

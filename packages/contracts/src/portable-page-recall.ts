@@ -78,6 +78,8 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
     contextDocumentEvidence: undefined,
     contextAttachmentRefs: undefined,
     documentAdmissions: undefined,
+    contextCompaction: undefined,
+    queuedMessageContexts: undefined,
     contextArtifactEvidence: undefined,
     contextArtifactIds: undefined,
     contextSourceArtifactIds: undefined,

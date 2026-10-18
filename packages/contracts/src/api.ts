@@ -1,3 +1,11 @@
+import { QueueOrderSchema, QueueOrderGetParams, QueueOrderSetParams } from "./queue-order.js";
+import { MemoryDocumentMethodSchemas, MemoryDocumentResultSchemas } from "./memory-documents.js";
+import {
+  RunContextStatsParams,
+  RunContextCompactParams,
+  RunContextCancelParams,
+  RunContextStatsSchema,
+} from "./context-compaction.js";
 import { RunsStartParams, RunsReconcileStartParams } from "./run-start.js";
 export { RunsStartParams } from "./run-start.js";
 import { DownloadsRemoveParams } from "./downloads.js";
@@ -319,6 +327,7 @@ import {
   RoutineCompareSchema,
   RoutineCreateParams,
   RoutineFromResultParams,
+  RoutineDraftFromCandidateParamsSchema,
   RoutineInboxItemSchema,
   RoutineSourceEventSchema,
   RoutineRunParams,
@@ -1174,6 +1183,7 @@ export const MethodSchemas = {
   "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
   "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
   "agent.images.generate": AgentWebContextSchema.extend({
+    referenceImageArtifactIds: z.array(id).max(4).optional(),
     prompt: z.string().trim().min(1).max(4000),
   }).strict(),
   "agent.turn.open": AgentTurnContextSchema.extend({
@@ -1369,6 +1379,7 @@ export const MethodSchemas = {
   "routines.get": z.object({ routineId: id }),
   "routines.create": RoutineCreateParams,
   "routines.fromResult": RoutineFromResultParams,
+  "routines.draftFromCandidate": RoutineDraftFromCandidateParamsSchema,
   "routines.replay.repair.propose": SkillRepairProposeSchema,
   "routines.replay.repair.apply": SkillRepairApplySchema,
   "routines.replay.compileDemonstration": DemonstrationReplayCompileSchema,
@@ -1490,6 +1501,7 @@ export const MethodSchemas = {
   "memory.paste.preview": MemoryPastePreviewParams,
   "memory.paste.commit": MemoryPasteCommitParams,
   "memory.paste.status": MemoryPasteStatusParams,
+  ...MemoryDocumentMethodSchemas,
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema.omit({ retentionDays: true }),
   "memory.pipeline.setRetention": MemoryRetentionParams,
@@ -1612,6 +1624,9 @@ export const MethodSchemas = {
   "runs.branch.list": z.object({}).strict(),
   "runs.get": RunsGetParams,
   "runs.list": RunsListParams,
+  "runs.context.stats": RunContextStatsParams,
+  "runs.context.compact": RunContextCompactParams,
+  "runs.context.cancelCompaction": RunContextCancelParams,
   "runs.context.get": RunsContextGetParams,
   "runs.context.set": RunsContextSetParams,
   "conversations.list": ConversationsListParams,
@@ -1679,6 +1694,8 @@ export const MethodSchemas = {
   "runs.retryModelSetup": z.object({ runId: id, suspensionId: id }).strict(),
   "runs.queue": RunsQueueParams,
   "runs.steer": RunsSteerParams,
+  "runs.messages.order": QueueOrderGetParams,
+  "runs.messages.reorder": QueueOrderSetParams,
   "runs.messages.list": z.object({ chatId: id, runIds: z.array(id) }),
   "runs.messageStatus": z.object({ nonce: id }),
   "safety.decisions.list": SafetyActivityQuerySchema,
@@ -1964,6 +1981,17 @@ const AgentResultSchemas = {
   "agent.web.fetch": AgentWebPageSchema,
   "agent.web.search": AgentWebPageSchema,
   "agent.images.generate": z.object({
+    referenceImages: z
+      .array(
+        z
+          .object({
+            artifactId: id,
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            mediaType: z.literal("image/png"),
+          })
+          .strict(),
+      )
+      .max(4),
     artifactId: id,
     mediaType: z.string(),
     size: z.number().int().positive(),
@@ -2176,6 +2204,7 @@ const AgentResultSchemas = {
 } as const;
 
 const AutomationResultSchemas = {
+  ...MemoryDocumentResultSchemas,
   "routines.list": z.array(RoutineSchema),
   "goals.create": GoalSchema,
   "goals.get": GoalSchema,
@@ -2195,6 +2224,7 @@ const AutomationResultSchemas = {
   "routines.get": z.object({ routine: RoutineSchema, runs: z.array(RoutineRunSchema) }),
   "routines.create": RoutineSchema,
   "routines.fromResult": RoutineSchema,
+  "routines.draftFromCandidate": RoutineSchema,
   "routines.replay.repair.propose": SkillRepairProposalSchema,
   "routines.replay.repair.apply": RoutineSchema,
   "routines.replay.compileDemonstration": RoutineSchema,
@@ -2411,6 +2441,17 @@ const BrowserAndRunResultSchemas = {
   }),
   "pages.network": z.array(ResponseRecordSchema),
   "pages.capture": z.object({
+    extent: z
+      .object({
+        kind: z.enum(["fullPage", "viewport"]),
+        x: z.number().optional(),
+        y: z.number().optional(),
+        width: z.number().positive(),
+        height: z.number().positive(),
+      })
+      .strict()
+      .optional(),
+    fallbackReason: z.enum(["timeout", "texture_limit", "native_viewport_only"]).optional(),
     dataUrl: z.string().optional(),
     artifactId: z.string().optional(),
     width: z.number(),
@@ -2461,6 +2502,9 @@ const BrowserAndRunResultSchemas = {
     suspension: SuspensionSchema.nullable().optional(),
   }),
   "runs.list": z.array(RunSchema),
+  "runs.context.stats": RunContextStatsSchema,
+  "runs.context.compact": RunContextStatsSchema,
+  "runs.context.cancelCompaction": RunContextStatsSchema,
   "runs.context.get": ConversationContextSchema,
   "runs.context.set": ConversationContextSchema,
 } as const;
@@ -2534,6 +2578,8 @@ const ConversationAndCodingResultSchemas = {
   "runs.retryModelSetup": RunSchema,
   "runs.queue": RunMessageSchema,
   "runs.steer": RunMessageSchema,
+  "runs.messages.order": QueueOrderSchema,
+  "runs.messages.reorder": QueueOrderSchema,
   "runs.messages.list": z.array(RunMessageSchema),
   "runs.messageStatus": SendRecordSchema.nullable(),
   "safety.decisions.list": SafetyActivityPageSchema,

@@ -1,4 +1,10 @@
 import {
+  NativeImageNormalizeParams,
+  NativeImageNormalizeResult,
+  type NativeImageNormalizeInput,
+  type NativeImageNormalizeOutput,
+} from "@aux/contracts/image-normalize";
+import {
   PrivateCloudRequestSchema,
   PrivateCloudResultSchema,
   type PrivateCloudRequest,
@@ -175,10 +181,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     input: DocumentReadParams & { token: string },
     signal?: AbortSignal,
   ): Promise<DocumentReadResult>;
-  evidenceDocumentsRelease?(input: {
-    token: string;
-    selectionId: string;
-  }): Promise<{ ok: true }>;
+  evidenceDocumentsRelease?(input: { token: string; selectionId: string }): Promise<{ ok: true }>;
   foundationModelsStatus?(input: {
     token: string;
   }): Promise<HostMethodResult<"native.foundationModelsStatus">>;
@@ -231,6 +234,10 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   }): Promise<NativeBrowserImportReceipt>;
   browserImportPoll?(operationId: string): Promise<NativeBrowserImportReceipt>;
   browserImportCancel?(operationId: string): Promise<NativeBrowserImportReceipt>;
+  imageNormalize?(
+    input: NativeImageNormalizeInput,
+    signal?: AbortSignal,
+  ): Promise<NativeImageNormalizeOutput>;
   personCapture?(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt>;
   personReadContext?(pageId: string): Promise<NativePersonReadContext>;
   personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
@@ -563,6 +570,17 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressRevoke(input: { lease: EgressLease }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
+  }
+  async imageNormalize(
+    input: NativeImageNormalizeInput,
+    signal?: AbortSignal,
+  ): Promise<NativeImageNormalizeOutput> {
+    signal?.throwIfAborted();
+    const result = NativeImageNormalizeResult.parse(
+      await this.channel.call("native.imageNormalize", NativeImageNormalizeParams.parse(input), 35_000),
+    );
+    signal?.throwIfAborted();
+    return result;
   }
   async personCapture(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt> {
     return NativePersonCaptureReceiptSchema.parse(

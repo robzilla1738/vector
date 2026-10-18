@@ -89,6 +89,23 @@ beforeEach(() => {
         steps: [],
       };
     if (method === "runs.messages.list") return rows.get(chatId!) ?? [];
+    if (method === "runs.messages.order")
+      return {
+        chatId,
+        revision: "f".repeat(64),
+        messageIds: (rows.get(chatId!) ?? [])
+          .filter((item) => !["delivered", "cancelled"].includes(item.status))
+          .map((item) => item.messageId),
+      };
+    if (method === "runs.messages.reorder") {
+      const input = params as { chatId: string; messageIds: string[] };
+      const current = rows.get(input.chatId) ?? [];
+      rows.set(
+        input.chatId,
+        input.messageIds.map((id) => current.find((item) => item.messageId === id)!),
+      );
+      return { chatId: input.chatId, revision: "f".repeat(64), messageIds: input.messageIds };
+    }
     if (method === "runs.message.cancel") return { ...message, status: "cancelled", updatedAt: 2 };
     if (method === "conversations.get") return { title: "Draft", archived: false };
     if (method === "conversations.artifacts.get") return { artifacts: [] };
@@ -321,4 +338,34 @@ it("adds exactly the two focused normal-window remappable queue command policies
       intercept: true,
       focusShell: true,
     });
+});
+
+it("reorders complete queued rows with keyboard-accessible controls and the exact queue revision", async () => {
+  rows.set("a", [
+    message,
+    { ...message, messageId: "second", deliveryRunId: "next-second", text: "Second payload" },
+  ]);
+  await render();
+  const down = host.querySelector<HTMLButtonElement>('button[aria-label="Move queued message 1 down"]')!;
+  down.focus();
+  await act(async () => down.click());
+  expect(bridge.invoke).toHaveBeenCalledWith("runs.messages.reorder", {
+    chatId: "a",
+    expectedRevision: "f".repeat(64),
+    messageIds: ["second", "queued-a"],
+  });
+  expect(
+    [...host.querySelectorAll(".composer-queue li")].map((node) => node.getAttribute("data-message-id")),
+  ).toEqual(["second", "queued-a"]);
+});
+it("disables queue drag and keyboard movement once any pending message begins delivery", async () => {
+  rows.set("a", [
+    message,
+    { ...message, messageId: "second", deliveryRunId: "next-second", status: "delivering" },
+  ]);
+  await render();
+  expect(host.querySelector<HTMLLIElement>(".composer-queue li")!.draggable).toBe(false);
+  expect(
+    host.querySelector<HTMLButtonElement>('button[aria-label="Move queued message 1 down"]')!.disabled,
+  ).toBe(true);
 });

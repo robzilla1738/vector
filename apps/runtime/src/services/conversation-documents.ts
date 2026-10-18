@@ -235,14 +235,17 @@ export class ConversationDocuments {
     };
   }
 
-  add(opts: {
-    chatId: string;
-    filename: string;
-    content: string;
-    sourceUrl?: string;
-    sourceTruncated?: boolean;
-    sourceArtifactId?: string;
-  }) {
+  add(
+    opts: {
+      chatId: string;
+      filename: string;
+      content: string;
+      sourceUrl?: string;
+      sourceTruncated?: boolean;
+      sourceArtifactId?: string;
+    },
+    onAdded?: (attachmentId: string) => void,
+  ) {
     const { chatId, content, ...source } = opts;
     const records = this.records(chatId);
     const attachmentId = newStepId();
@@ -260,14 +263,16 @@ export class ConversationDocuments {
           sha256: document.sha256,
         },
       ]);
+      onAdded?.(attachmentId);
     });
+    return attachmentId;
   }
 
   async importDocument(
     chatId: string,
     input: DocumentImportParams,
     source: DocumentSource,
-    context: Omit<DocumentImportContext, "publish">,
+    context: Omit<DocumentImportContext, "publish"> & { onAdded?: (attachmentId: string) => void },
   ) {
     const attachmentId = newStepId();
     const identity = () =>
@@ -327,6 +332,7 @@ export class ConversationDocuments {
               sha256: document.sha256,
             },
           ]);
+          context.onAdded?.(attachmentId);
         },
       },
     );

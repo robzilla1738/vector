@@ -179,6 +179,15 @@ async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
   const taskIds = new Set(scopedTasks(scope).map((task) => task.taskId));
   return listed.filter((run) => !!run.config?.taskId && taskIds.has(run.config.taskId)).map(presentRun);
 }
+async function h_runs_context_stats(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.runs.contextStats(ctx.params.runId);
+}
+async function h_runs_context_compact(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.runs.compactContext(ctx.params.runId, ctx.params.expectedRevision);
+}
+async function h_runs_context_cancelCompaction(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.runs.cancelContextCompaction(ctx.params.runId, ctx.params.compactionId);
+}
 async function h_runs_context_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   return s.runs.context(params.chatId);
@@ -345,6 +354,12 @@ async function h_runs_steer(ctx: MethodCtx): Promise<unknown> {
     );
   return s.runs.messages.steer(params);
 }
+async function h_runs_messages_order(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.runs.messages.order(ctx.params.chatId);
+}
+async function h_runs_messages_reorder(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.runs.messages.reorder(ctx.params);
+}
 async function h_runs_messages_list(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external) throw new AuxError("permission_denied", "Conversation messages are available in Aux.");
@@ -380,6 +395,9 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.branch.list": h_runs_branch_list,
   "runs.get": h_runs_get,
   "runs.list": h_runs_list,
+  "runs.context.stats": h_runs_context_stats,
+  "runs.context.compact": h_runs_context_compact,
+  "runs.context.cancelCompaction": h_runs_context_cancelCompaction,
   "runs.context.get": h_runs_context_get,
   "runs.context.set": h_runs_context_set,
   "runs.pause": h_runs_pause,
@@ -392,6 +410,8 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.retryModelSetup": h_runs_retry_model_setup,
   "runs.queue": h_runs_queue,
   "runs.steer": h_runs_steer,
+  "runs.messages.order": h_runs_messages_order,
+  "runs.messages.reorder": h_runs_messages_reorder,
   "runs.messages.list": h_runs_messages_list,
   "runs.messageStatus": h_runs_messageStatus,
   "runs.message.cancel": h_runs_message_cancel,

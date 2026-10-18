@@ -341,6 +341,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         async (runId) => {
           await s.runs.cancel(runId, "The original routine changed during launch.");
         },
+        s.memoryPipeline ? { memory: s.memoryPipeline, embeddingModelId: (workspaceId) => s.contentMemory?.policy(workspaceId).semanticModelId } : undefined,
       ),
     plugins: () => new PluginService(s.repo, d.routines),
     goals: () => s.goals ?? new GoalService(s.repo, s.runs),

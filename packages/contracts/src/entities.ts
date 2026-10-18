@@ -1,3 +1,4 @@
+import { RunContextStateSchema } from "./context-compaction.js";
 import { PageContextRefSchema } from "./page-context.js";
 export { PageContextRefSchema, type PageContextRef } from "./page-context.js";
 import { DocumentAdmissionsSchema } from "./document-citation.js";
@@ -148,6 +149,14 @@ export const AttachmentReferenceSchema = z
   .strict();
 export type AttachmentReference = z.infer<typeof AttachmentReferenceSchema>;
 
+export const QueuedContextSchema = z.object({
+  chatId: z.string().min(1), targetRunId: z.string().min(1), targetMessageRevision: z.number().int().nonnegative(),
+  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+  attachmentRefs: z.array(AttachmentReferenceSchema), imageArtifactIds: z.array(z.string().min(1)),
+  memoryRefs: z.array(CapturedSourceSchema), workspaceId: z.string().optional(), workspaceRevision: z.number().int().nonnegative().optional(),
+});
+export type QueuedContext = z.infer<typeof QueuedContextSchema>;
+
 export const RunSchema = z.object({
   runId: z.string(),
   goal: z.string(),
@@ -264,6 +273,8 @@ export const RunSchema = z.object({
       branchSourceRunIds: z.array(z.string()).optional(),
       /** Internal verified-source provenance; never accepted by public run creation. */
       documentAdmissions: DocumentAdmissionsSchema.optional(),
+      contextCompaction: RunContextStateSchema.optional(),
+      queuedMessageContexts: z.record(z.string(), QueuedContextSchema).optional(),
       /** AUX-017 durable coordinator snapshot. */
       checkpoint: z
         .object({
@@ -303,6 +314,7 @@ export const RunMessageSchema = z
     contextPageRefs: z.array(PageContextRefSchema),
     mentions: MentionRefsSchema.optional(),
     expectedRevision: z.number().int().nonnegative(),
+    context: QueuedContextSchema.optional(),
     /** This message supersedes an earlier message id (resend nonce chain). */
     resendsNonce: z.string().min(1).optional(),
     error: z.string().optional(),

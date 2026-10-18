@@ -676,6 +676,9 @@ export class Repo {
         [] as RunMessage["contextPageRefs"],
       ),
       mentions: MentionRefsSchema.parse(JSON.parse(mentions)),
+      context: this.getRun(row.target_run_id as string)?.config?.queuedMessageContexts?.[
+        row.message_id as string
+      ],
       expectedRevision: row.expected_revision as number,
       ...(row.resends_nonce ? { resendsNonce: row.resends_nonce as string } : {}),
       ...(row.error
@@ -716,23 +719,48 @@ export class Repo {
     return row ? this.rowToRunMessage(row) : undefined;
   }
 
+  private orderRunMessages(chatId: string, messages: RunMessage[]): RunMessage[] {
+    const order = this.getSetting<string[]>(`conversationQueueOrder:${chatId}`) ?? [];
+    const ranks = new Map(order.map((id, index) => [id, index]));
+    return messages.sort(
+      (left, right) =>
+        (ranks.get(left.messageId) ?? order.length) - (ranks.get(right.messageId) ?? order.length),
+    );
+  }
+
+  pendingRunMessages(chatId: string): RunMessage[] {
+    const rows = this.q(
+      "SELECT * FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention') ORDER BY created_at,message_id",
+    ).all(chatId) as Record<string, unknown>[];
+    return this.orderRunMessages(
+      chatId,
+      rows.map((row) => this.rowToRunMessage(row)),
+    );
+  }
+
   listRunMessages(chatId: string): RunMessage[] {
-    return (
-      this.q("SELECT * FROM run_messages WHERE chat_id=? ORDER BY created_at,message_id").all(
-        chatId,
-      ) as Record<string, unknown>[]
-    ).map((row) => this.rowToRunMessage(row));
+    return this.orderRunMessages(
+      chatId,
+      (
+        this.q("SELECT * FROM run_messages WHERE chat_id=? ORDER BY created_at,message_id").all(
+          chatId,
+        ) as Record<string, unknown>[]
+      ).map((row) => this.rowToRunMessage(row)),
+    );
   }
 
   visibleRunMessages(chatId: string, runIds: readonly string[]): RunMessage[] {
-    return (
-      this.q(
-        `SELECT * FROM run_messages WHERE chat_id=? AND
+    return this.orderRunMessages(
+      chatId,
+      (
+        this.q(
+          `SELECT * FROM run_messages WHERE chat_id=? AND
       (status NOT IN ('delivered','cancelled') OR
        (mode='steer' AND status='delivered' AND target_run_id IN (SELECT value FROM json_each(?))))
       ORDER BY created_at,message_id`,
-      ).all(chatId, JSON.stringify(runIds)) as Record<string, unknown>[]
-    ).map((row) => this.rowToRunMessage(row));
+        ).all(chatId, JSON.stringify(runIds)) as Record<string, unknown>[]
+      ).map((row) => this.rowToRunMessage(row)),
+    );
   }
 
   listRunSteers(runId: string): RunMessage[] {
@@ -770,10 +798,7 @@ export class Repo {
   }
 
   nextRunMessage(chatId: string): RunMessage | undefined {
-    const row = this.q(
-      "SELECT * FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention') ORDER BY created_at,message_id LIMIT 1",
-    ).get(chatId) as Record<string, unknown> | undefined;
-    return row ? this.rowToRunMessage(row) : undefined;
+    return this.pendingRunMessages(chatId)[0];
   }
 
   updateRunMessage(messageId: string, status: RunMessage["status"], error?: string): RunMessage {
@@ -1092,6 +1117,7 @@ export class Repo {
       }
       for (const key of [
         "conversationContext",
+        "conversationQueueOrder",
         "conversationAttachments",
         "conversationArtifacts",
         "conversationWorkspace",

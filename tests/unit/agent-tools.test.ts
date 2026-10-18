@@ -105,23 +105,79 @@ describe("S5 manifest — bash / history / memory (06-X)", () => {
     );
   });
 
-  it("memory_search routes with run context", async () => {
-    const seen: { query?: string; runId?: string } = {};
+  it("memory_search binds structured queries to the original run and preserves source identity", async () => {
+    const seen: unknown[] = [];
     const deps: LoopToolDeps = {
       memorySearch: async (query, c) => {
-        seen.query = query;
-        seen.runId = c.runId;
-        return [{ title: "t", url: "https://a.dev", text: "snippet", capturedAt: 2 }];
+        seen.push({ query, runId: c.runId });
+        return {
+          mode: "lexical",
+          fallbackReason: "No local embedding model",
+          matches: [],
+          nextCursor: null,
+          total: 0,
+        };
       },
     };
-    const out = (await manifest["memory_search"]!.execute({ query: "report" }, ctx(deps))) as {
-      output: { memories: { capturedAt: number }[] };
-    };
-    expect(seen).toEqual({ query: "report", runId: "run-1" });
-    expect(out.output.memories[0]!.capturedAt).toBe(2);
-    await expect(manifest["memory_search"]!.execute({ query: "x" }, ctx({}))).rejects.toThrow(
+    const out = await manifest.memory_search!.execute(
+      { queries: ["report", "decision"], domains: ["a.dev"], limit: 8 },
+      ctx(deps),
+    );
+    expect(seen).toEqual([
+      {
+        query: { queries: ["report", "decision"], domains: ["a.dev"], limit: 8, mode: "auto" },
+        runId: "run-1",
+      },
+    ]);
+    expect(out).toMatchObject({
+      output: { mode: "lexical", fallbackReason: "No local embedding model", nextCursor: null },
+    });
+    await expect(
+      manifest.memory_search!.execute({ queries: ["report"], workspaceId: "other" }, ctx(deps)),
+    ).rejects.toThrow();
+    await expect(manifest.memory_search!.execute({ queries: ["report"] }, ctx({}))).rejects.toThrow(
       /not available/,
     );
+  });
+
+  it("memory_read requires the exact searched identity and bounds line reads", async () => {
+    const seen: unknown[] = [];
+    const identity = {
+      sourceId: "document:one",
+      revision: "2",
+      sha256: "a".repeat(64),
+      startLine: 3,
+      limitLines: 10,
+    };
+    const deps: LoopToolDeps = {
+      memoryReadSource: async (input, c) => {
+        seen.push({ input, runId: c.runId });
+        return {
+          ...identity,
+          kind: "owner",
+          path: "USER.md",
+          title: "Owner",
+          text: "Saved line",
+          updatedAt: 1,
+          sourceRefs: [],
+          endLine: 3,
+          nextLine: null,
+        };
+      },
+    };
+    expect(await manifest.memory_read!.execute(identity, ctx(deps))).toMatchObject({
+      output: { text: "Saved line", startLine: 3, endLine: 3 },
+    });
+    expect(seen).toEqual([{ input: identity, runId: "run-1" }]);
+    await expect(
+      manifest.memory_read!.execute({ ...identity, limitLines: 201 }, ctx(deps)),
+    ).rejects.toThrow();
+    await expect(
+      manifest.memory_read!.execute({ ...identity, sha256: "missing" }, ctx(deps)),
+    ).rejects.toThrow();
+    await expect(
+      manifest.memory_read!.execute({ ...identity, workspaceId: "other" }, ctx(deps)),
+    ).rejects.toThrow();
   });
 });
 

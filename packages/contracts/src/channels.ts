@@ -125,6 +125,44 @@ export type ChannelPeer = z.infer<typeof ChannelPeerSchema>;
 export type ChannelFailureCode = z.infer<typeof ChannelFailureCodeSchema>;
 export type ChannelSaveParams = z.infer<typeof ChannelSaveParamsSchema>;
 
+export const CHANNEL_MAX_ATTACHMENT_BYTES = 20_000_000;
+export const ChannelAttachmentSchema = z
+  .object({
+    attachmentId: id,
+    filename: z.string().min(1).max(255),
+    kind: z.enum(["document", "image", "audio"]),
+    mediaType: z.string().max(100).optional(),
+    byteLength: z.number().int().nonnegative().safe().optional(),
+    durationSeconds: z.number().finite().nonnegative().optional(),
+  })
+  .strict();
+export type ChannelAttachment = z.infer<typeof ChannelAttachmentSchema>;
+export const ChannelReplySchema = z
+  .object({
+    title: z.string().min(1).max(150).optional(),
+    fields: z
+      .array(z.object({ label: z.string().min(1).max(80), value: z.string().max(500) }).strict())
+      .max(8)
+      .optional(),
+    buttons: z
+      .array(
+        z
+          .object({
+            actionId: z.string().uuid(),
+            label: z.string().min(1).max(40),
+            command: z.string().min(1).max(600),
+            expiresAt: z.number().nonnegative(),
+            preferencesRevision: z.number().int().nonnegative(),
+            usedBy: id.optional(),
+          })
+          .strict(),
+      )
+      .max(5)
+      .optional(),
+  })
+  .strict();
+export type ChannelReply = z.infer<typeof ChannelReplySchema>;
+
 /** Provider-authenticated identity; display names never authorize a peer. */
 export const ChannelInboundSchema = z
   .object({
@@ -133,12 +171,24 @@ export const ChannelInboundSchema = z
     peerName: z.string().max(200),
     conversationId: id,
     threadId: id.optional(),
-    text: z.string().min(1).max(20000),
+    text: z.string().max(20000),
+    attachments: z.array(ChannelAttachmentSchema).max(10).optional(),
+    interaction: z.object({ actionId: z.string().uuid(), providerMessageId: id }).strict().optional(),
     direct: z.boolean(),
     mentioned: z.boolean(),
     inThread: z.boolean(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (input) => Boolean(input.text.trim() || input.attachments?.length || input.interaction),
+    "A message needs text, an attachment, or an interaction.",
+  )
+  .refine(
+    (input) =>
+      new Set(input.attachments?.map((item) => item.attachmentId) ?? []).size ===
+      (input.attachments?.length ?? 0),
+    "Attachment identities must be distinct.",
+  );
 export type ChannelInbound = z.infer<typeof ChannelInboundSchema>;
 export const ChannelCursorSchema = z.discriminatedUnion("provider", [
   z.object({ provider: z.literal("slack") }).strict(),

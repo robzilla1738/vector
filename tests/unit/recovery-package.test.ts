@@ -120,6 +120,29 @@ async function fixture() {
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }],
   });
   const channel = seedChannel(source, space.workspaceId, task.taskId);
+  const originalAudio = Buffer.from("synthetic retained voice original");
+  const audioMessage = {
+    ...channel.message,
+    messageId: "300:401",
+    text: "",
+    attachments: [
+      { attachmentId: "voice", filename: "voice.ogg", kind: "audio" as const, mediaType: "audio/ogg" },
+    ],
+  };
+  channel.store.receive(channel.connection, audioMessage);
+  const savedAudio = channel.store.messages(channel.connection.connectionId, ["pending"])[0]!;
+  channel.store.saveAttachment({
+    connectionId: channel.connection.connectionId,
+    messageKey: savedAudio.messageKey,
+    attachmentKey: channel.store.key(channel.connection.connectionId, "attachment", "voice"),
+    state: "transcribing",
+    source: audioMessage.attachments[0]!,
+    bytesBase64: originalAudio.toString("base64"),
+    sha256: createHash("sha256").update(originalAudio).digest("hex"),
+    mediaType: "audio/ogg",
+    createdAt: 1,
+    updatedAt: 1,
+  });
   const authority = new AgentConnectionService(source).create({
     name: "Synthetic channel authority",
     client: "telegram",
@@ -228,6 +251,8 @@ async function fixture() {
     segmented,
     documentReference,
     channel,
+    savedAudio,
+    originalAudio,
   };
 }
 
@@ -353,6 +378,18 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)).toMatchObject({ state: "pending" });
   expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.authorityId).toBeUndefined();
   expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.requestId).toBeUndefined();
+  expect(
+    channels
+      .messages(restoredChannel.connectionId, ["retired"])
+      .find((message) => message.messageKey === f.savedAudio.messageKey),
+  ).toBeDefined();
+  expect(channels.attachments(restoredChannel.connectionId, f.savedAudio.messageKey)).toMatchObject([
+    {
+      state: "unknown",
+      bytesBase64: f.originalAudio.toString("base64"),
+      sha256: createHash("sha256").update(f.originalAudio).digest("hex"),
+    },
+  ]);
   expect(channels.cursor(restoredChannel)).toBeUndefined();
   expect(
     new AgentConnectionService(restored).list().find((item) => item.client === "telegram")?.revokedAt,

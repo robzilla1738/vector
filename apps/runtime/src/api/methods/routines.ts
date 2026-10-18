@@ -14,15 +14,19 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
     if (client.external || client.codeMode || !token || !ctx.s.native?.turnSourceContext)
       throw new AuxError("permission_denied", "Review Skills in the original Aux window.");
     const owner = ctx.s.native.turnSourceContext.bind(ctx.s.native);
-    const check = async () => { await owner(token); };
+    const check = async () => {
+      await owner(token);
+    };
     let library = skillLibraries.get(routines);
-    if (!library) { library = new SkillLibrary(); skillLibraries.set(routines, library); }
+    if (!library) {
+      library = new SkillLibrary();
+      skillLibraries.set(routines, library);
+    }
     if (method === "routines.skills.preview") return library.preview(params.source, token, check);
     const shares = await library.selected(params.reviewId, params.skillIds, token, check);
     await check();
     return routines.importRoutines(shares, params.workspaceId);
   }
-
 
   if (method === "routines.replay.repair.propose") {
     if (client.external) {
@@ -51,6 +55,11 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
     method === "routines.exportSkill";
   if (client.external && (client.scope || !routineRead))
     throw new AuxError("permission_denied", "Routines are managed in Aux.");
+  if (method === "routines.draftFromCandidate") {
+    if (client.external || client.codeMode)
+      throw new AuxError("permission_denied", "Review suggestions in Aux.");
+    return routines.draftFromCandidate(params);
+  }
   if (method === "routines.scan") {
     if (client.external || client.codeMode)
       throw new AuxError("permission_denied", "Review suggestions in Aux.");
@@ -120,6 +129,7 @@ export const routinesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "routines.skills.import": h_routines_list,
   "routines.list": h_routines_list,
   "routines.scan": h_routines_list,
+  "routines.draftFromCandidate": h_routines_list,
   "routines.suggest": h_routines_list,
   "routines.get": h_routines_list,
   "routines.create": h_routines_list,

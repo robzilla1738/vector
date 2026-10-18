@@ -148,6 +148,14 @@ export const RoutineSourceEventSchema = z.discriminatedUnion("kind", [
 ]);
 /** Host-only preflight before Chromium reads a watched document. */
 export const RoutinePageChangeTargetParamsSchema = z.object({ pageId: text.max(200), url: siteUrl }).strict();
+export const RoutineSupportingRunSchema = z
+  .object({
+    runId: text,
+    taskId: text,
+    taskRevision: z.number().int().positive(),
+    sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
   objective: text.max(10000),
@@ -217,6 +225,10 @@ export const RoutineSuggestionSchema = z.object({
 });
 /** Read-only evidence of repeated saved work, never an execution grant. */
 export const RoutineCandidateSchema = z.object({
+  candidateId: z.string().uuid(),
+  expiresAt: z.number().nonnegative(),
+  discoveryMethod: z.enum(["semantic", "lexical"]),
+  supportingRuns: z.array(RoutineSupportingRunSchema).min(3).max(100),
   taskId: text,
   taskRevision: z.number().int().positive(),
   runId: text,
@@ -225,6 +237,9 @@ export const RoutineCandidateSchema = z.object({
   completedRuns: z.number().int().min(3),
   lastCompletedAt: z.number().nonnegative(),
 });
+export const RoutineDraftFromCandidateParamsSchema = z
+  .object({ workspaceId: text, candidateId: z.string().uuid() })
+  .strict();
 export type RoutineCandidate = z.infer<typeof RoutineCandidateSchema>;
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
@@ -289,6 +304,7 @@ export const PluginSkillReadSchema = z
   })
   .strict();
 export const RoutineSchema = RoutineDefinitionSchema.extend({
+  supportingRuns: z.array(RoutineSupportingRunSchema).min(3).max(100).optional(),
   routineId: text,
   revision: z.number().int().positive(),
   createdAt: z.number(),

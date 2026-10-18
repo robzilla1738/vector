@@ -114,3 +114,8 @@ export * from "./memory-saver.js";
 export * from "./captured-source.js";
 
 export * from "./conversation-search.js";
+
+export * from "./context-compaction.js";
+
+export * from "./memory-documents.js";
+export * from "./queue-order.js";

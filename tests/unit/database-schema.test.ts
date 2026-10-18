@@ -344,7 +344,7 @@ it("adds protected channel storage to schema5 without changing existing records"
   expect(upgraded.prepare("SELECT value FROM kv WHERE key='retained'").get()).toEqual({
     value: "schema5 value",
   });
-  expect(channelTablesForDatabase(upgraded)).toHaveLength(6);
+  expect(channelTablesForDatabase(upgraded)).toHaveLength(7);
 });
 
 it("preserves a historical database with unexpected partial channel tables", () => {
@@ -359,4 +359,50 @@ it("preserves a historical database with unexpected partial channel tables", () 
   const preserved = track(new DatabaseSync(path));
   expect(version(preserved)).toBe(5);
   expect(preserved.prepare("SELECT kept FROM channel_connections").get()).toEqual({ kept: "preserve me" });
+});
+
+it("adds protected attachment storage to a valid schema6 without replacing existing data", () => {
+  const { path } = fixture();
+  const previous = track(openDb(path));
+  previous.exec(
+    "DROP TABLE channel_attachments; INSERT INTO kv VALUES('migration-sentinel','kept'); PRAGMA user_version=6",
+  );
+  expect(channelTablesForDatabase(previous)).toHaveLength(6);
+  previous.close();
+  const upgraded = track(openDb(path));
+  expect(version(upgraded)).toBe(7);
+  expect(channelTablesForDatabase(upgraded)).toHaveLength(7);
+  expect(upgraded.prepare("SELECT value FROM kv WHERE key='migration-sentinel'").get()).toEqual({
+    value: "kept",
+  });
+});
+
+it("preserves malformed schema6 without applying the attachment migration", () => {
+  const { path } = fixture();
+  const previous = track(openDb(path));
+  previous.exec(
+    "DROP TABLE channel_attachments; ALTER TABLE channel_messages ADD COLUMN unexpected TEXT; PRAGMA user_version=6",
+  );
+  previous.close();
+  expect(() => openDb(path)).toThrow("protected channel row identity");
+  const preserved = track(new DatabaseSync(path));
+  expect(version(preserved)).toBe(6);
+  expect(
+    preserved.prepare("SELECT name FROM sqlite_schema WHERE name='channel_attachments'").get(),
+  ).toBeUndefined();
+});
+
+it("validates the protected document schema before applying an unrelated attachment migration", () => {
+  const { path } = fixture();
+  const previous = track(openDb(path));
+  previous.exec(
+    "DROP TABLE channel_attachments; ALTER TABLE document_segments ADD COLUMN unexpected TEXT; PRAGMA user_version=6",
+  );
+  previous.close();
+  expect(() => openDb(path)).toThrow(/protected document row identity/);
+  const preserved = track(new DatabaseSync(path));
+  expect(version(preserved)).toBe(6);
+  expect(
+    preserved.prepare("SELECT name FROM sqlite_schema WHERE name='channel_attachments'").get(),
+  ).toBeUndefined();
 });

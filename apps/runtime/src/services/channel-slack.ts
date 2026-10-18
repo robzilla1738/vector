@@ -3,6 +3,7 @@ import type { ChannelCredentials, ChannelInbound } from "@aux/contracts/channels
 import { ChannelInboundSchema } from "@aux/contracts/channels";
 import {
   channelJson,
+  channelBinary,
   channelSocket,
   channelSocketUrl,
   ChannelTransportError,
@@ -25,7 +26,18 @@ const eventSchema = z.object({
   user: identifier,
   channel: identifier,
   ts: identifier,
-  text: z.string(),
+  text: z.string().default(""),
+  files: z
+    .array(
+      z.object({
+        id: identifier,
+        name: z.string().optional(),
+        mimetype: z.string().optional(),
+        size: z.number().int().nonnegative().optional(),
+      }),
+    )
+    .max(10)
+    .optional(),
   thread_ts: identifier.optional(),
   channel_type: z.string().optional(),
   bot_id: z.unknown().optional(),
@@ -126,7 +138,7 @@ export async function slackTransport(
             if (
               event.success &&
               !event.data.bot_id &&
-              !event.data.subtype &&
+              (!event.data.subtype || event.data.subtype === "file_share") &&
               event.data.user !== identity.botId
             ) {
               const value = event.data;
@@ -137,11 +149,62 @@ export async function slackTransport(
                 conversationId: value.channel,
                 threadId: value.thread_ts ?? (value.channel.startsWith("D") ? undefined : value.ts),
                 text: value.text,
+                attachments: value.files?.map((file) => ({
+                  attachmentId: file.id,
+                  filename: (file.name?.trim() || file.id).slice(0, 255),
+                  mediaType: file.mimetype,
+                  byteLength: file.size,
+                  kind: file.mimetype?.toLowerCase().startsWith("image/")
+                    ? "image"
+                    : file.mimetype?.toLowerCase().startsWith("audio/")
+                      ? "audio"
+                      : "document",
+                })),
                 direct: value.channel_type === "im" || value.channel.startsWith("D"),
                 mentioned: value.type === "app_mention" || value.text.includes(`<@${identity.botId}>`),
                 inThread: Boolean(value.thread_ts),
               });
               if (parsed.success) message = parsed.data;
+            }
+          }
+          if (frame.type === "interactive") {
+            const action = z
+              .object({
+                type: z.literal("block_actions"),
+                api_app_id: identifier,
+                team: z.object({ id: identifier }),
+                user: z.object({ id: identifier }),
+                channel: z.object({ id: identifier }),
+                container: z.object({ message_ts: identifier }),
+                message: z.object({ thread_ts: identifier.optional() }).optional(),
+                actions: z
+                  .array(z.object({ action_id: z.string().uuid(), action_ts: identifier }))
+                  .min(1)
+                  .max(1),
+              })
+              .safeParse(frame.payload);
+            if (
+              action.success &&
+              action.data.api_app_id === identity.applicationId &&
+              action.data.team.id === identity.accountId &&
+              action.data.user.id !== identity.botId
+            ) {
+              const value = action.data;
+              message = {
+                messageId: `action:${value.actions[0]!.action_ts}`,
+                peerId: value.user.id,
+                peerName: value.user.id,
+                conversationId: value.channel.id,
+                threadId: value.message?.thread_ts,
+                text: "",
+                direct: true,
+                mentioned: true,
+                inThread: Boolean(value.message?.thread_ts),
+                interaction: {
+                  actionId: value.actions[0]!.action_id,
+                  providerMessageId: value.container.message_ts,
+                },
+              };
             }
           }
           await input.receive(message, { provider: "slack" });
@@ -150,6 +213,50 @@ export async function slackTransport(
       }
       input.signal.throwIfAborted();
     },
+    async downloadAttachment(message, attachment, requestSignal) {
+      const result = await api(
+        "files.info",
+        credentials.botToken,
+        { file: attachment.attachmentId },
+        requestSignal,
+      );
+      const file = z
+        .object({
+          id: identifier,
+          url_private_download: z.string().optional(),
+          url_private: z.string().optional(),
+          channels: z.array(z.string()).optional(),
+          groups: z.array(z.string()).optional(),
+          ims: z.array(z.string()).optional(),
+        })
+        .safeParse(result.file);
+      if (!file.success || file.data.id !== attachment.attachmentId)
+        throw new ChannelTransportError("identity");
+      const memberships = [
+        ...(file.data.channels ?? []),
+        ...(file.data.groups ?? []),
+        ...(file.data.ims ?? []),
+      ];
+      if (memberships.length && !memberships.includes(message.conversationId))
+        throw new ChannelTransportError("identity");
+      const url = new URL(
+        file.data.url_private_download ?? file.data.url_private ?? "https://invalid.invalid",
+      );
+      if (
+        url.protocol !== "https:" ||
+        url.hostname !== "files.slack.com" ||
+        url.username ||
+        url.password ||
+        url.port
+      )
+        throw new ChannelTransportError("identity");
+      return channelBinary(
+        network,
+        url,
+        { headers: { Authorization: `Bearer ${credentials.botToken}` } },
+        requestSignal,
+      );
+    },
     async send(input, requestSignal) {
       const result = await api(
         "chat.postMessage",
@@ -157,6 +264,26 @@ export async function slackTransport(
         {
           channel: input.conversationId,
           text: input.text,
+          ...(input.reply
+            ? {
+                blocks: [
+                  { type: "section", text: { type: "plain_text", text: input.text.slice(0, 3000) } },
+                  ...(input.reply.buttons?.length
+                    ? [
+                        {
+                          type: "actions",
+                          elements: input.reply.buttons.map((button) => ({
+                            type: "button",
+                            text: { type: "plain_text", text: button.label },
+                            action_id: button.actionId,
+                            value: button.actionId,
+                          })),
+                        },
+                      ]
+                    : []),
+                ],
+              }
+            : {}),
           thread_ts: input.threadId ?? input.replyToMessageId?.split(":").at(-1),
           client_msg_id: input.deliveryId,
           mrkdwn: false,

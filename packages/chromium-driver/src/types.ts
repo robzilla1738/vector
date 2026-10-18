@@ -16,6 +16,9 @@ export interface PageIdentity {
 }
 
 export interface ScreenshotResult {
+  viewport?: { width: number; height: number; scale: number };
+  extent?: { kind: "fullPage" | "viewport"; x?: number; y?: number; width: number; height: number };
+  fallbackReason?: "timeout" | "texture_limit" | "native_viewport_only";
   buffer: Buffer;
   width: number;
   height: number;

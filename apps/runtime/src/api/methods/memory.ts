@@ -1,3 +1,5 @@
+import { normalWindowOwner } from "./normal-window-owner.js";
+import { MemoryDocumentMethodSchemas, type MemoryDreamChange } from "@aux/contracts/memory-documents";
 import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
@@ -8,6 +10,18 @@ import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external || ctx.client.codeMode)
     throw new AuxError("permission_denied", "Space memory is managed in Aux.");
+  if (
+    [
+      "memory.pipeline.setPolicy",
+      "memory.pipeline.setRetention",
+      "memory.pipeline.expire",
+      "memory.pipeline.edit",
+      "memory.pipeline.revert",
+      "memory.pipeline.review",
+      "memory.pipeline.forget",
+    ].includes(ctx.method)
+  )
+    await ctx.s.memoryPipeline?.retireWorkspace(ctx.params.workspaceId);
   if (
     [
       "memory.pipeline.setPolicy",
@@ -86,6 +100,79 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   return response;
 }
 
+async function h_memory_documents(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Space Memory is managed in Aux.");
+  const pipeline = ctx.s.memoryPipeline;
+  if (!pipeline) throw new AuxError("backend_unavailable", "Protected Memory requires the Aux desktop app.");
+  const method = ctx.method as keyof typeof MemoryDocumentMethodSchemas;
+  const raw = ctx.params;
+  if (method === "memory.pipeline.documentList") return pipeline.documentList(raw.workspaceId);
+  if (method === "memory.pipeline.dreamStatus") return pipeline.dreamStatus(raw.workspaceId);
+  if (method === "memory.pipeline.dreamActivity") {
+    const input = MemoryDocumentMethodSchemas[method].parse(raw);
+    return pipeline.dreamActivity(input.workspaceId, input.cursor, input.limit);
+  }
+  if (method === "memory.pipeline.recall") return pipeline.recall(raw);
+  if (method === "memory.pipeline.readSource") return pipeline.readSource(raw);
+  const owner = await normalWindowOwner(ctx);
+  await owner.current();
+  // Model accounting owns its original authority boundary. Never hold a global
+  // mutation lease while awaiting a model cancellation or its final invoice.
+  if (method === "memory.pipeline.dream" || method === "memory.pipeline.dreamCancel") {
+    const result =
+      method === "memory.pipeline.dream"
+        ? await pipeline.dream(raw.workspaceId, "manual", owner.current)
+        : await pipeline.dreamCancel(raw.workspaceId, raw.operationId);
+    await ctx.revokeWorkspaceContext(raw.workspaceId, false);
+    ctx.s.events.emit("workspace.memory.updated", { workspaceId: raw.workspaceId });
+    return result;
+  }
+  await pipeline.retireWorkspace(raw.workspaceId);
+  return withRunAuthorityMutation(ctx.s.repo, async () => {
+    await owner.current();
+    let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
+    const beforeRemoval = async () => {
+      await owner.current();
+      generation ??= advanceManagedRecoveryGeneration(ctx.s.settings.all().dataDir);
+      await ctx.s.contentMemory?.invalidateDerivatives();
+    };
+    const applyOwner = (change: MemoryDreamChange, expectedRevision: number) => {
+      if (!change.ownerPath) throw new AuxError("invalid_params", "Choose an owner document proposal.");
+      const memory =
+        change.ownerPath === "MEMORY.md"
+          ? ctx.tasks.setWorkspaceMemory(raw.workspaceId, expectedRevision, change.after)
+          : ctx.tasks.setWorkspaceMemoryDocument({
+              workspaceId: raw.workspaceId,
+              expectedRevision,
+              path: change.ownerPath,
+              content: change.after,
+            });
+      return memory.revision;
+    };
+    let result: unknown;
+    try {
+      if (method === "memory.pipeline.documentSet") result = await pipeline.documentSet(raw, beforeRemoval);
+      else if (method === "memory.pipeline.dreamReview")
+        result = await pipeline.dreamReview(raw, applyOwner, beforeRemoval);
+      else if (method === "memory.pipeline.dreamRevert")
+        result = await pipeline.dreamRevert(raw, applyOwner, beforeRemoval);
+      else throw new AuxError("invalid_params", "Unknown Memory operation.");
+    } catch (error) {
+      if (generation)
+        throw new AuxError(
+          "conflict",
+          "The Memory change could not be confirmed. Review the current documents and create a fresh local backup.",
+        );
+      throw error;
+    }
+    await ctx.revokeWorkspaceContext(raw.workspaceId, false);
+    ctx.s.events.emit("workspace.memory.updated", { workspaceId: raw.workspaceId });
+    if (generation) await attemptFreshManagedBackup(ctx.s.repo, ctx.s.settings.all().dataDir, generation);
+    return result;
+  });
+}
+
 function pastePipeline(ctx: MethodCtx) {
   if (ctx.client.external || ctx.client.codeMode)
     throw new AuxError("permission_denied", "Pasted Memory is reviewed in Aux.");
@@ -108,6 +195,16 @@ async function h_memory_paste_status(ctx: MethodCtx): Promise<unknown> {
 }
 
 export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "memory.pipeline.documentList": h_memory_documents,
+  "memory.pipeline.documentSet": h_memory_documents,
+  "memory.pipeline.dream": h_memory_documents,
+  "memory.pipeline.dreamCancel": h_memory_documents,
+  "memory.pipeline.dreamStatus": h_memory_documents,
+  "memory.pipeline.dreamActivity": h_memory_documents,
+  "memory.pipeline.dreamReview": h_memory_documents,
+  "memory.pipeline.dreamRevert": h_memory_documents,
+  "memory.pipeline.recall": h_memory_documents,
+  "memory.pipeline.readSource": h_memory_documents,
   "memory.paste.preview": h_memory_paste_preview,
   "memory.paste.commit": h_memory_paste_commit,
   "memory.paste.status": h_memory_paste_status,

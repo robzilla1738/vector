@@ -554,6 +554,13 @@ const RESULTS: Record<string, unknown> = {
   "native.powerActivity": {
     "active": false
   },
+  "native.imageNormalize": {
+    "pngBase64": "aaaa",
+    "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "width": 16384,
+    "height": 16384
+  },
   "native.personCapture": {
     "pageId": "00000000-0000-4000-8000-000000000000",
     "documentId": "00000000-0000-4000-8000-000000000000",
