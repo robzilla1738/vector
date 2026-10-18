@@ -395,7 +395,7 @@ index 143f96f..17400e8 100644
    if (!profile->IsOffTheRecord()) {
      profile_library_ = std::make_shared<aux::ProfileLibrary>(
          profile,
-@@ -389,20 +404,23 @@ void AuxRuntimeHost::OnProfileWillBeDestroyed(Profile*) {
+@@ -389,20 +404,29 @@ void AuxRuntimeHost::OnProfileWillBeDestroyed(Profile*) {
  }
  
  void AuxRuntimeHost::Shutdown() {
@@ -404,6 +404,12 @@ index 143f96f..17400e8 100644
      return;
 +  }
    shutting_down_ = true;
++  if (g_browser_process && g_browser_process->IsShuttingDown()) {
++    int64_t no_deadline = 0;
++    g_browser_runtime_retirement_deadline.compare_exchange_strong(
++        no_deadline,
++        (base::TimeTicks::Now() + kRuntimeRetirementBudget).ToInternalValue());
++  }
    profile_observation_.Reset();
    NativeConnectionRetired(admitted_native_generation_);
    FailOwnerMutations();
@@ -3102,37 +3108,48 @@ index 143f96f..17400e8 100644
  }
  
  AuxRuntimeHost::Worker::Worker(
-@@ -2458,21 +3170,26 @@ AuxRuntimeHost::Worker::Worker(
+@@ -2458,30 +3170,18 @@ AuxRuntimeHost::Worker::Worker(
        owner_(std::move(owner)) {}
  
  AuxRuntimeHost::Worker::~Worker() {
 -  if (Disconnect())
 +  if (Disconnect()) {
      return;
-+  }
-   // Preserve directory ownership until the exact launched child exits, even if
-   // normal termination was not acknowledged. Never delete beneath a live child.
-   base::ThreadPool::PostTask(
-       FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
-       base::BindOnce(
+-  // Preserve directory ownership until the exact launched child exits, even if
+-  // normal termination was not acknowledged. Never delete beneath a live child.
+-  base::ThreadPool::PostTask(
+-      FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
+-      base::BindOnce(
 -          [](base::Process process, std::shared_ptr<base::ScopedTempDir> private_data,
-+          [](base::Process process,
-+             std::shared_ptr<base::ScopedTempDir> private_data,
-              base::FilePath transport) {
-             if (process.IsValid() && !process.WaitForExit(nullptr)) {
+-             base::FilePath transport) {
+-            if (process.IsValid() && !process.WaitForExit(nullptr)) {
 -              if (private_data) private_data->Take();
-+              if (private_data) {
-+                private_data->Take();
-+              }
-               LOG(ERROR) << "Aux runtime cleanup could not confirm child exit";
-               return;
-             }
+-              LOG(ERROR) << "Aux runtime cleanup could not confirm child exit";
+-              return;
+-            }
 -            const bool private_removed = !private_data || private_data.use_count() > 1 ||
-+            const bool private_removed =
-+                !private_data || private_data.use_count() > 1 ||
-                 !private_data->IsValid() || private_data->Delete();
-             const bool transport_removed =
-                 transport.empty() || base::DeletePathRecursively(transport);
+-                !private_data->IsValid() || private_data->Delete();
+-            const bool transport_removed =
+-                transport.empty() || base::DeletePathRecursively(transport);
+-            if (!private_removed || !transport_removed) {
+-              LOG(ERROR) << "Aux runtime temporary directory cleanup failed";
+-            }
+-          },
+-          std::move(process_), std::move(private_data_directory_),
+-          socket_directory_.Take()));
++  }
++  // The deadline expired without an acknowledged exit/cleanup. Retain the
++  // exact original child and its directories as debt; never replace this with
++  // an unbounded BLOCK_SHUTDOWN wait or delete beneath an unjoined child.
++  [[maybe_unused]] auto* debt = new RuntimeCleanupDebt{
++      std::move(process_), process_creation_time_,
++      std::move(private_data_directory_), std::move(socket_directory_)};
++  ANNOTATE_LEAKING_OBJECT_PTR(debt);
++  LOG(ERROR) << "Aux runtime cleanup debt retained; original exit or directory "
++                "cleanup was not acknowledged";
+ }
+ 
+ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
 @@ -2499,10 +3216,14 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
    }
    private_startup_phase_.clear();
@@ -3256,26 +3273,51 @@ index 143f96f..17400e8 100644
    if (connection_fd_ >= 0) {
      close(connection_fd_);
      connection_fd_ = -1;
-@@ -2733,22 +3466,32 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -2733,22 +3466,59 @@ bool AuxRuntimeHost::Worker::Disconnect() {
    // Run on the dedicated sequenced transport worker, never browser UI. Do
    // not discard the original child handle or directory before its actual exit
    // and filesystem cleanup have been acknowledged. Failed cleanup is retained
 -  // as debt and blocks a subsequent connection; no new child adopts this socket.
 -  const bool child_stopped = !process_.IsValid() ||
+-      process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr) ||
+-      process_.Terminate(0, true);
+-  if (child_stopped && process_.IsValid()) process_.Close();
 +  // as debt and blocks a subsequent connection; no new child adopts this
 +  // socket.
-+  const bool child_stopped =
-+      !process_.IsValid() ||
-       process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr) ||
-       process_.Terminate(0, true);
--  if (child_stopped && process_.IsValid()) process_.Close();
-+  if (child_stopped && process_.IsValid()) {
-+    process_.Close();
++  if (process_retirement_deadline_.is_null()) {
++    process_retirement_deadline_ =
++        base::TimeTicks::Now() + kRuntimeRetirementBudget;
++  }
++  const int64_t shared_deadline =
++      g_browser_runtime_retirement_deadline.load();
++  if (shared_deadline) {
++    process_retirement_deadline_ = std::min(
++        process_retirement_deadline_,
++        base::TimeTicks::FromInternalValue(shared_deadline));
++  }
++  const auto retired = aux::RetireOriginalRuntimeChild(
++      process_, process_creation_time_, process_retirement_deadline_,
++      process_forced_retirement_);
++  const bool child_stopped = retired.exited;
++  process_cleanup_acknowledged_ |= retired.GracefulCleanupAcknowledged();
++  if (process_.IsValid()) {
++    if (retired.exited) {
++      LOG(INFO) << "Aux original runtime exit acknowledged; forced="
++                << retired.forced << " exit_code=" << retired.exit_code;
++      LOG_IF(ERROR, retired.forced || retired.exit_code != 0)
++          << "Aux original runtime retirement was interrupted; forced="
++          << retired.forced << " exit_code=" << retired.exit_code;
++      process_.Close();
++      process_creation_time_ = base::Time();
++    } else {
++      LOG(ERROR) << "Aux original runtime exit was not acknowledged; "
++                    "retaining process and directory ownership";
++    }
 +  }
    bool socket_removed = socket_path_.empty();
 -  if (!socket_removed && (unlink(socket_path_.value().c_str()) == 0 || errno == ENOENT)) {
 -    socket_path_.clear(); socket_removed = true;
-+  if (!socket_removed &&
++  if (child_stopped && !socket_removed &&
 +      (unlink(socket_path_.value().c_str()) == 0 || errno == ENOENT)) {
 +    socket_path_.clear();
 +    socket_removed = true;
@@ -3284,13 +3326,18 @@ index 143f96f..17400e8 100644
 +  const bool directory_removed =
 +      child_stopped && socket_removed &&
        (!socket_directory_.IsValid() || socket_directory_.Delete());
++  // Parent exit is sufficient to retire its socket, but a forced/nonzero exit
++  // cannot prove its managed descendants/resources joined. Keep the private
++  // directory's original owner even after the dead parent handle was closed.
    const bool private_data_removed =
        child_stopped &&
-       (!private_data_directory_ || private_data_directory_.use_count() > 1 ||
+-      (!private_data_directory_ || private_data_directory_.use_count() > 1 ||
 -       !private_data_directory_->IsValid() || private_data_directory_->Delete());
 -  if (private_data_removed) private_data_directory_.reset();
-+       !private_data_directory_->IsValid() ||
-+       private_data_directory_->Delete());
++      (!private_data_directory_ || !private_data_directory_->IsValid() ||
++       (process_cleanup_acknowledged_ &&
++        (private_data_directory_.use_count() > 1 ||
++         private_data_directory_->Delete())));
 +  if (private_data_removed) {
 +    private_data_directory_.reset();
 +  }

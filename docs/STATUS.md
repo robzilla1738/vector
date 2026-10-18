@@ -8,6 +8,20 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The native runtime-retirement correction compiles, and nine real process/pipe
+fixtures pass in 6.305s. Original-child signalling checks kernel birth and direct
+parent ownership; retirement shares a five-second browser-shutdown deadline,
+startup waits observe shutdown, and the unbounded destructor wait is removed.
+The integrated check passes all 5,937 tests across 858 files in 108.14s, with
+572 advisories and no type/lint errors.
+Forced or nonzero exit retains private-data ownership as cleanup debt instead
+of claiming joined resource cleanup. The 10-second native watchdog is unchanged.
+Both initial compile failures and their narrow corrections remain in the
+[bounded-retirement record](evidence/aside-native-bounded-retirement-2026-10-18.json).
+Areas 0001/0004/0060 preserve the implementation; all 68 patches replay with 942
+paths and modes matching. Full-app rebuild, real normal/active/startup Quit,
+private/multiple-Profile observation and Crashpad comparison remain pending.
+
 Original CDP commands now have a separate finite protocol-response deadline,
 bounded by 30 seconds and their captured native lease expiry. Retirement settles
 the original caller before detach, and late replies cannot resolve a replacement

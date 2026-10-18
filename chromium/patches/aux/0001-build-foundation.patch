@@ -535,15 +535,16 @@ index 82f3975..ca65408 100644
        "views/frame/app_menu_button.cc",
 diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
 new file mode 100644
-index 0000000..9c78880
+index 0000000..00597d2932d6dc23425cc1eb05d5965097b06258
 --- /dev/null
 +++ b/chrome/browser/ui/aux/BUILD.gn
-@@ -0,0 +1,374 @@
+@@ -0,0 +1,389 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
 +
 +import("//chrome/browser/buildflags.gni")
++import("//testing/test.gni")
 +import("//build/config/apple/swift_source_set.gni")
 +
 +assert(enable_aux_shell)
@@ -710,6 +711,7 @@ index 0000000..9c78880
 +    "native_recorder_controller.cc",
 +    "native_recorder_controller.h",
 +    "native_recorder_script.h",
++    "runtime_child_retirement.h",
 +    "runtime_host.cc",
 +    "runtime_host.h",
 +    "shell_events.cc",
@@ -912,6 +914,19 @@ index 0000000..9c78880
 +    frameworks = [ "Foundation.framework" ]
 +    weak_frameworks = [ "FoundationModels.framework" ]
 +  }
++}
++
++# Bounded original-child process retirement; no browser/Profile/network setup.
++test("runtime_child_retirement_unittests") {
++  sources = [
++    "runtime_child_retirement.h",
++    "runtime_child_retirement_unittest.cc",
++  ]
++  deps = [
++    "//base",
++    "//testing/gtest",
++    "//testing/gtest:gtest_main",
++  ]
 +}
 diff --git a/chrome/browser/ui/cocoa/BUILD.gn b/chrome/browser/ui/cocoa/BUILD.gn
 index fcf3a29..552b75e 100644

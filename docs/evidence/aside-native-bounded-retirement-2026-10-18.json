@@ -1,0 +1,211 @@
+{
+  "baseNativeCandidate": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+  "status": "Source/object/native fixtures passed; full application rebuild and real Quit remain pending",
+  "causeRecord": "aside-native-teardown-watchdog-2026-10-18.json",
+  "privateProposal": {
+    "path": "/tmp/aux-runtime-shutdown-8b-final-v4/proposal.patch",
+    "sha256": "2c9af587c668d4b721f17b02230c829adae69ae6048383c00e8f3f06786756c7",
+    "evidence": {
+      "files": [
+        {
+          "path": "/tmp/aux-runtime-shutdown-8b-final-v4/proposal.patch",
+          "sha256": "2c9af587c668d4b721f17b02230c829adae69ae6048383c00e8f3f06786756c7",
+          "bytes": 24566
+        },
+        {
+          "path": "/tmp/aux-runtime-shutdown-8b-final-v4/hashes.json",
+          "sha256": "89a8fa0946c6949682a5ef602f1056ac2adad977efed9537d91df69166a392ac",
+          "bytes": 1427
+        },
+        {
+          "path": "/tmp/aux-runtime-shutdown-8b-final-v4/series-proof.json",
+          "sha256": "8467f4447a7036ec9735f59b94d1e3711a422aac65433997a4be339118c56393",
+          "bytes": 1385
+        },
+        {
+          "path": "/tmp/aux-runtime-shutdown-8b-final-v4/handoff.md",
+          "sha256": "53aa4723545e98327d3d04893d69075509e918834666f74d372784125b385299",
+          "bytes": 3960
+        },
+        {
+          "path": "/tmp/aux-runtime-shutdown-8b-v4/handoff.md",
+          "sha256": "a3211f80462439a1f830782483890d4650455369da0ce69b48147a6f853335fe",
+          "bytes": 2480
+        }
+      ],
+      "sourceReferences": [
+        {
+          "gitRef": "8b87f491a:apps/runtime/src/main.ts",
+          "sha256": "d8ff376986931611bb9fe2e83a53d3e1c02caac268f7fd1ae971012b05814142"
+        },
+        {
+          "gitRef": "8b87f491a:apps/runtime/src/services/runtime-shutdown.ts",
+          "sha256": "ea43650211c2d43bc25a4e1f883ed7fbc375cc83e9ccb47bb877da4b158f0ebe"
+        },
+        {
+          "gitRef": "8b87f491a:apps/runtime/src/services/coding-processes.ts",
+          "sha256": "f3880617b673ad9b526f07a451fa07778afcce0318286e7733c2a0de8fc5d413"
+        }
+      ],
+      "compiled": false,
+      "testsRun": false,
+      "productionWrites": false,
+      "scope": "Separates actual original parent exit from private resource retirement; no descendant-containment claim."
+    }
+  },
+  "rootCorrections": [
+    {
+      "log": "/tmp/aux-root-runtime-retirement-v4-build-2026-10-18.log",
+      "result": "compile failure: standalone test target missing direct canonical GoogleTest include dependency; no fixtures ran"
+    },
+    {
+      "log": "/tmp/aux-root-runtime-retirement-v4-retry-2026-10-18.log",
+      "result": "standalone test binary linked; runtime object failed unused retained-debt binding because official-build leak annotation compiles away; no fixtures ran"
+    },
+    {
+      "log": "/tmp/aux-root-runtime-retirement-v4-retry2-2026-10-18.log",
+      "sha256": "4726e2f6e12dbbe23ca2cdf5d2cf3a6181ac3bbec72242e556c0027d2f39ee58",
+      "result": "runtime object compiled;9 actual native fixtures pass in6305ms; original launcher64101 exit0 and lock retired",
+      "objectBuildSteps": 1,
+      "objectBuildSeconds": 10.85
+    }
+  ],
+  "behavior": [
+    "Exact original process handle, kernel birth and direct-parent ownership are checked before signals.",
+    "One absolute5-second retirement deadline bounds graceful SIGTERM, forced original-child SIGKILL and reap. All browser-shutdown Profile workers share that deadline.",
+    "Original listener and hello-frame waits poll in at most100ms slices, observe irreversible browser shutdown, and retain authentication/peer/generation checks.",
+    "The unbounded worker-destructor fallback is removed. Unacknowledged exit retains the original process/directory cleanup owner as explicit in-process debt.",
+    "Forced or nonzero parent exit does not acknowledge descendant/resource cleanup. Private-directory ownership is retained unless the original nonforced runtime exits0.",
+    "Native teardown watchdog stays unchanged. No action is replayed; forced exit remains interrupted, never a fabricated graceful ACK."
+  ],
+  "nativeFixtureCases": [
+    "Graceful original exit0",
+    "Original child ignoring SIGTERM is forced and reaped",
+    "Nonzero parent exit refuses cleanup acknowledgement",
+    "150ms absolute owner budget does not become60 seconds",
+    "Wrong kernel birth never signals child",
+    "Missing kernel birth never signals child",
+    "Repeated cleanup preserves forced classification",
+    "Browser shutdown cancels original held pipe handshake",
+    "An ordinary handshake still requires actual readable bytes"
+  ],
+  "canonical": {
+    "areas": [
+      "0001-build-foundation.patch",
+      "0004-runtime-host.patch",
+      "0060-runtime-async-media-admission.patch"
+    ],
+    "manifest": {
+      "canonicalDeltaSha256": "f802d8ff3dc22c6d2b5f9a470b71b99ef1f62ecf5d64070d7301484a9fa3f5ab",
+      "files": [
+        {
+          "path": "chromium/patches/aux/0001-build-foundation.patch",
+          "before": "70449bf174be253d43ce47836ec8816e4a4f87bf073b46df5d013d634f78ed3a",
+          "after": "ece184a3dfc82bd9e752c7239048578d02a33eba8f751646645e6faa82e4a137",
+          "postBytes": 44848
+        },
+        {
+          "path": "chromium/patches/aux/0004-runtime-host.patch",
+          "before": "60ca036278c29d86ba6ed0b1fbe6abb9ee629172c4528c82f39afbb384d83db6",
+          "after": "a363e6bfd0284630228ea662f442d06dfebec72057674e20ffc0e5265249e92f",
+          "postBytes": 268518
+        },
+        {
+          "path": "chromium/patches/aux/0060-runtime-async-media-admission.patch",
+          "before": "99fc528e96df5e7420957d7cd2d32673cf542cbc590946fe580fcba61b053bb1",
+          "after": "34011dc9739660a4af8fd78d30d2402b1bfea930b35bd15d811a20b4710ee2a7",
+          "postBytes": 259027
+        }
+      ],
+      "freshCanonicalApplyExact": true,
+      "nativeExpectedPostimages": [
+        {
+          "path": "chrome/browser/ui/aux/BUILD.gn",
+          "replayExists": true,
+          "nativeExists": true,
+          "replaySHA256": "200b14becc1307e8ce3d342be64d0dd0172188f9f85d97ca3a30e0230511c2e5",
+          "nativeSHA256": "200b14becc1307e8ce3d342be64d0dd0172188f9f85d97ca3a30e0230511c2e5",
+          "replayMode": "100644",
+          "nativeMode": "100644",
+          "bytes": 12866,
+          "matches": true
+        },
+        {
+          "path": "chrome/browser/ui/aux/runtime_child_retirement.h",
+          "replayExists": true,
+          "nativeExists": true,
+          "replaySHA256": "5a99fae05f8a902192bfcd471952d40bcfc9ce75b5738aa247e3de1aec94a843",
+          "nativeSHA256": "5a99fae05f8a902192bfcd471952d40bcfc9ce75b5738aa247e3de1aec94a843",
+          "replayMode": "100644",
+          "nativeMode": "100644",
+          "bytes": 4380,
+          "matches": true
+        },
+        {
+          "path": "chrome/browser/ui/aux/runtime_child_retirement_unittest.cc",
+          "replayExists": true,
+          "nativeExists": true,
+          "replaySHA256": "c2edd819995326499f5ad9dd14f84d6415badde0e719bb88f0ff8c628a86aa77",
+          "nativeSHA256": "c2edd819995326499f5ad9dd14f84d6415badde0e719bb88f0ff8c628a86aa77",
+          "replayMode": "100644",
+          "nativeMode": "100644",
+          "bytes": 7689,
+          "matches": true
+        },
+        {
+          "path": "chrome/browser/ui/aux/runtime_host.cc",
+          "replayExists": true,
+          "nativeExists": true,
+          "replaySHA256": "708bf2288486c4f15118f47d1f424e33d0a7409603abd2d6ccbcbbad4ea8f19a",
+          "nativeSHA256": "708bf2288486c4f15118f47d1f424e33d0a7409603abd2d6ccbcbbad4ea8f19a",
+          "replayMode": "100644",
+          "nativeMode": "100644",
+          "bytes": 202520,
+          "matches": true
+        },
+        {
+          "path": "chrome/browser/ui/aux/runtime_host.h",
+          "replayExists": true,
+          "nativeExists": true,
+          "replaySHA256": "3c4ad9e8fe3904b87ffe834796daec2cc9bcf87c167e536c96d88cae70dc7256",
+          "nativeSHA256": "3c4ad9e8fe3904b87ffe834796daec2cc9bcf87c167e536c96d88cae70dc7256",
+          "replayMode": "100644",
+          "nativeMode": "100644",
+          "bytes": 22827,
+          "matches": true
+        }
+      ],
+      "fullSeriesProofSha256": "ecc6f0f76bdb7783fa90ae4245f0a08df9e312e451198467b96cae75f0cf5a83",
+      "foldProofSha256": "a2106e50de5cd0955af949ba08d0841ce541d81e802a3c828aefdcf4ae657752",
+      "compiledByAuthor": false,
+      "testsRunByAuthor": false,
+      "sourceWritesByAuthor": "private temporary files only"
+    },
+    "fullSeriesProof": {
+      "path": "/tmp/aux-runtime-retirement-area-consolidation-v4/full-series-proof.json",
+      "sha256": "ecc6f0f76bdb7783fa90ae4245f0a08df9e312e451198467b96cae75f0cf5a83",
+      "areasPassed": 68,
+      "changedPathsAndModesMatched": 942,
+      "mismatches": 0
+    },
+    "rootApplyRecord": "/tmp/aux-root-retirement-canonical-apply-v4-2026-10-18.json"
+  },
+  "limits": [
+    "Actual native start/Quit, active-work Quit, startup Quit, multi-Profile/private and Crashpad delta are pending.",
+    "Fixtures are real process/pipe checks, not full-browser or whole-descendant containment qualification.",
+    "Retained failure debt is in-process ownership, not a new persistent restart cleanup protocol.",
+    "Original browser-main155 SIGTRAP remains separate and unresolved."
+  ],
+  "integratedCheck": {
+    "command": "npm run check",
+    "exitCode": 0,
+    "runtimeDistRebuiltBeforeTests": true,
+    "tests": 5937,
+    "files": 858,
+    "seconds": 108.14,
+    "advisories": 572,
+    "log": "/tmp/aux-native-retirement-v4-integrated-check-2026-10-18.log",
+    "sha256": "e388c7015ab0ba25ceb7e4cfcb42330a996b7c74ed27e95a9231bb91d6798fc2",
+    "nativeCompilerStopped": true
+  }
+}

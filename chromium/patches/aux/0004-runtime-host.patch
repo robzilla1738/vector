@@ -1772,10 +1772,10 @@ index 0000000..fa2dce8
 +#endif
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 new file mode 100644
-index 0000000..10a4a6e
+index 0000000..bf42666c8233b1a8d5281a6012d7031250d04f99
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -0,0 +1,3232 @@
+@@ -0,0 +1,3265 @@
 +#include "chrome/browser/ui/aux/native_project.h"
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
@@ -1803,6 +1803,7 @@ index 0000000..10a4a6e
 +#include <vector>
 +
 +#include "base/base_paths.h"
++#include "base/debug/leak_annotations.h"
 +#include "base/command_line.h"
 +#include "base/containers/span.h"
 +#include "base/files/file_util.h"
@@ -1823,6 +1824,7 @@ index 0000000..10a4a6e
 +#include "base/timer/timer.h"
 +#include "base/uuid.h"
 +#include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
++#include "chrome/browser/browser_process.h"
 +#include "chrome/browser/devtools/remote_debugging_server.h"
 +#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 +#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
@@ -1850,6 +1852,7 @@ index 0000000..10a4a6e
 +#include "chrome/browser/ui/aux/profile_search_engine.h"
 +#include "chrome/browser/ui/aux/readable_capture.h"
 +#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/runtime_child_retirement.h"
 +#include "chrome/browser/ui/aux/secret_store_mac.h"
 +#include "chrome/browser/ui/aux/tab_catalog.h"
 +#include "chrome/browser/ui/aux/webmcp.h"
@@ -1883,6 +1886,18 @@ index 0000000..10a4a6e
 +constexpr int kConnectTimeoutMs = 15000;
 +constexpr int kRequestTimeoutMs = 30000;
 +constexpr int kBackupRequestTimeoutMs = 10 * 60 * 1000;
++// Published only by the browser UI shutdown owner. Every original Profile
++// worker shares this deadline rather than accumulating one budget per Profile.
++std::atomic<int64_t> g_browser_runtime_retirement_deadline{0};
++constexpr base::TimeDelta kRuntimeRetirementBudget = base::Seconds(5);
++
++struct RuntimeCleanupDebt {
++  base::Process process;
++  base::Time creation_time;
++  std::shared_ptr<base::ScopedTempDir> private_data;
++  base::ScopedTempDir transport;
++};
++
 +const char kAuxRuntimeHostKey = 0;
 +const char kPrivateRuntimeIdentityKey = 0;
 +
@@ -4061,15 +4076,28 @@ index 0000000..10a4a6e
 +    options.environment["AUX_LOAD_DOTENV"] = "0";
 +  }
 +  process_ = base::LaunchProcess(command, options);
++  process_cleanup_acknowledged_ = !process_.IsValid();
++  process_creation_time_ =
++      process_.IsValid() ? process_.CreationTime() : base::Time();
++  process_retirement_deadline_ = base::TimeTicks();
++  process_forced_retirement_ = false;
 +  if (!process_.IsValid()) {
 +    *error = "Cannot start the Aux Runtime helper";
 +    Disconnect();
 +    return false;
 +  }
 +
-+  pollfd pending = {listener_fd_, POLLIN, 0};
-+  if (poll(&pending, 1, kConnectTimeoutMs) != 1 ||
-+      !(pending.revents & POLLIN)) {
++  if (process_creation_time_.is_null()) {
++    *error = "Cannot establish the original runtime process birth identity";
++    Disconnect();
++    return false;
++  }
++
++  if (aux::WaitForRuntimeHandshake(
++          listener_fd_,
++          base::TimeTicks::Now() + base::Milliseconds(kConnectTimeoutMs),
++          g_browser_runtime_retirement_deadline) !=
++      aux::RuntimeHandshakeWait::kReadable) {
 +    *error = "Aux Runtime did not connect in time";
 +    Disconnect();
 +    return false;
@@ -4226,7 +4254,11 @@ index 0000000..10a4a6e
 +}
 +
 +bool AuxRuntimeHost::Worker::ReadFrame(std::string* frame, int timeout_ms) {
++  const auto deadline = base::TimeTicks::Now() + base::Milliseconds(timeout_ms);
 +  while (true) {
++    if (g_browser_runtime_retirement_deadline.load()) {
++      return false;
++    }
 +    const size_t newline = read_buffer_.find('\n');
 +    if (newline != std::string::npos) {
 +      *frame = read_buffer_.substr(0, newline);
@@ -4236,8 +4268,9 @@ index 0000000..10a4a6e
 +    if (read_buffer_.size() >= kMaxFrameBytes) {
 +      return false;
 +    }
-+    pollfd pending = {connection_fd_, POLLIN, 0};
-+    if (poll(&pending, 1, timeout_ms) != 1 || !(pending.revents & POLLIN)) {
++    if (aux::WaitForRuntimeHandshake(
++            connection_fd_, deadline, g_browser_runtime_retirement_deadline) !=
++        aux::RuntimeHandshakeWait::kReadable) {
 +      return false;
 +    }
 +    std::array<char, 4096> chunk;
@@ -5010,10 +5043,10 @@ index 0000000..10a4a6e
 +}
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
 new file mode 100644
-index 0000000..ddfb9a3
+index 0000000..59e2f9bad3e9e5aa051b220ced7d886cdef82271
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.h
-@@ -0,0 +1,384 @@
+@@ -0,0 +1,390 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -5207,6 +5240,12 @@ index 0000000..ddfb9a3
 +    base::FilePath socket_path_;
 +    std::string token_;
 +    base::Process process_;
++    base::Time process_creation_time_;
++    base::TimeTicks process_retirement_deadline_;
++    bool process_forced_retirement_ = false;
++    // True before any child launch; thereafter only a nonforced original exit0
++    // acknowledges resource retirement. Closing the PID handle cannot reset it.
++    bool process_cleanup_acknowledged_ = true;
 +    int listener_fd_ = -1;
 +    int connection_fd_ = -1;
 +    uint32_t next_request_id_ = 1;
@@ -5423,3 +5462,372 @@ index df2d02a..6862805 100644
  };
  
  // Restart: Allow Chrome to restart when all the registered KeepAlives allow
+diff --git a/chrome/browser/ui/aux/runtime_child_retirement.h b/chrome/browser/ui/aux/runtime_child_retirement.h
+new file mode 100644
+index 000000000..fbf2acceb
+--- /dev/null
++++ b/chrome/browser/ui/aux/runtime_child_retirement.h
+@@ -0,0 +1,133 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_RUNTIME_CHILD_RETIREMENT_H_
++#define CHROME_BROWSER_UI_AUX_RUNTIME_CHILD_RETIREMENT_H_
++
++#include <poll.h>
++#include <signal.h>
++#include <unistd.h>
++
++#include <algorithm>
++#include <atomic>
++#include <cerrno>
++#include <cstdint>
++
++#include "base/process/process.h"
++#include "base/process/process_handle.h"
++#include "base/time/time.h"
++
++namespace aux {
++
++enum class RuntimeHandshakeWait { kReadable, kCancelled, kTimedOut, kFailed };
++
++// Authentication remains on its original worker/socket, but browser teardown
++// can retire that original wait without waiting out the normal startup timeout.
++inline RuntimeHandshakeWait WaitForRuntimeHandshake(
++    int fd,
++    base::TimeTicks deadline,
++    const std::atomic<int64_t>& browser_shutdown_deadline) {
++  for (;;) {
++    if (browser_shutdown_deadline.load()) {
++      return RuntimeHandshakeWait::kCancelled;
++    }
++    const auto remaining = deadline - base::TimeTicks::Now();
++    if (!remaining.is_positive()) {
++      return RuntimeHandshakeWait::kTimedOut;
++    }
++    pollfd pending = {fd, POLLIN, 0};
++    const int result = poll(
++        &pending, 1,
++        static_cast<int>(std::min<int64_t>(
++            100, remaining.InMillisecondsRoundedUp())));
++    if (result < 0) {
++      if (errno == EINTR) {
++        continue;
++      }
++      return RuntimeHandshakeWait::kFailed;
++    }
++    if (result == 0) {
++      continue;
++    }
++    if (browser_shutdown_deadline.load()) {
++      return RuntimeHandshakeWait::kCancelled;
++    }
++    return pending.revents & POLLIN ? RuntimeHandshakeWait::kReadable
++                                   : RuntimeHandshakeWait::kFailed;
++  }
++}
++
++struct RuntimeChildRetirement {
++  bool exited = false;
++  bool forced = false;
++  int exit_code = -1;
++
++  // The runtime's exit0 path follows its joined shutdown. Forced/signal/nonzero
++  // exit proves only parent death, never descendant/resource retirement.
++  bool GracefulCleanupAcknowledged() const {
++    return exited && !forced && exit_code == 0;
++  }
++};
++
++// Only the original unreaped direct child is signalable. A PID alone is not
++// authority, and a missing creation time never permits a replacement process.
++inline bool OriginalRuntimeChild(const base::Process& process,
++                                 base::Time creation_time) {
++  return process.IsValid() && !creation_time.is_null() &&
++         base::GetParentProcessId(process.Pid()) == getpid() &&
++         process.CreationTime() == creation_time;
++}
++
++// Transport closure already requested the runtime's joined graceful shutdown.
++// SIGTERM preserves its existing shutdown handler. A nonresponsive original
++// child is forcibly interrupted only within the same absolute retirement
++// budget; an unacknowledged exit is never permission to delete its directories.
++inline RuntimeChildRetirement RetireOriginalRuntimeChild(
++    base::Process& process,
++    base::Time creation_time,
++    base::TimeTicks deadline,
++    bool& force_requested) {
++  RuntimeChildRetirement result;
++  result.forced = force_requested;
++  if (!process.IsValid()) {
++    result.exited = true;
++    return result;
++  }
++  if (process.WaitForExitWithTimeout(base::TimeDelta(), &result.exit_code)) {
++    result.exited = true;
++    return result;
++  }
++  const auto remaining = [&] {
++    return std::max(base::TimeDelta(), deadline - base::TimeTicks::Now());
++  };
++  if (force_requested) {
++    result.exited =
++        process.WaitForExitWithTimeout(remaining(), &result.exit_code);
++    return result;
++  }
++  if (!OriginalRuntimeChild(process, creation_time) ||
++      !process.Terminate(0, false)) {
++    return result;
++  }
++  if (process.WaitForExitWithTimeout(
++          std::min(base::Seconds(3), remaining()), &result.exit_code)) {
++    result.exited = true;
++    return result;
++  }
++  // Recheck the actual kernel identity immediately before the destructive
++  // signal. This function is the only waiter/reaper of this launched child.
++  if (!OriginalRuntimeChild(process, creation_time) ||
++      kill(process.Pid(), SIGKILL) != 0) {
++    return result;
++  }
++  force_requested = true;
++  result.forced = true;
++  result.exited =
++      process.WaitForExitWithTimeout(remaining(), &result.exit_code);
++  return result;
++}
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_RUNTIME_CHILD_RETIREMENT_H_
+diff --git a/chrome/browser/ui/aux/runtime_child_retirement_unittest.cc b/chrome/browser/ui/aux/runtime_child_retirement_unittest.cc
+new file mode 100644
+index 000000000..b18d04f4a
+--- /dev/null
++++ b/chrome/browser/ui/aux/runtime_child_retirement_unittest.cc
+@@ -0,0 +1,224 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/runtime_child_retirement.h"
++
++#include <poll.h>
++#include <sys/wait.h>
++
++#include <thread>
++
++#include "base/files/scoped_file.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++namespace {
++
++// No shell, network, Profile, runtime or browser. The fork child performs only
++// async-signal-safe operations before parking in pause().
++class Child {
++ public:
++  ~Child() {
++    if (owned_child_ <= 0) {
++      return;
++    }
++    // Test-only cleanup owns this exact fork child as its sole waiter. A zero
++    // WNOHANG result proves it is still our unreaped child, so its PID cannot
++    // have been recycled even if the kernel creation-time probe failed.
++    pid_t result;
++    do {
++      result = waitpid(owned_child_, nullptr, WNOHANG);
++    } while (result < 0 && errno == EINTR);
++    if (result == 0) {
++      EXPECT_EQ(kill(owned_child_, SIGKILL), 0);
++      EXPECT_TRUE(process.WaitForExitWithTimeout(base::Seconds(2), nullptr));
++    }
++    // ECHILD/already reaped never signals a potentially reused PID.
++  }
++
++  bool Start(bool ignore_term, bool fail_cleanup = false) {
++    int descriptors[2];
++    if (pipe(descriptors) != 0) {
++      return false;
++    }
++    base::ScopedFD reader(descriptors[0]);
++    base::ScopedFD writer(descriptors[1]);
++    const pid_t pid = fork();
++    if (pid < 0) {
++      return false;
++    }
++    if (pid == 0) {
++      close(reader.release());
++      struct sigaction action = {};
++      action.sa_handler =
++          ignore_term ? SIG_IGN : (fail_cleanup ? ExitFailure : ExitZero);
++      sigemptyset(&action.sa_mask);
++      if (sigaction(SIGTERM, &action, nullptr) != 0) {
++        _exit(71);
++      }
++      const char ready = 'R';
++      if (write(writer.get(), &ready, 1) != 1) {
++        _exit(72);
++      }
++      close(writer.release());
++      for (;;) {
++        pause();
++      }
++    }
++    owned_child_ = pid;
++    writer.reset();
++    process = base::Process(pid);
++    creation_time = process.CreationTime();
++    pollfd ready = {reader.get(), POLLIN, 0};
++    char byte = 0;
++    return !creation_time.is_null() && poll(&ready, 1, 2000) == 1 &&
++           read(reader.get(), &byte, 1) == 1 && byte == 'R';
++  }
++
++  base::Process process;
++  base::Time creation_time;
++
++ private:
++  pid_t owned_child_ = -1;
++  static void ExitZero(int) { _exit(0); }
++  static void ExitFailure(int) { _exit(1); }
++};
++
++TEST(RuntimeChildRetirementTest, BrowserRetiresOriginalHeldHandshake) {
++  int descriptors[2];
++  ASSERT_EQ(pipe(descriptors), 0);
++  base::ScopedFD reader(descriptors[0]);
++  base::ScopedFD writer(descriptors[1]);
++  std::atomic<int64_t> shutdown_deadline{0};
++  std::thread shutdown([&] {
++    // No data arrives. Only the actual original shutdown signal releases this
++    // wait; timeout and cancellation are distinct observed outcomes.
++    usleep(10'000);
++    shutdown_deadline.store(
++        (base::TimeTicks::Now() + base::Seconds(5)).ToInternalValue());
++  });
++  const auto result = WaitForRuntimeHandshake(
++      reader.get(), base::TimeTicks::Now() + base::Seconds(15),
++      shutdown_deadline);
++  shutdown.join();
++  EXPECT_EQ(result, RuntimeHandshakeWait::kCancelled);
++}
++
++TEST(RuntimeChildRetirementTest, OrdinaryHandshakeStillRequiresActualBytes) {
++  int descriptors[2];
++  ASSERT_EQ(pipe(descriptors), 0);
++  base::ScopedFD reader(descriptors[0]);
++  base::ScopedFD writer(descriptors[1]);
++  std::atomic<int64_t> shutdown_deadline{0};
++  const char byte = 'H';
++  ASSERT_EQ(write(writer.get(), &byte, 1), 1);
++  EXPECT_EQ(WaitForRuntimeHandshake(
++                reader.get(), base::TimeTicks::Now() + base::Seconds(1),
++                shutdown_deadline),
++            RuntimeHandshakeWait::kReadable);
++}
++
++TEST(RuntimeChildRetirementTest, JoinsGracefulOriginalExit) {
++  Child child;
++  ASSERT_TRUE(child.Start(false));
++  bool forced = false;
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, child.creation_time,
++      base::TimeTicks::Now() + base::Seconds(5), forced);
++  EXPECT_TRUE(result.exited);
++  EXPECT_FALSE(result.forced);
++  EXPECT_FALSE(forced);
++  EXPECT_EQ(result.exit_code, 0);
++  EXPECT_TRUE(result.GracefulCleanupAcknowledged());
++}
++
++TEST(RuntimeChildRetirementTest, ForcesAndJoinsOriginalIgnoringTermination) {
++  Child child;
++  ASSERT_TRUE(child.Start(true));
++  bool forced = false;
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, child.creation_time,
++      base::TimeTicks::Now() + base::Seconds(5), forced);
++  EXPECT_TRUE(result.exited);
++  EXPECT_TRUE(result.forced);
++  EXPECT_TRUE(forced);
++  EXPECT_EQ(result.exit_code, -1);
++  EXPECT_FALSE(result.GracefulCleanupAcknowledged());
++}
++
++TEST(RuntimeChildRetirementTest, NonzeroParentExitDoesNotAcknowledgeCleanup) {
++  Child child;
++  ASSERT_TRUE(child.Start(false, true));
++  bool forced = false;
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, child.creation_time,
++      base::TimeTicks::Now() + base::Seconds(5), forced);
++  EXPECT_TRUE(result.exited);
++  EXPECT_FALSE(result.forced);
++  EXPECT_EQ(result.exit_code, 1);
++  EXPECT_FALSE(result.GracefulCleanupAcknowledged());
++}
++
++TEST(RuntimeChildRetirementTest, ShortAbsoluteBudgetDoesNotBecomeSixtySeconds) {
++  Child child;
++  ASSERT_TRUE(child.Start(true));
++  bool forced = false;
++  const auto started = base::TimeTicks::Now();
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, child.creation_time,
++      started + base::Milliseconds(150), forced);
++  const auto elapsed = base::TimeTicks::Now() - started;
++  EXPECT_TRUE(result.forced);
++  EXPECT_TRUE(forced);
++  // Functional timeout regression with wide scheduling headroom, not a product
++  // performance target: a150ms owner budget must not enter POSIX's60s wait.
++  EXPECT_LT(elapsed, base::Seconds(5));
++  // The kill was requested at the exhausted deadline. Its exit may or may not
++  // already be waitable; retain and reap the SAME original child explicitly.
++  EXPECT_TRUE(child.process.WaitForExitWithTimeout(base::Seconds(2), nullptr));
++}
++
++TEST(RuntimeChildRetirementTest, ChangedKernelBirthDoesNotSignalChild) {
++  Child child;
++  ASSERT_TRUE(child.Start(false));
++  bool forced = false;
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, child.creation_time + base::Microseconds(1),
++      base::TimeTicks::Now() + base::Seconds(5), forced);
++  EXPECT_FALSE(result.exited);
++  EXPECT_FALSE(forced);
++  EXPECT_FALSE(child.process.WaitForExitWithTimeout(base::TimeDelta(), nullptr));
++}
++
++TEST(RuntimeChildRetirementTest, UnknownBirthDoesNotSignalChild) {
++  Child child;
++  ASSERT_TRUE(child.Start(false));
++  bool forced = false;
++  const auto result = RetireOriginalRuntimeChild(
++      child.process, base::Time(),
++      base::TimeTicks::Now() + base::Seconds(5), forced);
++  EXPECT_FALSE(result.exited);
++  EXPECT_FALSE(forced);
++  EXPECT_FALSE(child.process.WaitForExitWithTimeout(base::TimeDelta(), nullptr));
++}
++
++TEST(RuntimeChildRetirementTest, RetryKeepsOriginalForcedOutcome) {
++  Child child;
++  ASSERT_TRUE(child.Start(true));
++  bool forced = false;
++  const auto deadline = base::TimeTicks::Now() + base::Seconds(5);
++  const auto first = RetireOriginalRuntimeChild(
++      child.process, child.creation_time, deadline, forced);
++  ASSERT_TRUE(first.exited);
++  ASSERT_TRUE(forced);
++  // Keep the same identity/progress. A repeated inspection of the original
++  // reaped child cannot become a fresh graceful-exit claim or signal a new PID.
++  const auto again = RetireOriginalRuntimeChild(
++      child.process, child.creation_time, deadline, forced);
++  EXPECT_TRUE(again.exited);
++  EXPECT_TRUE(again.forced);
++}
++
++}  // namespace
++}  // namespace aux
