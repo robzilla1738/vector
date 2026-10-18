@@ -328,7 +328,7 @@ export function App() {
   return (
     <WindowToolbarProvider>
       <div
-        className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${clearNativeBackdrop ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+        className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar && !fullscreenPageId ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${clearNativeBackdrop ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
         style={
           {
             "--sb-w": `${sidebarWidth}px`,

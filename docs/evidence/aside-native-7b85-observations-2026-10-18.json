@@ -1,0 +1,384 @@
+{
+  "atUTC": "2026-10-18T20:02:19.923115+00:00",
+  "product": "7b85d980055237ca551a05df30222d15d9de04a1",
+  "frameworkUUID": "4C4C44DD-5555-3144-A10C-BC20B086B63E",
+  "sourceBuild": "/tmp/aux-fullscreen-permission-mute-native-build-attempt2-2026-10-18.json",
+  "sourceSymbolIdentity": "/tmp/aux-fullscreen-permission-mute-native-symbols-2026-10-18/identity.json",
+  "idle": {
+    "elapsedMs": 237059,
+    "heartbeats": 16,
+    "dedicatedReports": 0,
+    "interpretation": "current-build non-reproduction; historical SIGTRAP remains undiagnosed"
+  },
+  "acceptedBoundedObservations": [
+    "Actual media continues while native mute/unmute labels publish immediately; Return activates focused Unmute; audibility not established.",
+    "Microphone Never allow returns NotAllowedError; Notifications Block returns denied. Complete bubbles visibly inside parent; no site or OS grant.",
+    "Native question waits for record ID, composer answer rec-15 resumes same run and original page; certain observed navigate and extract; final owner matches synthetic record.",
+    "Appearance Advanced opens actual chrome://settings/appearance in new tab.",
+    "Theme picker keyboard Up/Return selects Light and returns trigger focus; Escape closes menu returning trigger focus; Down/Return restores Dark.",
+    "Quick Ask empty screenshot880x184physical:440x92logical. Unsent long draft expands880x320; clearing contracts; Escape returns original Open Quick Ask button focus. Global shortcut off.",
+    "Native beforeunload confirmation appears after real edit; Cancel retains original document and full draft; subsequent Leave navigates exact local second page.",
+    "Actual tab search is620x340logical over still-painted page, owns pasted text and filters the selected open-tab result; Escape restores guest focus."
+  ],
+  "openCurrentDefects": [
+    "Fullscreen hides chrome but retains42logical top slot; CmdL focuses hidden shell field. Pointer focus then Escape restores.",
+    "Completed successful answer run still shows original tab context changed warning.",
+    "Closing Advanced native settings tab then CmdComma shows forbidden Stage pages must belong to this window toast.",
+    "Selected theme-row popup alignment and theme-role icons unmatched."
+  ],
+  "unqualified": [
+    "Full UI parity across192TXT/182PNG references, both themes, populated and narrow states",
+    "Fresh complete20-task default-route smoke",
+    "Valid paired performance samples",
+    "Historical crash root cause and daily-use readiness",
+    "Quick Ask context/attachment and promoted draft continuity",
+    "Audible output and separate PiP native window"
+  ],
+  "files": [
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/ownership.json",
+      "bytes": 1868,
+      "sha256": "914b07d7296187a4ecd06cc015a1cbdfc0f0406c4ed2c90d9b52ffcc94011be8"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/timed-idle/idle-observation.json",
+      "bytes": 4768,
+      "sha256": "32136d653dd592f46f43f1cc3dca0ead914b3c9d741cec10cb4abc190680b8d1"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/answer-resume-readonly-audit.json",
+      "bytes": 11962,
+      "sha256": "cfc77b65f87eca816beedb3d4f5b349f2b826c0c07193d6492c5db01e36431c5"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/retirement.json",
+      "bytes": 525,
+      "sha256": "051280db830983aa41032993e7db82c1ef9dd0bb778413a27e6a0b8a92d310e6"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/advanced-appearance-native.ax.txt",
+      "bytes": 7255,
+      "sha256": "11921540b78edd50e4d556c02fa4c458b57323969486a4d2f02e4209eba70c8b"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/advanced-close-stage-toast.ax.txt",
+      "bytes": 10413,
+      "sha256": "d887ee1dcb50377bb9719b8663bb0f9c90fe24f9dee5b467b8a360dccc11f379"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/answer-resume-replied.ax.txt",
+      "bytes": 9669,
+      "sha256": "6aea94a70a516edcb96fa11a82b997b5d442be0ca811fc43089dce416b07018e"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/answer-resume-result.ax.txt",
+      "bytes": 7260,
+      "sha256": "7de6ee55b1a1942210c8485778514db43489df1abc77c4f52503df75b3efcf2b"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/answer-resume-submitted.ax.txt",
+      "bytes": 9722,
+      "sha256": "a90edfa933838fff97d4e11c56eef01ebb138d205355527a73fa4e297df5bac9"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/answer-resume-waiting.ax.txt",
+      "bytes": 9483,
+      "sha256": "69dd4512c6d4a1841b139851e122564a3fa0c0c371f3a12ae796c78f7270be24"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/appearance-current-light.ax.txt",
+      "bytes": 13043,
+      "sha256": "95259fbbb2bdba0b1c420613d8b968c4084436d8a6207b0604f2fed52f15ea74"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/appearance-current-light.jpg",
+      "bytes": 481713,
+      "sha256": "11b2a60ecdf1674d8e89c6cda00a81b7d786213827a7b2fad7c2dbf2ec8ace00"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/appearance-current.ax.txt",
+      "bytes": 12879,
+      "sha256": "39bfe99856bb3003d89683a04cb2a15214c095284a8c4d7e510110a3cd0d43dd"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/appearance-current.jpg",
+      "bytes": 428774,
+      "sha256": "0701eaab6b943bdf41d879b6f86888a5a5844ada9f6ce341bc35edd079a0f192"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/audio-keyboard-unmuted.ax.txt",
+      "bytes": 6258,
+      "sha256": "db0e6226c7b58220fe05360b79c9d5c8f815d27ef6146b09797eba8e259734d9"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/audio-muted-immediate.ax.txt",
+      "bytes": 6232,
+      "sha256": "2bc1f963eb5130508990d90311bd89824f99773372c333ecfd67d67df6753305"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/beforeunload-cancel-preserved.ax.txt",
+      "bytes": 6501,
+      "sha256": "66cb7fbc8543018bd7f05cf1eda0a1c7dd0c1390ea441d2d76b335ee343f899c"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/beforeunload-leave-navigated.ax.txt",
+      "bytes": 6466,
+      "sha256": "ec6afb626bd718a8b9a8a76e98cfa3e577e48bbd6c7ac499cc196cf62eda0c06"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/beforeunload-prompt.ax.txt",
+      "bytes": 414,
+      "sha256": "1045a3c6d6b9d00bf7a4f845a3f4470f2aa14a821f883a5d20288ce94da2b294"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-command-focus.ax.txt",
+      "bytes": 569,
+      "sha256": "b8513bac6935b61cfc4c616533d091a58e99d0af3ea5dd26507d38372e9b9c3d"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-command-focus.jpg",
+      "bytes": 339674,
+      "sha256": "1c9cad2b16e04aac5e292d7e72d395e34536cdbcb9c60a5133b6c27ad3d2057f"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-escape-restored.ax.txt",
+      "bytes": 569,
+      "sha256": "b8513bac6935b61cfc4c616533d091a58e99d0af3ea5dd26507d38372e9b9c3d"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-escape-restored.jpg",
+      "bytes": 337501,
+      "sha256": "20a5d44e0f3e7a1809c70f01acbe060ac1a3083e2349ab19dad801958ec0f7d3"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-pointer-focus-escape-restored.ax.txt",
+      "bytes": 5876,
+      "sha256": "60cac55da4209c233002a994eba44ea19fb7b36913a74b44b0448fa8101612c9"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/fullscreen-pointer-focus-escape-restored.jpg",
+      "bytes": 426575,
+      "sha256": "a6da8d01455fefcd867793fe78d75bd57d29e208e228c752dcfdf408918f02eb"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/microphone-bubble.ax.txt",
+      "bytes": 762,
+      "sha256": "87fc5e0a17a31e14aef8ccec34edbbb3712188d87e244d05a7ea8efa64470c98"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/microphone-bubble.jpg",
+      "bytes": 33938,
+      "sha256": "051c008279cd5e11e7ddc3398686874bd440874fa054308376a8e8fcf360f758"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/microphone-denied.ax.txt",
+      "bytes": 3500,
+      "sha256": "1071a0632bcab1ca2279e3ddf310008730b4f3787abf46e4e1d8511db5fa5098"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/notification-bubble.ax.txt",
+      "bytes": 473,
+      "sha256": "a74c6f1f9361bb2b77e1a54c842c79abdb1b047c2d5e912f9bdefef2ecbf3a77"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/notification-bubble.jpg",
+      "bytes": 23513,
+      "sha256": "9f010724b632cf6a1a7616cacbfffb426186300206bbbebc4f3de694f5795b0a"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/notification-denied.ax.txt",
+      "bytes": 3504,
+      "sha256": "1c5ae664a0bb5a612224283e271d79651b74abeafd3a4be1bc90b0f65a142077"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/projects-current.ax.txt",
+      "bytes": 4068,
+      "sha256": "736e87fc37d06824c7d84889a2b764f49b128010cbc1b70511ab9b71c140b81d"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/projects-current.jpg",
+      "bytes": 284144,
+      "sha256": "31f3ff2f4106ff4b7ed91b706b1dd8e4b73369ce5f3034d01511f8e36a74b0de"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-cleared.ax.txt",
+      "bytes": 709,
+      "sha256": "28e21aab902dfbd53d05b856562b874fc1e34902e1287315d6c0f3dc7e00d40b"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-cleared.jpg",
+      "bytes": 13679,
+      "sha256": "444762c9790d7136838e95d177ecbe9f97288a302ed558af90bea201e1654d64"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-empty.ax.txt",
+      "bytes": 709,
+      "sha256": "28e21aab902dfbd53d05b856562b874fc1e34902e1287315d6c0f3dc7e00d40b"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-empty.jpg",
+      "bytes": 13808,
+      "sha256": "8925e518b4bbf69564dcfc61fddfcb561f63514377db29030d30904ce8f1be79"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-long-draft.ax.txt",
+      "bytes": 1250,
+      "sha256": "217e5fb2532e3ffe7b653bc076e6a3d7e3075b4ef20fffcf51813cbb0e0b6ce9"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/quick-ask-live-long-draft.jpg",
+      "bytes": 67577,
+      "sha256": "c51ec013f6e360bf57232a85b20184ac95c959ef954199acf1c8f970d7abf983"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-channels-current.ax.txt",
+      "bytes": 4636,
+      "sha256": "530a13e61751dfeeffc926eb3a4d4f73f6b341b69504968289eaceeb969c9a0b"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-channels-current.jpg",
+      "bytes": 338485,
+      "sha256": "46b148a584d34c1b23f714e82deb4496462bd7ff3e5e2e3eb127e92b11549b95"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-desktop-context-current.ax.txt",
+      "bytes": 8826,
+      "sha256": "185297f82fa5964f1018fab5eca888ca6fb31df1b64053bfd85fcb483bf68843"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-desktop-context-current.jpg",
+      "bytes": 494285,
+      "sha256": "ccbdcc7efc2f7fecd323f467766646af1a98434cc14411269677089e9062a292"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-developers-current.ax.txt",
+      "bytes": 5895,
+      "sha256": "7dafb3eaf63aa67d6b4786011368b3b7d97b5dbe5e7253f85c04b66721537d1a"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-developers-current.jpg",
+      "bytes": 423447,
+      "sha256": "9cebea67bf35387d34b82d78c5d077f32882cb9ac73806361e983151d5932eee"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-memory-current.ax.txt",
+      "bytes": 5106,
+      "sha256": "f61bb7fc3e778c763060e552e3cd684c81fec8dbaf89288a6f6822f92af8041c"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-memory-current.jpg",
+      "bytes": 339003,
+      "sha256": "818335354213950a379cf8cc615cb5076aed98fca5150f21bd583d946126c566"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-models-current.ax.txt",
+      "bytes": 6104,
+      "sha256": "ae5593a284521563c9b9dda70652cf96e4334e26f1c1ec70be62a16e0cf55553"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-models-current.jpg",
+      "bytes": 436540,
+      "sha256": "6059d691c301ca02a0c710de5f85df1880e8d4eb1c869db8a316b7e7483c96c7"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-passwords-autofill-current.ax.txt",
+      "bytes": 5250,
+      "sha256": "fd5b800c2f5907d840965f3745dde705501d84c9691f248aaad3db5953fb63a0"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-passwords-autofill-current.jpg",
+      "bytes": 397763,
+      "sha256": "ffe14ee3ac247f6d3bd7b3e549b58ab52579d22f0b9be303be76cf335f0bb5d9"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-quick-ask-current.ax.txt",
+      "bytes": 4581,
+      "sha256": "c7e124882000f7366192edae17db57bd94231272ffe472dad85884e799701786"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-quick-ask-current.jpg",
+      "bytes": 351774,
+      "sha256": "3d3586057556ef39ae696bce4f89a699c9c13d7a3cda1f04562ad0187a66d820"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-routines-current.ax.txt",
+      "bytes": 5135,
+      "sha256": "dd9836e79266184e959afb47503891c55c8579dd7d5510f32c2ecf18ffeb2eb7"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-routines-current.jpg",
+      "bytes": 372714,
+      "sha256": "cf1017044da8bcfc473c396282a781d9eef2b91b9b8d05a610126715a13ba95e"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-skills-mcp-current.ax.txt",
+      "bytes": 5326,
+      "sha256": "797c23379e8fd8b5535d708f18b72ba4db37c3aa160b9bafc9e392bc429387ad"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/settings-skills-mcp-current.jpg",
+      "bytes": 353678,
+      "sha256": "7157a8376c85fbd1c2de210c2716b5b91e59f52ca600211c7306f77d7c049e5a"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/tab-search-current.ax.txt",
+      "bytes": 6749,
+      "sha256": "adcd55ab6a941bd4ec3255238530602e6109e598cf4322f1b461a5d69ea9cd20"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/tab-search-current.jpg",
+      "bytes": 422287,
+      "sha256": "d422ddb30076168dcfeb9d9d1f0b5eff06f2aaed22a807564cd1516eaa61d37c"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/tab-search-filtered.ax.txt",
+      "bytes": 6227,
+      "sha256": "d531edd7554d1d646bd788076633508df470dd16094f1d897c62ad52ec3472ca"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/theme-light-escape.ax.txt",
+      "bytes": 13019,
+      "sha256": "f809fe5f8e37b09bad5ae300d51daa9578ea8d0d5c9e830f96dc8dc5faf95e53"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/theme-light-menu.ax.txt",
+      "bytes": 13097,
+      "sha256": "8d9c9b13109d113b224b3518d9036960800aa478234ae596cb2a8aecddd3872e"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/theme-light-menu.jpg",
+      "bytes": 480977,
+      "sha256": "1ed8fa81de051bb234ac7d989e02c629810c67aa4ad9d073b340cc622b9bd381"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/video-fullscreen.ax.txt",
+      "bytes": 1123,
+      "sha256": "9e2829b4c83faaf87d93941dcbefeffcee9ac89f7f0bdcc584221927e7ad9a81"
+    },
+    {
+      "path": "/tmp/aux-native-fullscreen-acceptance-2026-10-18/screens/video-fullscreen.jpg",
+      "bytes": 356324,
+      "sha256": "8b75dd8d62ec794a95c42090d9da0bb27513a1c8410f4f5b591f05c75f72c8a2"
+    }
+  ],
+  "retirement": {
+    "atUTC": "2026-10-18T20:03:32.193523+00:00",
+    "method": "native Aux menu > Quit Aux",
+    "launcherSession": 17878,
+    "launcherExit": 0,
+    "originalPids": [
+      54486,
+      54642,
+      54656,
+      54644,
+      54646
+    ],
+    "processesAbsent": true,
+    "temporaryProfileRemoved": true,
+    "plainLockAbsent": true,
+    "runtimeAcknowledgement": [
+      "[54642:9616947:1018/150316.807901:INFO:chrome/browser/ui/aux/runtime_host.cc:3557] Aux original runtime exit acknowledged; forced=0 exit_code=0"
+    ],
+    "dedicatedCrashReports": []
+  }
+}

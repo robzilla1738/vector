@@ -1,0 +1,39 @@
+{
+  "atUTC": "2026-10-18T20:07:07.875364+00:00",
+  "base": "7b85d980055237ca551a05df30222d15d9de04a1",
+  "status": "integrated source and checks passed; native compilation/geometry/focus remain open",
+  "changes": [
+    "Remove persistent-toolbar role only for exact native tab fullscreen owner; remove existing42px pseudo-element reservation without anotherCSSoverride.",
+    "Chrome shortcut exits exact active tab content fullscreen before shell focus, retains browser/pseudo fullscreen and generic FocusAuxShell behavior.",
+    "Synchronously publish cleared native owner on same catalog/client pipe before shortcut; original UI/browser/activepage checks fence continuation."
+  ],
+  "source": {
+    "manifest": "/tmp/aux-tab-fullscreen-followup-7b85-v1/manifest.json",
+    "manifestSHA256": "3a2f1dd57f838d78f1b774f088ba02e0942885291a2140bb7fe6fe0a7c22f9fa",
+    "apply": "/tmp/aux-fullscreen-followup-root-apply-2026-10-18.json"
+  },
+  "peer": {
+    "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-fullscreen-followup-native-peer-review-7b85-wye7f_t8/review.json",
+    "sha256": "8feb9638c8b146a0be064304259f2666c817847d18459efff6deaf0d19688640",
+    "result": "approved source only; no actionablefinding"
+  },
+  "check": {
+    "command": "npm run check",
+    "session": 37637,
+    "exit": 0,
+    "tests": 6097,
+    "files": 866,
+    "seconds": 111.11,
+    "log": "/tmp/aux-fullscreen-followup-integrated-check-2026-10-18.log",
+    "nativeCompilerConcurrent": false
+  },
+  "canonical": {
+    "areas": 69,
+    "pathsAndModes": 975,
+    "mismatches": 0,
+    "proof": "/tmp/aux-fullscreen-followup-integrated-replay-2026-10-18/proof.json",
+    "sha256": "524893e6c621fdbd4d635709cbf96e0046f55d30005e29c172df4e9e56072c3a"
+  },
+  "nativeFixture": "Optional private real factory/controller fixture not applied, compiled or executed. No live claim.",
+  "observedPreFix": "docs/evidence/aside-native-7b85-observations-2026-10-18.json"
+}

@@ -54,13 +54,20 @@ The [latest fullscreen/Settings slice](evidence/aside-fullscreen-settings-integr
 passes 6,097 tests across 866 files after rebuilding runtime dist, with no
 concurrent native compiler. All 69 native areas replay across 975 paths/modes.
 Its source fixes permission anchoring, mute publication and normal/Little tab
-fullscreen while preserving embeds and drafts. Compilation and changed-flow
-native acceptance remain prerequisites to a fresh complete20 campaign.
+fullscreen while preserving embeds and drafts. The clean7b85 build passes61native steps in9m22.52s. Current observations
+prove original-page answer resumption, immediate mute publication, visible
+permission denial flows,92px Quick Ask, tab-search paint/input and native
+beforeunload paths. Fullscreen exposes42px reservation and hidden-field Cmd-L
+focus defects; their peer-reviewed source correction is integrated but awaits
+checks/build/native observation. The completed-chat context notice and native
+Settings-close stage toast remain open. A fresh complete20 campaign follows
+changed-flow acceptance.
 
 The retired clean7d native candidate has bounded denial/media/file/bookmark
 observations and a 237.018-second no-crash idle interval. Normal restore and
 runtime-outage navigation remain bounded observations, not OS sleep/wake or daily
-readiness. No preview holds the plain lock. The pinned helper's authorized
+readiness. Both preceding7d and current7b85 previews retire normally with unforced runtime
+exit0; original processes, disposable Profiles and plain locks are gone. The pinned helper's authorized
 Accessibility probe reports access; a valid paired run remains pending. Original
 155 SIGTRAP lacks matching symbols; the owner reports no known archive and asks
 for continued current-build investigation. All reference/native/performance gates

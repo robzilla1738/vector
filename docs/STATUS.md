@@ -14,8 +14,19 @@ type/lint errors. Runtime dist was rebuilt first, without a native compiler.
 All 69 canonical areas replay exactly across 975 paths and modes. Source now
 preserves original split/Little embeds and drafts during tab fullscreen, publishes
 actual mute changes, anchors permission bubbles inside the native toolbar, and
-adopts measured Settings/Home/select/card and five rail-glyph details. This slice
-still needs native compilation and changed-flow acceptance. Pre-fix comparison
+adopts measured Settings/Home/select/card and five rail-glyph details. The clean product `7b85d9800` builds 61 native steps in 9m22.52s; preserved
+framework/dSYM share UUID `4C4C44DD-5555-3144-A10C-BC20B086B63E`.
+[Current native observations](evidence/aside-native-7b85-observations-2026-10-18.json)
+prove immediate mute-state publication, visible permission denial flows and
+original-page answer resumption. Fullscreen still reserves a 42px top slot and
+Cmd-L strands focus on hidden chrome. The [peer-reviewed correction](evidence/aside-fullscreen-shortcut-followup-2026-10-18.json)
+passes6,097tests/866files in111.11s and69area/975path replay; native
+compilation and corrected geometry/focus observation remain open.
+A completed chat retains a misleading context warning, and closing native
+Appearance Settings can produce a stage-membership toast. Quick Ask has an
+actual 92px empty state, expands for an unsent draft and contracts after clearing.
+Native beforeunload Cancel preserves the draft; Leave reaches the exact local
+destination. None of these bounded observations establishes full readiness. Pre-fix comparison
 covers 28 actual captures against 21 distinct reference rows; it cannot accept
 the later corrections. Selected-option alignment, remaining glyph roles and all
 unmatched populated/empty/focus/theme/narrow states remain open.
@@ -26,19 +37,21 @@ is committed as `d09aff256` and passes **6,086 tests across 864 files** in
 before tests, without a concurrent native compiler. The repair binds answer
 resumption to the original logical page, current native document authority and a
 fresh acknowledged reader lease. It does not replay actions or clear uncertain
-receipts. Native answer-resumption acceptance remains open.
+receipts. The current 7b85 native answer/resumption observation succeeds on the same
+original page and run, with certain navigation/extraction receipts. The stale
+completed-chat context warning remains open.
 
 The preceding [artifact, rich-text and UI slice](evidence/aside-artifact-richtext-ui-integration-2026-10-18.json)
 passes 6,054 tests across 863 files. It exposes admitted artifact IDs and bounded
 run-owned text, rejects unsafe adjacent rich-text focus pairs before batch dispatch,
 and aligns Home recent-work and compact composer menus with measured references.
-The current disposable native/runtime candidate is clean product `7d0793702`, with
+The preceding disposable native/runtime candidate was clean product `7d0793702`, with
 279 advertised methods. Its incremental native build passed 26 steps in 8m23.53s;
 preserved framework/dSYM share UUID `4C4C442D-5555-3144-A1A5-3104EE83C650`.
-It includes that preceding slice, but does not yet include parked-page readmission.
+It included that preceding slice and predated parked-page readmission.
 All 68 canonical areas replay across 974 paths and modes.
 
-The [current native observations](evidence/aside-native-7d-observations-2026-10-18.json)
+The [preceding 7d native observations](evidence/aside-native-7d-observations-2026-10-18.json)
 include a separate 237.018-second identity-checked startup/idle
 interval with 16 heartbeats and no dedicated crash reports. That is current-build
 non-reproduction, not a diagnosis of the historical SIGTRAP. Real microphone and

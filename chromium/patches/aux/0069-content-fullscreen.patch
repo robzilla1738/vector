@@ -95,3 +95,57 @@ diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
      "//chrome/browser/ui/login:login",
      "//chrome/browser/ui/tabs:tabs_public",
      "//chrome/common:mojo_bindings",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -41,6 +41,9 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/generated/aux_host_methods.h"
++#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
++#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
++#include "content/public/browser/fullscreen_types.h"
+ #include "crypto/hash.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "services/data_decoder/public/cpp/data_decoder.h"
+@@ -814,7 +817,39 @@
+                                            bool preview_tabs) {
+   if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound())
+     return false;
+-  if (focus_shell || preview_tabs) FocusAuxShell();
++  if (focus_shell || preview_tabs) {
++    auto* active = browser_->GetTabStripModel()->GetActiveWebContents();
++    auto* manager = ExclusiveAccessManager::From(browser_);
++    if (active && manager) {
++      auto* controller = manager->fullscreen_controller();
++      if (controller->GetFullscreenState(active).target_mode ==
++          content::FullscreenMode::kContent) {
++        // A chrome shortcut needs visible shell controls. Leave only this
++        // tab's content fullscreen, retaining any prior browser fullscreen.
++        auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++        if (!catalog) return false;
++        const auto self = GetWeakPtr();
++        const auto browser = browser_->GetWeakPtr();
++        controller->ExitFullscreenModeForTab(active);
++        if (!self || !browser || browser->IsDeleteScheduled() ||
++            !IsAuthorizedAuxDocument() || !shell_host_client_.is_bound() ||
++            browser_->GetTabStripModel()->GetActiveWebContents() != active ||
++            controller->GetFullscreenState(active).target_mode ==
++                content::FullscreenMode::kContent) {
++          return false;
++        }
++        // Controller observers are posted. Send the cleared native owner on
++        // this same client pipe before the shortcut can focus a hidden field.
++        catalog->RefreshPage();
++        if (!self || !browser || browser->IsDeleteScheduled() ||
++            !IsAuthorizedAuxDocument() || !shell_host_client_.is_bound() ||
++            browser_->GetTabStripModel()->GetActiveWebContents() != active) {
++          return false;
++        }
++      }
++    }
++    FocusAuxShell();
++  }
+   base::DictValue shortcut;
+   shortcut.Set("commandId", command_id);
+   if (website_pass_through.has_value()) shortcut.Set("websitePassThrough", *website_pass_through);
