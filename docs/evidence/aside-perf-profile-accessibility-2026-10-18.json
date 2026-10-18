@@ -1,0 +1,42 @@
+{
+  "atUTC": "2026-10-18T22:07:23.262283+00:00",
+  "status": "Source/checks passed; corrected paired live verification pending",
+  "changes": [
+    "Read exact original application AXRole before focus queries to initialize supported Chromium accessibility. Keep original PID/birth/window/label constraints.",
+    "Prepare all five Aux/stock paired Profiles at final paths. Never clone encrypted runtime databases into another native credential owner. Keep clocks, samples, thresholds and workload unchanged."
+  ],
+  "checks": {
+    "focusedTests": 16,
+    "focusedFailed": 0,
+    "integratedTests": 6100,
+    "integratedFiles": 866,
+    "integratedSeconds": 113.89,
+    "exit": 0,
+    "nativeCompilerConcurrent": false,
+    "focusedLog": {
+      "path": "/tmp/aux-perf-owner-accessibility-focused-2026-10-18.log",
+      "sha256": "a3aec73b39e4b9445351f4efeeb5f80364ffd8c1c796114318f5be1d08a61f68"
+    },
+    "integratedLog": {
+      "path": "/tmp/aux-perf-owner-accessibility-integrated-2026-10-18.log",
+      "sha256": "6a40c921f50c39fc9f443e8d7a8a5d99bb9b57970b298ebfdf408dc444cdb394"
+    }
+  },
+  "newHelper": {
+    "path": "/tmp/aux-native-perf-role-2026-10-18/native-perf",
+    "sha256": "685534df2cf574f300481476257b192388e6f2f31b5bb2508c1a4c8f40096996"
+  },
+  "newHelperSource": {
+    "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-perf.swift",
+    "sha256": "755a092f7aac1d0837b9e0c00bc713e3e41d4dd29de0e9c58229a447daff89be"
+  },
+  "oldAuthorizedHelperUnchanged": {
+    "path": "/tmp/aux-paired155-b0236f538-2026-10-18T1543Z/native-perf",
+    "sha256": "9df7522cea34f6a012ec0d12ff9e07c48a3aea0f8b895e7adbdb7790b6c8ca0b"
+  },
+  "limits": [
+    "No qualified corrected performance samples yet.",
+    "App remains built product334b882ac; instrumentation-only changes do not require app rebuild.",
+    "System registration awaiting owner OS authentication."
+  ]
+}

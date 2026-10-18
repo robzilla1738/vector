@@ -8,36 +8,44 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
-The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
-retires obsolete Stage error publication, presents completed-chat context changes
-neutrally, and adopts the remaining source-proven Settings/Memory icon roles.
-Its real producer regressions fail three cases before the fix and pass all37
-cases across four affected renderer files afterward. The integrated check passes6,100tests/866files in108.40s, with no
-concurrent native compiler and runtime dist rebuilt before tests. These changes and fullscreen shortcut correction are not yet compiled
-into the native app; the last observed7b85 preview is retired normally. Work continues on local main.
+The current native candidate is clean product `334b882ac`. Its incremental build
+passes 25 native steps in 8m54.05s; preserved framework/dSYM share UUID
+`4C4C4490-5555-3144-A14B-64A5A937C72D`.
+[Current native evidence](evidence/aside-native-334-observations-2026-10-18.json)
+shows corrected fullscreen geometry and visible Cmd-L navigation, retained browser
+fullscreen, no obsolete Stage toast in the tested Settings-close sequence, and
+neutral completed-chat context guidance. Selected dark Settings/Memory glyphs,
+populated All Chats and actual browser-mode Home were observed. These are bounded
+observations, not complete reference-surface acceptance. The preview retired
+normally with unforced runtime exit0, original processes gone, disposable Profile
+removed, lock released and zero dedicated crash reports. A separate 237.043-second
+idle interval has 16 heartbeats; external human activity was not independently monitored.
 
-The latest [fullscreen and Settings integration](evidence/aside-fullscreen-settings-integration-2026-10-18.json)
-passes **6,097 tests across 866 files** in 103.05s, with 581 lint advisories and no
-type/lint errors. Runtime dist was rebuilt first, without a native compiler.
-All 69 canonical areas replay exactly across 975 paths and modes. Source now
-preserves original split/Little embeds and drafts during tab fullscreen, publishes
-actual mute changes, anchors permission bubbles inside the native toolbar, and
-adopts measured Settings/Home/select/card and five rail-glyph details. The clean product `7b85d9800` builds 61 native steps in 9m22.52s; preserved
-framework/dSYM share UUID `4C4C44DD-5555-3144-A10C-BC20B086B63E`.
-[Current native observations](evidence/aside-native-7b85-observations-2026-10-18.json)
-prove immediate mute-state publication, visible permission denial flows and
-original-page answer resumption. Fullscreen still reserves a 42px top slot and
-Cmd-L strands focus on hidden chrome. The [peer-reviewed correction](evidence/aside-fullscreen-shortcut-followup-2026-10-18.json)
-passes6,097tests/866files in111.11s and69area/975path replay; native
-compilation and corrected geometry/focus observation remain open.
-A completed chat retains a misleading context warning, and closing native
-Appearance Settings can produce a stage-membership toast. Quick Ask has an
-actual 92px empty state, expands for an unsent draft and contracts after clearing.
-Native beforeunload Cancel preserves the draft; Leave reaches the exact local
-destination. None of these bounded observations establishes full readiness. Pre-fix comparison
-covers 28 actual captures against 21 distinct reference rows; it cannot accept
-the later corrections. Selected-option alignment, remaining glyph roles and all
-unmatched populated/empty/focus/theme/narrow states remain open.
+The fresh default-route native manual smoke completes **20/20** on Automatic /
+Thinking Auto / Ask first, served by `anthropic/claude-sonnet-5.5`. Its 51 actual
+provider calls report 1,919,980 input tokens, 5,970 output tokens, 1,556,213 cached
+input tokens (8 explicit zero / 43 positive / 0 unknown), $1.1246678 observed cost
+and 93,511ms provider duration. Wire effort was not captured. Three uncertain
+receipts in L10/L15 remain preserved without replay; independent task success does
+not make their effects certain. Detailed trace access was denied and not bypassed.
+The earlier partial9/12 campaign remains historical and is not combined with this score.
+
+The first paired334 performance run fails before any complete sample. Diagnostics
+identify two benchmark defects: uninitialized native accessibility reads and
+cloned encrypted storage losing its exact Profile credential owner. The
+[instrumentation correction](evidence/aside-perf-profile-accessibility-2026-10-18.json)
+initializes standard application accessibility and prepares each final Profile in
+place, without relaxing focus labels, clocks, targets or security. All16 focused
+benchmark tests and the integrated **6,100 tests / 866 files** pass (113.89s), with
+no native compiler concurrent. Updated helper registration and corrected paired
+measurements remain pending. The historical Chromium155 SIGTRAP remains unresolved;
+current non-reproduction does not identify its cause.
+
+The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
+and [fullscreen correction](evidence/aside-fullscreen-shortcut-followup-2026-10-18.json)
+are now included in that native candidate. Canonical replay remains69areas across
+975 paths/modes. Full light/narrow/state UI comparisons, remaining browser workflows,
+performance qualification and crash investigation remain active.
 
 The current [parked-page readmission slice](evidence/aside-parked-page-readmission-2026-10-18.json)
 is committed as `d09aff256` and passes **6,086 tests across 864 files** in
@@ -46,8 +54,7 @@ before tests, without a concurrent native compiler. The repair binds answer
 resumption to the original logical page, current native document authority and a
 fresh acknowledged reader lease. It does not replay actions or clear uncertain
 receipts. The current 7b85 native answer/resumption observation succeeds on the same
-original page and run, with certain navigation/extraction receipts. The stale
-completed-chat context warning remains open.
+original page and run, with certain navigation/extraction receipts. The later334 candidate observes the neutral completed-chat presentation.
 
 The preceding [artifact, rich-text and UI slice](evidence/aside-artifact-richtext-ui-integration-2026-10-18.json)
 passes 6,054 tests across 863 files. It exposes admitted artifact IDs and bounded

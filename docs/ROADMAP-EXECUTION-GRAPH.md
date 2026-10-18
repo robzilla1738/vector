@@ -45,36 +45,27 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 
 ### Current reservations and integration
 
-The latest scored `587bdaf5e` manual20 stopped after 12 tasks: 9 passes,
-3 failures and 8 unsubmitted. Its [immutable partial record](evidence/aside-native-587-manual20-partial-2026-10-18.json)
-retains observed provider token/cache/cost/latency data. Artifact reading,
-revision-bound parked-page readmission and rich-text batch guards are now
-integrated; the original uncertain receipt is preserved without replay.
-The [latest fullscreen/Settings slice](evidence/aside-fullscreen-settings-integration-2026-10-18.json)
-passes 6,097 tests across 866 files after rebuilding runtime dist, with no
-concurrent native compiler. All 69 native areas replay across 975 paths/modes.
-Its source fixes permission anchoring, mute publication and normal/Little tab
-fullscreen while preserving embeds and drafts. The clean7b85 build passes61native steps in9m22.52s. Current observations
-prove original-page answer resumption, immediate mute publication, visible
-permission denial flows,92px Quick Ask, tab-search paint/input and native
-beforeunload paths. Fullscreen exposes42px reservation and hidden-field Cmd-L
-focus defects; their peer-reviewed source correction is integrated but awaits
-checks/build/native observation. The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
-passes6,100tests/866files, retaining current native refusal while retiring stale
-error publication and presenting successful-turn reruns neutrally. Source-exact
-remaining Settings/Memory glyph roles are integrated. Native observations of
-these corrections remain open. A fresh complete20 campaign follows
-changed-flow acceptance.
+The current built product334b882ac passes25native steps and has preserved matching
+framework/dSYM UUID `4C4C4490-5555-3144-A14B-64A5A937C72D`.
+[Native evidence](evidence/aside-native-334-observations-2026-10-18.json) includes
+corrected fullscreen geometry/Cmd-L focus, browser-fullscreen retention, bounded
+Settings-close and completed-context corrections, selected dark glyphs and actual
+populated Home/All Chats. The preview retired normally with unforced runtime exit0.
+Whole reference rows, light/narrow states and remaining browser workflows stay open.
 
-The retired clean7d native candidate has bounded denial/media/file/bookmark
-observations and a 237.018-second no-crash idle interval. Normal restore and
-runtime-outage navigation remain bounded observations, not OS sleep/wake or daily
-readiness. Both preceding7d and current7b85 previews retire normally with unforced runtime
-exit0; original processes, disposable Profiles and plain locks are gone. The pinned helper's authorized
-Accessibility probe reports access; a valid paired run remains pending. Original
-155 SIGTRAP lacks matching symbols; the owner reports no known archive and asks
-for continued current-build investigation. All reference/native/performance gates
-remain active.
+The fresh default-route manual smoke completes20/20. Its51 observed provider calls
+retain actual token/cache/cost/duration evidence, including8 explicit zero-cache
+values. Three uncertain L10/L15 receipts remain without replay; task score does not
+establish effect certainty or daily-use readiness. Prior partial9/12 remains historical.
+
+The first paired334 run has0complete samples. Two diagnosed instrumentation issues
+are corrected in source: initialize standard original-process accessibility and
+prepare each final encrypted Profile at its own native credential path. The
+[correction](evidence/aside-perf-profile-accessibility-2026-10-18.json) passes16focused
+benchmark tests and6,100integrated tests/866files in113.89s, with no concurrent native
+compiler. Updated helper OS registration and valid paired measurements remain open.
+The original155 SIGTRAP still lacks matching symbols; owner reports no known archive.
+Current zero-report observations do not diagnose it. All remaining A9 gates stay active.
 
 The earlier October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
 Four of eight submitted tasks pass; the remaining 20-task acceptance is open.

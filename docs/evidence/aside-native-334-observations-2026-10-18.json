@@ -1,0 +1,116 @@
+{
+  "atUTC": "2026-10-18T22:07:23.262283+00:00",
+  "status": "Current native build and bounded observations complete; full adoption/readiness acceptance remains open",
+  "product": "334b882acfa212fe3fcfca941a2a55f42d1c8912",
+  "native": {
+    "build": {
+      "path": "/tmp/aux-fullscreen-followup-native-build-2026-10-18.json",
+      "sha256": "67c4b6654ac54683028a19c2ec976dad1dfcc260b0b96181ad97d8666c26bd9f"
+    },
+    "steps": 25,
+    "seconds": 534.047,
+    "symbols": {
+      "path": "/tmp/aux-fullscreen-followup-native-symbols-2026-10-18/identity.json",
+      "sha256": "dfdc67f4f6c08b59a037cf50d4338cc356aeef7e3dfb2461b6b9427c37366849"
+    },
+    "frameworkUUID": "4C4C4490-5555-3144-A14B-64A5A937C72D",
+    "hostABI": "08c8b5e42176f212884ff53c54d5726e75eaabd6d188271fdc1ad312742aaafa"
+  },
+  "observations": {
+    "root": "/tmp/aux-native-followup-334-acceptance-2026-10-18",
+    "idle": {
+      "milliseconds": 237043,
+      "heartbeats": 16,
+      "dedicatedReports": 0,
+      "limit": "External human activity was not independently monitored; this is not a diagnosis of the historical crash."
+    },
+    "screens": "/tmp/aux-native-followup-334-acceptance-2026-10-18/screens",
+    "positive": [
+      "Tab video fullscreen removes former 42px chrome reservation; normal aspect-ratio black letterboxing remains.",
+      "Cmd-L exits exact active tab fullscreen, focuses visible address input, and navigation reaches /second. Browser-fullscreen to tab-fullscreen to Cmd-L retains browser fullscreen. Direct Escape restores original media document.",
+      "Closing native Appearance settings then opening Aux General does not reproduce obsolete Stage error toast. Exact earlier toast origin remains attribution-limited.",
+      "Successful completed chat after its own navigation displays neutral selected-tab rerun guidance; rerun was not executed.",
+      "Dark selected Settings/Memory utility icons captured on actual build. All Chats has 20 populated runs.",
+      "Actual browser-mode Home compared manually against reference001 at matched 1712x989; Aux logo, Geist and actual synthetic data intentional."
+    ],
+    "captureCorrections": [
+      "home-populated and home-canonical-populated are unsuccessful Home captures, retained but not counted. Actual Home is home-browser-mode-populated."
+    ],
+    "limits": [
+      "No whole-reference-row acceptance or complete themes/narrow/state qualification.",
+      "Split, Little, private and non-focus fullscreen shortcuts remain unqualified.",
+      "OS sleep/wake, crash restore, IME continuity and remaining browser readiness flows remain open."
+    ]
+  },
+  "manual20": {
+    "report": {
+      "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/reports/tasks-local-2026-10-18T21-44-02-262Z.json",
+      "sha256": "f6648b799605252a4e7af19d301e21ef5a568959945707d689f5624570c0dc8f"
+    },
+    "audit": {
+      "path": "/tmp/aux-native-followup-334-acceptance-2026-10-18/manual20-readonly-audit.json",
+      "sha256": "d5aec8bcb65813bb1ce1d58c7e3a3fe67d96eae73207d39a4493b2e84ef3531f"
+    },
+    "valid": true,
+    "complete": true,
+    "passed": 20,
+    "submitted": 20,
+    "route": "Actual native composer: Automatic / Thinking Auto / Ask first; no overrides",
+    "servedModel": "anthropic/claude-sonnet-5.5",
+    "wireEffort": "not captured",
+    "provider": {
+      "calls": 51,
+      "inputTokens": 1919980,
+      "outputTokens": 5970,
+      "cachedInputTokens": 1556213,
+      "explicitZeroCache": 8,
+      "positiveCache": 43,
+      "costUsd": 1.1246678,
+      "allCostObserved": true,
+      "durationMs": 93511
+    },
+    "uncertainReceipts": [
+      {
+        "task": "L10",
+        "run": "run_mvecvfgf_32b000w",
+        "steps": [
+          "st_mvecvh2a_365papn",
+          "st_mvecvos5_37vvhx5"
+        ],
+        "detail": "Click status ok/effect uncertain; following wait failed/effect uncertain. Only one click; no replay. Actual Details visible and independent task answer correct."
+      },
+      {
+        "task": "L15",
+        "run": "run_mvecxwm5_5gbr89q",
+        "steps": [
+          "st_mvecy4ae_5wxe6n9"
+        ],
+        "detail": "Extract failed/effect uncertain. Screenshot observed and later navigation observed; final sentence correct."
+      }
+    ],
+    "auditLimit": "Detailed workTrace access denied; no grant expansion or bypass. Uses permitted runs.get/events only. No claim that unavailable detailed tool trace proves artifact reader invocation.",
+    "qualification": "Independent task outcome score; does not make uncertain receipts certain or establish daily-use readiness."
+  },
+  "retirement": {
+    "path": "/tmp/aux-native-followup-334-acceptance-2026-10-18/retirement.json",
+    "sha256": "99238bf116ee0d51636df950e1fd08b9cdf1df6a7a89b3c7b67a33c0ebf77df7"
+  },
+  "performance": {
+    "failedReport": {
+      "path": "/tmp/aux-paired155-334-2026-10-18T2153Z/report.json",
+      "sha256": "c7167b3e1f5bd8feac86f2c69ece82dc5bf0199ca9cd29e452ddd039bd1351a0"
+    },
+    "completeSamples": 0,
+    "error": "No actual original browser address focus within 20000ms",
+    "diagnosticRoots": [
+      "/tmp/aux-perf-focus-diagnostic-334-Uj6Xke",
+      "/tmp/aux-perf-focus-diagnostic-334-qU7sUd"
+    ],
+    "findings": [
+      "Actual CUA address focus was correct while uninitialized helper AX reads failed; standard application AXRole query initializes Chromium basic accessibility. No expected-label relaxation.",
+      "Cloning encrypted runtime storage to a different Profile path loses the exact native credential owner. Prepare each final disposable Profile in place. Native secret_store_mac.mm Query service is dev.aux.browser:<profile_path>. No encryption bypass or reset."
+    ],
+    "pending": "Updated helper registration and corrected paired run; no target qualification yet."
+  },
+  "crash": "Historical UUID 4C4C4483-5555-3144-A1C0-52EB39B455CA still lacks matching symbols; no known owner archive. Current-build nonreproduction does not resolve historical SIGTRAP."
+}

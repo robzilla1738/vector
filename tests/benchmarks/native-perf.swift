@@ -138,8 +138,17 @@ while let line = readLine() {
       guard AXIsProcessTrusted(), app.activate(options: [.activateAllWindows]) else {
         throw NSError(domain: "Browser activation unavailable", code: 1)
       }
-      AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
-      result = ["requested": true]
+      let application = AXUIElementCreateApplication(pid)
+      // Chromium initializes non-VoiceOver accessibility when assistive
+      // technology reads its application role. Focus alone does not do so.
+      var role: CFTypeRef?
+      guard AXUIElementCopyAttributeValue(application, kAXRoleAttribute as CFString, &role) == .success,
+            role as? String == kAXApplicationRole else {
+        throw NSError(domain: "Original browser accessibility role unavailable", code: 1)
+      }
+      try current()
+      AXUIElementSetAttributeValue(application, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+      result = ["requested": true, "accessibilityRoleRequested": true]
     case "address-ready":
       if let windowID = request["windowId"] as? Int { try requireWindow(windowID) }
       guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {

@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -223,7 +222,8 @@ try {
           "positive native VSync-backed interval; zero means unavailable, never a guessed refresh rate",
         target: "p95(latencyUs - frameIntervalUs) <= 8000 across all 100 paired observations",
       },
-      profile: "fresh process; clone of prepared disposable Profile",
+      profile:
+        "fresh process; each final disposable Profile prepared in place, retaining its original protected runtime credential owner",
       osCaches: "not flushed",
       buildProvenance:
         "declared source/output paths and actual bundle VERSION; not a reproducible-build attestation",
@@ -653,47 +653,49 @@ try {
       return sum + (item.isDirectory() ? bytes(child) : item.isFile() ? statSync(child).size : 0);
     }, 0);
   }
-  const templates = {};
   try {
-    for (const kind of ["aux", "stock"]) {
-      const profile = join(temporary, `${kind}-prepared`);
-      mkdirSync(profile);
-      const run = await launch(builds[kind], profile);
-      try {
-        if (kind === "aux") {
-          console.log(
-            JSON.stringify({
-              event: "AUX_PERF_SETUP_REQUIRED",
-              pid: run.child.pid,
-              profile,
-              fixtureURL: url,
-              instruction:
-                "In this disposable Aux window, choose Finish later to finish setup, then use the native address bar to navigate to fixtureURL. Measurement waits for that ordinary page; the privileged shell stays hidden from CDP.",
-            }),
-          );
-          await until(
-            "manual disposable Aux setup and fixture navigation",
-            async () => (await loadedFixturePages(run)).length > 0,
-            600000,
-          );
-          console.log(JSON.stringify({ event: "AUX_PERF_SETUP_READY", pid: run.child.pid }));
-        } else {
-          const page = ordinaryPages(run)[0];
-          assert.ok(page, "Prepared stock browser needs an ordinary initial target");
-          await page.goto(url, { waitUntil: "load" });
+    for (let pair = 0; pair < 5; pair++) {
+      for (const kind of pair % 2 ? ["stock", "aux"] : ["aux", "stock"]) {
+        // The runtime's protected database belongs to this exact Profile.
+        // Prepare it at its final path instead of copying encrypted storage
+        // into a different native credential owner before measurement.
+        const profile = join(temporary, `${kind}-${pair}`);
+        mkdirSync(profile);
+        const run = await launch(builds[kind], profile);
+        try {
+          if (kind === "aux") {
+            console.log(
+              JSON.stringify({
+                event: "AUX_PERF_SETUP_REQUIRED",
+                pid: run.child.pid,
+                profile,
+                fixtureURL: url,
+                instruction:
+                  "In this disposable Aux window, choose Finish later to finish setup, then use the native address bar to navigate to fixtureURL. Measurement waits for that ordinary page; the privileged shell stays hidden from CDP.",
+              }),
+            );
+            await until(
+              "manual disposable Aux setup and fixture navigation",
+              async () => (await loadedFixturePages(run)).length > 0,
+              600000,
+            );
+            console.log(JSON.stringify({ event: "AUX_PERF_SETUP_READY", pid: run.child.pid }));
+          } else {
+            const page = ordinaryPages(run)[0];
+            assert.ok(page, "Prepared stock browser needs an ordinary initial target");
+            await page.goto(url, { waitUntil: "load" });
+          }
+          for (const page of ordinaryPages(run)) await page.goto("about:blank", { waitUntil: "load" });
+        } finally {
+          await close(run);
         }
-        for (const page of ordinaryPages(run)) await page.goto("about:blank", { waitUntil: "load" });
-      } finally {
-        await close(run);
+        seedHistory(profile);
       }
-      seedHistory(profile);
-      templates[kind] = profile;
     }
     for (let pair = 0; pair < 5; pair++) {
       // Alternate order so a single host does not always inherit the warmer caches.
       for (const kind of pair % 2 ? ["stock", "aux"] : ["aux", "stock"]) {
         const profile = join(temporary, `${kind}-${pair}`);
-        cpSync(templates[kind], profile, { recursive: true });
         const powerBefore = command("pmset", ["-g", "batt"]);
         assert.match(powerBefore, /Now drawing from 'AC Power'/, "Every sample requires mains power");
         const run = await launch(builds[kind], profile);
