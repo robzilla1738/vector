@@ -16,6 +16,7 @@ import type { ModelClient } from "../../apps/runtime/dist/agent/model-client.js"
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { budgetLineage } from "../fixtures/budget-lineage.js";
 import {
+  initialContextStats,
   boundedConversationReference,
   conversationReferenceParts,
 } from "../../apps/runtime/dist/agent/loop/compaction.js";
@@ -395,4 +396,49 @@ it("retires orphaned progress after recovery so completed chats can compact agai
   await f.start();
   await f.wait();
   expect(f.runs.contextStats("saved").compaction.status).toBe("completed");
+});
+
+it("uses saved original schema bytes for idle compaction rather than the full optional catalog", async () => {
+  const f = fixture();
+  const run = f.repo.getRun("saved")!;
+  run.config = {
+    ...run.config,
+    contextCompaction: {
+      toolsBytes: 1234,
+      stats: f.runs.contextStats(run.runId),
+    },
+  };
+  f.repo.saveRun(run);
+  await f.start();
+  await f.wait();
+  expect(f.repo.getRun(run.runId)?.config?.contextCompaction?.toolsBytes).toBe(1234);
+});
+
+it("estimates a historical profile using its original allowed tool schema without granting new integrations", async () => {
+  const f = fixture();
+  const run = f.repo.getRun("saved")!;
+  run.config = {
+    ...run.config,
+    agentProfile: {
+      name: "clock",
+      prompt: "Use the clock.",
+      tools: ["get_time"],
+      workspace: "shared",
+      packages: [],
+    },
+  };
+  f.repo.saveRun(run);
+  const { buildToolManifest } = await import("@aux/runtime");
+  const { modelTools } = await import("../../apps/runtime/dist/agent/loop/loop.js");
+  const { buildSystemPrompt } = await import("@aux/runtime");
+  const expected = initialContextStats(run.runId, DEFAULT_UTILITY_MODEL_ID, f.transcript.load(run.runId), {
+    system: buildSystemPrompt({
+      hasPage: false,
+      webEnabled: true,
+      hasProject: false,
+    }),
+    toolsBytes: modelTools({ get_time: buildToolManifest().get_time! }).bytes,
+    maxOutputTokens: 4000,
+  });
+  expect(f.runs.contextStats(run.runId).estimatedInputTokens).toBe(expected.estimatedInputTokens);
 });

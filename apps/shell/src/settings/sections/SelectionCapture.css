@@ -8,7 +8,10 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    min-height: var(--row-h);
+    min-height: 52px;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
     padding-block: var(--space-1);
   }
   .selection-action-row + .selection-action-row {
@@ -23,7 +26,9 @@
   }
   .selection-action-state {
     color: var(--ink-2);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
   }
   .selection-action-row > .btn {
     padding: var(--space-1);

@@ -1,8 +1,8 @@
 @layer overrides {
   .settings-content .models-overview > h3 {
     color: var(--ink-2);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-regular);
+    font-size: var(--fs-md);
+    font-weight: 550;
     margin: var(--space-7) 0 var(--space-2);
   }
   .settings-content .models-overview > .ui-setting:first-child {
@@ -22,7 +22,7 @@
   .settings-content .models-overview > .ui-setting:first-child > .setting-label {
     padding: 0 var(--space-3-5);
     color: var(--ink-2);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
   }
   .settings-content .models-overview > .ui-setting:first-child > .ui-setting-control {
     width: 100%;
@@ -73,12 +73,15 @@
     align-items: stretch;
     min-width: 0;
     max-width: 100%;
-    border: 1px solid var(--line);
+    height: 32px;
     border-radius: var(--r-lg);
     background: var(--settings-control-fill);
   }
-  .settings-content .field.ui-setting.compact:has(.settings-model-control) > .ui-setting-control {
-    max-width: 210px;
+  .settings-content
+    .field.ui-setting.compact:has(> .ui-setting-control > .settings-model-control)
+    > .ui-setting-control {
+    width: 176px;
+    max-width: min(176px, 100%);
   }
   @container settings-content (width < 440px) {
     .settings-content .field.ui-setting.compact:has(.settings-model-control) {
@@ -94,21 +97,31 @@
   }
   .settings-model-control > .ui-menu-trigger {
     flex: none;
-    width: 28px;
-    height: auto;
-    min-height: 28px;
-    border-left: 1px solid var(--line);
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border: 1px solid var(--line);
     border-radius: 0 var(--r-lg) var(--r-lg) 0;
+    margin-left: -1px;
   }
-  .settings-model-trigger {
+  .settings-content .ui-setting-control .settings-model-control > .settings-model-trigger {
     display: inline-flex;
+    flex: 1 1 auto;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
     max-width: 100%;
-    padding: 5px 8px;
-    border-radius: var(--r-md);
+    height: 32px;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg) 0 0 var(--r-lg);
     background: transparent;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
+  }
+  .settings-content .ui-setting-control .settings-model-control > .settings-model-trigger:only-child {
+    border-radius: var(--r-lg);
   }
   .settings-model-trigger span {
     overflow: hidden;

@@ -153,6 +153,7 @@ export class IdleConversationCompactions {
             (error instanceof AuxError &&
               ["cancelled", "ref_stale", "permission_denied"].includes(error.code));
           this.save(current, {
+            toolsBytes: state.toolsBytes,
             projection: run.config?.contextCompaction?.projection,
             stats: {
               ...stats,

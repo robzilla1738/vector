@@ -10,7 +10,9 @@
     display: grid;
     gap: var(--space-1-5);
     color: var(--ink-1);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
   }
   .developer-connection-editor > label > :is(input, select) {
     width: 100%;

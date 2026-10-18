@@ -59,7 +59,7 @@
 
 @layer overrides {
   .permission-policy-groups {
-    border-radius: var(--r-lg);
+    border-radius: var(--r-xl);
     background: var(--settings-card);
     overflow: hidden;
   }
@@ -80,7 +80,9 @@
   }
   .permission-policy-group header > span,
   .permission-policy-group > p {
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
     color: var(--ink-2);
   }
   .permission-policy-group > p {
@@ -200,13 +202,12 @@
   .settings-content .permissions-settings .field.ui-setting {
     margin-inline: 0;
   }
-  .settings-content .permissions-settings .field.ui-setting.compact > .ui-setting-control {
-    max-width: none;
-  }
   .permission-file-details {
     margin-top: var(--space-2);
     color: var(--ink-2);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
   }
   .permission-file-details summary {
     cursor: pointer;

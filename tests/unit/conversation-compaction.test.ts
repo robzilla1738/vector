@@ -519,3 +519,32 @@ describe("agent loop compaction dispatch", () => {
     expect(contextOverflow(cyclic)).toBe(false);
   });
 });
+
+it("preserves exact filtered schema bytes through completed and failed compaction", async () => {
+  for (const fail of [false, true]) {
+    const f = fixture();
+    f.owner.control.pending = {
+      id: "manual",
+      reason: "manual",
+      cancel: new AbortController(),
+    };
+    const optionsWithTools = { ...options, toolsBytes: 1234 };
+    const work = f.prepare({
+      options: optionsWithTools,
+      ...(fail
+        ? {
+            summarize: async () => {
+              throw new Error("Unavailable summary");
+            },
+          }
+        : {}),
+    });
+    const error: unknown = await work.then(
+      () => undefined,
+      (failure: unknown) => failure,
+    );
+    expect(error instanceof Error ? error.message : undefined).toBe(fail ? "Unavailable summary" : undefined);
+    expect(f.state()?.toolsBytes).toBe(1234);
+    expect(f.state()?.stats.compaction.status).toBe(fail ? "failed" : "completed");
+  }
+});

@@ -1,7 +1,7 @@
 import { DesktopContextSearchSchema, DesktopContextReadSchema } from "@aux/contracts/desktop-context";
-import { XToolInputSchema } from "@aux/contracts/x";
+import { XToolInputSchema, type XOperation } from "@aux/contracts/x";
 import { LinkedInToolInputSchema } from "@aux/contracts/linkedin";
-import { GoogleToolInputSchema } from "@aux/contracts/google";
+import { GoogleToolInputSchema, type GoogleOperation } from "@aux/contracts/google";
 import { WebSearchInputSchema } from "@aux/contracts/web-search";
 import { pdfToolManifest } from "./pdf-tools.js";
 import { codingToolManifest } from "./coding-tools.js";
@@ -94,7 +94,25 @@ export function normalizeSubmitResultInput(raw: unknown): unknown {
   return input;
 }
 
-export function buildToolManifest(): LoopToolManifest {
+export interface ToolOperationSelection {
+  googleOperations?: readonly GoogleOperation[];
+  xOperations?: readonly XOperation[];
+}
+function selectedOperationSchema(
+  schema: typeof GoogleToolInputSchema | typeof XToolInputSchema,
+  operations: readonly string[] | undefined,
+): z.ZodType | undefined {
+  if (operations === undefined) return schema;
+  const options = schema.options.filter((option) => operations.includes(option.shape.operation.value));
+  if (!options.length) return undefined;
+  return z.discriminatedUnion(
+    "operation",
+    options as [(typeof options)[number], ...(typeof options)[number][]],
+  );
+}
+export function buildToolManifest(selection: ToolOperationSelection = {}): LoopToolManifest {
+  const googleInput = selectedOperationSchema(GoogleToolInputSchema, selection.googleOperations);
+  const xInput = selectedOperationSchema(XToolInputSchema, selection.xOperations);
   const snapshot: LoopTool = {
     description:
       "Read the current page: accessibility-first tree text with [ref=…] markers, form fields, links, tables and dialogs. " +
@@ -154,6 +172,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const webfetch: LoopTool = {
+    available: (deps) => !!(deps.webFetch || deps.prepareWebFetch),
     description:
       "Fetch a public web page (text/HTML/JSON/XML, ≤1 MB). Carries no cookies; the destination is decided by decide() before dispatch.",
     byline: "Aux cookie-free web fetch",
@@ -177,6 +196,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const websearch: LoopTool = {
+    available: (deps) => !!(deps.webSearch || deps.prepareWebSearch),
     description:
       "Search through the selected Gateway connection (Perplexity or Exa) with structured sources and supported filters. Without Gateway, unfiltered auto search uses an explicitly labelled configured-engine HTML fallback. Factory filters are defaults; read observed execution provenance.",
     byline: "Aux web search",
@@ -242,18 +262,20 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const writeTodos: LoopTool = {
+    available: (deps) => !!deps.writeTodos,
     description:
       "Update your durable todo scratchpad for this run — short items the user can watch; survives suspension and restart.",
     byline: "Aux run scratchpad",
     inputSchema: z.object({ todos: z.array(z.string().min(1).max(280)).max(12) }),
     execute: async (raw, ctx) => {
       const { todos } = z.object({ todos: z.array(z.string().min(1).max(280)).max(12) }).parse(raw);
-      await ctx.deps.writeTodos?.(todos);
+      await need(ctx.deps.writeTodos, "write_todos")(todos);
       return { output: { saved: todos.length } };
     },
   };
 
   const repl: LoopTool = {
+    available: (deps) => !!deps.repl,
     description:
       "Run a whole browsing workflow in one persistent JavaScript REPL call. When the script sees the final evidence, call submitResult(report, citations) inside it to finish the run without another model call. The guest surface: page.* page actions " +
       "(page.click(ref), page.clickByName(name, role?), page.followLinkByName(name) for explicit same-origin route navigation, page.labeledValue(label), page.submitLabeledValue(label), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every action " +
@@ -294,6 +316,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const replWait: LoopTool = {
+    available: (deps) => !!deps.replWait,
     description:
       "Resume a yielded REPL cell. Returns its result when finished, or the same cell ID while running. terminate stops the guest and prevents further effects from that script.",
     byline: "Aux code mode — yielded script continuation",
@@ -315,6 +338,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const goalProgram: LoopTool = {
+    available: (deps) => !!deps.repl,
     description:
       "Verified browser or coding workflow. Use governed fs/proc APIs for coding; each effect keeps its own receipt. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
     byline: "Aux first-turn goal program — governed REPL with verified finish",
@@ -407,6 +431,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const bash: LoopTool = {
+    available: (deps) => !!deps.bash,
     description:
       "Run a shell command inside the current file permissions. Auto and Full allow outbound network by default; Ask can request it with network:true. Commands always stay sandboxed. stdout/stderr are bounded to 64 KB and timeoutMs to 120000.",
     byline: "Aux sandbox — current file and network permissions",
@@ -447,6 +472,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const historySearch: LoopTool = {
+    available: (deps) => !!deps.historySearch,
     description:
       "Search eligible browser history by meaning using an installed local embedding model. Reports keyword fallback when local embeddings are unavailable.",
     byline: "Aux history",
@@ -507,6 +533,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const memorySearch: LoopTool = {
+    available: (deps) => !!deps.memorySearch,
     description:
       "Search eligible saved documents, site/routine memory, pages and history in this run's Space. " +
       "Use multiple queries and optional date/domain filters. Results include exact source identities, " +
@@ -527,6 +554,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const memoryRead: LoopTool = {
+    available: (deps) => !!deps.memoryReadSource,
     description:
       "Read eligible Memory source lines by the exact sourceId, revision and sha256 returned by memory_search. Search again if a source changed.",
     byline: "Aux Memory",
@@ -540,6 +568,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const subagent: LoopTool = {
+    available: (deps) => !!deps.subagents?.spawnCell,
     description:
       "Spawn a subagent cell under this run — an independent durable agent with its own goal. " +
       "Returns {cellId}; check in with subagent_wait, steer with subagent_send, cancel with subagent_stop.",
@@ -576,6 +605,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const subagentWait: LoopTool = {
+    available: (deps) => !!deps.subagents?.waitCell,
     description:
       "Wait for a subagent cell to finish or the timeout to lapse; returns its state, result or error.",
     byline: "Aux subagent cells",
@@ -597,6 +627,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const subagentSend: LoopTool = {
+    available: (deps) => !!deps.subagents?.sendCell,
     description: "Steer a running subagent cell with new instructions.",
     byline: "Aux subagent cells",
     inputSchema: z.object({
@@ -615,6 +646,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const subagentStop: LoopTool = {
+    available: (deps) => !!deps.subagents?.cancelCell,
     description: "Cancel a subagent cell.",
     byline: "Aux subagent cells",
     inputSchema: z.object({ cellId: z.string().min(1).max(200) }),
@@ -629,6 +661,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const routineUpdate: LoopTool = {
+    available: (deps) => !!deps.routineUpdate,
     description:
       "Propose a change to an automation routine in this workspace — title, description, objective, trigger or " +
       "paused state. The user confirms every change before it lands; an approval lets the same call run once.",
@@ -671,12 +704,16 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const notification: LoopTool = {
+    available: (deps) => !!deps.notify,
     description: "Post a durable notice on this run's event stream — the user sees it in the task view.",
     byline: "Aux run notice",
     inputSchema: z.object({ text: z.string().min(1).max(2_000) }),
     execute: async (raw, ctx) => {
       const { text } = z.object({ text: z.string().min(1).max(2_000) }).parse(raw);
-      await ctx.deps.notify?.({ text }, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      await need(ctx.deps.notify, "notification")(
+        { text },
+        { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId },
+      );
       return { output: { posted: true } };
     },
   };
@@ -750,6 +787,7 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const goalUpdate: LoopTool = {
+    available: (deps) => !!deps.goalUpdate,
     description:
       "Report this Goal as paused, or report a blocker. A blocked Goal pauses only after you report the exact same blocker on three consecutive model turns. Use submit_result to complete. This cannot change the owner's budget.",
     byline: "Aux Goal status — owner-controlled budget",
@@ -770,25 +808,30 @@ export function buildToolManifest(): LoopToolManifest {
     const span = Date.parse(input.timeMax) - Date.parse(input.timeMin);
     return span > 0 && span <= 31 * 24 * 60 * 60 * 1000;
   }, "Choose a calendar range of at most 31 days.");
-  return {
+  const manifest: LoopToolManifest = {
     x_operation: {
       available: (deps) => !!deps.xOperation,
       description:
         "Invoke an operation explicitly granted to this original saved task and X account. Use only grant IDs and operations in the captured X accounts metadata. Reads return source identities; original writes have durable receipts and must never be retried when uncertain. X product access and endpoint limits still apply.",
       byline: "Task-granted X account",
-      inputSchema: XToolInputSchema,
-      execute: (raw, ctx) => need(ctx.deps.xOperation, "x_operation")(XToolInputSchema.parse(raw), ctx),
+      inputSchema: xInput ?? XToolInputSchema,
+      execute: (raw, ctx) =>
+        need(ctx.deps.xOperation, "x_operation")(XToolInputSchema.parse(xInput?.parse(raw) ?? raw), ctx),
     },
     google_operation: {
       available: (deps) => !!deps.googleOperation,
       description:
         "Invoke an operation explicitly granted to this original saved task and Google account. Use only grant IDs and operations in the captured Google accounts metadata. Reads return source identities; original writes have durable receipts and must never be retried when uncertain. Sheet preflight is optimistic, not atomic.",
       byline: "Task-granted Google account",
-      inputSchema: GoogleToolInputSchema,
+      inputSchema: googleInput ?? GoogleToolInputSchema,
       execute: (raw, ctx) =>
-        need(ctx.deps.googleOperation, "google_operation")(GoogleToolInputSchema.parse(raw), ctx),
+        need(ctx.deps.googleOperation, "google_operation")(
+          GoogleToolInputSchema.parse(googleInput?.parse(raw) ?? raw),
+          ctx,
+        ),
     },
     calendar_events_list: {
+      available: (deps) => !!deps.calendarEvents,
       description:
         "Read events from an account explicitly granted to this saved task. Use only a grantId listed in this run’s captured Calendar accounts; later grants do not expand this run.",
       byline: "Task-granted Calendar",
@@ -796,6 +839,7 @@ export function buildToolManifest(): LoopToolManifest {
       execute: (raw, ctx) => need(ctx.deps.calendarEvents, "calendar_events_list")(calendarInput.parse(raw)),
     },
     image_generate: {
+      available: (deps) => !!deps.generateImage,
       description:
         "Generate or edit an image from a prompt and optional reference images already admitted to this run. Save the actual output artifact in this conversation. Uses the original run’s model and spend budgets.",
       byline: "Aux image generation",
@@ -831,6 +875,7 @@ export function buildToolManifest(): LoopToolManifest {
     ...pdfToolManifest(),
     bash,
     page_summary: {
+      available: (deps) => !!deps.pageSummary,
       description:
         "Summarize a currently admitted page with verbatim evidence quotes and original document provenance. This does not complete the task.",
       byline: "Aux page summary",
@@ -864,4 +909,7 @@ export function buildToolManifest(): LoopToolManifest {
     reconcile_action: reconcileAction,
     submit_result: submitResult,
   };
+  if (!googleInput) delete manifest.google_operation;
+  if (!xInput) delete manifest.x_operation;
+  return manifest;
 }

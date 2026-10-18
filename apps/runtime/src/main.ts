@@ -2371,24 +2371,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         },
       }),
     pdfReady: () => native.available() && audioInspectionReady,
-    desktopContextSearch: async (input, owner) => {
-      const service = runtimeServices.desktopContextSources;
-      if (!service)
-        throw new AuxError(
-          "capability_unsupported",
-          "Desktop context requires the normal native Aux Profile.",
-        );
-      return service.search(input, owner);
-    },
-    desktopContextRead: async (input, owner) => {
-      const service = runtimeServices.desktopContextSources;
-      if (!service)
-        throw new AuxError(
-          "capability_unsupported",
-          "Desktop context requires the normal native Aux Profile.",
-        );
-      return service.read(input, owner);
-    },
+    desktopContextSearch: runtimeServices.desktopContextSources
+      ? async (input, owner) => {
+          const service = runtimeServices.desktopContextSources;
+          if (!service)
+            throw new AuxError(
+              "capability_unsupported",
+              "Desktop context requires the normal native Aux Profile.",
+            );
+          return service.search(input, owner);
+        }
+      : undefined,
+    desktopContextRead: runtimeServices.desktopContextSources
+      ? async (input, owner) => {
+          const service = runtimeServices.desktopContextSources;
+          if (!service)
+            throw new AuxError(
+              "capability_unsupported",
+              "Desktop context requires the normal native Aux Profile.",
+            );
+          return service.read(input, owner);
+        }
+      : undefined,
     desktopContextValidate: async (owner) => {
       await runtimeServices.desktopContextSources?.validate(owner);
     },

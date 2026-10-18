@@ -10,8 +10,7 @@ import { call } from "../../store";
 import { bridge } from "../../bridge";
 import { errorMessage } from "../../error-message";
 import "../../components/ConnectionSettings.css";
-import { Checkbox, SettingsGroup } from "../../ui";
-import { ConnectionSelect as Select } from "../../components/ConnectionSelect";
+import { Checkbox, Select, SettingsGroup } from "../../ui";
 import { shellIconDown } from "../../ui/icons";
 import { SettingsSection, SettingsField } from "../primitives";
 const scopeLabels: Partial<Record<GoogleScope, string>> = {

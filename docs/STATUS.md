@@ -28,23 +28,26 @@ native action proof does not bind recipient and rich-editor content through ever
 synchronous input event. A typed native prepare/apply proof is under isolated
 implementation; it is not yet a published completed capability.
 
-Startup source now lazily validates native bookmarks/history/downloads and run
-start requests. Captured-source restoration retains synchronous strict mini
-validation. The production renderer measures **663 KB startup JS /212 KB CSS /
-3,048 KB total JS** using actual boot/preload/static closure traversal
-(`/tmp/aux-followup-bundle-budget-final.log`). Targets490/180/1,800KB remain unmet;
-these bytes are not native startup timings. Full ICU is retained.
+Startup validation and utility glyphs now follow their actual feature boundaries.
+The production renderer measures **627 KB startup JS /213 KB CSS /3,049 KB total
+JS** using actual boot/preload/static closure traversal. The icon split preserves
+public exports and SVG markup. Targets490/180/1,800KB remain unmet; bytes do not
+establish native startup timings. Full ICU is retained.
 
-Optional model-tool publication now checks actual original-run implementation;
-unavailable Google/X schemas previously pushed a default64k request over its
-input budget before inference. The failed integrated check exposed this defect,
-a schema9 migration fixture retaining schema11 tables and asynchronous-start
-fixture assumptions. The affected13 files now pass179 tests after rebuilding
-runtime dist (`/tmp/aux-followup-repaired-tests.log`). The subsequent combined check passed typecheck/lint and exposed eight chat-view
-fixtures that assumed a connected runtime; their explicit connected fixtures now
-pass8/8 (`/tmp/aux-liveness-existing-view-tests.log`). The failed test process was
-retired after its results stopped progressing. Saved-context byte accounting and
-resumed optional-call checks are under review; no final integrated-pass claim is made.
+Model requests publish only functioning original-run tools, including captured
+Google/X operation subsets. Exact prepared schema bytes are retained in encrypted
+context records, including saved/idle compaction. Calls recheck availability at
+dispatch and on continuation. Prepared web reads remain available even without
+the separate immediate callback. Standard Settings Select owns native selected
+content; the connection-specific wrapper was deleted. Remaining Models,
+Permissions, Capture, Sidebar and Project controls use shared measured roles.
+
+The integrated check passed typecheck/lint and5,204 tests, with six failures in
+three files. Three exposed the prepared-read availability defect, now corrected.
+The unchanged coder and100-step lifecycle cases passed quietly; all85 tests in
+the three affected files pass after rebuilding runtime dist
+(`/tmp/aux-followup-failure-recheck.log`). Another143 focused tests passed before
+that integrated run. No final all-files-pass claim is made.
 
 ## Current native evidence
 
@@ -61,22 +64,34 @@ with the original runtime SIGSTOPped, and it resumed without a replacement child
 [The sanitized evidence record](evidence/aside-native-34117-2026-10-17.json)
 records exact limits. Captures are `/tmp/aux-34117-native/`.
 
-That walkthrough found a horizontal toggle overlapping Settings search, duplicate
-Memory presentation, raw stalled-runtime loading/error, a native Tab Search stub
-and Cmd-L failure during the runtime pause. Source changes address the first four;
-a conditional native-focus acknowledgement repair is implemented but has not
-proven the Cmd-L cause. Native area0065 contains liveness presentation and Tab
-Search routing, with forward/reverse/actual-byte proof
-(`/tmp/aux-native65-proof.json`). Its46-step native build passed in8m44.37s (`/tmp/aux-native65-build.log`); the
-original launcher is now rebuilding the current renderer package before a fresh
-disposable app observation. Liveness never replaces the original connection
-or replays a write. Repeated AppKit negative-geometry warnings need diagnosis.
+The follow-on area0065 built46 steps in8m44.37s; packaging the follow-on renderer
+then passed25 steps in9m04.20s. The native General pane honestly identifies
+source34117c740+dirty because source metadata was generated before commit10d3d930.
+This is not a clean10d3 combined build. At1712×989 logical bounds, native Tab Search
+opens over a painted page, owns filtering and returns focus on Escape. Cmd-L,
+navigation, Back, Find and isolated Reload work with the original runtime paused;
+the fixture's unsent filter reset on Reload while ps still showed that runtime
+stopped. Resume retires the liveness presentation without replacing its child.
+The rapid Back→Reload catalog-version rejection remains a valid command fence.
+A separate lost follow-up snapshot race is reproduced and under isolated repair.
 
-The34117 preview retired normally through application-menu Quit, followed by
-LLDB retirement; its original app/runtime, disposable Profile and plain lock are
-gone. No owner Profile was read or modified. All25 available older crash reports
-identify Chromium154; none identifies the earlier155 app7136 SIGTRAP. That trap
-remains unresolved and is not excused by later successful starts.
+Quick Ask retains its440×92 logical empty window and expands to440×200 for a
+long unsent draft with focus retained. Its context opener did not open during
+this preview and remains under investigation. The unified empty Memory tree
+renders; populated native activity/diff acceptance remains open. Captures and
+exact diagnostic limitations are in the [follow-on native record](evidence/aside-native-followup-2026-10-18.json).
+
+LLDB captured a negative-geometry path in AppKit's
+NSWindowSharingSessionRecipientIndicator: the OS sharing-indicator update supplied
+(-1,-1) to setFrameSize. This does not establish the cause of every warning or
+resolve the older SIGTRAP. No blanket content-size clamp was added. All25 available
+older crash reports identify Chromium154; none identifies earlier155 app7136.
+The original155 SIGTRAP remains unresolved.
+
+The latest original launcher71243/app71389/runtime71405 retired normally through
+application-menu Quit; its disposable Profile and plain lock are gone. Earlier
+interactive debugger SIGINT retirements were deliberate diagnostic interruptions,
+not reproduced application crashes. No owner Profile was read or modified.
 
 ## Validation and remaining acceptance
 

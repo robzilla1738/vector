@@ -193,7 +193,7 @@
     accent-color: var(--link);
   }
   .ui-text-field,
-  .ui-select {
+  .ui-select:where([multiple], [size]) {
     min-height: 36px;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);

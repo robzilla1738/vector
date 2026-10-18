@@ -12,8 +12,8 @@
   .settings-content .routines-settings [data-setting="My routines"] > .setting-label {
     padding-inline: var(--space-3);
     color: var(--ink-2);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-regular);
+    font-size: var(--fs-md);
+    font-weight: 550;
   }
   .routines-settings [data-setting="My routines"] > .hint {
     padding-inline: var(--space-3);

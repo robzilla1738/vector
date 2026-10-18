@@ -12,6 +12,7 @@ export function pdfToolManifest(): LoopToolManifest {
     })
     .strict();
   manifest.pdf_sources = {
+    available: (deps) => !!deps.pdfSources,
     description:
       "List a bounded page of original PDF sources already admitted to this run. Returns exact artifact, selected attachment or task-evidence IDs and availability, including scanned PDFs without selectable text.",
     byline: "Aux selected PDFs",
@@ -45,6 +46,7 @@ export function pdfToolManifest(): LoopToolManifest {
       })
       .strict();
     manifest[`pdf_${operation}`] = {
+      available: (deps) => !!deps.processPdf,
       description: `${descriptions[operation]} Use only admitted PDF artifact IDs, selected attachment IDs or selected task-document evidence IDs. Originals are preserved. Encrypted, XFA, signed and action-dependent PDFs are refused.`,
       byline: "Aux isolated PDFium",
       inputSchema: schema,

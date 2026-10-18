@@ -1,0 +1,45 @@
+{
+  "program": "Aside adoption",
+  "status": "limited native observation; full acceptance open",
+  "committedSource": "10d3d930c52c495d24c6bae952db6bf0c1eafa39",
+  "nativeAdvertisedSource": "34117c740bdac034680d7288a003d85016ccad7b+dirty",
+  "nativeVersion": "155.0.8059.85",
+  "nativeAbi": "550bdeb5fbbd",
+  "nativeArea": 65,
+  "packaging": {
+    "steps": 25,
+    "elapsedSeconds": 544.2,
+    "passed": true
+  },
+  "profile": "disposable; retired by original launcher after Aux menu Quit",
+  "logicalWindow": [1712, 989],
+  "observed": [
+    "Tab Search620x340 over painted page; no-results filtering; Escape focus return",
+    "original runtime SIGSTOP: Cmd-L and native navigation/Back/Find",
+    "isolated Reload reset unsent fixture filter; original runtime still stopped immediately after action",
+    "original runtime resumed; no replacement child",
+    "Quick Ask440x92 empty and440x200 long unsent draft; focus retained",
+    "unified empty Memory tree"
+  ],
+  "issues": [
+    "Quick Ask Add context did not open on click/Return/Space; investigation pending",
+    "rapid Back followed by Reload can correctly reject stale catalog revision; no automatic replay",
+    "separate lost catalog snapshot follow-up race reproduced in source, repair pending"
+  ],
+  "geometryDiagnostic": {
+    "receiver": "NSWindowSharingSessionRecipientIndicator",
+    "setFrameSize": [-1, -1],
+    "stack": "AppKit sharing indicator update through SkyLight notification",
+    "scope": "one actual caught path; not every warning and not old SIGTRAP",
+    "log": "/tmp/aux-native-geometry-caught.txt"
+  },
+  "evidenceDirectory": "/tmp/aux-10d3-native/",
+  "limitations": [
+    "native metadata generated before10d3 commit; not clean combined10d3 build",
+    "current uncommitted renderer controls/icon split not staged in this preview",
+    "no real provider manual20task smoke",
+    "no matched stock performance",
+    "no all-surface parity or daily-use readiness",
+    "older155SIGTRAP unresolved"
+  ]
+}

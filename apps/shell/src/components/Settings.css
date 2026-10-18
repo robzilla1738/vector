@@ -647,9 +647,11 @@
   }
   .settings-check-list > label {
     justify-content: space-between;
-    min-height: 36px;
+    min-height: 52px;
     padding-block: 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
   }
   .settings-check-list > label + label {
     border-top: var(--hairline) solid var(--line);

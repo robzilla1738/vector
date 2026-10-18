@@ -1,6 +1,5 @@
-import { ConnectionSelect as Select } from "./ConnectionSelect";
 import { staticHintProps } from "../ui/class-props";
-import { SettingsGroup } from "../ui";
+import { Select, SettingsGroup } from "../ui";
 import { SettingsField, SettingsSection } from "../settings/primitives";
 import "./ConnectionSettings.css";
 import { useEffect, useRef, useState } from "react";

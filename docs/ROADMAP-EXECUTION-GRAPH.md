@@ -49,21 +49,24 @@ One integrator owns main/contracts/migrations, the single native source/patch/
 builder/launcher, evidence and local commits. X public-PKCE/scoped REST, original
 source desktop model admission/retirement, DOM-only LinkedIn research, startup
 schema narrowing, Memory/archive and connected-service UI are integrated in the
-current follow-on source. Optional-tool publication and saved-context schema-byte
-accounting are being verified. Isolated work completes typed LinkedIn native
-recipient/editor proof and remaining Settings geometry. Account setup remains
-explicit per the owner's decision; adapters use fixtures until registrations exist.
+current follow-on source. Exact prepared schema bytes and actual optional-tool
+publication now cover saved/idle compaction and captured operation grants.
+Canonical Select ownership and remaining compact Settings roles are integrated;
+utility glyph modules reduce measured startup JS to627KB. Isolated work completes
+typed LinkedIn native recipient/editor proof, remaining Skills/MCP/activity geometry
+and concrete Docs/Sheets/Gmail adapter gaps. Account setup remains explicit per
+the owner's decision; adapters use fixtures until registrations exist.
 
 Foundation7806e41fc, capability07199225f and owned-services34117c740 have limited
-155 native observations. In34117, Memory owner-document Create/Save succeeds at
-1712×989 logical dimensions; off-by-default Desktop Context and unconfigured
-connection controls were inspected. Runtime-paused browsing works, while Cmd-L,
-stall presentation and native Tab Search exposed concrete remaining work.
-Area0065 liveness/Tab Search source is proven and compiling. Native all-state
-appearance, crash acceptance and the new source's changed flows remain open.
-Matching155 stock requires its full compile; no paired timing result exists.
-Source, compiled objects, observed current behavior and accepted outcomes stay
-separate. See STATUS for exact evidence and normal preview retirement.
+155 native observations. Area0065 is compiled; follow-on native Tab Search,
+Cmd-L/navigation/Back/Find and isolated Reload during original-runtime pause work.
+Quick Ask92px empty/long-draft expansion and unified empty Memory tree render;
+the Quick Ask context opener remains under investigation. Native build identity
+is34117+dirty, not a clean10d3 combined build. The original preview retired normally.
+One AppKit sharing-indicator negative-geometry path is diagnosed; the older155
+SIGTRAP remains unresolved. Matching155 stock requires its full compile; no paired
+timing result exists. Source, compiled objects, observed current behavior and
+accepted outcomes stay separate. See STATUS for exact evidence.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

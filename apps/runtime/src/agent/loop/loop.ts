@@ -261,7 +261,7 @@ async function executeOne(
   ctx: LoopToolContext,
 ): Promise<LoopToolResult> {
   const tool = tools[toolName];
-  if (!tool)
+  if (!tool || tool.available?.(ctx.deps) === false)
     return {
       output: new AuxError("capability_unsupported", `Unknown tool: ${toolName}`),
     };

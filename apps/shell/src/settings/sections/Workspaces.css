@@ -43,7 +43,9 @@
     min-width: 0;
   }
   .project-create-dialog fieldset > label {
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
     margin-top: 8px;
   }
   .project-create-dialog :is(input, select) {
@@ -53,12 +55,13 @@
     color: var(--ink-0);
     padding: 6px 10px;
     font: inherit;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
   }
   .project-create-dialog input {
     min-width: 0;
     width: 100%;
-    height: 34px;
+    height: 32px;
   }
   .project-name-row {
     display: flex;

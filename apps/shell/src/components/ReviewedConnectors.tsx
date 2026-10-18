@@ -1,4 +1,4 @@
-import { ConnectionSelect as Select } from "./ConnectionSelect";
+import { Select } from "../ui";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import "./ReviewedConnectors.css";

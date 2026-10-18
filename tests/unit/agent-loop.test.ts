@@ -3,6 +3,7 @@ import type { ExecContext } from "../../apps/runtime/src/execution/executor.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuxError } from "@aux/contracts";
+import { z } from "zod";
 import { mkdtempSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -115,6 +116,18 @@ describe("runAgentLoop (S5)", () => {
       "linkedin_workflow",
       "desktop_context_search",
       "desktop_context_read",
+      "pdf_sources",
+      "pdf_render",
+      "image_generate",
+      "page_summary",
+      "calendar_events_list",
+      "memory_search",
+      "memory_read",
+      "history_search",
+      "subagent",
+      "read_file",
+      "notification",
+      "write_todos",
     ])
       expect(absent).not.toHaveProperty(name);
     expect(absent).toHaveProperty("snapshot");
@@ -128,6 +141,106 @@ describe("runAgentLoop (S5)", () => {
     ).toMatchObject({ kind: "done" });
     expect(connectedCalls.mock.calls[0]![0].tools).toHaveProperty("x_operation");
     expect(xOperation).not.toHaveBeenCalled();
+  });
+  it("withdraws optional tools before resuming a parked execution", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    let available = true;
+    const execute = vi.fn(async () => ({
+      park: { kind: "handoff" as const, instruction: "Review" },
+    }));
+    const tools = {
+      optional: {
+        description: "Optional",
+        byline: "Fixture",
+        inputSchema: buildToolManifest().get_time!.inputSchema,
+        available: () => available,
+        execute,
+      },
+    };
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [{ toolCallId: "optional-call", toolName: "optional", input: {} }],
+      },
+      { text: "Stopped optional work" },
+    ]);
+    const opts = { ...baseOpts(transcript), tools, model };
+    // A real execution continuation is only stored for an explicitly retriable parked call.
+    execute.mockImplementation(async () => ({
+      park: {
+        kind: "handoff",
+        instruction: "Review",
+        detail: { retryCall: true },
+      },
+    }));
+    expect(await runAgentLoop(opts)).toMatchObject({ kind: "parked" });
+    available = false;
+    expect(await resumeAgentLoop(opts, "Continue")).toMatchObject({
+      kind: "done",
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(transcript.load("run-1"))).toContain("Unknown tool: optional");
+  });
+  it("publishes only canonical captured operation branches without expanding execution grants", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const grantId = "00000000-0000-4000-8000-000000000001";
+    const googleOperation = vi.fn<NonNullable<LoopToolDeps["googleOperation"]>>(async (input) => {
+      if (input.operation !== "gmail.search") throw new AuxError("permission_denied", "Not captured");
+      return { output: { messages: [] } };
+    });
+    const xOperation = vi.fn<NonNullable<LoopToolDeps["xOperation"]>>(async (input) => {
+      if (input.operation !== "posts.search") throw new AuxError("permission_denied", "Not captured");
+      return { output: { posts: [] } };
+    });
+    const googleOperations: import("@aux/contracts/google").GoogleOperation[] = ["gmail.search"];
+    const xOperations = ["posts.search"] as const;
+    const tools = buildToolManifest({ googleOperations, xOperations });
+    googleOperations.push("gmail.send");
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "forged",
+            toolName: "google_operation",
+            input: {
+              grantId,
+              operation: "gmail.send",
+              args: { to: ["fixture@example.test"], subject: "Fixture", text: "Fixture" },
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "captured-read",
+            toolName: "google_operation",
+            input: { grantId, operation: "gmail.search", args: { query: "in:inbox" } },
+          },
+        ],
+      },
+      { text: "No message sent" },
+    ]);
+    const calls = vi.spyOn(model, "toolCallStep");
+    expect(
+      await runAgentLoop({ ...baseOpts(transcript, { googleOperation, xOperation }), tools, model }),
+    ).toMatchObject({ kind: "done" });
+    const published = calls.mock.calls[0]![0].tools;
+    const googleSchema = JSON.stringify(z.toJSONSchema(published.google_operation!.inputSchema));
+    const xSchema = JSON.stringify(z.toJSONSchema(published.x_operation!.inputSchema));
+    expect(googleSchema).toContain("gmail.search");
+    expect(googleSchema).not.toContain("gmail.send");
+    expect(xSchema).toContain("posts.search");
+    expect(xSchema).not.toContain("messages.send");
+    expect(googleOperation).toHaveBeenCalledTimes(1);
+    expect(googleOperation.mock.calls[0]![0].operation).toBe("gmail.search");
+    expect(xOperation).not.toHaveBeenCalled();
+    expect(JSON.stringify(transcript.load("run-1"))).toContain("No matching discriminator");
+    expect(buildToolManifest({ googleOperations: [], xOperations: [] })).not.toHaveProperty(
+      "google_operation",
+    );
+    expect(buildToolManifest({ googleOperations: [], xOperations: [] })).not.toHaveProperty("x_operation");
   });
   it("parks a proven unsent model admission and resumes without inventing a tool transcript", async () => {
     const { transcript } = fixture();

@@ -255,7 +255,7 @@ describe("S5 manifest — routine_update + notification (06-X)", () => {
     ).rejects.toThrow(/not available/);
   });
 
-  it("notification posts to the dep and stays a no-dep no-op for hosts without notices", async () => {
+  it("notification posts to the dep and refuses missing notice storage", async () => {
     const seen: { text?: string; runId?: string } = {};
     const deps: LoopToolDeps = {
       notify: async ({ text }, c) => {
@@ -267,9 +267,12 @@ describe("S5 manifest — routine_update + notification (06-X)", () => {
       output: { posted: true },
     });
     expect(seen).toEqual({ text: "done soon", runId: "run-1" });
-    // No dep wired → still succeeds (a notice is best-effort).
-    expect(await manifest["notification"]!.execute({ text: "hi" }, ctx({}))).toEqual({
-      output: { posted: true },
-    });
+    await expect(manifest["notification"]!.execute({ text: "hi" }, ctx({}))).rejects.toThrow(/not available/);
   });
+});
+
+it("does not report a saved todo without its durable writer", async () => {
+  await expect(manifest.write_todos!.execute({ todos: ["Keep the original"] }, ctx({}))).rejects.toThrow(
+    /not available/,
+  );
 });

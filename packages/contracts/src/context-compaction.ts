@@ -39,6 +39,8 @@ export type RunContextStats = z.infer<typeof RunContextStatsSchema>;
 
 /** Encrypted run storage only; the API publishes stats without summary content. */
 export const RunContextStateSchema = z.object({
+  /** Exact provider-facing schema bytes from the last prepared original request. */
+  toolsBytes: tokens.optional(),
   projection: ContextProjectionSchema.optional(),
   stats: RunContextStatsSchema,
 });

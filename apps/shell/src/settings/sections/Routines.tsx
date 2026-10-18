@@ -1,4 +1,4 @@
-import { SettingsGroup } from "../../ui";
+import { Select, SettingsGroup } from "../../ui";
 import { staticFieldErrorProps, staticFieldProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
@@ -282,7 +282,7 @@ function CreateRoutineDialog({
         <>
           <label>
             Saved task (optional)
-            <select
+            <Select
               aria-label="Routine source task"
               value={taskId}
               onChange={(event) => setTaskId(event.target.value)}
@@ -294,7 +294,7 @@ function CreateRoutineDialog({
                   {task.title}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {!taskId && (
             <label>
@@ -484,7 +484,7 @@ export function RoutinesSettings({ active }: { active: boolean }) {
         {workspaces.length > 1 && (
           <label className="routine-space-filter">
             Space
-            <select
+            <Select
               aria-label="Routine Space"
               value={workspaceId}
               onChange={(event) => {
@@ -501,7 +501,7 @@ export function RoutinesSettings({ active }: { active: boolean }) {
                   {workspace.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {loading && <output {...staticHintProps}>Loading routines…</output>}
@@ -633,9 +633,10 @@ export function RoutinesSettings({ active }: { active: boolean }) {
                   call may go over it; tested browser replays do not call a model.
                 </span>
                 {routine.trigger.kind === "schedule" && (
-                  <label>
+                  <label htmlFor={`routine-missed-policy-${routine.routineId}`}>
                     When Aux missed a scheduled time
-                    <select
+                    <Select
+                      id={`routine-missed-policy-${routine.routineId}`}
                       aria-label={`${routine.title} missed run policy`}
                       value={routine.missedRunPolicy}
                       disabled={!!busyId}
@@ -647,7 +648,7 @@ export function RoutinesSettings({ active }: { active: boolean }) {
                     >
                       <option value="record_only">Record missed runs</option>
                       <option value="run_once_on_wake">Run once when Aux opens</option>
-                    </select>
+                    </Select>
                     <span {...staticHintProps}>
                       Earlier missed times stay in the results inbox. If a current scheduled time is due, it
                       takes priority. Writes still wait for review.
@@ -666,7 +667,7 @@ export function RoutinesSettings({ active }: { active: boolean }) {
           hint="Suggest saved routines from the current task or page. Scans stay on this device and never start a run."
           searchTerms={["suggestions", "scan frequency", "skills"]}
         >
-          <select
+          <Select
             aria-label="Routine suggestion scan frequency"
             value={scanMode}
             disabled={scanBusy}
@@ -681,7 +682,7 @@ export function RoutinesSettings({ active }: { active: boolean }) {
             <option value="off">Off</option>
             <option value="context">When context changes</option>
             <option value="five-minutes">Every 5 minutes</option>
-          </select>
+          </Select>
         </SettingsField>
         <SettingsField
           label="Missed runs and results"

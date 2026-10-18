@@ -786,6 +786,72 @@ export class RunService {
     );
   }
 
+  /** A historical estimate only; this never captures or grants callable authority. */
+  private contextToolsBytes(run: Run): number {
+    if (run.config?.contextCompaction?.toolsBytes !== undefined)
+      return run.config.contextCompaction.toolsBytes;
+    const host = this.deps.agentLoop;
+    const config = run.config;
+    const taskId = config?.taskId;
+    const goalRun = !!this.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(run.runId);
+    const googleOperations =
+      taskId && !config?.privateTask && this.deps.google
+        ? (this.deps.googleGrants
+            ?.list(taskId)
+            .filter(
+              (grant) =>
+                config?.googleGrantIds?.includes(grant.grantId) &&
+                grant.taskRevision === config?.taskRevision,
+            )
+            .flatMap((grant) => grant.operations) ?? [])
+        : [];
+    const xOperations =
+      taskId && !config?.privateTask && this.deps.x
+        ? (this.deps.xGrants
+            ?.list(taskId)
+            .filter(
+              (grant) =>
+                config?.xGrantIds?.includes(grant.grantId) && grant.taskRevision === config?.taskRevision,
+            )
+            .flatMap((grant) => grant.operations) ?? [])
+        : [];
+    const manifest = buildToolManifest({ googleOperations, xOperations });
+    const calendar = !!(
+      taskId &&
+      config?.calendarGrantIds?.length &&
+      this.deps.calendar &&
+      this.deps.operations
+    );
+    const optional: Record<string, unknown> = {
+      calendar_events_list: calendar,
+      image_generate: host?.generateImage,
+      page_summary: host?.summarizePage,
+      desktop_context_search: host?.desktopContextSearch,
+      desktop_context_read: host?.desktopContextRead,
+      history_search: host?.historySearch,
+      memory_search: host?.memorySearch,
+      memory_read: host?.memoryReadSource,
+      routine_update: host?.routineUpdate,
+      notification: host?.notify,
+      goal_update: goalRun && host?.goalUpdate,
+      bash: host?.bash,
+      webfetch: host?.webFetch || host?.prepareWebFetch,
+      websearch: host?.webSearch || host?.prepareWebSearch,
+      subagent: !goalRun && host?.subagents?.spawnCell,
+      subagent_wait: !goalRun && host?.subagents?.waitCell,
+      subagent_send: !goalRun && host?.subagents?.sendCell,
+      subagent_stop: !goalRun && host?.subagents?.cancelCell,
+    };
+    for (const [name, implemented] of Object.entries(optional)) if (!implemented) delete manifest[name];
+    if (!host?.processPdf || host.pdfReady?.() === false) {
+      for (const name of Object.keys(manifest)) if (name.startsWith("pdf_")) delete manifest[name];
+    } else if (!host.pdfSources) delete manifest.pdf_sources;
+    const allowed = config?.agentProfile?.tools;
+    if (allowed && !allowed.includes("*"))
+      for (const name of Object.keys(manifest)) if (!allowed.includes(name)) delete manifest[name];
+    return modelTools(manifest).bytes;
+  }
+
   contextStats(runId: string): RunContextStats {
     const run = this.deps.repo.getRun(runId) ?? this.coordinator.get(runId);
     if (run.config?.contextMemoryRevoked)
@@ -832,7 +898,7 @@ export class RunService {
           webEnabled: true,
           hasProject: !!run.config?.projectRoot,
         }),
-        toolsBytes: modelTools(buildToolManifest()).bytes,
+        toolsBytes: this.contextToolsBytes(run),
       },
     );
   }
@@ -919,7 +985,7 @@ export class RunService {
           webEnabled: true,
           hasProject: !!run.config.projectRoot,
         }),
-        toolsBytes: modelTools(buildToolManifest()).bytes,
+        toolsBytes: this.contextToolsBytes(run),
       },
       {
         contextTokens: summaryCapability?.contextTokens ?? (route.kind === "on-device" ? 4_096 : 16_000),
@@ -2736,10 +2802,7 @@ export class RunService {
         run.config?.privateTask ||
         !run.config?.xGrantIds?.includes(input.grantId)
       )
-        throw new AuxError(
-          "permission_denied",
-          "This original run has no active X operation authority.",
-        );
+        throw new AuxError("permission_denied", "This original run has no active X operation authority.");
       const signal = AbortSignal.any([
         control.abort.signal,
         ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),

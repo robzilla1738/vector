@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   rpc.mockReset();
   viewState.layout.activeSpaceId = "space-view";
+  viewState.settings.routineSuggestionScan = "off";
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -261,4 +262,37 @@ it("follows the Home Space on reopening and hides the previous Space while its r
     finish([{ routineId: "second", title: "Second Space routine", trigger: { kind: "manual" } }]),
   );
   expect(container.textContent).toContain("Second Space routine");
+});
+
+it("keeps suggestion selection on the original native control and saves only its explicit changed value", async () => {
+  let finish!: () => void;
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list" || method === "routines.list" || method === "routines.inbox") return [];
+    if (method === "settings.set")
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<RoutinesSettings active />));
+  const select = container.querySelector<HTMLSelectElement>(
+    '[aria-label="Routine suggestion scan frequency"]',
+  )!;
+  select.focus();
+  expect(select.querySelectorAll("selectedcontent")).toHaveLength(1);
+  await act(async () => {
+    select.value = "context";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(select.disabled).toBe(true);
+  expect(rpc).toHaveBeenCalledWith("settings.set", { routineSuggestionScan: "context" });
+  viewState.settings.routineSuggestionScan = "context";
+  await act(async () => finish());
+  expect(container.querySelector('[aria-label="Routine suggestion scan frequency"]')).toBe(select);
+  expect(select.value).toBe("context");
+  expect(select.selectedOptions[0]!.text).toBe("When context changes");
+  expect(select.disabled).toBe(false);
+  expect(
+    rpc.mock.calls.some(([method]) => ["runs.start", "routines.run", "google.auth.start"].includes(method)),
+  ).toBe(false);
 });

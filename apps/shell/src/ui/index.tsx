@@ -423,7 +423,24 @@ export function Select({
   controlRef,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { controlRef?: (node: HTMLSelectElement | null) => void }) {
-  return <select {...props} ref={controlRef} className={`ui-select ${props.className ?? ""}`} />;
+  const button = useRef<HTMLButtonElement | null>(null);
+  const attach = useCallback(
+    (node: HTMLSelectElement | null) => {
+      button.current?.remove();
+      button.current = null;
+      if (node && !props.multiple && props.size === undefined) {
+        // Chromium owns the label clone; React owns the original options and selection.
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.append(document.createElement("selectedcontent"));
+        node.prepend(trigger);
+        button.current = trigger;
+      }
+      controlRef?.(node);
+    },
+    [controlRef, props.multiple, props.size],
+  );
+  return <select {...props} ref={attach} className={`ui-select ${props.className ?? ""}`} />;
 }
 
 export function RadioCard({

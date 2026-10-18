@@ -27,6 +27,29 @@
   select:not([multiple]):not([size]) {
     appearance: base-select;
   }
+  .ui-select:not([multiple]):not([size]) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-select:not([multiple]):not([size]) > button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1-5);
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    font: inherit;
+    text-align: start;
+  }
+  .ui-select:not([multiple]):not([size]) > button > selectedcontent {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   select:not([multiple]):not([size])::picker(select) {
     appearance: base-select;
     min-width: max(144px, anchor-size(width));

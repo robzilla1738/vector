@@ -285,6 +285,7 @@ export async function prepareConversationContext(input: {
   messages = materialized;
   const projected = projectWorkingContext(messages, options);
   let state: RunContextState = {
+    toolsBytes: options.toolsBytes,
     projection: previous,
     stats: {
       ...initialContextStats(input.runId, input.modelId, messages, options),
@@ -503,6 +504,7 @@ export async function prepareConversationContext(input: {
       );
     check();
     state = {
+      ...state,
       projection,
       stats: {
         ...state.stats,

@@ -165,6 +165,7 @@ export function codingToolManifest(): LoopToolManifest {
     Object.entries(definitions).map(([name, definition]) => [
       name,
       {
+        available: (deps) => !!deps.codingTool,
         description: definition.description,
         byline: "Aux governed coding",
         inputSchema: definition.schema,
