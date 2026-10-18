@@ -11,8 +11,7 @@
   .memory-items,
   .browsing-memory,
   .browsing-memory-list article,
-  .conversation-task-card,
-  .save-conversation-task {
+  .conversation-task-card {
     border: 0;
   }
 

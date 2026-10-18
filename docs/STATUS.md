@@ -8,12 +8,23 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The next startup slice removes 22 proven obsolete task-save, takeover-card and
+library-filter rules plus one obsolete selector branch. Current Take over, task
+and library controls, shared wait styles and all other declarations stay intact.
+Matched renderer builds reduce startup CSS by another 2,460 bytes to 199,011;
+total CSS becomes 447,575 bytes. JavaScript byte totals stay unchanged, while
+144 emitted hashes differ through asset filenames. CSS remains 14,691 bytes above
+180KiB. The rebuilt cumulative check passes all 5,895 tests across 856 files in
+128.49s, with 572 unchanged advisories. [The exact deletion/build record](evidence/aside-dead-surface-css-2026-10-18.json)
+preserves source/cascade/producer proofs and independent asset review. No native
+timing, visual parity or full-program acceptance is claimed.
+
 Gateway now forwards selected relative effort through the shared SDK7 request
 for known reasoning-capable OpenAI, Anthropic and Google models. This fixes omitted
 Anthropic/Google effort and removes the local OpenAI xhigh→high downgrade, while
 retaining caller-native precedence, direct-provider preparation and the existing
-unset helper policy. The rebuilt check passes all5,895tests/856files in130.31s
-with572 unchanged advisories. One bounded live project-key Exa probe sends medium
+unset helper policy. The rebuilt check passes all 5,895 tests across 856 files in 130.31s
+with 572 unchanged advisories. One bounded live project-key Exa probe sends medium
 on the actual wire, executes the exact public query/domain/two-result parameters
 and returns two IANA sources with distinct source IDs. Gateway and search costs
 remain separate observations because inclusion is unverified. This is client/SDK

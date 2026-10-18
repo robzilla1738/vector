@@ -218,6 +218,14 @@ internal provider thinking/native manual20 remain unproven; see
 [the exact source/live record](evidence/aside-gateway-effort-search-2026-10-18.json).
 No outcome node is marked complete by this client probe.
 
+A further A1 slice removes 22 proven obsolete task/takeover/library CSS rules and
+one selector branch, preserving live controls and all remaining rules. Matched
+startup CSS is 199,011 bytes (-2,460), still 14,691 bytes over 180KiB; JavaScript
+byte totals remain unchanged, with emitted filename hash propagation recorded.
+The rebuilt cumulative check passes 5,895 tests across 856 files in 128.49s with
+572 unchanged advisories. [The deletion evidence](evidence/aside-dead-surface-css-2026-10-18.json)
+keeps private renderer bytes separate from current native acceptance.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

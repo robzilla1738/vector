@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "baseline": "476082b177942d83d2c18a5a2b934efb34f75850",
+  "privateRendererBaseline": "4ded324c179026ea0e715aa8c76c86f03eff8520",
+  "scope": "Remove proven obsolete task-save, takeover-card and library-filter CSS. Current producers/control logic and all remaining rules/declarations/cascade stay unchanged.",
+  "source": {
+    "wholeRulesRemoved": 22,
+    "mixedSelectorBranchesRemoved": 1,
+    "obsoleteMirrorAssertionRemoved": 1,
+    "rawCssBytesRemoved": 3165,
+    "files": [
+      {
+        "path": "apps/shell/src/styles/workspace.css",
+        "before": "255f382e489d06e2281d09abc320b7c826196a751872686adae6cf36cc5cc74a",
+        "after": "d5634f3a921b22d66f9aed058f4de58e298917a2bc580e2fe43c4382bf15639c",
+        "beforeBytes": 49937,
+        "afterBytes": 49013
+      },
+      {
+        "path": "apps/shell/src/styles/agent.css",
+        "before": "d95e1004056ddf3765c234dff83350aa2bb6c31d798e6848765777b8bc0b421f",
+        "after": "45b75420123e7ce9debe277589b3450b23239dd59201704f911af3b1f4ef4afb",
+        "beforeBytes": 26734,
+        "afterBytes": 25815
+      },
+      {
+        "path": "apps/shell/src/styles/surfaces.css",
+        "before": "2fdce100c8c5887b709f903aea16855a58659db6f7b110e0fef4b0f081dc0cda",
+        "after": "7402a91e976d16270ace0be03ac917a75024346fa554490d7bd7ff2cda8e7579",
+        "beforeBytes": 49580,
+        "afterBytes": 48285
+      },
+      {
+        "path": "apps/shell/src/styles/chrome-polish.css",
+        "before": "cd2a655d226e6ebdd903f6b88de910526690d209ccd6a82247227d97d1859a36",
+        "after": "777f5cf837b884016d8c6ba5103500345449531e35f819922fbe8fc67872735b",
+        "beforeBytes": 12936,
+        "afterBytes": 12909
+      },
+      {
+        "path": "tests/unit/chrome-tokens.test.ts",
+        "before": "00303e2e42799532417b8cc904cd58c502e102692cfa781ffea33357d7fa2316",
+        "after": "6047011e765c3cd174fa6e8d107d6309252b897637603d6659d7b52d610c00f3",
+        "beforeBytes": 22817,
+        "afterBytes": 22732
+      }
+    ],
+    "allOtherAstRawOrderAndDeclarationsExact": true,
+    "eightLiveMixedSelectorMembersRetained": true,
+    "actualTakeOverAndTimelineReceiptStylesRetained": true
+  },
+  "privateBuild": {
+    "mode": "production",
+    "AUX_CHROMIUM_SHELL_BUILD": "1",
+    "command": "pnpm --filter @aux/shell build",
+    "bothExitCode": 0,
+    "metrics": {
+      "startupCssBytes": {
+        "before": 201471,
+        "after": 199011,
+        "delta": -2460
+      },
+      "totalCssBytes": {
+        "before": 450035,
+        "after": 447575,
+        "delta": -2460
+      },
+      "startupJsBytes": {
+        "before": 618803,
+        "after": 618803,
+        "delta": 0
+      },
+      "totalJsBytes": {
+        "before": 3181214,
+        "after": 3181214,
+        "delta": 0
+      }
+    },
+    "cssAssetCount": 63,
+    "unchangedCssAssetCount": 62,
+    "changedCss": {
+      "before": [
+        {
+          "file": "assets/main-DUoBo-2B.css",
+          "bytes": 188889,
+          "sha256": "9aea1306ca0e910600c5a52225b04ed5e52d85caa9a37d1ff98be0cada539320",
+          "type": "css",
+          "startup": true
+        }
+      ],
+      "after": [
+        {
+          "file": "assets/main-CBGLVpqz.css",
+          "bytes": 186429,
+          "sha256": "447ada56ce151f83c44e4928dca11f743af98ab1bf93bbe6d7d90dd6188fc0c2",
+          "type": "css",
+          "startup": true
+        }
+      ]
+    },
+    "jsAssetCount": 204,
+    "rawChangedJsAssetCount": 144,
+    "rawJsIdentical": false,
+    "knownAssetFilenameNormalizedPayloadsEqual": true,
+    "normalizationDiagnosticOnly": true
+  },
+  "privateValidation": {
+    "minimalContractsFilterDriverBuild": "exit0",
+    "existingChromeTokens": "26/26, once,1file,943ms command,176ms bodies",
+    "shellTypes": "exit0",
+    "scopedLint": "exit0/no advisories",
+    "format": "exit0",
+    "noNewTests": true
+  },
+  "chronology": [
+    "Initial setup cwd did not exist and old system Python tar extractall(filter=...) unavailable; tracked archive extracted with supported interface, first no-manifest install failure retained in install.log, canonical offline frozen ignore-scripts install2 passed.",
+    "Preparation raw-edit assertion caught PostCSS end.offset is exclusive; original source restored and corrected prepare2 proof succeeded before source-v1 freeze, no validation of bad candidate.",
+    "All subsequent minimal dependency/Vite/test/type/lint/format commands passed first attempt; no product failures or timeout adjustment.",
+    "Full3030 source metadata checks were slower under concurrent stock work but completed naturally; no helper/process was force-retired."
+  ],
+  "reviewArtifacts": [
+    {
+      "path": "/tmp/aux-dead-css-22-4ded-v1/evidence.json",
+      "sha256": "bd4fb359701c459cb635452eaa075b62cd78ccba1d6cff719a59723216341c85"
+    },
+    {
+      "path": "/tmp/aux-dead-css-22-4ded-v1/handoff.md",
+      "sha256": "e5387f2521a51af92e6db936ee4884e25692795d50cef9cdd7bed5aacfb8bbf0"
+    },
+    {
+      "path": "/tmp/aux-dead-css-22-root-apply-2026-10-18.json",
+      "sha256": "b67bef7ed200f199f1f84f7c134199381b56846bca0cc50966cddb81294eccc9"
+    },
+    {
+      "path": "/tmp/aux-dead-css-22-4ded-v1-source-independent-review.json",
+      "sha256": "58642150da6cf8d96b1dcf73dae5377a79368b1e17f99ff7c5f292bdb953db32"
+    },
+    {
+      "path": "/tmp/aux-dead-css-22-4ded-v1-assets-independent-proof.json",
+      "sha256": "765a1f103bec3484effe861f98cf21d4e4e4b9df10faddf11ebe17533e5c050a"
+    },
+    {
+      "path": "/tmp/aux-dead-css-22-4ded-v1-final-independent-review.json",
+      "sha256": "d63141ad0a6c60245bfa698fe4f4dfcbfe0c57d357537aa579e274184830758d"
+    }
+  ],
+  "authorArtifacts": {
+    "source-v1.patch": {
+      "sha256": "173ee0f346fb39975b0ca10e63887b317901932f94a67782e1e0c541318fcb27",
+      "bytes": 5612
+    },
+    "source-proof.json": {
+      "sha256": "86e623b33457d24fff900ca252349464cc910ddf58b64a3e98b9a2fbb6924dfb",
+      "bytes": 9297
+    },
+    "hashes.json": {
+      "sha256": "b3f228ce4be972fe05ca4786896f8d1f79950badfe938c42ba83d538c75f5e07",
+      "bytes": 1594
+    },
+    "apply-proof.json": {
+      "sha256": "c482e765e41988f12e543f301f9eb1b2eeef703e8eb0ed4a5824f06dda9e4888",
+      "bytes": 180
+    },
+    "producer-proof.json": {
+      "sha256": "50d3c8a5993634cd4a412ab0ac7a9fb9266b6aa843cd3503c1d573ecbcd4a92a",
+      "bytes": 1542
+    },
+    "full-before-source-hashes.json": {
+      "sha256": "5ea3ef1b2408b25010ea3086048ddc13fc4695f495354650bde42f372c688212",
+      "bytes": 457160
+    },
+    "before-source-check.json": {
+      "sha256": "f6824b7ffdd84f25f9e8fd499f24be1e3970ab9ae3cd73cffcf7ee0a3c6c76b9",
+      "bytes": 118
+    },
+    "after-source-check.json": {
+      "sha256": "59921fabc09bb054b40ef25ae8e9bd3e5253a7290d94e2647fab41a360bcb68e",
+      "bytes": 117
+    },
+    "final-source-check.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "bundle-comparison.json": {
+      "sha256": "eab9cbca51a9401e44b335589a1a4e0b8a67908786c9ba25cdbd0f9fc6c6b64d",
+      "bytes": 179644
+    },
+    "measure.mjs": {
+      "sha256": "e8c7c13ae6db0b242c3c84c8e4e93ce3c07047b49b27576f05e6de802b5822ed",
+      "bytes": 3830
+    },
+    "measure.log": {
+      "sha256": "3c4f6e649b641ef16967e6075b3fabfbc4438b8bf371a5554a6b67d510c24223",
+      "bytes": 959
+    },
+    "install.log": {
+      "sha256": "2b24906cc1db8af3f766c2c8865fa6d559635160d687e6f628fa4eddad820ad5",
+      "bytes": 93
+    },
+    "install2.log": {
+      "sha256": "47f29f671b936e5bb936adf2c80c68fb2110f835e84067d20e013d76ffc0f373",
+      "bytes": 1605
+    },
+    "dependencies-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "vite-before.log": {
+      "sha256": "be857aea3cb347313bd648459c558ce77a2b61ed2a1219aec3812cdffc78b10e",
+      "bytes": 31465
+    },
+    "vite-after.log": {
+      "sha256": "1b836104a9c03758886f05b7b29003cb421ac88778c094cf4cd4cb4bfb3dba2d",
+      "bytes": 31464
+    },
+    "chrome-tokens.log": {
+      "sha256": "57cf42cb7677a4252e30aeb0b00d1bcd6d0b8037336c3d9b681eef8daef78342",
+      "bytes": 303
+    },
+    "shell-types.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "lint.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "format.log": {
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "bytes": 66
+    },
+    "prepare.mjs": {
+      "sha256": "ef43ac60bd32e034306e7047bb22229cba30cdd357c16e8b4cd57360c94dfc04",
+      "bytes": 3765
+    },
+    "prepare2.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "rootIntegrated": {
+    "command": "npm run check",
+    "runtimeDistRebuiltBeforeTests": true,
+    "exitCode": 0,
+    "tests": 5895,
+    "files": 856,
+    "durationSeconds": 128.49,
+    "lintAdvisories": 572,
+    "unchangedAdvisories": true,
+    "log": {
+      "path": "/tmp/aux-dead-css-22-integrated-check-2026-10-18.log",
+      "sha256": "65ae37c2c95f3bc4ff9aeb1a8e4bd279adb7e8d1199fd08a73960c8f22706554"
+    },
+    "lintComparison": {
+      "path": "/tmp/aux-dead-css-22-lint-comparison-2026-10-18.json",
+      "sha256": "8da9ec57f37f4bcb86f5043c1402d7f99789ff41c1a5ce692082be117cd95210"
+    }
+  },
+  "limits": [
+    "Matched byte measurements only; Vite27.96s/6.73s are not browser timing/performance acceptance.",
+    "Startup CSS199011B remains14691B over180KiB/184320B.",
+    "Raw JS hashes differ144of204 because known emitted asset names propagate; equal sizes and diagnostic normalized payloads are not raw-identity claim.",
+    "No main/native/Profile/GUI/provider request/paid search/run grant/newAPI/fullsuite/nativebuild by author.",
+    "Source code hash evidence is4ded renderer baseline; later root runtime-only reasoning change is separately owned and not included in this matched build.",
+    "Root applied all five exact pre/postimages across later runtime-only reasoning commit. Private matched renderer evidence is not the unstaged current native bundle.",
+    "Root integrated check rebuilds runtime dist and tests cumulative current source. Current native UI/browser comparison, manual20>=18/20, matching-stock performance and original155 crash resolution remain open."
+  ],
+  "result": "Reviewed CSS deletion passes the rebuilt cumulative full check; native acceptance and full program remain incomplete."
+}
