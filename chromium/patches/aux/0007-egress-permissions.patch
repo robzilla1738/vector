@@ -93,10 +93,10 @@ index 6fff9bd..880ce03 100644
    // HTTP interstitial on fallback.
 diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
 new file mode 100644
-index 0000000..8de01a3
+index 0000000..d328436
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_controller.cc
-@@ -0,0 +1,2321 @@
+@@ -0,0 +1,2330 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/aux/egress_controller.h"
 +#include <limits>
@@ -523,11 +523,20 @@ index 0000000..8de01a3
 +      return Fault("Another original run owns this session page");
 +    return before;
 +  }
++  const auto previous = pages_.find(page_id);
++  if (previous == pages_.end() || !previous->second->lease.empty() ||
++      !previous->second->navigation_transition_id.empty())
++    return Fault("Previous session request authority has not retired");
 +  auto [isolation_id, partition] = ReserveIsolation(run_id, String(params, "taskId"), revision, true);
 +  if (isolation_id.empty() || !partition.is_default() || !original_current.Run() ||
 +      !RegisterIsolation(page, isolation_id, run_id, String(params, "taskId"), revision,
 +                         ancestry, connection_generation, true))
 +    return Fault("Original Profile partition admission failed");
++  // This is a fresh, native-authorized session adoption, not continuation of
++  // the previous task's installed document. Its empty retired lease cannot
++  // require a CDP navigation receipt from that earlier task. Keep the old
++  // document protection tombstone and credential provenance untouched.
++  pages_[page_id]->installed_document_token.clear();
 +  borrowed_sessions_.emplace(page_id, std::make_pair(token, std::move(original_current)));
 +  pages_[page_id]->human_session_document =
 +      page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
@@ -2418,6 +2427,7 @@ index 0000000..8de01a3
 +  }
 +}
 +}  // namespace aux
+
 diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
 new file mode 100644
 index 0000000..61c102f

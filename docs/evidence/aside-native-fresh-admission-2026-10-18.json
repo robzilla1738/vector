@@ -1,0 +1,281 @@
+{
+  "source": "ea0dfafb6833a35f3ef020705eb1eb67a9fe5cc3",
+  "frameworkUUID": "4C4C445F-5555-3144-A1C8-CB9BAB3C1E3A",
+  "built": {
+    "steps": 25,
+    "seconds": 486.93,
+    "hostABI": "550bdeb5fbbd9e501d0d17ecf1854f19f76d634f8afff1b4f1e5541c012d57b2",
+    "fullICUBytes": 33105536,
+    "symbols": "/tmp/aux-ea0dfafb6-native-symbols/identity.json",
+    "log": "/tmp/aux-current-ea0dfafb6-native-2026-10-18.log"
+  },
+  "partialManual20": {
+    "report": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/reports/tasks-local-2026-10-18T14-02-24-542Z.json",
+    "sha256": "ae9017431b90e505aa042eedad34cf96b03a80341d1f71844131302e36264331",
+    "complete": false,
+    "rows": [
+      {
+        "id": "L01-owner",
+        "score": 1,
+        "status": "completed",
+        "runId": "run_mvdwapkw_0gyagx",
+        "runtimeModel": "anthropic/claude-sonnet-5.5",
+        "modelCalls": 1,
+        "inputTokens": 36490,
+        "outputTokens": 142,
+        "cachedInputTokens": 0,
+        "costUsd": 0.092643,
+        "costComplete": true,
+        "modelDurationMs": 2817,
+        "message": "Done"
+      },
+      {
+        "id": "L02-status",
+        "score": 0,
+        "status": "failed",
+        "runId": "run_mvdwbypx_55xfor",
+        "runtimeModel": null,
+        "modelCalls": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "costUsd": null,
+        "costComplete": false,
+        "modelDurationMs": null,
+        "message": "New document requires its exact original navigation transition"
+      }
+    ],
+    "retirement": "After L02 failed and scored, L03 awaiting submission with no active run; exact original runner38343 SIGTERM, session26766 joined143. No retry or effect replay."
+  },
+  "nativeObservations": {
+    "sameTabHandback": "L01 complete then New conversation / Cmd-L samepage rec12. Actual native page URL,title,owner/status/body painted, no ERR_BLOCKED_BY_CLIENT. Next AI reuse failed separately before inference.",
+    "selectedContext": {
+      "atUTC": "2026-10-18T14:04:22.005Z",
+      "scope": "Read-only own disposable synthetic run source identity only; no token/transcript/key exported",
+      "runs": [
+        {
+          "runId": "run_mvdwapkw_0gyagx",
+          "status": "completed",
+          "pageIds": [
+            "8ec5d599-4ffc-43c3-aab9-b75c6a1506b8"
+          ],
+          "config": {
+            "privateTask": false,
+            "contextPageRefs": [
+              {
+                "pageId": "8ec5d599-4ffc-43c3-aab9-b75c6a1506b8",
+                "url": "http://127.0.0.1:4810/records",
+                "documentEpoch": 1,
+                "sessionId": "cfc9e282-3f06-4b03-afbe-8fbd5e340ca9",
+                "selectedAt": 1792332170235
+              }
+            ],
+            "mentions": [],
+            "nativeTurnContextPresent": true
+          }
+        },
+        {
+          "runId": "run_mvdwbypx_55xfor",
+          "status": "failed",
+          "pageIds": [
+            "8ec5d599-4ffc-43c3-aab9-b75c6a1506b8"
+          ],
+          "config": {
+            "privateTask": false,
+            "contextPageRefs": [
+              {
+                "pageId": "8ec5d599-4ffc-43c3-aab9-b75c6a1506b8",
+                "url": "http://127.0.0.1:4810/records/rec-12",
+                "documentEpoch": 2,
+                "sessionId": "50abe50a-864f-4e74-98de-80128f8a5960",
+                "selectedAt": 1792332228736
+              }
+            ],
+            "mentions": [],
+            "nativeTurnContextPresent": true
+          }
+        }
+      ],
+      "pages": [
+        {
+          "pageId": "8ec5d599-4ffc-43c3-aab9-b75c6a1506b8",
+          "url": "http://127.0.0.1:4810/records/rec-12",
+          "sessionId": "50abe50a-864f-4e74-98de-80128f8a5960",
+          "documentEpoch": 2,
+          "ownedByRuntime": false,
+          "viewStatus": "visible",
+          "windowId": "16708999"
+        }
+      ]
+    },
+    "normalDimensions": {
+      "action": "Native Window > Fill",
+      "physical": [
+        3424,
+        1978
+      ],
+      "logicalAt2x": [
+        1712,
+        989
+      ]
+    },
+    "searchEnginePopup": "Corrected border-free selected-aligned custom popup observed in both themes. Dark initial selected focus, Down/End/Escape, original trigger return; no save. Narrow/disabled/forced-colors remain unverified.",
+    "appearance": "Actual Light theme saved in disposable Profile; native control Escape focus return. Theme native select opens below trigger rather than selected-item aligned; separate reference gap remains.",
+    "narrowResize": "Attempted CUA edge drags did not change actual captured size; not accepted as narrow comparison or product resize defect."
+  },
+  "newNativeFix": {
+    "proposalSHA256": "26a29a51fd7aa2197425149b10b8c4433ec0cf1c623fb2a54316ae1bb71c6b29",
+    "application": {
+      "method": "Exact source pre/post plus proposal applied to original area0007 added-file body in private directory; retain all later area patches",
+      "nativeBefore": "2ef68f2ac269794e488f6466b03f610c9f0be9b5018b57d8fb3d38f019c606e2",
+      "nativeAfter": "734e7ff9c25b4eea821b7bf6f6f688515a37ccc77bca1af5ffd7c66090a8a36c",
+      "canonicalAreaBefore": "87185212ba6ecdb3af5df1b53cbfefe2d4bc2b3143e1a2f4603eecb0ee3b5773",
+      "canonicalAreaAfter": "7fddf695d279b3fb24b2cfee6234b30d8709d437593cf2c54525b7607bc2d5cf",
+      "areaFileBefore": "ffbb53130b863c7116d80f7f3d6e517cbdfde13ae06183b4b8708c315d6b849b",
+      "areaFileAfter": "22937c00dee5e2ce6f68e82709f75cc607a95622da76e4ee174c6bebd9c0647d",
+      "privateApplyDirectory": "/tmp/aux-egress-area0007-fold-oTYrPl",
+      "allOtherAreaBytesPreserved": true,
+      "fullSeriesReplay": "independently verified all68 areas/940 paths and modes"
+    },
+    "review": {
+      "scope": "Independent read-only source review; no product/native/Profile/API/GUI/build/test mutation or execution. Only unique review artifact written.",
+      "patch": {
+        "path": "/tmp/aux-native-fresh-session-admission-ea0df-v1/proposal.patch",
+        "sha256": "26a29a51fd7aa2197425149b10b8c4433ec0cf1c623fb2a54316ae1bb71c6b29",
+        "beforeSHA256": "2ef68f2ac269794e488f6466b03f610c9f0be9b5018b57d8fb3d38f019c606e2",
+        "afterSHA256": "734e7ff9c25b4eea821b7bf6f6f688515a37ccc77bca1af5ffd7c66090a8a36c",
+        "stablePreimageExact": true
+      },
+      "verdict": "No concrete blocker found for the narrow fresh-session marker reset against current actual source. Source proposal only: compile and genuine original-owner two-run/retirement observations remain required.",
+      "reviewedSourceHashes": {
+        "chrome/browser/ui/aux/egress_controller.cc": "2ef68f2ac269794e488f6466b03f610c9f0be9b5018b57d8fb3d38f019c606e2",
+        "chrome/browser/ui/aux/egress_controller.h": "14bc056afbf668edeadae2d1f02547fd94d9c6a9745c9ae6e77dae24ef6c3895",
+        "chrome/browser/ui/aux/runtime_host.cc": "2a15de2efd2b77362e07fb4c95cf294b922045ba2aa5e2e73072be5a97201a01",
+        "chrome/browser/ui/aux/cdp_broker.cc": "26136589dad47d9b9ce03ac4870f357ad3dda54859c3d68e43c34d2dcb8b4a8b"
+      },
+      "observedFilteredSource": {
+        "sourcePath": "/tmp/aux-native-ea0dfafb6-acceptance/first-two-run-context.json",
+        "sourceSHA256": "99c8113bc375f536bf2aa57a61e5e05a4c3fc7150a759bbb21272b2377dbab69",
+        "sourceScope": "Read-only own disposable synthetic run source identity only; no token/transcript/key exported",
+        "supportsDiagnosis": {
+          "samePage": true,
+          "secondExactlyMatchesCurrent": true,
+          "firstDocumentEpoch": 1,
+          "secondDocumentEpoch": 2,
+          "extraRunPageCount": 0,
+          "oldMultiPageExpansionNotPresent": true
+        },
+        "proposalAuthorityBoundary": "New nativeAdoptSessionPage branch only after existing-scope reuse return; retired old request metadata marker only. No authority claimed merely from same URL/epoch."
+      },
+      "findings": [],
+      "reasoning": [
+        "Context captures exact current native page/document token before adoption; runtime_host.cc3063\u20133105 independently binds original regular native window/profile/page and connection before calling AdoptSessionPage. Existing same-scope branch validates borrowed token/run/task/ancestry and returns before reset, so it cannot clear a running scope transition marker.",
+        "New branch refuses residual lease or navigation_transition_id before Reserve/Register. The reset executes only after existing actual partition/run-intent/runtime generation/ancestry checks succeed in RegisterIsolation. It changes only prior installed_document_token bookkeeping; native new lease still needs exact current frame/documentToken/origin/isolation/run/task/controlGeneration/expiry.",
+        "Old document EgressDocument.protection remains guarded; credential_run_id remains on actual document and Install still refuses a different run in a credential-bearing same document. Fresh human B cannot gain authority from A token. Source document protection, opaque transport state, person/takeover flags and old credential records are not reset by proposed line.",
+        "ReleaseIsolation clears original lease/transition and rotates control generation; CancelChecks erases original pending/in_flight entries before invoking denial callbacks. Later responses holding those IDs cannot dispatch/replay. Current checks require live current primary frame/document plus exact current run/isolation/lease identity.",
+        "RegisterIsolation sends authority_observers_.Notify synchronously before returning. Actual observers read/revoke mapped input authority or enqueue Worker notification; reviewed current concrete callbacks do not synchronously install a new lease or replace original page between registration and reset. No new external callback is added. Existing AdoptSessionPage already performs post-Register borrowed-map/state writes; a new mutating subscriber would require re-review, not a blanket claim of arbitrary reentrant safety.",
+        "ReserveIsolation itself only returns a candidate ID/config on fresh run; a rejected Register cannot reach the reset. Existing successful registration/observer publication followed by end Context failure has no new rollback path in this proposal; it remains fail-closed guarded state and requires original cleanup. No success/cleanup proof is invented."
+      ],
+      "precision": [
+        "For A\u2192B navigation, A old WeakDocument/current-primary contexts and original captured lease callbacks remain refused. Do not overclaim that every future same-document old factory request is permanently refused: EgressRequestContext contains document/page/protection, not an original lease/generation; Check obtains the current lease, so a genuinely re-admitted same document can produce new requests under new-run projection/approval. This existing semantic is not changed by clearing marker.",
+        "An empty old lease is retirement evidence only within native existing original lifecycle; it is not provider/write completion or complete pending receipt proof. Active old isolation hits reuse/ownership refusal before new branch.",
+        "Current observed filtered metadata proves source identity shape and no extra-page expansion, not execution of proposed native source. No approximate old symbols/crash claim or mirror-test evidence."
+      ],
+      "requiredAcceptance": [
+        "Compile actual native area replay and observe runA success\u2192normal retirement\u2192human omnibox newdocB painted\u2192fresh runB success with exact fresh native source identity.",
+        "Prove oldA request/context and canceled original pending replies cannot send under B; inspect actual new run/isolation/control/document receipts without secrets.",
+        "Same document fresh adoption after complete retirement retains credential-provenance rejection; active/residual lease/transition refuses rather than clears.",
+        "Within-run changed-document without exact CDP transition remains refused; genuine matching one-use transition works and existing-scope adoption does not clear it.",
+        "Stop/Take over/source/window/native generation changes still retire original run; uncertain cleanup stays visibly incomplete rather than silently admitting or replaying."
+      ]
+    },
+    "fold": {
+      "canonicalAreaPath": "chromium/patches/aux/0007-egress-permissions.patch",
+      "beforeSHA256": "87185212ba6ecdb3af5df1b53cbfefe2d4bc2b3143e1a2f4603eecb0ee3b5773",
+      "afterSHA256": "7fddf695d279b3fb24b2cfee6234b30d8709d437593cf2c54525b7607bc2d5cf",
+      "sectionCount": 25,
+      "changedSectionCount": 1,
+      "onlyChangedSection": "chrome/browser/ui/aux/egress_controller.cc",
+      "allOtherSectionBytesPreserved": true,
+      "originalAddedBodyBeforeSHA256": "ffbb53130b863c7116d80f7f3d6e517cbdfde13ae06183b4b8708c315d6b849b",
+      "originalAddedBodyAfterSHA256": "22937c00dee5e2ce6f68e82709f75cc607a95622da76e4ee174c6bebd9c0647d",
+      "originalAddedBodyAuthorProposalFreshApplyMatches": true,
+      "freshBodyApplyDirectory": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-fresh-session-0007-independent-0mlggdmn",
+      "stableSourceExactlyAuthorPostimage": true,
+      "stableSourceSHA256": "734e7ff9c25b4eea821b7bf6f6f688515a37ccc77bca1af5ffd7c66090a8a36c",
+      "limits": "Read-only stable/main; all apply commands only unique temporary repository/files. No compile/native/Profile/GUI/API."
+    },
+    "fullReplay": {
+      "createdUTC": "2026-10-18T14:12:50.212827+00:00",
+      "sourceRepository": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+      "sourceBaseHEAD": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "sourceGitIndexModified": false,
+      "sourceWorktreeModified": false,
+      "sourceObjectDatabaseWritten": false,
+      "replay": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-native68-full-series-replay-v2-ohvze3ob",
+      "temporaryIndex": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-native68-full-series-replay-v2-ohvze3ob/.git/aux-replay.index",
+      "seriesPath": "/Users/rcourson/Documents/Vibe/web/chromium/patches/series",
+      "seriesSHA256": "ba8b09c1ef621a7b9da54e3a7b4285bdd237578a2db4d98925003aaff5cdb9fa",
+      "areas": 68,
+      "areasPassed": 68,
+      "changedPaths": 940,
+      "baseExistingPaths": 400,
+      "mismatches": [],
+      "allPostimagesAndGitModesMatch": true,
+      "limits": "Source replay only. No compilation/native behavior/Profile/GUI/lock or builder operation performed.",
+      "completeArtifact": {
+        "path": "/tmp/aux-native68-full-series-replay-2026-10-18-v2.json",
+        "sha256": "9a63d7f2b480d5caf5e6768062bd539f6563bbf93a73d70c85f5c36a7e07ddb7"
+      }
+    },
+    "nativeBehavior": "pending",
+    "objectCompile": {
+      "log": "/tmp/aux-fresh-admission-object-build-corrected-2026-10-18.log",
+      "exitCode": 0,
+      "steps": 1,
+      "seconds": 43.28,
+      "target": "obj/chrome/browser/ui/aux/runtime/egress_controller.o",
+      "earlierInvocation": {
+        "log": "/tmp/aux-fresh-admission-object-build-2026-10-18.log",
+        "exitCode": 1,
+        "reason": "Incorrect object target aux/aux rather than actual GN runtime target; schedule failure before compilation. Correct target verified in runtime.ninja."
+      }
+    },
+    "integratedCheck": {
+      "log": "/tmp/aux-native-fresh-admission-integrated-check-2026-10-18.log",
+      "sha256": "3f52f97078159b78f18700cf039f5ae84592424d61b3d0d28d33ded23946f11e",
+      "exitCode": 0,
+      "tests": 5924,
+      "files": 857,
+      "seconds": 109.79,
+      "advisories": 574,
+      "nativeCompilerConcurrent": false
+    }
+  },
+  "normalQuit": {
+    "originalOwner": 33185,
+    "browser": 36519,
+    "launcherSession": 82464,
+    "launcherExit": 0,
+    "processObserverSession": 19311,
+    "processObserverExit": 0,
+    "profileDeleted": true,
+    "lockRetired": true,
+    "crashpadIntegrity": {
+      "atUTC": "2026-10-18T14:12:51.082150+00:00",
+      "method": "Authorized default Crashpad report integrity only; original owned preview normal Aux menu Quit and launcher cleanup",
+      "beforeCount": 41,
+      "afterCount": 41,
+      "new": [],
+      "removed": [],
+      "changed": [],
+      "original155CrashResolved": false
+    }
+  },
+  "limits": [
+    "Native full192 comparison remains incomplete. Source presence or matched window size is not full acceptance.",
+    "No new Crashpad reports does not resolve original browser-main155 SIGTRAP.",
+    "No paired performance result yet.",
+    "New adoption marker reset preserves document protections/credential provenance/within-run transitions. Old-document callbacks are distinct from legitimate new requests after same-document re-adoption; no blanket old-factory denial is claimed."
+  ]
+}

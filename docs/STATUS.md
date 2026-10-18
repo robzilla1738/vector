@@ -65,6 +65,34 @@ Fixture refs now derive from the canonical page producer; new missing/replacemen
 session cases prove refusal before model/write dispatch. Production authority
 checks remain exact. The native compiler was stopped throughout both checks.
 
+The ea0dfafb native build completed25 steps in486.93s and runs its exact source
+with matching framework/dSYM UUID `4C4C445F-5555-3144-A1C8-CB9BAB3C1E3A`.
+Native Window → Fill produces exactly1712×989 logical dimensions, matching the
+reference. The corrected search-engine popup has border-free selected-aligned
+rows in both themes; dark Down/End/Escape traversal and original-trigger focus
+return pass. The native Theme picker still opens below its trigger and remains a
+separate alignment gap. Failed edge-drag attempts do not qualify narrow layouts.
+
+The fresh manual20 campaign remains **incomplete: one pass, one failure**.
+L01 returns Jordan Lee through the actual Sonnet5.5 route, with36,490 input/142
+output tokens, cache0, actual cost$0.092643 and2,817ms provider duration. Native
+same-tab Cmd-L now loads and paints rec12 after handback. L02 then fails before
+inference because fresh session adoption retains the previous run's installed
+document marker and incorrectly requires its old within-run transition. The
+reviewed source correction retires only that marker after new authorized adoption,
+requiring an empty prior lease and transition. Existing document protection,
+credential provenance and within-run transition checks remain. It is folded into
+area0007; all68 patches replay with all940 paths/modes matching. The changed native object compiles in43.28s; the integrated check passes all5,924
+tests across857 files in109.79s with574 advisories and no errors. Full-app relink
+and native two-run verification remain pending. [The fresh-admission record](evidence/aside-native-fresh-admission-2026-10-18.json)
+preserves the failure, source identities, proposal/reviews and scope limits.
+
+This preview retired normally through Aux menu Quit; original launcher and
+observer exit0, disposable Profile and lock deleted. All41 authorized default
+Crashpad reports remain byte-identical, with no new report. This does not resolve
+the original browser-main155 crash. Full native comparisons, complete manual20,
+paired performance and browser readiness remain open.
+
 ### Earlier implementation records
 
 A reproduced lazy-style failure is now corrected in the pinned Vite producer.
