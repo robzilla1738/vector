@@ -848,6 +848,7 @@ export class GatewayModelClient implements ModelClient {
       toolCallId: call.toolCallId,
       toolName: call.toolName,
       input: call.input,
+      ...("invalid" in call && call.invalid === true ? { invalid: true as const } : {}),
     }));
     const providerExecuted = (
       (lastStep?.toolCalls ?? []) as { toolCallId: string; providerExecuted?: boolean }[]

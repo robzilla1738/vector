@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-18",
+  "baseCommit": "7de81c18a",
+  "status": "source_and_sdk_fixtures_verified_configured_provider_retry_pending",
+  "failure": {
+    "route": "configured Gateway to anthropic/claude-sonnet-5.5",
+    "message": "tools.47.custom.input_schema: input_schema does not support oneOf, allOf, or anyOf at the top level",
+    "toolName": "unconfirmed; availability-filtered live manifest order was not captured",
+    "previousRecord": "docs/evidence/aside-native-fc9-plain-2026-10-18.json"
+  },
+  "patches": [
+    {
+      "path": "/tmp/aux-measurement-provider-envelope-fecd-v1.patch",
+      "sha256": "ad6daad5fca4929aab65424213e166f8e536bc810cbca6a95e4a2a95327c4f6b"
+    },
+    {
+      "path": "/tmp/aux-measurement-provider-envelope-fecd-v2-delta.patch",
+      "sha256": "aceb88a2269c7a7dc7d286393cf5633575004a0807cd8cbb8102d508b4526de1"
+    }
+  ],
+  "changes": [
+    "Object-root composition publishes a strict SDK-generated input envelope. Original nested branches, references, defaults and exact flat execution arguments are retained. Ordinary object schemas remain unchanged.",
+    "Preserve SDK invalid:true through Gateway transport and loop types. Refuse raw invalid input before parsing/preparation/execution and independent-read batching. Billable provider steps and repair feedback remain durable.",
+    "Provider transport and context estimates prepare the same representation. No alternate loop, weakened runtime validation, replay or fake invoices."
+  ],
+  "validation": {
+    "exactFinalHashesVerified": 7,
+    "authorAffected": "185 final affected cases covered across184 successful cases in the first nine-file run and the corrected seven-case file rerun; not a single185-case green run.",
+    "independentReviews": [
+      "/tmp/aux-provider-envelope-fecd-v1-independent-review.json",
+      "/tmp/aux-provider-envelope-fecd-v2-independent-review.json"
+    ],
+    "rootIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5672,
+      "testsFailed": 1,
+      "testFilesPassed": 848,
+      "testFilesFailed": 1,
+      "durationSeconds": 137.82,
+      "log": "/tmp/aux-provider-envelope-integrated-check.log",
+      "failure": "Unchanged coding-processes.test.ts delayed-exec case still observed original shell after fixed300ms during the full suite."
+    },
+    "unchangedFailureRerun": {
+      "command": "npx vitest run --project unit tests/unit/coding-processes.test.ts",
+      "passed": 3,
+      "durationSeconds": 1.89,
+      "log": "/tmp/aux-provider-envelope-coding-processes-rerun.log",
+      "meaning": "The unchanged original file passes isolated. Full integrated run was not green and was not relabelled."
+    },
+    "configuredProvider": "not retried on this source yet",
+    "nativeUi": "not observed on current source"
+  },
+  "canonicalManifestProjection": {
+    "base": "fecd35fdc74b02178c116dce5a6540c3eaabeb22",
+    "scope": "full canonical manifest, actual live L01 filtered manifest unknown",
+    "measurements": [
+      {
+        "mode": "inline",
+        "tools": 67,
+        "beforeBytes": 163527,
+        "afterBytes": 163902,
+        "enveloped": [
+          "x_operation",
+          "google_operation",
+          "connector_file_upload",
+          "sheets_navigation",
+          "linkedin_workflow"
+        ]
+      },
+      {
+        "mode": "references",
+        "tools": 67,
+        "beforeBytes": 103147,
+        "afterBytes": 103522,
+        "enveloped": [
+          "x_operation",
+          "google_operation",
+          "connector_file_upload",
+          "sheets_navigation",
+          "linkedin_workflow"
+        ]
+      }
+    ]
+  },
+  "remaining": [
+    "Fresh configured Gateway/Anthropic request and default-route20-task manual smoke.",
+    "Current native UI build, original155crash resolution and paired performance acceptance remain independent."
+  ]
+}

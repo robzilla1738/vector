@@ -42,6 +42,8 @@ export interface ToolStepToolCall {
   toolCallId: string;
   toolName: string;
   input: unknown;
+  /** The SDK rejected the wire input; never prepare or execute this raw value. */
+  invalid?: true;
 }
 
 export interface ToolCallStepResult extends ModelAttempt {

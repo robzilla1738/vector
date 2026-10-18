@@ -9,10 +9,7 @@ import { GatewayModelClient } from "../../apps/runtime/src/agent/gateway-client.
 import { modelUndispatched } from "../../apps/runtime/src/agent/model-client.js";
 import { buildToolManifest } from "../../apps/runtime/src/agent/loop/tools.js";
 import { modelTools } from "../../apps/runtime/src/agent/loop/loop.js";
-import {
-  objectToolJsonSchema,
-  prepareToolInputSchema,
-} from "../../apps/runtime/src/agent/tool-input-schema.js";
+import { prepareToolInputSchema } from "../../apps/runtime/src/agent/tool-input-schema.js";
 import { modelStream, modelSse } from "../fixtures/model-stream.js";
 
 const union = z.discriminatedUnion("operation", [
@@ -35,19 +32,25 @@ const result = {
   warnings: [],
 };
 
-it("adds only the redundant object root to object unions and retains native Zod validation", async () => {
+it("lowers object-root composition into a strict SDK wire envelope and returns the original validated input", async () => {
   const original = await zodSchema(union).jsonSchema;
   expect(original.type).toBeUndefined();
   const schema = prepareToolInputSchema(union);
-  expect(schema.jsonSchema).toEqual({ ...original, type: "object" });
-  expect(schema.jsonSchema).not.toHaveProperty("additionalProperties");
-  await expect(schema.validate?.({ operation: "read", id: "source" })).resolves.toMatchObject({
+  expect(schema.jsonSchema).toEqual({
+    $schema: original.$schema,
+    type: "object",
+    properties: { input: { ...original, $schema: undefined } },
+    required: ["input"],
+    additionalProperties: false,
+  });
+  await expect(schema.validate?.({ input: { operation: "read", id: "source" } })).resolves.toEqual({
     success: true,
+    value: { operation: "read", id: "source" },
   });
   await expect(
-    schema.validate?.({ operation: "read", id: "source", value: "unexpected" }),
+    schema.validate?.({ input: { operation: "read", id: "source", value: "unexpected" } }),
   ).resolves.toMatchObject({ success: false });
-  await expect(schema.validate?.({ operation: "delete", id: "source" })).resolves.toMatchObject({
+  await expect(schema.validate?.({ input: { operation: "delete", id: "source" } })).resolves.toMatchObject({
     success: false,
   });
 });
@@ -63,17 +66,6 @@ it("uses SDK input semantics, including defaults, rather than Zod output schemas
 it("rejects non-object, unresolved, external and cyclic root alternatives without weakening constraints", () => {
   for (const input of [z.string(), z.array(z.string()), z.union([z.object({}), z.string()])])
     expect(() => prepareToolInputSchema(input)).toThrow("only root objects");
-  for (const schema of [
-    { $ref: "https://example.invalid/schema" },
-    { $ref: "#/definitions/missing" },
-    { $ref: "#/definitions/loop", definitions: { loop: { $ref: "#/definitions/loop" } } },
-    { anyOf: [{ type: "object" }, {}] },
-  ])
-    expect(() => objectToolJsonSchema(schema)).toThrow("only root objects");
-  expect(objectToolJsonSchema({ allOf: [{ type: "object" }, { required: ["id"] }] })).toEqual({
-    type: "object",
-    allOf: [{ type: "object" }, { required: ["id"] }],
-  });
 });
 
 it.each(["inline", "references"] as const)(
@@ -82,6 +74,7 @@ it.each(["inline", "references"] as const)(
     for (const tool of Object.values(buildToolManifest())) {
       const schema = prepareToolInputSchema(tool.inputSchema, mode).jsonSchema;
       expect(schema).toMatchObject({ type: "object" });
+      for (const key of ["anyOf", "oneOf", "allOf"]) expect(schema).not.toHaveProperty(key);
       for (const match of JSON.stringify(schema).matchAll(/"\$ref":"(#[^"]+)"/g)) {
         let target: unknown = schema;
         for (const part of match[1]!.slice(2).split("/"))
@@ -130,7 +123,10 @@ it.each(["anthropic", "openai-compatible"] as const)(
       schema: tool.function?.parameters ?? tool.input_schema,
     }));
     expect(projection.map((tool) => tool.name)).toEqual(Object.keys(manifest));
-    for (const tool of projection) expect(tool.schema).toMatchObject({ type: "object" });
+    for (const tool of projection) {
+      expect(tool.schema).toMatchObject({ type: "object" });
+      for (const key of ["anyOf", "oneOf", "allOf"]) expect(tool.schema).not.toHaveProperty(key);
+    }
     expect(Buffer.byteLength(JSON.stringify(projection), "utf8")).toBe(prepared.bytes);
     expect(projection).toEqual(
       Object.entries(prepared.tools).map(([name, tool]) => ({
@@ -223,7 +219,15 @@ it.each([true, false])(
         runId: "schema-run",
         threadId: "schema-thread",
         transcript,
-        tools: { act: buildToolManifest().act! },
+        tools: {
+          act: buildToolManifest().act!,
+          operation: {
+            description: "Synthetic union",
+            byline: "Fixture",
+            inputSchema: union,
+            execute: async () => ({ output: {} }),
+          },
+        },
         deps: {},
         contextTokens: 128_000,
         maxOutputTokens: 1000,
@@ -258,7 +262,20 @@ it("publishes the exact prepared schema projection through the real Gateway SDK 
   let body: Record<string, unknown> | undefined;
   const network = vi.fn<typeof fetch>(async (_input, init) => {
     body = JSON.parse(String(init?.body));
-    return modelSse(result);
+    return modelSse({
+      ...result,
+      content: [
+        {
+          type: "tool-call",
+          toolCallId: "canonical-inspect",
+          toolName: "connector_file_upload",
+          input: JSON.stringify({
+            input: { action: "inspect", transferId: "663db240-0c5f-4a2a-b7ce-ef4aebcfe718" },
+          }),
+        },
+      ],
+      finishReason: { unified: "tool-calls", raw: "tool_use" },
+    });
   });
   const client = new GatewayModelClient("synthetic-fixture", {
     gatewayFetch: network,
@@ -269,12 +286,19 @@ it("publishes the exact prepared schema projection through the real Gateway SDK 
   const mode = client.toolSchemaMode("anthropic/fixture");
   const manifest = buildToolManifest();
   const prepared = modelTools(manifest, mode);
-  await client.toolCallStep({
+  const step = await client.toolCallStep({
     ...request,
     modelId: "anthropic/fixture",
     toolSchemaMode: mode,
     tools: prepared.tools,
   });
+  expect(step.toolCalls).toEqual([
+    {
+      toolCallId: "canonical-inspect",
+      toolName: "connector_file_upload",
+      input: { action: "inspect", transferId: "663db240-0c5f-4a2a-b7ce-ef4aebcfe718" },
+    },
+  ]);
   expect(network).toHaveBeenCalledTimes(1);
   expect(mode).toBe("references");
   expect(body).toBeDefined();
@@ -287,5 +311,7 @@ it("publishes the exact prepared schema projection through the real Gateway SDK 
   );
   expect(projection).toHaveLength(Object.keys(manifest).length);
   expect(projection.every((tool) => (tool.schema as { type?: string }).type === "object")).toBe(true);
+  for (const tool of projection)
+    for (const key of ["anyOf", "oneOf", "allOf"]) expect(tool.schema).not.toHaveProperty(key);
   expect(Buffer.byteLength(JSON.stringify(projection), "utf8")).toBe(prepared.bytes);
 });

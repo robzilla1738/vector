@@ -100,6 +100,10 @@ and Forget retire the original publication. Queue edits atomically move text,
 attachments and source references against the original queued-message revision;
 delivery fences further edits. Provider transport and context accounting prepare
 the same tool-schema representation, retaining the original runtime validation.
+Provider-incompatible root object compositions use a strict SDK-generated `input`
+envelope; its original Zod transform returns the validated flat execution input.
+SDK-invalid wire calls remain marked through transport and are refused before
+preparation/execution, while their usage and tool-error feedback remain recorded.
 
 Google Docs rich editing extends the existing revision-bound operation and account
 grant. A single reviewed batch may insert text, apply complete-paragraph named

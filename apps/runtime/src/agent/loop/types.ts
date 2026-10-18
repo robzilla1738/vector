@@ -21,6 +21,8 @@ export interface LoopToolCall {
   toolCallId: string;
   toolName: string;
   input: unknown;
+  /** The SDK rejected the wire input; never prepare or execute this raw value. */
+  invalid?: true;
 }
 
 /** What a single `toolCallStep` round trip produced. */

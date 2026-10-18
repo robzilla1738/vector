@@ -84,12 +84,19 @@ recovery never resumes write authority. Stop, Take over, article Forget and shut
 join the original transfers before retiring their sources. Unknown provider upload
 shapes remain unsupported; no real account/file upload is claimed.
 
-Object-root tool unions now publish the root object constraint without removing
-branches, references or original validation. Context accounting and SDK transport
-prepare the same schema representation for the original route, including failover
-and compaction. Independent SDK tests cover the full canonical manifest and direct/
-Gateway modes. The native default-route failure still needs fresh staging and a
-real provider attempt. Registration-only capabilities never imply an active account.
+The configured Gateway→Anthropic attempt exposed a second schema restriction:
+root unions/intersections are rejected even with an object constraint. Current
+source places these original schemas inside one strict SDK-generated `input`
+envelope. The original validator returns the same flat execution arguments,
+including defaults. SDK-invalid inputs now remain marked through transport and
+are refused before preparation/execution; their billable steps and repair feedback
+remain recorded. Context accounting and transport use the same representation.
+The complete canonical67-tool projection adds375bytes in each schema mode; this
+is not the unknown availability-filtered live manifest. Independent Gateway/direct
+SDK fixtures pass. Fresh staging and configured-provider acceptance remain open.
+[Provider evidence](evidence/aside-provider-envelope-2026-10-18.json) records exact
+patches, validation and the original failure. Registration-only capabilities never
+imply an active account.
 
 The current follow-on slice adds original-run desktop model-source admission and
 retirement, X public-PKCE accounts and governed operations, DOM-only LinkedIn
@@ -136,9 +143,14 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated check passes typecheck/lint and all5,666tests across848files
-in123.85s, including the Memory corrections and notification-menu interaction.
-Runtime dist was rebuilt first. Log: `/tmp/aux-task-notices-integrated-check.log`.
+The latest provider integrated check passes typecheck/lint and5,672tests across
+848files in137.82s; one unchanged delayed-exec process test observed its original
+shell after a fixed300ms under full-suite load. Its unchanged isolated file passes
+all3cases in1.89s. Logs: `/tmp/aux-provider-envelope-integrated-check.log` and
+`/tmp/aux-provider-envelope-coding-processes-rerun.log`. This is not a wholly green
+integrated run. Runtime dist was rebuilt first. The preceding notification check
+passes all5,666tests/848files in123.85s, including the Memory corrections
+(`/tmp/aux-task-notices-integrated-check.log`).
 The preceding Memory check passed5,663tests across846files;
 one existing coder-worktree case hit its original60s timeout. Its unchanged
 quiet rerun passes all3cases within the original limits (50.10/32.78/26.89s).

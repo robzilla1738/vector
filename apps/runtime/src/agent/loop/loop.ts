@@ -266,6 +266,10 @@ async function executeOne(
   tools: LoopToolManifest,
   ctx: LoopToolContext,
 ): Promise<LoopToolResult> {
+  if (call.invalid)
+    return {
+      output: new AuxError("invalid_params", "The tool input failed its original wire schema validation."),
+    };
   const tool = tools[toolName];
   if (!tool || tool.available?.(ctx.deps) === false)
     return {
@@ -747,7 +751,9 @@ async function runAgentLoopOwned(
     let skippedReason: string | undefined;
     const independentRead = (call: LoopToolCall) => {
       const tool = tools[call.toolName];
-      return !!tool?.prepare && !tool.requiresSoloCall && tool.independentRead?.(ctx) === true;
+      return (
+        !call.invalid && !!tool?.prepare && !tool.requiresSoloCall && tool.independentRead?.(ctx) === true
+      );
     };
     for (let cursor = 0; cursor < ordered.length;) {
       const call = ordered[cursor]!;

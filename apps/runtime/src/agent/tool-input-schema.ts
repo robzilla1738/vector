@@ -1,7 +1,7 @@
 import { zodSchema } from "@ai-sdk/provider-utils";
 import type { JSONSchema7, Schema } from "ai";
 import { AuxError } from "@aux/contracts";
-import type { z } from "zod";
+import { z } from "zod";
 
 export type ToolSchemaMode = "inline" | "references";
 const prepared = new WeakMap<z.ZodType, Map<ToolSchemaMode, Schema>>();
@@ -32,14 +32,6 @@ function objectOnly(value: unknown, root: JSONSchema7, visited = new Set<unknown
   return schema.allOf?.some((branch: unknown) => objectOnly(branch, root, seen)) ?? false;
 }
 
-/** Add only a redundant root constraint: union branches and their closed object validation remain intact. */
-export function objectToolJsonSchema(schema: JSONSchema7): JSONSchema7 {
-  if (schema.type === "object") return schema;
-  if (!objectOnly(schema, schema))
-    throw new AuxError("capability_unsupported", "Model tool input schemas must accept only root objects.");
-  return { ...schema, type: "object" };
-}
-
 function synchronousSchema(value: JSONSchema7 | PromiseLike<JSONSchema7>): value is JSONSchema7 {
   return !("then" in value && typeof value.then === "function");
 }
@@ -57,7 +49,23 @@ export function prepareToolInputSchema(input: z.ZodType, mode: ToolSchemaMode = 
       "capability_unsupported",
       "Tool schema preparation must finish before model admission.",
     );
-  const result = { ...original, jsonSchema: objectToolJsonSchema(converted) };
+  if (!objectOnly(converted, converted))
+    throw new AuxError("capability_unsupported", "Model tool input schemas must accept only root objects.");
+  // Anthropic rejects root composition even with type:object. Keep the
+  // original branches under a strict SDK-generated wire object; the SDK's
+  // original Zod transform returns the same flat validated execution input.
+  const result =
+    converted.anyOf || converted.oneOf || converted.allOf
+      ? zodSchema(
+          z.strictObject({ input }).transform((value) => value.input),
+          {
+            useReferences: mode === "references",
+          },
+        )
+      : {
+          ...original,
+          jsonSchema: converted.type === "object" ? converted : { ...converted, type: "object" as const },
+        };
   modes.set(mode, result);
   return result;
 }
