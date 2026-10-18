@@ -1,0 +1,352 @@
+{
+  "product": "7d079370256b6ef32d643a6f2233d026da202030",
+  "nativeFrameworkUUID": "4C4C442D-5555-3144-A1A5-3104EE83C650",
+  "preview": "/tmp/aux-native-7d-acceptance-2026-10-18",
+  "retirement": {
+    "atUTC": "2026-10-18T19:22:51.761851+00:00",
+    "method": "native Aux menu > Quit Aux",
+    "launcherSession": 27939,
+    "launcherExit": 0,
+    "originalPids": [
+      36221,
+      36573,
+      36592
+    ],
+    "processesAbsent": true,
+    "temporaryProfileRemoved": true,
+    "plainLockAbsent": true,
+    "runtimeAcknowledgement": [
+      "[36573:9507429:1018/142208.726238:INFO:chrome/browser/ui/aux/runtime_host.cc:3557] Aux original runtime exit acknowledged; forced=0 exit_code=0"
+    ],
+    "dedicatedCrashReports": []
+  },
+  "idle": {
+    "milliseconds": 237018,
+    "heartbeats": 16,
+    "dedicatedReports": 0,
+    "historicalCrashResolved": false
+  },
+  "observations": {
+    "microphone": "Actual prompt denied; NotAllowedError. No OS permission accepted. Placement not accepted.",
+    "notification": "Actual prompt blocked; denied.",
+    "media": "Actual advancing audio, decoded/painted VP8 video and PiP enter/exit. Separate PiP surface and audibility unqualified. Mute state publication and fullscreen chrome defects open.",
+    "files": "Native chooser Cancel preserved Settings; selected exact repository events-log HTML opened native file URL.",
+    "bookmarks": "File-only synthetic export previewed2 links/1folder; actual Imported2/0already-saved; expanded actual folder shows both; second bookmark opened exact4827/second. Repeat/dedup and preview Cancel not observed.",
+    "ui": "Normal1712x989 dark category captures and supplemental light captures. Matched-state manual comparison ongoing; no complete reference acceptance."
+  },
+  "benchmark": {
+    "helperAuthorized": true,
+    "accessibilityPreflight": true,
+    "newPairedSamples": 0
+  },
+  "sources": [
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/audio-playing.ax.txt",
+      "sha256": "13c8ef99908edb9bb919386ec37bfdb64ed51d2b644ccc994f67b2658984fae1"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/audio-stopped.ax.txt",
+      "sha256": "23bc8a98dc6ae38fb8384212090ba8abb2f61e970115d7dc8218fd4fd224deb1"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/bookmark-import-complete.ax.txt",
+      "sha256": "a9ef286ee9f56e9ddae01a29a7c430e7cdab451c2b9f4452d5d3a1a2029a0e34"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/bookmark-import-destination.ax.txt",
+      "sha256": "e55ae2ace30f9a1cd417d1b7b9cbde1356f7bc97c016c35ab40b26cf40d6df24"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/bookmark-import-opened.ax.txt",
+      "sha256": "897069987ae7cef2e17e8e5b7c6c2555a8862f8b3b58bae21c307cae9dc88c55"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/bookmark-import-preview.ax.txt",
+      "sha256": "18a7f8521be9263be1cf465141ffb58181e23a2ea0b034f77469aefbedd6daca"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/bookmark-import-tree.ax.txt",
+      "sha256": "229642712e1fd3f6dcd63e463b6859177f5834464f42f0fecc13646a18afef1c"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/home-search-focused-light.ax.txt",
+      "sha256": "a3600e01012829b95beaf4b2621f133cd359f267d4fb8307db68e488c947f2cc"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/home-search-focused-light.jpg",
+      "sha256": "7b29d58bdf345ee101257ec46d60b2d2227909100e50528eacad827a8a8fb474"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/local-file-open.ax.txt",
+      "sha256": "893899521ccd4e5be8a763b40b2eb30d278e2c36c283dbc903b2861465328a5e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/media-all-stopped.ax.txt",
+      "sha256": "3272665d9ff2386d42a5b49d9586560edc9676529c3df9077e3502456166076e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/microphone-denied.ax.txt",
+      "sha256": "1071a0632bcab1ca2279e3ddf310008730b4f3787abf46e4e1d8511db5fa5098"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/microphone-visible.ax.txt",
+      "sha256": "87fc5e0a17a31e14aef8ccec34edbbb3712188d87e244d05a7ea8efa64470c98"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/microphone-visible.jpg",
+      "sha256": "6e4482118a2047399d2b68a851cf233dcb2ce9fd524297f710f12f3c9136c712"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/notification-visible.ax.txt",
+      "sha256": "a74c6f1f9361bb2b77e1a54c842c79abdb1b047c2d5e912f9bdefef2ecbf3a77"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/notification-visible.jpg",
+      "sha256": "703e93b58dcf0ae5a561526813bc39ef298229abee5a22f79aac121ecfb5c774"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/permission-page-after-denial.jpg",
+      "sha256": "eaf5d5bfa2c84b179df88a32030cb7b41701918ba69bdffdbe7b9b8f71c497e6"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-agents-dark.ax.txt",
+      "sha256": "bb6857c91dd1839dc09588fd244fc7e117ffc7810ce906895d3e396c07d69dc0"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-agents-dark.jpg",
+      "sha256": "9372e033355103452b2e3a20866eb6e240d731bf67951fa4b9c4378dc9c81832"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-agents-light.ax.txt",
+      "sha256": "bb6857c91dd1839dc09588fd244fc7e117ffc7810ce906895d3e396c07d69dc0"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-agents-light.jpg",
+      "sha256": "87df3c43b438bc94ee7410fdc0d43bb0ab732c72809bfcaae5f2b35bc57aadbd"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-light-second.ax.txt",
+      "sha256": "16b9a102658e9552e746c5f03e947880a23a07d797db8063232a7ec11920c8cc"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-light-second.jpg",
+      "sha256": "7b0fb936e6be84f186646351668bb349fa0aed4e6cf19d1beeb734483e63b31e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-light.ax.txt",
+      "sha256": "245ed94df672bd03e131f1e142b59013af59ed836499ff68269a23e24bf6b68e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-light.jpg",
+      "sha256": "3bed43ce4c1ce9d4d0e189d62c3b11c6ab2a4d915c3fa47f7544de3b717cefeb"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-normal.ax.txt",
+      "sha256": "a84a1f26751fa0383b7db59d1bd4ce67cf3108adf5cd97096d6f1baa85dac512"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-appearance-normal.jpg",
+      "sha256": "a134448347453edb763469880f4f3cf89dba2e6aec10e5373bff35d521dd8bfb"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-archived-dark.ax.txt",
+      "sha256": "0d34026d7eee8e99e5cfe58454c9c912039419d5e391dc5ea927c14f836a381e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-archived-dark.jpg",
+      "sha256": "a3cced41f84b3b5135fd99fda88fa252638d296754c0cb4de952b8ec4c6da651"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-channels-dark.ax.txt",
+      "sha256": "fb742c1c166267b15e5f6a1f057ed536eab5b8c84e02b29427d53cf87ae931f8"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-channels-dark.jpg",
+      "sha256": "6e9ca74ab7a2455e45ea4d36c656fe51df5fd1e9bd0d45ccef382e307d557c12"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-connections-dark.ax.txt",
+      "sha256": "2c1d8c9770c0e028c3a1a97f9f3275825dde4df071c1fbd4473bafbcdb9468b7"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-connections-dark.jpg",
+      "sha256": "d47d36073c78077411da5edb1be7044d258716030697ab4bb242fa6c0fc2d317"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-desktop-off-dark.ax.txt",
+      "sha256": "c7da563b9cbc52b83e8bcecbe56c924898b0794c192ba83b596d2ead5298b2a3"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-desktop-off-dark.jpg",
+      "sha256": "77e6838dd30098f8f42d7c11b2c05e8f7fa14f8de1227856dafdbe688f07c0e6"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-desktop-off-light.ax.txt",
+      "sha256": "c7da563b9cbc52b83e8bcecbe56c924898b0794c192ba83b596d2ead5298b2a3"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-desktop-off-light.jpg",
+      "sha256": "c251e8b5d8cc0f67a3f7a90524a802c4f8b2abd6cc45092f0704225c2702930f"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-developers-dark.ax.txt",
+      "sha256": "022b098446e0582693adf1afbd7fb8544eff867e135654b12ce333477135663a"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-developers-dark.jpg",
+      "sha256": "9d9c840ef61d066e60c42f8135f8e8b9fb6a4e41bc1ebf1205e7f72bf6f091be"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-general-light.ax.txt",
+      "sha256": "197a3dabe397691e8624b94a33959eea28d1c4d4c01c025d4b6bf3e4ed6e64ed"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-general-light.jpg",
+      "sha256": "7c3069d916a51713713f589d0cb57c442d610243f409a0727074b100ea391377"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-general-normal.ax.txt",
+      "sha256": "197a3dabe397691e8624b94a33959eea28d1c4d4c01c025d4b6bf3e4ed6e64ed"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-general-normal.jpg",
+      "sha256": "80a38035c77d2c539b835f4d3eeebef608474e6d77181539704cb234ef178ca2"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-memory-dark.ax.txt",
+      "sha256": "3e0c909d940cd867b3a98bd3d24fee1bf623e8513e3bb10089f36bf09ae63a8b"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-memory-dark.jpg",
+      "sha256": "ee9968399f19a198932c36e18c5ff337179d9e0c3a06bbfd0d8dfeeb73759094"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-memory-light.ax.txt",
+      "sha256": "3e0c909d940cd867b3a98bd3d24fee1bf623e8513e3bb10089f36bf09ae63a8b"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-memory-light.jpg",
+      "sha256": "b7ad2f0265e978e6cfd5bc690dc1e54bb23375667a8477d169208944743a67bc"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-models-dark.ax.txt",
+      "sha256": "16d2b61216d7c95b69aa62641a77fe116c516ac10b5ea18f3b93e7238f223c51"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-models-dark.jpg",
+      "sha256": "38ba16f0245c692dc1746f862036704bc5310edaba555314d9b8a46a404d1b49"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-models-light.ax.txt",
+      "sha256": "16d2b61216d7c95b69aa62641a77fe116c516ac10b5ea18f3b93e7238f223c51"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-models-light.jpg",
+      "sha256": "38470a29b22a803dabcc7284425d9d5b3155471fa8721f0f673e2bc704cbd2ca"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-passwords-dark.ax.txt",
+      "sha256": "9083bf62297a679484e570c7d09ce4fe1220ae088f558846a0be2c6660c85bf9"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-passwords-dark.jpg",
+      "sha256": "65f486b8ebba8f74c102e02a6677247a5aaac5a65c0d1ff910bcc130f2e18941"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-privacy-dark.ax.txt",
+      "sha256": "1a94e8885e21a53a267297c71d5df37c6356bc4447a35df7ca72701946836f64"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-privacy-dark.jpg",
+      "sha256": "026b650206c389a09f0f9296254fa001e003f21cca21944687d95bcf67751759"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-profiles-dark.ax.txt",
+      "sha256": "74b0be2030bbc4fe8324876e5e898a8d526de97686ce270d32deff6e03e4b0de"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-profiles-dark.jpg",
+      "sha256": "77d4f6342da09db983f61157eda14d0824ad518adc28d9fae818450475b411e4"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-projects-dark.ax.txt",
+      "sha256": "c463f5fe38b6adaa578f6d7d95e7a9716b8d656f64595b3fd5cdbb0fd679e781"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-projects-dark.jpg",
+      "sha256": "625bba21dac0c8e644ca6a977b37570f43bc99f7f249f1f8d6eac1e37e4e0b50"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-projects-light.ax.txt",
+      "sha256": "c463f5fe38b6adaa578f6d7d95e7a9716b8d656f64595b3fd5cdbb0fd679e781"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-projects-light.jpg",
+      "sha256": "3c6f248414259aafe51a3f7a0fe9a529232f594ed6771bc8e62176fa7ed445c9"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-quick-ask-dark.ax.txt",
+      "sha256": "53f6b8ef2be53964f974c215753fbcee48717ea50df4535f575d46ab17df5812"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-quick-ask-dark.jpg",
+      "sha256": "e7912a7ca4bc14b3d1be50d15d0eed29489b26ff1a6c50ba4cc342b7f1f8500b"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-routines-dark.ax.txt",
+      "sha256": "8fc8c9ba761363c1ff475a5aad39961ceff388bef457345d58388db4f8bfcfb4"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-routines-dark.jpg",
+      "sha256": "65d0cd92e24d23f0c15f0f5e163a3787d9f137f7bd2bcaf0e4e83b61cd24b1a4"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-selection-dark.ax.txt",
+      "sha256": "441b6555d0842b8532c929fa2ff040164b4da5622c9007e35ccb27fa58bf054c"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-selection-dark.jpg",
+      "sha256": "408faa52d855b1fcd7ddfcb344312b880dca2452723a3bd16c3a326335ecb6e3"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-skills-mcp-dark.ax.txt",
+      "sha256": "a881fdf17eb7c18a4d6cac039c6ceb28c483a190ee39ced2e24590577d51fe2e"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-skills-mcp-dark.jpg",
+      "sha256": "135264fac7cc9009e5e12049965ff8f1938cb016854061d81e3c35100da88742"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-usage-dark.ax.txt",
+      "sha256": "6ee7bd7168cce7d7f727668f2fb96401ff8719a5442c4c7ec7a4a20a6b930026"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/settings-usage-dark.jpg",
+      "sha256": "8574f93f1f51723264c238e38f3ce1b61381cfc5b723594f19483aee076162e7"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/theme-select-dark.jpg",
+      "sha256": "11845c37778c6015230117fd4c7de539c45d5d316210d1457a72d4d837598d09"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/video-fullscreen.ax.txt",
+      "sha256": "edbbfccae5fdacbd5e01a4108f5a8e75370ee4ed2a1dfe6dde8c99c6cf0677a4"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/video-fullscreen.jpg",
+      "sha256": "52498af142376f8122e45698d0da6a3af3e51f86f05dd8eb0a9a804595561d9d"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/video-pip.ax.txt",
+      "sha256": "c7b67247dabb42a9d3c6a3af631b1955d18f69967e7892b23291f3c3a2764067"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/video-playing.ax.txt",
+      "sha256": "1e6bf89e05c3fc31857e117e17790c2e1b53865f4200715198134c498a0c8c65"
+    },
+    {
+      "path": "/tmp/aux-native-7d-acceptance-2026-10-18/screens/video-playing.jpg",
+      "sha256": "b0e6cb3a6978b667c8f44925b61e2b4828390225aae5ab9eff37cc9a93bca9c5"
+    }
+  ]
+}

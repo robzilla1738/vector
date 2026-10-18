@@ -1,0 +1,28 @@
+{
+  "atUTC": "2026-10-18T19:07:09.530884+00:00",
+  "state": "Source integrated and checked; native answer/Not now acceptance pending",
+  "privateV1Manifest": "/tmp/aux-parked-page-readmission-eedfa-v1/manifest.json",
+  "privateV1ManifestSHA256": "8ea0c93772bfed8ebb83dcbd96771ed863f9b9e8b57f94e20c0f8305a2682630",
+  "privateV2Manifest": "/tmp/aux-parked-page-readmission-eedfa-v2/manifest.json",
+  "privateV2ManifestSHA256": "d65b0804b34c8a62283a7d3fcaf6dffb38d19aa8128c0f75c2a9b9cbda84c751",
+  "rootApply": "/tmp/aux-root-parked-readmission-v2-apply-2026-10-18.json",
+  "rootApplySHA256": "6b50a984097501e80045f16c5b72fb58c1714c15392eecbd3bf2a1608dde726f",
+  "review": "Independent native_perf review cleared finalv2 after two concrete failclosed availability findings in v1 were repaired; root reviewed final source and six exact additive postimages including retained artifact-reader dependency.",
+  "authority": "One-use in-memory original waiter/native document/frame/Profile/window/source witness; acknowledged retirement and replacement lease before fresh reader admission. Original claim ownership is distinct from destructive revocation for first copied-page parking. Canonical source authority excludes verified derived bookkeeping and retains model/policy/Space/limits/source/turn/task checks. No detached-tab blanket grant or replay.",
+  "privateProof": "V1 original resume failure reproduced with real runtime stores. V1\u2192v2 exact three producer failures reproduced for private/Set first park and actual queued follow-up. Final private69/69 affected; final frozen fixture32/32. These overlap, not101unique cases.",
+  "integratedCheck": {
+    "session": 68910,
+    "exit": 0,
+    "tests": 6086,
+    "files": 864,
+    "seconds": 134.48,
+    "lintAdvisories": 581,
+    "typeLintErrors": 0,
+    "log": "/tmp/aux-parked-readmission-v2-integrated-check-2026-10-18.log",
+    "logSHA256": "b0a381e234b4d8a581132ca6d2177aa5244770e1e49a39abb3f92b252e23a2e5",
+    "runtimeDistRebuiltBeforeTests": true,
+    "nativeCompilerConcurrent": false,
+    "livePreview": "Packaged7d remains unchanged/isolated; this source not staged into live resources."
+  },
+  "limits": "Native approval response/readmission, full20, stale DOM pending-action denial, interrupted source and browser readiness remain acceptance work. Existing uncertain L12 receipt remains unresolved and unreplayed."
+}

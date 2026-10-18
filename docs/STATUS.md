@@ -8,18 +8,47 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
-The current [artifact, rich-text and UI slice](evidence/aside-artifact-richtext-ui-integration-2026-10-18.json)
-passes **6,054 tests across863files** in105.60s after rebuilding runtime dist;
-typecheck/lint have no errors. The reader exposes actual admitted artifact IDs and
-bounded run-owned text to tools/REPL. Rich-text focus pairs are rejected before
-partial batch dispatch. Home recent-work and compact composer menus now follow
-the measured reference geometry. Native source uses existing direct permission
-bubbles in place of an unrendered chip; all68 areas replay across974paths/modes.
-These changes await native compilation and observation. The answer-parking repair
-is still under revision after peer review; no fresh complete20 result is claimed.
-Normal three-tab restore is observed on the previous587candidate with both original
-launch groups joined normally and the disposable Profile removed. That scope does
-not cover crash restore or OS sleep/wake.
+The current [parked-page readmission slice](evidence/aside-parked-page-readmission-2026-10-18.json)
+is committed as `d09aff256` and passes **6,086 tests across 864 files** in
+134.48s, with 581 lint advisories and no type/lint errors. Runtime dist was rebuilt
+before tests, without a concurrent native compiler. The repair binds answer
+resumption to the original logical page, current native document authority and a
+fresh acknowledged reader lease. It does not replay actions or clear uncertain
+receipts. Native answer-resumption acceptance remains open.
+
+The preceding [artifact, rich-text and UI slice](evidence/aside-artifact-richtext-ui-integration-2026-10-18.json)
+passes 6,054 tests across 863 files. It exposes admitted artifact IDs and bounded
+run-owned text, rejects unsafe adjacent rich-text focus pairs before batch dispatch,
+and aligns Home recent-work and compact composer menus with measured references.
+The current disposable native/runtime candidate is clean product `7d0793702`, with
+279 advertised methods. Its incremental native build passed 26 steps in 8m23.53s;
+preserved framework/dSYM share UUID `4C4C442D-5555-3144-A1A5-3104EE83C650`.
+It includes that preceding slice, but does not yet include parked-page readmission.
+All 68 canonical areas replay across 974 paths and modes.
+
+The [current native observations](evidence/aside-native-7d-observations-2026-10-18.json)
+include a separate 237.018-second identity-checked startup/idle
+interval with 16 heartbeats and no dedicated crash reports. That is current-build
+non-reproduction, not a diagnosis of the historical SIGTRAP. Real microphone and
+notification browser prompts now appear; denying them returns NotAllowedError
+and denied respectively, without granting site or OS access. Prompt placement
+still needs correction. Real local audio playback, decoded and painted VP8 video,
+and PiP entry/exit are observed; audible output and the separate floating PiP
+window remain unqualified. File chooser Cancel and opening a repository-owned
+HTML file work. File-only bookmark import preserves one synthetic folder and two
+links, and the imported second link opens its exact local destination. Browser-level
+mute state is published late, and HTML
+fullscreen leaves Aux chrome visible. Narrow native corrections are being reviewed. The original preview subsequently
+joined normal application-menu Quit with unforced runtime exit 0; its processes,
+disposable Profile and plain lock are gone, with zero dedicated crash reports.
+
+The authorized benchmark helper is enabled in macOS Device Control and Data
+Access; its exact pinned binary reports Accessibility access in an identity-only
+preflight. The first paired run remains an incomplete zero-sample report; no new
+performance result is claimed. The latest scored manual20 remains the stopped
+587 campaign below. A fresh complete campaign and current native UI acceptance
+remain open. Normal three-tab restore is observed on the prior 587 candidate;
+that scope does not cover crash restore or OS sleep/wake.
 
 The [successor source](evidence/aside-native-input-download-integration-2026-10-18.json)
 is committed on local main. Original-input/download continuation is `454ea27cd`,
@@ -68,16 +97,12 @@ separate first attempt stopped before any task submission on a fixture-reset
 transport failure; its zero-row report is retained. Current UI acceptance,
 browser daily-use readiness and paired performance remain open.
 
-Current browser observations also prove navigation, Back, Forward and Reload while
+Earlier browser observations prove navigation, Back, Forward and Reload while
 the exact original runtime process was SIGSTOPped, with stopped-state checks both
-before and after the UI actions. SIGCONT restores the same runtime identity; the
-interrupted rich-form run remains interrupted. This is runtime-outage evidence,
-not OS sleep/wake acceptance. A local AudioContext fixture changes Playing→Stopped;
-video, PiP and audible output remain unqualified. Microphone and notification
-requests expose no visible browser prompt and remain pending. Source investigation
-finds a permission-chip animation path Aux does not render; a narrow native proposal
-is under review. No OS permission was granted. Source-only Home and compact-menu
-geometry corrections are not yet rebuilt or natively accepted.
+before and after UI actions. SIGCONT restored the same runtime identity. This is
+runtime-outage evidence, not OS sleep/wake acceptance. Earlier AudioContext-only
+and missing-permission-prompt observations are superseded by the current bounded
+media and denial observations above.
 
 Earlier integrated checks exposed missing fixture capabilities and a genuine
 process-retirement error. The independently reviewed
@@ -106,8 +131,11 @@ input/focus when explicitly anchored, but is not production implementation or
 complete scrolling/clamping acceptance. Remaining surfaces, themes and states
 are open. The first actual paired performance attempt stops before any samples
 because the PID-scoped helper lacks macOS Accessibility permission. Its schema-7
-incomplete report is retained; no performance target is passed and permission
-has not been changed.
+incomplete report is retained; no performance target is passed. The owner later
+authorized the exact pinned helper and approved macOS Touch ID. Its switch is now
+on and an identity-only check against the new owned browser reports actual
+Accessibility access; the valid paired rerun remains pending. No other app grant
+was changed.
 
 The native runtime-retirement correction compiles, and nine real process/pipe
 fixtures pass in 6.305s. Original-child signalling checks kernel birth and direct

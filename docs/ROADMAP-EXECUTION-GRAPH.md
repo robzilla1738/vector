@@ -55,9 +55,11 @@ none changes the existing uncertain receipt or authorizes replay. The native
 permission chip also remains invisible and needs the existing direct-bubble route.
 Current runtime-outage navigation and normal three-tab restore have bounded native
 evidence; they do not establish OS sleep/wake, all browser flows or daily readiness.
-No native preview currently holds the plain lock. Performance remains blocked on
-the pinned helper's ungranted Accessibility access; original155 SIGTRAP still lacks
-matching original symbols. New source/build/acceptance evidence remains separate.
+No native preview currently holds the plain lock. The owner has now authorized
+the pinned helper's Accessibility access; its actual identity probe reports access,
+and a valid paired run is pending. Original155 SIGTRAP still lacks matching
+original symbols; the owner reports no known archive and requests continued
+current-build investigation. New source/build/acceptance evidence remains separate.
 
 The earlier The October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
 Four of eight submitted tasks pass; the remaining 20-task acceptance is open.
