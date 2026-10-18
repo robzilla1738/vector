@@ -116,6 +116,13 @@ Old native fails closed without its genuine window proof. No new hand-authored
 native area or alternate API stack was added.
 [Trace evidence](evidence/aside-work-trace-2026-10-18.json) records the checks and limits.
 
+A new actual-store regression exposes a current saved-article gap: tool-only
+`memory_search`/`memory_read` can persist article text without canonical run source
+refs, so Forget and work details can miss it. Review also reproduces parent/child
+propagation, mixed desktop/article retirement and generated-child text paths.
+The coherent correction is still private and under independent review; it is
+not included in `99d6203af` or accepted merely because existing suites are green.
+
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
 byte-upload/completion protocols. Schema12 protects transfer manifests and private
@@ -157,8 +164,32 @@ ownership and original Profile split preference gate both enabled state and
 dispatch; modern ActionItems and legacy controller share the guard. Existing
 keyboard dispatch is unchanged. All67 areas replay with exact bytes/modes across
 940 source paths. The four affected native objects compile in94.58s/10steps,
-without retries. Full current-app build and native menu observations remain open.
+without retries. The clean `99d6203af` full application now builds all 1,589 steps
+in 22m51.38s, including the regenerated work-trace producer row. Its original
+disposable runtime is ready on Gateway → Claude Sonnet 5.5 / Ask first. Current UI,
+provider retry and native menu observations remain open.
 [Menu evidence](evidence/aside-native-menus-2026-10-18.json) records the separate gates.
+
+The `99d6203af` renderer's actual boot/preload/static closure measures 618,769 bytes
+JavaScript, 206,792 bytes CSS and 3,174,909 bytes total JavaScript. These exclude native
+resources outside Vite dist and remain above the byte targets. Matching current
+framework/dSYM symbols are preserved. A separate older Aux instance made CUA
+window selection ambiguous; it was left untouched and explicit permission is
+pending. Only the original disposable launcher was cancelled by SIGINT; it joined
+its own process group and removed its Profile/plain lock. This was not normal
+menu-Quit or UI acceptance. The original 155 crash UUID still differs.
+[Current build evidence](evidence/aside-native-99d6203-2026-10-18.json) preserves
+these boundaries; no manual 20-task or paired-performance result is claimed.
+
+The native smoke runners now accept the genuine current AuxFast developer output
+through canonical app/framework byte identity, version, Mach-O UUID and linked
+host ABI checks. Configuration flags remain separately labeled, and each launch/
+restart/report rechecks the original candidate under the existing inherited plain
+lock. Disposable HOME/native-host inventory replaces the owner user location.
+Eight synthetic guard fixtures and two independent source reviews pass; actual
+extension, Store and virtual-WebAuthn smoke remain open. This is a cooperative
+immutable-build guard, not signed attestation or atomic fd-to-exec binding.
+[Smoke guard evidence](evidence/aside-smoke-candidate-2026-10-18.json) records scope.
 
 The committed native-context slice extends LinkedIn with typed original-owner
 prepare/apply input proof. Its consolidated area0066 is source-proven. All49 real
@@ -197,9 +228,12 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated control-CSS check passes typecheck/lint and all5,707tests
-across851files in124.79s, including the final trace v1–v4 source. Runtime dist was
-rebuilt first. Log: `/tmp/aux-startup-control-css-integrated-check.log`.
+The latest integrated smoke-guard check passes typecheck/lint and all 5,707 tests
+across 851 files in 130.02s; three existing lint warnings remain. The eight new
+standalone Node guard fixtures retain their separate focused proof. Log:
+`/tmp/aux-smoke-guards-integrated-check-2026-10-18.log`. The preceding control-CSS
+check passes all 5,707 tests in 124.79s, including final trace v1–v4, with runtime
+dist rebuilt first (`/tmp/aux-startup-control-css-integrated-check.log`).
 The preceding v1–v3 trace check passes5,707tests in122.69s, followed by13/13 final
 pagination-gate cases; its earlier scope remains explicit in evidence. Filter
 passes5,683tests/850files, and Dialog passes5,673tests/849files. Provider-envelope,

@@ -12,20 +12,23 @@ node tests/smoke/chromium-webauthn-virtual.mjs
 AUX_CONTROL_BIN='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
   node tests/smoke/chromium-webauthn-virtual.mjs
 
-# Compiled Aux proof candidate; use the exact executable from an isolated build
-AUX_CANDIDATE_BIN='/absolute/path/to/out/AuxProof/Aux Host Proof.app/Contents/MacOS/Aux Host Proof' \
-  node tests/smoke/chromium-webauthn-virtual.mjs
+# Current candidate; original preview must first retire normally
+AUX_CHROMIUM_SRC='/absolute/patched/src' \
+AUX_CANDIDATE_BIN='/absolute/patched/src/out/AuxFast/Aux.app/Contents/MacOS/Aux' \
+  node scripts/dev.mjs -- node tests/smoke/chromium-webauthn-virtual.mjs
 ```
+
+The Aux route reuses the original launcher/plain lock and read-only candidate preflight described in [extension compatibility probes](extension-compatibility-probes.md). It admits current unsigned `Aux.app` developer outputs including genuine `AuxFast` only with matching native byte/UUID, bundle/framework version, linked ABI and separately recorded configuration evidence. It does not change or relabel the binary. `AUX_CONTROL_BIN` remains the external-browser control route; an Aux executable must use the guarded candidate route. No `enable_fido`/extension flag is invented as WebAuthn proof: real CDP virtual-authenticator operations and cryptographic checks below must pass. Preflight alone does not establish protocol or platform-passkey support.
 
 Each run creates and removes its own temporary `HOME`, user-data directory, and localhost server. The runner uses CDP `WebAuthn.enable`, `addVirtualAuthenticator`, `getCredentials`, `setUserVerified`, and `removeVirtualAuthenticator`. It verifies registration and assertion client data, exact origin and challenges, RP ID hashes, user-presence and user-verification flags, ES256 assertion signature, and a resident credential. An unrelated RP must fail with `SecurityError`; an authenticator whose UV state is off must fail a UV-required assertion with `NotAllowedError`.
 
 ## Results on September 25, 2026
 
-| Browser | Version | Synthetic registration/assertion and signature | RP rejection | UV rejection | Resident credential |
-| --- | --- | --- | --- | --- | --- |
-| Compiled AuxProof candidate | 156.0.8074.0 | Pass | Pass | Pass | Pass |
-| Installed Google Chrome control | 154.0.8037.58 | Pass | Pass | Pass | Pass |
-| Chrome for Testing control | 153.0.8010.12 | Pass | Pass | Pass | Pass |
+| Browser                         | Version       | Synthetic registration/assertion and signature | RP rejection | UV rejection | Resident credential |
+| ------------------------------- | ------------- | ---------------------------------------------- | ------------ | ------------ | ------------------- |
+| Compiled AuxProof candidate     | 156.0.8074.0  | Pass                                           | Pass         | Pass         | Pass                |
+| Installed Google Chrome control | 154.0.8037.58 | Pass                                           | Pass         | Pass         | Pass                |
+| Chrome for Testing control      | 153.0.8010.12 | Pass                                           | Pass         | Pass         | Pass                |
 
 The run artifacts are local under `release/test-artifacts/`: `aux-candidate-webauthn-virtual.json`, `system-control-webauthn-virtual.json`, and `chrome-reference-webauthn-virtual.json`. A same-version independent Chrome 156 control was not installed; the two available controls are labeled by their real versions. No result is transferred from them to AuxProof. The stable-tag AuxDev executable, signed package and production Aux Profile integration must be run separately once their exact binaries are ready.
 

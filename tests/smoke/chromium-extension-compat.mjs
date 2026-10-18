@@ -1,9 +1,9 @@
 // Disposable Chromium extension capability matrix. No personal profile, account or remote site is used.
-// Run with AUX_CANDIDATE_BIN=/absolute/path/to/out/AuxProof/.../MacOS/... for an Aux proof candidate.
+// Candidate runs use: AUX_CANDIDATE_BIN=/.../out/AuxFast/Aux.app/Contents/MacOS/Aux node scripts/dev.mjs -- node this-file
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -12,17 +12,27 @@ import {
   validateNativeMessagingManifest,
 } from "./native-messaging-manifests.mjs";
 
+import { nativeSource } from "../../chromium/dev-config.mjs";
+import { assertDevLock } from "../../scripts/dev.mjs";
+import {
+  inspectAuxCandidate,
+  assertAuxCandidateUnchanged,
+  assertCandidateBrowserVersion,
+} from "./native-candidate.mjs";
+
 const root = resolve(import.meta.dirname, "../..");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const candidate = process.env.AUX_CANDIDATE_BIN;
-if (candidate) {
-  assert.ok(existsSync(candidate), `Candidate executable missing: ${candidate}`);
-  assert.match(
-    realpathSync(candidate),
-    /\/out\/(?:AuxProof|AuxDev)\/.*\/Contents\/MacOS\//,
-    "Use an isolated compiled Aux candidate, not a reference browser",
-  );
-}
+const candidateProof = candidate
+  ? (() => {
+      assertDevLock();
+      return inspectAuxCandidate(candidate, {
+        source: nativeSource,
+        generatedHeader: join(root, "chromium/generated/aux_host_methods.h"),
+        capability: "extensions",
+      });
+    })()
+  : undefined;
 const temporary = mkdtempSync(join(tmpdir(), "aux-extension-compat-"));
 const extension = join(temporary, "extension");
 const profile = join(temporary, "profile");
@@ -133,7 +143,7 @@ let context;
 try {
   const options = {
     headless: false,
-    ...(candidate ? { executablePath: realpathSync(candidate) } : {}),
+    ...(candidate ? { executablePath: candidateProof.executable.path } : {}),
     env: { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary },
     args: [
       `--disable-extensions-except=${extension}`,
@@ -145,7 +155,12 @@ try {
     downloadsPath: downloads,
     acceptDownloads: true,
   };
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   context = await chromium.launchPersistentContext(profile, options);
+  assertCandidateBrowserVersion(context, candidateProof);
   const browserVersion = context.browser()?.version();
   const worker =
     context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker", { timeout: 30_000 }));
@@ -350,17 +365,22 @@ try {
     assert.equal(result, "rejected");
     return "unlisted extension origin denied";
   });
-  const hostDiscovery = scanNativeMessagingLocations(macNativeMessagingLocations(profile));
+  const hostDiscovery = scanNativeMessagingLocations(macNativeMessagingLocations(profile, temporary));
 
   await context.close();
   context = undefined;
   await record(
     "devTools",
     async () => {
+      if (candidateProof) {
+        assertDevLock();
+        assertAuxCandidateUnchanged(candidateProof);
+      }
       context = await chromium.launchPersistentContext(profile, {
         ...options,
         args: [...options.args, "--auto-open-devtools-for-tabs"],
       });
+      assertCandidateBrowserVersion(context, candidateProof);
       const worker =
         context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker", { timeout: 30_000 }));
       const id = new URL(worker.url()).host;
@@ -389,8 +409,9 @@ try {
   };
   const evidence = {
     at: new Date().toISOString(),
-    scope: candidate ? "AuxProof/AuxDev compiled candidate" : "Chrome for Testing reference",
-    binary: candidate ? realpathSync(candidate) : undefined,
+    scope: candidate ? "Inspected compiled Aux developer-output candidate" : "Chrome for Testing reference",
+    ...(candidateProof ? { candidateIdentity: candidateProof } : {}),
+    binary: candidateProof?.executable.path,
     browser: browserVersion,
     extensionId,
     profile: "disposable",
@@ -403,6 +424,10 @@ try {
     candidate ? "aux-candidate-extension-compat.json" : "chrome-reference-extension-compat.json",
   );
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   writeFileSync(artifact, JSON.stringify(evidence, null, 2) + "\n");
   console.log(JSON.stringify(evidence, null, 2));
   if (Object.values(results).some((result) => result.status === "fail")) process.exitCode = 1;

@@ -1,22 +1,32 @@
 // Chrome for Testing reference evidence, NOT proof that Aux/CEF implements these capabilities.
 // Uses the existing Playwright browser and a disposable profile; no native hosts.
 import { createRequire } from "node:module";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:http";
 import assert from "node:assert/strict";
+import { nativeSource } from "../../chromium/dev-config.mjs";
+import { assertDevLock } from "../../scripts/dev.mjs";
+import {
+  inspectAuxCandidate,
+  assertAuxCandidateUnchanged,
+  assertCandidateBrowserVersion,
+} from "./native-candidate.mjs";
+
 const root = resolve(import.meta.dirname, "../..");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const candidateBinary = process.env.AUX_CANDIDATE_BIN;
-if (candidateBinary) {
-  assert.ok(existsSync(candidateBinary), `Aux candidate executable missing: ${candidateBinary}`);
-  assert.match(
-    realpathSync(candidateBinary),
-    /\/out\/AuxProof\//,
-    "Use the isolated AuxProof build, not a reference browser",
-  );
-}
+const candidateProof = candidateBinary
+  ? (() => {
+      assertDevLock();
+      return inspectAuxCandidate(candidateBinary, {
+        source: nativeSource,
+        generatedHeader: join(root, "chromium/generated/aux_host_methods.h"),
+        capability: "extensions",
+      });
+    })()
+  : undefined;
 const dir = mkdtempSync(join(tmpdir(), "aux-chromium-baseline-"));
 const extension = join(dir, "extension");
 mkdirSync(extension);
@@ -41,9 +51,13 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://localhost:${server.address().port}`;
 let context;
 try {
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   context = await chromium.launchPersistentContext(join(dir, "profile"), {
     headless: false,
-    ...(candidateBinary ? { executablePath: realpathSync(candidateBinary) } : {}),
+    ...(candidateBinary ? { executablePath: candidateProof.executable.path } : {}),
     env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir },
     args: [
       `--disable-extensions-except=${extension}`,
@@ -54,6 +68,7 @@ try {
     downloadsPath: join(dir, "downloads"),
     acceptDownloads: true,
   });
+  assertCandidateBrowserVersion(context, candidateProof);
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   const page = await context.newPage();
@@ -127,7 +142,8 @@ try {
     scope: candidateBinary
       ? "Isolated Aux //chrome candidate executable; synthetic unpacked extension APIs only, not Store, native hosts, accounts, passkeys or Aux-shell integration."
       : "Google Chrome for Testing reference only, not Aux/CEF qualification; no native hosts, accounts, passkeys or Web Store invoked.",
-    ...(candidateBinary ? { candidateBinary: realpathSync(candidateBinary) } : {}),
+    ...(candidateBinary ? { candidateBinary: candidateProof.executable.path } : {}),
+    ...(candidateProof ? { candidateIdentity: candidateProof } : {}),
     ...result,
   };
   const output = join(
@@ -136,6 +152,10 @@ try {
     candidateBinary ? "aux-candidate-extension-apis.json" : "aux-chromium-extension-baseline.json",
   );
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   writeFileSync(output, JSON.stringify(evidence, null, 2) + "\n");
   console.log(JSON.stringify(evidence, null, 2));
 } finally {

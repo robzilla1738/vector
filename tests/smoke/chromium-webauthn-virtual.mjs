@@ -8,6 +8,15 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { nativeSource } from "../../chromium/dev-config.mjs";
+import { assertDevLock } from "../../scripts/dev.mjs";
+import {
+  inspectAuxCandidate,
+  assertAuxCandidateUnchanged,
+  assertCandidateBrowserVersion,
+  assertExternalControlPath,
+} from "./native-candidate.mjs";
+
 const root = resolve(import.meta.dirname, "../..");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const candidate = process.env.AUX_CANDIDATE_BIN;
@@ -15,12 +24,17 @@ const control = process.env.AUX_CONTROL_BIN;
 assert.ok(!(candidate && control), "Choose one browser binary per run.");
 const binary = candidate ?? control;
 if (binary) assert.ok(existsSync(binary), `Browser executable missing: ${binary}`);
-if (candidate)
-  assert.match(
-    realpathSync(candidate),
-    /\/out\/(?:AuxProof|AuxDev)\/.*\/Contents\/MacOS\//,
-    "Use a compiled isolated Aux candidate.",
-  );
+if (control) assertExternalControlPath(control);
+const candidateProof = candidate
+  ? (() => {
+      assertDevLock();
+      return inspectAuxCandidate(candidate, {
+        source: nativeSource,
+        generatedHeader: join(root, "chromium/generated/aux_host_methods.h"),
+        capability: "webauthn",
+      });
+    })()
+  : undefined;
 const scope = candidate
   ? "Aux compiled candidate"
   : control
@@ -38,12 +52,17 @@ let context;
 let session;
 let authenticatorId;
 try {
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   context = await chromium.launchPersistentContext(profile, {
     headless: false,
-    ...(binary ? { executablePath: realpathSync(binary) } : {}),
+    ...(binary ? { executablePath: candidateProof?.executable.path ?? realpathSync(binary) } : {}),
     env: { PATH: process.env.PATH, HOME: directory, TMPDIR: directory },
     args: ["--use-mock-keychain", "--password-store=basic", "--no-first-run"],
   });
+  assertCandidateBrowserVersion(context, candidateProof);
   const page = await context.newPage();
   await page.goto(origin);
   assert.equal(await page.evaluate(() => window.isSecureContext), true, "localhost must be a secure context");
@@ -163,8 +182,9 @@ try {
     at: new Date().toISOString(),
     scope,
     browser: context.browser()?.version(),
-    binary: binary ? realpathSync(binary) : undefined,
+    binary: candidateProof?.executable.path ?? (binary ? realpathSync(binary) : undefined),
     profile: "disposable",
+    ...(candidateProof ? { candidateIdentity: candidateProof } : {}),
     origin,
     checks: {
       registration: true,
@@ -189,6 +209,10 @@ try {
         : "chrome-reference-webauthn-virtual.json",
   );
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   writeFileSync(artifact, JSON.stringify(evidence, null, 2) + "\n");
   console.log(JSON.stringify(evidence, null, 2));
 } finally {

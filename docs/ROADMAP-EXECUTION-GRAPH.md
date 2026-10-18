@@ -114,16 +114,36 @@ retry remains open. Memory publication/rollback corrections and exact eligibilit
 have integrated fault regressions; native populated Dream acceptance remains open.
 Native area0067 adds guarded File New Chat and oriented Tab split chooser commands.
 All67 areas replay exactly across940 source paths; the four affected objects compile
-in94.58s/10steps. Current full-app build and native menu behavior remain open.
+in94.58s/10steps. The clean `99d6203af` full app now compiles 1,589 steps in 22m51.38s;
+native menu behavior remains open.
 Measured optional Dialog extraction, Filter split Update controls and durable
 work-trace/turn navigation are integrated with reviewed source and fixtures.
 Trace loads only on disclosure and retires held/cached data on canonical Space
 changes; exact source Forget joins original reads before removal. Its generated
-native producer row and all current UI observations remain open. The optional
+native producer row is included in that full build; current UI observations remain open. The optional
 widget CSS boundary preserves shared controls and all122 rules while saving
 10,653 startup CSS bytes in matched private renderer builds. Final cumulative
 source passes all5,707tests/851files; packaged performance remains separate. No unbuilt result
 is treated as native acceptance.
+
+The actual `99d6203af` renderer closure is 618,769 JS / 206,792 CSS bytes and
+3,174,909 total JS bytes, above targets. Its original disposable runtime reports
+ready with the configured Gateway / Claude Sonnet 5.5 / Ask first route. A separate older Aux instance
+made CUA selection ambiguous and was left untouched pending permission. Root
+cancelled only the original disposable launcher, which joined its process group
+and removed its own Profile/lock; no GUI Quit, provider retry or UI acceptance is
+claimed. Genuine AuxFast smoke guards now have exact binary/configuration evidence
+separation, the inherited original lock and eight synthetic fixtures. Live smoke,
+matching-stock performance and the original crash resolution remain open. See
+[current build](evidence/aside-native-99d6203-2026-10-18.json) and
+[guard](evidence/aside-smoke-candidate-2026-10-18.json) evidence.
+The integrated guard slice passes typecheck/lint and all 5,707 tests across
+851 files in 130.02s; its eight standalone guard fixtures remain separate proof.
+
+Actual-store regressions now demonstrate missing canonical article provenance
+from tool-only recall, related family outputs and mixed desktop/article cleanup.
+The private correction is under independent review and is not in the compiled
+candidate. A5/A6/work-details retirement acceptance remains open.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

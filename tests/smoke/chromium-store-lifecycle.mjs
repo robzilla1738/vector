@@ -1,21 +1,38 @@
 // Interactive Store lifecycle qualification. Requires a human to operate Chrome-owned UI.
-// AUX_CANDIDATE_BIN=/absolute/.../out/AuxDev/.../MacOS/... AUX_STORE_EXTENSION_ID=<32-letter-id> node this-file
+// AUX_CANDIDATE_BIN=/.../out/AuxFast/Aux.app/Contents/MacOS/Aux AUX_STORE_EXTENSION_ID=<actual-id> node scripts/dev.mjs -- node this-file
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
+
+import { nativeSource } from "../../chromium/dev-config.mjs";
+import { assertDevLock } from "../../scripts/dev.mjs";
+import {
+  inspectAuxCandidate,
+  assertAuxCandidateUnchanged,
+  assertCandidateBrowserVersion,
+} from "./native-candidate.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const binary = process.env.AUX_CANDIDATE_BIN;
 const storeId = process.env.AUX_STORE_EXTENSION_ID;
 assert.ok(binary && existsSync(binary), "Set AUX_CANDIDATE_BIN to a compiled Aux candidate.");
-assert.match(realpathSync(binary), /\/out\/(?:AuxProof|AuxDev)\/.*\/Contents\/MacOS\//);
 assert.match(storeId ?? "", /^[a-p]{32}$/, "Set AUX_STORE_EXTENSION_ID to a Chrome Web Store extension ID.");
 assert.ok(process.stdin.isTTY, "Store lifecycle requires a human at the candidate UI.");
 
+const candidateProof = binary
+  ? (() => {
+      assertDevLock();
+      return inspectAuxCandidate(binary, {
+        source: nativeSource,
+        generatedHeader: join(root, "chromium/generated/aux_host_methods.h"),
+        capability: "extensions",
+      });
+    })()
+  : undefined;
 const directory = mkdtempSync(join(tmpdir(), "aux-store-lifecycle-"));
 const profile = join(directory, "profile");
 const probe = join(directory, "probe");
@@ -34,20 +51,26 @@ writeFileSync(join(probe, "worker.js"), "chrome.runtime.onInstalled.addListener(
 writeFileSync(join(probe, "inspect.html"), "<!doctype html><title>Aux Store lifecycle observer</title>");
 const evidence = {
   at: new Date().toISOString(),
-  binary: realpathSync(binary),
+  binary: candidateProof.executable.path,
   storeId,
   profile: "disposable",
+  candidateIdentity: candidateProof,
   checks: {},
 };
 const input = createInterface({ input: process.stdin, output: process.stdout });
 let context;
 const launch = async () => {
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   context = await chromium.launchPersistentContext(profile, {
     headless: false,
-    executablePath: realpathSync(binary),
+    executablePath: candidateProof.executable.path,
     env: { PATH: process.env.PATH, HOME: directory, TMPDIR: directory },
     args: [`--load-extension=${probe}`, "--use-mock-keychain", "--password-store=basic", "--no-first-run"],
   });
+  assertCandidateBrowserVersion(context, candidateProof);
   const worker =
     context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker", { timeout: 30_000 }));
   const page = await context.newPage();
@@ -126,6 +149,10 @@ try {
   evidence.checks.removedAfterRestart = { status: "pass" };
   const artifact = join(root, "release/test-artifacts/aux-candidate-store-lifecycle.json");
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
+  if (candidateProof) {
+    assertDevLock();
+    assertAuxCandidateUnchanged(candidateProof);
+  }
   writeFileSync(artifact, JSON.stringify(evidence, null, 2) + "\n");
   console.log(JSON.stringify(evidence, null, 2));
 } finally {

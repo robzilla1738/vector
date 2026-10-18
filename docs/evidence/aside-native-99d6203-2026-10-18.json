@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "candidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "scope": "Full current native compilation and original disposable-peer readiness only; no UI/provider/performance acceptance",
+  "build": {
+    "steps": 1589,
+    "elapsed": "22m51.38s",
+    "retries": 0,
+    "remote": 0
+  },
+  "runtimeIdentity": {
+    "commit": "99d6203afd1ac9953f9a736766967cd3d637126a",
+    "tree": "4b9c1749f36fe82683f962bf40450f5896ab2d20",
+    "dirty": false
+  },
+  "frameworkUuid": "4C4C4483-5555-3144-A18E-F9CAF8C16DE4",
+  "symbols": {
+    "commit": "99d6203afd1ac9953f9a736766967cd3d637126a",
+    "preservedAt": "2026-10-18T08:35:45.359949+00:00",
+    "files": {
+      "Aux Framework": {
+        "bytes": 254279104,
+        "uuid": "UUID: 4C4C4483-5555-3144-A18E-F9CAF8C16DE4"
+      },
+      "Aux Framework.DWARF": {
+        "bytes": 1895968040,
+        "uuid": "UUID: 4C4C4483-5555-3144-A18E-F9CAF8C16DE4"
+      }
+    }
+  },
+  "renderer": {
+    "startupJsBytes": 618769,
+    "startupCssBytes": 206792,
+    "totalJsBytes": 3174909,
+    "scope": "Actual emitted Vite boot/preload/static closure, excluding native bootstrap/resources outside dist",
+    "rawEvidence": "/tmp/aux-integrated-renderer-closure-2026-10-18.json",
+    "rawSha256": "0724225c451cc3bbc340e950dfaadeca677a51da59ecdfe20d91547e5b461935",
+    "targetsMet": false
+  },
+  "ownedPeer": {
+    "peer": {
+      "pid": 22471,
+      "instanceId": "275a60d0-90c7-4953-b6b0-9feb5c7fd1d0",
+      "ready": true
+    },
+    "settings": {
+      "modelProvider": "gateway",
+      "plannerModel": "anthropic/claude-sonnet-5.5",
+      "agentModelRoutes": {
+        "fast": {
+          "modelId": "anthropic/claude-haiku-4.5",
+          "reasoning": "low"
+        },
+        "standard": {
+          "modelId": "anthropic/claude-sonnet-5.5",
+          "reasoning": "medium"
+        },
+        "deep": {
+          "modelId": "anthropic/claude-opus-5.5",
+          "reasoning": "high"
+        },
+        "visual": {
+          "modelId": "anthropic/claude-sonnet-5.5",
+          "reasoning": "medium"
+        }
+      },
+      "agentMode": "ask",
+      "localModelsOnly": false
+    },
+    "scope": "Original disposable peer/settings read only; no model task, UI inspection or readiness timing claim"
+  },
+  "retirement": {
+    "retiredAt": "2026-10-18T08:39:19.552108+00:00",
+    "action": "SIGINT to original launcher11997; original runCommand retired owned group22455 and finally cleaned its own Profile/lock",
+    "launcherExit": 1,
+    "temporaryProfileRemoved": true,
+    "plainLockRemoved": true,
+    "guiQuitAcceptance": false,
+    "olderAuxPid46159": "Left untouched; separate process group; permission question still pending"
+  },
+  "observations": [],
+  "limitations": [
+    "Current native UI, configured-provider retry/manual20, all-surface acceptance and paired matching-stock performance were not executed.",
+    "An older Aux instance outside the disposable run made native CUA app selection ambiguous. It was left untouched; an explicit permission question remains pending. No windows/chats/history/credentials from it were inspected.",
+    "Original155 trap remains unresolved; complete current framework UUID differs from the original dump.",
+    "Private Memory article-provenance/family corrections are not part of this candidate."
+  ],
+  "logs": [
+    "/tmp/aux-integrated-native-2026-10-18-build-launch.log",
+    "/tmp/aux-integrated-native-99d6203-2026-10-18/acceptance.json"
+  ]
+}
