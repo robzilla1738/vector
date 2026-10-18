@@ -8,6 +8,18 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The latest [fullscreen and Settings integration](evidence/aside-fullscreen-settings-integration-2026-10-18.json)
+passes **6,097 tests across 866 files** in 103.05s, with 581 lint advisories and no
+type/lint errors. Runtime dist was rebuilt first, without a native compiler.
+All 69 canonical areas replay exactly across 975 paths and modes. Source now
+preserves original split/Little embeds and drafts during tab fullscreen, publishes
+actual mute changes, anchors permission bubbles inside the native toolbar, and
+adopts measured Settings/Home/select/card and five rail-glyph details. This slice
+still needs native compilation and changed-flow acceptance. Pre-fix comparison
+covers 28 actual captures against 21 distinct reference rows; it cannot accept
+the later corrections. Selected-option alignment, remaining glyph roles and all
+unmatched populated/empty/focus/theme/narrow states remain open.
+
 The current [parked-page readmission slice](evidence/aside-parked-page-readmission-2026-10-18.json)
 is committed as `d09aff256` and passes **6,086 tests across 864 files** in
 134.48s, with 581 lint advisories and no type/lint errors. Runtime dist was rebuilt

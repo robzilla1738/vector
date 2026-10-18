@@ -45,23 +45,28 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 
 ### Current reservations and integration
 
-The current `587bdaf5e` native campaign stopped after12 scored tasks:9passes,
-3failures and8unsubmitted. Its [immutable partial record](evidence/aside-native-587-manual20-partial-2026-10-18.json)
-retains actual provider token/cache/cost/latency evidence. Input/navigation and
-original CSV intake now work, but model artifact access, answer-parking readmission
-and redundant rich-text focus clicks require repairs before a fresh complete20.
-The first two source repairs are being integrated and independently reviewed;
-none changes the existing uncertain receipt or authorizes replay. The native
-permission chip also remains invisible and needs the existing direct-bubble route.
-Current runtime-outage navigation and normal three-tab restore have bounded native
-evidence; they do not establish OS sleep/wake, all browser flows or daily readiness.
-No native preview currently holds the plain lock. The owner has now authorized
-the pinned helper's Accessibility access; its actual identity probe reports access,
-and a valid paired run is pending. Original155 SIGTRAP still lacks matching
-original symbols; the owner reports no known archive and requests continued
-current-build investigation. New source/build/acceptance evidence remains separate.
+The latest scored `587bdaf5e` manual20 stopped after 12 tasks: 9 passes,
+3 failures and 8 unsubmitted. Its [immutable partial record](evidence/aside-native-587-manual20-partial-2026-10-18.json)
+retains observed provider token/cache/cost/latency data. Artifact reading,
+revision-bound parked-page readmission and rich-text batch guards are now
+integrated; the original uncertain receipt is preserved without replay.
+The [latest fullscreen/Settings slice](evidence/aside-fullscreen-settings-integration-2026-10-18.json)
+passes 6,097 tests across 866 files after rebuilding runtime dist, with no
+concurrent native compiler. All 69 native areas replay across 975 paths/modes.
+Its source fixes permission anchoring, mute publication and normal/Little tab
+fullscreen while preserving embeds and drafts. Compilation and changed-flow
+native acceptance remain prerequisites to a fresh complete20 campaign.
 
-The earlier The October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
+The retired clean7d native candidate has bounded denial/media/file/bookmark
+observations and a 237.018-second no-crash idle interval. Normal restore and
+runtime-outage navigation remain bounded observations, not OS sleep/wake or daily
+readiness. No preview holds the plain lock. The pinned helper's authorized
+Accessibility probe reports access; a valid paired run remains pending. Original
+155 SIGTRAP lacks matching symbols; the owner reports no known archive and asks
+for continued current-build investigation. All reference/native/performance gates
+remain active.
+
+The earlier October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
 Four of eight submitted tasks pass; the remaining 20-task acceptance is open.
 Captured selection and fresh same-tab admission now work. Input-triggered
 navigation still needs an exact continuation from its original action to the

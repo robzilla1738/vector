@@ -1,0 +1,85 @@
+{
+  "atUTC": "2026-10-18T19:35:07.323815+00:00",
+  "status": "Source integrated and checked; native compilation and post-fix observation pending",
+  "integratedCheck": {
+    "session": 84288,
+    "exit": 0,
+    "tests": 6097,
+    "files": 866,
+    "seconds": 103.05,
+    "lintAdvisories": 581,
+    "typeOrLintErrors": 0,
+    "runtimeDistRebuiltBeforeTests": true,
+    "nativeCompilerConcurrent": false,
+    "log": "/tmp/aux-fullscreen-ui-native-integrated-check-2026-10-18.log",
+    "sha256": "e757298fd0ff19817997053f0b47b9f1f98df8820457b48782fe214f6d3ef529"
+  },
+  "nativeReplay": {
+    "areas": 69,
+    "paths": 975,
+    "mismatches": 0,
+    "path": "/tmp/aux-fullscreen-integrated-replay-2026-10-18/proof.json",
+    "sha256": "c64e3a501a7ac23cfe6d314326113b5b73862eea42b847b10a5eba8909d5319f"
+  },
+  "changes": [
+    "Exact active native HTML-fullscreen owner enters versioned tab catalog, generated client and store; normal and Little presentation hides chrome without replacing original embeds, drafts or saved split layout. Browser fullscreen remains distinct.",
+    "Native permission bubbles use retained1x1toolbar anchor instead of entire window; existing policy, manager, deny and input protection remain.",
+    "DidUpdateAudioMutingState publishes actual native mute state immediately through existing page event.",
+    "Measured Settings section spacing, Home Tab hint, paired select glyphs, Appearance native Advanced destination/Tidy glyph/card gap, Projects card geometry and five precise rail glyph roles."
+  ],
+  "review": {
+    "fullscreenManifest": "/tmp/aux-tab-fullscreen-d09-v1/frozen/manifest.json",
+    "fullscreenManifestSHA256": "e169847a90ba06da39cf92333dae7aaa57840540001e8c4aadc1d8f101b2b97f",
+    "focusedTests": 30,
+    "focusedFiles": 6,
+    "peerSourceReview": "clear after correcting split display:none embed teardown, direct GN dependency, positive generated event coverage and Little window scope",
+    "reactReview": "Existing component ownership preserved; no duplicate state for fullscreen or saved-layout mutation; static local icon role values; existing native keyboard/ARIA remain. Root manually reviewed source and pre-fix Appearance side by side.",
+    "nativeFixtureStatus": "Optional permission, mute and fullscreen native fixtures remain private and uncompiled/unexecuted; not applied or counted as test passes."
+  },
+  "uiObservation": {
+    "ledger": "/tmp/aux-ui-audit-7d-2026-10-18/current-native-observation-ledger-v1.json",
+    "sha256": "81cbcd0787e7757eabb7c3508e734bbac62b5f861e8362adb8542df8fc67acea",
+    "actualPreFixCaptures": 28,
+    "distinctReferenceRowsViewed": 21,
+    "postFixFullRowAcceptances": 0,
+    "remaining": [
+      "Selected native option alignment and theme-option glyphs",
+      "Remaining rail roles",
+      "Current native matched populated/empty/focus/theme/narrow states"
+    ]
+  },
+  "applyReceipts": [
+    {
+      "path": "/tmp/aux-root-ui-minimal-v2-apply-2026-10-18.json",
+      "sha256": "0b90c2e39430d60f3f31352b83f9346764b0c3d9b7549ff0dd6266951387be96"
+    },
+    {
+      "path": "/tmp/aux-root-ui-appearance-projects-apply-2026-10-18.json",
+      "sha256": "3531df37f24cbf901c69d665cd5d1fb37bb818b31262a47c5d1abcb77568d8d7"
+    },
+    {
+      "path": "/tmp/aux-root-ui-rail-apply-2026-10-18.json",
+      "sha256": "853ee0eafea4b538afe324634542d694cf59a02e7c668e8c98d6f00a8536301c"
+    },
+    {
+      "path": "/tmp/aux-permission-mute-root-integration-2026-10-18/result.json",
+      "sha256": "88e1043959c04b301f26248d1388a2162d75c16a3c4fd61e9fe037391c912f64"
+    },
+    {
+      "path": "/tmp/aux-root-fullscreen-integration-2026-10-18/web-apply.json",
+      "sha256": "0b2914a4bdba93140290aa501cb5ab264bcf9843f8eef34486a5d2390fc5f019"
+    },
+    {
+      "path": "/tmp/aux-root-fullscreen-integration-2026-10-18/native-apply.json",
+      "sha256": "4699b15e4b3a9ae34134c28df975ec2504fdc1b0bdc9967d3f64d6a3e23f229f"
+    },
+    {
+      "path": "/tmp/aux-root-fullscreen-integration-2026-10-18/generated-compare.json",
+      "sha256": "cc342828f7db8b07683a4b2671135f854c79ca3d22662e43c0e6d3d5b169a38e"
+    }
+  ],
+  "limits": [
+    "No new native compilation, live fullscreen/permission/mute acceptance, complete20-task smoke, paired performance or historical crash resolution is established by this source record.",
+    "No push, hosted Actions, signing, notarization or release."
+  ]
+}
