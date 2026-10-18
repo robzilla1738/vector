@@ -108,6 +108,7 @@ export class GoogleAccountService {
   private activeReads = new Map<string, Set<AbortController>>();
   private accountTasks = new Map<string, Set<Promise<unknown>>>();
   private operations = new Set<Promise<unknown>>();
+  // Reconnection keeps its connection ID but rotates this original credential identity.
   private refreshControllers = new Map<string, AbortController>();
   private refreshing = new Map<string, Promise<Secret>>();
   private closed = false;
@@ -452,7 +453,7 @@ export class GoogleAccountService {
           );
         if (!updated.changes) throw new AuxError("cancelled", "Google connection changed during sign-in.");
         this.activeReads.get(connectionId)?.forEach((controller) => controller.abort());
-        this.refreshControllers.get(connectionId)?.abort();
+        this.refreshControllers.get(previous.secret_name)?.abort();
       } else
         this.deps.repo.db
           .prepare(
@@ -544,20 +545,33 @@ export class GoogleAccountService {
     if (!secret.accessToken || !secret.refreshToken || !Number.isFinite(secret.expiresAt))
       throw new AuxError("needs_input", "Google credentials are incomplete. Reconnect this account.");
     if (secret.expiresAt > Date.now() + 60_000) return secret;
-    const existing = this.refreshing.get(row.connection_id);
+    const existing = this.refreshing.get(row.secret_name);
     if (existing) return existing;
     const task = this.refresh(row, secret);
-    this.refreshing.set(row.connection_id, task);
+    this.refreshing.set(row.secret_name, task);
     try {
       return await task;
     } finally {
-      this.refreshing.delete(row.connection_id);
+      if (this.refreshing.get(row.secret_name) === task) this.refreshing.delete(row.secret_name);
     }
   }
   private async refresh(row: GoogleAccountRow, prior: Secret): Promise<Secret> {
     const controller = new AbortController();
-    this.refreshControllers.set(row.connection_id, controller);
+    this.refreshControllers.set(row.secret_name, controller);
+    const checkOriginal = () => {
+      controller.signal.throwIfAborted();
+      if (this.closed) throw new AuxError("cancelled", "Google token refresh retired.");
+      const current = this.row(row.connection_id);
+      if (
+        current.secret_name !== row.secret_name ||
+        current.account_key !== row.account_key ||
+        current.scopes !== row.scopes ||
+        current.state !== "active"
+      )
+        throw new AuxError("cancelled", "The original Google account changed during refresh.");
+    };
     try {
+      checkOriginal();
       if (prior.clientId && ![this.deps.clientId, this.deps.generalClientId].includes(prior.clientId))
         throw new AuxError(
           "needs_input",
@@ -574,6 +588,7 @@ export class GoogleAccountService {
           grant_type: "refresh_token",
         }),
       });
+      checkOriginal();
       if (!response.ok) {
         if (response.status === 400 || response.status === 401) {
           this.deps.repo.db
@@ -587,6 +602,7 @@ export class GoogleAccountService {
         throw new AuxError("backend_unavailable", `Google token refresh failed (${response.status}).`);
       }
       const data = await googleJsonResponse(response);
+      checkOriginal();
       if (typeof data.access_token !== "string" || !data.access_token)
         throw new AuxError("backend_unavailable", "Google token refresh returned no access token.");
       if (
@@ -607,8 +623,7 @@ export class GoogleAccountService {
         refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : prior.refreshToken,
         expiresAt: tokenExpiry(data.expires_in),
       };
-      if (this.row(row.connection_id).secret_name !== row.secret_name)
-        throw new AuxError("cancelled", "Google connection changed during refresh.");
+      checkOriginal();
       await this.deps.native.storeSecret(row.secret_name, JSON.stringify(secret));
       const current = this.deps.repo.db
         .prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL")
@@ -625,9 +640,11 @@ export class GoogleAccountService {
         await this.deps.native.storeSecret(row.secret_name, "").catch(() => undefined);
         throw new AuxError("cancelled", "Google connection changed during refresh.");
       }
+      checkOriginal();
       return secret;
     } finally {
-      this.refreshControllers.delete(row.connection_id);
+      if (this.refreshControllers.get(row.secret_name) === controller)
+        this.refreshControllers.delete(row.secret_name);
     }
   }
   private revision(row: GoogleAccountRow): string {
@@ -734,7 +751,8 @@ export class GoogleAccountService {
     }
     this.pending.clear();
     this.activeReads.get(connectionId)?.forEach((controller) => controller.abort());
-    this.refreshControllers.get(connectionId)?.abort();
+    this.refreshControllers.get(row.secret_name)?.abort();
+    const refresh = this.refreshing.get(row.secret_name);
     this.deps.repo.db
       .prepare(
         "UPDATE calendar_connections SET revoked_at=?,updated_at=? WHERE connection_id=? AND revoked_at IS NULL",
@@ -747,7 +765,7 @@ export class GoogleAccountService {
       .prepare("UPDATE google_task_grants SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL")
       .run(Date.now(), connectionId);
     this.deps.onChange?.();
-    await Promise.allSettled(this.accountTasks.get(connectionId) ?? []);
+    await Promise.allSettled([...(this.accountTasks.get(connectionId) ?? []), ...(refresh ? [refresh] : [])]);
     const raw = await this.deps.native
       .readSecret(row.secret_name)
       .then((result) => result.value)
