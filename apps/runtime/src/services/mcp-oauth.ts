@@ -63,6 +63,7 @@ export class McpOAuthService {
   private generations = new Map<string, number>();
   private writes = new Map<string, Promise<void>>();
   private clearing = new Map<string, number>();
+  private tokenRequests = new Map<string, Promise<string>>();
   constructor(
     private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
     private networkFetch: typeof fetch = fetch,
@@ -554,6 +555,25 @@ export class McpOAuthService {
     server: RemoteServer,
     expectedGeneration = this.authorizationGeneration(server),
   ): Promise<string> {
+    if (this.authorizationGeneration(server) !== expectedGeneration)
+      throw new AuxError("cancelled", "MCP authorization changed.");
+    const key = JSON.stringify([server.serverId, server.sourceDigest, expectedGeneration]);
+    const existing = this.tokenRequests.get(key);
+    if (existing) return existing;
+    const task = this.tokenOwned(server, expectedGeneration).then((token) => {
+      if (this.authorizationGeneration(server) !== expectedGeneration)
+        throw new AuxError("cancelled", "MCP authorization changed.");
+      return token;
+    });
+    this.tokenRequests.set(key, task);
+    try {
+      return await task;
+    } finally {
+      if (this.tokenRequests.get(key) === task) this.tokenRequests.delete(key);
+    }
+  }
+
+  private async tokenOwned(server: RemoteServer, expectedGeneration: number): Promise<string> {
     if (this.authorizationGeneration(server) !== expectedGeneration)
       throw new AuxError("cancelled", "MCP authorization changed.");
     if (this.clearing.has(this.key(server)))

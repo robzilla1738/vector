@@ -17,6 +17,94 @@ type Provider = {
 };
 type Options = { authorizationCode?: string; iss?: string };
 
+function tokenFixture() {
+  const server = {
+    serverId: "44444444-4444-4444-8444-444444444444",
+    workspaceId: "workspace",
+    name: "Token fixture",
+    source: { kind: "remote" as const, url: "https://mcp.example.test/mcp", auth: "oauth" as const },
+    state: "active" as const,
+    toolsRevision: 0,
+    disabledTools: [],
+    toolNames: [],
+    sourceDigest: "e".repeat(64),
+    createdAt: 1,
+    updatedAt: 1,
+  };
+  const key = `mcp-oauth-${server.serverId}`,
+    stored = JSON.stringify({
+      serverId: server.serverId,
+      sourceDigest: server.sourceDigest,
+      issuer: "https://auth.example.test",
+      clients: {},
+      tokens: { access_token: "original-access", refresh_token: "original-refresh", token_type: "Bearer" },
+      expiresAt: Date.now() + 3600_000,
+    }),
+    secrets = new Map([[key, stored]]),
+    native = {
+      readSecret: vi.fn(async (name: string) => ({ value: secrets.get(name) })),
+      storeSecret: vi.fn(async (name: string, value: string) => {
+        if (value) secrets.set(name, value);
+        else secrets.delete(name);
+        return { ok: true as const };
+      }),
+    },
+    network = vi.fn<typeof fetch>(async () => {
+      throw new Error("Cached token cannot contact a provider");
+    }),
+    service = new McpOAuthService(native, network);
+  return { server, key, stored, secrets, native, network, service };
+}
+
+it("never shares a pending credential read with a different reviewed source", async () => {
+  const f = tokenFixture();
+  let finish!: () => void;
+  const held = new Promise<void>((resolve) => (finish = resolve));
+  f.native.readSecret.mockImplementation(async () => {
+    await held;
+    return { value: f.stored };
+  });
+  const original = f.service.token(f.server),
+    changed = f.service.token({ ...f.server, sourceDigest: "f".repeat(64) }).catch((error: unknown) => error);
+  try {
+    expect(f.native.readSecret).toHaveBeenCalledTimes(2);
+    finish();
+    expect(await original).toBe("original-access");
+    expect(await changed).toMatchObject({ code: "needs_input" });
+    expect(f.network).not.toHaveBeenCalled();
+  } finally {
+    finish();
+    f.service.close();
+  }
+});
+
+it.each(["disconnect", "close"] as const)(
+  "refuses every shared cached-token waiter after %s",
+  async (action) => {
+    const f = tokenFixture();
+    let finish!: () => void;
+    const held = new Promise<void>((resolve) => (finish = resolve));
+    f.native.readSecret.mockImplementation(async () => {
+      await held;
+      return { value: f.stored };
+    });
+    const first = f.service.token(f.server).catch((error: unknown) => error),
+      second = f.service.token(f.server).catch((error: unknown) => error);
+    try {
+      expect(f.native.readSecret).toHaveBeenCalledTimes(1);
+      const retirement = action === "disconnect" ? f.service.clear(f.server) : f.service.close();
+      finish();
+      await retirement;
+      for (const result of await Promise.all([first, second])) expect(result).toBeInstanceOf(Error);
+      expect(f.network).not.toHaveBeenCalled();
+      expect(f.secrets.size).toBe(action === "disconnect" ? 0 : 1);
+    } finally {
+      finish();
+      f.service.close();
+    }
+  },
+);
+
 it("binds MCP OAuth callback state and source identity while storing tokens only in Keychain", async () => {
   const secrets = new Map<string, string>();
   const native = {
@@ -182,94 +270,101 @@ it("does not restore a credential when disconnect races an in-flight OAuth excha
   }
 });
 
-it("completes SDK discovery, registration, code exchange, and refresh", async () => {
-  const secrets = new Map<string, string>();
-  const native = {
-    readSecret: async (name: string) => ({ value: secrets.get(name) }),
-    storeSecret: async (name: string, value: string) => {
-      if (value) secrets.set(name, value);
-      else secrets.delete(name);
-      return { ok: true as const };
-    },
-  };
-  const server = {
-    serverId: "22222222-2222-4222-8222-222222222222",
-    workspaceId: "workspace",
-    name: "Remote",
-    source: { kind: "remote" as const, url: "https://mcp.example.test/mcp", auth: "oauth" as const },
-    state: "active" as const,
-    toolsRevision: 0,
-    disabledTools: [],
-    toolNames: [],
-    sourceDigest: "c".repeat(64),
-    createdAt: 1,
-    updatedAt: 1,
-  };
-  let tokenCalls = 0;
-  let redirectUri = "";
-  let codeExchange: URLSearchParams | undefined;
-  let refreshExchange: URLSearchParams | undefined;
-  const networkFetch: typeof fetch = async (input, init) => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
-    if (
-      url.hostname === "mcp.example.test" &&
-      url.pathname.startsWith("/.well-known/oauth-protected-resource")
-    )
-      return Response.json({
-        resource: server.source.url,
-        authorization_servers: ["https://auth.example.test"],
-      });
-    if (url.href === "https://auth.example.test/.well-known/oauth-authorization-server")
-      return Response.json({
-        issuer: "https://auth.example.test",
-        authorization_endpoint: "https://auth.example.test/authorize",
-        token_endpoint: "https://auth.example.test/token",
-        registration_endpoint: "https://auth.example.test/register",
-        code_challenge_methods_supported: ["S256"],
-        response_types_supported: ["code"],
-        grant_types_supported: ["authorization_code", "refresh_token"],
-        authorization_response_iss_parameter_supported: true,
-      });
-    if (url.pathname === "/register") {
-      const body = JSON.parse(String(init?.body)) as { redirect_uris: string[] };
-      redirectUri = body.redirect_uris[0] ?? "";
-      return Response.json({ client_id: "aux-test-client", redirect_uris: body.redirect_uris });
+it.each(["single", "concurrent"] as const)(
+  "completes SDK discovery, registration, code exchange, and %s refresh",
+  async (mode) => {
+    const secrets = new Map<string, string>();
+    const native = {
+      readSecret: async (name: string) => ({ value: secrets.get(name) }),
+      storeSecret: async (name: string, value: string) => {
+        if (value) secrets.set(name, value);
+        else secrets.delete(name);
+        return { ok: true as const };
+      },
+    };
+    const server = {
+      serverId: "22222222-2222-4222-8222-222222222222",
+      workspaceId: "workspace",
+      name: "Remote",
+      source: { kind: "remote" as const, url: "https://mcp.example.test/mcp", auth: "oauth" as const },
+      state: "active" as const,
+      toolsRevision: 0,
+      disabledTools: [],
+      toolNames: [],
+      sourceDigest: "c".repeat(64),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    let tokenCalls = 0;
+    let redirectUri = "";
+    let codeExchange: URLSearchParams | undefined;
+    let refreshExchange: URLSearchParams | undefined;
+    const networkFetch: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (
+        url.hostname === "mcp.example.test" &&
+        url.pathname.startsWith("/.well-known/oauth-protected-resource")
+      )
+        return Response.json({
+          resource: server.source.url,
+          authorization_servers: ["https://auth.example.test"],
+        });
+      if (url.href === "https://auth.example.test/.well-known/oauth-authorization-server")
+        return Response.json({
+          issuer: "https://auth.example.test",
+          authorization_endpoint: "https://auth.example.test/authorize",
+          token_endpoint: "https://auth.example.test/token",
+          registration_endpoint: "https://auth.example.test/register",
+          code_challenge_methods_supported: ["S256"],
+          response_types_supported: ["code"],
+          grant_types_supported: ["authorization_code", "refresh_token"],
+          authorization_response_iss_parameter_supported: true,
+        });
+      if (url.pathname === "/register") {
+        const body = JSON.parse(String(init?.body)) as { redirect_uris: string[] };
+        redirectUri = body.redirect_uris[0] ?? "";
+        return Response.json({ client_id: "aux-test-client", redirect_uris: body.redirect_uris });
+      }
+      if (url.pathname === "/token") {
+        tokenCalls++;
+        const body = new URLSearchParams(String(init?.body));
+        if (body.get("grant_type") === "authorization_code") {
+          codeExchange = body;
+        } else refreshExchange = body;
+        return Response.json({
+          access_token: `sdk-access-${tokenCalls}`,
+          token_type: "Bearer",
+          refresh_token: "sdk-refresh",
+          expires_in: tokenCalls === 1 ? 1 : 3600,
+        });
+      }
+      throw new Error(`Unexpected OAuth request: ${url.href}`);
+    };
+    const service = new McpOAuthService(native, networkFetch);
+    try {
+      const started = await service.start(server);
+      expect(started.state).toBe("authorization");
+      if (started.state !== "authorization") throw new Error("Expected authorization URL");
+      const authorize = new URL(started.url);
+      expect(authorize.origin).toBe("https://auth.example.test");
+      expect(authorize.searchParams.get("code_challenge_method")).toBe("S256");
+      const callback = new URL(redirectUri);
+      callback.searchParams.set("code", "sdk-code");
+      callback.searchParams.set("state", authorize.searchParams.get("state") ?? "");
+      callback.searchParams.set("iss", "https://auth.example.test");
+      expect((await fetch(callback)).status).toBe(200);
+      const tokens =
+        mode === "concurrent"
+          ? await Promise.all([service.token(server), service.token(server)])
+          : [await service.token(server)];
+      expect(tokens).toEqual(Array(mode === "concurrent" ? 2 : 1).fill("sdk-access-2"));
+      expect(tokenCalls).toBe(2);
+      expect(codeExchange?.get("code")).toBe("sdk-code");
+      expect(codeExchange?.get("redirect_uri")).toBe(redirectUri);
+      expect(codeExchange?.get("code_verifier")).toBeTruthy();
+      expect(refreshExchange?.get("refresh_token")).toBe("sdk-refresh");
+    } finally {
+      service.close();
     }
-    if (url.pathname === "/token") {
-      tokenCalls++;
-      const body = new URLSearchParams(String(init?.body));
-      if (body.get("grant_type") === "authorization_code") {
-        codeExchange = body;
-      } else refreshExchange = body;
-      return Response.json({
-        access_token: `sdk-access-${tokenCalls}`,
-        token_type: "Bearer",
-        refresh_token: "sdk-refresh",
-        expires_in: tokenCalls === 1 ? 1 : 3600,
-      });
-    }
-    throw new Error(`Unexpected OAuth request: ${url.href}`);
-  };
-  const service = new McpOAuthService(native, networkFetch);
-  try {
-    const started = await service.start(server);
-    expect(started.state).toBe("authorization");
-    if (started.state !== "authorization") throw new Error("Expected authorization URL");
-    const authorize = new URL(started.url);
-    expect(authorize.origin).toBe("https://auth.example.test");
-    expect(authorize.searchParams.get("code_challenge_method")).toBe("S256");
-    const callback = new URL(redirectUri);
-    callback.searchParams.set("code", "sdk-code");
-    callback.searchParams.set("state", authorize.searchParams.get("state") ?? "");
-    callback.searchParams.set("iss", "https://auth.example.test");
-    expect((await fetch(callback)).status).toBe(200);
-    expect(await service.token(server)).toBe("sdk-access-2");
-    expect(tokenCalls).toBe(2);
-    expect(codeExchange?.get("code")).toBe("sdk-code");
-    expect(codeExchange?.get("redirect_uri")).toBe(redirectUri);
-    expect(codeExchange?.get("code_verifier")).toBeTruthy();
-    expect(refreshExchange?.get("refresh_token")).toBe("sdk-refresh");
-  } finally {
-    service.close();
-  }
-});
+  },
+);
