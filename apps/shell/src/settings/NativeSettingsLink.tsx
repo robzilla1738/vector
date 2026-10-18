@@ -9,7 +9,7 @@ export function NativeSettingsLink({
   label,
 }: {
   active: boolean;
-  destination: "content" | "security" | "extension-shortcuts";
+  destination: "content" | "security" | "appearance" | "extension-shortcuts";
   label: string;
 }) {
   const [busy, setBusy] = useState(false);

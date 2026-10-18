@@ -900,9 +900,11 @@
   .aux-home .home-mode > span {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-1);
     color: var(--ink-2);
     font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
   }
   .home-history {
     width: min(827px, 100%);
@@ -1469,17 +1471,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 26px;
-    height: 26px;
-    padding: 0 var(--space-2);
-    border-radius: var(--r-md);
-    corner-shape: superellipse(var(--squircle-factor));
-    background: var(--tabs-list);
+    min-width: 20px;
+    height: 18px;
+    padding: 0 var(--space-1-5);
+    border-radius: var(--r-key-hint);
+    background: var(--muted);
     color: var(--ink-0);
     box-shadow: none;
-    font-size: var(--fs-md);
+    font-family: var(--font-ui);
+    font-size: 11px;
     font-weight: var(--fw-medium);
-    line-height: 1;
+    line-height: 1.5;
+    text-box-trim: trim-both;
   }
   .conversation[data-empty-transcript] .conversation-scroll {
     align-items: center;

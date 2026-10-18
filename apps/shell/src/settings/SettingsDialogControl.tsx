@@ -14,6 +14,7 @@ export function SettingsDialogControl({
   active,
   label,
   action,
+  actionIcon,
   navigation = false,
   defaultOpen = false,
   size = "regular",
@@ -23,6 +24,7 @@ export function SettingsDialogControl({
   active: boolean;
   label: string;
   action: string;
+  actionIcon?: ReactNode;
   navigation?: boolean;
   defaultOpen?: boolean;
   size?: "regular" | "wide";
@@ -79,7 +81,14 @@ export function SettingsDialogControl({
         disabled={!active}
         onClick={() => setOpen(true)}
       >
-        {navigation ? shellIconRight : action}
+        {navigation ? (
+          shellIconRight
+        ) : (
+          <>
+            {actionIcon}
+            {action}
+          </>
+        )}
       </button>
       {open && active && (
         <Dialog

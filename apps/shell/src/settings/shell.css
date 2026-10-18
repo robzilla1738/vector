@@ -127,10 +127,11 @@
   }
   .settings-rail-group-title {
     display: block;
-    padding: var(--space-7) var(--space-2-5) var(--space-1);
+    padding: var(--space-3) var(--space-2-5) var(--space-1);
     color: var(--ink-2);
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
+    line-height: 16px;
     text-transform: none;
     letter-spacing: 0;
   }
@@ -470,7 +471,7 @@
     margin-top: var(--space-2);
   }
   .settings-content .appearance-sidebar-card {
-    margin-top: var(--space-3);
+    margin-top: var(--space-2);
   }
 }
 

@@ -3,12 +3,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
+    width: calc(100% + 2 * var(--space-3-5));
+    margin-inline: calc(-1 * var(--space-3-5));
     min-height: 52px;
     padding: 12px 16px;
     text-align: left;
     border: 0;
-    border-radius: var(--r-lg);
+    border-radius: var(--r-xl);
     background: var(--settings-card);
     color: var(--ink-1);
   }

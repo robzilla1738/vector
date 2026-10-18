@@ -9,7 +9,6 @@ import {
   shellIconCode,
   shellIconCube,
   shellIconExtension,
-  shellIconFolder,
   shellIconGear,
   shellIconGlobe,
   shellIconLock,
@@ -19,12 +18,24 @@ import {
   shellIconSun,
 } from "../ui/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
+import {
+  settingsIconAppearance,
+  settingsIconProjects,
+  settingsIconProjectsActive,
+  settingsIconPasswords,
+  settingsIconPasswordsActive,
+  settingsIconRoutines,
+  settingsIconRoutinesActive,
+  settingsIconQuickAsk,
+  settingsIconQuickAskActive,
+} from "./rail-icons";
 
 interface RailItem {
   label: string;
   category: string;
   group: "Personal" | "Agent" | "Features" | "Archived";
   icon: React.ReactNode;
+  activeIcon?: React.ReactNode;
   tab?: ConnectionTab;
   gate?:
     | "smartDownloadNames"
@@ -43,7 +54,7 @@ interface RailItem {
 
 const items: readonly RailItem[] = [
   { label: "General", category: "General", group: "Personal", icon: shellIconGear },
-  { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
+  { label: "Appearance", category: "Appearance", group: "Personal", icon: settingsIconAppearance },
   { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconPerson, gate: "profiles" },
   { label: "Usage & Budgets", category: "Usage & Budgets", group: "Personal", icon: shellIconModel },
   {
@@ -69,7 +80,13 @@ const items: readonly RailItem[] = [
     gate: "permissions",
   },
   { label: "Agents", category: "Permissions", group: "Agent", icon: shellIconAgent },
-  { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
+  {
+    label: "Projects",
+    category: "Projects",
+    group: "Agent",
+    icon: settingsIconProjects,
+    activeIcon: settingsIconProjectsActive,
+  },
   { label: "Models", category: "Connections", group: "Agent", icon: shellIconCube, tab: "Models" },
   {
     label: "Skills & MCP",
@@ -87,9 +104,21 @@ const items: readonly RailItem[] = [
     tab: "Services",
     gate: "services",
   },
-  { label: "Desktop context", category: "Desktop context", group: "Agent", icon: shellIconResult, gate: "desktopContext" },
+  {
+    label: "Desktop context",
+    category: "Desktop context",
+    group: "Agent",
+    icon: shellIconResult,
+    gate: "desktopContext",
+  },
   { label: "Memory", category: "Memory", group: "Agent", icon: shellIconModel, gate: "memory" },
-  { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Features", icon: shellIconLock },
+  {
+    label: "Passwords & Autofill",
+    category: "Passwords & Autofill",
+    group: "Features",
+    icon: settingsIconPasswords,
+    activeIcon: settingsIconPasswordsActive,
+  },
   {
     label: "Vault",
     category: "Connections",
@@ -102,11 +131,18 @@ const items: readonly RailItem[] = [
     label: "Routines",
     category: "Routines",
     group: "Features",
-    icon: shellIconClock,
+    icon: settingsIconRoutines,
+    activeIcon: settingsIconRoutinesActive,
     gate: "automations",
   },
   { label: "Channels", category: "Channels", group: "Features", icon: shellIconChats },
-  { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: shellIconChats },
+  {
+    label: "Quick Ask",
+    category: "Quick Ask",
+    group: "Features",
+    icon: settingsIconQuickAsk,
+    activeIcon: settingsIconQuickAskActive,
+  },
   { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
   {
     label: "Developers",
@@ -188,6 +224,10 @@ export function SectionRail({
     <div className="settings-category-list">
       {available.map((item, index) => {
         const groupStart = item.group !== available[index - 1]?.group;
+        const selected =
+          !searching &&
+          !(item.category === "Memory" && onOpenMemoryView) &&
+          selectedPath === settingsPath(item.category, item.tab);
         return (
           <div className="settings-rail-item" key={item.label}>
             {groupStart && <span className="settings-rail-group-title">{item.group}</span>}
@@ -195,16 +235,12 @@ export function SectionRail({
               ref={item.label === "General" ? firstCategory : undefined}
               data-category={item.label}
               title={item.label}
-              aria-current={
-                !searching &&
-                !(item.category === "Memory" && onOpenMemoryView) &&
-                selectedPath === settingsPath(item.category, item.tab)
-                  ? "page"
-                  : undefined
-              }
+              aria-current={selected ? "page" : undefined}
               onClick={() => onOpenCategory(item.category, item.tab)}
             >
-              <span className="settings-category-icon">{item.icon}</span>
+              <span className="settings-category-icon">
+                {selected ? (item.activeIcon ?? item.icon) : item.icon}
+              </span>
               <span className="settings-category-label">{item.label}</span>
             </button>
             {item.category === "Memory" && category === "Memory" && !searching && onOpenMemoryView && (

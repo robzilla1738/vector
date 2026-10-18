@@ -14,6 +14,7 @@ import { bridge, inNativeHost } from "../../bridge";
 import { errorMessage } from "../../error-message";
 import { NativeSettingsLink } from "../NativeSettingsLink";
 import { AppearanceChoice } from "./AppearanceChoice";
+import { shellIconSliders } from "../../ui/icons";
 
 const COMMON_SHORTCUTS = [
   "sidebar",
@@ -261,6 +262,7 @@ export function AppearanceSettings({
             active={active && !bridge.privateMode}
             label="Customize Tidy Tabs"
             action="Configure"
+            actionIcon={shellIconSliders}
             showClose
           >
             {(close) => (
@@ -272,6 +274,13 @@ export function AppearanceSettings({
               />
             )}
           </SettingsDialogControl>
+        </SettingsField>
+        <SettingsField compact label="Advanced">
+          <NativeSettingsLink
+            active={active}
+            destination="appearance"
+            label="Open advanced appearance settings"
+          />
         </SettingsField>
       </SettingsGroup>
 

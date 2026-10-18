@@ -139,6 +139,7 @@
     --r-pill: 999px;
     /* round-cornered (corner-shape: round) shapes, so no squircle factor */
     --r-control: 10px;
+    --r-key-hint: 6px;
     --r-card: 14px;
     --r-composer: 20px;
 

@@ -14,7 +14,7 @@ import {
   SEARCH_ENGINE_TEMPLATE_ERROR,
 } from "@aux/contracts/search-engine";
 import { Popover } from "../ui/popover";
-import { shellIconCheck, shellIconDown } from "../ui/icons";
+import { shellIconCheck, shellIconSelect } from "../ui/icons";
 import { moveListFocus } from "../keyboard-list";
 import "./search-engines.css";
 import { bridge } from "../bridge";
@@ -137,7 +137,7 @@ export function SearchEngineSetting({
         trigger={
           <>
             <span>{presetFor(value)?.name ?? "Custom"}</span>
-            {shellIconDown}
+            {shellIconSelect}
           </>
         }
       >
