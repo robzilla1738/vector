@@ -198,6 +198,16 @@ $0.0051356. This independently verifies schema acceptance/cache fields, not
 native publication/approvals or the required manual20-task smoke; see
 [the live record](evidence/aside-live-tool-schema-2026-10-18.json).
 
+The next A1 source optimization deletes 54 unused legacy project CSS rules
+without changing live producers or lazy boundaries. Matched production renderer
+builds measure startup CSS 206,719→201,471 bytes (-5,248), with unchanged startup
+and total JS bytes. CSS still exceeds 180KiB by 17,151 bytes; emitted filename
+changes account for 144 raw JS hash changes. Native timing and complete byte
+targets remain open. [The source/build record](evidence/aside-dead-project-css-2026-10-18.json)
+retains the distinct original-dist baseline and unchanged live CSS proofs.
+The rebuilt integrated check passes5,867tests/855files in129.30s with the same
+572 advisory warnings; native acceptance remains open.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

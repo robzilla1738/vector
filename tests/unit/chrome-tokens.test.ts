@@ -299,7 +299,6 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(dark + light).toMatch(/--accent-surface:\s*color-mix/);
     expect(styles).toMatch(/\.ctl-chip\.human\s*\{[^}]*color:\s*var\(--wait\)/s);
     expect(styles).toMatch(/\.takeover\s*\{[^}]*background:\s*var\(--wait-soft\)/s);
-    expect(styles).toMatch(/\.project-diff \.diff-added\s*\{[^}]*background:\s*var\(--diff-add\)/);
     expect(styles).toMatch(
       /::highlight\(aux-conversation-matches\)\s*\{[^}]*background:\s*var\(--find-match\)/,
     );

@@ -1,0 +1,239 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "integratedBase": "dcb4e788ff173d9ae5dcad6613eac8a3e09cd605",
+  "nativeStaged": false,
+  "scope": "Remove only proven-unused legacy project CSS; preserve live workspace/task-resource and shared-role styles.",
+  "patch": {
+    "path": "/tmp/aux-dead-project-css-cfe-v1/source-v1.patch",
+    "sha256": "66a5531877ebfb3fd1d35a766d5588efda3d022a9c1c12c26a40cc2faffcd7f5"
+  },
+  "sourcePostimages": {
+    "apps/shell/src/styles/workspace.css": "255f382e489d06e2281d09abc320b7c826196a751872686adae6cf36cc5cc74a",
+    "tests/unit/chrome-tokens.test.ts": "00303e2e42799532417b8cc904cd58c502e102692cfa781ffea33357d7fa2316"
+  },
+  "source": {
+    "patchSha256": "66a5531877ebfb3fd1d35a766d5588efda3d022a9c1c12c26a40cc2faffcd7f5",
+    "files": 2,
+    "deletedRules": 54,
+    "deletedCssRawBytes": 6763,
+    "otherCssAstAndRawBytesUnchanged": true,
+    "obsoleteMirrorAssertionsRemoved": 1,
+    "newTests": 0,
+    "fullSourceFiles": 3028,
+    "currentMainCompared": "e96aa70b0bb5b11cde9ddb1c1ebadeb002221e1d",
+    "currentMainDifferences": "Documentation only; no production or test source differences from captured before baseline"
+  },
+  "build": {
+    "mode": "production",
+    "AUX_CHROMIUM_SHELL_BUILD": "1",
+    "command": "pnpm --filter @aux/shell build",
+    "bothExitCode": 0,
+    "startupCss": {
+      "before": 206719,
+      "after": 201471,
+      "delta": -5248
+    },
+    "totalCss": {
+      "before": 455283,
+      "after": 450035,
+      "delta": -5248
+    },
+    "startupJs": {
+      "before": 618803,
+      "after": 618803,
+      "delta": 0
+    },
+    "totalJs": {
+      "before": 3181214,
+      "after": 3181214,
+      "delta": 0
+    },
+    "cssAssets": 63,
+    "unchangedCssAssets": 62,
+    "jsAssets": 204,
+    "rawContentHashChangedJsAssets": 144,
+    "rawJsIdentical": false,
+    "knownEmittedFilenameNormalizedJsEqual": true,
+    "assetNameNormalizationIsDiagnosticOnly": true,
+    "initialAuditDistBytes": 206792,
+    "baselineDifferenceExplanation": "Earlier existing dist was not this fresh matched build; matched before/after evidence uses exact same captured final-audit source, not original dist."
+  },
+  "focusedChecks": {
+    "chromeTokens": {
+      "exitCode": 0,
+      "tests": 26,
+      "files": 1,
+      "seconds": 1.09
+    },
+    "shellTypes": {
+      "initialExitCode": 2,
+      "initialReason": "Missing owned @aux/chromium-driver dist after minimal contracts-only setup; TS2307 and dependent inferred-any diagnostics retained in shell-types.log",
+      "setupCorrection": "Built existing packages/chromium-driver in this private workspace, no source changes",
+      "finalExitCode": 0
+    },
+    "formatExitCode": 0,
+    "lintExitCode": 0,
+    "offlineInstallExitCode": 0,
+    "contractsFilterBuildExitCode": 0,
+    "driverBuildExitCode": 0
+  },
+  "chronology": [
+    "Own metadata-only Python checker stalled before after-build copy/Vite; retired only that private shell/checker with exit143, then equivalent Node full-source checks passed. No native process touched.",
+    "No failed product tests or Vite build; 26/26 existing affected checks ran once.",
+    "Initial shell types failed due missing private dependency dist; required existing driver built, fresh shell types passed."
+  ],
+  "writerEvidence": {
+    "path": "/tmp/aux-dead-project-css-cfe-v1/evidence.json",
+    "sha256": "b8b5a7a0a65877d4a37ebf8b4371c554e05fd863c626726dac3815a4fb38e314"
+  },
+  "handoff": {
+    "path": "/tmp/aux-dead-project-css-cfe-v1/handoff.md",
+    "sha256": "ad243139d7e3ea72a1cd7bbc5e697f6958d23ebeab23b27ffaab494c5e8261ff"
+  },
+  "independentReview": {
+    "path": "/tmp/aux-dead-project-css-cfe-v1-independent-review.json",
+    "sha256": "788d4d3859ebcc41cd82329aed345917e055f50a2831c0885114977666728c34"
+  },
+  "rootApplyProof": {
+    "path": "/tmp/aux-dead-project-css-root-apply-proof.json",
+    "sha256": "e3cd75885f2ef4608940fc7ee7e74ecd08cbd1003805c52a3693cbb277ae606a"
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/source-v1.patch",
+      "sha256": "66a5531877ebfb3fd1d35a766d5588efda3d022a9c1c12c26a40cc2faffcd7f5"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/snapshot.json",
+      "sha256": "7fc9f90b29080d108cf4ac65aaff1dd0fcc3e8e09e546fe4e88e0dccace197ab"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/hashes.json",
+      "sha256": "e3cd75885f2ef4608940fc7ee7e74ecd08cbd1003805c52a3693cbb277ae606a"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/full-source-hashes.json",
+      "sha256": "39cc668fbea3198afc9420034db572305bfab8e87add4c3708018a5e253a797a"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/source-ast-proof.json",
+      "sha256": "43aab5b8765f1e90d2541d9ee44e4f8f0d6274665b024b2d3a0d914a9dbb70ab"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/producer-proof.json",
+      "sha256": "bdc084810e8b82f1ce26510219e7304e38792cc219fc42bbd882462cc76fbe4a"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/apply-proof.json",
+      "sha256": "4113238cc35b3fe8e52a193945302032cf7db515522a8e7dfdc8ae4a5095f775"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/before-source-check.json",
+      "sha256": "8b7f2801b27df2f005c7d4980e97e0c036964195adacfa5a95e58ffc21126c2f"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/after-source-check.json",
+      "sha256": "18730a85b6f7b63074807ae45026187700ba5ddc920a61d6530d6bf1d676213c"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/final-source-proof.json",
+      "sha256": "9d09cb27380cc20fe81f4ee6496cbe5976c8a6278879e90a5d34ecc41cbde3da"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/bundle-comparison.json",
+      "sha256": "3901a51c9e772c6c06b06fe0329aca780c1c4eaaf8d7b2ae54b8bf477af63514"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/measure.mjs",
+      "sha256": "e8c7c13ae6db0b242c3c84c8e4e93ce3c07047b49b27576f05e6de802b5822ed"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/install.log",
+      "sha256": "2db5f7c143c5ad415df2808a850cae379f162256349da18a10ba6c8cadbfd677"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/contracts-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/driver-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/vite-before.log",
+      "sha256": "258286f33701817675c89910b7cabb618b3228de28d6c2956a8160017c6c747c"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/vite-after.log",
+      "sha256": "395d16287b41cc518bf740a38e01088d1dd1e3dc5136b56364a7a586b1438e86"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/chrome-tokens.log",
+      "sha256": "c5375f1346b0ab3e6b8ba6ac926b0cafe687598c39253f38b7111d9c0649b976"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/shell-types.log",
+      "sha256": "0e02e4e70aa188ca575a548c05f3e3dc1ef2aa744cdc5f1c6f0da3d8d8bd6343"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/shell-types2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-dead-project-css-cfe-v1/format.log",
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    }
+  ],
+  "rootIntegratedCheck": {
+    "status": "passed",
+    "command": "npm run check",
+    "exitCode": 0,
+    "log": {
+      "path": "/tmp/aux-dead-project-css-integrated-check-2026-10-18.log",
+      "sha256": "45357725f4be043fcffd91ea084752c2538bb0fbf18d97b2cfbe574aa5d8ebd0"
+    },
+    "typecheck": "passed; dist rebuilt by initial command before tests",
+    "lint": {
+      "errors": 0,
+      "advisories": 572,
+      "unchanged": true,
+      "comparison": {
+        "path": "/tmp/aux-dead-project-css-lint-comparison-2026-10-18.json",
+        "sha256": "c0976d7c1a7c46404ab54d2f521502ac1347a3ed3a1bec74c218bfa76d0b932d"
+      }
+    },
+    "testsPassed": 5867,
+    "testsFailed": 0,
+    "filesPassed": 855,
+    "seconds": 129.3,
+    "runtimeSourceChanged": false
+  },
+  "stockBuildInterruption": {
+    "ownerPid": 41576,
+    "originalSession": 75877,
+    "signal": "SIGINT to verified original dev launcher only",
+    "joined": true,
+    "originalLockAbsentAndNoCompileDescendantsBeforeCheck": true,
+    "classification": "intentional quiet-check interruption, no compile failure",
+    "log": {
+      "path": "/tmp/aux-stock155-build-resume7-2026-10-18.log",
+      "sha256": "2b852877bb08930686f330ff27a2b06365d5418ff347bbc6b894263559fc2681"
+    },
+    "completedDynamicSteps": 795,
+    "dynamicTotalAtStop": 23425,
+    "elapsed": "6m51.98s"
+  },
+  "limits": [
+    "Matched private native-mode renderer builds establish byte differences, not staged app timing or full native appearance. Vite duration differences under concurrent stock compilation are not performance evidence.",
+    "Raw JS content hashes change for144 assets through emitted filename propagation; byte totals are unchanged and known-name normalization is diagnostic only. All other62CSS assets have exact original hashes.",
+    "Startup CSS201471B remains17151B above180KiB budget; startup/totalJS targets also remain unmet.",
+    "Earlier206792B existingdist belongs to a different source cohort; the actual matched baseline here is206719B.",
+    "Current native staging, default20-task manual smoke, all matched reference states, original155crash and matching-stock performance remain open."
+  ],
+  "completion": "Source optimization only. A1/A3/A9 and full adoption/browser-readiness program remain incomplete."
+}

@@ -35,6 +35,18 @@ not a Profile or native chat, and does not count toward the manual20-task smoke.
 [Live schema evidence](evidence/aside-live-tool-schema-2026-10-18.json) pins source,
 rebuilt dist, dispatched schema hashes and the original filtered-cost limitation.
 
+The startup follow-up removes 54 obsolete project CSS rules with no current
+producer, preserving every other rule and live workspace/task-resource style.
+Matched native-mode renderer builds reduce startup CSS from 206,719 to 201,471
+bytes and total CSS by the same 5,248 bytes. JavaScript byte totals are unchanged;
+144 emitted JS hashes change through asset filenames, so raw JS is not identical.
+The matched baseline is a fresh build, distinct from the earlier 206,792-byte dist.
+CSS remains 17,151 bytes above the 180KiB target; no native timing is established.
+[The removal evidence](evidence/aside-dead-project-css-2026-10-18.json) records
+producer/AST proofs, matched assets, independent review and retained setup failures.
+The rebuilt integrated check passes all 5,867 tests across 855 files in129.30s,
+with typechecking/linting successful and all572 advisories unchanged.
+
 Local commits7806e41fc,07199225f and34117c740 contain the shared reference UI
 foundation; long-conversation compaction and queue ordering; Memory documents,
 Dream/diffs/revert and retrieval; richer channels/routines; isolated PDF/audio
