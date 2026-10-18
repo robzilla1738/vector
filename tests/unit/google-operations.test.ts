@@ -7,7 +7,13 @@ import {
   withPdfSources,
   type PdfSourceDependencies,
 } from "../../apps/runtime/src/services/pdf-sources.js";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import type { AgentPolicySettings } from "@aux/contracts";
+import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
+import { decide, DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
+import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
+import { SuspensionStore } from "../../apps/runtime/src/safety/suspensions.js";
+import { googleAuthorizer } from "../../apps/runtime/src/services/google-governance.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { Repo, openDb, EventBus, TaskService } from "@aux/runtime";
 import { DurableWriteLedger } from "../../apps/runtime/src/agent/durable.js";
@@ -1391,5 +1397,412 @@ it.each(["document-title", "tab-title", "section-style"] as const)(
       code: "conflict",
     });
     expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+  },
+);
+
+function governGoogle(f: ReturnType<typeof fixture>, grantIds = [f.grant.grantId]) {
+  const run = f.repo.getRun(f.input().runId)!;
+  f.repo.saveRun({
+    ...run,
+    config: { ...run.config, googleGrantIds: grantIds, nativeTurnContext: randomUUID() },
+  });
+  const settings: AgentPolicySettings = { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] };
+  const approvals = new ApprovalStore(
+    f.repo.db,
+    () => {},
+    undefined,
+    () => settings,
+    (id) => f.repo.getRun(id),
+    f.repo,
+  );
+  const suspensions = new SuspensionStore(f.repo.db);
+  const policy = {
+    approvals,
+    journal: new DecisionJournal(f.repo.db),
+    managedRules: () => [],
+    agentPolicy: () => settings,
+    audit: () => {},
+  };
+  const decisions = vi.fn<Parameters<typeof googleAuthorizer>[0]["decide"]>((request, options) =>
+    decide(request, policy, { phase: "dispatch", runId: request.runId, ...options }),
+  );
+  f.authorize.mockImplementation(
+    googleAuthorizer({
+      repo: f.repo,
+      profileId: "disposable-google-fixture",
+      privateProfile: false,
+      closed: () => false,
+      grants: f.grants,
+      gate: new SafetyDispatchGate({ ...policy, suspensions }),
+      decide: decisions,
+    }),
+  );
+  return { ...f, approvals, suspensions, decisions };
+}
+
+async function approveGoogle(f: ReturnType<typeof governGoogle>, input: GoogleInvoke) {
+  const originalIntents = f.repo.db.prepare("SELECT id,status FROM action_intents ORDER BY rowid").all();
+  await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+    code: "needs_input",
+    detail: { park: { kind: "approval" } },
+  });
+  expect(f.repo.db.prepare("SELECT id,status FROM action_intents ORDER BY rowid").all()).toEqual(
+    originalIntents,
+  );
+  const pending = f.approvals.pending(input.runId);
+  expect(pending).toHaveLength(1);
+  const original = pending[0]!;
+  expect(original.action).toMatchObject({
+    runId: input.runId,
+    scope: { kind: "task", id: f.task.taskId },
+    reviewedActions: [{ action: input.operation }],
+  });
+  expect(f.suspensions.pending(input.runId)?.request.approvalId).toBe(original.approvalId);
+  f.approvals.decideLocal({ approvalId: original.approvalId, decision: "accept" }, input.runId);
+  f.suspensions.resolve(f.suspensions.pending(input.runId)!.suspensionId, "answered");
+  return original;
+}
+
+const draftBytesHash = (raw: string) =>
+  createHash("sha256").update(Buffer.from(raw, "base64url")).digest("hex");
+
+it("creates, reads, updates and sends the same original Gmail draft using separately granted drafting and sending and one-use reviewed actions", async () => {
+  const base = fixture(["gmail.draft.create", "gmail.draft.read", "gmail.draft.update", "gmail.draft.send"]);
+  base.grants.revoke(base.task.taskId, base.grant.grantId);
+  const grant = (operations: GoogleOperation[]) =>
+    base.grants.create({
+      taskId: base.task.taskId,
+      taskRevision: base.task.revision,
+      workspaceId: base.space.workspaceId,
+      connectionId: base.account.connectionId,
+      accountRevision: base.account.revision,
+      operations,
+    });
+  const drafting = grant(["gmail.draft.create", "gmail.draft.read", "gmail.draft.update"]);
+  const sending = grant(["gmail.draft.send"]);
+  const f = governGoogle(base, [drafting.grantId, sending.grantId]);
+  let raw = "";
+  const sent: {
+    method: string;
+    body: Record<string, unknown>;
+    pending: unknown;
+    authorization: string | null;
+  }[] = [];
+  f.http.mockImplementation(async (_url, init) => {
+    if (init?.method === "GET")
+      return Response.json({ id: "draft-original", message: { id: "draft-message", raw } });
+    const body = JSON.parse(String(init?.body));
+    sent.push({
+      method: init!.method!,
+      body,
+      pending: f.repo.db.prepare("SELECT status FROM action_intents ORDER BY rowid DESC LIMIT 1").get(),
+      authorization: new Headers(init?.headers).get("authorization"),
+    });
+    if (body.message?.raw) {
+      raw = body.message.raw;
+      return Response.json({
+        id: "draft-original",
+        message: { id: "draft-message", threadId: "original-thread" },
+      });
+    }
+    return Response.json({ id: "sent-original", threadId: "original-thread" });
+  });
+  const originalMessage = {
+    to: ["recipient@example.test"],
+    subject: "Reviewed draft",
+    text: "Original reviewed body",
+  };
+  const create = { ...f.input("gmail.draft.create", originalMessage), grantId: drafting.grantId };
+  const createApproval = await approveGoogle(f, create);
+  const created = await f.service.invoke(create, new AbortController().signal);
+  const read = { ...f.input("gmail.draft.read", { draftId: "draft-original" }), grantId: drafting.grantId };
+  const originalRead = await f.service.invoke(read, new AbortController().signal);
+  const originalRaw = (originalRead.result.message as { raw: string }).raw;
+  expect(originalRead.source).toMatchObject({
+    connectionId: f.account.connectionId,
+    accountRevision: f.account.revision,
+    objectId: "draft-original",
+    operation: "gmail.draft.read",
+  });
+  expect(originalRead).not.toHaveProperty("receiptId");
+  const updatedMessage = { ...originalMessage, text: "Updated reviewed body" };
+  const update = {
+    ...f.input("gmail.draft.update", {
+      draftId: "draft-original",
+      expectedMessageSha256: draftBytesHash(originalRaw),
+      message: updatedMessage,
+    }),
+    grantId: drafting.grantId,
+  };
+  const updateApproval = await approveGoogle(f, update);
+  const updated = await f.service.invoke(update, new AbortController().signal);
+  const latestRead = await f.service.invoke(
+    { ...read, actionId: randomUUID() },
+    new AbortController().signal,
+  );
+  const send = f.input("gmail.draft.send", {
+    draftId: "draft-original",
+    expectedMessageSha256: draftBytesHash((latestRead.result.message as { raw: string }).raw),
+  });
+  const beforeUnauthorizedSend = f.http.mock.calls.length;
+  await expect(
+    f.service.invoke({ ...send, grantId: drafting.grantId }, new AbortController().signal),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(f.http).toHaveBeenCalledTimes(beforeUnauthorizedSend);
+  const sendInput = { ...send, grantId: sending.grantId };
+  const sendApproval = await approveGoogle(f, sendInput);
+  const result = await f.service.invoke(sendInput, new AbortController().signal);
+  expect(sent).toHaveLength(3);
+  expect(sent.map(({ method, pending, authorization }) => ({ method, pending, authorization }))).toEqual([
+    { method: "POST", pending: { status: "pending" }, authorization: "Bearer fixture-never-live" },
+    { method: "PUT", pending: { status: "pending" }, authorization: "Bearer fixture-never-live" },
+    { method: "POST", pending: { status: "pending" }, authorization: "Bearer fixture-never-live" },
+  ]);
+  expect(sent[2]!.body).toEqual({ id: "draft-original" });
+  expect(Buffer.from((sent[0]!.body.message as { raw: string }).raw, "base64url").toString()).toContain(
+    Buffer.from(originalMessage.text).toString("base64"),
+  );
+  expect(Buffer.from((sent[1]!.body.message as { raw: string }).raw, "base64url").toString()).toContain(
+    Buffer.from(updatedMessage.text).toString("base64"),
+  );
+  expect(createApproval.action.reviewedActions?.[0]?.arguments).toContain("Original reviewed body");
+  expect(updateApproval.action.reviewedActions?.[0]?.arguments).toContain("Updated reviewed body");
+  expect(sendApproval.action.recipient).toBe(`${f.account.connectionId}:draft-original`);
+  expect([created, updated, result].map((output) => output.receiptId)).toEqual([
+    expect.any(String),
+    expect.any(String),
+    expect.any(String),
+  ]);
+  expect(result).toMatchObject({
+    result: { id: "sent-original", threadId: "original-thread" },
+    source: {
+      accountKey: f.account.accountKey,
+      connectionId: f.account.connectionId,
+      accountRevision: f.account.revision,
+      objectId: "draft-original",
+      operation: "gmail.draft.send",
+    },
+  });
+  expect(f.repo.db.prepare("SELECT status FROM action_intents ORDER BY rowid").all()).toEqual([
+    { status: "confirmed" },
+    { status: "confirmed" },
+    { status: "confirmed" },
+  ]);
+  expect(f.repo.db.prepare("SELECT state FROM safety_approval_requests ORDER BY rowid").all()).toEqual([
+    { state: "consumed" },
+    { state: "consumed" },
+    { state: "consumed" },
+  ]);
+});
+
+it.each(["gmail.draft.update", "gmail.draft.send"] as const)(
+  "refuses $0 when the original draft changes after actual review without sending replacement bytes",
+  async (operation) => {
+    const f = governGoogle(fixture([operation]));
+    let raw = Buffer.from("To: original@example.test\r\n\r\nOriginal draft").toString("base64url");
+    f.http.mockImplementation(async () => Response.json({ id: "draft-original", message: { raw } }));
+    const args = {
+      draftId: "draft-original",
+      expectedMessageSha256: draftBytesHash(raw),
+      ...(operation === "gmail.draft.update"
+        ? { message: { to: ["recipient@example.test"], subject: "Updated", text: "Reviewed update" } }
+        : {}),
+    };
+    const input = f.input(operation, args);
+    await approveGoogle(f, input);
+    raw = Buffer.from("To: different@example.test\r\n\r\nOwner changed the draft").toString("base64url");
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.http.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+    expect(f.repo.db.prepare("SELECT count(*) AS n FROM action_intents").get()).toEqual({ n: 0 });
+  },
+);
+
+const gridWrites = [
+  {
+    operation: "sheets.format",
+    args: {
+      spreadsheetId: "original-sheet",
+      sheetId: 7,
+      startRowIndex: 1,
+      endRowIndex: 2,
+      startColumnIndex: 2,
+      endColumnIndex: 4,
+      bold: true,
+    },
+    fields: "userEnteredFormat.textFormat.bold",
+    gridRange: { sheetId: 7, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 2, endColumnIndex: 4 },
+    observed: {
+      sheets: [
+        {
+          properties: { sheetId: 7 },
+          data: [
+            {
+              startRow: 1,
+              startColumn: 2,
+              rowData: [
+                {
+                  values: [
+                    {
+                      note: "Keep first note",
+                      userEnteredFormat: {
+                        textFormat: { bold: true, italic: true },
+                        numberFormat: { type: "NUMBER", pattern: "0.00" },
+                      },
+                    },
+                    {
+                      note: "Keep second note",
+                      userEnteredFormat: { textFormat: { bold: true, italic: false } },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    operation: "sheets.notes",
+    args: {
+      spreadsheetId: "original-sheet",
+      sheetId: 7,
+      rowIndex: 3,
+      columnIndex: 4,
+      note: "Exact reviewed note",
+    },
+    fields: "note",
+    gridRange: { sheetId: 7, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 4, endColumnIndex: 5 },
+    observed: {
+      sheets: [
+        {
+          properties: { sheetId: 7 },
+          data: [
+            {
+              startRow: 3,
+              startColumn: 4,
+              rowData: [
+                {
+                  values: [
+                    {
+                      note: "Exact reviewed note",
+                      userEnteredFormat: {
+                        textFormat: { bold: false },
+                        numberFormat: { type: "NUMBER", pattern: "0.00" },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+] satisfies {
+  operation: GoogleOperation;
+  args: Record<string, unknown>;
+  fields: string;
+  gridRange: Record<string, number>;
+  observed: Record<string, unknown>;
+}[];
+
+it.each(gridWrites)(
+  "confirms $operation only after original approval, one field-bounded write and independent original-grid readback",
+  async ({ operation, args, fields, gridRange, observed }) => {
+    const f = governGoogle(fixture([operation]));
+    const input = f.input(operation, args);
+    const original = await approveGoogle(f, input);
+    f.http
+      .mockResolvedValueOnce(Response.json({ spreadsheetId: "original-sheet", replies: [{}] }))
+      .mockResolvedValueOnce(Response.json(observed));
+    const result = await f.service.invoke(input, new AbortController().signal);
+    expect(f.http).toHaveBeenCalledTimes(2);
+    const write = JSON.parse(String(f.http.mock.calls[0]![1]?.body)).requests[0];
+    const change = write.repeatCell ?? write.updateCells;
+    expect(change).toMatchObject({ range: gridRange, fields });
+    expect(Object.keys(write)).toHaveLength(1);
+    expect(new URL(String(f.http.mock.calls[0]![0])).pathname).toBe(
+      "/v4/spreadsheets/original-sheet:batchUpdate",
+    );
+    const verification = f.http.mock.calls[1]!;
+    expect(new URL(String(verification[0])).pathname).toBe("/v4/spreadsheets/original-sheet:getByDataFilter");
+    expect(JSON.parse(String(verification[1]?.body))).toEqual({
+      dataFilters: [{ gridRange }],
+      includeGridData: true,
+    });
+    expect(original.action.recipient).toBe(`${f.account.connectionId}:original-sheet`);
+    expect(original.action.reviewedActions?.[0]?.arguments).toBe(JSON.stringify(args));
+    expect(result.source).toMatchObject({
+      connectionId: f.account.connectionId,
+      accountRevision: f.account.revision,
+      accountKey: f.account.accountKey,
+      operation,
+      objectId: "original-sheet",
+    });
+    expect(f.repo.db.prepare("SELECT id,status,evidence FROM action_intents").get()).toMatchObject({
+      id: result.receiptId,
+      status: "confirmed",
+      evidence: JSON.stringify({
+        operation,
+        requestDigest: original.action.invocationDigest,
+        providerObjectId: "original-sheet",
+        verificationSha256: createHash("sha256").update(JSON.stringify(observed)).digest("hex"),
+      }),
+    });
+    expect(f.repo.db.prepare("SELECT state FROM safety_approval_requests").get()).toEqual({
+      state: "consumed",
+    });
+  },
+);
+
+it.each(gridWrites)(
+  "withholds $operation results and retains uncertainty when original account retires during independent readback",
+  async ({ operation, args, observed }) => {
+    const f = governGoogle(fixture([operation]));
+    const input = f.input(operation, args);
+    await approveGoogle(f, input);
+    f.http
+      .mockResolvedValueOnce(Response.json({ spreadsheetId: "original-sheet", replies: [{}] }))
+      .mockImplementationOnce(async () => {
+        f.account.revision = "b".repeat(64);
+        return Response.json(observed);
+      });
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow();
+    expect(f.http).toHaveBeenCalledTimes(2);
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toEqual({ status: "uncertain" });
+    expect(
+      f.repo.db
+        .prepare("SELECT status,effect_outcome FROM operation_invocations ORDER BY rowid DESC LIMIT 1")
+        .get(),
+    ).toEqual({ status: "failed", effect_outcome: "unknown" });
+  },
+);
+
+it.each(gridWrites)(
+  "does not confirm or replay $operation when readback identifies a different original grid",
+  async ({ operation, args, observed }) => {
+    const f = governGoogle(fixture([operation]));
+    const input = f.input(operation, args);
+    await approveGoogle(f, input);
+    const mismatched = structuredClone(observed) as { sheets: { properties: { sheetId: number } }[] };
+    mismatched.sheets[0]!.properties.sheetId = 8;
+    f.http
+      .mockResolvedValueOnce(Response.json({ spreadsheetId: "original-sheet", replies: [{}] }))
+      .mockResolvedValueOnce(Response.json(mismatched));
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow(
+      "resulting range could not be verified",
+    );
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toEqual({ status: "uncertain" });
+    expect(f.http).toHaveBeenCalledTimes(2);
+    const replacement = { ...input, actionId: randomUUID() };
+    await approveGoogle(f, replacement);
+    await expect(f.service.invoke(replacement, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.http).toHaveBeenCalledTimes(2);
   },
 );
