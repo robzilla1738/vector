@@ -88,6 +88,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
+    label: "Advanced",
+    description: "",
+    target: "Advanced",
+  },
+  {
+    category: "Appearance",
     label: "All keyboard shortcuts",
     description: "Browse, import and export every command binding.",
     target: "All keyboard shortcuts",
