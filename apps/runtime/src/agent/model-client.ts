@@ -106,7 +106,7 @@ export function usageFields(
   return {
     inputTokens: u.inputTokens,
     outputTokens: u.outputTokens,
-    ...(cached ? { cachedInputTokens: cached } : {}),
+    ...(cached !== undefined ? { cachedInputTokens: cached } : {}),
   };
 }
 
