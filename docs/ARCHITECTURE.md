@@ -95,6 +95,16 @@ attachments and source references against the original queued-message revision;
 delivery fences further edits. Provider transport and context accounting prepare
 the same tool-schema representation, retaining the original runtime validation.
 
+Google Docs rich editing extends the existing revision-bound operation and account
+grant. A single reviewed batch may insert text, apply complete-paragraph named
+styles/alignment and create flat lists. Empty tables use bounded dimensions and a
+sole insertion; filling requires a fresh independent read of actual unmerged cell
+indices. No guessed cell offsets or browser-to-API index equivalence is accepted.
+Readback verifies complete text, direct styles, unrelated document/tab/section
+metadata, lists and table topology; actual targeted formatting is bounded in the
+result. Unsupported nested/merged transforms fail before dispatch. A mismatched
+sent result remains an uncertain durable intent without a second write.
+
 Selected-original connector uploads use the existing governed tool dispatcher and
 durable effect ledger. Notion's supported multipart instructions and Slack's
 allocation/upload/completion phases retain original source bytes, account and OAuth

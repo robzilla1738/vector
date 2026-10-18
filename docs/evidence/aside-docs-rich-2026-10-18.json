@@ -1,0 +1,81 @@
+{
+  "program": "Aside adoption",
+  "status": "source integrated; fixtures and full check passed; real account/native editor acceptance open",
+  "baseline": "3c48d2f1b",
+  "patches": [
+    {
+      "path": "/tmp/aux-measurement-docs-rich-ea9-v1.patch",
+      "sha256": "10308f17b6594de87514373fca65e8c2ba53b1dd02eafb88dad023540fc601d4"
+    },
+    {
+      "path": "/tmp/aux-measurement-docs-rich-v2-delta.patch",
+      "sha256": "1246a25ad092b7957afc1e01db3743575fdf9c60f780dd7e2098d04a317fe032"
+    }
+  ],
+  "finalSourceFiles": [
+    {
+      "path": "apps/runtime/src/services/google-document-requests.ts",
+      "sha256": "8b71d63b6f534208ea6fa4d79a8570f1bbcf37d0cb85785297b8a84f48bf7fb8"
+    },
+    {
+      "path": "apps/runtime/src/services/google-documents.ts",
+      "sha256": "1b97f8af7a7eff02fc8bd36c9cd963c8737c0d3e996d7e41ebc97633b5653ca1"
+    },
+    {
+      "path": "apps/runtime/src/services/google-operations.ts",
+      "sha256": "53b425dea6bd5df823f45fcbbd2c512f928b0b5c65c69732bd91ab93c6fa0d24"
+    },
+    {
+      "path": "apps/runtime/src/services/google-rest.ts",
+      "sha256": "1e37cd8c5ce906ba63125e6b779e9fd6caf42a555a7f1b4ebadf33e3d2f4b268"
+    },
+    {
+      "path": "packages/contracts/src/google.ts",
+      "sha256": "b173a733bcbbb682c8558c020aaa6d90bafa2378418109f6c36c150996b5c4de"
+    },
+    {
+      "path": "tests/unit/google-documents.test.ts",
+      "sha256": "d8a4ccaa1d0f0f352c7c7ce3679e877b5d4c925a1381b5d3e36044b155a52ed3"
+    },
+    {
+      "path": "tests/unit/google-operations.test.ts",
+      "sha256": "8c84f383c3b1bcc3e8d7bab6b61bbc3d0426444765b81da5980dcfca0f546058"
+    },
+    {
+      "path": "tests/unit/google-rich-structure.test.ts",
+      "sha256": "80d9f999bedbada32c89e08eb8b4eebf86203971df20d882a1ccf1a48a9a821a"
+    }
+  ],
+  "fullCheck": {
+    "command": "npm run check",
+    "passed": true,
+    "tests": 5621,
+    "files": 844,
+    "durationSeconds": 100.83,
+    "runtimeDistRebuiltBeforeTests": true,
+    "log": "/tmp/aux-docs-rich-integrated-check.log"
+  },
+  "independentReview": {
+    "path": "/tmp/aux-docs-rich-v2-independent-review.json",
+    "sha256": "4934ba84487a226cc409f6fb11a880e40c197bd1bfb8172ff21514015f538d1c",
+    "originalRepro": "normal accepted; unrelated document title, tab title and section style mutations rejected"
+  },
+  "scope": [
+    "revision-bound text/direct formatting plus complete paragraph named styles and alignment",
+    "flat new bullets or decimal lists; no leading-tab index transformations",
+    "sole empty-table insertion bounded to20 rows/10 columns/100 cells; fresh read before filling actual observed unmerged cells",
+    "independent preservation of unrelated document/tab tree/section/body metadata, styles, existing lists and table geometry",
+    "bounded actual resulting formatting; mismatch remains uncertain with no write replay"
+  ],
+  "limitations": [
+    "No live Google registration, OAuth account, API call or native editor test",
+    "Arbitrary HTML/Markdown paste, nested/merged table mutation, existing/nested list transforms, inline images and structural header/footer/footnote/TOC operations remain unsupported by this bounded API editor",
+    "Native DOM caret/ranges remain distinct from API UTF16 indices; unsupported canvas editors require handback"
+  ],
+  "primaryReferences": [
+    "https://developers.google.com/workspace/docs/api/how-tos/format-text",
+    "https://developers.google.com/workspace/docs/api/how-tos/lists",
+    "https://developers.google.com/workspace/docs/api/how-tos/tables",
+    "https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/get"
+  ]
+}

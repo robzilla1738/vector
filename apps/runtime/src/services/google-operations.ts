@@ -3,6 +3,7 @@ import {
   projectGoogleDocumentRange,
   prepareGoogleDocumentEdit,
   verifyGoogleDocumentEdit,
+  verifiedGoogleDocumentFormatting,
   type GoogleDocumentEditExpectation,
 } from "./google-documents.js";
 import { projectGoogleGrid } from "./google-grid.js";
@@ -195,7 +196,8 @@ export class GoogleOperationService {
       recordStarted = false;
     let expectedDocument: GoogleDocumentEditExpectation | undefined,
       verificationSha256: string | undefined,
-      verificationRevision: string | undefined;
+      verificationRevision: string | undefined,
+      verificationFormatting: ReturnType<typeof verifiedGoogleDocumentFormatting> | undefined;
     const operationId = `aux-google-${input.operation.replaceAll(".", "-")}`;
     const record = (status: string, effectOutcome: string, error?: string) =>
       this.deps.repo.saveInvocation({
@@ -419,6 +421,8 @@ export class GoogleOperationService {
                 "conflict",
                 "Google write was sent, but the resulting range could not be verified. Inspect the original receipt.",
               );
+            if (expectedDocument)
+              verificationFormatting = verifiedGoogleDocumentFormatting(observed, expectedDocument);
             verificationSha256 = sha(JSON.stringify(observed));
             if (typeof observed.revisionId === "string") verificationRevision = observed.revisionId;
           }
@@ -458,6 +462,7 @@ export class GoogleOperationService {
               sha256: verificationSha256,
               revisionId: verificationRevision,
               tabIds: [...expectedDocument.bodies.keys()],
+              ...(verificationFormatting ? { formatting: verificationFormatting } : {}),
             };
           if (input.operation === "gmail.attachment") {
             if (!this.deps.saveAttachment)

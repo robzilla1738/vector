@@ -62,7 +62,9 @@ Sheet grid reads, verified underline/link insertion and inspected Gmail original
 remain distinct from API indices and unsupported canvas editors. Working Sheets
 navigation adds original-target input, one-time approval continuation and
 independent grid readback, with42 integrated cases passing. Actual Google editor
-compatibility and rich structural Docs editing remain open. Account setup remains explicit per
+compatibility remains open. Bounded rich Docs paragraph/list/table edits now have
+revision-bound dispatch and independent unrelated-metadata preservation fixtures;
+arbitrary HTML and nested/merged structural mutations remain unsupported. Account setup remains explicit per
 the owner's decision; adapters use fixtures until registrations exist.
 
 Foundation7806e41fc, capability07199225f and owned-services34117c740 have limited

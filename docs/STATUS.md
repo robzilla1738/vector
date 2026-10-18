@@ -80,18 +80,16 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated check passes typecheck, lint and all **5,593tests across
-843files** in110.52s. Runtime dist was rebuilt before tests. This includes the
-repaired Quick Ask handback/queue fixtures, native-context approval continuation,
-accessible Sheets selection/navigation and named offline MCP/Google cases.
-Log: `/tmp/aux-mcp-schema-integrated-check3.log`. The first attempt stopped on
-a conditional-test lint error; the next full run exposed two historical-body startup
-scans and a resolver-versus-dispatch fixture assumption. The repaired check retains
-constant-time codec initialization, actual one-attempt provider dispatch assertions
-and complete transfer read/export/recovery verification.
-[Transfer/schema integration evidence](evidence/aside-connectors-schema12-2026-10-18.json)
-records the exact scope and reviews. Native runner results
-and source replay are recorded separately in
+The latest integrated check passes typecheck, lint and all **5,621tests across
+844files** in100.83s. Runtime dist was rebuilt before tests.
+Log: `/tmp/aux-docs-rich-integrated-check.log`.
+The preceding connector/schema slice passed5,593tests/843files after repairing an
+unconditional transfer-body startup scan and a resolver-versus-dispatch fixture
+assumption. Its exact reviews and scope are recorded in
+[transfer/schema integration evidence](evidence/aside-connectors-schema12-2026-10-18.json).
+The new [Docs rich-edit evidence](evidence/aside-docs-rich-2026-10-18.json) records
+bounded operations and the independent preservation review. Native input tests
+and source replay remain recorded separately in
 [the native-context evidence](evidence/aside-native-context-2026-10-18.json).
 
 Google fixtures now cover revision-bound Docs API ranges and verified plain-body
@@ -101,8 +99,13 @@ matrix verification handles omitted empty cells and compares USER_ENTERED parsed
 values/formulas with independent readback. The fixed uncached Docs DOM selection
 reader preserves actual local UTF-16 caret/range provenance; canvas-only or hidden
 editor buffers require handback. It never claims API indices or OAuth account
-identity. Rich structural Docs edits remain open; registrations/live account
-verification remain explicitly unconfigured.
+identity. Bounded rich structural Docs edits are now implemented: exact complete-paragraph
+named styles/alignment, flat new lists, and revision-bound empty table creation
+followed by a fresh observed-cell read before filling. Independent readback preserves
+unrelated text styles, document/tab metadata, sections and list/table structure.
+Unrequested normalization leaves the sent operation uncertain without replay.
+Nested/merged table edits, existing/nested list transforms and arbitrary HTML paste
+remain unsupported; registrations/live account verification remain unconfigured.
 
 The next working adapter slice adds an uncached accessible Sheets selection
 reader. It distinguishes a proven active cell from a complete rectangular range,

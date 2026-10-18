@@ -529,7 +529,7 @@ it("confirms Docs edits only after exact revision preflight and text/style readb
     .mockResolvedValueOnce(Response.json(docs("A\n")))
     .mockResolvedValueOnce(Response.json(docs("A\n")))
     .mockResolvedValueOnce(Response.json({ documentId: "doc1", replies: [{}] }))
-    .mockResolvedValueOnce(Response.json(docs("xA\n", "revision-2", true)));
+    .mockResolvedValueOnce(Response.json(richDocs([{ text: "x", style: { bold: true } }, { text: "A\n" }])));
   const result = await f.service.invoke(
     f.input("docs.edit", {
       documentId: "doc1",
@@ -858,7 +858,11 @@ function richDocs(parts: { text: string; style?: Record<string, unknown> }[], re
   result.tabs[0]!.documentTab.body.content[1]!.paragraph!.elements = parts.map((part) => {
     const startIndex = index;
     index += part.text.length;
-    return { startIndex, endIndex: index, textRun: { content: part.text, textStyle: part.style ?? {} } };
+    return {
+      startIndex,
+      endIndex: index,
+      textRun: { content: part.text, textStyle: part.style ?? { bold: false } },
+    };
   }) as never;
   return result;
 }
@@ -1136,3 +1140,256 @@ it("preserves a YouTube account access denial and withholds a People batch after
     status: "failed",
   });
 });
+
+it.each(["paragraph", "list"] as const)(
+  "dispatches revision-bound Docs %s formatting with exact reviewed bytes and independently confirmed structure",
+  async (kind) => {
+    const f = fixture(["docs.edit"]);
+    const after = docs("A\n", "revision-2");
+    if (kind === "paragraph")
+      Object.assign(after.tabs[0]!.documentTab.body.content[1]!.paragraph!, {
+        paragraphStyle: { namedStyleType: "HEADING_1", alignment: "CENTER" },
+      });
+    else {
+      Object.assign(after.tabs[0]!.documentTab.body.content[1]!.paragraph!, {
+        bullet: { listId: "actual-list" },
+      });
+      Object.assign(after.tabs[0]!.documentTab, {
+        lists: {
+          "actual-list": {
+            listProperties: { nestingLevels: [{ glyphType: "DECIMAL", glyphFormat: "%0." }] },
+          },
+        },
+      });
+    }
+    f.http
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+      .mockResolvedValueOnce(Response.json(after));
+    const input = f.input("docs.edit", {
+      documentId: "doc1",
+      requiredRevisionId: "revision-1",
+      edits: [
+        {
+          kind,
+          tabId: "tab1",
+          startIndex: 1,
+          endIndex: 3,
+          ...(kind === "paragraph"
+            ? { namedStyleType: "HEADING_1", alignment: "CENTER" }
+            : { preset: "NUMBERED_DECIMAL_ALPHA_ROMAN" }),
+        },
+      ],
+    });
+    const result = await f.service.invoke(input, new AbortController().signal);
+    expect(result.result).toMatchObject({
+      verification: {
+        formatting: {
+          truncated: false,
+          paragraphs: [
+            {
+              tabId: "tab1",
+              startIndex: 1,
+              endIndex: 3,
+              ...(kind === "paragraph"
+                ? { paragraphStyle: { namedStyleType: "HEADING_1", alignment: "CENTER" } }
+                : { bullet: { listId: "actual-list" } }),
+            },
+          ],
+        },
+      },
+    });
+    expect(f.http.mock.calls.map((call) => call[1]?.method)).toEqual(["GET", "GET", "POST", "GET"]);
+    const approved = f.authorize.mock.calls.find(([input]) => input.request.method === "POST")![0];
+    expect(approved.source.connectionId).toBe(f.account.connectionId);
+    expect(approved.source.revision).toBe(f.account.revision);
+    expect(approved.args).toEqual(input.args);
+    expect(approved.request.body).toBe(f.http.mock.calls[2]![1]?.body);
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({
+      status: "confirmed",
+    });
+  },
+);
+it.each(["paragraph", "list"] as const)(
+  "keeps sent Docs %s formatting unverified and inspect-only when returned structure does not match",
+  async (kind) => {
+    const f = fixture(["docs.edit"]);
+    f.http
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+      .mockResolvedValueOnce(Response.json(docs("A\n", "revision-2")));
+    const input = f.input("docs.edit", {
+      documentId: "doc1",
+      requiredRevisionId: "revision-1",
+      edits: [
+        {
+          kind,
+          tabId: "tab1",
+          startIndex: 1,
+          endIndex: 3,
+          ...(kind === "paragraph"
+            ? { namedStyleType: "HEADING_1" }
+            : { preset: "BULLET_DISC_CIRCLE_SQUARE" }),
+        },
+      ],
+    });
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({
+      status: "uncertain",
+    });
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+  },
+);
+
+function observedTableDocument(columns = 1) {
+  return {
+    documentId: "doc1",
+    revisionId: "revision-2",
+    tabs: [
+      {
+        tabProperties: { tabId: "tab1" },
+        documentTab: {
+          body: {
+            content: [
+              { startIndex: 0, endIndex: 1, sectionBreak: {} },
+              {
+                startIndex: 1,
+                endIndex: 2,
+                paragraph: {
+                  elements: [{ startIndex: 1, endIndex: 2, textRun: { content: "\n", textStyle: {} } }],
+                },
+              },
+              {
+                startIndex: 2,
+                endIndex: 8,
+                table: {
+                  rows: 1,
+                  columns,
+                  tableRows: [
+                    {
+                      startIndex: 3,
+                      endIndex: 7,
+                      tableCells: [
+                        {
+                          startIndex: 4,
+                          endIndex: 7,
+                          tableCellStyle: { rowSpan: 1, columnSpan: 1 },
+                          content: [
+                            {
+                              startIndex: 5,
+                              endIndex: 6,
+                              paragraph: {
+                                elements: [
+                                  { startIndex: 5, endIndex: 6, textRun: { content: "\n", textStyle: {} } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+              {
+                startIndex: 8,
+                endIndex: 10,
+                paragraph: {
+                  elements: [
+                    { startIndex: 8, endIndex: 10, textRun: { content: "A\n", textStyle: { bold: false } } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+  };
+}
+function tableWriteFixture(columns: number) {
+  const f = fixture(["docs.edit"]);
+  f.http
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+    .mockResolvedValueOnce(Response.json(observedTableDocument(columns)));
+  const input = f.input("docs.edit", {
+    documentId: "doc1",
+    requiredRevisionId: "revision-1",
+    edits: [{ kind: "table", tabId: "tab1", index: 1, rows: 1, columns: 1 }],
+  });
+  return { ...f, originalInput: input };
+}
+it("confirms an empty Docs table only from independently matching actual structure", async () => {
+  const f = tableWriteFixture(1);
+  await f.service.invoke(f.originalInput, new AbortController().signal);
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({ status: "confirmed" });
+  expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+  expect(JSON.parse(String(f.http.mock.calls.find((call) => call[1]?.method === "POST")![1]?.body))).toEqual({
+    writeControl: { requiredRevisionId: "revision-1" },
+    requests: [{ insertTable: { location: { index: 1, tabId: "tab1" }, rows: 1, columns: 1 } }],
+  });
+});
+it("retains an unverified Docs table as uncertain and does not replay insertion", async () => {
+  const f = tableWriteFixture(2);
+  await expect(f.service.invoke(f.originalInput, new AbortController().signal)).rejects.toMatchObject({
+    code: "conflict",
+  });
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({ status: "uncertain" });
+  await expect(f.service.invoke(f.originalInput, new AbortController().signal)).rejects.toMatchObject({
+    code: "conflict",
+  });
+  expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+});
+
+it.each(["document-title", "tab-title", "section-style"] as const)(
+  "keeps a Docs alignment write uncertain when independent readback changes unrelated %s",
+  async (field) => {
+    const f = fixture(["docs.edit"]);
+    const source = docs("A\n");
+    Object.assign(source, { title: "Original document" });
+    Object.assign(source.tabs[0]!.tabProperties, { title: "Original tab", index: 0 });
+    Object.assign(source.tabs[0]!.documentTab.body.content[0]!.sectionBreak!, {
+      sectionStyle: { sectionType: "CONTINUOUS" },
+    });
+    const after = structuredClone(source);
+    after.revisionId = "revision-2";
+    Object.assign(after.tabs[0]!.documentTab.body.content[1]!.paragraph!, {
+      paragraphStyle: { alignment: "CENTER" },
+    });
+    if (field === "document-title") Object.assign(after, { title: "Unapproved document" });
+    if (field === "tab-title") Object.assign(after.tabs[0]!.tabProperties, { title: "Unapproved tab" });
+    if (field === "section-style")
+      Object.assign(after.tabs[0]!.documentTab.body.content[0]!.sectionBreak!, {
+        sectionStyle: { sectionType: "NEXT_PAGE" },
+      });
+    f.http
+      .mockResolvedValueOnce(Response.json(source))
+      .mockResolvedValueOnce(Response.json(source))
+      .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+      .mockResolvedValueOnce(Response.json(after));
+    const input = f.input("docs.edit", {
+      documentId: "doc1",
+      requiredRevisionId: "revision-1",
+      edits: [{ kind: "paragraph", tabId: "tab1", startIndex: 1, endIndex: 3, alignment: "CENTER" }],
+    });
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({
+      status: "uncertain",
+    });
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+  },
+);

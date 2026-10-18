@@ -1,3 +1,4 @@
+import { googleDocumentRequests } from "./google-document-requests.js";
 import { createHash } from "node:crypto";
 import type { z } from "zod";
 import { googleReplyEnvelope, foldMailHeader, encodedMailSubject } from "./google-mail.js";
@@ -185,60 +186,7 @@ export function prepareGoogleRequest(
         method = "POST";
         body = {
           writeControl: { requiredRevisionId: value.requiredRevisionId },
-          requests: value.edits.flatMap<Record<string, unknown>>((edit) =>
-            edit.kind === "delete"
-              ? [
-                  {
-                    deleteContentRange: {
-                      range: {
-                        startIndex: edit.startIndex,
-                        endIndex: edit.endIndex,
-                        ...(edit.tabId ? { tabId: edit.tabId } : {}),
-                      },
-                    },
-                  },
-                ]
-              : [
-                  {
-                    insertText: {
-                      location: {
-                        index: edit.index,
-                        ...(edit.tabId ? { tabId: edit.tabId } : {}),
-                      },
-                      text: edit.text,
-                    },
-                  },
-                  ...(edit.bold !== undefined ||
-                  edit.italic !== undefined ||
-                  edit.underline !== undefined ||
-                  edit.link !== undefined
-                    ? [
-                        {
-                          updateTextStyle: {
-                            range: {
-                              startIndex: edit.index,
-                              endIndex: edit.index + edit.text.length,
-                              ...(edit.tabId ? { tabId: edit.tabId } : {}),
-                            },
-                            textStyle: {
-                              ...(edit.bold !== undefined ? { bold: edit.bold } : {}),
-                              ...(edit.italic !== undefined ? { italic: edit.italic } : {}),
-                              ...(edit.underline !== undefined ? { underline: edit.underline } : {}),
-                              // A masked, omitted link explicitly clears it without resetting other fields.
-                              ...(edit.link ? { link: { url: edit.link } } : {}),
-                            },
-                            fields: [
-                              ...(edit.bold !== undefined ? ["bold"] : []),
-                              ...(edit.italic !== undefined ? ["italic"] : []),
-                              ...(edit.underline !== undefined ? ["underline"] : []),
-                              ...(edit.link !== undefined ? ["link"] : []),
-                            ].join(","),
-                          },
-                        },
-                      ]
-                    : []),
-                ],
-          ),
+          requests: googleDocumentRequests(value.edits),
         };
       }
     }

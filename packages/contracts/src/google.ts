@@ -200,6 +200,53 @@ export const GoogleArguments = {
               .strict(),
             z
               .object({
+                kind: z.literal("paragraph"),
+                startIndex: z.number().int().min(1).max(200_000),
+                endIndex: z.number().int().min(2).max(200_000),
+                tabId: id.optional(),
+                namedStyleType: z
+                  .enum([
+                    "NORMAL_TEXT",
+                    "TITLE",
+                    "SUBTITLE",
+                    "HEADING_1",
+                    "HEADING_2",
+                    "HEADING_3",
+                    "HEADING_4",
+                    "HEADING_5",
+                    "HEADING_6",
+                  ])
+                  .optional(),
+                alignment: z.enum(["START", "CENTER", "END", "JUSTIFIED"]).optional(),
+              })
+              .strict()
+              .refine(
+                (item) =>
+                  item.endIndex > item.startIndex &&
+                  (item.namedStyleType !== undefined || item.alignment !== undefined),
+              ),
+            z
+              .object({
+                kind: z.literal("list"),
+                startIndex: z.number().int().min(1).max(200_000),
+                endIndex: z.number().int().min(2).max(200_000),
+                tabId: id.optional(),
+                preset: z.enum(["BULLET_DISC_CIRCLE_SQUARE", "NUMBERED_DECIMAL_ALPHA_ROMAN"]),
+              })
+              .strict()
+              .refine((item) => item.endIndex > item.startIndex),
+            z
+              .object({
+                kind: z.literal("table"),
+                index: z.number().int().min(1).max(200_000),
+                tabId: id,
+                rows: z.number().int().min(1).max(20),
+                columns: z.number().int().min(1).max(10),
+              })
+              .strict()
+              .refine((item) => item.rows * item.columns <= 100),
+            z
+              .object({
                 kind: z.literal("delete"),
                 startIndex: z.number().int().min(1),
                 endIndex: z.number().int().min(2),
