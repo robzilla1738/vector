@@ -1,3 +1,4 @@
+import { conversationContextAuthority } from "./loop/context-authority.js";
 import { taskMessage } from "./loop/task-message.js";
 import { TranscriptStore } from "./loop/transcript.js";
 import type { SelectedArticleReference } from "./loop/memory-context.js";
@@ -1625,7 +1626,53 @@ export class RunCoordinator {
       this.answers.delete(runId);
       return existing;
     }
-    this.releasePages(runId, true);
+    const dispatch = c.dispatchAbort;
+    const original = this.get(runId);
+    const mentions = this.deps.turnMentions.has(runId) ? this.deps.turnMentions.capture(runId) : undefined;
+    const source = () => {
+      const run = this.get(runId);
+      const { checkpoint: _checkpoint, ...config } = run.config ?? {};
+      const modelId = run.config?.modelId ?? this.deps.defaultModel();
+      return JSON.stringify([
+        run.pageIds,
+        conversationContextAuthority(
+          config,
+          modelId,
+          this.deps.contextAuthority?.(),
+          this.deps.repo.getSetting(`conversationWorkspace:${run.config?.chatId ?? runId}`),
+          this.deps.agentLoop?.modelLimits?.(modelId),
+        ),
+      ]);
+    };
+    const identity = source();
+    this.deps.browserEgress?.suspendForAnswer(
+      runId,
+      () => {
+        if (
+          this.closed ||
+          this.controls.get(runId) !== c ||
+          c.abort.signal.aborted ||
+          c.dispatchAbort !== dispatch ||
+          dispatch?.signal.aborted ||
+          c.paused ||
+          c.takeoverInterrupted ||
+          source() !== identity ||
+          (mentions !== undefined && this.deps.turnMentions.capture(runId) !== mentions) ||
+          !["needs_input", "running", "planning"].includes(this.get(runId).status)
+        )
+          throw new AuxError("ref_stale", "The original parked browser source retired.");
+        this.deps.checkRunSource?.(runId);
+        if (original.config?.taskId) {
+          const task = this.deps.taskSource?.(original.config.taskId);
+          if (!task || task.state !== "open" || task.revision !== original.config.taskRevision)
+            throw new AuxError("ref_stale", "The original parked task source retired.");
+        }
+      },
+      () => this.deps.turnMentions.revalidateSelection(runId),
+    );
+    const release = this.pageReleases.get(runId);
+    this.pageReleases.delete(runId);
+    release?.();
     const answer = await new Promise<string>((resolve) => {
       c.answerWaiter = {
         resolve: (answer) => {
@@ -1634,7 +1681,11 @@ export class RunCoordinator {
         },
       };
     });
-    if (!c.abort.signal.aborted) await this.waitIfPaused(c, runId);
+    if (c.abort.signal.aborted || c.dispatchAbort !== dispatch || dispatch?.signal.aborted) {
+      this.deps.browserEgress?.suspendRun(runId);
+      return answer;
+    }
+    await this.waitIfPaused(c, runId);
     return answer;
   }
 
@@ -1833,7 +1884,8 @@ export class RunCoordinator {
             agentScope,
             signal: control.abort.signal,
             beforeNavigate: async (target) => {
-              releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl));
+              const claim = await this.acquirePageClaim(runId, target.pageId, agentScope.source!.expectedUrl);
+              releases.push(claim.release);
             },
           });
           opened.push(structuredClone(copy));
@@ -1913,6 +1965,18 @@ export class RunCoordinator {
   }
 
   async claimPage(runId: string, pageId: string, initialDestination?: string): Promise<() => void> {
+    const claim = await this.acquirePageClaim(runId, pageId, initialDestination);
+    return () => {
+      claim.revoke?.();
+      claim.release();
+    };
+  }
+
+  private async acquirePageClaim(
+    runId: string,
+    pageId: string,
+    initialDestination?: string,
+  ): Promise<{ release: () => void; revoke: (() => void) | undefined }> {
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
     const release = await this.pageOwnership.acquire(
@@ -1921,10 +1985,7 @@ export class RunCoordinator {
     );
     try {
       const revoke = await this.deps.browserEgress?.acquire(runId, pageId, initialDestination);
-      return () => {
-        revoke?.();
-        release();
-      };
+      return { release, revoke };
     } catch (error) {
       release();
       throw error;

@@ -38,6 +38,18 @@ export class PageRegistry {
   private driverAttaches = new Map<string, Promise<void>>();
   private personReads = new Map<LivePage, Set<Promise<unknown>>>();
   private borrowedSessions = new Map<string, BorrowedSession>();
+  private suspendedAttachments = new Map<
+    string,
+    {
+      live: LivePage;
+      driver: DriverPage;
+      source: PageTarget;
+      isolation: AgentPageIsolation;
+      current(): void;
+      retired: boolean;
+      replacement?: DriverPage;
+    }
+  >();
   private controlledTransitions = new Map<
     string,
     {
@@ -205,6 +217,47 @@ export class PageRegistry {
     }
   }
 
+  /** Mark only the original answer waiter's intentional lease retirement. */
+  suspendSessionPage(input: { pageId: string; isolation: AgentPageIsolation; current(): void }): () => void {
+    const live = this.live.get(input.pageId);
+    input.current();
+    if (
+      this.closing ||
+      !live?.driver ||
+      !live.target.sessionId ||
+      this.suspendedAttachments.has(input.pageId) ||
+      JSON.stringify(live.target.agentIsolation) !== JSON.stringify(input.isolation) ||
+      ["detached", "crashed"].includes(live.target.viewStatus) ||
+      live.target.controller === "human"
+    )
+      throw new AuxError("ref_stale", "The original attachment cannot be parked.");
+    const original = {
+      live,
+      driver: live.driver,
+      source: structuredClone(live.target),
+      isolation: structuredClone(input.isolation),
+      current: input.current,
+      retired: false,
+    };
+    this.suspendedAttachments.set(input.pageId, original);
+    return () => {
+      if (this.suspendedAttachments.get(input.pageId) !== original) return;
+      this.suspendedAttachments.delete(input.pageId);
+      if (
+        original.retired &&
+        this.live.get(input.pageId) === live &&
+        !live.driver &&
+        live.target.sessionId === original.source.sessionId
+      ) {
+        delete live.target.sessionId;
+        if (live.target.viewStatus !== "crashed") live.target.viewStatus = "detached";
+        this.resetDocumentState(live);
+        this.persist(live);
+        this.deps.events.emit(EventTypes.PageUpdated, { page: live.target });
+      }
+    };
+  }
+
   /** Only BrowserEgress's acknowledged original-document admission calls this. */
   async admitSessionPage(input: {
     pageId: string;
@@ -214,6 +267,72 @@ export class PageRegistry {
   }): Promise<void> {
     const { pageId, source, isolation } = input;
     const lp = this.live.get(pageId);
+    const suspended = this.suspendedAttachments.get(pageId);
+    if (suspended) {
+      const current = () => {
+        suspended.current();
+        if (
+          !input.current() ||
+          this.closing ||
+          this.live.get(pageId) !== suspended.live ||
+          this.suspendedAttachments.get(pageId) !== suspended ||
+          JSON.stringify(isolation) !== JSON.stringify(suspended.isolation) ||
+          source.url !== suspended.source.url ||
+          source.documentEpoch !== suspended.source.documentEpoch ||
+          source.controllerEpoch !== suspended.source.controllerEpoch ||
+          source.sessionId !== suspended.source.sessionId
+        )
+          throw new AuxError("ref_stale", "The original parked attachment changed before readmission.");
+      };
+      current();
+      await suspended.driver.dispose();
+      current();
+      // DriverPage.dispose removes listeners; it need not emit onDestroyed.
+      // The acknowledged native lease retirement and exact original wrapper
+      // disposal jointly admit this intentional logical detach.
+      if (!suspended.retired && lp?.driver === suspended.driver && !suspended.driver.isAttached()) {
+        suspended.retired = true;
+        lp.driver = null;
+        this.resetDocumentState(lp);
+        this.persist(lp);
+        this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+      }
+      if (!suspended.retired || lp?.driver)
+        throw new AuxError("ref_stale", "The original parked attachment did not retire.");
+      const driver = this.driverFor("aux");
+      if (!driver) throw new AuxError("backend_unavailable", "The protected browser reader is unavailable.");
+      const attached = await driver.attach(suspended.source.targetId, pageId, {
+        initialDocumentEpoch: suspended.source.documentEpoch,
+      });
+      suspended.replacement = attached;
+      try {
+        current();
+        if (!attached.isAttached() || attached === suspended.driver || !lp)
+          throw new AuxError("ref_stale", "The original parked reader is unavailable.");
+        this.installDriver(lp, attached);
+        current();
+        if (lp.driver !== attached || lp.target.sessionId !== suspended.source.sessionId)
+          throw new AuxError("ref_stale", "The parked reader changed while publishing its incarnation.");
+        return;
+      } catch (error) {
+        if (lp?.driver === attached && lp.target.sessionId === suspended.source.sessionId) {
+          lp.driver = null;
+          delete lp.target.sessionId;
+          lp.target.viewStatus = "detached";
+          this.resetDocumentState(lp);
+          this.persist(lp);
+          this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+        }
+        try {
+          await attached.dispose();
+        } catch (cleanup) {
+          throw new AggregateError([error, cleanup], "Parked reader admission and cleanup failed", {
+            cause: error,
+          });
+        }
+        throw error;
+      }
+    }
     const existing = this.borrowedSessions.get(pageId);
     if (existing && existing.live === lp && existing.isolation.isolationId === isolation.isolationId) {
       if (existing.attachment) await existing.attachment;
@@ -665,7 +784,13 @@ export class PageRegistry {
     if (lp.driver) throw new AuxError("conflict", "This tab already has a newer attachment.");
     lp.driver = driver;
     const admission = this.borrowedSessions.get(lp.target.pageId);
-    const sessionId = admission?.live === lp ? (admission.sourceSessionId ?? randomUUID()) : randomUUID();
+    const suspended = this.suspendedAttachments.get(lp.target.pageId);
+    const sessionId =
+      suspended?.live === lp && suspended.replacement === driver
+        ? suspended.source.sessionId
+        : admission?.live === lp
+          ? (admission.sourceSessionId ?? randomUUID())
+          : randomUUID();
     lp.target.sessionId = sessionId;
     try {
       if (lp.target.backend === "aux" && this.deps.native.available()) driver.setNativeDownloadAuthority?.();
@@ -723,6 +848,29 @@ export class PageRegistry {
       },
       onDestroyed: (reason) => {
         if (!identityCurrent()) return;
+        const suspended = this.suspendedAttachments.get(lp.target.pageId);
+        if (
+          reason !== "crashed" &&
+          suspended?.live === lp &&
+          suspended.driver === driver &&
+          !suspended.retired
+        ) {
+          let intentional = false;
+          try {
+            suspended.current();
+            intentional = true;
+          } catch {
+            this.suspendedAttachments.delete(lp.target.pageId);
+          }
+          if (intentional) {
+            suspended.retired = true;
+            lp.driver = null;
+            this.resetDocumentState(lp);
+            this.persist(lp);
+            this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+            return;
+          }
+        }
         const transition = this.controlledTransitions.get(lp.target.pageId);
         const controlledRetirement =
           reason !== "crashed" &&

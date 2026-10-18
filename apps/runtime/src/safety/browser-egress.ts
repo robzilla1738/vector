@@ -31,6 +31,8 @@ function runSnapshot(run: RunIdentity | null | undefined) {
 
 interface PageIdentity {
   agentIsolation?: AgentPageIsolation;
+  windowId?: string;
+  targetId?: string;
   sessionId?: string;
   url: string;
   documentEpoch: number;
@@ -78,6 +80,7 @@ export interface BrowserEgressDeps {
     isolation: AgentPageIsolation;
     current(): boolean;
   }): Promise<void>;
+  suspendSessionPage?(input: { pageId: string; isolation: AgentPageIsolation; current(): void }): () => void;
   retireSessionPage?(pageId: string, isolation: AgentPageIsolation): Promise<void>;
   audit(decision: EgressDecision, evidence: EgressAuditEvidence): void;
   /** Must approve the exact ephemeral request digest, never a standing grant. */
@@ -111,6 +114,16 @@ export class BrowserEgress {
   private readonly borrowedSessions = new Map<
     string,
     { isolation: AgentPageIsolation; ancestry: string[] }
+  >();
+  private readonly parkedPages = new Map<
+    string,
+    {
+      runId: string;
+      lease: EgressLease;
+      check(): void;
+      revalidate(): Promise<void>;
+      retire(): void;
+    }
   >();
   private readonly mutationBarriers = new Set<(runId: string) => boolean>();
   private readonly now: () => number;
@@ -261,6 +274,9 @@ export class BrowserEgress {
     this.preparing.set(pageId, work);
     try {
       await work;
+    } catch (error) {
+      if (this.parkedPages.get(pageId)?.runId === runId) this.retireParkedPage(pageId);
+      throw error;
     } finally {
       if (this.preparing.get(pageId) === work) {
         this.preparing.delete(pageId);
@@ -277,6 +293,14 @@ export class BrowserEgress {
   ): Promise<void> {
     const run = runSnapshot(this.deps.run(runId));
     const page = { ...this.deps.page(pageId) };
+    const parked = this.parkedPages.get(pageId);
+    if (parked) {
+      if (parked.runId !== runId)
+        throw new AuxError("ref_stale", "A different run owns the parked browser source.");
+      parked.check();
+      await parked.revalidate();
+      parked.check();
+    }
     if (
       this.closed ||
       this.blocked(runId) ||
@@ -290,8 +314,9 @@ export class BrowserEgress {
     this.retainRunMode(runId, run);
     const existing = this.pages.get(pageId);
     if (existing && this.current(existing) && existing.lease.expiresAt > this.now()) return;
-    this.revokePage(pageId);
+    if (existing) this.revokeActive(existing);
     await this.repay([...this.retirementDebt.values()].filter((lease) => lease.tabId === pageId));
+    parked?.check();
     if (this.blocked(runId)) throw new AuxError("permission_denied", "Browser authority is being retired.");
     const { egressContext, egressInstall, egressRevoke } = this.deps.native;
     if (!egressContext || !egressInstall || !egressRevoke)
@@ -307,6 +332,18 @@ export class BrowserEgress {
     );
     if (this.blocked(runId) || (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion)
       throw new AuxError("permission_denied", "Browser authority changed while reading its native document.");
+    if (parked) {
+      parked.check();
+      if (
+        native.profileId !== parked.lease.profileId ||
+        native.tabId !== parked.lease.tabId ||
+        native.frameId !== parked.lease.frameId ||
+        native.documentToken !== parked.lease.documentToken ||
+        native.sourceOrigin !== parked.lease.sourceOrigin ||
+        native.isolation?.isolationId !== parked.lease.isolationId
+      )
+        throw new AuxError("ref_stale", "The original parked native document changed.");
+    }
     if (native.personControlled)
       throw new AuxError(
         "permission_denied",
@@ -381,6 +418,7 @@ export class BrowserEgress {
         "permission_denied",
         "This tab does not match the run’s original browser storage mode. Open a new Agent tab for this task.",
       );
+    parked?.check();
     const after = this.deps.page(pageId),
       currentRun = this.deps.run(runId);
     if (
@@ -429,11 +467,12 @@ export class BrowserEgress {
       const installed = await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
       if (installed?.accepted !== true)
         throw new AuxError("permission_denied", "Native browser request protection was not accepted.");
+      parked?.check();
       if ((this.authorityVersions.get(pageId) ?? 0) !== authorityVersion || !this.current(active))
         throw new AuxError("ref_stale", "The page changed while installing request protection.");
       active.installed = true;
       active.acknowledgedExpiresAt = lease.expiresAt;
-      if (this.borrowedSessions.get(pageId)?.isolation.isolationId === isolation.isolationId)
+      if (parked || this.borrowedSessions.get(pageId)?.isolation.isolationId === isolation.isolationId)
         await this.deps.admitSessionPage?.({
           pageId,
           source: page,
@@ -443,13 +482,22 @@ export class BrowserEgress {
             (this.authorityVersions.get(pageId) ?? 0) === authorityVersion &&
             this.current(active),
         });
+      if (parked) {
+        await parked.revalidate();
+        parked.check();
+      }
       if (!this.current(active))
         throw new AuxError("ref_stale", "The original session changed while attaching its reader.");
+      if (parked && this.parkedPages.get(pageId) === parked) {
+        this.parkedPages.delete(pageId);
+        parked.retire();
+      }
       active.timer = setInterval(() => {
         void this.renew(active);
       }, 10_000);
       active.timer.unref();
     } catch (error) {
+      this.retireParkedPage(pageId);
       // A missing/rejected Install reply does not prove the browser omitted
       // its effect. Retain that exact lease until native retirement ACK.
       this.owe(active);
@@ -1124,6 +1172,11 @@ export class BrowserEgress {
   /** Retire runtime authority synchronously; await the exact native tombstones before replying. */
   invalidateAuthority(matches: (runId: string, origins: readonly string[]) => boolean): Promise<void> {
     const affected = new Set<string>();
+    for (const [pageId, parked] of this.parkedPages) {
+      if (!matches(parked.runId, [parked.lease.sourceOrigin, ...parked.lease.recipientOrigins])) continue;
+      this.retireParkedPage(pageId);
+      affected.add(pageId);
+    }
     for (const active of this.pages.values()) {
       if (!matches(active.runId, [active.lease.sourceOrigin, ...active.lease.recipientOrigins])) continue;
       affected.add(active.pageId);
@@ -1203,7 +1256,22 @@ export class BrowserEgress {
     }
   }
 
+  private retireParkedPage(pageId: string): void {
+    const parked = this.parkedPages.get(pageId);
+    if (!parked) return;
+    this.parkedPages.delete(pageId);
+    parked.retire();
+  }
+
+  private revokeActive(active: ActivePage): void {
+    this.owe(active);
+    // Failure retains the original identity for the next acknowledged mutation.
+    void this.repay([active.lease]).catch(() => {});
+  }
+
   revokePage(pageId: string, runId?: string): void {
+    const parked = this.parkedPages.get(pageId);
+    if (parked && (!runId || parked.runId === runId)) this.retireParkedPage(pageId);
     const binding = this.bindingSources.get(pageId);
     if (binding?.retirement && (!runId || binding.runId === runId)) {
       binding.retirement.abort();
@@ -1211,13 +1279,72 @@ export class BrowserEgress {
     }
     const active = this.pages.get(pageId);
     if (!active || (runId && active.runId !== runId)) return;
-    this.owe(active);
-    // Failure retains the original identity for the next acknowledged mutation.
-    void this.repay([active.lease]).catch(() => {});
+    this.revokeActive(active);
+  }
+
+  /** Only the original live answer waiter can retain an attachment incarnation. */
+  suspendForAnswer(runId: string, checkOwner: () => void, revalidateSource: () => Promise<void>): void {
+    for (const [pageId, parked] of this.parkedPages)
+      if (parked.runId === runId) this.retireParkedPage(pageId);
+    for (const active of this.pages.values()) {
+      if (active.runId !== runId || !active.installed || !this.current(active)) continue;
+      const page = structuredClone(this.deps.page(active.pageId));
+      const identity = (source: PageIdentity) =>
+        JSON.stringify([
+          source.windowId,
+          source.targetId,
+          source.url,
+          source.documentEpoch,
+          source.controller,
+          source.controllerEpoch,
+          source.viewStatus,
+          source.sessionId,
+          source.agentIsolation,
+        ]);
+      const run = runSnapshot(this.deps.run(runId));
+      const version = this.authorityVersions.get(active.pageId) ?? 0;
+      const isolation = page.agentIsolation ?? this.borrowedSessions.get(active.pageId)?.isolation;
+      if (!isolation || !page.sessionId || !this.deps.suspendSessionPage || !this.deps.admitSessionPage)
+        continue;
+      const check = () => {
+        checkOwner();
+        if (
+          this.closed ||
+          this.blocked(runId) ||
+          this.parkedPages.get(active.pageId) !== parked ||
+          (this.authorityVersions.get(active.pageId) ?? 0) !== version ||
+          JSON.stringify(this.deps.run(runId)) !== JSON.stringify(run) ||
+          identity(this.deps.page(active.pageId)) !== identity(page)
+        )
+          throw new AuxError("ref_stale", "The original parked browser incarnation changed.");
+      };
+      let retire: (() => void) | undefined;
+      const parked = {
+        runId,
+        lease: active.lease,
+        check,
+        revalidate: revalidateSource,
+        retire: () => retire?.(),
+      };
+      this.parkedPages.set(active.pageId, parked);
+      try {
+        retire = this.deps.suspendSessionPage({ pageId: active.pageId, isolation, current: check });
+      } catch (error) {
+        this.retireParkedPage(active.pageId);
+        throw error;
+      }
+    }
+    this.suspendLeases(runId);
   }
 
   /** Pausing drops network authority but the run still remembers protected context. */
   suspendRun(runId: string): void {
+    for (const [pageId, parked] of this.parkedPages)
+      if (parked.runId === runId) this.retireParkedPage(pageId);
+    this.suspendLeases(runId);
+  }
+
+  private suspendLeases(runId: string): void {
     // During the genuine old-lease handoff there may be no ActivePage row.
     // The original continuation remains independently revocable in that gap.
     for (const [pageId, source] of this.bindingSources)
@@ -1225,7 +1352,7 @@ export class BrowserEgress {
         source.retirement?.abort();
         this.authorityVersions.set(pageId, (this.authorityVersions.get(pageId) ?? 0) + 1);
       }
-    for (const page of this.pages.values()) if (page.runId === runId) this.revokePage(page.pageId, runId);
+    for (const page of this.pages.values()) if (page.runId === runId) this.revokeActive(page);
     this.pending.get(runId)?.controller.abort();
   }
 
@@ -1236,6 +1363,7 @@ export class BrowserEgress {
 
   close(): void {
     this.closed = true;
+    for (const pageId of this.parkedPages.keys()) this.retireParkedPage(pageId);
     for (const source of this.bindingSources.values()) source.retirement?.abort();
     for (const runId of new Set([...this.pages.values()].map((page) => page.runId))) this.revokeRun(runId);
     this.seen.clear();

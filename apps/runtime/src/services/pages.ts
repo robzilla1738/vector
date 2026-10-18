@@ -369,6 +369,8 @@ export class PageService {
   viewport: PageDiagnostics["viewport"] = (...args) => this.diagnostics.viewport(...args);
 
   prepareReadPage: PageRegistry["prepareReadPage"] = (...args) => this.pages.prepareReadPage(...args);
+  suspendSessionPage: PageRegistry["suspendSessionPage"] = (...args) =>
+    this.pages.suspendSessionPage(...args);
   admitSessionPage: PageRegistry["admitSessionPage"] = (...args) => this.pages.admitSessionPage(...args);
   retireSessionPage: PageRegistry["retireSessionPage"] = (...args) => this.pages.retireSessionPage(...args);
 
