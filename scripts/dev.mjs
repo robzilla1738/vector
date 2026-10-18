@@ -68,7 +68,7 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--debug-native] [--fake-media-devices] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
+      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--debug-native] [--fake-media-devices] [--window-size WIDTH,HEIGHT] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
     );
     return;
   }
@@ -77,6 +77,7 @@ async function main() {
   const runtimeOnly = args.includes("--runtime-only");
   const debugNative = args.includes("--debug-native");
   const fakeMediaDevices = args.includes("--fake-media-devices");
+  let windowSize;
   if (runtimeOnly && (commandIndex >= 0 || !args.includes("--temp-profile")))
     throw new Error("Use --runtime-only with --temp-profile and no custom command.");
   if (debugNative && (commandIndex >= 0 || !args.includes("--temp-profile")))
@@ -91,6 +92,18 @@ async function main() {
         continue;
       if (args[index] === "--flavor" && ["dev", "fast"].includes(args[index + 1])) {
         flavor = args[++index];
+        continue;
+      }
+      if (args[index] === "--window-size") {
+        const value = args[++index];
+        if (
+          !args.includes("--temp-profile") ||
+          windowSize ||
+          !/^\d{3,4},\d{3,4}$/.test(value ?? "") ||
+          value.split(",").some((part) => Number(part) < 400 || Number(part) > 4096)
+        )
+          throw new Error("Use one --window-size WIDTH,HEIGHT (400–4096) with --temp-profile.");
+        windowSize = value;
         continue;
       }
       throw new Error("Unknown dev option; use --help");
@@ -129,6 +142,7 @@ async function main() {
       `--user-data-dir=${profile}`,
       ...(temporary ? ["--enable-logging=stderr"] : []),
       ...(fakeMediaDevices ? ["--use-fake-device-for-media-stream"] : []),
+      ...(windowSize ? [`--window-size=${windowSize}`] : []),
     ];
     if (debugNative)
       await run("lldb", [
