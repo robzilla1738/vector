@@ -26,6 +26,7 @@ export function positionSelectedPopover(
   anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
   selected: HTMLElement | null,
 ) {
+  menu.style.minWidth = `${Math.min(anchor.right - anchor.left, 440, Math.max(0, window.innerWidth - 16))}px`;
   menu.style.maxHeight = `${Math.max(0, Math.min(360, window.innerHeight - 16))}px`;
   if (!selected || !menu.contains(selected)) {
     positionContextMenu(menu, anchor.left - 4, anchor.bottom + 4);

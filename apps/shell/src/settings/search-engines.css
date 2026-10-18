@@ -1,6 +1,6 @@
 @layer components {
   .anchored-panel:has(.search-engine-menu) {
-    width: 200px;
+    width: max-content;
   }
   .search-engine-menu {
     display: grid;

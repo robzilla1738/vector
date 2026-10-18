@@ -1,0 +1,66 @@
+{
+  "baseCommit": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+  "status": "Integrated check passed; actual native popup geometry pending",
+  "problem": "Search-engine popup forced200px despite reference intrinsic content with trigger-width minimum.",
+  "change": "Intrinsic max-content width; selected popup minimum uses actual trigger width, bounded440px andviewport minus16px. Existing shared selected alignment, scrolling, keyboard and owner remain.",
+  "files": [
+    "apps/shell/src/settings/search-engines.css",
+    "apps/shell/src/position-context-menu.ts",
+    "apps/shell/src/position-context-menu.test.ts"
+  ],
+  "proposalSHA256": "9eedb43aac6f4742dd47d5735ee489b97233581b1b2868286b27714b9741baed",
+  "referenceBundles": {
+    "general-BAmJptmw.js": "ef8a70d77058486f338b74888cb451d1089f580a5f1afe581c31e6c7acd6d2c6",
+    "select-Dbr-_s6R.js": "080b736ebf1eb561dd0babdb5f3c2dfdf4b57afb900f178c8befbb240eab4e43"
+  },
+  "referenceSourceProof": {
+    "path": "/tmp/aux-search-width-8b-ui-layout-v1/reference-source-proof.json",
+    "sha256": "116f72d0f11500061c0d9e7d01057fc4f125579d372918e597e869e6777406fb"
+  },
+  "privateValidation": {
+    "head": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+    "patchSHA256": "9eedb43aac6f4742dd47d5735ee489b97233581b1b2868286b27714b9741baed",
+    "patchBytes": 2636,
+    "files": 3,
+    "mainPreimagesMatch": true,
+    "freshApplyExact": true,
+    "tests": "29/29 across3files;1newmeaningful wide-trigger/440cap/narrowviewport case plus existingselected/ordinary/scoped-save tests",
+    "types": "own shell clean after own driver/contracts declarationbuild",
+    "lint": "0errors/0warnings owned2TSfiles",
+    "format": "pass",
+    "noMainSourceEdits": true,
+    "noNativeBuildOrUI": true,
+    "knownCommandError": "Initial append of offline ignore-scripts install used main cwd; already-up-to-date468ms, clean main source/metadata and exact pinnedViteproducer independentlyverified. No prior ignored-dist snapshot, so not claiming byte comparison for ignored dist. Preserved proof/logs. All latercommands explicitprivatecwd.",
+    "logs": {
+      "private-install.log": "517c2edbc16e0ba01b03e326380b20f91370cf3c077f4495e1f50d72069ff16f",
+      "dependency-types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "types2-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests2-final.log": "3ba86a2b469e6a848a3e473936e0b55d9033ece4cbb51a6fd0d7313dda081bd2",
+      "lint2-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "format2-final.log": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "install.log": "cbbdb905aebdb472a2fb1689cfc6f5777b8108121dce6617a39accc9ac651df5",
+      "main-workdir-error-proof.json": "6cf1f709aa7acfae105be9e94019b7bd871b84f4107dbadb3e9ed66df1a7ffbd"
+    },
+    "limits": "No actual computed-font/popup width or native acceptance. Separate local fixture unexecuted; no hard152 target. No024 alignment change."
+  },
+  "rootAppliedExactPatch": true,
+  "limits": [
+    "Private tests are separate from integrated main check.",
+    "No hard152px/reference-image width assumed; Aux keepsGeist.",
+    "Actual native popup geometry remains unobserved.",
+    "Native base-select Theme picker still has separately observed selected-item alignment gap; this change does not claim to fix it."
+  ],
+  "integratedCheck": {
+    "command": "npm run check",
+    "runtimeDist": "typecheck ran tsc-b before tests",
+    "exitCode": 0,
+    "testFiles": 858,
+    "tests": 5937,
+    "seconds": 112.49,
+    "lintAdvisories": 572,
+    "lintErrors": 0,
+    "nativeCompilerStopped": true,
+    "log": "/tmp/aux-cdp-shutdown-width-stock-integrated-check-2026-10-18.log",
+    "logSHA256": "73b096cede55461377fbe4841264655aecbe7dd41542e228d776c1d4892a9b63"
+  }
+}

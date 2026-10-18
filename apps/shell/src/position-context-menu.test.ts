@@ -66,6 +66,7 @@ it("aligns the selected row center and text inset with its original trigger", ()
   menu.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
   selected.getBoundingClientRect = () => ({ top: 78, height: 32 }) as DOMRect;
   positionSelectedPopover(menu, { left: 300, right: 440, top: 200, bottom: 232 }, selected);
+  expect(menu.style.minWidth).toBe("140px");
   expect(menu.style.left).toBe("296px");
   expect(menu.style.top).toBe("122px");
   expect(menu.scrollTop).toBe(0);
@@ -109,3 +110,22 @@ it.each([null, document.createElement("button")])(
     expect(menu.style.top).toBe("92px");
   },
 );
+
+it("keeps an intrinsic selected picker at least as wide as its trigger without exceeding a narrow viewport", () => {
+  vi.stubGlobal("innerWidth", 800);
+  vi.stubGlobal("innerHeight", 600);
+  const menu = document.createElement("div");
+  Object.defineProperties(menu, {
+    offsetWidth: { get: () => Math.max(152, Number.parseFloat(menu.style.minWidth) || 0) },
+    offsetHeight: { value: 100 },
+  });
+  positionSelectedPopover(menu, { left: 500, right: 760, top: 100, bottom: 132 }, null);
+  expect(menu.style.minWidth).toBe("260px");
+  expect(menu.style.left).toBe("496px");
+  positionSelectedPopover(menu, { left: 20, right: 620, top: 100, bottom: 132 }, null);
+  expect(menu.style.minWidth).toBe("440px");
+  vi.stubGlobal("innerWidth", 240);
+  positionSelectedPopover(menu, { left: 5, right: 400, top: 100, bottom: 132 }, null);
+  expect(menu.style.minWidth).toBe("224px");
+  expect(menu.style.left).toBe("8px");
+});
