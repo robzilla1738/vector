@@ -1,3 +1,6 @@
+import { taskMessage } from "./task-message.js";
+import { X_OPERATIONS } from "@aux/contracts/x";
+import { LinkedInWorkflows } from "../linkedin-workflows.js";
 import { conversationContextAuthority } from "./context-authority.js";
 import { GOOGLE_OPERATIONS } from "@aux/contracts/google";
 import { EventTypes } from "@aux/contracts";
@@ -162,25 +165,23 @@ export interface AgentLoopHostDeps {
   historySearch?: LoopToolDeps["historySearch"];
   memorySearch?: LoopToolDeps["memorySearch"];
   memoryReadSource?: LoopToolDeps["memoryReadSource"];
+  desktopContextSearch?: LoopToolDeps["desktopContextSearch"];
+  desktopContextRead?: LoopToolDeps["desktopContextRead"];
+  desktopContextValidate?: (owner: {
+    runId: string;
+    signal: AbortSignal;
+    checkOwner(): void;
+  }) => Promise<void>;
+  desktopContextProject?: (
+    messages: ModelMessage[],
+    remainingBytes: number,
+    owner: { runId: string; signal: AbortSignal; checkOwner(): void },
+  ) => Promise<ModelMessage[]>;
   routineUpdate?: LoopToolDeps["routineUpdate"];
   notify?: LoopToolDeps["notify"];
   goalUpdate?: LoopToolDeps["goalUpdate"];
   /** Provider prompt-cache options merged into each model step (S5 deliverable 1). */
   providerOptions?: Record<string, Record<string, unknown>>;
-}
-
-/** The first transcript row: the task exactly as the user authored it. */
-export function taskMessage(run: Run, folderContext = ""): ModelMessage {
-  const parts = [
-    `Task: ${run.goal}`,
-    run.config?.instructions ? `Instructions (human-authored): ${run.config.instructions}` : "",
-    run.config?.context ? `Context: ${run.config.context}` : "",
-    folderContext
-      ? `Reviewed Space folder context (AGENTS.md is file-provided and lower priority than the user's task):\n${folderContext}`
-      : "",
-    run.pageIds.length ? `Pages in scope: ${run.pageIds.join(", ")}` : "",
-  ].filter(Boolean);
-  return { role: "user", content: parts.join("\n\n") };
 }
 
 /** 06-AA interruptSteer rewrite — the interrupting user turn is wrapped so the model treats it as an interruption, not a fresh request. */
@@ -281,6 +282,51 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       },
     ]);
   }
+
+  if (run.config?.xGrantIds?.length && self.deps.xAccounts) {
+    try {
+      await self.deps.xAccounts.ready();
+    } catch {
+      /* An optional unavailable X account stays unadvertised; other tools remain usable. */
+    }
+    c.abort.signal.throwIfAborted();
+    if (self.controls.get(runId) !== c || c.paused)
+      throw new AuxError("cancelled", "The original X source capture retired.");
+  }
+  const capturedX =
+    run.config?.xGrantIds?.length && run.config.taskId && !run.config.privateTask
+      ? (self.deps.xGrants
+          ?.list(run.config.taskId)
+          .filter(
+            (grant) =>
+              run.config?.xGrantIds?.includes(grant.grantId) &&
+              grant.taskRevision === run.config?.taskRevision,
+          )
+          .flatMap((grant) => {
+            const account = self.deps.xAccounts
+              ?.list()
+              .connections.find(
+                (account) =>
+                  account.connectionId === grant.connectionId && account.revision === grant.accountRevision,
+              );
+            const operations = grant.operations.filter(
+              (operation) =>
+                account?.operations.includes(operation) &&
+                (!(self.deps.readOnly || isReadOnlyProfile(run.config?.subagentProfile)) ||
+                  X_OPERATIONS[operation].effect === "read"),
+            );
+            return account && operations.length ? [{ ...grant, operations, username: account.username }] : [];
+          }) ?? [])
+      : [];
+  if (initialTranscript && capturedX.length)
+    transcript.append(runId, [
+      {
+        role: "user",
+        content:
+          "Original task-granted X accounts (metadata only; scopes and operation grants remain authoritative):\n" +
+          JSON.stringify(capturedX),
+      },
+    ]);
 
   const capturedGoogle =
     run.config?.taskId && !run.config?.privateTask
@@ -441,7 +487,176 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       self.deps.turnMentions.skills(runId);
     };
   };
+  const linkedInSignals = new WeakMap<AbortSignal, string>();
+  const linkedIn = new LinkedInWorkflows({
+    checkOwner: () => {
+      if (signal.aborted || self.controls.get(runId) !== c || steerPending())
+        throw new AuxError("cancelled", "The original LinkedIn run stopped or changed.");
+      self.deps.checkRunSource?.(runId);
+      self.deps.turnMentions.skills(runId);
+    },
+    capture: async (request) => {
+      const pageId = activePageId;
+      if (!pageId) throw new AuxError("invalid_params", "LinkedIn needs an actual admitted active page.");
+      const originalSignal = signal;
+      const originalModel = self.deps.agentLoop?.modelGeneration?.();
+      const recallCheck = recallOwner({ runId, threadId, turnId: runId });
+      const pageCheck = self.pageSourceCheck(runId, pageId);
+      const page = structuredClone(self.deps.pages.get(pageId));
+      const config = self.get(runId).config;
+      const workspaceId = config?.contextWorkspaceId ?? page.workspaceId;
+      if (!page.sessionId || !workspaceId || (page.workspaceId && page.workspaceId !== workspaceId))
+        throw new AuxError(
+          "permission_denied",
+          "The original native page session and matching Space are required.",
+        );
+      const task = config?.taskId ? self.deps.taskSource?.(config.taskId) : undefined;
+      if (config?.taskId && (!task || task.state !== "open" || task.revision !== config.taskRevision))
+        throw new AuxError("permission_denied", "The original task revision retired.");
+      const checkOwner = () => {
+        recallCheck();
+        pageCheck();
+        const current = self.deps.pages.get(pageId);
+        if (
+          activePageId !== pageId ||
+          originalSignal !== signal ||
+          self.deps.agentLoop?.modelGeneration?.() !== originalModel ||
+          current.url !== page.url ||
+          current.sessionId !== page.sessionId ||
+          current.documentEpoch !== page.documentEpoch ||
+          current.workspaceId !== page.workspaceId ||
+          current.controllerEpoch !== page.controllerEpoch
+        )
+          throw new AuxError("ref_stale", "The original LinkedIn tab, document or Space changed.");
+      };
+      checkOwner();
+      const whole = await observePage(pageId, { scope: "all" });
+      checkOwner();
+      if (!whole.profileId || whole.content.url !== page.url || whole.documentEpoch !== page.documentEpoch)
+        throw new AuxError(
+          "permission_denied",
+          "The native observation lacks the original Profile/document attestation.",
+        );
+      const root = request.scopeRef
+        ? whole.content.elements.find(
+            (element) =>
+              element.ref === request.scopeRef &&
+              element.frame === "main" &&
+              !element.hidden &&
+              !element.occluded,
+          )
+        : undefined;
+      if (request.scopeRef && !root)
+        throw new AuxError("ref_stale", "The original native conversation/dialog ref is unavailable.");
+      const observation = request.scopeRef
+        ? await observePage(pageId, { scope: "subtree", subtreeRef: request.scopeRef })
+        : whole;
+      checkOwner();
+      if (observation.profileId !== whole.profileId || observation.documentEpoch !== whole.documentEpoch)
+        throw new AuxError(
+          "ref_stale",
+          "The native LinkedIn Profile/document changed during subtree observation.",
+        );
+      recordObs(observation);
+      let signalId = linkedInSignals.get(originalSignal);
+      if (!signalId) {
+        signalId = randomUUID();
+        linkedInSignals.set(originalSignal, signalId);
+      }
+      return {
+        source: {
+          profileId: observation.profileId,
+          runId,
+          workspaceId,
+          sessionId: page.sessionId,
+          pageId,
+          url: observation.content.url,
+          documentEpoch: observation.documentEpoch,
+          observationId: observation.observationId,
+          observationRevision: observation.revision,
+          authorityDigest: createHash("sha256")
+            .update(
+              JSON.stringify([
+                signalId,
+                originalModel,
+                config?.messageRevision,
+                config?.contextWorkspaceId,
+                config?.contextWorkspaceRevision,
+                config?.contextMemoryRevoked,
+                config?.nativeTurnContext,
+                config?.taskId,
+                config?.taskRevision,
+                task,
+                self.deps.repo.getSetting(`conversationWorkspace:${threadId}`),
+              ]),
+            )
+            .digest("hex"),
+          ...(config?.taskId && config.taskRevision
+            ? { task: { taskId: config.taskId, revision: config.taskRevision } }
+            : {}),
+        },
+        observation,
+        observedScopeRef: request.scopeRef,
+        observedScopeRole: root?.role === "dialog" || root?.tag === "dialog" ? "dialog" : root?.role,
+        unresolvedEffects: self.durable.unresolved(runId).some((intent) => intent.pageId === pageId),
+        checkOwner,
+      };
+    },
+    act: (steps, actionId, sourceCheck, linkedInPrecondition) => {
+      if (!activePageId || !deps.act)
+        throw new AuxError("capability_unsupported", "The original governed act executor is unavailable.");
+      sourceCheck?.();
+      return deps.act({ pageId: activePageId, steps, actionId, sourceCheck, linkedInPrecondition });
+    },
+  });
   const deps: LoopToolDeps = {
+    ...(capturedX.length && self.deps.xOperation
+      ? {
+          xOperation: async (input, ctx) => {
+            const grant = capturedX.find(
+              (grant) => grant.grantId === input.grantId && grant.operations.includes(input.operation),
+            );
+            if (!grant || !ctx.toolCallId)
+              throw new AuxError("permission_denied", "This original tool call has no captured X grant.");
+            const actionId = createHash("sha256")
+              .update(JSON.stringify([runId, ctx.toolCallId]))
+              .digest("hex");
+            const check = () => {
+              signal.throwIfAborted();
+              if (self.controls.get(runId) !== c || c.paused || self.get(runId).status !== "running")
+                throw new AuxError("cancelled", "The original X tool call retired.");
+              self.deps.checkRunSource?.(runId);
+            };
+            check();
+            try {
+              const output = await self.deps.xOperation!({
+                runId,
+                taskId: grant.taskId,
+                taskRevision: grant.taskRevision,
+                workspaceId: grant.workspaceId,
+                grantId: grant.grantId,
+                connectionId: grant.connectionId,
+                accountRevision: grant.accountRevision,
+                operation: input.operation,
+                args: input.args,
+                actionId,
+              });
+              check();
+              return { output };
+            } catch (error) {
+              check();
+              if (
+                error instanceof AuxError &&
+                error.code === "needs_input" &&
+                (error.detail as { park?: import("./types.js").LoopPark } | undefined)?.park
+              )
+                return { park: (error.detail as { park: import("./types.js").LoopPark }).park };
+              throw error;
+            }
+          },
+        }
+      : {}),
+    linkedInWorkflow: (input, context) => linkedIn.invoke(input, context.actionId),
     ...(capturedGoogle.length && self.deps.googleOperation
       ? {
           googleOperation: async (input, ctx) => {
@@ -667,7 +882,8 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       const obs = await observePage(pageId, { scope, subtreeRef });
       return recordObs(obs);
     },
-    act: async ({ pageId, steps, actionId }): Promise<LoopToolResult> => {
+    act: async ({ pageId, steps, actionId, sourceCheck, linkedInPrecondition }): Promise<LoopToolResult> => {
+      sourceCheck?.();
       const maxSteps = self.get(runId).config?.maxSteps ?? 0;
       const used = self.deps.repo.listSteps(runId).length;
       if (maxSteps > 0 && used + steps.length > maxSteps) {
@@ -675,6 +891,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
       }
       await self.assertPage(runId, pageId, "act");
+      sourceCheck?.();
       const obs =
         lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
       const safeObs = redactObservation(obs);
@@ -763,12 +980,22 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           revision: obs.revision,
           taskId: run.config?.taskId,
           taskRevision: run.config?.taskRevision,
-          isCurrent: () => !steerPending() && !signal.aborted,
+          isCurrent: () => {
+            sourceCheck?.();
+            return !steerPending() && !signal.aborted;
+          },
           exec: {
             runId,
             taskId: run.config?.taskId,
             signal,
-            sourcePageCheck: self.pageSourceCheck(runId, pageId),
+            sourcePageCheck: (() => {
+              const pageCheck = self.pageSourceCheck(runId, pageId);
+              return () => {
+                pageCheck();
+                sourceCheck?.();
+              };
+            })(),
+            linkedInPrecondition,
             onStep: (outcome, step) => {
               outcomes.push(outcome);
               writeDispatches.set(outcome.stepId, { pageId, revision: obs.revision });
@@ -1559,6 +1786,32 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           return result;
         }
       : undefined,
+    desktopContextSearch: self.deps.agentLoop?.desktopContextSearch
+      ? async (input, owner) => {
+          const check = recallOwner({ runId: owner.runId, threadId, turnId: runId });
+          check();
+          const result = await self.deps.agentLoop!.desktopContextSearch!(input, {
+            runId,
+            signal,
+            checkOwner: check,
+          });
+          check();
+          return result;
+        }
+      : undefined,
+    desktopContextRead: self.deps.agentLoop?.desktopContextRead
+      ? async (input, owner) => {
+          const check = recallOwner({ runId: owner.runId, threadId, turnId: runId });
+          check();
+          const result = await self.deps.agentLoop!.desktopContextRead!(input, {
+            runId,
+            signal,
+            checkOwner: check,
+          });
+          check();
+          return result;
+        }
+      : undefined,
     memorySearch: self.deps.agentLoop?.memorySearch
       ? async (query, context) => {
           const checkOwner = recallOwner(context);
@@ -2279,6 +2532,11 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   };
   c.contextCompaction ??= {};
+  const desktopResponseOwner = () => ({
+    runId,
+    signal,
+    checkOwner: recallOwner({ runId, threadId, turnId: runId }),
+  });
   const makeOpts = (): AgentLoopOptions => {
     // A pending assistant tool call must receive its result before any user context.
     publishModelContext();
@@ -2314,6 +2572,14 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         : {}),
       onText: (text) => {
         if (!signal.aborted) answer.push(text);
+      },
+      validateModelResponse: async () => {
+        try {
+          await self.deps.agentLoop?.desktopContextValidate?.(desktopResponseOwner());
+        } catch (error) {
+          answer.discard();
+          throw error;
+        }
       },
       beforeContext: publishModelContext,
       projectTranscript: (messages) => projectLegacyRecall(self.deps.repo, transcript, runId, messages),
@@ -2367,11 +2633,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       tools: (() => {
         const manifest = buildToolManifest();
         if (!deps.goalUpdate) delete manifest.goal_update;
-        if (!deps.googleOperation) delete manifest.google_operation;
         if (!self.deps.agentLoop?.processPdf || self.deps.agentLoop.pdfReady?.() === false)
           for (const name of Object.keys(manifest))
             if (name.startsWith("pdf_")) delete manifest[name];
-        else if (!self.deps.agentLoop?.pdfSources) delete manifest.pdf_sources;
+            else if (!self.deps.agentLoop?.pdfSources) delete manifest.pdf_sources;
         if (goalRun)
           for (const name of ["subagent", "subagent_wait", "subagent_send", "subagent_stop"])
             delete manifest[name];
@@ -2423,6 +2688,19 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               ),
             },
           ];
+        answer.discard();
+        if (self.deps.agentLoop?.desktopContextProject) {
+          const previousDesktopProjection = messages;
+          const check = recallOwner({ runId, threadId, turnId: runId });
+          check();
+          messages = await self.deps.agentLoop.desktopContextProject(
+            messages,
+            budget.remainingInputBytes(messages),
+            { runId, signal, checkOwner: check },
+          );
+          if (messages !== previousDesktopProjection) answer.hold();
+          check();
+        }
         const original = self.get(runId);
         const refs = original.config?.contextMemoryRefs ?? [];
         const documentRefs = original.config?.contextAttachmentRefs ?? [];
@@ -2583,6 +2861,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         if (signal.aborted) throw new AuxError("cancelled", "Tool authority changed before dispatch.");
       },
       afterModelCall: () => {
+        answer.discard();
         releaseSharedCall?.();
         releaseSharedCall = undefined;
       },
@@ -2670,6 +2949,12 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           }
         }
         pendingDocuments = undefined;
+        try {
+          await self.deps.agentLoop?.desktopContextValidate?.(desktopResponseOwner());
+          if (purpose !== "compaction") answer.release();
+        } finally {
+          answer.discard();
+        }
       },
       onModelFailure: async ({ error, reservationId }) => {
         // Known provider attempts include the final failed request.
@@ -3103,6 +3388,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       await self.finish(runId, "failed", undefined, error instanceof Error ? error.message : String(error));
     }
   } finally {
+    linkedIn.close();
     const latestContextRun = self.deps.repo.getRun(runId);
     const context = latestContextRun?.config?.contextCompaction;
     if (

@@ -41,6 +41,7 @@ const ExternalAgents = lazySection(async () => (await import("./ExternalAgents")
 const PluginsPanel = lazySection(async () => (await import("./PluginsPanel")).PluginsPanel);
 const Extensions = lazySection(async () => (await import("./Extensions")).Extensions);
 const VaultSettings = lazySection(async () => (await import("./VaultSettings")).VaultSettings);
+const XConnections = lazySection(async () => (await import("../settings/sections/XConnections")).XConnections);
 const GoogleConnections = lazySection(
   async () => (await import("../settings/sections/GoogleConnections")).GoogleConnections,
 );
@@ -288,8 +289,8 @@ export function Settings() {
   const searchInput = useRef<HTMLInputElement>(null);
   const firstSearchResult = useRef<HTMLButtonElement>(null);
   const editorViews = useRef(new Map<string, HTMLElement>());
-  const connectorSections = useRef(new Map<"calendar" | "mcp" | "google", HTMLDivElement>());
-  const manageConnector = (kind: "calendar" | "mcp" | "google") => {
+  const connectorSections = useRef(new Map<"calendar" | "mcp" | "google" | "x", HTMLDivElement>());
+  const manageConnector = (kind: "calendar" | "mcp" | "google" | "x") => {
     if (kind === "mcp") {
       openCategory("Connections", "Plugins");
       return;
@@ -555,6 +556,9 @@ export function Settings() {
               {connectorsAvailable && (
                 <>
                   <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
+                  <div id="connection-x" tabIndex={-1} ref={(node) => { if (node) connectorSections.current.set("x", node); else connectorSections.current.delete("x"); }}>
+                    <XConnections active={visible("Connections")} />
+                  </div>
                   <div
                     id="connection-google"
                     tabIndex={-1}

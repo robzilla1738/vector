@@ -1,68 +1,121 @@
-.desktop-context-card {
-  padding: 16px;
-  margin-block: 16px;
-  background: var(--settings-card);
-  border-radius: var(--r-xl);
-  display: grid;
-  gap: 12px;
-}
-.desktop-context-card fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-.desktop-context-card legend {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-.desktop-context-choice {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding-block: 6px;
-  font-size: 14px;
-  font-weight: 500;
-}
-.desktop-context-choice input {
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.desktop-context-choice small,
-.desktop-context-sources small {
-  display: block;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-secondary);
-  overflow-wrap: anywhere;
-}
-.desktop-context-destination,
-.desktop-context-search {
-  display: grid;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
-}
-.desktop-context-sources {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.desktop-context-sources li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-height: 52px;
-  padding-block: 8px;
-}
-.desktop-context-sources li > span {
-  flex: 1 1 160px;
-}
-.desktop-context-card pre {
-  max-height: 320px;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 12px/16px var(--font-mono);
+@layer components {
+  .desktop-context-settings .desktop-context-intro {
+    margin: 0 0 var(--space-5);
+  }
+  .desktop-context-settings .desktop-context-note {
+    margin: 0;
+    padding: var(--space-3) var(--space-3-5);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
+  }
+  .desktop-context-settings .desktop-context-error {
+    color: var(--err);
+    font-size: var(--fs-xs);
+    line-height: 16px;
+    margin-block: var(--space-3);
+  }
+  .desktop-context-settings .desktop-context-save,
+  .desktop-context-settings .desktop-context-source-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-1-5);
+  }
+  .desktop-context-settings .desktop-context-save {
+    margin-block: var(--space-3) var(--space-7);
+  }
+  .desktop-context-settings .desktop-context-save > button {
+    flex: none;
+    width: auto;
+  }
+  .desktop-context-settings .field > .hint {
+    overflow-wrap: anywhere;
+  }
+  .desktop-context-settings .desktop-context-status {
+    text-transform: capitalize;
+  }
+  .desktop-context-settings .desktop-context-search {
+    display: flex;
+    gap: var(--space-1-5);
+    min-width: 0;
+  }
+  .desktop-context-settings .desktop-context-search > input {
+    flex: 1;
+    min-width: 0;
+  }
+  .desktop-context-settings .desktop-context-search > button {
+    flex: none;
+    width: auto;
+  }
+  .desktop-context-settings .desktop-context-search-mode {
+    margin-top: var(--space-2);
+  }
+  .desktop-context-settings .desktop-context-sources {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .desktop-context-settings .desktop-context-sources li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 52px;
+    padding: var(--space-2-5) var(--space-3-5);
+    border-top: var(--hairline) solid var(--line);
+  }
+  .desktop-context-settings .desktop-context-source-label {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+  .desktop-context-settings .desktop-context-source-label strong,
+  .desktop-context-settings .desktop-context-source-label small {
+    display: block;
+    font-weight: var(--fw-medium);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .desktop-context-settings .desktop-context-source-label strong {
+    font-size: var(--fs-md);
+    line-height: 20px;
+  }
+  .desktop-context-settings .desktop-context-source-label small {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 16px;
+  }
+  .desktop-context-settings .desktop-context-pagination,
+  .desktop-context-settings .desktop-context-inspection {
+    padding: var(--space-3) var(--space-3-5);
+    border-top: var(--hairline) solid var(--line);
+  }
+  .desktop-context-settings .desktop-context-inspection h4 {
+    margin: 0;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+  .desktop-context-settings .desktop-context-inspection pre {
+    max-height: 320px;
+    margin-block: var(--space-2);
+    padding: var(--space-2-5);
+    border-radius: var(--r-lg);
+    background: var(--surface-tertiary);
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: var(--fs-xs)/16px var(--font-mono);
+    user-select: text;
+  }
+  @container settings-content (width < 440px) {
+    .desktop-context-settings .desktop-context-search {
+      flex-wrap: wrap;
+    }
+    .desktop-context-settings .desktop-context-search > input {
+      flex-basis: 100%;
+    }
+  }
 }

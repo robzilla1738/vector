@@ -50,7 +50,7 @@ export class DesktopContextStore {
       .prepare("SELECT * FROM desktop_context_generations WHERE workspace_id=?")
       .all(workspaceId) as Generation[];
   }
-  private rows(workspaceId: string) {
+  private rows(workspaceId: string, captureIds?: readonly string[]) {
     const size = this.repo.db
       .prepare(
         "SELECT count(*) AS count,coalesce(sum(length(CAST(content AS BLOB))),0) AS bytes FROM desktop_context_captures WHERE workspace_id=?",
@@ -60,9 +60,9 @@ export class DesktopContextStore {
       throw new Error("Desktop context exceeds its reviewed 32 MB / 10,000 capture limit.");
     const rows = this.repo.db
       .prepare(
-        "SELECT * FROM desktop_context_captures WHERE workspace_id=? ORDER BY captured_at DESC,capture_id",
+        `SELECT * FROM desktop_context_captures WHERE workspace_id=? ${captureIds ? `AND capture_id IN (${captureIds.map(() => "?").join(",") || "NULL"})` : ""} ORDER BY captured_at DESC,capture_id`,
       )
-      .all(workspaceId) as Row[];
+      .all(workspaceId, ...(captureIds ?? [])) as Row[];
     if (
       rows.length > maximumCaptures ||
       rows.reduce((sum, row) => sum + Buffer.byteLength(row.content), 0) > maximumBytes
@@ -89,11 +89,13 @@ export class DesktopContextStore {
       (row) => row.app_key === generation.app_key && row.generation === generation.generation,
     );
   }
-  async read(workspaceId: string, check: () => void = () => {}) {
-    const rows = this.rows(workspaceId);
+  async read(workspaceId: string, check: () => void = () => {}, captureIds?: readonly string[]) {
+    if (captureIds && captureIds.length > 200) throw new Error("Choose at most 200 admitted desktop quotes.");
+    const rows = this.rows(workspaceId, captureIds);
     const generations = this.generations(workspaceId);
     const result: DesktopContextCapture[] = [];
     for (const generation of generations) {
+      if (!rows.some((row) => row.app_key === generation.app_key)) continue;
       const key = await this.key(generation);
       check();
       if (!this.current(generation)) throw new Error("Desktop context changed during reading.");
@@ -124,6 +126,14 @@ export class DesktopContextStore {
     if (result.length !== rows.length) throw new Error("Desktop context inventory is incomplete.");
     check();
     return result.sort((a, b) => b.capturedAt - a.capturedAt || a.captureId.localeCompare(b.captureId));
+  }
+  sourceVersion(workspaceId: string, captureId: string): string | undefined {
+    const row = this.repo.db
+      .prepare(
+        `SELECT c.generation,c.content,c.expires_at FROM desktop_context_captures c JOIN desktop_context_generations g ON g.workspace_id=c.workspace_id AND g.app_key=c.app_key AND g.generation=c.generation WHERE c.workspace_id=? AND c.capture_id=?`,
+      )
+      .get(workspaceId, captureId);
+    return row ? digest(JSON.stringify(row)) : undefined;
   }
   revision(workspaceId: string) {
     return digest(

@@ -80,7 +80,16 @@ export default defineConfig({
   base: "/",
   resolve: {
     // Configure Zod when a lazy schema chunk loads, before any parser can probe JIT.
-    alias: [{ find: /^zod$/, replacement: join(import.meta.dirname, "src/schema-runtime.ts") }],
+    alias: [
+      {
+        find: /^zod$/,
+        replacement: join(import.meta.dirname, "src/schema-runtime.ts"),
+      },
+      {
+        find: /^zod\/mini$/,
+        replacement: join(import.meta.dirname, "src/schema-mini-runtime.ts"),
+      },
+    ],
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },

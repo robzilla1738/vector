@@ -23,6 +23,8 @@ import type { OriginPolicyAudit } from "./origin-policy.js";
 import type { SuspensionStore } from "./suspensions.js";
 
 export interface StepSafetyContext {
+  /** In-process workflow seal only; no API schema admits this context. */
+  linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
   /** Only the selected account's original adapter can supply this validated endpoint. */
   configuredModelDestination?: string;
   taskRead?: ValidatedTaskRead;
@@ -117,6 +119,48 @@ export class SafetyDispatchGate {
         )
         .digest("hex"),
     });
+    const precondition = input.context.linkedInPrecondition;
+    if (precondition) {
+      input.context.checkOwner?.();
+      const original = precondition.source;
+      const draft = precondition.effect === "draft";
+      if (
+        input.context.actor !== "builtin_agent" ||
+        original.runId !== input.context.runId ||
+        original.profileId !== input.context.profileId ||
+        original.pageId !== input.context.pageId ||
+        original.sessionId !== input.context.sessionId ||
+        original.documentEpoch !== input.context.documentEpoch ||
+        (input.context.scope.kind === "task"
+          ? original.task?.taskId !== input.context.scope.id
+          : original.workspaceId !== input.context.scope.id) ||
+        new URL(original.url).origin !== input.origin ||
+        !("target" in input.step) ||
+        input.step.target !== precondition.targetRef ||
+        (draft
+          ? input.step.op !== "fill" || input.step.value !== precondition.exactContent
+          : input.step.op !== "click" || request.category !== "send")
+      )
+        throw new AuxError(
+          "ref_stale",
+          "The sealed LinkedIn recipient/draft source no longer matches this action.",
+        );
+      // The current native target proof binds its form, but cannot bind a LinkedIn recipient
+      // header and rich composer subtree together. Never reinterpret that gap as authority.
+      const instruction = `Complete this ${draft ? "draft edit" : precondition.effect === "external-message" ? "message send" : "invitation"} directly in the current LinkedIn page.\nRecipient: ${precondition.recipientUrl}\nExact content: ${precondition.exactContent || "(no note)"}\nAux cannot currently attest this recipient and composer together at native dispatch. No browser input was dispatched. Return to Aux for a fresh inspection; never repeat an uncertain send.`;
+      this.park(
+        request,
+        input.context,
+        {
+          kind: "handoff",
+          instruction,
+          guidance:
+            "Use the displayed exact recipient/content on the page. Continuing only permits a fresh inspection, never replay of this recipe.",
+        },
+        input.origin,
+      );
+      throw new AuxError("needs_input", instruction, { suspensionKind: "handoff" });
+    }
     return this.checkRequest(request, input.context, input.phase, input.origin);
   }
 

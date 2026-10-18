@@ -1,3 +1,8 @@
+import type { DesktopContextRemoval } from "./desktop-context-retirement.js";
+import {
+  DesktopContextQuotesSchema,
+  type DesktopContextQuote,
+} from "@aux/contracts/desktop-context-admission";
 import { MemoryRecall } from "./memory-recall.js";
 import { AuxError } from "@aux/contracts";
 import { digest } from "@aux/contracts/util/digest";
@@ -25,7 +30,8 @@ export type DesktopContextDependencies = {
   saveSettings(settings: DesktopContextSettings): void;
   workspaceEligible(workspaceId: string): boolean;
   sourceEligible(capture: DesktopContextCapture): boolean;
-  beforeRemoval(): Promise<void>;
+  beforeRemoval(scope: DesktopContextRemoval): Promise<void>;
+  beforeChange?(scope: DesktopContextRemoval): Promise<void>;
   changed(): void;
   now?: () => number;
 };
@@ -47,6 +53,7 @@ export class DesktopContextService {
   private readonly recall = new MemoryRecall();
   private epoch = 0;
   private closed = false;
+  private retiring = false;
   private serial: Promise<unknown> = Promise.resolve();
   private work = new Set<{ controller: AbortController; done: Promise<unknown> }>();
   private recent = new Map<string, { text: string; at: number }>();
@@ -125,6 +132,7 @@ export class DesktopContextService {
       signal: AbortSignal,
     ) => Promise<T>,
     inspection = false,
+    inventorySnapshot = true,
   ): Promise<T> {
     const settings = this.settings();
     const epoch = this.epoch;
@@ -141,19 +149,28 @@ export class DesktopContextService {
       await this.trusted(settings, epoch, workspaceId, controller.signal, inspection);
       const revision = this.deps.store.revision(workspaceId);
       let published: DesktopContextCapture[] = [];
+      let sourceVersions: (string | undefined)[] = [];
       const result = await action(
         settings,
         check,
         (captures) => {
           published = captures;
+          sourceVersions = captures.map((capture) =>
+            this.deps.store.sourceVersion(workspaceId, capture.captureId),
+          );
         },
         controller.signal,
       );
       await this.trusted(settings, epoch, workspaceId, controller.signal, inspection);
       check();
       if (
-        this.deps.store.revision(workspaceId) !== revision ||
-        published.some((capture) => !this.eligible(capture, settings))
+        (inventorySnapshot && this.deps.store.revision(workspaceId) !== revision) ||
+        published.some(
+          (capture, index) =>
+            !this.eligible(capture, settings) ||
+            !sourceVersions[index] ||
+            this.deps.store.sourceVersion(workspaceId, capture.captureId) !== sourceVersions[index],
+        )
       )
         fail("Desktop sources changed or expired before publication.");
       return result;
@@ -196,12 +213,14 @@ export class DesktopContextService {
       this.deps.workspaceEligible(settings.workspaceId)
     )
       await this.deps.native.attach(settings);
+    this.retiring = false;
   }
   async reconcilePolicy() {
     await this.retire();
     await this.start();
   }
   private async retire() {
+    this.retiring = true;
     this.epoch++;
     this.recent.clear();
     this.recall.invalidate();
@@ -229,13 +248,18 @@ export class DesktopContextService {
       await checkOwner();
       await this.retire();
       await checkOwner();
+      if (previous.workspaceId) await this.deps.beforeChange?.({ workspaceId: previous.workspaceId });
+      await checkOwner();
       if (previous.workspaceId) {
         for (const app of previous.selectedApps.filter(
           (app) => !settings.selectedApps.some((selected) => selected.bundleId === app.bundleId),
         ))
           await this.deps.store.forgetScope(previous.workspaceId, app.bundleId, async () => {
             await checkOwner();
-            await this.deps.beforeRemoval();
+            await this.deps.beforeRemoval({
+              workspaceId: previous.workspaceId!,
+              appBundleIds: [app.bundleId],
+            });
           });
       }
       try {
@@ -247,6 +271,7 @@ export class DesktopContextService {
         )
           fail();
         this.deps.saveSettings(settings);
+        this.retiring = false;
       } catch (error) {
         await this.deps.native.stop();
         throw error;
@@ -508,6 +533,154 @@ export class DesktopContextService {
       inspection,
     );
   }
+  /** Durable tool results contain recipes only; quotes are hydrated for each actual model request. */
+  async modelSearch(raw: DesktopContextSearch, signal: AbortSignal, checkOwner: () => void) {
+    const revision = this.settings().revision;
+    const result = await this.search(raw, signal, checkOwner);
+    if (this.settings().revision !== revision) fail();
+    const quotes = await this.quoteRecipes(
+      raw.workspaceId,
+      result.items.map((item) => ({ ...item, includeSelection: false })),
+      signal,
+      checkOwner,
+    );
+    return { ...result, items: quotes.map((quote, index) => ({ quote, score: result.items[index]!.score })) };
+  }
+  async modelRead(raw: DesktopContextRead, signal: AbortSignal, checkOwner: () => void) {
+    const revision = this.settings().revision;
+    const result = await this.read(raw, signal, checkOwner);
+    if (this.settings().revision !== revision) fail();
+    const [quote] = await this.quoteRecipes(
+      raw.workspaceId,
+      [{ ...result, includeSelection: true }],
+      signal,
+      checkOwner,
+    );
+    return { quote: quote!, totalLines: result.totalLines };
+  }
+  private quoteRecipes(
+    workspaceId: string,
+    items: {
+      source: DesktopContextSource;
+      text: string;
+      selection?: string;
+      startLine: number;
+      endLine: number;
+      includeSelection: boolean;
+    }[],
+    signal: AbortSignal,
+    checkOwner: () => void,
+  ) {
+    return this.owned(
+      workspaceId,
+      signal,
+      checkOwner,
+      async (settings, check, publish) => {
+        const captures = await this.deps.store.read(
+          workspaceId,
+          check,
+          items.map((item) => item.source.captureId),
+        );
+        const quotes = items.map((item) => {
+          const capture = captures.find(
+            (capture) => capture.captureId === item.source.captureId && capture.sha256 === item.source.sha256,
+          );
+          if (!capture || !this.eligible(capture, settings))
+            throw new AuxError("ref_stale", "The desktop quote source retired.");
+          const lines = capture.text.split("\n");
+          if (item.startLine > lines.length || !item.text)
+            throw new AuxError("invalid_params", "Choose existing nonempty desktop source lines.");
+          const first = lines
+            .slice(0, item.startLine - 1)
+            .reduce((offset, line) => offset + line.length + 1, 0);
+          const startOffset = capture.text.indexOf(item.text, first),
+            endOffset = startOffset + item.text.length;
+          const through = lines.slice(0, item.endLine).join("\n").length;
+          const version = this.deps.store.sourceVersion(workspaceId, capture.captureId);
+          if (
+            !version ||
+            startOffset < first ||
+            endOffset > through ||
+            (item.includeSelection && item.selection !== capture.selection)
+          )
+            fail("The exact desktop quote changed.");
+          return {
+            workspaceId,
+            captureId: capture.captureId,
+            sha256: capture.sha256,
+            version,
+            appBundleId: capture.app.bundleId,
+            expiresAt: capture.expiresAt,
+            consentRevision: settings.revision,
+            startLine: item.startLine,
+            endLine: item.endLine,
+            startOffset,
+            endOffset,
+            includeSelection: item.includeSelection,
+            quoteSha256: digest(JSON.stringify([item.text, item.includeSelection ? capture.selection : ""])),
+          };
+        });
+        check();
+        publish(captures);
+        return DesktopContextQuotesSchema.parse(quotes);
+      },
+      false,
+      false,
+    );
+  }
+  assertQuotes(raw: readonly DesktopContextQuote[]) {
+    const quotes = DesktopContextQuotesSchema.parse(raw),
+      settings = this.settings();
+    if (this.retiring) throw new AuxError("cancelled", "The desktop source owner is retiring.");
+    for (const quote of quotes) {
+      this.check(this.epoch, settings, quote.workspaceId);
+      if (
+        quote.consentRevision !== settings.revision ||
+        quote.expiresAt <= this.now() ||
+        !settings.selectedApps.some((app) => app.bundleId === quote.appBundleId) ||
+        this.deps.store.sourceVersion(quote.workspaceId, quote.captureId) !== quote.version
+      )
+        fail("An admitted desktop source changed or was forgotten.");
+    }
+  }
+  materializeQuotes(raw: readonly DesktopContextQuote[], signal: AbortSignal, checkOwner: () => void) {
+    const quotes = DesktopContextQuotesSchema.parse(raw);
+    this.assertQuotes(quotes);
+    const workspaceId = quotes[0]?.workspaceId;
+    if (!workspaceId) return Promise.resolve([]);
+    if (quotes.some((quote) => quote.workspaceId !== workspaceId))
+      throw new AuxError("permission_denied", "Desktop quotes must belong to one original Space.");
+    return this.owned(
+      workspaceId,
+      signal,
+      checkOwner,
+      async (settings, check, publish) => {
+        const captures = await this.deps.store.read(
+          workspaceId,
+          check,
+          quotes.map((quote) => quote.captureId),
+        );
+        const output = quotes.map((quote) => {
+          const capture = captures.find(
+            (capture) => capture.captureId === quote.captureId && capture.sha256 === quote.sha256,
+          );
+          if (!capture || !this.eligible(capture, settings))
+            throw new AuxError("ref_stale", "An admitted desktop source retired.");
+          const text = capture.text.slice(quote.startOffset, quote.endOffset),
+            selection = quote.includeSelection ? capture.selection : "";
+          if (digest(JSON.stringify([text, selection])) !== quote.quoteSha256)
+            fail("The admitted desktop quote does not match its exact recipe.");
+          return { quote, source: source(capture), text, selection };
+        });
+        this.assertQuotes(quotes);
+        check();
+        publish(captures);
+        return output;
+      },
+      false,
+      false,
+    );
+  }
   async forget(
     workspaceId: string,
     expectedRevision: number,
@@ -522,7 +695,14 @@ export class DesktopContextService {
       if (this.settings().revision !== expectedRevision) fail();
       const beforeRemoval = async () => {
         await checkOwner();
-        await this.deps.beforeRemoval();
+        const appBundleIds = appBundleId
+          ? [appBundleId]
+          : captureId
+            ? (await this.deps.store.read(workspaceId))
+                .filter((capture) => capture.captureId === captureId)
+                .map((capture) => capture.app.bundleId)
+            : undefined;
+        await this.deps.beforeRemoval({ workspaceId, appBundleIds });
       };
       const removed = captureId
         ? await this.deps.store.remove(
@@ -551,7 +731,15 @@ export class DesktopContextService {
         removed += await this.deps.store.remove(
           workspaceId,
           (capture) => capture.expiresAt <= this.now(),
-          this.deps.beforeRemoval,
+          async () => {
+            const expired = (await this.deps.store.read(workspaceId)).filter(
+              (capture) => capture.expiresAt <= this.now(),
+            );
+            await this.deps.beforeRemoval({
+              workspaceId,
+              appBundleIds: [...new Set(expired.map((capture) => capture.app.bundleId))],
+            });
+          },
         );
       await this.start();
       return { removed };

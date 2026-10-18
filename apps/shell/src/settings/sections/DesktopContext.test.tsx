@@ -163,3 +163,71 @@ it("discards a permission response from before hiding and reopening the same Set
   expect(host.textContent).toContain("Approve Aux in macOS Accessibility");
   expect(button("Refresh status").disabled).toBe(false);
 });
+it("restores every unsaved consent choice on Cancel without calling the service", async () => {
+  await act(async () => root.render(<DesktopContextSettings active />));
+  const capture = host.querySelector<HTMLInputElement>(
+      '[aria-label="Allow desktop context for the selected apps"]',
+    )!,
+    ocr = host.querySelector<HTMLInputElement>(
+      '[aria-label="Allow local OCR for a window selected with macOS"]',
+    )!,
+    app = host.querySelector<HTMLInputElement>('[aria-label="Include Synthetic Editor"]')!,
+    space = host.querySelector<HTMLSelectElement>('[aria-label="Desktop context Space"]')!;
+  expect(capture.getAttribute("role")).toBe("switch");
+  await act(async () => {
+    capture.click();
+    ocr.click();
+    app.click();
+  });
+  await act(async () => {
+    space.value = "workspace";
+    space.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(button("Cancel").disabled).toBe(false);
+  await act(async () => button("Cancel").click());
+  expect(capture.checked).toBe(false);
+  expect(ocr.checked).toBe(false);
+  expect(app.checked).toBe(false);
+  expect(space.value).toBe("");
+  expect(button("Save desktop context").disabled).toBe(true);
+  expect(fixture.call).toHaveBeenCalledTimes(2);
+});
+it("keeps system permission controls tied to saved settings rather than unsaved switches", async () => {
+  snapshot.settings = {
+    ...snapshot.settings,
+    workspaceId: "workspace",
+    selectedApps: [{ bundleId: "test.editor", displayName: "Synthetic Editor" }],
+  };
+  await act(async () => root.render(<DesktopContextSettings active />));
+  await act(async () =>
+    host
+      .querySelector<HTMLInputElement>('[aria-label="Allow desktop context for the selected apps"]')!
+      .click(),
+  );
+  await act(async () =>
+    host
+      .querySelector<HTMLInputElement>('[aria-label="Allow local OCR for a window selected with macOS"]')!
+      .click(),
+  );
+  expect(button("Request access").disabled).toBe(true);
+  expect(button("Choose window…").disabled).toBe(true);
+  expect(fixture.call).toHaveBeenCalledTimes(2);
+  await act(async () => button("Save desktop context").click());
+  expect(button("Request access").disabled).toBe(false);
+  expect(button("Choose window…").disabled).toBe(false);
+  expect(fixture.call.mock.calls.some(([method]) => method === "desktopContext.permission")).toBe(false);
+});
+it("does not allow saving enabled capture without an explicit destination and selected app", async () => {
+  await act(async () => root.render(<DesktopContextSettings active />));
+  await act(async () =>
+    host
+      .querySelector<HTMLInputElement>('[aria-label="Allow desktop context for the selected apps"]')!
+      .click(),
+  );
+  expect(button("Save desktop context").disabled).toBe(true);
+  await act(async () =>
+    host.querySelector<HTMLInputElement>('[aria-label="Include Synthetic Editor"]')!.click(),
+  );
+  expect(button("Save desktop context").disabled).toBe(true);
+  expect(fixture.call.mock.calls.some(([method]) => method === "desktopContext.configure")).toBe(false);
+});

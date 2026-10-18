@@ -10,7 +10,7 @@ vi.mock("./use-feature", () => ({ useFeature: () => true }));
 import { bridge } from "./bridge";
 import { COMMAND_ACTIONS } from "./commands";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
-import { closeCommandSurface, useCommandSurfaceRequest } from "./command-surface-state";
+import { closeCommandSurface, openCommandSurface, useCommandSurfaceRequest } from "./command-surface-state";
 import { CommandSurface } from "./components/CommandSurface";
 import { useStore } from "./store";
 import { normalizePages } from "./store/pages";
@@ -115,6 +115,18 @@ it("opens a quiet compact entry with recent browser objects and exposes filters 
   expect(host.querySelector('.cb-provider-scopes [aria-pressed="true"]')?.textContent).toBe("Open Tabs");
   await act(async () => key(input, "Escape"));
   expect(host.querySelector(".cb-results-footer")).toBeNull();
+});
+
+it("closes native tab search without discarding a replacement new-tab draft", async () => {
+  nativeOmniboxFixture([]);
+  await open();
+  await act(async () => COMMAND_ACTIONS["close-tab-search"]());
+  expect(useStore.getState().overlay).toBeNull();
+  await act(async () => openCommandSurface({ mode: "new-tab", seed: "Unfinished draft" }));
+  await settle();
+  await act(async () => COMMAND_ACTIONS["close-tab-search"]());
+  expect(useStore.getState().overlay).toBe("command-surface");
+  expect(host.querySelector<HTMLInputElement>('input[role="combobox"]')?.value).toBe("Unfinished draft");
 });
 
 it("keeps all browser-object providers and accepts the selected native row without reclassifying it", async () => {

@@ -22,7 +22,7 @@ tracks the new reference set and missing comparisons. The owner is adding and
 organizing captures during work; rescan recursively between batches. Keep all
 native work under the single launcher/lock and use disposable Profiles.
 
-**October 12 wrap-up:** the owner requested a stopping point after the parity
+**Historical October 12 wrap-up (superseded):** the owner requested a stopping point after the parity
 implementation pass. Changes are consolidated locally; further implementation
 and native acceptance are paused at this checkpoint. [STATUS](STATUS.md) records
 the source/build distinction and [the surface ledger](design/aside-parity.md)
@@ -49,7 +49,7 @@ icons and clean selected rows. Keep Aux's address field in the sidebar directly
 above Tabs. Empty Chats should stay compact, and narrow widths must preserve
 usable controls.
 
-**October 8 local checkpoint:** the owner requested wrapping up and stopping further
+**Historical October 8 local checkpoint (superseded):** the owner requested wrapping up and stopping further
 testing. Completed work is committed on local main; execution is paused with
 remaining acceptance preserved in [STATUS](STATUS.md) and the
 [execution graph](ROADMAP-EXECUTION-GRAPH.md). Built app: 272 methods / 30 events,

@@ -9,7 +9,7 @@ import { makeRun } from "../mock/fixtures";
 it("uses the latest turn’s actual table and opens its exact saved result", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const initial = useStore.getState();
-  useStore.setState({ conversationDrafts: {}, resultPreview: null });
+  useStore.setState({ connected: true, conversationDrafts: {}, resultPreview: null });
   const run = makeRun({ runId: "latest", config: { chatId: "chat" }, status: "completed" });
   const artifact = {
     artifactId: "table-2",

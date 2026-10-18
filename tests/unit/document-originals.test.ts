@@ -275,14 +275,16 @@ function historicalDatabase(forged: boolean) {
   });
   const path = join(directory, "state.sqlite"),
     db = openDb(path);
-  db.exec("DROP TABLE document_source_chunks; PRAGMA user_version=9");
+  db.exec(
+    "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks; PRAGMA user_version=9",
+  );
   if (forged) db.exec("CREATE TABLE document_source_forged(secret TEXT)");
   db.close();
   return path;
 }
 it("migrates an authentic schema9 database to encrypted original-byte support", () => {
   const migrated = openDb(historicalDatabase(false));
-  expect(migrated.prepare("PRAGMA user_version").get()).toEqual({ user_version: 10 });
+  expect(migrated.prepare("PRAGMA user_version").get()).toEqual({ user_version: 11 });
   migrated.close();
 });
 it("refuses a forged historical source table before changing the database", () => {

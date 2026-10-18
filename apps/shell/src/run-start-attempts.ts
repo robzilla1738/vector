@@ -1,5 +1,4 @@
 import type { MethodParams, MethodResult, Run } from "@aux/contracts";
-import { RunsReconcileStartParams } from "@aux/contracts/run-start";
 import { bridge } from "./bridge";
 
 const PREFIX = "aux.pending-run-start.v1:";
@@ -31,12 +30,44 @@ export function isRunStartRemoved(key: string): boolean {
   return false;
 }
 
-/** Delete the request payload, retaining only a non-replayable chat marker. */
+/** Only UI/deletion identity, never authority to replay a stored request. */
+function storedStartIdentity(key: string): { request: { chatId: string; privateTask: false } } | null {
+  if (bridge.privateMode) return null;
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(PREFIX + key) ?? "null");
+    if (
+      !value ||
+      typeof value !== "object" ||
+      !("request" in value) ||
+      !value.request ||
+      typeof value.request !== "object"
+    )
+      return null;
+    const request = value.request;
+    if (
+      !("chatId" in request) ||
+      typeof request.chatId !== "string" ||
+      !request.chatId ||
+      ("privateTask" in request && request.privateTask === true) ||
+      (key !== "new" && request.chatId !== key)
+    )
+      return null;
+    return { request: { chatId: request.chatId, privateTask: false } };
+  } catch {
+    return null;
+  }
+}
+
+export function hasStartAttempt(key: string): boolean {
+  return !isRunStartRemoved(key) && !!(attempts.get(key) ?? storedStartIdentity(key));
+}
+
+/** Delete synchronously, including while a replay validator is loading. */
 export function removeRunStart(key: string): boolean {
   let pendingKey = key;
-  let attempt = readStartAttempt(key);
+  let attempt = attempts.get(key) ?? storedStartIdentity(key);
   if (!attempt && key !== "new") {
-    const newChat = readStartAttempt("new");
+    const newChat = attempts.get("new") ?? storedStartIdentity("new");
     if (newChat?.request.chatId === key) {
       attempt = newChat;
       pendingKey = "new";
@@ -44,7 +75,7 @@ export function removeRunStart(key: string): boolean {
   }
   removedChats.add(key);
   attempts.delete(pendingKey);
-  if (!attempt || bridge.privateMode || attempt.request.privateTask) return true;
+  if (bridge.privateMode || attempt?.request.privateTask) return true;
   try {
     localStorage.removeItem(PREFIX + pendingKey);
     localStorage.setItem(PREFIX + key, '{"removed":true}');
@@ -54,11 +85,15 @@ export function removeRunStart(key: string): boolean {
   }
 }
 
-export function readStartAttempt(key: string): StartAttempt | null {
+export async function readStartAttempt(key: string): Promise<StartAttempt | null> {
   if (isRunStartRemoved(key)) return null;
   const current = attempts.get(key);
   if (bridge.privateMode || current?.request.privateTask) return current ?? null;
   try {
+    if (!localStorage.getItem(PREFIX + key)) return null;
+    const { RunsReconcileStartParams } = await import("@aux/contracts/run-start");
+    if (isRunStartRemoved(key)) return null;
+    // Read again after loading; another window may have replaced or removed it.
     const raw: unknown = JSON.parse(localStorage.getItem(PREFIX + key) ?? "null");
     if (
       !raw ||
@@ -71,7 +106,8 @@ export function readStartAttempt(key: string): StartAttempt | null {
     const parsed = RunsReconcileStartParams.safeParse(raw.request);
     if (!parsed.success || parsed.data.privateTask || (key !== "new" && parsed.data.chatId !== key))
       return null;
-    if (current?.request.requestId === parsed.data.requestId) return current;
+    const latest = attempts.get(key);
+    if (latest?.request.requestId === parsed.data.requestId) return latest;
     const attempt = { request: parsed.data, intent: raw.intent };
     attempts.set(key, attempt);
     return attempt;
@@ -98,15 +134,16 @@ function forget(key: string, attempt: StartAttempt) {
   attempts.delete(key);
 }
 
-export async function reconcileStartAttempt(
-  key: string,
-): Promise<{ attempt: StartAttempt; result: MethodResult<"runs.reconcileStart"> } | null> {
-  const attempt = readStartAttempt(key);
+export async function reconcileStartAttempt(key: string): Promise<{
+  attempt: StartAttempt;
+  result: MethodResult<"runs.reconcileStart">;
+} | null> {
+  const attempt = await readStartAttempt(key);
   if (!attempt) return null;
   if (inFlight.has(key)) return null;
   const result = await bridge.invoke("runs.reconcileStart", attempt.request);
   // A foreground Send or another window may have already resolved this attempt.
-  if (inFlight.has(key) || readStartAttempt(key) !== attempt) return null;
+  if (inFlight.has(key) || (await readStartAttempt(key)) !== attempt) return null;
   if (result.status === "removed") removeRunStart(attempt.request.chatId ?? key);
   else forget(key, attempt);
   return { attempt, result };
@@ -123,9 +160,10 @@ export function deliverRunStart(key: string, request: MethodParams<"runs.start">
       recovered: true,
       changed: delivery.changed || pending.intent !== intent,
     }));
-  const original = readStartAttempt(key);
   const operation = Promise.resolve()
     .then(async (): Promise<Delivery> => {
+      if (isRunStartRemoved(key)) throw removedError();
+      const original = await readStartAttempt(key);
       if (isRunStartRemoved(key)) throw removedError();
       if (original) {
         const result = await bridge.invoke("runs.reconcileStart", original.request);
@@ -133,7 +171,11 @@ export function deliverRunStart(key: string, request: MethodParams<"runs.start">
         if (isRunStartRemoved(key) || isRunStartRemoved(original.request.chatId ?? key)) throw removedError();
         forget(key, original);
         if (result.status === "accepted")
-          return { run: result.run, recovered: true, changed: original.intent !== intent };
+          return {
+            run: result.run,
+            recovered: true,
+            changed: original.intent !== intent,
+          };
       }
       const attempt: StartAttempt = {
         intent,

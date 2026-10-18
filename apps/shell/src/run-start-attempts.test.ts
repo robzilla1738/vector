@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Run } from "@aux/contracts";
-const native = vi.hoisted(() => ({ invoke: vi.fn(), privateMode: false, windowId: "original-window" }));
+const native = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  privateMode: false,
+  windowId: "original-window",
+}));
 vi.mock("./bridge", () => ({ bridge: native }));
 let delivery: typeof import("./run-start-attempts");
 const request = {
@@ -56,7 +60,10 @@ it("restores the exact request across a changed native window and preserves an e
   delivery = await import("./run-start-attempts");
   native.invoke.mockReset().mockResolvedValue({ status: "accepted", run });
   expect(
-    await delivery.deliverRunStart(request.chatId, { ...request, goal: "Edited while offline" }),
+    await delivery.deliverRunStart(request.chatId, {
+      ...request,
+      goal: "Edited while offline",
+    }),
   ).toEqual({ run, recovered: true, changed: true });
   expect(native.invoke).toHaveBeenCalledExactlyOnceWith("runs.reconcileStart", original);
   expect(localStorage.length).toBe(0);
@@ -87,8 +94,11 @@ it("joins concurrent sends and leaves removed originals fenced instead of making
       }),
   );
   const first = delivery.deliverRunStart(request.chatId, request);
-  const second = delivery.deliverRunStart(request.chatId, { ...request, goal: "Second unsent draft" });
-  await Promise.resolve();
+  const second = delivery.deliverRunStart(request.chatId, {
+    ...request,
+    goal: "Second unsent draft",
+  });
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   finish(run);
   expect((await first).changed).toBe(false);
   expect((await second).changed).toBe(true);
@@ -99,7 +109,7 @@ it("joins concurrent sends and leaves removed originals fenced instead of making
   await expect(delivery.deliverRunStart(request.chatId, request)).rejects.toThrow(/removed/);
   await expect(delivery.deliverRunStart(request.chatId, request)).rejects.toThrow(/removed/);
   expect(native.invoke.mock.calls.every(([method]) => method === "runs.reconcileStart")).toBe(true);
-  expect(delivery.readStartAttempt(request.chatId)).toBeNull();
+  expect(await delivery.readStartAttempt(request.chatId)).toBeNull();
   expect(localStorage.getItem("aux.pending-run-start.v1:original-chat")).toBe('{"removed":true}');
 });
 
@@ -107,13 +117,16 @@ it.each(["temporary", "private-window"])("keeps %s request contents in memory on
   native.privateMode = mode === "private-window";
   native.invoke.mockRejectedValue(new Error("Disconnected"));
   await expect(
-    delivery.deliverRunStart(request.chatId, { ...request, privateTask: mode === "temporary" }),
+    delivery.deliverRunStart(request.chatId, {
+      ...request,
+      privateTask: mode === "temporary",
+    }),
   ).rejects.toThrow();
   expect(localStorage.length).toBe(0);
-  expect(delivery.readStartAttempt(request.chatId)?.request.goal).toBe(request.goal);
+  expect((await delivery.readStartAttempt(request.chatId))?.request.goal).toBe(request.goal);
   vi.resetModules();
   delivery = await import("./run-start-attempts");
-  expect(delivery.readStartAttempt(request.chatId)).toBeNull();
+  expect(await delivery.readStartAttempt(request.chatId)).toBeNull();
 });
 
 it("does not dispatch a normal send if its restart identity cannot be stored", async () => {
@@ -133,9 +146,13 @@ it("an acknowledgement cannot erase a newer pending send from another Aux window
       }),
   );
   const pending = delivery.deliverRunStart(request.chatId, request);
-  await Promise.resolve();
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   const newer = {
-    request: { ...request, requestId: crypto.randomUUID(), goal: "Newer request" },
+    request: {
+      ...request,
+      requestId: crypto.randomUUID(),
+      goal: "Newer request",
+    },
     intent: "newer",
   };
   localStorage.setItem("aux.pending-run-start.v1:original-chat", JSON.stringify(newer));
@@ -155,13 +172,17 @@ it("ignores a late automatic reconciliation after an explicit send has advanced 
       }),
   );
   const automatic = delivery.reconcileStartAttempt(request.chatId);
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   native.invoke.mockImplementation(async (method) =>
     method === "runs.reconcileStart" ? { status: "not_started", run: null } : run,
   );
-  await delivery.deliverRunStart(request.chatId, { ...request, goal: "Explicit new draft" });
+  await delivery.deliverRunStart(request.chatId, {
+    ...request,
+    goal: "Explicit new draft",
+  });
   finish({ status: "not_started", run: null });
   expect(await automatic).toBeNull();
-  expect(delivery.readStartAttempt(request.chatId)).toBeNull();
+  expect(await delivery.readStartAttempt(request.chatId)).toBeNull();
 });
 
 it.each([request.chatId, "new"])(
@@ -175,7 +196,7 @@ it.each([request.chatId, "new"])(
         }),
     );
     const pending = delivery.deliverRunStart(key, request);
-    await Promise.resolve();
+    await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
     expect(delivery.removeRunStart(request.chatId)).toBe(true);
     expect(localStorage.getItem("aux.pending-run-start.v1:original-chat")).toBe('{"removed":true}');
     finish(run);
@@ -188,3 +209,30 @@ it.each([request.chatId, "new"])(
     expect(native.invoke).toHaveBeenCalledOnce();
   },
 );
+
+it("cannot restore a forgotten pending request after its deferred validator finishes loading", async () => {
+  localStorage.setItem(
+    "aux.pending-run-start.v1:original-chat",
+    JSON.stringify({ request: { ...request, requestId: crypto.randomUUID() }, intent: "original" }),
+  );
+  let release!: () => void;
+  vi.doMock("@aux/contracts/run-start", async (original) => {
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return original();
+  });
+  try {
+    vi.resetModules();
+    const fresh = await import("./run-start-attempts");
+    const reading = fresh.readStartAttempt(request.chatId);
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    expect(fresh.removeRunStart(request.chatId)).toBe(true);
+    release();
+    expect(await reading).toBeNull();
+    expect(localStorage.getItem("aux.pending-run-start.v1:original-chat")).toBe('{"removed":true}');
+    expect(native.invoke).not.toHaveBeenCalled();
+  } finally {
+    vi.doUnmock("@aux/contracts/run-start");
+  }
+});

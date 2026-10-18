@@ -415,6 +415,7 @@ export class TaskService {
       this.repo.db
         .prepare("UPDATE google_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL")
         .run(next.updatedAt, taskId);
+      this.repo.db.prepare("UPDATE x_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL").run(next.updatedAt, taskId);
       const chatId = next.conversationId ?? taskConversationId(taskId);
       this.repo.setConversationTitle(chatId, next.title.slice(0, 160));
       this.repo.db

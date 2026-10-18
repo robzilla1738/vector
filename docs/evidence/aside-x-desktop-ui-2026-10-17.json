@@ -1,0 +1,47 @@
+{
+  "program": "Aside adoption",
+  "status": "implementation checkpoint; full acceptance open",
+  "baseCommit": "34117c740bdac034680d7288a003d85016ccad7b",
+  "nativeSourceRevision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+  "nativeArea": {
+    "path": "chromium/patches/aux/0065-runtime-liveness-tab-search.patch",
+    "sha256": "adc0598fc8d9ebc7c7d20fec2dd1050b503e4563559d1ff698f3661596f4de60",
+    "paths": [
+      "chrome/browser/ui/aux/runtime_host.cc",
+      "chrome/browser/ui/aux/runtime_host.h",
+      "chrome/browser/ui/webui_browser/webui_browser_window.cc"
+    ],
+    "proof": "passed",
+    "build": {
+      "passed": true,
+      "steps": 46,
+      "elapsedSeconds": 524.37
+    }
+  },
+  "rendererBytesKB": {
+    "startupJavaScript": 663,
+    "startupCss": 212,
+    "totalJavaScript": 3048,
+    "budgetsMet": false
+  },
+  "checks": {
+    "runtimeRebuilt": true,
+    "typecheck": "passed",
+    "lint": "passed",
+    "combinedUnitRun": "eight connected-runtime fixture failures; terminated after no further progress",
+    "priorAffectedRegressionTests": 179,
+    "correctedChatViewFixtureTests": 8,
+    "finalCombinedPass": false
+  },
+  "setup": "OAuth registrations remain explicit; no simulated accounts or real third-party messages",
+  "nativeObservation": "current renderer packaging in progress; latest accepted observation remains source34117",
+  "open": [
+    "original155SIGTRAP",
+    "native Cmd-L during runtime pause",
+    "AppKit negative geometry warnings",
+    "LinkedIn final native recipient/editor input proof",
+    "all captured UI states",
+    "matching155stock performance",
+    "default-route20task manual provider smoke"
+  ]
+}

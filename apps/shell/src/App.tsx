@@ -20,7 +20,7 @@ import { useOrganizationEditor } from "./features/organization-state";
 import { useFeature } from "./use-feature";
 import { useSurfaceCovering } from "./features/surfaces/drag-state";
 import { FeatureSlots } from "./features/registry";
-import { runCommand, executeCommand } from "./commands";
+import { executeCommand } from "./commands";
 import { useCommandSurfaceRequest } from "./command-surface-state";
 import { TabSwitcher } from "./components/TabSwitcher";
 
@@ -44,7 +44,7 @@ import { spaceThemeStyle } from "./workspace";
 import { Toolbar } from "./components/Toolbar";
 import { WindowToolbarProvider } from "./components/WindowToolbarContent";
 import { Stage } from "./components/Stage";
-import { shellIconAlert, shellIconSidebarOpen } from "./ui/icons";
+import { shellIconAlert } from "./ui/icons";
 import { SidebarReveal } from "./components/SidebarReveal";
 import { Toasts } from "./components/Toasts";
 
@@ -318,18 +318,6 @@ export function App() {
   if (nativeOverlayCovering && !toolbarHole) setToolbarHole(true);
   if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk} />;
-  const sidebarToggle = (
-    <button
-      className="chat-sidebar-toggle icon-btn"
-      aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"}
-      aria-expanded={sidebar === "expanded"}
-      title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"}
-      data-command-id="sidebar"
-      onClick={() => runCommand("sidebar")}
-    >
-      {shellIconSidebarOpen}
-    </button>
-  );
   return (
     <WindowToolbarProvider>
       <div
@@ -376,7 +364,6 @@ export function App() {
             inert={minimal && !toolbarReveal.revealed}
             aria-hidden={minimal && !toolbarReveal.revealed}
           >
-            {nativeShowing && sidebarToggle}
             <HorizontalTabs />
             <Toolbar />
           </div>
@@ -393,7 +380,6 @@ export function App() {
           <div
             className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}
           >
-            {horizontal && !nativeShowing && sidebarToggle}
             {!horizontal && <Toolbar hidden={toolbarHidden} />}
             <div className="main">
               <div className="stage-wrap">

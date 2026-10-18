@@ -1,8 +1,8 @@
-import { BookmarkSchema, type Bookmark } from "@aux/contracts/entities";
-import { BookmarkResultSchemas, NativeBookmarkResultSchema } from "@aux/contracts/bookmark-methods";
+import type { Bookmark } from "@aux/contracts/entities";
 import type { ChromiumHostPort } from "./chromium-bridge";
 
-const bookmarks = BookmarkSchema.array();
+const validation = () =>
+  Promise.all([import("@aux/contracts/entities"), import("@aux/contracts/bookmark-methods")]);
 let generation = 0;
 let authorityGeneration: number | undefined;
 
@@ -18,6 +18,7 @@ export function startNativeBookmarkObserver(
 ) {
   if (port.privateMode) return () => {};
   const { windowId, profileId } = port;
+  const schemas = validation();
   const owner = ++generation;
   authorityGeneration = undefined;
   let live = true;
@@ -31,14 +32,22 @@ export function startNativeBookmarkObserver(
   const stop = port.subscribe("onBookmarksChanged", (payload) => {
     if (!current()) return;
     ++revision;
-    const parsed = bookmarks.safeParse(payload);
-    if (parsed.success) commit(parsed.data);
-    else onError(parsed.error);
+    void schemas
+      .then(([{ BookmarkSchema }]) => {
+        if (!current()) return;
+        const parsed = BookmarkSchema.array().safeParse(payload);
+        if (parsed.success) commit(parsed.data);
+        else onError(parsed.error);
+      })
+      .catch((error) => {
+        if (current()) onError(error);
+      });
   });
   const requested = revision;
   void port
     .request("bookmarksInvoke", [{ method: "bookmarks.list", params: {} }])
-    .then((payload) => {
+    .then(async (payload) => {
+      const [, { NativeBookmarkResultSchema, BookmarkResultSchemas }] = await schemas;
       if (current() && requested === revision) {
         const response = NativeBookmarkResultSchema.parse(payload);
         if (response.method !== "bookmarks.list")

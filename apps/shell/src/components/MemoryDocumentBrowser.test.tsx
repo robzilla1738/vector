@@ -303,3 +303,41 @@ it("deletes only the reviewed document revision and keeps newer content on confl
   expect(memory.documents).toEqual([]);
   expect(host.textContent).not.toContain("Newer owner content");
 });
+
+it("selects an external document in the existing pane and returns to the original owner draft without duplication", async () => {
+  let external = true;
+  const extension = {
+    keys: ["site"],
+    selected: external,
+    label: "Site guidance",
+    onSelectInternal: () => {
+      external = false;
+    },
+    navigation: () => (
+      <button role="treeitem" aria-level={1} tabIndex={-1}>
+        sites
+      </button>
+    ),
+    pane: <p>Actual site guidance</p>,
+  };
+  const draw = () =>
+    root.render(
+      <MemoryDocumentBrowser
+        memory={memory}
+        onSaved={saved}
+        active
+        onManage={() => {}}
+        onClose={() => {}}
+        extension={{ ...extension, selected: external }}
+      />,
+    );
+  await act(async () => draw());
+  expect(host.querySelectorAll('[aria-label="Memory documents"]')).toHaveLength(1);
+  expect(host.querySelectorAll('[role="tree"]')).toHaveLength(1);
+  expect(host.querySelectorAll(".memory-document-pane")).toHaveLength(1);
+  expect(host.querySelector(".memory-document-pane")?.textContent).toContain("Actual site guidance");
+  await click("MEMORY.md");
+  await act(async () => draw());
+  expect(host.querySelector(".memory-document-pane")?.textContent).toContain("Saved root");
+  expect(host.querySelector(".memory-document-pane")?.textContent).not.toContain("Actual site guidance");
+});

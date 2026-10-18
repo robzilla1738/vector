@@ -1,6 +1,8 @@
 import { AuxError, SiteReadResultSchema, type MethodParams, type MethodResult } from "@aux/contracts";
 import type { PageRegistry } from "../services/pages/registry.js";
 import { readImageResultsInPage } from "./image-search-adapter.js";
+import { linkedInSurface, readLinkedInInPage } from "./linkedin-adapter.js";
+import { redactForModel } from "./policy.js";
 
 type SiteRead = MethodParams<"sites.read">;
 type InPageResult =
@@ -10,6 +12,7 @@ type InPageResult =
       mediaType: "text/plain" | "text/csv";
       transcript?: MethodResult<"sites.read">["transcript"];
       imageSearch?: MethodResult<"sites.read">["imageSearch"];
+      linkedin?: MethodResult<"sites.read">["linkedin"];
     }
   | { ok: false; reason: string };
 const MAX_TEXT_BYTES = 2_000_000;
@@ -26,6 +29,10 @@ export function siteExportUrl(input: SiteRead): URL {
       "permission_denied",
       "Site export requires a secure page without embedded credentials.",
     );
+  if (input.kind === "linkedin") {
+    linkedInSurface(page.href);
+    return page;
+  }
   if (input.kind === "image-search") {
     const google =
       ["www.google.com", "google.com"].includes(page.hostname) &&
@@ -238,9 +245,22 @@ export class SiteAdapters {
     const driver = this.pages.driverPageLenient(input.pageId);
     let result: InPageResult;
     try {
-      result = (await driver.evaluate(
-        `(${(input.kind === "image-search" ? readImageResultsInPage : readSiteTextInPage).toString()})(${JSON.stringify({ kind: input.kind, expectedUrl: input.expectedUrl, exportUrl: exportUrl.href, language: input.language })})`,
-      )) as InPageResult;
+      const reader =
+        input.kind === "linkedin"
+          ? readLinkedInInPage
+          : input.kind === "image-search"
+            ? readImageResultsInPage
+            : readSiteTextInPage;
+      const args =
+        input.kind === "linkedin"
+          ? { pageUrl: input.expectedUrl }
+          : {
+              kind: input.kind,
+              expectedUrl: input.expectedUrl,
+              exportUrl: exportUrl.href,
+              language: input.language,
+            };
+      result = (await driver.evaluate(`(${reader.toString()})(${JSON.stringify(args)})`)) as InPageResult;
     } catch {
       throw new AuxError("backend_unavailable", "The site export could not be read from the current page.");
     }
@@ -269,6 +289,18 @@ export class SiteAdapters {
       text: result.text,
       ...(result.transcript ? { transcript: result.transcript } : {}),
       ...(result.imageSearch ? { imageSearch: result.imageSearch } : {}),
+      ...(result.linkedin
+        ? {
+            linkedin: {
+              ...result.linkedin,
+              title: redactForModel(result.linkedin.title),
+              text: redactForModel(result.linkedin.text),
+              headings: result.linkedin.headings.map(redactForModel),
+              links: result.linkedin.links.map((link) => ({ ...link, text: redactForModel(link.text) })),
+            },
+            text: redactForModel(result.text),
+          }
+        : {}),
     });
   }
 }

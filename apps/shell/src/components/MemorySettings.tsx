@@ -1,4 +1,6 @@
-import { MemoryWorkbench } from "./MemoryWorkbench";
+import { MemoryWorkspace } from "./MemoryWorkspace";
+import { pushSettingsPath } from "../settings/routes";
+import type { OwnerMemoryDocument } from "@aux/contracts";
 import type { MemoryView } from "../settings/routes";
 import "./MemorySettings.css";
 import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
@@ -27,6 +29,9 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
     useStore.setState({ memoryWorkspaceId: null });
   }, []);
   const [manageNotes, setManageNotes] = useState(false);
+  const [initialDocument, setInitialDocument] = useState<OwnerMemoryDocument["path"] | "MEMORY.md">(
+    "MEMORY.md",
+  );
   const [query, setQuery] = useState("");
   const [memory, setMemory] = useState<WorkspaceMemory | null>(null);
   const [error, setError] = useState("");
@@ -238,8 +243,8 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
           </MemorySettingsControl>
         </p>
       )}
-      {view !== "configure" && editor}
-      {space?.workspaceId && (
+      {view !== "configure" && view !== "history" && editor}
+      {space?.workspaceId && view !== "history" && (
         <div hidden={view === "context"}>
           <SpaceMemory
             key={`pipeline:${space.workspaceId}`}
@@ -257,7 +262,10 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
       <div
         className="memory-settings"
         data-memory-view={view}
-        hidden={view === "overview" && !manageNotes && !!memory && memory.workspaceId === selectedWorkspaceId}
+        hidden={
+          (view === "overview" && !manageNotes && !!memory && memory.workspaceId === selectedWorkspaceId) ||
+          (view === "history" && !!memory && memory.workspaceId === selectedWorkspaceId)
+        }
       >
         {view === "overview" && manageNotes && (
           <button type="button" className="btn sm" onClick={() => setManageNotes(false)}>
@@ -266,28 +274,39 @@ export function MemorySettings({ view = "overview" }: { view?: MemoryView }) {
         )}
         {management}
       </div>
-      {memory && memory.workspaceId === selectedWorkspaceId ? (
-        <MemoryDocumentBrowser
-          key={`${selectedSpaceId}:${memory.workspaceId}`}
-          memory={memory}
-          active={view === "overview" && !manageNotes}
-          onManage={() => setManageNotes(true)}
-          onClose={() => useStore.getState().setOverlay(null)}
-          onSaved={(value) => {
-            if (value.workspaceId !== selectedWorkspace.current) return;
-            setMemory(value);
-            if (query.trim()) setRefresh((current) => current + 1);
-          }}
-        />
-      ) : null}
       {memory &&
         memory.workspaceId === selectedWorkspaceId &&
         (view === "overview" || view === "history") && (
-          <MemoryWorkbench
+          <MemoryWorkspace
             memory={memory}
             active={view === "history" || !manageNotes}
             historyOnly={view === "history"}
-          />
+            scopeControl={management}
+            onOpenOwnerDocument={(path) => {
+              if (!selectedSpaceId) return;
+              currentSpace(selectedSpaceId, selectedWorkspaceId);
+              setInitialDocument(path);
+              pushSettingsPath("Memory", undefined, "overview");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
+          >
+            {(extension) => (
+              <MemoryDocumentBrowser
+                key={`${selectedSpaceId}:${memory.workspaceId}`}
+                memory={memory}
+                initialPath={initialDocument}
+                active={view === "overview" && !manageNotes}
+                extension={extension}
+                onManage={() => setManageNotes(true)}
+                onClose={() => useStore.getState().setOverlay(null)}
+                onSaved={(value) => {
+                  if (value.workspaceId !== selectedWorkspace.current) return;
+                  setMemory(value);
+                  if (query.trim()) setRefresh((current) => current + 1);
+                }}
+              />
+            )}
+          </MemoryWorkspace>
         )}
     </div>
   );

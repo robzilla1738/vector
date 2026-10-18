@@ -4,7 +4,7 @@ import { registerConversationSearchSurface } from "../conversation-search";
 import { ConversationTurn } from "./ConversationTurn";
 import { useConversationViewport } from "../use-conversation-viewport";
 import { CapturedSourcePicker } from "./CapturedSourcePicker";
-import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
+import { isRunStartRemoved, hasStartAttempt } from "../run-start-attempts";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
 import { ChatPreferences } from "../composer/ChatPreferences";
@@ -1576,7 +1576,7 @@ function ConversationContent({
       const chatId = sentChatId ?? createdChat.current ?? id;
       const draft = chatId ? state.conversationDrafts[draftKey(chatId)] : state.agentDraft;
       if (draft === text) return;
-      if (chatId && readStartAttempt(chatId)) {
+      if (chatId && hasStartAttempt(chatId)) {
         state.toast(
           "Aux couldn’t confirm the original send. Open its chat to check without sending it twice.",
           "error",
@@ -1818,7 +1818,7 @@ function ConversationContent({
         const staleSource =
           (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
         setSendError(
-          readStartAttempt(sentChatId ?? "new")
+          hasStartAttempt(sentChatId ?? "new")
             ? "Aux couldn’t confirm whether your message was sent. Send again to check its status."
             : staleSource
               ? "Open the source tab and wait for it to load, then return here and send your reply again."

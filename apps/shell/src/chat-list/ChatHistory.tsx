@@ -341,7 +341,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                   )}
                   {menu === item.chatId && (
                     <Menu
-                      className="history-menu"
+                      className="menu ctx-menu history-actions-menu"
                       label="Conversation actions"
                       anchor={menuAnchor}
                       returnFocus={menuAnchor}
@@ -350,6 +350,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                     >
                       {item.taskId ? (
                         <button
+                          className="menu-item"
                           role="menuitem"
                           disabled={saving}
                           onClick={() => void openSavedTask(item.taskId!).catch(errToast)}
@@ -359,6 +360,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                       ) : (
                         <>
                           <button
+                            className="menu-item"
                             role="menuitem"
                             disabled={saving}
                             onClick={() => {
@@ -370,6 +372,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                             {shellIconPencil} Rename
                           </button>
                           <button
+                            className="menu-item"
                             role="menuitem"
                             disabled={saving}
                             onClick={() => void mutate("archive", item)}
@@ -385,13 +388,14 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                             >
                               <span>Delete permanently?</span>
                               <button
+                                className="menu-item"
                                 role="menuitem"
                                 disabled={saving}
                                 onClick={() => void mutate("delete", item)}
                               >
                                 Delete
                               </button>
-                              <button role="menuitem" onClick={() => setDeleting(null)}>
+                              <button className="menu-item" role="menuitem" onClick={() => setDeleting(null)}>
                                 Cancel
                               </button>
                             </div>
@@ -399,7 +403,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                             <button
                               role="menuitem"
                               disabled={saving}
-                              className="danger"
+                              className="menu-item danger"
                               onClick={() => setDeleting(item.chatId)}
                             >
                               {shellIconTrash} Delete

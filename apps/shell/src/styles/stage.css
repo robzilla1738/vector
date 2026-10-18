@@ -277,15 +277,9 @@
   .app .horizontal-chrome {
     position: relative;
   }
-  .app .horizontal-chrome > .chat-sidebar-toggle {
-    top: calc((var(--horizontal-tab-strip-h) - var(--control-h)) / 2);
-    left: var(--traffic-inset);
-    width: var(--control-h);
-    height: var(--control-h);
-  }
   .app .horizontal-chrome .horizontal-tabs-row {
     height: var(--horizontal-tab-strip-h);
-    padding-left: calc(var(--traffic-inset) + var(--control-h) + var(--space-2));
+    padding-left: var(--traffic-inset);
   }
   .app .sidebar .tab-row,
   .app .sidebar .tab-new,

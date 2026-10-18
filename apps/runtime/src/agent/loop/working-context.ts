@@ -22,6 +22,8 @@ const READ_TOOLS = new Set([
   "history_search",
   "memory_search",
   "memory_read",
+  "desktop_context_search",
+  "desktop_context_read",
   "websearch",
   "webfetch",
   "package_skill",

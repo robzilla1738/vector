@@ -1,3 +1,5 @@
+import { retireDesktopContextOutputs, type DesktopContextRemoval } from "./desktop-context-retirement.js";
+import type { DesktopContextRunSources } from "./desktop-context-run-sources.js";
 import { statSync } from "node:fs";
 import {
   gatewayAudioGenerator,
@@ -567,6 +569,25 @@ export class RunService {
       }
     }
     return { chatId, sources: dedupeConversationSources(sources) };
+  }
+
+  retireDesktopContext(scope: DesktopContextRemoval, cancelOnly = false): Promise<number> {
+    return retireDesktopContextOutputs(
+      {
+        repo: this.deps.repo,
+        events: this.deps.events,
+        artifacts: this.deps.artifacts,
+        documents: this.documents,
+        cancel: async (runId) => {
+          await this.cancel(runId, "An admitted desktop source was forgotten.");
+        },
+        retireCompactions: (chatId) => this.retireConversationCompactions(chatId),
+        cancelQueue: (chatId) => this.messages.cancelForChat(chatId),
+        purgeBranches: () => this.branches.purgeRevoked(),
+      },
+      scope,
+      { cancelOnly },
+    );
   }
 
   /** Withdraw article-derived answers while retaining financial and effect recovery records. */
@@ -1366,6 +1387,9 @@ export class RunService {
       turnMentions: import("./turn-mention-service.js").TurnMentionService;
       taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
       vault?: import("./vault.js").VaultService;
+      x?: import("./x-operations.js").XOperationService;
+      xGrants?: import("./x-grants.js").XGrantService;
+      xAccounts?: import("./x-accounts.js").XAccountService;
       google?: import("./google-operations.js").GoogleOperationService;
       googleGrants?: import("./google-grants.js").GoogleGrantService;
       googleAccounts?: import("./google-accounts.js").GoogleAccountService;
@@ -1381,6 +1405,7 @@ export class RunService {
       budgets?: import("./budgets.js").BudgetsService;
       /** S5 tool-loop backends (decide()-gated web tools) — main.ts wires them. */
       agentLoop?: import("../agent/loop/host.js").AgentLoopHostDeps;
+      desktopContextSources?: DesktopContextRunSources;
       browserEgress?: import("../safety/browser-egress.js").BrowserEgress;
       tracer?: {
         start(
@@ -1533,6 +1558,9 @@ export class RunService {
       suspensions: deps.suspensions,
       vault: deps.vault,
       calendar: deps.calendar,
+      xGrants: deps.xGrants,
+      xAccounts: deps.xAccounts,
+      xOperation: (input) => this.xOperation(input),
       googleGrants: deps.googleGrants,
       googleAccounts: deps.googleAccounts,
       googleOperation: (input) => this.googleOperation(input),
@@ -1758,6 +1786,7 @@ export class RunService {
       ...(prepared
         ? {
             accountLabels: target.config.accountLabels ?? [],
+            xGrantIds: target.config.xGrantIds ?? [],
             googleGrantIds: target.config.googleGrantIds ?? [],
             calendarGrantIds: target.config.calendarGrantIds ?? [],
           }
@@ -1907,6 +1936,14 @@ export class RunService {
       pauseFunding: (error) => this.coordinator.pauseForResourceFunding(error),
       checkOwner: async () => {
         await input.checkOwner();
+        await this.deps.desktopContextSources?.validate({
+          runId: input.runId,
+          signal: input.signal,
+          checkOwner: () => {
+            input.signal.throwIfAborted();
+            this.deps.desktopContextSources?.assertCurrent(input.runId);
+          },
+        });
         const run = this.deps.repo.getRun(input.runId);
         const control = this.coordinator.controls.get(input.runId);
         if (!run || run.status !== "running" || !control || control.paused || control.abort.signal.aborted)
@@ -2684,6 +2721,43 @@ export class RunService {
     }
   }
 
+  xOperation(input: import("@aux/contracts/x").XInvoke) {
+    return this.ownOperation(async () => {
+      const run = this.deps.repo.getRun(input.runId),
+        control = this.coordinator.controls.get(input.runId),
+        service = this.deps.x;
+      if (
+        !service ||
+        !run ||
+        !control ||
+        control.paused ||
+        run.status !== "running" ||
+        this.deps.privateBrowserProfile ||
+        run.config?.privateTask ||
+        !run.config?.xGrantIds?.includes(input.grantId)
+      )
+        throw new AuxError(
+          "permission_denied",
+          "This original run has no active X operation authority.",
+        );
+      const signal = AbortSignal.any([
+        control.abort.signal,
+        ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),
+      ]);
+      this.checkSetSource(input.runId);
+      const result = await service.invoke(input, signal);
+      signal.throwIfAborted();
+      if (
+        this.coordinator.controls.get(input.runId) !== control ||
+        control.paused ||
+        this.deps.repo.getRun(input.runId)?.status !== "running"
+      )
+        throw new AuxError("cancelled", "The original X run retired.");
+      this.checkSetSource(input.runId);
+      return result;
+    });
+  }
+
   googleOperation(input: import("./google-operations.js").GoogleInvoke) {
     return this.ownOperation(async () => {
       const run = this.deps.repo.getRun(input.runId),
@@ -3168,6 +3242,7 @@ export class RunService {
   }
 
   private checkSetSource(runId: string): void {
+    this.deps.desktopContextSources?.assertCurrent(runId);
     for (const sourceId of this.deps.repo.getRun(runId)?.config?.branchSourceRunIds ?? []) {
       const source = this.deps.repo.getRun(sourceId);
       if (!source || source.config?.contextMemoryRevoked)
@@ -3243,6 +3318,7 @@ export class RunService {
       taskId: parent.config?.taskId,
       taskRevision: parent.config?.taskRevision,
       accountLabels: parent.config?.accountLabels,
+      xGrantIds: parent.config?.xGrantIds ?? [],
       googleGrantIds: parent.config?.googleGrantIds ?? [],
       calendarGrantIds: parent.config?.calendarGrantIds,
     });
@@ -3583,6 +3659,7 @@ export class RunService {
     packageNames?: string[];
     profile?: string;
     coderWorktree?: import("@aux/contracts").CoderWorktree;
+    xGrantIds?: string[];
     googleGrantIds?: string[];
     calendarGrantIds?: string[];
   }): Promise<Run> {
@@ -3977,6 +4054,7 @@ export class RunService {
       auxPackages: opts.auxPackages ?? coding?.auxPackages,
       projectRoot: opts.projectRoot ?? coding?.projectRoot,
       coderWorktree: opts.coderWorktree,
+      xGrantIds: opts.xGrantIds,
       googleGrantIds: opts.googleGrantIds,
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
@@ -4130,6 +4208,7 @@ export class RunService {
       chatId,
       retryOfRunId: prior.runId,
       accountLabels: prior.config?.accountLabels,
+      xGrantIds: prior.config?.xGrantIds ?? [],
       googleGrantIds: prior.config?.googleGrantIds ?? [],
       calendarGrantIds: prior.config?.calendarGrantIds,
     });

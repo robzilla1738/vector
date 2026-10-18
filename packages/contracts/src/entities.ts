@@ -1,3 +1,4 @@
+import { DesktopContextQuotesSchema } from "./desktop-context-admission.js";
 import { RunContextStateSchema } from "./context-compaction.js";
 import { PageContextRefSchema } from "./page-context.js";
 export { PageContextRefSchema, type PageContextRef } from "./page-context.js";
@@ -235,6 +236,10 @@ export const RunSchema = z.object({
       contextImageArtifactIds: z.array(z.string()).max(4).optional(),
       /** Selected protected article IDs; plaintext is hydrated only for a model call. */
       contextMemoryIds: z.array(z.string()).optional(),
+      /** Internal desktop quote admissions; model arguments cannot create these. */
+      desktopContextQuotes: DesktopContextQuotesSchema.optional(),
+      /** Generated content retired; financial/effect audit records remain authoritative. */
+      desktopContextRetired: z.literal(true).optional(),
       contextMemoryRefs: z.array(CapturedSourceSchema).optional(),
       /** The selected article was deleted; saved model outputs were removed. */
       contextMemoryRevoked: z.boolean().optional(),
@@ -282,6 +287,7 @@ export const RunSchema = z.object({
       projectRoot: z.string().optional(),
       coderWorktree: CoderWorktreeSchema.optional(),
       /** Pinned provider authority for this turn, even when empty. Later grants cannot expand an existing turn. */
+      xGrantIds: z.array(z.string().uuid()).max(100).optional(),
       googleGrantIds: z.array(z.string().uuid()).max(100).optional(),
       calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */

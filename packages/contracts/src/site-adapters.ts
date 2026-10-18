@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LinkedInReadSchema } from "./linkedin.js";
 
 /** Browser reads require an exact live document identity and an authorized task revision. */
 export const SiteReadParamsSchema = z
@@ -8,7 +9,7 @@ export const SiteReadParamsSchema = z
     pageId: z.string().min(1),
     expectedDocumentEpoch: z.number().int().nonnegative(),
     expectedUrl: z.string().url().max(8192),
-    kind: z.enum(["google-docs", "google-sheets", "youtube", "image-search"]),
+    kind: z.enum(["google-docs", "google-sheets", "youtube", "image-search", "linkedin"]),
     sheetGid: z
       .string()
       .regex(/^\d{1,20}$/)
@@ -30,6 +31,7 @@ export const SiteReadResultSchema = z
     sourceUrl: z.string().url(),
     mediaType: z.enum(["text/plain", "text/csv"]),
     text: z.string().max(2_000_000),
+    linkedin: LinkedInReadSchema.optional(),
     transcript: z
       .object({
         videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
@@ -75,33 +77,3 @@ export const SiteReadResultSchema = z
       .optional(),
   })
   .strict();
-
-/** Reserved for the native PDFium renderer; absent from callable surfaces until implemented. */
-export const PDF_TEXT_CAPABILITY = "pdfium";
-export const PdfTextRequestSchema = z
-  .object({
-    taskId: z.string().min(1),
-    expectedRevision: z.number().int().positive(),
-    pageId: z.string().min(1),
-    expectedDocumentEpoch: z.number().int().nonnegative(),
-    expectedUrl: z.string().url().max(8192),
-    maxPages: z.number().int().positive().max(500).optional(),
-  })
-  .strict();
-export const PdfTextResultSchema = z
-  .object({
-    pageId: z.string(),
-    url: z.string().url(),
-    documentEpoch: z.number().int().nonnegative(),
-    capturedAt: z.number().int().nonnegative(),
-    pageCount: z.number().int().nonnegative(),
-    text: z.string().max(2_000_000),
-    truncated: z.boolean(),
-    source: z.literal("pdfium"),
-  })
-  .strict();
-export type PdfTextRequest = z.infer<typeof PdfTextRequestSchema>;
-export type PdfTextResult = z.infer<typeof PdfTextResultSchema>;
-export interface PdfTextPort {
-  pdfText(request: PdfTextRequest): Promise<PdfTextResult>;
-}

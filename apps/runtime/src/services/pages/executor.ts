@@ -90,6 +90,11 @@ export class ProgramExecutor {
   ): Promise<ExecuteResult> {
     const pageId = program.pageId;
     ctx.sourcePageCheck?.();
+    if (ctx.linkedInPrecondition && !this.pages.deps.safetyGate)
+      throw new AuxError(
+        "capability_unsupported",
+        "LinkedIn recipient/draft review requires the governed safety gate.",
+      );
     const sourceRun = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
     const restrictMentions =
       !!ctx.runId &&
@@ -265,6 +270,7 @@ export class ProgramExecutor {
                 phase,
                 context: {
                   taskRead: ctx.taskRead,
+                  linkedInPrecondition: ctx.linkedInPrecondition,
                   pageId,
                   observedTarget,
                   credentialTarget,

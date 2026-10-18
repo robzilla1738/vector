@@ -7,6 +7,7 @@ import {
   channelTablesForDatabase,
   documentTablesForDatabase,
   googleTablesForDatabase,
+  xTablesForDatabase,
   desktopTablesForDatabase,
 } from "./db.js";
 
@@ -34,6 +35,9 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   coder_worktree_receipts: ["body"],
   model_calls: ["provider_metadata"],
   google_task_grants: ["body"],
+  x_accounts: ["body"],
+  x_task_grants: ["body"],
+  x_credential_jobs: ["body"],
   calendar_connections: ["account_key", "label", "secret_name", "scopes"],
   task_evidence: ["json"],
   document_snapshots: ["manifest"],
@@ -50,11 +54,12 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
 /** Restorable v2/v3 snapshots predate the separate encrypted process log table. */
 export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_FIELDS {
   const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
-  if (![2, 3, 4, 5, 6, 7, 8, 9, 10].includes(version))
+  if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(version))
     throw new Error("Unsupported encrypted database schema.");
   documentTablesForDatabase(db);
   desktopTablesForDatabase(db);
   const google = googleTablesForDatabase(db);
+  const x = xTablesForDatabase(db);
   const channels = channelTablesForDatabase(db);
   const evidence = taskEvidenceProtection(db);
   if (evidence && evidence.cursor !== null)
@@ -67,7 +72,8 @@ export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_F
         (version >= 10 || table !== "document_source_chunks") &&
         (!table.startsWith("channel_") || channels.includes(table)) &&
         (evidence || table !== "task_evidence") &&
-        (!table.startsWith("google_") || google.includes(table)),
+        (!table.startsWith("google_") || google.includes(table)) &&
+        (!table.startsWith("x_") || x.includes(table)),
     ),
   );
 }

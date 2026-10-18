@@ -1,3 +1,6 @@
+import { XAccountRecords } from "../../apps/runtime/src/services/x-store.js";
+import { XAccountService } from "../../apps/runtime/src/services/x-accounts.js";
+import { XGrantService } from "../../apps/runtime/src/services/x-grants.js";
 import { GoogleGrantService } from "../../apps/runtime/src/services/google-grants.js";
 import { GoogleAccountService } from "../../apps/runtime/src/services/google-accounts.js";
 import { captureOriginalPdf } from "../support/pdf-original.js";
@@ -65,15 +68,18 @@ afterEach(() => {
 
 function native(profileId: string) {
   const secrets = new Map<string, string>();
+  const credentialWrites: string[] = [];
   const authentications: ("export" | "restore")[] = [];
   const secretName = (prefix: string) =>
     `${prefix}_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
   return {
     bridge: {
+      available: () => true,
       async readSecret(name: string) {
         return { value: secrets.get(name) };
       },
       async storeSecret(name: string, value: string) {
+        credentialWrites.push(name);
         secrets.set(name, value);
         return { ok: true as const };
       },
@@ -93,6 +99,7 @@ function native(profileId: string) {
       },
     } as unknown as NativeBridge,
     secrets,
+    credentialWrites,
     authentications,
   };
 }
@@ -280,6 +287,47 @@ async function fixture() {
 
 it("restores protected SQLite, page memory, Space memory and artifacts under the second Profile's own keys", async () => {
   const f = await fixture();
+  const xRecords = new XAccountRecords(f.source),
+    xId = randomUUID();
+  const xRecord = {
+    connectionId: xId,
+    userId: "123456789",
+    username: "fixture_owner",
+    label: "Protected X identity",
+    epoch: randomUUID(),
+    secretName: `x_oauth_${createHash("sha256").update(f.sourceId).digest("hex")}_${randomUUID()}`,
+    clientId: "fixture-public-client",
+    scopes: ["tweet.read", "users.read", "offline.access"] as const,
+    state: "active" as const,
+    createdAt: 1,
+    updatedAt: 1,
+  };
+  xRecords.save({ ...xRecord, scopes: [...xRecord.scopes] });
+  xRecords.stageCredential(xId, xRecord.secretName);
+  const xGrantId = randomUUID();
+  const xGrant = {
+    grantId: xGrantId,
+    taskId: f.task.taskId,
+    taskRevision: f.task.revision,
+    workspaceId: f.space.workspaceId,
+    connectionId: xId,
+    accountRevision: "a".repeat(64),
+    operations: ["posts.search"],
+    createdAt: 1,
+  };
+  f.source.db
+    .prepare(
+      "INSERT INTO x_task_grants(grant_id,task_id,task_revision,connection_id,body,created_at) VALUES(?,?,?,?,?,?)",
+    )
+    .run(
+      xGrantId,
+      f.task.taskId,
+      f.task.revision,
+      xId,
+      f.source.protectRecordField("x_task_grants", [xGrantId], "body", JSON.stringify(xGrant)),
+      1,
+    );
+  const originalXLookup = f.source.exactRecordLookup("x_accounts", "user_id", xRecord.userId);
   const googleConnectionId = randomUUID();
   const protectedGoogle = (field: string, value: string) =>
     f.source.protectRecordField("calendar_connections", [googleConnectionId], field, value);
@@ -450,6 +498,31 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  const restoredXRecords = new XAccountRecords(restored);
+  expect(restoredXRecords.get(xId)).toMatchObject({
+    state: "needs_reauth",
+    userId: xRecord.userId,
+    secretName: xRecord.secretName,
+  });
+  expect(restoredXRecords.get(xId).epoch).not.toBe(xRecord.epoch);
+  expect(restoredXRecords.credentialJobs()).toEqual([]);
+  expect(restored.db.prepare("SELECT user_id_lookup FROM x_accounts WHERE connection_id=?").get(xId)).toEqual(
+    { user_id_lookup: restored.exactRecordLookup("x_accounts", "user_id", xRecord.userId) },
+  );
+  expect(restored.exactRecordLookup("x_accounts", "user_id", xRecord.userId)).not.toBe(originalXLookup);
+  const restoredX = new XAccountService({
+    records: restoredXRecords,
+    native: f.targetNative.bridge,
+    profileId: f.targetId,
+    clientId: xRecord.clientId,
+    redirectUri: "http://127.0.0.1:18764/oauth/x/callback",
+  });
+  await restoredX.ready();
+  expect(restoredX.list().connections).toMatchObject([{ state: "needs_reauth", operations: [] }]);
+  expect(new XGrantService(restored, restoredX).list(f.task.taskId)).toEqual([]);
+  expect(f.targetNative.secrets.has(xRecord.secretName)).toBe(false);
+  expect(f.targetNative.credentialWrites.some((name) => name.startsWith("x_oauth_"))).toBe(false);
+  await restoredX.close();
   const restoredGoogle = restored.db
     .prepare("SELECT body,revoked_at FROM google_task_grants WHERE grant_id=?")
     .get(googleGrant.grantId) as { body: string; revoked_at: number };
@@ -909,4 +982,36 @@ it("refuses an ordinary staged restore after Space memory changes", async () => 
   await expect(
     applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId),
   ).rejects.toThrow(/Space memory changed/);
+});
+
+it("refuses recovery export when the original Google exact-lookup identity is corrupt", async () => {
+  const f = await fixture();
+  const id = randomUUID();
+  const field = (name: string, value: string) =>
+    f.source.protectRecordField("calendar_connections", [id], name, value);
+  f.source.db
+    .prepare(
+      "INSERT INTO calendar_connections(connection_id,provider,account_key,account_key_lookup,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,'corrupt',?,?,?,'active',1,1)",
+    )
+    .run(
+      id,
+      field("account_key", "synthetic@example.test"),
+      field("label", "Fixture"),
+      field("secret_name", "fixture"),
+      field("scopes", "[]"),
+    );
+  try {
+    await expect(
+      exportRecoveryPackage(
+        f.source,
+        f.sourceNative.bridge,
+        f.sourceDir,
+        f.sourceId,
+        "synthetic recovery phrase",
+      ),
+    ).rejects.toThrow(/lookup.*original identity/);
+  } finally {
+    f.source.close();
+    f.target.close();
+  }
 });

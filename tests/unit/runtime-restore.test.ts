@@ -63,7 +63,9 @@ async function stagedFixture(version = 3) {
     createdAt: Date.now(),
   });
   if (version === 2) {
-    original.db.exec("DROP TABLE document_source_chunks");
+    original.db.exec(
+      "DROP TABLE x_task_grants; DROP TABLE x_accounts; DROP TABLE x_credential_jobs; DROP TABLE document_source_chunks",
+    );
     for (const table of googleTablesForDatabase(original.db).reverse())
       original.db.exec(`DROP TABLE ${table}`);
     for (const table of desktopTablesForDatabase(original.db).reverse())

@@ -1,148 +1,125 @@
-@layer components {
-  .reviewed-connectors {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .reviewed-connectors > .drawer-section {
-    margin: 0;
-  }
-
+@layer overrides {
   .reviewed-connectors-scope {
-    display: flex;
-    align-items: end;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .reviewed-connectors-scope label {
     display: grid;
-    flex: 1 1 160px;
-    gap: var(--space-1);
     min-width: 0;
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
   }
-
   .reviewed-connectors-layout {
     display: grid;
-    grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
-    min-height: 235px;
-    overflow: hidden;
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-card);
-    background: var(--surface-primary);
-    box-shadow: var(--highlight-inset);
+    grid-template-columns: 176px minmax(0, 1fr);
+    min-width: 0;
   }
-
   .reviewed-connectors-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-2);
+    gap: 4px;
+    padding: 6px;
     border-right: var(--hairline) solid var(--line);
-    background: color-mix(in srgb, var(--surface-secondary) 65%, transparent);
-    -webkit-backdrop-filter: blur(var(--blur-16)) saturate(1.2);
-    backdrop-filter: blur(var(--blur-16)) saturate(1.2);
+    background: var(--settings-card);
   }
-
   .reviewed-connectors-list button {
     display: grid;
-    gap: 3px;
+    gap: 2px;
     width: 100%;
-    min-height: 50px;
-    padding: var(--space-2);
-    border-radius: var(--r-md);
+    min-height: 52px;
+    padding: 8px 10px;
+    border-radius: var(--r-lg);
     text-align: left;
+    min-width: 0;
   }
-
   .reviewed-connectors-list button:hover,
   .reviewed-connectors-list button[aria-current="true"] {
     background: var(--bg-active);
   }
-
   .reviewed-connectors-list button:focus-visible {
     outline: 2px solid var(--focus-line);
     outline-offset: -2px;
   }
-
   .reviewed-connectors-name {
     color: var(--ink-0);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-medium);
-    overflow-wrap: anywhere;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-
   .reviewed-connectors-sub {
     color: var(--ink-2);
-    font-size: var(--fs-2xs);
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
   }
-
   .reviewed-connectors-detail {
     display: flex;
     flex-direction: column;
     align-items: start;
-    gap: var(--space-2);
+    gap: 12px;
     min-width: 0;
-    padding: var(--space-4);
+    padding: 14px;
+    font-size: 12px;
+    line-height: 16px;
   }
-
   .reviewed-connectors-detail p {
     margin: 0;
+    overflow-wrap: anywhere;
   }
-
   .reviewed-connectors-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: 8px;
     width: 100%;
   }
-
   .reviewed-connectors-heading strong {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
     overflow-wrap: anywhere;
   }
-
   .reviewed-connectors-state {
-    padding: 3px var(--space-2);
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-pill);
-    color: var(--ink-1);
-    font-size: var(--fs-2xs);
+    color: var(--ink-2);
+    font-size: 12px;
+    line-height: 16px;
   }
-
   .reviewed-connectors-grant {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: 8px;
     width: 100%;
-    padding: var(--space-2);
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-md);
-    font-size: var(--fs-xs);
+    padding-block: 10px;
+    border-top: var(--hairline) solid var(--line);
+    overflow-wrap: anywhere;
   }
-
-  .reviewed-connectors-empty {
-    padding-top: var(--space-1);
+  .reviewed-connectors-detail details {
+    width: 100%;
+    overflow-wrap: anywhere;
   }
-
+  .reviewed-connectors-detail summary {
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .reviewed-connectors-detail ul {
+    padding-left: 18px;
+    margin-bottom: 0;
+  }
   .reviewed-connectors-confirm {
     display: grid;
-    gap: var(--space-2);
-    padding: var(--space-3);
+    gap: 8px;
+    padding: 14px;
     border: var(--hairline) solid var(--line-strong);
-    border-radius: var(--r-card);
-    background: var(--surface-secondary);
+    border-radius: var(--r-xl);
+    background: var(--settings-card);
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
   }
-
   .reviewed-connectors-confirm p {
     margin: 0;
   }
-
-  @media (max-width: 700px) {
+  @container settings-content (max-width: 520px) {
     .reviewed-connectors-layout {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -153,15 +130,7 @@
       border-bottom: var(--hairline) solid var(--line);
     }
     .reviewed-connectors-list button {
-      min-width: 130px;
-    }
-  }
-
-  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
-    .reviewed-connectors-list {
-      background: var(--bg-1);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      flex: 0 0 160px;
     }
   }
 }

@@ -1,14 +1,13 @@
-import { staticFieldProps } from "../ui/class-props";
-import { staticHintProps, staticRowProps } from "../ui/class-props";
-import { smallButtonProps } from "../ui/button-props";
+import { ConnectionSelect as Select } from "./ConnectionSelect";
+import { staticHintProps } from "../ui/class-props";
+import { SettingsGroup } from "../ui";
+import { SettingsField, SettingsSection } from "../settings/primitives";
+import "./ConnectionSettings.css";
 import { useEffect, useRef, useState } from "react";
 import type { CalendarConnection, CalendarEvent } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call } from "../store";
-import {
-  staticDrawerSectionProps as auxClassDrawerSectionProps,
-  staticErrorHintProps as auxClassErrorHintProps,
-} from "../ui/class-props";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type ConnectionList = Awaited<ReturnType<typeof call<"calendar.connections.list">>>;
@@ -152,23 +151,22 @@ export function CalendarConnections() {
 
   const connection = list?.connections.find((item) => item.connectionId === selected);
   return (
-    <section {...staticFieldProps} aria-label="Google Calendar connection">
-      <div {...auxClassDrawerSectionProps}>Google Calendar</div>
+    <SettingsSection className="connection-section" name="Google Calendar connection" title="Google Calendar">
       <p {...staticHintProps}>
-        Connect a Google account for read-only event access. Aux keeps each account separate and stores its
-        authorization in secure desktop storage. Browser cookies are never used.
+        Read-only Calendar connections and existing task grants stay separate from Google operation grants.
+        Account authorization stays in secure desktop storage; browser cookies are never used.
       </p>
       {!list?.available && (
         <output {...staticHintProps} data-block>
           {list?.reason ?? "Checking Calendar availability…"}
         </output>
       )}
-      <div {...staticRowProps}>
-        <button {...smallButtonProps} disabled={busy || !list?.available} onClick={() => void connect()}>
+      <div className="connection-actions">
+        <button className="btn" disabled={busy || !list?.available} onClick={() => void connect()}>
           Connect Google Calendar
         </button>
         <button
-          {...smallButtonProps}
+          className="btn"
           disabled={busy}
           onClick={() => void refresh().catch((reason) => setError(String(reason)))}
         >
@@ -177,21 +175,22 @@ export function CalendarConnections() {
       </div>
       {!!list?.connections.length && (
         <>
-          <label {...staticFieldProps}>
-            Calendar account
-            <select
-              aria-label="Calendar account"
-              value={selected}
-              onChange={(event) => select(event.target.value)}
-            >
-              {list.connections.map((item) => (
-                <option key={item.connectionId} value={item.connectionId}>
-                  {item.label} · {item.accountKey}
-                  {item.state === "needs_reauth" ? " · reconnect required" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SettingsGroup>
+            <SettingsField label="Calendar account">
+              <Select
+                aria-label="Calendar account"
+                value={selected}
+                onChange={(event) => select(event.target.value)}
+              >
+                {list.connections.map((item) => (
+                  <option key={item.connectionId} value={item.connectionId}>
+                    {item.label} · {item.accountKey}
+                    {item.state === "needs_reauth" ? " · reconnect required" : ""}
+                  </option>
+                ))}
+              </Select>
+            </SettingsField>
+          </SettingsGroup>
           {connection && (
             <>
               <p {...staticHintProps}>
@@ -201,24 +200,24 @@ export function CalendarConnections() {
               <p {...staticHintProps}>
                 Granted scope: Google Calendar read-only. Aux cannot edit or send invitations.
               </p>
-              <div {...staticRowProps}>
+              <div className="connection-actions">
                 <button
-                  {...smallButtonProps}
+                  className="btn"
                   disabled={busy || connection.state !== "active"}
                   onClick={() => void read(connection)}
                 >
                   Show next 7 days
                 </button>
-                <button {...smallButtonProps} disabled={busy} onClick={() => void disconnect(connection)}>
+                <button className="btn" disabled={busy} onClick={() => void disconnect(connection)}>
                   Disconnect account
                 </button>
               </div>
               {page?.connectionId === connection.connectionId && (
-                <div {...staticFieldProps}>
+                <div className="connection-events settings-card">
                   <strong>Upcoming events</strong>
                   {page.value.events.length ? (
                     page.value.events.map((event) => (
-                      <div className="field" key={`${event.source.connectionId}:${event.eventId}`}>
+                      <div className="connection-event" key={`${event.source.connectionId}:${event.eventId}`}>
                         <strong>{event.title}</strong>
                         <span {...staticHintProps}>
                           {new Date(event.start).toLocaleString()} · {event.source.accountKey}
@@ -230,7 +229,7 @@ export function CalendarConnections() {
                   )}
                   {page.value.nextPageToken && (
                     <button
-                      {...smallButtonProps}
+                      className="btn"
                       disabled={busy}
                       onClick={() => void read(connection, page.value.nextPageToken)}
                     >
@@ -253,6 +252,6 @@ export function CalendarConnections() {
           {error}
         </p>
       )}
-    </section>
+    </SettingsSection>
   );
 }

@@ -1,4 +1,4 @@
-import { RpcChannel, type Transport } from "@aux/contracts";
+import { AuxError, RpcChannel, type Transport } from "@aux/contracts";
 import type { HostSocketTransport } from "./host-socket.js";
 
 /**
@@ -17,7 +17,12 @@ export function startupHostChannel(socket: HostSocketTransport) {
     onMessage(callback) {
       deliver = callback;
       socket.onMessage((frame) => {
-        if ((frame as { kind?: unknown })?.kind === "res" || released) {
+        if (
+          (frame as { kind?: unknown })?.kind === "res" ||
+          released ||
+          ((frame as { kind?: unknown })?.kind === "req" &&
+            (frame as { method?: unknown }).method === "runtime.liveness")
+        ) {
           callback(frame);
           return;
         }
@@ -31,6 +36,20 @@ export function startupHostChannel(socket: HostSocketTransport) {
     },
   };
   const channel = new RpcChannel(transport, "runtime->chromium-host");
+  // Native-only authenticated IPC control; independent of storage unlock and API readiness.
+  channel.onMethod("runtime.liveness", (params) => {
+    if (
+      !params ||
+      typeof params !== "object" ||
+      Array.isArray(params) ||
+      Object.keys(params).length !== 1 ||
+      !("nonce" in params) ||
+      typeof params.nonce !== "string" ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(params.nonce)
+    )
+      throw new AuxError("invalid_params", "Invalid native liveness probe.");
+    return { nonce: params.nonce };
+  });
   return {
     channel,
     release() {

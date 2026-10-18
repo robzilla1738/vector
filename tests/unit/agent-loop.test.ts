@@ -102,6 +102,33 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("publishes optional tools only when their original run implementation is present", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const model = new MockModelClient().scriptToolSteps([{ text: "Done" }]);
+    const calls = vi.spyOn(model, "toolCallStep");
+    expect(await runAgentLoop({ ...baseOpts(transcript), model })).toMatchObject({ kind: "done" });
+    const absent = calls.mock.calls[0]![0].tools;
+    for (const name of [
+      "x_operation",
+      "google_operation",
+      "linkedin_workflow",
+      "desktop_context_search",
+      "desktop_context_read",
+    ])
+      expect(absent).not.toHaveProperty(name);
+    expect(absent).toHaveProperty("snapshot");
+
+    transcript.append("run-2", [userTask]);
+    const connected = new MockModelClient().scriptToolSteps([{ text: "Connected" }]);
+    const connectedCalls = vi.spyOn(connected, "toolCallStep");
+    const xOperation = vi.fn<NonNullable<LoopToolDeps["xOperation"]>>();
+    expect(
+      await runAgentLoop({ ...baseOpts(transcript, { xOperation }), runId: "run-2", model: connected }),
+    ).toMatchObject({ kind: "done" });
+    expect(connectedCalls.mock.calls[0]![0].tools).toHaveProperty("x_operation");
+    expect(xOperation).not.toHaveBeenCalled();
+  });
   it("parks a proven unsent model admission and resumes without inventing a tool transcript", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);

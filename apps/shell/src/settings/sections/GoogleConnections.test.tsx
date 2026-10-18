@@ -112,3 +112,22 @@ it("keeps a refresh action usable after runtime failure", async () => {
   expect(f.container.querySelector('[role="alert"]')?.textContent).toContain("Runtime unavailable");
   expect(f.button("Refresh accounts").disabled).toBe(false);
 });
+
+it("keeps permission choices local until the owner explicitly starts sign-in", async () => {
+  const f = await fixture({ available: true, connections: [] });
+  const permission = [...f.container.querySelectorAll("label")].find(
+    (label) => label.textContent === "Read Google Docs",
+  )!;
+  await act(async () => permission.querySelector("input")!.click());
+  expect(f.container.querySelector("summary")?.textContent).toContain("1 selected");
+  expect(call).not.toHaveBeenCalledWith("google.auth.start", expect.anything());
+  expect(bridge.openExternal).not.toHaveBeenCalled();
+  vi.mocked(call).mockImplementationOnce(
+    async () => ({ url: "https://accounts.google.com/fixture", expiresAt: Date.now() + 1000 }) as never,
+  );
+  await act(async () => f.button("Connect Google account").click());
+  expect(call).toHaveBeenCalledWith("google.auth.start", {
+    scopes: ["https://www.googleapis.com/auth/documents.readonly"],
+  });
+  expect(bridge.openExternal).toHaveBeenCalledWith("https://accounts.google.com/fixture");
+});

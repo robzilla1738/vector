@@ -109,6 +109,9 @@ export interface Services {
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
   subagents?: SubagentService;
   calendar?: CalendarConnectionService;
+  xAccounts?: import("../../services/x-accounts.js").XAccountService;
+  xGrants?: import("../../services/x-grants.js").XGrantService;
+  x?: import("../../services/x-operations.js").XOperationService;
   googleAccounts?: import("../../services/google-accounts.js").GoogleAccountService;
   googleGrants?: import("../../services/google-grants.js").GoogleGrantService;
   google?: import("../../services/google-operations.js").GoogleOperationService;

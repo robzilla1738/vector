@@ -5,6 +5,7 @@ import { expect, it, vi } from "vitest";
 import { SidebarChats } from "../chat-list/SidebarChats";
 import { bridge } from "../bridge";
 import { makeRun } from "../mock/fixtures";
+import { useStore } from "../store";
 
 it("bounds recent chats, exposes organization in one menu, and requires confirmation before deletion", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -23,6 +24,8 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     removeItem: (key: string) => storage.delete(key),
   });
   vi.useFakeTimers();
+  const initial = useStore.getState();
+  useStore.setState({ connected: true });
   const rows = Array.from({ length: 9 }, (_, i) => ({
     chatId: `chat-${i}`,
     title: `Session ${i}`,
@@ -169,6 +172,7 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     await act(async () => root.unmount());
     host.remove();
     vi.restoreAllMocks();
+    useStore.setState(initial, true);
     vi.useRealTimers();
     vi.unstubAllGlobals();
   }
@@ -177,6 +181,8 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
 it("searches all saved chats and reveals matches inside collapsed projects without changing their state", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
+  const initial = useStore.getState();
+  useStore.setState({ connected: true });
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     get length() {
@@ -226,6 +232,7 @@ it("searches all saved chats and reveals matches inside collapsed projects witho
     await act(async () => root.unmount());
     host.remove();
     vi.restoreAllMocks();
+    useStore.setState(initial, true);
     vi.useRealTimers();
     vi.unstubAllGlobals();
   }

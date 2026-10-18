@@ -1,3 +1,4 @@
+import { XMethodSchemas, XResultSchemas } from "./x.js";
 import { GoogleMethodSchemas, GoogleResultSchemas } from "./google.js";
 import { TranscriptionModelSchema } from "./model-connections.js";
 import { DesktopContextMethodSchemas, DesktopContextResultSchemas } from "./desktop-context.js";
@@ -1538,6 +1539,7 @@ export const MethodSchemas = {
   "subagents.getGroup": z.object({ groupId: z.string().uuid() }).strict(),
   "subagents.cancel": z.object({ agentId: z.string().uuid() }).strict(),
   ...GoogleMethodSchemas,
+  ...XMethodSchemas,
   "calendar.connections.list": z.object({}),
   "calendar.auth.start": z.object({}),
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -2363,6 +2365,7 @@ const AutomationResultSchemas = {
   "subagents.getGroup": SubagentGroupViewSchema,
   "subagents.cancel": SubagentSchema,
   ...GoogleResultSchemas,
+  ...XResultSchemas,
   "calendar.connections.list": z.object({
     available: z.boolean(),
     reason: z.string().optional(),

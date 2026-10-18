@@ -11,6 +11,7 @@ import { useStore } from "./store";
 it("refreshes the loaded history range instead of dropping older pages", async () => {
   vi.useFakeTimers();
   const initial = useStore.getState();
+  useStore.setState({ connected: true });
   const rows = Array.from({ length: 90 }, (_, index) => ({
     chatId: `chat-${index}`,
     title: `Chat ${index}`,
@@ -66,6 +67,7 @@ it("refreshes the loaded history range instead of dropping older pages", async (
 it("keeps conversation actions in the shared menu and restores focus on Escape", async () => {
   vi.useFakeTimers();
   const initial = useStore.getState();
+  useStore.setState({ connected: true });
   const row = {
     chatId: "chat-menu",
     title: "Menu chat",
@@ -117,6 +119,7 @@ it("keeps conversation actions in the shared menu and restores focus on Escape",
 it("orders oldest-first across every page, then keeps layout and archive filters independent", async () => {
   vi.useFakeTimers();
   const initial = useStore.getState();
+  useStore.setState({ connected: true });
   const rows = Array.from({ length: 205 }, (_, index) => ({
     chatId: `chat-${index}`,
     title: `Chat ${index}`,

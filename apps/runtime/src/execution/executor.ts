@@ -26,6 +26,8 @@ function pageDocumentEpoch(page: DriverPage): number | undefined {
 }
 
 export interface ExecContext {
+  /** Private sealed producer context. Never accepted from program/tool input. */
+  linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
   runId?: string;
   resumeStep?: (step: Step) => StepOutcome | undefined;
   isStepApplied?: (step: Step) => boolean;

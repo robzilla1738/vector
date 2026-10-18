@@ -11,6 +11,7 @@ export class AnswerDeltaEmitter {
   private sent = "";
   private latest = "";
   private lastAt = 0;
+  private held = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
@@ -25,13 +26,30 @@ export class AnswerDeltaEmitter {
       text.length > ANSWER_DELTA_PREVIEW_CHARS ? text.slice(0, ANSWER_DELTA_PREVIEW_CHARS) + TRUNCATED : text;
     if (preview === this.latest) return;
     this.latest = preview;
+    if (this.held) return;
     const wait = this.lastAt + this.intervalMs - Date.now();
     if (wait <= 0) this.emit();
     else this.timer ??= setTimeout(() => this.emit(), wait);
   }
 
-  flush(): void {
+  /** Source-bearing drafts stay local until their final source proof succeeds. */
+  hold(): void {
+    this.held = true;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+  release(): void {
+    if (!this.held) return;
+    this.held = false;
     this.emit();
+  }
+  discard(): void {
+    if (!this.held) return;
+    this.latest = this.sent;
+    this.held = false;
+  }
+  flush(): void {
+    if (!this.held) this.emit();
   }
 
   private emit(): void {

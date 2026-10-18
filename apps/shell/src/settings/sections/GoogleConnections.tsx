@@ -9,9 +9,11 @@ import {
 import { call } from "../../store";
 import { bridge } from "../../bridge";
 import { errorMessage } from "../../error-message";
-import "./GoogleConnections.css";
+import "../../components/ConnectionSettings.css";
+import { Checkbox, SettingsGroup } from "../../ui";
+import { ConnectionSelect as Select } from "../../components/ConnectionSelect";
+import { shellIconDown } from "../../ui/icons";
 import { SettingsSection, SettingsField } from "../primitives";
-import { smallButtonProps } from "../../ui/button-props";
 const scopeLabels: Partial<Record<GoogleScope, string>> = {
   "https://www.googleapis.com/auth/calendar.readonly": "Read Google Calendar",
   "https://www.googleapis.com/auth/gmail.readonly": "Read Gmail messages and attachments",
@@ -169,13 +171,17 @@ export function GoogleConnections({ active }: { active: boolean }) {
   };
   if (bridge.privateMode) return null;
   return (
-    <SettingsSection name="Google accounts" title="Google accounts">
-      <p className="hint">
+    <SettingsSection className="connection-section" name="Google accounts" title="Google accounts">
+      <p className="connection-description hint">
         Choose account permissions, then grant precise operations to a saved task. Calendar keeps its existing
         grants. New grants apply to future runs; uncertain writes are never sent again automatically.
       </p>
-      {error && <p role="alert">{error}</p>}
-      {notice && <output>{notice}</output>}
+      {error && (
+        <p role="alert" className="connection-message field-error">
+          {error}
+        </p>
+      )}
+      {notice && <output className="connection-message hint">{notice}</output>}
       {!snapshot ? (
         <>
           <p>
@@ -183,27 +189,36 @@ export function GoogleConnections({ active }: { active: boolean }) {
               ? "Google account availability could not be loaded."
               : "Loading Google account availability…"}
           </p>
-          <button {...smallButtonProps} disabled={busy} onClick={() => void perform(async () => {})}>
+          <button className="btn" disabled={busy} onClick={() => void perform(async () => {})}>
             Refresh accounts
           </button>
         </>
       ) : (
         <>
           {!snapshot.available && (
-            <p>{snapshot.reason ?? "Google account registration is not configured for this build."}</p>
+            <p className="connection-message hint">
+              {snapshot.reason ?? "Google account registration is not configured for this build."}
+            </p>
           )}
-          <SettingsField
-            layout="feature"
-            label="Google permissions"
-            hint="Each sign-in requests only the selected permissions and replaces the account’s prior Aux permission set. Select Calendar reading here to keep Calendar available. Task grants cannot broaden Google permissions."
-          >
-            <div className="google-operation-options">
+          <details className="connection-permissions settings-card">
+            <summary>
+              <span>Google permissions</span>
+              <span className="hint">{scopes.length} selected</span>
+              <span className="connection-disclosure-icon" aria-hidden="true">
+                {shellIconDown}
+              </span>
+            </summary>
+            <p className="connection-description hint">
+              Each sign-in requests only the selected permissions and replaces the account’s prior Aux
+              permission set. Select Calendar reading here to keep Calendar available. Task grants cannot
+              broaden Google permissions.
+            </p>
+            <div className="connection-options">
               {GoogleScopeSchema.options
                 .filter((scope) => scopeLabels[scope])
                 .map((scope) => (
                   <label key={scope}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       disabled={busy || !snapshot.available}
                       checked={scopes.includes(scope)}
                       onChange={(event) =>
@@ -218,10 +233,10 @@ export function GoogleConnections({ active }: { active: boolean }) {
                   </label>
                 ))}
             </div>
-          </SettingsField>
-          <div className="row">
+          </details>
+          <div className="connection-actions">
             <button
-              {...smallButtonProps}
+              className="btn"
               disabled={busy || !snapshot.available || !scopes.length}
               onClick={() =>
                 void perform(async (check) => {
@@ -240,34 +255,41 @@ export function GoogleConnections({ active }: { active: boolean }) {
             >
               Connect Google account
             </button>
-            <button {...smallButtonProps} disabled={busy} onClick={() => void perform(async () => {})}>
+            <button className="btn" disabled={busy} onClick={() => void perform(async () => {})}>
               Refresh accounts
             </button>
           </div>
           {!!snapshot.connections.length && (
             <>
-              <SettingsField label="Account">
-                <select
-                  aria-label="Google account"
-                  value={accountId}
-                  disabled={busy}
-                  onChange={(event) => setAccountId(event.target.value)}
-                >
-                  {snapshot.connections.map((item) => (
-                    <option key={item.connectionId} value={item.connectionId}>
-                      {item.label} · {item.accountKey}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
+              <SettingsGroup>
+                <SettingsField label="Account">
+                  <Select
+                    aria-label="Google account"
+                    value={accountId}
+                    disabled={busy}
+                    onChange={(event) => setAccountId(event.target.value)}
+                  >
+                    {snapshot.connections.map((item) => (
+                      <option key={item.connectionId} value={item.connectionId}>
+                        {item.label} · {item.accountKey}
+                      </option>
+                    ))}
+                  </Select>
+                </SettingsField>
+              </SettingsGroup>
               {account && (
                 <>
                   <p>
                     {account.state === "active" ? "Connected" : "Reconnect required"} ·{" "}
                     {account.operations.length} available operations
                   </p>
-                  <details>
-                    <summary>Granted Google permissions</summary>
+                  <details className="connection-permissions settings-card">
+                    <summary>
+                      Granted Google permissions
+                      <span className="connection-disclosure-icon" aria-hidden="true">
+                        {shellIconDown}
+                      </span>
+                    </summary>
                     <ul>
                       {account.scopes.map((scope) => (
                         <li key={scope}>{scopeLabels[scope] ?? "Read Google Calendar"}</li>
@@ -275,7 +297,7 @@ export function GoogleConnections({ active }: { active: boolean }) {
                     </ul>
                   </details>
                   <button
-                    {...smallButtonProps}
+                    className="btn"
                     disabled={busy}
                     onClick={() =>
                       void perform(async (check) => {
@@ -293,35 +315,43 @@ export function GoogleConnections({ active }: { active: boolean }) {
                   >
                     Disconnect account
                   </button>
-                  <SettingsField
-                    label="Saved task"
-                    hint="Task grants bind this account revision and the current task revision."
-                  >
-                    <select
-                      aria-label="Google task"
-                      value={taskId}
-                      disabled={busy}
-                      onChange={(event) => setTaskId(event.target.value)}
+                  <SettingsGroup>
+                    <SettingsField
+                      label="Saved task"
+                      hint="Task grants bind this account revision and the current task revision."
                     >
-                      <option value="">Choose an open saved task</option>
-                      {tasks
-                        .filter((item) => item.state === "open")
-                        .map((item) => (
-                          <option key={item.taskId} value={item.taskId}>
-                            {item.title}
-                          </option>
-                        ))}
-                    </select>
-                  </SettingsField>
+                      <Select
+                        aria-label="Google task"
+                        value={taskId}
+                        disabled={busy}
+                        onChange={(event) => setTaskId(event.target.value)}
+                      >
+                        <option value="">Choose an open saved task</option>
+                        {tasks
+                          .filter((item) => item.state === "open")
+                          .map((item) => (
+                            <option key={item.taskId} value={item.taskId}>
+                              {item.title}
+                            </option>
+                          ))}
+                      </Select>
+                    </SettingsField>
+                  </SettingsGroup>
                   {task && (
                     <>
-                      <SettingsField layout="feature" label="Task operations">
-                        <div className="google-operation-options">
+                      <details className="connection-permissions settings-card">
+                        <summary>
+                          <span>Task operations</span>
+                          <span className="hint">{operations.length} selected</span>
+                          <span className="connection-disclosure-icon" aria-hidden="true">
+                            {shellIconDown}
+                          </span>
+                        </summary>
+                        <div className="connection-options">
                           {account.operations.length ? (
                             account.operations.map((operation) => (
                               <label key={operation}>
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={operations.includes(operation)}
                                   disabled={busy}
                                   onChange={(event) =>
@@ -342,9 +372,9 @@ export function GoogleConnections({ active }: { active: boolean }) {
                             </p>
                           )}
                         </div>
-                      </SettingsField>
+                      </details>
                       <button
-                        {...smallButtonProps}
+                        className="btn"
                         disabled={busy || !operations.length}
                         onClick={() =>
                           void perform(async (check) => {
@@ -373,7 +403,7 @@ export function GoogleConnections({ active }: { active: boolean }) {
                       {grants
                         .filter((grant) => grant.connectionId === account.connectionId)
                         .map((grant) => (
-                          <div key={grant.grantId}>
+                          <div className="connection-grant settings-card" key={grant.grantId}>
                             <p>
                               Task revision {grant.taskRevision} ·{" "}
                               {grant.operations.map(operationLabel).join(", ")}
@@ -382,7 +412,7 @@ export function GoogleConnections({ active }: { active: boolean }) {
                                 : ""}
                             </p>
                             <button
-                              {...smallButtonProps}
+                              className="btn"
                               disabled={busy}
                               onClick={() =>
                                 void perform(async (check) => {

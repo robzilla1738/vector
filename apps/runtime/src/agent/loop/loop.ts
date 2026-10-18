@@ -39,6 +39,8 @@ export interface AgentLoopOptions {
   /** Actual provider text, published independently of complete tool dispatch. */
   onText?: (text: string) => void;
   afterModelCall?: () => void;
+  /** Fresh asynchronous source fence after a dispatched response, before content publication. */
+  validateModelResponse?: () => Promise<void>;
   onModelAdmissionCancelled?: (reservationId: string | undefined) => void | Promise<void>;
   prepareModelMessages?: (
     messages: ModelMessage[],
@@ -348,7 +350,10 @@ async function runAgentLoopOwned(
   opts: AgentLoopOptions,
   recallSignal: AbortSignal,
 ): Promise<AgentLoopOutcome> {
-  const { model, tools, transcript, runId } = opts;
+  const { model, transcript, runId } = opts;
+  const tools = Object.fromEntries(
+    Object.entries(opts.tools).filter(([, tool]) => !tool.available || tool.available(opts.deps)),
+  );
   if (!model.toolCallStep) {
     return {
       kind: "failed",
@@ -509,6 +514,7 @@ async function runAgentLoopOwned(
                   reservationId: summaryReservation,
                   purpose: "compaction",
                 });
+                await opts.validateModelResponse?.();
                 request.check();
                 if (
                   summaryStep.toolCalls.length ||
@@ -626,6 +632,17 @@ async function runAgentLoopOwned(
       };
     }
 
+    try {
+      await opts.validateModelResponse?.();
+    } catch (error) {
+      // Source refusal does not undo an actual provider request or its invoice.
+      try {
+        await opts.onStep?.({ index, step, reservationId });
+      } finally {
+        opts.afterModelCall?.();
+      }
+      throw error;
+    }
     let toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
     let assistant = assistantWithToolCalls(step.message, toolCalls);
     if (!toolCalls.length && step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
@@ -636,9 +653,18 @@ async function runAgentLoopOwned(
       }
     }
     messages.push(assistant);
-    transcript.append(runId, [assistant]);
+    const responseSeq = transcript.append(runId, [assistant]);
     try {
       await opts.onStep?.({ index, step, reservationId });
+    } catch (error) {
+      // A source can retire while a dispatched attempt is being invoiced.
+      // Keep its accounting, but withdraw the newly appended derived message.
+      try {
+        await opts.validateModelResponse?.();
+      } catch {
+        transcript.truncateFrom(runId, responseSeq);
+      }
+      throw error;
     } finally {
       opts.afterModelCall?.();
     }

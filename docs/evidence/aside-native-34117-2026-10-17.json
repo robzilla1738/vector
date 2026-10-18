@@ -1,0 +1,141 @@
+{
+  "sourceRevision": "34117c740bdac034680d7288a003d85016ccad7b",
+  "chromium": "155.0.8059.85",
+  "hostAbi": "550bdeb5fbbd9e501d0d17ecf1854f19f76d634f8afff1b4f1e5541c012d57b2",
+  "hostMethods": 278,
+  "hostEvents": 30,
+  "build": {
+    "log": "/tmp/aux-34117-native-debug.log",
+    "steps": 44,
+    "seconds": 507.44,
+    "result": "passed"
+  },
+  "launcher": {
+    "pid": 27783,
+    "debuggerPid": 38271,
+    "appPid": 38332,
+    "runtimePid": 38491,
+    "temporaryProfile": "aux-dev-3eEIcL",
+    "retirement": "Application-menu Quit; app exited0, runtime retired; debugger quit; original launcher removed Profile and lock"
+  },
+  "observed": [
+    "native About identity matches source/Chromium/ABI",
+    "Window Fill gives3424x1978physical/1712x989logical reference size",
+    "Home Ask dark, General dark and Appearance light at reference size; these are separate surface observations, not both-theme acceptance of every surface",
+    "desktop context off, no selected apps/OCR, permission controls disabled; no permission enabled",
+    "owner USER.md synthetic content created and saved through original native window",
+    "Google account setup explicitly unavailable without registration; no OAuth connection attempted",
+    "vertical sidebar hidden consumes no reserved rail",
+    "horizontal mode retains same New Tab state",
+    "local fixture page navigation/Back/Forward",
+    "reload resets transient fixture details panel",
+    "original runtime SIGSTOP60s with guaranteed SIGCONT; native navigation/Back/Reload/Find still usable; Find reports1of2",
+    "native left-half853x989logical Settings responsive header layout"
+  ],
+  "openFindings": [
+    "Cmd-L did not focus address during runtime pause; succeeds after SIGCONT; exact cause not proven",
+    "Chats shows loading then raw operation_uncertain during pause and lacks truthful responsive status; new native liveness work remains",
+    "native Tab Search menu does not open; actual CreateTabSearchBubble/CloseTabSearchBubble implementations are placeholders; fix authored after this observation",
+    "horizontal sidebar control overlaps Settings search; moved into toolbar after this observation",
+    "duplicate appended Memory Workbench remains on observed candidate; single-pane replacement pending",
+    "repeated AppKit negative view geometry warnings recorded; no SIGTRAP reproduced"
+  ],
+  "notEstablished": [
+    "all captured states/themes/narrow visual acceptance",
+    "live desktop capture/OCR",
+    "current automatic LinkedIn draft/send proof",
+    "default-provider20tasksmoke",
+    "matching155stock perf",
+    "original155SIGTRAP diagnosis"
+  ],
+  "captures": [
+    {
+      "path": "/tmp/aux-34117-native/appearance-light.jpg",
+      "sha256": "20db028e8a8205e67cbb7c8114c7dd5035f12ccb856e1c14bcadd49a4e0c71dd",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/connections-unconfigured-dark.jpg",
+      "sha256": "f82f2031c677736f24edb8403cce80f958e6d99764cf6623868b6f529efa4b63",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/desktop-context-off-dark.jpg",
+      "sha256": "479819ba41616c399f7b41e239889472b4a7b0735507a3717789a1712d6f5f63",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/general-dark.jpg",
+      "sha256": "77122f44c153e17e701eb05875b5090511593a158d5ebd84aa9ac42050ef4692",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/general-narrow-light.jpg",
+      "sha256": "109d7961ed2aca2c491c68ba2c07cfe3272cb0d8b9185312235af6a879aae530",
+      "metadata": [
+        "  pixelWidth: 1706",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/home-ask-dark.jpg",
+      "sha256": "1f7b251f1b3e54b03fc3c2b3e5e8f38030ac301b664b8070786c8bafddb07b4f",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/horizontal-tabs-light.jpg",
+      "sha256": "7c9d7d394efe96122b5abd85cde3975e77820ce881814d7f740b6425350bd8b1",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/memory-owner-saved-dark.jpg",
+      "sha256": "895fb47d83de99abb69f1c1d230fa08ce5e4da49e8a36065b4de1313ae5ee595",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/runtime-paused-find.jpg",
+      "sha256": "15e8a4d9b62a55c3b96421eb5e61d10c8905293c0469c1806a993905b38b5ad9",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/sidebar-collapsed-light.jpg",
+      "sha256": "8207a853857f125267ccafb5c2ee88805a494b9d2a2220181ab5a7be42422027",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    },
+    {
+      "path": "/tmp/aux-34117-native/tab-search-light.jpg",
+      "sha256": "9be01a754557e3c09252066a7feb188ec7f66d2188e5af60b93e29776679a2d0",
+      "metadata": [
+        "  pixelWidth: 3424",
+        "  pixelHeight: 1978"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,14 @@
+import { XAccountSchema, XOperationSchema } from "./x.js";
 import { GoogleAccountSchema, GoogleOperationSchema } from "./google.js";
 import { z } from "zod";
 
 /** Profile-owned integrations are visible here; access follows their original connection and current tool settings. */
 export const ConnectorEntrySchema = z.discriminatedUnion("kind", [
+  XAccountSchema.omit({ createdAt: true, updatedAt: true }).extend({
+    kind: z.literal("x"),
+    connectorId: z.string(),
+    authority: z.literal("x_account"),
+  }),
   GoogleAccountSchema.omit({ createdAt: true, updatedAt: true }).extend({
     kind: z.literal("google"),
     connectorId: z.string(),
@@ -36,6 +42,17 @@ export const ConnectorEntrySchema = z.discriminatedUnion("kind", [
 export type ConnectorEntry = z.infer<typeof ConnectorEntrySchema>;
 
 export const ConnectorAccessSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("x"),
+      connectorId: z.string(),
+      taskId: z.string().uuid(),
+      taskRevision: z.number().int().positive(),
+      grantId: z.string().uuid(),
+      operations: z.array(XOperationSchema),
+      authority: z.literal("x_task_grant"),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("google"),

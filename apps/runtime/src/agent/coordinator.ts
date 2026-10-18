@@ -1,3 +1,4 @@
+import { taskMessage } from "./loop/task-message.js";
 import { TranscriptStore } from "./loop/transcript.js";
 import type { SelectedArticleReference } from "./loop/memory-context.js";
 import type { ModelMessage } from "./loop/types.js";
@@ -40,7 +41,7 @@ import { ApprovalStore } from "../safety/approval.js";
 import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
-import { runToolLoop, taskMessage, type AgentLoopHostDeps } from "./loop/host.js";
+import { runToolLoop, type AgentLoopHostDeps } from "./loop/host.js";
 import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
 import { DEFAULT_MAX_STEPS, TERMINAL_STATUSES } from "./run-state.js";
 
@@ -150,6 +151,11 @@ export interface CoordinatorDeps {
   suspensions?: SuspensionStore;
   approvals?: ApprovalStore;
   vault?: import("../services/vault.js").VaultService;
+  xAccounts?: import("../services/x-accounts.js").XAccountService;
+  xOperation?: (
+    input: import("@aux/contracts/x").XInvoke,
+  ) => ReturnType<import("../services/x-operations.js").XOperationService["invoke"]>;
+  xGrants?: import("../services/x-grants.js").XGrantService;
   googleAccounts?: import("../services/google-accounts.js").GoogleAccountService;
   googleOperation?: (
     input: import("../services/google-operations.js").GoogleInvoke,
@@ -260,6 +266,7 @@ export class RunCoordinator {
     auxPackages?: import("@aux/contracts").AuxPackageSnapshot[];
     projectRoot?: string;
     coderWorktree?: import("@aux/contracts").CoderWorktree;
+    xGrantIds?: string[];
     googleGrantIds?: string[];
     calendarGrantIds?: string[];
   }): Promise<Run> {
@@ -268,6 +275,14 @@ export class RunCoordinator {
       const existing = this.deps.repo.getRun(opts.runId);
       if (existing) return existing;
     }
+    const xGrantIds =
+      opts.xGrantIds ??
+      (opts.taskId && opts.taskRevision
+        ? this.deps.xGrants
+            ?.list(opts.taskId)
+            .filter((grant) => grant.taskRevision === opts.taskRevision)
+            .map((grant) => grant.grantId)
+        : undefined);
     const googleGrantIds =
       opts.googleGrantIds ??
       (opts.taskId && opts.taskRevision
@@ -342,6 +357,7 @@ export class RunCoordinator {
         projectRoot: opts.projectRoot,
         coderWorktree: opts.coderWorktree,
         calendarGrantIds,
+        xGrantIds,
         googleGrantIds,
         retryOfRunId: opts.retryOfRunId,
         branchSourceRunIds: opts.branchSourceRunIds,

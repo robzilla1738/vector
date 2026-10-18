@@ -172,6 +172,10 @@
   @container settings-content (max-width: 620px) {
     .memory-document-browser {
       grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: max-content minmax(0, 1fr);
+    }
+    .memory-document-pane > header .memory-document-breadcrumb {
+      flex-basis: 100%;
     }
     .memory-document-browser > nav {
       border-right: 0;

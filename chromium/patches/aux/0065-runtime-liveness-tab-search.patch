@@ -1,0 +1,186 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index e1c205ec865fcce4210a33e32d7438a9a5ed6a60..0106b5ed1666e5f5d875e5b02aedeb90f6e48c93 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -817,7 +817,7 @@ void AuxRuntimeHost::CallInternal(std::string method,
+ base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
+     base::RepeatingCallback<void(const std::string&, const std::string&)>
+         callback) {
+-  callback.Run("onRuntimeStatus", runtime_connected_ ? "{\"connected\":true}"
++  callback.Run("onRuntimeStatus", runtime_connected_ && runtime_responsive_ ? "{\"connected\":true}"
+                                                      : "{\"connected\":false}");
+   return observers_.Add(std::move(callback));
+ }
+@@ -916,8 +916,23 @@ void AuxRuntimeHost::NativeConnectionPublished(
+   native_person_connection_id_ =
+       base::Uuid::GenerateRandomV4().AsLowercaseString();
+   runtime_connected_ = true;
++  runtime_responsive_ = true;
+   observers_.Notify("onRuntimeStatus", "{\"connected\":true}");
+ }
++void AuxRuntimeHost::RuntimeResponsivenessChanged(uint64_t generation,
++                                                   bool responsive) {
++  if (shutting_down_ || !generation || generation != admitted_native_generation_ ||
++      generation <= retired_native_generation_ || runtime_responsive_ == responsive) {
++    return;
++  }
++  // Responsiveness is presentation state, never connection or action authority.
++  // Keep the original generation, receipts, socket and pending effects intact.
++  runtime_responsive_ = responsive;
++  observers_.Notify("onRuntimeStatus", responsive
++      ? "{\"connected\":true}"
++      : "{\"connected\":false,\"detail\":\"Runtime is not responding\"}");
++}
++
+ void AuxRuntimeHost::HandleNativeBrowserImportCall(
+     const std::string& method,
+     const base::DictValue& params,
+@@ -2314,6 +2329,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   }
+   admitted_native_generation_ = 0;
+   runtime_connected_ = false;
++  runtime_responsive_ = false;
+ #if BUILDFLAG(IS_MAC)
+   // The retired runtime can no longer acknowledge a powerRelease RPC.
+   // End its original assertion before any replacement connection is admitted.
+@@ -3454,6 +3470,8 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+       FROM_HERE,
+       base::BindOnce(&AuxRuntimeHost::NativeConnectionPublished, owner_,
+                      connection_generation_, private_data_directory_));
++  liveness_pending_ = false;
++  liveness_timer_.Start(FROM_HERE, base::Seconds(5), this, &Worker::ProbeLiveness);
+   // Authentication may have read ahead into the first runtime request.
+   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+       FROM_HERE,
+@@ -3462,6 +3480,8 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+ }
+ 
+ bool AuxRuntimeHost::Worker::Disconnect() {
++  liveness_timer_.Stop();
++  liveness_pending_ = false;
+   socket_watcher_.reset();
+   outgoing_watcher_.reset();
+   outgoing_deadline_.Stop();
+@@ -4594,6 +4614,38 @@ void AuxRuntimeHost::Worker::DrainSocket() {
+       base::BindOnce(&Worker::DrainSocket, weak_factory_.GetWeakPtr()));
+ }
+ 
++void AuxRuntimeHost::Worker::ProbeLiveness() {
++  if (connection_fd_ < 0 || !connection_generation_ || liveness_pending_) {
++    return;
++  }
++  liveness_pending_ = true;
++  const std::string nonce = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  base::DictValue params;
++  params.Set("nonce", nonce);
++  CallInternal("runtime.liveness", *base::WriteJson(params),
++      base::BindOnce(&Worker::LivenessReply, weak_factory_.GetWeakPtr(),
++                     connection_generation_, nonce));
++}
++
++void AuxRuntimeHost::Worker::LivenessReply(uint64_t generation,
++                                           std::string nonce,
++                                           Response response) {
++  if (connection_fd_ < 0 || generation != connection_generation_) {
++    return;
++  }
++  liveness_pending_ = false;
++  const auto result = response.ok
++      ? base::JSONReader::ReadDict(response.result_json, base::JSON_PARSE_RFC)
++      : std::nullopt;
++  const auto* echoed = result ? result->FindString("nonce") : nullptr;
++  const bool responsive = echoed && *echoed == nonce && result->size() == 1;
++  ui_runner_->PostTask(FROM_HERE,
++      base::BindOnce(&AuxRuntimeHost::RuntimeResponsivenessChanged, owner_,
++                     generation, responsive));
++  // A timed-out child may resume. Probe that same connection; do not restart it.
++  liveness_timer_.Start(FROM_HERE, base::Seconds(5), this, &Worker::ProbeLiveness);
++}
++
+ void AuxRuntimeHost::Worker::CallApi(std::string method,
+                                      std::string params_json,
+                                      std::string person_resume,
+@@ -4628,6 +4680,7 @@ void AuxRuntimeHost::Worker::CallRequest(std::string method,
+                                          std::string person_resume,
+                                          ResponseCallback callback,
+                                          std::string turn_context) {
++  const bool liveness_request = !desktop_api && method == "runtime.liveness";
+   const bool egress_request = !desktop_api && method == "egress.request";
+   const bool backup_request =
+       desktop_api && (method == "installation.createBackup" ||
+@@ -4640,7 +4693,7 @@ void AuxRuntimeHost::Worker::CallRequest(std::string method,
+       !desktop_api && (method == "artifact.exportOwnerRetire" ||
+                        method == "artifact.exportRelease");
+   // Retirement must reach the child even when ordinary work fills admission.
+-  if (pending_requests_.size() >= 256 && !artifact_cleanup) {
++  if (pending_requests_.size() >= 256 && !artifact_cleanup && !liveness_request) {
+     std::move(callback).Run({false, "", "backend_unavailable",
+                              "Too many pending runtime requests"});
+     return;
+@@ -4702,7 +4755,8 @@ void AuxRuntimeHost::Worker::CallRequest(std::string method,
+   pending_requests_.emplace(
+       id, PendingRequest{
+               base::TimeTicks::Now() +
+-                  base::Milliseconds(egress_request    ? 125000
++                  base::Milliseconds(liveness_request  ? 3000
++                                     : egress_request    ? 125000
+                                      : backup_request  ? kBackupRequestTimeoutMs
+                                      : document_import ? 80000
+                                                        : kRequestTimeoutMs),
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 726ff192a216817349485f839ce0d20b4655e3b1..61aef9fd2bf571531c7bdf71ef861be43ca13ab7 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -236,6 +236,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+     std::map<int, std::unique_ptr<NativeRequest>> native_requests_;
+     void ForwardNote(const base::DictValue& data);
+     void HandleResponse(const base::DictValue& data);
++    void ProbeLiveness();
++    void LivenessReply(uint64_t generation, std::string nonce, Response response);
++    base::OneShotTimer liveness_timer_;
++    bool liveness_pending_ = false;
+     struct PendingRequest {
+       base::TimeTicks deadline;
+       ResponseCallback callback;
+@@ -333,6 +337,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+       uint64_t generation,
+       std::shared_ptr<base::ScopedTempDir> private_directory);
+   void NativeConnectionRetired(uint64_t generation);
++  void RuntimeResponsivenessChanged(uint64_t generation, bool responsive);
+   void HandleNativeCdpAttachment(
+       const base::DictValue& params,
+       uint64_t connection_generation,
+@@ -412,6 +417,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+       observers_;
+   bool runtime_connected_ = false;
++  bool runtime_responsive_ = false;
+   const std::string native_owner_incarnation_ =
+       base::UnguessableToken::Create().ToString();
+   base::WeakPtr<aux::EgressController> native_connection_egress_;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+index 7bc5d920eb432ed05056594fb82a17935acac0c7..4382af9d9899221ef263a2bd293befc47eb78a56 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -1328,11 +1328,21 @@ void WebUIBrowserWindow::ShowCaretBrowsingDialog() {
+ }
+ 
+ void WebUIBrowserWindow::CreateTabSearchBubble() {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI())
++    ui->DispatchAuxShortcut("command-tabs", true);
++#else
+   NOTIMPLEMENTED_LOG_ONCE();
++#endif
+ }
+ 
+ void WebUIBrowserWindow::CloseTabSearchBubble() {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI())
++    ui->DispatchAuxShortcut("close-tab-search");
++#else
+   NOTIMPLEMENTED_LOG_ONCE();
++#endif
+ }
+ 
+ void WebUIBrowserWindow::ShowIncognitoClearBrowsingDataDialog() {

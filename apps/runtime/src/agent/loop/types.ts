@@ -80,6 +80,10 @@ export interface WebToolContext {
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
+  xOperation?: (
+    input: import("@aux/contracts/x").XToolInput,
+    ctx: LoopToolContext,
+  ) => Promise<LoopToolResult>;
   googleOperation?: (
     input: import("@aux/contracts/google").GoogleToolInput,
     ctx: LoopToolContext,
@@ -114,6 +118,9 @@ export interface LoopToolDeps {
    */
   act?: (input: {
     actionId?: string;
+    /** Private original workflow ownership fence and source seal, never tool input. */
+    sourceCheck?: () => void;
+    linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
     pageId: string;
     steps: import("@aux/contracts").Step[];
   }) => Promise<LoopToolResult>;
@@ -121,6 +128,10 @@ export interface LoopToolDeps {
    * Cookie-free web fetch; the destination runs through decide() first —
    * an `ask` parks the loop on the suspension it creates.
    */
+  linkedInWorkflow?: (
+    input: import("@aux/contracts/linkedin").LinkedInToolInput,
+    context: { actionId: string },
+  ) => Promise<LoopToolResult>;
   webFetch?: (url: string, ctx: WebToolContext) => Promise<LoopToolResult>;
   webSearch?: (
     request: import("@aux/contracts/web-search").WebSearchInput,
@@ -179,6 +190,14 @@ export interface LoopToolDeps {
     message: string;
     entries: { url: string; title: string; pageId?: string; visitedAt: number }[];
   }>;
+  desktopContextSearch?: (
+    input: Omit<import("@aux/contracts/desktop-context").DesktopContextSearch, "workspaceId">,
+    owner: { runId: string; signal: AbortSignal; checkOwner(): void },
+  ) => Promise<unknown>;
+  desktopContextRead?: (
+    input: Omit<import("@aux/contracts/desktop-context").DesktopContextRead, "workspaceId">,
+    owner: { runId: string; signal: AbortSignal; checkOwner(): void },
+  ) => Promise<unknown>;
   /** Unified protected recall. Space identity always comes from the original run. */
   memorySearch?: (
     query: Omit<MemoryRecallQuery, "workspaceId">,
@@ -273,6 +292,8 @@ export interface LoopTool {
   /** One-line provenance shown to the model and the user (05-B). */
   byline: string;
   inputSchema: z.ZodType;
+  /** Optional integrations are published only with their original execution capability. */
+  available?: (deps: LoopToolDeps) => boolean;
   /**
    * Suspension tools (`ask_user_question`, `request_action_confirmation`)
    * must be the only tool call in their step — the model's park turn.

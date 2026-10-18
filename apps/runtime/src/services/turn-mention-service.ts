@@ -611,7 +611,7 @@ export class TurnMentionService {
       (grant) =>
         grant.connectorId === connectorId &&
         (grant.kind === "calendar" ||
-          (grant.kind === "google"
+          ((grant.kind === "google" || grant.kind === "x")
             ? grant.operations.some((operation) => operation === toolName)
             : grant.toolName === toolName)),
     );

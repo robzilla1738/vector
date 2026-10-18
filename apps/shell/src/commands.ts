@@ -10,7 +10,12 @@ import {
   type ShortcutOverrides,
 } from "@aux/contracts";
 import type { RefObject } from "react";
-import { openCommandSurface, closeCommandSurface, refocusNewTabSurface } from "./command-surface-state";
+import {
+  openCommandSurface,
+  closeCommandSurface,
+  closeTabSearchSurface,
+  refocusNewTabSurface,
+} from "./command-surface-state";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
 import { invokeScopedControl } from "./scoped-control-commands";
@@ -347,6 +352,7 @@ export const COMMAND_ACTIONS = {
   },
   palette: (st) =>
     st.overlay === "command-surface" ? closeCommandSurface() : openCommandSurface({ mode: "command" }),
+  "close-tab-search": closeTabSearchSurface,
   settings: (st) => (bridge.privateMode ? undefined : st.setOverlay("settings")),
   history: () => openNativeLibrary("history"),
   downloads: (st) => st.setOverlay("downloads"),

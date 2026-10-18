@@ -62,3 +62,4 @@ aux/0061-runtime-window-proof-routing.patch
 aux/0062-isolated-document-audio-jobs.patch
 aux/0063-selected-app-desktop-context.patch
 aux/0064-immutable-selected-pdf-originals.patch
+aux/0065-runtime-liveness-tab-search.patch

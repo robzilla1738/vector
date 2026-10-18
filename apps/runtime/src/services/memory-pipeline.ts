@@ -301,6 +301,7 @@ export class MemoryPipeline {
       run.config?.contextMemoryIds?.length ||
       run.config?.contextAttachmentIds?.length ||
       run.config?.contextAttachmentRefs?.length ||
+      run.config?.desktopContextQuotes?.length ||
       run.config?.contextTaskDocumentRefs?.length ||
       run.config?.contextImageArtifactIds?.length ||
       run.config?.contextRunIds?.length ||

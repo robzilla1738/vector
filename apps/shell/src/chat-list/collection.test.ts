@@ -116,3 +116,45 @@ it("never reads an inadmissible owner", async () => {
   expect(read).not.toHaveBeenCalled();
   expect(collection.getSnapshot().loading).toBe(false);
 });
+
+it("ends stalled loading, retains saved rows and fences late reads across native responsiveness changes", async () => {
+  const delayed = deferred<ConversationSummary[]>();
+  const read = vi
+    .fn()
+    .mockResolvedValueOnce([item("saved")])
+    .mockReturnValueOnce(delayed.promise)
+    .mockResolvedValueOnce([item("recovered")]);
+  const collection = new ConversationCollection({ archived: false, policy: "paged" }, read, () => true);
+  collection.start();
+  await collection.load();
+  const pending = collection.load("refresh");
+  collection.connectionChanged(false);
+  expect(collection.getSnapshot()).toMatchObject({
+    loading: false,
+    ids: ["saved"],
+    error: expect.stringContaining("not responding"),
+  });
+  delayed.resolve([item("late")]);
+  await pending;
+  expect(collection.getSnapshot().ids).toEqual(["saved"]);
+  await collection.load("refresh");
+  expect(read).toHaveBeenCalledTimes(2);
+  collection.connectionChanged(true);
+  await collection.load("refresh");
+  expect(collection.getSnapshot()).toMatchObject({ ids: ["recovered"], loading: false, error: "" });
+});
+
+it("allows only an explicit read retry while offline and presents read uncertainty without replaying an action", async () => {
+  const read = vi.fn().mockRejectedValue(new Error("operation_uncertain: native request deadline"));
+  const collection = new ConversationCollection({ archived: false, policy: "paged" }, read, () => true);
+  collection.start();
+  collection.connectionChanged(false);
+  await collection.load("refresh");
+  expect(read).not.toHaveBeenCalled();
+  await collection.retry();
+  expect(read).toHaveBeenCalledOnce();
+  expect(collection.getSnapshot()).toMatchObject({
+    loading: false,
+    error: "Aux did not respond. Your saved chats are unchanged. Retry when it reconnects.",
+  });
+});

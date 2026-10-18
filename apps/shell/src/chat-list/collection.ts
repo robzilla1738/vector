@@ -45,6 +45,7 @@ export class ConversationCollection {
   private sequence = 0;
   private active = false;
   private loading = false;
+  private connected = true;
   private retryMode: "reset" | "refresh" | "append" = "reset";
   constructor(
     readonly query: ConversationQuery,
@@ -98,9 +99,24 @@ export class ConversationCollection {
     byId[item.chatId] = item;
     this.publish({ byId });
   }
-  retry = () => this.load(this.retryMode);
-  async load(mode: "reset" | "refresh" | "append" = "reset") {
-    if (!this.current() || (this.loading && mode === "append")) return;
+  connectionChanged(connected: boolean) {
+    if (this.connected === connected) return;
+    this.connected = connected;
+    ++this.sequence;
+    this.loading = false;
+    this.publish({
+      loading: false,
+      error: connected ? "" : "Aux is not responding. Chats will reload when it reconnects.",
+    });
+  }
+  retry = () => this.load(this.retryMode, true);
+  async load(mode: "reset" | "refresh" | "append" = "reset", explicitRetry = false) {
+    if (
+      !this.current() ||
+      (!this.connected && !explicitRetry) ||
+      (this.loading && (mode === "append" || !this.connected))
+    )
+      return;
     const version = ++this.sequence;
     this.loading = true;
     this.retryMode = mode;
@@ -165,7 +181,19 @@ export class ConversationCollection {
         more: !complete && this.query.policy === "paged" && found.length > target,
       });
     } catch (reason) {
-      if (current()) this.publish({ error: reason instanceof Error ? reason.message : String(reason) });
+      if (current()) {
+        const message = reason instanceof Error ? reason.message : String(reason);
+        const code = reason && typeof reason === "object" && "code" in reason ? reason.code : undefined;
+        this.publish({
+          error:
+            code === "operation_uncertain" ||
+            code === "condition_timeout" ||
+            code === "backend_unavailable" ||
+            /^(operation_uncertain|condition_timeout|backend_unavailable):/.test(message)
+              ? "Aux did not respond. Your saved chats are unchanged. Retry when it reconnects."
+              : message,
+        });
+      }
     } finally {
       if (current()) {
         this.loading = false;

@@ -638,9 +638,18 @@ export const COMMANDS = [
     ["retry", "", "Retry", ""],
   ]),
   S("desktop-context-refresh", "Refresh desktop context", { ...memoryControl, feature: "desktopContext" }),
-  S("desktop-context-configure", "Save desktop context consent", { ...memoryControl, feature: "desktopContext" }),
-  S("desktop-context-permission", "Request desktop context permission", { ...memoryControl, feature: "desktopContext" }),
-  S("desktop-context-pause", "Pause or resume desktop context", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-configure", "Save desktop context consent", {
+    ...memoryControl,
+    feature: "desktopContext",
+  }),
+  S("desktop-context-permission", "Request desktop context permission", {
+    ...memoryControl,
+    feature: "desktopContext",
+  }),
+  S("desktop-context-pause", "Pause or resume desktop context", {
+    ...memoryControl,
+    feature: "desktopContext",
+  }),
   S("desktop-context-search", "Search desktop context", { ...memoryControl, feature: "desktopContext" }),
   S("desktop-context-read", "Inspect desktop capture", { ...memoryControl, feature: "desktopContext" }),
   S("desktop-context-forget", "Forget desktop context", { ...memoryControl, feature: "desktopContext" }),
@@ -794,6 +803,7 @@ export const COMMANDS = [
   S("toggle-sidebar-more", "Toggle browser tools", memoryControl),
 
   C("command-tabs", "Search open tabs", shellApplication),
+  C("close-tab-search", "Close tab search", { ...shellApplication, palette: false }),
   C("command-observe", "Inspect what the agent sees", normalApplication),
   C("command-inline-assist", "Assist writing in this field…", normalApplication),
   {

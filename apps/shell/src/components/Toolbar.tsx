@@ -75,12 +75,12 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
       }
     >
       <div className="tb-left">
-        {!horizontal && sidebar !== "expanded" && (
+        {(horizontal || sidebar !== "expanded") && (
           <button
             {...staticIconButtonProps}
-            title={withShortcut("Show sidebar", key("sidebar"))}
-            aria-label="Show sidebar"
-            aria-expanded={false}
+            title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))}
+            aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"}
+            aria-expanded={sidebar === "expanded"}
             data-command-id="sidebar"
             onClick={() => runCommand("sidebar")}
           >

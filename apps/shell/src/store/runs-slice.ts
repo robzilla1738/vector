@@ -221,9 +221,9 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
 
   recoverRunStart: async (chatId) => {
     const key = chatId ?? "new";
-    const attempt = readStartAttempt(key);
-    if (!attempt) return;
     const before = get();
+    const attempt = await readStartAttempt(key);
+    if (!attempt) return;
     const restore = () => {
       if (isRunStartRemoved(key) || isRunStartRemoved(attempt.request.chatId ?? key)) return;
       const draft = chatId ? get().conversationDrafts[draftKey(chatId)] : get().agentDraft;

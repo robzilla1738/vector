@@ -197,3 +197,27 @@ it("does not show a grant when the runtime rejects a stale task revision", async
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Task revision changed");
   expect(container.textContent).toContain("No access for this task revision.");
 });
+
+it("distinguishes a loaded empty catalog from an unavailable catalog without inventing connections", async () => {
+  let unavailable = false;
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list") return [{ workspaceId, name: "Product" }];
+    if (method === "tasks.list") return [];
+    if (method === "connectors.catalog") {
+      if (unavailable) throw new Error("Runtime unavailable");
+      return { entries: [], access: [], bindings: {} };
+    }
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<ReviewedConnectors onManage={vi.fn()} />));
+  await flush();
+  expect(container.textContent).toContain("No connections yet.");
+  expect(container.textContent).not.toContain("Choose a connection to review.");
+  expect(container.querySelector('[aria-label="Reviewed connections"]')).toBeNull();
+  unavailable = true;
+  await act(async () => button("Refresh").click());
+  await flush();
+  expect(container.textContent).not.toContain("No connections yet.");
+  expect(container.textContent).toContain("Connection access could not be loaded.");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Runtime unavailable");
+});

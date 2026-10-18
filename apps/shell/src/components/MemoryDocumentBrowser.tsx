@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   OWNER_MEMORY_DOCUMENT_PATHS,
   memoryClaimText,
@@ -30,7 +39,19 @@ function noteHeading(text: string) {
   return line.length > 72 ? `${line.slice(0, 72).replace(/\s+\S*$/, "")}…` : line;
 }
 
+export type MemoryDocumentExtension = {
+  keys: string[];
+  selected: boolean;
+  label: string;
+  onSelectInternal(): void;
+  navigation(context: { focused: string; onFocus(key: string): void }): ReactNode;
+  pane: ReactNode;
+  controls?: ReactNode;
+  setFolderOpen?(key: string, open: boolean): void;
+};
 type Props = {
+  extension?: MemoryDocumentExtension;
+  initialPath?: OwnerMemoryDocument["path"] | "MEMORY.md";
   memory: WorkspaceMemory;
   onSaved(memory: WorkspaceMemory): void;
   active: boolean;
@@ -46,7 +67,15 @@ export function MemoryDocumentBrowser(props: Props) {
   );
 }
 
-function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose }: Props) {
+function MemoryDocumentBrowserBody({
+  memory,
+  onSaved,
+  active,
+  onManage,
+  onClose,
+  extension,
+  initialPath,
+}: Props) {
   const workspaceId = memory.workspaceId;
   const savedMemory = useRef(memory);
   const savedCallback = useRef(onSaved);
@@ -83,7 +112,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
     );
   }, [owner, identities, workspaceId, windowId]);
   const [documents, setDocuments] = useState<MemoryClaimDocuments | null>(null);
-  const [selected, setSelected] = useState(ROOT);
+  const [selected, setSelected] = useState<string>(initialPath ?? ROOT);
   const [focused, setFocused] = useState(ROOT);
   const [newDocuments, setNewDocuments] = useState<OwnerMemoryDocument["path"][]>([]);
   const [removing, setRemoving] = useState<{
@@ -173,7 +202,9 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
   const ownerPaths = OWNER_MEMORY_DOCUMENT_PATHS.filter(
     (path) => newDocuments.includes(path) || memory.documents?.some((document) => document.path === path),
   );
-  const treeFocus = [ROOT, "episodic", ...paths, ...ownerPaths].includes(focused) ? focused : ROOT;
+  const treeFocus = [ROOT, "episodic", ...paths, ...ownerPaths, ...(extension?.keys ?? [])].includes(focused)
+    ? focused
+    : ROOT;
   const path =
     selected === ROOT || paths.includes(selected) || ownerPaths.some((path) => path === selected)
       ? selected
@@ -292,6 +323,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
       ...previous,
       [path]: { revision: memory.revision, generation: null, texts: { [path]: "" } },
     }));
+    extension?.onSelectInternal();
     setSelected(path);
     setError("");
   };
@@ -369,13 +401,17 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
           const folder = current.closest("details");
           if (event.key === "ArrowRight") {
             if (current.tagName !== "SUMMARY") return;
-            if (!expanded) setExpanded(true);
-            else folder?.querySelector<HTMLElement>('[role="group"] [role="treeitem"]')?.focus();
+            if (folder && !folder.open) {
+              if (current.dataset.memoryFolder === "episodic") setExpanded(true);
+              else extension?.setFolderOpen?.(current.dataset.memoryFolder ?? "", true);
+            } else folder?.querySelector<HTMLElement>('[role="group"] [role="treeitem"]')?.focus();
             return;
           }
           if (event.key === "ArrowLeft") {
-            if (current.tagName === "SUMMARY") setExpanded(false);
-            else folder?.querySelector("summary")?.focus();
+            if (current.tagName === "SUMMARY" && folder) {
+              if (current.dataset.memoryFolder === "episodic") setExpanded(false);
+              else extension?.setFolderOpen?.(current.dataset.memoryFolder ?? "", false);
+            } else folder?.querySelector("summary")?.focus();
             return;
           }
           controls[
@@ -387,6 +423,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
           ]?.focus();
         }}
       >
+        {extension?.controls}
         <div className="memory-tree-heading">
           {shellIconFolder} <span>Documents</span>
         </div>
@@ -400,6 +437,7 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
             <summary
               role="treeitem"
               aria-expanded={expanded}
+              data-memory-folder="episodic"
               aria-level={1}
               aria-owns={episodicGroupId}
               tabIndex={treeFocus === "episodic" ? 0 : -1}
@@ -420,11 +458,12 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
                     key={item}
                     role="treeitem"
                     aria-level={2}
-                    aria-selected={path === item}
+                    aria-selected={!extension?.selected && path === item}
                     tabIndex={treeFocus === item ? 0 : -1}
                     onFocus={() => setFocused(item)}
-                    aria-current={path === item ? "page" : undefined}
+                    aria-current={!extension?.selected && path === item ? "page" : undefined}
                     onClick={() => {
+                      extension?.onSelectInternal();
                       setSelected(item);
                       setError("");
                     }}
@@ -439,15 +478,17 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
               )}
             </div>
           </details>
+          {extension?.navigation({ focused: treeFocus, onFocus: setFocused })}
           <button
             type="button"
             role="treeitem"
             aria-level={1}
-            aria-selected={path === ROOT}
+            aria-selected={!extension?.selected && path === ROOT}
             tabIndex={treeFocus === ROOT ? 0 : -1}
             onFocus={() => setFocused(ROOT)}
-            aria-current={path === ROOT ? "page" : undefined}
+            aria-current={!extension?.selected && path === ROOT ? "page" : undefined}
             onClick={() => {
+              extension?.onSelectInternal();
               setSelected(ROOT);
               setError("");
             }}
@@ -464,11 +505,12 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
               key={ownerPath}
               role="treeitem"
               aria-level={1}
-              aria-selected={path === ownerPath}
+              aria-selected={!extension?.selected && path === ownerPath}
               tabIndex={treeFocus === ownerPath ? 0 : -1}
               onFocus={() => setFocused(ownerPath)}
-              aria-current={path === ownerPath ? "page" : undefined}
+              aria-current={!extension?.selected && path === ownerPath ? "page" : undefined}
               onClick={() => {
+                extension?.onSelectInternal();
                 setSelected(ownerPath);
                 setError("");
               }}
@@ -497,192 +539,203 @@ function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose 
           Review and manage notes
         </button>
       </nav>
-      <section className="memory-document-pane" aria-label={path}>
-        <header>
-          <span className="memory-document-breadcrumb">{path.replaceAll("/", " › ")}</span>
-          {changedAt !== undefined && (
-            <time dateTime={new Date(changedAt).toISOString()} title={new Date(changedAt).toLocaleString()}>
-              {new Date(changedAt).toLocaleString()}
-            </time>
-          )}
-          {draft ? (
-            <div className="memory-document-actions">
-              <button type="button" className="btn sm" disabled={busy} onClick={discard}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn sm"
-                disabled={
-                  busy || stale || (!textDocument && Object.values(draft.texts).some((text) => !text.trim()))
-                }
-                onClick={() => void save()}
-              >
-                {busy ? "Saving…" : "Save"}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="btn sm memory-document-edit"
-              disabled={busy || (!textDocument && !documents?.generation)}
-              onClick={startEdit}
-            >
-              Edit
-            </button>
-          )}
-          {ownerDocument && !draft && (
-            <button
-              type="button"
-              className="btn sm"
-              disabled={busy}
-              onClick={() =>
-                setRemoving({
-                  path: ownerDocument.path,
-                  revision: memory.revision,
-                  content: ownerDocument.content,
-                })
-              }
-            >
-              Delete
-            </button>
-          )}
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Close settings"
-            title="Close (Esc)"
-            onClick={onClose}
-          >
-            {shellIconClose}
-          </button>
-        </header>
-        <div className="memory-document-body">
-          {storageError && rootDraft && (
-            <p role="status">
-              Your Space notes draft is available in this window but could not be saved for restart.
-            </p>
-          )}
-          {visibleError && (
-            <p role="alert">
-              {visibleError}{" "}
-              <button
-                type="button"
-                className="btn sm"
-                onClick={() => {
-                  void refresh()
-                    .then(() => {
-                      if (current()) setError("");
-                    })
-                    .catch((reason) => {
-                      if (current()) setError(errorMessage(reason));
-                    });
-                }}
-              >
-                Refresh documents
-              </button>
-            </p>
-          )}
-          {draft ? (
-            <>
-              {stale && (
-                <section className="memory-document-conflict" aria-label="Document changed">
-                  <p>
-                    The saved document changed. Your draft is preserved. Compare the latest version before
-                    saving.
-                  </p>
-                  {textDocument ? (
-                    <MemoryDocument text={documentText || "No saved content."} />
-                  ) : (
-                    notePreview(false)
-                  )}
+      <section className="memory-document-pane" aria-label={extension?.selected ? extension.label : path}>
+        {extension?.selected ? (
+          extension.pane
+        ) : (
+          <>
+            <header>
+              <span className="memory-document-breadcrumb">{path.replaceAll("/", " › ")}</span>
+              {changedAt !== undefined && (
+                <time
+                  dateTime={new Date(changedAt).toISOString()}
+                  title={new Date(changedAt).toLocaleString()}
+                >
+                  {new Date(changedAt).toLocaleString()}
+                </time>
+              )}
+              {draft ? (
+                <div className="memory-document-actions">
+                  <button type="button" className="btn sm" disabled={busy} onClick={discard}>
+                    Cancel
+                  </button>
                   <button
                     type="button"
                     className="btn sm"
-                    disabled={busy}
-                    onClick={() =>
-                      path === ROOT
-                        ? useMemoryDrafts.getState().write(workspaceId, {
-                            content: draft.texts[ROOT] ?? "",
-                            revision: memory.revision,
-                          })
-                        : setDrafts((previous) => ({
-                            ...previous,
-                            [path]: {
-                              ...draft,
-                              revision: memory.revision,
-                              generation: textDocument ? null : (documents?.generation ?? null),
-                              texts: textDocument
-                                ? draft.texts
-                                : Object.fromEntries(
-                                    notes.map((note) => [
-                                      note.claim.claimId,
-                                      draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim),
-                                    ]),
-                                  ),
-                            },
-                          }))
+                    disabled={
+                      busy ||
+                      stale ||
+                      (!textDocument && Object.values(draft.texts).some((text) => !text.trim()))
                     }
+                    onClick={() => void save()}
                   >
-                    Keep my draft against this version
+                    {busy ? "Saving…" : "Save"}
                   </button>
-                </section>
-              )}
-              {textDocument ? (
-                <textarea
-                  aria-label={`Edit ${path}`}
-                  maxLength={16000}
-                  value={draft.texts[path] ?? ""}
-                  disabled={busy}
-                  onChange={(event) =>
-                    path === ROOT
-                      ? useMemoryDrafts
-                          .getState()
-                          .write(workspaceId, { content: event.target.value, revision: draft.revision })
-                      : setDrafts((previous) => ({
-                          ...previous,
-                          [path]: { ...draft, texts: { [path]: event.target.value } },
-                        }))
-                  }
-                />
+                </div>
               ) : (
-                notes.map((note, index) => (
-                  <label className="memory-document-editor-section" key={note.claim.claimId}>
-                    Note {index + 1}
+                <button
+                  type="button"
+                  className="btn sm memory-document-edit"
+                  disabled={busy || (!textDocument && !documents?.generation)}
+                  onClick={startEdit}
+                >
+                  Edit
+                </button>
+              )}
+              {ownerDocument && !draft && (
+                <button
+                  type="button"
+                  className="btn sm"
+                  disabled={busy}
+                  onClick={() =>
+                    setRemoving({
+                      path: ownerDocument.path,
+                      revision: memory.revision,
+                      content: ownerDocument.content,
+                    })
+                  }
+                >
+                  Delete
+                </button>
+              )}
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Close settings"
+                title="Close (Esc)"
+                onClick={onClose}
+              >
+                {shellIconClose}
+              </button>
+            </header>
+            <div className="memory-document-body">
+              {storageError && rootDraft && (
+                <p role="status">
+                  Your Space notes draft is available in this window but could not be saved for restart.
+                </p>
+              )}
+              {visibleError && (
+                <p role="alert">
+                  {visibleError}{" "}
+                  <button
+                    type="button"
+                    className="btn sm"
+                    onClick={() => {
+                      void refresh()
+                        .then(() => {
+                          if (current()) setError("");
+                        })
+                        .catch((reason) => {
+                          if (current()) setError(errorMessage(reason));
+                        });
+                    }}
+                  >
+                    Refresh documents
+                  </button>
+                </p>
+              )}
+              {draft ? (
+                <>
+                  {stale && (
+                    <section className="memory-document-conflict" aria-label="Document changed">
+                      <p>
+                        The saved document changed. Your draft is preserved. Compare the latest version before
+                        saving.
+                      </p>
+                      {textDocument ? (
+                        <MemoryDocument text={documentText || "No saved content."} />
+                      ) : (
+                        notePreview(false)
+                      )}
+                      <button
+                        type="button"
+                        className="btn sm"
+                        disabled={busy}
+                        onClick={() =>
+                          path === ROOT
+                            ? useMemoryDrafts.getState().write(workspaceId, {
+                                content: draft.texts[ROOT] ?? "",
+                                revision: memory.revision,
+                              })
+                            : setDrafts((previous) => ({
+                                ...previous,
+                                [path]: {
+                                  ...draft,
+                                  revision: memory.revision,
+                                  generation: textDocument ? null : (documents?.generation ?? null),
+                                  texts: textDocument
+                                    ? draft.texts
+                                    : Object.fromEntries(
+                                        notes.map((note) => [
+                                          note.claim.claimId,
+                                          draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim),
+                                        ]),
+                                      ),
+                                },
+                              }))
+                        }
+                      >
+                        Keep my draft against this version
+                      </button>
+                    </section>
+                  )}
+                  {textDocument ? (
                     <textarea
-                      aria-label={`Edit note ${index + 1}`}
-                      maxLength={2000}
-                      value={draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim)}
+                      aria-label={`Edit ${path}`}
+                      maxLength={16000}
+                      value={draft.texts[path] ?? ""}
                       disabled={busy}
                       onChange={(event) =>
-                        setDrafts((previous) => ({
-                          ...previous,
-                          [path]: {
-                            ...draft,
-                            texts: { ...draft.texts, [note.claim.claimId]: event.target.value },
-                          },
-                        }))
+                        path === ROOT
+                          ? useMemoryDrafts
+                              .getState()
+                              .write(workspaceId, { content: event.target.value, revision: draft.revision })
+                          : setDrafts((previous) => ({
+                              ...previous,
+                              [path]: { ...draft, texts: { [path]: event.target.value } },
+                            }))
                       }
                     />
-                    <small>Saved as your edit; the original source quote stays unchanged.</small>
-                  </label>
-                ))
+                  ) : (
+                    notes.map((note, index) => (
+                      <label className="memory-document-editor-section" key={note.claim.claimId}>
+                        Note {index + 1}
+                        <textarea
+                          aria-label={`Edit note ${index + 1}`}
+                          maxLength={2000}
+                          value={draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim)}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setDrafts((previous) => ({
+                              ...previous,
+                              [path]: {
+                                ...draft,
+                                texts: { ...draft.texts, [note.claim.claimId]: event.target.value },
+                              },
+                            }))
+                          }
+                        />
+                        <small>Saved as your edit; the original source quote stays unchanged.</small>
+                      </label>
+                    ))
+                  )}
+                </>
+              ) : textDocument ? (
+                <>
+                  {ownerPath && <p className="hint">Owner-written context for this Space.</p>}
+                  <MemoryDocument
+                    text={documentText || "No saved content. Choose Edit to add context for this Space."}
+                  />
+                </>
+              ) : (
+                <>
+                  <h2>{path.split("/").at(-1)?.replace(/\.md$/, "")}</h2>
+                  {notePreview()}
+                </>
               )}
-            </>
-          ) : textDocument ? (
-            <>
-              {ownerPath && <p className="hint">Owner-written context for this Space.</p>}
-              <MemoryDocument
-                text={documentText || "No saved content. Choose Edit to add context for this Space."}
-              />
-            </>
-          ) : (
-            <>
-              <h2>{path.split("/").at(-1)?.replace(/\.md$/, "")}</h2>
-              {notePreview()}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </section>
       {removing && current() && (
         <Dialog

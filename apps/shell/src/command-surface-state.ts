@@ -39,6 +39,10 @@ export function closeCommandSurface(expectedSequence?: number): void {
   if (useStore.getState().overlay === "command-surface") useStore.getState().setOverlay(null);
   for (const listener of listeners) listener();
 }
+/** Native tab-search retirement must leave unrelated command drafts alone. */
+export function closeTabSearchSurface(): void {
+  if (current?.presentation === "tab-search") closeCommandSurface(current.sequence);
+}
 export function useCommandSurfaceRequest(): CommandSurfaceRequest | null {
   return useSyncExternalStore(
     (listener) => {

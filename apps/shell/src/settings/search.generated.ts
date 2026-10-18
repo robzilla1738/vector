@@ -713,12 +713,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Inline assist",
   },
   {
-    category: "Archived chats",
-    label: "Find archived chats",
-    description: "Archived chats remain available until you delete them from chat history.",
-    target: "Find archived chats",
-  },
-  {
     category: "General",
     label: "Default search engine",
     description: "Used for searches from the address bar.",
@@ -912,9 +906,27 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Connections",
+    label: "Calendar account",
+    description: "",
+    target: "Calendar account",
+  },
+  {
+    category: "Connections",
     label: "Connector access",
     description: "",
     target: "Connector access",
+  },
+  {
+    category: "Connections",
+    label: "Space",
+    description: "",
+    target: "Space",
+  },
+  {
+    category: "Connections",
+    label: "Saved task",
+    description: "",
+    target: "Saved task",
   },
   {
     category: "Advanced",

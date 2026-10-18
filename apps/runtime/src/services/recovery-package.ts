@@ -1,3 +1,5 @@
+import { XAccountRecordSchema, XCredentialJobSchema } from "./x-store.js";
+import { XTaskGrantSchema } from "@aux/contracts/x";
 import { DesktopContextStore } from "./desktop-context-store.js";
 import { currentDesktopContext } from "./desktop-context-backup.js";
 import {
@@ -7,6 +9,7 @@ import {
 } from "@aux/contracts/desktop-context";
 import {
   googleTablesForDatabase,
+  xTablesForDatabase,
   channelTablesForDatabase,
   financialTablesForDatabase,
 } from "../store/db.js";
@@ -148,6 +151,65 @@ function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encryp
         account.connection_id,
       );
   }
+  if (xTablesForDatabase(db).length) {
+    for (const account of db.prepare("SELECT connection_id,user_id_lookup,body FROM x_accounts").all() as {
+      connection_id: string;
+      user_id_lookup: string;
+      body: string;
+    }[]) {
+      const body =
+        direction === "decrypt"
+          ? account.body
+          : cipher.decrypt("x_accounts", JSON.stringify([account.connection_id]), "body", account.body);
+      const record = XAccountRecordSchema.parse(JSON.parse(body));
+      const expected =
+        direction === "decrypt" ? cipher.exactLookup("x_accounts", "user_id", record.userId) : record.userId;
+      if (record.connectionId !== account.connection_id || account.user_id_lookup !== expected)
+        throw new Error("Protected X account lookup does not match its original identity.");
+      if (direction === "encrypt")
+        db.prepare("UPDATE x_accounts SET user_id_lookup=? WHERE connection_id=?").run(
+          cipher.exactLookup("x_accounts", "user_id", record.userId),
+          account.connection_id,
+        );
+    }
+    for (const row of db
+      .prepare("SELECT job_id,connection_id,body,created_at FROM x_credential_jobs")
+      .all() as { job_id: string; connection_id: string; body: string; created_at: number }[]) {
+      const body =
+        direction === "decrypt"
+          ? row.body
+          : cipher.decrypt("x_credential_jobs", JSON.stringify([row.job_id]), "body", row.body);
+      const job = XCredentialJobSchema.parse(JSON.parse(body));
+      if (
+        job.jobId !== row.job_id ||
+        job.connectionId !== row.connection_id ||
+        job.createdAt !== row.created_at
+      )
+        throw new Error("Protected X credential retirement indexes do not match the original record.");
+    }
+    for (const row of db
+      .prepare("SELECT grant_id,task_id,task_revision,connection_id,body FROM x_task_grants")
+      .all() as {
+      grant_id: string;
+      task_id: string;
+      task_revision: number;
+      connection_id: string;
+      body: string;
+    }[]) {
+      const body =
+        direction === "decrypt"
+          ? row.body
+          : cipher.decrypt("x_task_grants", JSON.stringify([row.grant_id]), "body", row.body);
+      const grant = XTaskGrantSchema.parse(JSON.parse(body));
+      if (
+        grant.grantId !== row.grant_id ||
+        grant.taskId !== row.task_id ||
+        grant.taskRevision !== row.task_revision ||
+        grant.connectionId !== row.connection_id
+      )
+        throw new Error("Protected X grant indexes do not match the original record.");
+    }
+  }
   if (direction === "decrypt")
     db.prepare("DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3')").run();
   else
@@ -251,6 +313,26 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
   db.prepare("DELETE FROM content_memory").run();
   db.prepare("UPDATE calendar_connections SET account_key_lookup=account_key").run();
   const at = Date.now();
+  if (xTablesForDatabase(db).length) {
+    for (const row of db.prepare("SELECT connection_id,body FROM x_accounts").all() as {
+      connection_id: string;
+      body: string;
+    }[]) {
+      const original = XAccountRecordSchema.parse(JSON.parse(row.body));
+      if (original.connectionId !== row.connection_id)
+        throw new Error("X recovery account identity changed.");
+      const record = { ...original, state: "needs_reauth", epoch: randomUUID(), updatedAt: at };
+      db.prepare("UPDATE x_accounts SET body=?,user_id_lookup=? WHERE connection_id=?").run(
+        JSON.stringify(record),
+        record.userId,
+        row.connection_id,
+      );
+    }
+    db.prepare("UPDATE x_task_grants SET revoked_at=? WHERE revoked_at IS NULL").run(at);
+    // Jobs belong to the source Profile's native namespace; recovery never accesses its Keychain.
+    db.prepare("DELETE FROM x_credential_jobs").run();
+  }
+
   for (const table of [
     "calendar_task_grants",
     ...googleTablesForDatabase(db),

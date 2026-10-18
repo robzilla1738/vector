@@ -47,7 +47,7 @@ it("subscribes before the initial read and prevents that read from replacing a n
   );
   expect(hasNativeBookmarkAuthority()).toBe(false);
   emit(saved);
-  expect(hasNativeBookmarkAuthority()).toBe(true);
+  await vi.waitFor(() => expect(hasNativeBookmarkAuthority()).toBe(true));
   finish([]);
   await Promise.resolve();
   expect(apply.mock.calls).toEqual([[saved]]);
@@ -60,7 +60,7 @@ it("discards reads and events after retirement and rejects malformed native snap
   const { port, apply, error, stop, emit, finish } = fixture();
   const retire = startNativeBookmarkObserver(port, apply, error);
   emit([{ title: "Missing identity and address" }]);
-  expect(error).toHaveBeenCalledOnce();
+  await vi.waitFor(() => expect(error).toHaveBeenCalledOnce());
   retire();
   emit(saved);
   finish(saved);
@@ -74,4 +74,43 @@ it("does not read or subscribe to persistent bookmarks for private windows", () 
   startNativeBookmarkObserver({ ...port, privateMode: true }, apply, error)();
   expect(port.request).not.toHaveBeenCalled();
   expect(port.subscribe).not.toHaveBeenCalled();
+});
+
+it("preserves event arrival order while validation loads and cannot publish after retirement", async () => {
+  const { port, apply, error, emit, finish } = fixture();
+  const retire = startNativeBookmarkObserver(port, apply, error);
+  emit(saved);
+  emit([{ ...saved[0]!, title: "Latest" }]);
+  finish([]);
+  await vi.waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+  expect(apply.mock.calls).toEqual([[saved], [[{ ...saved[0]!, title: "Latest" }]]]);
+  retire();
+  emit(saved);
+  await Promise.resolve();
+  expect(apply).toHaveBeenCalledTimes(2);
+  expect(error).not.toHaveBeenCalled();
+});
+
+it("retires synchronously before deferred event validation can publish", async () => {
+  const { port, apply, error, emit, finish } = fixture();
+  const retire = startNativeBookmarkObserver(port, apply, error);
+  emit(saved);
+  finish(saved);
+  retire();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(apply).not.toHaveBeenCalled();
+  expect(error).not.toHaveBeenCalled();
+  expect(hasNativeBookmarkAuthority()).toBe(false);
+});
+
+it("keeps the preceding valid event if a newer event fails deferred validation", async () => {
+  const { port, apply, error, emit, finish } = fixture();
+  const retire = startNativeBookmarkObserver(port, apply, error);
+  emit(saved);
+  emit([{ title: "Malformed latest event" }]);
+  finish([]);
+  await vi.waitFor(() => expect(error).toHaveBeenCalledOnce());
+  expect(apply.mock.calls).toEqual([[saved]]);
+  expect(hasNativeBookmarkAuthority()).toBe(true);
+  retire();
 });

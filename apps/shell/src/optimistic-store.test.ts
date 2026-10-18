@@ -119,9 +119,11 @@ it("removes a closed row immediately and restores it when the close is refused",
 
 it("shows a sent message at once and returns it to the composer if the run cannot start", async () => {
   let fail!: (error: Error) => void;
-  vi.spyOn(bridge, "invoke").mockImplementation(
-    (method) => method === "runs.start"
-      ? new Promise((_resolve, reject) => { fail = reject; })
+  vi.spyOn(bridge, "invoke").mockImplementation((method) =>
+    method === "runs.start"
+      ? new Promise((_resolve, reject) => {
+          fail = reject;
+        })
       : Promise.reject(new Error("Runtime unavailable")),
   );
   useStore.setState({ activePageId: "p", settings: { modelConfigured: true } });
@@ -130,7 +132,7 @@ it("shows a sent message at once and returns it to the composer if the run canno
     .startRun("Summarize", { chatId: "chat", pageId: "p", ownsDraft: true });
   expect(useStore.getState().pendingTurns).toMatchObject([{ chatId: "chat", goal: "Summarize" }]);
   const error = new Error("offline");
-  await Promise.resolve();
+  await vi.waitFor(() => expect(fail).toBeTypeOf("function"));
   fail(error);
   await expect(starting).rejects.toBe(error);
   expect(useStore.getState().pendingTurns).toEqual([]);
@@ -262,8 +264,10 @@ it("keeps native history available through later runtime snapshots and patches",
   useStore.setState({ pages: normalizePages([native]), catalogVersion: 7 });
   useStore.getState().applyEvent(event("page.updated", { page: { ...page("a"), backend: "aux" } }, 1));
   expect(useStore.getState().pages.byId.a).toMatchObject({ canGoBack: true, canGoForward: true });
-  useStore.getState().applyEvent(
-    event("page.updated", { pageId: "a", canGoBack: false, canGoForward: false, loading: false }, 2),
-  );
+  useStore
+    .getState()
+    .applyEvent(
+      event("page.updated", { pageId: "a", canGoBack: false, canGoForward: false, loading: false }, 2),
+    );
   expect(useStore.getState().pages.byId.a).toMatchObject({ canGoBack: true, canGoForward: true });
 });

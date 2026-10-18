@@ -597,6 +597,13 @@ CREATE TABLE document_source_chunks(
     REFERENCES document_snapshots(owner_kind,owner_id,document_id,snapshot_id) ON DELETE CASCADE
 );
 
+-- @schema x
+CREATE TABLE x_accounts(connection_id TEXT PRIMARY KEY,user_id_lookup TEXT NOT NULL UNIQUE,body TEXT NOT NULL,revoked_at INTEGER);
+CREATE TABLE x_task_grants(grant_id TEXT PRIMARY KEY,task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,task_revision INTEGER NOT NULL,connection_id TEXT NOT NULL REFERENCES x_accounts(connection_id) ON DELETE CASCADE,body TEXT NOT NULL,created_at INTEGER NOT NULL,revoked_at INTEGER);
+CREATE INDEX idx_x_task_grants_task ON x_task_grants(task_id,task_revision,revoked_at);
+CREATE INDEX idx_x_task_grants_connection ON x_task_grants(connection_id,revoked_at);
+CREATE TABLE x_credential_jobs(job_id TEXT PRIMARY KEY,connection_id TEXT NOT NULL,body TEXT NOT NULL,created_at INTEGER NOT NULL);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

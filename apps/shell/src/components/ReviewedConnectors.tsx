@@ -1,15 +1,14 @@
+import { ConnectionSelect as Select } from "./ConnectionSelect";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
-import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./ReviewedConnectors.css";
+import "./ConnectionSettings.css";
+import { SettingsField } from "../settings/primitives";
 import { useEffect, useState } from "react";
 import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
 import { call } from "../store";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import {
-  staticDrawerSectionProps as auxClassDrawerSectionProps,
-  staticErrorHintProps as auxClassErrorHintProps,
-} from "../ui/class-props";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Kind = ConnectorEntry["kind"];
@@ -168,11 +167,20 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
 
   return (
     <section
-      className="reviewed-connectors field"
+      className="reviewed-connectors connection-section"
       aria-label="Connector access"
       data-setting="Connector access"
     >
-      <div {...auxClassDrawerSectionProps}>Connector access</div>
+      <header className="connection-section-header">
+        <h3 className="connection-heading">Connector access</h3>{" "}
+        <button
+          className="btn ghost"
+          disabled={busy || loading}
+          onClick={() => void refresh().catch((reason) => setError(errorText(reason)))}
+        >
+          Refresh
+        </button>
+      </header>
       <p {...staticHintProps}>
         Review each connection and the access currently available to a saved task. Connected MCP servers make
         enabled tools available; Calendar access remains scoped to the selected task.
@@ -181,10 +189,9 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
         <p {...staticHintProps}>{loading ? "Loading Spaces…" : "Create a Space to review connectors."}</p>
       ) : (
         <>
-          <div className="reviewed-connectors-scope">
-            <label>
-              Space
-              <select
+          <div className="reviewed-connectors-scope settings-card">
+            <SettingsField label="Space">
+              <Select
                 aria-label="Connector Space"
                 value={workspaceId}
                 onChange={(event) => {
@@ -202,11 +209,10 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                     {space.name}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label>
-              Saved task
-              <select
+              </Select>
+            </SettingsField>
+            <SettingsField label="Saved task">
+              <Select
                 aria-label="Connector task"
                 value={task?.taskId ?? ""}
                 onChange={(event) => {
@@ -221,168 +227,201 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                     {item.title} · revision {item.revision}
                   </option>
                 ))}
-              </select>
-            </label>
-            <button
-              {...smallGhostButtonProps}
-              disabled={busy || loading}
-              onClick={() => void refresh().catch((reason) => setError(errorText(reason)))}
-            >
-              Refresh
-            </button>
+              </Select>
+            </SettingsField>
           </div>
-          <div className="reviewed-connectors-layout">
-            <aside className="reviewed-connectors-list" aria-label="Reviewed connections">
-              {catalog?.entries.map((item) => (
-                <button
-                  key={item.connectorId}
-                  {...auxNativeButtonTypeProps}
-                  aria-current={selectedId === item.connectorId ? "true" : undefined}
-                  onClick={() => {
-                    setSelectedId(item.connectorId);
-                    setReview(null);
-                  }}
-                >
-                  <span className="reviewed-connectors-name">{item.label}</span>
-                  <span className="reviewed-connectors-sub">
-                    {item.kind === "mcp"
-                      ? "MCP server"
-                      : item.kind === "google"
-                        ? "Google account"
-                        : "Calendar account"}{" "}
-                    · {stateLabel(item)}
-                  </span>
-                </button>
-              ))}
-            </aside>
-            <div className="reviewed-connectors-detail" {...nativePoliteLiveProps}>
-              {loading && <p {...staticHintProps}>Loading connector access…</p>}
-              {!loading && !entry && <p {...staticHintProps}>Choose a connection to review.</p>}
-              {entry && (
-                <>
-                  <div className="reviewed-connectors-heading">
-                    <strong>{entry.label}</strong>
-                    <span className="reviewed-connectors-state">{stateLabel(entry)}</span>
-                  </div>
-                  {entry.kind === "calendar" && (
-                    <>
-                      <p {...staticHintProps}>Google Calendar · {entry.accountKey} · read-only events</p>
-                      <p {...staticHintProps}>
-                        Task access requires an explicit account grant for this task revision. Events read
-                        during a task may be sent to its selected AI model.
-                      </p>
-                      {task && access.length === 0 && entry.state === "active" && (
-                        <button
-                          {...smallButtonProps}
-                          disabled={busy}
-                          onClick={() =>
-                            setReview({
-                              kind: "grant",
-                              connectorId: entry.connectorId,
-                              taskId: task.taskId,
-                              revision: task.revision,
-                              connectionId: entry.connectionId,
-                            })
-                          }
-                        >
-                          Review Calendar grant
-                        </button>
-                      )}
-                      {access
-                        .filter((item) => item.kind === "calendar")
-                        .map((item) => (
-                          <div className="reviewed-connectors-grant" key={item.grantId}>
-                            <span>
-                              Granted to {task?.title} · revision {item.taskRevision}
-                            </span>
-                            <button
-                              {...smallGhostButtonProps}
-                              disabled={busy}
-                              onClick={() =>
-                                setReview({
-                                  kind: "revoke",
-                                  connectorId: entry.connectorId,
-                                  taskId: item.taskId,
-                                  revision: item.taskRevision,
-                                  connectionId: entry.connectionId,
-                                  grantId: item.grantId,
-                                })
-                              }
-                            >
-                              Review revocation
-                            </button>
-                          </div>
-                        ))}
-                      <button {...smallGhostButtonProps} onClick={() => onManage("calendar")}>
-                        Manage Calendar accounts
-                      </button>
-                    </>
-                  )}
-                  {entry.kind === "google" && (
-                    <>
-                      <p {...staticHintProps}>
-                        {entry.accountKey} · {entry.operations.length} available operations
-                      </p>
-                      <p {...staticHintProps}>
-                        Google permissions and saved-task operation grants are separate. Account or task
-                        revisions retire prior access.
-                      </p>
-                      <details>
-                        <summary>Google permissions</summary>
-                        <ul>
-                          {entry.scopes.map((scope) => (
-                            <li key={scope}>{scope.replace("https://www.googleapis.com/auth/", "")}</li>
-                          ))}
-                        </ul>
-                      </details>
-                      {access
-                        .filter((item) => item.kind === "google")
-                        .map((item) => (
-                          <p key={item.grantId}>
-                            {item.operations.join(", ")} · task revision {item.taskRevision}
-                          </p>
-                        ))}
-                      <button {...smallGhostButtonProps} onClick={() => onManage("google")}>
-                        Manage Google permissions and task access
-                      </button>
-                    </>
-                  )}
-                  {entry.kind === "mcp" && (
-                    <>
-                      <p {...staticHintProps}>
-                        Adding an MCP server enables its tools in this Space. Individual tools can be disabled
-                        in Permissions.
-                      </p>
-                      {task &&
-                        access
-                          .filter((item) => item.kind === "mcp")
+          {!loading && !catalog?.entries.length ? (
+            <p className="connection-empty settings-card">
+              {error
+                ? "Connection access could not be loaded. Refresh to try again."
+                : "No connections yet. Connect an account below or add an MCP server in Skills & MCP."}
+            </p>
+          ) : loading ? (
+            <output className="connection-empty hint">Loading connector access…</output>
+          ) : (
+            <div className="reviewed-connectors-layout settings-card">
+              <aside className="reviewed-connectors-list" aria-label="Reviewed connections">
+                {catalog?.entries.map((item) => (
+                  <button
+                    key={item.connectorId}
+                    {...auxNativeButtonTypeProps}
+                    aria-current={selectedId === item.connectorId ? "true" : undefined}
+                    onClick={() => {
+                      setSelectedId(item.connectorId);
+                      setReview(null);
+                    }}
+                  >
+                    <span className="reviewed-connectors-name">{item.label}</span>
+                    <span className="reviewed-connectors-sub">
+                      {item.kind === "mcp"
+                        ? "MCP server"
+                        : item.kind === "google"
+                          ? "Google account"
+                          : item.kind === "x"
+                            ? "X account"
+                            : "Calendar account"}{" "}
+                      · {stateLabel(item)}
+                    </span>
+                  </button>
+                ))}
+              </aside>
+              <div className="reviewed-connectors-detail" {...nativePoliteLiveProps}>
+                {!entry && <p {...staticHintProps}>Choose a connection to review.</p>}
+                {entry && (
+                  <>
+                    <div className="reviewed-connectors-heading">
+                      <strong>{entry.label}</strong>
+                      <span className="reviewed-connectors-state">{stateLabel(entry)}</span>
+                    </div>
+                    {entry.kind === "calendar" && (
+                      <>
+                        <p {...staticHintProps}>Google Calendar · {entry.accountKey} · read-only events</p>
+                        <p {...staticHintProps}>
+                          Task access requires an explicit account grant for this task revision. Events read
+                          during a task may be sent to its selected AI model.
+                        </p>
+                        {task && access.length === 0 && entry.state === "active" && (
+                          <button
+                            className="btn"
+                            disabled={busy}
+                            onClick={() =>
+                              setReview({
+                                kind: "grant",
+                                connectorId: entry.connectorId,
+                                taskId: task.taskId,
+                                revision: task.revision,
+                                connectionId: entry.connectionId,
+                              })
+                            }
+                          >
+                            Review Calendar grant
+                          </button>
+                        )}
+                        {access
+                          .filter((item) => item.kind === "calendar")
                           .map((item) => (
-                            <div
-                              className="reviewed-connectors-grant"
-                              key={`${item.connectorId}:${item.toolName}`}
-                            >
+                            <div className="reviewed-connectors-grant" key={item.grantId}>
                               <span>
-                                {item.toolName} · enabled · tools revision {item.toolsRevision}
+                                Granted to {task?.title} · revision {item.taskRevision}
                               </span>
+                              <button
+                                className="btn ghost"
+                                disabled={busy}
+                                onClick={() =>
+                                  setReview({
+                                    kind: "revoke",
+                                    connectorId: entry.connectorId,
+                                    taskId: item.taskId,
+                                    revision: item.taskRevision,
+                                    connectionId: entry.connectionId,
+                                    grantId: item.grantId,
+                                  })
+                                }
+                              >
+                                Review revocation
+                              </button>
                             </div>
                           ))}
-                      <button {...smallGhostButtonProps} onClick={() => onManage("mcp")}>
-                        Manage server and tools
-                      </button>
-                    </>
-                  )}
-                  {task && !access.length && (
-                    <p className="hint reviewed-connectors-empty">No access for this task revision.</p>
-                  )}
-                  {!task && (
-                    <p className="hint reviewed-connectors-empty">
-                      Select a saved task to review its effective access.
-                    </p>
-                  )}
-                </>
-              )}
+                        <button className="btn ghost" onClick={() => onManage("calendar")}>
+                          Manage Calendar accounts
+                        </button>
+                      </>
+                    )}
+                    {entry.kind === "x" && (
+                      <>
+                        <p {...staticHintProps}>
+                          {`@${entry.username}`} · {entry.operations.length} available operations
+                        </p>
+                        <p {...staticHintProps}>
+                          X permissions and saved-task operation grants are separate. Account or task
+                          revisions retire prior access.
+                        </p>
+                        <details>
+                          <summary>X permissions</summary>
+                          <ul>
+                            {entry.scopes.map((scope) => (
+                              <li key={scope}>{scope}</li>
+                            ))}
+                          </ul>
+                        </details>
+                        {access
+                          .filter((item) => item.kind === "x")
+                          .map((item) => (
+                            <p key={item.grantId}>
+                              {item.operations.join(", ")} · task revision {item.taskRevision}
+                            </p>
+                          ))}
+                        <button className="btn ghost" onClick={() => onManage("x")}>
+                          Manage X permissions and task access
+                        </button>
+                      </>
+                    )}
+                    {entry.kind === "google" && (
+                      <>
+                        <p {...staticHintProps}>
+                          {entry.accountKey} · {entry.operations.length} available operations
+                        </p>
+                        <p {...staticHintProps}>
+                          Google permissions and saved-task operation grants are separate. Account or task
+                          revisions retire prior access.
+                        </p>
+                        <details>
+                          <summary>Google permissions</summary>
+                          <ul>
+                            {entry.scopes.map((scope) => (
+                              <li key={scope}>{scope.replace("https://www.googleapis.com/auth/", "")}</li>
+                            ))}
+                          </ul>
+                        </details>
+                        {access
+                          .filter((item) => item.kind === "google")
+                          .map((item) => (
+                            <p key={item.grantId}>
+                              {item.operations.join(", ")} · task revision {item.taskRevision}
+                            </p>
+                          ))}
+                        <button className="btn ghost" onClick={() => onManage("google")}>
+                          Manage Google permissions and task access
+                        </button>
+                      </>
+                    )}
+                    {entry.kind === "mcp" && (
+                      <>
+                        <p {...staticHintProps}>
+                          Adding an MCP server enables its tools in this Space. Individual tools can be
+                          disabled in Permissions.
+                        </p>
+                        {task &&
+                          access
+                            .filter((item) => item.kind === "mcp")
+                            .map((item) => (
+                              <div
+                                className="reviewed-connectors-grant"
+                                key={`${item.connectorId}:${item.toolName}`}
+                              >
+                                <span>
+                                  {item.toolName} · enabled · tools revision {item.toolsRevision}
+                                </span>
+                              </div>
+                            ))}
+                        <button className="btn ghost" onClick={() => onManage("mcp")}>
+                          Manage server and tools
+                        </button>
+                      </>
+                    )}
+                    {task && !access.length && (
+                      <p className="hint reviewed-connectors-empty">No access for this task revision.</p>
+                    )}
+                    {!task && (
+                      <p className="hint reviewed-connectors-empty">
+                        Select a saved task to review its effective access.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
       {review &&
@@ -405,10 +444,10 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
               )}
             </p>
             <div {...staticRowProps}>
-              <button {...smallButtonProps} disabled={busy} onClick={() => void submit()}>
+              <button className="btn" disabled={busy} onClick={() => void submit()}>
                 {review.kind === "grant" ? "Grant account" : "Revoke grant"}
               </button>
-              <button {...smallGhostButtonProps} disabled={busy} onClick={() => setReview(null)}>
+              <button className="btn ghost" disabled={busy} onClick={() => setReview(null)}>
                 Cancel
               </button>
             </div>

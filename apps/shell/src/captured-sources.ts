@@ -1,4 +1,4 @@
-import { CapturedSourceSelectionSchema, type CapturedSourceSelection } from "@aux/contracts";
+import { CapturedSourceSelectionSchema, type CapturedSourceSelection } from "@aux/contracts/captured-source";
 
 const PREFIX = "aux.captured-sources.v1:";
 type StorageEntries = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;

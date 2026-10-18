@@ -19,6 +19,8 @@ export class ConnectorCatalogService {
       tasks: TaskService;
       settings: SettingsService;
       calendar?: CalendarConnectionService;
+      xAccounts?: import("./x-accounts.js").XAccountService;
+      xGrants?: import("./x-grants.js").XGrantService;
       googleAccounts?: import("./google-accounts.js").GoogleAccountService;
       googleGrants?: import("./google-grants.js").GoogleGrantService;
       mcp: OutboundMcpService;
@@ -46,7 +48,14 @@ export class ConnectorCatalogService {
         .connections.filter((account) =>
           account.scopes.some((scope) => !scope.endsWith("calendar.readonly")),
         ) ?? [];
+    const x = this.deps.xAccounts?.list().connections ?? [];
     const entries = [
+      ...x.map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...account }) => ({
+        ...account,
+        kind: "x" as const,
+        connectorId: `x:${account.connectionId}`,
+        authority: "x_account" as const,
+      })),
       ...google.map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...account }) => ({
         ...account,
         kind: "google" as const,
@@ -90,6 +99,23 @@ export class ConnectorCatalogService {
             taskRevision: task.revision,
             grantId: grant.grantId,
             authority: "calendar_task_grant",
+          });
+      }
+      for (const grant of this.deps.xGrants?.list(task.taskId) ?? []) {
+        const account = x.find(
+          (account) =>
+            account.connectionId === grant.connectionId && account.revision === grant.accountRevision,
+        );
+        const operations = grant.operations.filter((operation) => account?.operations.includes(operation));
+        if (grant.taskRevision === task.revision && operations.length)
+          access.push({
+            kind: "x",
+            connectorId: `x:${grant.connectionId}`,
+            taskId: task.taskId,
+            taskRevision: task.revision,
+            grantId: grant.grantId,
+            operations,
+            authority: "x_task_grant",
           });
       }
       for (const grant of this.deps.googleGrants?.list(task.taskId) ?? []) {

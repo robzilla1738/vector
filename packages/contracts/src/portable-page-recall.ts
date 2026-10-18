@@ -8,6 +8,8 @@ type RecallConfig = {
   contextMemoryIds?: string[];
   contextMemoryRefs?: { memoryId: string }[];
   contextMemoryRevoked?: boolean;
+  desktopContextRetired?: boolean;
+  desktopContextQuotes?: unknown[];
   contextRunIds?: string[];
   contextArtifactIds?: string[];
   contextSourceArtifactIds?: string[];
@@ -74,6 +76,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
     ...config,
     contextMemoryRevoked: true,
     contextMemoryRefs: undefined,
+    desktopContextQuotes: undefined,
     context: undefined,
     revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined,
@@ -168,8 +171,12 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
           "spans",
           "response_metadata",
         ])
-          if (has(table)) db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
-        redactSettledRunInvocations(db, row.runId);
+          if (
+            has(table) &&
+            !(row.config.desktopContextRetired && (table === "model_calls" || table === "steps"))
+          )
+            db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
+        if (!row.config.desktopContextRetired) redactSettledRunInvocations(db, row.runId);
         db.prepare(
           "UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?",
         ).run(
@@ -177,9 +184,18 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             "runs",
             row.runId,
             "status_message",
-            "Saved article unavailable after restore — generated answer removed",
+            row.config.desktopContextRetired
+              ? "Desktop source retired — generated answer removed"
+              : "Saved article unavailable after restore — generated answer removed",
           ),
-          sealed("runs", row.runId, "error", "Protected article context is not portable."),
+          sealed(
+            "runs",
+            row.runId,
+            "error",
+            row.config.desktopContextRetired
+              ? "Desktop source retired; durable effects and invoices are preserved."
+              : "Protected article context is not portable.",
+          ),
           sealed("runs", row.runId, "config", JSON.stringify(redactedPageRecallConfig(row.config, owned))),
           row.runId,
         );
@@ -199,7 +215,8 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             : "owner_kind='conversation' AND owner_id=? AND document_id=?";
         const params = attachmentId === undefined ? [chatId] : [chatId, attachmentId];
         // Portable copies can have foreign_keys disabled; remove protected children explicitly.
-        if (has("document_source_chunks")) db.prepare(`DELETE FROM document_source_chunks WHERE ${clause}`).run(...params);
+        if (has("document_source_chunks"))
+          db.prepare(`DELETE FROM document_source_chunks WHERE ${clause}`).run(...params);
         db.prepare(`DELETE FROM document_segments WHERE ${clause}`).run(...params);
         db.prepare(`DELETE FROM document_snapshots WHERE ${clause}`).run(...params);
       };

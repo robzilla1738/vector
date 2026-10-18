@@ -410,3 +410,71 @@ it("preserves typed address selection when native focus acknowledges late", asyn
   expect(input.selectionStart).toBe(5);
   expect(input.selectionEnd).toBe(5);
 });
+
+it("reclaims only the same address request after native root focus settles, without reselecting typed text", async () => {
+  let acknowledge!: () => void;
+  vi.mocked(bridge.focusShell).mockImplementation(
+    () =>
+      new Promise<undefined>((resolve) => {
+        acknowledge = () => resolve(undefined);
+      }),
+  );
+  await render(false);
+  await act(async () => useStore.getState().focusCommandBar("toolbar"));
+  const input = host.querySelector<HTMLInputElement>(".cmdbar input")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+      input,
+      "https://typed.test/path",
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  input.setSelectionRange(9, 9);
+  await act(async () => {
+    input.blur();
+    acknowledge();
+  });
+  expect(document.activeElement).toBe(input);
+  expect(input.value).toBe("https://typed.test/path");
+  expect(input.selectionStart).toBe(9);
+  expect(input.selectionEnd).toBe(9);
+});
+
+it("does not reclaim address focus after the person chose another control, even if it disappears", async () => {
+  let acknowledge!: () => void;
+  vi.mocked(bridge.focusShell).mockImplementation(
+    () =>
+      new Promise<undefined>((resolve) => {
+        acknowledge = () => resolve(undefined);
+      }),
+  );
+  await render(false);
+  await act(async () => useStore.getState().focusCommandBar("toolbar"));
+  const other = document.createElement("button");
+  document.body.append(other);
+  await act(async () => {
+    other.focus();
+    other.remove();
+    acknowledge();
+  });
+  expect(document.activeElement).not.toBe(host.querySelector(".cmdbar input"));
+});
+
+it("cannot reclaim focus after a newer page activation retires the original address request", async () => {
+  let acknowledge!: () => void;
+  vi.mocked(bridge.focusShell).mockImplementation(
+    () =>
+      new Promise<undefined>((resolve) => {
+        acknowledge = () => resolve(undefined);
+      }),
+  );
+  await render(false);
+  await act(async () => useStore.getState().focusCommandBar("toolbar"));
+  const input = host.querySelector<HTMLInputElement>(".cmdbar input")!;
+  await act(async () => {
+    input.blur();
+    useStore.setState({ activePageId: "newly-selected-page" });
+    acknowledge();
+  });
+  expect(document.activeElement).not.toBe(input);
+});

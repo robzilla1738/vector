@@ -1,3 +1,9 @@
+import { DesktopContextRunSources } from "./services/desktop-context-run-sources.js";
+import { XAccountService } from "./services/x-accounts.js";
+import { XAccountRecords } from "./services/x-store.js";
+import { XGrantService } from "./services/x-grants.js";
+import { XOperationService } from "./services/x-operations.js";
+import { xAuthorizer } from "./services/x-governance.js";
 import { GoogleAccountService } from "./services/google-accounts.js";
 import { GoogleGrantService } from "./services/google-grants.js";
 import { GoogleOperationService } from "./services/google-operations.js";
@@ -322,6 +328,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let nativeSpaceBindings: Promise<(() => Promise<void>) | undefined> | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
+    desktopContextSources?: DesktopContextRunSources;
     workspaceFolders: WorkspaceFolderService;
     filesystem: FilesystemAccessService;
     coderWorktrees: CoderWorktreeOperations;
@@ -351,6 +358,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     outboundMcp: OutboundMcpService;
     hooks: HookService;
     calendar: CalendarConnectionService;
+    xAccounts: XAccountService;
+    xGrants: XGrantService;
+    x: XOperationService;
     googleAccounts: GoogleAccountService;
     googleGrants: GoogleGrantService;
     google: GoogleOperationService;
@@ -499,13 +509,27 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
                   ?.excludedOrigins ?? [];
               return !excluded.includes(new URL(capture.documentUrl).origin);
             },
-            beforeRemoval: async () => {
+            beforeChange: (scope) => runtimeServices.runs.retireDesktopContext(scope, true).then(() => {}),
+            beforeRemoval: async (scope) => {
               advanceManagedRecoveryGeneration(config.dataDir);
+              await runtimeServices.runs.retireDesktopContext(scope);
               await runtimeServices.contentMemory?.invalidateDerivatives();
             },
             changed: () => events.emit("settings.changed", {}),
           })
         : undefined,
+    desktopContextSources: () => {
+      const service = runtimeServices.desktopContext;
+      return service
+        ? new DesktopContextRunSources({
+            repo,
+            service,
+            privateProfile: !!privateSession,
+            turnSourceContext: native.turnSourceContext?.bind(native),
+            protect: (runId, text) => browserEgress?.protect(runId, text, "memory"),
+          })
+        : undefined;
+    },
     memoryPipeline: () =>
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new MemoryPipeline(
@@ -806,6 +830,33 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             : {}),
         },
       }),
+    xAccounts: () =>
+      new XAccountService({
+        records: new XAccountRecords(repo),
+        native,
+        clientId: privateSession ? undefined : env.AUX_X_CLIENT_ID,
+        redirectUri: privateSession ? undefined : env.AUX_X_REDIRECT_URI,
+        profileId: env.AUX_BROWSER_PROFILE_ID,
+        onChange: () => events.emit("settings.changed", { category: "x" }),
+      }),
+    xGrants: () => new XGrantService(repo, runtimeServices.xAccounts),
+    x: () =>
+      new XOperationService({
+        repo,
+        accounts: runtimeServices.xAccounts,
+        grants: runtimeServices.xGrants,
+        writes: runtimeServices.durableWrites,
+        authorize: xAuthorizer({
+          repo,
+          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+          privateProfile: !!privateSession,
+          closed: () => closed,
+          grants: runtimeServices.xGrants,
+          gate: runtimeServices.safetyGate,
+          decide: (request, options) =>
+            decide(request, decideDeps, { phase: "dispatch", runId: request.runId, ...options }),
+        }),
+      }),
     googleAccounts: () =>
       new GoogleAccountService({
         repo,
@@ -907,6 +958,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         calendar: runtimeServices.calendar,
         googleAccounts: runtimeServices.googleAccounts,
         googleGrants: runtimeServices.googleGrants,
+        xAccounts: runtimeServices.xAccounts,
+        xGrants: runtimeServices.xGrants,
         mcp: runtimeServices.outboundMcp,
       }),
     turnMentions: () =>
@@ -955,6 +1008,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     runs: () => {
       const runs = new RunService({
         documentSnapshots: runtimeServices.documentSnapshots,
+        desktopContextSources: runtimeServices.desktopContextSources,
         privateBrowserProfile: !!privateSession,
         resolveCodingContext: async (input) => {
           const roots = input.workspaceId
@@ -989,6 +1043,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         tracer: runtimeServices.tracer,
         vault: runtimeServices.vault,
         calendar: runtimeServices.calendar,
+        x: runtimeServices.x,
+        xGrants: runtimeServices.xGrants,
+        xAccounts: runtimeServices.xAccounts,
         google: runtimeServices.google,
         googleGrants: runtimeServices.googleGrants,
         googleAccounts: runtimeServices.googleAccounts,
@@ -2191,6 +2248,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return runtimeServices.codingProcesses;
     },
     authorizeModelDestination: async (runId, destination) => {
+      const controller = runtimeServices.runs.coordinator.controls.get(runId);
+      if (!controller) throw new AuxError("cancelled", "The original model run retired.");
+      const desktopOwner = {
+        runId,
+        signal: controller.abort.signal,
+        checkOwner: () => {
+          if (runtimeServices.runs.coordinator.controls.get(runId) !== controller || controller.paused)
+            throw new AuxError("cancelled", "The original desktop model owner changed.");
+        },
+      };
+      await runtimeServices.desktopContextSources?.validate(desktopOwner);
       const original = repo.getRun(runId);
       if (!original || original.status !== "running" || !original.config?.nativeTurnContext)
         throw new AuxError("cancelled", "The original model run or window retired.");
@@ -2249,6 +2317,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         configuredModelDestination: destination,
         checkOwner,
       });
+      await runtimeServices.desktopContextSources?.validate(desktopOwner);
       checkOwner();
     },
     prepareWaitingPhrase: (input) =>
@@ -2302,6 +2371,29 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         },
       }),
     pdfReady: () => native.available() && audioInspectionReady,
+    desktopContextSearch: async (input, owner) => {
+      const service = runtimeServices.desktopContextSources;
+      if (!service)
+        throw new AuxError(
+          "capability_unsupported",
+          "Desktop context requires the normal native Aux Profile.",
+        );
+      return service.search(input, owner);
+    },
+    desktopContextRead: async (input, owner) => {
+      const service = runtimeServices.desktopContextSources;
+      if (!service)
+        throw new AuxError(
+          "capability_unsupported",
+          "Desktop context requires the normal native Aux Profile.",
+        );
+      return service.read(input, owner);
+    },
+    desktopContextValidate: async (owner) => {
+      await runtimeServices.desktopContextSources?.validate(owner);
+    },
+    desktopContextProject: async (messages, budget, owner) =>
+      runtimeServices.desktopContextSources?.project(messages, budget, owner) ?? messages,
     pdfSources: (input) =>
       runtimeServices.runs.pdfOperation(input, (run, signal, checkCurrent) =>
         listPdfSources(
@@ -3965,6 +4057,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           await nativeCdp?.close();
         },
       },
+      { stage: "x-operations", run: () => serviceContainer.peek("x")?.close() },
+      { stage: "x-accounts", run: () => serviceContainer.peek("xAccounts")?.close() },
       { stage: "google-operations", run: () => serviceContainer.peek("google")?.close() },
       { stage: "calendar", run: () => serviceContainer.peek("calendar")?.close() },
       { stage: "google-accounts", run: () => serviceContainer.peek("googleAccounts")?.close() },

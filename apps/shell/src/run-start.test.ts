@@ -36,7 +36,7 @@ it("starts a page-free chat without opening a tab or displacing newer navigation
     modelId: "fixture/exact",
     reasoning: "high",
   });
-  await Promise.resolve();
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   expect(open).not.toHaveBeenCalled();
   expect(bridge.invoke).toHaveBeenCalledWith(
     "runs.start",
@@ -118,7 +118,7 @@ it("conversation deletion scrubs a pending request and a late reply cannot reope
   const pending = useStore
     .getState()
     .startRun("Deleted message sentinel", { chatId, scope: "new", ownsDraft: true });
-  await Promise.resolve();
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   useStore.getState().applyEvent({
     type: "conversation.deleted",
     payload: { chatId },
@@ -157,4 +157,28 @@ it("sends from a fresh native Space without borrowing the previous workspace whi
   expect(method).toBe("runs.start");
   expect((request as { defaultWorkspaceId?: string }).defaultWorkspaceId).toBeUndefined();
   expect(request).toMatchObject({ goal: "A new question", chatId, pageIds: [] });
+});
+
+it("recovery cannot reclaim navigation taken while its schema validator is loading", async () => {
+  const chatId = crypto.randomUUID(),
+    accepted = makeRun({ runId: "recovered-background", config: { chatId } });
+  const invoke = vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Lost acknowledgement"));
+  const reveal = vi.fn();
+  useStore.setState({
+    settings: { modelConfigured: true },
+    mode: "conversation",
+    conversationId: chatId,
+    openConversation: reveal,
+    conversationDrafts: {},
+  });
+  await expect(
+    useStore.getState().startRun("Original", { chatId, scope: "new", ownsDraft: true }),
+  ).rejects.toThrow("Lost acknowledgement");
+  invoke.mockReset().mockResolvedValue({ status: "accepted", run: accepted });
+  const recovering = useStore.getState().recoverRunStart(chatId);
+  useStore.setState({ mode: "focus", conversationId: null, activePageId: "newly-selected-page" });
+  await recovering;
+  expect(reveal).not.toHaveBeenCalled();
+  expect(useStore.getState().activePageId).toBe("newly-selected-page");
+  expect(useStore.getState().runs).toContain(accepted);
 });

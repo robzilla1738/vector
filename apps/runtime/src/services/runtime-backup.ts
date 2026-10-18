@@ -43,6 +43,7 @@ import {
   documentTablesForDatabase,
   desktopTablesForDatabase,
   googleTablesForDatabase,
+  xTablesForDatabase,
   channelTablesForDatabase,
   discardIncompleteDocumentSnapshots,
 } from "../store/db.js";
@@ -186,7 +187,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (![2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION].includes(version))
+    if (![2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION].includes(version))
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||
@@ -213,6 +214,7 @@ function validateDatabase(path: string) {
     channelTablesForDatabase(db);
     desktopTablesForDatabase(db);
     googleTablesForDatabase(db);
+    xTablesForDatabase(db);
     return version;
   } finally {
     db.close();

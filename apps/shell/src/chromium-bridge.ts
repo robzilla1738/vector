@@ -1,23 +1,8 @@
-import {
-  isNativeBookmarkMethod,
-  BookmarkMethodSchemas,
-  NativeBookmarkRequestSchema,
-  NativeBookmarkResultSchema,
-  BookmarkResultSchemas,
-} from "@aux/contracts/bookmark-methods";
-import {
-  isNativeHistoryMethod,
-  HistoryMethodSchemas,
-  HistoryResultSchemas,
-  NativeHistoryRequestSchema,
-  NativeHistoryResultSchema,
-} from "@aux/contracts/history-methods";
 import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
 import type { AuxBridge } from "./bridge";
 import { requireAuxMethod } from "@aux/contracts/method-feature";
 import type { AuxFeatureOverrides } from "@aux/contracts/aux-features";
 import type { MethodName, MethodResult, RpcArgs } from "@aux/contracts/api";
-import { DownloadsRemoveParams } from "@aux/contracts/downloads";
 import { installNativeDownloadCollection } from "./downloads";
 import { createHostClient, type HostValidation } from "./host/client.generated";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
@@ -139,35 +124,58 @@ export function installChromiumBridge(
             (tab) => tab.windowId === window.windowId && !tab.popup && !tab.runtimeOwned,
           );
           const active = tabs.find((tab) => tab.pageId === window.activePageId) ?? tabs[0];
-          return { id: window.windowId, title: active?.title || "Aux", tabCount: tabs.length };
+          return {
+            id: window.windowId,
+            title: active?.title || "Aux",
+            tabCount: tabs.length,
+          };
         });
     },
     invoke: async <M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>> => {
       requireAuxMethod(method, "chromium-fork", chromiumFeatureStages(target));
-      if (isNativeBookmarkMethod(method)) {
-        const request = NativeBookmarkRequestSchema.parse({
-          method,
-          params: BookmarkMethodSchemas[method].parse(params[0] ?? {}),
-        });
-        const response = NativeBookmarkResultSchema.parse(await port.request("bookmarksInvoke", [request]));
-        if (response.method !== method)
-          throw new Error("Native bookmark response does not match its request.");
-        return BookmarkResultSchemas[method].parse(response.result) as MethodResult<M>;
+      if (method.startsWith("bookmarks.")) {
+        const {
+          isNativeBookmarkMethod,
+          BookmarkMethodSchemas,
+          NativeBookmarkRequestSchema,
+          NativeBookmarkResultSchema,
+          BookmarkResultSchemas,
+        } = await import("@aux/contracts/bookmark-methods");
+        if (isNativeBookmarkMethod(method)) {
+          const request = NativeBookmarkRequestSchema.parse({
+            method,
+            params: BookmarkMethodSchemas[method].parse(params[0] ?? {}),
+          });
+          const response = NativeBookmarkResultSchema.parse(await port.request("bookmarksInvoke", [request]));
+          if (response.method !== method)
+            throw new Error("Native bookmark response does not match its request.");
+          return BookmarkResultSchemas[method].parse(response.result) as MethodResult<M>;
+        }
       }
       if (method === "downloads.list") return downloadsSnapshot() as Promise<MethodResult<M>>;
       if (method === "downloads.remove") {
+        const { DownloadsRemoveParams } = await import("@aux/contracts/downloads");
         const { ids } = DownloadsRemoveParams.parse(params[0]);
         return dismissDownloads(ids) as Promise<MethodResult<M>>;
       }
-      if (isNativeHistoryMethod(method)) {
-        const request = NativeHistoryRequestSchema.parse({
-          method,
-          params: HistoryMethodSchemas[method].parse(params[0] ?? {}),
-        });
-        const response = NativeHistoryResultSchema.parse(await port.request("historyInvoke", [request]));
-        if (response.method !== method)
-          throw new Error("Native history response does not match its request.");
-        return HistoryResultSchemas[method].parse(response.result) as MethodResult<M>;
+      if (method.startsWith("history.")) {
+        const {
+          isNativeHistoryMethod,
+          HistoryMethodSchemas,
+          HistoryResultSchemas,
+          NativeHistoryRequestSchema,
+          NativeHistoryResultSchema,
+        } = await import("@aux/contracts/history-methods");
+        if (isNativeHistoryMethod(method)) {
+          const request = NativeHistoryRequestSchema.parse({
+            method,
+            params: HistoryMethodSchemas[method].parse(params[0] ?? {}),
+          });
+          const response = NativeHistoryResultSchema.parse(await port.request("historyInvoke", [request]));
+          if (response.method !== method)
+            throw new Error("Native history response does not match its request.");
+          return HistoryResultSchemas[method].parse(response.result) as MethodResult<M>;
+        }
       }
       // The browser forwards this name to the runtime as the signed-in desktop user.
       return port.request("invoke", [method, params[0] ?? {}]) as Promise<MethodResult<M>>;

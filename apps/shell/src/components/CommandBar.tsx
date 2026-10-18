@@ -342,9 +342,63 @@ export function CommandBar({
     if (!focusRequest || focusSlot !== slot) return;
     const el = inputRef.current;
     if (!el) return;
+    const original = useStore.getState();
+    const windowId = bridge.windowId;
+    let owned = true;
+    const current = () => {
+      const state = useStore.getState();
+      return (
+        owned &&
+        inputRef.current === el &&
+        el.isConnected &&
+        bridge.windowId === windowId &&
+        state.focusRequest === focusRequest &&
+        state.focusSlot === focusSlot &&
+        state.activePageId === original.activePageId &&
+        state.mode === original.mode &&
+        state.overlay === original.overlay
+      );
+    };
+    const retire = () => {
+      owned = false;
+      document.removeEventListener("pointerdown", moved, true);
+      document.removeEventListener("focusin", moved, true);
+      document.removeEventListener("keydown", navigated, true);
+    };
+    const moved = (event: Event) => {
+      if (
+        event.target !== el &&
+        !(
+          event.type === "focusin" &&
+          (event.target === document.body || event.target === document.documentElement)
+        )
+      )
+        retire();
+    };
+    const navigated = (event: KeyboardEvent) => {
+      if (event.key === "Tab" || event.key === "Escape") retire();
+    };
     el.focus();
     el.select();
-    void bridge.focusShell().catch(errToast);
+    document.addEventListener("pointerdown", moved, true);
+    document.addEventListener("focusin", moved, true);
+    document.addEventListener("keydown", navigated, true);
+    void bridge
+      .focusShell()
+      .then(() => {
+        // Native parent-frame focus may settle after the initial DOM focus.
+        // Reclaim only this request, preserving any text and caret typed meanwhile.
+        if (
+          current() &&
+          [el, document.body, document.documentElement].includes(document.activeElement as HTMLElement)
+        )
+          el.focus({ preventScroll: true });
+      })
+      .catch((error) => {
+        if (current()) errToast(error);
+      })
+      .finally(retire);
+    return retire;
   }, [focusRequest, focusSlot, slot]);
 
   // The first native catalog adopts this window’s tab after the field mounts.

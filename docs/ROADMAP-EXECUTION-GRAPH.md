@@ -45,21 +45,25 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 
 ### Current reservations and integration
 
-One integrator owns coordinated main/contracts/migrations, the single native
-source/patch/builder/launcher, current evidence and local commits. Current isolated
-lanes complete X public-PKCE accounts/scoped governed operations, original-source
-desktop model admission/Forget retirement, and DOM-only LinkedIn research plus
-sealed workflows delegated to existing governed actions. Google/MCP/Gateway search,
-voice, idle compaction/background Memory, PDF original admission and UI artwork
-are merged in working source and undergoing the integrated check/native build.
+One integrator owns main/contracts/migrations, the single native source/patch/
+builder/launcher, evidence and local commits. X public-PKCE/scoped REST, original
+source desktop model admission/retirement, DOM-only LinkedIn research, startup
+schema narrowing, Memory/archive and connected-service UI are integrated in the
+current follow-on source. Optional-tool publication and saved-context schema-byte
+accounting are being verified. Isolated work completes typed LinkedIn native
+recipient/editor proof and remaining Settings geometry. Account setup remains
+explicit per the owner's decision; adapters use fixtures until registrations exist.
 
-Foundation7806e41fc and capability07199225f have limited155 native observations.
-The original-window routing omission now has generated ownership and source
-checks; its changed native controls still need observation. Source presence,
-compiled native objects and observed current app behavior remain separate.
-Matching155stock performance requires a newly built stock app; the historical154
-comparison cannot close it. Current all-state UI/browser acceptance, provider
-smoke and the earlier155SIGTRAP remain open. See STATUS for exact evidence.
+Foundation7806e41fc, capability07199225f and owned-services34117c740 have limited
+155 native observations. In34117, Memory owner-document Create/Save succeeds at
+1712×989 logical dimensions; off-by-default Desktop Context and unconfigured
+connection controls were inspected. Runtime-paused browsing works, while Cmd-L,
+stall presentation and native Tab Search exposed concrete remaining work.
+Area0065 liveness/Tab Search source is proven and compiling. Native all-state
+appearance, crash acceptance and the new source's changed flows remain open.
+Matching155 stock requires its full compile; no paired timing result exists.
+Source, compiled objects, observed current behavior and accepted outcomes stay
+separate. See STATUS for exact evidence and normal preview retirement.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

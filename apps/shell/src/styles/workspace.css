@@ -970,23 +970,6 @@
   :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tab.empty {
     background: var(--sb-selected);
   }
-  .chat-sidebar-toggle {
-    position: absolute;
-    z-index: var(--z-panel);
-    top: var(--space-1-5);
-    left: var(--space-1-5);
-    color: var(--ink-2);
-    background: transparent;
-    -webkit-app-region: no-drag;
-  }
-  .chat-sidebar-toggle:hover {
-    background: var(--bg-hover);
-  }
-  .chat-sidebar-toggle:focus-visible {
-    box-shadow:
-      0 0 0 2px var(--focus-ring),
-      var(--shadow-card);
-  }
   @media (max-width: 1150px) {
     .home-mode > span {
       display: none;
@@ -1431,29 +1414,9 @@
     opacity: 1;
     background: var(--bg-hover);
   }
-  .history-menu {
+  .history-actions-menu {
+    min-width: 180px;
     width: 180px;
-    padding: 5px;
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-lg);
-    background: var(--bg-2);
-    box-shadow: var(--shadow-md);
-  }
-  .history-menu > button {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-2) 9px;
-    border-radius: var(--r-md);
-    text-align: left;
-    font-size: var(--fs-xs);
-  }
-  .history-menu > button:hover {
-    background: var(--bg-hover);
-  }
-  .history-menu .danger {
-    color: var(--err);
   }
   .history-delete-confirm {
     padding: var(--space-2);
@@ -2428,11 +2391,5 @@
   .http-auth-origin {
     overflow-wrap: anywhere;
     font-weight: var(--fw-medium);
-  }
-}
-
-@layer components {
-  .app .horizontal-chrome:not(:has(> .chat-sidebar-toggle)) .horizontal-tabs-row {
-    padding-left: var(--traffic-inset);
   }
 }
