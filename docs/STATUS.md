@@ -82,8 +82,15 @@ or moving anchors. Left/chat/right sidebar widths and page spacers share the200m
 layout timing; disclosure and hover timings use shared tokens. Direct resizing
 stays immediate and reduced motion disables layout/reveal transitions.
 
-The integrated document/material check and two updated assertion reruns are
-recorded below. Renderer build passed; raw CSS colors outside tokens remain0.
+A final override pass removed the sidebar-address and Settings model-picker
+rules that disabled blur, along with separate tab-switcher/omnibox recipes.
+The narrow right-rail overlay uses the shared material; docked rails retain native
+window glass. The interrupted candidate builder12589 retired before native
+compilation so this complete source can be frozen for one build.
+
+The final integrated `npm run check` passed typecheck, lint and all4,784tests/
+762files in91.75s (`/tmp/aux-final-popup-overrides-check.log`), including the
+corrected debugger setting. Raw CSS colors outside tokens remain0.
 The contrast check now evaluates actual popup material instead of a removed CSS
 navigation tint (native navigation glass belongs to the OS). Secondary popup text
 passes4.5:1 over both black/white underlays in both themes: minimum4.69:1
@@ -109,10 +116,9 @@ Site/routine documents, file diffs and Dream remain open.
 Runtime dist and renderer typecheck passed. The62focused document/authority/
 context/paste/task/recovery tests passed in6.28s
 (`/tmp/aux-owner-memory-focused.log`). The integrated combined document/material
-check passed typecheck/lint and4,782of4,784tests/762files in102.27s; two existing CSS
-recipe assertions needed the new shared material/entrance names. Those two passed
-alone after updating the expectations (`/tmp/aux-popup-chrome-check-retry.log`).
-Renderer build passed. Native document acceptance remains open.
+check initially passed4,782of4,784tests; two old CSS recipe assertions were updated
+and passed alone. The final integrated check passed all4,784tests/762files in91.75s
+(`/tmp/aux-final-popup-overrides-check.log`). Native document acceptance remains open.
 
 ## Channels — integrated transport, task and Settings source
 

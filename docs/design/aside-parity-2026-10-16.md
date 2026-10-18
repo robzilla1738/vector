@@ -2880,3 +2880,9 @@ rerun alone. Renderer build and the actual popup contrast computation pass;
 raw CSS colors outside tokens remain0. The current desktop-control pipe is
 unavailable, so matched native popup/sidebar light/dark/narrow acceptance remains
 open. No full parity claim follows from source changes.
+
+The final override pass removed the sidebar address/Settings model-picker blur
+suppression and separate tab-switcher/omnibox recipes. Narrow right rails share
+popup material; docked rails expose the native window glass. The final integrated
+check passed all4,784tests/762files in91.75s. Latest-source native build and matched
+visual acceptance remain pending.
