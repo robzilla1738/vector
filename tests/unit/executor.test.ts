@@ -116,7 +116,7 @@ describe("executeProgram", () => {
       {
         navigateAndReadmit: async () => {
           old.page.isAttached = () => false;
-          return next.page;
+          return { driver: next.page };
         },
       },
     );
@@ -145,7 +145,7 @@ describe("executeProgram", () => {
         {
           navigateAndReadmit: async () => {
             starts++;
-            return kind === "same" ? old.page : next.page;
+            return { driver: kind === "same" ? old.page : next.page };
           },
         },
       );
@@ -154,6 +154,142 @@ describe("executeProgram", () => {
       expect(starts).toBe(1);
       expect(old.calls).toEqual([]);
       expect(next.calls).toEqual([]);
+    },
+  );
+
+  it("uses the exact native artifact for expectDownload without arming a time-first waiter", async () => {
+    const f = fakePage();
+    f.page.waitForDownload = async () => {
+      throw new Error("Generic time-first waiter must not run");
+    };
+    const result = await executeProgram(
+      f.page,
+      {
+        pageId: "p1",
+        steps: [
+          { id: "expect", op: "expectDownload" },
+          { id: "download", op: "navigate", url: "https://x.test/export.csv" },
+        ],
+      },
+      {
+        navigateAndReadmit: async () => ({
+          driver: f.page,
+          download: {
+            downloadId: "native-guid",
+            artifactId: "artifact-exact",
+            suggestedFilename: "export.csv",
+          },
+        }),
+      },
+    );
+    expect(result.status).toBe("completed");
+    expect(result.steps[0]?.artifactIds).toEqual(["artifact-exact"]);
+    expect(result.steps.find((step) => step.stepId === "download")).toMatchObject({
+      effect: "observed",
+      artifactIds: ["artifact-exact"],
+    });
+    expect(result.steps.find((step) => step.stepId === "expect")).toMatchObject({
+      status: "ok",
+      extracted: { artifactId: "artifact-exact", filename: "export.csv" },
+    });
+  });
+  it("refuses native expectDownload when its governed click has no exact receipt", async () => {
+    const f = fakePage();
+    f.page.waitForDownload = async () => ({ suggestedFilename: "unrelated.csv", path: "/unrelated" });
+    const result = await executeProgram(
+      f.page,
+      {
+        pageId: "p1",
+        steps: [
+          { id: "expect", op: "expectDownload" },
+          { id: "click", op: "click", target: "r1" },
+        ],
+      },
+      {
+        inputAndReadmit: async (_step, dispatch) => ({
+          driver: f.page,
+          value: await dispatch(new AbortController().signal),
+        }),
+      },
+    );
+    expect(result.status).toBe("failed");
+    expect(result.steps.flatMap((step) => step.artifactIds ?? [])).toEqual([]);
+    expect(result.steps.find((step) => step.stepId === "expect")?.error?.code).toBe("capability_unsupported");
+    expect(f.calls).toEqual(["click:r1"]);
+  });
+
+  it.each(["stop", "source"] as const)(
+    "rechecks %s after native input before touching its returned driver",
+    async (kind) => {
+      const f = fakePage(),
+        controller = new AbortController();
+      let current = true,
+        postAdmissionReads = 0;
+      const result = await executeProgram(
+        f.page,
+        { pageId: "p1", steps: [{ id: "click", op: "click", target: "r1" }] },
+        {
+          signal: controller.signal,
+          checkValid: () => {
+            if (!current) throw new AuxError("ref_stale", "Original source changed");
+          },
+          inputAndReadmit: async (_step, dispatch) => {
+            await dispatch(controller.signal);
+            f.page.isAttached = () => {
+              postAdmissionReads++;
+              return true;
+            };
+            if (kind === "stop") controller.abort();
+            else current = false;
+            return { driver: f.page };
+          },
+        },
+      );
+      expect(result.status).toBe(kind === "stop" ? "cancelled" : "failed");
+      expect(result.steps[0]?.error?.code).toBe(kind === "stop" ? "cancelled" : "ref_stale");
+      expect(postAdmissionReads).toBe(0);
+      expect(f.calls).toEqual(["click:r1"]);
+    },
+  );
+
+  it.each(["press", "select", "evaluate"] as const)(
+    "does not borrow a mouse-release continuation for %s navigation",
+    async (op) => {
+      const f = fakePage();
+      let valid = true,
+        dispatched = 0,
+        arms = 0;
+      const effect = async () => {
+        dispatched++;
+        valid = false;
+      };
+      f.page.press = effect;
+      f.page.select = effect;
+      f.page.evaluate = effect;
+      const step =
+        op === "press"
+          ? { id: "unsupported", op, key: "Enter", target: "r1" }
+          : op === "select"
+            ? { id: "unsupported", op, target: "r1", value: "approved" }
+            : { id: "unsupported", op, expression: "document.forms[0].submit()" };
+      const result = await executeProgram(
+        f.page,
+        { pageId: "p1", steps: [step] },
+        {
+          allowEval: true,
+          checkValid: () => {
+            if (!valid) throw new AuxError("ref_stale", "Original document retired");
+          },
+          inputAndReadmit: async () => {
+            arms++;
+            throw new Error("Unexpected mouse continuation");
+          },
+        },
+      );
+      expect(result.status).toBe("failed");
+      expect(result.steps[0]?.error?.code).toBe("ref_stale");
+      expect(dispatched).toBe(1);
+      expect(arms).toBe(0);
     },
   );
 

@@ -29,6 +29,7 @@ export const HostCapabilitiesSchema = z
     buildId: str,
     sourceCommit: str.regex(/^[a-f0-9]{40}(\+dirty)?$/),
     methods: z.array(str),
+    downloadOriginal: z.boolean().optional(),
     privateSession: z.object({ id: z.string().uuid() }).strict().optional(),
     nativeAppearanceFileChannel: NativeAppearanceFileChannelSchema.optional(),
     testClockScale: z.number().finite().min(1).max(100000).optional(),

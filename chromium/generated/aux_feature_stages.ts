@@ -291,6 +291,8 @@ const requirements = {
       "native.cdpAttach",
       "native.cdpStartNavigation",
       "native.cdpTakeNavigationReceipt",
+      "native.cdpArmInput",
+      "native.cdpTakeInputOutcome",
       "native.cdpDispatch",
       "native.cdpVersion"
     ]

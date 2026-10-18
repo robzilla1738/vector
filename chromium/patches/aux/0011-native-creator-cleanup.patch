@@ -518,10 +518,20 @@ index d1169b1..243fc66 100644
                                       std::move(navigation_handle_callback));
  }
 diff --git a/content/browser/renderer_host/render_frame_host_delegate.h b/content/browser/renderer_host/render_frame_host_delegate.h
-index 6b11b24..d4b5b33 100644
+index 6b11b248e35652c26d8c33ba298c93234e9b5f52..3f155430ce09c643043041a779332e2e57958dc6 100644
 --- a/content/browser/renderer_host/render_frame_host_delegate.h
 +++ b/content/browser/renderer_host/render_frame_host_delegate.h
-@@ -763,6 +763,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
+@@ -166,6 +166,9 @@
+       const url::Origin& initiator_origin,
+       blink::mojom::NavigationBlockedReason reason) {}
+ 
++  virtual void DidCompleteAuxInputNavigation(RenderFrameHostImpl*,
++      const base::UnguessableToken&, const blink::DocumentToken&, bool) {}
++
+   // Called when blink.mojom.LocalFrameHost::DidFinishLoad() is invoked.
+   virtual void OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
+                                const GURL& url) {}
+@@ -763,6 +766,9 @@
  
    // Called by the main frame to close the current tab/window.
    virtual void Close(RenderFrameHostImpl* render_frame_host) {}
@@ -532,7 +542,7 @@ index 6b11b24..d4b5b33 100644
    // True if the delegate is currently showing a JavaScript dialog.
    virtual bool IsJavaScriptDialogShowing() const;
 diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
-index 2a4625e..bd89517 100644
+index 2a4625eebc4830065dac7d681ebd310be3097189..4a5655452e20125a39ad902633db820d33004332 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.cc
 +++ b/content/browser/renderer_host/render_frame_host_impl.cc
 @@ -304,6 +304,7 @@
@@ -543,7 +553,7 @@ index 2a4625e..bd89517 100644
  #include "third_party/blink/public/common/loader/inter_process_time_ticks_converter.h"
  #include "third_party/blink/public/common/loader/resource_type_util.h"
  #include "third_party/blink/public/common/messaging/transferable_message.h"
-@@ -7136,6 +7137,10 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7136,6 +7137,10 @@
  
    bool showed_dialog = has_shown_beforeunload_dialog_;
  
@@ -554,7 +564,7 @@ index 2a4625e..bd89517 100644
    // Resets beforeunload waiting state.
    is_waiting_for_beforeunload_completion_ = false;
    has_shown_beforeunload_dialog_ = false;
-@@ -7152,7 +7157,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7152,7 +7157,8 @@
        [](base::WeakPtr<RenderFrameHostImpl> self,
           const base::TimeTicks& before_unload_end_time, bool proceed,
           bool unload_ack_is_for_navigation, bool for_legacy,
@@ -564,7 +574,7 @@ index 2a4625e..bd89517 100644
          if (!self) {
            return;
          }
-@@ -7165,7 +7171,11 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7165,7 +7171,11 @@
                                                     before_unload_end_time,
                                                     for_legacy, showed_dialog);
          } else {
@@ -577,7 +587,7 @@ index 2a4625e..bd89517 100644
          }
        },
        // The overhead of the browser->renderer IPC may be non trivial. Account
-@@ -7175,7 +7185,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+@@ -7175,7 +7185,8 @@
        weak_ptr_factory_.GetWeakPtr(),
        before_unload_end_time - browser_to_renderer_ipc_time_delta, proceed,
        unload_ack_is_for_navigation_,
@@ -587,7 +597,7 @@ index 2a4625e..bd89517 100644
  
    if (is_frame_being_destroyed) {
      CHECK(proceed);
-@@ -7785,8 +7796,15 @@ bool RenderFrameHostImpl::HasStickyUserActivationForHistoryIntervention()
+@@ -7785,8 +7796,15 @@
  }
  
  void RenderFrameHostImpl::ClosePage(
@@ -605,7 +615,7 @@ index 2a4625e..bd89517 100644
    // This path is taken when tab/window close is initiated by either the
    // browser process or via a window.close() call through a proxy. In both
    // cases, we need to tell the main frame's renderer process to run unload
-@@ -7809,24 +7827,32 @@ void RenderFrameHostImpl::ClosePage(
+@@ -7809,24 +7827,32 @@
  
    if (IsRenderFrameLive() && !IsPageReadyToBeClosed()) {
      close_timeout_ = std::make_unique<input::TimeoutMonitor>(
@@ -645,7 +655,7 @@ index 2a4625e..bd89517 100644
    if (close_timeout_) {
      close_timeout_->Stop();
      close_timeout_.reset();
-@@ -7862,7 +7888,8 @@ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
+@@ -7862,7 +7888,8 @@
      return;
    }
  
@@ -655,7 +665,7 @@ index 2a4625e..bd89517 100644
  }
  
  bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
-@@ -7878,13 +7905,20 @@ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
+@@ -7878,13 +7905,20 @@
  }
  
  void RenderFrameHostImpl::ClosePageTimeout(
@@ -679,7 +689,21 @@ index 2a4625e..bd89517 100644
  }
  
  void RenderFrameHostImpl::SetWindowRect(const gfx::Rect& bounds,
-@@ -10625,6 +10659,79 @@ void RenderFrameHostImpl::CreateNewWindow(
+@@ -8970,6 +9004,13 @@
+   delegate_->DidChangeLoadProgressForMainFrame(this);
+ }
+ 
++void RenderFrameHostImpl::DidCompleteAuxInputNavigation(
++    const base::UnguessableToken& token, const blink::DocumentToken& source_document,
++    bool navigation_requested) {
++  if (!GetParent() && !token.is_empty())
++    delegate_->DidCompleteAuxInputNavigation(this, token, source_document, navigation_requested);
++}
++
+ void RenderFrameHostImpl::DidFinishLoad(const GURL& validated_url) {
+   // In case of prerendering, we dispatch DidFinishLoad on activation. This is
+   // done to avoid notifying observers about a load event triggered from a
+@@ -10625,6 +10666,79 @@
      return;
    }
  
@@ -759,7 +783,7 @@ index 2a4625e..bd89517 100644
    // Otherwise, consume user activation before we proceed. In particular, it is
    // important to do this before we return from the |opener_suppressed| case
    // below.
-@@ -12418,6 +12525,16 @@ void RenderFrameHostImpl::Stop() {
+@@ -12418,6 +12532,16 @@
    GetAssociatedLocalFrame()->StopLoading();
  }
  
@@ -776,7 +800,7 @@ index 2a4625e..bd89517 100644
  void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
                                                 bool is_reload) {
    TRACE_EVENT("navigation", "RenderFrameHostImpl::DispatchBeforeUnload",
-@@ -12460,9 +12577,12 @@ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
+@@ -12460,9 +12584,12 @@
      // Dispatch the ACK to prevent re-entrancy.
      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
          FROM_HERE,
@@ -793,10 +817,10 @@ index 2a4625e..bd89517 100644
    }
  
 diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/browser/renderer_host/render_frame_host_impl.h
-index 7e846e4..1dd880e 100644
+index 7e846e4f47d8016a0fdbf08201a2baf593704678..7efc8bf9014e943ea09025585e13dd80a4844b54 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.h
 +++ b/content/browser/renderer_host/render_frame_host_impl.h
-@@ -1310,6 +1310,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -1310,6 +1310,7 @@
    // corresponds to tab close and not a navigation, |is_reload| should be
    // false.
    void DispatchBeforeUnload(BeforeUnloadType type, bool is_reload);
@@ -804,7 +828,16 @@ index 7e846e4..1dd880e 100644
  
    // Simulate beforeunload completion callback on behalf of renderer if it's
    // unrenresponsive.
-@@ -3039,6 +3040,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -2313,6 +2314,8 @@
+   base::SafeRef<RenderFrameHostImpl> GetSafeRef() const;
+ 
+   // blink::mojom::LocalFrameHost
++  void DidCompleteAuxInputNavigation(const base::UnguessableToken& token,
++      const blink::DocumentToken& source_document, bool navigation_requested) override;
+   void EnterFullscreen(blink::mojom::FullscreenOptionsPtr options,
+                        EnterFullscreenCallback callback) override;
+   void ExitFullscreen() override;
+@@ -3039,6 +3042,10 @@
    void ClosePage(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -815,7 +848,7 @@ index 7e846e4..1dd880e 100644
  
    // When true, indicates that the unload handlers have already executed (e.g.,
    // after receiving a ClosePage ACK) or that they should be ignored. This is
-@@ -3505,6 +3510,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -3505,6 +3512,13 @@
    // mojom::FrameHost:
    void CreateNewWindow(mojom::CreateNewWindowParamsPtr params,
                         CreateNewWindowCallback callback) override;
@@ -829,7 +862,7 @@ index 7e846e4..1dd880e 100644
    void GetKeepAliveHandleFactory(
        mojo::PendingReceiver<blink::mojom::KeepAliveHandleFactory> receiver)
        override;
-@@ -4284,6 +4296,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4284,6 +4298,10 @@
    void ClosePageIgnoringUnloadEvents(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -840,7 +873,7 @@ index 7e846e4..1dd880e 100644
  
    // Called when this frame's page has started closing via ClosePage(), and the
    // timer for running unload events has expired. The `source` parameter
-@@ -4295,6 +4311,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4295,6 +4313,10 @@
    void ClosePageTimeout(
        ClosePageSource source,
        base::RepeatingClosure completion_callback = base::DoNothing());
@@ -851,7 +884,7 @@ index 7e846e4..1dd880e 100644
  
    // Perform pre-conditions checks on RenderFrameHost lifecycle state and fenced
    // frame properties that are common for `SendFencedFrameReportingBeacon()` and
-@@ -4659,6 +4679,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -4659,6 +4681,8 @@
    // TODO(clamy): Remove this boolean and add one more state to the state
    // machine.
    bool is_waiting_for_beforeunload_completion_ = false;
@@ -955,10 +988,10 @@ index bccc510..918d4b8 100644
    // Called when a renderer's frame navigates.
    void DidNavigateFrame(
 diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
-index 6d6d094..e2822ef 100644
+index 6d6d0947faf0be9203085344fce2998dbba586c8..befd4cd7391099a2fc2b378ed857391e6d9d30dd 100644
 --- a/content/browser/web_contents/web_contents_impl.cc
 +++ b/content/browser/web_contents/web_contents_impl.cc
-@@ -3323,6 +3323,11 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
+@@ -3323,6 +3323,11 @@
    return false;
  }
  
@@ -970,7 +1003,7 @@ index 6d6d094..e2822ef 100644
  void WebContentsImpl::DispatchBeforeUnload(bool auto_cancel) {
    OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::DispatchBeforeUnload",
                          "auto_cancel", auto_cancel);
-@@ -5617,6 +5622,7 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5617,6 +5622,7 @@
    TRACE_EVENT2("browser,content,navigation", "WebContentsImpl::CreateNewWindow",
                 "opener", opener, "params", params);
    DCHECK(opener);
@@ -978,7 +1011,7 @@ index 6d6d094..e2822ef 100644
  
    // Block Document Picture-in-Picture window creation if the delegate reports
    // that the OS currently prevents it (e.g., Android in app fullscreen).
-@@ -5671,6 +5677,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5671,6 +5677,10 @@
      }
      web_contents_impl->is_popup_ =
          params.disposition == WindowOpenDisposition::NEW_POPUP;
@@ -989,7 +1022,7 @@ index 6d6d094..e2822ef 100644
      return &web_contents_impl->GetPrimaryFrameTree();
    }
  
-@@ -5776,6 +5786,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+@@ -5776,6 +5786,10 @@
  
    // Sets the newly created WebContents WindowOpenDisposition.
    new_contents_impl->original_window_open_disposition_ = params.disposition;
@@ -1000,7 +1033,20 @@ index 6d6d094..e2822ef 100644
  
    // If the new frame has a name, make sure any SiteInstances that can find
    // this named frame have proxies for it.  Must be called after
-@@ -9670,6 +9684,28 @@ void WebContentsImpl::NotifyOnJavaScriptDialogDismiss(
+@@ -8911,6 +8925,12 @@
+                              render_frame_host);
+ }
+ 
++void WebContentsImpl::DidCompleteAuxInputNavigation(RenderFrameHostImpl* frame,
++    const base::UnguessableToken& token, const blink::DocumentToken& document, bool requested) {
++  observers_.NotifyObservers(&WebContentsObserver::DidCompleteAuxInputNavigation,
++      frame, token, document, requested);
++}
++
+ void WebContentsImpl::OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
+                                       const GURL& url) {
+   OPTIONAL_TRACE_EVENT2("content", "WebContentsImpl::OnDidFinishLoad",
+@@ -9670,6 +9690,28 @@
    javascript_dialog_dismiss_notifier_->NotifyOnDismiss(std::move(callback));
  }
  
@@ -1029,10 +1075,12 @@ index 6d6d094..e2822ef 100644
  void WebContentsImpl::Close(RenderFrameHostImpl* render_frame_host) {
    if (GuestPageHolderImpl* guest_holder =
            GuestPageHolderImpl::FromRenderFrameHost(*render_frame_host)) {
-@@ -11330,6 +11366,23 @@ void WebContentsImpl::RendererResponsive(
+@@ -11328,6 +11370,23 @@
+   if (delegate_) {
+     delegate_->RendererResponsive(this, render_widget_host);
    }
- }
- 
++}
++
 +void WebContentsImpl::BeforeUnloadFiredForEmbeddingClose(
 +    bool proceed, bool* proceed_to_fire_unload,
 +    base::UnguessableToken invocation,
@@ -1048,16 +1096,14 @@ index 6d6d094..e2822ef 100644
 +        this, proceed, proceed_to_fire_unload, invocation, original_document);
 +  // The delegate may destroy this WebContents. A stale document can only
 +  // retire the original opaque invocation, never fire the replacement unload.
-+}
-+
+ }
+ 
  void WebContentsImpl::BeforeUnloadFiredFromRenderManager(
-     bool proceed,
-     bool* proceed_to_fire_unload) {
 diff --git a/content/browser/web_contents/web_contents_impl.h b/content/browser/web_contents/web_contents_impl.h
-index c2c99af..e6d8647 100644
+index c2c99afba11dad48ba0731c22e052fc20544b41c..4085d1209b7ed3b81c640e02d760c4ab7d9f10ca 100644
 --- a/content/browser/web_contents/web_contents_impl.h
 +++ b/content/browser/web_contents/web_contents_impl.h
-@@ -513,6 +513,8 @@ class CONTENT_EXPORT WebContentsImpl
+@@ -513,6 +513,8 @@
    Visibility GetVisibility() override;
    bool NeedToFireBeforeUnloadOrUnloadEvents() override;
    void DispatchBeforeUnload(bool auto_cancel) override;
@@ -1066,7 +1112,7 @@ index c2c99af..e6d8647 100644
    void AttachInnerWebContents(std::unique_ptr<WebContents> inner_web_contents,
                                RenderFrameHost* render_frame_host,
                                bool is_full_page) override;
-@@ -586,6 +588,8 @@ class CONTENT_EXPORT WebContentsImpl
+@@ -586,6 +588,8 @@
    const std::string& GetContentsMimeType() override;
    blink::RendererPreferences* GetMutableRendererPrefs() override;
    void Close() override;
@@ -1075,7 +1121,16 @@ index c2c99af..e6d8647 100644
    void SetClosedByUserGesture(bool value) override;
    bool GetClosedByUserGesture() override;
    int GetMinimumZoomPercent() override;
-@@ -736,6 +740,9 @@ class CONTENT_EXPORT WebContentsImpl
+@@ -719,6 +723,8 @@
+       const GURL& initiator_url,
+       const url::Origin& initiator_origin,
+       blink::mojom::NavigationBlockedReason reason) override;
++  void DidCompleteAuxInputNavigation(RenderFrameHostImpl*,
++      const base::UnguessableToken&, const blink::DocumentToken&, bool) override;
+   void OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
+                        const GURL& url) override;
+   void OnManifestUrlChanged(PageImpl& page) override;
+@@ -736,6 +742,9 @@
                             bool disable_third_party_subframe_suppresion,
                             JavaScriptDialogCallback response_callback) override;
    void Close(RenderFrameHostImpl* render_frame_host) override;
@@ -1085,7 +1140,7 @@ index c2c99af..e6d8647 100644
    void RunBeforeUnloadConfirm(
        RenderFrameHostImpl* render_frame_host,
        bool is_reload,
-@@ -1282,6 +1289,10 @@ class CONTENT_EXPORT WebContentsImpl
+@@ -1282,6 +1291,10 @@
    void BeforeUnloadFiredFromRenderManager(
        bool proceed,
        bool* proceed_to_fire_unload) override;

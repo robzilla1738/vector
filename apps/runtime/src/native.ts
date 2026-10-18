@@ -619,7 +619,7 @@ export class ChannelNativeBridge implements NativeBridge {
       await this.channel.call(
         "native.documentJob",
         NativeDocumentJobParams.parse(input),
-        input.action === "run" || input.action === "close" ? 70_000 : 15_000,
+        input.action === "run" || input.action === "capture" || input.action === "close" ? 70_000 : 15_000,
       ),
     );
   }

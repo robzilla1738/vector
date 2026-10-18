@@ -579,6 +579,24 @@ export class BrowserEgress {
       signal: retirement.signal,
       expiresAt: commandExpiry,
       check,
+      completeUnchanged: (proof: { originalLeaseId: string; url: string }) => {
+        check();
+        if (
+          consumed ||
+          completed ||
+          published ||
+          staged ||
+          replacement ||
+          this.pages.get(pageId) !== original ||
+          !this.current(original) ||
+          proof.originalLeaseId !== originalLease.leaseId ||
+          proof.url !== originalPage.url
+        )
+          throw new AuxError("ref_stale", "Original unchanged authority retired.");
+        consumed = completed = published = true;
+        clearTimeout(retirementTimer);
+        this.bindingSources.delete(pageId);
+      },
       install: async (
         raw: NativeCdpNavigationReceipt,
         stage: (document: { url: string; documentEpoch: number }) => void,

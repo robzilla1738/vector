@@ -149,7 +149,13 @@ export interface DriverPage {
   reload(timeoutMs?: number): Promise<void>;
   stop(): Promise<void>;
 
-  click(target: string, button?: "left" | "right" | "middle", timeoutMs?: number): Promise<void>;
+  /** continuation is internal: its native producer owns navigation completion and cancellation. */
+  click(
+    target: string,
+    button?: "left" | "right" | "middle",
+    timeoutMs?: number,
+    continuation?: { signal: AbortSignal },
+  ): Promise<void>;
   dblclick(target: string, timeoutMs?: number): Promise<void>;
   hover(target: string, timeoutMs?: number): Promise<void>;
   fill(target: string, value: string, timeoutMs?: number): Promise<void>;

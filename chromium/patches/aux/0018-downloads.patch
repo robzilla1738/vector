@@ -529,3 +529,399 @@ index b49a8d4..4e38d2a 100644
    MOCK_METHOD1(OnAsyncScanningCompleted, void(DownloadDangerType));
  
   private:
+diff --git a/components/download/internal/common/in_progress_download_manager.cc b/components/download/internal/common/in_progress_download_manager.cc
+index efc2d7bbc28fd7f96963509c212628575d30e4a8..feb1a2bd329b0f7c1b6e435520699fe07221e7f4 100644
+--- a/components/download/internal/common/in_progress_download_manager.cc
++++ b/components/download/internal/common/in_progress_download_manager.cc
+@@ -139,7 +139,8 @@
+     const URLSecurityPolicy& url_security_policy,
+     mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider,
+     const scoped_refptr<base::SingleThreadTaskRunner>& main_task_runner,
+-    bool is_transient) {
++    bool is_transient,
++    std::optional<int64_t> navigation_id) {
+   DCHECK(GetIOTaskRunner()->BelongsToCurrentThread());
+ 
+   ResourceDownloader::InterceptNavigationResponse(
+@@ -151,7 +152,7 @@
+       network::SharedURLLoaderFactory::Create(
+           std::move(pending_url_loader_factory)),
+       url_security_policy, std::move(wake_lock_provider), main_task_runner,
+-      is_transient);
++      is_transient, navigation_id);
+ }
+ 
+ #if BUILDFLAG(IS_ANDROID)
+@@ -349,7 +350,8 @@
+     network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
+     std::unique_ptr<network::PendingSharedURLLoaderFactory>
+         pending_url_loader_factory,
+-    bool is_transient) {
++    bool is_transient,
++    std::optional<int64_t> navigation_id) {
+   mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider;
+   if (wake_lock_provider_binder_) {
+     wake_lock_provider_binder_.Run(
+@@ -367,7 +369,8 @@
+           std::move(url_loader_client_endpoints),
+           std::move(pending_url_loader_factory), url_security_policy_,
+           std::move(wake_lock_provider),
+-          base::SingleThreadTaskRunner::GetCurrentDefault(), is_transient));
++          base::SingleThreadTaskRunner::GetCurrentDefault(), is_transient,
++          navigation_id));
+ }
+ 
+ void InProgressDownloadManager::Initialize(
+diff --git a/components/download/internal/common/resource_downloader.cc b/components/download/internal/common/resource_downloader.cc
+index 5856d8f9fef7a997b38d68896f784942a4f515ef..0f231cebc6ed1b269ff91ddf70e3e2e55f723eb3 100644
+--- a/components/download/internal/common/resource_downloader.cc
++++ b/components/download/internal/common/resource_downloader.cc
+@@ -107,13 +107,15 @@
+     const URLSecurityPolicy& url_security_policy,
+     mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider,
+     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+-    bool is_transient) {
++    bool is_transient,
++    std::optional<int64_t> navigation_id) {
+   auto downloader = std::make_unique<ResourceDownloader>(
+       delegate, std::move(resource_request), render_process_id, render_frame_id,
+       serialized_embedder_download_data, tab_url, tab_referrer_url, true,
+       task_runner, std::move(url_loader_factory), url_security_policy,
+       std::move(wake_lock_provider));
+   ResourceDownloader* raw_downloader = downloader.get();
++  raw_downloader->navigation_id_ = navigation_id;
+   task_runner->PostTask(
+       FROM_HERE,
+       base::BindOnce(
+@@ -252,6 +254,7 @@
+   download_create_info->tab_referrer_url = tab_referrer_url_;
+   download_create_info->render_process_id = render_process_id_;
+   download_create_info->render_frame_id = render_frame_id_;
++  download_create_info->navigation_id = navigation_id_;
+   download_create_info->has_user_gesture = resource_request_->has_user_gesture;
+   download_create_info->is_content_initiated = is_content_initiated_;
+   download_create_info->transition_type =
+diff --git a/components/download/internal/common/resource_downloader.h b/components/download/internal/common/resource_downloader.h
+index 33c7e54f31e6183a5b91e44cbff0013c681386ce..27fbe3e66bf79197e3c50ddcc80dfa22c6808b02 100644
+--- a/components/download/internal/common/resource_downloader.h
++++ b/components/download/internal/common/resource_downloader.h
+@@ -4,6 +4,10 @@
+ 
+ #ifndef COMPONENTS_DOWNLOAD_INTERNAL_COMMON_RESOURCE_DOWNLOADER_H_
+ #define COMPONENTS_DOWNLOAD_INTERNAL_COMMON_RESOURCE_DOWNLOADER_H_
++
++#include <stdint.h>
++
++#include <optional>
+ 
+ #include "base/functional/callback.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -62,7 +66,8 @@
+       const URLSecurityPolicy& url_security_policy,
+       mojo::PendingRemote<device::mojom::WakeLockProvider> wake_lock_provider,
+       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+-      bool is_transient);
++      bool is_transient,
++      std::optional<int64_t> navigation_id = std::nullopt);
+ 
+   ResourceDownloader(
+       base::WeakPtr<UrlDownloadHandler::Delegate> delegate,
+@@ -146,6 +151,9 @@
+   int render_process_id_;
+   int render_frame_id_;
+ 
++  // Exact browser identity from navigation interception, never URL/time.
++  std::optional<int64_t> navigation_id_;
++
+   // Serialized embedder data download for the site instance that initiated the
+   // download.
+   std::string serialized_embedder_download_data_;
+diff --git a/components/download/public/common/download_create_info.h b/components/download/public/common/download_create_info.h
+index 080056eda7024b716d4ca3f8847469bc25babe36..bd819326ccc24e3eba263628bf80290d02c28ece 100644
+--- a/components/download/public/common/download_create_info.h
++++ b/components/download/public/common/download_create_info.h
+@@ -63,6 +63,10 @@
+   // The unique identifier for the download.
+   std::string guid;
+ 
++  // Exact browser navigation which became this new download. Not persisted or
++  // restored, and absent for direct downloads, retries and history records.
++  std::optional<int64_t> navigation_id;
++
+   // The chain of redirects that leading up to and including the final URL.
+   std::vector<GURL> url_chain;
+ 
+diff --git a/components/download/public/common/in_progress_download_manager.h b/components/download/public/common/in_progress_download_manager.h
+index 39a0dc9902a98fbc1987d4b4de508c0bffdda48e..5d52da3eea2b163e0bcb1b2e632f37400635b8bf 100644
+--- a/components/download/public/common/in_progress_download_manager.h
++++ b/components/download/public/common/in_progress_download_manager.h
+@@ -7,6 +7,7 @@
+ 
+ #include <map>
+ #include <memory>
++#include <optional>
+ #include <set>
+ #include <string>
+ #include <vector>
+@@ -132,7 +133,8 @@
+       network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
+       std::unique_ptr<network::PendingSharedURLLoaderFactory>
+           pending_url_loader_factory,
+-      bool is_transient);
++      bool is_transient,
++      std::optional<int64_t> navigation_id = std::nullopt);
+ 
+   void StartDownload(std::unique_ptr<DownloadCreateInfo> info,
+                      std::unique_ptr<InputStream> stream,
+diff --git a/content/browser/download/download_item_utils.cc b/content/browser/download/download_item_utils.cc
+index 113e6a13c72d7cc939260a905d5048df4d1e9b0f..f376ea4c8341e5ef1cb2f275de0cd3f87d448848 100644
+--- a/content/browser/download/download_item_utils.cc
++++ b/content/browser/download/download_item_utils.cc
+@@ -21,19 +21,22 @@
+  public:
+   DownloadItemData(BrowserContext* browser_context,
+                    WebContents* web_contents,
+-                   GlobalRenderFrameHostId id);
++                   GlobalRenderFrameHostId id,
++                   std::optional<int64_t> navigation_id);
+   ~DownloadItemData() override = default;
+ 
+   static void Attach(download::DownloadItem* download_item,
+                      BrowserContext* browser_context,
+                      WebContents* web_contents,
+-                     GlobalRenderFrameHostId id);
++                     GlobalRenderFrameHostId id,
++                     std::optional<int64_t> navigation_id);
+ 
+   static DownloadItemData* Get(const download::DownloadItem* download_item);
+   static void Detach(download::DownloadItem* download_item);
+ 
+   BrowserContext* browser_context() const { return browser_context_; }
+   GlobalRenderFrameHostId id() const { return id_; }
++  std::optional<int64_t> navigation_id() const { return navigation_id_; }
+ 
+  private:
+   // WebContentsObserver methods.
+@@ -43,6 +46,7 @@
+   static const char kKey[];
+   raw_ptr<BrowserContext, DanglingUntriaged> browser_context_;
+   GlobalRenderFrameHostId id_;
++  std::optional<int64_t> navigation_id_;
+ };
+ 
+ // static
+@@ -50,18 +54,21 @@
+ 
+ DownloadItemData::DownloadItemData(BrowserContext* browser_context,
+                                    WebContents* web_contents,
+-                                   GlobalRenderFrameHostId id)
++                                   GlobalRenderFrameHostId id,
++                                   std::optional<int64_t> navigation_id)
+     : WebContentsObserver(web_contents),
+       browser_context_(browser_context),
+-      id_(id) {}
++      id_(id),
++      navigation_id_(navigation_id) {}
+ 
+ // static
+ void DownloadItemData::Attach(download::DownloadItem* download_item,
+                               BrowserContext* browser_context,
+                               WebContents* web_contents,
+-                              GlobalRenderFrameHostId id) {
+-  auto data =
+-      std::make_unique<DownloadItemData>(browser_context, web_contents, id);
++                              GlobalRenderFrameHostId id,
++                              std::optional<int64_t> navigation_id) {
++  auto data = std::make_unique<DownloadItemData>(browser_context, web_contents,
++                                                 id, navigation_id);
+   download_item->SetUserData(&kKey, std::move(data));
+ }
+ 
+@@ -81,11 +88,13 @@
+   // DownloadItemUtils::GetWebContents() will return null after the primary page
+   // changed.
+   id_ = GlobalRenderFrameHostId();
++  navigation_id_.reset();
+ }
+ 
+ void DownloadItemData::WebContentsDestroyed() {
+   Observe(nullptr);
+   id_ = GlobalRenderFrameHostId();
++  navigation_id_.reset();
+ }
+ 
+ }  // namespace
+@@ -139,11 +148,20 @@
+ }
+ 
+ // static
++std::optional<int64_t> DownloadItemUtils::GetNavigationId(
++    const download::DownloadItem* download_item) {
++  DownloadItemData* data = DownloadItemData::Get(download_item);
++  return data && data->id() ? data->navigation_id() : std::nullopt;
++}
++
++// static
+ void DownloadItemUtils::AttachInfo(download::DownloadItem* download_item,
+                                    BrowserContext* browser_context,
+                                    WebContents* web_contents,
+-                                   GlobalRenderFrameHostId id) {
+-  DownloadItemData::Attach(download_item, browser_context, web_contents, id);
++                                   GlobalRenderFrameHostId id,
++                                   std::optional<int64_t> navigation_id) {
++  DownloadItemData::Attach(download_item, browser_context, web_contents, id,
++                           navigation_id);
+ }
+ 
+ // static
+diff --git a/content/browser/download/download_item_utils_unittest.cc b/content/browser/download/download_item_utils_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..a29f949842cbfbee8465563c97924e33887ba25e
+--- /dev/null
++++ b/content/browser/download/download_item_utils_unittest.cc
+@@ -0,0 +1,40 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "content/public/browser/download_item_utils.h"
++
++#include "components/download/public/common/mock_download_item.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gmock/include/gmock/gmock.h"
++#include "url/gurl.h"
++
++namespace content {
++namespace {
++class NativeDownloadNavigationIdentityTest : public RenderViewHostTestHarness {
++};
++TEST_F(NativeDownloadNavigationIdentityTest,
++       ExactOriginalIdentityRetiresOnDocumentReplacement) {
++  NavigateAndCommit(GURL("https://fixture.invalid/original"));
++  testing::NiceMock<download::MockDownloadItem> item;
++  DownloadItemUtils::AttachInfo(&item, browser_context(), web_contents(),
++                                main_rfh()->GetGlobalId(), 123456);
++  EXPECT_EQ(DownloadItemUtils::GetNavigationId(&item), 123456);
++  EXPECT_EQ(DownloadItemUtils::GetRenderFrameHost(&item), main_rfh());
++  EXPECT_EQ(DownloadItemUtils::GetBrowserContext(&item), browser_context());
++  NavigateAndCommit(GURL("https://fixture.invalid/replacement"));
++  EXPECT_FALSE(DownloadItemUtils::GetNavigationId(&item));
++  EXPECT_EQ(DownloadItemUtils::GetRenderFrameHost(&item), nullptr);
++  EXPECT_EQ(DownloadItemUtils::GetWebContents(&item), nullptr);
++  EXPECT_EQ(DownloadItemUtils::GetOriginalWebContents(&item), web_contents());
++}
++TEST_F(NativeDownloadNavigationIdentityTest,
++       OrdinaryDownloadDoesNotAcquireNavigationIdentity) {
++  NavigateAndCommit(GURL("https://fixture.invalid/original"));
++  testing::NiceMock<download::MockDownloadItem> item;
++  DownloadItemUtils::AttachInfo(&item, browser_context(), web_contents(),
++                                main_rfh()->GetGlobalId());
++  EXPECT_FALSE(DownloadItemUtils::GetNavigationId(&item));
++}
++}  // namespace
++}  // namespace content
+diff --git a/content/browser/download/download_manager_impl.cc b/content/browser/download/download_manager_impl.cc
+index c8f92f88d2ca7ece2b71a19a111bdc732a1f269d..a1f7b4eff349c4f9aaeab4fb2fe85982edf8df28 100644
+--- a/content/browser/download/download_manager_impl.cc
++++ b/content/browser/download/download_manager_impl.cc
+@@ -522,7 +522,8 @@
+                                     info.render_frame_id);
+   DownloadItemUtils::AttachInfo(
+       download, GetBrowserContext(),
+-      WebContentsImpl::FromRenderFrameHostID(global_id), global_id);
++      WebContentsImpl::FromRenderFrameHostID(global_id), global_id,
++      info.navigation_id);
+   if (delegate_) {
+     delegate_->AttachExtraInfo(download);
+ #if BUILDFLAG(IS_ANDROID)
+@@ -1196,7 +1197,8 @@
+     network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
+     net::CertStatus cert_status,
+     FrameTreeNodeId frame_tree_node_id,
+-    bool from_download_cross_origin_redirect) {
++    bool from_download_cross_origin_redirect,
++    std::optional<int64_t> navigation_id) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   if (!delegate_) {
+     DropDownload();
+@@ -1220,7 +1222,7 @@
+           weak_factory_.GetWeakPtr(), frame_tree_node_id,
+           std::move(resource_request), std::move(url_chain), cert_status,
+           std::move(response_head), std::move(response_body),
+-          std::move(url_loader_client_endpoints));
++          std::move(url_loader_client_endpoints), navigation_id);
+ 
+   delegate_->CheckDownloadAllowed(
+       std::move(web_contents_getter), url, method, std::move(request_initiator),
+@@ -1593,6 +1595,7 @@
+     network::mojom::URLResponseHeadPtr response_head,
+     mojo::ScopedDataPipeConsumerHandle response_body,
+     network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
++    std::optional<int64_t> navigation_id,
+     bool is_download_allowed) {
+   if (!is_download_allowed) {
+     DropDownload();
+@@ -1647,7 +1650,7 @@
+       std::move(response_head), std::move(response_body),
+       std::move(url_loader_client_endpoints),
+       CreatePendingSharedURLLoaderFactory(storage_partition, render_frame_host),
+-      is_transient);
++      is_transient, navigation_id);
+ }
+ 
+ void DownloadManagerImpl::BeginResourceDownloadOnChecksComplete(
+diff --git a/content/browser/download/download_manager_impl.h b/content/browser/download/download_manager_impl.h
+index 2bbba284257d07a435b47516a8aff2a53b7cb519..c5994fd5e2e13030ef84f006013683f106cf8ef4 100644
+--- a/content/browser/download/download_manager_impl.h
++++ b/content/browser/download/download_manager_impl.h
+@@ -186,7 +186,8 @@
+       network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
+       net::CertStatus cert_status,
+       FrameTreeNodeId frame_tree_node_id,
+-      bool from_download_cross_origin_redirect);
++      bool from_download_cross_origin_redirect,
++      std::optional<int64_t> navigation_id = std::nullopt);
+ 
+   // DownloadItemImplDelegate overrides.
+   download::QuarantineConnectionCallback GetQuarantineConnectionCallback()
+@@ -298,6 +299,7 @@
+       network::mojom::URLResponseHeadPtr response_head,
+       mojo::ScopedDataPipeConsumerHandle response_body,
+       network::mojom::URLLoaderClientEndpointsPtr url_loader_client_endpoints,
++      std::optional<int64_t> navigation_id,
+       bool is_download_allowed);
+   void BeginResourceDownloadOnChecksComplete(
+       std::unique_ptr<download::DownloadUrlParameters> params,
+diff --git a/content/public/browser/download_item_utils.h b/content/public/browser/download_item_utils.h
+index 265f6794312eec0caed7a26816959e7a030d6c57..6400e7fdeed6e720e017c1ba9bf33444d1628ada 100644
+--- a/content/public/browser/download_item_utils.h
++++ b/content/public/browser/download_item_utils.h
+@@ -4,6 +4,10 @@
+ 
+ #ifndef CONTENT_PUBLIC_BROWSER_DOWNLOAD_ITEM_UTILS_H_
+ #define CONTENT_PUBLIC_BROWSER_DOWNLOAD_ITEM_UTILS_H_
++
++#include <stdint.h>
++
++#include <optional>
+ 
+ #include "content/common/content_export.h"
+ #include "content/public/browser/global_routing_id.h"
+@@ -46,11 +50,16 @@
+   static WebContents* GetOriginalWebContents(
+       const download::DownloadItem* downloadItem);
+ 
++  // Exact browser navigation, unavailable after original document retirement.
++  static std::optional<int64_t> GetNavigationId(
++      const download::DownloadItem* download_item);
++
+   // Attach information to a DownloadItem.
+   static void AttachInfo(download::DownloadItem* downloadItem,
+                          BrowserContext* browser_context,
+                          WebContents* web_contents,
+-                         GlobalRenderFrameHostId id);
++                         GlobalRenderFrameHostId id,
++                         std::optional<int64_t> navigation_id = std::nullopt);
+ 
+   // Attach information to a DownloadItem.
+   static void AttachInfoForTesting(download::DownloadItem* downloadItem,

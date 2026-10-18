@@ -1190,10 +1190,10 @@ index 0000000..80b20e0
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/cdp_broker.h b/chrome/browser/ui/aux/cdp_broker.h
 new file mode 100644
-index 0000000..884afc0
+index 0000000000000000000000000000000000000000..bf2951b7fa2f2fb057d9e0af823302fce1d871ba
 --- /dev/null
 +++ b/chrome/browser/ui/aux/cdp_broker.h
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,101 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1201,15 +1201,17 @@ index 0000000..884afc0
 +#ifndef CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
 +#define CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
 +
-+#include <map>
 +#include <cstdint>
++#include <map>
 +#include <memory>
++#include <optional>
 +#include <string>
 +
 +#include "base/functional/callback.h"
 +#include "base/memory/raw_ptr.h"
 +#include "base/memory/weak_ptr.h"
 +#include "base/values.h"
++#include "chrome/browser/ui/aux/document_jobs.h"
 +
 +class Profile;
 +
@@ -1255,14 +1257,27 @@ index 0000000..884afc0
 +  base::DictValue StartControlledNavigation(const std::string& page_id,
 +      const std::string& attachment_id, int command_id, const std::string& url,
 +      double acknowledged_expires_at, uint64_t connection_generation);
++  base::DictValue ArmInput(const std::string& page_id,
++      const std::string& attachment_id, int command_id,
++      double acknowledged_expires_at, uint64_t connection_generation);
 +  base::DictValue TakeReadyNavigationReceipt(const std::string& page_id,
 +      const std::string& attachment_id, int command_id,
-+      uint64_t connection_generation);
++      uint64_t connection_generation, bool input = false);
 +  void WaitForNavigationReceipt(const std::string& page_id,
 +      const std::string& attachment_id, int command_id,
 +      uint64_t connection_generation,
 +      base::RepeatingCallback<bool()> caller_current,
 +      base::OnceCallback<void(base::DictValue)> callback);
++  std::optional<NativeDownloadSource> TakeDownloadSource(
++      const std::string& page_id,
++      const std::string& attachment_id,
++      int command_id,
++      const std::string& download_id,
++      const std::string& lease_id,
++      const std::string& navigation_id,
++      const std::string& url,
++      const std::string& run_id,
++      uint64_t connection_generation);
 +  void DetachAll();
 +
 + private:
@@ -1282,10 +1297,10 @@ index 0000000..884afc0
 +#endif  // CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
 diff --git a/chrome/browser/ui/aux/methods/native_cdp_methods.cc b/chrome/browser/ui/aux/methods/native_cdp_methods.cc
 new file mode 100644
-index 0000000..b75d5a5
+index 0000000000000000000000000000000000000000..9b2649f7f5f0f1096e98035f3d32261160aa7c5f
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_cdp_methods.cc
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,157 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1393,6 +1408,15 @@ index 0000000..b75d5a5
 +      return NativeFault("invalid_params", "CDP catalog takes no arguments");
 +    return cdp_broker_->Catalog(connection_generation);
 +  }
++  if (method == "native.cdpArmInput") {
++    const auto* page_id = params.FindString("pageId");
++    const auto* attachment_id = params.FindString("attachmentId");
++    const auto command_id = params.FindInt("commandId");
++    const auto expiry = params.FindDouble("acknowledgedExpiresAt");
++    if (params.size() != 4 || !page_id || !attachment_id || !command_id || *command_id < 1 || !expiry)
++      return NativeFault("invalid_params", "Invalid original input continuation request");
++    return cdp_broker_->ArmInput(*page_id, *attachment_id, *command_id, *expiry, connection_generation);
++  }
 +  if (method == "native.cdpStartNavigation") {
 +    const auto* page_id = params.FindString("pageId");
 +    const auto* attachment_id = params.FindString("attachmentId");
@@ -1423,7 +1447,7 @@ index 0000000..b75d5a5
 +    return cdp_broker_->Dispatch(*page_id, *attachment_id, *message,
 +                                  *acknowledged_expiry, connection_generation);
 +  }
-+  if (method == "native.cdpTakeNavigationReceipt") {
++  if (method == "native.cdpTakeNavigationReceipt" || method == "native.cdpTakeInputOutcome") {
 +    return NativeFault("permission_denied", "Navigation receipt requires original asynchronous caller authority");
 +  }
 +  if (method == "native.cdpVersion") {

@@ -643,6 +643,8 @@ const nativeOnlyHostMethods = new Set([
   "native.cdpAttach",
   "native.cdpStartNavigation",
   "native.cdpTakeNavigationReceipt",
+  "native.cdpArmInput",
+  "native.cdpTakeInputOutcome",
   "native.cdpDispatch",
   "native.adoptSessionPage",
   "native.egressContext",

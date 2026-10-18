@@ -2756,7 +2756,7 @@ index 143f96f..17400e8 100644
      std::shared_ptr<std::atomic_bool> cancelled,
      base::OnceCallback<void(base::DictValue)> callback) {
    const auto* page_id = params.FindString("pageId");
-@@ -2205,24 +2854,31 @@ void AuxRuntimeHost::HandleNativeCdpAttachment(
+@@ -2205,24 +2854,32 @@ void AuxRuntimeHost::HandleNativeCdpAttachment(
    const auto acknowledged_expiry = params.FindDouble("acknowledgedExpiresAt");
    if (!acknowledged_expiry || !std::isfinite(*acknowledged_expiry) ||
        *acknowledged_expiry <= 0 || *acknowledged_expiry > 9007199254740991.0 ||
@@ -2797,6 +2797,7 @@ index 143f96f..17400e8 100644
 -
  void AuxRuntimeHost::HandleNativeCdpNavigationReceipt(
 -    const base::DictValue& params, uint64_t connection_generation,
++    bool input,
 +    const base::DictValue& params,
 +    uint64_t connection_generation,
      std::shared_ptr<std::atomic_bool> cancelled,
@@ -2818,7 +2819,7 @@ index 143f96f..17400e8 100644
 -  auto result = cdp_broker_->TakeReadyNavigationReceipt(*page_id, *attachment_id,
 -      *command_id, connection_generation);
 +  auto result = cdp_broker_->TakeReadyNavigationReceipt(
-+      *page_id, *attachment_id, *command_id, connection_generation);
++      *page_id, *attachment_id, *command_id, connection_generation, input);
    std::move(callback).Run(std::move(result));
  }
  
@@ -3874,9 +3875,9 @@ index 143f96f..17400e8 100644
 +                      state));
 +              return;
 +            }
-+            if (owner && method == "native.cdpTakeNavigationReceipt") {
++            if (owner && (method == "native.cdpTakeNavigationReceipt" || method == "native.cdpTakeInputOutcome")) {
 +              owner->HandleNativeCdpNavigationReceipt(
-+                  params, connection_generation, state->cancelled,
++                  method == "native.cdpTakeInputOutcome", params, connection_generation, state->cancelled,
 +                  base::BindOnce(
 +                      [](std::shared_ptr<NativeReplyState> state,
 +                         base::DictValue reply) {
@@ -4943,7 +4944,7 @@ index 8fc85e6..90a757e 100644
        const base::DictValue& params,
        base::OnceCallback<void(base::DictValue)> callback);
    void HandleHistoryMutation(
-@@ -248,62 +291,80 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -248,62 +291,81 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
    void HandleCredentialFill(const base::DictValue& params,
                              std::shared_ptr<std::atomic_bool> cancelled,
                              base::OnceCallback<void(base::DictValue)> callback);
@@ -5017,6 +5018,7 @@ index 8fc85e6..90a757e 100644
        base::OnceCallback<void(base::DictValue)> callback);
    void HandleNativeCdpNavigationReceipt(
 -      const base::DictValue& params, uint64_t connection_generation,
++      bool input,
 +      const base::DictValue& params,
 +      uint64_t connection_generation,
        std::shared_ptr<std::atomic_bool> cancelled,

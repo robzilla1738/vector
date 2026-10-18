@@ -34,6 +34,9 @@ function fixture() {
         };
       case "close":
         return { action: "close", joined: true };
+      case "beginDownload":
+      case "capture":
+        throw new Error("This computation fixture does not mint a download source");
     }
   });
   const native = {

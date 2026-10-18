@@ -25,6 +25,12 @@ function pageDocumentEpoch(page: DriverPage): number | undefined {
   return typeof p.epoch === "number" ? p.epoch : undefined;
 }
 
+interface NativeActionDownload {
+  downloadId: string;
+  artifactId: string;
+  suggestedFilename: string;
+}
+
 export interface ExecContext {
   /** Original private workflow target proofs in exact program step order. */
   targetPreconditions?: readonly import("@aux/chromium-driver").ObservedActionTarget[];
@@ -71,7 +77,16 @@ export interface ExecContext {
   navigate?: (url: string, timeoutMs?: number) => Promise<void>;
   /** Private native navigation producer: returns only after original receipt,
    * retirement and fresh native attachment/install ACKs. Never tool input. */
-  navigateAndReadmit?: (url: string, timeoutMs?: number) => Promise<DriverPage>;
+  navigateAndReadmit?: (
+    url: string,
+    timeoutMs?: number,
+  ) => Promise<{ driver: DriverPage; download?: NativeActionDownload }>;
+  inputAndReadmit?: (
+    step: Step,
+    dispatch: (signal: AbortSignal) => Promise<unknown>,
+  ) => Promise<{ driver: DriverPage; value?: unknown; download?: NativeActionDownload }>;
+  /** Only the exact private native click producer supplies this cancellation scope. */
+  nativeInputSignal?: AbortSignal;
   /** Trusted supervised reader returns held bytes; the driver never reopens a pathname. */
   uploadRead?: (path: string) => Promise<Buffer>;
   safety?: {
@@ -168,7 +183,12 @@ async function runStep(
     case "stop":
       return void (await page.stop());
     case "click":
-      return void (await page.click(s.target, s.button, s.timeoutMs));
+      return void (await page.click(
+        s.target,
+        s.button,
+        s.timeoutMs,
+        ctx.nativeInputSignal ? { signal: ctx.nativeInputSignal } : undefined,
+      ));
     case "dblclick":
       return void (await page.dblclick(s.target, s.timeoutMs));
     case "hover":
@@ -277,6 +297,7 @@ async function runStep(
 export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
   const extracted: Record<string, unknown> = {};
   const artifactIds: string[] = [];
+  const nativeDownloads = new Map<string, NativeActionDownload>();
 
   const runOne = async (step: Step): Promise<StepOutcome> => {
     const startedAt = Date.now();
@@ -312,14 +333,15 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         return step.op === "navigate" && ctx.navigateAndReadmit
           ? await (async () => {
               const original = page;
-              const replacement = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
+              const admitted = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
+              const replacement = admitted.driver;
               if (ctx.signal?.aborted)
                 throw new AuxError(
                   "cancelled",
                   "Navigation was cancelled before admitting its new attachment.",
                 );
               if (
-                replacement === original ||
+                (replacement === original && !admitted.download) ||
                 !replacement.isAttached() ||
                 replacement.identity.pageId !== original.identity.pageId ||
                 replacement.identity.backend !== original.identity.backend
@@ -330,23 +352,40 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
                 );
               ctx.checkValid?.();
               page = replacement;
-              return undefined;
+              return admitted.download ? { download: admitted.download } : undefined;
             })()
-          : await runStep(page, step, ctx).catch(async (e) => {
-              const code = e instanceof AuxError ? e.code : undefined;
-              if (
-                ctx.targetPreconditions ||
-                !code ||
-                !RETRYABLE_RESOLUTION_CODES.has(code) ||
-                ctx.signal?.aborted
-              )
-                throw e;
-              await page
-                .waitFor({ kind: "settled", policy: "interactive" })
-                .catch(() => ({ ok: false, timedOut: false }));
-              ctx.checkValid?.();
-              return runStep(page, step, ctx);
-            });
+          : ctx.inputAndReadmit && step.op === "click" && (!step.button || step.button === "left")
+            ? await (async () => {
+                const admitted = await ctx.inputAndReadmit!(step, (nativeInputSignal) =>
+                  runStep(page, step, { ...ctx, nativeInputSignal }),
+                );
+                if (ctx.signal?.aborted)
+                  throw new AuxError("cancelled", "Native input was cancelled before admitting its outcome.");
+                ctx.checkValid?.();
+                if (
+                  !admitted.driver.isAttached() ||
+                  admitted.driver.identity.pageId !== page.identity.pageId ||
+                  admitted.driver.identity.backend !== page.identity.backend
+                )
+                  throw new AuxError("ref_stale", "Native input did not admit this original page.");
+                page = admitted.driver;
+                return admitted.download ? { download: admitted.download } : admitted.value;
+              })()
+            : await runStep(page, step, ctx).catch(async (e) => {
+                const code = e instanceof AuxError ? e.code : undefined;
+                if (
+                  ctx.targetPreconditions ||
+                  !code ||
+                  !RETRYABLE_RESOLUTION_CODES.has(code) ||
+                  ctx.signal?.aborted
+                )
+                  throw e;
+                await page
+                  .waitFor({ kind: "settled", policy: "interactive" })
+                  .catch(() => ({ ok: false, timedOut: false }));
+                ctx.checkValid?.();
+                return runStep(page, step, ctx);
+              });
       };
       const detail = ctx.dispatchStep ? await ctx.dispatchStep(step, dispatch) : await dispatch();
       // verify post-conditions
@@ -374,7 +413,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         before !== undefined &&
         after !== undefined &&
         JSON.stringify(before) !== JSON.stringify(after);
-      const observed = postconditions.length > 0 || navigationObserved || setterObserved;
+      const nativeDownload = (detail as { download?: NativeActionDownload } | undefined)?.download;
+      const observed = postconditions.length > 0 || navigationObserved || setterObserved || !!nativeDownload;
       const outcome: StepOutcome = {
         stepId: step.id,
         op: step.op,
@@ -407,6 +447,13 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           },
         },
       };
+      if (nativeDownload) {
+        nativeDownloads.set(step.id, nativeDownload);
+        outcome.artifactIds = [nativeDownload.artifactId];
+        artifactIds.push(nativeDownload.artifactId);
+        outcome.detail = `downloaded ${nativeDownload.suggestedFilename}`;
+        if (outcome.receipt) outcome.receipt.observed = outcome.detail;
+      }
       if (detail) {
         const d = detail as Record<string, unknown>;
         if (d["extracted"]) {
@@ -516,10 +563,14 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     const cancelWait = () => waiterAbort.abort();
     ctx.signal?.addEventListener("abort", cancelWait, { once: true });
     if (ctx.signal?.aborted) cancelWait();
-    const dlWait = page.waitForDownload(dlStep.timeoutMs ?? 30_000, waiterAbort.signal);
+    const requiresNativeDownload =
+      page.identity.backend === "aux" && !!(ctx.navigateAndReadmit || ctx.inputAndReadmit);
+    const dlWait = requiresNativeDownload
+      ? undefined
+      : page.waitForDownload(dlStep.timeoutMs ?? 30_000, waiterAbort.signal);
     // The trigger may take longer than the download wait. Observe rejection
     // immediately so a failed trigger cannot leave an unhandled promise.
-    void dlWait.catch(() => {});
+    void dlWait?.catch(() => {});
     try {
       const trigOutcome = await runOne(trigger);
       if (trigOutcome.status === "failed" && !trigger.optional) {
@@ -531,25 +582,45 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       }
       let dlOutcome: StepOutcome;
       try {
-        const res = await dlWait;
-        dlOutcome = {
-          stepId: dlStep.id,
-          op: dlStep.op,
-          status: "ok",
-          startedAt: dlStarted,
-          durationMs: Date.now() - dlStarted,
-          detail: `downloaded ${res.suggestedFilename}`,
-          extracted: await downloadExtract(res.suggestedFilename, res.path),
-        };
-        if (trigOutcome.status === "ok") {
-          trigOutcome.effect = "observed";
-          trigOutcome.receipt = {
-            remoteConfirmed: false,
-            dispatchedBeforeTakeover: false,
-            ...trigOutcome.receipt,
-            observed: `downloaded ${res.suggestedFilename}`,
-            uncertain: false,
+        const nativeDownload = nativeDownloads.get(trigger.id);
+        nativeDownloads.delete(trigger.id);
+        if (requiresNativeDownload) {
+          if (!nativeDownload)
+            throw new AuxError(
+              "capability_unsupported",
+              "This native action has no attributable download artifact.",
+            );
+          dlOutcome = {
+            stepId: dlStep.id,
+            op: dlStep.op,
+            status: "ok",
+            startedAt: dlStarted,
+            durationMs: Date.now() - dlStarted,
+            detail: `downloaded ${nativeDownload.suggestedFilename}`,
+            artifactIds: [nativeDownload.artifactId],
+            extracted: { artifactId: nativeDownload.artifactId, filename: nativeDownload.suggestedFilename },
           };
+        } else {
+          const res = await dlWait!;
+          dlOutcome = {
+            stepId: dlStep.id,
+            op: dlStep.op,
+            status: "ok",
+            startedAt: dlStarted,
+            durationMs: Date.now() - dlStarted,
+            detail: `downloaded ${res.suggestedFilename}`,
+            extracted: await downloadExtract(res.suggestedFilename, res.path),
+          };
+          if (trigOutcome.status === "ok") {
+            trigOutcome.effect = "observed";
+            trigOutcome.receipt = {
+              remoteConfirmed: false,
+              dispatchedBeforeTakeover: false,
+              ...trigOutcome.receipt,
+              observed: `downloaded ${res.suggestedFilename}`,
+              uncertain: false,
+            };
+          }
         }
       } catch (e) {
         dlOutcome = {

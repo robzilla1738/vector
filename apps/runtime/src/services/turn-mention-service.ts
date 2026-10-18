@@ -554,7 +554,7 @@ export class TurnMentionService {
     dispatch: (
       mentionAuthority: () => void,
       revalidateMentionSource: () => Promise<void>,
-    ) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>,
+    ) => Promise<{ result: T; receipt?: ControlledAttachmentNavigationReceipt }>,
   ): Promise<T> {
     const active = await this.refresh(runId);
     if (!active) throw new MentionUnavailable("This turn or its Space snapshot changed.");
@@ -574,7 +574,7 @@ export class TurnMentionService {
       });
       await revalidateMentionSource();
       if ("status" in outcome) throw new MentionUnavailable(outcome.reason);
-      finalizeControlledAttachmentNavigation(originalReceipt!);
+      if (originalReceipt) finalizeControlledAttachmentNavigation(originalReceipt);
       return outcome.value;
     } catch (error) {
       if (originalReceipt) {
@@ -611,7 +611,7 @@ export class TurnMentionService {
       (grant) =>
         grant.connectorId === connectorId &&
         (grant.kind === "calendar" ||
-          ((grant.kind === "google" || grant.kind === "x")
+          (grant.kind === "google" || grant.kind === "x"
             ? grant.operations.some((operation) => operation === toolName)
             : grant.toolName === toolName)),
     );

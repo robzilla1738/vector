@@ -104,3 +104,45 @@ export const NativeCdpNavigationReceiptSchema = z
   })
   .strict();
 export type NativeCdpNavigationReceipt = z.infer<typeof NativeCdpNavigationReceiptSchema>;
+
+/** No new document/lease is admitted by an exact browser-created download. */
+export const NativeCdpDownloadOutcomeSchema = NativeCdpNavigationReceiptSchema.pick({
+  originalAttachmentId: true,
+  originalLeaseId: true,
+  commandId: true,
+  navigationId: true,
+  url: true,
+})
+  .extend({ kind: z.literal("download"), downloadId: z.string().uuid() })
+  .strict();
+export type NativeCdpDownloadOutcome = z.infer<typeof NativeCdpDownloadOutcomeSchema>;
+export const NativeCdpNavigationOutcomeSchema = z.union([
+  NativeCdpNavigationReceiptSchema,
+  NativeCdpDownloadOutcomeSchema,
+]);
+export type NativeCdpNavigationOutcome = z.infer<typeof NativeCdpNavigationOutcomeSchema>;
+
+/** Private continuation armed before one original native pointer release. */
+export const NativeCdpArmInputSchema = NativeCdpStartNavigationSchema.omit({
+  url: true,
+});
+export const NativeCdpUnchangedInputSchema = z
+  .object({
+    kind: z.literal("unchanged"),
+    originalAttachmentId: NativeCdpAttachmentIdSchema,
+    originalLeaseId: z.string().uuid(),
+    commandId: z.number().int().min(1).max(2147483647),
+    url: navigationUrl,
+  })
+  .strict();
+export const NativeCdpInputOutcomeSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("document_committed"),
+      receipt: NativeCdpNavigationReceiptSchema,
+    })
+    .strict(),
+  NativeCdpUnchangedInputSchema,
+  NativeCdpDownloadOutcomeSchema,
+]);
+export type NativeCdpInputOutcome = z.infer<typeof NativeCdpInputOutcomeSchema>;

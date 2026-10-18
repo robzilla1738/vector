@@ -2282,10 +2282,19 @@ index 0000000..422fade
 +}
 +}  // namespace blink
 diff --git a/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc b/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
-index 8527714..015651d 100644
+index 8527714f0f6bb82913c602119138962fd03b0ae6..d1136ea369ceee982af6b56821160cd18fa683ff 100644
 --- a/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
 +++ b/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
-@@ -351,6 +351,11 @@ bool StructTraits<blink::mojom::EventDataView,
+@@ -5,6 +5,8 @@
+ #include "third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h"
+ 
+ #include <algorithm>
++
++#include "mojo/public/cpp/base/unguessable_token_mojom_traits.h"
+ #include <memory>
+ 
+ #include "base/strings/string_util.h"
+@@ -351,6 +353,11 @@
      PointerPropertiesFromPointerData(pointer_data, mouse_event);
      if (pointer_data->mouse_data) {
        mouse_event->click_count = pointer_data->mouse_data->click_count;
@@ -2297,7 +2306,18 @@ index 8527714..015651d 100644
  
        if (type == blink::WebInputEvent::Type::kMouseWheel &&
            pointer_data->mouse_data->wheel_data) {
-@@ -449,8 +454,14 @@ StructTraits<blink::mojom::EventDataView,
+@@ -383,6 +390,10 @@
+     return false;
+   }
+ 
++  std::optional<base::UnguessableToken> aux_input_continuation;
++  if (!event.ReadAuxInputContinuation(&aux_input_continuation))
++    return false;
++  input_event->SetAuxInputContinuation(aux_input_continuation);
+   ui::EventLatencyMetadata event_latency_metadata;
+   if (!event.ReadEventLatencyMetadata(&event_latency_metadata)) {
+     return false;
+@@ -449,8 +460,14 @@
    }
  
    return PointerDataFromPointerProperties(

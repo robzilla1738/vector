@@ -795,14 +795,17 @@ export class PlaywrightDriverPage implements DriverPage {
     target: string,
     button: "left" | "right" | "middle" | "none",
     clicks: number,
+    check?: () => void,
   ): Promise<boolean> {
     if (this.admittedTargets.has(target)) return false;
     const w = await this.worldRef(target);
+    check?.();
     if (!w) return false;
     const point = await bounded(
       w.world.call<[number, number] | string>(`__aux.point(${w.ref})`),
       FRAME_PROBE_MS,
     );
+    check?.();
     if (!Array.isArray(point)) return false;
     const [x, y] = point;
     const mask = button === "left" ? 1 : button === "right" ? 2 : button === "middle" ? 4 : 0;
@@ -893,21 +896,34 @@ export class PlaywrightDriverPage implements DriverPage {
     target: string,
     button: "left" | "right" | "middle" = "left",
     timeoutMs = DEFAULT_STEP_TIMEOUT,
+    continuation?: { signal: AbortSignal },
   ) {
+    const check = () => {
+      if (continuation?.signal.aborted)
+        throw new AuxError("cancelled", "The original native input was cancelled.");
+    };
+    check();
     if (this.contextAdmission) {
+      if (continuation) throw new AuxError("conflict", "A native context action already owns this click.");
       if (button !== "left")
         throw new AuxError("permission_denied", "Native context input supports left click only.");
       await this.applyContext(target, "click");
       await this.settleClickNavigation();
       return;
     }
-    if (await this.rawPointer(target, button, 1)) {
-      await this.settleClickNavigation();
+    if (await this.rawPointer(target, button, 1, check)) {
+      check();
+      if (!continuation) await this.settleClickNavigation();
       return;
     }
+    check();
     const loc = await this.resolveActionable(target);
+    check();
     await loc.click({ button, timeout: timeoutMs, noWaitAfter: true });
-    await this.settleClickNavigation();
+    check();
+    // The exact native receipt owns governed navigation completion. Re-entering
+    // a heuristic evaluate/load wait here can outlive that original document.
+    if (!continuation) await this.settleClickNavigation();
   }
   async dblclick(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     if (await this.rawPointer(target, "left", 2)) return;

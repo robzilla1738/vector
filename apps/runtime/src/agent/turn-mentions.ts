@@ -198,7 +198,7 @@ export class TurnMentions {
     pageId: string,
     dispatch: (
       mentionAuthority: () => void,
-    ) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>,
+    ) => Promise<{ result: T; receipt?: ControlledAttachmentNavigationReceipt }>,
   ): Promise<T | Extract<MentionAvailability, { status: "unavailable" }>> {
     const access = this.require(runId, pageId, "act");
     if (access.status === "unavailable") return access;
@@ -233,6 +233,18 @@ export class TurnMentions {
     try {
       const { result, receipt } = await dispatch(mentionAuthority);
       originalReceipt = receipt;
+      if (!receipt) {
+        mentionAuthority();
+        const current = this.page(pageId);
+        if (
+          !current ||
+          current.sessionId !== before.sessionId ||
+          current.url !== before.url ||
+          current.documentEpoch !== before.documentEpoch
+        )
+          return await refuse("Input without a transition receipt changed its original attachment.");
+        return result;
+      }
       if (this.turns.get(runId) !== turn || turn.navigation.get(pageId) !== token)
         return await refuse("The turn changed during native navigation.");
       const page = consumeControlledAttachmentNavigation(receipt, runId, pageId, before, mentionAuthority);

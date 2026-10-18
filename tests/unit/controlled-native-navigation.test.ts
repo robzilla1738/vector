@@ -5,7 +5,10 @@ import { EventBus, NullNativeBridge, openDb, Repo } from "@aux/runtime";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 import { PageRegistry } from "../../apps/runtime/src/services/pages/registry.js";
 import { TurnMentions } from "../../apps/runtime/src/agent/turn-mentions.js";
-import { navigateControlledPage } from "../../apps/runtime/src/services/pages/controlled-navigation.js";
+import {
+  navigateControlledPage,
+  inputControlledPage,
+} from "../../apps/runtime/src/services/pages/controlled-navigation.js";
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { ProgramExecutor } from "../../apps/runtime/src/services/pages/executor.js";
 import { PageLanes } from "../../apps/runtime/src/services/pages/lanes.js";
@@ -150,6 +153,21 @@ function fixture(retireOnReceipt = true, initialUrl = "https://continuation.test
       };
     }),
   };
+  const inputCdp = {
+    ...cdp,
+    inputDeadline: () => Date.now() + 2000,
+    inputControlled: async <T>(_id: string, dispatch: (signal: AbortSignal) => Promise<T>) => ({
+      value: await dispatch(new AbortController().signal),
+      outcome: {
+        kind: "unchanged" as const,
+        originalAttachmentId: "A".repeat(32),
+        originalLeaseId: latestLease!.leaseId,
+        commandId: 19,
+        url: pages.get(pageId).url,
+      },
+    }),
+  };
+  pages.deps.inputControlled = (input, registry) => inputControlledPage(input, registry, egress, inputCdp);
   const check = vi.fn(() => {
     const run = repo.getRun("run");
     if (run && (run.status !== "running" || run.config?.taskId !== "task" || run.config?.taskRevision !== 4))
@@ -170,7 +188,20 @@ function fixture(retireOnReceipt = true, initialUrl = "https://continuation.test
       egress,
       cdp,
     );
-  return { repo, pages, live, egress, native, old, next, cdp, check, navigate, lease: () => latestLease! };
+  return {
+    repo,
+    pages,
+    live,
+    egress,
+    native,
+    old,
+    next,
+    cdp,
+    inputCdp,
+    check,
+    navigate,
+    lease: () => latestLease!,
+  };
 }
 
 it("advances a mentioned attachment only through the completed one-use private continuation", async () => {
@@ -923,3 +954,274 @@ it("routes a genuinely created protected page first load through the same native
   expect(browser.attach).toHaveBeenCalledTimes(2);
   expect(f.native.egressInstall).toHaveBeenCalledTimes(2);
 });
+
+it("retains the exact original session, document and lease after an unchanged native click", async () => {
+  const f = fixture();
+  await f.egress.acquire("run", pageId);
+  const original = { ...f.live.target },
+    originalLease = f.lease();
+  const result = await inputControlledPage(
+    { runId: "run", pageId, dispatch: f.old.click, validateSource: f.check },
+    f.pages,
+    f.egress,
+    f.inputCdp,
+  );
+  expect(result.driver).toBe(f.old.page);
+  expect(result.receipt).toBeUndefined();
+  expect(f.live.target.sessionId).toBe(original.sessionId);
+  expect(f.live.target.documentEpoch).toBe(original.documentEpoch);
+  expect(f.lease()).toBe(originalLease);
+  expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  expect(f.native.egressRevoke).not.toHaveBeenCalled();
+  expect(f.old.click).toHaveBeenCalledTimes(1);
+  // Completing the bookkeeping permits another governed action on this exact source.
+  await inputControlledPage(
+    { runId: "run", pageId, dispatch: f.old.click, validateSource: f.check },
+    f.pages,
+    f.egress,
+    f.inputCdp,
+  );
+  expect(f.old.click).toHaveBeenCalledTimes(2);
+});
+
+it("readmits an exact click commit and updates the mention before the next program action", async () => {
+  const f = fixture();
+  const ref = {
+    kind: "tab" as const,
+    pageId,
+    title: "Fixture",
+    url: f.live.target.url,
+    documentEpoch: 1,
+    sessionId: f.live.target.sessionId!,
+    access: "act" as const,
+  };
+  f.repo.saveRun({
+    runId: "run",
+    goal: "Save then continue",
+    status: "running",
+    pageIds: [pageId],
+    createdAt: 1,
+    config: { taskId: "task", taskRevision: 4, mentions: [ref] },
+  });
+  await f.pages.deps.turnMentions.begin("run", [ref], []);
+  f.pages.deps.prepareAgentEgress = (run, id) => f.egress.ensure(run, id);
+  const cdp = {
+    ...f.inputCdp,
+    inputControlled: async <T>(
+      _id: string,
+      dispatch: (signal: AbortSignal) => Promise<T>,
+      signal: AbortSignal,
+    ) => {
+      const value = await dispatch(new AbortController().signal);
+      const receipt = await f.cdp.navigateControlled(pageId, "https://continuation.test/next", signal);
+      return { value, outcome: { kind: "document_committed" as const, receipt } };
+    },
+  };
+  f.pages.deps.inputControlled = (input, registry) => inputControlledPage(input, registry, f.egress, cdp);
+  const lanes = new PageLanes(f.pages);
+  const executor = new ProgramExecutor(
+    f.pages,
+    lanes,
+    new ObservationService(f.pages, lanes),
+    new ControlAuthority(f.pages),
+  );
+  const result = await executor.execute(
+    { pageId, steps: [{ id: "save", op: "click", target: "css:#save" }] },
+    { runId: "run", sourcePageCheck: f.check, signal: new AbortController().signal },
+  );
+  expect(result.status).toBe("completed");
+  expect(result.steps[0]?.effect).toBe("observed");
+  expect(f.old.click).toHaveBeenCalledTimes(1);
+  expect(f.live.driver).toBe(f.next.page);
+  expect(f.live.target.sessionId).not.toBe(ref.sessionId);
+  await expect(f.pages.deps.turnMentions.require("run", pageId, "act")).resolves.toEqual({
+    status: "available",
+  });
+});
+
+it.each(["takeover", "cancel", "source-change"] as const)(
+  "refuses %s during input completion without adopting the replacement",
+  async (change) => {
+    const f = fixture();
+    await f.egress.acquire("run", pageId);
+    const signal = new AbortController();
+    let changed = false;
+    const cdp = {
+      ...f.inputCdp,
+      inputControlled: async <T>(_id: string, dispatch: (signal: AbortSignal) => Promise<T>) => {
+        const value = await dispatch(new AbortController().signal);
+        const receipt = await f.cdp.navigateControlled(
+          pageId,
+          "https://continuation.test/next",
+          signal.signal,
+        );
+        if (change === "takeover") f.live.target.controller = "human";
+        if (change === "cancel") signal.abort();
+        if (change === "source-change") changed = true;
+        return { value, outcome: { kind: "document_committed" as const, receipt } };
+      },
+    };
+    await expect(
+      inputControlledPage(
+        {
+          runId: "run",
+          pageId,
+          dispatch: f.old.click,
+          signal: signal.signal,
+          validateSource: () => {
+            if (changed) throw new Error("Original source changed");
+          },
+        },
+        f.pages,
+        f.egress,
+        cdp,
+      ),
+    ).rejects.toThrow();
+    expect(f.old.click).toHaveBeenCalledTimes(1);
+    expect(f.live.driver).not.toBe(f.next.page);
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("retains original authority for an exact Page.navigate download without a document receipt", async () => {
+  const f = fixture();
+  await f.egress.acquire("run", pageId);
+  const originalSession = f.live.target.sessionId,
+    originalLease = f.lease();
+  const download = {
+    kind: "download" as const,
+    originalAttachmentId: "A".repeat(32),
+    originalLeaseId: originalLease.leaseId,
+    commandId: 31,
+    navigationId: "73",
+    downloadId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    url: f.live.target.url,
+  };
+  const result = await navigateControlledPage(
+    { runId: "run", pageId, url: "https://continuation.test/export.csv", validateSource: f.check },
+    f.pages,
+    f.egress,
+    { ...f.cdp, navigateControlled: async () => download },
+  );
+  expect(result.download).toEqual(download);
+  expect(result.receipt).toBeUndefined();
+  expect(result.driver).toBe(f.old.page);
+  expect(f.live.target.sessionId).toBe(originalSession);
+  expect(f.lease()).toBe(originalLease);
+  expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  expect(f.native.egressRevoke).not.toHaveBeenCalled();
+});
+
+it.each(["lease", "url", "detached"] as const)(
+  "refuses a download with changed %s authority",
+  async (change) => {
+    const f = fixture();
+    await f.egress.acquire("run", pageId);
+    const cdp = {
+      ...f.cdp,
+      navigateControlled: async () => {
+        if (change === "detached") f.old.retire();
+        return {
+          kind: "download" as const,
+          originalAttachmentId: "A".repeat(32),
+          originalLeaseId: change === "lease" ? "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" : f.lease().leaseId,
+          commandId: 31,
+          navigationId: "73",
+          downloadId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          url: change === "url" ? "https://continuation.test/other" : f.live.target.url,
+        };
+      },
+    };
+    await expect(
+      navigateControlledPage(
+        { runId: "run", pageId, url: "https://continuation.test/export.csv", validateSource: f.check },
+        f.pages,
+        f.egress,
+        cdp,
+      ),
+    ).rejects.toThrow();
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each(["present", "missing", "source-changed", "missing-signal"] as const)(
+  "publishes a navigation download only through the exact private artifact producer (%s)",
+  async (leaf) => {
+    const f = fixture();
+    const ref = {
+      kind: "tab" as const,
+      pageId,
+      title: "Fixture",
+      url: f.live.target.url,
+      documentEpoch: 1,
+      sessionId: f.live.target.sessionId!,
+      access: "act" as const,
+    };
+    f.repo.saveRun({
+      runId: "run",
+      goal: "Download export",
+      status: "running",
+      pageIds: [pageId],
+      createdAt: 1,
+      config: { taskId: "task", taskRevision: 4, mentions: [ref] },
+    });
+    await f.pages.deps.turnMentions.begin("run", [ref], []);
+    f.pages.deps.prepareAgentEgress = (run, id) => f.egress.ensure(run, id);
+    const downloadId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    f.pages.deps.navigateControlled = (input, registry) =>
+      navigateControlledPage(input, registry, f.egress, {
+        ...f.cdp,
+        navigateControlled: async () => ({
+          kind: "download" as const,
+          originalAttachmentId: "A".repeat(32),
+          originalLeaseId: f.lease().leaseId,
+          commandId: 42,
+          navigationId: "15",
+          downloadId,
+          url: f.live.target.url,
+        }),
+      });
+    const sourceSignal = new AbortController().signal;
+    const intake = vi.fn(
+      async (input: Parameters<NonNullable<typeof f.pages.deps.admitNavigationDownload>>[0]) => {
+        expect(input.signal).toBe(sourceSignal);
+        expect(input.outcome.downloadId).toBe(downloadId);
+        expect(input.pageId).toBe(pageId);
+        expect(input.runId).toBe("run");
+        input.validateSource();
+        if (leaf === "source-changed") f.live.target.controller = "human";
+        return {
+          artifactId: "download-artifact",
+          suggestedFilename: "export.csv",
+          sha256: "a".repeat(64),
+          mediaType: "text/csv",
+        };
+      },
+    );
+    if (leaf !== "missing") f.pages.deps.admitNavigationDownload = intake;
+    const lanes = new PageLanes(f.pages),
+      executor = new ProgramExecutor(
+        f.pages,
+        lanes,
+        new ObservationService(f.pages, lanes),
+        new ControlAuthority(f.pages),
+      );
+    const result = await executor.execute(
+      { pageId, steps: [{ id: "download", op: "navigate", url: "https://continuation.test/export.csv" }] },
+      {
+        runId: "run",
+        sourcePageCheck: f.check,
+        ...(leaf === "missing-signal" ? {} : { signal: sourceSignal }),
+      },
+    );
+    expect(result.status).toBe(leaf === "present" ? "completed" : "failed");
+    expect(result.steps.flatMap((step) => step.artifactIds ?? [])).toEqual(
+      leaf === "present" ? ["download-artifact"] : [],
+    );
+    expect(intake).toHaveBeenCalledTimes(leaf === "missing" || leaf === "missing-signal" ? 0 : 1);
+    expect(leaf !== "missing-signal" || result.steps[0]?.error?.code === "capability_unsupported").toBe(true);
+    expect(f.live.driver).toBe(f.old.page);
+    expect(f.live.target.sessionId).toBe(ref.sessionId);
+    expect(f.native.egressRevoke).not.toHaveBeenCalled();
+  },
+);

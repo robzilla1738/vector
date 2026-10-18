@@ -13,26 +13,35 @@ index 82c7cffdf0b51a9312fef0ec68522eda1d86c79e..aa0dbce4413fe73a96f54b141b069707
      "native_project.cc",
 diff --git a/chrome/browser/ui/aux/document_jobs.cc b/chrome/browser/ui/aux/document_jobs.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea2144b9457a
+index 0000000000000000000000000000000000000000..ae7fd7fa6a2c28f012052e1398546dac5f727b99
 --- /dev/null
 +++ b/chrome/browser/ui/aux/document_jobs.cc
-@@ -0,0 +1,423 @@
+@@ -0,0 +1,694 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +#include "chrome/browser/ui/aux/document_jobs.h"
 +
 +#include <algorithm>
++#include <array>
++#include <optional>
 +#include <utility>
 +#include <vector>
 +
++#include "build/build_config.h"
++#if BUILDFLAG(IS_POSIX)
++#include <sys/stat.h>
++#endif
++
 +#include "base/base64.h"
 +#include "base/containers/span.h"
++#include "base/files/file.h"
 +#include "base/functional/bind.h"
 +#include "base/memory/ref_counted.h"
 +#include "base/memory/shared_memory_mapping.h"
 +#include "base/memory/weak_ptr.h"
 +#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
 +#include "base/strings/string_view_util.h"
 +#include "base/task/thread_pool.h"
 +#include "base/time/time.h"
@@ -105,6 +114,132 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +  }
 +  return result;
 +}
++struct CapturedDownload {
++  base::ReadOnlySharedMemoryMapping bytes;
++  size_t size = 0;
++  std::string sha256;
++  std::string media_type;
++  std::string failure;
++};
++bool SameDownload(const NativeDownloadFile& a, const NativeDownloadFile& b) {
++  return a.state == NativeDownloadFile::State::kReady &&
++         b.state == NativeDownloadFile::State::kReady && a.path == b.path &&
++         a.size == b.size && a.filename == b.filename &&
++         a.native_sha256 == b.native_sha256;
++}
++std::string DownloadMime(base::span<const uint8_t> bytes) {
++  const auto starts = [&](std::string_view signature) {
++    return bytes.size() >= signature.size() &&
++           std::ranges::equal(bytes.first(signature.size()),
++                              base::as_byte_span(signature));
++  };
++  const std::string_view prefix(reinterpret_cast<const char*>(bytes.data()),
++                                std::min<size_t>(1024, bytes.size()));
++  if (prefix.find("%PDF-") != std::string_view::npos)
++    return "application/pdf";
++  constexpr std::array<uint8_t, 8> png = {137, 80, 78, 71, 13, 10, 26, 10};
++  if (bytes.size() >= png.size() &&
++      std::ranges::equal(bytes.first(png.size()), png))
++    return "image/png";
++  if (bytes.size() >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 &&
++      bytes[2] == 0xff)
++    return "image/jpeg";
++  if (bytes.size() >= 12 && starts("RIFF") &&
++      std::ranges::equal(bytes.subspan(8u, 4u),
++                         base::as_byte_span(std::string_view("WEBP"))))
++    return "image/webp";
++  if (bytes.size() >= 4 && bytes[0] == 'P' && bytes[1] == 'K' &&
++      bytes[2] == 3 && bytes[3] == 4)
++    return "application/zip";
++  const std::string_view text(reinterpret_cast<const char*>(bytes.data()),
++                              bytes.size());
++  if (text.find('\0') == std::string_view::npos &&
++      base::IsStringUTF8AllowingNoncharacters(text))
++    return "text/plain";
++  return "application/octet-stream";
++}
++CapturedDownload CaptureDownload(NativeDownloadFile original,
++                                 base::TimeTicks deadline,
++                                 std::shared_ptr<std::atomic_bool> cancelled) {
++  CapturedDownload result;
++#if BUILDFLAG(IS_POSIX)
++  if (original.size < 0 || original.size > static_cast<int64_t>(kSourceLimit) ||
++      cancelled->load() || base::TimeTicks::Now() >= deadline) {
++    result.failure =
++        "Original download capture is cancelled, expired or oversized";
++    return result;
++  }
++  base::File file(original.path, base::File::FLAG_OPEN | base::File::FLAG_READ |
++                                     base::File::FLAG_NO_FOLLOW);
++  struct stat before, after, published;
++  if (!file.IsValid() || fstat(file.GetPlatformFile(), &before) != 0 ||
++      !S_ISREG(before.st_mode) || before.st_size != original.size) {
++    result.failure = "Original download is not the expected regular local file";
++    return result;
++  }
++  auto memory = base::ReadOnlySharedMemoryRegion::Create(
++      std::max<size_t>(1, static_cast<size_t>(original.size)));
++  if (!memory.IsValid()) {
++    result.failure = "Download capture allocation failed";
++    return result;
++  }
++  auto bytes = memory.mapping.GetMemoryAsSpan<uint8_t>().first(static_cast<size_t>(original.size));
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    if (cancelled->load() || base::TimeTicks::Now() >= deadline) {
++      result.failure = "Original download capture cancelled or expired";
++      return result;
++    }
++    const auto count = file.ReadAtCurrentPos(
++        bytes.subspan(offset, std::min(kChunkLimit, bytes.size() - offset)));
++    if (!count || !*count) {
++      result.failure = "Original download bytes are incomplete";
++      return result;
++    }
++    offset += *count;
++  }
++  base::File current(original.path, base::File::FLAG_OPEN |
++                                        base::File::FLAG_READ |
++                                        base::File::FLAG_NO_FOLLOW);
++  const auto same = [](const struct stat& a, const struct stat& b) {
++    return S_ISREG(b.st_mode) && a.st_dev == b.st_dev && a.st_ino == b.st_ino &&
++           a.st_size == b.st_size && a.st_mtime == b.st_mtime &&
++           a.st_ctime == b.st_ctime
++#if BUILDFLAG(IS_APPLE)
++           && a.st_mtimespec.tv_nsec == b.st_mtimespec.tv_nsec &&
++           a.st_ctimespec.tv_nsec == b.st_ctimespec.tv_nsec
++#else
++           && a.st_mtim.tv_nsec == b.st_mtim.tv_nsec &&
++           a.st_ctim.tv_nsec == b.st_ctim.tv_nsec
++#endif
++        ;
++  };
++  if (!current.IsValid() || fstat(file.GetPlatformFile(), &after) != 0 ||
++      fstat(current.GetPlatformFile(), &published) != 0 ||
++      !same(before, after) || !same(before, published) || cancelled->load() ||
++      base::TimeTicks::Now() >= deadline) {
++    result.failure = "Original download file changed during immutable capture";
++    return result;
++  }
++  result.sha256 = Hash(bytes);
++  if (!original.native_sha256.empty() &&
++      result.sha256 != original.native_sha256) {
++    result.failure =
++        "Downloaded bytes no longer match their actual native hash";
++    return result;
++  }
++  result.media_type = DownloadMime(bytes);
++  result.size = bytes.size();
++  result.bytes = memory.region.Map();
++  if (!result.bytes.IsValid())
++    result.failure = "Original download capture mapping failed";
++#else
++  result.failure =
++      "This platform lacks the required local file identity verifier";
++#endif
++  return result;
++}
++
 +}  // namespace
 +class NativeDocumentJobs::Job final
 +    : public base::RefCounted<Job>,
@@ -113,6 +248,11 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +  Job(std::vector<Source> sources, base::DictValue request)
 +      : sources_(std::move(sources)), request_(std::move(request)) {
 +    expires_ = base::TimeTicks::Now() + base::Minutes(2);
++    timer_.Start(FROM_HERE, base::Milliseconds(100), this, &Job::Check);
++  }
++  explicit Job(NativeDownloadSource source)
++      : download_source_(std::move(source)) {
++    expires_ = download_source_->deadline;
 +    timer_.Start(FROM_HERE, base::Milliseconds(100), this, &Job::Check);
 +  }
 +  size_t bytes() const { return source_bytes_; }
@@ -147,7 +287,24 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +                   .Set("action", "append")
 +                   .Set("offset", static_cast<int>(source.received))));
 +  }
++  void Capture(std::shared_ptr<std::atomic_bool> cancelled, Reply callback) {
++    if (!download_source_ || state_ != State::kUploading) {
++      std::move(callback).Run(Fault(
++          "conflict",
++          "Original download capture is unavailable or already dispatched"));
++      return;
++    }
++    cancelled_ = std::move(cancelled);
++    pending_ = std::move(callback);
++    state_ = State::kDownloadWaiting;
++    TryDownload();
++  }
 +  void Run(std::shared_ptr<std::atomic_bool> cancelled, Reply callback) {
++    if (download_source_) {
++      std::move(callback).Run(Fault(
++          "invalid_params", "Use original download capture, not computation"));
++      return;
++    }
 +    if (state_ != State::kUploading ||
 +        std::ranges::any_of(
 +            sources_, [](const Source& s) { return s.received != s.size; })) {
@@ -175,10 +332,27 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +          Fault("ref_stale", "Document output is unavailable at this offset"));
 +      return;
 +    }
++    if (download_source_ &&
++        (base::TimeTicks::Now() >= download_source_->deadline ||
++         !SameDownload(download_file_, download_source_->snapshot.Run()))) {
++      Retire("ref_stale",
++             "Original downloaded source retired before byte publication");
++      std::move(callback).Run(
++          Fault("ref_stale", "Original downloaded source retired"));
++      return;
++    }
 +    auto bytes = outputs_[*index].GetMemoryAsSpan<const uint8_t>();
++    if (download_source_)
++      bytes = bytes.first(download_size_);
++    if (static_cast<size_t>(*offset) > bytes.size()) {
++      std::move(callback).Run(
++          Fault("ref_stale", "Original download offset unavailable"));
++      return;
++    }
 +    auto chunk = bytes.subspan(static_cast<size_t>(*offset),
 +                               std::min(kChunkLimit, bytes.size() - *offset));
-+    expires_ = base::TimeTicks::Now() + base::Minutes(2);
++    if (!download_source_)
++      expires_ = base::TimeTicks::Now() + base::Minutes(2);
 +    std::move(callback).Run(
 +        Result(base::DictValue()
 +                   .Set("action", "read")
@@ -228,12 +402,79 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 + private:
 +  friend class base::RefCounted<Job>;
 +  ~Job() override = default;
-+  enum class State { kUploading, kPreparing, kRunning, kComplete, kClosed };
++  enum class State {
++    kUploading,
++    kDownloadWaiting,
++    kPreparing,
++    kRunning,
++    kComplete,
++    kClosed
++  };
 +  void Check() {
 +    if ((cancelled_ && cancelled_->load()) ||
 +        base::TimeTicks::Now() >= expires_) {
 +      Retire("cancelled", "Document job cancelled or expired");
++      return;
 +    }
++    if (state_ == State::kDownloadWaiting)
++      TryDownload();
++    else if (download_source_ && state_ == State::kComplete &&
++             !SameDownload(download_file_, download_source_->snapshot.Run()))
++      Retire("ref_stale", "Original download source retired");
++  }
++  void TryDownload() {
++    if (!download_source_ || !cancelled_)
++      return;
++    auto file = download_source_->snapshot.Run();
++    if (cancelled_->load() ||
++        base::TimeTicks::Now() >= download_source_->deadline ||
++        file.state == NativeDownloadFile::State::kRetired) {
++      Retire("ref_stale", "Original download source retired or expired");
++      return;
++    }
++    if (file.state == NativeDownloadFile::State::kWaiting)
++      return;
++    download_file_ = file;
++    state_ = State::kPreparing;
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++        base::BindOnce(&CaptureDownload, file, download_source_->deadline,
++                       cancelled_),
++        base::BindOnce(&Job::DownloadCaptured, base::RetainedRef(this)));
++  }
++  void DownloadCaptured(CapturedDownload captured) {
++    scoped_refptr<Job> hold(this);
++    if (!fault_.empty() || cancelled_->load() || !captured.failure.empty() ||
++        base::TimeTicks::Now() >= download_source_->deadline ||
++        !SameDownload(download_file_, download_source_->snapshot.Run())) {
++      if (fault_.empty())
++        fault_ = Fault("ref_stale",
++                       captured.failure.empty()
++                           ? "Original download source retired during capture"
++                           : captured.failure);
++      // Release worker-owned immutable bytes before closed becomes observable
++      // to a reentrant admission from the original close callback.
++      captured.bytes = {};
++      FinishClosed();
++      return;
++    }
++    download_size_ = captured.size;
++    source_bytes_ = std::max<size_t>(1, captured.size);
++    outputs_.push_back(std::move(captured.bytes));
++    state_ = State::kComplete;
++    auto source =
++        base::DictValue()
++            .Set("runId", download_source_->run_id)
++            .Set("downloadId", download_source_->download_id)
++            .Set("filename", download_file_.filename)
++            .Set("sha256", captured.sha256)
++            .Set("size", static_cast<int>(captured.size))
++            .Set("mediaType", captured.media_type)
++            .Set("nativeHashVerified", !download_file_.native_sha256.empty());
++    if (pending_)
++      std::move(pending_).Run(Result(base::DictValue()
++                                         .Set("action", "capture")
++                                         .Set("source", std::move(source))));
 +  }
 +  void PreparedSources(Prepared prepared) {
 +    if (!fault_.empty() || cancelled_->load() || !prepared.failure.empty()) {
@@ -242,6 +483,7 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +                                             ? "Document job cancelled"
 +                                             : prepared.failure);
 +      }
++      prepared.sources.clear();
 +      FinishClosed();
 +      return;
 +    }
@@ -334,6 +576,9 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +    }
 +    closers_.clear();
 +  }
++  std::optional<NativeDownloadSource> download_source_;
++  NativeDownloadFile download_file_;
++  size_t download_size_ = 0;
 +  State state_ = State::kUploading;
 +  size_t source_bytes_ = 0;
 +  std::vector<Source> sources_;
@@ -354,6 +599,29 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +  for (auto& [id, job] : jobs_) {
 +    job->Retire("ref_stale", "Original native connection retired");
 +  }
++}
++void NativeDocumentJobs::BeginDownload(
++    NativeDownloadSource source,
++    std::shared_ptr<std::atomic_bool> cancelled,
++    Reply callback) {
++  std::erase_if(jobs_,
++                [](const auto& entry) { return entry.second->closed(); });
++  size_t occupied = 0;
++  for (const auto& [id, job] : jobs_)
++    occupied += job->bytes();
++  if (cancelled->load() || !source.snapshot ||
++      base::TimeTicks::Now() >= source.deadline || jobs_.size() >= 4 ||
++      occupied + kSourceLimit > 128 * 1024 * 1024) {
++    std::move(callback).Run(
++        Fault("ref_stale", "Original download admission unavailable or full"));
++    return;
++  }
++  const auto id = base::UnguessableToken::Create().ToString();
++  auto job = base::MakeRefCounted<Job>(std::move(source));
++  job->set_bytes(kSourceLimit);
++  jobs_.emplace(id, std::move(job));
++  std::move(callback).Run(Result(
++      base::DictValue().Set("action", "beginDownload").Set("jobId", id)));
 +}
 +void NativeDocumentJobs::Dispatch(const base::DictValue& params,
 +                                  std::shared_ptr<std::atomic_bool> cancelled,
@@ -426,13 +694,16 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +  }
 +  if (*action == "append") {
 +    found->second->Append(params, std::move(callback));
++  } else if (*action == "capture" && params.size() == 2) {
++    found->second->Capture(std::move(cancelled), std::move(callback));
 +  } else if (*action == "run" && params.size() == 2) {
 +    found->second->Run(std::move(cancelled), std::move(callback));
 +  } else if (*action == "read") {
 +    found->second->Read(params, std::move(callback));
 +  } else if (*action == "close" && params.size() == 2) {
++    // A preparing worker still owns its reservation until Close joins it.
++    // Begin prunes only closed jobs, after their immutable resources released.
 +    auto job = found->second;
-+    jobs_.erase(found);
 +    job->Close(std::move(callback));
 +  } else {
 +    std::move(callback).Run(
@@ -442,30 +713,54 @@ index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea21
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/document_jobs.h b/chrome/browser/ui/aux/document_jobs.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..dad8b41c7d010c3dc2d2bde2e6460c0af846e510
+index 0000000000000000000000000000000000000000..28084cc9916f2848e055d6ad629a01210e1b1f66
 --- /dev/null
 +++ b/chrome/browser/ui/aux/document_jobs.h
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,54 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +#ifndef CHROME_BROWSER_UI_AUX_DOCUMENT_JOBS_H_
 +#define CHROME_BROWSER_UI_AUX_DOCUMENT_JOBS_H_
++#include <stdint.h>
++
 +#include <atomic>
 +#include <map>
 +#include <memory>
 +#include <string>
 +
++#include "base/files/file_path.h"
 +#include "base/functional/callback.h"
 +#include "base/memory/scoped_refptr.h"
++#include "base/time/time.h"
 +#include "base/values.h"
 +namespace aux {
++// Only the native CDP continuation creates this original-source closure. No
++// runtime path, URL or download row can construct file authority.
++struct NativeDownloadFile {
++  enum class State { kRetired, kWaiting, kReady };
++  State state = State::kRetired;
++  base::FilePath path;
++  std::string filename;
++  int64_t size = 0;
++  std::string native_sha256;
++};
++struct NativeDownloadSource {
++  std::string run_id;
++  std::string download_id;
++  base::TimeTicks deadline;
++  base::RepeatingCallback<NativeDownloadFile()> snapshot;
++};
++
 +// A controller belongs to one authenticated native connection, never a path or
 +// a replacement runtime. Each computation has its own sandboxed utility.
 +class NativeDocumentJobs {
 + public:
 +  NativeDocumentJobs();
 +  ~NativeDocumentJobs();
++  void BeginDownload(NativeDownloadSource source,
++                     std::shared_ptr<std::atomic_bool> cancelled,
++                     base::OnceCallback<void(base::DictValue)> callback);
 +  void Dispatch(const base::DictValue& params,
 +                std::shared_ptr<std::atomic_bool> cancelled,
 +                base::OnceCallback<void(base::DictValue)> callback);
@@ -3063,3 +3358,292 @@ index 421e7f2baa1ca05ac3db1a2499273de740a98724..1b251b2f6356461ce90747d16056e07f
      virtual void OnServiceProcessTerminatedNormally(
          const ServiceProcessInfo& info) {}
      virtual void OnServiceProcessCrashed(const ServiceProcessInfo& info) {}
+diff --git a/chrome/browser/ui/aux/document_jobs_unittest.cc b/chrome/browser/ui/aux/document_jobs_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..a1e3de6f79fa781bcf65798dd0e999d032728334
+--- /dev/null
++++ b/chrome/browser/ui/aux/document_jobs_unittest.cc
+@@ -0,0 +1,283 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/document_jobs.h"
++
++#include "base/base64.h"
++#include "base/containers/span.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/test/bind.h"
++#include "base/test/task_environment.h"
++#include "base/test/test_future.h"
++#include "crypto/hash.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++namespace {
++// Tests real file capture and byte-job retirement. The synthetic native closure
++// is not evidence of CdpBroker's original navigation/lease/GUID admission.
++class NativeDownloadJobsTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    ASSERT_TRUE(directory_.CreateUniqueTempDir());
++    file_.state = NativeDownloadFile::State::kReady;
++    file_.path = directory_.GetPath().AppendASCII("original.pdf");
++    file_.filename = "original.pdf";
++    ASSERT_TRUE(base::WriteFile(file_.path, bytes_));
++    file_.size = bytes_.size();
++  }
++  std::string Begin() {
++    NativeDownloadSource source;
++    source.run_id = "original-run";
++    source.download_id = "exact-original-guid";
++    source.deadline = base::TimeTicks::Now() + base::Seconds(30);
++    source.snapshot = base::BindLambdaForTesting([this] {
++      ++snapshots_;
++      if (retire_after_capture_ && snapshots_ > 1)
++        return NativeDownloadFile();
++      return file_;
++    });
++    base::test::TestFuture<base::DictValue> begun;
++    jobs_.BeginDownload(std::move(source), cancelled_, begun.GetCallback());
++    const auto* result = begun.Get().FindDict("result");
++    EXPECT_NE(result, nullptr);
++    return result ? *result->FindString("jobId") : std::string();
++  }
++  base::DictValue Capture(const std::string& id) {
++    base::test::TestFuture<base::DictValue> captured;
++    jobs_.Dispatch(base::DictValue().Set("action", "capture").Set("jobId", id),
++                   cancelled_, captured.GetCallback());
++    return captured.Take();
++  }
++  base::DictValue Read(const std::string& id) {
++    base::test::TestFuture<base::DictValue> read;
++    jobs_.Dispatch(base::DictValue()
++                       .Set("action", "read")
++                       .Set("jobId", id)
++                       .Set("outputIndex", 0)
++                       .Set("offset", 0),
++                   std::make_shared<std::atomic_bool>(false),
++                   read.GetCallback());
++    return read.Take();
++  }
++  base::DictValue Close(const std::string& id) {
++    base::test::TestFuture<base::DictValue> closed;
++    jobs_.Dispatch(base::DictValue().Set("action", "close").Set("jobId", id),
++                   std::make_shared<std::atomic_bool>(false),
++                   closed.GetCallback());
++    return closed.Take();
++  }
++  base::test::TaskEnvironment tasks_;
++  base::ScopedTempDir directory_;
++  const std::string bytes_ = "%PDF-1.7\nexact original immutable bytes\n";
++  NativeDownloadFile file_;
++  int snapshots_ = 0;
++  bool retire_after_capture_ = false;
++  std::shared_ptr<std::atomic_bool> cancelled_ =
++      std::make_shared<std::atomic_bool>(false);
++  NativeDocumentJobs jobs_;
++};
++
++TEST_F(NativeDownloadJobsTest,
++       CapturesHashMimeAndActualBytesWithoutChangingOriginal) {
++  file_.native_sha256 =
++      base::HexEncodeLower(crypto::hash::Sha256(base::as_byte_span(bytes_)));
++  const auto id = Begin();
++  auto captured = Capture(id);
++  ASSERT_TRUE(captured.FindDict("result"));
++  const auto* source = captured.FindDict("result")->FindDict("source");
++  ASSERT_TRUE(source);
++  EXPECT_EQ(*source->FindString("runId"), "original-run");
++  EXPECT_EQ(*source->FindString("downloadId"), "exact-original-guid");
++  EXPECT_EQ(*source->FindString("mediaType"), "application/pdf");
++  EXPECT_EQ(source->FindBool("nativeHashVerified"), true);
++  EXPECT_EQ(*source->FindString("sha256"), file_.native_sha256);
++  auto read = Read(id);
++  ASSERT_TRUE(read.FindDict("result"));
++  std::string actual;
++  ASSERT_TRUE(base::Base64Decode(
++      *read.FindDict("result")->FindString("bytesBase64"), &actual));
++  EXPECT_EQ(actual, bytes_);
++  EXPECT_EQ(read.FindDict("result")->FindBool("done"), true);
++  auto closed = Close(id);
++  ASSERT_TRUE(closed.FindDict("result"));
++  EXPECT_EQ(closed.FindDict("result")->FindBool("joined"), true);
++  ASSERT_TRUE(base::ReadFileToString(file_.path, &actual));
++  EXPECT_EQ(actual, bytes_);
++}
++TEST_F(NativeDownloadJobsTest, DoesNotTrustFilenameForMimeOrInventNativeHash) {
++  ASSERT_TRUE(base::WriteFile(file_.path, "ordinary text"));
++  file_.size = 13;
++  const auto id = Begin();
++  auto captured = Capture(id);
++  ASSERT_TRUE(captured.FindDict("result"));
++  const auto* source = captured.FindDict("result")->FindDict("source");
++  ASSERT_TRUE(source);
++  EXPECT_EQ(*source->FindString("mediaType"), "text/plain");
++  EXPECT_EQ(source->FindBool("nativeHashVerified"), false);
++  EXPECT_TRUE(Close(id).FindDict("result"));
++}
++TEST_F(NativeDownloadJobsTest, RefusesSymlinkWithoutDeletingOriginal) {
++  const auto original = file_.path;
++  file_.path = directory_.GetPath().AppendASCII("alias.pdf");
++  ASSERT_TRUE(base::CreateSymbolicLink(original, file_.path));
++  auto captured = Capture(Begin());
++  EXPECT_TRUE(captured.FindDict("error"));
++  EXPECT_TRUE(base::PathExists(original));
++}
++TEST_F(NativeDownloadJobsTest, RefusesChangedSize) {
++  --file_.size;
++  auto captured = Capture(Begin());
++  EXPECT_TRUE(captured.FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file_.path));
++}
++TEST_F(NativeDownloadJobsTest, RefusesBytesChangedFromActualNativeHash) {
++  file_.native_sha256 = std::string(64, '0');
++  auto captured = Capture(Begin());
++  EXPECT_TRUE(captured.FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file_.path));
++}
++TEST_F(NativeDownloadJobsTest, RetiredSourceAfterWorkerReadPublishesNoBytes) {
++  retire_after_capture_ = true;
++  const auto id = Begin();
++  auto captured = Capture(id);
++  EXPECT_TRUE(captured.FindDict("error"));
++  EXPECT_TRUE(Read(id).FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file_.path));
++}
++TEST_F(NativeDownloadJobsTest,
++       ClosingWaitingDownloadJoinsOriginalCaptureExactlyOnce) {
++  file_.state = NativeDownloadFile::State::kWaiting;
++  const auto id = Begin();
++  base::test::TestFuture<base::DictValue> captured;
++  jobs_.Dispatch(base::DictValue().Set("action", "capture").Set("jobId", id),
++                 cancelled_, captured.GetCallback());
++  EXPECT_FALSE(captured.IsReady());
++  auto closed = Close(id);
++  ASSERT_TRUE(closed.FindDict("result"));
++  EXPECT_EQ(closed.FindDict("result")->FindBool("joined"), true);
++  EXPECT_TRUE(captured.Get().FindDict("error"));
++  file_.state = NativeDownloadFile::State::kReady;
++  EXPECT_TRUE(Read(id).FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file_.path));
++}
++TEST_F(NativeDownloadJobsTest,
++       SourceRetirementAfterCaptureRefusesFurtherByteReads) {
++  const auto id = Begin();
++  ASSERT_TRUE(Capture(id).FindDict("result"));
++  file_.state = NativeDownloadFile::State::kRetired;
++  EXPECT_TRUE(Read(id).FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file_.path));
++}
++
++TEST(NativeDownloadJobsLifecycleTest,
++     ReadingDoesNotRenewOriginalDownloadDeadline) {
++  base::test::TaskEnvironment tasks(
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME);
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  NativeDownloadFile file;
++  file.state = NativeDownloadFile::State::kReady;
++  file.path = directory.GetPath().AppendASCII("original.txt");
++  file.filename = "original.txt";
++  file.size = 5;
++  ASSERT_TRUE(base::WriteFile(file.path, "bytes"));
++  NativeDocumentJobs jobs;
++  NativeDownloadSource source;
++  source.run_id = "original-run";
++  source.download_id = "original-guid";
++  source.deadline = base::TimeTicks::Now() + base::Seconds(30);
++  source.snapshot = base::BindLambdaForTesting([&] { return file; });
++  base::test::TestFuture<base::DictValue> begun, captured;
++  jobs.BeginDownload(std::move(source),
++                     std::make_shared<std::atomic_bool>(false),
++                     begun.GetCallback());
++  ASSERT_TRUE(begun.Get().FindDict("result"));
++  const auto id = *begun.Get().FindDict("result")->FindString("jobId");
++  jobs.Dispatch(base::DictValue().Set("action", "capture").Set("jobId", id),
++                std::make_shared<std::atomic_bool>(false),
++                captured.GetCallback());
++  tasks.RunUntilIdle();
++  ASSERT_TRUE(captured.Get().FindDict("result"));
++  const auto read = [&] {
++    base::test::TestFuture<base::DictValue> result;
++    jobs.Dispatch(base::DictValue()
++                      .Set("action", "read")
++                      .Set("jobId", id)
++                      .Set("outputIndex", 0)
++                      .Set("offset", 0),
++                  std::make_shared<std::atomic_bool>(false),
++                  result.GetCallback());
++    return result.Take();
++  };
++  tasks.FastForwardBy(base::Seconds(10));
++  EXPECT_TRUE(read().FindDict("result"));
++  tasks.FastForwardBy(base::Seconds(21));
++  EXPECT_TRUE(read().FindDict("error"));
++  EXPECT_TRUE(base::PathExists(file.path));
++}
++TEST(NativeDownloadJobsLifecycleTest,
++     PreparingCloseRetainsReservationUntilWorkerJoins) {
++  base::test::TaskEnvironment tasks(
++      base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED);
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  NativeDownloadFile file;
++  file.state = NativeDownloadFile::State::kReady;
++  file.path = directory.GetPath().AppendASCII("original.txt");
++  file.filename = "original.txt";
++  file.size = 5;
++  ASSERT_TRUE(base::WriteFile(file.path, "bytes"));
++  NativeDocumentJobs jobs;
++  const auto begin = [&] {
++    NativeDownloadSource source;
++    source.run_id = "original-run";
++    source.download_id = "original-guid";
++    source.deadline = base::TimeTicks::Now() + base::Seconds(30);
++    source.snapshot = base::BindLambdaForTesting([&] { return file; });
++    base::test::TestFuture<base::DictValue> result;
++    jobs.BeginDownload(std::move(source),
++                       std::make_shared<std::atomic_bool>(false),
++                       result.GetCallback());
++    return result.Take();
++  };
++  auto first = begin(), second = begin();
++  ASSERT_TRUE(first.FindDict("result"));
++  ASSERT_TRUE(second.FindDict("result"));
++  const auto first_id = *first.FindDict("result")->FindString("jobId");
++  const auto second_id = *second.FindDict("result")->FindString("jobId");
++  base::test::TestFuture<base::DictValue> capture_first, capture_second;
++  jobs.Dispatch(
++      base::DictValue().Set("action", "capture").Set("jobId", first_id),
++      std::make_shared<std::atomic_bool>(false), capture_first.GetCallback());
++  jobs.Dispatch(
++      base::DictValue().Set("action", "capture").Set("jobId", second_id),
++      std::make_shared<std::atomic_bool>(false), capture_second.GetCallback());
++  ASSERT_FALSE(capture_first.IsReady());
++  ASSERT_FALSE(capture_second.IsReady());
++  base::test::TestFuture<base::DictValue> close_first, close_second;
++  jobs.Dispatch(base::DictValue().Set("action", "close").Set("jobId", first_id),
++                std::make_shared<std::atomic_bool>(false),
++                close_first.GetCallback());
++  jobs.Dispatch(
++      base::DictValue().Set("action", "close").Set("jobId", second_id),
++      std::make_shared<std::atomic_bool>(false), close_second.GetCallback());
++  EXPECT_FALSE(close_first.IsReady());
++  EXPECT_FALSE(close_second.IsReady());
++  // Both original 64 MiB reservations remain while their workers are queued.
++  EXPECT_TRUE(begin().FindDict("error"));
++  tasks.RunUntilIdle();
++  EXPECT_TRUE(capture_first.Get().FindDict("error"));
++  EXPECT_TRUE(capture_second.Get().FindDict("error"));
++  ASSERT_TRUE(close_first.Get().FindDict("result"));
++  ASSERT_TRUE(close_second.Get().FindDict("result"));
++  EXPECT_EQ(close_first.Get().FindDict("result")->FindBool("joined"), true);
++  EXPECT_EQ(close_second.Get().FindDict("result")->FindBool("joined"), true);
++  // Closed entries prune only after original workers released their bytes.
++  EXPECT_TRUE(begin().FindDict("result"));
++  EXPECT_TRUE(base::PathExists(file.path));
++}
++}  // namespace
++}  // namespace aux

@@ -50,6 +50,8 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.cdpAttach",
       "native.cdpStartNavigation",
       "native.cdpTakeNavigationReceipt",
+      "native.cdpArmInput",
+      "native.cdpTakeInputOutcome",
       "native.cdpDispatch",
       "native.adoptSessionPage",
       "native.egressContext",

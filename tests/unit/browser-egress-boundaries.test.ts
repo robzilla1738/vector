@@ -1,5 +1,8 @@
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
-import { navigateControlledPage } from "../../apps/runtime/src/services/pages/controlled-navigation.js";
+import {
+  inputControlledPage,
+  navigateControlledPage,
+} from "../../apps/runtime/src/services/pages/controlled-navigation.js";
 import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
@@ -190,6 +193,32 @@ function pageFixture(
             navigationTransitionId: "B".repeat(32),
             url,
             context: await native.egressContext({ tabId: input.pageId }),
+          };
+        },
+      });
+    },
+    inputControlled: async (input, registry) => {
+      // Supply the fixture's exact installed lease and real shared continuation
+      // consumer; its typed native outcome is not native admission evidence.
+      await egress.acquire(input.runId, input.pageId);
+      return inputControlledPage(input, registry, egress, {
+        navigateControlled: async () => {
+          throw new Error("This input fixture must not navigate");
+        },
+        navigationDeadline: () => Date.now() + 2000,
+        inputDeadline: () => Date.now() + 2000,
+        inputControlled: async (_pageId, dispatch, signal) => {
+          const originalLease = installedLease!;
+          trace.push("input-continuation");
+          return {
+            value: await dispatch(signal),
+            outcome: {
+              kind: "unchanged",
+              originalAttachmentId: "A".repeat(32),
+              originalLeaseId: originalLease.leaseId,
+              commandId: 2,
+              url,
+            },
           };
         },
       });
@@ -413,6 +442,9 @@ it("installs transmission protection for a write program and not for a read", as
     prepareAgentEgress: prepare,
     grantsForRun: () => ["effect:read", "effect:write"],
   });
+  prepare.mockImplementation(async () => {
+    f.trace.push("protection");
+  });
   Object.assign(f.native, {
     acquireStage: async () => ({ ok: true }),
     releaseStage: async () => {},
@@ -421,9 +453,19 @@ it("installs transmission protection for a write program and not for a read", as
     url: "https://source.test/read",
     background: true,
     ownedByRuntime: true,
+    agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+    beforeNavigate: async () => {},
   });
   (f.driverPage.identity as { pageId: string }).pageId = page.pageId;
-  for (const runId of ["run-read", "run-write"])
+  for (const runId of ["run-read", "run"]) {
+    f.repo.saveRun({
+      runId,
+      goal: "Original transmission boundary",
+      status: "running",
+      pageIds: [page.pageId],
+      createdAt: 1,
+      config: { taskRevision: 0 },
+    });
     await f.turnMentions.begin(
       runId,
       [
@@ -439,26 +481,37 @@ it("installs transmission protection for a write program and not for a read", as
       ],
       [],
     );
-  await f.pages.execute(
+  }
+  const original = { ...f.pages.get(page.pageId) };
+  const read = await f.pages.execute(
     {
       pageId: page.pageId,
       steps: [
         { id: "wait", op: "waitFor", condition: { kind: "selector", selector: "#x", state: "visible" } },
       ],
     },
-    { runId: "run-read" },
+    { runId: "run-read", signal: new AbortController().signal },
   );
+  expect(read.status).toBe("completed");
   expect(prepare).not.toHaveBeenCalled();
-  await f.pages.execute(
+  expect(f.trace).not.toContain("input-continuation");
+  const write = await f.pages.execute(
     {
       pageId: page.pageId,
       steps: [{ id: "go", op: "click", target: "r1" }],
     },
-    { runId: "run-write" },
+    { runId: "run", signal: new AbortController().signal },
   );
+  expect(write.steps.map((step) => step.error)).toEqual([undefined]);
+  expect(write.status).toBe("completed");
   expect(prepare).toHaveBeenCalledTimes(1);
-  expect(prepare).toHaveBeenCalledWith("run-write", page.pageId);
-  expect(f.trace).toContain("click");
+  expect(prepare).toHaveBeenCalledWith("run", page.pageId);
+  expect(f.trace).toEqual(["navigate", "protection", "input-continuation", "click"]);
+  expect(f.pages.get(page.pageId)).toMatchObject({
+    url: original.url,
+    documentEpoch: original.documentEpoch,
+    sessionId: original.sessionId,
+  });
 });
 
 it("uses native-minted controlled identity before navigation and never falls back to ordinary open", async () => {
@@ -756,10 +809,27 @@ it.each([
 );
 
 it("routes scoped direct navigation through the original task program and transmission lease", async () => {
-  const {invoke, trace, task, client} = scopedDispatch();
-  await expect(invoke("pages.navigate", {pageId: "p1", url: "https://recipient.test/", taskId: task.taskId, expectedRevision: task.revision}, client)).rejects.toThrow("driver failed");
+  const { invoke, trace, task, client } = scopedDispatch();
+  await expect(
+    invoke(
+      "pages.navigate",
+      { pageId: "p1", url: "https://recipient.test/", taskId: task.taskId, expectedRevision: task.revision },
+      client,
+    ),
+  ).rejects.toThrow("driver failed");
   expect(trace).toEqual(["bind", "dispatch", "revoke"]);
   trace.length = 0;
-  await expect(invoke("pages.navigate", {pageId: "p1", url: "https://recipient.test/", taskId: task.taskId, expectedRevision: task.revision + 1}, client)).rejects.toMatchObject({code: "conflict"});
+  await expect(
+    invoke(
+      "pages.navigate",
+      {
+        pageId: "p1",
+        url: "https://recipient.test/",
+        taskId: task.taskId,
+        expectedRevision: task.revision + 1,
+      },
+      client,
+    ),
+  ).rejects.toMatchObject({ code: "conflict" });
   expect(trace).toEqual([]);
 });

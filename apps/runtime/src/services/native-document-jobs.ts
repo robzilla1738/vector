@@ -16,6 +16,49 @@ export type AdmittedJobSource = { bytes: Uint8Array; sha256: string; mediaType: 
 export type DocumentJobOutput = { bytes: Buffer; sha256: string; mediaType: string; label: string };
 const hash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
+/** Read one immutable native-owned output using exact original offsets/hash. */
+export async function readNativeDocumentOutput(
+  call: (
+    input: NativeDocumentJobInput,
+  ) => Promise<import("@aux/contracts/document-jobs").NativeDocumentJobOutput>,
+  jobId: string,
+  outputIndex: number,
+  output: { size: number; sha256: string },
+  check: () => void,
+): Promise<Buffer> {
+  const bytes = Buffer.alloc(output.size);
+  let offset = 0;
+  try {
+    do {
+      check();
+      const receipt = await call({ action: "read", jobId, outputIndex, offset });
+      check();
+      if (receipt.action !== "read")
+        throw new AuxError("backend_unavailable", "Invalid document output reply.");
+      const chunk = Buffer.from(receipt.bytesBase64, "base64");
+      if (
+        receipt.offset !== offset ||
+        chunk.toString("base64") !== receipt.bytesBase64 ||
+        chunk.length > DOCUMENT_JOB_CHUNK_LIMIT ||
+        chunk.length > bytes.length - offset ||
+        (!chunk.length && offset !== bytes.length) ||
+        receipt.done !== (offset + chunk.length === bytes.length)
+      )
+        throw new AuxError("backend_unavailable", "The document output was truncated or reordered.");
+      chunk.copy(bytes, offset);
+      offset += chunk.length;
+    } while (offset < bytes.length);
+    if (hash(bytes) !== output.sha256) {
+      bytes.fill(0);
+      throw new AuxError("backend_unavailable", "The original native output hash failed verification.");
+    }
+    return bytes;
+  } catch (error) {
+    bytes.fill(0);
+    throw error;
+  }
+}
+
 /** One original native channel owns upload, computation, output and process retirement. */
 export async function nativeDocumentJob(
   native: NativeBridge,
@@ -102,37 +145,18 @@ export async function nativeDocumentJob(
       );
     const outputs: DocumentJobOutput[] = [];
     for (const [outputIndex, output] of completed.outputs.entries()) {
-      const bytes = Buffer.alloc(output.size);
-      let offset = 0;
-      do {
-        check();
-        const receipt = await call({ action: "read", jobId, outputIndex, offset });
-        check();
-        if (receipt.action !== "read")
-          throw new AuxError("backend_unavailable", "Invalid document output reply.");
-        const chunk = Buffer.from(receipt.bytesBase64, "base64");
-        if (
-          receipt.offset !== offset ||
-          chunk.toString("base64") !== receipt.bytesBase64 ||
-          chunk.length > DOCUMENT_JOB_CHUNK_LIMIT ||
-          chunk.length > bytes.length - offset ||
-          (!chunk.length && offset !== bytes.length) ||
-          receipt.done !== (offset + chunk.length === bytes.length)
-        )
-          throw new AuxError("backend_unavailable", "The document output was truncated or reordered.");
-        chunk.copy(bytes, offset);
-        offset += chunk.length;
-      } while (offset < bytes.length);
+      const bytes = await readNativeDocumentOutput(call, jobId, outputIndex, output, check);
       if (
-        hash(bytes) !== output.sha256 ||
         (output.mediaType === "application/pdf" && !bytes.subarray(0, 1024).includes(Buffer.from("%PDF-"))) ||
         (output.mediaType === "image/png" &&
           !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
-      )
+      ) {
+        bytes.fill(0);
         throw new AuxError(
           "backend_unavailable",
-          "The document output hash or MIME declaration failed verification.",
+          "The document output MIME declaration failed verification.",
         );
+      }
       outputs.push({ ...output, bytes });
     }
     check();

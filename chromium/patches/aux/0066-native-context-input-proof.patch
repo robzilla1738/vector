@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/aux/cdp_broker.cc b/chrome/browser/ui/aux/cdp_broker.cc
-index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d3129453398868c 100644
+index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..736097e7a82a3e2c1fe76ff7b83a0652aa0bd524 100644
 --- a/chrome/browser/ui/aux/cdp_broker.cc
 +++ b/chrome/browser/ui/aux/cdp_broker.cc
-@@ -5,38 +5,43 @@
+@@ -5,38 +5,49 @@
  #include "chrome/browser/ui/aux/cdp_broker.h"
  
  #include <array>
@@ -28,6 +28,7 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
  #include "base/memory/weak_ptr.h"
 -#include "base/unguessable_token.h"
 -#include "chrome/browser/ui/aux/egress_controller.h"
++#include "base/scoped_observation.h"
 +#include "base/strings/string_number_conversions.h"
  #include "base/strings/string_util.h"
  #include "base/strings/utf_string_conversions.h"
@@ -38,14 +39,19 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
 +#include "base/unguessable_token.h"
  #include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/shell_events.h"
  #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/download/public/common/download_item.h"
 +#include "content/browser/devtools/devtools_agent_host_impl.h"
 +#include "content/browser/devtools/protocol/input_handler.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
  #include "content/public/browser/devtools_agent_host.h"
  #include "content/public/browser/devtools_agent_host_client.h"
 -#include "content/public/browser/web_contents.h"
 -#include "content/public/browser/web_contents_observer.h"
 -#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/download_item_utils.h"
++#include "content/public/browser/download_manager.h"
  #include "content/public/browser/navigation_handle.h"
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/render_widget_host.h"
@@ -56,9 +62,13 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
  #include "url/gurl.h"
  
  namespace aux {
-@@ -91,11 +96,14 @@ bool IsCdpMethodAllowed(const std::string& method) {
+@@ -89,13 +100,17 @@
+ }
+ 
  class CdpBroker::Session final : public content::DevToolsAgentHostClient,
-                                  public content::WebContentsObserver {
+-                                 public content::WebContentsObserver {
++                                 public content::WebContentsObserver,
++                                 public content::DownloadManager::Observer {
   public:
 -  Session(Profile* profile, uint64_t connection_generation,
 +  Session(Profile* profile,
@@ -74,7 +84,7 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
        : content::WebContentsObserver(host->GetWebContents()),
          profile_(profile),
          connection_generation_(connection_generation),
-@@ -103,14 +111,26 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+@@ -103,14 +118,29 @@
          scope_(std::move(scope)),
          lease_(std::move(lease)),
          attachment_id_(base::UnguessableToken::Create().ToString()),
@@ -89,6 +99,8 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
 -                                 ->owner_mutations().failure_epoch()) {}
 +                                 ->owner_mutations()
 +                                 .failure_epoch()) {
++    if (auto* downloads = profile_->GetDownloadManager())
++      download_observation_.Observe(downloads);
 +    auto* egress = EgressController::ForProfile(profile_);
 +    context_authority_subscription_ =
 +        egress->ObserveAuthority(base::BindRepeating(
@@ -99,11 +111,20 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
 +  }
  
    ~Session() override {
++    download_observation_.Reset();
 +    RetireContextAuthority();
      weak_factory_.InvalidateWeakPtrs();
      auto waiters = std::move(navigation_waiters_);
      auto navigations = std::move(pending_navigations_);
-@@ -206,17 +226,116 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+@@ -186,6 +216,7 @@
+     // PageHandler or deliver a protocol response. Child navigations never
+     // acquire whole-page transition authority.
+     if (!Current() || !AcknowledgedExpiryCurrent(acknowledged_expires_at) ||
++        (root_command && method == "Page.navigate" && !pending_navigations_.empty()) ||
+         pending_navigations_.contains(command_id))
+       return false;
+     auto weak = weak_factory_.GetWeakPtr();
+@@ -206,21 +237,222 @@
        }
        return false;
      }
@@ -183,7 +204,44 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
 +        return false;
 +      }
 +    }
-+    host_->DispatchProtocolMessage(this, base::as_byte_span(outgoing));
++    // Attach the browser-owned ticket only to this exact real release event.
++    // Page code cannot supply this field through CDP parameters or DOM state.
++    std::vector<content::protocol::InputHandler*> input_handlers;
++    if (root_command && method == "Input.dispatchMouseEvent") {
++      auto parsed = base::JSONReader::Read(outgoing, base::JSON_PARSE_RFC);
++      auto* envelope = parsed ? parsed->GetIfDict() : nullptr;
++      auto* params = envelope ? envelope->FindDict("params") : nullptr;
++      const auto* type = params ? params->FindString("type") : nullptr;
++      const auto* button = params ? params->FindString("button") : nullptr;
++      if (type && *type == "mouseReleased" && button && *button == "left") {
++        for (auto& [id, pending] : pending_navigations_) {
++          if (!pending.input_token || pending.input_command_id) continue;
++          if (base::TimeTicks::Now() >= pending.original_deadline) return false;
++          auto* agent = static_cast<content::DevToolsAgentHostImpl*>(host_.get());
++          input_handlers = content::protocol::InputHandler::ForAgentHost(agent);
++          if (input_handlers.empty()) return false;
++          pending.input_command_id = command_id;
++          for (auto* handler : input_handlers)
++            handler->SetAuxInputContinuation(pending.input_token);
++          break;
++        }
++      }
++    }
++    // Dispatch may synchronously close the agent host without destroying this
++    // Session. Retain the original host and never look up handlers on a null or
++    // replacement host after re-entry.
++    const scoped_refptr<content::DevToolsAgentHost> dispatch_host = host_;
++    dispatch_host->DispatchProtocolMessage(this, base::as_byte_span(outgoing));
++    // InputHandler consumes synchronously while constructing the real event.
++    // Clear any unconsumed registration before accepting another command.
++    if (weak && host_ && host_ == dispatch_host) {
++      auto* current_agent =
++          static_cast<content::DevToolsAgentHostImpl*>(host_.get());
++      for (auto* handler :
++           content::protocol::InputHandler::ForAgentHost(current_agent)) {
++        handler->SetAuxInputContinuation(std::nullopt);
++      }
++    }
 +    if (weak && root_command && method == "Page.navigate") {
        navigation_dispatches_.pop_back();
 +    }
@@ -206,7 +264,45 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
 +      RetireContextAuthority();
 +    }
 +  }
++  void DidCompleteAuxInputNavigation(content::RenderFrameHost* source,
++      const base::UnguessableToken& token, const blink::DocumentToken& document,
++      bool requested) override {
++    for (auto& [id, pending] : pending_navigations_) {
++      auto* original_frame =
++          pending.original_document.AsRenderFrameHostIfValid();
++      if (pending.input_token != token || !pending.input_command_id ||
++          pending.input_completed || !pending.input_document || !source ||
++          !original_frame || source != original_frame || !web_contents() ||
++          source != web_contents()->GetPrimaryMainFrame() ||
++          *pending.input_document != document ||
++          static_cast<content::RenderFrameHostImpl*>(source)->GetDocumentToken() !=
++              *pending.input_document) {
++        continue;
++      }
++      pending.input_completed = true;
++      if (!requested && !pending.navigation_id) {
++        pending.unchanged = true;
++        pending.finished = true;
++      }
++      NotifyNavigationState(id);
++      return;
++    }
++  }
 +  void DidStartNavigation(content::NavigationHandle* navigation) override {
++    auto* original_frame = document_.AsRenderFrameHostIfValid();
++    if (navigation && original_frame && navigation->IsInPrimaryMainFrame() &&
++        !navigation->IsSameDocument() && Current() &&
++        navigation->GetInitiatorFrameToken() == original_frame->GetFrameToken()) {
++      const auto token = navigation->GetAuxInputContinuation();
++      for (auto& [id, pending] : pending_navigations_) {
++        if (token && pending.input_token == token && pending.input_command_id &&
++            !pending.navigation_id && !pending.finished &&
++            base::TimeTicks::Now() < pending.original_deadline) {
++          pending.navigation_id = navigation->GetNavigationId();
++          break;
++        }
++      }
++    }
 +    if (navigation && navigation->IsInPrimaryMainFrame() &&
 +        !navigation->IsSameDocument()) {
 +      RetireContextAuthority();
@@ -218,13 +314,375 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
      if (!navigation || navigation_dispatches_.empty() || !Current() ||
          navigation->GetWebContents() != web_contents() ||
 -        !navigation->IsInPrimaryMainFrame())
+-      return;
 +        !navigation->IsInPrimaryMainFrame()) {
-       return;
++      return;
 +    }
      auto it = pending_navigations_.find(navigation_dispatches_.back());
      if (it == pending_navigations_.end() || it->second.navigation_id)
        return;
-@@ -600,6 +719,13 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+     it->second.navigation_id = navigation->GetNavigationId();
++  }
++
++  void OnDownloadCreated(content::DownloadManager* manager,
++                         download::DownloadItem* item) override {
++    if (!Current() || !item || manager != download_observation_.GetSource() ||
++        content::DownloadItemUtils::GetBrowserContext(item) != profile_ ||
++        content::DownloadItemUtils::GetWebContents(item) != web_contents() ||
++        content::DownloadItemUtils::GetRenderFrameHost(item) !=
++            document_.AsRenderFrameHostIfValid())
++      return;
++    const auto navigation_id =
++        content::DownloadItemUtils::GetNavigationId(item);
++    if (!navigation_id || item->GetGuid().empty())
++      return;
++    for (auto& [id, pending] : pending_navigations_) {
++      if (pending.navigation_id != *navigation_id ||
++          !pending.download_guid.empty() ||
++          base::TimeTicks::Now() >= pending.original_deadline)
++        continue;
++      pending.download_guid = item->GetGuid();
++      pending.download_item_identity = reinterpret_cast<uintptr_t>(item);
++      NotifyNavigationState(id);
++      return;
++    }
++  }
++  void ManagerGoingDown(content::DownloadManager* manager) override {
++    download_observation_.Reset();
+   }
+ 
+   void DidFinishNavigation(content::NavigationHandle* navigation) override {
+@@ -233,6 +465,8 @@
+           pending.finished = true;
+         continue;
+       }
++      pending.download =
++          navigation->IsDownload() && !navigation->HasCommitted();
+       auto* frame = navigation->GetRenderFrameHost();
+       if (navigation->HasCommitted() && !navigation->IsErrorPage() &&
+           navigation->GetWebContents() == web_contents() && frame &&
+@@ -244,7 +478,8 @@
+     // A commit does not rebind document_. Every later dispatch on this
+     // attachment refuses. A separately validated transition receipt and fresh
+     // installed lease are required to create a new attachment.
+-    child_sessions_.clear();
++    if (navigation->HasCommitted())
++      child_sessions_.clear();
+     for (const auto& [id, waiter] : navigation_waiters_)
+       ScheduleReceiptCheck(id);
+     std::vector<int> commands;
+@@ -255,6 +490,19 @@
+       NotifyNavigationState(id);
+       if (!weak) return;
+     }
++  }
++
++  base::DictValue ArmInput(int command_id, double acknowledged_expiry) {
++    auto* frame = document_.AsRenderFrameHostIfValid();
++    if (!Current() || !AcknowledgedExpiryCurrent(acknowledged_expiry) ||
++        !frame || !pending_navigations_.empty())
++      return Fault("permission_denied", "Original input continuation authority retired");
++    auto [it, inserted] = pending_navigations_.emplace(
++        command_id, PendingNavigation{document_, acknowledged_expiry, true});
++    if (!inserted) return Fault("conflict", "Original input continuation already exists");
++    it->second.input_token = base::UnguessableToken::Create();
++    it->second.input_document = static_cast<content::RenderFrameHostImpl*>(frame)->GetDocumentToken();
++    return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
+   }
+ 
+   base::DictValue StartControlledNavigation(int command_id,
+@@ -275,8 +523,59 @@
+     return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
+   }
+ 
+-  base::DictValue TakeReadyNavigationReceipt(int command_id) {
+-    return TakeNavigationReceipt(command_id);
++  base::DictValue TakeReadyNavigationReceipt(int command_id, bool input = false) {
++    const auto pending = pending_navigations_.find(command_id);
++    if (pending == pending_navigations_.end() || input != pending->second.input_token.has_value())
++      return Fault("ref_stale", "Original continuation kind changed");
++    if (pending->second.download) {
++      const auto& original = pending->second;
++      if (!original.response_received || !OriginalNavigationCurrent(original))
++        return Fault("ref_stale", "Original download continuation unavailable");
++      const auto* lease_id = lease_.FindString("leaseId");
++      if (!lease_id)
++        return Fault("ref_stale", "Original download lease unavailable");
++      std::erase_if(download_admissions_, [](const auto& entry) {
++        return entry.second.expires_at <=
++               base::Time::Now().InMillisecondsFSinceUnixEpoch();
++      });
++      if (download_admissions_.size() >= 4)
++        return Fault("conflict", "Original download admission limit reached");
++      download_admissions_.emplace(
++          command_id,
++          DownloadAdmission{original.navigation_id, original.download_guid,
++                            original.download_item_identity,
++                            original.source_expires_at});
++      auto result =
++          base::DictValue()
++              .Set("kind", "download")
++              .Set("originalAttachmentId", attachment_id_)
++              .Set("originalLeaseId", *lease_id)
++              .Set("commandId", command_id)
++              .Set("navigationId", base::NumberToString(original.navigation_id))
++              .Set("downloadId", original.download_guid)
++              .Set("url", web_contents()->GetLastCommittedURL().spec());
++      pending_navigations_.erase(pending);
++      return base::DictValue().Set("result", std::move(result));
++    }
++    if (input && pending->second.unchanged) {
++      if (!pending->second.response_received || !pending->second.input_completed ||
++          !OriginalNavigationCurrent(pending->second))
++        return Fault("ref_stale", "Original unchanged input outcome unavailable");
++      auto result = base::DictValue().Set("kind", "unchanged")
++          .Set("originalAttachmentId", attachment_id_)
++          .Set("originalLeaseId", *lease_.FindString("leaseId"))
++          .Set("commandId", command_id)
++          .Set("url", web_contents()->GetLastCommittedURL().spec());
++      pending_navigations_.erase(pending);
++      return base::DictValue().Set("result", std::move(result));
++    }
++    auto result = TakeNavigationReceipt(command_id);
++    if (input && result.FindDict("result")) {
++      auto receipt = result.FindDict("result")->Clone();
++      return base::DictValue().Set("result", base::DictValue()
++          .Set("kind", "document_committed").Set("receipt", std::move(receipt)));
++    }
++    return result;
+   }
+ 
+   void WaitForNavigationReceipt(int command_id,
+@@ -356,8 +655,14 @@
+     const auto response_id = event ? event->FindInt("id") : std::nullopt;
+     auto original_navigation = response_id ? pending_navigations_.find(*response_id)
+                                           : pending_navigations_.end();
++    if (response_id && original_navigation == pending_navigations_.end())
++      original_navigation = std::find_if(pending_navigations_.begin(), pending_navigations_.end(),
++          [&](const auto& entry) { return entry.second.input_token &&
++              entry.second.input_command_id == *response_id; });
++    const int continuation_id = original_navigation == pending_navigations_.end()
++        ? 0 : original_navigation->first;
+     // A committed old attachment remains retired for ALL effects/events.
+-    // Only the original root navigation response can cross that boundary,
++    // Only the original navigation or input response can cross that boundary,
+     // with unchanged lease/generation and its exact committed WeakDocument.
+     if (!Current() && (method || original_navigation == pending_navigations_.end() ||
+         !OriginalNavigationCurrent(original_navigation->second)))
+@@ -414,11 +719,15 @@
+     const auto encoded = base::WriteJson(envelope);
+     bool navigation_refused = false;
+     if (response_id) {
+-      auto pending = pending_navigations_.find(*response_id);
++      auto pending = continuation_id ? pending_navigations_.find(continuation_id) : pending_navigations_.end();
+       if (pending != pending_navigations_.end()) {
+         if (pending->second.response_received)
+           return;
+-        if (event->FindDict("error")) {
++        // Exact input or controlled Page.navigate can terminate its old CDP
++        // response while the original native navigation becomes a download.
++        // Only its fixed native outcome deadline can decide that continuation.
++        if (event->FindDict("error") && !pending->second.input_token &&
++            !pending->second.controlled) {
+           navigation_refused = pending->second.controlled && !pending->second.notified;
+           pending_navigations_.erase(pending);
+         } else
+@@ -428,8 +737,8 @@
+     if (response_id) {
+       ScheduleReceiptCheck(*response_id);
+       auto weak = weak_factory_.GetWeakPtr();
+-      if (navigation_refused) EmitNavigationState(*response_id, false);
+-      else NotifyNavigationState(*response_id);
++      if (navigation_refused) EmitNavigationState(continuation_id, false);
++      else if (continuation_id) NotifyNavigationState(continuation_id);
+       if (!weak) return;
+     }
+     // Callback last: channel teardown may synchronously destroy this session.
+@@ -484,6 +793,10 @@
+     auto it = pending_navigations_.find(command_id);
+     if (it == pending_navigations_.end() || !it->second.controlled ||
+         it->second.notified || !it->second.finished) return;
++    if (it->second.download &&
++        (it->second.download_guid.empty() ||
++         (it->second.input_token && !it->second.input_completed)))
++      return;
+     const bool ready = OriginalNavigationCurrent(it->second);
+     if (ready && !it->second.response_received) return;
+     it->second.notified = true;
+@@ -531,7 +844,9 @@
+     }
+     auto pending = pending_navigations_.find(command_id);
+     const bool missing = pending == pending_navigations_.end();
+-    if (!missing && !pending->second.finished)
++    if (!missing &&
++        (!pending->second.finished ||
++         (pending->second.download && pending->second.download_guid.empty())))
+       return;
+     if (!missing && pending->second.finished && !pending->second.response_received &&
+         OriginalNavigationCurrent(pending->second))
+@@ -539,23 +854,44 @@
+     auto owned = std::move(waiter->second);
+     navigation_waiters_.erase(waiter);
+     owned->timer.Stop();
+-    auto result = missing ? Fault("ref_stale", "Original navigation command was retired")
+-                          : TakeNavigationReceipt(command_id);
++    auto result =
++        missing ? Fault("ref_stale", "Original navigation command was retired")
++                : TakeReadyNavigationReceipt(command_id);
+     // Retirement notifications may destroy this session. Callback uses only
+     // the already-owned local reply, with no post-effect access to this.
+     std::move(owned->callback).Run(std::move(result));
+   }
+   struct PendingNavigation {
+-    PendingNavigation(content::WeakDocumentPtr document, double expiry, bool fixed)
+-        : acknowledged_expires_at(std::min(expiry,
+-              static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch() + 8000))),
+-          original_deadline(base::TimeTicks::Now() + std::min(base::Seconds(8),
+-              base::Milliseconds(std::max(0.0, acknowledged_expires_at -
+-                  base::Time::Now().InMillisecondsFSinceUnixEpoch())))),
+-          original_document(std::move(document)), controlled(fixed) {}
++    PendingNavigation(content::WeakDocumentPtr document,
++                      double expiry,
++                      bool fixed)
++        : source_expires_at(expiry),
++          acknowledged_expires_at(std::min(
++              expiry,
++              static_cast<double>(
++                  base::Time::Now().InMillisecondsSinceUnixEpoch() + 8000))),
++          original_deadline(
++              base::TimeTicks::Now() +
++              std::min(
++                  base::Seconds(8),
++                  base::Milliseconds(std::max(
++                      0.0,
++                      acknowledged_expires_at -
++                          base::Time::Now().InMillisecondsFSinceUnixEpoch())))),
++          original_document(std::move(document)),
++          controlled(fixed) {}
++    double source_expires_at;
+     double acknowledged_expires_at;
+     base::TimeTicks original_deadline;
+     content::WeakDocumentPtr original_document;
++    std::optional<base::UnguessableToken> input_token;
++    std::optional<blink::DocumentToken> input_document;
++    int input_command_id = 0;
++    bool input_completed = false;
++    bool unchanged = false;
++    bool download = false;
++    std::string download_guid;
++    uintptr_t download_item_identity = 0;
+     int64_t navigation_id = 0;
+     content::WeakDocumentPtr committed_document;
+     bool finished = false;
+@@ -576,6 +912,16 @@
+     return installed_expiry && expiry <= *installed_expiry;
+   }
+   bool OriginalNavigationCurrent(const PendingNavigation& pending) const {
++    if (pending.download)
++      return pending.finished && pending.navigation_id &&
++             !pending.download_guid.empty() &&
++             (!pending.input_token || pending.input_completed) &&
++             base::TimeTicks::Now() < pending.original_deadline && Current() &&
++             AcknowledgedExpiryCurrent(pending.acknowledged_expires_at);
++    if (pending.unchanged)
++      return pending.input_token && pending.input_completed && pending.finished &&
++          !pending.navigation_id && base::TimeTicks::Now() < pending.original_deadline &&
++          Current() && AcknowledgedExpiryCurrent(pending.acknowledged_expires_at);
+     auto* frame = pending.committed_document.AsRenderFrameHostIfValid();
+     if (pending.original_deadline.is_null() ||
+         base::TimeTicks::Now() >= pending.original_deadline ||
+@@ -590,6 +936,90 @@
+     return egress && egress->owner_mutations().failure_epoch() == owner_failure_epoch_ &&
+         egress->HasOriginalCdpNavigationAuthority(lease_, pending.committed_document);
+   }
++  struct DownloadAdmission {
++    int64_t navigation_id;
++    std::string guid;
++    uintptr_t item_identity;
++    double expires_at;
++  };
++  NativeDownloadFile DownloadSnapshot(const DownloadAdmission& original) {
++    NativeDownloadFile result;
++    if (!Current() || !AcknowledgedExpiryCurrent(original.expires_at))
++      return result;
++    auto* manager = download_observation_.GetSource();
++    auto* item = manager ? manager->GetDownloadByGuid(original.guid) : nullptr;
++    if (!item || reinterpret_cast<uintptr_t>(item) != original.item_identity ||
++        content::DownloadItemUtils::GetBrowserContext(item) != profile_ ||
++        content::DownloadItemUtils::GetWebContents(item) != web_contents() ||
++        content::DownloadItemUtils::GetRenderFrameHost(item) !=
++            document_.AsRenderFrameHostIfValid() ||
++        content::DownloadItemUtils::GetNavigationId(item) !=
++            original.navigation_id ||
++        item->IsDangerous() || item->GetFileExternallyRemoved() ||
++        DownloadIsDismissed(profile_, item))
++      return result;
++    if (item->GetState() == download::DownloadItem::IN_PROGRESS) {
++      result.state = NativeDownloadFile::State::kWaiting;
++      return result;
++    }
++    if (item->GetState() != download::DownloadItem::COMPLETE ||
++        item->GetTargetFilePath().empty())
++      return result;
++    result.state = NativeDownloadFile::State::kReady;
++    result.path = item->GetTargetFilePath();
++    result.filename = item->GetFileNameToReportUser().AsUTF8Unsafe();
++    result.size = item->GetReceivedBytes();
++    if (item->GetHash().size() == 32)
++      result.native_sha256 =
++          base::HexEncodeLower(base::as_byte_span(item->GetHash()));
++    return result;
++  }
++
++ public:
++  std::optional<NativeDownloadSource> TakeDownloadSource(
++      int command_id,
++      const std::string& download_id,
++      const std::string& lease_id,
++      const std::string& navigation_id,
++      const std::string& url,
++      const std::string& run_id) {
++    auto found = download_admissions_.find(command_id);
++    const auto* current_lease = lease_.FindString("leaseId");
++    const auto* original_run = lease_.FindString("runId");
++    if (!original_run || *original_run != run_id ||
++        found == download_admissions_.end() ||
++        found->second.guid != download_id ||
++        base::NumberToString(found->second.navigation_id) != navigation_id ||
++        !web_contents() ||
++        web_contents()->GetLastCommittedURL().spec() != url || !current_lease ||
++        *current_lease != lease_id || !Current() ||
++        !AcknowledgedExpiryCurrent(found->second.expires_at))
++      return std::nullopt;
++    const auto original = found->second;
++    download_admissions_.erase(found);
++    NativeDownloadSource source;
++    source.run_id = run_id;
++    source.download_id = original.guid;
++    source.deadline =
++        base::TimeTicks::Now() +
++        base::Milliseconds(std::max(
++            0.0,
++            std::min(30000.0,
++                     original.expires_at -
++                         base::Time::Now().InMillisecondsFSinceUnixEpoch())));
++    source.snapshot = base::BindRepeating(
++        [](base::WeakPtr<Session> self, DownloadAdmission original) {
++          return self ? self->DownloadSnapshot(original) : NativeDownloadFile();
++        },
++        weak_factory_.GetWeakPtr(), original);
++    return source;
++  }
++
++ private:
++  std::map<int, DownloadAdmission> download_admissions_;
++  base::ScopedObservation<content::DownloadManager,
++                          content::DownloadManager::Observer>
++      download_observation_{this};
+   raw_ptr<Profile> profile_;
+   uint64_t connection_generation_;
+   std::string page_id_;
+@@ -600,6 +1030,13 @@
    std::map<int, PendingNavigation> pending_navigations_;
    std::map<int, std::unique_ptr<NavigationWaiter>> navigation_waiters_;
    std::vector<int> navigation_dispatches_;
@@ -238,6 +696,61 @@ index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d312945
    scoped_refptr<content::DevToolsAgentHost> host_;
    std::map<std::string, content::WeakDocumentPtr> child_sessions_;
    MessageCallback on_message_;
+@@ -909,15 +1346,25 @@
+   return it->second->StartControlledNavigation(command_id, url, acknowledged_expiry);
+ }
+ 
++base::DictValue CdpBroker::ArmInput(const std::string& page_id,
++    const std::string& attachment_id, int command_id, double acknowledged_expiry,
++    uint64_t connection_generation) {
++  auto it = sessions_.find(page_id);
++  if (destroying_ || connection_generation_ != connection_generation || command_id < 1 ||
++      it == sessions_.end() || it->second->attachment_id() != attachment_id)
++    return Fault("ref_stale", "Original input attachment unavailable");
++  return it->second->ArmInput(command_id, acknowledged_expiry);
++}
++
+ base::DictValue CdpBroker::TakeReadyNavigationReceipt(
+     const std::string& page_id, const std::string& attachment_id,
+-    int command_id, uint64_t connection_generation) {
++    int command_id, uint64_t connection_generation, bool input) {
+   auto it = sessions_.find(page_id);
+   if (destroying_ || connection_generation_ != connection_generation ||
+       command_id < 1 || it == sessions_.end() ||
+       it->second->attachment_id() != attachment_id)
+     return Fault("ref_stale", "Original navigation attachment unavailable");
+-  return it->second->TakeReadyNavigationReceipt(command_id);
++  return it->second->TakeReadyNavigationReceipt(command_id, input);
+ }
+ 
+ void CdpBroker::WaitForNavigationReceipt(const std::string& page_id,
+@@ -943,6 +1390,26 @@
+   original.reset();
+ }
+ 
++std::optional<NativeDownloadSource> CdpBroker::TakeDownloadSource(
++    const std::string& page_id,
++    const std::string& attachment_id,
++    int command_id,
++    const std::string& download_id,
++    const std::string& lease_id,
++    const std::string& navigation_id,
++    const std::string& url,
++    const std::string& run_id,
++    uint64_t connection_generation) {
++  if (destroying_ || connection_generation_ != connection_generation)
++    return std::nullopt;
++  auto found = sessions_.find(page_id);
++  if (found == sessions_.end() ||
++      found->second->attachment_id() != attachment_id)
++    return std::nullopt;
++  return found->second->TakeDownloadSource(command_id, download_id, lease_id,
++                                           navigation_id, url, run_id);
++}
++
+ void CdpBroker::DetachAll() {
+   std::map<std::string, std::unique_ptr<Session>> retired;
+   retired.swap(sessions_);
 diff --git a/components/input/render_input_router.cc b/components/input/render_input_router.cc
 index f6a35a61c842ef4601c65ad28ac80f6af93c26ea..61f569493d869ebc7b60ce24ba0a9f2e316e4d83 100644
 --- a/components/input/render_input_router.cc
@@ -265,7 +778,7 @@ index f6a35a61c842ef4601c65ad28ac80f6af93c26ea..61f569493d869ebc7b60ce24ba0a9f2e
      DLOG(WARNING) << "Input request on unbound interface";
    }
 diff --git a/content/browser/devtools/protocol/input_handler.cc b/content/browser/devtools/protocol/input_handler.cc
-index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe0339dd0a83 100644
+index 411d7835ac4c964dc11d110ec363aff860697fd3..da06e1825a23e06644f7992a100185805b0767ed 100644
 --- a/content/browser/devtools/protocol/input_handler.cc
 +++ b/content/browser/devtools/protocol/input_handler.cc
 @@ -11,6 +11,7 @@
@@ -284,7 +797,7 @@ index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe03
  #include "ui/base/clipboard/clipboard_constants.h"
  #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-shared.h"
  #include "ui/events/base_event_utils.h"
-@@ -1141,7 +1143,9 @@ InputHandler::InputHandler(bool allow_file_access,
+@@ -1141,7 +1143,9 @@
        allow_file_access_(allow_file_access),
        allow_sending_input_to_browser_(allow_sending_input_to_browser) {}
  
@@ -295,10 +808,12 @@ index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe03
  
  // static
  std::vector<InputHandler*> InputHandler::ForAgentHost(
-@@ -1278,6 +1282,206 @@ void InputHandler::DispatchKeyEvent(
-       ->InjectKeyboardEvent(event, std::move(commands), std::move(callback));
- }
+@@ -1276,6 +1280,206 @@
  
+   EnsureInjector(widget_host)
+       ->InjectKeyboardEvent(event, std::move(commands), std::move(callback));
++}
++
 +void InputHandler::RegisterAuxContextOwner(
 +    const std::string& owner,
 +    base::ReadOnlySharedMemoryRegion authority,
@@ -497,12 +1012,21 @@ index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe03
 +          token, ticket.owner);
 +    }
 +  }
-+}
-+
+ }
+ 
  void InputHandler::InsertText(const std::string& text,
-                               std::unique_ptr<InsertTextCallback> callback) {
-   std::u16string text16 = base::UTF8ToUTF16(text);
-@@ -2305,8 +2509,10 @@ void InputHandler::SynthesizeTapGesture(
+@@ -1389,7 +1593,9 @@
+     return;
+   }
+ 
+-  HandleMouseEvent(std::move(maybe_event).value(), std::move(callback));
++  auto event = std::move(maybe_event).value();
++  event->SetAuxInputContinuation(std::exchange(aux_input_continuation_, std::nullopt));
++  HandleMouseEvent(std::move(event), std::move(callback));
+ }
+ 
+ void InputHandler::HandleMouseEvent(
+@@ -2305,8 +2511,10 @@
  }
  
  void InputHandler::ClearInputState() {
@@ -515,16 +1039,25 @@ index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe03
    pointer_ids_.clear();
  }
 diff --git a/content/browser/devtools/protocol/input_handler.h b/content/browser/devtools/protocol/input_handler.h
-index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b1ab3c859 100644
+index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..e16430e34e9269d6693aff29da0353fba2248dc5 100644
 --- a/content/browser/devtools/protocol/input_handler.h
 +++ b/content/browser/devtools/protocol/input_handler.h
-@@ -15,14 +15,18 @@
+@@ -6,6 +6,7 @@
+ #define CONTENT_BROWSER_DEVTOOLS_PROTOCOL_INPUT_HANDLER_H_
+ 
+ #include <memory>
++#include <optional>
+ #include <set>
+ #include <string>
+ #include <vector>
+@@ -15,14 +16,19 @@
  #include "base/containers/unique_ptr_adapters.h"
  #include "base/memory/raw_ptr.h"
  #include "base/memory/raw_ref.h"
 +#include "base/memory/read_only_shared_memory_region.h"
  #include "base/memory/weak_ptr.h"
 +#include "base/timer/timer.h"
++#include "base/unguessable_token.h"
  #include "content/browser/devtools/protocol/devtools_domain_handler.h"
  #include "content/browser/devtools/protocol/input.h"
  #include "content/browser/renderer_host/render_widget_host_view_base.h"
@@ -537,7 +1070,7 @@ index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b
  #include "content/public/browser/web_contents.h"
  #include "third_party/blink/public/common/input/pointer_id.h"
  #include "third_party/blink/public/common/input/web_input_event.h"
-@@ -50,7 +54,8 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+@@ -50,7 +56,8 @@
  
    ~InputHandler() override;
  
@@ -547,7 +1080,7 @@ index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b
  
    void Wire(UberDispatcher* dispatcher) override;
    void SetRenderer(int process_host_id,
-@@ -76,6 +81,21 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+@@ -76,6 +83,24 @@
    void DragEnded();
  
    Response Disable() override;
@@ -556,6 +1089,9 @@ index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b
 +      const std::string& owner,
 +      base::ReadOnlySharedMemoryRegion authority,
 +      base::TimeTicks deadline);
++  void SetAuxInputContinuation(std::optional<base::UnguessableToken> token) {
++    aux_input_continuation_ = token;
++  }
 +  void PrepareAuxContextAction(
 +      std::unique_ptr<Input::AuxContextAction> context,
 +      const std::string& owner,
@@ -569,7 +1105,15 @@ index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b
  
    void DispatchKeyEvent(
        const std::string& type,
-@@ -348,6 +368,22 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+@@ -188,6 +213,7 @@
+       std::unique_ptr<SynthesizeTapGestureCallback> callback) override;
+ 
+  private:
++  std::optional<base::UnguessableToken> aux_input_continuation_;
+   class InputInjector;
+   class DragController {
+    public:
+@@ -348,6 +374,22 @@
  
    float ScaleFactor();
  
@@ -2037,10 +2581,18 @@ index ae876aac7b1df310e799f04025d594f982c3a91d..fc53e38610cf396e273f95e030489847
    // left as nullptr on platforms where a parent view is not required to
    // initialize a child window.
 diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
-index de99ad761f486ec5037d82eba9bc04b5d7737fed..497331df87eabd9cdaadfd1822ef9b938848dbb1 100644
+index de99ad761f486ec5037d82eba9bc04b5d7737fed..8db18af776314809245d02964a07f0dafb5cb33f 100644
 --- a/content/test/BUILD.gn
 +++ b/content/test/BUILD.gn
-@@ -3864,3 +3864,41 @@ if (is_fuchsia) {
+@@ -8,6 +8,7 @@
+ import("//build/config/features.gni")
+ import("//build/config/ui.gni")
+ import("//build/nocompile.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//components/guest_view/buildflags/buildflags.gni")
+ import("//components/viz/common/debugger/viz_debugger.gni")
+ import("//components/vrp_flags/features.gni")
+@@ -3864,3 +3865,78 @@
      ]
    }
  }
@@ -2070,6 +2622,43 @@ index de99ad761f486ec5037d82eba9bc04b5d7737fed..497331df87eabd9cdaadfd1822ef9b93
 +      "//ui/events:test_support",
 +      "//ui/events/blink",
 +      "//ui/gfx/range",
++    ]
++    data = [ "$root_out_dir/content_shell.pak" ]
++    data_deps = [
++      "//content/shell:pak",
++      "//tools/v8_context_snapshot",
++    ]
++    frameworks = [
++      "Cocoa.framework",
++      "Foundation.framework",
++    ]
++  }
++}
++
++# The real original-file and document-identity cases, without content_unittests.
++if (enable_aux_shell && is_mac && !is_component_build) {
++  test("aux_native_download_unittests") {
++    sources = [
++      "../../chrome/browser/ui/aux/document_jobs.cc",
++      "../../chrome/browser/ui/aux/document_jobs_unittest.cc",
++      "../browser/download/download_item_utils_unittest.cc",
++    ]
++    configs += [ "//build/config:precompiled_headers" ]
++    deps = [
++      ":run_all_unittests",
++      ":test_support",
++      "//base",
++      "//base/test:test_support",
++      "//chrome/services/aux_document/public/mojom",
++      "//components/download/public/common:test_support",
++      "//content/browser:for_content_tests",
++      "//content/common:for_content_tests",
++      "//content/public/browser",
++      "//crypto",
++      "//mojo/public/cpp/bindings",
++      "//testing/gmock",
++      "//testing/gtest",
++      "//url",
 +    ]
 +    data = [ "$root_out_dir/content_shell.pak" ]
 +    data_deps = [
@@ -2212,10 +2801,10 @@ index 815bf7c4147c4dd89ea6e9c7a0440517cb5a4937..c1dabd0956755a08e942374429f77064
      properties
        # X coordinate of the event relative to the main frame's viewport in CSS pixels.
 diff --git a/third_party/blink/public/mojom/input/input_handler.mojom b/third_party/blink/public/mojom/input/input_handler.mojom
-index 7e2548916f765486de469332bfeccba18cf8f7b6..e425b0aed424465ff18e573cd763ca39de9555a2 100644
+index 7e2548916f765486de469332bfeccba18cf8f7b6..87f05d4a6dbfe6093cc9feab1b3ac110a18c3fe7 100644
 --- a/third_party/blink/public/mojom/input/input_handler.mojom
 +++ b/third_party/blink/public/mojom/input/input_handler.mojom
-@@ -12,6 +12,7 @@ import "cc/mojom/overscroll_behavior.mojom";
+@@ -12,6 +12,7 @@
  import "cc/mojom/touch_action.mojom";
  import "mojo/public/mojom/base/big_buffer.mojom";
  import "mojo/public/mojom/base/string16.mojom";
@@ -2223,7 +2812,15 @@ index 7e2548916f765486de469332bfeccba18cf8f7b6..e425b0aed424465ff18e573cd763ca39
  import "mojo/public/mojom/base/time.mojom";
  import "third_party/blink/public/mojom/dom/dom_node_id.mojom";
  import "third_party/blink/public/mojom/input/gesture_event.mojom";
-@@ -493,7 +494,34 @@ struct NativeMouseDownLink {
+@@ -191,6 +192,7 @@
+   mojo_base.mojom.TimeTicks timestamp;
+   ui.mojom.LatencyInfo latency;
+   ui.mojom.EventLatencyMetadata event_latency_metadata;
++  mojo_base.mojom.UnguessableToken? aux_input_continuation;
+   KeyData? key_data;
+   PointerData? pointer_data;
+   GestureData? gesture_data;
+@@ -493,7 +495,34 @@
    string href;
  };
  
@@ -2259,45 +2856,59 @@ index 7e2548916f765486de469332bfeccba18cf8f7b6..e425b0aed424465ff18e573cd763ca39
    SetFocus(FocusState state);
  
 diff --git a/third_party/blink/renderer/controller/BUILD.gn b/third_party/blink/renderer/controller/BUILD.gn
-index 05b4956d84bb02328a07495d0f68612dc7e128b7..feb28e16b270a8694016015d90bf85c16d43a287 100644
+index 05b4956d84bb02328a07495d0f68612dc7e128b7..37618994123ab715f61944a3e249e89c2e088435 100644
 --- a/third_party/blink/renderer/controller/BUILD.gn
 +++ b/third_party/blink/renderer/controller/BUILD.gn
-@@ -261,6 +261,40 @@ source_set("blink_bindings_test_sources") {
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/ui.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//testing/test.gni")
+ import("//third_party/blink/renderer/bindings/bindings.gni")
+ import("//third_party/blink/renderer/config.gni")
+@@ -261,6 +262,46 @@
    ]
  }
  
 +# Focused Aux input-proof fixtures reuse the real Blink/content test environment.
-+test("aux_context_actions_unittests") {
-+  sources = [
-+    "../core/frame/aux_context_actions_test.cc",
-+    "tests/run_all_tests.cc",
-+    "tests/thread_state_test_environment.h",
-+  ]
-+  deps = [
-+    ":controller",
-+    "//base",
-+    "//base:i18n",
-+    "//base/test:test_support",
-+    "//content/test:test_support",
-+    "//gpu:test_support",
-+    "//testing/gmock",
-+    "//testing/gtest",
-+    "//third_party/blink/renderer/core:testing",
-+    "//third_party/blink/renderer/core:unit_test_support",
-+    "//third_party/blink/renderer/modules",
-+    "//third_party/blink/renderer/modules/exported:test_support",
-+    "//third_party/blink/renderer/platform",
-+    "//third_party/blink/renderer/platform:test_support",
-+    "//third_party/blink/renderer/platform/wtf",
-+    "//url",
-+    "//v8",
-+  ]
-+  configs += [
-+    "//third_party/blink/renderer:config",
-+    "//third_party/blink/renderer:inside_blink",
-+    "//third_party/blink/renderer/core:blink_core_pch",
-+  ]
-+  data_deps = [ "//content/shell:pak" ]
++if (enable_aux_shell) {
++  test("aux_context_actions_unittests") {
++    sources = [
++      "../../common/input/web_input_event_unittest.cc",
++      "../core/frame/aux_context_actions_test.cc",
++      "tests/run_all_tests.cc",
++      "tests/thread_state_test_environment.h",
++    ]
++    deps = [
++      ":controller",
++      "//base",
++      "//base:i18n",
++      "//base/test:test_support",
++      "//content/test:test_support",
++      "//gpu:test_support",
++      "//mojo/public/cpp/test_support:test_utils",
++      "//testing/gmock",
++      "//testing/gtest",
++      "//third_party/blink/public/common",
++      "//third_party/blink/public/mojom:mojom_platform",
++      "//third_party/blink/renderer/core:testing",
++      "//third_party/blink/renderer/core:unit_test_support",
++      "//third_party/blink/renderer/modules",
++      "//third_party/blink/renderer/modules/exported:test_support",
++      "//third_party/blink/renderer/platform",
++      "//third_party/blink/renderer/platform:test_support",
++      "//third_party/blink/renderer/platform/wtf",
++      "//url",
++      "//v8",
++    ]
++    configs += [
++      "//third_party/blink/renderer:config",
++      "//third_party/blink/renderer:inside_blink",
++      "//third_party/blink/renderer/core:blink_core_pch",
++    ]
++    data_deps = [ "//content/shell:pak" ]
++  }
 +}
 +
  source_set("blink_unittests_sources") {
@@ -2407,10 +3018,10 @@ index d1785e509ac2b924b1d8a7747f5cf6124153c5d3..dd2e3ac96e50b06bf96bb78c349ee8bf
  }
 diff --git a/third_party/blink/renderer/core/frame/aux_context_actions.cc b/third_party/blink/renderer/core/frame/aux_context_actions.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..73822e373aa2b0741819d2dad54de85b0d25d213
+index 0000000000000000000000000000000000000000..89689f418c978f8e67b74e211fe50d3fac7618a2
 --- /dev/null
 +++ b/third_party/blink/renderer/core/frame/aux_context_actions.cc
-@@ -0,0 +1,477 @@
+@@ -0,0 +1,502 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2424,6 +3035,7 @@ index 0000000000000000000000000000000000000000..73822e373aa2b0741819d2dad54de85b
 +#include "base/memory/read_only_shared_memory_region.h"
 +#include "base/time/time.h"
 +#include "base/unguessable_token.h"
++#include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 +#include "third_party/blink/renderer/core/dom/document.h"
 +#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 +#include "third_party/blink/renderer/core/dom/element.h"
@@ -2445,6 +3057,30 @@ index 0000000000000000000000000000000000000000..73822e373aa2b0741819d2dad54de85b
 +#include "ui/gfx/geometry/rect.h"
 +
 +namespace blink {
++namespace {
++AuxInputNavigationScope* active_navigation_input = nullptr;
++}
++AuxInputNavigationScope::AuxInputNavigationScope(
++    LocalFrame& frame, std::optional<base::UnguessableToken> token)
++    : frame_(&frame), document_(frame.GetDocumentToken()), token_(token) {
++  previous_ = active_navigation_input;
++  active_navigation_input = token_ ? this : nullptr;
++}
++AuxInputNavigationScope::~AuxInputNavigationScope() {
++  active_navigation_input = previous_;
++  if (!token_) return;
++  if (frame_->GetPage())
++    frame_->GetLocalFrameHostRemote().DidCompleteAuxInputNavigation(
++        *token_, document_, requested_);
++}
++std::optional<base::UnguessableToken> AuxInputNavigationScope::CurrentToken() {
++  return active_navigation_input ? active_navigation_input->token_ : std::nullopt;
++}
++void AuxInputNavigationScope::NavigationRequested(
++    std::optional<base::UnguessableToken> token) {
++  if (active_navigation_input && token && active_navigation_input->token_ == token)
++    active_navigation_input->requested_ = true;
++}
 +namespace {
 +// Validate refreshes layout once before inspecting any source node. Walk the
 +// flat tree so an invisible shadow host cannot leave a visible-looking editor.
@@ -2890,25 +3526,49 @@ index 0000000000000000000000000000000000000000..73822e373aa2b0741819d2dad54de85b
 +}  // namespace blink
 diff --git a/third_party/blink/renderer/core/frame/aux_context_actions.h b/third_party/blink/renderer/core/frame/aux_context_actions.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..ad39c2c64c0d2881fa0fd51514edb25411d14318
+index 0000000000000000000000000000000000000000..ec7223bf05d7d2ad36166660f26421669cd09d1c
 --- /dev/null
 +++ b/third_party/blink/renderer/core/frame/aux_context_actions.h
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,76 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_AUX_CONTEXT_ACTIONS_H_
 +#define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_AUX_CONTEXT_ACTIONS_H_
 +
++#include <optional>
++
 +#include "base/functional/callback.h"
++#include "base/unguessable_token.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
 +#include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 +#include "third_party/blink/renderer/core/core_export.h"
 +#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 +#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
 +#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 +
 +namespace blink {
 +class Document;
++class LocalFrame;
++// Only the original native input stack can mark its navigation request.
++// A later scheduled HTML form retains that token on its ResourceRequest.
++class CORE_EXPORT AuxInputNavigationScope final {
++ public:
++  AuxInputNavigationScope(LocalFrame&, std::optional<base::UnguessableToken>);
++  ~AuxInputNavigationScope();
++  AuxInputNavigationScope(const AuxInputNavigationScope&) = delete;
++  AuxInputNavigationScope& operator=(const AuxInputNavigationScope&) = delete;
++  static std::optional<base::UnguessableToken> CurrentToken();
++  static void NavigationRequested(std::optional<base::UnguessableToken>);
++
++ private:
++  Persistent<LocalFrame> frame_;
++  DocumentToken document_;
++  std::optional<base::UnguessableToken> token_;
++  AuxInputNavigationScope* previous_ = nullptr;
++  bool requested_ = false;
++};
 +class Element;
 +class Node;
 +class AuxContextActionRecord;
@@ -2948,15 +3608,24 @@ index 0000000000000000000000000000000000000000..ad39c2c64c0d2881fa0fd51514edb254
 +#endif
 diff --git a/third_party/blink/renderer/core/frame/aux_context_actions_test.cc b/third_party/blink/renderer/core/frame/aux_context_actions_test.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..36f2e2d3b8178c066b3a6296709a1d769466389a
+index 0000000000000000000000000000000000000000..862427ccdd1a7fef6e3c0e8459cb028fd69fa1e4
 --- /dev/null
 +++ b/third_party/blink/renderer/core/frame/aux_context_actions_test.cc
-@@ -0,0 +1,871 @@
+@@ -0,0 +1,1059 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
 +
++#include <vector>
++#include <string>
++
++#include "base/run_loop.h"
++#include "third_party/blink/public/common/input/web_coalesced_input_event.h"
++#include "third_party/blink/public/web/web_navigation_params.h"
++#include "third_party/blink/renderer/core/loader/frame_load_request.h"
++#include "third_party/blink/renderer/core/testing/fake_local_frame_host.h"
++#include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 +#include "base/atomicops.h"
 +#include "base/memory/read_only_shared_memory_region.h"
 +#include "base/test/bind.h"
@@ -2980,6 +3649,7 @@ index 0000000000000000000000000000000000000000..36f2e2d3b8178c066b3a6296709a1d76
 +#include "third_party/blink/renderer/core/html_names.h"
 +#include "third_party/blink/renderer/core/input/event_handler.h"
 +#include "third_party/blink/renderer/core/page/page.h"
++#include "third_party/blink/renderer/core/style/computed_style.h"
 +#include "third_party/blink/renderer/core/testing/page_test_base.h"
 +#include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 +#include "third_party/blink/renderer/core/testing/sim/sim_test.h"
@@ -3822,6 +4492,184 @@ index 0000000000000000000000000000000000000000..36f2e2d3b8178c066b3a6296709a1d76
 +  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
 +}
 +}  // namespace
++// The fixture drives Blink's actual widget and delayed HTML form navigation.
++// It never grants browser authority or infers a result from a matching URL.
++class AuxNavigationFrameHost final : public FakeLocalFrameHost {
++ public:
++  struct Completion { base::UnguessableToken token; DocumentToken document; bool requested; };
++  void DidCompleteAuxInputNavigation(const base::UnguessableToken& token,
++      const DocumentToken& document, bool requested) override {
++    completions.push_back({token, document, requested});
++  }
++  std::vector<Completion> completions;
++};
++class AuxNavigationFrameClient final : public frame_test_helpers::TestWebFrameClient {
++ public:
++  AuxNavigationFrameClient() { host.Init(GetRemoteNavigationAssociatedInterfaces()); }
++  void BeginNavigation(std::unique_ptr<WebNavigationInfo> info) override {
++    if (!capture) { TestWebFrameClient::BeginNavigation(std::move(info)); return; }
++    tokens.push_back(info->url_request.AuxInputContinuation());
++    methods.push_back(info->url_request.HttpMethod().Utf8());
++    during_input.push_back(AuxInputNavigationScope::CurrentToken().has_value());
++  }
++  bool capture = false;
++  AuxNavigationFrameHost host;
++  std::vector<std::optional<base::UnguessableToken>> tokens;
++  std::vector<std::string> methods;
++  std::vector<bool> during_input;
++};
++// Observe actual widget delivery without canceling or replacing default actions.
++class AuxNavigationInputRecorder final : public NativeEventListener {
++ public:
++  void Invoke(ExecutionContext*, Event* event) override {
++    if (event->type() == event_type_names::kMousedown) {
++      ++mouse_down_count;
++    } else if (event->type() == event_type_names::kMouseup) {
++      ++mouse_up_count;
++    } else if (event->type() == event_type_names::kClick) {
++      ++click_count;
++    }
++    all_trusted &= event->isTrusted();
++  }
++
++  unsigned mouse_down_count = 0;
++  unsigned mouse_up_count = 0;
++  unsigned click_count = 0;
++  bool all_trusted = true;
++};
++class AuxInputNavigationTest : public SimTest {
++ protected:
++  std::unique_ptr<frame_test_helpers::TestWebFrameClient> CreateWebFrameClientForMainFrame() override {
++    auto client = std::make_unique<AuxNavigationFrameClient>();
++    client_ = client.get();
++    return client;
++  }
++  void SetUp() override {
++    SimTest::SetUp();
++    ResizeView(gfx::Size(800, 600));
++    SimRequest page("https://continuation.test/start", "text/html");
++    LoadURL("https://continuation.test/start");
++    page.Complete(R"HTML(<style>body { font: 16px/24px sans-serif; }</style>
++      <a id="link" href="/next">Record 15</a>
++      <form action="/filter" method="get"><input name="status" value="approved"><button id="get">Apply filter</button></form>
++      <form action="/save" method="post"><input name="status" value="approved"><button id="post">Save</button></form>
++      <button id="plain">No navigation</button>)HTML");
++    Compositor().BeginFrame();
++    GetWebFrameWidget().UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
++    GetWebFrameWidget().SetFocus(true);
++    client_->capture = true;
++  }
++  void Click(const char* id, std::optional<base::UnguessableToken> token) {
++    auto* node = GetDocument().getElementById(AtomicString(id));
++    ASSERT_TRUE(node);
++    auto* rect = node->GetBoundingClientRect();
++    const auto* style = node->GetComputedStyle();
++    ASSERT_TRUE(style);
++    const gfx::PointF point(rect->x() + rect->width() / 2,
++                            rect->y() + rect->height() / 2);
++    SCOPED_TRACE(testing::Message()
++                 << "target=" << id << " rect=(" << rect->x() << ","
++                 << rect->y() << "," << rect->width() << "," << rect->height()
++                 << ") center=(" << point.x() << "," << point.y()
++                 << ") computed_font_size=" << style->FontSize());
++    ASSERT_GT(rect->width(), 2);
++    ASSERT_GT(rect->height(), 2);
++    ASSERT_EQ(GetDocument().elementFromPoint(point.x(), point.y()), node);
++    Persistent<AuxNavigationInputRecorder> delivered =
++        MakeGarbageCollected<AuxNavigationInputRecorder>();
++    node->addEventListener(event_type_names::kMousedown, delivered.Get(), false);
++    node->addEventListener(event_type_names::kMouseup, delivered.Get(), false);
++    node->addEventListener(event_type_names::kClick, delivered.Get(), false);
++    for (auto type : {WebInputEvent::Type::kMouseDown, WebInputEvent::Type::kMouseUp}) {
++      WebMouseEvent event(type, type == WebInputEvent::Type::kMouseDown ? WebInputEvent::kLeftButtonDown : WebInputEvent::kNoModifiers,
++                          WebInputEvent::GetStaticTimeStampForTests());
++      event.button = WebPointerProperties::Button::kLeft;
++      event.click_count = 1;
++      event.SetPositionInWidget(point);
++      if (type == WebInputEvent::Type::kMouseUp) event.SetAuxInputContinuation(token);
++      GetWebFrameWidget().HandleInputEvent(WebCoalescedInputEvent(event, ui::LatencyInfo()));
++    }
++    node->removeEventListener(event_type_names::kMousedown, delivered.Get(), false);
++    node->removeEventListener(event_type_names::kMouseup, delivered.Get(), false);
++    node->removeEventListener(event_type_names::kClick, delivered.Get(), false);
++    EXPECT_EQ(delivered->mouse_down_count, 1u);
++    EXPECT_EQ(delivered->mouse_up_count, 1u);
++    EXPECT_EQ(delivered->click_count, 1u);
++    EXPECT_TRUE(delivered->all_trusted);
++  }
++  raw_ptr<AuxNavigationFrameClient> client_ = nullptr;
++};
++TEST_F(AuxInputNavigationTest, RealLinkReleaseCarriesExactTicket) {
++  const auto token = base::UnguessableToken::Create();
++  const auto document = MainFrame().GetFrame()->GetDocumentToken();
++  Click("link", token);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(client_->tokens.size(), 1u);
++  EXPECT_EQ(client_->tokens[0], token);
++  EXPECT_EQ(client_->methods[0], "GET");
++  ASSERT_EQ(client_->host.completions.size(), 1u);
++  EXPECT_EQ(client_->host.completions[0].token, token);
++  EXPECT_EQ(client_->host.completions[0].document, document);
++  EXPECT_TRUE(client_->host.completions[0].requested);
++  EXPECT_FALSE(AuxInputNavigationScope::CurrentToken());
++}
++TEST_F(AuxInputNavigationTest, DelayedGetFormRetainsOnlyOriginalInputTicket) {
++  const auto token = base::UnguessableToken::Create();
++  Click("get", token);
++  EXPECT_FALSE(AuxInputNavigationScope::CurrentToken());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(client_->tokens.size(), 1u);
++  EXPECT_EQ(client_->tokens[0], token);
++  EXPECT_EQ(client_->methods[0], "GET");
++  EXPECT_FALSE(client_->during_input[0]);
++  ASSERT_EQ(client_->host.completions.size(), 1u);
++  EXPECT_TRUE(client_->host.completions[0].requested);
++}
++TEST_F(AuxInputNavigationTest, DelayedPostFormRetainsOnlyOriginalInputTicket) {
++  const auto token = base::UnguessableToken::Create();
++  Click("post", token);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(client_->tokens.size(), 1u);
++  EXPECT_EQ(client_->tokens[0], token);
++  EXPECT_EQ(client_->methods[0], "POST");
++  EXPECT_FALSE(client_->during_input[0]);
++  ASSERT_EQ(client_->host.completions.size(), 1u);
++  EXPECT_TRUE(client_->host.completions[0].requested);
++}
++TEST_F(AuxInputNavigationTest, UnchangedReleaseDoesNotTagLaterPersonNavigation) {
++  const auto token = base::UnguessableToken::Create();
++  Click("plain", token);
++  base::RunLoop().RunUntilIdle();
++  EXPECT_TRUE(client_->tokens.empty());
++  ASSERT_EQ(client_->host.completions.size(), 1u);
++  EXPECT_FALSE(client_->host.completions[0].requested);
++  Click("link", std::nullopt);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(client_->tokens.size(), 1u);
++  EXPECT_FALSE(client_->tokens[0]);
++  EXPECT_EQ(client_->host.completions.size(), 1u);
++}
++TEST_F(AuxInputNavigationTest, UntaggedNestedInputCannotBorrowOuterTicket) {
++  const auto token = base::UnguessableToken::Create();
++  AuxInputNavigationScope outer(*MainFrame().GetFrame(), token);
++  {
++    AuxInputNavigationScope untagged(*MainFrame().GetFrame(), std::nullopt);
++    ResourceRequest resource(KURL("https://continuation.test/other"));
++    FrameLoadRequest request(GetDocument().domWindow(), resource);
++    EXPECT_FALSE(request.GetResourceRequest().AuxInputContinuation());
++  }
++  EXPECT_EQ(AuxInputNavigationScope::CurrentToken(), token);
++}
++TEST_F(AuxInputNavigationTest, ScheduledRequestCannotBorrowAReplacementInputTicket) {
++  const auto original = base::UnguessableToken::Create();
++  const auto unrelated = base::UnguessableToken::Create();
++  ResourceRequest resource(KURL("https://continuation.test/save"));
++  resource.SetAuxInputContinuation(original);
++  AuxInputNavigationScope other_input(*MainFrame().GetFrame(), unrelated);
++  FrameLoadRequest scheduled(GetDocument().domWindow(), resource);
++  EXPECT_EQ(scheduled.GetResourceRequest().AuxInputContinuation(), original);
++  EXPECT_EQ(AuxInputNavigationScope::CurrentToken(), unrelated);
++}
 +}  // namespace blink
 diff --git a/third_party/blink/renderer/core/frame/build.gni b/third_party/blink/renderer/core/frame/build.gni
 index 88a2a1caf05c68fbe4f953965b7298214d02a944..f1608cdefd3cea842b94d8faae83850758c7e98c 100644
@@ -3863,7 +4711,7 @@ index eb9b6c165ef37aad2d8b70cd51ec4afe1c1784c1..81c64b8896d2c474b552b3b44ddabc87
            WrapWeakPersistent(this)));
    FlushInputHandlerTasks();
 diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
-index f3cea4974ffe89855fa57ba8a8aeab7d263bbbbd..e0d52d55861166b82b3ee90ff0f970f02283a1bb 100644
+index f3cea4974ffe89855fa57ba8a8aeab7d263bbbbd..88d9cdae4491bbb6d7ad58c10cb6541787e376f2 100644
 --- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
 +++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
 @@ -100,6 +100,7 @@
@@ -3890,7 +4738,7 @@ index f3cea4974ffe89855fa57ba8a8aeab7d263bbbbd..e0d52d55861166b82b3ee90ff0f970f0
  #include "third_party/blink/renderer/core/html/anchor_element_viewport_position_tracker.h"
  #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
  #include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
-@@ -1692,6 +1695,7 @@ void WebFrameWidgetImpl::RequestDecode(const cc::DrawImage& image,
+@@ -1692,6 +1695,7 @@
  }
  
  void WebFrameWidgetImpl::Trace(Visitor* visitor) const {
@@ -3898,7 +4746,16 @@ index f3cea4974ffe89855fa57ba8a8aeab7d263bbbbd..e0d52d55861166b82b3ee90ff0f970f0
    visitor->Trace(local_root_);
    visitor->Trace(current_drag_data_);
    visitor->Trace(frame_widget_host_);
-@@ -4398,6 +4402,159 @@ bool WebFrameWidgetImpl::SetComposition(
+@@ -3479,6 +3483,8 @@
+                WebInputEvent::GetName(input_event.GetType()));
+   DCHECK(!WebInputEvent::IsTouchEventType(input_event.GetType()));
+   CHECK(LocalRootImpl());
++  AuxInputNavigationScope aux_navigation_input(
++      *LocalRootImpl()->GetFrame(), input_event.AuxInputContinuation());
+ 
+   // Clients shouldn't be dispatching events to a provisional frame but this
+   // can happen. Ensure that event handling can assume we're in a committed
+@@ -4398,6 +4404,159 @@
        selection_start, selection_end, ime_state);
  }
  
@@ -4341,3 +5198,418 @@ index 051616f0edc12fedd00e64493f1d522c3e6f8603..b929c1c7a36d77ff3d4145398b280c13
    void SetFocus(mojom::blink::FocusState focus_state) override;
    void MouseCaptureLost() override;
    void SetEditCommandsForNextKeyEvent(
+diff --git a/content/browser/loader/navigation_url_loader_impl_unittest.cc b/content/browser/loader/navigation_url_loader_impl_unittest.cc
+index 5cb76fd2f3998b942a6124c730b0abdc741e1a18..7258f01d734065afbed17f0c0873eb36cdd2d9a9 100644
+--- a/content/browser/loader/navigation_url_loader_impl_unittest.cc
++++ b/content/browser/loader/navigation_url_loader_impl_unittest.cc
+@@ -172,7 +172,7 @@
+             false /* started_by_ad */, false /* is_container_initiated */,
+             false /* has_rel_opener */,
+             std::nullopt /* script_tool_invocation_id */,
+-            /*script_injector_host=*/"");
++            /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+     auto common_params = blink::CreateCommonNavigationParams();
+     common_params->url = url;
+diff --git a/content/browser/loader/navigation_url_loader_unittest.cc b/content/browser/loader/navigation_url_loader_unittest.cc
+index e15f54215f638a1a468cd2045abd3de06ed7a9a5..7a6608a32668d3afe0e4e1a53684b8ec3cb4e41e 100644
+--- a/content/browser/loader/navigation_url_loader_unittest.cc
++++ b/content/browser/loader/navigation_url_loader_unittest.cc
+@@ -105,7 +105,7 @@
+             false /* started_by_ad */, false /* is_container_initiated */,
+             false /* has_rel_opener */,
+             std::nullopt /* script_tool_invocation_id */,
+-            /*script_injector_host=*/"");
++            /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+     auto common_params = blink::CreateCommonNavigationParams();
+     common_params->url = url;
+     common_params->initiator_origin = url::Origin::Create(url);
+diff --git a/content/browser/security_exploit_browsertest.cc b/content/browser/security_exploit_browsertest.cc
+index f3698639864423aacae105e2ad47ac65154848e2..37ff650ef9ddb57834ddba942cf66bd661c33508 100644
+--- a/content/browser/security_exploit_browsertest.cc
++++ b/content/browser/security_exploit_browsertest.cc
+@@ -4027,7 +4027,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   // Receiving the invalid IPC message should lead to renderer process
+   // termination.
+@@ -4118,7 +4118,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   // Receiving the invalid IPC message should lead to renderer process
+   // termination.
+@@ -4189,7 +4189,7 @@
+           /*started_by_ad=*/false, /*is_container_initiated=*/false,
+           /*has_rel_opener=*/false,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   // Receiving the invalid IPC message should lead to renderer process
+   // termination.
+@@ -4260,7 +4260,7 @@
+           /*started_by_ad=*/false, /*is_container_initiated=*/false,
+           /*has_rel_opener=*/false,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   // Receiving the invalid IPC message should lead to renderer process
+   // termination.
+@@ -6064,7 +6064,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client;
+   auto navigation_client_receiver =
+       navigation_client.InitWithNewEndpointAndPassReceiver();
+@@ -6370,7 +6370,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client;
+   auto navigation_client_receiver =
+@@ -6444,7 +6444,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client;
+   auto navigation_client_receiver =
+@@ -6524,7 +6524,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client;
+   auto navigation_client_receiver =
+diff --git a/content/public/browser/navigation_handle.cc b/content/public/browser/navigation_handle.cc
+index 94b551898cb82c9b3e38880ab5c07269ececd61f..183086570e5e49a36d9a65407e9cc666c8cec99f 100644
+--- a/content/public/browser/navigation_handle.cc
++++ b/content/public/browser/navigation_handle.cc
+@@ -13,6 +13,10 @@
+ 
+ namespace content {
+ 
++std::optional<base::UnguessableToken> NavigationHandle::GetAuxInputContinuation() const {
++  return std::nullopt;
++}
++
+ WebContents* NavigationHandle::GetWebContents() {
+   // The NavigationRequest cannot access the WebContentsImpl as it would be a
+   // layering violation, hence the cast here.
+diff --git a/content/public/browser/navigation_handle.h b/content/public/browser/navigation_handle.h
+index dcd90a547b6fe3569dfba78ebbe6fb33a4c7aa5e..8137b31c0d25d8b0b8cf1288b097ea720c2010e9 100644
+--- a/content/public/browser/navigation_handle.h
++++ b/content/public/browser/navigation_handle.h
+@@ -151,6 +151,7 @@
+ 
+   // Get a unique ID for this navigation.
+   virtual int64_t GetNavigationId() const = 0;
++  virtual std::optional<base::UnguessableToken> GetAuxInputContinuation() const;
+ 
+   // Get the page UKM ID that will be in use once this navigation fully commits
+   // (typically the eventual value of
+diff --git a/content/public/browser/web_contents_observer.h b/content/public/browser/web_contents_observer.h
+index 9c60c3e494ba6145ad99987fc458b91ded2fc828..6f0ea62d06df56be7790766c953f0aef17fc7281 100644
+--- a/content/public/browser/web_contents_observer.h
++++ b/content/public/browser/web_contents_observer.h
+@@ -336,6 +336,9 @@
+   // semantics (e.g. DidStartNavigationAttempt).
+   //
+   // WARNING: Please read the above IMPORTANT NOTES for correct usage.
++  virtual void DidCompleteAuxInputNavigation(RenderFrameHost*,
++      const base::UnguessableToken&, const blink::DocumentToken&, bool) {}
++
+   virtual void DidStartNavigation(NavigationHandle* navigation_handle) {}
+ 
+   // Called when a navigation encountered a server redirect.
+diff --git a/content/test/navigation_simulator_impl.cc b/content/test/navigation_simulator_impl.cc
+index c853504956406fe302e744dcbad124a75f572873..b78ff71c9425c288dd05ab194dca0a4e09d9a49c 100644
+--- a/content/test/navigation_simulator_impl.cc
++++ b/content/test/navigation_simulator_impl.cc
+@@ -1461,7 +1461,7 @@
+           has_user_gesture_, false /* started_by_ad */,
+           false /* is_container_initiated */, false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+   auto common_params = blink::CreateCommonNavigationParams();
+   common_params->navigation_start =
+       navigation_start_.is_null() ? base::TimeTicks::Now() : navigation_start_;
+diff --git a/content/test/test_render_frame_host.cc b/content/test/test_render_frame_host.cc
+index e16b544e4fb759ebab99ba6c5c7f34f2c219a491..6e313a0143f09c31f90913b6e32e32c8c7b9b827 100644
+--- a/content/test/test_render_frame_host.cc
++++ b/content/test/test_render_frame_host.cc
+@@ -506,7 +506,7 @@
+           false /* started_by_ad */, false /* is_container_initiated */,
+           false /* has_rel_opener */,
+           std::nullopt /* script_tool_invocation_id */,
+-          /*script_injector_host=*/"");
++          /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+   auto common_params = blink::CreateCommonNavigationParams();
+   common_params->url = url;
+   common_params->initiator_origin = GetLastCommittedOrigin();
+diff --git a/third_party/blink/common/input/web_input_event_unittest.cc b/third_party/blink/common/input/web_input_event_unittest.cc
+index 113ac8f3e09baa437498d410ddb45bf563d64b5d..910c5f19ed4d7338ba479920c955461e704c23a3 100644
+--- a/third_party/blink/common/input/web_input_event_unittest.cc
++++ b/third_party/blink/common/input/web_input_event_unittest.cc
+@@ -291,4 +291,21 @@
+             ui::GestureScrollRailsMode::kHorizontal);
+ }
+ 
++TEST(WebInputEventTest, AuxReleaseTicketSurvivesMojoWithoutMintingPersonAuthority) {
++  for (bool attach_ticket : {false, true}) {
++    WebMouseEvent release(WebInputEvent::Type::kMouseUp,
++                          WebInputEvent::kNoModifiers,
++                          WebInputEvent::GetStaticTimeStampForTests());
++    const auto token = base::UnguessableToken::Create();
++    if (attach_ticket) release.SetAuxInputContinuation(token);
++    auto original = std::make_unique<WebCoalescedInputEvent>(release, ui::LatencyInfo());
++    std::unique_ptr<WebCoalescedInputEvent> decoded;
++    ASSERT_TRUE(mojo::test::SerializeAndDeserialize<blink::mojom::Event>(original, decoded));
++    ASSERT_TRUE(decoded);
++    EXPECT_EQ(decoded->Event().AuxInputContinuation(),
++              attach_ticket ? std::make_optional(token) : std::nullopt);
++    EXPECT_EQ(decoded->Event().GetType(), WebInputEvent::Type::kMouseUp);
++  }
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h b/third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h
+index 31edf2250a588776ec02ceef017676f52088c93f..9960e5a1630f3bfc097c48bb30a7e0ff6c61394d 100644
+--- a/third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h
++++ b/third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h
+@@ -41,6 +41,11 @@
+     return event->Event().GetEventLatencyMetadata();
+   }
+ 
++  static const std::optional<base::UnguessableToken>& aux_input_continuation(
++      const std::unique_ptr<blink::WebCoalescedInputEvent>& event) {
++    return event->Event().AuxInputContinuation();
++  }
++
+   static blink::mojom::KeyDataPtr key_data(
+       const std::unique_ptr<blink::WebCoalescedInputEvent>& event);
+   static blink::mojom::PointerDataPtr pointer_data(
+diff --git a/third_party/blink/public/common/input/web_input_event.h b/third_party/blink/public/common/input/web_input_event.h
+index 2cec6e3a7c0690ce2ca4aa923f61601f2c1b339a..92d90107b9b8af5b0759f81372693623be060c24 100644
+--- a/third_party/blink/public/common/input/web_input_event.h
++++ b/third_party/blink/public/common/input/web_input_event.h
+@@ -38,6 +38,7 @@
+ 
+ #include "base/notreached.h"
+ #include "base/time/time.h"
++#include "base/unguessable_token.h"
+ #include "third_party/blink/public/common/common_export.h"
+ #include "third_party/blink/public/mojom/input/input_event.mojom-shared.h"
+ #include "ui/events/event_latency_metadata.h"
+@@ -356,6 +357,13 @@
+     queued_time_stamp_ = time_stamp;
+   }
+ 
++  const std::optional<base::UnguessableToken>& AuxInputContinuation() const {
++    return aux_input_continuation_;
++  }
++  void SetAuxInputContinuation(std::optional<base::UnguessableToken> token) {
++    aux_input_continuation_ = std::move(token);
++  }
++
+   const ui::EventLatencyMetadata& GetEventLatencyMetadata() const {
+     return event_latency_metadata_;
+   }
+@@ -446,6 +454,7 @@
+   }
+ 
+   ui::EventLatencyMetadata event_latency_metadata_;
++  std::optional<base::UnguessableToken> aux_input_continuation_;
+ 
+   bool prevent_counting_as_interaction_ = false;
+ };
+diff --git a/third_party/blink/public/mojom/frame/frame.mojom b/third_party/blink/public/mojom/frame/frame.mojom
+index 4d598f927000f773acc06569c6be5e25f9680566..44934ca6b25e979443a4aec3e68ca5eaed9046b6 100644
+--- a/third_party/blink/public/mojom/frame/frame.mojom
++++ b/third_party/blink/public/mojom/frame/frame.mojom
+@@ -289,6 +289,9 @@
+ // Onion Soup project advances, which can potentially lead to the removal of
+ // content/common/frame.mojom if enough code is moved to Blink.
+ interface LocalFrameHost {
++  DidCompleteAuxInputNavigation(mojo_base.mojom.UnguessableToken token,
++      blink.mojom.DocumentToken source_document, bool navigation_requested);
++
+   // Request to the browser that the frame wishes to enter fullscreen mode.
+   // Returns either true if fullscreen is allowed to be entered, or false if the
+   // request to enter fullscreen was denied. Note that the actual transition to
+diff --git a/third_party/blink/public/mojom/navigation/navigation_params.mojom b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+index 7d1f949b4d1510f1bff141bc72233af45a2302c3..bcd36e456361085a1ffbe2c37563efa6914a65bf 100644
+--- a/third_party/blink/public/mojom/navigation/navigation_params.mojom
++++ b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+@@ -215,6 +215,9 @@
+   // navigation, or empty if none. This is only populated when the initiator
+   // document's ScriptInjectionPolicy is kNavigationProtection.
+   string script_injector_host;
++
++  // Original native input provenance; not inferred from a URL or user activation.
++  mojo_base.mojom.UnguessableToken? aux_input_continuation;
+ };
+ 
+ // Provided by the browser or the renderer -------------------------------------
+diff --git a/third_party/blink/public/platform/web_url_request.h b/third_party/blink/public/platform/web_url_request.h
+index 4ca458c84185ba4b20bf986718e76a834ff76b73..8a4fc5d8aa885fe34f6ce09cfb77152cc9a1eb89 100644
+--- a/third_party/blink/public/platform/web_url_request.h
++++ b/third_party/blink/public/platform/web_url_request.h
+@@ -100,6 +100,8 @@
+   WebURLRequest& operator=(WebURLRequest&&);
+   void CopyFrom(const WebURLRequest&);
+ 
++  std::optional<base::UnguessableToken> AuxInputContinuation() const;
++
+   bool IsNull() const;
+ 
+   WebURL Url() const;
+diff --git a/third_party/blink/renderer/core/loader/form_submission.cc b/third_party/blink/renderer/core/loader/form_submission.cc
+index 9d42202ad65bd976dc20afa6b7205d88446ca362..9758bb6dca0c5a9dfab2ad29afe982b95cb62e28 100644
+--- a/third_party/blink/renderer/core/loader/form_submission.cc
++++ b/third_party/blink/renderer/core/loader/form_submission.cc
+@@ -29,6 +29,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/loader/form_submission.h"
++
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ 
+ #include "services/network/public/cpp/is_potentially_trustworthy.h"
+ #include "third_party/blink/public/common/security_context/insecure_request_policy.h"
+@@ -363,6 +365,7 @@
+     triggering_event_info = mojom::blink::TriggeringEventInfo::kNotFromEvent;
+   }
+ 
++  resource_request->SetAuxInputContinuation(AuxInputNavigationScope::CurrentToken());
+   FrameLoadRequest frame_request(form->GetDocument().domWindow(),
+                                  *resource_request);
+   NavigationPolicy navigation_policy = NavigationPolicyFromEvent(event);
+@@ -449,6 +452,8 @@
+ }
+ 
+ void FormSubmission::NotifyInspector() {
++  if (resource_request_)
++    AuxInputNavigationScope::NavigationRequested(resource_request_->AuxInputContinuation());
+   LocalFrame* origin_frame = origin_window_->GetFrame();
+   if (!origin_frame || !target_frame_) {
+     return;
+diff --git a/third_party/blink/renderer/core/loader/frame_load_request.cc b/third_party/blink/renderer/core/loader/frame_load_request.cc
+index 36282f866edf5223225b4d2d95d22b04633319c3..d1a6b3d4bdc971547ed574600bb98d63df5e639a 100644
+--- a/third_party/blink/renderer/core/loader/frame_load_request.cc
++++ b/third_party/blink/renderer/core/loader/frame_load_request.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/loader/frame_load_request.h"
++
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ 
+ #include "base/types/optional_util.h"
+ #include "third_party/blink/public/common/blob/blob_utils.h"
+@@ -83,6 +85,10 @@
+       should_send_referrer_(kMaybeSendReferrer),
+       creation_time_(base::TimeTicks::Now()) {
+   resource_request_.CopyHeadFrom(resource_request);
++  // A scheduled form already holds its original input token. Never rebind it
++  // to an unrelated nested input that happens to run when it is dispatched.
++  if (!resource_request_.AuxInputContinuation())
++    resource_request_.SetAuxInputContinuation(AuxInputNavigationScope::CurrentToken());
+   resource_request_.SetHttpBody(resource_request.HttpBody());
+   resource_request_.SetMode(network::mojom::RequestMode::kNavigate);
+   resource_request_.SetTargetAddressSpace(
+diff --git a/third_party/blink/renderer/core/loader/frame_loader.cc b/third_party/blink/renderer/core/loader/frame_loader.cc
+index 02f5eb91bdbd2d8162f8c416fae09f0234987e36..822591bd7921ec55f3f239e163ac4e165371aa9c 100644
+--- a/third_party/blink/renderer/core/loader/frame_loader.cc
++++ b/third_party/blink/renderer/core/loader/frame_loader.cc
+@@ -35,6 +35,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/loader/frame_loader.h"
++
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ 
+ #include <memory>
+ #include <utility>
+@@ -1012,6 +1014,7 @@
+           ? CSPDisposition::DO_NOT_CHECK
+           : CSPDisposition::CHECK;
+ 
++  AuxInputNavigationScope::NavigationRequested(resource_request.AuxInputContinuation());
+   Client()->BeginNavigation(
+       resource_request, request.GetRequestorBaseURL(), request.GetFrameType(),
+       origin_window, nullptr /* document_loader */, navigation_type,
+diff --git a/third_party/blink/renderer/core/testing/fake_local_frame_host.h b/third_party/blink/renderer/core/testing/fake_local_frame_host.h
+index 4fbcc4ab4f6419f5d49dc29b4a17085a83018e02..e225bb59b9172aa89eb092588683e0c22fd3a482 100644
+--- a/third_party/blink/renderer/core/testing/fake_local_frame_host.h
++++ b/third_party/blink/renderer/core/testing/fake_local_frame_host.h
+@@ -71,6 +71,8 @@
+   void DidBlockNavigation(const KURL& blocked_url,
+                           mojom::NavigationBlockedReason reason) override;
+   void DidChangeLoadProgress(double load_progress) override;
++  void DidCompleteAuxInputNavigation(const base::UnguessableToken&,
++      const blink::DocumentToken&, bool) override {}
+   void DidFinishLoad(const KURL& validated_url) override;
+   void DispatchLoad() override;
+   void GoToEntryAtOffset(
+diff --git a/third_party/blink/renderer/platform/exported/web_url_request.cc b/third_party/blink/renderer/platform/exported/web_url_request.cc
+index 56cb9eb4448103ffefd7e43a254d4fe7f23d94cb..b25e93f7fcffeff7c240f807d97f66541bdf8cdf 100644
+--- a/third_party/blink/renderer/platform/exported/web_url_request.cc
++++ b/third_party/blink/renderer/platform/exported/web_url_request.cc
+@@ -121,6 +121,10 @@
+   resource_request_->SetHttpBody(r.resource_request_->HttpBody());
+ }
+ 
++std::optional<base::UnguessableToken> WebURLRequest::AuxInputContinuation() const {
++  return resource_request_->AuxInputContinuation();
++}
++
+ bool WebURLRequest::IsNull() const {
+   return resource_request_->IsNull();
+ }
+diff --git a/third_party/blink/renderer/platform/loader/fetch/resource_request.h b/third_party/blink/renderer/platform/loader/fetch/resource_request.h
+index 82980f4578c05e02f88999132fa5df37e278493b..17fbbd857f4877a12c6d85b32babc0ef665fe489 100644
+--- a/third_party/blink/renderer/platform/loader/fetch/resource_request.h
++++ b/third_party/blink/renderer/platform/loader/fetch/resource_request.h
+@@ -128,6 +128,13 @@
+       network::mojom::ReferrerPolicy new_referrer_policy,
+       bool skip_service_worker) const;
+ 
++  const std::optional<base::UnguessableToken>& AuxInputContinuation() const {
++    return aux_input_continuation_;
++  }
++  void SetAuxInputContinuation(std::optional<base::UnguessableToken> token) {
++    aux_input_continuation_ = token;
++  }
++
+   bool IsNull() const;
+ 
+   const KURL& Url() const;
+@@ -641,6 +648,7 @@
+   }
+ 
+  private:
++  std::optional<base::UnguessableToken> aux_input_continuation_;
+   const CacheControlHeader& GetCacheControlHeader() const;
+ 
+   bool NeedsHTTPOrigin() const;

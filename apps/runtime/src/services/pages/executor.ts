@@ -54,6 +54,32 @@ export class ProgramExecutor {
     private control: ControlAuthority,
   ) {}
 
+  private async admitDownload(
+    runId: string,
+    pageId: string,
+    outcome: import("@aux/contracts").NativeCdpDownloadOutcome | undefined,
+    signal: AbortSignal | undefined,
+    validateSource: () => void,
+  ) {
+    if (!outcome) return undefined;
+    if (!signal)
+      throw new AuxError(
+        "capability_unsupported",
+        "The original download cancellation scope is unavailable.",
+      );
+    const admit = this.pages.deps.admitNavigationDownload;
+    if (!admit)
+      throw new AuxError("capability_unsupported", "Native download artifact intake is unavailable.");
+    validateSource();
+    const artifact = await admit({ runId, pageId, outcome, signal, validateSource });
+    validateSource();
+    return {
+      downloadId: outcome.downloadId,
+      artifactId: artifact.artifactId,
+      suggestedFilename: artifact.suggestedFilename,
+    };
+  }
+
   /** Wait until a condition holds — one `waitFor` program step. */
   async waitFor(
     pageId: string,
@@ -181,7 +207,11 @@ export class ProgramExecutor {
         const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
         // Same rule as the external page lease: a read uses the task page, and
         // any non-read step (including hover, scroll, and stop) takes transmission protection.
-        if (ctx.runId && !ctx.linkedInCapture?.source && allSteps.some((step) => classifyStep(step.op) !== "read"))
+        if (
+          ctx.runId &&
+          !ctx.linkedInCapture?.source &&
+          allSteps.some((step) => classifyStep(step.op) !== "read")
+        )
           await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
         let batchPreparation: Parameters<SafetyDispatchGate["check"]>[0][] | undefined;
         let projectedSteps: Step[] = [];
@@ -225,15 +255,16 @@ export class ProgramExecutor {
             if (ctx.linkedInPrecondition) {
               // Only original main-frame backend nodes may reach this native consumer.
               origins = [new URL(ctx.linkedInPrecondition.source.url).origin];
-            } else origins = targets.length
-              ? await Promise.all(
-                  targets.map((target) =>
-                    projectedOrigin !== undefined && !isElementRef(target)
-                      ? projectedOrigin
-                      : (lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)),
-                  ),
-                )
-              : [fallbackOrigin];
+            } else
+              origins = targets.length
+                ? await Promise.all(
+                    targets.map((target) =>
+                      projectedOrigin !== undefined && !isElementRef(target)
+                        ? projectedOrigin
+                        : (lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)),
+                    ),
+                  )
+                : [fallbackOrigin];
             checkIncarnation();
             let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
             for (const actionOrigin of origins) {
@@ -251,8 +282,9 @@ export class ProgramExecutor {
                       })()
                     : actionOrigin;
                 const metadata = ctx.safety?.steps?.[step.id];
-                const observedTarget = ctx.linkedInCapture?.observedTarget ?? (
-                  targets.length === 1 && lp.driver!.actionTarget
+                const observedTarget =
+                  ctx.linkedInCapture?.observedTarget ??
+                  (targets.length === 1 && lp.driver!.actionTarget
                     ? await lp.driver!.actionTarget(
                         targets[0]!,
                         batchPreparation ? projectedSteps : undefined,
@@ -320,7 +352,8 @@ export class ProgramExecutor {
                     ctx.linkedInCapture.source ??= await lp.driver.captureLinkedInContext(
                       ctx.linkedInPrecondition,
                     );
-                    if (observedTarget) ctx.linkedInCapture.observedTarget ??= structuredClone(observedTarget);
+                    if (observedTarget)
+                      ctx.linkedInCapture.observedTarget ??= structuredClone(observedTarget);
                     checkIncarnation();
                     ctx.sourcePageCheck?.();
                     if (ctx.signal?.aborted) throw new AuxError("cancelled", "The original input stopped.");
@@ -611,11 +644,102 @@ export class ProgramExecutor {
                   return admittedDriver.withContextAction(context, execute);
                 }
                 if (ctx.linkedInPrecondition)
-                  throw new AuxError("permission_denied", "The original native LinkedIn input attestation is required.");
+                  throw new AuxError(
+                    "permission_denied",
+                    "The original native LinkedIn input attestation is required.",
+                  );
                 if (admission && admittedDriver.withActionTarget)
                   return admittedDriver.withActionTarget(admission.target, admission.proof, execute);
                 return execute();
               },
+              inputAndReadmit:
+                ctx.runId &&
+                !ctx.linkedInPrecondition &&
+                lp.target.backend === "aux" &&
+                this.pages.deps.native.available()
+                  ? async (_step, dispatch) => {
+                      const producer = this.pages.deps.inputControlled;
+                      if (!producer)
+                        throw new AuxError(
+                          "capability_unsupported",
+                          "Native input continuation is unavailable.",
+                        );
+                      const runId = ctx.runId!;
+                      const original = this.pages.deps.repo.getRun(runId);
+                      if (!original) throw new AuxError("ref_stale", "Original input run retired.");
+                      const revision = original.config?.messageRevision;
+                      const taskId = original.config?.taskId;
+                      const taskRevision = original.config?.taskRevision;
+                      const validateSource = () => {
+                        const run = this.pages.deps.repo.getRun(runId);
+                        if (
+                          ctx.signal?.aborted ||
+                          this.pages.live.get(pageId) !== lp ||
+                          lp.target.controller === "human" ||
+                          lp.target.controllerEpoch !== expectedEpoch ||
+                          !run ||
+                          !["running", "planning", "queued"].includes(run.status) ||
+                          run.config?.messageRevision !== revision ||
+                          run.config?.taskId !== taskId ||
+                          run.config?.taskRevision !== taskRevision ||
+                          (mentionTurn && this.pages.deps.turnMentions.capture(runId) !== mentionTurn)
+                        )
+                          throw new AuxError(
+                            "ref_stale",
+                            "Original input run, source or controller changed.",
+                          );
+                        ctx.sourcePageCheck?.();
+                        ctx.checkValid?.();
+                      };
+                      const commanded = async (
+                        mentionAuthority?: () => void,
+                        revalidateMentionSource?: () => Promise<void>,
+                      ) => {
+                        validateSource();
+                        const result = await producer(
+                          {
+                            runId,
+                            pageId,
+                            dispatch,
+                            signal: ctx.signal,
+                            validateSource,
+                            mentionAuthority,
+                            revalidateMentionSource,
+                          },
+                          this.pages,
+                        );
+                        validateSource();
+                        return { result, receipt: result.receipt };
+                      };
+                      const admitted = mentionTurn
+                        ? await this.pages.deps.turnMentions.navigateAttachmentUse(runId, pageId, commanded)
+                        : (await commanded()).result;
+                      validateSource();
+                      if (
+                        lp.driver !== admitted.driver ||
+                        !lp.target.sessionId ||
+                        !admitted.driver.isAttached()
+                      )
+                        throw new AuxError(
+                          "ref_stale",
+                          "Native input attachment changed before executor admission.",
+                        );
+                      admittedDriver = admitted.driver;
+                      admittedSession = lp.target.sessionId;
+                      checkIncarnation();
+                      const download = await this.admitDownload(
+                        runId,
+                        pageId,
+                        admitted.download,
+                        ctx.signal,
+                        () => {
+                          validateSource();
+                          checkIncarnation();
+                        },
+                      );
+                      return { driver: admitted.driver, value: admitted.value, download };
+                    }
+                  : undefined,
               navigateAndReadmit:
                 ctx.runId && lp.target.backend === "aux" && this.pages.deps.native.available()
                   ? async (url) => {
@@ -635,11 +759,11 @@ export class ProgramExecutor {
                       const revision = originalRun.config?.messageRevision;
                       const taskId = originalRun.config?.taskId;
                       const taskRevision = originalRun.config?.taskRevision;
-                      const signal = ctx.signal ?? new AbortController().signal;
+                      const signal = ctx.signal;
                       const validateSource = () => {
                         const currentRun = this.pages.deps.repo.getRun(runId);
                         if (
-                          signal.aborted ||
+                          signal?.aborted ||
                           this.pages.live.get(pageId) !== lp ||
                           lp.target.controller === "human" ||
                           lp.target.controllerEpoch !== expectedEpoch ||
@@ -679,17 +803,18 @@ export class ProgramExecutor {
                           this.pages,
                         );
                         validateSource();
-                        return { result: admitted.driver, receipt: admitted.receipt };
+                        return { result: admitted, receipt: admitted.receipt };
                       };
-                      const replacement = mentionTurn
+                      const admitted = mentionTurn
                         ? await this.pages.deps.turnMentions.navigateAttachmentUse(runId, pageId, commanded)
                         : (await commanded()).result;
+                      const replacement = admitted.driver;
                       validateSource();
                       if (
                         this.pages.live.get(pageId) !== lp ||
                         lp.driver !== replacement ||
                         !lp.target.sessionId ||
-                        replacement === admittedDriver ||
+                        (replacement === admittedDriver && !admitted.download) ||
                         !replacement.isAttached()
                       )
                         throw new AuxError(
@@ -699,7 +824,17 @@ export class ProgramExecutor {
                       admittedDriver = replacement;
                       admittedSession = lp.target.sessionId;
                       checkIncarnation();
-                      return replacement;
+                      const download = await this.admitDownload(
+                        runId,
+                        pageId,
+                        admitted.download,
+                        signal,
+                        () => {
+                          validateSource();
+                          checkIncarnation();
+                        },
+                      );
+                      return { driver: replacement, download };
                     }
                   : undefined,
               navigate: ctx.runId

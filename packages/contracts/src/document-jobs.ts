@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NativeCdpDownloadOutcomeSchema } from "./native-cdp.js";
 import { DocumentCompletedSchema, DocumentFormatSchema, DocumentWarningSchema } from "./document-intake.js";
 
 export const DOCUMENT_JOB_SOURCE_LIMIT = 64 * 1024 * 1024;
@@ -65,6 +66,16 @@ const jobId = z.string().min(1).max(128);
 export const NativeDocumentJobParams = z.discriminatedUnion("action", [
   z
     .object({
+      action: z.literal("beginDownload"),
+      source: NativeCdpDownloadOutcomeSchema.extend({
+        pageId: z.string().uuid(),
+        runId: z.string().min(1).max(200),
+      }).strict(),
+    })
+    .strict(),
+  z.object({ action: z.literal("capture"), jobId }).strict(),
+  z
+    .object({
       action: z.literal("begin"),
       sources: z.array(source).min(1).max(8),
       request: DocumentJobRequestSchema,
@@ -88,7 +99,7 @@ export const NativeDocumentJobParams = z.discriminatedUnion("action", [
       action: z.literal("read"),
       jobId,
       outputIndex: z.number().int().min(0).max(39),
-      offset: z.number().int().nonnegative().max(DOCUMENT_JOB_OUTPUT_LIMIT),
+      offset: z.number().int().nonnegative().max(DOCUMENT_JOB_SOURCE_LIMIT),
     })
     .strict(),
   z.object({ action: z.literal("close"), jobId }).strict(),
@@ -151,7 +162,28 @@ export const DocumentJobReportSchema = z
       .optional(),
   })
   .strict();
+export const NativeDownloadedSourceSchema = z
+  .object({
+    runId: z.string().min(1).max(200),
+    downloadId: z.string().uuid(),
+    filename: z.string().min(1).max(1024),
+    sha256,
+    size: z.number().int().nonnegative().max(DOCUMENT_JOB_SOURCE_LIMIT),
+    mediaType: z.enum([
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "application/zip",
+      "text/plain",
+      "application/octet-stream",
+    ]),
+    nativeHashVerified: z.boolean(),
+  })
+  .strict();
 export const NativeDocumentJobResult = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("beginDownload"), jobId }).strict(),
+  z.object({ action: z.literal("capture"), source: NativeDownloadedSourceSchema }).strict(),
   z.object({ action: z.literal("begin"), jobId }).strict(),
   z
     .object({
@@ -180,7 +212,7 @@ export const NativeDocumentJobResult = z.discriminatedUnion("action", [
   z
     .object({
       action: z.literal("read"),
-      offset: z.number().int().nonnegative().max(DOCUMENT_JOB_OUTPUT_LIMIT),
+      offset: z.number().int().nonnegative().max(DOCUMENT_JOB_SOURCE_LIMIT),
       bytesBase64: z.string().max(4 * Math.ceil(DOCUMENT_JOB_CHUNK_LIMIT / 3)),
       done: z.boolean(),
     })

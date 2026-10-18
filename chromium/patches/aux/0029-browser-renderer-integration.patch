@@ -1888,10 +1888,28 @@ index 14ca7e8..6d5f708 100644
    friend class DocumentUserData<ModelContextUserData>;
    friend class ModelContextPageUserData;
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index 447cd91..394ff78 100644
+index 447cd9114749fb0341a03d481fd9ea4a3f42730a..a0f46d88a137cac4b6d3b1fdd00ffe73acf5a8b3 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
-@@ -6997,6 +6997,24 @@ bool NavigationRequest::ShouldDispatchPageSwapEvent() const {
+@@ -1241,7 +1241,7 @@
+       base::TimeTicks() /* before_unload_dialog_closed */,
+       started_with_transient_activation, started_by_ad, is_container_initiated,
+       has_rel_opener, std::nullopt /* script_tool_invocation_id */,
+-      /*script_injector_host=*/"");
++      /*script_injector_host=*/"", std::nullopt /* aux_input_continuation */);
+ 
+   // Shift-Reload forces bypassing caches and service workers.
+   if (common_params->navigation_type ==
+@@ -6644,7 +6644,7 @@
+           std::move(response_body_), std::move(url_loader_client_endpoints_),
+           ssl_info_.has_value() ? ssl_info_->cert_status : 0,
+           frame_tree_node_->frame_tree_node_id(),
+-          from_download_cross_origin_redirect_);
++          from_download_cross_origin_redirect_, GetNavigationId());
+       CHECK(this_ptr);
+ 
+       auto completion_status =
+@@ -6997,6 +6997,24 @@
    return !did_fire_page_swap_;
  }
  
@@ -1916,7 +1934,7 @@ index 447cd91..394ff78 100644
  void NavigationRequest::CommitNavigation() {
    TRACE_EVENT("navigation", "NavigationRequest::CommitNavigation",
                perfetto::Flow::FromPointer(this));
-@@ -7388,6 +7406,15 @@ void NavigationRequest::CommitNavigation() {
+@@ -7388,6 +7406,15 @@
    // cross-site-ness, therefore just sanitize unilaterally.
    SanitizeRedirectsForCommit(common_params, commit_params);
  
@@ -1932,7 +1950,18 @@ index 447cd91..394ff78 100644
    GetRenderFrameHost()->CommitNavigation(
        this, std::move(common_params), std::move(commit_params),
        std::move(response_head), std::move(response_body_),
-@@ -12719,6 +12746,31 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactoryUnchecked() {
+@@ -10493,6 +10520,10 @@
+ 
+ int64_t NavigationRequest::GetNavigationId() const {
+   return navigation_id_;
++}
++
++std::optional<base::UnguessableToken> NavigationRequest::GetAuxInputContinuation() const {
++  return begin_params_->aux_input_continuation;
+ }
+ 
+ void NavigationRequest::SetBypassRedirectChecksForNextRedirect(bool bypass) {
+@@ -12719,6 +12750,31 @@
  
    // In cases not covered above, URLLoaderFactory should be associated with the
    // origin of |common_params.url| and/or |common_params.initiator_origin|.
@@ -1965,10 +1994,18 @@ index 447cd91..394ff78 100644
        common_params().url,
        common_params().initiator_origin.value_or(url::Origin()));
 diff --git a/content/browser/renderer_host/navigation_request.h b/content/browser/renderer_host/navigation_request.h
-index 921d4c8..db6fedf 100644
+index 921d4c8e5677be3c47561c173f161ad45ca879e3..a42b34b6a1db14ae8e93aba67b5088a24043a26a 100644
 --- a/content/browser/renderer_host/navigation_request.h
 +++ b/content/browser/renderer_host/navigation_request.h
-@@ -3705,6 +3705,14 @@ class CONTENT_EXPORT NavigationRequest
+@@ -386,6 +386,7 @@
+ 
+   // NavigationHandle implementation:
+   int64_t GetNavigationId() const override;
++  std::optional<base::UnguessableToken> GetAuxInputContinuation() const override;
+   ukm::SourceId GetNextPageUkmSourceId() override;
+   const GURL& GetURL() override;
+   SiteInstanceImpl* GetStartingSiteInstance() override;
+@@ -3705,6 +3706,14 @@
    // value is available.
    std::optional<url::Origin> tentative_data_origin_to_commit_;
  

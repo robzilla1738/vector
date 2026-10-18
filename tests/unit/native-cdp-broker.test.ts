@@ -772,6 +772,371 @@ describe("fixed native controlled navigation transport", () => {
   );
 });
 
+describe("native input continuation transport", () => {
+  async function inputFixture() {
+    const dir = mkdtempSync(join(tmpdir(), "aux-input-continuation-"));
+    const [a, b] = memoryTransportPair();
+    const runtime = new RpcChannel(a, "runtime"),
+      host = new RpcChannel(b, "host");
+    const authority = await testAuthorities();
+    const attachmentId = "A".repeat(32),
+      lease = authority.leases.get(OWN)!;
+    let armed: { commandId: number } | undefined;
+    let armAck = async () => ({ accepted: true });
+    let afterArmCheck: (() => void) | undefined;
+    let result: unknown;
+    let dispatched: { id: number } | undefined;
+    let nativeDispatches = 0;
+    let sawDispatch!: () => void;
+    const dispatchStarted = new Promise<void>((resolve) => {
+      sawDispatch = resolve;
+    });
+    host.onMethod("native.cdpReset", () => ({}));
+    host.onMethod("native.cdpCatalog", () => ({
+      pages: [{ pageId: OWN, cdpTargetId: "target", url: "https://example.test/", title: "Own", lease }],
+    }));
+    host.onMethod("native.cdpAttach", () => ({ attachmentId }));
+    host.onMethod("native.cdpArmInput", async (params) => {
+      armed = params as { commandId: number };
+      return armAck();
+    });
+    host.onMethod("native.cdpTakeInputOutcome", () => result);
+    host.onMethod("native.cdpDispatch", (params) => {
+      const request = NativeCdpDispatchSchema.parse(params);
+      dispatched = JSON.parse(request.message) as { id: number };
+      nativeDispatches++;
+      sawDispatch();
+      return {};
+    });
+    const broker = await NativeCdpBroker.start(
+      runtime,
+      (pageId, lease) => {
+        const original = authority.capture(pageId, lease);
+        return {
+          ...original,
+          current: () => {
+            const current = original.current();
+            if (armed && afterArmCheck) {
+              const callback = afterArmCheck;
+              afterArmCheck = undefined;
+              callback();
+            }
+            return current;
+          },
+        };
+      },
+      dir,
+    );
+    const socket = new WebSocket(broker.endpoint());
+    const frames: Record<string, any>[] = [];
+    const waiters = new Map<number, (frame: Record<string, any>) => void>();
+    socket.on("message", (raw) => {
+      const frame = JSON.parse(String(raw));
+      frames.push(frame);
+      if (typeof frame.id === "number") {
+        waiters.get(frame.id)?.(frame);
+        waiters.delete(frame.id);
+      }
+    });
+    await new Promise<void>((resolve) => socket.on("open", () => resolve()));
+    let sequence = 0;
+    const send = async (method: string, sessionId?: string) => {
+      const id = ++sequence;
+      const response = new Promise<Record<string, any>>((resolve) => waiters.set(id, resolve));
+      socket.send(
+        JSON.stringify({
+          id,
+          method,
+          ...(sessionId ? { sessionId } : {}),
+          params:
+            method === "Target.setAutoAttach"
+              ? { autoAttach: true, flatten: true }
+              : { type: "mouseReleased", button: "left", x: 20, y: 20 },
+        }),
+      );
+      const frame = await response;
+      if (frame.error) throw new Error(String(frame.error.message));
+      return frame.result;
+    };
+    await send("Target.setAutoAttach");
+    const sessionId = frames.find((frame) => frame.method === "Target.attachedToTarget")?.params.sessionId;
+    expect(sessionId).toBeTruthy();
+    let dispatches = 0;
+    const dispatch = () => {
+      dispatches++;
+      return send("Input.dispatchMouseEvent", sessionId);
+    };
+    const proof = () => ({
+      originalAttachmentId: attachmentId,
+      originalLeaseId: lease.leaseId,
+      commandId: armed!.commandId,
+      url: "https://example.test/",
+    });
+    const state = () =>
+      host.notify("native.cdpNavigationState", {
+        pageId: OWN,
+        attachmentId,
+        leaseId: lease.leaseId,
+        commandId: armed!.commandId,
+        state: "ready",
+      });
+    const reply = (error?: string) =>
+      host.notify("native.cdpMessage", {
+        pageId: OWN,
+        message: JSON.stringify({
+          auxAttachmentId: attachmentId,
+          id: dispatched!.id,
+          ...(error ? { error: { code: -32000, message: error } } : { result: {} }),
+        }),
+      });
+    return {
+      broker,
+      authority,
+      dispatch,
+      dispatchStarted,
+      proof,
+      state,
+      reply,
+      dispatches: () => dispatches,
+      nativeDispatches: () => nativeDispatches,
+      probe: () => send("Runtime.evaluate", sessionId),
+      afterArmCheck: (callback: () => void) => {
+        afterArmCheck = callback;
+      },
+      arm: (callback: typeof armAck) => {
+        armAck = callback;
+      },
+      outcome: (value: unknown) => {
+        result = value;
+      },
+      close: async () => {
+        socket.terminate();
+        await broker.close();
+        authority.close();
+        rmSync(dir, { recursive: true, force: true });
+      },
+    };
+  }
+  it("joins an acknowledged unchanged release once and retains the original authority", async () => {
+    const f = await inputFixture();
+    try {
+      const result = f.broker.inputControlled(OWN, f.dispatch, new AbortController().signal);
+      await f.dispatchStarted;
+      f.outcome({ kind: "unchanged", ...f.proof() });
+      f.reply();
+      f.state();
+      const actual = await result;
+      expect(actual.outcome).toMatchObject({ kind: "unchanged", ...f.proof() });
+      expect(f.broker.inputDeadline(actual.outcome)).toBeGreaterThan(Date.now());
+      expect(() => f.broker.inputDeadline(actual.outcome)).toThrow(/unavailable|expired/);
+      expect(f.dispatches()).toBe(1);
+    } finally {
+      await f.close();
+    }
+  });
+  it("joins old pending commands when an exact native commit proves the input effect", async () => {
+    const f = await inputFixture();
+    try {
+      const result = f.broker.inputControlled(OWN, f.dispatch, new AbortController().signal);
+      await f.dispatchStarted;
+      f.outcome({
+        kind: "document_committed",
+        receipt: {
+          ...f.proof(),
+          navigationId: "17",
+          navigationTransitionId: "B".repeat(32),
+          url: "https://example.test/next",
+          context: {
+            profileId: "profile",
+            tabId: OWN,
+            frameId: "new-frame",
+            documentToken: "new-document",
+            sourceOrigin: "https://example.test",
+            controlGeneration: "new-control",
+            personControlled: false,
+            isolation: {
+              isolationId: `isolation-${OWN}`,
+              runId: `run-${OWN}`,
+              taskRevision: 0,
+              mode: "session",
+              inMemory: false,
+              cookies: "profile",
+            },
+          },
+        },
+      });
+      // Native attestation is the sole success evidence. The old session's
+      // protocol operation is retired without replay and must still join.
+      f.state();
+      const actual = await result;
+      expect(actual.outcome.kind).toBe("document_committed");
+      expect(f.dispatches()).toBe(1);
+      f.reply("late old-session error");
+    } finally {
+      await f.close();
+    }
+  });
+  it.each(["abort", "forged", "unchanged-error"] as const)(
+    "refuses %s and joins the original dispatch without replay",
+    async (kind) => {
+      const f = await inputFixture(),
+        signal = new AbortController();
+      try {
+        const pending = f.broker.inputControlled(OWN, f.dispatch, signal.signal);
+        const rejected = expect(pending).rejects.toThrow();
+        await f.dispatchStarted;
+        if (kind === "abort") signal.abort();
+        else {
+          f.outcome({
+            kind: "unchanged",
+            ...f.proof(),
+            ...(kind === "forged" ? { originalAttachmentId: "C".repeat(32) } : {}),
+          });
+          if (kind === "unchanged-error") f.reply("actual dispatch refused");
+          f.state();
+        }
+        await rejected;
+        expect(f.dispatches()).toBe(1);
+        f.reply();
+        f.state();
+      } finally {
+        await f.close();
+      }
+    },
+  );
+  it("joins cancellation and refuses later commands from the same still-unwinding dispatch", async () => {
+    const f = await inputFixture(),
+      controller = new AbortController();
+    let scopeAborted = false,
+      scopeJoined = false;
+    let retiredProbeError: unknown;
+    try {
+      const pending = f.broker.inputControlled(
+        OWN,
+        async (signal) => {
+          try {
+            await f.dispatch();
+          } catch (error) {
+            scopeAborted = signal.aborted;
+            try {
+              await f.probe();
+            } catch (probeError) {
+              retiredProbeError = probeError;
+            }
+            throw error;
+          } finally {
+            scopeJoined = true;
+          }
+        },
+        controller.signal,
+      );
+      const rejected = expect(pending).rejects.toThrow(/aborted/);
+      await f.dispatchStarted;
+      controller.abort();
+      await rejected;
+      expect(scopeAborted).toBe(true);
+      expect(scopeJoined).toBe(true);
+      expect(retiredProbeError).toBeInstanceOf(Error);
+      expect((retiredProbeError as Error).message).toMatch(/input dispatch retired/);
+      expect(f.nativeDispatches()).toBe(1);
+      expect(f.dispatches()).toBe(1);
+    } finally {
+      await f.close();
+    }
+  });
+  it("retains cancellation after an outcome arrives until the actual original dispatch joins", async () => {
+    const f = await inputFixture(),
+      controller = new AbortController();
+    try {
+      const pending = f.broker.inputControlled(OWN, f.dispatch, controller.signal);
+      const rejected = expect(pending).rejects.toThrow(/retired|aborted/);
+      await f.dispatchStarted;
+      f.outcome({ kind: "unchanged", ...f.proof() });
+      f.state();
+      // Let the independent receipt promise complete while the real CDP command remains held.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      controller.abort();
+      await rejected;
+      expect(f.dispatches()).toBe(1);
+      expect(f.nativeDispatches()).toBe(1);
+    } finally {
+      await f.close();
+    }
+  });
+  it("refuses concurrent navigation while the original click ticket is pending", async () => {
+    const f = await inputFixture(),
+      signal = new AbortController();
+    try {
+      const pending = f.broker.inputControlled(OWN, f.dispatch, signal.signal);
+      const rejected = expect(pending).rejects.toThrow();
+      await f.dispatchStarted;
+      await expect(
+        f.broker.navigateControlled(OWN, "https://example.test/next", new AbortController().signal),
+      ).rejects.toThrow(/already pending/);
+      signal.abort();
+      await rejected;
+      expect(f.dispatches()).toBe(1);
+    } finally {
+      await f.close();
+    }
+  });
+  it("checks a queued caller abort again after the arm ACK and before dispatch", async () => {
+    const f = await inputFixture(),
+      signal = new AbortController();
+    try {
+      f.afterArmCheck(() => queueMicrotask(() => signal.abort()));
+      await expect(f.broker.inputControlled(OWN, f.dispatch, signal.signal)).rejects.toThrow(
+        /aborted|retired/,
+      );
+      expect(f.dispatches()).toBe(0);
+    } finally {
+      await f.close();
+    }
+  });
+  it("never dispatches after the exact authority retires while arm acknowledgement is pending", async () => {
+    const f = await inputFixture();
+    let release!: () => void, entered!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const armed = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    f.arm(async () => {
+      entered();
+      await held;
+      return { accepted: true };
+    });
+    try {
+      const pending = f.broker.inputControlled(OWN, f.dispatch, new AbortController().signal);
+      const rejected = expect(pending).rejects.toThrow(/retired/);
+      await armed;
+      f.authority.retire(OWN);
+      release();
+      await rejected;
+      expect(f.dispatches()).toBe(0);
+    } finally {
+      release();
+      await f.close();
+    }
+  });
+  it("expires and joins an acknowledged but unanswered input within its fixed lifetime", async () => {
+    const f = await inputFixture();
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    try {
+      const pending = f.broker.inputControlled(OWN, f.dispatch, new AbortController().signal);
+      const rejected = expect(pending).rejects.toThrow(/deadline/);
+      await f.dispatchStarted;
+      await vi.advanceTimersByTimeAsync(8001);
+      await rejected;
+      expect(f.dispatches()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+      await f.close();
+    }
+  });
+});
+
 type ProtocolFrame = {
   id?: number;
   sessionId?: string;

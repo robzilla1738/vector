@@ -106,6 +106,26 @@ export interface PageServiceDeps {
     },
     pages: import("./registry.js").PageRegistry,
   ) => Promise<import("./controlled-navigation.js").ControlledNavigationReadmission>;
+  inputControlled?: (
+    input: {
+      runId: string;
+      pageId: string;
+      dispatch: (signal: AbortSignal) => Promise<unknown>;
+      signal?: AbortSignal;
+      validateSource(): void;
+      mentionAuthority?: () => void;
+      revalidateMentionSource?: () => Promise<void>;
+    },
+    pages: import("./registry.js").PageRegistry,
+  ) => Promise<import("./controlled-navigation.js").ControlledActionReadmission>;
+  /** Internal exact browser-owned download receipt → immutable artifact intake. */
+  admitNavigationDownload?: (input: {
+    runId: string;
+    pageId: string;
+    outcome: import("@aux/contracts").NativeCdpDownloadOutcome;
+    signal: AbortSignal;
+    validateSource(): void;
+  }) => Promise<{ artifactId: string; suggestedFilename: string; sha256: string; mediaType: string }>;
   /** Record source text before any observation is returned to an agent. */
   recordAgentObservation?: (pageId: string, url: string, text: string) => void;
   /**

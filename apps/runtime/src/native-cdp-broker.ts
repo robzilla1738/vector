@@ -8,10 +8,13 @@ import {
   NativeCdpCatalogSchema,
   NativeCdpAttachedSchema,
   NativeCdpStartNavigationSchema,
+  NativeCdpArmInputSchema,
+  NativeCdpInputOutcomeSchema,
+  type NativeCdpInputOutcome,
   NativeCdpNavigationStartedSchema,
   NativeCdpNavigationStateSchema,
-  NativeCdpNavigationReceiptSchema,
-  type NativeCdpNavigationReceipt,
+  NativeCdpNavigationOutcomeSchema,
+  type NativeCdpNavigationOutcome,
   type EgressLease,
   type RpcChannel,
 } from "@aux/contracts";
@@ -50,8 +53,12 @@ type Navigation = {
   signal: AbortSignal;
   timer: ReturnType<typeof setTimeout>;
   abort: () => void;
-  resolve: (receipt: NativeCdpNavigationReceipt) => void;
+  resolve: (receipt: NativeCdpNavigationOutcome) => void;
   reject: (error: Error) => void;
+};
+type InputContinuation = Omit<Navigation, "resolve"> & {
+  dispatchAbort: AbortController;
+  resolve: (outcome: NativeCdpInputOutcome) => void;
 };
 type Attachment = { id: string; authority: CdpAuthority };
 
@@ -110,7 +117,10 @@ export class NativeCdpBroker {
   private readonly autoAttachSessions = new Map<string, string>();
   private readonly browserSessions = new Set<string>();
   private readonly pending = new Map<number, Pending>();
-  private readonly navigationDeadlines = new WeakMap<NativeCdpNavigationReceipt, number>();
+  private readonly navigationDeadlines = new WeakMap<NativeCdpNavigationOutcome, number>();
+  private readonly inputs = new Map<number, InputContinuation>();
+  private readonly inputDeadlines = new WeakMap<NativeCdpInputOutcome, number>();
+  private readonly inputDispatches = new Map<string, InputContinuation>();
   private readonly navigations = new Map<number, Navigation>();
   private nextNativeId = 1;
   private client: WebSocket | null = null;
@@ -211,12 +221,14 @@ export class NativeCdpBroker {
     pageId: string,
     url: string,
     signal: AbortSignal,
-  ): Promise<NativeCdpNavigationReceipt> {
+  ): Promise<NativeCdpNavigationOutcome> {
     if (this.closed || signal.aborted || !this.client)
       throw new Error("Original navigation caller is unavailable");
     if (
       this.navigations.size >= 128 ||
-      [...this.navigations.values()].some((value) => value.pageId === pageId)
+      [...this.navigations.values(), ...this.inputDispatches.values()].some(
+        (value) => value.pageId === pageId,
+      )
     )
       throw new Error("Original page navigation is already pending");
     const session = [...this.sessions].find(
@@ -239,7 +251,7 @@ export class NativeCdpBroker {
     });
     if (expiresAt <= Date.now()) throw new Error("Original navigation acknowledgement expired");
     const deadlineAt = Math.min(Date.now() + 8000, expiresAt);
-    return new Promise<NativeCdpNavigationReceipt>((resolve, reject) => {
+    return new Promise<NativeCdpNavigationOutcome>((resolve, reject) => {
       const abort = () => this.finishNavigation(commandId, new Error("Original navigation caller aborted"));
       const timer = setTimeout(
         () => this.finishNavigation(commandId, new Error("Original navigation receipt deadline expired")),
@@ -286,11 +298,208 @@ export class NativeCdpBroker {
     });
   }
 
+  /** Arm before dispatch; only the native input ticket can attest its resulting document. */
+  async inputControlled<T>(
+    pageId: string,
+    dispatch: (signal: AbortSignal) => Promise<T>,
+    signal: AbortSignal,
+  ): Promise<{ outcome: NativeCdpInputOutcome; value?: T }> {
+    if (
+      this.closed ||
+      signal.aborted ||
+      !this.client ||
+      this.inputDispatches.size >= 128 ||
+      [...this.inputDispatches.values(), ...this.navigations.values()].some((p) => p.pageId === pageId)
+    )
+      throw new Error("Original input continuation is unavailable or busy");
+    const session = [...this.sessions].find(
+      ([id, target]) =>
+        !this.childOwners.has(id) &&
+        this.targets.get(target)?.pageId === pageId &&
+        this.attachments.get(id)?.authority.current(),
+    );
+    const attachment = session ? this.attachments.get(session[0]) : undefined;
+    if (!attachment?.authority.current()) throw new Error("Original input attachment retired");
+    const commandId = this.nextNativeId++;
+    const expiresAt = attachment.authority.acknowledgedExpiresAt();
+    const deadlineAt = Math.min(Date.now() + 8000, expiresAt);
+    const request = NativeCdpArmInputSchema.parse({
+      pageId,
+      commandId,
+      attachmentId: attachment.id,
+      acknowledgedExpiresAt: expiresAt,
+    });
+    if (deadlineAt <= Date.now()) throw new Error("Original input authority expired");
+    let pending!: InputContinuation;
+    const completion = new Promise<NativeCdpInputOutcome>((resolve, reject) => {
+      const abort = () => this.abortInputDispatch(pending, new Error("Original input caller aborted"));
+      pending = {
+        pageId,
+        attachmentId: attachment.id,
+        leaseId: attachment.authority.lease.leaseId,
+        commandId,
+        expiresAt,
+        deadlineAt,
+        signal,
+        abort,
+        dispatchAbort: new AbortController(),
+        started: false,
+        ready: false,
+        taking: false,
+        timer: setTimeout(
+          () => this.abortInputDispatch(pending, new Error("Original input outcome deadline expired")),
+          Math.max(0, deadlineAt - Date.now()),
+        ),
+        resolve,
+        reject,
+      };
+      this.inputs.set(commandId, pending);
+      this.inputDispatches.set(attachment.id, pending);
+      signal.addEventListener("abort", abort, { once: true });
+      if (signal.aborted) abort();
+    });
+    // Own rejection immediately; the original arm ACK may arrive later.
+    void completion.catch(() => {});
+    try {
+      NativeCdpNavigationStartedSchema.parse(await this.channel.call("native.cdpArmInput", request, 8000));
+      if (this.inputs.get(commandId) !== pending || signal.aborted || !attachment.authority.current())
+        throw new Error("Original input authority retired before dispatch");
+      pending.started = true;
+      this.takeInput(pending);
+      const dispatched = Promise.resolve().then(() => {
+        if (
+          this.inputs.get(commandId) !== pending ||
+          this.closed ||
+          signal.aborted ||
+          Date.now() >= pending.deadlineAt ||
+          !attachment.authority.current()
+        ) {
+          const error = new Error("Original input retired before its queued dispatch");
+          this.finishInput(commandId, error);
+          throw error;
+        }
+        return dispatch(AbortSignal.any([signal, pending.dispatchAbort.signal]));
+      });
+      // Exactly one call. Retirement settles old commands; the actual native receipt decides
+      // whether their late failure belongs to a successful document transition.
+      const [effect, executed] = await Promise.allSettled([completion, dispatched]);
+      if (effect.status === "rejected") throw effect.reason;
+      if (
+        this.closed ||
+        signal.aborted ||
+        pending.dispatchAbort.signal.aborted ||
+        Date.now() >= pending.deadlineAt
+      )
+        throw new Error("Original input retired before its dispatch joined");
+      if (effect.value.kind === "unchanged" && executed.status === "rejected") throw executed.reason;
+      return { outcome: effect.value, ...(executed.status === "fulfilled" ? { value: executed.value } : {}) };
+    } catch (error) {
+      this.finishInput(commandId, error instanceof Error ? error : new Error("Original input failed"));
+      throw error;
+    } finally {
+      clearTimeout(pending.timer);
+      pending.signal.removeEventListener("abort", pending.abort);
+      if (this.inputDispatches.get(attachment.id) === pending) this.inputDispatches.delete(attachment.id);
+    }
+  }
+
+  inputDeadline(outcome: NativeCdpInputOutcome): number {
+    const deadline = this.inputDeadlines.get(outcome);
+    this.inputDeadlines.delete(outcome);
+    if (deadline === undefined || deadline <= Date.now()) throw new Error("Original input outcome expired");
+    return deadline;
+  }
+
+  private takeInput(pending: InputContinuation): void {
+    if (
+      !pending.started ||
+      !pending.ready ||
+      pending.taking ||
+      this.inputs.get(pending.commandId) !== pending
+    )
+      return;
+    pending.taking = true;
+    void this.channel
+      .call(
+        "native.cdpTakeInputOutcome",
+        { pageId: pending.pageId, attachmentId: pending.attachmentId, commandId: pending.commandId },
+        8000,
+      )
+      .then((raw) => {
+        const outcome = NativeCdpInputOutcomeSchema.parse(raw);
+        const proof = outcome.kind === "document_committed" ? outcome.receipt : outcome;
+        if (
+          proof.originalAttachmentId !== pending.attachmentId ||
+          proof.originalLeaseId !== pending.leaseId ||
+          proof.commandId !== pending.commandId ||
+          (outcome.kind === "document_committed" && outcome.receipt.context.tabId !== pending.pageId)
+        )
+          throw new Error("Native input outcome does not match its original dispatch");
+        this.finishInput(pending.commandId, undefined, outcome);
+      })
+      .catch((error) =>
+        this.finishInput(
+          pending.commandId,
+          error instanceof Error ? error : new Error("Original input outcome failed"),
+        ),
+      );
+  }
+
+  private retireInputDispatch(pending: InputContinuation, error: Error): void {
+    // Keep this fence until the actual dispatch joins, even if its native outcome
+    // arrived first. A late Stop must settle original pending commands too.
+    pending.dispatchAbort.abort(error);
+    this.retirePending(
+      (p) => p.attachmentId === pending.attachmentId && p.pageId === pending.pageId,
+      "Original native input retired; dispatched outcome may be uncertain",
+    );
+  }
+
+  private abortInputDispatch(pending: InputContinuation, error: Error): void {
+    if (this.inputDispatches.get(pending.attachmentId) !== pending) return;
+    if (this.inputs.get(pending.commandId) === pending) this.finishInput(pending.commandId, error);
+    else this.retireInputDispatch(pending, error);
+  }
+
+  private finishInput(commandId: number, error?: Error, outcome?: NativeCdpInputOutcome): void {
+    const pending = this.inputs.get(commandId);
+    if (!pending) return;
+    this.inputs.delete(commandId);
+    if (error || !outcome || this.closed || pending.signal.aborted || Date.now() >= pending.deadlineAt) {
+      this.retireInputDispatch(pending, error ?? new Error("Original input retired"));
+      pending.reject(error ?? new Error("Original input outcome retired"));
+      return;
+    }
+    this.inputDeadlines.set(outcome, pending.deadlineAt);
+    if (outcome.kind === "document_committed")
+      this.retirePending(
+        (p) => p.attachmentId === pending.attachmentId && p.pageId === pending.pageId,
+        "Original document retired after its native input transition",
+      );
+    pending.resolve(outcome);
+  }
+
   private navigationState(payload: unknown): void {
     const parsed = NativeCdpNavigationStateSchema.safeParse(payload);
     if (!parsed.success) return;
-    const state = parsed.data,
-      pending = this.navigations.get(state.commandId);
+    const state = parsed.data;
+    const input = this.inputs.get(state.commandId);
+    if (input) {
+      if (
+        input.pageId !== state.pageId ||
+        input.attachmentId !== state.attachmentId ||
+        input.leaseId !== state.leaseId
+      )
+        return;
+      if (state.state === "refused")
+        this.finishInput(state.commandId, new Error("Original native input authority retired"));
+      else {
+        input.ready = true;
+        this.takeInput(input);
+      }
+      return;
+    }
+    const pending = this.navigations.get(state.commandId);
     if (
       !pending ||
       pending.pageId !== state.pageId ||
@@ -326,12 +535,12 @@ export class NativeCdpBroker {
         8000,
       )
       .then((result) => {
-        const receipt = NativeCdpNavigationReceiptSchema.parse(result);
+        const receipt = NativeCdpNavigationOutcomeSchema.parse(result);
         if (
           receipt.originalAttachmentId !== pending.attachmentId ||
           receipt.originalLeaseId !== pending.leaseId ||
           receipt.commandId !== pending.commandId ||
-          receipt.context.tabId !== pending.pageId
+          ("context" in receipt && receipt.context.tabId !== pending.pageId)
         )
           throw new Error("Native navigation receipt does not match the original command");
         this.finishNavigation(pending.commandId, undefined, receipt);
@@ -344,7 +553,7 @@ export class NativeCdpBroker {
       );
   }
 
-  private finishNavigation(commandId: number, error?: Error, receipt?: NativeCdpNavigationReceipt): void {
+  private finishNavigation(commandId: number, error?: Error, receipt?: NativeCdpNavigationOutcome): void {
     const pending = this.navigations.get(commandId);
     if (!pending) return;
     this.navigations.delete(commandId);
@@ -364,7 +573,7 @@ export class NativeCdpBroker {
     }
   }
 
-  navigationDeadline(receipt: NativeCdpNavigationReceipt): number {
+  navigationDeadline(receipt: NativeCdpNavigationOutcome): number {
     const deadline = this.navigationDeadlines.get(receipt);
     this.navigationDeadlines.delete(receipt);
     if (deadline === undefined || deadline <= Date.now())
@@ -373,6 +582,7 @@ export class NativeCdpBroker {
   }
 
   private refuseNavigations(reason: string): void {
+    for (const id of this.inputs.keys()) this.finishInput(id, new Error(reason));
     for (const id of this.navigations.keys()) this.finishNavigation(id, new Error(reason));
   }
 
@@ -706,6 +916,14 @@ export class NativeCdpBroker {
       }
       const attachment = this.attachments.get(sessionId);
       if (!attachment?.authority.current()) throw new Error("Original CDP attachment authority retired");
+      const inputDispatch = this.inputDispatches.get(attachment.id);
+      if (
+        inputDispatch &&
+        (inputDispatch.signal.aborted ||
+          inputDispatch.dispatchAbort.signal.aborted ||
+          Date.now() >= inputDispatch.deadlineAt)
+      )
+        throw new Error("Original input dispatch retired before its next CDP command");
       if (method === "Target.setAutoAttach") {
         if (
           [...this.pending.values()].some(

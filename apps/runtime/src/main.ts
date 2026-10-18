@@ -35,7 +35,8 @@ import { AgentTurnTabs } from "./agent/turn-tabs.js";
 import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
 import { markInterruptedRuns, activeRunIds } from "./services/startup-recovery.js";
 import { createServiceContainer, type ServiceContainer } from "./services/container.js";
-import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
+import { navigateControlledPage, inputControlledPage } from "./services/pages/controlled-navigation.js";
+import { navigationDownloadIntake } from "./services/navigation-download.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
@@ -695,6 +696,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             throw new AuxError("capability_unsupported", "Authenticated native navigation is unavailable.");
           return navigateControlledPage(input, registry, browserEgress, nativeCdp);
         },
+        inputControlled: (input, registry) => {
+          if (!browserEgress || !nativeCdp)
+            throw new AuxError(
+              "capability_unsupported",
+              "Authenticated native input continuation is unavailable.",
+            );
+          return inputControlledPage(input, registry, browserEgress, nativeCdp);
+        },
+        admitNavigationDownload: navigationDownloadIntake(native, runtimeServices.artifacts),
         recordAgentObservation: (pageId, url, text) => {
           const runId = runtimeServices.pageClaims.activeForPage(pageId)?.runId;
           // Owner/API reads can hold a short page claim without an agent run.

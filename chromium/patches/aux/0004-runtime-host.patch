@@ -1772,10 +1772,10 @@ index 0000000..fa2dce8
 +#endif
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 new file mode 100644
-index 0000000..bf42666c8233b1a8d5281a6012d7031250d04f99
+index 0000000000000000000000000000000000000000..853197faafe86bb38e76d99fcaf201b3f428a5c6
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -0,0 +1,3265 @@
+@@ -0,0 +1,3268 @@
 +#include "chrome/browser/ui/aux/native_project.h"
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
@@ -1996,6 +1996,9 @@ index 0000000..bf42666c8233b1a8d5281a6012d7031250d04f99
 +
 +base::DictValue AuxRuntimeHost::Capabilities() const {
 +  auto capabilities = aux::AuxMethodRegistry::Get().Capabilities();
++#if BUILDFLAG(IS_POSIX)
++  capabilities.Set("downloadOriginal", true);
++#endif
 +  if (!private_session_id_.empty()) {
 +    capabilities.Set("privateSession",
 +                     base::DictValue().Set("id", private_session_id_));

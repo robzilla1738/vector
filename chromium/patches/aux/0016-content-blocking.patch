@@ -265935,7 +265935,7 @@ index 777084a..b125600 100644
    virtual void DidCreateDocumentElement() {}
    // TODO(dgozman): replace next two methods with DidFinishNavigation.
 diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
-index b844982..89258e2 100644
+index b844982e7506b3ae26a6b18f17845ef8a587a372..e48173a4211c444ebe4f806a7f2dffb71784c151 100644
 --- a/content/renderer/render_frame_impl.cc
 +++ b/content/renderer/render_frame_impl.cc
 @@ -157,6 +157,7 @@
@@ -265946,7 +265946,7 @@ index b844982..89258e2 100644
  #include "third_party/blink/public/common/input/web_keyboard_event.h"
  #include "third_party/blink/public/common/loader/loader_constants.h"
  #include "third_party/blink/public/common/loader/record_load_histograms.h"
-@@ -3121,6 +3122,11 @@ void RenderFrameImpl::CommitNavigationWithParams(
+@@ -3121,6 +3122,11 @@
    original_storage_key_ = navigation_params->storage_key;
  
    base::WeakPtr<RenderFrameImpl> weak_self = weak_factory_.GetWeakPtr();
@@ -265958,10 +265958,12 @@ index b844982..89258e2 100644
    frame_->CommitNavigation(std::move(navigation_params),
                             std::move(document_state));
    // The commit can result in this frame being removed.
-@@ -4331,6 +4337,15 @@ void RenderFrameImpl::RunScriptsAtDocumentIdle() {
+@@ -4329,6 +4335,15 @@
+ void RenderFrameImpl::RunScriptsAtDocumentIdle() {
+   GetContentClient()->renderer()->RunScriptsAtDocumentIdle(this);
    // ContentClient might have deleted |this| by now!
- }
- 
++}
++
 +void RenderFrameImpl::DidReceiveTrustedMouseDownLink(
 +    const blink::WebURL& href) {
 +  if (!frame_) {
@@ -265969,12 +265971,20 @@ index b844982..89258e2 100644
 +  }
 +  blink::NativeMouseLinkCapture::Record(frame_->GetDocument().Token(),
 +                                        href.GetString().Utf8());
-+}
-+
+ }
+ 
  void RenderFrameImpl::DidHandleOnloadEvents() {
-   for (auto& observer : observers_) {
-     observer.DidHandleOnloadEvents();
-@@ -7079,6 +7094,10 @@ WebView* RenderFrameImpl::CreateNewWindow(
+@@ -6500,7 +6515,8 @@
+           /*started_by_ad=*/
+           (info->initiator_frame_is_ad || info->is_ad_script_in_stack),
+           info->is_container_initiated, info->has_rel_opener,
+-          info->script_tool_invocation_id, info->script_injector_host.Utf8());
++          info->script_tool_invocation_id, info->script_injector_host.Utf8(),
++          info->url_request.AuxInputContinuation());
+ 
+   bool current_frame_has_download_sandbox_flag = !frame_->IsAllowedToDownload();
+   bool has_download_sandbox_flag =
+@@ -7079,6 +7095,10 @@
      const blink::WebURL& base_url) {
    consumed_user_gesture = false;
    mojom::CreateNewWindowParamsPtr params = mojom::CreateNewWindowParams::New();

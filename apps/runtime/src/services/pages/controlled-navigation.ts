@@ -1,4 +1,4 @@
-import { AuxError } from "@aux/contracts";
+import { AuxError, type NativeCdpDownloadOutcome, type NativeCdpNavigationReceipt } from "@aux/contracts";
 import type { DriverPage } from "@aux/chromium-driver";
 import type { NativeCdpBroker } from "../../native-cdp-broker.js";
 import type { BrowserEgress } from "../../safety/browser-egress.js";
@@ -66,15 +66,17 @@ export function finalizeControlledAttachmentNavigation(receipt: ControlledAttach
 
 export interface ControlledNavigationReadmission {
   driver: DriverPage;
-  receipt: ControlledAttachmentNavigationReceipt;
+  receipt?: ControlledAttachmentNavigationReceipt;
+  download?: NativeCdpDownloadOutcome;
 }
 
-/** One original native command through a real replacement driver incarnation. */
-export async function navigateControlledPage(
+/** One original native action through an attributable outcome and optional new incarnation. */
+async function transitionControlledPage(
   input: {
     runId: string;
     pageId: string;
-    url: string;
+    url?: string;
+    dispatch?: (signal: AbortSignal) => Promise<unknown>;
     signal?: AbortSignal;
     validateSource(): void;
     /** Exact closure minted by the original active mention navigation, never serialized. */
@@ -83,8 +85,9 @@ export async function navigateControlledPage(
   },
   pages: PageRegistry,
   egress: BrowserEgress,
-  cdp: Pick<NativeCdpBroker, "navigateControlled" | "navigationDeadline">,
-): Promise<ControlledNavigationReadmission> {
+  cdp: Pick<NativeCdpBroker, "navigateControlled" | "navigationDeadline"> &
+    Partial<Pick<NativeCdpBroker, "inputControlled" | "inputDeadline">>,
+): Promise<ControlledActionReadmission> {
   input.validateSource();
   if (input.mentionAuthority && !input.revalidateMentionSource)
     throw new AuxError("permission_denied", "Original mention source revalidation is unavailable.");
@@ -119,9 +122,40 @@ export async function navigateControlledPage(
     // The original native authority supplies mandatory retirement cancellation.
     // A caller signal can narrow it, but its absence never supplies authority.
     signal = input.signal ? AbortSignal.any([input.signal, authority.signal]) : authority.signal;
-    const receipt = await cdp.navigateControlled(input.pageId, input.url, signal);
-    check();
-    receiptDeadline = Math.min(authority.expiresAt, cdp.navigationDeadline(receipt));
+    let receipt: NativeCdpNavigationReceipt;
+    const finishUnchanged = async (proof: { originalLeaseId: string; url: string }) => {
+      await input.revalidateMentionSource?.();
+      check();
+      const driver = live.driver;
+      if (!driver?.isAttached()) throw new AuxError("ref_stale", "Original unchanged driver retired.");
+      authority!.completeUnchanged(proof);
+      attachment.completeUnchanged();
+      return driver;
+    };
+    let value: unknown;
+    if (input.dispatch) {
+      if (!cdp.inputControlled || !cdp.inputDeadline)
+        throw new AuxError("capability_unsupported", "Native input continuation is unavailable.");
+      const result = await cdp.inputControlled(input.pageId, input.dispatch, signal);
+      check();
+      receiptDeadline = Math.min(authority.expiresAt, cdp.inputDeadline(result.outcome));
+      value = result.value;
+      if (result.outcome.kind !== "document_committed") {
+        const driver = await finishUnchanged(result.outcome);
+        return { driver, value, ...(result.outcome.kind === "download" ? { download: result.outcome } : {}) };
+      }
+      receipt = result.outcome.receipt;
+    } else {
+      if (!input.url) throw new AuxError("invalid_params", "Original native navigation destination missing.");
+      const outcome = await cdp.navigateControlled(input.pageId, input.url, signal);
+      check();
+      receiptDeadline = Math.min(authority.expiresAt, cdp.navigationDeadline(outcome));
+      if ("kind" in outcome) {
+        const driver = await finishUnchanged(outcome);
+        return { driver, download: outcome };
+      }
+      receipt = outcome;
+    }
     await attachment.waitRetired(receiptDeadline, signal, check);
     check();
     const lease = await authority.install(
@@ -185,7 +219,7 @@ export async function navigateControlledPage(
         );
       },
     });
-    return { driver, receipt: token };
+    return { driver, receipt: token, value };
   } catch (error) {
     // Both producers retire their runtime rows synchronously before awaiting
     // original native ACKs/driver disposal. Retain both cleanup failures.
@@ -201,4 +235,36 @@ export async function navigateControlledPage(
       );
     throw error;
   }
+}
+
+export interface ControlledActionReadmission extends ControlledNavigationReadmission {
+  value?: unknown;
+}
+type ActionSource = {
+  runId: string;
+  pageId: string;
+  signal?: AbortSignal;
+  validateSource(): void;
+  mentionAuthority?: () => void;
+  revalidateMentionSource?: () => Promise<void>;
+};
+export async function navigateControlledPage(
+  input: ActionSource & { url: string },
+  pages: PageRegistry,
+  egress: BrowserEgress,
+  cdp: Pick<NativeCdpBroker, "navigateControlled" | "navigationDeadline">,
+): Promise<ControlledNavigationReadmission> {
+  const result = await transitionControlledPage(input, pages, egress, cdp);
+  return result;
+}
+export function inputControlledPage(
+  input: ActionSource & { dispatch: (signal: AbortSignal) => Promise<unknown> },
+  pages: PageRegistry,
+  egress: BrowserEgress,
+  cdp: Pick<
+    NativeCdpBroker,
+    "navigateControlled" | "navigationDeadline" | "inputControlled" | "inputDeadline"
+  >,
+): Promise<ControlledActionReadmission> {
+  return transitionControlledPage(input, pages, egress, cdp);
 }

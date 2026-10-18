@@ -476,6 +476,11 @@ export class PageRegistry {
     };
     return {
       current,
+      completeUnchanged: () => {
+        if (!current() || original.retired || committed || published || !original.driver.isAttached())
+          throw new AuxError("ref_stale", "Original unchanged attachment retired.");
+        finish();
+      },
       waitRetired: (deadline: number, signal: AbortSignal, validate: () => void): Promise<void> =>
         new Promise((resolve, reject) => {
           let timer: ReturnType<typeof setTimeout> | undefined;

@@ -1613,7 +1613,7 @@ index a02ef2ded3a026674c6a4a1286337f5308da0d57..7743b7192fa499d273cb299723853b53
    credential_admissions_.clear();
    if (native_content_blocker_) {
      native_content_blocker_->RetireConnection(generation);
-@@ -3633,12 +3649,19 @@ void AuxRuntimeHost::Worker::DispatchNative(
+@@ -3633,12 +3649,67 @@ void AuxRuntimeHost::Worker::DispatchNative(
                return;
              }
              if (method == "native.documentJob") {
@@ -1626,6 +1626,54 @@ index a02ef2ded3a026674c6a4a1286337f5308da0d57..7743b7192fa499d273cb299723853b53
 +              if (!owner->native_document_jobs_) {
 +                owner->native_document_jobs_ =
 +                    std::make_unique<aux::NativeDocumentJobs>();
++              }
++              if (const auto* action = params.FindString("action");
++                  action && *action == "beginDownload") {
++                const auto* source = params.FindDict("source");
++                const auto* page =
++                    source ? source->FindString("pageId") : nullptr;
++                const auto* attachment =
++                    source ? source->FindString("originalAttachmentId")
++                           : nullptr;
++                const auto command =
++                    source ? source->FindInt("commandId") : std::nullopt;
++                const auto* guid =
++                    source ? source->FindString("downloadId") : nullptr;
++                const auto* lease =
++                    source ? source->FindString("originalLeaseId") : nullptr;
++                const auto* navigation =
++                    source ? source->FindString("navigationId") : nullptr;
++                const auto* url = source ? source->FindString("url") : nullptr;
++                const auto* kind =
++                    source ? source->FindString("kind") : nullptr;
++                const auto* run =
++                    source ? source->FindString("runId") : nullptr;
++                auto admitted =
++                    params.size() == 2 && source && source->size() == 9 &&
++                            kind && *kind == "download" && navigation && url &&
++                            run && page && attachment && command && guid &&
++                            lease && owner->cdp_broker_
++                        ? owner->cdp_broker_->TakeDownloadSource(
++                              *page, *attachment, *command, *guid, *lease,
++                              *navigation, *url, *run, connection_generation)
++                        : std::nullopt;
++                if (!admitted) {
++                  state->reply = NativeFault(
++                      "ref_stale",
++                      "Original browser download source unavailable");
++                  state->Complete();
++                  return;
++                }
++                owner->native_document_jobs_->BeginDownload(
++                    std::move(*admitted), state->cancelled,
++                    base::BindOnce(
++                        [](std::shared_ptr<NativeReplyState> state,
++                           base::DictValue reply) {
++                          state->reply = std::move(reply);
++                          state->Complete();
++                        },
++                        state));
++                return;
 +              }
 +              owner->native_document_jobs_->Dispatch(
 +                  params, state->cancelled,

@@ -86,8 +86,10 @@ import {
   NativeCdpDispatchSchema,
   NativeCdpStartNavigationSchema,
   NativeCdpNavigationStartedSchema,
+  NativeCdpArmInputSchema,
+  NativeCdpInputOutcomeSchema,
   NativeCdpNavigationRequestSchema,
-  NativeCdpNavigationReceiptSchema,
+  NativeCdpNavigationOutcomeSchema,
 } from "./native-cdp.js";
 import {
   NativeRecorderStartSchema,
@@ -595,7 +597,13 @@ export const RuntimeHostMethods = {
   "native.cdpTakeNavigationReceipt": runtime(
     "fourLayerTabApi",
     NativeCdpNavigationRequestSchema,
-    NativeCdpNavigationReceiptSchema,
+    NativeCdpNavigationOutcomeSchema,
+  ),
+  "native.cdpArmInput": runtime("fourLayerTabApi", NativeCdpArmInputSchema, NativeCdpNavigationStartedSchema),
+  "native.cdpTakeInputOutcome": runtime(
+    "fourLayerTabApi",
+    NativeCdpNavigationRequestSchema,
+    NativeCdpInputOutcomeSchema,
   ),
   "native.cdpDispatch": runtime("fourLayerTabApi", NativeCdpDispatchSchema, z.unknown()),
   "native.cdpVersion": runtime("fourLayerTabApi", z.object({}).strict(), z.object({ version: str }).strict()),
