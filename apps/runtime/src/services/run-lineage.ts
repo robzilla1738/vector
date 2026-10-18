@@ -1,3 +1,4 @@
+import { withSecureDelete } from "../store/db.js";
 import { AuxError, SubagentGroupSchema, SubagentSchema } from "@aux/contracts";
 import { assertSetMemberSource } from "./set-member-lineage.js";
 import type { Repo } from "../store/repo.js";
@@ -124,4 +125,103 @@ export function lineageRuns(repo: Repo, runId: string): string[] {
     frontier = next;
   }
   throw new AuxError("permission_denied", "Run descendants exceed their depth limit.");
+}
+
+/** Whole authenticated effect family: child outputs can be echoed by their original parent. */
+export function protectedRunFamily(repo: Repo, seeds: ReadonlySet<string>): Set<string> {
+  const roots = new Set<string>();
+  for (const id of seeds) {
+    const root = runRoot(repo, id);
+    if (!repo.getRun(root))
+      throw new AuxError("permission_denied", "The original protected run family is unavailable.");
+    roots.add(root);
+  }
+  const result = new Set<string>();
+  for (const root of roots)
+    for (const id of lineageRuns(repo, root)) {
+      result.add(id);
+      if (result.size > MAX_DESCENDANTS)
+        throw new AuxError(
+          "permission_denied",
+          "Protected run families exceed their bounded authority limit.",
+        );
+    }
+  return result;
+}
+
+/** Only authenticated generated-child tasks can contain model-authored goals/follow-ups. */
+export function retireProtectedGeneratedTask(
+  repo: Repo,
+  runId: string,
+  source: "article" | "desktop" = "article",
+): boolean {
+  if (runAncestry(repo, runId).length < 2) return false;
+  return withSecureDelete(repo.db, () => {
+    const run = repo.getRun(runId);
+    if (!run) throw new AuxError("permission_denied", "The generated task is unavailable.");
+    const goal =
+      source === "desktop" ? "Desktop-source-derived task retired" : "Saved-article-derived task retired";
+    let changed = run.goal !== goal;
+    if (
+      source === "desktop" &&
+      repo.db.prepare("SELECT 1 FROM run_transcript WHERE run_id=? LIMIT 1").get(runId)
+    ) {
+      // Model-to-child instructions/fork copies are not new human parent follow-ups.
+      repo.db.prepare("DELETE FROM run_transcript WHERE run_id=?").run(runId);
+      changed = true;
+    }
+    if (run.goal !== goal) {
+      // Run goals are intentionally immutable in saveRun; retirement is the exact exception.
+      repo.db
+        .prepare("UPDATE runs SET goal=? WHERE run_id=?")
+        .run(repo.protectRecordField("runs", [runId], "goal", goal), runId);
+      const chatId = run.config?.chatId ?? runId;
+      const conversation = repo.getConversation(chatId);
+      if (conversation?.title === run.goal.slice(0, 160))
+        repo.db
+          .prepare("UPDATE conversations SET title=? WHERE chat_id=?")
+          .run(repo.protectRecordField("conversations", [chatId], "title", goal), chatId);
+    }
+    const rows = repo.db
+      .prepare(`${EDGE_SELECT} WHERE a.run_id=? OR a.reserved_run_id=? LIMIT 2`)
+      .all(runId, runId) as EdgeRow[];
+    for (const row of rows) {
+      edge(repo, row);
+      const agent = SubagentSchema.parse(
+        JSON.parse(repo.revealRecordField("subagents", [row.agent_id], "body", row.body)),
+      );
+      if (agent.goal !== goal) {
+        repo.db
+          .prepare("UPDATE subagents SET body=? WHERE agent_id=?")
+          .run(
+            repo.protectRecordField("subagents", [row.agent_id], "body", JSON.stringify({ ...agent, goal })),
+            row.agent_id,
+          );
+        changed = true;
+      }
+      // These are internal model-to-child instructions, not the human root request.
+      const messages = repo.db
+        .prepare("SELECT message_id FROM run_messages WHERE target_run_id=? AND chat_id=?")
+        .all(runId, row.agent_id) as { message_id: string }[];
+      for (const { message_id: id } of messages) {
+        const message = repo.getRunMessage(id)!;
+        if (message.text !== goal || message.status !== "cancelled") changed = true;
+        repo.db
+          .prepare(
+            "UPDATE run_messages SET text=?,status='cancelled',context_page_refs=?,mentions=?,error=NULL WHERE message_id=?",
+          )
+          .run(
+            repo.protectRecordField("run_messages", [id], "text", goal),
+            repo.protectRecordField("run_messages", [id], "context_page_refs", "[]"),
+            repo.protectRecordField("run_messages", [id], "mentions", "[]"),
+            id,
+          );
+        // Keep the exact local-send identity/state/digest receipt while removing its derived body.
+        repo.db
+          .prepare("UPDATE safety_send_journal SET text=? WHERE nonce=? AND thread_id=? AND turn_id=?")
+          .run(repo.protectRecordField("safety_send_journal", [id], "text", goal), id, row.agent_id, runId);
+      }
+    }
+    return changed;
+  });
 }

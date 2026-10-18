@@ -154,6 +154,25 @@ The legacy JSON planner, Electron migration and standalone drivers have been rem
 
 Native socket events replace periodic bridge polling. Chromium owns background tab discarding and native bookmark identities, so human browser controls do not require Node. Model context is a bounded projection of the complete durable transcript. Exact capture references bind selected saved articles; relevant excerpts use the remaining provider input budget after required plans, receipts and images. Automatic recall warms cooperatively and enters only ephemeral provider messages. It does not append plaintext recall into the durable transcript.
 
+Explicit Memory tools persist their actual encrypted results. Before publication,
+returned page identities/revisions/hashes must resolve to the original eligible
+capture; its canonical references join the run without replacing earlier refs.
+Only genuine new coordinator starts receive the encrypted admission-version marker.
+Unmarked legacy Memory work details fail closed; bounded historical discovery,
+legacy model-context refusal and extracted-note retirement remain a separate
+unfinished correction, rather than an inferred or backfilled grant.
+
+Protected-source retirement follows authenticated Set/subagent reservations and
+their original execution family. Historical reads register every bounded source
+before awaiting the viewer; source removal aborts and joins those original reads,
+and changed family membership invalidates publication. Generated child task goals,
+unchanged automatic titles and internal follow-up bodies retire with the source.
+Desktop cleanup preserves human root requests/follow-ups and authoritative effect,
+Undo and invoice records; article cleanup retains its distinct transcript policy.
+Portable export/stage removes dependent output even for an active desktop source
+whose capture is omitted, reusing the live transcript projection. These source
+rules and encrypted-store fixtures do not establish current native acceptance.
+
 Conversation documents preserve complete metadata collections with separately encrypted immutable bodies and previews. Accepted turns store exact chat/attachment/content-hash references. Provider requests resolve relevant excerpts one body at a time under the remaining input budget and original cancellation/source fences; raw document context is not copied into new durable run configurations. Used sources survive removal for exact retries and branches; source-chat deletion and Forget retire the corresponding bodies and references. Historical inline collections convert atomically on first access rather than blocking startup with a full scan.
 
 Skills, occurrence history and inbox results use keyset pages. Scheduling traverses every eligible definition in cooperative batches, re-reading current definitions before dispatch. Shutdown synchronously closes scheduler admission and joins the original sweep, including any accepted launch receipt, before repository closure. Automatic command-bar routing selects the visible Ask/Search intent synchronously; Enter executes that choice without a provider round trip.

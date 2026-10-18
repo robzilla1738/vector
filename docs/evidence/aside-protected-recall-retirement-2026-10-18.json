@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "baseline": "5ffae4c18f7f4ade77a492722e385b9f0736ce91",
+  "nativeCandidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "series": [
+    {
+      "patch": "/tmp/aux-measurement-memory-article-99-v1.patch",
+      "sha256": "90e8f43dacceab236c4326f60ca28df69f30a0e5d3b7d8217d328d87d6f4a2bc",
+      "files": 10,
+      "exact": true
+    },
+    {
+      "patch": "/tmp/aux-measurement-memory-article-99-v2-delta.patch",
+      "sha256": "d681f9cb53cbed2acb223f74868da921a1355a8b64bbb1d5e476632aded9b077",
+      "files": 6,
+      "exact": true
+    },
+    {
+      "patch": "/tmp/aux-measurement-desktop-family-99-v1-delta.patch",
+      "sha256": "2f5c94b85192667fd571da02edf0d34c7ba8c3c8648c9d121e951de9cc17acfd",
+      "files": 6,
+      "exact": true
+    },
+    {
+      "patch": "/tmp/aux-measurement-desktop-family-99-v2-delta.patch",
+      "sha256": "1332db1aec28f405dfe74b1377ae351a5f4d6f04523aa6825f8a5108417dc397",
+      "files": 4,
+      "exact": true
+    }
+  ],
+  "finalSourcePostimages": {
+    "apps/runtime/src/agent/coordinator.ts": "b168e0e37990fb3434ece3ccf3b3d095abdccbaf6ef9acf3cf38bf90e9c101e1",
+    "apps/runtime/src/agent/loop/host.ts": "9fc380ddd2f7c93c48d62c312f285143fcae1d8c88f75aa68f3aa8ad50b17379",
+    "apps/runtime/src/services/content-memory.ts": "111ec661dd30c9149339eae410e1b6b7b34b00f09423d1aaa88a116c0a8d11a3",
+    "apps/runtime/src/services/runs.ts": "fa0ae36273ca4b3b4fe64c24e5952184bde2fc5a8f501dcd98ebbe94b428c8f5",
+    "apps/runtime/src/services/run-lineage.ts": "6b4662551aaf4cf8e81133aa21c5f6d037c3d40e723fa54f223992e0bbeeaf05",
+    "apps/runtime/src/services/set-member-lineage.ts": "5074e8986f535acc262fa719010ca2d6e809e1e0449577fdbbf7f48eb89e00a6",
+    "apps/runtime/src/services/runtime-backup.ts": "572dfe38a271f20a79d05ff2ade846758a994af719a4c1f3b98f5d605cc2f963",
+    "packages/contracts/src/entities.ts": "1a4bd8fb91e792409543fc05188226e1d8caab28527074bbfbaafdb212e4679b",
+    "packages/contracts/src/portable-page-recall.ts": "5d855682db961e68416444c9bdcd968c35cb51a37a3219f2e9e8f9663c9e35d8",
+    "tests/unit/memory-article-provenance.test.ts": "648de247e76e06e9d2326883cd653a8f5913a51df05b295dc58f2ef829966ac4",
+    "apps/runtime/src/services/run-messages.ts": "555a361f3def84ae44b70b0b0d1479f357169ff7dba84cb25a6570fe1650cdbc",
+    "apps/runtime/src/services/desktop-context-retirement.ts": "c640cf9fd3b0bddb3acc51a6bcfaacf910257a6ef19d5fd2d924c7029517a715"
+  },
+  "rootPreAndPostimagesVerified": true,
+  "changes": [
+    "Admit actual returned article Memory sources before original tool-result publication; persist canonical source refs without replacing old refs or granting legacy authority.",
+    "Use authenticated original Set/subagent families for retirement and historical read ownership; final family growth is stale.",
+    "Join actual dependent reads before explicit desktop source removal; retire generated child goals, unchanged automatic titles, original internal follow-up bodies and derived transcript copies.",
+    "Separate mixed article/desktop retirement; retain original human root requests under desktop partial-history policy and durable effect/undo/invoice records.",
+    "Sanitize active desktop-source output before portable export/stage even when Forget has never run; share the live parent transcript projection and existing generated-task helper."
+  ],
+  "reviews": [
+    {
+      "path": "/tmp/aux-memory-article-v2-independent-review.json",
+      "sha256": "324212e61de0c21d36fd5e2f06d621cf6bba506175eba9a90371f5276cf00be7"
+    },
+    {
+      "path": "/tmp/aux-memory-article-v2-independent-review-addendum.json",
+      "sha256": "ea5ed81665f0608dc3a9d2aeb098cdf77498d501fb880ba0a02271673ba6639a"
+    },
+    {
+      "path": "/tmp/aux-desktop-family-v1-independent-review.json",
+      "sha256": "a28971cb082460bd3ca9fc5648a2993263679371bf36a8260533e4723f2cd831"
+    },
+    {
+      "path": "/tmp/aux-desktop-family-v2-independent-review.json",
+      "sha256": "4d782c1d8dcff5923a5ee45c253ebd78284c2eb5c05b611ed19e2865473fd655"
+    }
+  ],
+  "privateValidation": {
+    "articleV2": "Fresh runtime build/types; final25/25 in four affected suites. Earlier152 unaffected passing cases were in a command with two subsequently corrected fixture failures, not a wholly passing command.",
+    "desktopV1": "Fresh build/types;73/73 in five suites and a separate2/2 rerun after test teardown guard.",
+    "desktopV2": "Fresh build/types/lint/format;60 unaffected passing cases and a separate1/1 actual export-stage-apply fixture, not a claimed combined61-case command.",
+    "rootIntegratedCheck": {
+      "command": "npm run check",
+      "status": "passed",
+      "exitCode": 0,
+      "runtimeDist": "rebuilt by initial typecheck before unit tests",
+      "typecheck": "passed",
+      "lint": "passed with570 unchanged advisory warning diagnostics",
+      "testFilesPassed": 852,
+      "testsPassed": 5724,
+      "newProvenanceCasesPassed": 17,
+      "testPhaseSeconds": 138.56,
+      "log": "/tmp/aux-source-lifetime-integrated-check-2026-10-18.log",
+      "logSha256": "d09be27f8043e3deb0a093a83509e620f6fe581445f10356b64b70a6b1ae46c6",
+      "coderCaseSeconds": [
+        47.519,
+        55.92,
+        30.179
+      ],
+      "lintWarningDiagnostics": 570,
+      "lintWarningComparison": {
+        "path": "/tmp/aux-lint-baseline-comparison-2026-10-18.json",
+        "sha256": "3544badb06c1ccc3b7461f7a7dac6c0716dbe9790cca2fa2f048f95f61216cf6",
+        "allWarningsUnchanged": true
+      }
+    }
+  },
+  "nativeObservation": "Not yet staged or observed on a current native build; compiled99d candidate predates this runtime slice.",
+  "openLimits": [
+    "Typed legacy Memory results without admitted source refs still need bounded historical discovery, continuation refusal and retirement of extracted Memory derivatives; implementation is separate and private.",
+    "No owner Profile, native app UI, configured provider, external account or real third-party message was exercised for this source slice.",
+    "Original155 trap, full matched native UI/browser acceptance, matching-stock performance and complete default-route20-task smoke remain open.",
+    "Human-authored root requests/follow-ups and authoritative financial/effect/undo records are intentionally preserved under their existing source-specific policies; this is not a claim that all owner-authored occurrences are erased."
+  ],
+  "rootReview": {
+    "path": "/tmp/aux-protected-recall-root-review-2026-10-18.json",
+    "sha256": "45ea90639378de01292ebf87e7c69e03a649551cfd26bd31d770b6e899a5ea65"
+  },
+  "lintReportingCorrection": "Earlier smoke-guard evidence/status incorrectly said three warnings. Actual retained logs contain570 advisory diagnostics; this correction uses the original logs without rerunning lint."
+}

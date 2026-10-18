@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "date": "2026-10-18",
   "baseline": "99d6203afd1ac9953f9a736766967cd3d637126a",
   "patch": {
@@ -20,13 +20,38 @@
       "command": "npm run check",
       "exitCode": 0,
       "typecheck": "passed",
-      "lint": "passed with three existing warnings",
+      "lint": "passed with570 unchanged advisory warning diagnostics",
       "testsPassed": 5707,
       "testFilesPassed": 851,
       "testPhaseSeconds": 130.02,
       "log": "/tmp/aux-smoke-guards-integrated-check-2026-10-18.log",
       "logSha256": "05c2e142e94b1f0d217c56d82899bfc481b8957e18b6dbbaa3260c43038c3416",
-      "scope": "Full unit integration; eight standalone node:test guard cases retain their separate private focused proof"
+      "scope": "Full unit integration; eight standalone node:test guard cases retain their separate private focused proof",
+      "lintWarningDiagnostics": 570,
+      "lintWarningComparison": {
+        "path": "/tmp/aux-lint-baseline-comparison-2026-10-18.json",
+        "sha256": "3544badb06c1ccc3b7461f7a7dac6c0716dbe9790cca2fa2f048f95f61216cf6",
+        "allWarningsUnchanged": true
+      }
+    },
+    "actualCandidateIdentityPreflight": {
+      "path": "/tmp/aux-smoke-actual-99d6203-identity-preflight.json",
+      "sha256": "4910465a1e66898946b00963d16d8f112505de6b4381187adee8e0e5f75a18ff",
+      "result": "passed",
+      "candidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+      "guardSource": "5ffae4c18",
+      "executable": {
+        "uuid": "4c4c44a055553144a14a9eeb184fc21d",
+        "sha256": "0b1f153545e5160698f3ab54125dff6befae82c27ae168b16dbf5e7c57c9b421",
+        "bytes": 52096
+      },
+      "framework": {
+        "uuid": "4c4c448355553144a18ef9caf8c16de4",
+        "sha256": "2d2cbfde580fb2ab59a35af581464f2236869177daa95f3c56fbe45b5f3becb7",
+        "bytes": 254279104
+      },
+      "scope": "Read-only actual candidate identity preflight; no runner launch or lock-admission/capability pass",
+      "liveSmoke": false
     }
   },
   "reviews": [
@@ -49,5 +74,6 @@
   "handoff": {
     "path": "/tmp/aux-smoke-candidate-99d-v2-handoff.md",
     "sha256": "8e744358b0a47a4ba48cdc32fbb9ee20fbd9c0534c39d4e8ec731701db09d6cc"
-  }
+  },
+  "lintReportingCorrection": "Earlier smoke-guard evidence/status incorrectly said three warnings. Actual retained logs contain570 advisory diagnostics; this correction uses the original logs without rerunning lint."
 }

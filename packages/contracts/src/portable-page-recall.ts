@@ -93,7 +93,12 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
 }
 
 /** Remove Profile-bound article recall and every saved output derived from it in a portable database copy. */
-export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRecallCipher): Set<string> {
+export function sanitizePortablePageRecall(
+  db: DatabaseSync,
+  cipher?: PortableRecallCipher,
+  protectedFamily?: (runIds: ReadonlySet<string>) => ReadonlySet<string>,
+  retireGeneratedTask?: (runId: string, source: "article" | "desktop") => void,
+): Set<string> {
   const has = (table: string) =>
     !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table);
   if (db.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get() && !cipher)
@@ -141,13 +146,78 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             (row) =>
               row.config.contextMemoryRefs?.length ||
               row.config.contextMemoryIds?.length ||
+              row.config.desktopContextQuotes?.length ||
+              row.config.desktopContextRetired ||
               row.config.contextMemoryRevoked,
           )
           .map((row) => row.runId),
       );
-      const affected = derivedPageRecallRunIds(parsed, seeds, owners);
+      const expand = (seeds: Set<string>) => {
+        let affected = derivedPageRecallRunIds(parsed, seeds, owners);
+        for (;;) {
+          if (!protectedFamily) {
+            for (const id of affected) {
+              const setReceipt =
+                has("set_run_members") &&
+                db
+                  .prepare("SELECT 1 FROM set_run_members WHERE child_run_id=? OR parent_run_id=? LIMIT 1")
+                  .get(id, id);
+              const childReceipt =
+                has("subagents") &&
+                has("subagent_groups") &&
+                db
+                  .prepare(
+                    "SELECT 1 FROM subagents a JOIN subagent_groups g ON g.group_id=a.group_id WHERE a.run_id=? OR a.reserved_run_id=? OR g.parent_run_id=? LIMIT 1",
+                  )
+                  .get(id, id, id);
+              if (setReceipt || childReceipt)
+                throw new Error(
+                  "Protected run families require authenticated runtime lineage for portable cleanup.",
+                );
+            }
+            break;
+          }
+          const family = protectedFamily(affected);
+          const expanded = derivedPageRecallRunIds(parsed, new Set([...affected, ...family]), owners);
+          if (expanded.size === affected.size) break;
+          affected = expanded;
+        }
+        return affected;
+      };
+      const articleAffected = expand(
+        new Set(
+          parsed
+            .filter((row) => row.config.contextMemoryRefs?.length || row.config.contextMemoryIds?.length)
+            .map((row) => row.runId),
+        ),
+      );
+      const desktopAffected = expand(
+        new Set(
+          parsed
+            .filter((row) => row.config.desktopContextQuotes?.length || row.config.desktopContextRetired)
+            .map((row) => row.runId),
+        ),
+      );
+      const affected = expand(seeds);
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
+        const desktopRetired = desktopAffected.has(row.runId);
+        if (desktopRetired && !row.config.desktopContextRetired && !retireGeneratedTask)
+          throw new Error("Desktop source omission requires authenticated runtime transcript retirement.");
+        if (articleAffected.has(row.runId) || desktopRetired) {
+          const generated =
+            (has("set_run_members") &&
+              db.prepare("SELECT 1 FROM set_run_members WHERE child_run_id=?").get(row.runId)) ||
+            (has("subagents") &&
+              db
+                .prepare("SELECT 1 FROM subagents WHERE run_id=? OR reserved_run_id=?")
+                .get(row.runId, row.runId));
+          if (generated && !retireGeneratedTask)
+            throw new Error(
+              "Generated protected tasks require authenticated runtime retirement for portable cleanup.",
+            );
+          retireGeneratedTask?.(row.runId, articleAffected.has(row.runId) ? "article" : "desktop");
+        }
         affectedChats.add(row.config.chatId ?? row.runId);
         if (has("run_messages"))
           db.prepare(
@@ -162,6 +232,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
               "DELETE FROM result_versions WHERE artifact_id=? OR root_artifact_id=? OR parent_artifact_id=?",
             ).run(artifactId, artifactId, artifactId);
         for (const table of [
+          "run_transcript",
           "artifacts",
           "model_calls",
           "events",
@@ -173,10 +244,15 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
         ])
           if (
             has(table) &&
-            !(row.config.desktopContextRetired && (table === "model_calls" || table === "steps"))
+            !(
+              desktopRetired &&
+              (table === "model_calls" ||
+                table === "steps" ||
+                (table === "run_transcript" && !articleAffected.has(row.runId)))
+            )
           )
             db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
-        if (!row.config.desktopContextRetired) redactSettledRunInvocations(db, row.runId);
+        if (!desktopRetired) redactSettledRunInvocations(db, row.runId);
         db.prepare(
           "UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?",
         ).run(
@@ -184,7 +260,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             "runs",
             row.runId,
             "status_message",
-            row.config.desktopContextRetired
+            desktopRetired
               ? "Desktop source retired — generated answer removed"
               : "Saved article unavailable after restore — generated answer removed",
           ),
@@ -192,11 +268,19 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             "runs",
             row.runId,
             "error",
-            row.config.desktopContextRetired
+            desktopRetired
               ? "Desktop source retired; durable effects and invoices are preserved."
               : "Protected article context is not portable.",
           ),
-          sealed("runs", row.runId, "config", JSON.stringify(redactedPageRecallConfig(row.config, owned))),
+          sealed(
+            "runs",
+            row.runId,
+            "config",
+            JSON.stringify({
+              ...redactedPageRecallConfig(row.config, owned),
+              ...(desktopRetired ? { desktopContextRetired: true } : {}),
+            }),
+          ),
           row.runId,
         );
         if (has("run_lookup"))

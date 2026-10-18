@@ -241,6 +241,8 @@ export const RunSchema = z.object({
       /** Generated content retired; financial/effect audit records remain authoritative. */
       desktopContextRetired: z.literal(true).optional(),
       contextMemoryRefs: z.array(CapturedSourceSchema).optional(),
+      /** Engine-owned creation marker: all returned article recall is admitted before publication. */
+      memoryRecallAdmissionVersion: z.literal(1).optional(),
       /** The selected article was deleted; saved model outputs were removed. */
       contextMemoryRevoked: z.boolean().optional(),
       /** IDs of removed generated artifacts, retained only to revoke later dependent turns. */

@@ -52,9 +52,9 @@ schema narrowing, Memory/archive and connected-service UI are integrated in the
 current follow-on source. Exact prepared schema bytes and actual optional-tool
 publication now cover saved/idle compaction and captured operation grants.
 Canonical Select ownership and remaining compact Settings roles are integrated;
-utility glyph modules and generated synchronous command routing reduce measured
-startup JS to617KB. CSS measures212KB and current total optional JS3,083KB; all byte targets
-remain open. Isolated work completes typed LinkedIn native recipient/editor proof
+utility glyph modules and generated synchronous command routing narrow startup.
+The actual `99d6203af` closure below measures618,769 JS/206,792 CSS bytes and
+3,174,909 total JS bytes; all byte targets remain open. Isolated work completes typed LinkedIn native recipient/editor proof
 and remaining matched UI observations.
 Skills/MCP/activity geometry and the Quick Ask context admission/scroll fixes are
 integrated. Google adds revision-bound Docs ranges/readback, separately granted
@@ -140,10 +140,17 @@ matching-stock performance and the original crash resolution remain open. See
 The integrated guard slice passes typecheck/lint and all 5,707 tests across
 851 files in 130.02s; its eight standalone guard fixtures remain separate proof.
 
-Actual-store regressions now demonstrate missing canonical article provenance
-from tool-only recall, related family outputs and mixed desktop/article cleanup.
-The private correction is under independent review and is not in the compiled
-candidate. A5/A6/work-details retirement acceptance remains open.
+Current source corrects tool-only article provenance before publication, shares
+authenticated Set/subagent retirement and historical-read dependencies, refuses
+held-read family growth, and retires generated child task/follow-up bodies. Active
+desktop-source export/stage now uses the same live transcript projection when
+original captures are omitted. Independent reviews and actual encrypted-store/
+export/stage/apply fixtures pass; the integrated source check passes5,724tests/
+852files in138.56s with dist rebuilt first. These
+changes are not in the compiled candidate. Bounded legacy article-result discovery,
+continuation refusal and derived Memory-note retirement remain private. A5/A6/
+work-details/native acceptance stays open; see
+[retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json).
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

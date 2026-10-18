@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "originalLedgerSha256": "b7292ae079209d4f49153626296e8f6e23a522f8ffb9bcb675fd20fbb0772e86",
+  "date": "2026-10-18",
+  "path": "/tmp/aux-aside-reference-refresh-2026-10-18.json",
+  "sha256": "9fb5705c43f48fbd38ccaa3bb2164431edbef8a3e8110e8ee6c992141aecc672",
+  "comparedOriginalImages": 182,
+  "changedOriginalImages": [],
+  "newOrMissingOriginalImages": false,
+  "manifestSha256": "8d8003155728d81ebe012869c4d434e3a72e3f2abc8a2f6a008043ef34383b44",
+  "matchesReviewedManifest": true,
+  "thumbnailJpgs": 182,
+  "newNativeComparison": false,
+  "scope": "Recursive inventory refresh only; original manifest and all182 original-image bytes unchanged.182jpg files are existing thumbnails; no new image views or native comparisons."
+}

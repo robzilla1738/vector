@@ -372,6 +372,23 @@ export class RunMessageQueue {
   }
 
   private syncJournal(message: RunMessage): void {
+    if (
+      message.status === "cancelled" &&
+      this.repo.getRun(message.targetRunId)?.config?.contextMemoryRevoked
+    ) {
+      const original = this.sendJournal.messageStatus(message.messageId);
+      if (
+        !original ||
+        original.threadId !== message.chatId ||
+        original.turnId !== message.targetRunId ||
+        original.text !== message.text
+      )
+        throw new AuxError("permission_denied", "The retired original message receipt is unavailable.");
+      // Forget can replace internal generated text without rebinding the original nonce/digest.
+      if (!["accepted", "acknowledged", "failed", "cancelled"].includes(original.state))
+        this.sendJournal.cancel(original.nonce);
+      return;
+    }
     const record = this.sendJournal.queue(
       {
         nonce: message.messageId,

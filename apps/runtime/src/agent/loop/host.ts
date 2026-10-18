@@ -502,6 +502,26 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       self.deps.turnMentions.skills(runId);
     };
   };
+  const admitMemorySources = async (
+    sources: readonly Pick<
+      import("@aux/contracts/memory-documents").MemoryRecallSource,
+      "kind" | "sourceId" | "revision" | "sha256"
+    >[],
+    checkOwner: () => void,
+  ) => {
+    const pages = sources.filter((source) => source.kind === "page");
+    if (!pages.length) return;
+    const check = () => {
+      checkOwner();
+      if (self.deps.agentLoop?.modelGeneration?.() !== originalModelGeneration)
+        throw new AuxError("cancelled", "The original recall model or account changed.");
+    };
+    check();
+    if (!self.deps.admitMemorySources)
+      throw new AuxError("permission_denied", "Saved article recall provenance is unavailable.");
+    await self.deps.admitMemorySources(runId, pages, { signal, checkOwner: check });
+    check();
+  };
   const linkedInSignals = new WeakMap<AbortSignal, string>();
   const linkedIn = new LinkedInWorkflows({
     approval: (approvalId) =>
@@ -2013,6 +2033,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           checkOwner();
           const result = await self.deps.agentLoop!.memorySearch!(query, { ...context, signal, checkOwner });
           checkOwner();
+          await admitMemorySources(result.matches, checkOwner);
           return result;
         }
       : undefined,
@@ -2026,6 +2047,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             checkOwner,
           });
           checkOwner();
+          await admitMemorySources([result], checkOwner);
           return result;
         }
       : undefined,

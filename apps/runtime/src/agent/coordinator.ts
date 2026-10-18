@@ -84,6 +84,15 @@ export interface CoordinatorDeps {
   onDeadline?: (runId: string) => void;
   prepareSources?: (run: Run, signal: AbortSignal) => Promise<void>;
   checkRunSource?: (runId: string) => void;
+  admitMemorySources?: (
+    runId: string,
+    sources: readonly Pick<
+      import("@aux/contracts/memory-documents").MemoryRecallSource,
+      "kind" | "sourceId" | "revision" | "sha256"
+    >[],
+    owner: { signal: AbortSignal; checkOwner(): void },
+  ) => Promise<void>;
+
   checkSharedBudget?: (runId: string) => Promise<void>;
   reserveModelCall?: (runId: string) => Promise<() => void>;
   admitToolCall?: (runId: string, callId: string, toolName: string) => Promise<void>;
@@ -338,6 +347,7 @@ export class RunCoordinator {
         contextArtifactIds: opts.contextArtifactIds,
         contextSourceArtifactIds: opts.contextSourceArtifactIds,
         contextImageArtifactIds: opts.contextImageArtifactIds,
+        memoryRecallAdmissionVersion: 1,
         contextMemoryIds: opts.contextMemoryRefs?.map((source) => source.memoryId),
         contextMemoryRefs: opts.contextMemoryRefs,
         contextPageRefs: opts.contextPageRefs,

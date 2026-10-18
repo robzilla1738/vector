@@ -98,6 +98,9 @@ every image hash is unchanged. Version3 corrects invalid dimensions from the
 previous PNG-header assumption; that superseded ledger remains in Git history
 and its exact hash is recorded. Display-scale limits and remaining native
 comparisons are explicit; this is not182 matched native acceptances.
+[A recursive refresh](evidence/aside-ui-reference-refresh-2026-10-18.json) confirms
+the manifest and all182 original image hashes are unchanged; thumbnails add no
+new captured surfaces or native observations.
 [Notification evidence](evidence/aside-task-notices-2026-10-18.json) records this
 small implementation and the actual preference/keyboard fixtures.
 
@@ -110,18 +113,27 @@ when the chat remains mounted. Explicit source Forget aborts and joins the origi
 reads before removal/acknowledgement; ordinary capture/Memory off and Stop do not
 erase retained owner history or grant new model authority. Turn markers use real
 loaded turns and the existing virtualized reveal route.
-The existing generic native producer needs its regenerated metadata row and full
-current build; unchanged278-method host ABI does not prove that row is installed.
-Old native fails closed without its genuine window proof. No new hand-authored
-native area or alternate API stack was added.
+The regenerated native producer row is included in the clean `99d6203af` full
+build. The subsequent runtime retirement correction is not yet staged; unchanged
+278-method host ABI alone does not prove current source is installed. Old native
+fails closed without its genuine window proof. No new hand-authored native area
+or alternate API stack was added.
 [Trace evidence](evidence/aside-work-trace-2026-10-18.json) records the checks and limits.
 
-A new actual-store regression exposes a current saved-article gap: tool-only
-`memory_search`/`memory_read` can persist article text without canonical run source
-refs, so Forget and work details can miss it. Review also reproduces parent/child
-propagation, mixed desktop/article retirement and generated-child text paths.
-The coherent correction is still private and under independent review; it is
-not included in `99d6203af` or accepted merely because existing suites are green.
+Current source admits the actual article sources returned by `memory_search` and
+`memory_read` before tool-result publication. Authenticated Set/subagent families
+now share retirement and original historical-read ownership; a held read refuses
+new family membership. Generated child goals, unchanged automatic titles and
+internal follow-ups retire with their source. Mixed article/desktop cleanup keeps
+the existing source-specific human-history and durable audit policies.
+Portable export/stage also sanitizes active desktop-derived outputs when the
+original capture is omitted, using the live transcript projection. Actual encrypted
+store/export/stage/apply fixtures and independent reviews cover these changes;
+the integrated check passes all5,724tests/852files. They are not in the compiled `99d6203af`.
+[Retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json)
+separates those gates. Older typed Memory results without admitted source refs
+still require bounded legacy discovery, model-context refusal and retirement of
+extracted Memory notes; that follow-up remains private and incomplete.
 
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
@@ -189,6 +201,8 @@ lock. Disposable HOME/native-host inventory replaces the owner user location.
 Eight synthetic guard fixtures and two independent source reviews pass; actual
 extension, Store and virtual-WebAuthn smoke remain open. This is a cooperative
 immutable-build guard, not signed attestation or atomic fd-to-exec binding.
+The actual clean99d app also passes the read-only identity preflight; this did
+not launch a runner, admit a lock or establish any live capability result.
 [Smoke guard evidence](evidence/aside-smoke-candidate-2026-10-18.json) records scope.
 
 The committed native-context slice extends LinkedIn with typed original-owner
@@ -228,8 +242,15 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated smoke-guard check passes typecheck/lint and all 5,707 tests
-across 851 files in 130.02s; three existing lint warnings remain. The eight new
+The latest protected-recall retirement check passes typecheck/lint and all5,724
+tests across852files in138.56s, including17 new actual-store provenance cases.
+Runtime dist rebuilt before tests;570 advisory lint diagnostics match the prior
+guard log exactly after ignoring only line/column positions. The previous count
+of three was a reporting error, corrected from the retained original logs. Log:
+`/tmp/aux-source-lifetime-integrated-check-2026-10-18.log`.
+The preceding integrated smoke-guard check passes typecheck/lint and all 5,707 tests
+across 851 files in 130.02s; its actual570 advisory lint diagnostics are unchanged
+in the current check. The eight new
 standalone Node guard fixtures retain their separate focused proof. Log:
 `/tmp/aux-smoke-guards-integrated-check-2026-10-18.log`. The preceding control-CSS
 check passes all 5,707 tests in 124.79s, including final trace v1–v4, with runtime

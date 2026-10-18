@@ -1480,6 +1480,49 @@ export class ContentMemoryStore {
     });
   }
 
+  /** Bind returned page recall to its actual immutable encrypted capture before publication. */
+  admitRecallSources(
+    workspaceId: string,
+    sources: readonly Pick<MemoryRecallSource, "kind" | "sourceId" | "revision" | "sha256">[],
+    signal: AbortSignal,
+  ) {
+    return this.own(async () => {
+      signal.throwIfAborted();
+      if (sources.length > MAX_PAGES_PER_SPACE)
+        throw new AuxError("invalid_params", "Too many saved article recall sources.");
+      const index = await this.index(workspaceId, signal);
+      const admitted: { source: IndexedPage; reference: CapturedSource }[] = [];
+      for (const source of sources) {
+        signal.throwIfAborted();
+        const indexed =
+          source.kind === "page" && source.sourceId.startsWith("page:")
+            ? index.rows.get(source.sourceId.slice(5))
+            : undefined;
+        const body = indexed && (await this.readIndexedPage(indexed));
+        if (
+          !indexed ||
+          !body ||
+          indexed.sourceVersion !== source.revision ||
+          createHash("sha256").update(body.text).digest("hex") !== source.sha256
+        )
+          throw new AuxError("ref_stale", "A recalled article changed or is no longer eligible.");
+        const { text: _text, sessionId: _session, ...metadata } = body;
+        admitted.push({ source: indexed, reference: CapturedSourceSchema.parse(metadata) });
+      }
+      const check = () => {
+        signal.throwIfAborted();
+        if (
+          this.closed ||
+          this.indexes.get(workspaceId) !== index ||
+          admitted.some(({ source }) => !this.sourceCurrent(source))
+        )
+          throw new AuxError("cancelled", "A recalled article retired before publication.");
+      };
+      check();
+      return { references: admitted.map(({ reference }) => reference), check };
+    });
+  }
+
   /** Historical owner inspection does not re-enable ingestion or grant model access. */
   assertHistoricalSources(workspaceId: string, refs: readonly CapturedSource[]) {
     return this.own(async () => {

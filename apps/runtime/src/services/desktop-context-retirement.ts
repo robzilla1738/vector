@@ -1,3 +1,4 @@
+import { protectedRunFamily, retireProtectedGeneratedTask } from "./run-lineage.js";
 import { setImmediate } from "node:timers/promises";
 import { EventTypes, type Run } from "@aux/contracts";
 import { derivedPageRecallRunIds, redactedPageRecallConfig } from "@aux/contracts/portable-page-recall";
@@ -57,26 +58,19 @@ export async function retireDesktopContextOutputs(
     runId: run.runId,
     config: {
       ...run.config,
-      contextRunIds: [
-        ...(run.config?.contextRunIds ?? []),
-        ...(run.config?.branchSourceRunIds ?? []),
-        ...(run.config?.setMemberSource ? [run.config.setMemberSource.parentRunId] : []),
-      ],
+      contextRunIds: [...(run.config?.contextRunIds ?? []), ...(run.config?.branchSourceRunIds ?? [])],
     },
   }));
-  const children = deps.repo.db
-    .prepare(
-      "SELECT g.parent_run_id,a.run_id,a.reserved_run_id FROM subagents a JOIN subagent_groups g ON g.group_id=a.group_id",
-    )
-    .all() as { parent_run_id: string; run_id: string | null; reserved_run_id: string }[];
-  for (const child of children) {
-    const row = configs.find((run) => run.runId === (child.run_id ?? child.reserved_run_id));
-    row?.config.contextRunIds.push(child.parent_run_id);
+  let affected = derivedPageRecallRunIds(configs, seeds, owners);
+  for (;;) {
+    const family = protectedRunFamily(deps.repo, affected);
+    const expanded = derivedPageRecallRunIds(configs, new Set([...affected, ...family]), owners);
+    if (expanded.size === affected.size) break;
+    affected = expanded;
   }
-  const affected = derivedPageRecallRunIds(configs, seeds, owners),
-    chats = new Set(
-      runs.filter((run) => affected.has(run.runId)).map((run) => run.config?.chatId ?? run.runId),
-    );
+  const chats = new Set(
+    runs.filter((run) => affected.has(run.runId)).map((run) => run.config?.chatId ?? run.runId),
+  );
   // Mark every descendant unavailable before yielding into native/provider cancellation.
   if (!options.cancelOnly)
     deps.repo.transaction(() => {
@@ -101,52 +95,16 @@ export async function retireDesktopContextOutputs(
   for (const runId of affected)
     for (const artifact of deps.repo.listArtifacts({ runId })) revoked.add(artifact.artifactId);
   for (const chatId of chats) deps.documents.forgetDerived(chatId, revoked);
-  const transcript = new TranscriptStore(deps.repo.db, deps.repo.columnCipher);
-  const generatedChildren = new Set(children.map((child) => child.run_id ?? child.reserved_run_id));
+
   for (const runId of affected) {
-    const current = deps.repo.getRun(runId);
-    if (!current) continue;
+    if (!deps.repo.getRun(runId)) continue;
+    deps.repo.transaction(() => retireProtectedGeneratedTask(deps.repo, runId, "desktop"));
+    const current = deps.repo.getRun(runId)!;
     const artifacts = deps.repo.listArtifacts({ runId });
     deps.artifacts.removeFiles(artifacts.map((artifact) => artifact.path));
-    const entries = transcript.entries(runId);
     deps.repo.transaction(() =>
       withSecureDelete(deps.repo.db, () => {
-        // Captured quotes were ephemeral. Remove generated messages/answers, retain real
-        // user follow-ups, and rebuild the initial runtime task without inherited context.
-        for (const entry of entries) {
-          if (entry.message.role !== "user") {
-            deps.repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND seq=?").run(runId, entry.seq);
-            continue;
-          }
-          if (entry.seq === 0) {
-            const original = runs.find((run) => run.runId === runId)!;
-            const projected = taskMessage({
-              ...original,
-              ...(generatedChildren.has(runId) || original.config?.setMemberSource
-                ? { goal: "Desktop-source-derived task retired" }
-                : {}),
-              config: {
-                ...original.config,
-                context: undefined,
-                contextDocumentEvidence: undefined,
-                contextArtifactEvidence: undefined,
-              },
-            });
-            deps.repo.db
-              .prepare("UPDATE run_transcript SET message=? WHERE run_id=? AND seq=?")
-              .run(
-                deps.repo.protectRecordField(
-                  "run_transcript",
-                  [runId, entry.seq],
-                  "message",
-                  JSON.stringify(projected),
-                ),
-                runId,
-                entry.seq,
-              );
-          }
-        }
-        deps.repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND kind='park'").run(runId);
+        retireDesktopTranscript(deps.repo, runId);
         for (const artifact of artifacts)
           deps.repo.db
             .prepare(
@@ -171,9 +129,6 @@ export async function retireDesktopContextOutputs(
         // remain authoritative audit records, including uncertain effects.
         deps.repo.saveRun({
           ...current,
-          ...(generatedChildren.has(runId) || current.config?.setMemberSource
-            ? { goal: "Desktop-source-derived task retired" }
-            : {}),
           status: "cancelled",
           statusMessage: "Desktop source forgotten — generated answer removed",
           result: undefined,
@@ -201,4 +156,44 @@ export async function retireDesktopContextOutputs(
   }
   deps.purgeBranches();
   return affected.size;
+}
+
+/** Human root requests survive portable source omission; generated children are retired separately. */
+export function retireDesktopTranscript(repo: Repo, runId: string): void {
+  const run = repo.getRun(runId);
+  if (!run) throw new Error("The original desktop-source run is unavailable.");
+  const transcript = new TranscriptStore(repo.db, repo.columnCipher);
+  const entries = transcript.entries(runId);
+  withSecureDelete(repo.db, () => {
+    for (const entry of entries) {
+      if (entry.message.role !== "user") {
+        repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND seq=?").run(runId, entry.seq);
+        continue;
+      }
+      if (entry.seq === 0) {
+        const projected = taskMessage({
+          ...run,
+          config: {
+            ...run.config,
+            context: undefined,
+            contextDocumentEvidence: undefined,
+            contextArtifactEvidence: undefined,
+          },
+        });
+        repo.db
+          .prepare("UPDATE run_transcript SET message=? WHERE run_id=? AND seq=?")
+          .run(
+            repo.protectRecordField(
+              "run_transcript",
+              [runId, entry.seq],
+              "message",
+              JSON.stringify(projected),
+            ),
+            runId,
+            entry.seq,
+          );
+      }
+    }
+    repo.db.prepare("DELETE FROM run_transcript WHERE run_id=? AND kind='park'").run(runId);
+  });
 }

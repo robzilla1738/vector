@@ -101,7 +101,13 @@ import { modelCallCost } from "../agent/model-client.js";
 import { SetExecutor } from "../scheduler/set-executor.js";
 import { TranscriptStore } from "../agent/loop/transcript.js";
 import { toolResultsMessage } from "../agent/loop/types.js";
-import { runRoot, runAncestry, lineageRuns } from "./run-lineage.js";
+import {
+  runRoot,
+  runAncestry,
+  lineageRuns,
+  protectedRunFamily,
+  retireProtectedGeneratedTask,
+} from "./run-lineage.js";
 import { assertSetMemberSource, setMemberSourceDigest } from "./set-member-lineage.js";
 import { WorkerPool } from "../scheduler/pool.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
@@ -251,12 +257,19 @@ export class RunService {
   private closed = false;
   private readonly startReceipts: RunStartReceipts;
   private ownedOperations = new Set<Promise<unknown>>();
-  private historicalReads = new Set<{ runId: string; controller: AbortController; done: Promise<unknown> }>();
+  private historicalReads = new Set<{
+    runId: string;
+    sourceRunIds: ReadonlySet<string>;
+    controller: AbortController;
+    done: Promise<unknown>;
+  }>();
   private retiredHistoricalRuns = new Set<string>();
   private async retireHistoricalReads(runIds: readonly string[]) {
     const affected = new Set(runIds);
     for (const runId of affected) this.retiredHistoricalRuns.add(runId);
-    const original = [...this.historicalReads].filter((entry) => affected.has(entry.runId));
+    const original = [...this.historicalReads].filter((entry) =>
+      [...entry.sourceRunIds].some((id) => affected.has(id)),
+    );
     for (const entry of original) entry.controller.abort();
     await Promise.allSettled(original.map((entry) => entry.done));
   }
@@ -655,7 +668,7 @@ export class RunService {
     while ([...affected].some((id) => !expanded.has(id))) {
       for (const id of affected) {
         if (expanded.has(id)) continue;
-        for (const child of lineageRuns(this.deps.repo, id)) {
+        for (const child of protectedRunFamily(this.deps.repo, new Set([id]))) {
           seeds.add(child);
           expanded.add(child);
         }
@@ -718,7 +731,18 @@ export class RunService {
     let redacted = 0;
     for (const runId of affected) {
       const current = this.deps.repo.getRun(runId);
-      if (!current || current.config?.contextMemoryRevoked) continue;
+      if (!current) continue;
+      const generatedChanged = this.deps.repo.transaction(() =>
+        retireProtectedGeneratedTask(this.deps.repo, runId),
+      );
+      if (
+        current.config?.contextMemoryRevoked &&
+        !generatedChanged &&
+        !current.result &&
+        !this.deps.repo.listArtifacts({ runId }).length &&
+        !this.deps.repo.db.prepare("SELECT 1 FROM run_transcript WHERE run_id=? LIMIT 1").get(runId)
+      )
+        continue;
       if (current.config?.chatId) this.messages.cancelForChat(current.config.chatId);
       if (!TERMINAL_RUN_STATUSES.has(current.status))
         await this.cancel(runId, "A selected saved article was forgotten.");
@@ -733,6 +757,7 @@ export class RunService {
           )
           .run(runId);
         for (const table of [
+          "run_transcript",
           "artifacts",
           "events",
           "steps",
@@ -743,7 +768,8 @@ export class RunService {
           "safety_run_grants",
           "safety_run_authority",
         ])
-          this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
+          if (!(run.config?.desktopContextRetired && table === "steps"))
+            this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
         this.deps.repo.db.prepare("DELETE FROM safety_approval_requests WHERE turn_id=?").run(runId);
         redactSettledRunInvocations(this.deps.repo.db, runId);
         this.deps.repo.saveRun({
@@ -930,14 +956,58 @@ export class RunService {
     limit = 40,
   ) {
     const controller = new AbortController();
+    const sourceRunIds = new Set([runId]);
+    const collectSources = () => {
+      const byId = new Map<string, Run>();
+      for (const id of protectedRunFamily(this.deps.repo, new Set([runId])))
+        for (const source of desktopSourceRuns(this.deps.repo, id)) {
+          byId.set(source.runId, source);
+          if (byId.size > 256)
+            throw new AuxError(
+              "permission_denied",
+              "Recorded protected work exceeds its bounded source history.",
+            );
+        }
+      return [...byId.values()];
+    };
     const done = this.ownOperation(async () => {
-      const sources = desktopSourceRuns(this.deps.repo, runId);
+      const sources = collectSources();
+      for (const source of sources) sourceRunIds.add(source.runId);
+      const membership = JSON.stringify([...sourceRunIds].sort());
       const identity = (run: Run) =>
-        JSON.stringify([queuedSourceHash(run), run.config?.desktopContextQuotes]);
+        JSON.stringify([
+          queuedSourceHash(run),
+          run.config?.desktopContextQuotes,
+          run.config?.memoryRecallAdmissionVersion,
+        ]);
       const snapshots = sources.map(identity);
+      // Old tool results can repeat article text in later outputs. Do not pretend
+      // a scrubbed page or a later new admission proves the complete legacy trace.
+      for (const source of sources) {
+        if (source.config?.memoryRecallAdmissionVersion === 1) continue;
+        if (
+          this.deps.repo.db
+            .prepare(
+              "SELECT 1 FROM run_tool_calls WHERE run_id=? AND tool_name IN ('memory_search','memory_read') LIMIT 1",
+            )
+            .get(source.runId)
+        )
+          throw new AuxError(
+            "permission_denied",
+            "These legacy Memory work details lack original saved-article provenance. Ordinary saved chat remains available.",
+          );
+      }
       const current = () => {
         if (this.closed || controller.signal.aborted)
           throw new AuxError("cancelled", "The recorded work owner retired.");
+        if (
+          JSON.stringify(
+            collectSources()
+              .map((source) => source.runId)
+              .sort(),
+          ) !== membership
+        )
+          throw new AuxError("permission_denied", "The recorded protected source family changed.");
         sources.forEach((source, index) => {
           const latest = this.deps.repo.getRun(source.runId);
           if (
@@ -993,7 +1063,9 @@ export class RunService {
       if (sources.some((run) => run.config?.desktopContextQuotes?.length)) {
         if (!this.deps.desktopContextSources)
           throw new AuxError("permission_denied", "The original desktop source is unavailable.");
-        checks.push(await this.deps.desktopContextSources.assertHistorical(runId));
+        for (const source of sources)
+          if (source.config?.desktopContextQuotes?.length)
+            checks.push(await this.deps.desktopContextSources.assertHistorical(source.runId));
       }
       await checkOwner(workspaceId);
       current();
@@ -1008,7 +1080,7 @@ export class RunService {
       for (const check of checks) check();
       return { ...trace, ...(workspaceId ? { protectedWorkspaceId: workspaceId } : {}) };
     });
-    const entry = { runId, controller, done };
+    const entry = { runId, sourceRunIds, controller, done };
     this.historicalReads.add(entry);
     void done.finally(() => this.historicalReads.delete(entry)).catch(() => {});
     return done;
@@ -1695,6 +1767,51 @@ export class RunService {
       imageReferences: (run) => this.images.forRun(run),
       documentEvidence: (run, options) => this.documentEvidence(run, options),
       restoreDocumentEvidence: (run, recipes, signal) => this.restoreDocumentEvidence(run, recipes, signal),
+      admitMemorySources: async (runId, sources, owner) => {
+        owner.checkOwner();
+        owner.signal.throwIfAborted();
+        const run = this.deps.repo.getRun(runId);
+        const workspaceId = run?.config?.contextWorkspaceId;
+        if (!run || run.status !== "running" || !workspaceId || !deps.contentMemory)
+          throw new AuxError("permission_denied", "The original recalled article owner is unavailable.");
+        const admitted = await deps.contentMemory.admitRecallSources(workspaceId, sources, owner.signal);
+        owner.checkOwner();
+        const current = this.deps.repo.getRun(runId);
+        if (
+          !current ||
+          current.status !== "running" ||
+          current.config?.contextWorkspaceId !== workspaceId ||
+          current.config.contextMemoryRevoked
+        )
+          throw new AuxError("cancelled", "The original recalled article owner changed.");
+        const refs = [...(current.config.contextMemoryRefs ?? [])];
+        if (current.config.contextMemoryIds?.some((id) => !refs.some((ref) => ref.memoryId === id)))
+          throw new AuxError("ref_stale", "The original article capture identities are unavailable.");
+        for (const reference of admitted.references) {
+          const existing = refs.find((ref) => ref.memoryId === reference.memoryId);
+          if (existing && !sameCapturedSource(existing, reference))
+            throw new AuxError(
+              "ref_stale",
+              "An earlier recalled article changed. Start a new turn with current sources.",
+            );
+          if (!existing) refs.push(reference);
+        }
+        if (refs.length > 500)
+          throw new AuxError(
+            "invalid_params",
+            "This turn already admitted the maximum number of saved articles.",
+          );
+        admitted.check();
+        owner.checkOwner();
+        this.deps.repo.saveRun({
+          ...current,
+          config: {
+            ...current.config,
+            contextMemoryRefs: refs,
+            contextMemoryIds: refs.map((ref) => ref.memoryId),
+          },
+        });
+      },
       memoryReferences: async (run, query) => {
         const refs = run.config?.contextMemoryRefs ?? [];
         if (!refs.length && run.config?.contextMemoryIds?.length)

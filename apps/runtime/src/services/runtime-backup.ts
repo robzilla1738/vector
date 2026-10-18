@@ -1,3 +1,4 @@
+import { retireDesktopTranscript } from "./desktop-context-retirement.js";
 import {
   currentSpaceMemory,
   omitDerivedAndSpaceMemory,
@@ -48,7 +49,8 @@ import {
   channelTablesForDatabase,
   discardIncompleteDocumentSnapshots,
 } from "../store/db.js";
-import type { Repo } from "../store/repo.js";
+import { Repo } from "../store/repo.js";
+import { protectedRunFamily, retireProtectedGeneratedTask } from "./run-lineage.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import {
   authenticateConnectorTransfers,
@@ -344,7 +346,16 @@ export async function createRuntimeBackup(
       if (repo.columnCipher) protectLegacyDocumentCollections(sanitized, repo.columnCipher);
       omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
-      sanitizePortablePageRecall(sanitized, repo.columnCipher);
+      sanitizePortablePageRecall(
+        sanitized,
+        repo.columnCipher,
+        (ids) => protectedRunFamily(new Repo(sanitized, repo.columnCipher), ids),
+        (runId, source) => {
+          const copied = new Repo(sanitized, repo.columnCipher);
+          retireProtectedGeneratedTask(copied, runId, source);
+          if (source === "desktop") retireDesktopTranscript(copied, runId);
+        },
+      );
       if (repo.columnCipher && sanitized.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get())
         sanitized
           .prepare(
@@ -761,7 +772,16 @@ async function stageRuntimeRestoreSource(
       if (preservedMemory) retainSpaceMemory(staged, preservedMemory);
       else omitDerivedAndSpaceMemory(staged);
       staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
-      omittedArtifacts = sanitizePortablePageRecall(staged, cipher);
+      omittedArtifacts = sanitizePortablePageRecall(
+        staged,
+        cipher,
+        (ids) => protectedRunFamily(new Repo(staged, cipher), ids),
+        (runId, source) => {
+          const copied = new Repo(staged, cipher);
+          retireProtectedGeneratedTask(copied, runId, source);
+          if (source === "desktop") retireDesktopTranscript(copied, runId);
+        },
+      );
       const rows = staged
         .prepare(
           "SELECT artifact_id AS artifactId,page_id AS pageId,media_type AS mediaType,path FROM artifacts",
