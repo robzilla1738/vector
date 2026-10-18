@@ -348,6 +348,29 @@ describe("semantic conversation compaction", () => {
     expect(f.transcript.load("r")).toEqual(before);
   });
 
+  it.each([
+    { conversation: 64, utility: 32 },
+    { conversation: 32, utility: 64 },
+  ])("honors small route output limits ($conversation/$utility) without changing history", async (limits) => {
+    const f = fixture();
+    const original = f.transcript.entries("r");
+    const summarize = vi.fn<Parameters<typeof prepareConversationContext>[0]["summarize"]>(
+      async () => "The draft remains unsent.",
+    );
+    await f.prepare({
+      summarize,
+      options: { ...options, maxOutputTokens: limits.conversation },
+      summaryLimits: { contextTokens: 4_000, maxOutputTokens: limits.utility },
+    });
+    expect(summarize).toHaveBeenCalled();
+    for (const [request] of summarize.mock.calls) {
+      expect(request.maxOutputTokens).toBeLessThanOrEqual(32);
+      expect(request.messages[0]?.content).toContain("Target at most 32 tokens");
+    }
+    expect(f.state()?.stats.compaction.status).toBe("completed");
+    expect(f.transcript.entries("r")).toEqual(original);
+  });
+
   it("removes private summary text from public runs and forgotten/portable context", async () => {
     const f = fixture();
     await f.prepare();
