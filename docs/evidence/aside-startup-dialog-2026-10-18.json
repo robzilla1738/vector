@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-18",
+  "integrationBase": "81a290836",
+  "status": "private_matched_production_and_integrated_checks_pass_native_pending",
+  "patch": {
+    "path": "/tmp/aux-measurement-startup-05ee35-dialog-v1.patch",
+    "sha256": "ba69f72a33e56a75fcc540dc498a86f5ee30dee7ec203678953b19f227649f12",
+    "paths": 5
+  },
+  "independentReview": "/tmp/aux-startup-dialog-v1-independent-review.json",
+  "implementation": "One unchanged canonical native Dialog/lifecycle leaf; three eager importers use it directly. Old module deletes moved bodies and exports those same canonical identities for optional Menu/AlertDialog consumers. No CSS, validation, command routing or first-input behavior changes.",
+  "privateMatchedProduction": {
+    "sourceCheckpoint": "05ee35e71d1cba01ca3a4c7770682186b7145f15",
+    "startupJsBeforeBytes": 622887,
+    "startupJsAfterBytes": 618598,
+    "startupJsChangeBytes": -4289,
+    "startupCssBeforeBytes": 217445,
+    "startupCssAfterBytes": 217445,
+    "cssHashesIdentical": true,
+    "totalJsBeforeBytes": 3161922,
+    "totalJsAfterBytes": 3164539,
+    "totalJsChangeBytes": 2617,
+    "method": "Unchanged production Vite config and canonical actual boot/preload/static-closure walker; final emitted files, not intermediate Rollup renderedLength, gzip or App filename guesses.",
+    "detailPath": "/tmp/aux-measurement-startup-05ee35-dialog-v1-bytes.json",
+    "detailSha256": "a7f370525516713b2cb456d297e61940a55d9e520884e109edaa3ed5ff50a2b1",
+    "remaining": "Targets remain unmet; this is not native timing, memory or packaged readiness."
+  },
+  "validation": {
+    "authorRendererTestsPassed": 103,
+    "authorFilesPassed": 12,
+    "authorTypes": "pass",
+    "authorLint": "pass; same eight baseline advisory warnings",
+    "rootIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5673,
+      "testFilesPassed": 849,
+      "durationSeconds": 123.24,
+      "log": "/tmp/aux-startup-dialog-integrated-check.log"
+    },
+    "currentNative": "pending"
+  },
+  "remainingActualBootGraph": "No eager MethodSchemas/API registry/provider SDK/runtime services. Shared Zod core57990B remains for original synchronous source/Space validation. React/store/host/command ownership remains; no validation bypass or runtime-outage regression introduced."
+}

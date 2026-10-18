@@ -3,7 +3,7 @@ import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { tabLabel } from "../workspace";
-import { Dialog } from "../ui/dialog";
+import { Dialog } from "../ui/native-dialog";
 import { positionContextMenu } from "../position-context-menu";
 import { FavIcon } from "./SiteTile";
 import {

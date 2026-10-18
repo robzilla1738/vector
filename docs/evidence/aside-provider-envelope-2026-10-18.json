@@ -51,7 +51,17 @@
       "meaning": "The unchanged original file passes isolated. Full integrated run was not green and was not relabelled."
     },
     "configuredProvider": "not retried on this source yet",
-    "nativeUi": "not observed on current source"
+    "nativeUi": "not observed on current source",
+    "subsequentIntegratedCheck": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5673,
+      "testFilesPassed": 849,
+      "durationSeconds": 123.24,
+      "log": "/tmp/aux-startup-dialog-integrated-check.log"
+    }
   },
   "canonicalManifestProjection": {
     "base": "fecd35fdc74b02178c116dce5a6540c3eaabeb22",

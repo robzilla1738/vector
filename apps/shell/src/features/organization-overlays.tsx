@@ -1,5 +1,5 @@
 import { lazy, Suspense, useRef } from "react";
-import { Dialog } from "../ui/dialog";
+import { Dialog } from "../ui/native-dialog";
 import { ArchivePolicy } from "../components/ArchivePolicy";
 import { showOrganizationEditor, useOrganizationEditor } from "./organization-state";
 import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";

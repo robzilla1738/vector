@@ -29,6 +29,17 @@ total-JS increase. A combined current production/native measurement remains pend
 [The integration record](evidence/aside-navigation-shutdown-2026-10-18.json) separates
 source, tests, measured private builds and native observations.
 
+The optional native Dialog lifecycle now lives in one canonical narrow module.
+Its three eager consumers no longer retain optional Menu/AlertDialog code in
+startup. Exact matched production builds at05ee35 reduce startup JavaScript from
+622,887 to618,598bytes (4,289bytes), with identical217,445-byte CSS; total emitted
+JavaScript increases2,617bytes from chunk restructuring. All original lifecycle
+bodies are unchanged and103 affected renderer cases pass. The remaining startup
+graph contains actual React/store/native/command/source-validation ownership; no
+eager API registry/provider SDK remains. These measured private outputs do not
+establish current packaged timing, memory or byte-target completion.
+[Startup evidence](evidence/aside-startup-dialog-2026-10-18.json) records the tradeoff.
+
 The current Memory correction selects eligible completed sessions within their
 original Space before bounded keyset paging and excludes empty reports. It fences
 original source reports at model admission and final publication. Owner proposal
@@ -152,17 +163,14 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest native-menu integrated check passes typecheck/lint and5,671tests
-across848files in153.92s; two unchanged coder-worktree cases hit their original
-60s timeouts. Their unchanged isolated file passes all3cases in74.01s, each within
-its original limit (18.59/28.51/24.89s). Logs: `/tmp/aux-native-menus-integrated-check.log`
-and `/tmp/aux-native-menus-coder-rerun.log`. Runtime dist was rebuilt first; this
-is not a wholly green integrated run. The preceding provider check passes5,672tests
-with one unchanged delayed-exec300ms race; its unchanged isolated file passes3/3
-in1.89s (`/tmp/aux-provider-envelope-integrated-check.log` and
-`/tmp/aux-provider-envelope-coding-processes-rerun.log`). The preceding notification
-check passes all5,666tests/848files in123.85s, including the Memory corrections
-(`/tmp/aux-task-notices-integrated-check.log`).
+The latest integrated Dialog check passes typecheck/lint and all5,673tests across
+849files in123.24s, including provider-envelope and Memory corrections. Runtime
+dist was rebuilt first. Log: `/tmp/aux-startup-dialog-integrated-check.log`.
+The preceding native-menu check passed5,671tests; two unchanged coder-worktree
+cases hit60s limits, then their unchanged isolated file passed3/3 in74.01s.
+The preceding provider check passed5,672tests; one unchanged delayed-exec300ms
+race passed3/3 in its isolated file. Their original failures and separate reruns
+remain recorded in the corresponding evidence; the current full run is green.
 The preceding Memory check passed5,663tests across846files;
 one existing coder-worktree case hit its original60s timeout. Its unchanged
 quiet rerun passes all3cases within the original limits (50.10/32.78/26.89s).

@@ -75,6 +75,16 @@
       ],
       "log": "/tmp/aux-native-menus-coder-rerun.log",
       "meaning": "Original file unchanged, all original60s case limits preserved. Separate rerun, not a wholly green full-suite run."
+    },
+    "subsequentIntegratedCheck": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5673,
+      "testFilesPassed": 849,
+      "durationSeconds": 123.24,
+      "log": "/tmp/aux-startup-dialog-integrated-check.log"
     }
   },
   "remaining": [

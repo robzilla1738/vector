@@ -11,7 +11,7 @@ import {
   useSurfaceState,
   type SplitEdge,
 } from "../features/surfaces/drag-state";
-import { Dialog } from "../ui/dialog";
+import { Dialog } from "../ui/native-dialog";
 import { addPane } from "../workspace";
 import "./SplitStage.css";
 import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
