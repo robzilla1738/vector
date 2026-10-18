@@ -24,6 +24,7 @@ import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { histogram, oneObservation, onePresentation, tabPresentationNames } from "./native-histograms.mjs";
 import { memoryFootprints, shellRoleWitness } from "./native-memory.mjs";
+import { assertNativePerfHelperCurrent, prepareNativePerfHelper } from "./native-perf-helper.mjs";
 import { formatPerformanceTargets, performanceTargets, tabPresentationSummary } from "./native-targets.mjs";
 import { acquireDevLock } from "../../scripts/dev.mjs";
 
@@ -50,6 +51,8 @@ if (process.argv.includes("--plan")) {
       {
         command:
           "pnpm perf --aux-app /absolute/Aux.app --stock-app /absolute/Chromium.app --aux-source /absolute/patched/src --stock-source /absolute/stock/src [--output /absolute/new/report]",
+        inputHelper:
+          "Optional --input-helper /absolute/existing/native-perf requires --input-helper-sha256 and --input-helper-source-sha256; approved bytes are reused without compilation.",
         runs: 5,
         metrics: {
           ...names,
@@ -82,7 +85,6 @@ const output = resolve(
 assert.ok(!existsSync(output), "Use a new report directory");
 assert.ok(!/[\r\n]/.test(output), "Report paths cannot contain line breaks");
 mkdirSync(output, { recursive: true });
-const helperBinary = join(output, "native-perf");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const critical = [
   "is_debug",
@@ -173,10 +175,20 @@ try {
   }
   const power = command("pmset", ["-g", "batt"]);
   assert.match(power, /Now drawing from 'AC Power'/, "Use AC power");
-  command(
-    "xcrun",
-    ["swiftc", "-O", join(import.meta.dirname, "native-perf.swift"), "-o", helperBinary],
-    120000,
+  const helperFlags = ["--input-helper", "--input-helper-sha256", "--input-helper-source-sha256"];
+  const inputHelper = prepareNativePerfHelper(
+    {
+      source: join(import.meta.dirname, "native-perf.swift"),
+      output: join(output, "native-perf"),
+      approved: helperFlags.some((flag) => process.argv.includes(flag))
+        ? {
+            path: option("--input-helper"),
+            sha256: option("--input-helper-sha256"),
+            sourceSha256: option("--input-helper-source-sha256"),
+          }
+        : undefined,
+    },
+    (source, binary) => command("xcrun", ["swiftc", "-O", source, "-o", binary], 120000),
   );
   const report = {
     schema: 7,
@@ -184,6 +196,7 @@ try {
     at: new Date().toISOString(),
     machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
     builds,
+    inputHelper,
     method: {
       runs: 5,
       historyEntries: 50000,
@@ -262,7 +275,8 @@ try {
     throw new Error(`No actual ${label} within ${milliseconds} ms`);
   }
   function helper(pid, app) {
-    const child = spawn(helperBinary, [String(pid), app], { stdio: ["pipe", "pipe", "inherit"] });
+    assertNativePerfHelperCurrent(inputHelper);
+    const child = spawn(inputHelper.path, [String(pid), app], { stdio: ["pipe", "pipe", "inherit"] });
     const pending = new Map();
     let next = 0;
     let exitError;
