@@ -1,0 +1,102 @@
+{
+  "product": "cd76f71b6e0205da66b749d01908c04c0e924450",
+  "builtFromMain": "5adfd3e4b058e38eec121ff7d1991f7529f6cd1f",
+  "nativeFrameworkUUID": "4C4C44EB-5555-3144-A185-09FCC5F3A992",
+  "hostABI": "08c8b5e42176f212884ff53c54d5726e75eaabd6d188271fdc1ad312742aaafa",
+  "build": {
+    "session": 98366,
+    "exit": 0,
+    "steps": 25,
+    "autoninjaSeconds": 525.64,
+    "record": {
+      "path": "/tmp/aux-parallel-batch3-native-build-2026-10-18.json",
+      "sha256": "a5ac982e5fbe3a4bc95b0fb3d1bbd4dc56e97636ed4c8d5456c90b72ddd5a1f3",
+      "bytes": 4819
+    },
+    "preservedSymbols": {
+      "path": "/tmp/aux-parallel-batch3-native-symbols-2026-10-18/identity.json",
+      "sha256": "2b9294ff94b265c7c61af8735a758947e94eb06bede92977d3183e5573a8e6e4",
+      "bytes": 2922
+    }
+  },
+  "preview": {
+    "session": 56804,
+    "launcherPid": 23481,
+    "browserPid": 23609,
+    "exit": 0,
+    "disposableProfileRemoved": true,
+    "originalPlainLockRetired": true,
+    "nativeRuntimeRetirement": {
+      "forced": 0,
+      "exitCode": 0
+    },
+    "log": {
+      "path": "/tmp/aux-parallel-batch3-acceptance-launch-2026-10-18.log",
+      "sha256": "3a3f477e499223dde34a8f3f70469ee7ff3ce9609ee529292cda22e2e82ab94e",
+      "bytes": 3403
+    }
+  },
+  "manualObserved": [
+    "Routines Create right edge matches adjacent card edge; caption aligns heading against reference083.",
+    "Wide model provider submenu: Down/Right entry; Escape provider then trigger.",
+    "853x989 logical narrow model submenu stays inside owning popup with Back header and no observed right/bottom clipping.",
+    "Narrow Left returns provider; Escape returns trigger; Space reopens fresh popup state.",
+    "Empty model search shows actual no-results guidance."
+  ],
+  "captures": [
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/general-current.ax.txt",
+      "sha256": "b7b3f49803051efbab93be1cab95f3448d6c71ea4b1464dde1be054367afa2c1",
+      "bytes": 9664
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/model-provider-half.jpg",
+      "sha256": "4d17398691ec715e11395ac62721257d7bf777cc3806313e9688eb045e9d824f",
+      "bytes": 325925
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/model-provider-wide.jpg",
+      "sha256": "729b28c0ada7d7ec1c84333ff64e346cbdb3448bc4f02c16046e701012c63f4c",
+      "bytes": 471755
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/model-search-empty-half.jpg",
+      "sha256": "21f3d1dca7b3400b5ad61cb9b83f6cc55b0a5d884c9536480a94e4c9b22f37bd",
+      "bytes": 308390
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/models-after-cancel.ax.txt",
+      "sha256": "d31e23b6f4b1f68676e5eb913bb40b8b96d2f6f074c12da7783254a16fb9f50c",
+      "bytes": 5325
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch3-acceptance-2026-10-18/routines-wide.jpg",
+      "sha256": "ca17c191c5ead03a94138a3b1f6711779b49cede203a817cbee9df11bd34b9c7",
+      "bytes": 350376
+    }
+  ],
+  "limitations": [
+    "Dead-key OptionE probe did not establish IME composition; native IME acceptance remains open.",
+    "No populated Memory/Dream, compaction/queue, live image generation or full browser acceptance from this preview.",
+    "Prior20/20 manual smoke belongs to product334, not this candidate.",
+    "Original October17 SIGTRAP remains unresolved; this shutdown fix is separate.",
+    "All192 reference comparisons and accessibility modes are not complete."
+  ],
+  "performance": {
+    "session": 8959,
+    "exit": 1,
+    "completeSamples": 0,
+    "failure": "First CtrlTab measurement: No actual paired native tab presentation within20000ms. Ten fixture tabs prepared successfully.",
+    "report": {
+      "path": "/tmp/aux-paired155-cd76-2026-10-18T2336Z/report.json",
+      "sha256": "f3955906ac7929d10e210dbf08c6614368908581c79e788afa9c84a49c326a07",
+      "bytes": 198681
+    },
+    "boundedDiagnostic": {
+      "path": "/tmp/aux-modifier-diagnostic-aux-GqqcK6/result.json",
+      "sha256": "d77d26bb5b520cdbe23310d84d908a288691ecbcc120b77692e45c57b19dbea8",
+      "bytes": 7612
+    },
+    "diagnosticConclusion": "v3flags-only and privatev4full modifier lifetime both lacked TabSwitch histograms; helper fix unconfirmed and not integrated. Command histogram increments and warm-window histograms present. Diagnostic only, no performance qualification."
+  }
+}

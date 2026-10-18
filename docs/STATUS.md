@@ -8,29 +8,30 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
-The [current native candidate](evidence/aside-native-3868-observations-2026-10-18.json)
-is product `3868d5af5`, built from clean main `0bca89b34`:27native steps in503.633s,
-with preserved framework/dSYM UUID `4C4C446A-5555-3144-A17F-27B15F836738`.
-Its actual ten-tab diagnostic records one fixture presentation per document and
-normal browser exit; this is not a qualified performance result. Native Theme
-Dark/Light/System alignment, arrow/Escape/Enter/focus, both materials and853px
-layout are observed. Tidy narrow dismissal/focus works. A reference083 Routines
-Create-width/caption mismatch is preserved as a failure and corrected only in
-newer source. Full reference and accessibility acceptance remain open.
+The [current native candidate](evidence/aside-native-cd76-observations-2026-10-18.json)
+is product `cd76f71b6`, built from clean main `5adfd3e4b`:25native steps,
+with preserved framework/dSYM UUID `4C4C44EB-5555-3144-A185-09FCC5F3A992`.
+Current native Routines Create-width/caption correction and wide/narrow model-menu
+Back/Escape/focus/reset/empty states are observed. Native-menu Quit now records
+original runtime **forced0/exit_code0**, browser/launcher0 and normal Profile/lock
+retirement. This verifies the signal-lifetime fix in this preview; it does not
+resolve the original155SIGTRAP or complete browser readiness.
 
-Normal native-menu Quit retires browser/launcher0 and removes the disposable
-Profile/lock, but reports **interrupted runtime retirement**, forced0/exit_code−1.
-Do not treat this as graceful runtime cleanup. The signal-handler lifetime race reproduces in four actual child fixtures;
-its integrated fix retains original handlers through joined retirement and passes16
-focused cases. Fresh native verification remains open, separately from the
-original155SIGTRAP. Current-source paired performance and crash/readiness remain open.
+The matching-stock paired attempt prepares all ten actual fixture tabs but stops
+at its first CtrlTab presentation measurement:0complete samples. A bounded
+single-Profile diagnostic confirms command-input and warm-window histogram signals,
+but neither flags-only nor full modifier-lifetime input yields the missing tab pair.
+The latter helper change remains private and unproven. Root owns diagnosis/native
+acceptance; UI is checking the shortcut-release route in its isolated worktree.
+No performance pass is claimed. Full reference/accessibility acceptance and a fresh
+current-candidate20-task manual smoke remain open; earlier334smoke20/20 is separate.
 
 The [third parallel batch](evidence/aside-parallel-integration-batch3-2026-10-18.json)
 is integrated: bounded compaction caps, truthful MCP cancellation/join, IME/model-menu
 ownership and the native-found Routines CSS correction. Focused evidence is recorded;
 the combined full check passes **6,174 tests /869files** in109.80s after runtime
-dist rebuild, with no concurrent native compiler. The sole stock build and both
-counter diagnostics retired normally; final Aux compilation/acceptance is next. The first two batches passed6,121 and6,150 tests respectively.
+dist rebuild, with no concurrent native compiler. The sole stock build, final Aux build and both
+counter diagnostics retired normally; current native observations are linked above. The first two batches passed6,121 and6,150 tests respectively.
 
 The [first parallel implementation batch](evidence/aside-parallel-integration-batch1-2026-10-18.json)
 is integrated in coherent local commits: reference-backed Tidy/Routines/selection
@@ -56,7 +57,8 @@ new-tab preparation barrier incorrectly reused a deliberately one-shot cold
 navigation histogram. A separate fixture-document native presentation counter is
 now applied identically to Aux and stock observer logic; latency clocks/targets
 stay unchanged. All69areas/975paths and modes replay exactly. Both native builds
-and a live counter observation remain pending; no performance pass is claimed.
+and ten-document counter observations now pass; the subsequent CtrlTab measurement
+remains blocked as described above. No performance pass is claimed.
 
 The [benchmark focus follow-up](evidence/aside-perf-active-descendant-2026-10-18.json)
 recognizes the exact address combobox through its linked selected autocomplete row,
