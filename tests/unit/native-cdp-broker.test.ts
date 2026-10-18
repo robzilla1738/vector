@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { setTimeout as delay } from "node:timers/promises";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import {
   NativeCdpStartNavigationSchema,
   type EgressLease,
 } from "@aux/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress";
 import { NullNativeBridge } from "../../apps/runtime/src/native";
 import { NativeCdpBroker } from "../../apps/runtime/src/native-cdp-broker";
@@ -769,4 +770,407 @@ describe("fixed native controlled navigation transport", () => {
       }
     },
   );
+});
+
+type ProtocolFrame = {
+  id?: number;
+  sessionId?: string;
+  method?: string;
+  params?: Record<string, unknown>;
+  result?: unknown;
+  error?: { code: number; message: string };
+};
+
+async function pendingCommandFixture() {
+  const dir = mkdtempSync(join(tmpdir(), "aux-cdp-pending-"));
+  const [a, b] = memoryTransportPair();
+  const runtime = new RpcChannel(a, "runtime"),
+    host = new RpcChannel(b, "host");
+  const authority = await testAuthorities();
+  let attachmentCount = 0;
+  const dispatched: ReturnType<typeof NativeCdpDispatchSchema.parse>[] = [];
+  let dispatch: (request: ReturnType<typeof NativeCdpDispatchSchema.parse>) => unknown = () => ({});
+  host.onMethod("native.cdpReset", () => ({}));
+  host.onMethod("native.cdpVersion", () => ({ version: "155.0.8059.85" }));
+  host.onMethod("native.cdpCatalog", () => ({
+    pages: [
+      {
+        pageId: OWN,
+        cdpTargetId: "target",
+        url: "https://example.test/",
+        title: "Original",
+        lease: authority.leases.get(OWN),
+      },
+    ],
+  }));
+  host.onMethod("native.cdpAttach", () => ({
+    attachmentId: (++attachmentCount).toString(16).toUpperCase().padStart(32, "0"),
+  }));
+  host.onMethod("native.cdpDispatch", (params) => {
+    const request = NativeCdpDispatchSchema.parse(params);
+    dispatched.push(request);
+    return dispatch(request);
+  });
+  const broker = await NativeCdpBroker.start(runtime, authority.capture, dir);
+  const frames: ProtocolFrame[] = [];
+  let socket = new WebSocket(broker.endpoint());
+  const connect = async () => {
+    socket.on("message", (raw) => frames.push(JSON.parse(String(raw)) as ProtocolFrame));
+    await new Promise<void>((resolve, reject) => {
+      socket.on("open", () => resolve());
+      socket.on("error", reject);
+    });
+  };
+  await connect();
+  let id = 0;
+  const wait = async (condition: () => boolean) => {
+    for (let attempt = 0; attempt < 200; attempt++) {
+      if (condition()) return;
+      await delay(5);
+    }
+    throw new Error("Original CDP fixture condition did not settle");
+  };
+  const send = (method: string, params: Record<string, unknown> = {}, sessionId?: string) => {
+    const requestId = ++id;
+    socket.send(JSON.stringify({ id: requestId, method, params, sessionId }));
+    return requestId;
+  };
+  const response = async (requestId: number) => {
+    await wait(() => frames.some((frame) => frame.id === requestId));
+    return frames.find((frame) => frame.id === requestId)!;
+  };
+  const call = (method: string, params: Record<string, unknown> = {}, sessionId?: string) =>
+    response(send(method, params, sessionId));
+  const attach = async (browserSession?: string) => {
+    const result = await call("Target.attachToTarget", { targetId: "target", flatten: true }, browserSession);
+    return (result.result as { sessionId: string }).sessionId;
+  };
+  const nativeResponse = (
+    request: ReturnType<typeof NativeCdpDispatchSchema.parse>,
+    fields: Record<string, unknown> = { result: { original: true } },
+  ) =>
+    host.notify("native.cdpMessage", {
+      pageId: request.pageId,
+      message: JSON.stringify({
+        auxAttachmentId: request.attachmentId,
+        id: (JSON.parse(request.message) as { id: number }).id,
+        ...fields,
+      }),
+    });
+  return {
+    authority,
+    host,
+    broker,
+    frames,
+    dispatched,
+    wait,
+    send,
+    response,
+    call,
+    attach,
+    nativeResponse,
+    setDispatch: (handler: typeof dispatch) => {
+      dispatch = handler;
+    },
+    reconnect: async () => {
+      socket.terminate();
+      await new Promise<void>((resolve) => socket.on("close", () => resolve()));
+      frames.length = 0;
+      id = 0;
+      socket = new WebSocket(broker.endpoint());
+      await connect();
+    },
+    close: async () => {
+      vi.useRealTimers();
+      socket.terminate();
+      await broker.close();
+      authority.close();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
+describe("original native CDP command response lifetime", () => {
+  it("rejects retired original requests before detach and never forwards their late replies into a replacement", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      await f.call("Target.setAutoAttach", { autoAttach: true, flatten: true });
+      const automatic = f.frames.find((frame) => frame.method === "Target.attachedToTarget")?.params
+        ?.sessionId as string;
+      const browser = (await f.call("Target.attachToBrowserTarget")).result as { sessionId: string };
+      const explicit = await f.attach(browser.sessionId);
+      const first = f.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter" }, automatic);
+      const second = f.send("Runtime.evaluate", { expression: "1" }, explicit);
+      await f.wait(() => f.dispatched.length === 2);
+      await f.authority.replace(OWN);
+      f.host.notify("native.cdpAuthorityChanged", {});
+      for (const [id, sessionId] of [
+        [first, automatic],
+        [second, explicit],
+      ] as const) {
+        expect(await f.response(id)).toMatchObject({
+          id,
+          sessionId,
+          error: { code: -32000, message: expect.stringContaining("outcome may be uncertain") },
+        });
+        await f.wait(() =>
+          f.frames.some(
+            (frame) => frame.method === "Target.detachedFromTarget" && frame.params?.sessionId === sessionId,
+          ),
+        );
+        expect(f.frames.findIndex((frame) => frame.id === id)).toBeLessThan(
+          f.frames.findIndex(
+            (frame) => frame.method === "Target.detachedFromTarget" && frame.params?.sessionId === sessionId,
+          ),
+        );
+      }
+      const fresh = await f.attach(browser.sessionId);
+      const third = f.send("Page.enable", {}, fresh);
+      await f.wait(() => f.dispatched.length === 3);
+      f.nativeResponse(f.dispatched[0]!);
+      f.nativeResponse(f.dispatched[1]!);
+      f.nativeResponse(f.dispatched[2]!);
+      expect(await f.response(third)).toMatchObject({
+        id: third,
+        sessionId: fresh,
+        result: { original: true },
+      });
+      expect(f.frames.filter((frame) => frame.id === first)).toHaveLength(1);
+      expect(f.frames.filter((frame) => frame.id === second)).toHaveLength(1);
+      expect(f.dispatched).toHaveLength(3);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it.each(["retirement", "response"] as const)(
+    "does not send a second reply when the dispatch ACK fails after %s",
+    async (earlier) => {
+      const f = await pendingCommandFixture();
+      let failAck!: (error: Error) => void;
+      f.setDispatch(
+        () =>
+          new Promise((_, reject) => {
+            failAck = reject;
+          }),
+      );
+      try {
+        const session = await f.attach();
+        const id = f.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter" }, session);
+        await f.wait(() => f.dispatched.length === 1);
+        if (earlier === "retirement") {
+          f.authority.retire(OWN);
+          f.host.notify("native.cdpAuthorityChanged", {});
+        } else f.nativeResponse(f.dispatched[0]!);
+        const original = await f.response(id);
+        failAck(new Error("Late native ACK refusal"));
+        await f.call("Browser.getVersion");
+        expect(f.frames.filter((frame) => frame.id === id)).toEqual([original]);
+        expect(f.dispatched).toHaveLength(1);
+      } finally {
+        await f.close();
+      }
+    },
+  );
+
+  it("refuses a matching response from stale authority without waiting for catalog refresh", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const session = await f.attach();
+      const id = f.send("Runtime.evaluate", { expression: "1" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      f.authority.retire(OWN);
+      f.nativeResponse(f.dispatched[0]!);
+      expect(await f.response(id)).toMatchObject({
+        id,
+        sessionId: session,
+        error: { code: -32000, message: expect.stringContaining("authority retired") },
+      });
+      f.nativeResponse(f.dispatched[0]!);
+      await f.call("Browser.getVersion");
+      expect(f.frames.filter((frame) => frame.id === id)).toHaveLength(1);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("does not consume an original pending request for a foreign attachment or page response", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const session = await f.attach();
+      const id = f.send("Runtime.evaluate", { expression: "1" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      const original = f.dispatched[0]!;
+      f.nativeResponse({ ...original, attachmentId: "F".repeat(32) }, { result: { foreign: true } });
+      f.nativeResponse({ ...original, pageId: NEW }, { result: { foreign: true } });
+      await f.call("Browser.getVersion");
+      expect(f.frames.filter((frame) => frame.id === id)).toEqual([]);
+      f.nativeResponse(original);
+      expect(await f.response(id)).toMatchObject({ id, sessionId: session, result: { original: true } });
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("settles an explicitly detached session's pending command once", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const browser = (await f.call("Target.attachToBrowserTarget")).result as { sessionId: string };
+      const session = await f.attach(browser.sessionId);
+      const id = f.send("Runtime.evaluate", { expression: "1" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      expect(
+        (await f.call("Target.detachFromTarget", { sessionId: session }, browser.sessionId)).result,
+      ).toEqual({});
+      expect(await f.response(id)).toMatchObject({
+        id,
+        sessionId: session,
+        error: { code: -32000, message: expect.stringContaining("session detached") },
+      });
+      f.nativeResponse(f.dispatched[0]!);
+      await f.call("Browser.getVersion");
+      expect(f.frames.filter((frame) => frame.id === id)).toHaveLength(1);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("settles a detached child session without retiring the independent page", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const parent = await f.attach();
+      f.setDispatch((request) => {
+        if ((JSON.parse(request.message) as { method: string }).method === "Target.setAutoAttach")
+          f.nativeResponse(request);
+        return {};
+      });
+      await f.call("Target.setAutoAttach", { autoAttach: true, flatten: true }, parent);
+      const attachmentId = f.dispatched[0]!.attachmentId;
+      f.host.notify("native.cdpMessage", {
+        pageId: OWN,
+        message: JSON.stringify({
+          auxAttachmentId: attachmentId,
+          method: "Target.attachedToTarget",
+          params: { sessionId: "original-child", targetInfo: { targetId: "child", type: "iframe" } },
+        }),
+      });
+      await f.wait(() =>
+        f.frames.some(
+          (frame) =>
+            frame.method === "Target.attachedToTarget" && frame.params?.sessionId === "original-child",
+        ),
+      );
+      const id = f.send("Runtime.evaluate", { expression: "1" }, "original-child");
+      await f.wait(() => f.dispatched.length === 2);
+      f.host.notify("native.cdpMessage", {
+        pageId: OWN,
+        message: JSON.stringify({
+          auxAttachmentId: attachmentId,
+          method: "Target.detachedFromTarget",
+          params: { sessionId: "original-child" },
+        }),
+      });
+      expect(await f.response(id)).toMatchObject({
+        sessionId: "original-child",
+        error: { message: expect.stringContaining("child session detached") },
+      });
+      const next = f.send("Page.enable", {}, parent);
+      await f.wait(() => f.dispatched.length === 3);
+      f.nativeResponse(f.dispatched[1]!);
+      f.nativeResponse(f.dispatched[2]!);
+      expect(await f.response(next)).toMatchObject({ sessionId: parent, result: { original: true } });
+      expect(f.frames.filter((frame) => frame.id === id)).toHaveLength(1);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("bounds the actual protocol response after ACK and suppresses late success without input replay", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const session = await f.attach();
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const timeouts = vi.spyOn(globalThis, "setTimeout");
+      const originalExpiry = f.authority.leases.get(OWN)!.expiresAt;
+      const beforeDispatch = Date.now();
+      const id = f.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      // The fixture's dispatch ACK is immediate. Let the RPC continuation join.
+      await delay(5);
+      const responseDelay = timeouts.mock.calls
+        .map(([, ms]) => ms)
+        .find((ms) => typeof ms === "number" && ms > 10_000)!;
+      expect(responseDelay).toBeLessThanOrEqual(30_000);
+      expect(responseDelay).toBeLessThanOrEqual(originalExpiry - beforeDispatch);
+      expect(responseDelay).toBeGreaterThan(10_000);
+      await vi.advanceTimersByTimeAsync(responseDelay - 1);
+      expect(f.frames.filter((frame) => frame.id === id)).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await f.response(id)).toMatchObject({
+        id,
+        sessionId: session,
+        error: { message: expect.stringContaining("response deadline expired") },
+      });
+      f.nativeResponse(f.dispatched[0]!);
+      await f.call("Browser.getVersion");
+      expect(f.frames.filter((frame) => frame.id === id)).toHaveLength(1);
+      expect(f.dispatched).toHaveLength(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("bounds a missing dispatch ACK and ignores its later success", async () => {
+    const f = await pendingCommandFixture();
+    let ack!: () => void;
+    f.setDispatch(
+      () =>
+        new Promise((resolve) => {
+          ack = () => resolve({});
+        }),
+    );
+    try {
+      const session = await f.attach();
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const id = f.send("Runtime.evaluate", { expression: "1" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(await f.response(id)).toMatchObject({ id, sessionId: session, error: { code: -32000 } });
+      ack();
+      f.nativeResponse(f.dispatched[0]!);
+      await f.call("Browser.getVersion");
+      expect(f.frames.filter((frame) => frame.id === id)).toHaveLength(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      ack();
+      await f.close();
+    }
+  });
+
+  it("does not send a retired connection's late response to a new client reusing the same request ID", async () => {
+    const f = await pendingCommandFixture();
+    try {
+      const session = await f.attach();
+      const id = f.send("Runtime.evaluate", { expression: "1" }, session);
+      await f.wait(() => f.dispatched.length === 1);
+      await f.reconnect();
+      const fresh = await f.attach();
+      const next = f.send("Runtime.evaluate", { expression: "2" }, fresh);
+      await f.wait(() => f.dispatched.length === 2);
+      f.nativeResponse(f.dispatched[0]!, { result: { retired: true } });
+      f.nativeResponse(f.dispatched[1]!);
+      expect(await f.response(next)).toMatchObject({
+        id: next,
+        sessionId: fresh,
+        result: { original: true },
+      });
+      expect(next).toBe(id);
+      expect(f.frames.filter((frame) => frame.id === id)).toEqual([
+        { id: next, sessionId: fresh, result: { original: true } },
+      ]);
+    } finally {
+      await f.close();
+    }
+  });
 });

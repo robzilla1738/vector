@@ -4057,6 +4057,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     retireAuthority: async () => {
       try {
         const results = await Promise.allSettled([
+          // Stop reconnect first, then retire the original protocol before run
+          // joins. A lost native owner cannot deliver a pending CDP response.
+          auxRecovery?.stop(),
+          nativeCdp?.close(),
           nativeSpaceBindings?.then((stop) => stop?.()),
           Promise.allSettled(cliInstallWork),
           Promise.allSettled(agentInstallWork),

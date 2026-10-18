@@ -1,0 +1,189 @@
+{
+  "baseCommit": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+  "status": "Integrated check passed; actual native reproduction pending",
+  "scope": "Settle the exact original CDP caller without granting replacement authority or repeating input.",
+  "behavior": [
+    "Pending requests retain original WebSocket, caller ID and session ID.",
+    "Protocol response has its own deadline: the lesser of30 seconds and remaining captured acknowledged lease lifetime. Existing dispatch ACK deadline remains10 seconds.",
+    "Document/session retirement sends one error before detach; late ACK/error/response cannot reply twice or resolve a replacement connection.",
+    "Foreign page/attachment replies cannot consume original pending state.",
+    "Broker close rejects original pending requests; connection close clears their timers.",
+    "Uncertain dispatched outcomes remain uncertain; page ownership is not released early."
+  ],
+  "privateEvidence": {
+    "baseline": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+    "privateTree": "/tmp/aux-cdp-pending-8b-ui-primitives/web",
+    "sourcePatchSha256": "18e6f415e7be762d6ce0ca632766979a850211727baf549544429c740fc20cb5",
+    "files": {
+      "build1.log": {
+        "bytes": 61,
+        "sha256": "27653cb3bc65b196caa3c435767c6f0cec40997f2bdb84ca0e7eca37fdfed69a"
+      },
+      "tests1.log": {
+        "bytes": 4765,
+        "sha256": "577bb72d93c90ff114686b54c634ab5353a7b95c17757bd3028f68dd90c4700f"
+      },
+      "lint1.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "build2.log": {
+        "bytes": 61,
+        "sha256": "27653cb3bc65b196caa3c435767c6f0cec40997f2bdb84ca0e7eca37fdfed69a"
+      },
+      "tests2.log": {
+        "bytes": 447,
+        "sha256": "22b12c99d7e9fb2c7a02034f43b57724bd8b1cd665cf8bf83d60d59132eee26d"
+      },
+      "lint2.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "format2.log": {
+        "bytes": 66,
+        "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+      },
+      "proposal.patch": {
+        "bytes": 24184,
+        "sha256": "18e6f415e7be762d6ce0ca632766979a850211727baf549544429c740fc20cb5"
+      },
+      "hashes.json": {
+        "bytes": 666,
+        "sha256": "4420d4d1e0ae798bde14d9db7ae4a6e5dadc834ce8a5a097225b1615114ddf1e"
+      },
+      "apply-proof.json": {
+        "bytes": 154,
+        "sha256": "2c0150abdef4fe7157eceebca4c837c1fce641ba3064c74e206699f3ed7d48fc"
+      }
+    },
+    "checks": [
+      {
+        "command": "npx tsc -b",
+        "log": "build1.log",
+        "exitCode": 0
+      },
+      {
+        "command": "pnpm exec vitest run --project unit tests/unit/native-cdp-broker.test.ts",
+        "log": "tests1.log",
+        "exitCode": 1,
+        "passed": 17,
+        "failed": 2,
+        "notes": [
+          "Test expected30s but original captured lease remaining lifetime correctly shortened deadline.",
+          "Test incorrectly required reused caller ID absent on replacement connection rather than exact fresh-session reply."
+        ]
+      },
+      {
+        "command": "npx tsc -b",
+        "log": "build2.log",
+        "exitCode": 0
+      },
+      {
+        "command": "pnpm exec vitest run --project unit tests/unit/native-cdp-broker.test.ts",
+        "log": "tests2.log",
+        "exitCode": 0,
+        "passed": 19,
+        "failed": 0,
+        "durationSeconds": 1.5
+      },
+      {
+        "command": "pnpm exec oxlint apps/runtime/src/native-cdp-broker.ts tests/unit/native-cdp-broker.test.ts",
+        "log": "lint2.log",
+        "exitCode": 0
+      },
+      {
+        "command": "pnpm exec prettier --check apps/runtime/src/native-cdp-broker.ts tests/unit/native-cdp-broker.test.ts",
+        "log": "format2.log",
+        "exitCode": 0
+      }
+    ],
+    "limits": [
+      "Actual protocol response/error tests use an owned temporary Unix WebSocket plus actual RpcChannel and BrowserEgress authority; no native process, standard fixture server or real page is used.",
+      "No actual L06 cause established; ordinary Target.detachedFromTarget may already reject correctly scoped Playwright sessions.",
+      "Response deadline rejects original caller only; it cannot prove native effect cancelled or undone.",
+      "Original dispatch RPC remains bounded by10s independently; no early page ownership release.",
+      "No new native input continuation authority; aside_logic is authoring a separate genuine native receipt path.",
+      "No integrated full check, native launch, provider call, Profile/API access or manual-smoke pass claimed."
+    ]
+  },
+  "rootPatchSHA256": "18e6f415e7be762d6ce0ca632766979a850211727baf549544429c740fc20cb5",
+  "rootAppliedExactPatch": true,
+  "limits": [
+    "This closes confirmed protocol lifetime gaps; the exact L06 suspended command remains unproven.",
+    "Input-triggered navigation continuation and native runtime-child shutdown bounds are separate pending changes.",
+    "Private tests are not current native acceptance."
+  ],
+  "shutdownOrder": {
+    "patchSHA256": "334dd262266f0508cafad1fb07f4c926397cce4631ce15b53fffde4dbc6a5408",
+    "behavior": "Stop reconnect and close original native CDP at start of existing allSettled retirement, before run joins; retain aggregated errors and idempotent later cleanup.",
+    "privateEvidence": {
+      "baseline": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+      "requiresBrokerPatchSha256": "18e6f415e7be762d6ce0ca632766979a850211727baf549544429c740fc20cb5",
+      "patchSha256": "334dd262266f0508cafad1fb07f4c926397cce4631ce15b53fffde4dbc6a5408",
+      "checks": {
+        "shutdown-build1.log": {
+          "sha256": "4800ad1006253a48cbe57836c420457202ae78071dbdb5f013f9a28e198aef76",
+          "bytes": 525
+        },
+        "shutdown-build2.log": {
+          "sha256": "27653cb3bc65b196caa3c435767c6f0cec40997f2bdb84ca0e7eca37fdfed69a",
+          "bytes": 61
+        },
+        "shutdown-tests1.log": {
+          "sha256": "62e70d7c1853c4b8ada1a8dfbe09d67ab2d29afc559703d53f7329ad7bdf7e9c",
+          "bytes": 578
+        },
+        "shutdown-lint1.log": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        "shutdown-lint2.log": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        "shutdown-format2.log": {
+          "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+          "bytes": 66
+        }
+      },
+      "finalRuntimeBuild": {
+        "command": "npx tsc -b",
+        "exitCode": 0,
+        "log": "shutdown-build2.log"
+      },
+      "finalAffected": {
+        "command": "pnpm exec vitest run --project unit tests/unit/native-cdp-broker.test.ts tests/unit/runtime-shutdown.test.ts tests/unit/runtime-cdp-shutdown.test.ts",
+        "exitCode": 0,
+        "files": 3,
+        "passed": 25,
+        "failed": 0,
+        "durationSeconds": 6.4
+      },
+      "chronology": [
+        "First new fixture attempted an unnecessary second install override; TypeScript caught3 fixture typing errors before any test. Fixed to capture original single native install.",
+        "Final rebuilt25-case run passed once; no timeout changes."
+      ],
+      "limits": [
+        "Real private Unix WebSocket/RpcChannel/BrowserEgress/PageOwnership components; native host transport only memory double.",
+        "Actual full main startup is not launched by fixture; source change is the existing retirement owner array ordering.",
+        "Fixture checks work-join order, not an actual native retirement ACK or guarantee of fullprocess5squit.",
+        "No generic page claim released on cancel ACK; original work joins before claim handoff.",
+        "No native/main/Profile/GUI/API/provider/services or standard fixtures launched."
+      ]
+    },
+    "actualNativeShutdown": "Pending verification; no claimed graceful process ACK from unit fixtures"
+  },
+  "integratedCheck": {
+    "command": "npm run check",
+    "runtimeDist": "typecheck ran tsc-b before tests",
+    "exitCode": 0,
+    "testFiles": 858,
+    "tests": 5937,
+    "seconds": 112.49,
+    "lintAdvisories": 572,
+    "lintErrors": 0,
+    "nativeCompilerStopped": true,
+    "log": "/tmp/aux-cdp-shutdown-width-stock-integrated-check-2026-10-18.log",
+    "logSHA256": "73b096cede55461377fbe4841264655aecbe7dd41542e228d776c1d4892a9b63"
+  }
+}

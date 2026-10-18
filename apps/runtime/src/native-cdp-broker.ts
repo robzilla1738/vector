@@ -29,6 +29,8 @@ type Target = {
 };
 type Request = { id: number; method: string; params: Record<string, unknown>; sessionId?: string };
 type Pending = {
+  client: WebSocket;
+  timer: ReturnType<typeof setTimeout>;
   id: number;
   sessionId: string;
   pageId: string;
@@ -56,6 +58,7 @@ type Attachment = { id: string; authority: CdpAuthority };
 const CONTEXT_ID = "aux-profile";
 const MAX_MESSAGE_BYTES = 1024 * 1024;
 const MAX_NATIVE_EVENT_BYTES = 16 * 1024 * 1024;
+const COMMAND_RESPONSE_TIMEOUT_MS = 30_000;
 const PAGE_DOMAINS = new Set([
   "Page",
   "Runtime",
@@ -196,7 +199,7 @@ export class NativeCdpBroker {
       this.childOwners.clear();
       this.autoAttachSessions.clear();
       this.browserSessions.clear();
-      this.pending.clear();
+      this.clearPending();
       this.targets.clear();
       this.autoAttach = false;
       this.discover = false;
@@ -398,6 +401,29 @@ export class NativeCdpBroker {
     });
   }
 
+  private takePending(nativeId: number): Pending | undefined {
+    const pending = this.pending.get(nativeId);
+    if (!pending) return;
+    this.pending.delete(nativeId);
+    clearTimeout(pending.timer);
+    return pending;
+  }
+
+  private refusePending(nativeId: number, error: unknown): void {
+    const pending = this.takePending(nativeId);
+    if (pending?.client === this.client)
+      this.fail({ id: pending.id, sessionId: pending.sessionId, method: "", params: {} }, error);
+  }
+
+  private retirePending(matches: (pending: Pending) => boolean, reason: string): void {
+    for (const [nativeId, pending] of this.pending)
+      if (matches(pending)) this.refusePending(nativeId, new Error(reason));
+  }
+
+  private clearPending(): void {
+    for (const nativeId of this.pending.keys()) this.takePending(nativeId);
+  }
+
   private notify(method: string, params: Record<string, unknown>): void {
     this.send({ method, params });
   }
@@ -433,6 +459,12 @@ export class NativeCdpBroker {
             ([session, target]) => target === id && !this.attachments.get(session)?.authority.current(),
           )
         ) {
+          // Settle the exact original request before detach; the caller may own
+          // an explicit browser session rather than the root auto-attachment.
+          this.retirePending(
+            (pending) => pending.pageId === old.pageId,
+            "Original CDP document authority retired; dispatched command outcome may be uncertain",
+          );
           for (const [sessionId, targetId] of this.sessions)
             if (targetId === id) {
               this.sessions.delete(sessionId);
@@ -445,8 +477,6 @@ export class NativeCdpBroker {
           if (replacement) replacement.info.attached = false;
           this.autoAttachSessions.delete(id);
           if (this.discover) this.notify("Target.targetDestroyed", { targetId: id });
-          for (const [nativeId, pending] of this.pending)
-            if (pending.pageId === old.pageId) this.pending.delete(nativeId);
         }
       this.targets.clear();
       for (const [id, value] of next) this.targets.set(id, value);
@@ -540,14 +570,16 @@ export class NativeCdpBroker {
     delete message.auxNavigationCommandId;
     if (typeof message.id === "number") {
       const pending = this.pending.get(message.id);
-      if (
-        !pending ||
-        pending.pageId !== event.pageId ||
-        pending.attachmentId !== attachmentId ||
-        !this.attachments.get(pending.sessionId)?.authority.current()
-      )
+      if (!pending || pending.pageId !== event.pageId || pending.attachmentId !== attachmentId) return;
+      if (!this.attachments.get(pending.sessionId)?.authority.current()) {
+        this.refusePending(
+          message.id,
+          new Error("Original CDP document authority retired; dispatched command outcome may be uncertain"),
+        );
         return;
-      this.pending.delete(message.id);
+      }
+      this.takePending(message.id);
+      if (pending.client !== this.client) return;
       if (pending.autoAttach && !message.error) {
         if (pending.autoAttach.enabled)
           this.autoAttachSessions.set(pending.autoAttach.targetId, pending.sessionId);
@@ -591,6 +623,10 @@ export class NativeCdpBroker {
       if (typeof child !== "string") return;
       const parent = nativeSession ?? this.childOwners.get(child);
       if (this.attachments.get(child)?.id !== attachmentId) return;
+      this.retirePending(
+        (pending) => pending.sessionId === child,
+        "Original CDP child session detached; dispatched command outcome may be uncertain",
+      );
       this.sessions.delete(child);
       this.attachments.delete(child);
       this.childOwners.delete(child);
@@ -681,8 +717,21 @@ export class NativeCdpBroker {
         if (typeof params.sessionId !== "string" || this.childOwners.get(params.sessionId) !== sessionId)
           throw new Error("Iframe session is not owned by this page");
       } else if (!pageMethodAllowed(method)) throw new Error("CDP method is not page scoped");
+      const acknowledgedExpiresAt = attachment.authority.acknowledgedExpiresAt();
       const nativeId = this.nextNativeId++;
+      // Dispatch ACK is not a protocol response. Bound the latter independently,
+      // without extending the original native lease or retrying an input.
+      const timer = setTimeout(
+        () =>
+          this.refusePending(
+            nativeId,
+            new Error("Original CDP response deadline expired; dispatched command outcome may be uncertain"),
+          ),
+        Math.max(0, Math.min(COMMAND_RESPONSE_TIMEOUT_MS, acknowledgedExpiresAt - Date.now())),
+      );
       this.pending.set(nativeId, {
+        client: socket,
+        timer,
         id: request.id,
         sessionId,
         pageId: target.pageId,
@@ -697,7 +746,7 @@ export class NativeCdpBroker {
           {
             pageId: target.pageId,
             attachmentId: attachment.id,
-            acknowledgedExpiresAt: attachment.authority.acknowledgedExpiresAt(),
+            acknowledgedExpiresAt,
             message: JSON.stringify({
               id: nativeId,
               method,
@@ -708,8 +757,8 @@ export class NativeCdpBroker {
           10_000,
         );
       } catch (error) {
-        this.pending.delete(nativeId);
-        throw error;
+        // A response/retirement can precede this ACK. Never send a second reply.
+        this.refusePending(nativeId, error);
       }
       return null; // Native protocol response arrives as native.cdpMessage.
     }
@@ -771,6 +820,10 @@ export class NativeCdpBroker {
       if (this.browserSessions.delete(params.sessionId)) return {};
       const targetId = this.sessions.get(params.sessionId);
       if (!targetId) throw new Error("Unknown target session");
+      this.retirePending(
+        (pending) => pending.sessionId === params.sessionId,
+        "Original CDP session detached; dispatched command outcome may be uncertain",
+      );
       this.sessions.delete(params.sessionId);
       this.attachments.delete(params.sessionId);
       this.childOwners.delete(params.sessionId);
@@ -799,6 +852,7 @@ export class NativeCdpBroker {
     if (this.closed) return;
     this.closed = true;
     this.refuseNavigations("Original CDP broker closed");
+    this.retirePending(() => true, "Original CDP broker closed; dispatched command outcome may be uncertain");
     this.client?.terminate();
     this.ws.close();
     if (this.server.listening) await new Promise<void>((resolve) => this.server.close(() => resolve()));
