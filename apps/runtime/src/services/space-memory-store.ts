@@ -13,13 +13,18 @@ export type MemoryPublication = {
   checkOwner?: () => Promise<void>;
   commit?: () => (() => void) | undefined;
 };
-type FileRow = { name: string; generation: string; key_name: string; content: string };
-type HistoryRow = {
+export type FileRow = { name: string; generation: string; key_name: string; content: string };
+export type HistoryRow = {
   revision_id: string;
   captured_at: number;
   generation: string;
   key_name: string;
   content: string;
+};
+export type PreparedMemoryGeneration = MemoryGeneration & {
+  workspaceId: string;
+  files: FileRow[];
+  history: HistoryRow[];
 };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
@@ -34,7 +39,7 @@ export class SpaceMemoryStore {
     this.protectedStore = new ProtectedStore(secrets, profileId);
   }
 
-  private keyName(workspaceId: string, generation: string) {
+  keyName(workspaceId: string, generation: string) {
     return `mem_${digest(this.profileId).slice(0, 10)}_${digest(workspaceId).slice(0, 10)}_${generation.slice(2).replaceAll("-", "")}`;
   }
 
@@ -151,18 +156,16 @@ export class SpaceMemoryStore {
     };
   }
 
-  async write(
+  private async prepare(
     workspaceId: string,
     files: Map<string, string>,
     history: MemoryRevision[],
-    prior: MemoryGeneration | null,
-    beforeCommit?: () => void,
-    publication?: MemoryPublication,
+    createRoot: boolean,
   ) {
     const generation = `g-${randomUUID()}`;
     const keyName = this.keyName(workspaceId, generation);
     const factor = randomBytes(32);
-    const key = await this.protectedStore.generationKey("space-memory", factor, !prior);
+    const key = await this.protectedStore.generationKey("space-memory", factor, createRoot);
     const seal = (name: string, value: string) =>
       this.protectedStore.seal(key, "space-memory", `${workspaceId}/${name}`, Buffer.from(value));
     if (history.length > 20 || new Set(history.map((row) => row.revisionId)).size !== history.length)
@@ -206,35 +209,85 @@ export class SpaceMemoryStore {
       32 * 1024 * 1024
     )
       throw new Error("Space memory exceeds the 32 MB reviewed size cap.");
+    return { workspaceId, generation, keyName, files: fileRows, history: historyRows, factor };
+  }
+
+  async prepareDetached(
+    workspaceId: string,
+    files: Map<string, string>,
+    history: MemoryRevision[],
+    plan: (prepared: PreparedMemoryGeneration) => void,
+    check: () => void,
+  ): Promise<PreparedMemoryGeneration> {
+    const { factor, ...prepared } = await this.prepare(workspaceId, files, history, false);
+    try {
+      check();
+      if ((await this.secrets.readSecret(prepared.keyName)).value)
+        throw new Error("The detached Space memory factor identity is already owned.");
+      check();
+      plan(prepared);
+      await this.secrets.storeSecret(prepared.keyName, factor.toString("base64"));
+      check();
+      if ((await this.secrets.readSecret(prepared.keyName)).value !== factor.toString("base64"))
+        throw new Error("Detached Space memory key could not be confirmed.");
+      check();
+      return prepared;
+    } finally {
+      factor.fill(0);
+    }
+  }
+
+  publishDetached(prepared: PreparedMemoryGeneration, prior: MemoryGeneration) {
+    if (prepared.keyName !== this.keyName(prepared.workspaceId, prepared.generation))
+      throw new Error("Detached Space memory identity changed.");
+    this.repo.transaction(() => {
+      const current = this.generation(prepared.workspaceId);
+      if (current?.generation !== prior.generation || current.keyName !== prior.keyName)
+        throw new AuxError("conflict", "The copied Space memory generation changed.");
+      this.publish(prepared.workspaceId, prepared.files, prepared.history);
+    });
+  }
+
+  private publish(workspaceId: string, fileValues: FileRow[], revisionValues: HistoryRow[]) {
+    withSecureDelete(this.repo.db, () => {
+      this.repo.db.prepare("DELETE FROM memory_files WHERE workspace_id=?").run(workspaceId);
+      this.repo.db.prepare("DELETE FROM memory_history WHERE workspace_id=?").run(workspaceId);
+    });
+    const putFile = this.repo.db.prepare(
+      "INSERT INTO memory_files(workspace_id,name,generation,key_name,content) VALUES(?,?,?,?,?)",
+    );
+    const putHistory = this.repo.db.prepare(
+      "INSERT INTO memory_history(workspace_id,revision_id,captured_at,generation,key_name,content) VALUES(?,?,?,?,?,?)",
+    );
+    for (const row of fileValues)
+      putFile.run(workspaceId, row.name, row.generation, row.key_name, row.content);
+    for (const row of revisionValues)
+      putHistory.run(
+        workspaceId,
+        row.revision_id,
+        row.captured_at,
+        row.generation,
+        row.key_name,
+        row.content,
+      );
+  }
+
+  async write(
+    workspaceId: string,
+    files: Map<string, string>,
+    history: MemoryRevision[],
+    prior: MemoryGeneration | null,
+    beforeCommit?: () => void,
+    publication?: MemoryPublication,
+  ) {
+    const prepared = await this.prepare(workspaceId, files, history, !prior);
+    const { generation, keyName, factor, files: fileRows, history: historyRows } = prepared;
     let previous: ReturnType<SpaceMemoryStore["rows"]> | undefined;
     const priorFactor = prior ? (await this.secrets.readSecret(prior.keyName)).value : undefined;
     if (prior && !priorFactor) throw new Error("The prior Space memory key is unavailable.");
     let published = false;
     let retirementStarted = false;
     let rollbackEffect: (() => void) | undefined;
-    const publish = (fileValues: FileRow[], revisionValues: HistoryRow[]) => {
-      withSecureDelete(this.repo.db, () => {
-        this.repo.db.prepare("DELETE FROM memory_files WHERE workspace_id=?").run(workspaceId);
-        this.repo.db.prepare("DELETE FROM memory_history WHERE workspace_id=?").run(workspaceId);
-      });
-      const putFile = this.repo.db.prepare(
-        "INSERT INTO memory_files(workspace_id,name,generation,key_name,content) VALUES(?,?,?,?,?)",
-      );
-      const putHistory = this.repo.db.prepare(
-        "INSERT INTO memory_history(workspace_id,revision_id,captured_at,generation,key_name,content) VALUES(?,?,?,?,?,?)",
-      );
-      for (const row of fileValues)
-        putFile.run(workspaceId, row.name, row.generation, row.key_name, row.content);
-      for (const row of revisionValues)
-        putHistory.run(
-          workspaceId,
-          row.revision_id,
-          row.captured_at,
-          row.generation,
-          row.key_name,
-          row.content,
-        );
-    };
     try {
       await this.secrets.storeSecret(keyName, factor.toString("base64"));
       if ((await this.secrets.readSecret(keyName)).value !== factor.toString("base64"))
@@ -245,7 +298,7 @@ export class SpaceMemoryStore {
         if (this.generation(workspaceId)?.generation !== prior?.generation)
           throw new AuxError("conflict", "Space memory changed while its generation was prepared.");
         previous = this.rows(workspaceId);
-        publish(fileRows, historyRows);
+        this.publish(workspaceId, fileRows, historyRows);
         rollbackEffect = publication?.commit?.();
       });
       published = true;
@@ -271,7 +324,7 @@ export class SpaceMemoryStore {
           this.repo.transaction(() => {
             if (this.generation(workspaceId)?.generation === generation) {
               rollbackEffect?.();
-              publish(previous!.files, previous!.history);
+              this.publish(workspaceId, previous!.files, previous!.history);
             }
           });
         await this.secrets.storeSecret(keyName, "");

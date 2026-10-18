@@ -50,7 +50,7 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   };
   if (method === "memory.pipeline.policy") return pipeline.policy(params.workspaceId);
   if (method === "memory.pipeline.setPolicy")
-    return changed(pipeline.setPolicy(params.workspaceId, params.enabled));
+    return changed(await pipeline.setPolicy(params.workspaceId, params.enabled));
   if (method === "memory.pipeline.extractRun") {
     const result = await pipeline.extractRun(params.workspaceId, params.runId);
     return changed(result);

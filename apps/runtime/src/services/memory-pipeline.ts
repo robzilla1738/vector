@@ -1,3 +1,7 @@
+import { basename } from "node:path";
+import { SpaceMemoryRestore, memoryLogicalDigest } from "./space-memory-restore.js";
+import { memoryRestoreSources } from "./memory-restore-sources.js";
+import { projectMemoryRetirement, selectMemoryRetirement } from "./memory-retirement.js";
 import {
   MemoryDocumentRecordSchema,
   MemoryDreamOperationSchema,
@@ -118,6 +122,9 @@ export class MemoryPipeline {
   private recallWork = new Map<string, Set<AbortController>>();
   private recallPending = new Map<string, Set<Promise<unknown>>>();
   private memoryEpochs = new Map<string, object>();
+  private restoreDataDir?: string;
+  private restoreCleanup?: Promise<void>;
+  private restoreWork?: { controller: AbortController; promise: Promise<unknown> };
   private closed = false;
   private closing?: Promise<void>;
   private updates = new Set<Promise<unknown>>();
@@ -136,8 +143,8 @@ export class MemoryPipeline {
   >();
   constructor(
     private repo: Repo,
-    secrets: Secrets,
-    profileId: string,
+    private secrets: Secrets,
+    private profileId: string,
     private readonly extractor?: MemoryExtractor,
     private readonly dreamer?: MemoryDreamer,
     private readonly recallDependencies?: MemoryRecallDependencies,
@@ -146,21 +153,170 @@ export class MemoryPipeline {
     this.storage = new SpaceMemoryStore(repo, secrets, profileId);
   }
 
+  configureOrdinaryRestore(dataDir: string) {
+    if (this.restoreDataDir && this.restoreDataDir !== dataDir)
+      throw new Error("The original restore directory changed.");
+    this.restoreDataDir = dataDir;
+    return this;
+  }
+
+  async cleanupOrdinaryRestore(dataDir: string) {
+    this.configureOrdinaryRestore(dataDir);
+    if (this.restoreCleanup) return this.restoreCleanup;
+    const original = new SpaceMemoryRestore(this.repo, this.secrets, this.profileId, dataDir).cancel();
+    this.restoreCleanup = original;
+    try {
+      await original;
+    } finally {
+      if (this.restoreCleanup === original) this.restoreCleanup = undefined;
+    }
+  }
+
+  async cancelOrdinaryRestore(dataDir: string) {
+    this.configureOrdinaryRestore(dataDir);
+    const original = this.restoreWork;
+    original?.controller.abort();
+    await original?.promise.catch(() => {});
+    await this.cleanupOrdinaryRestore(dataDir);
+  }
+
+  async ownOrdinaryRestore<T>(dataDir: string, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (this.closed || this.restoreWork)
+      throw new AuxError("conflict", "The original restore preparation is unavailable.");
+    this.configureOrdinaryRestore(dataDir);
+    const controller = new AbortController();
+    // Install the actual controller before the first cleanup, key or file await.
+    const promise = Promise.resolve().then(async () => {
+      await this.cleanupOrdinaryRestore(dataDir);
+      controller.signal.throwIfAborted();
+      if (this.closed) throw new AuxError("cancelled", "The original restore owner retired.");
+      return work(controller.signal);
+    });
+    const original = { controller, promise };
+    this.restoreWork = original;
+    try {
+      return await promise;
+    } finally {
+      if (this.restoreWork === original) this.restoreWork = undefined;
+    }
+  }
+
+  async prepareOrdinaryRestoreCopy(
+    destination: Repo,
+    dataDir: string,
+    database: string,
+    artifacts: string,
+    sourceDigest: string,
+    copiedSources: { affected: ReadonlySet<string>; runs: { runId: string; config: Run["config"] }[] },
+    signal: AbortSignal,
+  ) {
+    const checkOwner = () => {
+      signal.throwIfAborted();
+      if (this.closed || this.currentStateDigest() !== sourceDigest)
+        throw new AuxError("cancelled", "The original restore Memory snapshot retired.");
+    };
+    checkOwner();
+    const sources = await memoryRestoreSources(this.repo, checkOwner);
+    const logical = await this.recoverySnapshot();
+    sources.check();
+    checkOwner();
+    const affected = new Set([...sources.affected, ...copiedSources.affected]);
+    const sourceConfigs = new Map(
+      [...copiedSources.runs, ...sources.runs].map((run) => [run.runId, run.config ?? {}]),
+    );
+    const owner = new SpaceMemoryRestore(this.repo, this.secrets, this.profileId, dataDir);
+    const operationId = owner.begin(sourceDigest, sources.digest, basename(database), basename(artifacts));
+    const copiedStore = new SpaceMemoryStore(destination, this.secrets, this.profileId);
+    for (const state of logical) {
+      const prior = this.storage.generation(state.workspaceId);
+      if (!prior) throw new Error("The original restore Memory generation disappeared.");
+      const ids = selectMemoryRetirement(state, { sourceRunIds: affected, mode: "source" }, sourceConfigs);
+      const projection = projectMemoryRetirement(state, ids, {
+        sourceRunIds: affected,
+        mode: "source",
+        at: Date.now(),
+      });
+      let projected = { ...state, ...projection };
+      const retiredInSpace = projection.retiredSourceRunIds;
+      const retired = new Set([
+        ...(state.retiredSources?.sourceHashes ?? []),
+        ...[...retiredInSpace].map(sha),
+      ]);
+      // Do not rewrite or rekey unrelated CURRENT Memory merely absent from an older backup.
+      const content = (space: RecoverySpaceMemory) =>
+        JSON.stringify([
+          space.claims,
+          space.inbox,
+          space.history,
+          space.documents ?? [],
+          space.dreams ?? [],
+          space.activity ?? [],
+        ]);
+      if (content(projected) === content(state)) continue;
+      if (retired.size > 5000)
+        throw new AuxError("conflict", "Restore Memory retirement exceeds its exact source-hash budget.");
+      projected = {
+        ...projected,
+        retiredSources: { before: state.retiredSources?.before ?? 0, sourceHashes: [...retired] },
+      };
+      sources.check();
+      checkOwner();
+      const files = this.generationFiles(projected);
+      const prepared = await this.storage.prepareDetached(
+        state.workspaceId,
+        files,
+        projected.history,
+        (value) => owner.plan(operationId, value, prior, memoryLogicalDigest(files, projected.history)),
+        () => {
+          sources.check();
+          checkOwner();
+        },
+      );
+      sources.check();
+      checkOwner();
+      copiedStore.publishDetached(prepared, prior);
+      const removed = retiredInSpace;
+      for (const id of removed)
+        destination.db
+          .prepare(
+            "INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)",
+          )
+          .run(state.workspaceId, id, Date.now());
+    }
+    sources.check();
+    checkOwner();
+    owner.ready(operationId, destination);
+    return {
+      operationId,
+      check: () => {
+        owner.checkFiles(operationId);
+        sources.check();
+        checkOwner();
+      },
+    };
+  }
+
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
+    const restore = this.restoreWork;
+    restore?.controller.abort();
+    const restoreCleanup = restore
+      ? restore.promise.catch(() => {}).then(() => this.cleanupOrdinaryRestore(this.restoreDataDir!))
+      : (this.restoreCleanup ?? Promise.resolve());
     for (const controller of this.extractions.values()) controller.abort();
     for (const work of this.dreamWork.values()) work.controller.abort();
     for (const work of this.recallWork.values()) for (const controller of work) controller.abort();
     for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
     this.pastePreviews.clear();
     // Rejected work is still joined: keep the original operation error with its caller.
-    const closing = Promise.allSettled([...this.pending, ...this.updates, this.recallEngine.close()]).then(
-      () => {
-        for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
-        this.pastePreviews.clear();
-      },
-    );
+    const closing = Promise.all([
+      restoreCleanup,
+      Promise.allSettled([...this.pending, ...this.updates, this.recallEngine.close()]),
+    ]).then(() => {
+      for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
+      this.pastePreviews.clear();
+    });
     this.closing = closing;
     return closing;
   }
@@ -235,7 +391,7 @@ export class MemoryPipeline {
     return readWorkspaceMemory(this.repo, workspaceId).enabled ? policy : { ...policy, enabled: false };
   }
 
-  setPolicy(workspaceId: string, enabled: boolean) {
+  async setPolicy(workspaceId: string, enabled: boolean) {
     if (this.closed) throw new AuxError("cancelled", "Space memory is closed.");
     const policy = MemoryPipelinePolicySchema.parse({ ...this.policy(workspaceId), workspaceId, enabled });
     if (!enabled) {
@@ -244,8 +400,8 @@ export class MemoryPipeline {
       if (this.extractionQueues.has(workspaceId)) this.extractionEpochs.set(workspaceId, {});
       else this.extractionEpochs.delete(workspaceId);
     }
-    if (!enabled) void this.retireWorkspace(workspaceId);
     this.repo.setSetting(`memoryPipelinePolicy:${workspaceId}`, policy);
+    if (!enabled) await this.retireWorkspace(workspaceId);
     return policy;
   }
 
@@ -690,6 +846,52 @@ export class MemoryPipeline {
     return { revisionId: randomUUID(), capturedAt: Date.now(), claims };
   }
 
+  private generationFiles(state: RecoverySpaceMemory) {
+    return new Map<string, string>([
+      [
+        "retired-sources.json.enc",
+        JSON.stringify(
+          retiredMemorySourcesSchema.parse(state.retiredSources ?? { before: 0, sourceHashes: [] }),
+        ),
+      ],
+      [
+        "documents.json.enc",
+        JSON.stringify(
+          validateMemoryDocuments(
+            MemoryDocumentRecordSchema.array()
+              .max(100)
+              .parse(state.documents ?? []),
+          ),
+        ),
+      ],
+      [
+        "dream-operations.json.enc",
+        JSON.stringify(
+          validateDreamOperations(
+            MemoryDreamOperationSchema.array()
+              .max(200)
+              .parse(state.dreams ?? []),
+          ),
+        ),
+      ],
+      ["claims.json.enc", JSON.stringify(state.claims)],
+      ["search-index.json.enc", JSON.stringify(buildMemorySearchIndex(state.claims))],
+      ["inbox.json.enc", JSON.stringify(state.inbox)],
+      ["imports.json.enc", JSON.stringify(state.imports ?? [])],
+      [
+        "activity.json.enc",
+        JSON.stringify(
+          MemoryExtractionSchema.array()
+            .max(200)
+            .parse(state.activity ?? []),
+        ),
+      ],
+      ["summary.md.enc", this.summary(state.claims)],
+      ["handbook.md.enc", this.handbook(state.claims)],
+      ...state.claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
+    ]);
+  }
+
   private async writeGeneration(
     workspaceId: string,
     claims: MemoryClaim[],
@@ -712,40 +914,18 @@ export class MemoryPipeline {
         : null;
     const receipts = imports ?? previous!.imports;
     const operations = activity ?? previous!.activity;
-    const files = new Map<string, string>([
-      [
-        "retired-sources.json.enc",
-        JSON.stringify(retiredMemorySourcesSchema.parse(extras?.retiredSources ?? previous!.retiredSources)),
-      ],
-      [
-        "documents.json.enc",
-        JSON.stringify(
-          validateMemoryDocuments(
-            MemoryDocumentRecordSchema.array()
-              .max(100)
-              .parse(extras?.documents ?? previous!.documents),
-          ),
-        ),
-      ],
-      [
-        "dream-operations.json.enc",
-        JSON.stringify(
-          validateDreamOperations(
-            MemoryDreamOperationSchema.array()
-              .max(200)
-              .parse(extras?.dreams ?? previous!.dreams),
-          ),
-        ),
-      ],
-      ["claims.json.enc", JSON.stringify(claims)],
-      ["search-index.json.enc", JSON.stringify(buildMemorySearchIndex(claims))],
-      ["inbox.json.enc", JSON.stringify(inbox)],
-      ["imports.json.enc", JSON.stringify(receipts)],
-      ["activity.json.enc", JSON.stringify(MemoryExtractionSchema.array().max(200).parse(operations))],
-      ["summary.md.enc", this.summary(claims)],
-      ["handbook.md.enc", this.handbook(claims)],
-      ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
-    ]);
+    const files = this.generationFiles({
+      workspaceId,
+      claims,
+      inbox,
+      history,
+      verifiedFiles: [],
+      imports: receipts,
+      activity: operations,
+      documents: extras?.documents ?? previous!.documents,
+      dreams: extras?.dreams ?? previous!.dreams,
+      retiredSources: extras?.retiredSources ?? previous!.retiredSources,
+    });
     await this.storage.write(workspaceId, files, history, prior, beforeCommit, publication);
   }
 
@@ -1510,13 +1690,19 @@ export class MemoryPipeline {
 
   /** Retire original asynchronous work before an owner edit, pause, exclusion or Forget. */
   async retireWorkspace(workspaceId: string) {
+    const restore = this.restoreDataDir ? this.cancelOrdinaryRestore(this.restoreDataDir) : Promise.resolve();
     this.memoryEpochs.set(workspaceId, {});
     this.recallEngine.invalidate();
     for (const controller of this.recallWork.get(workspaceId) ?? []) controller.abort();
-    await Promise.allSettled(this.recallPending.get(workspaceId) ?? []);
     const work = this.dreamWork.get(workspaceId);
     work?.controller.abort();
-    if (work) await work.promise.catch(() => {});
+    const results = await Promise.allSettled([
+      restore,
+      Promise.allSettled(this.recallPending.get(workspaceId) ?? []),
+      work?.promise.catch(() => {}),
+    ]);
+    const cleanup = results[0]!;
+    if (cleanup.status === "rejected") throw cleanup.reason;
   }
 
   async retireOwnerDerivatives(workspaceId: string) {
@@ -2731,105 +2917,32 @@ export class MemoryPipeline {
         dreams,
         retiredSources: retirement,
       } = await this.readClaims(input.workspaceId);
-      const universe = [...claims, ...inbox, ...history.flatMap((revision) => revision.claims)];
-      const forgottenIds = new Set(
-        universe
-          .filter((claim) =>
-            expiredBefore !== undefined
-              ? claim.capturedAt <= expiredBefore
-              : input.all ||
-                (input.claimId ? claim.claimId === input.claimId : claim.sourceRunId === input.sourceRunId),
-          )
-          .map((claim) => claim.claimId),
+      const sourceConfigs = new Map(
+        [...claims, ...inbox, ...history.flatMap((revision) => revision.claims)].map((claim) => [
+          claim.sourceRunId,
+          this.repo.getRun(claim.sourceRunId)?.config ?? {},
+        ]),
       );
-      // Older generations could contain claims extracted from a later turn's
-      // inherited context. Remove those descendants in the same generation,
-      // including revisions, so restoring history cannot revive the source.
-      let expanded = true;
-      while (expanded) {
-        expanded = false;
-        const forgottenSources = universe.filter((claim) => forgottenIds.has(claim.claimId));
-        for (const claim of universe) {
-          if (forgottenIds.has(claim.claimId)) continue;
-          const run = this.repo.getRun(claim.sourceRunId);
-          const context = run?.config?.context ?? "";
-          const parents = run?.config?.contextRunIds ?? [];
-          if (
-            forgottenSources.some(
-              (source) =>
-                parents.includes(source.sourceRunId) ||
-                (source.source?.kind === "owner-paste"
-                  ? context.includes(`[owner-pasted, unverified; import:${source.source.importId}]`)
-                  : context.includes(
-                      `[run:${source.sourceRunId}#${source.source?.quoteSha256.slice(0, 12) ?? ""}]`,
-                    )),
-            )
-          ) {
-            forgottenIds.add(claim.claimId);
-            expanded = true;
-          }
-        }
-      }
-      const keep = (claim: MemoryClaim) => !forgottenIds.has(claim.claimId);
-      const retiredAt = Date.now();
-      const preservedOwnerEdits = retiredSource
-        ? [...claims, ...inbox]
-            .filter((claim) => forgottenIds.has(claim.claimId) && claim.ownerEdit)
-            .map((claim) =>
-              MemoryClaimSchema.parse({
-                ...claim,
-                text: "Original source retired.",
-                source: undefined,
-                sourceRetired: { at: retiredAt },
-                contradictionIds: undefined,
-                mergedClaimIds: undefined,
-              }),
-            )
-        : [];
-      const remaining = [...claims.filter(keep), ...preservedOwnerEdits];
-      if (remaining.length > 200)
-        throw new AuxError(
-          "conflict",
-          "Retained owner edits exceed the inspection document limit; no source retirement was committed.",
-        );
-      const pending = inbox.filter(keep);
-      const forgotten = forgottenIds.size;
-      const retainedActivity = activity.filter(
-        (entry) =>
-          (expiredBefore !== undefined ? entry.capturedAt > expiredBefore : !input.all) &&
-          entry.sourceRunId !== input.sourceRunId &&
-          !entry.candidateIds.some((id) => forgottenIds.has(id) || id === input.claimId),
+      const forgottenIds = selectMemoryRetirement(
+        { claims, inbox, history },
+        { ...input, expiredBefore, mode: retiredSource ? "source" : "owner" },
+        sourceConfigs,
       );
-      const keptDocuments = documents.flatMap((document) => {
-        const affected = document.sourceRefs.some(
-          (ref) => forgottenIds.has(ref.claimId) || ref.sourceRunId === input.sourceRunId,
-        );
-        if (retiredSource && document.authoredBy === "owner")
-          return [affected ? { ...document, sourceRefs: [], sourceRetired: { at: retiredAt } } : document];
-        return !forgetAll && !affected ? [document] : [];
-      });
-      const forgottenRunIds = new Set(
-        universe.filter((claim) => forgottenIds.has(claim.claimId)).map((claim) => claim.sourceRunId),
+      const projection = projectMemoryRetirement(
+        { claims, inbox, history, activity, documents, dreams },
+        forgottenIds,
+        { ...input, expiredBefore, mode: retiredSource ? "source" : "owner", at: Date.now() },
       );
-      if (input.sourceRunId) forgottenRunIds.add(input.sourceRunId);
-      const keptDreams = dreams.filter(
-        (operation) =>
-          !forgetAll &&
-          (expiredBefore === undefined || operation.startedAt > expiredBefore) &&
-          !operation.sourceRunIds.some((runId) => forgottenRunIds.has(runId)) &&
-          !operation.changes.some((change) =>
-            change.sourceRefs.some(
-              (ref) => forgottenIds.has(ref.claimId) || forgottenRunIds.has(ref.sourceRunId),
-            ),
-          ),
-      );
-      const activityRemoved =
-        activity.length -
-        retainedActivity.length +
-        documents.length -
-        keptDocuments.length +
-        dreams.length -
-        keptDreams.length;
+      const {
+        claims: remaining,
+        inbox: pending,
+        activity: retainedActivity,
+        documents: keptDocuments,
+        dreams: keptDreams,
+        forgottenRunIds,
+        forgotten,
+        activityRemoved,
+      } = projection;
       const retiredIds = [
         ...new Set([...retirement.sourceHashes, ...[...forgottenRunIds, ...interruptedSources].map(sha)]),
       ];
@@ -2844,7 +2957,7 @@ export class MemoryPipeline {
       };
       if (forgotten || activityRemoved || interruptedSources.length || retirementNeeded) {
         await beforeRemoval?.();
-        const sanitized = history.map((revision) => ({ ...revision, claims: revision.claims.filter(keep) }));
+        const sanitized = projection.history;
         await this.writeGeneration(
           input.workspaceId,
           remaining,

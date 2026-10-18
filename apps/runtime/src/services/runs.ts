@@ -769,6 +769,7 @@ export class RunService {
       const owner = () => {
         if (this.closed) throw new AuxError("cancelled", "The original article retirement owner closed.");
       };
+      await this.deps.memoryPipeline?.retireWorkspace(workspaceId);
       const sourceFingerprint = () => this.articleSourceFingerprint(workspaceId, memoryId);
       const originalSources = sourceFingerprint();
       const transcript = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher);

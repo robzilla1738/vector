@@ -227,7 +227,9 @@ function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encryp
     }
   }
   if (direction === "decrypt")
-    db.prepare("DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3')").run();
+    db.prepare(
+      "DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3','space_memory_restore_v1')",
+    ).run();
   else
     db.prepare(
       "INSERT INTO aux_meta(key,value) VALUES('field_codec_v3','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -694,6 +696,7 @@ export async function stageRecoveryPackage(
     const sourceTables = manifest.sqliteTables;
     if (!Array.isArray(sourceTables) || sourceTables.some((table) => typeof table !== "string"))
       throw new Error("Recovery SQLite inventory is invalid.");
+    db.prepare("DELETE FROM aux_meta WHERE key='space_memory_restore_v1'").run();
     rebindProfile(db, manifest.sourceProfileId, profileId);
     if (
       JSON.stringify([...sourceTables].sort()) !==

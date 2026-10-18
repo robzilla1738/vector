@@ -184,12 +184,20 @@ closure is stable. Live Forget joins original work and removes derived claim,
 document, Dream/history and index bodies through the existing Memory generation.
 Exact owner edits remain inspectable as typed sourceRetired records, excluded from
 recall and generated/model views; independent owner documents remain separate.
-Portable transcript cleanup does not yet remove article-derived quotes from the
-CURRENT independent Memory generation preserved during ordinary restore. Its
-[detached generation ownership design](design/aside-memory-restore-ownership.md)
-is pending implementation. Legacy derived notes can also remain recall-eligible
-after article expiry before discovery; the separate
-[source admission design](design/aside-memory-source-admission.md) remains pending.
+Ordinary restore preserves CURRENT independent Memory and projects only proven
+article-derived records through that shared retirement transform. Changed Spaces
+receive detached generations; unchanged ciphertext and factors remain exact. One
+metadata-only protected journal records each planned factor before its native store
+under a scoped durable commit. Cancel/Forget/Pause/shutdown join the original
+stage and propagate cleanup debt. Before API publication, authenticated native
+startup cancels abandoned source work or verifies the actual applied generation,
+durably checkpoints its DB and parent, then retires exact prior factors. Stale
+pre-native apply can reach that owner without granting key authority; hostless or
+unverified ownership fails closed. Successful apply does not cancel its active new
+factors. [The restore record](evidence/aside-memory-restore-ownership-2026-10-18.json)
+separates source/tests from unobserved native behavior. Legacy derived notes can
+still remain recall-eligible after article expiry before discovery; the separate
+[source admission correction](design/aside-memory-source-admission.md) is pending.
 
 Conversation documents preserve complete metadata collections with separately encrypted immutable bodies and previews. Accepted turns store exact chat/attachment/content-hash references. Provider requests resolve relevant excerpts one body at a time under the remaining input budget and original cancellation/source fences; raw document context is not copied into new durable run configurations. Used sources survive removal for exact retries and branches; source-chat deletion and Forget retire the corresponding bodies and references. Historical inline collections convert atomically on first access rather than blocking startup with a full scan.
 

@@ -157,11 +157,15 @@ closure alternates typed Memory dependencies and authenticated run families for
 live Forget and portable transcript cleanup. Original patch/review failures remain
 recorded. The integrated check passes5,754tests/852files in137.02s with dist
 rebuilt first and unchanged570 advisory warnings; current native acceptance stays
-open. A5 still requires the
-[expired-source admission correction](design/aside-memory-source-admission.md)
-and [physical restore generation ownership](design/aside-memory-restore-ownership.md).
-These are designs, not implemented or accepted capabilities. A5/A6/work-details
-acceptance stays open; see
+open. The corrected physical restore slice now owns detached changed-Space
+factors, durable metadata/apply boundaries, original stage cancellation/join and
+authenticated pre-API finalization. Independent review clears the source;163
+private affected cases pass. The root integrated check passes5,777tests/853files
+in125.68s after rebuilding dist, with unchanged570 advisory warnings. The
+[restore record](evidence/aside-memory-restore-ownership-2026-10-18.json) preserves
+initial failures and the unobserved hardware/native limits. A5 still requires the
+[expired-source admission correction](design/aside-memory-source-admission.md),
+which is being implemented separately. A5/A6/work-details acceptance stays open; see
 [retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json) and
 [the legacy correction](evidence/aside-legacy-memory-retirement-2026-10-18.json).
 

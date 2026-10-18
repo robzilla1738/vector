@@ -149,14 +149,24 @@ reviewed fixture correction. After rebuilding dist, the integrated check passes
 all5,754tests/852files in137.02s; typechecking passes and the570 advisory lint
 warnings are unchanged. The first check's four fixture failures remain recorded.
 
-Two Memory gaps remain open: a legacy derived note can still be recalled after its
-article expires before explicit discovery, and ordinary restore can retain its
-generated quote inside CURRENT independent Space Memory. The
-[admission design](design/aside-memory-source-admission.md) and
-[restore ownership design](design/aside-memory-restore-ownership.md) specify the
-remaining implementations; neither design is a completed fix. The latter must
-preserve live generation factors until apply rather than erase shared keys from
-a staged database. A5 and integrated readiness remain incomplete.
+Ordinary restore now projects proven article-derived CURRENT Memory through a
+shared retirement transform and prepares detached generations only for changed
+Spaces. Live prior keys survive prepare/Cancel; original stage ownership joins
+Forget, Pause and shutdown. Metadata-only durable plans and authenticated native
+startup handle stale/missing staging files, actual apply, lost key acknowledgements
+and exact prior-factor retirement before API publication. Existing tombstones,
+owner text and unrelated per-Space hashes/watermarks remain exact. Independent
+review clears the corrected source;163 distinct affected cases pass privately.
+After rebuilding dist, the integrated check passes all5,777tests/853files in
+125.68s; typechecking passes and570 existing advisory warnings are unchanged.
+[Restore evidence](evidence/aside-memory-restore-ownership-2026-10-18.json)
+preserves the initial failures and separates source durability from hardware/native
+acceptance. These changes are not staged in the compiled candidate.
+
+The separate legacy-derived model-admission gap remains open: an old extracted
+note can still be recalled after article expiry before explicit discovery.
+[That correction](design/aside-memory-source-admission.md) is being implemented
+and reviewed separately. A5 and integrated readiness remain incomplete.
 
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/

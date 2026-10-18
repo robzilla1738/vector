@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "integratedBase": "f5d87ef5e09b1e9f48a3e077c42bbd50ddcef8c9",
+  "nativeCandidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "nativeStaged": false,
+  "scope": "K1 physical source retirement in CURRENT independent Space Memory during ordinary restore; K2 model admission remains separate.",
+  "patch": {
+    "path": "/tmp/aux-space-memory-restore-599-final-v2.patch",
+    "sha256": "e8a7122db9fc347d5497f043fdb668442cf72ee9e6d3bee3ef5a5c20bf57b6c8"
+  },
+  "manifest": {
+    "path": "/tmp/aux-space-memory-restore-599-final-v2-hashes.json",
+    "sha256": "9df1b5b1d64f896f0aa0809698e62eeb7a7682fcf8d9137b2792c06ee015df82"
+  },
+  "checkpoint": {
+    "path": "/tmp/aux-space-memory-restore-599-checkpoint-v1.patch",
+    "sha256": "92adf054329cea7774c91e7979449472867285bdbd88b3ac678ef86dde951804"
+  },
+  "delta": {
+    "path": "/tmp/aux-space-memory-restore-599-v2-delta.patch",
+    "sha256": "b035fe0b552da8ef7517b4eb9c4960f89f6a4929d97dbed0763cbaa5056743e3"
+  },
+  "handoff": {
+    "path": "/tmp/aux-space-memory-restore-599-final-v2-handoff.md",
+    "sha256": "903e268e40491ab438b8371ca0183464fa8bbdbfc39e7936623b0de11d1bb31c"
+  },
+  "rootApplyProof": {
+    "path": "/tmp/aux-space-memory-restore-final-v2-root-apply-proof-2026-10-18.json",
+    "sha256": "3bafe58030aec0dff2712de981649f59ccf82c94631240f557ad6bb0da4a5702"
+  },
+  "finalSourcePostimages": {
+    "apps/runtime/src/services/memory-retirement.ts": "79823d87498b3e841224b738855f1a816d13c3a8f475a3e4735928a2552dd1b9",
+    "apps/runtime/src/services/memory-restore-sources.ts": "de61bf9a60aaf779c0d5f525f6993df51d9bd278995a96336288170a485ca8ba",
+    "apps/runtime/src/services/space-memory-restore.ts": "50cef8e75b5a398570653e77404802a275ef499ae6117b897e74233f35d3d641",
+    "apps/runtime/src/services/space-memory-store.ts": "cbc3d695746779bb8d735dbea1a77cfb70d10790e86d07fd8374bc6a6a410389",
+    "apps/runtime/src/services/memory-pipeline.ts": "9824580031801f38cdde01689fdf9d73aa6a5c99c98cd26de00fcc6589b01260",
+    "apps/runtime/src/services/runtime-backup.ts": "b406d50b228d3fa1e66159c0195db532432df57b9a4423c1c69043ce78840872",
+    "apps/runtime/src/services/runs.ts": "80aaed03bf986ed64929ce22b8352b39a0efaf57d7df4348a3cfabf856be7231",
+    "apps/runtime/src/services/recovery-package.ts": "da6ad1ae654e4def2890bdf56d3270c980ac2ca0862c47e6a317f6243a99a4a6",
+    "apps/runtime/src/api/methods/installation.ts": "61f13152291b46ef61444f5b4d7c33a467bbeb964ecd08aa05f4d945dabf395c",
+    "apps/runtime/src/api/methods/memory.ts": "4fb8899064f33e0bbd0a1d05d407beb5b03006a8b4b349eb5c926d38bd010cac",
+    "apps/runtime/src/main.ts": "d8ff376986931611bb9fe2e83a53d3e1c02caac268f7fd1ae971012b05814142",
+    "tests/unit/memory-article-provenance.test.ts": "35b72857c5e89b01850f3d91df7e7722601e7b1ebc56634f75821526202401b1",
+    "tests/unit/memory-retirement-selection.test.ts": "46e92b3203a5d1d42d2d57d35b9d0bc5221581f9fba0acd5849e91657c157a45",
+    "tests/unit/recovery-package.test.ts": "3f7fcf6881cce5f57fbdbb8604d1264708246f5e6e27dec9cea8ef73bcf47cae",
+    "tests/fixtures/historical-memory.ts": "6cdca8e4dec22ef121cbdb7d5e9f4d82b1a3603df23e39473cdbf1909996778e"
+  },
+  "sharedHistoricalFixture": {
+    "path": "tests/fixtures/historical-memory.ts",
+    "owner": "K2",
+    "frozenPath": "/tmp/aux-memory-admission-99-v1-postimages/tests/fixtures/historical-memory.ts",
+    "sha256": "6cdca8e4dec22ef121cbdb7d5e9f4d82b1a3603df23e39473cdbf1909996778e",
+    "included": false
+  },
+  "changes": [
+    "One pure live/copy retirement projection and bounded reverse dependency queue preserve exact owner edits, existing tombstones and unrelated Memory. Only actually retired per-Space sources enter retirement hashes/watermarks; genuine hash overflow refuses instead of sweeping unrelated notes.",
+    "Changed Spaces get detached authenticated generations; unchanged ciphertext/factors remain exact. Source live prior factors survive prepare/Cancel. Metadata-only encrypted aux_meta journal registers exact operation/Profile/files/generation/key/hash identities before native stores.",
+    "Scoped independent SQLite FULL commits preserve journal plans before native factor storage, with prior connection settings restored. Raw pre-native journal presence grants no key action.",
+    "Original stage work is registered before awaits; article/desktop Forget, Pause and shutdown abort and join original late writes/cleanup. Ready cancellation is serialized and cleanup failures propagate before erasure acknowledgement.",
+    "Native startup before migrations/services/API authenticates source cancellation or actual destination completion; unknown/hostless ownership fails closed. Exact DB/WAL/parent durability precedes old-key retirement; lost ACK resumes same operation without rollback/reallocation.",
+    "Successful apply uses files-only pending cleanup. Explicit source-retaining recovery-package policy stays separate; transient ordinary-restore ownership is omitted."
+  ],
+  "interfaces": {
+    "newPublicMethods": 0,
+    "sqlMigration": false,
+    "nativeProtocolChange": false,
+    "journal": "One metadata-only protected aux_meta value space_memory_restore_v1; no source text or factor values.",
+    "cancel": "Existing installation Cancel passes actual MemoryPipeline owner.",
+    "startup": "Internal cleanupRequired handoff reaches authenticated native finalizer without accepting stale application."
+  },
+  "reviews": [
+    {
+      "phase": "checkpoint",
+      "result": "changes requested",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-checkpoint-v1-independent-review.json",
+        "sha256": "e52ed5833773740d83d6f39e30fa4d35e02a4793f379866bcdfcac8973ff173f"
+      }
+    },
+    {
+      "phase": "checkpoint root",
+      "result": "changes requested; P1-P4",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-checkpoint-v1-root-review.json",
+        "sha256": "b01ae59ba298dcae930db752720f90c0861810fb15be5a10ef215e4ce4f05484"
+      }
+    },
+    {
+      "phase": "corrected v2",
+      "result": "no remaining blocker in reviewed scope; hashes/fresh replay verified",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-599-v2-independent-review.json",
+        "sha256": "7d7b180136151ad9df1a2581d1392ddbe40cc7fac8fcce90f6e8fc0a787399c6"
+      }
+    }
+  ],
+  "privateValidation": {
+    "initialRestore": {
+      "result": "1 passed/2 failed/45 skipped; fixture corrections needed, not green",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-599-v1/restore-first.log",
+        "sha256": "ff5c930a98defc95ef627e3bc50e2c1a8a0c689a98962054d063cd0b26bf1f58"
+      }
+    },
+    "firstAffected": {
+      "passed": 95,
+      "failed": 1,
+      "filesPassed": 6,
+      "filesFailed": 1,
+      "seconds": 9.52,
+      "issue": "Existing recovery fixture expected pre-native rejection; now verifies cleanupRequired plus authenticated original cancellation.",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-599-v1/affected-first.log",
+        "sha256": "b232d0184dbb2141915dfd8a114e88f78a4679d06449ea57caefadc41a4307c8"
+      }
+    },
+    "finalAffected": {
+      "passed": 76,
+      "failed": 0,
+      "files": 3,
+      "seconds": 16.33,
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-599-v1/affected-final.log",
+        "sha256": "6b41dfae6112fabab7b8e1ef15ef0e54edb436b6ceb42c92a4595a8a27854b1f"
+      }
+    },
+    "distinctAffectedCases": 163,
+    "distinctCounting": "Final provenance67+recovery8+graph1=76, plus87 unaffected unique MemoryPipeline/Dream/boundaries/listed/runtime cases from first run; no exploratory duplicates counted.",
+    "runtimeBuild": {
+      "path": "/tmp/aux-space-memory-restore-599-v1/build12.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "testTypes": {
+      "path": "/tmp/aux-space-memory-restore-599-v1/test-types2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "lint": {
+      "result": "0 errors; one existing runs control-regex advisory",
+      "evidence": {
+        "path": "/tmp/aux-space-memory-restore-599-v1/lint3.log",
+        "sha256": "5deb940d003e4bf2e0ddc5ffe5bff4b6e8dd2c9c8068a30497c3002464925037"
+      }
+    },
+    "format": {
+      "path": "/tmp/aux-space-memory-restore-599-v1/format-check.log",
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    }
+  },
+  "rootIntegratedCheck": {
+    "command": "npm run check",
+    "status": "passed",
+    "runtimeDist": "rebuilt by initial typecheck before backend tests",
+    "log": "/tmp/aux-space-memory-restore-integrated-check-2026-10-18.log",
+    "sha256": "00529d7242435b57df8a70b4c19ff418002433728309e85ff90e057c3ee98282",
+    "typecheck": "passed; dist rebuilt before tests",
+    "lint": {
+      "result": "passed;570 existing advisory warnings unchanged",
+      "comparison": {
+        "path": "/tmp/aux-space-memory-restore-lint-comparison-2026-10-18.json",
+        "sha256": "2cccefa7b5985d1654971a474ede14c65a92f80fc35045ffc45b80e48bacbfb4"
+      }
+    },
+    "testsPassed": 5777,
+    "testsFailed": 0,
+    "filesPassed": 853,
+    "seconds": 125.68,
+    "coderWorktrees": {
+      "passed": 3,
+      "originalDeadlineMs": 60000,
+      "caseMs": [
+        37782,
+        54655,
+        30657
+      ],
+      "fileMs": 123094,
+      "deadlinesChanged": false
+    }
+  },
+  "algorithmProbe": {
+    "classification": "Synthetic direct helper observation only; not Aux/native performance acceptance. Both runs occurred with stock-j12 compile active; no speedup ratio or target claim. Canonical schema-valid800claim correctness fixture passes separately.",
+    "before": {
+      "source": {
+        "path": "/tmp/aux-k1-projection-bound-probe/memory-retirement.ts",
+        "sha256": "b5b7e3622aa853243308e72d86bfb3442b284b50a3878e212384cc15ff33fb20"
+      },
+      "case": {
+        "path": "/tmp/aux-k1-projection-bound-probe/probe.mjs",
+        "sha256": "08bd37b7475779c8e6bf19e1b37a8342df683206f3662436ce1130e175393a43"
+      },
+      "log": {
+        "path": "/tmp/aux-k1-projection-bound-probe/results.log",
+        "sha256": "b2de02e5bd534d7bba9995e45657a448b000caddc33782de5720634ef690e00b"
+      }
+    },
+    "after": {
+      "source": {
+        "path": "/tmp/aux-k1-projection-bound-probe/v2/memory-retirement.ts",
+        "sha256": "79823d87498b3e841224b738855f1a816d13c3a8f475a3e4735928a2552dd1b9"
+      },
+      "case": {
+        "path": "/tmp/aux-k1-projection-bound-probe/v2/probe.mjs",
+        "sha256": "29503a92289f7141e7fe69a6fc9eaac83944252eef91ef04620f610da55eec06"
+      },
+      "log": {
+        "path": "/tmp/aux-k1-projection-bound-probe/v2/results.log",
+        "sha256": "170f1484a7f37c5bc55b88c3fb240a76ec0537aea73b9bbfb1056d3fb5ad140a"
+      }
+    },
+    "scope": "Reverse queue removes cubic repeated chain scans; exact context-marker edge discovery remains bounded source-by-marker scanning under262144actualedge cap."
+  },
+  "durabilityReference": "https://www.sqlite.org/pragma.html#pragma_synchronous",
+  "stockBuildInterruption": {
+    "ownerPid": 99201,
+    "signal": "SIGINT to original scripts/dev.mjs owner only",
+    "completedDynamicSteps": 3497,
+    "dynamicTotalAtStop": 33576,
+    "elapsed": "25m20.68s",
+    "log": {
+      "path": "/tmp/aux-stock155-build-resume4-2026-10-18.log",
+      "sha256": "2fb8c3f98b738528ef77ed4c3fa254b715d8fc6e300ded83c80f6f372051fc39"
+    },
+    "cleanup": "Original child processes joined and plain lock removed normally; no Profile or app staging.",
+    "classification": "intentional quiet-check interruption, not compile error"
+  },
+  "limits": [
+    "No hardware power-loss or new native observation claimed. Actual SQLite/WAL/fsync code and synthetic native-key fault fixtures establish narrower evidence.",
+    "K2 legacy-derived model admission remains open; this slice physically sanitizes proven derived current records during ordinary restore.",
+    "Current native staging, default-route20task smoke, original155crash resolution, full matched UI comparison and stock performance remain open."
+  ],
+  "completion": "A5 and complete Aside adoption remain active and incomplete."
+}

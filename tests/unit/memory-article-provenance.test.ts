@@ -1,3 +1,16 @@
+import { seedHistoricalRunMemory, seedHistoricalEpisodicReceiver } from "../fixtures/historical-memory.js";
+import { advanceManagedRecoveryGeneration } from "../../apps/runtime/dist/services/managed-recovery-generation.js";
+import { startRuntime } from "@aux/runtime";
+import {
+  SpaceMemoryRestore,
+  memoryRestoreTransition,
+  memoryLogicalDigest,
+} from "../../apps/runtime/dist/services/space-memory-restore.js";
+import { cancelRuntimeRestore } from "../../apps/runtime/dist/services/runtime-backup.js";
+import {
+  currentSpaceMemory,
+  spaceMemoryDigest,
+} from "../../apps/runtime/dist/services/space-memory-backup.js";
 import { SpaceMemoryStore } from "../../apps/runtime/dist/services/space-memory-store.js";
 import { toErrorPayload } from "@aux/contracts";
 import { inspectLegacyArticleHistory } from "../../apps/runtime/dist/services/legacy-memory-retirement.js";
@@ -2601,4 +2614,654 @@ it("retires typed episodic receivers after authenticated family expansion in liv
   expect(f.repo.getRun("independent-family-child")?.result?.report).toBe("Independent family report.");
   expect((await f.pipeline.documentList(f.workspaceId)).documents).toEqual([ownerDocument.document]);
   expect(() => f.runs.contextStats("recall-run")).toThrow("retired by Forget");
+});
+
+async function restoreMemoryFixture() {
+  const f = await fixture();
+  await f.pipeline.setPolicy(f.workspaceId, true);
+  const original = await legacyArticle(f);
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, original.runId, true);
+  await seedHistoricalEpisodicReceiver(f.repo, f.workspaceId, claim);
+  const exported = await createRuntimeBackup(f.repo, f.directory);
+  const destination = join(f.directory, "aux-state.sqlite");
+  await backup(f.repo.db, destination);
+  const storage = new SpaceMemoryStore(f.repo, f.native, "recall-provenance");
+  const prior = storage.generation(f.workspaceId)!;
+  const priorFactor = (await f.native.readSecret(prior.keyName)).value;
+  return { ...f, original, claim, exported, destination, prior, priorFactor };
+}
+
+it("ordinary restore detaches source-retired Memory without touching live factors, then finalizes actual applied generations", async () => {
+  const f = await restoreMemoryFixture();
+  const other = new TaskService(f.repo, f.events).createWorkspace("Independent current Space").workspaceId;
+  await f.pipeline.documentSet({
+    workspaceId: other,
+    target: { kind: "site", origin: "https://independent.test" },
+    expectedGeneration: null,
+    content: "Owner instructions created after the older backup remain exact.",
+  });
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  const independentBefore = currentSpaceMemory(f.repo.db).files.filter((row) => row.workspace_id === other);
+  const currentBefore = spaceMemoryDigest(currentSpaceMemory(f.repo.db));
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const transition = memoryRestoreTransition(f.repo)!;
+  expect(transition).toMatchObject({
+    role: "source",
+    phase: "ready",
+    spaces: [{ workspaceId: f.workspaceId, prior: f.prior }],
+  });
+  const prepared = transition.spaces[0]!;
+  expect(prepared.next.generation).not.toBe(f.prior.generation);
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  expect((await f.native.readSecret(prepared.next.keyName)).value).toBeTruthy();
+  expect(spaceMemoryDigest(currentSpaceMemory(f.repo.db))).toBe(currentBefore);
+  expect(JSON.stringify(await f.pipeline.recoverySnapshot())).toContain("The quartz workshop meets");
+  await applyPendingRuntimeRestore(f.directory, f.destination);
+  const restored = new Repo(openDb(f.destination), f.repo.columnCipher);
+  const pipeline = new MemoryPipeline(restored, f.native, "recall-provenance", fixtureMemoryExtractor);
+  try {
+    expect(memoryRestoreTransition(restored)?.role).toBe("destination");
+    await new SpaceMemoryRestore(restored, f.native, "recall-provenance", f.directory).startup();
+    expect(memoryRestoreTransition(restored)).toBeUndefined();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBeFalsy();
+    expect((await f.native.readSecret(prepared.next.keyName)).value).toBeTruthy();
+    expect(JSON.stringify(await pipeline.recoverySnapshot())).not.toContain("The quartz workshop meets");
+    expect(currentSpaceMemory(restored.db).files.filter((row) => row.workspace_id === other)).toEqual(
+      independentBefore,
+    );
+    expect(new TranscriptStore(restored.db, restored.columnCipher).load("recall-run")).toEqual([]);
+    expect((await pipeline.documentList(other)).documents[0]?.content).toContain("after the older backup");
+  } finally {
+    await pipeline.close();
+    restored.close();
+  }
+});
+
+it("ordinary restore Cancel removes only original detached factors and retains exact live Memory", async () => {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const next = memoryRestoreTransition(f.repo)!.spaces[0]!.next;
+  await cancelRuntimeRestore(f.directory, f.pipeline);
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+  expect((await f.native.readSecret(next.keyName)).value).toBeFalsy();
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  expect(JSON.stringify(await f.pipeline.recoverySnapshot())).toContain("The quartz workshop meets");
+  expect(existsSync(join(f.directory, "pending-runtime-restore.sqlite"))).toBe(false);
+});
+
+it("ordinary restore joins a held original detached write before article Forget acknowledges and cleans late key bytes", async () => {
+  const f = await restoreMemoryFixture();
+  const store = f.native.storeSecret.bind(f.native);
+  let entered!: () => void, release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let nextKey: string | undefined;
+  vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+    if (!nextKey && key.startsWith("mem_") && key !== f.prior.keyName && value) {
+      nextKey = key;
+      entered();
+      await gate;
+    }
+    return store(key, value);
+  });
+  const staged = stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline).then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
+  await held;
+  let acknowledged = false;
+  const removal = f.memory
+    .forget(f.workspaceId, f.article.memoryId, () =>
+      f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId),
+    )
+    .then((result) => {
+      acknowledged = true;
+      return result;
+    });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(acknowledged).toBe(false);
+  expect(
+    f.repo.db.prepare("SELECT 1 FROM content_memory WHERE memory_id=?").get(f.article.memoryId),
+  ).toBeDefined();
+  release();
+  expect(await staged).toHaveProperty("error");
+  await removal;
+  expect(acknowledged).toBe(true);
+  expect(nextKey).toBeDefined();
+  expect((await f.native.readSecret(nextKey!)).value).toBeFalsy();
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+});
+
+it.each(["before", "after"] as const)(
+  "ordinary restore records key ownership before detached allocation and cleans a %s-store failure",
+  async (timing) => {
+    const f = await restoreMemoryFixture();
+    const store = f.native.storeSecret.bind(f.native);
+    let allocated: string | undefined;
+    let writes = 0;
+    let plannedBeforeStore = false;
+    vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+      if (value && key.startsWith("mem_") && key !== f.prior.keyName) {
+        allocated = key;
+        writes++;
+        plannedBeforeStore =
+          memoryRestoreTransition(f.repo)?.spaces.some((item) => item.next.keyName === key) ?? false;
+        if (timing === "after") await store(key, value);
+        throw new Error("Synthetic detached native store failure");
+      }
+      return store(key, value);
+    });
+    await expect(
+      stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline),
+    ).rejects.toThrow("Synthetic detached native store failure");
+    expect(writes).toBe(1);
+    expect(plannedBeforeStore).toBe(true);
+    expect(allocated).toBeDefined();
+    expect((await f.native.readSecret(allocated!)).value).toBeFalsy();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+    expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+  },
+);
+
+it("ordinary restore retains exact cleanup debt and refuses source Forget when detached erasure is uncertain", async () => {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const next = memoryRestoreTransition(f.repo)!.spaces[0]!.next;
+  const store = f.native.storeSecret.bind(f.native);
+  const failure = vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+    if (key === next.keyName && !value) throw new Error("Synthetic detached erase refusal");
+    return store(key, value);
+  });
+  await expect(
+    f.memory.forget(f.workspaceId, f.article.memoryId, () =>
+      f.runs.retireArticleTransferSources(f.workspaceId, f.article.memoryId),
+    ),
+  ).rejects.toThrow("Synthetic detached erase refusal");
+  expect(
+    f.repo.db.prepare("SELECT 1 FROM content_memory WHERE memory_id=?").get(f.article.memoryId),
+  ).toBeDefined();
+  expect(memoryRestoreTransition(f.repo)?.spaces[0]?.next).toEqual(next);
+  expect((await f.native.readSecret(next.keyName)).value).toBeTruthy();
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  failure.mockRestore();
+  await cancelRuntimeRestore(f.directory, f.pipeline);
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+  expect((await f.native.readSecret(next.keyName)).value).toBeFalsy();
+});
+
+async function appliedMemoryFixture() {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const next = memoryRestoreTransition(f.repo)!.spaces[0]!.next;
+  await applyPendingRuntimeRestore(f.directory, f.destination);
+  const restored = new Repo(openDb(f.destination), f.repo.columnCipher);
+  cleanup.push(async () => restored.close());
+  return {
+    ...f,
+    next,
+    restored,
+    owner: new SpaceMemoryRestore(restored, f.native, "recall-provenance", f.directory),
+  };
+}
+
+it.each(["before", "after"] as const)(
+  "ordinary restore finalization preserves applied generation after a %s-erase acknowledgement failure",
+  async (timing) => {
+    const f = await appliedMemoryFixture();
+    const store = f.native.storeSecret.bind(f.native);
+    const failure = vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+      if (key === f.prior.keyName && !value) {
+        if (timing === "after") await store(key, value);
+        throw new Error("Synthetic old-key erase acknowledgement failure");
+      }
+      return store(key, value);
+    });
+    const first = await f.owner.startup().then(
+      () => undefined,
+      (error: unknown) => String(error),
+    );
+    expect(first).toBe(
+      timing === "before" ? "Error: Synthetic old-key erase acknowledgement failure" : undefined,
+    );
+    expect(memoryRestoreTransition(f.restored)?.role).toBe(timing === "before" ? "destination" : undefined);
+    expect(Boolean((await f.native.readSecret(f.prior.keyName)).value)).toBe(timing === "before");
+    if (timing === "before") {
+      failure.mockRestore();
+      await f.owner.startup();
+    }
+    expect(memoryRestoreTransition(f.restored)).toBeUndefined();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBeFalsy();
+    expect((await f.native.readSecret(f.next.keyName)).value).toBeTruthy();
+    const state = await new SpaceMemoryStore(f.restored, f.native, "recall-provenance").read(f.workspaceId);
+    expect(JSON.stringify([...state.files])).not.toContain("The quartz workshop meets");
+  },
+);
+
+it("ordinary restore refuses Cancel of the actual newly active factor before startup finalization", async () => {
+  const f = await appliedMemoryFixture();
+  const restoredPipeline = new MemoryPipeline(f.restored, f.native, "recall-provenance");
+  try {
+    await expect(cancelRuntimeRestore(f.directory, restoredPipeline)).rejects.toThrow(
+      "original Space memory restore owner changed",
+    );
+    expect((await f.native.readSecret(f.next.keyName)).value).toBeTruthy();
+    await f.owner.startup();
+  } finally {
+    await restoredPipeline.close();
+  }
+});
+
+it("ordinary restore discards the original preparing generation after an actual protected database reopen", async () => {
+  const f = await restoreMemoryFixture();
+  const name = `pending-runtime-restore.sqlite.${randomUUID()}.tmp`;
+  const artifacts = `pending-runtime-restore-artifacts.${randomUUID()}.tmp`;
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(join(f.directory, artifacts));
+  await backup(f.repo.db, join(f.directory, name));
+  const source = spaceMemoryDigest(currentSpaceMemory(f.repo.db));
+  const owner = new SpaceMemoryRestore(f.repo, f.native, "recall-provenance", f.directory);
+  const operation = owner.begin(
+    source,
+    digest("original explicit fixture source ownership"),
+    name,
+    artifacts,
+  );
+  const store = new SpaceMemoryStore(f.repo, f.native, "recall-provenance");
+  const current = await store.read(f.workspaceId);
+  const prepared = await store.prepareDetached(
+    f.workspaceId,
+    current.files,
+    current.history,
+    (next) => owner.plan(operation, next, f.prior, memoryLogicalDigest(current.files, current.history)),
+    () => expect(spaceMemoryDigest(currentSpaceMemory(f.repo.db))).toBe(source),
+  );
+  expect(memoryRestoreTransition(f.repo)?.phase).toBe("preparing");
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  const reopened = new Repo(openDb(f.destination), f.repo.columnCipher);
+  try {
+    await new SpaceMemoryRestore(reopened, f.native, "recall-provenance", f.directory).startup();
+    expect(memoryRestoreTransition(reopened)).toBeUndefined();
+    expect((await f.native.readSecret(prepared.keyName)).value).toBeFalsy();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+    expect(existsSync(join(f.directory, name))).toBe(false);
+  } finally {
+    reopened.close();
+  }
+});
+
+it("ordinary restore preserves existing retired owner tombstones and unrelated owner documents without allocating another factor", async () => {
+  const f = await restoreMemoryFixture();
+  await f.pipeline.editDocuments({
+    workspaceId: f.workspaceId,
+    expectedGeneration: (await f.pipeline.documents(f.workspaceId)).generation,
+    edits: [{ claimId: f.claim.claimId, text: "My separate owner correction remains exact for inspection." }],
+  });
+  await forgetLegacy(f);
+  await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://owner.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent owner authored instructions.",
+  });
+  const state = await f.pipeline.recoverySnapshot();
+  const before = currentSpaceMemory(f.repo.db);
+  const prior = new SpaceMemoryStore(f.repo, f.native, "recall-provenance").generation(f.workspaceId)!;
+  const key = (await f.native.readSecret(prior.keyName)).value;
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  const calls = vi.spyOn(f.native, "storeSecret");
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  expect(memoryRestoreTransition(f.repo)?.spaces).toEqual([]);
+  expect(calls.mock.calls.filter(([name, value]) => name.startsWith("mem_") && value)).toEqual([]);
+  expect(currentSpaceMemory(f.repo.db)).toEqual(before);
+  const staged = new Repo(
+    new DatabaseSync(join(f.directory, "pending-runtime-restore.sqlite"), { readOnly: true }),
+    f.repo.columnCipher,
+  );
+  const pipeline = new MemoryPipeline(staged, f.native, "recall-provenance");
+  try {
+    expect(await pipeline.recoverySnapshot()).toEqual(state);
+  } finally {
+    await pipeline.close();
+    staged.close();
+  }
+  await cancelRuntimeRestore(f.directory, f.pipeline);
+  expect((await f.native.readSecret(prior.keyName)).value).toBe(key);
+});
+
+it("ordinary restore records only actually retired sources per Space without overflowing unrelated near-cap history", async () => {
+  const f = await restoreMemoryFixture();
+  const other = new TaskService(f.repo, f.events).createWorkspace("Unrelated Space").workspaceId;
+  await f.pipeline.documentSet({
+    workspaceId: other,
+    target: { kind: "site", origin: "https://owner.test" },
+    expectedGeneration: null,
+    content: "Independent untouched owner document in another Space.",
+  });
+  f.repo.saveRun({
+    runId: "independent-research",
+    status: "completed",
+    pageIds: [],
+    goal: "Independent research",
+    createdAt: Date.now(),
+    endedAt: Date.now(),
+    config: { contextWorkspaceId: f.workspaceId },
+    result: { report: "The independent planning review happens on Friday mornings in the west building." },
+  });
+  await f.pipeline.extractRun(f.workspaceId, "independent-research");
+  const pending = (await f.pipeline.inbox(f.workspaceId)).find(
+    (item) => item.sourceRunId === "independent-research",
+  )!;
+  await f.pipeline.review(f.workspaceId, pending.claimId, "accept");
+  const store = new SpaceMemoryStore(f.repo, f.native, "recall-provenance");
+  const current = await store.read(f.workspaceId);
+  const hashes = Array.from({ length: 4999 }, (_, index) =>
+    digest(`unrelated historical retirement ${index}`),
+  );
+  current.files.set("retired-sources.json.enc", JSON.stringify({ before: 0, sourceHashes: hashes }));
+  await store.write(f.workspaceId, current.files, current.history, current.prior);
+  const chosen = await createRuntimeBackup(f.repo, f.directory);
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  const otherBefore = currentSpaceMemory(f.repo.db).files.filter((row) => row.workspace_id === other);
+  const watermarks = f.repo.db
+    .prepare("SELECT * FROM memory_pipeline_watermarks WHERE workspace_id=? ORDER BY run_id")
+    .all(other);
+  await stageRuntimeRestore(f.directory, chosen.path, f.repo.columnCipher, f.pipeline);
+  const restoredCopy = new Repo(
+    new DatabaseSync(join(f.directory, "pending-runtime-restore.sqlite")),
+    f.repo.columnCipher,
+  );
+  const projected = new MemoryPipeline(restoredCopy, f.native, "recall-provenance");
+  try {
+    const state = (await projected.recoverySnapshot()).find((item) => item.workspaceId === f.workspaceId)!;
+    expect(state.retiredSources).toEqual({ before: 0, sourceHashes: [...hashes, digest(f.original.runId)] });
+    expect(currentSpaceMemory(restoredCopy.db).files.filter((row) => row.workspace_id === other)).toEqual(
+      otherBefore,
+    );
+    expect(
+      restoredCopy.db
+        .prepare("SELECT * FROM memory_pipeline_watermarks WHERE workspace_id=? ORDER BY run_id")
+        .all(other),
+    ).toEqual(watermarks);
+    expect(
+      restoredCopy.db
+        .prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id='recall-run'")
+        .get(f.workspaceId),
+    ).toBeUndefined();
+    expect(
+      (
+        await projected.recall({
+          workspaceId: f.workspaceId,
+          queries: ["independent planning review"],
+          kinds: ["episodic"],
+          mode: "lexical",
+        })
+      ).matches,
+    ).toEqual([expect.objectContaining({ sourceId: `claim:${pending.claimId}` })]);
+  } finally {
+    await projected.close();
+    restoredCopy.close();
+  }
+  await cancelRuntimeRestore(f.directory, f.pipeline);
+});
+
+it("ordinary restore commits actual WAL metadata under scoped FULL durability before native allocation and restores the connection mode", async () => {
+  const f = await restoreMemoryFixture();
+  const disk = new Repo(openDb(f.destination), f.repo.columnCipher);
+  const pipeline = new MemoryPipeline(disk, f.native, "recall-provenance");
+  try {
+    expect(disk.db.prepare("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
+    disk.db
+      .exec(`CREATE TABLE restore_durability_probe(mode INTEGER); CREATE TRIGGER capture_restore_durability BEFORE INSERT ON aux_meta
+      WHEN NEW.key='space_memory_restore_v1' BEGIN INSERT INTO restore_durability_probe SELECT synchronous FROM pragma_synchronous; END`);
+    const prior = disk.db.prepare("PRAGMA synchronous").get();
+    const native = f.native.storeSecret.bind(f.native);
+    const allocations: { transaction: boolean; mode: unknown; modes: unknown[]; planned: boolean }[] = [];
+    const writes = vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+      if (key.startsWith("mem_") && key !== f.prior.keyName && value)
+        allocations.push({
+          transaction: disk.db.isTransaction,
+          mode: disk.db.prepare("PRAGMA synchronous").get(),
+          modes: disk.db.prepare("SELECT mode FROM restore_durability_probe").all(),
+          planned: memoryRestoreTransition(disk)?.spaces.some((item) => item.next.keyName === key) ?? false,
+        });
+      return native(key, value);
+    });
+    await stageRuntimeRestore(f.directory, f.exported.path, disk.columnCipher, pipeline);
+    expect(writes).toHaveBeenCalled();
+    expect(allocations).toHaveLength(1);
+    expect(allocations[0]).toMatchObject({ transaction: false, mode: prior, planned: true });
+    expect(allocations[0]!.modes.length).toBeGreaterThanOrEqual(2);
+    expect(allocations[0]!.modes.every((row) => (row as { mode: number }).mode === 2)).toBe(true);
+    expect(disk.db.prepare("PRAGMA synchronous").get()).toEqual(prior);
+    await cancelRuntimeRestore(f.directory, pipeline);
+  } finally {
+    await pipeline.close();
+    disk.close();
+  }
+});
+
+it("ordinary restore reaches native cleanup after a stale ready generation instead of failing before authentication", async () => {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const next = memoryRestoreTransition(f.repo)!.spaces[0]!.next;
+  advanceManagedRecoveryGeneration(f.directory);
+  const store = f.native.storeSecret.bind(f.native);
+  const fault = vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+    if (key === next.keyName && !value) throw new Error("Synthetic crash before cleanup acknowledgement");
+    return store(key, value);
+  });
+  await expect(f.pipeline.retireWorkspace(f.workspaceId)).rejects.toThrow(
+    "Synthetic crash before cleanup acknowledgement",
+  );
+  // Persist the actual source-side owner as a stopped runtime would leave it.
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  expect(await applyPendingRuntimeRestore(f.directory, f.destination)).toMatchObject({
+    applied: false,
+    cleanupRequired: true,
+  });
+  const reopened = new Repo(openDb(f.destination), f.repo.columnCipher);
+  try {
+    fault.mockRestore();
+    await new SpaceMemoryRestore(reopened, f.native, "recall-provenance", f.directory).startup();
+    expect(memoryRestoreTransition(reopened)).toBeUndefined();
+    expect((await f.native.readSecret(next.keyName)).value).toBeFalsy();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+    expect(existsSync(join(f.directory, "pending-runtime-restore.json"))).toBe(false);
+  } finally {
+    reopened.close();
+  }
+});
+
+it("ordinary restore refuses hostless startup before any runtime descriptor or API can publish a pending destination", async () => {
+  const f = await appliedMemoryFixture();
+  await expect(
+    startRuntime({
+      AUX_DATA_DIR: f.directory,
+      AUX_API_PORT: "0",
+      AUX_LOAD_DOTENV: "0",
+      AUX_BROWSER_PROFILE_ID: "recall-provenance",
+    }),
+  ).rejects.toThrow("authenticated native Profile owner before startup");
+  expect(existsSync(join(f.directory, "runtime.json"))).toBe(false);
+  expect(memoryRestoreTransition(f.restored)?.role).toBe("destination");
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  await f.owner.startup();
+});
+
+it("ordinary restore refuses nested metadata ownership and restores synchronous mode after a failed durable plan", async () => {
+  const f = await restoreMemoryFixture();
+  const name = `pending-runtime-restore.sqlite.${randomUUID()}.tmp`;
+  const artifacts = `pending-runtime-restore-artifacts.${randomUUID()}.tmp`;
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(join(f.directory, artifacts));
+  await backup(f.repo.db, join(f.directory, name));
+  const owner = new SpaceMemoryRestore(f.repo, f.native, "recall-provenance", f.directory);
+  const before = f.repo.db.prepare("PRAGMA synchronous").get();
+  expect(() =>
+    f.repo.transaction(() =>
+      owner.begin(
+        spaceMemoryDigest(currentSpaceMemory(f.repo.db)),
+        digest("fixture original proof"),
+        name,
+        artifacts,
+      ),
+    ),
+  ).toThrow("independent durable commit");
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+  expect(f.repo.db.prepare("PRAGMA synchronous").get()).toEqual(before);
+  // Remove the independent low-level fixture paths before testing the actual production stage owner.
+  rmSync(join(f.directory, name));
+  rmSync(join(f.directory, artifacts), { recursive: true });
+  f.repo.db.exec(`CREATE TABLE plan_fail_counter(count INTEGER); INSERT INTO plan_fail_counter VALUES(0);
+    CREATE TRIGGER fail_second_metadata_write BEFORE INSERT ON aux_meta WHEN NEW.key='space_memory_restore_v1' BEGIN
+      UPDATE plan_fail_counter SET count=count+1;
+      SELECT CASE WHEN (SELECT count FROM plan_fail_counter)>1 THEN RAISE(ABORT,'Synthetic durable plan failure') END;
+    END;`);
+  const writes = vi.spyOn(f.native, "storeSecret");
+  await expect(
+    stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline),
+  ).rejects.toThrow("Synthetic durable plan failure");
+  expect(
+    writes.mock.calls.filter(([key, value]) => key.startsWith("mem_") && key !== f.prior.keyName && value),
+  ).toEqual([]);
+  expect(f.repo.db.prepare("PRAGMA synchronous").get()).toEqual(before);
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+});
+
+it("ordinary restore joins shutdown before cleaning a late original detached key write", async () => {
+  const f = await restoreMemoryFixture();
+  let enter!: () => void, release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let next: string | undefined;
+  const store = f.native.storeSecret.bind(f.native);
+  vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+    if (!next && key.startsWith("mem_") && key !== f.prior.keyName && value) {
+      next = key;
+      enter();
+      await gate;
+    }
+    return store(key, value);
+  });
+  const staged = stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline).then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
+  await held;
+  let closed = false;
+  const shutdown = f.pipeline.close().then(() => {
+    closed = true;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(closed).toBe(false);
+  release();
+  await shutdown;
+  expect(await staged).toHaveProperty("error");
+  expect((await f.native.readSecret(next!)).value).toBeFalsy();
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+});
+
+it("ordinary restore missing pending bytes still reaches authenticated original source cleanup on restart", async () => {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const original = memoryRestoreTransition(f.repo)!;
+  const next = original.spaces[0]!.next;
+  rmSync(join(f.directory, "pending-runtime-restore.sqlite"));
+  rmSync(f.destination);
+  await backup(f.repo.db, f.destination);
+  const outcome = await applyPendingRuntimeRestore(f.directory, f.destination);
+  expect(outcome).toMatchObject({ applied: false, cleanupRequired: true, operationId: original.operationId });
+  if (!("cleanupRequired" in outcome)) throw new Error("Expected original native cleanup handoff.");
+  const reopened = new Repo(openDb(f.destination), f.repo.columnCipher);
+  try {
+    await new SpaceMemoryRestore(reopened, f.native, "recall-provenance", f.directory).startup({
+      operationId: outcome.operationId,
+    });
+    expect(memoryRestoreTransition(reopened)).toBeUndefined();
+    expect((await f.native.readSecret(next.keyName)).value).toBeFalsy();
+    expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  } finally {
+    reopened.close();
+  }
+});
+
+it("ordinary restore rechecks exact applied rows after original native awaits before erasing any prior key", async () => {
+  const f = await appliedMemoryFixture();
+  const read = f.native.readSecret.bind(f.native);
+  let changed = false;
+  vi.spyOn(f.native, "readSecret").mockImplementation(async (key) => {
+    const value = await read(key);
+    if (key === f.prior.keyName && !changed) {
+      changed = true;
+      f.restored.db
+        .prepare("UPDATE memory_files SET content=content||'changed' WHERE workspace_id=?")
+        .run(f.workspaceId);
+    }
+    return value;
+  });
+  const writes = vi.spyOn(f.native, "storeSecret");
+  await expect(f.owner.startup()).rejects.toThrow("generation identity changed");
+  expect(changed).toBe(true);
+  expect(writes.mock.calls.filter(([key, value]) => key === f.prior.keyName && !value)).toEqual([]);
+  expect((await read(f.prior.keyName)).value).toBe(f.priorFactor);
+  expect(memoryRestoreTransition(f.restored)?.role).toBe("destination");
+});
+
+it("ordinary restore Pause rejects uncertain original cleanup and a later exact Cancel can settle it", async () => {
+  const f = await restoreMemoryFixture();
+  await stageRuntimeRestore(f.directory, f.exported.path, f.repo.columnCipher, f.pipeline);
+  const next = memoryRestoreTransition(f.repo)!.spaces[0]!.next;
+  const store = f.native.storeSecret.bind(f.native);
+  const failure = vi.spyOn(f.native, "storeSecret").mockImplementation(async (key, value) => {
+    if (key === next.keyName && !value) throw new Error("Synthetic paused cleanup refusal");
+    return store(key, value);
+  });
+  await expect(f.pipeline.setPolicy(f.workspaceId, false)).rejects.toThrow(
+    "Synthetic paused cleanup refusal",
+  );
+  expect(memoryRestoreTransition(f.repo)?.spaces[0]?.next).toEqual(next);
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  failure.mockRestore();
+  await cancelRuntimeRestore(f.directory, f.pipeline);
+  expect(memoryRestoreTransition(f.repo)).toBeUndefined();
+  expect((await f.native.readSecret(next.keyName)).value).toBeFalsy();
+});
+
+it("ordinary restore refuses an unproven deferred operation before reading or erasing native factors", async () => {
+  const f = await appliedMemoryFixture();
+  const reads = vi.spyOn(f.native, "readSecret");
+  const writes = vi.spyOn(f.native, "storeSecret");
+  await expect(f.owner.startup({ operationId: randomUUID() })).rejects.toThrow("operation is unverified");
+  expect(reads).not.toHaveBeenCalled();
+  expect(writes).not.toHaveBeenCalled();
+  expect(memoryRestoreTransition(f.restored)?.role).toBe("destination");
+  await f.owner.startup();
+});
+
+it("ordinary restore refuses prior-key retirement if the applied database lost its canonical destination identity", async () => {
+  const f = await appliedMemoryFixture();
+  const moved = join(f.directory, "original-applied-moved.sqlite");
+  const { renameSync } = await import("node:fs");
+  renameSync(f.destination, moved);
+  const writes = vi.spyOn(f.native, "storeSecret");
+  await expect(f.owner.startup()).rejects.toThrow();
+  expect(writes.mock.calls.filter(([key, value]) => key === f.prior.keyName && !value)).toEqual([]);
+  expect((await f.native.readSecret(f.prior.keyName)).value).toBe(f.priorFactor);
+  expect(memoryRestoreTransition(f.restored)?.role).toBe("destination");
+  renameSync(moved, f.destination);
+  await f.owner.startup();
 });

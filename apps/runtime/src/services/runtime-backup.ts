@@ -1,3 +1,6 @@
+import { resolveDatabasePath } from "@aux/contracts/installation";
+import { omitMemoryRestoreTransition } from "./space-memory-restore.js";
+import { memoryRestoreSources } from "./memory-restore-sources.js";
 import { inspectLegacyArticleHistory } from "./legacy-memory-retirement.js";
 import { TranscriptStore } from "../agent/loop/transcript.js";
 import { ConversationBranches } from "./conversation-branches.js";
@@ -350,6 +353,7 @@ export async function createRuntimeBackup(
       omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
       const copied = new Repo(sanitized, repo.columnCipher);
+      omitMemoryRestoreTransition(copied);
       const legacy = await inspectLegacyArticleHistory(
         copied,
         new TranscriptStore(sanitized, repo.columnCipher),
@@ -531,12 +535,29 @@ export async function stageListedRuntimeRestore(
   cipher?: FieldCodec,
   memory?: MemoryPipeline,
 ) {
+  if (memory)
+    return memory.ownOrdinaryRestore(dataDir, (signal) =>
+      stageListedRuntimeRestoreOwned(dataDir, name, expectedSha256, cipher, memory, signal),
+    );
+  return stageListedRuntimeRestoreOwned(dataDir, name, expectedSha256, cipher);
+}
+
+async function stageListedRuntimeRestoreOwned(
+  dataDir: string,
+  name: string,
+  expectedSha256: string,
+  cipher?: FieldCodec,
+  memory?: MemoryPipeline,
+  signal?: AbortSignal,
+) {
   if (!/^aux-runtime-[A-Za-z0-9._-]{1,160}$/.test(name) || !/^[a-f0-9]{64}$/.test(expectedSha256))
     throw new Error("Choose the original managed backup.");
+  signal?.throwIfAborted();
   const generation = ensureManagedRecoveryGeneration(dataDir);
   const item = (await listRuntimeBackups(dataDir)).find(
     (value) => value.name === name && value.sha256 === expectedSha256 && value.restorable,
   );
+  signal?.throwIfAborted();
   if (!item) throw new Error("This backup changed or is no longer available. Refresh the list.");
   const canonicalRoot = await realpath(item.path);
   const paths = [item.path, join(item.path, "manifest.json"), join(item.path, "state.sqlite")];
@@ -568,6 +589,7 @@ export async function stageListedRuntimeRestore(
     const originalManifest = await readBoundedManifest(handles[1]!, identities[1]!.size);
     const manifestHash = bytesDigest(originalManifest);
     const current = async () => {
+      signal?.throwIfAborted();
       assertManagedRecoveryGeneration(dataDir, generation);
       for (const [index, path] of paths.entries()) {
         const [named, retained] = await Promise.all([lstat(path), handles[index]!.stat()]),
@@ -628,12 +650,19 @@ export async function stageListedRuntimeRestore(
       }
       await current();
     };
-    const result = await stageRuntimeRestoreSource(dataDir, item.path, cipher, memory, {
-      expectedSha256,
-      current,
-      finalCurrent,
-      manifest,
-    });
+    const result = await stageRuntimeRestoreSource(
+      dataDir,
+      item.path,
+      cipher,
+      memory,
+      {
+        expectedSha256,
+        current,
+        finalCurrent,
+        manifest,
+      },
+      signal,
+    );
     admitted = { ...result, source: { path: item.path, name: item.name, sha256: manifest.database.sha256 } };
   } catch (error) {
     primary = error;
@@ -723,8 +752,34 @@ async function stageRuntimeRestoreSource(
     finalCurrent(): Promise<void>;
     manifest: BackupManifest;
   },
-) {
-  await managed?.current();
+  signal?: AbortSignal,
+): Promise<{
+  staged: true;
+  schemaVersion: number;
+  bytes: number;
+  sha256: string;
+  artifactFiles: number;
+  missingArtifacts: number;
+}> {
+  if (memory && !signal) {
+    return memory.ownOrdinaryRestore(dataDir, (signal) =>
+      stageRuntimeRestoreSource(dataDir, sourcePath, cipher, memory, managed, signal),
+    );
+  }
+  const check = () => signal?.throwIfAborted();
+  const current = async () => {
+    check();
+    await managed?.current();
+    check();
+  };
+  const finalCurrent = async () => {
+    check();
+    await managed?.finalCurrent();
+    check();
+  };
+  await current();
+  if (memory) await clearPendingRestoreFiles(dataDir);
+  check();
   const root = await realpath(sourcePath),
     rootInfo = await lstat(root);
   if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory())
@@ -735,8 +790,8 @@ async function stageRuntimeRestoreSource(
   assertManagedRecoveryGeneration(dataDir, manifest.recoveryGeneration);
   const preservedMemory = memory ? await memory.ordinaryRestoreMemory() : undefined;
   const memorySourceDigest = preservedMemory ? spaceMemoryDigest(preservedMemory) : undefined;
-  if (!memory && existsSync(join(dataDir, "state.sqlite"))) {
-    const current = new DatabaseSync(join(dataDir, "state.sqlite"), { readOnly: true });
+  if (!memory && existsSync(resolveDatabasePath(dataDir))) {
+    const current = new DatabaseSync(resolveDatabasePath(dataDir), { readOnly: true });
     try {
       if (
         current.prepare("SELECT 1 FROM memory_files UNION SELECT 1 FROM memory_history LIMIT 1").get() ||
@@ -761,7 +816,7 @@ async function stageRuntimeRestoreSource(
     throw new Error("The backup database failed its integrity check.");
   if (managed && manifest.database.sha256 !== managed.expectedSha256)
     throw new Error("The reviewed backup changed before staging. Refresh the list.");
-  await managed?.current();
+  await current();
   let schemaVersion = validateDatabase(sourceDatabase);
   if (schemaVersion !== manifest.schemaVersion)
     throw new Error("The backup schema does not match its manifest.");
@@ -772,12 +827,13 @@ async function stageRuntimeRestoreSource(
   const temporaryArtifacts = `${pendingArtifacts}.${randomUUID()}.tmp`;
   await mkdir(temporaryArtifacts, { recursive: true, mode: 0o700 });
   const published: { path: string; dev: number; ino: number }[] = [];
+  let memoryTransition: { operationId: string; check(): void } | undefined;
   try {
-    await managed?.current();
+    await current();
     await copyFile(sourceDatabase, temporaryDatabase);
     if (managed && (await digest(temporaryDatabase)) !== managed.expectedSha256)
       throw new Error("The reviewed database changed while copying.");
-    await managed?.current();
+    await current();
     await chmod(temporaryDatabase, 0o600);
     const needsDesktopMigration = Boolean(
       preservedMemory &&
@@ -795,9 +851,12 @@ async function stageRuntimeRestoreSource(
       else omitDerivedAndSpaceMemory(staged);
       staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
       const copied = new Repo(staged, cipher);
+      omitMemoryRestoreTransition(copied);
+      const copiedSources = memory ? await memoryRestoreSources(copied, check) : undefined;
       const legacy = await inspectLegacyArticleHistory(copied, new TranscriptStore(staged, cipher), {}, () =>
         assertManagedRecoveryGeneration(dataDir, manifest.recoveryGeneration),
       );
+      copiedSources?.check();
       omittedArtifacts = sanitizePortablePageRecall(
         staged,
         cipher,
@@ -817,6 +876,17 @@ async function stageRuntimeRestoreSource(
         },
       );
       new ConversationBranches(copied).purgeRevoked();
+      if (memory && signal && copiedSources && memorySourceDigest)
+        memoryTransition = await memory.prepareOrdinaryRestoreCopy(
+          copied,
+          dataDir,
+          temporaryDatabase,
+          temporaryArtifacts,
+          memorySourceDigest,
+          copiedSources,
+          signal,
+        );
+      check();
       const rows = staged
         .prepare(
           "SELECT artifact_id AS artifactId,page_id AS pageId,media_type AS mediaType,path FROM artifacts",
@@ -833,6 +903,8 @@ async function stageRuntimeRestoreSource(
     const stagedPaths = new Set<string>();
     let artifactBytes = 0;
     for (const item of portableArtifacts) {
+      check();
+      memoryTransition?.check();
       const rel = safeRelative(item.relativePath);
       const metadata = artifactRows.get(item.artifactId);
       if (!metadata) throw new Error(`Backup artifact ${item.artifactId} has no database record.`);
@@ -930,16 +1002,20 @@ async function stageRuntimeRestoreSource(
     const stagedInfo = await stat(temporaryDatabase),
       sha256 = await digest(temporaryDatabase),
       artifactInfo = managed ? await stat(temporaryArtifacts) : undefined;
-    await managed?.finalCurrent();
+    await finalCurrent();
     await rm(pendingArtifacts, { recursive: true, force: true });
     await rename(temporaryArtifacts, pendingArtifacts);
     if (managed) {
       published.push({ path: pendingArtifacts, dev: artifactInfo!.dev, ino: artifactInfo!.ino });
-      await managed.finalCurrent();
+      await finalCurrent();
     }
     if (memory && memory.currentStateDigest() !== memorySourceDigest)
       throw new Error("Space memory changed while restore was staged. Prepare the restore again.");
+    check();
+    memoryTransition?.check();
     await rename(temporaryDatabase, pendingDatabase);
+    check();
+    memoryTransition?.check();
     if (managed) published.push({ path: pendingDatabase, dev: stagedInfo.dev, ino: stagedInfo.ino });
     const recoveryGeneration = assertManagedRecoveryGeneration(dataDir, manifest.recoveryGeneration);
     const descriptor =
@@ -953,12 +1029,14 @@ async function stageRuntimeRestoreSource(
           artifactFiles: stagedArtifacts,
           recoveryGeneration,
           memorySourceDigest,
+          memoryTransitionId: memoryTransition?.operationId,
+          memoryPhase: memoryTransition ? "ready" : undefined,
         },
         null,
         2,
       ) + "\n";
     if (managed) {
-      await managed.finalCurrent();
+      await finalCurrent();
       for (const original of published) {
         const now = lstatSync(original.path);
         if (now.dev !== original.dev || now.ino !== original.ino || now.isSymbolicLink())
@@ -975,6 +1053,8 @@ async function stageRuntimeRestoreSource(
         encoding: "utf8",
         mode: 0o600,
       });
+    check();
+    memoryTransition?.check();
     return {
       staged: true as const,
       schemaVersion,
@@ -984,6 +1064,17 @@ async function stageRuntimeRestoreSource(
       missingArtifacts: manifest.missingArtifacts,
     };
   } catch (error) {
+    // Keys are retired before their only exact cleanup journal or files disappear.
+    if (memory) {
+      try {
+        await memory.cleanupOrdinaryRestore(dataDir);
+      } catch (cleanup) {
+        throw new AggregateError(
+          [error, cleanup],
+          "Original restore and detached-factor cleanup did not settle.",
+        );
+      }
+    }
     const cleanup = await Promise.allSettled([
       rm(temporaryDatabase, { force: true }),
       rm(temporaryArtifacts, { recursive: true, force: true }),
@@ -1003,7 +1094,24 @@ async function stageRuntimeRestoreSource(
   }
 }
 
-export async function cancelRuntimeRestore(dataDir: string) {
+export async function cancelRuntimeRestore(dataDir: string, memory?: MemoryPipeline) {
+  if (memory) await memory.cancelOrdinaryRestore(dataDir);
+  else {
+    const path = resolveDatabasePath(dataDir);
+    if (existsSync(path)) {
+      const db = new DatabaseSync(path, { readOnly: true });
+      try {
+        if (db.prepare("SELECT 1 FROM aux_meta WHERE key='space_memory_restore_v1'").get())
+          throw new Error("Authenticate original Space memory before cancelling its staged factors.");
+      } finally {
+        db.close();
+      }
+    }
+  }
+  return clearPendingRestoreFiles(dataDir);
+}
+
+async function clearPendingRestoreFiles(dataDir: string) {
   await Promise.all([
     rm(join(dataDir, "pending-runtime-restore.sqlite"), { force: true }),
     rm(join(dataDir, "pending-runtime-restore-artifacts"), { recursive: true, force: true }),
@@ -1023,6 +1131,8 @@ type PendingRestore = {
   recoveryPackage?: boolean;
   recoveryProfileId?: string;
   memorySourceDigest?: string;
+  memoryTransitionId?: string;
+  memoryPhase?: "ready";
 };
 
 export async function runtimeRestoreStatus(dataDir: string) {
@@ -1049,6 +1159,16 @@ export async function runtimeRestoreStatus(dataDir: string) {
   };
 }
 
+function hasOriginalMemoryTransition(dbPath: string) {
+  if (!existsSync(dbPath)) return false;
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return !!db.prepare("SELECT 1 FROM aux_meta WHERE key='space_memory_restore_v1'").get();
+  } finally {
+    db.close();
+  }
+}
+
 /** Apply a user-staged restore before opening the runtime's active database. */
 export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string, profileId?: string) {
   const metadataPath = join(dataDir, "pending-runtime-restore.json");
@@ -1057,6 +1177,8 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
   // by the OS on crash. Never swap a database while another runtime owns it.
   const lockPath = join(dataDir, "runtime-restore-lock.sqlite");
   const lock = new DatabaseSync(lockPath);
+  let operationId: string | undefined;
+  let authenticatedStartupMayClean = false;
   try {
     await chmod(lockPath, 0o600);
     lock.exec("PRAGMA busy_timeout=5000; BEGIN EXCLUSIVE");
@@ -1075,6 +1197,7 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
+    authenticatedStartupMayClean = true;
     const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as Partial<PendingRestore>;
     if (
       metadata.version !== 2 ||
@@ -1087,6 +1210,16 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
       metadata.artifactFiles.length > MAX_ARTIFACTS
     )
       throw new Error("The staged runtime restore metadata is invalid.");
+    if (
+      typeof metadata.memoryTransitionId === "string" &&
+      /^[a-f0-9-]{36}$/.test(metadata.memoryTransitionId)
+    )
+      operationId = metadata.memoryTransitionId;
+    if (
+      metadata.memoryTransitionId &&
+      (metadata.memoryPhase !== "ready" || !/^[a-f0-9-]{36}$/.test(metadata.memoryTransitionId))
+    )
+      throw new Error("Detached Space memory restore is not ready.");
     if (metadata.recoveryPackage) {
       if (!profileId || metadata.recoveryProfileId !== profileId)
         throw new Error("The staged recovery Profile or Space-memory inventory is invalid.");
@@ -1100,7 +1233,15 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
           current.close();
         }
       }
-    } else assertManagedRecoveryGeneration(dataDir, metadata.recoveryGeneration);
+    } else {
+      try {
+        assertManagedRecoveryGeneration(dataDir, metadata.recoveryGeneration);
+      } catch (error) {
+        if (metadata.memoryTransitionId && hasOriginalMemoryTransition(dbPath))
+          return { applied: false as const, cleanupRequired: true as const, operationId };
+        throw error;
+      }
+    }
     const pendingDatabase = join(dataDir, "pending-runtime-restore.sqlite");
     const dbInfo = await lstat(pendingDatabase);
     if (
@@ -1115,8 +1256,11 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
     if (!alreadySwapped && !metadata.recoveryPackage && metadata.memorySourceDigest) {
       const current = new DatabaseSync(dbPath, { readOnly: true });
       try {
-        if (spaceMemoryDigest(currentSpaceMemory(current)) !== metadata.memorySourceDigest)
+        if (spaceMemoryDigest(currentSpaceMemory(current)) !== metadata.memorySourceDigest) {
+          if (metadata.memoryTransitionId && hasOriginalMemoryTransition(dbPath))
+            return { applied: false as const, cleanupRequired: true as const, operationId };
           throw new Error("Space memory changed after restore was staged. Prepare the restore again.");
+        }
       } finally {
         current.close();
       }
@@ -1230,12 +1374,29 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
       if ((await digest(temporaryDatabase)) !== metadata.sha256)
         throw new Error("The staged database changed during restore.");
       await Promise.all([rm(`${dbPath}-wal`, { force: true }), rm(`${dbPath}-shm`, { force: true })]);
+      const stagedFd = openSync(temporaryDatabase, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        fsyncSync(stagedFd);
+      } finally {
+        closeSync(stagedFd);
+      }
       await rename(temporaryDatabase, dbPath);
+      const directoryFd = openSync(dirname(dbPath), constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        fsyncSync(directoryFd);
+      } finally {
+        closeSync(directoryFd);
+      }
     } finally {
       await rm(temporaryDatabase, { force: true });
     }
     await finishRestore(dataDir, Date.now());
     return { applied: true as const, recoveryPath: recoveryRoot };
+  } catch (error) {
+    // Only the authenticated native owner may interpret this metadata and settle abandoned/applied keys.
+    if (authenticatedStartupMayClean && hasOriginalMemoryTransition(dbPath))
+      return { applied: false as const, cleanupRequired: true as const, operationId };
+    throw error;
   } finally {
     try {
       lock.exec("ROLLBACK");
@@ -1249,5 +1410,5 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
 async function finishRestore(dataDir: string, lastAppliedAt: number) {
   const status = join(dataDir, "runtime-restore-status.json");
   await writeFile(status, JSON.stringify({ lastAppliedAt }) + "\n", { mode: 0o600 });
-  await cancelRuntimeRestore(dataDir);
+  await clearPendingRestoreFiles(dataDir);
 }

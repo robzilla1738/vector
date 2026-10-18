@@ -1,3 +1,4 @@
+import { SpaceMemoryRestore } from "./services/space-memory-restore.js";
 import { ConnectorFileTransfers } from "./services/connector-file-transfers.js";
 import { ConnectorUploadStore } from "./services/connector-upload-store.js";
 import { connectorUploadAuthorizer } from "./services/connector-upload-authorization.js";
@@ -275,8 +276,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   if (config.apiPort !== 0 && (await loopbackPortTaken(config.apiPort))) {
     await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
   }
-  if (!privateSession)
-    await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
+  const restoreOutcome = !privateSession
+    ? await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID)
+    : undefined;
   bootPhase("restore");
   const db = openDb(config.dbPath);
   bootPhase("database");
@@ -314,6 +316,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   try {
+    if (!privateSession && channel && columnCipher)
+      await new SpaceMemoryRestore(
+        repo,
+        new ChannelNativeBridge(channel),
+        env.AUX_BROWSER_PROFILE_ID ?? "",
+        config.dataDir,
+      ).startup(
+        restoreOutcome && "cleanupRequired" in restoreOutcome
+          ? { operationId: restoreOutcome.operationId }
+          : undefined,
+      );
+    else if (repo.db.prepare("SELECT 1 FROM aux_meta WHERE key='space_memory_restore_v1'").get())
+      throw new Error("Space memory restore requires its authenticated native Profile owner before startup.");
     await migrateCodingProcessLogs(repo);
     if (columnCipher) new ConnectorUploadStore(repo).retireRestored();
     else if (repo.db.prepare("SELECT 1 FROM connector_file_transfers LIMIT 1").get())
@@ -529,6 +544,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             beforeChange: (scope) => runtimeServices.runs.retireDesktopContext(scope, true).then(() => {}),
             beforeRemoval: async (scope) => {
               advanceManagedRecoveryGeneration(config.dataDir);
+              await runtimeServices.memoryPipeline?.retireWorkspace(scope.workspaceId);
               await runtimeServices.runs.retireDesktopContext(scope);
               await runtimeServices.contentMemory?.invalidateDerivatives();
             },
@@ -640,7 +656,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               },
               changed: (workspaceId) => events.emit("workspace.memory.updated", { workspaceId }),
             },
-          )
+          ).configureOrdinaryRestore(config.dataDir)
         : undefined,
     pages: () =>
       new PageService({

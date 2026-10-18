@@ -1,3 +1,7 @@
+import {
+  SpaceMemoryRestore,
+  memoryRestoreTransition,
+} from "../../apps/runtime/src/services/space-memory-restore.js";
 import { XAccountRecords } from "../../apps/runtime/src/services/x-store.js";
 import { XAccountService } from "../../apps/runtime/src/services/x-accounts.js";
 import { XGrantService } from "../../apps/runtime/src/services/x-grants.js";
@@ -979,9 +983,19 @@ it("refuses an ordinary staged restore after Space memory changes", async () => 
   const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
   await stageRuntimeRestore(f.sourceDir, ordinary.path, f.source.columnCipher, memory);
   await memory.review(f.space.workspaceId, (await memory.inbox(f.space.workspaceId))[0]!.claimId, "accept");
-  await expect(
-    applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId),
-  ).rejects.toThrow(/Space memory changed/);
+  const current = f.source.db.prepare("SELECT * FROM memory_files ORDER BY name").all();
+  const outcome = await applyPendingRuntimeRestore(
+    f.sourceDir,
+    join(f.sourceDir, "state.sqlite"),
+    f.sourceId,
+  );
+  expect(outcome).toMatchObject({ applied: false, cleanupRequired: true });
+  if (!("cleanupRequired" in outcome)) throw new Error("Expected authenticated original restore cleanup.");
+  await new SpaceMemoryRestore(f.source, f.sourceNative.bridge, f.sourceId, f.sourceDir).startup({
+    operationId: outcome.operationId,
+  });
+  expect(memoryRestoreTransition(f.source)).toBeUndefined();
+  expect(f.source.db.prepare("SELECT * FROM memory_files ORDER BY name").all()).toEqual(current);
 });
 
 it("refuses recovery export when the original Google exact-lookup identity is corrupt", async () => {

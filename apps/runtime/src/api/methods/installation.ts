@@ -69,7 +69,7 @@ async function h_installation_cancelRestore(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Runtime restore requires an explicit action in Aux.");
-  return cancelRuntimeRestore(s.settings.all().dataDir);
+  return cancelRuntimeRestore(s.settings.all().dataDir, s.memoryPipeline);
 }
 async function h_installation_restoreStatus(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external)
