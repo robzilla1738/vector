@@ -1,0 +1,148 @@
+{
+  "atUTC": "2026-10-18T15:50:38.200469+00:00",
+  "scope": "Current candidate native observations and first paired performance attempt; program incomplete",
+  "source": "b0236f5387eda242826ed52fbcb72c2145a5e3ce",
+  "build": {
+    "steps": 43,
+    "seconds": 567.24,
+    "chromium": "155.0.8059.85",
+    "abi": "550bdeb5fbbd9e501d0d17ecf1854f19f76d634f8afff1b4f1e5541c012d57b2",
+    "nativeGeneralSourceObserved": true,
+    "log": "/tmp/aux-current-b0236f538-native-2026-10-18.log",
+    "fullIcuBytes": 33105536,
+    "symbols": {
+      "source": "b0236f5387eda242826ed52fbcb72c2145a5e3ce",
+      "atUTC": "2026-10-18T15:30:22.130667+00:00",
+      "artifacts": [
+        {
+          "role": "framework",
+          "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+          "preserved": "/tmp/aux-b0236f538-native-symbols/framework.bin",
+          "bytes": 254279104,
+          "sha256": "8f51fde462ef73432ea4a7ff3b974ab254997f8fa3d2d935cc2288e7bb69e529",
+          "uuid": "UUID: 4C4C4447-5555-3144-A152-805550CF190B (arm64) /tmp/aux-b0236f538-native-symbols/framework.bin"
+        },
+        {
+          "role": "frameworkDWARF",
+          "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux Framework.dSYM/Contents/Resources/DWARF/Aux Framework",
+          "preserved": "/tmp/aux-b0236f538-native-symbols/frameworkDWARF.bin",
+          "bytes": 1895976960,
+          "sha256": "dea799a9958f85b103e832a11b210607f8863faeb1233196a1113498246843b6",
+          "uuid": "UUID: 4C4C4447-5555-3144-A152-805550CF190B (arm64) /tmp/aux-b0236f538-native-symbols/frameworkDWARF.bin"
+        },
+        {
+          "role": "executable",
+          "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/MacOS/Aux",
+          "preserved": "/tmp/aux-b0236f538-native-symbols/executable.bin",
+          "bytes": 52096,
+          "sha256": "0b1f153545e5160698f3ab54125dff6befae82c27ae168b16dbf5e7c57c9b421",
+          "uuid": "UUID: 4C4C44A0-5555-3144-A14A-9EEB184FC21D (arm64) /tmp/aux-b0236f538-native-symbols/executable.bin"
+        },
+        {
+          "role": "aperitif",
+          "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+          "preserved": "/tmp/aux-b0236f538-native-symbols/aperitif.bin",
+          "bytes": 69760,
+          "sha256": "3e3238b7059028b91fda16d0910cba9b62c4edb8c7c6c5ea6ff38fd709aa0fa3",
+          "uuid": "UUID: 4C4C4443-5555-3144-A183-FDBD30695963 (arm64) /tmp/aux-b0236f538-native-symbols/aperitif.bin"
+        },
+        {
+          "role": "aperitifDWARF",
+          "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/libaperitif.dylib.dSYM/Contents/Resources/DWARF/libaperitif.dylib",
+          "preserved": "/tmp/aux-b0236f538-native-symbols/aperitifDWARF.bin",
+          "bytes": 119647,
+          "sha256": "1c4b7b50fc7db7d677e13a00d9ae0fd4f830fd6553bbb7f9ce660f0d579fcab1",
+          "uuid": "UUID: 4C4C4443-5555-3144-A183-FDBD30695963 (arm64) /tmp/aux-b0236f538-native-symbols/aperitifDWARF.bin"
+        }
+      ]
+    }
+  },
+  "originalOwner": {
+    "pid": 70114,
+    "ppid": 67694,
+    "birth": "Sun Oct 18 10:30:31 2026",
+    "command": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/MacOS/Aux --user-data-dir=/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-dev-sVZxtK --enable-logging=stderr --use-fake-device-for-media-stream",
+    "profile": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-dev-sVZxtK",
+    "runtimeDescriptorExists": true,
+    "atUTC": "2026-10-18T15:30:43.896385+00:00",
+    "source": "b0236f5387eda242826ed52fbcb72c2145a5e3ce",
+    "originalExecSession": 14433
+  },
+  "normalQuit": {
+    "atUTC": "2026-10-18T15:41:55.958926+00:00",
+    "scope": "Authorized Crashpad report integrity only",
+    "beforeCount": 42,
+    "afterCount": 42,
+    "added": [],
+    "removed": [],
+    "changed": [],
+    "launcherSession": 14433,
+    "launcherExitCode": 0,
+    "observerSession": 40630,
+    "observerExitCode": 0,
+    "temporaryProfileRemoved": true,
+    "plainLockRemoved": true
+  },
+  "nativeRuntimeAcknowledgement": "Aux original runtime exit acknowledged; forced=0 exit_code=0",
+  "normalQuitLimits": [
+    "Idle UI/native dialogs and catalog browsing only; no active inference on this candidate.",
+    "Startup, active-work, private and multiple-Profile retirement remain unobserved.",
+    "Earlier original155 SIGTRAP remains unresolved; a normal Quit is not its resolution."
+  ],
+  "ui": {
+    "ledger": "/tmp/aux-native-b0236f538-acceptance/native-comparisons.json",
+    "ledgerSHA256": "697aaab1b081ef3eeb9bb35c24c0d1f69f5f0d0c3272a9eb4888c608163cdcb8",
+    "referenceSizeLogical": [
+      1712,
+      989
+    ],
+    "referenceScale": 2,
+    "currentPartialComparisons": [
+      15,
+      16
+    ],
+    "searchPicker": "Actual intrinsic approximately153logical wide; selectedrow aligned; Down/End/Escape andfocusreturn observed. Light/exactcomputed/narrow states pending.",
+    "collapsedSidebar": "Ordinarypage actualinner1712px equals1712outerwidth; no unusedrail.",
+    "nativeHalf": "853x989 outer; expandedsidebar leaves572pxpage width. Exact640/480 notachieved byCUAedge drag; notreportedproductfailure.",
+    "modelSubmenuFailure": {
+      "screenshot": "/tmp/aux-native-b0236f538-acceptance/model-narrow-provider.png",
+      "state": "/tmp/aux-native-b0236f538-acceptance/model-narrow-provider.txt",
+      "trigger": "853outer/572available HomeAsk\u2192modelpicker\u2192Anthropic",
+      "observed": "Submenu opens beyond right/bottom instead of inside owning popup withBack.",
+      "status": "Private correction inprogress; notfixedinthiscandidate."
+    },
+    "selectExperiment": {
+      "fixture": "/tmp/aux-native-select-ea0-ui-layout-fixture-v2/fixture.html",
+      "observations": [
+        "/tmp/aux-native-b0236f538-acceptance/select-v2-proposed-pointer.txt",
+        "/tmp/aux-native-b0236f538-acceptance/select-v2-light-commit.txt",
+        "/tmp/aux-native-b0236f538-acceptance/select-v2-keyboard-escape.txt",
+        "/tmp/aux-native-b0236f538-acceptance/select-v2-keyboard-commit.txt"
+      ],
+      "result": "Flat-listselectedcentersalign; explicitposition-anchor:auto preserves144pxpopupwidth. Firsttrustedpointerupleavesopenunchanged; actualLightinput/changeclosesandreturnsfocus; keyboardEscape/commitobserved.",
+      "limits": "Diagnostic only; no productionadoption; tall/grouped/scroll/clamp andcomplete statecoverage remainopen."
+    }
+  },
+  "performanceAttempt": {
+    "runnerSession": 42537,
+    "runnerExitCode": 1,
+    "report": "/tmp/aux-paired155-b0236f538-2026-10-18T1543Z/report.json",
+    "reportSHA256": "75978cfdc205be6e379c07832f8ba1fce6a3b38c8ec386ed3e0180459b5859b7",
+    "schema": 7,
+    "status": "incomplete",
+    "auxSamples": 0,
+    "stockSamples": 0,
+    "error": "AssertionError [ERR_ASSERTION]: PID-scoped input requires existing Accessibility permission\n\nfalse !== true\n\n    at launch (file:///Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-browser.mjs:407:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-browser.mjs:647:19",
+    "AC": "100%chargedACpower",
+    "plainLockReleased": true,
+    "permissionRequest": "Pending explicit owner approval for localhelperAccessibility; no permissionchanged.",
+    "interpretation": "No measured targets; failure before samples is retained, not a performance pass."
+  },
+  "acceptanceRemaining": [
+    "Fresh complete20taskcampaign after input/download fix integration andnativeproof",
+    "Remaining192reference comparisons both themes/allstates/exactnarrowbounds",
+    "Active/startup/private/multipleProfile shutdown andbrowserreadiness",
+    "Pairedperformance samples/targets",
+    "OriginalSIGTRAP resolution or honestlyretainedunresolvedstate"
+  ]
+}

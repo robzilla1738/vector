@@ -8,6 +8,26 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The `b0236f538` native app rebuild completes 43 steps in 9m27.24s. Its original
+normal application-menu Quit now acknowledges an unforced runtime exit 0; the
+original launcher exits 0 and removes its disposable Profile and plain lock. All
+42 authorized Crashpad reports remain unchanged. This is one idle native UI
+retirement observation; active/startup/private/multiple-Profile cases and the
+older SIGTRAP remain open. The [current native record](evidence/aside-native-b0236-observations-2026-10-18.json)
+retains the exact framework/dSYM identity and actual owner.
+
+At matched 1712×989 logical dimensions, the corrected search picker uses its
+intrinsic width, aligns the selected row, and returns focus after Escape. Native
+Half gives 853×989 with 572px available beside the sidebar; this exposes a model
+submenu clipping beyond the right/bottom edge rather than showing its nested
+Back view. The separate native-select experiment preserves width and native
+input/focus when explicitly anchored, but is not production implementation or
+complete scrolling/clamping acceptance. Remaining surfaces, themes and states
+are open. The first actual paired performance attempt stops before any samples
+because the PID-scoped helper lacks macOS Accessibility permission. Its schema-7
+incomplete report is retained; no performance target is passed and permission
+has not been changed.
+
 The native runtime-retirement correction compiles, and nine real process/pipe
 fixtures pass in 6.305s. Original-child signalling checks kernel birth and direct
 parent ownership; retirement shares a five-second browser-shutdown deadline,
