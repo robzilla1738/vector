@@ -5613,3 +5613,26 @@ index 82980f4578c05e02f88999132fa5df37e278493b..17fbbd857f4877a12c6d85b32babc0ef
    const CacheControlHeader& GetCacheControlHeader() const;
  
    bool NeedsHTTPOrigin() const;
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index a365f3f863d314ce7f27da45e3d80efd914a82a1..7d80e33d501e7d4f74b06b0da6c1ac7f6e9d7331 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -133,7 +133,8 @@
+                     "native.contentBlockBegin", "native.contentBlockAppend"});
+   register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
+   register_runtime(AuxRuntimeMethodGroup::kCdp,
+-                   {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
++                   {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation",
++                    "native.cdpArmInput", "native.cdpDispatch", "native.cdpVersion"});
+   register_runtime(AuxRuntimeMethodGroup::kTabs,
+                    {"native.spaceBindingsSet", "native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
+                     "native.focusPage", "native.stopPage", "native.recoverPage",
+@@ -155,7 +156,7 @@
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+       {"native.copilotStart", "native.copilotEndpoint", "native.copilotStop",
+-       "native.cdpAttach", "native.cdpTakeNavigationReceipt",
++       "native.cdpAttach", "native.cdpTakeNavigationReceipt", "native.cdpTakeInputOutcome",
+        "native.closeCreatedPage", "native.personReadContext",
+        "native.personRead", "native.personCapture", "native.recorderStart",
+        "native.recorderDrain", "native.recorderStop"});
