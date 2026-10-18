@@ -4138,7 +4138,7 @@ bool ValidateNode304(const base::Value& value) {
 
 bool ValidateNode305(const base::Value& value) {
   if (!((value.is_int() || (value.is_double() && std::isfinite(value.GetDouble()) && std::floor(value.GetDouble()) == value.GetDouble())))) return false;
-  if (AsNumber(value) < 184) return false;
+  if (AsNumber(value) < 92) return false;
   if (AsNumber(value) > 360) return false;
   return true;
 }

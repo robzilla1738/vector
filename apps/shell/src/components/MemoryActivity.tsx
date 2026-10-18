@@ -1,8 +1,20 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { MemoryExtractionView } from "@aux/contracts";
 import "./MemoryHistory.css";
 
-export function MemoryActivity({ entries }: { entries: MemoryExtractionView[] }) {
+const failureMessages = {
+  model_unavailable: "Choose an available model connection, then try extraction again.",
+  budget_exceeded: "The model budget needs your review before extraction can run.",
+  invalid_output: "The model returned quotes that could not be verified. No notes were added.",
+  inference_failed: "The model request failed. No notes were added.",
+};
+export function MemoryActivity({
+  entries,
+  retry,
+}: {
+  entries: MemoryExtractionView[];
+  retry?(entry: MemoryExtractionView): ReactNode;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailId = useId();
   const selected = entries.find((entry) => entry.activityId === selectedId) ?? entries[0];
@@ -30,8 +42,10 @@ export function MemoryActivity({ entries }: { entries: MemoryExtractionView[] })
             >
               <strong className="memory-activity-title">{entry.title}</strong>
               <span>
-                {duration(entry.durationMs)} · {entry.candidateIds.length}{" "}
-                {entry.candidateIds.length === 1 ? "note" : "notes"}
+                {entry.status === "failed"
+                  ? "Failed"
+                  : `${entry.candidateIds.length} ${entry.candidateIds.length === 1 ? "note" : "notes"}`}{" "}
+                · {duration(entry.durationMs)}
               </span>
             </button>
           </div>
@@ -57,17 +71,69 @@ export function MemoryActivity({ entries }: { entries: MemoryExtractionView[] })
           </div>
           <div>
             <dt>Processing</dt>
-            <dd>Local extraction · no model request</dd>
+            <dd>
+              {selected.modelId ??
+                (selected.status === "failed" ? "Not started" : "Local extraction · no model request")}
+            </dd>
           </div>
           <div>
             <dt>Notes extracted</dt>
             <dd>{selected.candidateIds.length}</dd>
           </div>
+          {selected.inputTokens !== undefined && (
+            <div>
+              <dt>Input tokens</dt>
+              <dd>{selected.inputTokens.toLocaleString()}</dd>
+            </div>
+          )}
+          {selected.outputTokens !== undefined && (
+            <div>
+              <dt>Output tokens</dt>
+              <dd>{selected.outputTokens.toLocaleString()}</dd>
+            </div>
+          )}
+          {selected.cachedInputTokens !== undefined && (
+            <div>
+              <dt>Cached input</dt>
+              <dd>{selected.cachedInputTokens.toLocaleString()}</dd>
+            </div>
+          )}
+          {selected.costUsd !== undefined && (
+            <div>
+              <dt>Cost{selected.costEstimated ? " (estimated)" : ""}</dt>
+              <dd>
+                {new Intl.NumberFormat(undefined, {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: 6,
+                }).format(selected.costUsd)}
+              </dd>
+            </div>
+          )}
         </dl>
+        {selected.status === "failed" && (
+          <div role="alert">
+            <p>{failureMessages[selected.errorCode ?? "inference_failed"]}</p>
+            {retry?.(selected)}
+          </div>
+        )}
+        {!!selected.proposals?.length && (
+          <section aria-label="Proposed memory notes">
+            <h4>Proposed notes</h4>
+            {selected.proposals.map((proposal) => (
+              <details key={proposal.claimId}>
+                <summary>{proposal.state === "accepted" ? "Accepted note" : "Pending review"}</summary>
+                <blockquote className="memory-activity-quote">{proposal.quote}</blockquote>
+              </details>
+            ))}
+          </section>
+        )}
         <p className="memory-activity-outcome">
-          {selected.candidateIds.length
-            ? "These notes were added to the review inbox. Accepted notes can inform replies."
-            : "No new notes were extracted from this chat."}
+          {selected.status === "failed"
+            ? "Extraction did not add any notes."
+            : selected.candidateIds.length
+              ? "These notes were added to the review inbox. Accepted notes can inform replies."
+              : "No new notes were extracted from this chat."}
         </p>
       </section>
     </div>

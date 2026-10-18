@@ -15,6 +15,20 @@ flowchart TD
   Runtime --> Models[AI Gateway / direct providers]
 ```
 
+Named custom model providers keep their own endpoint, protocol, models, role
+defaults and enabled state. Their keys live in separate OS credential entries
+bound to the normalized destination and protocol. Settings writes use the current
+connection revision; old transports cannot dispatch after a connection change.
+Private windows inherit the declared protocol through the credential-only broker.
+Custom endpoints use inline tool schemas and refuse HTTP redirects.
+
+Quick Ask mounts the ordinary conversation and draft owner. Its empty form uses a
+compact context/send footer; native sizing follows text, context and connection
+notices, then expands for the transcript. The recent-downloads popover and full
+history share one download projection and action implementation. Native snapshots
+and file/transfer controls work without the runtime; the popup does not create
+another download history or separate file-action authority.
+
 Bookmarks, History and Clear History route to Chromium's native WebUI pages.
 The native bookmark model owns folder navigation, selection, editing, clipboard,
 Undo and import/export. Aux branding and appearance apply within those pages.
@@ -28,12 +42,22 @@ Aux surface. Reading items use native bookmark data and keep row focus when thei
 read state moves them between groups. Browser chrome remains usable around this
 surface, and the replaced combined Library implementation has been removed.
 
-Memory extraction activity is committed atomically with candidate notes in the encrypted
-Space-memory generation. It records local processing duration, source identity,
-trigger and extracted candidate IDs, with a 200-operation limit. Recovery and Forget
-include these records; source titles are resolved only while their run remains
-eligible. Activity and recovery revisions are separate History views. Local extraction
-does not claim model token or cost usage.
+Memory extraction selects exact quotes from a bounded completed report using the
+selected connection's fast route. The model has no tools; verified source quotes
+enter the existing review inbox before recall. Per-Space queues preserve simultaneous
+completions. Original source, policy, model generation and lease are checked before
+dispatch and again inside encrypted generation publication. Pause and shutdown
+cancel uncommitted extraction while joining accepted native key writes.
+Forget all retires and joins active/queued sources before publishing its own
+generation, retaining their watermarks so delayed work cannot restore them.
+
+The extraction has its own financial reservation and model invoices. Activity stores
+actual extraction tokens/cache/cost, duration and safe failure codes independently
+of the source run's usage. Failed attempts remain retryable; completed sources keep
+deduplication watermarks. The encrypted generation commits notes and activity
+together, with200operations. Recovery and Forget include the records; proposed
+quotes are resolved only from remaining notes while their source remains eligible.
+Activity and recovery revisions remain separate History views.
 
 Memory Settings uses four routed views under the same retained Space editor:
 Overview, History, Context awareness and Configure. Subpage selection changes the
@@ -41,7 +65,9 @@ visible controls without discarding the editor draft or changing the selected
 Space. History defaults to extraction activity; Recovery revisions retains Restore
 through the existing scoped command and original revision ID. Context controls
 continue to use separate browsing-title and page-content policies. Model-based
-extraction telemetry, episodic retention and index rebuilding remain unimplemented.
+extraction now has source telemetry and safe retries. Episodic retention and the
+approved-note index are implemented; broader document authority, file diffs and
+Dream behavior remain open. Current native evidence belongs in STATUS.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 
@@ -66,6 +92,35 @@ Embedded tabs own their native input acknowledgement through their actual child 
 Private AI belongs to the actual Chromium off-the-record Profile. Authenticated native capability proof admits its UUID, in-memory SQLite and owner-only temporary files. The native Profile owns worker retirement and temporary cleanup; its existing private tabs retain signed-in sessions and exact document authority. Normal Temporary tasks remain isolated signed-out tabs. The authenticated native broker forwards only strict credential, budget and cloud realms to the original normal runtime. The selected provider descriptor and short-lived access lease inherit saved/environment/OAuth connections; refresh tokens and private content stay with their original owners. Original provider revocation aborts inherited private transports. Private daily/monthly costs use opaque aggregate leases without prompts, URLs, run IDs or provider identifiers. Basic private source-backed answer delivery, Stop and last-window retirement have passed a native walkthrough. Provider revocation, explicit export and shared-account/cloud acceptance remain separate pending flows.
 
 Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud Preview and human Changes/Logs/Stop/Undo routing are integrated. Process metadata contains bounded summaries; encrypted UTF-8 chunks supply cursor-based history without SDK access. Schema-4 startup conversion removes the replaced embedded log field atomically after original key admission. Cloud code-mode parity and actual cloud workflow acceptance remain pending.
+
+Memory restoration reads a bounded before/after approved-note preview, then binds
+the explicit write to that generation. Concurrent edits and Forget invalidate the
+write; pause and lease ownership are checked again at publication after original
+native key writes. Window/Space retirement and Memory events clear preview content
+and invalidate pending reads. Restoring preserves the prior current notes as a
+restorable encrypted revision. The root owner document is independent.
+
+Channel transport implementations own Slack envelope ACKs, Telegram offsets and
+Discord heartbeat/resume state. They admit authenticated provider identities and
+await durable receipt before acknowledgement. Schema 6 separately protects channel
+connections, peers, thread mappings, inputs, outbox receipts and transport cursors.
+Per-connection keyed indexes live outside ciphertext; their random keys remain
+inside the encrypted connection envelope and survive reviewed Profile recovery.
+Interrupted sends remain unknown, and a delivery ID cannot change its recipient.
+Original normal-window proof owns channel configuration and native secret writes;
+credentials never enter connection rows or renderer status. Authenticated provider
+user IDs map to local pairing records and revocable external workspace authority.
+Each provider thread owns an ordinary task/chat. Remote turns retain that authority
+through initial runs and queued/steered follow-ups, using normal approvals and
+session retirement. Blocking, disablement, changed configuration and shutdown
+retire original work and join admitted producers. Network reconnects preserve
+pairing; identity/authentication faults require local attention. Replies remain
+bound to their original task, run, authority and provider destination. Unknown
+acceptance requires concrete local review before retrying. Cross-Profile recovery
+disables connections, rotates configuration revisions, clears resume cursors and
+retires pairing authority while preserving protected history and opaque indexes.
+Settings uses shared fields, dialogs, native selects, switches and command dispatch.
+Live messenger and native visual acceptance remain open in STATUS.
 
 ## Immutable documents and native receipt exports
 

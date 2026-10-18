@@ -8,6 +8,17 @@ historical pause below. Baseline is clean local main `6f1016d8b`; the accepted
 native/renderer/runtime source is `769ba5f86`. The 4,675-test integrated check and
 native dropdown/rail observations remain valid for unchanged behavior. Full
 browser readiness, the manual 20-task smoke and performance acceptance remain open.
+Current source adds isolated named providers, compact Quick Ask/downloads,
+model-based Memory extraction and Channels transport/storage/pairing/run/reply/
+Settings integration, shared visual tokens and reviewed generation-bound Memory
+restoration. Latest verification covers4,776tests including one updated UI fixture
+rerun in isolation; STATUS records the exact integrated results. Live messenger
+and native channel acceptance remain open. Native address save/edit/cancel/update and refill are accepted
+on c366c7dc8. Redirect area0058 and compact-window area0059 await native acceptance;
+the isolated155baseline compiled and booted after an initial storage-factor
+timeout. Its disposable preview retired normally; latest-source integration and
+fresh startup diagnosis follow. STATUS is the current build-ownership
+record; older preview entries below are historical.
 
 ```mermaid
 flowchart LR
@@ -22,11 +33,11 @@ flowchart LR
 | Batch | State | Outcome and acceptance |
 | --- | --- | --- |
 | R1 | active | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations. |
-| R2 | active: clean57-area replay | Update the pinned Chromium security baseline in a disposable checkout; replay ordered area patches, compile and inspect changed behavior while preserving the stable product/stock checkouts. |
+| R2 | active | Official155.0.8059.85 with58areas compiled and launched. Diagnose the first storage-factor timeout, integrate current main/0059 into the isolated candidate and accept fresh startup/changed flows before moving root main's pin. Preserve stable product/stock checkouts. |
 | R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
-| R4 | ready | Measure system/tool/page/history prompt contributions, reduce irrelevant schema/context and verify stable caching. Complete valid paired native startup/interaction/memory measurements against matching stock. |
-| R5 | ready | Finish channel persistence/transports/pairing/replies; named custom providers and supported subscription setup; Memory document authority/extraction/diffs/Dream; routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. Existing implemented features remain enabled. |
-| R6 | ready | Complete compact Quick Ask/download popup and matched light/dark, normal/narrow, populated/error/focus-state comparisons across native browser chrome, Settings, chat and libraries using the current reference corpus. |
+| R4 | active | Shared tool schemas halve the known SDK payload bytes; actual provider token/cache/latency and valid paired native startup/interaction/memory measurements against matching stock remain. |
+| R5 | active | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Accept live channel transport/pairing/reply/native flows; implement personal-assistant capabilities; supported subscription setup; Memory root/automatic document authority, real-note extraction and file-diff/Dream flows (approved-note restore review is integrated); routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
+| R6 | active | Compact Quick Ask/download popup source is integrated. Complete native compilation, matched light/dark, normal/narrow and populated/error/focus comparisons across browser chrome, Settings, chat and libraries using the current corpus. |
 | RF | waiting on integrated batches | All scoped implementation and native acceptance complete, current evidence recorded, no unresolved daily-use blocker. Distribution, signing/notarization, sync and other platforms remain separate scope. |
 
 One executor owns source integration, the native tree, builder and launcher/plain

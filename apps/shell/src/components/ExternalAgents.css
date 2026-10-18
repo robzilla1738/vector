@@ -25,7 +25,7 @@
     padding: var(--space-4) 0 0 var(--space-4);
     border-radius: var(--r-lg);
     min-height: 164px;
-    background: linear-gradient(135deg, #b592a4, #f1c4ce 58%, #c8c1d9);
+    background: var(--preview-developer-backdrop);
     overflow: hidden;
   }
   .developer-cli-preview > div {

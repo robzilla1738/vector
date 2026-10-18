@@ -1,4 +1,99 @@
 @layer components {
+  .anchored-panel:has(.downloads-recent) {
+    width: 320px;
+    max-height: min(544px, calc(100dvh - 24px));
+    padding: 0;
+    overflow: hidden;
+  }
+  .downloads-recent.shelf {
+    width: 100%;
+    max-height: min(544px, calc(100dvh - 24px));
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .downloads-recent .shelf-head {
+    height: auto;
+    margin: 0;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-regular);
+  }
+  .downloads-recent .dl-row {
+    position: relative;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    padding: var(--space-3) var(--space-5);
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+  .downloads-recent .dl-row:is(:hover, :focus-within) {
+    background: var(--bg-hover);
+  }
+  .downloads-recent .dl-ico {
+    width: 20px;
+    height: 24px;
+    background: transparent;
+  }
+  .downloads-recent .dl-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: var(--fs-md);
+    line-height: var(--lh-normal);
+  }
+  .downloads-recent .dl-sub {
+    font-size: var(--fs-sm);
+  }
+  .downloads-recent .dl-state.completed {
+    color: inherit;
+  }
+  .downloads-recent .dl-row.completed .dl-actions {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-5);
+    opacity: 0;
+    flex-direction: row-reverse;
+  }
+  .downloads-recent .dl-row.completed:is(:hover, :focus-within) .dl-main {
+    padding-right: 64px;
+  }
+  .downloads-recent .dl-row.completed:is(:hover, :focus-within) .dl-actions {
+    opacity: 1;
+  }
+  .downloads-recent .dl-actions:has(button[aria-label^="Open "]) > button {
+    min-width: 28px;
+    height: 28px;
+    padding: 5px;
+  }
+  .downloads-recent .shelf-empty,
+  .downloads-recent .download-error,
+  .downloads-recent .download-private-note {
+    padding-inline: var(--space-5);
+  }
+  .downloads-history-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    padding: var(--space-3) var(--space-5);
+    border-top: var(--hairline) solid var(--line);
+    background: transparent;
+    color: var(--ink-1);
+    font-size: var(--fs-md);
+    text-align: left;
+  }
+  .downloads-history-link:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  @media (hover: none) {
+    .downloads-recent .dl-row.completed .dl-actions {
+      opacity: 1;
+    }
+  }
   .shelf {
     border-radius: var(--r-lg);
     max-height: min(380px, 48vh);

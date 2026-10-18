@@ -51,7 +51,7 @@ export function SettingsField({
   layout?: "row" | "feature";
   icon?: ReactNode;
   details?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const id = useId();
   const supportingText = hint ?? description;
@@ -75,7 +75,7 @@ export function SettingsField({
       <span id={`${id}-label`} className="setting-label">
         {label}
       </span>
-      <div className="ui-setting-control">{children}</div>
+      {children !== undefined && children !== null && <div className="ui-setting-control">{children}</div>}
       {details && <div className="setting-details">{details}</div>}
       {supportingText && (
         <span id={`${id}-hint`} {...staticHintProps}>

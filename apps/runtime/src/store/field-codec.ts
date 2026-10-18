@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "../services/protected-store.js";
 import { protectLegacyTaskEvidence, taskEvidenceProtection } from "./task-evidence-protection.js";
-import { documentTablesForDatabase } from "./db.js";
+import { channelTablesForDatabase, documentTablesForDatabase } from "./db.js";
 
 const PREFIX = "auxenc:v3:";
 const NAME = /^[a-z][a-z0-9_]*$/;
@@ -32,12 +32,19 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   task_evidence: ["json"],
   document_snapshots: ["manifest"],
   document_segments: ["json"],
+  channel_connections: ["body"],
+  channel_peers: ["body"],
+  channel_threads: ["body"],
+  channel_messages: ["body"],
+  channel_outbox: ["body"],
+  channel_cursors: ["body"],
 };
 /** Restorable v2/v3 snapshots predate the separate encrypted process log table. */
 export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_FIELDS {
   const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
-  if (![2, 3, 4, 5].includes(version)) throw new Error("Unsupported encrypted database schema.");
+  if (![2, 3, 4, 5, 6].includes(version)) throw new Error("Unsupported encrypted database schema.");
   documentTablesForDatabase(db);
+  const channels = channelTablesForDatabase(db);
   const evidence = taskEvidenceProtection(db);
   if (evidence && evidence.cursor !== null)
     throw new Error("Task evidence protection must finish before backup or recovery.");
@@ -46,6 +53,7 @@ export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_F
       ([table]) =>
         (version >= 4 || table !== "coding_process_logs") &&
         (version >= 5 || !["document_snapshots", "document_segments"].includes(table)) &&
+        (channels.length > 0 || !table.startsWith("channel_")) &&
         (evidence || table !== "task_evidence"),
     ),
   );

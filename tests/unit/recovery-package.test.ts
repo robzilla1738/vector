@@ -1,3 +1,7 @@
+import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
+import { seedChannel } from "../fixtures/channels.js";
+import { AgentConnectionService } from "../../apps/runtime/src/services/agent-connections.js";
+import { ChannelStore } from "../../apps/runtime/src/services/channel-store.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes } from "node:crypto";
@@ -115,6 +119,19 @@ async function fixture() {
     objective: "Check source",
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }],
   });
+  const channel = seedChannel(source, space.workspaceId, task.taskId);
+  const authority = new AgentConnectionService(source).create({
+    name: "Synthetic channel authority",
+    client: "telegram",
+    scope: { kind: "workspace", workspaceId: space.workspaceId },
+  });
+  channel.store.savePeer(channel.connection.connectionId, {
+    ...channel.store.peer(channel.connection.connectionId, channel.peerKey)!,
+    state: "paired",
+    authorityId: authority.connection.connectionId,
+    requestId: undefined,
+    expiresAt: undefined,
+  });
   const evidence = new TaskEvidenceService(
     source,
     new EventBus(source),
@@ -183,7 +200,7 @@ async function fixture() {
     title: "Protected article",
     text: "Protected article memory for a second Profile.",
   });
-  const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId);
+  const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId, fixtureMemoryExtractor);
   memory.setPolicy(space.workspaceId, true);
   await memory.extractRun(space.workspaceId, "recovery-run");
   const targetDb = openDb(join(targetDir, "state.sqlite"));
@@ -204,6 +221,7 @@ async function fixture() {
     evidence,
     segmented,
     documentReference,
+    channel,
   };
 }
 
@@ -305,6 +323,29 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  const channels = new ChannelStore(restored);
+  expect(channels.get(f.channel.connection.connectionId)?.name).toBe("Protected messenger connection");
+  expect(channels.key(f.channel.connection.connectionId, "peer", "200")).toBe(f.channel.peerKey);
+  expect(channels.peer(f.channel.connection.connectionId, f.channel.peerKey)?.name).toBe("Protected person");
+  expect(
+    channels.thread(f.channel.connection.connectionId, f.channel.peerKey, f.channel.threadKey)?.taskId,
+  ).toBe(f.channel.taskId);
+  expect(channels.messages(f.channel.connection.connectionId, ["completed"])[0]?.message.text).toBe(
+    "Protected messenger request",
+  );
+  expect(channels.deliveries(f.channel.connection.connectionId)[0]?.text).toBe(
+    "Protected messenger response",
+  );
+  const restoredChannel = channels.get(f.channel.connection.connectionId)!;
+  expect(restoredChannel.enabled).toBe(false);
+  expect(restoredChannel.revision).not.toBe(f.channel.connection.revision);
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)).toMatchObject({ state: "pending" });
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.authorityId).toBeUndefined();
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.requestId).toBeUndefined();
+  expect(channels.cursor(restoredChannel)).toBeUndefined();
+  expect(
+    new AgentConnectionService(restored).list().find((item) => item.client === "telegram")?.revokedAt,
+  ).toBeTypeOf("number");
   expect(
     new DocumentSnapshots(restored).read(f.segmented.owner, f.segmented.snapshot.sha256).chunk.segments[0]
       ?.text,

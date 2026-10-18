@@ -50,6 +50,9 @@
     --squircle-factor: 1.4;
     --hairline: 0.5px;
     --text: var(--ink-0);
+    --brand-slack-surface: #4a154b;
+    --brand-telegram-surface: #229ed9;
+    --brand-discord-surface: #5865f2;
     --text-muted: var(--ink-2);
     --shadow-md: var(--shadow-card);
     --shadow-dialog: 0 25px 50px -12px rgb(0 0 0 / 0.25);
@@ -255,6 +258,26 @@
     --web-page-selection: #eef0f6;
     --sidebar-elevation-tint: rgb(0 0 0 / 22%);
     --terminal-background: #151515;
+    --terminal-foreground: #d4d4d4;
+    --preview-quick-ask-backdrop:
+      radial-gradient(ellipse at 65% 15%, #ebc8a0 0, transparent 65%),
+      linear-gradient(135deg, #9a572d, #af7950 50%, #d8aa77);
+    --preview-quick-ask-fill: color-mix(in srgb, #4c3427 82%, transparent);
+    --preview-quick-ask-ink: #e1d4c9;
+    --preview-developer-backdrop: linear-gradient(135deg, #b592a4, #f1c4ce 58%, #c8c1d9);
+    --preview-selection-backdrop: linear-gradient(135deg, #becce3, #658fad 60%, #aaa9cd);
+    --preview-document-fill: #f8f7f5;
+    --preview-document-ink: #343c4b;
+    --preview-document-placeholder: #d9dce2;
+    --preview-document-highlight: #d2defb;
+    --project-icon-orange: oklch(72% 0.16 55);
+    --project-icon-yellow: oklch(80% 0.16 90);
+    --project-icon-green: oklch(72% 0.16 145);
+    --project-icon-teal: oklch(72% 0.12 180);
+    --project-icon-blue: oklch(70% 0.15 250);
+    --project-icon-violet: oklch(72% 0.15 295);
+    --project-icon-pink: oklch(72% 0.16 340);
+    --layout-vertical-selection-ring: rgb(251 146 60 / 30%);
     --quick-ask-shadow-tint: rgb(0 0 0 / 55%);
     --space-editor-hue-0: oklch(60% 0.18 0);
     --space-editor-hue-60: oklch(60% 0.18 60);

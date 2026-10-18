@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (![2, 3, 4, SCHEMA_VERSION].includes(version)) throw incompatible();
+      if (![2, 3, 4, 5, SCHEMA_VERSION].includes(version)) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -46,6 +46,8 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
+      if (version < 6 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name LIKE 'channel_%'").get())
+        throw incompatible();
       if (
         version < 5 &&
         db
@@ -72,15 +74,18 @@ export function openDb(path: string): DatabaseSync {
       if (version < 5) {
         applySchema(db, [schema.documents, "PRAGMA user_version=5"]);
       }
+      if (version < 6) applySchema(db, [schema.channels, "PRAGMA user_version=6"]);
     } else {
       applySchema(db, [
         schema.profile,
         schema.run_starts,
         schema.process_logs,
         schema.documents,
+        schema.channels,
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
+    channelTablesForDatabase(db);
     if (!financialTablesForDatabase(db).length) applySchema(db, [schema.private_spend]);
     if (path !== ":memory:") chmodSync(path, 0o600);
     db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=OFF");
@@ -160,7 +165,7 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Document tables do not match the historical database schema.");
     return [];
   }
-  if (version !== 5 || found.length !== tables.length)
+  if (![5, 6].includes(version) || found.length !== tables.length)
     throw new Error("The protected document schema is incomplete.");
   const expected = [
     "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,state:0,manifest:0",
@@ -170,6 +175,37 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
     if (columns.map((column) => `${column.name}:${column.pk}`).join(",") !== expected[index])
       throw new Error("The protected document row identity is invalid.");
+  }
+  return tables;
+}
+
+export function channelTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const expected = {
+    channel_connections:
+      "connection_id:1,revision:0,workspace_id:0,enabled:0,body:0,created_at:0,updated_at:0",
+    channel_peers: "connection_id:1,peer_key:2,body:0",
+    channel_threads: "connection_id:1,peer_key:2,thread_key:3,task_id:0,body:0",
+    channel_messages:
+      "connection_id:1,message_key:2,revision:0,peer_key:0,state:0,run_id:0,body:0,received_at:0",
+    channel_outbox:
+      "delivery_id:1,connection_id:0,revision:0,peer_key:0,run_id:0,state:0,body:0,created_at:0,updated_at:0",
+    channel_cursors: "connection_id:1,revision:0,body:0",
+  };
+  const tables = Object.keys(expected);
+  const found = tables.filter((table) =>
+    db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+  );
+  if (version < 6) {
+    if (found.length) throw new Error("Channel tables do not match the historical database schema.");
+    return [];
+  }
+  if (version !== 6 || found.length !== tables.length)
+    throw new Error("The protected channel schema is incomplete.");
+  for (const [table, identity] of Object.entries(expected)) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
+    if (columns.map((column) => `${column.name}:${column.pk}`).join(",") !== identity)
+      throw new Error("The protected channel row identity is invalid.");
   }
   return tables;
 }

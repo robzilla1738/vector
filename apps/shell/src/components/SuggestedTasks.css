@@ -54,7 +54,7 @@
     width: 80px;
     height: 80px;
     border-radius: 16px;
-    background: rgb(255 255 255 / 30%);
+    background: color-mix(in srgb, var(--liquid-white) 30%, transparent);
   }
   .home-suggestion-icon img {
     width: 48px;

@@ -563,9 +563,16 @@ function rewindDatabase(dataDir: string): string {
   mkdirSync(dataDir, { recursive: true });
   const dbPath = join(dataDir, "aux-state.sqlite");
   const prepared = openDb(dbPath);
-  prepared.exec(
-    `DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version = ${SCHEMA_VERSION - 1}`,
-  );
+  for (const table of [
+    "channel_cursors",
+    "channel_outbox",
+    "channel_messages",
+    "channel_threads",
+    "channel_peers",
+    "channel_connections",
+  ])
+    prepared.exec(`DROP TABLE ${table}`);
+  prepared.exec(`PRAGMA user_version = ${SCHEMA_VERSION - 1}`);
   prepared.close();
   return dbPath;
 }

@@ -103,6 +103,7 @@ const items: readonly RailItem[] = [
     icon: shellIconClock,
     gate: "automations",
   },
+  { label: "Channels", category: "Channels", group: "Features", icon: shellIconChats },
   { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: shellIconChats },
   { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
   {

@@ -731,6 +731,20 @@ in the run path. Add real transport-backed controls rather than enabled mock row
 The personal-assistant cards require separate capability evidence before wiring.
 All six references remain OPEN; this audit does not narrow the full parity goal.
 
+### Channels implementation follow-up — October 17
+
+The audit above records the original gap. Current source now has a Channels route,
+shared Settings hero/rows, Slack/Telegram/Discord Add menu and persisted connection
+Options, Pairing and Credentials tabs. Actual transports and protected native
+credentials back enable, reconnect and removal. Authenticated provider IDs back
+pair/block actions; paired people is the default, Everyone is an explicit saved
+choice. Thread mentions and Queue/Steer reach normal tasks, runs and approvals.
+Unknown reply review displays the exact text and original recipient before a
+permitted retry; historical retired replies remain viewable. Reference captures
+091/093/096 informed this implementation; no current live native comparison is
+claimed while computer control fails. Personal-assistant capability and all-six
+matched light/dark/narrow acceptance remain open.
+
 ## Routine model and delivery controls
 
 Reference084 now has functional Model and Notifications rows in source and Vite.
@@ -2824,3 +2838,27 @@ overlap. Default400px width restored;104 shows final native Run options. A secon
 synthetic no-tool request returned AUX READY with Low/local/Ask first and no page
 context. No diagnostic CSS was injected. Current launcher/Profile ownership is
 recorded inSTATUS. Full Aside parity and the20-task smoke remain incomplete.
+
+
+## October17 — remaining color tokens and live Terminal appearance
+
+The remaining29raw CSS colors across Home, project controls, Settings artwork,
+Developer previews and Terminal now use central semantic/artwork definitions.
+The raw-color scan reports0outside tokens.css. Terminal reads the actual shared
+computed palette/type values and refits after theme/text changes while retaining
+its existing process; its wrapper and xterm canvas now share one background.
+Renderer build and changed behavior checks pass; STATUS records the integrated
+suite and isolated recovery of a native-build-contention timeout. This does not
+establish matched native screenshot acceptance.
+
+
+## October17 — reviewed approved-note restoration
+
+History Restore now opens an actual current/target note comparison with daily
+paths and original quotes. Confirmation carries the preview's exact generation;
+changed Memory must be reviewed again. An already-matching revision has no write.
+Pause is checked at encrypted publication. Memory events redact the open review
+and invalidate pending reads, and retired owners cannot reveal late results.
+Shared dialog/button/material/type tokens provide the surface. Root-document and
+Dream file receipts remain separate scope. Dist,94focused tests, renderer build
+and integrated verification are recorded in STATUS; native comparison is open.

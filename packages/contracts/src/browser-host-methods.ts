@@ -14,8 +14,8 @@ import {
 } from "./tabs.js";
 import { BookmarkSchema, DownloadSchema, PageQuickActionSchema } from "./entities.js";
 import {
-  AgentClientSchema,
-  AgentConnectionCreateParams,
+  AgentCliClientSchema,
+  AgentCliConnectionCreateParams,
   AgentConnectionSchema,
 } from "./agent-connections.js";
 import { EventSchema } from "./events.js";
@@ -303,7 +303,10 @@ export const BrowserHostMethods = {
   ),
   pageFind: coreShell(
     tuple([str, str.min(1).max(4096), strictObject({ findNext: bool, forward: bool })]),
-    strictObject({ matches: number.int().nonnegative(), activeMatch: freshOptional(number.int().positive()) }),
+    strictObject({
+      matches: number.int().nonnegative(),
+      activeMatch: freshOptional(number.int().positive()),
+    }),
   ),
   pageStopFind: coreShell(tuple([str, z.enum(["clear", "keep"])]), strictObject({ ok: bool })),
   privacy: blockingShell(
@@ -429,7 +432,7 @@ export const BrowserHostMethods = {
   ),
   quickAsk: quickAskShell(tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
   quickAskLayout: quickAskShell(
-    tuple([strictObject({ conversation: bool, draftHeight: z.number().int().min(184).max(360) })]),
+    tuple([strictObject({ conversation: bool, draftHeight: z.number().int().min(92).max(360) })]),
     bool,
   ),
   showTabWindow: shell("windowSync", tuple([str]), bool),
@@ -580,13 +583,13 @@ export const BrowserHostMethods = {
   saveFile: coreShell(tuple([str, str]), nullableString),
   saveWorkbook: documentArtifactsShell(tuple([str, z.enum(["snapshot", "csv"]).optional()]), nullableString),
   saveStoredArtifact: documentArtifactsShell(tuple([str, str]), nullableString),
-  copyStoredImage: documentArtifactsShell(tuple([str.min(1).max(128)]), strictObject({ copied: z.literal(true) })),
+  copyStoredImage: documentArtifactsShell(
+    tuple([str.min(1).max(128)]),
+    strictObject({ copied: z.literal(true) }),
+  ),
   openPluginDirectory: shell("skills", noArgs, nullableString),
   pickEvidenceImage: conversationShell(noArgs, strictObject({ filename: str, dataUrl: str }).nullable()),
-  pickEvidenceDocuments: conversationShell(
-    noArgs,
-    DocumentSelectionSchema.nullable(),
-  ),
+  pickEvidenceDocuments: conversationShell(noArgs, DocumentSelectionSchema.nullable()),
   readEvidenceDocument: conversationShell(
     tuple([str.uuid(), number.int().nonnegative(), str.min(1).max(200).optional()]),
     DocumentReadResultSchema,
@@ -594,7 +597,7 @@ export const BrowserHostMethods = {
   releaseEvidenceDocuments: conversationShell(tuple([str.uuid()]), noResult),
   // External agents
   agentConfig: inboundAgentsShell(
-    tuple([AgentConnectionCreateParams]),
+    tuple([AgentCliConnectionCreateParams]),
     strictObject({
       command: str,
       args: freshStringArray(),
@@ -607,7 +610,7 @@ export const BrowserHostMethods = {
     noArgs,
     z.array(
       strictObject({
-        client: AgentClientSchema,
+        client: AgentCliClientSchema,
         installed: bool,
         version: freshOptional(str),
         error: freshOptional(str),

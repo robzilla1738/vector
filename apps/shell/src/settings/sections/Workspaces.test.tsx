@@ -176,8 +176,13 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
       approved = false;
       return { forgotten: 1, remaining: 0 };
     }
-    if (method === "memory.pipeline.revert")
-      return { workspaceId, enabled, summary: note.text, claimCount: 1, sourceCount: 1 };
+    if (method === "memory.pipeline.previewRevision")
+      return {
+        workspaceId,
+        revisionId: "11669024-a817-444b-bafa-7622510e51a3",
+        expectedGeneration: "current-generation",
+        changes: [],
+      };
     throw new Error(`Unexpected ${method}`);
   });
   await act(async () => root.render(<SpaceMemory workspaceId={workspaceId} />));
@@ -196,10 +201,13 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   expect(container.querySelector(".memory-document")?.textContent).toContain(note.text);
   await act(async () => button("Recovery revisions").click());
   await act(async () => button("Restore this revision").click());
-  expect(rpc).toHaveBeenCalledWith("memory.pipeline.revert", {
+  expect(rpc).toHaveBeenCalledWith("memory.pipeline.previewRevision", {
     workspaceId,
     revisionId: "11669024-a817-444b-bafa-7622510e51a3",
   });
+  expect(button("Restore approved notes").disabled).toBe(true);
+  expect(rpc.mock.calls.filter(([method]) => method === "memory.pipeline.revert")).toHaveLength(0);
+  await act(async () => button("Cancel").click());
   await act(async () => button("Forget note").click());
   expect(rpc).not.toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, claimId: note.claimId });
   expect(container.textContent).toContain("Forget run run-1");

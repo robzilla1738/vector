@@ -66,6 +66,26 @@ export const MemoryPipelineRevisionSchema = z.object({
   summary: z.string().max(2000),
   sourceRunIds: z.array(z.string().min(1)).max(200),
 });
+export const MemoryRevisionPreviewSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    revisionId: z.string().uuid(),
+    expectedGeneration: z.string().min(1),
+    changes: z
+      .array(
+        z
+          .object({
+            claimId: z.string().uuid(),
+            path: z.string().regex(/^episodic\/\d{4}-\d{2}-\d{2}\.md$/),
+            before: MemoryClaimSchema.nullable(),
+            after: MemoryClaimSchema.nullable(),
+          })
+          .strict(),
+      )
+      .max(400),
+  })
+  .strict();
+export type MemoryRevisionPreview = z.infer<typeof MemoryRevisionPreviewSchema>;
 export const MemoryExtractionSchema = z.object({
   activityId: z.string().uuid(),
   sourceRunId: z.string().min(1),
@@ -73,8 +93,32 @@ export const MemoryExtractionSchema = z.object({
   durationMs: z.number().nonnegative(),
   trigger: z.enum(["manual", "run-completed"]),
   candidateIds: z.array(z.string().uuid()).max(20),
+  status: z.enum(["completed", "failed"]).optional(),
+  modelId: z.string().min(1).max(500).optional(),
+  inputTokens: z.number().nonnegative().optional(),
+  outputTokens: z.number().nonnegative().optional(),
+  cachedInputTokens: z.number().nonnegative().optional(),
+  costUsd: z.number().nonnegative().optional(),
+  costEstimated: z.boolean().optional(),
+  errorCode: z
+    .enum(["model_unavailable", "inference_failed", "invalid_output", "budget_exceeded"])
+    .optional(),
 });
-export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({ title: z.string() });
+export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({
+  title: z.string(),
+  proposals: z
+    .array(
+      z
+        .object({
+          claimId: z.string().uuid(),
+          quote: z.string().max(2000),
+          state: z.enum(["pending", "accepted"]),
+        })
+        .strict(),
+    )
+    .max(20)
+    .optional(),
+});
 export type MemoryExtraction = z.infer<typeof MemoryExtractionSchema>;
 export type MemoryExtractionView = z.infer<typeof MemoryExtractionViewSchema>;
 

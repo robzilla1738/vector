@@ -231,6 +231,7 @@ export class GatewayModelClient implements ModelClient {
   private readonly gatewayFetch?: typeof fetch;
   private readonly teamIdOrSlug?: string;
   private readonly directModel: boolean;
+  private readonly toolSchemas: "inline" | "provider-default";
   private resolveModel: (id: string) => LanguageModel;
   private readonly streamIdleTimeoutMs: number;
   private readonly only: string[] | undefined;
@@ -254,6 +255,7 @@ export class GatewayModelClient implements ModelClient {
       models?: () => readonly ModelCapability[];
       candidatesFor?: (modelId: string) => readonly AgentModelRoute[];
       allowedModelId?: string;
+      toolSchemas?: "inline" | "provider-default";
     } = {},
   ) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
@@ -261,6 +263,7 @@ export class GatewayModelClient implements ModelClient {
     this.gatewayFetch = opts.gatewayFetch;
     this.teamIdOrSlug = opts.teamIdOrSlug;
     this.directModel = !!opts.model;
+    this.toolSchemas = opts.toolSchemas ?? "provider-default";
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.streamIdleTimeoutMs =
       opts.streamIdleTimeoutMs && opts.streamIdleTimeoutMs > 0
@@ -281,7 +284,12 @@ export class GatewayModelClient implements ModelClient {
       this.directModel ? undefined : import("@ai-sdk/gateway"),
     ])
       .then(([sdk, gateway]) => {
-        if (gateway) this.gateway = gateway.createGateway({ apiKey: this.apiKey, fetch: this.gatewayFetch, teamIdOrSlug: this.teamIdOrSlug });
+        if (gateway)
+          this.gateway = gateway.createGateway({
+            apiKey: this.apiKey,
+            fetch: this.gatewayFetch,
+            teamIdOrSlug: this.teamIdOrSlug,
+          });
         return sdk;
       })
       .catch((error) => {
@@ -436,6 +444,23 @@ export class GatewayModelClient implements ModelClient {
         )
       : undefined;
     const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
+    const capability = modelCapabilities(opts.modelId, this.capabilities());
+    const reasoning: Record<string, Record<string, unknown>> = {};
+    if (
+      !this.gateway &&
+      opts.reasoning &&
+      (capability?.reasoning === "supported" || capability?.reasoning === "required")
+    ) {
+      if (provider === "openai") reasoning.openai = { reasoningEffort: opts.reasoning, forceReasoning: true };
+      if (provider === "anthropic")
+        reasoning.anthropic = {
+          effort: opts.reasoning === "minimal" ? "low" : opts.reasoning,
+        };
+      if (provider === "google")
+        reasoning.google = {
+          thinkingConfig: { thinkingLevel: opts.reasoning === "xhigh" ? "high" : opts.reasoning },
+        };
+    }
     return {
       model,
       abortSignal: opts.signal,
@@ -443,7 +468,7 @@ export class GatewayModelClient implements ModelClient {
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       instructions: anthropic ? stampAnthropicCache({ role: "system", content: opts.system }) : opts.system,
       messages: cachedMessages,
-      providerOptions: mergeProviderOptions(gateway, session, opts.providerOptions),
+      providerOptions: mergeProviderOptions(gateway, reasoning, session, opts.providerOptions),
       cacheTools: anthropic,
     };
   }
@@ -720,7 +745,8 @@ export class GatewayModelClient implements ModelClient {
       ? modelCapabilities(opts.modelId, this.capabilities())?.provider
       : (request.model as { provider?: string }).provider;
     // Compatible servers may not resolve local schema references.
-    const useReferences = provider === "anthropic" || provider === "openai";
+    const useReferences =
+      this.toolSchemas === "provider-default" && (provider === "anthropic" || provider === "openai");
     const tools = Object.fromEntries(
       names.map((name) => {
         const spec = opts.tools[name]!;

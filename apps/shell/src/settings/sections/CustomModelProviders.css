@@ -1,0 +1,19 @@
+@layer components {
+  .custom-model-provider-dialog {
+    width: min(404px, calc(100vw - 32px));
+  }
+  .custom-provider-json {
+    width: 100%;
+    min-height: 220px;
+    max-height: 48dvh;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
+  .custom-provider-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+}

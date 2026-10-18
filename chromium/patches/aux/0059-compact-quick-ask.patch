@@ -1,0 +1,72 @@
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.cc b/chrome/browser/ui/aux/quick_ask_controller.cc
+--- a/chrome/browser/ui/aux/quick_ask_controller.cc
++++ b/chrome/browser/ui/aux/quick_ask_controller.cc
+@@ -6,6 +6,10 @@
+ 
+ #include <algorithm>
+ #include <optional>
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#endif
+ #include "base/scoped_observation.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "components/prefs/scoped_user_pref_update.h"
+@@ -97,7 +101,7 @@
+     const gfx::Rect work_area =
+         screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint()).work_area();
+     constexpr int kWidth = 440;
+-    constexpr int kHeight = 184;
++    constexpr int kHeight = 92;
+     const gfx::Rect bounds(
+         work_area.CenterPoint().x() - kWidth / 2,
+         work_area.CenterPoint().y() - kHeight / 2, kWidth, kHeight);
+@@ -112,7 +116,7 @@
+       return false;
+     popup_id_ = popup->GetSessionID();
+     chrome::AddTabAt(popup, GURL(), -1, true);
+-    popup->GetWindow()->SetBounds(bounds);
++    SetLayout(popup, false, kHeight);
+     popup->GetWindow()->Show();
+     popup->GetWindow()->Activate();
+     return true;
+@@ -126,9 +130,13 @@
+     if (!screen) return false;
+     const gfx::Rect work_area = screen->GetDisplayNearestWindow(
+         browser->GetWindow()->GetNativeWindow()).work_area();
++#if BUILDFLAG(IS_MAC)
++    if (auto* window = WebUIBrowserWindow::FromBrowser(browser))
++      window->SetAuxWindowControlsVisible(conversation);
++#endif
+     gfx::Rect bounds = browser->GetWindow()->GetBounds();
+     const int width = std::min(conversation ? 520 : 440, work_area.width());
+-    const int height = std::min(conversation ? 640 : std::clamp(draft_height, 184, 360),
++    const int height = std::min(conversation ? 640 : std::clamp(draft_height, 92, 360),
+                                 work_area.height());
+     bounds.set_x(bounds.CenterPoint().x() - width / 2);
+     bounds.set_size(gfx::Size(width, height));
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -495,7 +495,7 @@
+     const auto* layout = list->size() == 1 ? (*list)[0].GetIfDict() : nullptr;
+     const auto conversation = layout ? layout->FindBool("conversation") : std::nullopt;
+     const auto height = layout ? layout->FindInt("draftHeight") : std::nullopt;
+-    if (!conversation || !height || *height < 184 || *height > 360) {
++    if (!conversation || !height || *height < 92 || *height > 360) {
+       std::move(callback).Run(false, "", "invalid_argument", "Invalid Quick Ask layout");
+       return;
+     }
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -512,7 +512,8 @@
+   const CGFloat height = window.contentView.bounds.size.height;
+   const bool corner = window.isKeyWindow && cursor.x >= 0 && cursor.x < 60 &&
+                       cursor.y <= height && cursor.y > height - 40;
+-  const bool visible = aux_window_controls_requested_ || corner;
++  const bool visible = aux_window_controls_requested_ ||
++      (corner && !aux::IsQuickAskWindow(browser_));
+   if (visible == aux_window_controls_shown_) return;
+   aux_window_controls_shown_ = visible;
+   const bool reduce_motion = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;

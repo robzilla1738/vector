@@ -1,6 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint } from "@aux/runtime";
+import { createServer } from "node:http";
+import { CustomModelApiSchema } from "@aux/contracts/custom-model-providers";
 
 afterEach(() => vi.unstubAllEnvs());
 const sse = (events: unknown[]) =>
@@ -177,4 +179,145 @@ it("permits local HTTP endpoints and requires HTTPS everywhere else", () => {
   expect(isLoopbackCompatibleEndpoint("https://localhost:1234/v1")).toBe(true);
   expect(isLoopbackCompatibleEndpoint("https://models.example.test/v1")).toBe(false);
   expect(isLoopbackCompatibleEndpoint("invalid")).toBe(false);
+});
+
+for (const api of CustomModelApiSchema.options) {
+  for (const authenticated of [true, false]) {
+    it(`custom protocol ${api} uses its declared wire format and authentication=${authenticated}`, async () => {
+      const calls: {
+        url: string;
+        headers: Headers;
+        body: Record<string, unknown>;
+        redirect?: RequestRedirect;
+      }[] = [];
+      const network: typeof fetch = async (input, init) => {
+        const body = JSON.parse(String(init?.body));
+        calls.push({
+          url: String(input),
+          headers: new Headers(init?.headers),
+          body,
+          redirect: init?.redirect,
+        });
+        if (api === "anthropic-messages") return streamedResponse("anthropic", body.tools?.[0]?.name);
+        if (api === "google-generative-ai") return streamedResponse("google");
+        if (api === "openai-responses") return streamedResponse("openai");
+        return sse([
+          {
+            id: "chat_fixture",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "fixture-model",
+            choices: [
+              { index: 0, delta: { role: "assistant", content: '{"ok":true}' }, finish_reason: null },
+            ],
+          },
+          {
+            id: "chat_fixture",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "fixture-model",
+            choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+            usage: { prompt_tokens: 4, completion_tokens: 5, total_tokens: 9 },
+          },
+        ]);
+      };
+      const client = directModelClient(
+        "openai-compatible",
+        "synthetic-custom-key",
+        network,
+        "https://custom.example.test/api",
+        {
+          api,
+          authHeader: authenticated,
+          models: [{ id: "fixture-model", source: "configured", reasoning: "supported" }],
+        },
+      );
+      const result = await client.generateStructured({
+        modelId: "fixture-model",
+        system: "Return JSON",
+        prompt: "Synthetic protocol fixture",
+        reasoning: "high",
+        schema: z.object({ ok: z.boolean() }),
+      });
+      expect(result.object).toEqual({ ok: true });
+      expect(calls).toHaveLength(1);
+      const request = calls[0]!;
+      expect(new URL(request.url).origin).toBe("https://custom.example.test");
+      expect(new URL(request.url).pathname).toBe(
+        {
+          "openai-completions": "/api/chat/completions",
+          "openai-responses": "/api/responses",
+          "anthropic-messages": "/api/messages",
+          "google-generative-ai": "/api/models/fixture-model:streamGenerateContent",
+        }[api],
+      );
+      expect(request.redirect).toBe("error");
+      expect(request.body).toMatchObject(
+        {
+          "openai-completions": { reasoning_effort: "high" },
+          "openai-responses": { reasoning: { effort: "high" } },
+          "anthropic-messages": { output_config: { effort: "high" } },
+          "google-generative-ai": { generationConfig: { thinkingConfig: { thinkingLevel: "high" } } },
+        }[api],
+      );
+      const header =
+        api === "anthropic-messages"
+          ? "x-api-key"
+          : api === "google-generative-ai"
+            ? "x-goog-api-key"
+            : "authorization";
+      expect(request.headers.get(header)).toBe(
+        authenticated
+          ? header === "authorization"
+            ? "Bearer synthetic-custom-key"
+            : "synthetic-custom-key"
+          : null,
+      );
+      expect(
+        ["authorization", "x-api-key", "x-goog-api-key"].filter((name) => request.headers.has(name)),
+      ).toEqual(authenticated ? [header] : []);
+    });
+  }
+}
+
+it("custom protocol credentials never follow an HTTP redirect to another endpoint", async () => {
+  let sourceRequests = 0,
+    destinationRequests = 0;
+  const destination = createServer((_request, response) => {
+    destinationRequests++;
+    response.end("Unexpected request");
+  });
+  await new Promise<void>((resolve) => destination.listen(0, "127.0.0.1", resolve));
+  const destinationAddress = destination.address();
+  if (!destinationAddress || typeof destinationAddress === "string")
+    throw new Error("Missing fixture address");
+  const source = createServer((_request, response) => {
+    sourceRequests++;
+    response.writeHead(307, { location: `http://127.0.0.1:${destinationAddress.port}/other` });
+    response.end();
+  });
+  await new Promise<void>((resolve) => source.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = source.address();
+    if (!address || typeof address === "string") throw new Error("Missing fixture address");
+    const client = directModelClient(
+      "openai-compatible",
+      "synthetic-redirect-key",
+      undefined,
+      `http://127.0.0.1:${address.port}/v1`,
+      { api: "openai-completions", authHeader: true, models: [{ id: "fixture", source: "configured" }] },
+    );
+    await expect(
+      client.generateText({ modelId: "fixture", prompt: "Synthetic redirect fixture", maxAttempts: 1 }),
+    ).rejects.toThrow();
+    expect(sourceRequests).toBe(1);
+    expect(destinationRequests).toBe(0);
+  } finally {
+    source.closeAllConnections();
+    destination.closeAllConnections();
+    await Promise.all([
+      new Promise<void>((resolve) => source.close(() => resolve())),
+      new Promise<void>((resolve) => destination.close(() => resolve())),
+    ]);
+  }
 });

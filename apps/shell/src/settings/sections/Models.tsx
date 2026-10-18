@@ -2,15 +2,17 @@ import { staticFieldProps } from "../../ui/class-props";
 import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
-import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState } from "react";
 import {
   MODEL_PROVIDER_NAMES,
+  CustomModelProviderSchema,
   type ModelConnectionStatus,
   type ModelProvider,
   type LocalModelServer,
 } from "@aux/contracts";
 import { ProviderSignIn } from "./ProviderSignIn";
 import { ModelConnections } from "./ModelConnections";
+import { CustomModelProviders } from "./CustomModelProviders";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 import {
   useModelControlOwner,
@@ -200,7 +202,20 @@ export function ModelsSettings({
   const [savingKey, setSavingKey] = useState(false);
   const [switchingProvider, setSwitchingProvider] = useState(false);
   const provider = (settings.modelProvider as ModelProvider) ?? "gateway";
-  const providerNames = MODEL_PROVIDER_NAMES;
+  const custom = useMemo(() => {
+    const parsed = CustomModelProviderSchema.array().safeParse(settings.customModelProviders ?? []);
+    return parsed.success && provider === "openai-compatible"
+      ? parsed.data.find((definition) => definition.id === settings.customModelProviderId)
+      : undefined;
+  }, [provider, settings.customModelProviders, settings.customModelProviderId]);
+  const providerNames = {
+    ...MODEL_PROVIDER_NAMES,
+    "openai-compatible": custom?.name ?? MODEL_PROVIDER_NAMES["openai-compatible"],
+  };
+  const connectionIdentity =
+    provider === "openai-compatible"
+      ? JSON.stringify([provider, settings.customModelProviderId, settings.compatibleEndpoint, custom?.api])
+      : provider;
   const keyInput = useRef<HTMLInputElement>(null),
     modelInput = useRef<HTMLInputElement>(null);
   const focusRequest = useRef<{
@@ -230,7 +245,7 @@ export function ModelsSettings({
     setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
   }, [settings.modelProbe, settings.modelConnectionRevision, provider]);
   const [probing, setProbing] = useState(false);
-  const owner = useModelControlOwner(active, provider);
+  const owner = useModelControlOwner(active, connectionIdentity);
   const catalogOwner = useModelControlOwner(
     active,
     JSON.stringify([
@@ -264,7 +279,7 @@ export function ModelsSettings({
   const providerCommit = useRef({ provider, epoch: 0 });
   useLayoutEffect(() => {
     providerCommit.current = { provider, epoch: providerCommit.current.epoch + 1 };
-  }, [owner]);
+  }, [owner, provider]);
   const keyDraft = useRef(key);
   const keyGeneration = useRef(0);
   const connection = (settings.modelConnections as ModelConnectionStatus[] | undefined)?.find(
@@ -304,35 +319,41 @@ export function ModelsSettings({
     };
   }, [catalogOwner]);
 
-  const keyProvider = useRef(provider);
+  const keyProvider = useRef(connectionIdentity);
   useEffect(() => {
-    if (keyProvider.current !== provider) {
-      keyProvider.current = provider;
+    if (keyProvider.current !== connectionIdentity) {
+      keyProvider.current = connectionIdentity;
       setKey("");
     }
     setSavingKey(false);
     setProbing(false);
     setConnectionError("");
     probeSequence.current++;
-  }, [active, provider, owner]);
-  const previousModel = useRef({ provider, value: plannerModelSelection(settings, provider) });
-  const previousEndpoint = useRef({ provider, value: String(settings.compatibleEndpoint ?? "") });
+  }, [active, connectionIdentity, owner]);
+  const previousModel = useRef({
+    provider: connectionIdentity,
+    value: plannerModelSelection(settings, provider),
+  });
+  const previousEndpoint = useRef({
+    provider: connectionIdentity,
+    value: String(settings.compatibleEndpoint ?? ""),
+  });
   useEffect(() => {
     const previous = previousModel.current,
       next = plannerModelSelection(settings, provider);
     setModelDraft((current) =>
-      previous.provider !== provider || current === previous.value ? next : current,
+      previous.provider !== connectionIdentity || current === previous.value ? next : current,
     );
-    previousModel.current = { provider, value: next };
-  }, [settings.plannerModel, provider]);
+    previousModel.current = { provider: connectionIdentity, value: next };
+  }, [settings.plannerModel, provider, connectionIdentity]);
   useEffect(() => {
     const previous = previousEndpoint.current,
       next = String(settings.compatibleEndpoint ?? "");
     setEndpointDraft((current) =>
-      previous.provider !== provider || current === previous.value ? next : current,
+      previous.provider !== connectionIdentity || current === previous.value ? next : current,
     );
-    previousEndpoint.current = { provider, value: next };
-  }, [settings.compatibleEndpoint, provider]);
+    previousEndpoint.current = { provider: connectionIdentity, value: next };
+  }, [settings.compatibleEndpoint, provider, connectionIdentity]);
   useEffect(
     () => () => {
       probeSequence.current++;
@@ -358,7 +379,11 @@ export function ModelsSettings({
           probeSequence.current++;
           setProbe(null);
         }
-        return await onSave(patch);
+        return await onSave(
+          Object.keys(patch).length && typeof settings.modelConnectionRevision === "string"
+            ? { ...patch, expectedModelConnectionRevision: settings.modelConnectionRevision }
+            : patch,
+        );
       } finally {
         owner.finish(action);
       }
@@ -624,7 +649,14 @@ export function ModelsSettings({
         disabled={savingKey || probing || switchingProvider}
         onSave={set}
         onEdit={editConnection}
-      />
+      >
+        <CustomModelProviders
+          settings={settings}
+          active={active}
+          disabled={savingKey || probing || switchingProvider}
+          onSave={set}
+        />
+      </ModelConnections>
       {active && settings.localModelsOnly !== true && <ProviderSignIn onConnected={() => set({})} />}
       <IndexedField
         label="Local models only"
@@ -711,7 +743,7 @@ export function ModelsSettings({
           ))}
         </select>
       </IndexedField>
-      {provider === "openai-compatible" && (
+      {provider === "openai-compatible" && !custom && (
         <IndexedField
           label="Endpoint"
           hint="Prompts and screenshots are sent here. Remote endpoints must use HTTPS; localhost may use HTTP."

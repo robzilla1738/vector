@@ -1,4 +1,5 @@
 export * from "./ids.js";
+export * from "./channels.js";
 export * from "./environment.js";
 export * from "./errors.js";
 export * from "./refusals.js";
@@ -59,6 +60,7 @@ export * from "./bridge.js";
 export * from "./ipc-channel.js";
 
 export * from "./model-providers.js";
+export * from "./custom-model-providers.js";
 export * from "./model-registry.js";
 export * from "./site-adapters.js";
 

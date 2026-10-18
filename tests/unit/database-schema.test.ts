@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { withSecureDelete, openDb, PrivacyCheckpoint, Repo, SCHEMA_VERSION } from "@aux/runtime";
+import { channelTablesForDatabase } from "../../apps/runtime/src/store/db.js";
 
 const directories: string[] = [];
 const connections: DatabaseSync[] = [];
@@ -206,6 +207,7 @@ describe("fresh schema", () => {
       config: { chatId: "saved-chat" },
     });
     repo.setSetting("owner-choice", "preserved");
+    for (const table of channelTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
     previous.exec(
       "DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=2",
     );
@@ -319,6 +321,7 @@ describe("fresh schema", () => {
 it("adds opaque account receipts to an existing development schema4 Profile", () => {
   const { path } = fixture();
   const db = track(openDb(path));
+  for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   db.exec(
     "DROP TABLE private_spend; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=4",
   );
@@ -327,4 +330,33 @@ it("adds opaque account receipts to an existing development schema4 Profile", ()
   expect(version(reopened)).toBe(SCHEMA_VERSION);
   expect(reopened.prepare("SELECT COUNT(*) n FROM private_spend").get()).toEqual({ n: 0 });
   expect(reopened.prepare("SELECT COUNT(*) n FROM document_snapshots").get()).toEqual({ n: 0 });
+});
+
+it("adds protected channel storage to schema5 without changing existing records", () => {
+  const { path } = fixture();
+  const db = track(openDb(path));
+  db.prepare("INSERT INTO kv VALUES('retained','schema5 value')").run();
+  for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
+  db.exec("PRAGMA user_version=5");
+  db.close();
+  const upgraded = track(openDb(path));
+  expect(version(upgraded)).toBe(SCHEMA_VERSION);
+  expect(upgraded.prepare("SELECT value FROM kv WHERE key='retained'").get()).toEqual({
+    value: "schema5 value",
+  });
+  expect(channelTablesForDatabase(upgraded)).toHaveLength(6);
+});
+
+it("preserves a historical database with unexpected partial channel tables", () => {
+  const { path } = fixture();
+  const db = track(openDb(path));
+  for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
+  db.exec(
+    "CREATE TABLE channel_connections(kept TEXT); INSERT INTO channel_connections VALUES('preserve me'); PRAGMA user_version=5",
+  );
+  db.close();
+  expect(() => openDb(path)).toThrow(/incompatible/);
+  const preserved = track(new DatabaseSync(path));
+  expect(version(preserved)).toBe(5);
+  expect(preserved.prepare("SELECT kept FROM channel_connections").get()).toEqual({ kept: "preserve me" });
 });

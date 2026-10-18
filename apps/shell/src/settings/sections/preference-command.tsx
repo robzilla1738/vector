@@ -41,6 +41,7 @@ export function PreferenceAction({
   command,
   scopeId,
   invoke,
+  type = "button",
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   command: string;
@@ -48,5 +49,5 @@ export function PreferenceAction({
   invoke(): unknown;
 }) {
   const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, invoke);
-  return <button {...props} ref={controlRef} data-command-id={command} onClick={run} />;
+  return <button {...props} type={type} ref={controlRef} data-command-id={command} onClick={run} />;
 }

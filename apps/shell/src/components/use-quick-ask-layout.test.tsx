@@ -57,7 +57,7 @@ it("resizes only for changed draft geometry or conversation state and retires wi
   try {
     await act(async () => root.render(<Window conversation={false} />));
     await flush();
-    expect(bridge.quickAskLayout).toHaveBeenLastCalledWith({ conversation: false, draftHeight: 184 });
+    expect(bridge.quickAskLayout).toHaveBeenLastCalledWith({ conversation: false, draftHeight: 92 });
     host.querySelector("textarea")!.dispatchEvent(new Event("input", { bubbles: true }));
     await flush();
     expect(bridge.quickAskLayout).toHaveBeenCalledTimes(1);
@@ -67,7 +67,7 @@ it("resizes only for changed draft geometry or conversation state and retires wi
     expect(bridge.quickAskLayout).toHaveBeenLastCalledWith({ conversation: false, draftHeight: 360 });
     await act(async () => root.render(<Window conversation />));
     await flush();
-    expect(bridge.quickAskLayout).toHaveBeenLastCalledWith({ conversation: true, draftHeight: 184 });
+    expect(bridge.quickAskLayout).toHaveBeenLastCalledWith({ conversation: true, draftHeight: 92 });
     bridge.windowId = "replacement-window";
     await act(async () => root.render(<Window conversation={false} />));
     await flush();

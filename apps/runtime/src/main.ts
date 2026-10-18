@@ -30,6 +30,7 @@ import { readRuntimeIdentity } from "./api/runtime-identity.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore, contentMemoryExcerpt } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
+import { extractMemoryNotes } from "./services/memory-extractor.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 import { McpOAuthService } from "./services/mcp-oauth.js";
 import { OutboundMcpService } from "./services/outbound-mcp.js";
@@ -145,6 +146,7 @@ import type { CloudExecutionContext } from "./services/cloud-execution.js";
 import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
 import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
+import { ChannelService } from "./services/channels.js";
 import { pollCalendarRoutines } from "./services/calendar-routine-poll.js";
 import { ZapService } from "./services/zap.js";
 import { ContentBlockingService } from "./services/content-blocking.js";
@@ -329,6 +331,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     outboundMcp: OutboundMcpService;
     hooks: HookService;
     calendar: CalendarConnectionService;
+    channels: ChannelService;
     operations: OperationService;
     state: StateService;
     budgets: BudgetsService;
@@ -443,7 +446,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         : undefined,
     memoryPipeline: () =>
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
-        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID)
+        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID, {
+            generation: () => runtimeServices.settings.modelCacheGeneration(),
+            extract: (input) => {
+              const settings = runtimeServices.settings;
+              return extractMemoryNotes(
+                {
+                  repo,
+                  budget: accountBudget,
+                  model: settings.model(),
+                  modelId: settings.agentRoute("fast").modelId,
+                  models: settings.registryModels(),
+                },
+                input,
+              );
+            },
+          })
         : undefined,
     pages: () =>
       new PageService({
@@ -574,6 +592,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           server.disabledTools.includes(handler.toolName)
         )
           throw new AuxError("permission_denied", "Connect this MCP server and enable its tool first.");
+      }),
+    channels: () =>
+      new ChannelService({
+        repo,
+        native,
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "",
+        privateProfile: Boolean(privateSession),
+        events,
+        connections: runtimeServices.agentConnections,
+        sessions: runtimeServices.externalSessions,
+        runs: runtimeServices.runs,
+        tasks: runtimeServices.tasks,
       }),
     calendar: () =>
       new CalendarConnectionService({
@@ -3295,6 +3325,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       await runtimeServices.settings.initializeCredentials();
       if (closed) return;
       events.emit(EventTypes.SettingsChanged, { settings: runtimeServices.settings.all() });
+      if (
+        !privateSession &&
+        native.available() &&
+        env.AUX_BROWSER_PROFILE_ID &&
+        repo.db.prepare("SELECT 1 FROM channel_connections WHERE enabled=1 LIMIT 1").get()
+      )
+        runtimeServices.channels.start();
       void runtimeServices.settings.listModels().catch(() => {
         if (!closed) process.stderr.write("[runtime] model catalog refresh unavailable\n");
       });
@@ -3371,6 +3408,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       clearInterval(contentExpiry);
       clearInterval(dueTimer);
       calendarScanAbort.abort();
+      void serviceContainer
+        .peek("channels")
+        ?.close()
+        .catch(() => {});
       process.off("SIGTERM", onTerminationSignal);
       process.off("SIGINT", onTerminationSignal);
       process.off("unhandledRejection", onUnhandledRejection);
@@ -3396,6 +3437,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           })(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
           serviceContainer.peek("externalSessions")?.dispose(),
+          serviceContainer.peek("channels")?.close(),
           serviceContainer.peek("routines")?.close(),
           (async () => {
             const failures: unknown[] = [];

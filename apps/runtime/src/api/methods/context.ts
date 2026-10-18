@@ -83,6 +83,7 @@ export interface Services {
   repo: Repo;
   documentSnapshots: DocumentSnapshots;
   agentConnections?: AgentConnectionService;
+  channels?: import("../../services/channels.js").ChannelService;
   installCli?: (owner: string) => Promise<import("@aux/contracts").MethodResult<"developer.cli.install">>;
   installAgentConnection?: (
     input: unknown,

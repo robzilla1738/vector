@@ -1278,6 +1278,7 @@ export class RunService {
     const target = this.deps.repo.getRun(message.targetRunId);
     if (!target || target.config?.chatId !== message.chatId)
       throw new AuxError("conflict", "The original conversation run changed. Review this follow-up.");
+    this.checkExternalSource(target.config);
     if (target.config.contextMemoryIds?.length && !target.config.contextMemoryRefs?.length)
       throw new AuxError(
         "ref_stale",
@@ -1293,7 +1294,12 @@ export class RunService {
     if (taskId && taskRevision === undefined)
       throw new AuxError("conflict", "The saved task revision is missing. Review this follow-up.");
     const prepared = taskId
-      ? new TaskService(this.deps.repo, this.deps.events).prepareRun(taskId, taskRevision!)
+      ? new TaskService(this.deps.repo, this.deps.events).prepareRun(
+          taskId,
+          taskRevision!,
+          undefined,
+          target.config.externalParentRunId,
+        )
       : undefined;
     if (
       prepared &&
@@ -1309,6 +1315,8 @@ export class RunService {
       queuedMessageId: message.messageId,
       goal: message.text,
       nativeTurnContext: target.config.nativeTurnContext,
+      externalConnectionId: target.config.externalConnectionId,
+      externalParentRunId: target.config.externalParentRunId,
       executionTarget: target.config.executionTarget ?? "local",
       chatId: message.chatId,
       pageIds: message.pageIds,

@@ -153,6 +153,12 @@ describe("model registry capabilities", () => {
     expect(
       usageFields({ inputTokens: 100, outputTokens: 5, inputTokenDetails: { cacheReadTokens: 80 } }),
     ).toEqual({ inputTokens: 100, outputTokens: 5, cachedInputTokens: 80 });
+    expect(usageFields({ inputTokenDetails: { cacheReadTokens: 0 }, cachedInputTokens: 80 })).toEqual({
+      inputTokens: undefined,
+      outputTokens: undefined,
+      cachedInputTokens: 0,
+    });
+    expect(usageFields({})).not.toHaveProperty("cachedInputTokens");
     const e = withAttempts(new Error("x"), [{ durationMs: 1, inputTokens: 3 }]);
     expect(attemptsOf(e)).toEqual([{ durationMs: 1, inputTokens: 3 }]);
   });

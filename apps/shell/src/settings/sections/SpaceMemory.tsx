@@ -17,6 +17,7 @@ import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
 import { MemoryActivity } from "../../components/MemoryActivity";
 import type { MemoryExtractionView } from "@aux/contracts";
+import { MemoryRestoreControl } from "../../components/MemoryRestoreControl";
 import { MemoryHistory } from "../../components/MemoryHistory";
 import { MemoryDocument } from "../../components/MemoryDocument";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
@@ -784,25 +785,57 @@ function SpaceMemoryContent({
             </button>
           </div>
           {!snapshot && !error && <p role="status">Loading memory history…</p>}
-          {snapshot && historyView === "activity" && <MemoryActivity entries={activity} />}
+          {snapshot && historyView === "activity" && (
+            <MemoryActivity
+              entries={activity}
+              retry={(entry) => (
+                <PipelineControl
+                  command="extract-space-memory-source"
+                  scopeId={`${workspaceId}:${entry.activityId}`}
+                  disabled={busy || !enabled}
+                  onError={report}
+                  action={() => {
+                    assertCurrent();
+                    if (
+                      activity.filter(
+                        (original) =>
+                          original.activityId === entry.activityId && original.status === "failed",
+                      ).length !== 1
+                    )
+                      throw new Error("Choose the current failed extraction.");
+                    return act(() =>
+                      call("memory.pipeline.extractRun", { workspaceId, runId: entry.sourceRunId }),
+                    );
+                  }}
+                >
+                  Try again
+                </PipelineControl>
+              )}
+            />
+          )}
           {snapshot && historyView === "revisions" && (
             <MemoryHistory
               revisions={history}
               restore={(revision) => (
-                <PipelineControl
-                  key={revision.revisionId}
-                  command="restore-space-memory-revision"
-                  scopeId={`${workspaceId}:${revision.revisionId}`}
+                <MemoryRestoreControl
+                  key={`${workspaceId}:${revision.revisionId}`}
+                  workspaceId={workspaceId}
+                  revisionId={revision.revisionId}
                   disabled={busy}
-                  onError={report}
-                  action={() =>
-                    act(() =>
-                      call("memory.pipeline.revert", { workspaceId, revisionId: revision.revisionId }),
-                    )
-                  }
-                >
-                  Restore this revision
-                </PipelineControl>
+                  current={() => scope.current(snapshot) && ownsWorkspace()}
+                  restore={async (preview) => {
+                    const result = act(() =>
+                      call("memory.pipeline.revert", {
+                        workspaceId,
+                        revisionId: preview.revisionId,
+                        expectedGeneration: preview.expectedGeneration,
+                      }),
+                    );
+                    if (!result)
+                      throw new Error("Memory is busy. Review the current changes before restoring.");
+                    await result;
+                  }}
+                />
               )}
             />
           )}
