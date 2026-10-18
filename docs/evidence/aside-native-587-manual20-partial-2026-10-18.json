@@ -1,0 +1,80 @@
+{
+  "atUTC": "2026-10-18T18:22:55.024846+00:00",
+  "campaignStatus": "Stopped after original L12 uncertain outcome; incomplete12of20, no smoke qualification",
+  "report": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/reports/tasks-local-2026-10-18T18-09-53-028Z.json",
+  "reportSHA256": "36b7d66899d2bb43de98452ae88d59d5f84129f161a1d94eb0e969dc4180d7a8",
+  "runner": {
+    "session": 93226,
+    "originalPID": 18469,
+    "exitCode": 143,
+    "retirement": "Exact originalSIGTERM then joined; L13not submitted; its initialfixture reset had already occurred"
+  },
+  "rows": 12,
+  "passed": 9,
+  "failed": 3,
+  "unsubmitted": 8,
+  "modelCallEvents": 36,
+  "actualModelIDs": [
+    "anthropic/claude-sonnet-5.5"
+  ],
+  "inputTokens": 1362990,
+  "outputTokens": 5650,
+  "cachedInputTokens": 955105,
+  "explicitCacheZeroCalls": 10,
+  "positiveCacheCalls": 26,
+  "unknownCacheCalls": 0,
+  "observedCostComplete": true,
+  "observedCostUsd": 1.1716739999999997,
+  "knownObservedCostUsd": 1.1716739999999997,
+  "providerDurationComplete": true,
+  "providerDurationMs": 80644,
+  "providerCallP50Ms": 2082,
+  "providerCallP95Ms": 4262,
+  "limits": "Task walltime includes operator and approval waiting; provider durations and costs are actual model.call event fields. Actual reasoning effort on provider wire is not captured by this report; UI was Auto. No complete20, performance target, durable-Intents absence, or daily-readiness claim.",
+  "nativeSourceCommit": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+  "frameworkAndDWARFUUID": "4C4C4405-5555-3144-A11F-D378A9476D99",
+  "failures": [
+    {
+      "task": "L08-csv-metric",
+      "runId": "run_mve59s3u_1myr84f",
+      "status": "failed",
+      "observation": "Native download admitted complete20-byte artifact; immediate original-page extract succeeded. Later broad filesystem search was rejected through Not now. Resume failed with current-run-owned-page error.",
+      "sourceGap": "Model act projection drops artifactIds; no general model text-artifact reader is published. Narrow private correction pending."
+    },
+    {
+      "task": "L09-two-csv-metrics",
+      "runId": "run_mve5d7eo_2d9tv2v",
+      "status": "failed",
+      "observation": "Both CSV artifacts were admitted; broad home-folder content search rejected through Not now. Same resume error.",
+      "backendProof": "Three exact receipt-bound artifacts read successfully via existing typed backend; only metadata/hash retained, no contents or arbitrary filesystem paths."
+    },
+    {
+      "task": "L12-submit-rich-intake",
+      "runId": "run_mve5ghww_3nnec8k",
+      "status": "interrupted",
+      "uncertainActionId": "a3675f17-f223-4177-ae49-68025c114eb0",
+      "observation": "The uncertain action is the successful42ms bare focus click on Bio rich-text ref r12, batch index6; the original native dispatch joined. Subsequent type/fill was refused before dispatch by the unresolved receipt. Bio/date remained empty and no Submit step exists. No replay or receipt clearing. Whole-worker/raw native ticket join is not independently exposed. The initialL13 reset had already happened before runner stop."
+    }
+  ],
+  "regressionEvidence": {
+    "L03": "Actual select approved\u2192click\u2192extract, same page epoch3\u21924; six approved data rows.",
+    "L04": "Actual successful link click, same page epoch6.",
+    "L06": "Actual Edit\u2192select\u2192Save\u2192extract and confirmed saved status; completed normally. Ordinary explicitly requested Save follows current mechanical policy; no missing-confirmation claim.",
+    "limits": "Raw native continuation ticket IDs are not exposed by allowed read APIs. Continuation path attribution is a grounded implementation inference from exact source and successful native-backed steps."
+  },
+  "privateProofs": [
+    {
+      "path": "/tmp/aux-native-587-l03-l04-readonly-audit-2026-10-18.json",
+      "sha256": "e4d63f72d90d5d10ffd58bd36e439cdb42b7f6545d036955b3222d434521c56b"
+    },
+    {
+      "path": "/tmp/aux-native-587-csv-artifact-read-audit-2026-10-18.json",
+      "sha256": "f0575a4d787c9d60066a07a08c46768d8a33fc59975f6662d9f897a8f88ab153"
+    },
+    {
+      "path": "/tmp/aux-native-587-l12-readonly-audit-2026-10-18.json",
+      "sha256": "17eb00f29b2127a56377ccd51ee610fc49664eadefbf21e890814f288640a59d"
+    }
+  ],
+  "retirement": "/tmp/aux-native-587-acceptance-2026-10-18/retirement.json"
+}

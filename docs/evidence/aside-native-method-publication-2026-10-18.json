@@ -105,10 +105,11 @@
     "OSPermissionChanged": false
   },
   "manual20": {
-    "status": "Active separate campaign; not yet a completed20 result",
+    "status": "Stopped incomplete12of20:9pass3fail; exactoriginalrunner93226 joined143 after uncertainL12, no replay",
     "log": "/tmp/aux-manual20-587-attempt2-2026-10-18.log",
     "report": "tests/benchmarks/reports/tasks-local-2026-10-18T18-09-53-028Z.json",
-    "bootstrapFailure": "Earlier attempt stopped before any task submission on fixture-reset transport failure;0-row report18-09-05 retained separately."
+    "bootstrapFailure": "Earlier attempt stopped before any task submission on fixture-reset transport failure;0-row report18-09-05 retained separately.",
+    "currentEvidence": "docs/evidence/aside-native-587-manual20-partial-2026-10-18.json"
   },
   "remaining": [
     "Fresh20-task smoke completion and actual provider/cache/latency evidence",

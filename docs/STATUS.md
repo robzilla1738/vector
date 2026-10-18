@@ -39,10 +39,33 @@ with 16 identity-checked heartbeats, a maximum 15.026-second gap and no dedicate
 crash report. No agent GUI action occurred during the timer; external human
 activity was not independently monitored. This is current-source
 non-reproduction, **not resolution of the historical SIGTRAP**. Its original
-launcher retains cleanup ownership while a new default-route manual20 campaign
-runs. A separate first attempt stopped before any task submission on a fixture
-reset transport failure; its zero-row report is retained. Current UI acceptance,
+launcher subsequently joined normal application-menu Quit with unforced runtime exit0;
+the original processes, disposable Profile and plain lock are gone, with no new
+dedicated crash dump. The fresh default-route
+[manual20 campaign](evidence/aside-native-587-manual20-partial-2026-10-18.json)
+stopped after 12 scored tasks: **9 passes, 3 failures**, eight unsubmitted. Actual
+filter/link navigation and status saving now pass; CSV downloads are admitted,
+but the model lacks a general artifact reader and approval resumption fails.
+Rich-form input stops on a bare focus click before typing into Bio; that uncertain
+receipt is preserved without replay.
+The original runner was joined before further submissions/resets; L13’s initial
+reset had already occurred. All 36 model calls have observed cost/token/cache
+and provider-duration data: $1.171674, 10 explicit zero-cache calls and 26 positive
+cache calls. This is an incomplete failed smoke campaign, not readiness. A
+separate first attempt stopped before any task submission on a fixture-reset
+transport failure; its zero-row report is retained. Current UI acceptance,
 browser daily-use readiness and paired performance remain open.
+
+Current browser observations also prove navigation, Back, Forward and Reload while
+the exact original runtime process was SIGSTOPped, with stopped-state checks both
+before and after the UI actions. SIGCONT restores the same runtime identity; the
+interrupted rich-form run remains interrupted. This is runtime-outage evidence,
+not OS sleep/wake acceptance. A local AudioContext fixture changes Playing→Stopped;
+video, PiP and audible output remain unqualified. Microphone and notification
+requests expose no visible browser prompt and remain pending. Source investigation
+finds a permission-chip animation path Aux does not render; a narrow native proposal
+is under review. No OS permission was granted. Source-only Home and compact-menu
+geometry corrections are not yet rebuilt or natively accepted.
 
 Earlier integrated checks exposed missing fixture capabilities and a genuine
 process-retirement error. The independently reviewed
