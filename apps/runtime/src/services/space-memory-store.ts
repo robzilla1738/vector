@@ -9,6 +9,10 @@ import { ProtectedStore } from "./protected-store.js";
 
 export type MemoryRevision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
 export type MemoryGeneration = { generation: string; keyName: string };
+export type MemoryPublication = {
+  checkOwner?: () => Promise<void>;
+  commit?: () => (() => void) | undefined;
+};
 type FileRow = { name: string; generation: string; key_name: string; content: string };
 type HistoryRow = {
   revision_id: string;
@@ -153,6 +157,7 @@ export class SpaceMemoryStore {
     history: MemoryRevision[],
     prior: MemoryGeneration | null,
     beforeCommit?: () => void,
+    publication?: MemoryPublication,
   ) {
     const generation = `g-${randomUUID()}`;
     const keyName = this.keyName(workspaceId, generation);
@@ -206,6 +211,7 @@ export class SpaceMemoryStore {
     if (prior && !priorFactor) throw new Error("The prior Space memory key is unavailable.");
     let published = false;
     let retirementStarted = false;
+    let rollbackEffect: (() => void) | undefined;
     const publish = (fileValues: FileRow[], revisionValues: HistoryRow[]) => {
       withSecureDelete(this.repo.db, () => {
         this.repo.db.prepare("DELETE FROM memory_files WHERE workspace_id=?").run(workspaceId);
@@ -233,12 +239,14 @@ export class SpaceMemoryStore {
       await this.secrets.storeSecret(keyName, factor.toString("base64"));
       if ((await this.secrets.readSecret(keyName)).value !== factor.toString("base64"))
         throw new Error("Space memory key could not be confirmed.");
+      await publication?.checkOwner?.();
       this.repo.transaction(() => {
         beforeCommit?.();
         if (this.generation(workspaceId)?.generation !== prior?.generation)
           throw new AuxError("conflict", "Space memory changed while its generation was prepared.");
         previous = this.rows(workspaceId);
         publish(fileRows, historyRows);
+        rollbackEffect = publication?.commit?.();
       });
       published = true;
       if (prior) {
@@ -261,8 +269,10 @@ export class SpaceMemoryStore {
       if (canRollback) {
         if (published)
           this.repo.transaction(() => {
-            if (this.generation(workspaceId)?.generation === generation)
+            if (this.generation(workspaceId)?.generation === generation) {
+              rollbackEffect?.();
               publish(previous!.files, previous!.history);
+            }
           });
         await this.secrets.storeSecret(keyName, "");
       }

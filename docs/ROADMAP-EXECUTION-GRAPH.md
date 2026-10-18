@@ -105,8 +105,11 @@ custom JSON. Current runtime-only native acceptance is blocked before task
 submission: direct runtime reads and authenticated native background calls work,
 but the chat retry does not reach the runtime. No20-task result or cause is claimed.
 The original debug launcher retired after SIGINT; fresh final-source native
-acceptance remains required. Memory fault fixes remain isolated until exact
-publication/rollback failure reviews pass.
+acceptance remains required. Memory fault fixes now have independently reviewed exact
+publication/rollback failure regressions. Native Dream acceptance remains open.
+A saved non-debugger runtime-only preview connects and submits L01, but the actual
+Gateway/Anthropic route rejects top-level schema composition. Only1task fails; no
+L02submission or complete smoke is claimed. Portable schema publication remains active.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

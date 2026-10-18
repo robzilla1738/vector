@@ -29,14 +29,18 @@ total-JS increase. A combined current production/native measurement remains pend
 [The integration record](evidence/aside-navigation-shutdown-2026-10-18.json) separates
 source, tests, measured private builds and native observations.
 
-Deeper current-source review reproduced four Memory gaps: a global1,000-run cutoff
-can hide eligible sessions in another Space; empty reports can count toward Dream;
-owner proposal acceptance can mutate text before key preparation succeeds; and source
-retirement during preparation can escape the last publication check. Corrections
-and failure fixtures are in progress. Dream is not accepted from source presence or
-earlier passing tests. Further granular captured-surface audits have also identified
-remaining Home/menu/Settings/selection layout differences; native all-surface parity
-remains open.
+The current Memory correction selects eligible completed sessions within their
+original Space before bounded keyset paging and excludes empty reports. It fences
+original source reports at model admission and final publication. Owner proposal
+accept/revert and encrypted receipts now publish atomically after key preparation,
+with exact owner rechecks. Exact generated-document publication identity preserves
+applied diffs/usage through lost key-retirement acknowledgement and failed SQLite
+restoration, without overwriting newer results or replaying inference. Independent
+fault tests reproduce both failures and verify the fix; current native populated
+Dream acceptance remains open. [The Memory integration record](evidence/aside-memory-boundaries-2026-10-18.json)
+records exact patches, independent review and limitations. All182 original reference
+PNGs have now been manually inspected in the source audit; this is not all-surface
+native comparison. Remaining native states and confirmed feature-menu gaps continue.
 
 The current renderer parity slice removes Sidebar More's custom35px/12px rows
 and uses shared32px/14px menu roles. Home Ask focus and synchronous initialization
@@ -118,9 +122,13 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest renderer integrated check passes typecheck, lint and all **5,643tests
-across846files** in120.08s. Runtime dist was rebuilt before tests.
-Log: `/tmp/aux-ui-parity-integrated-check.log`.
+The Memory integrated check passes typecheck/lint and5,663tests across846files;
+one existing coder-worktree case hits its original60s timeout. Its unchanged
+quiet rerun passes all3cases within the original limits (50.10/32.78/26.89s).
+Logs: `/tmp/aux-memory-boundaries-integrated-check.log` and
+`/tmp/aux-memory-boundaries-coder-rerun.log`. Runtime dist was rebuilt first.
+The preceding renderer check passed all5,643tests/846files in120.08s
+(`/tmp/aux-ui-parity-integrated-check.log`).
 The preceding navigation/shutdown check passed5,640tests/846files in105.17s
 (`/tmp/aux-navigation-shutdown-integrated-check.log`).
 The preceding rich-Docs slice passed5,621tests/844files in100.83s
@@ -278,6 +286,19 @@ provider success is claimed. The debugger interrupt ended the launch with SIGINT
 its original launcher retired children/Profile/lock. This is not normal-Quit
 acceptance. [The bootstrap evidence](evidence/aside-native-fc9-bootstrap-2026-10-18.json)
 records identities, diagnostics and limits.
+
+The saved immutable fc9 runtime/ea9 native combination subsequently connects in
+a fresh non-debugger disposable Profile. Native local-fixture navigation works and
+the exact first manual task reaches the configured Gateway route for
+anthropic/claude-sonnet-5.5. It fails before inference: root object type is present,
+but top-level oneOf/allOf/anyOf is rejected. Only1task was submitted and failed;
+the harness stopped before L02. Usage/cache/cost remain unknown. Portable schema
+publication is still active work. Aux menu Quit returns the original launcher0;
+its lock retires and the newly created disposable Profile is removed. No active
+capture shutdown claim follows from absence of a warning. The earlier debugger
+stall and original155 crash remain unresolved.
+[The plain-launch evidence](evidence/aside-native-fc9-plain-2026-10-18.json) records
+identities, captures, failure and normal retirement.
 
 ## Validation and remaining acceptance
 

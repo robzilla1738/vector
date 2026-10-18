@@ -74,8 +74,14 @@ Search/recall include these bodies within the existing bounded Space budget; the
 grant no execution authority. Site and routine documents now share the encrypted
 authoritative document model. Dream records its own admitted model operation and
 usage, consolidates generated material, and proposes changes to owner-authored
-documents. File-change records bind before/after revisions; Revert refuses later
-edits. History uses50-entry pages. Unified retrieval preserves heading-aware
+documents. Eligible nonempty sessions are selected within the original Space before
+keyset paging. Original source reports are fenced at admission and final publication.
+Owner proposal/revert text and encrypted operation receipts publish atomically after
+key preparation. Exact generated-document publication identity survives failed key
+acknowledgement and failed SQLite restoration; persisted generations determine
+confirmed rollback or inspect-only uncertainty, without overwriting later results
+or replaying inference. File-change records bind before/after revisions; Revert
+refuses later edits. History uses50-entry pages. Unified retrieval preserves heading-aware
 chunks, original revision/line ranges and source eligibility through publication;
 local semantic ranking has an explicit lexical fallback. Native populated
 Dream/diff acceptance remains open in STATUS.

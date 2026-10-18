@@ -25,7 +25,7 @@
   "diagnostics": {
     "captured": "frame direction, request ID, method name, timestamp and error code only",
     "argumentsLogged": false,
-    "inspector": "Original disposable runtime only; conditional breakpoints removed and inspector closed before retirement. An initial inspector-only dynamic import cleanup expression failed; corrected built-in inspector closure succeeded. No product source changed.",
+    "inspector": "Original disposable runtime only; conditional breakpoints removed and inspector closure requested through the built-in module before retirement. An initial inspector-only dynamic import cleanup expression failed and was replaced. Closure was not independently sampled before SIGINT; after original launcher retirement no runtime or9229 listener remained. No product source changed.",
     "original155Crash": "Not reproduced or resolved by this session."
   },
   "retirement": {

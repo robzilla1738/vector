@@ -120,13 +120,28 @@ async function h_memory_documents(ctx: MethodCtx): Promise<unknown> {
   // Model accounting owns its original authority boundary. Never hold a global
   // mutation lease while awaiting a model cancellation or its final invoice.
   if (method === "memory.pipeline.dream" || method === "memory.pipeline.dreamCancel") {
-    const result =
-      method === "memory.pipeline.dream"
-        ? await pipeline.dream(raw.workspaceId, "manual", owner.current)
-        : await pipeline.dreamCancel(raw.workspaceId, raw.operationId);
-    await ctx.revokeWorkspaceContext(raw.workspaceId, false);
-    ctx.s.events.emit("workspace.memory.updated", { workspaceId: raw.workspaceId });
-    return result;
+    try {
+      const result =
+        method === "memory.pipeline.dream"
+          ? await pipeline.dream(raw.workspaceId, "manual", owner.current)
+          : await pipeline.dreamCancel(raw.workspaceId, raw.operationId);
+      await ctx.revokeWorkspaceContext(raw.workspaceId, false);
+      ctx.s.events.emit("workspace.memory.updated", { workspaceId: raw.workspaceId });
+      return result;
+    } catch (error) {
+      if (
+        error instanceof AuxError &&
+        error.code === "operation_uncertain" &&
+        error.detail &&
+        typeof error.detail === "object" &&
+        "kind" in error.detail &&
+        error.detail.kind === "memory-dream-publication"
+      ) {
+        await ctx.revokeWorkspaceContext(raw.workspaceId, false);
+        ctx.s.events.emit("workspace.memory.updated", { workspaceId: raw.workspaceId });
+      }
+      throw error;
+    }
   }
   await pipeline.retireWorkspace(raw.workspaceId);
   return withRunAuthorityMutation(ctx.s.repo, async () => {
@@ -154,9 +169,9 @@ async function h_memory_documents(ctx: MethodCtx): Promise<unknown> {
     try {
       if (method === "memory.pipeline.documentSet") result = await pipeline.documentSet(raw, beforeRemoval);
       else if (method === "memory.pipeline.dreamReview")
-        result = await pipeline.dreamReview(raw, applyOwner, beforeRemoval);
+        result = await pipeline.dreamReview(raw, applyOwner, beforeRemoval, owner.current);
       else if (method === "memory.pipeline.dreamRevert")
-        result = await pipeline.dreamRevert(raw, applyOwner, beforeRemoval);
+        result = await pipeline.dreamRevert(raw, applyOwner, beforeRemoval, owner.current);
       else throw new AuxError("invalid_params", "Unknown Memory operation.");
     } catch (error) {
       if (generation)

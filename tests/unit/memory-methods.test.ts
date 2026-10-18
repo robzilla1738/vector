@@ -1,3 +1,4 @@
+import { AuxError } from "@aux/contracts";
 import { expect, it, vi } from "vitest";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
 import { openDb, Repo } from "@aux/runtime";
@@ -130,4 +131,38 @@ it("advances the managed backup generation before a nonempty pipeline Forget", a
     repo.close();
     rmSync(dataDir, { recursive: true, force: true });
   }
+});
+
+it("invalidates current context for committed Dream publication uncertainty without rewriting or retrying the original result", async () => {
+  const emit = vi.fn();
+  const revokeWorkspaceContext = vi.fn();
+  const error = new AuxError("operation_uncertain", "Saved, key retirement ACK lost", {
+    kind: "memory-dream-publication",
+    operationId: "original-operation",
+  });
+  const dream = vi.fn().mockRejectedValue(error);
+  const handler = memoryMethods["memory.pipeline.dream"]!;
+  const context = {
+    method: "memory.pipeline.dream",
+    client: { external: false, codeMode: false, nativeTurnContext: "original-token" },
+    params: { workspaceId: "space-1" },
+    revokeWorkspaceContext,
+    s: {
+      memoryPipeline: { dream },
+      events: { emit },
+      nativeIdentity: Promise.resolve({ privateSession: false }),
+      native: { turnSourceContext: vi.fn().mockResolvedValue({ windowId: "original-window" }) },
+    },
+  } as unknown as Parameters<typeof handler>[0];
+  await expect(handler(context)).rejects.toBe(error);
+  expect(dream).toHaveBeenCalledOnce();
+  expect(revokeWorkspaceContext).toHaveBeenCalledExactlyOnceWith("space-1", false);
+  expect(emit).toHaveBeenCalledExactlyOnceWith("workspace.memory.updated", { workspaceId: "space-1" });
+  revokeWorkspaceContext.mockClear();
+  emit.mockClear();
+  const uncommitted = new AuxError("conflict", "Source changed before publication");
+  dream.mockRejectedValueOnce(uncommitted);
+  await expect(handler(context)).rejects.toBe(uncommitted);
+  expect(revokeWorkspaceContext).not.toHaveBeenCalled();
+  expect(emit).not.toHaveBeenCalled();
 });

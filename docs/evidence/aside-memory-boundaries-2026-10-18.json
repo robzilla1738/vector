@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-18",
+  "baseCommit": "fecd35fdc74b02178c116dce5a6540c3eaabeb22",
+  "status": "source_and_fault_fixtures_pass_native_dream_acceptance_pending",
+  "changes": [
+    "Select completed Dream sessions within the original Space before bounded keyset paging; foreign-Space volume cannot hide eligible sessions. Empty reports do not count.",
+    "Capture exact original source eligibility/report evidence before model admission and recheck at final database publication.",
+    "Publish owner acceptance/revert text and encrypted proposal/operation receipts in one original generation transaction after key preparation, rechecking exact owner revision.",
+    "Observe the exact generated-document publication transaction. Lost key-retirement acknowledgement cannot overwrite applied diffs/usage/receipts with failure.",
+    "Retain that observation through failed SQLite restoration; persisted generation proves successful rollback, exact publication or newer competing result. Uncertainty remains inspect-only, no inference/action replay."
+  ],
+  "frozenStack": [
+    {
+      "path": "/tmp/aux-measurement-memory-boundaries-ea9-v1.patch",
+      "sha256": "abf46278fec07b9114fc2de8d4a70a4e93bb7d46456b78e1cab650579b7d5022"
+    },
+    {
+      "path": "/tmp/aux-measurement-memory-publication-v2-delta.patch",
+      "sha256": "7189e645ee0823ae84a0dc29ebe2c0714c4e7667ec9b8d78c6ca219fdec30443"
+    },
+    {
+      "path": "/tmp/aux-measurement-memory-publication-v3-delta.patch",
+      "sha256": "b1b08cf77bbaff21f384812e8bacf36ac6e07904cfe73fbcbe71bbc789bbeb68"
+    },
+    {
+      "path": "/tmp/aux-measurement-memory-publication-v4-delta.patch",
+      "sha256": "e83a4049423ca329913d2b2750a8c274d5de9d8841d7a056eec5258a183467b8"
+    }
+  ],
+  "finalSourceHashes": {
+    "apps/runtime/src/services/memory-pipeline.ts": "b36614852d4b8b55cc9adcd1d0706b8f68b579aba372ea71473bc95a4e999f38",
+    "apps/runtime/src/services/space-memory-store.ts": "f84323bf2de6cc4287ac5340a91f5dfeb6e8fb717be393d4ed86acb8609b6bee",
+    "apps/runtime/src/api/methods/memory.ts": "66d88298123333126d9e87000348ce558825013e4848de61c84f6b3d0bc829c0",
+    "tests/unit/memory-dream-boundaries.test.ts": "b35d2dfa6820d26e577fec1c6802c8c43ee0af2063c10f455e8b7f1336e0c637",
+    "tests/unit/memory-methods.test.ts": "8506cc1282e700a91bc92d1b88a9aa1e3848c5cdb967a98f5737c9d3a0ec5bf6"
+  },
+  "review": {
+    "path": "/tmp/aux-memory-publication-v4-independent-review.json",
+    "sha256": "881fb5835ab642408694795b7941d34304a0d8e4a33ca8976691a54eff216a4c",
+    "independentFault": "Real SQLite restoration trigger plus old-key retirement refusal now retains completed receipt/diff with operation_uncertain."
+  },
+  "validation": {
+    "runtimeDist": "rebuilt before tests",
+    "typecheck": "pass",
+    "lint": "pass; advisory unrelated warnings remain",
+    "integrated": {
+      "command": "npm run check",
+      "testsPassed": 5663,
+      "testsFailed": 1,
+      "filesPassed": 846,
+      "filesFailed": 1,
+      "durationSeconds": 147.22,
+      "failure": "Existing coder-worktrees interrupted-snapshot case hit its original60000ms timeout.",
+      "log": "/tmp/aux-memory-boundaries-integrated-check.log"
+    },
+    "quietUnchangedCoderRerun": {
+      "testsPassed": 3,
+      "testsFailed": 0,
+      "durationSeconds": 117.25,
+      "perTestMs": [
+        50100,
+        32778,
+        26893
+      ],
+      "limitsChanged": false,
+      "log": "/tmp/aux-memory-boundaries-coder-rerun.log"
+    },
+    "authorFocused": {
+      "testsPassed": 108,
+      "files": 10,
+      "runtimeRebuilt": true
+    },
+    "native": "No current-source populated Dream observation claimed."
+  },
+  "limits": [
+    "Fault fixtures establish source behavior; current native populated Memory activity/diff/Open/Revert and live Dream admission remain acceptance work.",
+    "Original native155 crash remains unresolved.",
+    "Default-route native provider schema union rejection is separate active work."
+  ]
+}

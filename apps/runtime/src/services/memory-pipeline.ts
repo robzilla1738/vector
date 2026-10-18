@@ -42,6 +42,7 @@ import {
   ResultCitationSchema,
   MemoryPipelinePolicySchema,
   type MemoryClaim,
+  type WorkspaceMemory,
 } from "@aux/contracts";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import {
@@ -63,7 +64,12 @@ import {
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import { consolidateMemoryClaims, markMemoryContradictions } from "./night-memory.js";
-import { SpaceMemoryStore, type MemoryGeneration, type MemoryRevision } from "./space-memory-store.js";
+import {
+  SpaceMemoryStore,
+  type MemoryGeneration,
+  type MemoryRevision,
+  type MemoryPublication,
+} from "./space-memory-store.js";
 import { renderObservation } from "./observation-render.js";
 import type { MemoryExtractor, MemoryExtractionResult } from "./memory-extractor.js";
 
@@ -401,8 +407,8 @@ export class MemoryPipeline {
     });
   }
 
-  private report(run: Run): string | undefined {
-    return [run.result?.report, run.result?.answer, run.result?.text].find(
+  private report(run: Run | undefined): string | undefined {
+    return [run?.result?.report, run?.result?.answer, run?.result?.text].find(
       (value) => typeof value === "string",
     ) as string | undefined;
   }
@@ -695,6 +701,7 @@ export class MemoryPipeline {
       dreams: MemoryDreamOperation[];
       retiredSources?: { before: number; sourceHashes: string[] };
     },
+    publication?: MemoryPublication,
   ) {
     const previous =
       imports === undefined || activity === undefined || !extras?.retiredSources
@@ -736,7 +743,7 @@ export class MemoryPipeline {
       ["handbook.md.enc", this.handbook(claims)],
       ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
     ]);
-    await this.storage.write(workspaceId, files, history, prior, beforeCommit);
+    await this.storage.write(workspaceId, files, history, prior, beforeCommit, publication);
   }
 
   private clearPastePreviews(workspaceId: string) {
@@ -1581,6 +1588,57 @@ export class MemoryPipeline {
       .get(target.routineId, workspaceId);
   }
 
+  private sourceFence(workspaceId: string, claims: MemoryClaim[]) {
+    const reports = new Map<string, string | undefined>();
+    for (const claim of claims)
+      if (claim.source?.kind !== "owner-paste" && !reports.has(claim.sourceRunId))
+        reports.set(claim.sourceRunId, this.report(this.repo.getRun(claim.sourceRunId)));
+    const check = () => {
+      if (claims.some((claim) => !this.eligibleForRecall(workspaceId, claim)))
+        throw new AuxError("cancelled", "The original Memory source eligibility changed.");
+      for (const [runId, report] of reports) {
+        const run = this.repo.getRun(runId);
+        if (!run || this.report(run) !== report)
+          throw new AuxError("cancelled", "The original Memory source report changed.");
+      }
+    };
+    check();
+    return {
+      check,
+      digest: sha(
+        JSON.stringify([claims, [...reports].map(([runId, report]) => [runId, sha(report ?? "")])]),
+      ),
+    };
+  }
+
+  private ownerCommit(
+    workspaceId: string,
+    owner: WorkspaceMemory,
+    changes: MemoryDreamChange[],
+    applyOwner: (change: MemoryDreamChange, revision: number) => number,
+  ) {
+    return () => {
+      const key = `workspaceMemory:${workspaceId}`;
+      const previous = this.repo.getSetting<unknown>(key);
+      if (JSON.stringify(readWorkspaceMemory(this.repo, workspaceId)) !== JSON.stringify(owner))
+        throw new AuxError("conflict", "The owner Memory changed before publication.");
+      let revision = owner.revision;
+      for (const change of changes) {
+        const next = applyOwner(change, revision);
+        if (next !== revision + 1)
+          throw new AuxError("conflict", "The owner Memory revision changed during publication.");
+        revision = next;
+      }
+      const published = JSON.stringify(readWorkspaceMemory(this.repo, workspaceId));
+      return () => {
+        if (JSON.stringify(readWorkspaceMemory(this.repo, workspaceId)) !== published)
+          throw new AuxError("conflict", "Later owner edits prevent rolling back this Memory publication.");
+        if (previous === undefined) this.repo.deleteSetting(key);
+        else this.repo.setSetting(key, previous);
+      };
+    };
+  }
+
   private refsEligible(workspaceId: string, refs: MemoryDocumentRecord["sourceRefs"], claims: MemoryClaim[]) {
     return refs.every((ref) => {
       const claim = claims.find((item) => item.claimId === ref.claimId);
@@ -1692,22 +1750,37 @@ export class MemoryPipeline {
     since: number,
     retired: { before: number; sourceHashes: string[] },
   ) {
-    const rows = this.repo.db
-      .prepare(
-        "SELECT run_id AS runId FROM runs WHERE status='completed' AND ended_at>? ORDER BY ended_at DESC LIMIT 1000",
-      )
-      .all(Math.max(since, Date.now() - 14 * 86400000)) as { runId: string }[];
-    return rows
-      .flatMap(({ runId }) => {
-        const run = this.repo.getRun(runId);
-        return run &&
-          (run.endedAt ?? run.createdAt) > retired.before &&
-          !retired.sourceHashes.includes(sha(runId)) &&
+    const cutoff = Math.max(since, retired.before, Date.now() - 14 * 86400000);
+    const sessions: Run[] = [];
+    let cursor = { endedAt: Number.MAX_SAFE_INTEGER, runId: "" };
+    for (;;) {
+      const rows = this.repo.db
+        .prepare(
+          `SELECT runs.run_id AS runId,runs.ended_at AS endedAt FROM runs
+         JOIN run_lookup ON run_lookup.run_id=runs.run_id
+         WHERE runs.status='completed' AND runs.ended_at>?
+           AND json_extract(run_lookup.config,'$.contextWorkspaceId')=?
+           AND (runs.ended_at<? OR (runs.ended_at=? AND runs.run_id>?))
+         ORDER BY runs.ended_at DESC,runs.run_id ASC LIMIT 100`,
+        )
+        .all(cutoff, workspaceId, cursor.endedAt, cursor.endedAt, cursor.runId) as {
+        runId: string;
+        endedAt: number;
+      }[];
+      for (const row of rows) {
+        const run = this.repo.getRun(row.runId);
+        if (
+          run &&
+          this.report(run)?.trim() &&
+          !retired.sourceHashes.includes(sha(row.runId)) &&
           this.sourceEligible(workspaceId, run)
-          ? [run]
-          : [];
-      })
-      .slice(0, 200);
+        )
+          sessions.push(run);
+        if (sessions.length === 200) return sessions;
+      }
+      if (rows.length < 100) return sessions;
+      cursor = rows[rows.length - 1]!;
+    }
   }
 
   async dreamStatus(workspaceId: string) {
@@ -1834,6 +1907,8 @@ export class MemoryPipeline {
     let expectedGeneration: string | null = null;
     let operation: MemoryDreamOperation | undefined;
     let selection: MemoryDreamResult | undefined;
+    let committedPublicationUncertain = false;
+    let sources: ReturnType<MemoryPipeline["sourceFence"]> | undefined;
     const started = performance.now();
     const checkCurrent = () => {
       controller.signal.throwIfAborted();
@@ -1848,6 +1923,7 @@ export class MemoryPipeline {
         (this.storage.generation(workspaceId)?.generation ?? null) !== expectedGeneration
       )
         throw new AuxError("cancelled", "The original Dream model, sources or Memory policy changed.");
+      sources?.check();
     };
     try {
       const prepared = await this.leased(workspaceId, async (checkLease) => {
@@ -1859,6 +1935,7 @@ export class MemoryPipeline {
             this.eligibleForRecall(workspaceId, claim),
         );
         expectedGeneration = state.prior?.generation ?? null;
+        sources = this.sourceFence(workspaceId, claims);
         checkCurrent();
         checkLease();
         operation = {
@@ -1869,7 +1946,7 @@ export class MemoryPipeline {
           durationMs: 0,
           inputGeneration: expectedGeneration,
           ownerRevision: owner.revision,
-          sourceDigest: sha(JSON.stringify(claims)),
+          sourceDigest: sources.digest,
           sourceRunIds: [...new Set(claims.map((claim) => claim.sourceRunId))],
           changes: [],
         };
@@ -2051,30 +2128,63 @@ export class MemoryPipeline {
           changes,
           status: selection!.status === "failed" ? "failed" : changes.length ? "completed" : "no-change",
         };
-        await this.writeGeneration(
-          workspaceId,
-          state.claims,
-          state.inbox,
-          state.history,
-          state.prior,
-          state.imports,
-          state.activity,
-          () => {
-            checkLease();
-            checkCurrent();
-          },
-          {
-            documents: next,
-            dreams: state.dreams.map((entry) =>
-              entry.operationId === operation!.operationId ? operation! : entry,
-            ),
-          },
-        );
+        let publicationGeneration: string | undefined;
+        try {
+          await this.writeGeneration(
+            workspaceId,
+            state.claims,
+            state.inbox,
+            state.history,
+            state.prior,
+            state.imports,
+            state.activity,
+            () => {
+              checkLease();
+              checkCurrent();
+            },
+            {
+              documents: next,
+              dreams: state.dreams.map((entry) =>
+                entry.operationId === operation!.operationId ? operation! : entry,
+              ),
+            },
+            {
+              commit: () => {
+                publicationGeneration = this.storage.generation(workspaceId)?.generation;
+                // Keep this immutable identity even if a later SQLite rollback
+                // aborts. Only the actual current generation proves restoration.
+                return undefined;
+              },
+            },
+          );
+        } catch (error) {
+          // Record this write's exact generation inside its publication
+          // transaction. An expired lease and a competing writer must never
+          // make a rejected preparation look like this operation committed.
+          if (
+            publicationGeneration &&
+            this.storage.generation(workspaceId)?.generation !== state.prior?.generation
+          ) {
+            committedPublicationUncertain = true;
+            throw new AuxError(
+              "operation_uncertain",
+              this.storage.generation(workspaceId)?.generation === publicationGeneration
+                ? "The original Dream result was saved, but its generation key retirement could not be confirmed. Inspect the recorded operation before running Dream again."
+                : "The original Dream publication could not be confirmed after Memory changed. Inspect current documents and activity before running Dream again.",
+              { kind: "memory-dream-publication", operationId: operation.operationId },
+            );
+          }
+          throw error;
+        }
         this.recallDependencies?.changed?.(workspaceId);
         return operation!;
       });
     } catch (error) {
       if (!operation) throw error;
+      if (committedPublicationUncertain) {
+        if (!this.closed) this.recallDependencies?.changed?.(workspaceId);
+        throw error;
+      }
       operation = {
         ...operation,
         durationMs: Math.max(0, performance.now() - started),
@@ -2133,6 +2243,7 @@ export class MemoryPipeline {
     raw: unknown,
     applyOwner?: (change: MemoryDreamChange, expectedRevision: number) => number,
     beforeRemoval?: () => void | Promise<void>,
+    checkOwner?: () => Promise<void>,
   ) {
     const input = MemoryDocumentMethodSchemas["memory.pipeline.dreamReview"].parse(raw);
     await this.retireWorkspace(input.workspaceId);
@@ -2147,6 +2258,8 @@ export class MemoryPipeline {
           throw new AuxError("conflict", "This Dream proposal is no longer pending.");
         const updated = { ...change };
         const documents = [...state.documents];
+        let sources: ReturnType<MemoryPipeline["sourceFence"]> | undefined;
+        let commitEffect: (() => () => void) | undefined;
         if (input.decision === "reject") updated.state = "rejected";
         else {
           this.liveMemorySpace(input.workspaceId);
@@ -2155,6 +2268,10 @@ export class MemoryPipeline {
             !this.refsEligible(input.workspaceId, change.sourceRefs, state.claims)
           )
             throw new AuxError("permission_denied", "This proposal no longer has eligible Memory sources.");
+          sources = this.sourceFence(
+            input.workspaceId,
+            state.claims.filter((claim) => change.sourceRefs.some((ref) => ref.claimId === claim.claimId)),
+          );
           if (change.ownerPath) {
             const owner = readWorkspaceMemory(this.repo, input.workspaceId);
             const text =
@@ -2173,7 +2290,8 @@ export class MemoryPipeline {
               );
             await beforeRemoval?.();
             checkLease();
-            updated.resultingRevision = applyOwner(change, owner.revision);
+            updated.resultingRevision = owner.revision + 1;
+            commitEffect = this.ownerCommit(input.workspaceId, owner, [change], applyOwner);
           } else {
             const document = documents.find((document) => document.documentId === change.documentId);
             if (
@@ -2210,11 +2328,23 @@ export class MemoryPipeline {
           state.prior,
           state.imports,
           state.activity,
-          checkLease,
+          () => {
+            checkLease();
+            if (input.decision === "accept") {
+              this.liveMemorySpace(input.workspaceId);
+              if (!this.policy(input.workspaceId).enabled)
+                throw new AuxError("cancelled", "Memory paused before proposal publication.");
+              const target = documents.find((document) => document.documentId === change.documentId)?.target;
+              if (target && !this.targetEligible(input.workspaceId, target))
+                throw new AuxError("cancelled", "The Memory document target retired.");
+            }
+            sources?.check();
+          },
           {
             documents,
             dreams: state.dreams.map((entry) => (entry.operationId === next.operationId ? next : entry)),
           },
+          { checkOwner, commit: commitEffect },
         );
         return next;
       }),
@@ -2225,6 +2355,7 @@ export class MemoryPipeline {
     raw: unknown,
     applyOwner?: (change: MemoryDreamChange, expectedRevision: number) => number,
     beforeRemoval?: () => void | Promise<void>,
+    checkOwner?: () => Promise<void>,
   ) {
     const input = MemoryDocumentMethodSchemas["memory.pipeline.dreamRevert"].parse(raw);
     await this.retireWorkspace(input.workspaceId);
@@ -2276,12 +2407,22 @@ export class MemoryPipeline {
               throw new AuxError("conflict", "A document has later edits. Revert cannot replace them.");
           }
         }
+        const refs = changes.flatMap((change) => [...change.sourceRefs, ...(change.beforeSourceRefs ?? [])]);
+        const sources = this.sourceFence(
+          input.workspaceId,
+          state.claims.filter((claim) => refs.some((ref) => ref.claimId === claim.claimId)),
+        );
+        const ownerChanges = changes
+          .filter((change) => change.ownerPath)
+          .map((change) => ({ ...change, after: change.before ?? "" }));
+        const commitEffect = ownerChanges.length
+          ? this.ownerCommit(input.workspaceId, owner, ownerChanges, applyOwner!)
+          : undefined;
         await beforeRemoval?.();
         checkLease();
         const documents = [...state.documents];
         for (const change of changes) {
-          if (change.ownerPath) applyOwner!({ ...change, after: change.before ?? "" }, owner.revision);
-          else {
+          if (!change.ownerPath) {
             const index = documents.findIndex((document) => document.documentId === change.documentId);
             if (change.before === null) documents.splice(index, 1);
             else
@@ -2310,11 +2451,28 @@ export class MemoryPipeline {
           state.prior,
           state.imports,
           state.activity,
-          checkLease,
+          () => {
+            checkLease();
+            this.liveMemorySpace(input.workspaceId);
+            if (
+              !this.policy(input.workspaceId).enabled ||
+              documents.some(
+                (document) =>
+                  changes.some((change) => change.documentId === document.documentId) &&
+                  !this.targetEligible(input.workspaceId, document.target),
+              )
+            )
+              throw new AuxError(
+                "cancelled",
+                "Memory or a document target retired before revert publication.",
+              );
+            sources.check();
+          },
           {
             documents,
             dreams: state.dreams.map((entry) => (entry.operationId === next.operationId ? next : entry)),
           },
+          { checkOwner, commit: commitEffect },
         );
         return next;
       }),
