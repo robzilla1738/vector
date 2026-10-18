@@ -8,6 +8,56 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+Original CDP commands now have a separate finite protocol-response deadline,
+bounded by 30 seconds and their captured native lease expiry. Retirement settles
+the original caller before detach, and late replies cannot resolve a replacement
+connection. Shutdown stops reconnect and closes that protocol before joining
+runs, retaining uncertain outcomes and page ownership until the original work
+unwinds. The [response-lifetime record](evidence/aside-native-cdp-response-lifetime-2026-10-18.json)
+includes actual held-command fixtures with a disconnected host. The search-engine
+popup also uses intrinsic width with its actual trigger minimum, retaining Aux's
+Geist font; [native width comparison](evidence/aside-search-picker-intrinsic-width-2026-10-18.json)
+remains pending. The rebuilt integrated check passes all 5,937 tests across 858
+files in 112.49s, with 572 advisories and no type/lint errors. These source fixes
+still require a rebuilt native candidate; input-triggered navigation, exact
+download continuation and bounded native child retirement remain in progress.
+
+The matching stock 155 benchmark now includes the current paired microsecond
+latency/frame-interval signals and warm-window presentation/control clocks.
+The original four object targets compile, followed by a six-step incremental
+app link in 8m53.09s. The linked framework and dSYM match UUID
+`4C4C44CE-5555-3144-A14A-C07137FB2114`; Chromium remains 155.0.8059.85 and
+build flags are unchanged. Its canonical benchmark patch replays across all
+nine paths. This is [instrumentation and build evidence](evidence/aside-stock155-current-metrics-2026-10-18.json),
+not a paired performance result or a passed target.
+
+The `8b87f491` native candidate builds six steps in 379.85s and verifies the repaired
+same-tab handback: L01 completes, person Cmd-L loads rec12 in the same tab, and
+L02 reads its status. An unrelated second Space tab stays outside L03's captured
+selection. The new manual20 campaign remains **incomplete: four passes and four
+failures**, with L09 cancelled while queued and unscored. Click-triggered filter
+and record navigation commit a new native document but retire the old attachment
+without admitting a continuation; explicit pagination navigation succeeds. CSV
+retrieval fails after a download transition. A synthetic status save is confirmed by the independent fixture oracle, then
+times out; cancellation acknowledgement does not prove the worker
+joined, and the next task stays queued. The original runner was stopped before
+further fixture resets. Its 21 actual model calls report $0.2148106 observed cost,
+including explicit cache zero and later positive cache counts. No task was retried.
+
+Normal application-menu Quit then reaches the teardown watchdog, records a fresh
+crash dump and reports browser exit 2 / launcher exit 1. The original launcher
+still removes its disposable Profile and plain lock. All prior 41 authorized
+Crashpad reports remain byte-identical. Exact matching symbols were preserved
+before launch. The [new watchdog dump](evidence/aside-native-teardown-watchdog-2026-10-18.json) proves
+main-thread shutdown waiting on the Aux runtime worker, which calls a 60-second
+child-termination wait against the 10-second macOS watchdog. A destructor also
+has an unbounded fallback wait. Both need bounded cleanup; no fix is qualified.
+The older browser-main155 SIGTRAP remains separate and unresolved. The [campaign record](evidence/aside-native-navigation-campaign-2026-10-18.json)
+retains the source/build identity, actual task receipts, failures and limits.
+The complete 20-task run, current native surface comparisons, paired performance and
+browser-readiness acceptance remain open. Older candidate observations below
+remain historical evidence, not acceptance of the current candidate.
+
 Matching stock Chromium155 now builds successfully after correcting its benchmark
 header's `FrameTimingDetails` declaration from `struct` to upstream's `class`.
 The canonical155 input patch preserves the correction; no warning was suppressed

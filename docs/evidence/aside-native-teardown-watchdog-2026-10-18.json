@@ -1,0 +1,88 @@
+{
+  "reportSha256": "bbfa954ec2f4ae05ea36fa483e7d904b0748522b403f85583bb4a0f08d92d06f",
+  "frameworkUuid": "4C4C4404-5555-3144-A16F-1D9EE4A5F2AB",
+  "sourceHead": "8b87f491aefed0c4a357594f8fb12ca13ff714ba",
+  "files": [
+    {
+      "path": "/tmp/aux-watchdog-8b-2026-10-18-v1/decode.py",
+      "bytes": 5983,
+      "sha256": "50d34a370453933474a7d45121073e46ba921363ce4ddc23e0e6409c13f6755d"
+    },
+    {
+      "path": "/tmp/aux-watchdog-8b-2026-10-18-v1/handoff.md",
+      "bytes": 4217,
+      "sha256": "e95d99571d11c25ad40f576d98d631e2024a85310803043d1130774f967652a7"
+    },
+    {
+      "path": "/tmp/aux-watchdog-8b-2026-10-18-v1/structured.json",
+      "bytes": 398859,
+      "sha256": "5f659fdf50edf5e10e8385473cd2e914c99acbbef804f4dcfb15c8b8ef069e99"
+    },
+    {
+      "path": "/tmp/aux-watchdog-8b-2026-10-18-v1/symbolicated.json",
+      "bytes": 425549,
+      "sha256": "92754b61864c367bb874d045bf4054d3b16d1071268afa7c94630b8a07c9a32f"
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "2a15de2efd2b77362e07fb4c95cf294b922045ba2aa5e2e73072be5a97201a01"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/shutdown_watchdog_mac.cc",
+      "sha256": "ad8eb8218f820ebda2753a3e7ec708c7e7ae3e32731bfb5335d92ab74b67e1f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/browser_process_impl.cc",
+      "sha256": "a9f393fe5ea6984b6d6fc48f1250e37d6a0e42f369143f161f1f64a4112f3c66"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "a4e11a49034ef40ceeab817ac38204a801426008cdf028534c1ee8770998dca7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+      "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_apple.cc",
+      "sha256": "fd30210ca652366ede502aae6de9932af08df6bbdcc03a39e48ddaa5eea6e2ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/task/thread_pool/task_tracker.cc",
+      "sha256": "598781e62f3d6237c98b98641cab9efd15636937fd72bcf7793895f9e21eee24"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/browser_main_loop.cc",
+      "sha256": "b78b75c592ecb0e4997e8044dba49b77b1cc56c02cffe2b1d091111cfbe321ac"
+    }
+  ],
+  "symbolsIdentity": {
+    "path": "/tmp/aux-8b87f491a-native-symbols/identity.json",
+    "sha256": "a1b4ff70ffb2fd9dce93792c1d03110f66047d791e31d1bb720a8a2e5e03a8cc"
+  },
+  "limits": [
+    "Not original155 SIGTRAP diagnosis",
+    "Only exact framework symbols; system frames remain module offsets",
+    "Bounded FP-chain unwind, not exhaustive CFI unwind",
+    "No application memory/string scan, owner Profile, GUI/process attachment, source mutation or build"
+  ],
+  "diagnosis": {
+    "report": "pending/0df30e23-7376-44db-a64a-c1e04ff13744.dmp",
+    "browserPid": 47582,
+    "processCreatedUTC": "2026-10-18T14:25:17Z",
+    "dumpUTC": "2026-10-18T14:41:54Z",
+    "threadCount": 42,
+    "exception": "Crashpad simulated 0x43507378; flags0",
+    "main": "CrBrowserMain -> BrowserMainLoop::ShutdownThreadsAndCleanUp:1305 -> TaskTracker::CompleteShutdown:247 -> WaitableEvent::TimedWait",
+    "join": "ThreadPoolForegroundWorker -> AuxRuntimeHost::Shutdown lambda -> Thread::Stop:303 -> PlatformThreadBase::Join:352",
+    "runtimeWorker": "AuxProfileRuntime -> SequenceBound destructor -> Worker::Disconnect runtime_host.cc:3521 -> Process::TerminateInternal process_posix.cc:317 -> WaitForExitWithTimeoutImpl:382",
+    "watchdog": "MacShutdownWatchdog -> TearDownWatchdog::ThreadMain shutdown_watchdog_mac.cc:79 -> DumpWithoutCrashing -> _exit(RESULT_CODE_HUNG)",
+    "deadlineMismatch": "Worker Disconnect uses Process::Terminate(0,true), whose POSIX implementation waits60s afterSIGTERM beforeSIGKILL/unboundedreap; Mac shutdown watchdog is10s.",
+    "secondWait": "Worker destructor can post separate BLOCK_SHUTDOWN unbounded WaitForExit(nullptr). Both need bounded original-child cleanup.",
+    "runtimeCauseLimit": "No runtime shutdown-stage instrumentation or runtime stack was captured; precise held runtime promise remains unproven.",
+    "fixStatus": "Private proposal in progress; not applied/compiled/qualified",
+    "original155SIGTRAP": "Different original report/exception/framework UUID; remains unresolved"
+  }
+}

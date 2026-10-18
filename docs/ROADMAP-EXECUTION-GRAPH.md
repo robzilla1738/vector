@@ -45,6 +45,21 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 
 ### Current reservations and integration
 
+The October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
+Four of eight submitted tasks pass; the remaining 20-task acceptance is open.
+Captured selection and fresh same-tab admission now work. Input-triggered
+navigation still needs an exact continuation from its original action to the
+replacement document. Pending protocol commands need finite settlement so
+cancellation can join the original worker before releasing its page claim. The
+fresh teardown-watchdog dump has matching symbols: synchronous child termination
+can wait 60 seconds against a 10-second watchdog, with a second unbounded
+destructor wait. These are implementation prerequisites, not reasons to relax
+session, source, cancellation or uncertain-effect checks. The [current campaign](evidence/aside-native-navigation-campaign-2026-10-18.json)
+retains the failed observations. A new complete 20-task campaign follows repairs.
+Stock 155 also needs the current microsecond/frame-interval and warm-window
+histograms before the existing paired runner can produce valid measurements.
+The original browser-main SIGTRAP remains a separate unresolved gate.
+
 One integrator owns main/contracts/migrations, the single native source/patch/
 builder/launcher, evidence and local commits. X public-PKCE/scoped REST, original
 source desktop model admission/retirement, DOM-only LinkedIn research, startup

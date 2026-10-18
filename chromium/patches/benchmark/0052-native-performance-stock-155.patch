@@ -24,12 +24,38 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..1e919b478ff33dccc4086fac3f6c911a
        "views/browser_commands_views.cc",
        "views/browser_dialogs_views.cc",
        "views/frame/app_menu_button.cc",
+diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_commands.cc
+--- a/chrome/browser/ui/browser_commands.cc
++++ b/chrome/browser/ui/browser_commands.cc
+@@ -76,6 +76,8 @@
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ #include "chrome/browser/ui/browser_tabstrip.h"
+ #include "chrome/browser/ui/browser_window.h"
++#include "chrome/browser/ui/performance/native_performance.h"
++#include "ui/views/widget/widget.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+@@ -977,6 +979,13 @@
+ 
+   base::TimeTicks now = base::TimeTicks::Now();
+   BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
++  if (NativePerformance::Enabled() && !profile->IsOffTheRecord()) {
++    if (auto* observer = NativePerformance::ForWidget(
++            views::Widget::GetWidgetForNativeWindow(
++                browser->GetWindow()->GetNativeWindow()))) {
++      observer->SetWindowCreationStart(now);
++    }
++  }
+   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser)) {
+     manager->SetWindowCreationInfo(
+         waap::NewWindowCreationSource::kBrowserInitiated, now);
 diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b9394380b698fb3
+index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179aeebed7fb7
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.cc
-@@ -0,0 +1,339 @@
+@@ -0,0 +1,377 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#include "chrome/browser/ui/performance/native_performance.h"
@@ -142,7 +168,18 @@ index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b939438
 +    if (tab_switch) {
 +      if (input != owner_->tab_input_time_) return;
 +      owner_->tab_input_time_ = base::TimeTicks();
-+      base::UmaHistogramTimes("AuxPerf.TabSwitchInputToPresented", time - input);
++      const auto& feedback = details.presentation_feedback;
++      const auto interval =
++          (feedback.flags & gfx::PresentationFeedback::kVSync) &&
++                  feedback.interval.is_positive()
++              ? feedback.interval
++              : base::TimeDelta();
++      // One accepted original input produces exactly one pair. Zero preserves
++      // an unavailable display interval instead of guessing a refresh rate.
++      base::UmaHistogramMicrosecondsTimes("AuxPerf.TabSwitchInputToPresentedUs",
++                                         time - input);
++      base::UmaHistogramMicrosecondsTimes("AuxPerf.TabSwitchFrameIntervalUs",
++                                         interval);
 +      return;
 +    }
 +    if (owner_->interactive_recorded_) return;
@@ -206,7 +243,9 @@ index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b939438
 +}
 +NativePerformance::NativePerformance(views::Widget* widget,
 +                                     content::WebContents* shell, TabStripModel* tabs)
-+    : content::WebContentsObserver(shell), widget_(widget) {
++    : content::WebContentsObserver(shell),
++      widget_(widget),
++      profile_(tabs ? tabs->profile() : nullptr) {
 +  CHECK(widget_);
 +  CHECK(!Registry().contains(widget_));
 +  Registry().emplace(widget_, this);
@@ -343,12 +382,37 @@ index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b939438
 +  window_shown_recorded_ = true;
 +  base::UmaHistogramLongTimes("AuxPerf.WindowShown", base::TimeTicks::Now() - start);
 +}
++void NativePerformance::SetWindowCreationStart(base::TimeTicks start) {
++  if (retired_ || !widget_ || !profile_ || first_frame_recorded_ ||
++      !window_creation_start_.is_null() || start.is_null()) return;
++  for (const auto& [widget, observer] : Registry()) {
++    if (widget != widget_ && widget->IsVisible() && !observer->retired_ &&
++        observer->profile_ == profile_ && observer->first_frame_recorded_) {
++      window_creation_start_ = start;
++      return;
++    }
++  }
++}
++void NativePerformance::RecordWindowControlsReady(base::TimeTicks presentation) {
++  if (retired_ || controls_ready_recorded_ || !widget_ || !widget_->IsVisible() ||
++      window_creation_start_.is_null() || presentation.is_null() ||
++      presentation < window_creation_start_) return;
++  controls_ready_recorded_ = true;
++  base::UmaHistogramMicrosecondsTimes("AuxPerf.WarmWindowControlsReadyUs",
++                                     presentation - window_creation_start_);
++}
 +void NativePerformance::RecordFirstFrame(base::TimeTicks presentation) {
 +  const auto start = OriginalProcessStart();
-+  if (first_frame_recorded_ || !widget_ || presentation.is_null() ||
++  if (retired_ || first_frame_recorded_ || !widget_ || presentation.is_null() ||
 +      start.is_null() || presentation < start) return;
 +  first_frame_recorded_ = true;
 +  base::UmaHistogramLongTimes("AuxPerf.FirstFrame", presentation - start);
++  if (!window_creation_start_.is_null() && presentation >= window_creation_start_) {
++    base::UmaHistogramMicrosecondsTimes("AuxPerf.WarmWindowFirstFrameUs",
++                                       presentation - window_creation_start_);
++    // BrowserView's native controls exist before its first presentation.
++    RecordWindowControlsReady(presentation);
++  }
 +}
 +void NativePerformance::DidFirstVisuallyNonEmptyPaint() {
 +  if (!widget_ || !input_host_ || !web_contents() || first_frame_recorded_) return;
@@ -371,10 +435,10 @@ index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b939438
 +}
 diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e18e3122c
+index 0000000000000000000000000000000000000000..97c4869769f3c2c5ff966f6ba7945b3e1950394e
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,91 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
@@ -395,6 +459,7 @@ index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e
 +namespace viz { class FrameTimingDetails; }
 +namespace ui { class Compositor; }
 +namespace views { class Widget; }
++class Profile;
 +class TabStripModel;
 +class NativePerformancePage;
 +
@@ -419,6 +484,8 @@ index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e
 +  void CommitQuery(int query_id);
 +  void CommitStockQuery(ui::Compositor* compositor);
 +  void RecordFirstFrame(base::TimeTicks presentation);
++  // Same OpenEmptyWindow creation clock as Aux; native controls exist at first presentation.
++  void SetWindowCreationStart(base::TimeTicks start);
 +
 + private:
 +  void OnWidgetDestroying(views::Widget* widget) override;
@@ -430,6 +497,7 @@ index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e
 +  void RenderWidgetHostDestroyed(content::RenderWidgetHost* host) override;
 +  void PrimaryPageChanged(content::Page& page) override;
 +  void DidFirstVisuallyNonEmptyPaint() override;
++  void RecordWindowControlsReady(base::TimeTicks presentation);
 +  void AttachInputHost();
 +  void DetachInputHost();
 +  void Input(base::TimeTicks timestamp);
@@ -446,6 +514,9 @@ index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e
 +  friend class NativePerformancePage;
 +  std::unique_ptr<NativePerformancePage> page_;
 +  raw_ptr<views::Widget> widget_;
++  const raw_ptr<Profile> profile_;
++  base::TimeTicks window_creation_start_;
++  bool controls_ready_recorded_ = false;
 +  raw_ptr<content::RenderWidgetHost> input_host_ = nullptr;
 +  base::TimeTicks input_time_;
 +  base::TimeTicks tab_input_time_;

@@ -1,0 +1,138 @@
+{
+  "nativeSourceHEAD": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+  "stockChangedPaths": [
+    "chrome/browser/ui/performance/native_performance.cc",
+    "chrome/browser/ui/performance/native_performance.h",
+    "chrome/browser/ui/browser_commands.cc"
+  ],
+  "canonicalChangedSections": [
+    "chrome/browser/ui/performance/native_performance.cc",
+    "chrome/browser/ui/performance/native_performance.h"
+  ],
+  "canonicalAddedCallsite": "chrome/browser/ui/browser_commands.cc",
+  "canonicalOtherSixSectionsBytePreserved": [
+    "chrome/browser/prefs/browser_prefs.cc",
+    "chrome/browser/ui/BUILD.gn",
+    "chrome/browser/ui/views/frame/browser_view.cc",
+    "chrome/browser/ui/views/frame/browser_view.h",
+    "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc",
+    "chrome/common/pref_names.h"
+  ],
+  "canonicalFullChangedPaths": [
+    "chrome/browser/prefs/browser_prefs.cc",
+    "chrome/browser/ui/BUILD.gn",
+    "chrome/browser/ui/browser_commands.cc",
+    "chrome/browser/ui/performance/native_performance.cc",
+    "chrome/browser/ui/performance/native_performance.h",
+    "chrome/browser/ui/views/frame/browser_view.cc",
+    "chrome/browser/ui/views/frame/browser_view.h",
+    "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc",
+    "chrome/common/pref_names.h"
+  ],
+  "freshCanonicalApplyExact": true,
+  "freshCanonicalApplyDirectory": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-stock155-schema7-replay-n3io203n",
+  "freshNativeDeltaApplyExact": true,
+  "freshNativeDeltaApplyDirectory": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-stock155-schema7-delta-46w1oog2",
+  "tabPairCallbackExactAux": true,
+  "noAuxAuthoritySource": "No aux directory/header, native source grants, RPC or source proof, UI command dispatch, shell role witness or Aux shell controls readiness code copied. Stock warms through its actual native BrowserView presentation.",
+  "compileStatus": "Not run; parent owns build after preview retirement",
+  "hashes": [
+    {
+      "path": "chrome/browser/ui/performance/native_performance.cc",
+      "beforeSHA256": "c864ab811e3413966ae63bd18935a592320b0ecedba940cca682acfc2ea77a89",
+      "afterSHA256": "eaf230c919f28566bc67d7ca32fb9d4fd2c7bd5a43323a6661e41b0c0794c36b"
+    },
+    {
+      "path": "chrome/browser/ui/performance/native_performance.h",
+      "beforeSHA256": "2b47b0ee56d381222620bc0962fde289dfbc6650f60871ed7ccbd017c4e622c6",
+      "afterSHA256": "fb086cb8a8be79383f33931ef52c9db0dd736954ae3aba862dda5edb24cf6e00"
+    },
+    {
+      "path": "chrome/browser/ui/browser_commands.cc",
+      "beforeSHA256": "ed7796d9654aac0bb444f9aeb5a37c5f60f41e920ce5a3ef0b9e168b42d6441e",
+      "afterSHA256": "f73a94ad727ebc12559969ebc4a3322eeacf37434b0c620dc95d671b1a1f2117"
+    }
+  ],
+  "repoCanonical": {
+    "path": "chromium/patches/benchmark/0052-native-performance-stock-155.patch",
+    "beforeSHA256": "8455e6b117c8f542bbf3cdcd26f971e57db5e66a99788c73c4822b77749b6d84",
+    "afterSHA256": "154d2993b496401097109f1692852735eb369d19e2528ea9e0b476fefc8c23e3"
+  },
+  "artifacts": {
+    "native-delta.patch": "b2c316e19b0be2505737bb30ca8973add5cb4e8eb4060cdcab7a0cbf353802bd",
+    "canonical-delta.patch": "343d42f82c4b41040dae05022e989ed30277173c1eec95694484112c79afc149",
+    "canonical-full-0052.patch": "154d2993b496401097109f1692852735eb369d19e2528ea9e0b476fefc8c23e3"
+  },
+  "actualStockArgsSHA256": "c353e9d19fabfab9ff832b288e75cafedfdc9e24dd628f53914a2938659abc70",
+  "actualStockVersionSHA256": "8c58f23093157a1930f349ec92b52cb2e9749cd7e580b4262573ae814d6de8e9",
+  "runnerSourceHashes": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-browser.mjs",
+      "sha256": "37bc58b0281e4dc90afb8deeca2624146d687c6b35f299b18b398732a84aed86"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-histograms.mjs",
+      "sha256": "8b022293a5cfa4219f9370fda8c740f90606b8385db3a01140f8e84d91121a7f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-targets.mjs",
+      "sha256": "ae68737060610b354fab413d1792dca2a83e48f3dcde3bf232dda885f139837e"
+    }
+  ],
+  "handoffSHA256": "4c33596b0018197f2f503007817de1e3090b07b5e190b6a56608c128c87fc7a6",
+  "objectTargetEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/out/AuxFast/obj/chrome/browser/ui/ui.ninja",
+      "sha256": "8e84f4e0db13ac8733b2d42f08274fb5aecfd6af3b36e14fb88fe5aa28070080"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/out/AuxFast/obj/chrome/browser/ui/views/omnibox/impl.ninja",
+      "sha256": "43146779267397d0427ca0205d61a5e072a7363e066bf169ea96481584969a7c"
+    }
+  ],
+  "rootIntegration": {
+    "patchAppliedUnderCanonicalStockLock": true,
+    "originalOwnerPid": 54666,
+    "execSession": 42803,
+    "exitCode": 0,
+    "sourceArgsUnchanged": true,
+    "buildRecord": {
+      "atUTC": "2026-10-18T14:43:04.558Z",
+      "ownerPid": "54666",
+      "sourceHEAD": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "source": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src",
+      "flagsSHA256": "c353e9d19fabfab9ff832b288e75cafedfdc9e24dd628f53914a2938659abc70",
+      "canonicalSHA256": "154d2993b496401097109f1692852735eb369d19e2528ea9e0b476fefc8c23e3",
+      "nativeDeltaSHA256": "b2c316e19b0be2505737bb30ca8973add5cb4e8eb4060cdcab7a0cbf353802bd",
+      "status": "object targets and incremental chrome link completed",
+      "completedAtUTC": "2026-10-18T14:53:28.105Z"
+    },
+    "linkedIdentity": {
+      "Chromium": "155.0.8059.85",
+      "framework": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/out/AuxFast/Chromium.app/Contents/Frameworks/Chromium Framework.framework/Versions/155.0.8059.85/Chromium Framework",
+      "frameworkUUID": "UUID: 4C4C44CE-5555-3144-A14A-C07137FB2114 (arm64) /Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/out/AuxFast/Chromium.app/Contents/Frameworks/Chromium Framework.framework/Versions/155.0.8059.85/Chromium Framework",
+      "dSYMUUID": "UUID: 4C4C44CE-5555-3144-A14A-C07137FB2114 (arm64) /Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/out/AuxFast/Chromium Framework.dSYM/Contents/Resources/DWARF/Chromium Framework",
+      "frameworkSHA256": "4141a07e0875afec2ba881d7e041ba1110f39d5fe581c0e3dda7dc7267e79122",
+      "flagsSHA256": "c353e9d19fabfab9ff832b288e75cafedfdc9e24dd628f53914a2938659abc70",
+      "lockExists": false
+    },
+    "buildLog": {
+      "path": "/tmp/aux-root-stock155-schema7-build-2026-10-18.log",
+      "sha256": "6c5e6886fc686ce04d538cf35f4bef901b3e8d9f845bd7525d41ac14971d193f"
+    },
+    "remaining": "Actual native histogram samples and full paired performance have not run; build is not measurement acceptance."
+  },
+  "integratedCheck": {
+    "command": "npm run check",
+    "runtimeDist": "typecheck ran tsc-b before tests",
+    "exitCode": 0,
+    "testFiles": 858,
+    "tests": 5937,
+    "seconds": 112.49,
+    "lintAdvisories": 572,
+    "lintErrors": 0,
+    "nativeCompilerStopped": true,
+    "log": "/tmp/aux-cdp-shutdown-width-stock-integrated-check-2026-10-18.log",
+    "logSHA256": "73b096cede55461377fbe4841264655aecbe7dd41542e228d776c1d4892a9b63"
+  }
+}
