@@ -85,6 +85,7 @@ export function ComposerModelControls({ draftKey, disabled }: { draftKey: string
       )}
       <div className="composer-run-option">
         <ComposerModelPicker
+          menuSize={kind === "quick-ask" ? "md" : "sm"}
           models={chatModels}
           modelId={choice.modelId}
           selectedModel={selected}

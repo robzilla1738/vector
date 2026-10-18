@@ -12,6 +12,17 @@
     max-width: calc(100vw - 16px);
     padding: 6px;
   }
+  .composer-model-picker-compact {
+    --menu-radius: var(--r-lg);
+    --model-item-radius: var(--r-md);
+    --model-item-min-height: 28px;
+    --model-item-padding: 6px;
+    --model-label-inset: 6px;
+    --model-label-block-padding: 4px;
+    --model-label-line-height: 16px;
+    --model-label-weight: var(--fw-medium);
+    --model-label-tracking: 0.025em;
+  }
   .composer-model-search {
     display: flex;
     align-items: center;
@@ -49,10 +60,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 32px;
+    min-height: var(--model-item-min-height, 32px);
     width: 100%;
-    padding: 4px 10px;
-    border-radius: var(--r-lg);
+    padding: var(--model-item-padding, 4px 10px);
+    border-radius: var(--model-item-radius, var(--r-lg));
     color: var(--ink-1);
     text-align: left;
     font-size: var(--fs-md);
@@ -91,8 +102,11 @@
     overflow-wrap: anywhere;
   }
   .composer-model-list .composer-model-provider {
-    padding-block: 6px;
+    padding: var(--model-label-block-padding, 6px) var(--model-label-inset, 10px);
     font-size: var(--fs-xs);
+    line-height: var(--model-label-line-height, 20px);
+    font-weight: var(--model-label-weight, inherit);
+    letter-spacing: var(--model-label-tracking, normal);
   }
   .composer-model-list > [role="group"]:has(.composer-model-provider) {
     margin-top: 4px;
@@ -158,8 +172,8 @@
     justify-content: space-between;
     gap: 8px;
     width: 100%;
-    min-height: 36px;
-    padding: 6px 10px;
+    min-height: var(--model-item-min-height, 36px);
+    padding: var(--model-item-padding, 6px 10px);
     margin-top: 4px;
     border-top: var(--hairline) solid var(--line);
     color: var(--ink-1);
@@ -169,6 +183,6 @@
   .composer-model-settings:is(:hover, :focus-visible) {
     background: var(--bg-hover);
     color: var(--ink-0);
-    border-radius: var(--r-lg);
+    border-radius: var(--model-item-radius, var(--r-lg));
   }
 }

@@ -3,23 +3,27 @@
     color: var(--warn);
   }
   .agent-mode-menu {
+    --menu-radius: var(--r-lg);
     width: 288px;
     max-width: calc(100vw - 16px);
     padding: 6px;
   }
   .agent-mode-menu-label {
-    padding: 6px 8px;
+    padding: 4px 6px;
     color: var(--ink-2);
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
+    line-height: 16px;
+    letter-spacing: 0.025em;
   }
   .agent-mode-menu > button {
     display: flex;
     align-items: flex-start;
     gap: 8px;
     width: 100%;
-    padding: 8px;
-    border-radius: var(--r-lg);
+    min-height: 28px;
+    padding: 6px;
+    border-radius: var(--r-md);
     text-align: left;
     color: var(--ink-1);
   }
@@ -40,12 +44,13 @@
     min-width: 0;
   }
   .agent-mode-menu strong {
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-medium);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-regular);
+    line-height: 20px;
   }
   .agent-mode-menu small {
     font-size: var(--fs-xs);
-    line-height: 1.5;
+    line-height: 16px;
     color: var(--ink-2);
   }
 }

@@ -198,9 +198,16 @@
   @media (forced-colors: none) {
     /* Search icons, text and clear actions form one control. Focus belongs to
        that rounded surface instead of drawing a second rectangle around text. */
-    :is([data-input-surface], .ui-search-field, .ui-input-group):has(> :is(input, textarea):focus-visible) {
+    :is([data-input-surface], .ui-search-field, .ui-input-group):not(
+        .composer-model-picker-compact .composer-model-search
+      ):has(> :is(input, textarea):focus-visible) {
       outline: none;
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-line) 65%, transparent);
+    }
+    /* Compact composer search is unboxed; the owning popup carries keyboard focus. */
+    .composer-model-picker-compact:has(.composer-model-search > input:focus-visible) {
+      outline: 1px solid var(--focus-line);
+      outline-offset: 1px;
     }
     .aux-native-dialog
       :where(

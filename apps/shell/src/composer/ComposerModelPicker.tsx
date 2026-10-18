@@ -23,6 +23,7 @@ export function ComposerModelPicker({
   onChange,
   onSettings,
   label = "Composer model",
+  menuSize = "md",
 }: {
   models: readonly ModelCapability[];
   modelId?: string;
@@ -32,6 +33,7 @@ export function ComposerModelPicker({
   loading: boolean;
   error?: string;
   label?: string;
+  menuSize?: "sm" | "md";
   onSettings?(): void;
   onRequest?(): void;
   onRetry(): void;
@@ -131,7 +133,7 @@ export function ComposerModelPicker({
         <Menu
           id={id}
           label="Choose a model"
-          className="composer-model-picker"
+          className={`composer-model-picker${menuSize === "sm" ? " composer-model-picker-compact" : ""}`}
           anchor={trigger}
           returnFocus={trigger}
           initialFocusRef={search}
