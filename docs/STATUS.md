@@ -11,7 +11,8 @@ Older entries there are not current operating instructions.
 No accepted product preview is running. The last accepted unchanged product
 observations belong to `c366c7dc8` (Chromium154, areas through0057); its disposable
 launcher retired normally. Area0058 compiled in the155baseline and still needs
-changed-flow acceptance. Area0059's compact Quick Ask awaits native compilation.
+changed-flow acceptance. Area0059's compact Quick Ask compiled in the155candidate
+and still needs changed-flow acceptance.
 
 The isolated `aux-readiness-chromium` worktree, branch
 `codex/chromium-155-security`, completed its58-area baseline at `96f772c6d`.
@@ -32,14 +33,27 @@ was collected after the initial stall cleared and does not establish its cause.
 No storage-factor timeout workaround was introduced without diagnosis. Original
 launcher85228 then retired app/runtime/Profile/plainlock normally, all verified.
 
-Integrate current local main into this isolated candidate, retaining its155pin
-and rebased areas, then apply0059 and build/launch the latest complete source under
-one owner. Recheck fresh-Profile startup and capture the native stack during any
-recurrence. This is candidate integration; root main/product remain pinned154
-until migration and changed-flow acceptance are supported. Stable product/stock
-checkouts remain untouched. Earlier logs:
-`/tmp/aux-chromium-155-websocket-build.log` and
-`/tmp/aux-chromium-155-native-generated.log`.
+Current main through6351de349 was merged into the155candidate at `d253a1242`,
+including area0059. Owner3890 completed its40-step incremental build in8m48.63s
+(`/tmp/aux-chromium-155-current-source-build.log`). Disposableapp7136 reachedReady
+in63.75ms and answered461API methods with matching native/runtime commit receipts
+(`/tmp/aux-155-current-runtime.json`). It then exited withSIGTRAP; its log does
+not identify the trapping native frame. This is not accepted startup stability.
+
+The same candidate ran under LLDB as9344/Profile`aux-dev-OH9Hh6`, owner9023,
+and reachedReady in82.58ms. The crash did not recur during that observation.
+Retiring LLDB exposed its default detach-on-error behavior: app9344 survived in a
+separate process group after launcher9023 exited. That exact disposable target
+was terminated and verified gone. The launcher now sets target.detach-on-error
+false so debugserver kills its original target on disconnect; native retirement
+verification of this setting remains pending. No active target/lock from this
+probe remains. Diagnostic log: `/tmp/aux-155-debug-current.log`.
+
+Integrate the completed owner-document and popup/motion source into the155
+candidate, then build under one owner. Capture the actual stack ifSIGTRAP recurs
+and inspect changed surfaces when native UI control is available. Root main stays
+pinned154 until migration acceptance; stable product/stock checkouts remain
+untouched. No storage-factor workaround was added. Earlier logs remain in place.
 
 Local fixture96158 serves address POST→303,302navigation and a synthetic test-card
 form at `http://127.0.0.1:4826`; no form fields are logged. Its prior owner87871
@@ -338,7 +352,8 @@ source is newer than those accepted previews.
 
 - R1: accept exact post-task person navigation, redirects/back/forward/reload,
   Stop/Take over and payment-specific prompts; preserve late-task denial.
-- R2/R3: complete155build and changed-flow acceptance, then browser restore,
+- R2/R3: diagnose155SIGTRAP, verify debugger retirement and accept latest-source
+  startup/changed flows, then browser restore,
   sleep/wake, runtime outage, imports/extensions/files/media/permissions and the
   default-route20-task manual smoke (at least18/20), with real workflow receipts.
 - R4: valid paired native startup/interaction/memory measurements against matching
