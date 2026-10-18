@@ -18,6 +18,7 @@ import {
 } from "react";
 import { shellIconClose, shellIconFolder, shellIconMore, shellIconSearch } from "./icons";
 import { Menu } from "./dialog";
+import { alignNativeSelect } from "./select-position";
 import "./ui.css";
 import {
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,
@@ -378,11 +379,19 @@ export function TextField(props: InputHTMLAttributes<HTMLInputElement>) {
 }
 export function Select({
   controlRef,
+  alignSelected = false,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { controlRef?: (node: HTMLSelectElement | null) => void }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  controlRef?: (node: HTMLSelectElement | null) => void;
+  alignSelected?: boolean;
+}) {
   const button = useRef<HTMLButtonElement | null>(null);
+  const alignment = useRef<ReturnType<typeof alignNativeSelect> | null>(null);
+  useLayoutEffect(() => alignment.current?.sync());
   const attach = useCallback(
     (node: HTMLSelectElement | null) => {
+      alignment.current?.dispose();
+      alignment.current = null;
       button.current?.remove();
       button.current = null;
       if (node && !props.multiple && props.size === undefined) {
@@ -392,10 +401,11 @@ export function Select({
         trigger.append(document.createElement("selectedcontent"));
         node.prepend(trigger);
         button.current = trigger;
+        if (alignSelected) alignment.current = alignNativeSelect(node);
       }
       controlRef?.(node);
     },
-    [controlRef, props.multiple, props.size],
+    [controlRef, props.multiple, props.size, alignSelected],
   );
   return <select {...props} ref={attach} className={`ui-select ${props.className ?? ""}`} />;
 }

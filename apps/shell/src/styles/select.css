@@ -68,6 +68,15 @@
     font: inherit;
     font-size: var(--fs-md);
   }
+  select.ui-select[data-ui-select-positioned]::picker(select) {
+    position-anchor: auto;
+    position-area: none;
+    position-try-fallbacks: none;
+    inset: auto;
+    left: var(--ui-select-picker-left);
+    top: var(--ui-select-picker-top);
+    margin: 0;
+  }
   select:not([multiple]):not([size])::picker-icon {
     content: "";
     flex: none;

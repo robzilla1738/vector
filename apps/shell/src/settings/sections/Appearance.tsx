@@ -175,6 +175,7 @@ export function AppearanceSettings({
       <div className="settings-card">
         <SettingsField compact label="Theme" description="Choose how Aux looks.">
           <Select
+            alignSelected
             className="settings-theme-select"
             data-theme-choice={theme}
             aria-label="Theme"
