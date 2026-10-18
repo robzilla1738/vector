@@ -8,6 +8,30 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [current native candidate](evidence/aside-native-3868-observations-2026-10-18.json)
+is product `3868d5af5`, built from clean main `0bca89b34`:27native steps in503.633s,
+with preserved framework/dSYM UUID `4C4C446A-5555-3144-A17F-27B15F836738`.
+Its actual ten-tab diagnostic records one fixture presentation per document and
+normal browser exit; this is not a qualified performance result. Native Theme
+Dark/Light/System alignment, arrow/Escape/Enter/focus, both materials and853px
+layout are observed. Tidy narrow dismissal/focus works. A reference083 Routines
+Create-width/caption mismatch is preserved as a failure and corrected only in
+newer source. Full reference and accessibility acceptance remain open.
+
+Normal native-menu Quit retires browser/launcher0 and removes the disposable
+Profile/lock, but reports **interrupted runtime retirement**, forced0/exit_code−1.
+Do not treat this as graceful runtime cleanup. The signal-handler lifetime race reproduces in four actual child fixtures;
+its integrated fix retains original handlers through joined retirement and passes16
+focused cases. Fresh native verification remains open, separately from the
+original155SIGTRAP. Current-source paired performance and crash/readiness remain open.
+
+The [third parallel batch](evidence/aside-parallel-integration-batch3-2026-10-18.json)
+is integrated: bounded compaction caps, truthful MCP cancellation/join, IME/model-menu
+ownership and the native-found Routines CSS correction. Focused evidence is recorded;
+the combined full check passes **6,174 tests /869files** in109.80s after runtime
+dist rebuild, with no concurrent native compiler. The sole stock build and both
+counter diagnostics retired normally; final Aux compilation/acceptance is next. The first two batches passed6,121 and6,150 tests respectively.
+
 The [first parallel implementation batch](evidence/aside-parallel-integration-batch1-2026-10-18.json)
 is integrated in coherent local commits: reference-backed Tidy/Routines/selection
 controls, complete queued source/account binding, bounded Unicode Memory reads,

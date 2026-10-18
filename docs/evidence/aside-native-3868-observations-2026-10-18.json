@@ -1,0 +1,202 @@
+{
+  "atUTC": "2026-10-18T23:12:42.134618+00:00",
+  "status": "Bounded current native observations; acceptance incomplete and runtime retirement failure recorded",
+  "main": "0bca89b34862edd32be50a4ab7ff3eea104125ae",
+  "product": "3868d5af586279a756ff9debd558710bf87d53c5",
+  "frameworkUUID": "4C4C446A-5555-3144-A17F-27B15F836738",
+  "build": {
+    "session": 48294,
+    "exit": 0,
+    "steps": 27,
+    "autoninjaReportedSeconds": 502.82,
+    "driverMeasuredSeconds": 503.633,
+    "record": "/tmp/aux-parallel-batch2-native-build-2026-10-18.json",
+    "symbols": "/tmp/aux-parallel-batch2-native-symbols-2026-10-18/identity.json"
+  },
+  "fixtureCounter": {
+    "session": 38036,
+    "exit": 0,
+    "result": "/tmp/aux-fixture-counter-aux-zjiHoT/result.json",
+    "sha256": "7e7265eefc4484503eec3037bf13b816e52581c3632b85a78bb2f8df216249c0",
+    "actualTabs": 10,
+    "perTabNativeCountDelta": 1,
+    "wrongExpectedAddressLabelRejectedEachTime": true,
+    "originalBrowserExit": 0,
+    "qualifiedPerformance": false
+  },
+  "preview": {
+    "session": 4943,
+    "launcherPid": 15045,
+    "browserPid": 15228,
+    "profile": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-dev-YKyTJD",
+    "logicalSizes": [
+      [1712, 989],
+      [853, 989]
+    ],
+    "backingScale": 2,
+    "launcherExit": 0,
+    "browserAndLauncherGone": true,
+    "profileRemoved": true,
+    "auxLockReleased": true,
+    "quit": "CUA Cmd-Q produced no observed quit; native Aux menu Quit terminated original browser. Reason for shortcut behavior not established.",
+    "runtime": "Original native log reports forced=0 exit_code=-1 and interrupted retirement; do not claim graceful runtime cleanup.",
+    "log": "/tmp/aux-parallel-batch2-acceptance-launch-2026-10-18.log",
+    "logSHA256": "e850565f70b6d9980c4e1615e60cc20ed5d81c93b94b4ea73ad247a033128962",
+    "concurrentNativeStockBuild": true,
+    "timingEvidence": false
+  },
+  "observations": [
+    {
+      "surface": "Theme/ref024 + Appearance/ref023",
+      "state": "observed partial",
+      "evidence": "Dark/Light/System opening selections align visually to their trigger; Dark\u2192Up moves highlight without moving popup; Escape retains Dark and returns focus; keyboard Space/Up/Enter commits Light; System commits/reopens correctly. Native glyphs, light/dark material and narrow853 popup observed. Tidy Configure uses32px role.",
+      "limits": "No native computed-style instrumentation or pixel-diff program; manual side-by-side screenshot/source comparison.640/480 and accessibility modes remain open."
+    },
+    {
+      "surface": "Tidy dialog",
+      "state": "observed partial",
+      "evidence": "Narrow853 dialog fits; native prompt receives focus, Save disabled while unchanged, Escape returns to Customize Tidy Tabs trigger.",
+      "limits": "No modified prompt/save or provider result tested."
+    },
+    {
+      "surface": "Routines/ref083",
+      "state": "failed geometry",
+      "evidence": "Native Create row still608logical px: shared max-width100% clamps intended calc+28. Caption has additional12px inset versus reference.",
+      "followup": "UI separate3de353cd5 CSS fix ready, not yet integrated/rebuilt/observed. Aux actual suggestions/results controls intentionally remain; whole row not accepted."
+    },
+    {
+      "surface": "Selection & Capture/ref105",
+      "state": "observed partial",
+      "evidence": "Current selected/unselected source-exact Lasso glyph, Aux-branded hero and actual selection controls observed.",
+      "limits": "First saved wide capture can precede loading completion; loaded files are authoritative. No capture permissions or desktop service enabled."
+    },
+    {
+      "surface": "Home/sidebar",
+      "state": "observed partial",
+      "evidence": "Actual empty Home; collapsed sidebar uses full window without unused rail.",
+      "limits": "Populated Home and full state/IME coverage not established by this preview."
+    }
+  ],
+  "captureLimits": [
+    "theme-dark-open.jpg is a failed opening capture after asynchronous indices changed; theme-dark-open-actual.jpg is authoritative",
+    "Screenshots are retained original2x dimensions; reference review is manual",
+    "Runtime interrupted retirement is distinct from original unsymbolicated Chromium155SIGTRAP; source hypothesis assigned AI/data for proof"
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/appearance-dark.jpg",
+      "sha256": "35f13f347c94a7c70a5d776fe62daeee5322376e802be141eceac9d187231290",
+      "bytes": 421637
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/appearance-half.jpg",
+      "sha256": "5f108cae93497f5a57e52a604afe7258b30af0f38c334dfecbc3b0dae618ceaa",
+      "bytes": 296255
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/appearance-light.jpg",
+      "sha256": "6cf0bdb7cf367c8631d71487c1fb9e1e1cc9de3e39e861d10769456fe4c72d1b",
+      "bytes": 455592
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/home-empty.ax.txt",
+      "sha256": "b4744e0c4c14571885476399a0978831c279a4387185132d2d72fdd52a965965",
+      "bytes": 3915
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/home-empty.jpg",
+      "sha256": "5eb1188bf984da3386e2ae96deb70eb903b1e1634579dbc31aeff5bbd44e6042",
+      "bytes": 290552
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/home-sidebar-collapsed.jpg",
+      "sha256": "30fdecb07f8f237d8636c371c69fa10028ae39443e498432f6461ca49be95204",
+      "bytes": 253860
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/routines-half.jpg",
+      "sha256": "46b9a765a92a3694417f5d1c2c4a4bc479af51afae1d0d16d9f9ec3608ae160a",
+      "bytes": 235202
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/routines-wide.jpg",
+      "sha256": "f03fcb90be4ebe5fbafe90eff9a7f0becb70ef60540c79df6755dabab67c5344",
+      "bytes": 350311
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/selection-capture-loaded.ax.txt",
+      "sha256": "057ec36e57069c67a8b71bdd83ea002de464e439527f15d607f938f81cc7446d",
+      "bytes": 5992
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/selection-capture-loaded.jpg",
+      "sha256": "38f5367b1f79924240dbf66f97d768f41fabf17c76535319c5ca8ac6cbcd75d4",
+      "bytes": 444446
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/selection-capture-wide.jpg",
+      "sha256": "c9ae6d5ff817aa46bfa6fd8226ab10418ccb7520fc10f2fb230981ca34e415c0",
+      "bytes": 444402
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-dark-arrow-light.jpg",
+      "sha256": "71b0760230fffc0376caacb1db68427e147f1b6645d7b64ef7ff064533087b13",
+      "bytes": 427636
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-dark-open-actual.jpg",
+      "sha256": "1b8bb2745344771c60dbd44f8517f7a67dd31fbeec6278dfd450cbc5cf407d37",
+      "bytes": 427371
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-dark-open.jpg",
+      "sha256": "0d6db83bc59302aab00aaab481fbe643c32d3946f4414d5c1a73be50a27fe520",
+      "bytes": 161598
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-light-open.jpg",
+      "sha256": "50008d53ec560773018cf88cc283dd0e3ceebda5751b2660c96e28d80cac7950",
+      "bytes": 456780
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-system-half-open.jpg",
+      "sha256": "feda16bbc6be1924e726ab350ea16536672b95f940291a50d2f1aa691e48b276",
+      "bytes": 296706
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/theme-system-open.jpg",
+      "sha256": "367324cb01e75c3ea21413db48573e62d78d681baf42e56dccbae1ad755744b0",
+      "bytes": 424706
+    },
+    {
+      "path": "/tmp/aux-native-parallel-batch2-acceptance-2026-10-18/tidy-dialog-half.jpg",
+      "sha256": "8340be4b3f8202a553f0d96017d0a024323638be4c5c0a04540665e2b932cd76",
+      "bytes": 178339
+    }
+  ],
+  "remaining": "All-reference themes/widths/states, final source integration/build, current runtime retirement, paired performance and remaining browser/AI/native acceptance remain active.",
+  "stockCounter": {
+    "buildSession": 7119,
+    "buildExit": 0,
+    "buildSteps": 7,
+    "buildSeconds": 643.405,
+    "frameworkUUID": "4C4C44B8-5555-3144-A144-899DF7117CAF",
+    "symbolIdentity": "/tmp/aux-stock155-fixture-counter-symbols-2026-10-18/identity.json",
+    "diagnosticSession": 83462,
+    "diagnosticExit": 0,
+    "result": "/tmp/aux-fixture-counter-stock-M5oB6R/result.json",
+    "sha256": "8e5817de3ca6ad2ef82d3c3fdb85965be037847d5be3e271cf8f4c093790b853",
+    "actualTabs": 10,
+    "eachDelta": 1,
+    "actualBrowserExit": 0,
+    "qualifiedPerformance": false
+  },
+  "runtimeFollowup": {
+    "sourceCommit": "c00788181",
+    "mainCommit": "cd76f71b6",
+    "before": "4/4 actual child regressions fail: signal interrupts held cleanup and public.close detaches handlers before join",
+    "after": "16/16 targeted tests after isolated dist rebuild; signal-path handlers remain until process exit; public.close removes handlers after original join and preserves errors",
+    "nativeReobservation": "pending newer runtime/native candidate",
+    "historicalCrash": "Original unsymbolicated155SIGTRAP still unexplained; no causal conflation"
+  }
+}

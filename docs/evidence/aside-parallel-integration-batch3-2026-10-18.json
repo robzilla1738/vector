@@ -1,0 +1,60 @@
+{
+  "atUTC": "2026-10-18T23:14:11.724163+00:00",
+  "status": "Integrated source; full check passed; final native build and acceptance pending",
+  "integrated": [
+    {
+      "owner": "AI/data",
+      "sourceCommit": "73ec64025",
+      "mainCommit": "77f6f22ba",
+      "deliverable": "Compaction summary output and prompt target obey both actual route caps",
+      "evidence": "32-token route reproduced128 request before;50 affected cases after isolated dist/type/lint/format pass"
+    },
+    {
+      "owner": "Tools",
+      "sourceCommit": "df3eae0ee",
+      "mainCommit": "063b6937a",
+      "deliverable": "MCP disconnect/close abort and join original SDK/native work; bounded truthful timeout; return existing shutdown stage promise",
+      "evidence": "6 lifecycle regressions failed before;38 affected after rebuild plus3 final test-only correction; exact patch replay",
+      "manifest": "/tmp/aux-tools-final-0a5c27653/.native/tools-mcp-retirement-v1/manifest.json",
+      "manifestSHA256": "4851ca30e2f3c113c98acf8ef27acdcdba1a1f1cce55f708175a73d22bfe8bb5"
+    },
+    {
+      "owner": "UI",
+      "sourceCommit": "978333755",
+      "mainCommit": "2592b79d2",
+      "deliverable": "IME ownership, pending submenu focus, per-opening state and late-save publication",
+      "evidence": "39 focused and renderer types pass; final equivalent test-loop cleanup awaits root integrated lint/test",
+      "handoff": "/tmp/aux-ui-final-memory-models-2026-10-18/handoff-978333755.json"
+    },
+    {
+      "owner": "UI/native integrator",
+      "sourceCommit": "3de353cd5",
+      "mainCommit": "45e7331e9",
+      "deliverable": "Native-found Create card clamp and caption inset",
+      "evidence": "Actual native3868/ref083 comparison failed. Exact extracted caption550/unpadded source; targeted CSS fix only; no tests during resource hold",
+      "nativeAcceptance": "pending final native build/re-observation"
+    },
+    {
+      "owner": "AI/data + native integrator",
+      "sourceCommit": "c00788181",
+      "mainCommit": "cd76f71b6",
+      "deliverable": "Keep raw signal/native-owner shutdown handlers through joined process exit; public.close retires listeners only after join",
+      "evidence": "Native3868 interrupted runtime exit preserved; actual isolated child4before failures;16targetedafter plus dist/types/lint pass",
+      "nativeAcceptance": "Fresh normal Quit/repeated close observation pending"
+    }
+  ],
+  "nativeEvidence": "aside-native-3868-observations-2026-10-18.json",
+  "setupDependencies": "Google/X/eligible Slack registrations remain explicit. No live sends or simulated connections.",
+  "limits": "No phase completion or daily-use readiness; current app source3868 predates all this batch.",
+  "fullCheck": {
+    "session": 5680,
+    "log": "/tmp/aux-parallel-batch3-integrated-2026-10-18.log",
+    "nativeCompilerConcurrent": false,
+    "runtimeDistRebuiltBeforeTests": true,
+    "exit": 0,
+    "tests": 6174,
+    "files": 869,
+    "seconds": 109.8,
+    "sha256": "ac3d41cc98f2a0e42bf71de92f47d01d45fd9f785ca6a4cf57706d05054d5cbb"
+  }
+}
