@@ -1,0 +1,187 @@
+@layer components {
+  .channel-provider-mark {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--space-7);
+    height: var(--space-7);
+    border-radius: var(--r-group);
+  }
+  .channel-provider-mark[data-provider="slack"] {
+    background: var(--brand-slack-surface);
+  }
+  .channel-provider-mark[data-provider="telegram"] {
+    background: var(--brand-telegram-surface);
+  }
+  .channel-provider-mark[data-provider="discord"] {
+    background: var(--brand-discord-surface);
+  }
+  .channel-provider-mark img {
+    display: block;
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+  }
+  .channel-provider-mark:not([data-provider="slack"]) img {
+    filter: brightness(0) invert(1);
+  }
+  .channels-settings .ui-settings-group {
+    margin-top: var(--space-7);
+  }
+  .channels-settings .ui-setting:has(.setting-icon) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .channels-settings .setting-icon {
+    grid-row: 1 / span 2;
+  }
+  .channels-settings .setting-icon + .setting-label {
+    grid-column: 2;
+  }
+  .channels-settings .ui-setting:has(.setting-icon) .ui-setting-control {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    gap: var(--space-2);
+  }
+  .channels-settings .ui-setting:has(.setting-icon) > .hint {
+    grid-column: 2;
+  }
+  .channels-add-row {
+    padding: var(--space-2) var(--space-3);
+  }
+  .channels-add-row > button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: auto;
+    padding: var(--space-2) var(--space-1);
+    font-size: var(--fs-md);
+  }
+  .channels-preview {
+    display: grid;
+    place-items: center;
+    padding: var(--space-6);
+    min-height: 164px;
+    border-radius: var(--r-lg);
+    background:
+      radial-gradient(ellipse at 80% 90%, var(--surface-menu), transparent 65%),
+      color-mix(in srgb, var(--brand-telegram-surface) 65%, var(--surface-menu));
+  }
+  .channels-preview-chat {
+    padding: var(--space-4);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+    background: var(--liquid-white);
+    color: var(--liquid-shade-light);
+    font-size: var(--fs-xs);
+  }
+  .channels-preview-chat strong {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: var(--fw-medium);
+  }
+  .channels-preview-chat strong span {
+    font-weight: var(--fw-regular);
+    color: color-mix(in srgb, var(--liquid-black) 50%, transparent);
+  }
+  .channels-preview-chat strong img {
+    width: var(--space-4);
+    height: var(--space-4);
+    filter: brightness(0);
+  }
+  .channels-preview-chat p {
+    margin: var(--space-1) 0 var(--space-3);
+  }
+  .channels-preview-chat p:last-child {
+    margin-bottom: 0;
+    color: color-mix(in srgb, var(--liquid-black) 50%, transparent);
+  }
+  .channels-error {
+    margin-top: var(--space-3);
+    color: var(--err);
+  }
+  .channel-editor {
+    width: min(600px, calc(100vw - var(--space-7)));
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .channel-editor-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-2);
+  }
+  .channel-editor-header h3 {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .channel-editor-tabs {
+    gap: var(--space-5);
+    border-bottom: var(--hairline) solid var(--line);
+    padding: 0 var(--space-2);
+  }
+  .channel-editor-tabs [role="tab"] {
+    padding: var(--space-2) 0;
+    color: var(--ink-2);
+    border-bottom: var(--hairline) solid transparent;
+    font-size: var(--fs-md);
+  }
+  .channel-editor-tabs [role="tab"].active {
+    color: var(--ink-0);
+    border-bottom-color: var(--ink-0);
+  }
+  .channel-editor form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .channel-editor-panel {
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .channel-editor .ui-settings-group > h4 {
+    padding-inline: var(--space-3);
+  }
+  .channel-editor .ui-setting .field-input {
+    max-width: 280px;
+    width: 100%;
+  }
+  .channel-editor .ui-setting-control {
+    min-width: 0;
+    gap: var(--space-2);
+  }
+  .channel-editor .ui-select {
+    max-width: 220px;
+  }
+  .channel-editor .hint {
+    overflow-wrap: anywhere;
+    line-height: var(--lh-relaxed);
+  }
+  .channel-save-hint {
+    padding-inline: var(--space-2);
+  }
+  .channel-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+  @media (max-width: 540px) {
+    .channel-editor .ui-setting {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .channel-editor .ui-setting-control {
+      grid-column: 1;
+      grid-row: auto;
+      justify-content: flex-start;
+      margin-top: var(--space-2);
+    }
+    .channel-editor .ui-setting .field-input,
+    .channel-editor .ui-select {
+      max-width: none;
+    }
+  }
+}

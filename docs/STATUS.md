@@ -14,13 +14,25 @@ normally. Area0058's redirect correction and area0059's compact Quick Ask still
 need native compilation and changed-flow acceptance.
 
 The Chromium155 migration is building in the isolated
-`aux-readiness-chromium` web worktree at frozen `0f7d9bc1b`, branch
+`aux-readiness-chromium` web worktree at frozen `96f772c6d`, branch
 `codex/chromium-155-security`. Source is
 `/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`, official
 155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`, with58native areas.
-GN generated36,045targets; the cold build is still active under original owner
-90979, log `/tmp/aux-chromium-155-native-generated.log`. Do not start another
-native builder or clear its plain lock. That worktree intentionally predates the
+GN generated36,045targets. The first cold build completed 40,613 objects before
+one WebSocket compile error: the old patch forwarded a storage-access argument
+that Chromium155 now owns on the connector. Owner90979 exited and released its
+lock normally. Area0007 now uses that constructor-bound state and removes the
+obsolete callback/helper argument; its changed hunks reverse-check successfully.
+Replacement owner67020 compiled that boundary and completed another12,628objects
+before a removed password-store callback type stopped the build. It exited and
+released its lock normally. Area0015 now consumes Chromium155's expected stored-
+credential result, converting values through its normal PasswordForm boundary.
+Owner85228 compiled both credential implementation and native controls objects
+successfully, then resumed the incremental build/temporary preview. Current log:
+`/tmp/aux-chromium-155-credential-build.log`. Earlier failure logs are
+`/tmp/aux-chromium-155-websocket-build.log` and
+`/tmp/aux-chromium-155-native-generated.log`.
+Do not start another native builder or clear its plain lock. That worktree predates the
 new provider and compact-surface commits. Accept the migration before merging its
 pin/rebased patches into local main, then stage the later source and area0059.
 The current main/product pin remains154 until migration evidence is ready.
@@ -31,36 +43,46 @@ is claimed. CUA bindings from retired previews must not be reused: a stale bindi
 can launch the default Profile. Check the owned app PID and disposable Profile
 argument before creating a new binding. Only disposable Profiles are authorized.
 
-## Channels transport and protected storage — integrated foundation
+## Channels — integrated transport, task and Settings source
 
-Slack Socket Mode, Telegram long polling and Discord Gateway now have real,
-independent transport implementations. Bot/app identities bind incoming events;
-provider user IDs identify senders. Slack ACKs and Telegram offsets follow durable
-receipt. Discord checkpoints follow durable frames, resume invalidation clears
-the original session, and missing heartbeat ACKs retire the socket. Retirement
-joins admitted storage work and clears socket timers. Provider errors and socket
-tickets are sanitized; redirects are refused. Telegram leaves existing webhooks
-unchanged. Sends preserve stable delivery IDs, plain text and mention suppression.
-Known rate limits retain provider retry guidance; uncertain acceptance is explicit.
+Slack Socket Mode, Telegram long polling and Discord Gateway have real independent
+transports. Authenticated bot/app/user identities bind incoming events. Slack ACKs
+and Telegram offsets follow durable receipt; Discord heartbeat and resume state
+retire with their original socket. Provider redirects are refused, existing
+Telegram webhooks remain unchanged and errors omit credentials and socket tickets.
+Rate limits retain provider retry guidance. Interrupted sends become unknown.
 
-Schema 6 adds six protected channel tables for connections, peers, threads, inputs,
-outbound receipts and cursors. Names, provider identities, content and resume data
-use authenticated encrypted bodies. Per-connection keyed indexes remain opaque
-and survive reviewed cross-Profile recovery. Input deduplication and checkpoints
-commit together. Config revisions retire old queued inputs/replies; interrupted
-sends become unknown rather than replaying. Delivery identities cannot move to
-another recipient or connection. Migration preserves schema 2–5 records and rejects
-unexpected partial schemas. Backup and recovery include the new protected fields.
+Schema6 separately encrypts connections, peers, threads, inputs, outbound receipts
+and resume cursors. Opaque keyed indexes and historical content survive reviewed
+cross-Profile recovery; restored connections are disabled with fresh revisions,
+retired work, cleared cursors and revoked pairing authority. No imported remote
+permission resumes automatically. Migration preserves schema2–5 records.
 
-Integrated `npm run check` passed typecheck, lint and 4,746 tests/756 files in 135.07s
-(`/tmp/aux-channel-foundation-check.log`). The final HTTP 429 body refinement passed
-runtime rebuild and 18 transport tests in 1.09s
-(`/tmp/aux-channel-final-transport-tests.log`). No unchanged full suite was repeated.
-Protocol/storage fixtures and actual cross-Profile recovery passed; no messenger
-credential was read or real message sent. Original-window configuration, native
-secret lifecycle, pairing/revocation, run admission, reply draining and the matched
-Settings surface remain the next integrated batch. Enabled messenger controls
-are not exposed before those paths are connected. Full channel readiness remains open.
+Original normal-window proof owns configuration and native secret writes; private
+and external configuration requests are refused. Pair/block binds actual provider
+IDs and revocable workspace authority. Each person/thread owns an ordinary task
+and chat. Initial turns and Queue/Steer retain external authority, normal approval
+rules and parent sessions. Stop affects the originating person's conversation.
+Disable, configuration changes, blocking and shutdown retire/join original work;
+network reconnect preserves pairing. Reply publication validates the original
+request/run/task/authority and destination. Unknown acceptance requires local
+review of the exact reply/recipient before retry; retired receipts stay viewable.
+
+Channels Settings now includes shared hero/rows, bundled provider marks, Add menu,
+Options/Pairing/Credentials, explicit Space and audience choices, reconnect and
+removal. Shared fields, dialogs, native selects, switches, buttons and command
+dispatch provide the controls. A wiring audit also registered22missing model/
+subscription command IDs and fixed secondary form buttons accidentally submitting.
+Queued page-free follow-ups now preserve their external authority in RunService.
+
+Integrated `npm run check` passed typecheck, lint and4,772tests/760files in132.21s
+(`/tmp/aux-channel-integration-check.log`). This includes actual cross-Profile
+recovery, provider protocol/storage fixtures, source-window retirement, pairing/
+revocation, Queue/Steer, person-scoped Stop, uncertain reply review and command
+registration. Earlier transport foundation checks remain valid. No messenger
+credential was read or real message sent. Native visual and live messenger
+acceptance, including provider permissions/reconnect, remain open. Personal-
+assistant cards require separate implementation; full channel readiness is open.
 
 ## Model-based Memory extraction — integrated source
 

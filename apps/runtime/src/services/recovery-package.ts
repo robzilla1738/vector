@@ -1,4 +1,4 @@
-import { financialTablesForDatabase } from "../store/db.js";
+import { channelTablesForDatabase, financialTablesForDatabase } from "../store/db.js";
 import { omitDerivedAndSpaceMemory } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
@@ -12,6 +12,8 @@ import { recodeTaskEvidenceProtection } from "../store/task-evidence-protection.
 import { transformDocumentFields, documentFieldTables } from "../store/document-fields.js";
 import { ContentMemoryStore, type RecoveryPageMemory } from "./content-memory.js";
 import { MemoryPipeline, type RecoverySpaceMemory } from "./memory-pipeline.js";
+
+import { ChannelConnectionEnvelopeSchema, StoredChannelPeerSchema } from "./channel-store.js";
 
 const MAX_DATABASE = 32 * 1024 * 1024;
 const MAX_PACKAGE = 64 * 1024 * 1024;
@@ -222,6 +224,38 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     "plugin_skill_grants",
   ])
     db.prepare(`UPDATE ${table} SET revoked_at=? WHERE revoked_at IS NULL`).run(at);
+  if (channelTablesForDatabase(db).length) {
+    for (const row of db.prepare("SELECT connection_id,body FROM channel_connections").all() as {
+      connection_id: string;
+      body: string;
+    }[]) {
+      const envelope = ChannelConnectionEnvelopeSchema.parse(JSON.parse(row.body));
+      const connection = { ...envelope.connection, enabled: false, revision: randomUUID(), updatedAt: at };
+      db.prepare(
+        "UPDATE channel_connections SET enabled=0,revision=?,body=?,updated_at=? WHERE connection_id=?",
+      ).run(connection.revision, JSON.stringify({ ...envelope, connection }), at, row.connection_id);
+    }
+    for (const row of db.prepare("SELECT connection_id,peer_key,body FROM channel_peers").all() as {
+      connection_id: string;
+      peer_key: string;
+      body: string;
+    }[]) {
+      const peer = StoredChannelPeerSchema.parse(JSON.parse(row.body));
+      const { authorityId: _authority, requestId: _request, expiresAt: _expiry, ...record } = peer;
+      db.prepare("UPDATE channel_peers SET body=? WHERE connection_id=? AND peer_key=?").run(
+        JSON.stringify({ ...record, state: peer.state === "blocked" ? "blocked" : "pending", updatedAt: at }),
+        row.connection_id,
+        row.peer_key,
+      );
+    }
+    db.prepare("DELETE FROM channel_cursors").run();
+    db.prepare(
+      "UPDATE channel_messages SET state='retired' WHERE state IN ('pending','admitting','running','queued')",
+    ).run();
+    db.prepare(
+      "UPDATE channel_outbox SET state=CASE WHEN state='sending' THEN 'unknown' ELSE 'failed' END,updated_at=? WHERE state IN ('pending','sending')",
+    ).run(at);
+  }
   db.prepare("UPDATE calendar_connections SET state='needs_reauth' WHERE revoked_at IS NULL").run();
   db.prepare("UPDATE outbound_mcp_servers SET state='revoked' WHERE state='approved'").run();
   db.prepare("UPDATE safety_approval_requests SET state='cancelled' WHERE state='pending'").run();

@@ -64,6 +64,7 @@ const UsageBudgetsSettings = lazySection(
 const RoutinesSettings = lazySection(
   async () => (await import("../settings/sections/Routines")).RoutinesSettings,
 );
+const ChannelsSettings = lazySection(async () => (await import("../settings/sections/Channels")).ChannelsSettings);
 const WorkspacesSettings = lazySection(
   async () => (await import("../settings/sections/Workspaces")).WorkspacesSettings,
 );
@@ -512,6 +513,7 @@ export function Settings() {
         />
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
         {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
+        <ChannelsSettings active={visible("Channels")} />
         <GeneralSettings
           active={category === "General"}
           searching={searching}

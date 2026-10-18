@@ -1,4 +1,8 @@
-import { MemoryClaimDocumentsSchema, MemoryDocumentEditParams, MemoryRetentionParams } from "./memory-pipeline.js";
+import {
+  MemoryClaimDocumentsSchema,
+  MemoryDocumentEditParams,
+  MemoryRetentionParams,
+} from "./memory-pipeline.js";
 import { TaskReceiptExportParamsSchema, TaskReceiptExportResultSchema } from "./task-receipt-export.js";
 import { DocumentSnapshotSchema, SavedDocumentPageSchema } from "./document-snapshot.js";
 import {
@@ -15,13 +19,31 @@ import { BookmarkMethodSchemas, BookmarkResultSchemas } from "./bookmark-methods
 import { HistoryMethodSchemas, HistoryResultSchemas } from "./history-methods.js";
 export { HistoryListParams, HistoryRangeParams } from "./history-methods.js";
 export {
-  BookmarkAddParams, BookmarkReadingListParams, BookmarkMarkReadParams,
-  BookmarkOfflineSetParams, BookmarkOfflineGetParams, BookmarkUpdateParams, BookmarkRemoveParams,
+  BookmarkAddParams,
+  BookmarkReadingListParams,
+  BookmarkMarkReadParams,
+  BookmarkOfflineSetParams,
+  BookmarkOfflineGetParams,
+  BookmarkUpdateParams,
+  BookmarkRemoveParams,
 } from "./bookmark-methods.js";
-import { CodingRunParams, CodingChangesParams, CodingUndoParams, CodingProcessParams, CodingLogsParams, CodingFileReceiptSchema, CodingProcessViewSchema, CodingLogsSchema } from "./coding-api.js";
+import {
+  CodingRunParams,
+  CodingChangesParams,
+  CodingUndoParams,
+  CodingProcessParams,
+  CodingLogsParams,
+  CodingFileReceiptSchema,
+  CodingProcessViewSchema,
+  CodingLogsSchema,
+} from "./coding-api.js";
 import { CloudPreviewSchema } from "./cloud-preview.js";
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
-import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
+import {
+  SkillLibraryPreviewParams,
+  SkillLibraryImportParams,
+  SkillLibraryPreviewSchema,
+} from "./skill-library.js";
 import {
   CopilotAttemptParams,
   CopilotAccountParams,
@@ -89,10 +111,7 @@ import {
   MemoryPasteStatusSchema,
 } from "./memory-paste.js";
 export * from "./memory-paste.js";
-import {
-  OnboardingStateSchema,
-  OnboardingUpdateParamsSchema,
-} from "./onboarding.js";
+import { OnboardingStateSchema, OnboardingUpdateParamsSchema } from "./onboarding.js";
 export * from "./onboarding.js";
 import {
   GenerateResultParamsSchema,
@@ -106,7 +125,11 @@ import {
   ZapSitePolicySchema,
   ZapUpdateParamsSchema,
 } from "./zap.js";
-import { ModelProviderSchema, ModelCredentialSchema, CustomModelProviderIdSchema } from "./model-providers.js";
+import {
+  ModelProviderSchema,
+  ModelCredentialSchema,
+  CustomModelProviderIdSchema,
+} from "./model-providers.js";
 import { CustomModelProviderSchema } from "./custom-model-providers.js";
 import { z } from "zod";
 import { CoderRecoveryInspectionSchema } from "./coder-worktrees.js";
@@ -210,7 +233,16 @@ import {
   CriterionVerificationSchema,
   TaskReplaceAgentParams,
 } from "./tasks.js";
-import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import { AgentCliConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import {
+  ChannelSaveParamsSchema,
+  ChannelControlParamsSchema,
+  ChannelPeerControlParamsSchema,
+  ChannelDeliveryRetryParamsSchema,
+  ChannelStatusSchema,
+  ChannelPeerSchema,
+  ChannelDeliveryViewSchema,
+} from "./channels.js";
 import {
   OutboundMcpRegisterParams,
   OutboundMcpToolToggleParams,
@@ -655,7 +687,7 @@ export const RunsQueueParams = z.object({
   runId: id,
   chatId: id,
   text: z.string().trim().min(1).max(20_000),
-  pageIds: z.array(id).min(1),
+  pageIds: z.array(id),
   contextPageRefs: z.array(PageContextRefSchema),
   expectedRevision: z.number().int().nonnegative(),
   /** This send supersedes an earlier cancelled/failed message — the nonce chain (04-A). */
@@ -681,16 +713,26 @@ export const ConversationContextEntrySchema = z.object({
   createdAt: z.number(),
   included: z.boolean(),
 });
-export const ConversationBranchDraftSchema = z.object({
-  chatId: id, sourceRunId: id, privateTask: z.boolean(), draftText: z.string(),
-  contextPageRefs: z.array(PageContextRefSchema),
-}).strict();
+export const ConversationBranchDraftSchema = z
+  .object({
+    chatId: id,
+    sourceRunId: id,
+    privateTask: z.boolean(),
+    draftText: z.string(),
+    contextPageRefs: z.array(PageContextRefSchema),
+  })
+  .strict();
 
 export const ConversationBranchMetadataSchema = ConversationBranchDraftSchema.extend({
-  kind: z.literal("branch-draft"), title: z.string(), archived: z.literal(false),
-  mode: z.enum(["branch", "edit"]), available: z.boolean(),
-  taskId: id.optional(), taskRevision: z.number().int().positive().optional(),
-  modelId: z.string().optional(), reasoning: z.enum(["low", "medium", "high"]).optional(),
+  kind: z.literal("branch-draft"),
+  title: z.string(),
+  archived: z.literal(false),
+  mode: z.enum(["branch", "edit"]),
+  available: z.boolean(),
+  taskId: id.optional(),
+  taskRevision: z.number().int().positive().optional(),
+  modelId: z.string().optional(),
+  reasoning: z.enum(["low", "medium", "high"]).optional(),
   executionTarget: ExecutionTargetSchema.optional(),
 });
 export type ConversationBranchMetadata = z.infer<typeof ConversationBranchMetadataSchema>;
@@ -746,8 +788,11 @@ export const ConversationAttachmentsSchema = z.object({
   chatId: id,
   attachments: z.array(ConversationAttachmentSchema),
 });
-export const ConversationAttachmentAddParams = TaskTextEvidenceParamsSchema
-  .omit({ taskId: true, expectedRevision: true, criterionId: true })
+export const ConversationAttachmentAddParams = TaskTextEvidenceParamsSchema.omit({
+  taskId: true,
+  expectedRevision: true,
+  criterionId: true,
+})
   .extend({ chatId: id, sourceArtifactId: id.optional() })
   .strict();
 export const ConversationAttachmentControlParams = z.object({ chatId: id, attachmentId: id });
@@ -1440,10 +1485,18 @@ export const MethodSchemas = {
   "plugins.skills.read": PluginSkillReadParams,
   "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
-  "agentConnections.create": AgentConnectionCreateParams,
-  "agentConnections.install": AgentConnectionCreateParams,
+  "agentConnections.create": AgentCliConnectionCreateParams,
+  "agentConnections.install": AgentCliConnectionCreateParams,
   "developer.cli.install": z.object({}).strict(),
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
+  "channels.list": z.object({}).strict(),
+  "channels.save": ChannelSaveParamsSchema,
+  "channels.reconnect": ChannelControlParamsSchema,
+  "channels.remove": ChannelControlParamsSchema,
+  "channels.peers": ChannelControlParamsSchema,
+  "channels.peer": ChannelPeerControlParamsSchema,
+  "channels.deliveries": ChannelControlParamsSchema,
+  "channels.retryDelivery": ChannelDeliveryRetryParamsSchema,
   "mcp.servers.register": OutboundMcpRegisterParams,
   "mcp.bundles.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "mcp.servers.list": z.object({ workspaceId: id }).strict(),
@@ -1658,12 +1711,19 @@ export const MethodSchemas = {
   "runs.messageStatus": z.object({ nonce: id }),
   "safety.decisions.list": SafetyActivityQuerySchema,
   "packages.list": z.object({}).strict(),
-  "packages.install": z.object({path:z.string().min(1).max(4096)}).strict(),
-  "packages.remove": z.object({name:z.string().min(1).max(128)}).strict(),
-  "packages.defaults": z.object({names:z.array(z.string().min(1).max(128)).max(32)}).strict(),
+  "packages.install": z.object({ path: z.string().min(1).max(4096) }).strict(),
+  "packages.remove": z.object({ name: z.string().min(1).max(128) }).strict(),
+  "packages.defaults": z.object({ names: z.array(z.string().min(1).max(128)).max(32) }).strict(),
   "coding.activity": CodingRunParams,
-  "coding.worktreeInspect": z.object({runId:id,cellId:id}).strict(),
-  "coding.worktreeArchive": z.object({runId:id,cellId:id,expectedDigest:z.string().regex(/^[a-f0-9]{64}$/),actionId:z.string().min(1)}).strict(),
+  "coding.worktreeInspect": z.object({ runId: id, cellId: id }).strict(),
+  "coding.worktreeArchive": z
+    .object({
+      runId: id,
+      cellId: id,
+      expectedDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      actionId: z.string().min(1),
+    })
+    .strict(),
   "coding.changes": CodingChangesParams,
   "coding.undo": CodingUndoParams,
   "coding.processes": CodingRunParams,
@@ -2186,7 +2246,11 @@ const AutomationResultSchemas = {
     .object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) })
     .strict(),
   "routines.skills.preview": SkillLibraryPreviewSchema,
-  "routines.skills.import": z.object({ imported: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(), routineIds: z.array(z.string()) }),
+  "routines.skills.import": z.object({
+    imported: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    routineIds: z.array(z.string()),
+  }),
   "routines.importSkill": z
     .object({
       imported: z.number().int().nonnegative(),
@@ -2446,7 +2510,9 @@ const ConversationAndCodingResultSchemas = {
   "conversations.images.toggle": ConversationImagesSchema,
   "conversations.images.remove": ConversationImagesSchema,
   "conversations.attachments.get": ConversationAttachmentsSchema,
-  "conversations.attachments.read": SavedDocumentPageSchema.extend({ attachment: ConversationAttachmentSchema }).strict(),
+  "conversations.attachments.read": SavedDocumentPageSchema.extend({
+    attachment: ConversationAttachmentSchema,
+  }).strict(),
   "conversations.attachments.import": ConversationAttachmentsSchema,
   "conversations.attachments.add": ConversationAttachmentsSchema,
   "conversations.attachments.page": ConversationAttachmentsSchema,
@@ -2504,7 +2570,13 @@ const ConversationAndCodingResultSchemas = {
   "packages.install": AuxPackageLibrarySchema,
   "packages.remove": AuxPackageLibrarySchema,
   "packages.defaults": AuxPackageLibrarySchema,
-  "coding.activity": z.object({ fileRevision: z.string(), processes: z.array(CodingProcessViewSchema), agents:z.array(SubagentSchema) }).strict(),
+  "coding.activity": z
+    .object({
+      fileRevision: z.string(),
+      processes: z.array(CodingProcessViewSchema),
+      agents: z.array(SubagentSchema),
+    })
+    .strict(),
   "coding.worktreeInspect": CoderRecoveryInspectionSchema,
   "coding.worktreeArchive": CoderRecoveryInspectionSchema,
   "coding.changes": z.array(CodingFileReceiptSchema),
@@ -2717,17 +2789,30 @@ const NativeLibraryResultSchemas = {
   "runtime.describe": z.unknown(),
 } as const;
 
+const ChannelResultSchemas = {
+  "channels.list": z.array(ChannelStatusSchema),
+  "channels.save": ChannelStatusSchema,
+  "channels.reconnect": ChannelStatusSchema,
+  "channels.remove": z.object({ removed: z.literal(true) }).strict(),
+  "channels.peers": z.array(ChannelPeerSchema),
+  "channels.peer": ChannelPeerSchema,
+  "channels.deliveries": z.array(ChannelDeliveryViewSchema),
+  "channels.retryDelivery": z.object({ queued: z.literal(true) }).strict(),
+} as const;
+
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas: typeof AgentResultSchemas &
   typeof AutomationResultSchemas &
   typeof BrowserAndRunResultSchemas &
   typeof ConversationAndCodingResultSchemas &
-  typeof NativeLibraryResultSchemas = {
+  typeof NativeLibraryResultSchemas &
+  typeof ChannelResultSchemas = {
   ...AgentResultSchemas,
   ...AutomationResultSchemas,
   ...BrowserAndRunResultSchemas,
   ...ConversationAndCodingResultSchemas,
   ...NativeLibraryResultSchemas,
+  ...ChannelResultSchemas,
 };
 
 export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;

@@ -522,6 +522,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Image-generation model",
   },
   {
+    category: "Models",
+    label: "Custom providers",
+    description: "Connect named providers with their own endpoint, key and models.",
+    target: "Custom providers",
+  },
+  {
     category: "External agents",
     label: "Cloud account",
     description:
@@ -575,6 +581,69 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
       "Missed read-only checks are combined into one run when Aux resumes. Writes wait for review; overlapping runs are blocked.",
     target: "Missed runs and results",
     searchTerms: ["catch up", "coalesce", "inbox"],
+  },
+  {
+    category: "Channels",
+    label: "Aux, anywhere",
+    description:
+      "Control Aux from Slack, Discord or Telegram to work remotely or build a chatbot for your team.",
+    target: "Messenger connections",
+    searchTerms: ["Channels", "Slack", "Discord", "Telegram", "pairing", "messengers"],
+  },
+  {
+    category: "Channels",
+    label: "Access permission",
+    description:
+      "Set who can use this bot to request tasks and receive replies in the selected Space.",
+    target: "Access permission",
+  },
+  {
+    category: "Channels",
+    label: "Space",
+    description: "Channel tasks and their context stay in this Space.",
+    target: "Space",
+  },
+  {
+    category: "Channels",
+    label: "Require mentions in threads",
+    description: "Require an @mention for the bot to respond in a thread or topic.",
+    target: "Require mentions in threads",
+  },
+  {
+    category: "Channels",
+    label: "Follow-up behavior",
+    description: "Queue follow-ups while Aux runs or steer the current run.",
+    target: "Follow-up behavior",
+  },
+  {
+    category: "Channels",
+    label: "Reconnect",
+    description: "Use this when messages stop arriving.",
+    target: "Reconnect",
+  },
+  {
+    category: "Channels",
+    label: "Remove channel",
+    description: "",
+    target: "Remove channel",
+  },
+  {
+    category: "Channels",
+    label: "Name",
+    description: "",
+    target: "Name",
+  },
+  {
+    category: "Channels",
+    label: "Bot token",
+    description: "",
+    target: "Bot token",
+  },
+  {
+    category: "Channels",
+    label: "App token",
+    description: "",
+    target: "App token",
   },
   {
     category: "Projects",

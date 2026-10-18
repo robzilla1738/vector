@@ -731,6 +731,20 @@ in the run path. Add real transport-backed controls rather than enabled mock row
 The personal-assistant cards require separate capability evidence before wiring.
 All six references remain OPEN; this audit does not narrow the full parity goal.
 
+### Channels implementation follow-up — October 17
+
+The audit above records the original gap. Current source now has a Channels route,
+shared Settings hero/rows, Slack/Telegram/Discord Add menu and persisted connection
+Options, Pairing and Credentials tabs. Actual transports and protected native
+credentials back enable, reconnect and removal. Authenticated provider IDs back
+pair/block actions; paired people is the default, Everyone is an explicit saved
+choice. Thread mentions and Queue/Steer reach normal tasks, runs and approvals.
+Unknown reply review displays the exact text and original recipient before a
+permitted retry; historical retired replies remain viewable. Reference captures
+091/093/096 informed this implementation; no current live native comparison is
+claimed while computer control fails. Personal-assistant capability and all-six
+matched light/dark/narrow acceptance remain open.
+
 ## Routine model and delivery controls
 
 Reference084 now has functional Model and Notifications rows in source and Vite.

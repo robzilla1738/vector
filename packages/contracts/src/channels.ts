@@ -54,6 +54,7 @@ export const ChannelFailureCodeSchema = z.enum([
   "network",
   "invalid_response",
   "delivery_unknown",
+  "runtime",
 ]);
 export const ChannelStatusSchema = ChannelConnectionSchema.extend({
   status: z.enum(["connecting", "connected", "offline", "needs_attention"]),
@@ -106,6 +107,10 @@ export const ChannelDeliveryViewSchema = z
     errorCode: ChannelFailureCodeSchema.optional(),
     createdAt: z.number().nonnegative(),
     updatedAt: z.number().nonnegative(),
+    text: z.string().max(3500),
+    peerName: z.string().max(200),
+    canRetry: z.boolean(),
+    conversationId: id,
   })
   .strict();
 export const ChannelDeliveryRetryParamsSchema = ChannelControlParamsSchema.extend({

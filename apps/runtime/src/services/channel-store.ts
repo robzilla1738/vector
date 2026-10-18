@@ -14,7 +14,7 @@ import {
 import type { Repo } from "../store/repo.js";
 import { withSecureDelete } from "../store/db.js";
 
-const connectionEnvelope = z
+export const ChannelConnectionEnvelopeSchema = z
   .object({ connection: ChannelConnectionSchema, lookupKey: z.string().regex(/^[A-Za-z0-9+/]{43}=$/) })
   .strict();
 export const StoredChannelPeerSchema = ChannelPeerSchema.extend({
@@ -35,6 +35,7 @@ const messageBody = z
     message: ChannelInboundSchema,
     messageUuid: z.string().uuid(),
     deliveryRunId: z.string().min(1),
+    authorityId: z.string().uuid().optional(),
     needsInputNotified: z.boolean().default(false),
   })
   .strict();
@@ -58,6 +59,7 @@ const deliveryBody = z
     text: z.string().min(1),
     providerMessageId: z.string().optional(),
     errorCode: ChannelFailureCodeSchema.optional(),
+    retryAt: z.number().nonnegative().optional(),
   })
   .strict();
 export type StoredChannelDelivery = z.infer<typeof deliveryBody> & {
@@ -108,7 +110,12 @@ export class ChannelStore {
       .get(connectionId) as
       { revision: string; workspace_id: string; enabled: number; body: string } | undefined;
     if (!row) return undefined;
-    const value = this.decode("channel_connections", [connectionId], row.body, connectionEnvelope);
+    const value = this.decode(
+      "channel_connections",
+      [connectionId],
+      row.body,
+      ChannelConnectionEnvelopeSchema,
+    );
     if (
       value.connection.connectionId !== connectionId ||
       value.connection.revision !== row.revision ||
@@ -140,7 +147,7 @@ export class ChannelStore {
       const previous = this.envelope(connection.connectionId);
       if ((previous?.connection.revision ?? null) !== expectedRevision)
         throw new AuxError("conflict", "This channel connection changed. Reopen it before saving.");
-      const value = connectionEnvelope.parse({
+      const value = ChannelConnectionEnvelopeSchema.parse({
         connection,
         lookupKey: previous?.lookupKey ?? randomBytes(32).toString("base64"),
       });
@@ -163,16 +170,7 @@ export class ChannelStore {
         this.repo.db
           .prepare("DELETE FROM channel_cursors WHERE connection_id=?")
           .run(connection.connectionId);
-        this.repo.db
-          .prepare(
-            "UPDATE channel_messages SET state='retired' WHERE connection_id=? AND state IN ('pending','admitting','running','queued')",
-          )
-          .run(connection.connectionId);
-        this.repo.db
-          .prepare(
-            "UPDATE channel_outbox SET state=CASE WHEN state='sending' THEN 'unknown' ELSE 'failed' END,updated_at=? WHERE connection_id=? AND state IN ('pending','sending')",
-          )
-          .run(Date.now(), connection.connectionId);
+        this.retireWork(connection.connectionId);
       }
       return connection;
     });
@@ -188,6 +186,30 @@ export class ChannelStore {
     return createHmac("sha256", Buffer.from(envelope.lookupKey, "base64"))
       .update(`${kind}\0${value}`)
       .digest("hex");
+  }
+  retireWork(connectionId: string) {
+    this.repo.db
+      .prepare(
+        "UPDATE channel_messages SET state='retired' WHERE connection_id=? AND state IN ('pending','admitting','running','queued')",
+      )
+      .run(connectionId);
+    this.repo.db
+      .prepare(
+        "UPDATE channel_outbox SET state=CASE WHEN state='sending' THEN 'unknown' ELSE 'failed' END,updated_at=? WHERE connection_id=? AND state IN ('pending','sending')",
+      )
+      .run(Date.now(), connectionId);
+  }
+  retirePeerWork(connectionId: string, peerKey: string) {
+    this.repo.db
+      .prepare(
+        "UPDATE channel_messages SET state='retired' WHERE connection_id=? AND peer_key=? AND state IN ('pending','admitting','running','queued')",
+      )
+      .run(connectionId, peerKey);
+    this.repo.db
+      .prepare(
+        "UPDATE channel_outbox SET state=CASE WHEN state='sending' THEN 'unknown' ELSE 'failed' END,updated_at=? WHERE connection_id=? AND peer_key=? AND state IN ('pending','sending')",
+      )
+      .run(Date.now(), connectionId, peerKey);
   }
   peers(connectionId: string): StoredChannelPeer[] {
     return (
@@ -242,12 +264,40 @@ export class ChannelStore {
     if (!row || row.revision !== connection.revision) return undefined;
     return this.decode("channel_cursors", [connection.connectionId], row.body, ChannelCursorSchema);
   }
+  hasMessage(connectionId: string, providerMessageId: string): boolean {
+    return Boolean(
+      this.repo.db
+        .prepare("SELECT 1 FROM channel_messages WHERE connection_id=? AND message_key=?")
+        .get(connectionId, this.key(connectionId, "message", providerMessageId)),
+    );
+  }
+  message(connectionId: string, providerMessageId: string): StoredChannelMessage | undefined {
+    const row = this.repo.db
+      .prepare("SELECT * FROM channel_messages WHERE connection_id=? AND message_key=?")
+      .get(connectionId, this.key(connectionId, "message", providerMessageId)) as MessageRow | undefined;
+    return row ? this.recordMessage(row) : undefined;
+  }
+  counts(connectionId: string): { peers: number; pendingMessages: number; uncertainDeliveries: number } {
+    return this.repo.db
+      .prepare(
+        `SELECT
+      (SELECT count(*) FROM channel_peers WHERE connection_id=?) AS peers,
+      (SELECT count(*) FROM channel_messages WHERE connection_id=? AND state IN ('pending','admitting','running','queued')) AS pendingMessages,
+      (SELECT count(*) FROM channel_outbox WHERE connection_id=? AND state='unknown') AS uncertainDeliveries`,
+      )
+      .get(connectionId, connectionId, connectionId) as {
+      peers: number;
+      pendingMessages: number;
+      uncertainDeliveries: number;
+    };
+  }
   /** The checkpoint and deduplicated input commit together before any network ACK. */
   receive(
     connection: ChannelConnection,
     message: ChannelInbound | null,
     cursor?: ChannelCursor | null,
     state: "pending" | "rejected" = "pending",
+    authorityId?: string,
   ): boolean {
     return this.repo.transaction(() => {
       this.assertCurrent(connection);
@@ -256,7 +306,12 @@ export class ChannelStore {
       let inserted = false;
       if (message) {
         const messageKey = this.key(connection.connectionId, "message", message.messageId);
-        const body = messageBody.parse({ message, messageUuid: randomUUID(), deliveryRunId: randomUUID() });
+        const body = messageBody.parse({
+          message,
+          messageUuid: randomUUID(),
+          deliveryRunId: randomUUID(),
+          authorityId,
+        });
         inserted =
           this.repo.db
             .prepare(
@@ -295,10 +350,13 @@ export class ChannelStore {
     return (
       this.repo.db
         .prepare(
-          `SELECT * FROM channel_messages WHERE connection_id=? AND state IN (${states.map(() => "?").join(",")}) ORDER BY received_at,message_key`,
+          `SELECT * FROM channel_messages WHERE connection_id=? AND state IN (${states.map(() => "?").join(",")}) ORDER BY received_at,rowid`,
         )
         .all(connectionId, ...states) as MessageRow[]
-    ).map((row) => ({
+    ).map((row) => this.recordMessage(row));
+  }
+  private recordMessage(row: MessageRow): StoredChannelMessage {
+    return {
       ...this.decode("channel_messages", [row.connection_id, row.message_key], row.body, messageBody),
       connectionId: row.connection_id,
       messageKey: row.message_key,
@@ -307,7 +365,7 @@ export class ChannelStore {
       state: row.state,
       runId: row.run_id ?? undefined,
       receivedAt: row.received_at,
-    }));
+    };
   }
   saveMessage(message: StoredChannelMessage) {
     const result = this.repo.db
@@ -325,6 +383,7 @@ export class ChannelStore {
             messageUuid: message.messageUuid,
             deliveryRunId: message.deliveryRunId,
             needsInputNotified: message.needsInputNotified,
+            authorityId: message.authorityId,
           }),
         ),
         message.connectionId,
@@ -333,11 +392,13 @@ export class ChannelStore {
       );
     if (result.changes !== 1) throw new AuxError("conflict", "The original channel message changed.");
   }
-  deliveries(connectionId: string): StoredChannelDelivery[] {
+  deliveries(connectionId: string, states?: StoredChannelDelivery["state"][]): StoredChannelDelivery[] {
+    if (states && !states.length) return [];
+    const where = states ? ` AND state IN (${states.map(() => "?").join(",")})` : "";
     return (
       this.repo.db
-        .prepare("SELECT * FROM channel_outbox WHERE connection_id=? ORDER BY created_at,delivery_id")
-        .all(connectionId) as DeliveryRow[]
+        .prepare(`SELECT * FROM channel_outbox WHERE connection_id=?${where} ORDER BY created_at,rowid`)
+        .all(connectionId, ...(states ?? [])) as DeliveryRow[]
     ).map((row) => ({
       ...this.decode("channel_outbox", [row.delivery_id], row.body, deliveryBody),
       deliveryId: row.delivery_id,
@@ -358,6 +419,7 @@ export class ChannelStore {
       text: value.text,
       providerMessageId: value.providerMessageId,
       errorCode: value.errorCode,
+      retryAt: value.retryAt,
     });
     const previous = this.repo.db
       .prepare("SELECT * FROM channel_outbox WHERE delivery_id=?")

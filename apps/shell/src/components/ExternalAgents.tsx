@@ -8,7 +8,14 @@ import { staticFieldProps } from "../ui/class-props";
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
+import {
+  AgentCliClientSchema,
+  type AgentCliClient,
+  type AgentConnection,
+  type AgentConnectionScope,
+  type Task,
+  type Workspace,
+} from "@aux/contracts";
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
 import { ExternalAgentOversight } from "./ExternalAgentOversight";
@@ -43,7 +50,7 @@ function ExternalAgentSettings() {
       !bridge.privateMode;
   };
   const [config, setConfig] = useState<Config | null>(null);
-  const [client, setClient] = useState<AgentConnection["client"]>("codex");
+  const [client, setClient] = useState<AgentCliClient>("codex");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [connections, setConnections] = useState<AgentConnection[]>([]);
@@ -87,7 +94,9 @@ function ExternalAgentSettings() {
     if (!current()) return;
     setWorkspaces(nextWorkspaces);
     setTasks(nextTasks);
-    setConnections(nextConnections);
+    setConnections(
+      nextConnections.filter((connection) => AgentCliClientSchema.safeParse(connection.client).success),
+    );
     setInstallations(nextInstallations);
     setWorkspaceId((current) =>
       current && nextWorkspaces.some((item) => item.workspaceId === current)

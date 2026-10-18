@@ -2,6 +2,7 @@ import { packagedNodeBootstrap } from "./packaged-node.js";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { AgentCliConnectionCreateParams } from "@aux/contracts";
 import type { AgentConnectionService } from "./agent-connections.js";
 
 type Client = "codex" | "claude" | "cursor";
@@ -50,10 +51,11 @@ export async function nativeAgentClients() {
 
 /** The one-time token stays in the response; only its hash persists in Aux. */
 export function nativeAgentConfig(connections: AgentConnectionService, input: unknown, dataDir: string) {
+  const value = AgentCliConnectionCreateParams.parse(input);
   const entry = join(dirname(process.argv[1] ?? ""), "mcp.js");
   if (!existsSync(entry)) throw new Error("The Aux MCP server is missing from this build");
   const nodeBootstrap = packagedNodeBootstrap();
-  const { connection, token } = connections.create(input);
+  const { connection, token } = connections.create(value);
   return {
     command: process.execPath,
     args: [...nodeBootstrap.args, entry],

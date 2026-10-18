@@ -118,7 +118,6 @@ export class RunMessageQueue {
         );
       if (
         new Set(input.pageIds).size !== input.pageIds.length ||
-        !input.pageIds.length ||
         new Set(input.contextPageRefs.map((ref) => ref.pageId)).size !== input.contextPageRefs.length ||
         input.contextPageRefs.some((ref) => !input.pageIds.includes(ref.pageId))
       ) {

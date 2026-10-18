@@ -9,9 +9,9 @@ native/renderer/runtime source is `769ba5f86`. The 4,675-test integrated check a
 native dropdown/rail observations remain valid for unchanged behavior. Full
 browser readiness, the manual 20-task smoke and performance acceptance remain open.
 Current source adds isolated named providers, compact Quick Ask/downloads,
-model-based Memory extraction and protected channel transport/storage;
-the latest integrated check passed 4,746 tests. Channel pairing/run/reply/Settings
-integration remains open. Native address save/edit/cancel/update and refill are accepted
+model-based Memory extraction and Channels transport/storage/pairing/run/reply/
+Settings integration; the latest integrated check passed4,772tests. Live messenger
+and native channel acceptance remain open. Native address save/edit/cancel/update and refill are accepted
 on c366c7dc8. Redirect area0058 and compact-window area0059 await native acceptance;
 the isolated155cold build remains active. STATUS is the current build-ownership
 record; older preview entries below are historical.
@@ -32,7 +32,7 @@ flowchart LR
 | R2 | building | Official155.0.8059.85 with58areas is compiling in its isolated checkout. Accept it before integrating the pin and later area0059; preserve stable product/stock checkouts. |
 | R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
 | R4 | active | Shared tool schemas halve the known SDK payload bytes; actual provider token/cache/latency and valid paired native startup/interaction/memory measurements against matching stock remain. |
-| R5 | active | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Finish channel persistence/transports/pairing/replies; supported subscription setup; Memory document authority/extraction/diffs/Dream; routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
+| R5 | active | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Accept live channel transport/pairing/reply/native flows; implement personal-assistant capabilities; supported subscription setup; Memory document authority/extraction/diffs/Dream; routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
 | R6 | active | Compact Quick Ask/download popup source is integrated. Complete native compilation, matched light/dark, normal/narrow and populated/error/focus comparisons across browser chrome, Settings, chat and libraries using the current corpus. |
 | RF | waiting on integrated batches | All scoped implementation and native acceptance complete, current evidence recorded, no unresolved daily-use blocker. Distribution, signing/notarization, sync and other platforms remain separate scope. |
 

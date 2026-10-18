@@ -14,6 +14,7 @@ import {
   SetExecutor,
   TaskService,
   WorkerPool,
+  AgentConnectionService,
 } from "@aux/runtime";
 import {
   AuxError,
@@ -21,6 +22,7 @@ import {
   SubagentGroupSchema,
   SubagentSchema,
   taskConversationId,
+  RunsQueueParams,
 } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
@@ -1707,6 +1709,66 @@ describe("saved task queued follow-ups", () => {
     h.repo.saveRun(target);
     return { ...h, tasks, task, chatId, target };
   }
+
+  it.each([false, true])("preserves page-free external follow-up authority (revoked=%s)", async (revoked) => {
+    const h = taskFixture();
+    const connections = new AgentConnectionService(h.repo);
+    const { connection } = connections.create({
+      name: "Synthetic Telegram channel",
+      client: "telegram",
+      scope: { kind: "workspace", workspaceId: h.task.workspaceId },
+    });
+    const parentRunId = "synthetic-channel-parent";
+    h.repo.saveRun({
+      runId: parentRunId,
+      goal: "Channel presence",
+      pageIds: [],
+      status: "running",
+      createdAt: Date.now(),
+      config: { implementation: "external-agent", externalConnectionId: connection.connectionId },
+    });
+    const target: Run = {
+      ...h.target,
+      pageIds: [],
+      config: {
+        ...h.target.config,
+        externalConnectionId: connection.connectionId,
+        externalParentRunId: parentRunId,
+      },
+    };
+    h.repo.saveRun(target);
+    const input = {
+      messageId: "55555555-5555-4555-8555-555555555555",
+      runId: target.runId,
+      chatId: h.chatId,
+      text: "Answer the synthetic follow-up",
+      pageIds: [],
+      contextPageRefs: [],
+      expectedRevision: 0,
+    };
+    expect(RunsQueueParams.safeParse(input).success).toBe(true);
+    const queued = h.runs.messages.queue(input);
+    if (revoked) connections.revoke(connection.connectionId);
+    const finished = { ...target, status: "completed" as const, endedAt: Date.now() };
+    h.repo.saveRun(finished);
+    h.events.emit(EventTypes.RunUpdated, { run: finished }, target.runId);
+    try {
+      await vi.waitFor(() =>
+        expect(h.repo.getRunMessage(queued.messageId)?.status).toBe(
+          revoked ? "needs_attention" : "delivered",
+        ),
+      );
+      const followUp = h.repo.getRun(queued.deliveryRunId);
+      expect(Boolean(followUp)).toBe(!revoked);
+      expect(followUp?.pageIds).toEqual(revoked ? undefined : []);
+      expect(followUp?.config?.externalConnectionId).toBe(revoked ? undefined : connection.connectionId);
+      expect(followUp?.config?.externalParentRunId).toBe(revoked ? undefined : parentRunId);
+      expect(followUp?.config?.taskId).toBe(revoked ? undefined : h.task.taskId);
+      expect(followUp?.config?.nativeTurnContext).toBeUndefined();
+    } finally {
+      await h.runs.close();
+    }
+  });
 
   it("delivers within the original task, browser, and account scope", async () => {
     const h = taskFixture();

@@ -15,6 +15,7 @@ const sections = {
   CloudExecution: "External agents",
   UsageBudgets: "Usage & Budgets",
   Routines: "Routines",
+  Channels: "Channels",
   Workspaces: "Projects",
   QuickAsk: "Quick Ask",
   SelectionCapture: "Selection & Capture",

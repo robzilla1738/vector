@@ -100,8 +100,20 @@ connections, peers, thread mappings, inputs, outbox receipts and transport curso
 Per-connection keyed indexes live outside ciphertext; their random keys remain
 inside the encrypted connection envelope and survive reviewed Profile recovery.
 Interrupted sends remain unknown, and a delivery ID cannot change its recipient.
-This foundation is not yet connected to normal-run admission or enabled Settings
-controls; connection/pairing/reply integration remains open in STATUS.
+Original normal-window proof owns channel configuration and native secret writes;
+credentials never enter connection rows or renderer status. Authenticated provider
+user IDs map to local pairing records and revocable external workspace authority.
+Each provider thread owns an ordinary task/chat. Remote turns retain that authority
+through initial runs and queued/steered follow-ups, using normal approvals and
+session retirement. Blocking, disablement, changed configuration and shutdown
+retire original work and join admitted producers. Network reconnects preserve
+pairing; identity/authentication faults require local attention. Replies remain
+bound to their original task, run, authority and provider destination. Unknown
+acceptance requires concrete local review before retrying. Cross-Profile recovery
+disables connections, rotates configuration revisions, clears resume cursors and
+retires pairing authority while preserving protected history and opaque indexes.
+Settings uses shared fields, dialogs, native selects, switches and command dispatch.
+Live messenger and native visual acceptance remain open in STATUS.
 
 ## Immutable documents and native receipt exports
 

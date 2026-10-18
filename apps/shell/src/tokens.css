@@ -50,6 +50,9 @@
     --squircle-factor: 1.4;
     --hairline: 0.5px;
     --text: var(--ink-0);
+    --brand-slack-surface: #4a154b;
+    --brand-telegram-surface: #229ed9;
+    --brand-discord-surface: #5865f2;
     --text-muted: var(--ink-2);
     --shadow-md: var(--shadow-card);
     --shadow-dialog: 0 25px 50px -12px rgb(0 0 0 / 0.25);

@@ -3,7 +3,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, wri
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { parse, stringify } from "smol-toml";
-import { AgentConnectionCreateParams, AuxError, type AgentConnection } from "@aux/contracts";
+import { AgentCliConnectionCreateParams, AuxError, type AgentConnection } from "@aux/contracts";
 import type { AgentConnectionService } from "./agent-connections.js";
 import { nativeAgentConfig } from "./native-agent-connections.js";
 
@@ -66,7 +66,7 @@ function replace(change: FileChange, home: string, content: Buffer | undefined) 
 
 /** Human Settings action: merge the actual client config and install its local skill pointer. */
 export async function installAgentClient(input: unknown, options: Options) {
-  const value = AgentConnectionCreateParams.parse(input);
+  const value = AgentCliConnectionCreateParams.parse(input);
   const home = resolve(options.home ?? homedir());
   const id = createHash("sha256")
     .update(options.dataDir)
@@ -112,10 +112,13 @@ export async function installAgentClient(input: unknown, options: Options) {
     const old = object(servers[server]),
       environment = object(old.env);
     const token = environment.AUX_MCP_TOKEN;
-    const authorized = typeof token === "string"
-      ? options.connections.authorize(token) ?? options.connections.closedClient(token) : null;
+    const authorized =
+      typeof token === "string"
+        ? (options.connections.authorize(token) ?? options.connections.closedClient(token))
+        : null;
     previous = authorized
-      ? options.connections.list().find((item) => item.connectionId === authorized.connectionId) : undefined;
+      ? options.connections.list().find((item) => item.connectionId === authorized.connectionId)
+      : undefined;
     if (
       !previous ||
       previous.client !== value.client ||

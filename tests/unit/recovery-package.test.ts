@@ -1,5 +1,6 @@
 import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
 import { seedChannel } from "../fixtures/channels.js";
+import { AgentConnectionService } from "../../apps/runtime/src/services/agent-connections.js";
 import { ChannelStore } from "../../apps/runtime/src/services/channel-store.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { DatabaseSync } from "node:sqlite";
@@ -119,6 +120,18 @@ async function fixture() {
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }],
   });
   const channel = seedChannel(source, space.workspaceId, task.taskId);
+  const authority = new AgentConnectionService(source).create({
+    name: "Synthetic channel authority",
+    client: "telegram",
+    scope: { kind: "workspace", workspaceId: space.workspaceId },
+  });
+  channel.store.savePeer(channel.connection.connectionId, {
+    ...channel.store.peer(channel.connection.connectionId, channel.peerKey)!,
+    state: "paired",
+    authorityId: authority.connection.connectionId,
+    requestId: undefined,
+    expiresAt: undefined,
+  });
   const evidence = new TaskEvidenceService(
     source,
     new EventBus(source),
@@ -323,7 +336,16 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   expect(channels.deliveries(f.channel.connection.connectionId)[0]?.text).toBe(
     "Protected messenger response",
   );
-  expect(channels.cursor(f.channel.connection)).toEqual({ provider: "telegram", offset: 5 });
+  const restoredChannel = channels.get(f.channel.connection.connectionId)!;
+  expect(restoredChannel.enabled).toBe(false);
+  expect(restoredChannel.revision).not.toBe(f.channel.connection.revision);
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)).toMatchObject({ state: "pending" });
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.authorityId).toBeUndefined();
+  expect(channels.peer(restoredChannel.connectionId, f.channel.peerKey)?.requestId).toBeUndefined();
+  expect(channels.cursor(restoredChannel)).toBeUndefined();
+  expect(
+    new AgentConnectionService(restored).list().find((item) => item.client === "telegram")?.revokedAt,
+  ).toBeTypeOf("number");
   expect(
     new DocumentSnapshots(restored).read(f.segmented.owner, f.segmented.snapshot.sha256).chunk.segments[0]
       ?.text,

@@ -13,6 +13,7 @@ import { sitesMethods } from "./sites.js";
 import { calendarMethods } from "./calendar.js";
 import { connectorsMethods } from "./connectors.js";
 import { agentConnectionsMethods } from "./agentConnections.js";
+import { channelsMethods } from "./channels.js";
 import { mcpMethods } from "./mcp.js";
 import { subagentsMethods } from "./subagents.js";
 import { pluginsMethods } from "./plugins.js";
@@ -70,6 +71,7 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...calendarMethods,
   ...connectorsMethods,
   ...agentConnectionsMethods,
+  ...channelsMethods,
   ...mcpMethods,
   ...subagentsMethods,
   ...pluginsMethods,
