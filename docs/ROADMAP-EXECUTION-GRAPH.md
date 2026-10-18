@@ -99,17 +99,24 @@ and independent reviews do not establish live account compatibility. Next curren
 native acceptance must verify the default-route schema correction and Settings
 navigation fix before the manual20-task smoke.
 
-The next renderer integration applies the full-corpus source corrections for
-Home/menu/Memory/selection/CLI and Settings controls, MCP form ownership and
-custom JSON. Current runtime-only native acceptance is blocked before task
-submission: direct runtime reads and authenticated native background calls work,
-but the chat retry does not reach the runtime. No20-task result or cause is claimed.
-The original debug launcher retired after SIGINT; fresh final-source native
-acceptance remains required. Memory fault fixes now have independently reviewed exact
-publication/rollback failure regressions. Native Dream acceptance remains open.
-A saved non-debugger runtime-only preview connects and submits L01, but the actual
-Gateway/Anthropic route rejects top-level schema composition. Only1task fails; no
-L02submission or complete smoke is claimed. Portable schema publication remains active.
+The full-corpus renderer corrections are integrated for Home/menu/Memory/selection/
+CLI and Settings controls, MCP form ownership, custom JSON and Task notifications.
+All182 original reference images have been manually reviewed. Their `.png` filenames
+contain JPEG bytes; complete read-only decoding verifies manifest dimensions and
+unchanged hashes. Current native comparisons remain open.
+The earlier debug runtime-only preview stalled before task submission, then retired
+after SIGINT; its cause remains unproven. A saved non-debugger preview connected and
+submitted L01, exposing actual Gateway/Anthropic rejection of root schema
+composition. That single attempted task failed; noL02 or complete smoke is claimed.
+Current source now uses strict SDK-generated envelopes for those original object
+schemas and refuses SDK-invalid calls before preparation/execution. Actual provider
+retry remains open. Memory publication/rollback corrections and exact eligibility
+have integrated fault regressions; native populated Dream acceptance remains open.
+Native area0067 adds guarded File New Chat and oriented Tab split chooser commands.
+All67 areas replay exactly across940 source paths; the four affected objects compile
+in94.58s/10steps. Current full-app build and native menu behavior remain open.
+Measured optional Dialog extraction and durable work-trace/turn navigation are
+separate integration slices; no unbuilt result is treated as native acceptance.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

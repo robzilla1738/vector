@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-18",
+  "status": "native_objects_compiled_current_app_observation_pending",
+  "baseCommit": "ddcb89621",
+  "patch": {
+    "path": "chromium/patches/aux/0067-native-chat-split-menus.patch",
+    "sha256": "feda89e7539557ad58b201d8c69aaf3db3dd21cc832cb2329fcf69b12b770d39",
+    "nativePaths": 9
+  },
+  "sourceProof": {
+    "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-native67-series-proof-lbs3a8sv/result.json",
+    "sha256": "1982bf7c5ae081dfa8cd56ef5ad9c428f660e8fb977b39f3d19c885eef36e315",
+    "prefixAreasUnchanged": 66,
+    "ownedPaths": 940,
+    "mismatches": 0,
+    "forwardIndexCheck": "pass",
+    "reverseIndexCheck": "pass",
+    "newPinnedPaths": [
+      "chrome/app/chrome_command_ids.h",
+      "chrome/app/generated_resources.grd",
+      "chrome/browser/ui/actions/chrome_action_id.h",
+      "chrome/browser/ui/browser_actions.cc",
+      "chrome/browser/ui/browser_command_controller.h"
+    ]
+  },
+  "independentReview": {
+    "path": "/tmp/aux-native-menus-area67-v2-peer-review.json",
+    "sha256": "2c60a5affa6b24d2402580c769b3baf875ebac7bf4e42d6d96c1a77998e60ee1",
+    "blockers": 0,
+    "scope": "static exact nine-file replay and original lifecycle review; not native acceptance"
+  },
+  "changes": [
+    "Aux File menu adds local New Chat. Aux Tab menu uses existing side-by-side and stacked split choosers. Non-Aux inherited menu remains.",
+    "Same current authorized Aux document, bound host, active tab, original Profile splitView preference and actual browser/private/Quick/Little eligibility gate availability and dispatch. Modern ActionItems and legacy controller share the guard.",
+    "No new accelerator, runtime request, provider request, fallback tab creation or replay; existing generic keyboard dispatch is unchanged."
+  ],
+  "validation": {
+    "nativeObjectBuild": {
+      "command": "Original scripts/dev.mjs with four incremental native object targets; one plain lock.",
+      "targets": [
+        "browser_actions.o",
+        "browser_command_controller.o",
+        "main_menu_builder.o",
+        "webui_browser_ui.o"
+      ],
+      "passed": true,
+      "steps": 10,
+      "durationSeconds": 94.58,
+      "retries": 0,
+      "log": "/tmp/aux-native-menus-area67-object-build.log"
+    },
+    "integratedCheck": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5671,
+      "testsFailed": 2,
+      "testFilesPassed": 848,
+      "testFilesFailed": 1,
+      "durationSeconds": 153.92,
+      "log": "/tmp/aux-native-menus-integrated-check.log",
+      "failures": "Two unchanged coder-worktree cases exceeded their original60s limits under full-suite load."
+    },
+    "fullCurrentApplicationBuild": "pending",
+    "nativeObserved": "pending",
+    "unchangedFailureRerun": {
+      "command": "npx vitest run --project unit tests/unit/coder-worktrees.test.ts",
+      "passed": 3,
+      "durationSeconds": 74.01,
+      "caseDurationSeconds": [
+        18.585,
+        28.513,
+        24.893
+      ],
+      "log": "/tmp/aux-native-menus-coder-rerun.log",
+      "meaning": "Original file unchanged, all original60s case limits preserved. Separate rerun, not a wholly green full-suite run."
+    }
+  },
+  "remaining": [
+    "Current full native build and matched File/Tab interactions.",
+    "Normal/private/QuickAsk/Little/no-tab/retired document/host disconnect and splitView preference transitions.",
+    "Modern Actions enabled/disabled routes, runtime outage and existing original keyboard/draft/chooser behavior."
+  ]
+}

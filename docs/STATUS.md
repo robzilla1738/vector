@@ -106,6 +106,15 @@ recovery restores inactive authority. The owner explicitly chose to keep OAuth
 registration setup explicit and finish adapters/fixture tests. No working connection
 is simulated; no real third-party message has been sent.
 
+Native area0067 adds Aux File→New Chat and Tab→Split Side by Side/Stacked
+through the existing local chooser commands. Current document/host/window/tab
+ownership and original Profile split preference gate both enabled state and
+dispatch; modern ActionItems and legacy controller share the guard. Existing
+keyboard dispatch is unchanged. All67 areas replay with exact bytes/modes across
+940 source paths. The four affected native objects compile in94.58s/10steps,
+without retries. Full current-app build and native menu observations remain open.
+[Menu evidence](evidence/aside-native-menus-2026-10-18.json) records the separate gates.
+
 The committed native-context slice extends LinkedIn with typed original-owner
 prepare/apply input proof. Its consolidated area0066 is source-proven. All49 real
 Blink input cases and nine Mac retirement/Cocoa-acknowledgement/BFCache cases pass
@@ -143,13 +152,16 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest provider integrated check passes typecheck/lint and5,672tests across
-848files in137.82s; one unchanged delayed-exec process test observed its original
-shell after a fixed300ms under full-suite load. Its unchanged isolated file passes
-all3cases in1.89s. Logs: `/tmp/aux-provider-envelope-integrated-check.log` and
-`/tmp/aux-provider-envelope-coding-processes-rerun.log`. This is not a wholly green
-integrated run. Runtime dist was rebuilt first. The preceding notification check
-passes all5,666tests/848files in123.85s, including the Memory corrections
+The latest native-menu integrated check passes typecheck/lint and5,671tests
+across848files in153.92s; two unchanged coder-worktree cases hit their original
+60s timeouts. Their unchanged isolated file passes all3cases in74.01s, each within
+its original limit (18.59/28.51/24.89s). Logs: `/tmp/aux-native-menus-integrated-check.log`
+and `/tmp/aux-native-menus-coder-rerun.log`. Runtime dist was rebuilt first; this
+is not a wholly green integrated run. The preceding provider check passes5,672tests
+with one unchanged delayed-exec300ms race; its unchanged isolated file passes3/3
+in1.89s (`/tmp/aux-provider-envelope-integrated-check.log` and
+`/tmp/aux-provider-envelope-coding-processes-rerun.log`). The preceding notification
+check passes all5,666tests/848files in123.85s, including the Memory corrections
 (`/tmp/aux-task-notices-integrated-check.log`).
 The preceding Memory check passed5,663tests across846files;
 one existing coder-worktree case hit its original60s timeout. Its unchanged

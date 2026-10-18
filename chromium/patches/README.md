@@ -1,6 +1,6 @@
 # Native patch ownership
 
-The current155 series contains64 numbered areas, `0001`–`0064`, applied to
+The current155 series contains67 numbered areas, `0001`–`0067`, applied to
 Chromium155.0.8059.85. Current source, compiled and observed status belongs in
 [STATUS](../../docs/STATUS.md). Older consolidation evidence below describes its
 explicit154 checkpoint and must not be used as155 build or acceptance evidence.
@@ -30,7 +30,15 @@ affected paths pass forward/reverse and actual-source byte checks in
 `/tmp/aux-native64-proof.json`. Native object compilation and the scanned-PDF
 fixture are recorded separately in STATUS.
 
-The next available area number is0065. Do not reset an active native tree or reuse
+Areas0065–0066 add runtime liveness/tab-search and original native input ownership.
+Area0067 adds guarded Aux New Chat and oriented split chooser menus through the
+existing command controller and modern ActionItems. All67 areas have source
+equivalence across940 affected paths. Its four affected native objects compile;
+current full-application observations remain pending.
+[Menu evidence](../../docs/evidence/aside-native-menus-2026-10-18.json) separates
+source replay, object compilation and native acceptance.
+
+The next available area number is0068. Do not reset an active native tree or reuse
 historical follow-up reservations. Continue to use the single existing launcher,
 builder and plain PID lock; do not force-clear an active lock.
 
@@ -118,3 +126,6 @@ Renderer assets and generated host bindings are staged by their existing produce
 | [0062-isolated-document-audio-jobs](aux/0062-isolated-document-audio-jobs.patch)             |    22 | Isolated document audio jobs; current build and observation evidence in STATUS.     |
 | [0063-selected-app-desktop-context](aux/0063-selected-app-desktop-context.patch)             |    10 | Selected app desktop context; current build and observation evidence in STATUS.     |
 | [0064-immutable-selected-pdf-originals](aux/0064-immutable-selected-pdf-originals.patch)     |     8 | Immutable selected pdf originals; current build and observation evidence in STATUS. |
+| [0065-runtime-liveness-tab-search](aux/0065-runtime-liveness-tab-search.patch) | 3 | Runtime liveness and tab search; current evidence in STATUS. |
+| [0066-native-context-input-proof](aux/0066-native-context-input-proof.patch) | 35 | Original native input ownership; current evidence in STATUS. |
+| [0067-native-chat-split-menus](aux/0067-native-chat-split-menus.patch) | 9 | Guarded Aux File/Tab commands; object compilation and native observations recorded separately. |

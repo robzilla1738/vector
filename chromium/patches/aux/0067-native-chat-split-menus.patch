@@ -1,0 +1,337 @@
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -103,6 +103,9 @@
+ #define IDC_VERTICAL_TABS_SEND_FEEDBACK 34059
+ #define IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER 34060
+ #define IDC_TOGGLE_VERTICAL_TABS_COLLAPSE 34061
++#define IDC_AUX_NEW_CHAT                34064
++#define IDC_AUX_SPLIT_SIDE_BY_SIDE      34065
++#define IDC_AUX_SPLIT_STACKED           34066
+ 
+ // Web app window commands
+ #define IDC_COPY_URL                    34071
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -15920,6 +15920,15 @@
+         <message name="IDS_NEW_TAB_MAC" desc="In Title Case: The Mac menu item for opening a new tab in the file menu.">
+           New Tab
+         </message>
++        <message name="IDS_AUX_NEW_CHAT_MAC" desc="Aux File menu command for opening a new local chat draft.">
++          New Chat
++        </message>
++        <message name="IDS_AUX_SPLIT_SIDE_BY_SIDE_MAC" desc="Aux Tab menu command for choosing another tab for a side-by-side split.">
++          Split Side by Side
++        </message>
++        <message name="IDS_AUX_SPLIT_STACKED_MAC" desc="Aux Tab menu command for choosing another tab for a stacked split.">
++          Split Stacked
++        </message>
+         <message name="IDS_NEW_WINDOW_MAC" desc="In Title Case: The Mac menu item for opening a new window in the file menu.">
+           New Window
+         </message>
+--- a/chrome/browser/ui/actions/chrome_action_id.h
++++ b/chrome/browser/ui/actions/chrome_action_id.h
+@@ -32,6 +32,9 @@
+   E(kActionNewWindow, IDC_NEW_WINDOW) \
+   E(kActionCloseWindow, IDC_CLOSE_WINDOW) \
+   E(kActionNewTab, IDC_NEW_TAB) \
++  E(kActionAuxNewChat, IDC_AUX_NEW_CHAT) \
++  E(kActionAuxSplitSideBySide, IDC_AUX_SPLIT_SIDE_BY_SIDE) \
++  E(kActionAuxSplitStacked, IDC_AUX_SPLIT_STACKED) \
+   E(kActionCloseTab, IDC_CLOSE_TAB) \
+   E(kActionSelectNextTab, IDC_SELECT_NEXT_TAB) \
+   E(kActionSelectPreviousTab, IDC_SELECT_PREVIOUS_TAB) \
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -20,6 +20,7 @@
+ #include "base/types/to_address.h"
+ #include "build/branding_buildflags.h"
+ #include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
+ #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
+@@ -1195,6 +1196,34 @@
+             .Build());
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  const struct {
++    int command;
++    actions::ActionId action;
++    int label;
++  } aux_menu_commands[] = {
++      {IDC_AUX_NEW_CHAT, kActionAuxNewChat, IDS_AUX_NEW_CHAT_MAC},
++      {IDC_AUX_SPLIT_SIDE_BY_SIDE, kActionAuxSplitSideBySide,
++       IDS_AUX_SPLIT_SIDE_BY_SIDE_MAC},
++      {IDC_AUX_SPLIT_STACKED, kActionAuxSplitStacked, IDS_AUX_SPLIT_STACKED_MAC},
++  };
++  for (const auto& entry : aux_menu_commands) {
++    root_action_item_->AddChild(
++        actions::ActionItem::Builder(base::BindRepeating(
++            [](BrowserWindowInterface* browser, int command,
++               actions::ActionItem*, actions::ActionInvocationContext) {
++              if (auto* controller = chrome::BrowserCommandController::From(browser))
++                controller->DispatchAuxMenuCommand(command);
++            },
++            bwi, entry.command))
++            .SetActionId(entry.action)
++            .SetText(l10n_util::GetStringUTF16(entry.label))
++            .SetTooltipText(l10n_util::GetStringUTF16(entry.label))
++            .SetEnabled(false)
++            .Build());
++  }
++#endif
++
+   root_action_item_->AddChild(
+       actions::ActionItem::Builder(
+           base::BindRepeating(
+--- a/chrome/browser/ui/browser_command_controller.h
++++ b/chrome/browser/ui/browser_command_controller.h
+@@ -12,6 +12,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/command_updater.h"
+ #include "chrome/browser/command_updater_delegate.h"
+ #include "chrome/browser/command_updater_impl.h"
+@@ -94,6 +95,10 @@
+   void ExtensionStateChanged();
+   void TabKeyboardFocusChangedTo(std::optional<int> index);
+   void WebContentsFocusChanged();
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  void UpdateAuxMenuCommands();
++  bool DispatchAuxMenuCommand(int command_id);
++#endif
+ 
+   // Helper method to show the customize chrome sidepanel and optionally scroll
+   // to a specific section.
+@@ -172,6 +177,10 @@
+ 
+   // Initialize state for all browser commands.
+   void InitCommandState();
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  bool CanExecuteAuxMenuCommand(int command_id) const;
++  PrefChangeRegistrar aux_menu_pref_registrar_;
++#endif
+ 
+   // Update commands whose state depends on incognito mode availability.
+   void UpdateCommandsForIncognitoAvailability();
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/profile_prefs.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+ #endif
+@@ -352,6 +353,13 @@
+   }
+ 
+   profile_pref_registrar_.Init(profile()->GetPrefs());
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  aux_menu_pref_registrar_.Init(profile()->GetOriginalProfile()->GetPrefs());
++  aux_menu_pref_registrar_.Add(
++      aux::kLibraryFeatureOverridesPref,
++      base::BindRepeating(&BrowserCommandController::UpdateAuxMenuCommands,
++                          base::Unretained(this)));
++#endif
+   if (!base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog)) {
+     profile_pref_registrar_.Add(
+         prefs::kDevToolsAvailability,
+@@ -637,8 +645,56 @@
+ }
+ 
+ bool BrowserCommandController::IsCommandEnabled(int id) const {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  if ((id == IDC_AUX_NEW_CHAT || id == IDC_AUX_SPLIT_SIDE_BY_SIDE ||
++       id == IDC_AUX_SPLIT_STACKED) && !CanExecuteAuxMenuCommand(id))
++    return false;
++#endif
+   return command_updater_->IsCommandEnabled(id);
+ }
++
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++namespace {
++const char* AuxMenuShortcut(int command) {
++  switch (command) {
++    case IDC_AUX_NEW_CHAT:
++      return "new-chat";
++    case IDC_AUX_SPLIT_SIDE_BY_SIDE:
++      return "split-side-by-side";
++    case IDC_AUX_SPLIT_STACKED:
++      return "split-stacked";
++    default:
++      return nullptr;
++  }
++}
++}  // namespace
++
++bool BrowserCommandController::CanExecuteAuxMenuCommand(int command_id) const {
++  const char* shortcut = AuxMenuShortcut(command_id);
++  auto* window = WebUIBrowserWindow::FromBrowser(browser_);
++  auto* ui = window ? window->GetWebUIBrowserUI() : nullptr;
++  return shortcut && ui && ui->CanDispatchAuxMenuShortcut(shortcut);
++}
++
++bool BrowserCommandController::DispatchAuxMenuCommand(int command_id) {
++  if (!IsCommandEnabled(command_id))
++    return false;
++  auto* window = WebUIBrowserWindow::FromBrowser(browser_);
++  auto* ui = window ? window->GetWebUIBrowserUI() : nullptr;
++  const char* shortcut = AuxMenuShortcut(command_id);
++  return ui && shortcut && ui->DispatchAuxShortcut(shortcut, true);
++}
++
++void BrowserCommandController::UpdateAuxMenuCommands() {
++  UpdateCommandAndActionEnabled(IDC_AUX_NEW_CHAT, kActionAuxNewChat,
++                               CanExecuteAuxMenuCommand(IDC_AUX_NEW_CHAT));
++  UpdateCommandAndActionEnabled(
++      IDC_AUX_SPLIT_SIDE_BY_SIDE, kActionAuxSplitSideBySide,
++      CanExecuteAuxMenuCommand(IDC_AUX_SPLIT_SIDE_BY_SIDE));
++  UpdateCommandAndActionEnabled(IDC_AUX_SPLIT_STACKED, kActionAuxSplitStacked,
++                               CanExecuteAuxMenuCommand(IDC_AUX_SPLIT_STACKED));
++}
++#endif
+ 
+ bool BrowserCommandController::ExecuteCommandWithDispositionAndContext(
+     int id,
+@@ -757,6 +813,13 @@
+       base::RecordAction(base::UserMetricsAction("CloseWindowByKey"));
+       CloseWindow(browser_);
+       break;
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++    case IDC_AUX_NEW_CHAT:
++    case IDC_AUX_SPLIT_SIDE_BY_SIDE:
++    case IDC_AUX_SPLIT_STACKED:
++      DispatchAuxMenuCommand(id);
++      break;
++#endif
+     case IDC_NEW_TAB: {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+       if (auto* window = WebUIBrowserWindow::FromBrowser(browser_);
+@@ -1753,6 +1816,9 @@
+   // Window management commands
+   command_updater_->UpdateCommandEnabled(IDC_CLOSE_WINDOW, true);
+   command_updater_->UpdateCommandEnabled(IDC_NEW_TAB, true);
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  UpdateAuxMenuCommands();
++#endif
+   command_updater_->UpdateCommandEnabled(IDC_CLOSE_TAB, true);
+   command_updater_->UpdateCommandEnabled(
+       IDC_DUPLICATE_TAB,
+@@ -2724,6 +2790,9 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  UpdateAuxMenuCommands();
++#endif
+   int tab_index = browser_->tab_strip_model()->active_index();
+   // No commands are updated if there is not yet any selected tab.
+   if (tab_index == TabStripModel::kNoTab) {
+--- a/chrome/browser/ui/cocoa/main_menu_builder.mm
++++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
+@@ -176,6 +176,11 @@
+               Item(IDS_NEW_TAB_MAC)
+                   .command_id(IDC_NEW_TAB)
+                   .remove_if(is_pwa),
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++              Item(IDS_AUX_NEW_CHAT_MAC)
++                  .command_id(IDC_AUX_NEW_CHAT)
++                  .remove_if(is_pwa),
++#endif
+               Item(IDS_NEW_WINDOW_MAC)
+                   .command_id(IDC_NEW_WINDOW),
+               Item(IDS_NEW_INCOGNITO_WINDOW_MAC)
+@@ -616,8 +621,15 @@
+                   .set_hidden(true),
+               Item(IDS_MOVE_TAB_TO_NEW_WINDOW)
+                   .command_id(IDC_MOVE_TAB_TO_NEW_WINDOW),
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++              Item(IDS_AUX_SPLIT_SIDE_BY_SIDE_MAC)
++                  .command_id(IDC_AUX_SPLIT_SIDE_BY_SIDE),
++              Item(IDS_AUX_SPLIT_STACKED_MAC)
++                  .command_id(IDC_AUX_SPLIT_STACKED),
++#else
+               Item(IDS_TAB_CXMENU_ADD_TAB_TO_NEW_SPLIT)
+                   .command_id(IDC_NEW_SPLIT_TAB),
++#endif
+               Item(IDS_SEARCH_TABS)
+                   .command_id(IDC_TAB_SEARCH),
+               Item().is_separator(),
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -161,6 +161,7 @@
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   void FocusAuxShell();
++  bool CanDispatchAuxMenuShortcut(const std::string& command_id) const;
+   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
+                            std::optional<bool> website_pass_through = std::nullopt,
+                            bool preview_tabs = false);
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
+ #include "ui/views/controls/menu/menu_model_adapter.h"
+ #include "ui/views/controls/menu/menu_runner.h"
+@@ -789,6 +791,22 @@
+     }
+   }
+   web_ui()->GetWebContents()->Focus();
++}
++
++bool WebUIBrowserUI::CanDispatchAuxMenuShortcut(const std::string& command_id) const {
++  if (command_id != "new-chat" && command_id != "split-side-by-side" &&
++      command_id != "split-stacked")
++    return false;
++  if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound() ||
++      browser_->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL ||
++      aux::IsQuickAskWindow(browser_) || aux::IsLittleWindow(browser_) ||
++      !browser_->GetTabStripModel()->GetActiveWebContents())
++    return false;
++  if (command_id == "new-chat")
++    return !browser_->GetProfile()->IsOffTheRecord();
++  return browser_->GetProfile()->GetOriginalProfile()->GetPrefs()
++      ->GetDict(aux::kLibraryFeatureOverridesPref)
++      .FindBool("splitView").value_or(true);
+ }
+ 
+ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool focus_shell,
+@@ -1397,6 +1415,10 @@
+   evidence_document_selection_.reset();
+   shell_host_receiver_.reset();
+   shell_host_client_.reset();
++#if BUILDFLAG(IS_MAC)
++  if (auto* controller = chrome::BrowserCommandController::From(browser_))
++    controller->UpdateAuxMenuCommands();
++#endif
+   tab_catalog_subscription_ = {};
+   runtime_event_subscription_ = {};
+   shell_events_subscription_ = {};
+@@ -1415,9 +1437,17 @@
+             ui->RetireAuxArtifactSave();
+             ui->shell_host_receiver_.reset();
+             ui->shell_host_client_.reset();
++#if BUILDFLAG(IS_MAC)
++            if (auto* controller = chrome::BrowserCommandController::From(ui->browser_))
++              controller->UpdateAuxMenuCommands();
++#endif
+           }
+         },
+         weak_factory_.GetWeakPtr()));
++#if BUILDFLAG(IS_MAC)
++    if (auto* controller = chrome::BrowserCommandController::From(browser_))
++      controller->UpdateAuxMenuCommands();
++#endif
+     if (!browser_->GetProfile()->IsOffTheRecord()) {
+       organization_pref_registrar_ = std::make_unique<PrefChangeRegistrar>();
+       organization_pref_registrar_->Init(browser_->GetProfile()->GetPrefs());
