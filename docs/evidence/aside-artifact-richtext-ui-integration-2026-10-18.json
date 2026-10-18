@@ -1,0 +1,67 @@
+{
+  "atUTC": "2026-10-18T18:48:59.803621+00:00",
+  "sourceStatus": "Integrated fullcheck passed; native compile/live acceptance pending",
+  "artifactReader": {
+    "proposal": "/tmp/aux-artifact-text-aside-logic-final-v1/manifest.json",
+    "proposalSHA256": "ea451ec10cc724ecb0fe80c526b524ee03ccd99186ff51689cf97ef376af7253",
+    "scope": "Original captured-run, ID-only completed UTF-8 text up to256KiB, pages8KiB, source/revision/cancellation rechecks and durable REPL read revalidation; act retains admitted IDs/metadata.",
+    "limits": "Uses existing ArtifactStore; no new plaintext copy/encryption migration. Hash identifies current read bytes and pagination, not independently sealed original-download bytes. Lexical root confinement and final-component O_NOFOLLOW; not parent-directory descriptor hardening."
+  },
+  "richText": {
+    "proposalSHA256": "36f93aa14e9b13b65d5592b57c74598b82ddada4e239b194a3f0e33879bfe6fa",
+    "scope": "Reject bare adjacent focusclick then type/fill on same observed richtext field anywhere in a batch, before any dispatch; uncertain original L12 remains unresolved.",
+    "rootFixtureCorrection": "Moved selection/method expectations out of conditional branches; captures actual selection then asserts after execution. Initial integrated check failed lint2errors before unit stage; retained log."
+  },
+  "UI": {
+    "applyProof": "/tmp/aux-root-home-compact-ui-apply-2026-10-18.json",
+    "review": "React review: prop-only menu geometry variant; preserves same menu focus ownership, keyboard handlers, lazy catalog and narrow provider portal; no new state/effect/import. Forced colors retained. Source reference supports compact exception and827pxHome recent-work cap.",
+    "limits": "No native parity claim; default Settings/QuickAsk menu size retained; Home preview-count/empty states remain open.",
+    "rootFormatting": "Prettier-only wrap accessibility.css after exact patch; no selector change."
+  },
+  "focused": {
+    "build": "/tmp/aux-artifact-l12-root-build-2026-10-18.log",
+    "buildExit": 0,
+    "tests": "/tmp/aux-artifact-l12-ui-root-focused-after-build-2026-10-18.log",
+    "testsExit": 0,
+    "passed": 202,
+    "files": 8,
+    "seconds": 5.36,
+    "prematureAttempt": "67096 stopped130 before runtime results because original build16426 had not joined. No results accepted; complete post-build rerun retained."
+  },
+  "nativePermission": {
+    "apply": "/tmp/aux-permission-root-apply-2026-10-18/result.json",
+    "sourceReview": "/tmp/aux-permission-l12-measurement-review-v1/review.json",
+    "replay": "/tmp/aux-permission-integrated-replay-2026-10-18/proof.json",
+    "replaySHA256": "c40595281e7eecee441317ef08d4f5296695552b1c5c4771ee81c4dba7e2fb00",
+    "areas": 68,
+    "paths": 974,
+    "mismatches": 0,
+    "limits": "Not compiled or live accepted; actual direct-bubble denial/callback/queue/tab behavior pending."
+  },
+  "restore": {
+    "proof": "/tmp/aux-disposable-session-restore-proof-2026-10-18.json",
+    "proofSHA256": "bd7881a77bb3360c16d27dbc07adce19cfc2c01abe873ad19bef84a0857de2db",
+    "candidateNativeCommit": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+    "normalSessionRestore": true,
+    "limits": "Three synthetic tabs only; no crashrestore, OSsleepwake, unsavedvalues or all-surface parity."
+  },
+  "program": "Active/incomplete; no full20, original155crashresolution or pairedperf pass.",
+  "integratedCheck": {
+    "session": 31627,
+    "exit": 0,
+    "tests": 6054,
+    "files": 863,
+    "seconds": 105.6,
+    "lintAdvisories": 581,
+    "typeLintErrors": 0,
+    "log": "/tmp/aux-artifact-l12-ui-integrated-check-fixed-2026-10-18.log",
+    "logSHA256": "5d87c45ec66ef43a8a641f0eb74b3634c528600c6b7ac597891fcb42b8d64dcf",
+    "nativeCompilerConcurrent": false,
+    "initialFailedLintLog": "/tmp/aux-artifact-l12-ui-integrated-check-2026-10-18.log"
+  },
+  "commits": {
+    "UI": "9d8cae666",
+    "artifactAndRichText": "99417fcfa",
+    "nativePermission": "7d0793702"
+  }
+}

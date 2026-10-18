@@ -8,11 +8,23 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The current [artifact, rich-text and UI slice](evidence/aside-artifact-richtext-ui-integration-2026-10-18.json)
+passes **6,054 tests across863files** in105.60s after rebuilding runtime dist;
+typecheck/lint have no errors. The reader exposes actual admitted artifact IDs and
+bounded run-owned text to tools/REPL. Rich-text focus pairs are rejected before
+partial batch dispatch. Home recent-work and compact composer menus now follow
+the measured reference geometry. Native source uses existing direct permission
+bubbles in place of an unrendered chip; all68 areas replay across974paths/modes.
+These changes await native compilation and observation. The answer-parking repair
+is still under revision after peer review; no fresh complete20 result is claimed.
+Normal three-tab restore is observed on the previous587candidate with both original
+launch groups joined normally and the disposable Profile removed. That scope does
+not cover crash restore or OS sleep/wake.
+
 The [successor source](evidence/aside-native-input-download-integration-2026-10-18.json)
 is committed on local main. Original-input/download continuation is `454ea27cd`,
 process retirement `2b81d27dc`, composer menus `b9870419a`, disposable window sizing
-`efdd7ee9b` and pinned performance-helper reuse `2728ac6c6`. The tested product is
-clean; nothing was pushed. The latest integrated check passes **6,003 tests across
+`efdd7ee9b` and pinned performance-helper reuse `2728ac6c6`. Nothing was pushed. That earlier integrated check passes **6,003 tests across
 861 files** in 107.36s, with 580 lint advisories and no type/lint errors. Runtime
 dist was rebuilt first, without a concurrent native compiler.
 

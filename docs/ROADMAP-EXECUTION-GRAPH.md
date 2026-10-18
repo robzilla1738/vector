@@ -45,7 +45,21 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 
 ### Current reservations and integration
 
-The October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
+The current `587bdaf5e` native campaign stopped after12 scored tasks:9passes,
+3failures and8unsubmitted. Its [immutable partial record](evidence/aside-native-587-manual20-partial-2026-10-18.json)
+retains actual provider token/cache/cost/latency evidence. Input/navigation and
+original CSV intake now work, but model artifact access, answer-parking readmission
+and redundant rich-text focus clicks require repairs before a fresh complete20.
+The first two source repairs are being integrated and independently reviewed;
+none changes the existing uncertain receipt or authorizes replay. The native
+permission chip also remains invisible and needs the existing direct-bubble route.
+Current runtime-outage navigation and normal three-tab restore have bounded native
+evidence; they do not establish OS sleep/wake, all browser flows or daily readiness.
+No native preview currently holds the plain lock. Performance remains blocked on
+the pinned helper's ungranted Accessibility access; original155 SIGTRAP still lacks
+matching original symbols. New source/build/acceptance evidence remains separate.
+
+The earlier The October 18 `8b87f491` native campaign adds concrete prerequisites to A9.
 Four of eight submitted tasks pass; the remaining 20-task acceptance is open.
 Captured selection and fresh same-tab admission now work. Input-triggered
 navigation still needs an exact continuation from its original action to the
