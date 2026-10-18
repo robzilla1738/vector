@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
-import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
+import { effectiveShortcutBindings } from "@aux/contracts/shortcut-startup";
+import { matchShortcut } from "@aux/contracts/shortcut-bindings";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { dispatchShortcut as dispatchCommandShortcut } from "../commands";
@@ -32,7 +33,7 @@ export function useShellShortcuts(findInput: RefObject<HTMLInputElement | null>)
       if (e.metaKey || e.ctrlKey) {
         const st = useStore.getState();
         const def = matchShortcut(
-          effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined),
+          effectiveShortcutBindings(st.settings?.shortcutOverrides as ShortcutOverrides | undefined),
           {
             key: e.key,
             meta: e.metaKey,

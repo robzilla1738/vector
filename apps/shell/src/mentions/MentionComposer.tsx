@@ -43,9 +43,10 @@ export function MentionComposer({
   const dismissed = useRef<string | null>(null);
   const rows = useRef<HTMLDivElement>(null);
   const draft = readMentionDraft(composerId, value);
+  const windowKind = bridge.windowKind;
   const candidates = useMemo(
-    () => mentionCandidates({ pages, organization, routines, connectors }),
-    [pages, organization, routines, connectors],
+    () => mentionCandidates({ pages, organization, routines, connectors, windowKind }),
+    [pages, organization, routines, connectors, windowKind],
   );
   const matching = useMemo(
     () =>
@@ -79,7 +80,7 @@ export function MentionComposer({
     ];
     void Promise.allSettled(loads).then((results) => {
       if (live && results.some((result) => result.status === "rejected"))
-        setError("Some sources are unavailable. Available tabs can still be mentioned.");
+        setError("Some sources are unavailable. Other available sources can still be mentioned.");
     });
     return () => {
       live = false;

@@ -207,7 +207,7 @@ function CreateRoutineDialog({
 
   return (
     <Dialog
-      className="routine-create-dialog"
+      className="aux-dialog-surface routine-create-dialog"
       label="Create routine"
       initialFocusRef={titleInput}
       onClose={() => {

@@ -352,7 +352,6 @@ export const COMMANDS = [
 
   ...GL(quickAskConversationControl, "-conversation-", " conversation ", [
     ["choose", "image", "Choose", "image"],
-    ["capture", "page", "Capture", "page"],
     ["attach", "image", "Attach", "image"],
     ["cancel", "image", "Cancel", "image review"],
     ["use-whole", "image", "Use whole", "image"],
@@ -368,6 +367,11 @@ export const COMMANDS = [
     ["attach", "document", "Attach", "documents"],
     ["cancel", "document-import", "Cancel", "document import"],
   ]),
+  S("capture-conversation-page", "Capture conversation page", privateConversationControl),
+  S("open-quick-ask-browser-context", "Open Quick Ask in Aux for browser context", {
+    ...browserContextControl,
+    windows: ["quick-ask"],
+  }),
   S("select-conversation-image-region", "Select conversation image region", privateConversationControl),
   S("toggle-conversation-context", "Toggle conversation context choices", quickAskConversationControl),
   ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
@@ -752,8 +756,8 @@ export const COMMANDS = [
   C("open-run-tab", "Open this run’s temporary tab", runControl),
   C("take-page-control", "Take control of this page", runControl),
   C("return-agent-control", "Return control to agent", runControl),
-  ...GL(quickAskBrowserContextControl, "-browser-", " browser ", [
-    ["remove", "source", "Remove selected", "source"],
+  S("remove-browser-source", "Remove selected browser source", quickAskBrowserContextControl),
+  ...GL(browserContextControl, "-browser-", " browser ", [
     ["toggle", "source", "Select additional", "source"],
     ["select", "context", "Choose", "context"],
   ]),
@@ -802,7 +806,7 @@ export const COMMANDS = [
     ["toggle", "-enabled", "Toggle Space memory"],
     ["toggle", "-overview", "Toggle Space overview"],
   ]),
-  S("update-browser-source", "Use current browser source", quickAskBrowserContextControl),
+  S("update-browser-source", "Use current browser source", browserContextControl),
   C("mention-insert", "Mention source", mentionControl),
   C("mention-remove", "Remove source mention", mentionControl),
 

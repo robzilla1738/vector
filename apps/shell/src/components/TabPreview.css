@@ -1,10 +1,9 @@
 @layer components {
-  .tab-preview {
+  .tab-preview.ui-tooltip {
     position: fixed;
     width: min(280px, calc(100vw - 16px));
     max-height: calc(100vh - 16px);
     padding: 0;
-    background: var(--surface-menu);
     color: var(--ink-0);
     overflow: hidden;
     pointer-events: none;

@@ -2,10 +2,13 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { COMMANDS, effectiveShortcuts, matchShortcut } from "@aux/contracts";
 import { executeCommand } from "./commands";
+import { bridge } from "./bridge";
 import { registerScopedControl, invokeScopedControl } from "./scoped-control-commands";
 const ids: string[] = ["remove-browser-source", "toggle-browser-source", "select-browser-context"];
+const originalKind = bridge.windowKind;
 const retired: (() => void)[] = [];
 afterEach(() => {
+  bridge.windowKind = originalKind;
   retired.splice(0).forEach((done) => done());
   document.body.replaceChildren();
 });
@@ -17,12 +20,12 @@ function owner(command: string, value: string) {
   retired.push(registerScopedControl(element, command, value, invoke));
   return { element, invoke };
 }
-it.each(ids)("registers %s exactly once for normal and Quick Ask context", (id) => {
+it.each(ids)("registers %s exactly once for its supported browser-source windows", (id) => {
   expect(COMMANDS.filter((row) => row.id === id)).toHaveLength(1);
   expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
     handler: "shell",
     palette: false,
-    windows: ["normal", "quick-ask"],
+    windows: id === "remove-browser-source" ? ["normal", "quick-ask"] : ["normal"],
     bindings: [],
     intercept: true,
     focusShell: true,
@@ -86,4 +89,19 @@ it("keeps all scoped source commands out of the focus-stealing palette", () => {
     { palette: false },
     { palette: false },
   ]);
+});
+
+it.each([
+  "select-browser-context",
+  "toggle-browser-source",
+  "update-browser-source",
+  "capture-conversation-page",
+])("rejects stale %s controls in Quick Ask before their callback", async (id) => {
+  bridge.windowKind = "quick-ask";
+  const original = owner(id, "original-source");
+  original.element.focus();
+  await expect(executeCommand(id, { payload: { scopeId: "original-source" } })).rejects.toThrow(
+    "unavailable in this window",
+  );
+  expect(original.invoke).not.toHaveBeenCalled();
 });

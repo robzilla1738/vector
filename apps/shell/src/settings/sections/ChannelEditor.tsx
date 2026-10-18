@@ -200,7 +200,7 @@ export function ChannelEditor({
     <>
       <Dialog
         label={connection ? `Manage ${connection.name}` : `Connect ${channelLabels[provider]}`}
-        className="aux-dialog-surface popup-material channel-editor"
+        className="channel-editor"
         onClose={() => {
           if (!busy) onClose();
         }}
@@ -525,17 +525,17 @@ export function ChannelEditor({
                 </p>
               </>
             )}
+            {failure && (
+              <p className="field-error" role="alert">
+                {failure}
+              </p>
+            )}
+            {connection && tab !== "pairing" && (
+              <p className="hint channel-save-hint">
+                Saving restarts this channel and stops its current tasks.
+              </p>
+            )}
           </div>
-          {failure && (
-            <p className="field-error" role="alert">
-              {failure}
-            </p>
-          )}
-          {connection && tab !== "pairing" && (
-            <p className="hint channel-save-hint">
-              Saving restarts this channel and stops its current tasks.
-            </p>
-          )}
           <footer className="channel-editor-actions">
             <PreferenceAction
               className="btn sm ghost"

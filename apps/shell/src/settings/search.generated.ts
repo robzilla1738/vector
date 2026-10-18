@@ -912,15 +912,21 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Connections",
-    label: "Connector access",
-    description: "",
-    target: "Connector access",
-  },
-  {
-    category: "Connections",
     label: "Space",
     description: "",
     target: "Space",
+  },
+  {
+    category: "Connections",
+    label: "Review server",
+    description: "",
+    target: "Review server",
+  },
+  {
+    category: "Connections",
+    label: "Connector access",
+    description: "",
+    target: "Connector access",
   },
   {
     category: "Connections",

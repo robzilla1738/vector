@@ -1,4 +1,5 @@
 import "./TabPreview.css";
+import "../ui/tooltip.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PageTarget } from "@aux/contracts";
@@ -46,7 +47,7 @@ export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: num
     };
   }, [page.pageId, page.url, page.showBlankDocument]);
   return createPortal(
-    <div ref={card} className="menu tab-preview popup-material" role="tooltip" style={position}>
+    <div ref={card} className="ui-tooltip solid-popover tab-preview" role="tooltip" style={position}>
       {(!isHomeAddress(page.url) || page.showBlankDocument === true) && (
         <div className="tab-preview-image">{image && <img src={image} alt="" />}</div>
       )}

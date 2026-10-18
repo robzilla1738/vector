@@ -208,7 +208,10 @@ export function prepareGoogleRequest(
                       text: edit.text,
                     },
                   },
-                  ...(edit.bold !== undefined || edit.italic !== undefined
+                  ...(edit.bold !== undefined ||
+                  edit.italic !== undefined ||
+                  edit.underline !== undefined ||
+                  edit.link !== undefined
                     ? [
                         {
                           updateTextStyle: {
@@ -220,10 +223,15 @@ export function prepareGoogleRequest(
                             textStyle: {
                               ...(edit.bold !== undefined ? { bold: edit.bold } : {}),
                               ...(edit.italic !== undefined ? { italic: edit.italic } : {}),
+                              ...(edit.underline !== undefined ? { underline: edit.underline } : {}),
+                              // A masked, omitted link explicitly clears it without resetting other fields.
+                              ...(edit.link ? { link: { url: edit.link } } : {}),
                             },
                             fields: [
                               ...(edit.bold !== undefined ? ["bold"] : []),
                               ...(edit.italic !== undefined ? ["italic"] : []),
+                              ...(edit.underline !== undefined ? ["underline"] : []),
+                              ...(edit.link !== undefined ? ["link"] : []),
                             ].join(","),
                           },
                         },

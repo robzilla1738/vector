@@ -65,3 +65,26 @@ it("carries the catalog account authority into selected connector refs", () => {
     authorityDigest: "b".repeat(64),
   });
 });
+
+it("does not offer main-window tabs or browser groups in Quick Ask, but retains admitted connections", () => {
+  const entry = {
+    kind: "mcp" as const,
+    connectorId: "mcp:fixture",
+    serverId: "11111111-1111-4111-8111-111111111111",
+    label: "Research",
+    state: "active" as const,
+    authority: "connected_server" as const,
+    sourceDigest: "a".repeat(64),
+    toolsRevision: 2,
+  };
+  const input = {
+    pages: [page],
+    connectors: { entries: [entry], access: [], bindings: { "mcp:fixture": "b".repeat(64) } },
+  };
+  expect(mentionCandidates({ ...input, windowKind: "normal" }).some((item) => item.ref.kind === "tab")).toBe(
+    true,
+  );
+  const quick = mentionCandidates({ ...input, windowKind: "quick-ask" });
+  expect(quick.map((item) => item.section)).toEqual(["Connectors"]);
+  expect(quick[0]?.ref.kind).toBe("connector");
+});

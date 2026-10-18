@@ -5,9 +5,11 @@ import type { z } from "zod";
 type ObjectValue = Record<string, unknown>;
 type Unit = {
   text: string;
-  bold: boolean;
-  italic: boolean;
-  wanted?: { bold?: boolean; italic?: boolean };
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  link: ObjectValue | null;
+  wanted?: { bold?: boolean; italic?: boolean; underline?: boolean; link?: string | null };
 };
 type Body = { tabId: string; units: (Unit | null)[]; structural: boolean };
 const MAX_UNITS = 200_000;
@@ -64,6 +66,17 @@ function boundary(units: Body["units"], index: number): boolean {
     after <= 0xdfff
   );
 }
+function inheritedBoolean(field: string, ...styles: ObjectValue[]): boolean | undefined {
+  for (const style of styles) {
+    const value = style[field];
+    if (value === undefined) continue;
+    if (typeof value !== "boolean")
+      throw new AuxError("backend_unavailable", "Google returned invalid document text styles.");
+    return value;
+  }
+  // The editor's unresolved defaults cannot prove a requested explicit false value.
+  return undefined;
+}
 function body(tabId: string, tab: ObjectValue): Body {
   const units: Body["units"] = [];
   let structural = false,
@@ -87,8 +100,8 @@ function body(tabId: string, tab: ObjectValue): Body {
       if (item.paragraph) {
         const paragraph = object(item.paragraph),
           style = object(paragraph.paragraphStyle ?? {});
-        const inherited =
-          named.get(String(style.namedStyleType ?? "NORMAL_TEXT")) ?? named.get("NORMAL_TEXT") ?? {};
+        const inherited = named.get(String(style.namedStyleType ?? "NORMAL_TEXT")) ?? {},
+          normal = named.get("NORMAL_TEXT") ?? {};
         for (const element of array(paragraph.elements)) {
           if (++visited > 20_000) throw new AuxError("invalid_params", "Choose a smaller Google document.");
           const part = object(element);
@@ -110,15 +123,24 @@ function body(tabId: string, tab: ObjectValue): Body {
             (stop as number) - (start as number) !== text.length
           )
             throw new AuxError("backend_unavailable", "Google returned invalid UTF-16 text spans.");
-          const formatting = object(run.textStyle ?? {});
+          const formatting = object(run.textStyle ?? {}),
+            link = formatting.link === undefined ? null : object(formatting.link),
+            bold = inheritedBoolean("bold", formatting, inherited, normal),
+            italic = inheritedBoolean("italic", formatting, inherited, normal),
+            underline = inheritedBoolean("underline", formatting, inherited, normal);
+          if (link && !Object.keys(link).length)
+            throw new AuxError("backend_unavailable", "Google returned an empty document link.");
           for (let offset = 0; offset < text.length; offset++) {
             const index = (start as number) + offset;
             if (units[index])
               throw new AuxError("backend_unavailable", "Google returned overlapping text spans.");
             units[index] = {
               text: text[offset]!,
-              bold: Boolean(formatting.bold ?? inherited.bold ?? false),
-              italic: Boolean(formatting.italic ?? inherited.italic ?? false),
+              bold,
+              italic,
+              underline,
+              // Links are explicitly not inherited in the Docs API.
+              link,
             };
           }
         }
@@ -247,11 +269,20 @@ export function prepareGoogleDocumentEdit(value: ObjectValue, raw: unknown): Goo
         /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\ue000-\uf8ff]/.test(edit.text)
       )
         throw new AuxError("invalid_params", "Use supported, well-formed Unicode document text.");
+      // Updating a range overlapping a link may rewrite the entire existing link.
+      if (edit.link !== undefined && (snapshot.units[start - 1]?.link || snapshot.units[start]?.link))
+        throw new AuxError("capability_unsupported", "Insert linked text outside an existing link boundary.");
+      let insertedLink = snapshot.units[start - 1]?.link ?? snapshot.units[start]?.link ?? null;
+      if (edit.link !== undefined) insertedLink = edit.link ? { url: edit.link } : null;
       const inserted = edit.text.split("").map((text) => ({
         text,
-        bold: false,
-        italic: false,
-        wanted: { bold: edit.bold, italic: edit.italic },
+        link: text === "\n" ? null : insertedLink,
+        wanted: {
+          bold: edit.bold,
+          italic: edit.italic,
+          underline: edit.underline ?? (edit.link && text !== "\n" ? true : undefined),
+          link: text === "\n" && edit.link ? null : edit.link,
+        },
       }));
       snapshot.units.splice(start, 0, ...inserted);
     }
@@ -284,7 +315,13 @@ export function verifyGoogleDocumentEdit(
         if (
           original.wanted &&
           ((original.wanted.bold !== undefined && original.wanted.bold !== observed.bold) ||
-            (original.wanted.italic !== undefined && original.wanted.italic !== observed.italic))
+            (original.wanted.italic !== undefined && original.wanted.italic !== observed.italic) ||
+            (original.wanted.underline !== undefined && original.wanted.underline !== observed.underline) ||
+            (original.wanted.link === null && observed.link !== null) ||
+            (typeof original.wanted.link === "string" &&
+              (!observed.link ||
+                observed.link.url !== original.wanted.link ||
+                Object.keys(observed.link).length !== 1)))
         )
           return false;
       }

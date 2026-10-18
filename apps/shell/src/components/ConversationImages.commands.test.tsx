@@ -220,7 +220,7 @@ it("refuses foreign focus and native-window changes before invoking the original
   bridge.windowId = originalWindow;
   expect(picker).not.toHaveBeenCalled();
 });
-it("admits supported Quick Ask image/document controls while keeping page lasso in browser windows", () => {
+it("admits supported Quick Ask image/document controls while keeping page capture in browser windows", () => {
   for (const id of [
     "choose-conversation-image",
     "capture-conversation-page",
@@ -236,10 +236,9 @@ it("admits supported Quick Ask image/document controls while keeping page lasso 
     expect(COMMANDS.find((command) => command.id === id)).toMatchObject({
       handler: "shell",
       dispatch: "scoped",
-      windows:
-        id === "select-conversation-image-region"
-          ? ["normal", "private"]
-          : ["normal", "private", "quick-ask"],
+      windows: ["select-conversation-image-region", "capture-conversation-page"].includes(id)
+        ? ["normal", "private"]
+        : ["normal", "private", "quick-ask"],
       palette: false,
       intercept: true,
       bindings: [],

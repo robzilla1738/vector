@@ -89,6 +89,19 @@ export type GoogleTaskGrant = z.infer<typeof GoogleTaskGrantSchema>;
 
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,300}$/);
 const token = z.string().min(1).max(2048);
+const documentLink = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((value) => {
+    if (!/^https?:\/\//i.test(value) || /[\s\\\p{Cc}]/u.test(value)) return false;
+    try {
+      const url = new URL(value);
+      return !!url.hostname && !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  }, "Use an HTTP(S) URL without credentials or whitespace.");
 const email = z
   .string()
   .email()
@@ -181,6 +194,8 @@ export const GoogleArguments = {
                 tabId: id.optional(),
                 bold: z.boolean().optional(),
                 italic: z.boolean().optional(),
+                underline: z.boolean().optional(),
+                link: documentLink.nullable().optional(),
               })
               .strict(),
             z

@@ -65,18 +65,17 @@
   .routine-create-dialog {
     width: min(576px, calc(100vw - var(--space-7)));
   }
+  .routine-create-dialog > label {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+  .routine-create-dialog > label :is(input, select) {
+    width: 100%;
+  }
   .routine-create-dialog > label textarea {
     min-height: 176px;
     width: 100%;
     resize: vertical;
-  }
-  .routine-create-dialog :is(input:not([type="checkbox"]), select, textarea) {
-    color: var(--ink-0);
-    background: transparent;
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-md);
-    padding: var(--space-2);
-    font: inherit;
   }
   .routine-create-advanced label {
     display: grid;

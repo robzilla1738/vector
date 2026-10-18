@@ -254,3 +254,59 @@ it("uses separately granted bounded grid reads and revision-bound Docs edit pref
     verify: { operation: "docs.read", method: "GET" },
   });
 });
+
+it.each([
+  {
+    link: "https://example.test/path?q=1#part",
+    underline: false,
+    style: { link: { url: "https://example.test/path?q=1#part" }, underline: false },
+    fields: "underline,link",
+  },
+  { link: null, underline: true, style: { underline: true }, fields: "underline,link" },
+  {
+    link: "http://example.test/",
+    underline: undefined,
+    style: { link: { url: "http://example.test/" } },
+    fields: "link",
+  },
+])(
+  "uses exact inline link/underline masks including explicit link reset: $fields",
+  ({ link, underline, style, fields }) => {
+    const request = prepareGoogleRequest(
+      "docs.edit",
+      {
+        documentId: "doc1",
+        requiredRevisionId: "rev-1",
+        edits: [{ kind: "insert", index: 2, text: "😀x", tabId: "tab2", link, underline }],
+      },
+      action,
+    );
+    expect(JSON.parse(request.body!).requests[1]).toEqual({
+      updateTextStyle: {
+        range: { startIndex: 2, endIndex: 5, tabId: "tab2" },
+        textStyle: style,
+        fields,
+      },
+    });
+  },
+);
+it.each([
+  "javascript:alert(1)",
+  "data:text/html,test",
+  "//example.test",
+  "ftp://example.test",
+  "https://owner:secret@example.test",
+  "https://example.test/ bad",
+  "https://example.test/\\other",
+  "https://",
+  "https://example.test/\n",
+  "https://example.test/\u0000",
+])("refuses unsupported document link %j", (link) => {
+  expect(
+    GoogleArguments["docs.edit"].safeParse({
+      documentId: "doc1",
+      requiredRevisionId: "rev-1",
+      edits: [{ kind: "insert", index: 1, text: "x", link }],
+    }).success,
+  ).toBe(false);
+});

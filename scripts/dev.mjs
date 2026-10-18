@@ -101,6 +101,7 @@ async function main() {
       return;
     }
     console.log(`Aux development: ${source} · ${flavor}`);
+    await run("node", ["scripts/gen-command-routing.mjs"]);
     await run("node", ["scripts/gen-runtime-schema.mjs"]);
     const app = join(source, "out", nativeOutput[flavor], "Aux.app");
     if (runtimeOnly) {

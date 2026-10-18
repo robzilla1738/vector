@@ -1,4 +1,5 @@
-import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
+import { effectiveShortcutBindings } from "@aux/contracts/shortcut-startup";
+import type { ShortcutOverrides } from "@aux/contracts/shortcut-bindings";
 import type { AuxBridge } from "./bridge";
 import { requireAuxMethod } from "@aux/contracts/method-feature";
 import type { AuxFeatureOverrides } from "@aux/contracts/aux-features";
@@ -91,7 +92,7 @@ export function installChromiumBridge(
     },
     setShortcutOverrides: async (overrides: ShortcutOverrides) => {
       const rows = (saved?: ShortcutOverrides) =>
-        effectiveShortcuts(saved).flatMap((command) =>
+        effectiveShortcutBindings(saved).flatMap((command) =>
           command.bindings
             .filter((binding) => !binding.platforms || binding.platforms.includes(port.platform))
             .map((binding) => ({

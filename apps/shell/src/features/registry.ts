@@ -1,5 +1,6 @@
 import { VisitedSection } from "../settings/visited-section";
-import { COMMANDS, type AuxFeature, type ShellCommandId, type FeatureOverride } from "@aux/contracts";
+import type { AuxFeature, ShellCommandId, FeatureOverride } from "@aux/contracts";
+import { STARTUP_COMMANDS } from "@aux/contracts/command-routing.generated";
 import { createElement, type ComponentType, type RefObject, useSyncExternalStore } from "react";
 import { bridge } from "../bridge";
 import { featureAvailable, featureVisible } from "../feature-availability";
@@ -115,7 +116,7 @@ const modules = import.meta.glob<{ mount: FeatureMount }>("./*/mount.ts", { eage
 export const featureMounts = Object.entries(modules)
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, module]) => module.mount);
-const commandIds = new Set(COMMANDS.map((command) => command.id));
+const commandIds = new Set(STARTUP_COMMANDS.map((command) => command.id));
 const handlers = new Set<string>();
 for (const mount of featureMounts) {
   for (const id of [...Object.keys(mount.commands ?? {}), ...(mount.shortcuts ?? [])]) {

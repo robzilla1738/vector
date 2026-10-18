@@ -1,3 +1,5 @@
+import { bridge } from "../bridge";
+import { QuickAskPageContext } from "./QuickAskPageContext";
 import { orderedPages } from "../store/pages";
 import { memo, useState, useRef, useLayoutEffect, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -109,7 +111,15 @@ const BrowserContextChoice = memo(function BrowserContextChoice({
   );
 });
 
-export function BrowserContextPicker({
+export function BrowserContextPicker(
+  props: Parameters<typeof LiveBrowserContextPicker>[0] & { onOpenInAux?(): void },
+) {
+  if (bridge.windowKind === "quick-ask")
+    return <QuickAskPageContext disabled={props.disabled} onOpenInAux={props.onOpenInAux} />;
+  return <LiveBrowserContextPicker {...props} />;
+}
+
+function LiveBrowserContextPicker({
   value,
   onChange,
   linkedPageId,

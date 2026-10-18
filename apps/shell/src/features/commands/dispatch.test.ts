@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { COMMANDS, type CommandDef } from "@aux/contracts";
+import { COMMANDS } from "@aux/contracts";
+import { bridge } from "../../bridge";
 import { runCommand, executeCommand, dispatchShortcut } from "../../commands";
 import { useStore } from "../../store";
 import * as registry from "../registry";
@@ -30,17 +31,16 @@ it("passes contextual payload and catches an asynchronous feature failure once",
   expect(toast).toHaveBeenCalledExactlyOnceWith("Window closed", "error", undefined);
 });
 it("refuses an ineligible window before invoking a feature handler", () => {
-  const command = COMMANDS.find((command) => command.id === "promote-tab")! as CommandDef;
-  const windows = command.windows;
-  command.windows = ["little"];
+  const windowKind = bridge.windowKind;
+  bridge.windowKind = "little";
   const invoke = vi.spyOn(registry, "runFeatureCommand");
   try {
-    expect(runCommand("promote-tab")).toBe(false);
+    expect(runCommand("new-chat")).toBe(false);
     expect(invoke).not.toHaveBeenCalled();
     expect(runCommand("unregistered-action")).toBe(false);
     expect(invoke).not.toHaveBeenCalled();
   } finally {
-    command.windows = windows;
+    bridge.windowKind = windowKind;
   }
 });
 

@@ -1,3 +1,5 @@
+import { bridge } from "../bridge";
+import { QuickAskPageContext } from "./QuickAskPageContext";
 import { orderedPages } from "../store/pages";
 import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
@@ -175,7 +177,15 @@ const SourceChip = memo(function SourceChip({
 });
 
 /** Additional tabs are explicit live sources. Navigation requires a fresh choice. */
-export function BrowserContextTray({
+export function BrowserContextTray(
+  props: Parameters<typeof LiveBrowserContextTray>[0] & { onOpenInAux?(): void },
+) {
+  if (bridge.windowKind === "quick-ask")
+    return <QuickAskPageContext disabled={props.disabled} onOpenInAux={props.onOpenInAux} />;
+  return <LiveBrowserContextTray {...props} />;
+}
+
+function LiveBrowserContextTray({
   primary,
   linkedPageId,
   sources,

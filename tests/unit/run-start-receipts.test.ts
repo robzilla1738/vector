@@ -50,7 +50,7 @@ function fixture(contentMemory?: ConstructorParameters<typeof RunService>[0]["co
   const turnMentions = fixtureTurnMentions(() => undefined);
   const makeRuns = () =>
     new RunService({
-    documentSnapshots: new DocumentSnapshots(repo),
+      documentSnapshots: new DocumentSnapshots(repo),
       repo,
       events,
       pages,
@@ -310,4 +310,29 @@ it("admits only exact captured references and refuses recaptured or historical I
     config: { contextMemoryIds: ["article"], contextWorkspaceId: workspace.workspaceId },
   });
   await expect(f.runs().retry("historical")).rejects.toMatchObject({ code: "ref_stale" });
+});
+
+it("does not borrow a main-window page for an original Quick Ask window send", async () => {
+  const f = fixture();
+  f.window("original-quick-ask-window");
+  const request = {
+    ...f.request(),
+    pageIds: [f.source.pageId],
+    contextPageRefs: [
+      {
+        pageId: f.source.pageId,
+        url: f.source.url,
+        documentEpoch: f.source.documentEpoch,
+        sessionId: f.source.sessionId,
+      },
+    ],
+  };
+  const dispatched = vi.spyOn(f.runs().coordinator, "start");
+  await expect(f.invoke("runs.start", request)).rejects.toMatchObject({
+    code: "conflict",
+    message: "A selected browser tab changed. Review its context before sending.",
+  });
+  expect(dispatched).not.toHaveBeenCalled();
+  expect(await f.invoke("runs.reconcileStart", request)).toEqual({ status: "not_started", run: null });
+  expect(f.source.windowId).toBe("original-window");
 });

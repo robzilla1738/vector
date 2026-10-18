@@ -269,8 +269,13 @@ export function useNativeDialog(
   returnFocus?: RefObject<HTMLElement | null>,
   initialFocus?: RefObject<HTMLElement | null>,
 ) {
+  const focusConfig = useRef({ returnFocus, initialFocus });
+  useLayoutEffect(() => {
+    focusConfig.current = { returnFocus, initialFocus };
+  });
   useLayoutEffect(() => {
     if (!open || !ref.current) return;
+    const { returnFocus, initialFocus } = focusConfig.current;
     const dialog = ref.current;
     const previous = document.activeElement;
     const target = returnFocus?.current ?? (previous instanceof HTMLElement ? previous : null);
@@ -335,7 +340,7 @@ export function useNativeDialog(
         });
       requestAnimationFrame(requestStageReport);
     };
-  }, [open, ref, returnFocus, initialFocus]);
+  }, [open, ref]);
 }
 
 export type ConfirmControls = {

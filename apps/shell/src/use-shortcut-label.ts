@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { bindingLabel, effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
+import { effectiveShortcutBindings } from "@aux/contracts/shortcut-startup";
+import { bindingLabel, type ShortcutOverrides } from "@aux/contracts/shortcut-bindings";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 
@@ -9,7 +10,7 @@ export function shortcutLabel(
   overrides?: ShortcutOverrides | null,
   platform = bridge.platform,
 ): string {
-  const def = effectiveShortcuts(overrides).find((item) => item.id === commandId);
+  const def = effectiveShortcutBindings(overrides).find((item) => item.id === commandId);
   const binding = def?.bindings.find((b) => !b.platforms || b.platforms.includes(platform));
   return binding ? bindingLabel(binding, platform) : "";
 }

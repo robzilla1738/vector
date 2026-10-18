@@ -233,3 +233,22 @@ it("shows the exact reply and duplicate-delivery uncertainty before the retry ac
     deliveryId: delivery.deliveryId,
   });
 });
+
+it("retains the original modal opener across Options, Pairing and Credentials before Escape", async () => {
+  connections = [status()];
+  await render();
+  const opener = button("Manage Synthetic messenger");
+  opener.focus();
+  await click("Manage Synthetic messenger");
+  for (const tab of ["Pairing", "Credentials", "Options", "Credentials"]) await click(tab);
+  const dialog = document.querySelector<HTMLDialogElement>(
+    'dialog[aria-label="Manage Synthetic messenger"]',
+  )!;
+  expect(dialog.open).toBe(true);
+  button("Done").focus();
+  await act(async () =>
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  expect(document.querySelector("dialog")).toBeNull();
+  expect(document.activeElement).toBe(opener);
+});

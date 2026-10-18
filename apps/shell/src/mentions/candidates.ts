@@ -5,6 +5,7 @@ import {
   type OrganizationSnapshot,
   type PageTarget,
   type Routine,
+  type WindowKind,
 } from "@aux/contracts";
 export interface MentionCandidate {
   id: string;
@@ -15,14 +16,24 @@ export interface MentionCandidate {
 }
 export function mentionCandidates(input: {
   pages: readonly PageTarget[];
+  windowKind?: WindowKind;
   organization?: OrganizationSnapshot;
   routines?: readonly Routine[];
   connectors?: ConnectorCatalog;
 }): MentionCandidate[] {
-  const candidates: MentionCandidate[] = [
-    { id: "tabs", section: "Tabs", label: "Tabs", detail: "Titles and URLs only", ref: { kind: "tabs" } },
-  ];
-  const tabs = input.pages.flatMap((page) => {
+  const candidates: MentionCandidate[] =
+    input.windowKind === "quick-ask"
+      ? []
+      : [
+          {
+            id: "tabs",
+            section: "Tabs",
+            label: "Tabs",
+            detail: "Titles and URLs only",
+            ref: { kind: "tabs" },
+          },
+        ];
+  const tabs = (input.windowKind === "quick-ask" ? [] : input.pages).flatMap((page) => {
     if (!page.sessionId || page.viewStatus === "detached" || page.viewStatus === "crashed") return [];
     const parsed = MentionRefSchema.safeParse({
       kind: "tab",

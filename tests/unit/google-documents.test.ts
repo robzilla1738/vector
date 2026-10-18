@@ -8,7 +8,10 @@ import { projectGoogleGrid } from "../../apps/runtime/src/services/google-grid.j
 import { GoogleArguments, googleOperationAvailable } from "@aux/contracts/google";
 
 function document(
-  parts: (string | { text: string; bold?: boolean; italic?: boolean })[] = ["A😀B\n"],
+  parts: (
+    | string
+    | { text: string; bold?: boolean; italic?: boolean; underline?: boolean; link?: Record<string, unknown> }
+  )[] = ["A😀B\n"],
   revisionId = "revision-1",
 ) {
   let index = 1;
@@ -24,6 +27,8 @@ function document(
         textStyle: {
           ...(value.bold === undefined ? {} : { bold: value.bold }),
           ...(value.italic === undefined ? {} : { italic: value.italic }),
+          ...(value.underline === undefined ? {} : { underline: value.underline }),
+          ...(value.link === undefined ? {} : { link: value.link }),
         },
       },
     };
@@ -221,4 +226,114 @@ it("exposes bounded formulas, formatting and notes only through the explicit gri
     ).cells,
   ).toEqual([]);
   expect(() => projectGoogleGrid({ spreadsheetId: "other", sheets: [] }, input)).toThrow(/identity/);
+});
+
+const inlineEdit = (extra: Record<string, unknown> = {}) => ({
+  documentId: "doc1",
+  requiredRevisionId: "revision-1",
+  edits: [{ kind: "insert", index: 2, text: "😀x", tabId: "tab1", ...extra }],
+});
+it("verifies requested links and explicit underline overrides on complete UTF-16 spans", () => {
+  const expected = prepareGoogleDocumentEdit(
+    document(["AB\n"]),
+    inlineEdit({ link: "https://example.test/", underline: false }),
+  );
+  const actual = document(
+    ["A", { text: "😀x", underline: false, link: { url: "https://example.test/" } }, "B\n"],
+    "revision-2",
+  );
+  expect(verifyGoogleDocumentEdit(actual, expected)).toBe(true);
+  for (const part of [
+    { text: "😀x", underline: true, link: { url: "https://example.test/" } },
+    { text: "😀x", link: { url: "https://example.test/" } },
+    { text: "😀x", underline: false },
+    { text: "😀x", underline: false, link: { url: "https://wrong.test/" } },
+    { text: "😀x", underline: false, link: { url: "https://example.test/", tabId: "another" } },
+    { text: "😀x", underline: false, link: {} },
+    { text: "😀x", underline: "false", link: { url: "https://example.test/" } },
+  ])
+    expect(verifyGoogleDocumentEdit(document(["A", part as never, "B\n"]), expected)).toBe(false);
+  expect(
+    verifyGoogleDocumentEdit(
+      document(["A", { text: "😀", underline: false, link: { url: "https://example.test/" } }, "xB\n"]),
+      expected,
+    ),
+  ).toBe(false);
+});
+it("resolves named text style inheritance through NORMAL_TEXT but never inherits links", () => {
+  const expected = prepareGoogleDocumentEdit(
+    document(["AB\n"]),
+    inlineEdit({ bold: true, italic: false, underline: false, link: null }),
+  );
+  const actual = document(["A😀xB\n"], "revision-2");
+  Object.assign(actual.tabs[0]!.documentTab, {
+    namedStyles: {
+      styles: [
+        {
+          namedStyleType: "NORMAL_TEXT",
+          textStyle: { bold: true, italic: false, underline: true, link: { url: "https://ignored.test/" } },
+        },
+        { namedStyleType: "HEADING_1", textStyle: { underline: false } },
+      ],
+    },
+  });
+  Object.assign(actual.tabs[0]!.documentTab.body.content[1]!.paragraph!, {
+    paragraphStyle: { namedStyleType: "HEADING_1" },
+  });
+  expect(verifyGoogleDocumentEdit(actual, expected)).toBe(true);
+  // Unresolved editor defaults cannot establish an explicit false style request.
+  expect(verifyGoogleDocumentEdit(document(["A😀xB\n"]), expected)).toBe(false);
+});
+it("verifies documented link underline defaults and excludes newline link destinations", () => {
+  const expected = prepareGoogleDocumentEdit(
+    document(["AB\n"]),
+    inlineEdit({ text: "x\ny", link: "https://example.test/" }),
+  );
+  const actual = document([
+    "A",
+    { text: "x", underline: true, link: { url: "https://example.test/" } },
+    "\n",
+    { text: "y", underline: true, link: { url: "https://example.test/" } },
+    "B\n",
+  ]);
+  expect(verifyGoogleDocumentEdit(actual, expected)).toBe(true);
+  actual.tabs[0]!.documentTab.body.content[1]!.paragraph!.elements[2]!.textRun.textStyle = {
+    link: { url: "https://example.test/" },
+  };
+  expect(verifyGoogleDocumentEdit(actual, expected)).toBe(false);
+});
+it("refuses link insertions that could update an existing overlapping link", () => {
+  for (const link of [null, "https://new.test/"]) {
+    for (const source of [
+      document([{ text: "A", link: { url: "https://old.test/" } }, "B\n"]),
+      document(["A", { text: "B", link: { headingId: "existing-heading" } }, "\n"]),
+    ])
+      expect(() => prepareGoogleDocumentEdit(source, inlineEdit({ link }))).toThrow(/existing link boundary/);
+  }
+});
+it("proves explicit link clearing only from absent run links", () => {
+  const expected = prepareGoogleDocumentEdit(document(["AB\n"]), inlineEdit({ link: null, underline: true }));
+  expect(verifyGoogleDocumentEdit(document(["A", { text: "😀x", underline: true }, "B\n"]), expected)).toBe(
+    true,
+  );
+  expect(
+    verifyGoogleDocumentEdit(
+      document(["A", { text: "😀x", underline: true, link: { headingId: "existing" } }, "B\n"]),
+      expected,
+    ),
+  ).toBe(false);
+});
+
+it("refuses a later link update across text that may have inherited an earlier inserted link", () => {
+  expect(() =>
+    prepareGoogleDocumentEdit(document(["AB\n"]), {
+      documentId: "doc1",
+      requiredRevisionId: "revision-1",
+      edits: [
+        { kind: "insert", index: 2, text: "x", link: "https://first.test/" },
+        { kind: "insert", index: 3, text: "y" },
+        { kind: "insert", index: 4, text: "z", link: "https://second.test/" },
+      ],
+    }),
+  ).toThrow(/existing link boundary/);
 });

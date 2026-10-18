@@ -118,7 +118,7 @@ export function AutofillSetting({
   return (
     <div className="autofill-setting">
       {!draft && (
-        <div {...staticRowProps}>
+        <div className="row wrap">
           {filled.length ? (
             <span {...staticHintProps}>
               {filled.length} detail{filled.length === 1 ? "" : "s"} saved —{" "}

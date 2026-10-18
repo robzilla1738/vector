@@ -60,6 +60,7 @@ import { GeneratedResultPreview } from "./GeneratedResultPreview";
 import { guardCommandCompletion } from "../command-completion";
 import { ConversationImageAction } from "./ConversationImageControl";
 import { ConversationImages } from "./ConversationImages";
+import { QuickAskPageContext } from "./QuickAskPageContext";
 import { DocumentSnapshot } from "./DocumentSnapshot";
 import { AuxMark } from "./AuxMark";
 import { ConversationTask } from "./ConversationTask";
@@ -1383,6 +1384,13 @@ function ConversationContent({
     else useStore.setState({ conversationId: chatId });
     return chatId;
   };
+  const openQuickAskInAux = quickAsk
+    ? () => {
+        if (!conversationCurrent()) return;
+        ensureChatId();
+        quickAsk.onExpand();
+      }
+    : undefined;
   const imageSnapshot = JSON.stringify(images);
   const committedImages = useRef(imageSnapshot);
   const imageMutation = useRef<{ release(): void } | null>(null);
@@ -1644,6 +1652,17 @@ function ConversationContent({
     };
     try {
       const mentions = await submittedMentions(composerId, text);
+      const explicitBrowserContext = contexts[id ? draftKey(id) : "new"];
+      if (
+        bridge.windowKind === "quick-ask" &&
+        (mentions.some((ref) => ref.kind === "tab" || ref.kind === "group") ||
+          browserSources.length > 0 ||
+          (!live && selectedContext) ||
+          (explicitBrowserContext !== undefined && explicitBrowserContext !== "none"))
+      ) {
+        setSendError("Open in Aux to use browser tabs. Your draft and attachments are kept.");
+        return;
+      }
       if (answering && last && suspension && effectiveLiveMode === "answer") {
         await useStore
           .getState()
@@ -2131,7 +2150,7 @@ function ConversationContent({
       ))}
     </div>
   );
-  const browserContextControls = (
+  const browserContextControls = (close: () => void) => (
     <>
       <BrowserContextTray
         key={id ?? "new"}
@@ -2140,6 +2159,14 @@ function ConversationContent({
         linkedPageId={linked?.pageId}
         sources={browserSources}
         onSources={setBrowserSources}
+        onOpenInAux={
+          openQuickAskInAux
+            ? () => {
+                close();
+                openQuickAskInAux();
+              }
+            : undefined
+        }
         disabled={contextLocked}
       />
       <CapturedSourcePicker
@@ -2168,21 +2195,7 @@ function ConversationContent({
                 if ((event.target as HTMLElement).closest("button")) close();
               }}
             />
-            <div className="home-tools-context">{browserContextControls}</div>
-            {quickAsk && (
-              <button
-                type="button"
-                className="context-choice"
-                onClick={() => {
-                  if (!conversationCurrent()) return;
-                  close();
-                  quickAsk.onExpand();
-                }}
-              >
-                {shellIconOpen}
-                <span>Open Quick Ask in Aux</span>
-              </button>
-            )}
+            <div className="home-tools-context">{browserContextControls(close)}</div>
             {home && (
               <HomeEntryAction
                 className="context-choice"
@@ -2909,7 +2922,7 @@ function ConversationContent({
                         type="button"
                         className="quick-ask-expand"
                         title="Open in Aux"
-                        onClick={quickAsk.onExpand}
+                        onClick={openQuickAskInAux}
                       >
                         Quick Ask
                       </button>
@@ -3163,6 +3176,12 @@ function ConversationContent({
                         <ConversationDetails current={conversationCurrent} text={contextError} />
                       </div>
                     )}
+                    {bridge.windowKind === "quick-ask" &&
+                      (selectedContext ||
+                        browserSources.length > 0 ||
+                        sendError.startsWith("Open in Aux to use browser tabs")) && (
+                        <QuickAskPageContext onOpenInAux={openQuickAskInAux} disabled={sending} />
+                      )}
                     {missingContext && !closedPage && (
                       <output {...auxReuseStaticFieldErrorProps} data-block>
                         The selected tab is unavailable. Choose another browser context before sending.

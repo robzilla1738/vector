@@ -83,15 +83,30 @@ export function PasswordsAutofillSettings({
   }
   return (
     <SettingsSection name="Passwords & Autofill" hidden={!active}>
-      <SettingsGroup title="Password managers">
-        {vaultAvailable && (
-          <SettingsField
-            compact
-            label="Aux Vault"
-            hint="Save sign-ins and let Aux fill them without exposing passwords to agents."
-          >
+      <header className="ui-settings-group">
+        <h4>Password managers</h4>
+      </header>
+      {vaultAvailable && (
+        <SettingsField
+          layout="feature"
+          label="Aux Vault"
+          hint="Save sign-ins and let Aux fill them without exposing passwords to agents."
+          details={
+            <img
+              className="setting-illustration"
+              src="/settings/vault.svg"
+              width={288}
+              height={160}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          }
+        >
+          <div className="row">
             <button
-              className="icon-btn"
+              type="button"
+              className="btn"
               aria-label="Open Aux Vault"
               disabled={!active}
               onClick={() => {
@@ -100,10 +115,12 @@ export function PasswordsAutofillSettings({
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
             >
-              {shellIconRight}
+              Open Vault {shellIconRight}
             </button>
-          </SettingsField>
-        )}
+          </div>
+        </SettingsField>
+      )}
+      <SettingsGroup>
         <SettingsField
           compact
           label="Saved passwords"

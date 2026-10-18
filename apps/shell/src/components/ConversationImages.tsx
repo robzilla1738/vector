@@ -293,6 +293,8 @@ export function ConversationImages({
   };
   const takeCapture = (onPage = false) =>
     perform(async (version, owner) => {
+      if (owner.kind === "quick-ask")
+        throw new Error("Open in Aux to capture a browser page. Your draft and attachments are kept.");
       if (!page || !pageCurrent()) throw new Error("The page changed during capture. Capture it again.");
       const bounds = onPage ? stageBounds() : null;
       if (onPage && !bounds) throw new Error("The page is not visible. Show the page and try again.");
@@ -424,7 +426,10 @@ export function ConversationImages({
       }
     });
   const canCapture =
-    page && /^https?:\/\//.test(page.url) && !["crashed", "detached"].includes(page.viewStatus ?? "");
+    kind !== "quick-ask" &&
+    page &&
+    /^https?:\/\//.test(page.url) &&
+    !["crashed", "detached"].includes(page.viewStatus ?? "");
   const onPage =
     kind !== "quick-ask" &&
     canCapture &&
@@ -432,17 +437,20 @@ export function ConversationImages({
     useStore.getState().activePageId === page.pageId &&
     !useStore.getState().splitPageId &&
     page.backend !== "chrome";
-  const captureDisabledReason = disabled
-    ? "Capture is unavailable while this conversation cannot accept attachments."
-    : images.length >= 4
-      ? "Four images attached. Remove one to add another."
-      : !page
-        ? "Choose an open web page in Browser context to capture it."
-        : !/^https?:\/\//.test(page.url)
-          ? "Page capture is available on http(s) pages, not local or special pages."
-          : ["crashed", "detached"].includes(page.viewStatus ?? "")
-            ? "This tab is crashed or detached. Capture is unavailable until it is restored."
-            : undefined;
+  const captureDisabledReason =
+    kind === "quick-ask"
+      ? "Open in Aux to capture a browser page. Your draft and attachments are kept."
+      : disabled
+        ? "Capture is unavailable while this conversation cannot accept attachments."
+        : images.length >= 4
+          ? "Four images attached. Remove one to add another."
+          : !page
+            ? "Choose an open web page in Browser context to capture it."
+            : !/^https?:\/\//.test(page.url)
+              ? "Page capture is available on http(s) pages, not local or special pages."
+              : ["crashed", "detached"].includes(page.viewStatus ?? "")
+                ? "This tab is crashed or detached. Capture is unavailable until it is restored."
+                : undefined;
   const selection = capture && (
     <div
       ref={captureCanvas}

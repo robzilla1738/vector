@@ -56,7 +56,7 @@
     height: 12px;
     flex: none;
   }
-  .citation-preview {
+  .citation-preview.ui-tooltip {
     position: fixed;
     z-index: var(--z-toast);
     display: flex;
@@ -66,11 +66,8 @@
     max-width: calc(100vw - 16px);
     max-height: calc(100vh - 16px);
     overflow: auto;
-    border-radius: var(--r-lg);
     color: var(--ink-0);
-    padding: var(--space-3);
     pointer-events: none;
-    font-size: var(--fs-sm);
     overflow-wrap: anywhere;
   }
   .citation-preview > span,

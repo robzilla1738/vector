@@ -8,6 +8,7 @@ import { hostOf } from "../workspace";
 import { sourceDescription } from "./SourceRow";
 import { shellIconGlobe } from "../ui/icons";
 import "./reading.css";
+import "../ui/tooltip.css";
 
 export function CitationChip({
   source,
@@ -22,7 +23,7 @@ export function CitationChip({
   useLayoutEffect(() => {
     if (!open || !card.current || !anchor.current) return;
     const rect = anchor.current.getBoundingClientRect();
-    positionContextMenu(card.current, rect.left, rect.bottom + 6);
+    positionContextMenu(card.current, rect.left, rect.bottom + 4);
     requestStageReport();
     const close = () => setOpen(false);
     window.addEventListener("resize", close);
@@ -50,7 +51,7 @@ export function CitationChip({
       </a>
       {open &&
         createPortal(
-          <span id={id} ref={card} role="tooltip" className="citation-preview ctx-menu popup-material">
+          <span id={id} ref={card} role="tooltip" className="ui-tooltip solid-popover citation-preview">
             <strong>{source.title || hostOf(source.url)}</strong>
             <span>{sourceDescription(source)}</span>
             <small>{source.url}</small>

@@ -5,9 +5,14 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import HomeAsk from "./HomeAsk";
+import { Conversation } from "./Conversation";
+import { makePage } from "../mock/fixtures";
+import { draftKey } from "../conversation-drafts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 const initial = useStore.getState();
+const originalKind = bridge.windowKind,
+  originalWindow = bridge.windowId;
 const modal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal"),
   close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close"),
   scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
@@ -80,6 +85,8 @@ afterEach(async () => {
   host.remove();
   style.remove();
   useStore.setState(initial, true);
+  bridge.windowKind = originalKind;
+  bridge.windowId = originalWindow;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   for (const [prototype, key, descriptor] of [
@@ -128,4 +135,40 @@ it("distinguishes unavailable page capture from enabled attachments in the real 
   await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
   expect(document.activeElement).toBe(opener);
   expect(input.value).toBe("Original page-free question");
+});
+
+it("hands the real Quick Ask composer to existing expansion with its draft intact and no page read", async () => {
+  bridge.windowKind = "quick-ask";
+  bridge.windowId = "original-quick-window";
+  const source = makePage(0, {
+    pageId: "main-source",
+    windowId: "main-window",
+    windowKind: "normal",
+    url: "https://example.test/",
+    sessionId: "main-session",
+  });
+  useStore.setState({
+    pages: normalizePages([source]),
+    conversationContexts: { new: source.pageId },
+    activePageId: source.pageId,
+  });
+  const expand = vi.fn();
+  await act(async () => root.render(<Conversation embedded quickAsk={{ onExpand: expand }} />));
+  const send = host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!;
+  expect(send.disabled).toBe(false);
+  await act(async () => send.click());
+  expect(host.textContent).toContain("Open in Aux to use browser tabs");
+  expect(bridge.invoke).not.toHaveBeenCalledWith("browser.recovery.list", expect.anything());
+  expect(bridge.invoke).not.toHaveBeenCalledWith("pages.capture", expect.anything());
+  expect(bridge.invoke).not.toHaveBeenCalledWith("runs.start", expect.anything());
+  expect(useStore.getState().agentDraft).toBe("Original page-free question");
+  const handback = host.querySelector<HTMLButtonElement>(
+    '[data-command-id="open-quick-ask-browser-context"]',
+  )!;
+  await act(async () => handback.click());
+  expect(expand).toHaveBeenCalledOnce();
+  const state = useStore.getState();
+  expect(state.conversationId).toBeTruthy();
+  expect(state.conversationDrafts[draftKey(state.conversationId!)]).toBe("Original page-free question");
+  expect(state.conversationContexts[draftKey(state.conversationId!)]).toBe(source.pageId);
 });

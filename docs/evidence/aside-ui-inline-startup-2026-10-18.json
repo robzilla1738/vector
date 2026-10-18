@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-18",
+  "baseline": "7893cd5a6e40a1b478e7bd88f7a85bdadd02901a",
+  "scope": "Current working roles, scoped Google inline edits, startup routing and Quick Ask handback; native area66 is separately uncommitted and unaccepted.",
+  "integratedCheck": {
+    "command": "npm run check",
+    "log": "/tmp/aux-roles-inline-startup-integrated-check.log",
+    "typecheck": "passed",
+    "lint": "passed with advisories",
+    "passed": 5331,
+    "failed": 3,
+    "filesPassed": 828,
+    "filesFailed": 2,
+    "durationSeconds": 103.7,
+    "failures": "Three obsolete expectations for replaced Quick Ask browser-source selection, then repaired."
+  },
+  "repairs": {
+    "affectedLog": "/tmp/aux-roles-inline-quick-affected-tests.log",
+    "testsPassed": 50,
+    "filesPassed": 8,
+    "queuedHandbackLog": "/tmp/aux-roles-inline-quick-queued-tests.log",
+    "queuedTestsPassed": 6,
+    "finalTypes": [
+      "/tmp/aux-roles-inline-quick-final-types.log",
+      "/tmp/aux-roles-inline-quick-shell-types.log"
+    ],
+    "finalFullAllFilesPass": false
+  },
+  "rendererBuild": {
+    "log": "/tmp/aux-roles-inline-renderer-build.log",
+    "result": "passed",
+    "byteLog": "/tmp/aux-roles-inline-renderer-bytes.log",
+    "startupJsReportedKiB": 617,
+    "startupCssReportedKiB": 212,
+    "totalJsReportedKiB": 3081,
+    "allByteTargetsMet": false,
+    "nativeTimingMeasured": false
+  },
+  "matchedStartupProjection": {
+    "beforeBytes": 642990,
+    "afterBytes": 631434,
+    "startupSavingBytes": 11556,
+    "allOptionalJsIncreaseBytes": 26133,
+    "evidence": "/tmp/aux-shortcut-startup-retained-proof.json",
+    "note": "Matched isolated package-semantics build; final integrated renderer bytes separately reported above."
+  },
+  "uiRenderer": {
+    "stateMatrix": 66,
+    "narrowFollowupStates": 8,
+    "source": "/tmp/aux-context-routine-renderer/geometry.json",
+    "narrowSource": "/tmp/aux-context-routine-renderer/final-narrow.json",
+    "nativeAcceptance": false
+  },
+  "remaining": [
+    "Current native changed-surface observation in both themes and widths",
+    "Genuine Quick Ask cross-window browser source admission",
+    "Remaining structural Docs edits and verified active Sheets navigation",
+    "OAuth registrations and live-account verification explicitly unconfigured",
+    "Native area66 compilation and actual test execution",
+    "Earlier Chromium155 crash diagnosis",
+    "Matching155 stock build and paired performance",
+    "Default-route20-task manual smoke with actual provider evidence"
+  ]
+}

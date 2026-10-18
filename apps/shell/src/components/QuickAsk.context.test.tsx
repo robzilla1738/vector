@@ -113,7 +113,7 @@ async function escape(node: HTMLElement) {
   );
   await flushFrames();
 }
-it("opens actual Quick Ask context, chooses its source, dismisses to its original focus and retains the draft/92px empty layout", async () => {
+it("opens Quick Ask context with truthful browser handback, restores focus and retains its draft/92px empty layout", async () => {
   await act(async () => root.render(<QuickAsk onExpand={expand} />));
   await flushFrames();
   const input = host.querySelector("textarea")!,
@@ -127,23 +127,11 @@ it("opens actual Quick Ask context, chooses its source, dismisses to its origina
   expect(dialog("Add context").open).toBe(true);
   expect(opener.getAttribute("aria-expanded")).toBe("true");
   expect(vi.mocked(bridge.quickAskLayout).mock.calls.at(-1)![0].draftHeight).toBeGreaterThan(92);
-  const browser = dialog("Add context").querySelector<HTMLButtonElement>('[aria-label="Browser context"]')!;
-  await act(async () => browser.click());
-  await flushFrames();
-  const current = [...dialog("Browser context").querySelectorAll<HTMLButtonElement>(".context-choice")].find(
-    (node) => node.textContent?.startsWith("Current tab"),
-  )!;
-  await act(async () => current.click());
-  await flushFrames();
-  expect(useStore.getState().conversationContexts["chat:quick-chat"]).toBe("active");
-  expect(dialog("Browser context")).toBeNull();
-  await act(async () => browser.click());
-  await flushFrames();
-  const none = [...dialog("Browser context").querySelectorAll<HTMLButtonElement>(".context-choice")].find(
-    (node) => node.textContent?.startsWith("No browser context"),
-  )!;
-  await act(async () => none.click());
-  await flushFrames();
+  expect(dialog("Add context").querySelector('[aria-label="Browser context"]')).toBeNull();
+  expect(
+    dialog("Add context").querySelector('[data-command-id="open-quick-ask-browser-context"]'),
+  ).not.toBeNull();
+  expect(useStore.getState().conversationContexts["chat:quick-chat"]).toBe("none");
   await escape(dialog("Add context"));
   expect(dialog("Add context")).toBeNull();
   expect(document.activeElement).toBe(opener);
@@ -165,9 +153,7 @@ it("offers a concrete Open in Aux path while keeping unsupported on-page lasso d
   )!;
   expect(lasso.disabled).toBe(true);
   expect(lasso.title).toContain("Open in Aux");
-  const open = [...popup.querySelectorAll("button")].find(
-    (node) => node.textContent === "Open Quick Ask in Aux",
-  )!;
+  const open = popup.querySelector<HTMLButtonElement>('[data-command-id="open-quick-ask-browser-context"]')!;
   await act(async () => open.click());
   expect(expand).toHaveBeenCalledTimes(1);
   expect(dialog("Add context")).toBeNull();

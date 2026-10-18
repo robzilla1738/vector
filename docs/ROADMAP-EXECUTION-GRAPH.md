@@ -52,11 +52,13 @@ schema narrowing, Memory/archive and connected-service UI are integrated in the
 current follow-on source. Exact prepared schema bytes and actual optional-tool
 publication now cover saved/idle compaction and captured operation grants.
 Canonical Select ownership and remaining compact Settings roles are integrated;
-utility glyph modules reduce measured startup JS to627KB. Isolated work completes
-typed LinkedIn native recipient/editor proof and remaining matched UI observations.
+utility glyph modules and generated synchronous command routing reduce measured
+startup JS to617KB. CSS measures212KB and total optional JS3,081KB; all byte targets
+remain open. Isolated work completes typed LinkedIn native recipient/editor proof
+and remaining matched UI observations.
 Skills/MCP/activity geometry and the Quick Ask context admission/scroll fixes are
 integrated. Google adds revision-bound Docs ranges/readback, separately granted
-Sheet grid reads and inspected Gmail originals; genuine Docs DOM caret/ranges
+Sheet grid reads, verified underline/link insertion and inspected Gmail originals; genuine Docs DOM caret/ranges
 remain distinct from API indices and unsupported canvas editors. Verified active
 Sheet navigation and rich structural Docs editing remain open. Account setup remains explicit per
 the owner's decision; adapters use fixtures until registrations exist.
@@ -65,7 +67,10 @@ Foundation7806e41fc, capability07199225f and owned-services34117c740 have limite
 155 native observations. Area0065 is compiled; follow-on native Tab Search,
 Cmd-L/navigation/Back/Find and isolated Reload during original-runtime pause work.
 Quick Ask92px empty/long-draft expansion and unified empty Memory tree render;
-the Quick Ask context opener remains under investigation. Native build identity
+the corrected Quick Ask context opener still needs current native observation.
+Main-window live context has no original Quick caller admission: source now offers
+Open in Aux, preserves drafts and fences new/queued/steered browser choices.
+A genuine cross-window source producer remains an explicit implementation gap. Native build identity
 is34117+dirty, not a clean10d3 combined build. The original preview retired normally.
 One AppKit sharing-indicator negative-geometry path is diagnosed; the older155
 SIGTRAP remains unresolved. Matching155 stock requires its full compile; no paired

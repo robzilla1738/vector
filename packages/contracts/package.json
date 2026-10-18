@@ -15,8 +15,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -b",
-    "typecheck": "tsc -b --force"
+    "build": "node ../../scripts/gen-command-routing.mjs && tsc -b",
+    "typecheck": "node ../../scripts/gen-command-routing.mjs && tsc -b --force"
   },
   "dependencies": {
     "zod": "catalog:",

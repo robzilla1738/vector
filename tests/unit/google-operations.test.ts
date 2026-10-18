@@ -837,3 +837,107 @@ it("makes inspected Gmail PDF originals available to the owned pdf_sources route
   );
   expect(inspect).toHaveBeenCalledTimes(1);
 });
+
+function richDocs(parts: { text: string; style?: Record<string, unknown> }[], revision = "revision-2") {
+  const result = docs(parts.map((part) => part.text).join(""), revision);
+  let index = 1;
+  result.tabs[0]!.documentTab.body.content[1]!.paragraph!.elements = parts.map((part) => {
+    const startIndex = index;
+    index += part.text.length;
+    return { startIndex, endIndex: index, textRun: { content: part.text, textStyle: part.style ?? {} } };
+  }) as never;
+  return result;
+}
+it.each(["set", "clear"])(
+  "confirms rich Docs link %s only after original-revision GET and exact style readback",
+  async (operation) => {
+    const f = fixture(["docs.edit"]),
+      link = operation === "set" ? "https://example.test/" : null;
+    f.http
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+      .mockResolvedValueOnce(
+        Response.json(
+          richDocs([
+            { text: "😀x", style: { underline: false, ...(link ? { link: { url: link } } : {}) } },
+            { text: "A\n" },
+          ]),
+        ),
+      );
+    await f.service.invoke(
+      f.input("docs.edit", {
+        documentId: "doc1",
+        requiredRevisionId: "revision-1",
+        edits: [{ kind: "insert", index: 1, text: "😀x", underline: false, link, tabId: "tab1" }],
+      }),
+      new AbortController().signal,
+    );
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+      expect.objectContaining({ status: "confirmed" }),
+    ]);
+    expect(f.http.mock.calls.map((call) => call[1]?.method)).toEqual(["GET", "GET", "POST", "GET"]);
+  },
+);
+it.each([
+  "missing-link",
+  "wrong-link",
+  "partial-link",
+  "missing-underline",
+  "wrong-underline",
+  "clear-failed",
+  "read-error",
+])("leaves rich Docs %s readback uncertain and never replays it", async (failure) => {
+  const f = fixture(["docs.edit"]),
+    link = failure === "clear-failed" ? null : "https://example.test/";
+  const good = { underline: false, link: { url: "https://example.test/" } };
+  let parts: { text: string; style?: Record<string, unknown> }[] = [
+    { text: "😀x", style: good },
+    { text: "A\n" },
+  ];
+  if (failure === "missing-link") parts[0]!.style = { underline: false };
+  if (failure === "wrong-link") parts[0]!.style = { ...good, link: { url: "https://wrong.test/" } };
+  if (failure === "missing-underline") parts[0]!.style = { link: good.link };
+  if (failure === "wrong-underline") parts[0]!.style = { ...good, underline: true };
+  if (failure === "partial-link")
+    parts = [{ text: "😀", style: good }, { text: "x", style: { underline: false } }, { text: "A\n" }];
+  f.http
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+    .mockResolvedValueOnce(
+      failure === "read-error"
+        ? new Response("Unavailable", { status: 503 })
+        : Response.json(richDocs(parts)),
+    );
+  const input = f.input("docs.edit", {
+    documentId: "doc1",
+    requiredRevisionId: "revision-1",
+    edits: [{ kind: "insert", index: 1, text: "😀x", underline: false, link, tabId: "tab1" }],
+  });
+  await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow();
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+    expect.objectContaining({ status: "uncertain" }),
+  ]);
+  await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+    code: "conflict",
+  });
+  expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+});
+it("refuses a rich edit if the original revision changes at the final pre-dispatch read", async () => {
+  const f = fixture(["docs.edit"]);
+  f.http
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json(docs("A\n", "retired-revision")));
+  await expect(
+    f.service.invoke(
+      f.input("docs.edit", {
+        documentId: "doc1",
+        requiredRevisionId: "revision-1",
+        edits: [{ kind: "insert", index: 1, text: "x", link: "https://example.test/", underline: true }],
+      }),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow();
+  expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(0);
+});

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useRef, useState } from "react";
+import { act, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Popover } from "./popover";
@@ -108,6 +108,76 @@ it("uses actual modal acquisition order when retained dialogs are arranged in re
   } finally {
     await act(async () => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("captures focus configuration once per opening, preserving current control and original return target across ref changes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div"),
+    original = document.createElement("button"),
+    later = document.createElement("button");
+  original.textContent = "Original opener";
+  later.textContent = "Next opener";
+  document.body.append(host, original, later);
+  const firstReturn = { current: original },
+    nextReturn = { current: later };
+  const root = createRoot(host);
+  let update!: (open: boolean, alternate: boolean) => void;
+  function Parent() {
+    const [state, setState] = useState({ open: false, alternate: false });
+    useLayoutEffect(() => {
+      update = (open, alternate) => setState({ open, alternate });
+    });
+    const dialog = useRef<HTMLDialogElement>(null),
+      first = useRef<HTMLInputElement>(null),
+      second = useRef<HTMLInputElement>(null);
+    useNativeDialog(
+      state.open,
+      dialog,
+      state.alternate ? nextReturn : firstReturn,
+      state.alternate ? second : first,
+    );
+    return (
+      <dialog
+        ref={dialog}
+        aria-label="Retained modal"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setState((value) => ({ ...value, open: false }));
+        }}
+      >
+        <input ref={first} aria-label="First field" />
+        <input ref={second} aria-label="Second field" />
+      </dialog>
+    );
+  }
+  try {
+    await act(async () => root.render(<Parent />));
+    original.focus();
+    await act(async () => update(true, false));
+    const first = host.querySelector<HTMLInputElement>('[aria-label="First field"]')!,
+      second = host.querySelector<HTMLInputElement>('[aria-label="Second field"]')!;
+    expect(document.activeElement).toBe(first);
+    second.focus();
+    await act(async () => update(true, true));
+    expect(document.activeElement).toBe(second);
+    expect(host.querySelector("dialog")!.open).toBe(true);
+    await act(async () =>
+      second.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+    expect(document.activeElement).toBe(original);
+    await act(async () => update(true, true));
+    expect(document.activeElement).toBe(second);
+    first.focus();
+    await act(async () => update(true, false));
+    expect(document.activeElement).toBe(first);
+    await act(async () => root.unmount());
+    expect(document.activeElement).toBe(later);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    original.remove();
+    later.remove();
     vi.unstubAllGlobals();
   }
 });

@@ -15,7 +15,7 @@
     border-radius: var(--r-card);
     background: var(--surface-primary);
     box-shadow: var(--highlight-inset);
-    backdrop-filter: blur(var(--blur-16));
+    backdrop-filter: blur(var(--blur-popup));
   }
   .filter-manager-list {
     padding: var(--space-2);

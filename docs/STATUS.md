@@ -1,4 +1,4 @@
-# Aux status — October 17, 2026
+# Aux status — October 18, 2026
 
 The full Aside adoption and browser-readiness program is **active and incomplete**
 on local `main`. The owner's [adoption specification](design/aside-adoption.md)
@@ -30,10 +30,14 @@ unexecuted. Current committed LinkedIn writes retain concrete on-page handoff.
 Unsupported contexts and uncertain outcomes never acquire automatic replay.
 
 Startup validation and utility glyphs now follow their actual feature boundaries.
-The production renderer measures **627 KB startup JS /213 KB CSS /3,049 KB total
-JS** using actual boot/preload/static closure traversal. The icon split preserves
-public exports and SVG markup. Targets490/180/1,800KB remain unmet; bytes do not
-establish native startup timings. Full ICU is retained.
+The current production renderer measures **617 KB startup JS /212 KB CSS /3,081 KB total
+JS** using actual boot/preload/static closure traversal. Canonical command routing
+and shortcut bindings stay synchronous; labels and Settings metadata load lazily.
+The authored registry generates the ordered startup projection before build,
+typecheck and the original native launcher. Matched production builds reduce
+startup JavaScript by11,556bytes while adding26,133bytes across optional chunks.
+The icon split preserves public exports and SVG markup. Targets490/180/1,800KB
+remain unmet; bytes do not establish native startup timings. Full ICU is retained.
 
 Model requests publish only functioning original-run tools, including captured
 Google/X operation subsets. Exact prepared schema bytes are retained in encrypted
@@ -44,16 +48,19 @@ content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
 The earlier working-source integrated check passed typecheck/lint and5,223tests
-across821files. The next Google/Quick Ask/catalog source check passed typecheck/lint
-and5,278tests, with8failed assertions across6files. Seven were stale command-window
-inventories after adding the actual Quick Ask controls. One test helper missed a
-run completing during its final sleep; its final status read now accepts that
-completion without extending its5sdeadline. All131affected tests pass after those
-repairs (`/tmp/aux-quick-metadata-fixture-tests.log`). Runtime dist was rebuilt.
-No final all-files-pass claim is made for the newer combined source.
+across821files. The current roles/Docs/startup integrated check passed typecheck/lint
+and5,331tests, with3stale assertions across2files for the replaced Quick Ask source
+selection flow. The repaired fixtures verify truthful handback, draft/focus/92px
+continuity and normal-window source updates. All50affected cases pass; the separate
+six-case queued/steered/answer handback fixture also passes after integration.
+Runtime dist was rebuilt before tests. No final all-files-pass claim is made for
+the combined source after those focused repairs. Logs are
+`/tmp/aux-roles-inline-startup-integrated-check.log` and
+`/tmp/aux-roles-inline-quick-affected-tests.log` and
+`/tmp/aux-roles-inline-quick-queued-tests.log`.
 
 Google fixtures now cover revision-bound Docs API ranges and verified plain-body
-edits, separately granted bounded Sheets grid data, and native-inspected Gmail
+edits with bold/italic/underline and HTTP(S) link setting/clearing, separately granted bounded Sheets grid data, and native-inspected Gmail
 attachment admission with inert original retention on inspection failure. Sheets
 matrix verification handles omitted empty cells and compares USER_ENTERED parsed
 values/formulas with independent readback. The fixed uncached Docs DOM selection
@@ -63,11 +70,21 @@ identity. Rich structural Docs edits and verified active Sheets navigation remai
 open; registrations/live account verification remain explicitly unconfigured.
 
 Skills/MCP/activity roles have60renderer states and6accessibility/keyboard states.
-Quick Ask context admission, supported intake commands, owned-dialog sizing and
-internal popup scrolling are repaired in source:54focused cases and18renderer
-states in both themes. Empty remains92px; owned picker/review bounds cap at360px.
-Region lasso supplies an explicit Open in Aux path. These are renderer/source
-proofs; the corrected packaged native interaction still awaits staging.
+The next shared-role slice adds66renderer states plus8narrow follow-ups for context
+slots, routine/Channel dialogs, tooltips, the Aux Vault hero and Autofill control
+containment. Shared modal focus configuration is captured once per opening, so
+changing Channel tabs retains the original opener. These are source/renderer
+proofs; native both-theme comparisons remain open.
+
+Quick Ask retains supported file/image intake,92px empty geometry and owned popup
+scrolling. Live browser context from another window has no native Quick caller
+admission, and the actual run-start guard rejects that ownership mismatch. The
+popup now offers Open in Aux for browser tabs/capture and disables unsupported
+capture/source commands. It preserves selected refs/drafts for review and refuses
+new browser choices before new-run, queue, steer or answer acknowledgement. Plain
+text followups may retain their original run's existing page authority. No new
+cross-window source producer is advertised; the corrected packaged interaction
+still awaits staging. Its final focused cases cover menu dismissal before expansion.
 The separately reproduced catalog snapshot/patch race has10passing actual-store
 regressions and retains command revision rejection with zero write replay.
 

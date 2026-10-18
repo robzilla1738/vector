@@ -1,14 +1,13 @@
 import { openNativeLibrary } from "./native-library";
 import { orderedPages } from "./store/pages";
+import type { ShellCommandId, ShortcutOverrides } from "@aux/contracts";
 import {
-  COMMANDS,
-  SCOPED_COMMANDS,
-  effectiveShortcuts,
-  matchShortcut,
-  type ShellCommandId,
-  type CommandDef,
-  type ShortcutOverrides,
-} from "@aux/contracts";
+  STARTUP_COMMANDS,
+  STARTUP_SCOPED_COMMANDS,
+  type StartupCommandDef,
+} from "@aux/contracts/command-routing.generated";
+import { effectiveShortcutBindings } from "@aux/contracts/shortcut-startup";
+import { matchShortcut } from "@aux/contracts/shortcut-bindings";
 import type { RefObject } from "react";
 import {
   openCommandSurface,
@@ -61,7 +60,8 @@ function featureCommands<const T extends readonly ShellCommandId[]>(...ids: T) {
   return Object.fromEntries(
     ids.map<[ShellCommandId, CommandAction]>((id) => [
       id,
-      () => {
+      async () => {
+        const { COMMANDS } = await import("@aux/contracts/commands");
         throw new Error(
           `${COMMANDS.find((command) => command.id === id)?.label ?? id} is unavailable in this window`,
         );
@@ -115,11 +115,11 @@ function bookmarkAll(st: StoreState) {
 }
 export const COMMAND_ACTIONS = {
   ...(Object.fromEntries(
-    SCOPED_COMMANDS.map(({ id }) => [
+    STARTUP_SCOPED_COMMANDS.map(({ id }) => [
       id,
       (_state: StoreState, context: CommandContext) => invokeScopedControl(id, context),
     ]),
-  ) as Record<(typeof SCOPED_COMMANDS)[number]["id"], CommandAction>),
+  ) as Record<(typeof STARTUP_SCOPED_COMMANDS)[number]["id"], CommandAction>),
 
   ...(Object.fromEntries(
     RUN_CONTROL_COMMANDS.map((id) => [
@@ -389,10 +389,13 @@ export const COMMAND_ACTIONS = {
 } satisfies Record<ShellCommandId, CommandAction>;
 
 const executor = commandExecutor<CommandContext>((id, context) => {
-  const command = COMMANDS.find((command) => command.id === id);
+  const command = STARTUP_COMMANDS.find((command) => command.id === id);
   if (!command) return undefined;
   const state = context.state ?? useStore.getState();
-  if ((command as CommandDef).windows && !(command as CommandDef).windows!.includes(bridge.windowKind))
+  if (
+    (command as StartupCommandDef).windows &&
+    !(command as StartupCommandDef).windows!.includes(bridge.windowKind)
+  )
     return undefined;
   if (command.handler === "native") return () => bridge.dispatchCommand(command.id);
   return () => {
@@ -433,7 +436,7 @@ export function dispatchShortcut(
   const id =
     shortcut.commandId ??
     matchShortcut(
-      effectiveShortcuts(state.settings.shortcutOverrides as ShortcutOverrides | undefined),
+      effectiveShortcutBindings(state.settings.shortcutOverrides as ShortcutOverrides | undefined),
       shortcut,
       { platform: bridge.platform },
     )?.id;
