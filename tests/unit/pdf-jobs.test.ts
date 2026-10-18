@@ -1,7 +1,17 @@
 import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  closeSync,
+  constants,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -120,6 +130,49 @@ it("requires original run admission and refuses falsely declared or changed file
   await expect(f.process()).rejects.toMatchObject({ code: "ref_stale" });
   expect(nativeDocumentJob).not.toHaveBeenCalled();
 });
+it("refuses a PDF artifact replaced by a symlink before admitting unrelated bytes", async () => {
+  const f = fixture(),
+    unrelated = join(f.dir, "unrelated.pdf");
+  writeFileSync(unrelated, f.bytes);
+  rmSync(f.source.path);
+  symlinkSync(unrelated, f.source.path);
+  await expect(f.process()).rejects.toMatchObject({ code: "ref_stale" });
+  expect(nativeDocumentJob).not.toHaveBeenCalled();
+  expect(readFileSync(unrelated)).toEqual(f.bytes);
+  expect(f.artifacts.list({ runId: f.run.runId })).toHaveLength(1);
+});
+it.skipIf(process.platform === "win32")(
+  "refuses a substituted FIFO without waiting for another process to open it",
+  async () => {
+    const f = fixture();
+    rmSync(f.source.path);
+    execFileSync("/usr/bin/mkfifo", [f.source.path]);
+    let settled = false;
+    const result = f.process().then(
+      (value) => {
+        settled = true;
+        return value;
+      },
+      (error: unknown) => {
+        settled = true;
+        return error;
+      },
+    );
+    try {
+      await vi.waitFor(() => expect(settled).toBe(true), { timeout: 500, interval: 10 });
+      expect(await result).toMatchObject({ code: "ref_stale" });
+      expect(nativeDocumentJob).not.toHaveBeenCalled();
+    } finally {
+      // Unblock the old implementation if this regression fails, then join its original open.
+      const writer = openSync(f.source.path, constants.O_RDWR | constants.O_NONBLOCK);
+      try {
+        await result;
+      } finally {
+        closeSync(writer);
+      }
+    }
+  },
+);
 it("never saves an unproved form appearance or publishes after source retirement", async () => {
   const f = fixture();
   vi.mocked(nativeDocumentJob).mockResolvedValue({

@@ -2,6 +2,7 @@ import { selectedDocument } from "./selected-document-source.js";
 import { setImmediate } from "node:timers/promises";
 import { documentOriginalFence } from "./document-originals.js";
 import { createHash } from "node:crypto";
+import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { AuxError, type Run } from "@aux/contracts";
 import { DOCUMENT_JOB_SOURCE_LIMIT, type PdfSource } from "@aux/contracts/document-jobs";
@@ -67,9 +68,16 @@ export async function withPdfSources<T>(
       };
       check();
       reserve(artifact!.size);
-      const file = await open(artifact!.path, "r");
+      // Match text-artifact admission: never follow a replaced link or wait for a FIFO writer.
+      const file = await open(
+        artifact!.path,
+        constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+      ).catch(() => {
+        throw new AuxError("ref_stale", "The original PDF artifact is unavailable.");
+      });
       const bytes = Buffer.alloc(artifact!.size);
       try {
+        check();
         const before = await file.stat();
         if (!before.isFile() || before.size !== bytes.length)
           throw new AuxError("ref_stale", "The original PDF file size changed.");
