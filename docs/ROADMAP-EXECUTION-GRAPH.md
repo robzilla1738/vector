@@ -43,6 +43,27 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 | A8      | active                         | Shared account primitives, Google REST, Notion/eligible Slack MCP, X REST, governed LinkedIn/browser paths and structured Gateway/image search. Registrations and actual granted capabilities remain explicit prerequisites. |
 | A9      | waiting on integrated outcomes | Current 155 crash/browser acceptance, all reference surfaces in matched themes/widths/states, matching-stock perf and default-route 20-task smoke at least18/20. No source-only completion.                                  |
 
+### Current implementation owners — October 18
+
+The owner authorized three implementation agents and one integrator. Each lane
+starts at `0a5c27653` in its own detached worktree; older dirty worktrees remain
+untouched. Native performance has priority: lanes review source only until the
+integrator sends `PERF_RESOURCE_RELEASED`. No competing installs/builds/heavy tests
+run during timed samples. Each lane delivers fixes, focused checks and a small
+requirement/evidence matrix; the integrator runs one full check per coherent batch.
+
+| Owner                                    | Worktree                           | Concrete deliverable and acceptance                                                                                                                                                                                                                                              |
+| ---------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/root/ui_audit` — UI                    | `/tmp/aux-ui-final-0a5c27653`      | Reference-backed theme/select placement, narrow menus/layouts and keyboard/state fixes in renderer settings/shared controls. Preserve native input/Aux identity; focused regressions plus exact references. Native parity remains integrator-owned.                              |
+| `/root/ai_data_final` — AI/data          | `/tmp/aux-ai-data-final-0a5c27653` | Complete compaction/queue/Memory/Dream/Forget/recovery gaps in runtime services/API/loop and focused tests, with exact boundaries, cancellation and owner/revision proofs. Rebuild isolated runtime dist first.                                                                  |
+| `/root/aside_logic` — tools/integrations | `/tmp/aux-tools-final-0a5c27653`   | Complete PDF/image/channel/account/adapter gaps with artifact/authority/partial-failure fixtures; distinguish native/live output proof from mocks. OAuth registrations remain explicit prerequisites.                                                                            |
+| `/root` — integrator                     | local `main`                       | Native builder/launcher ownership, current GUI/reference comparisons, crash investigation, paired performance and batch integration/full checks. Current334 manual smoke20/20 and native evidence remain bounded; performance and transient navigation/new-tab focus still open. |
+
+Common contracts, generated bindings, runtime main/store/run dispatch and global
+status documents require coordination before edits. No lane runs a native build,
+changes the owner's Profile, sends real messages, pushes or releases. Inconclusive
+investigations preserve their reproductions and limits while independent fixes advance.
+
 ### Current reservations and integration
 
 The current built product334b882ac passes25native steps and has preserved matching

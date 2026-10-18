@@ -40,6 +40,7 @@ const names = {
   tabSwitch: tabPresentationNames.latency,
   commandBar: "AuxPerf.CommandBarInputToPresented",
 };
+const fixturePresentedName = "AuxPerf.FixturePresented";
 const warmWindowNames = {
   firstFrameUs: "AuxPerf.WarmWindowFirstFrameUs",
   controlsReadyUs: "AuxPerf.WarmWindowControlsReadyUs",
@@ -222,6 +223,8 @@ try {
           "positive native VSync-backed interval; zero means unavailable, never a guessed refresh rate",
         target: "p95(latencyUs - frameIntervalUs) <= 8000 across all 100 paired observations",
       },
+      workloadPreparation:
+        "Each added fixture waits for its distinct active native document presentation; this boolean counter is not a latency measurement.",
       profile:
         "fresh process; each final disposable Profile prepared in place, retaining its original protected runtime credential owner",
       osCaches: "not flushed",
@@ -608,20 +611,21 @@ try {
   }
   async function open(run) {
     const before = (await loadedFixturePages(run)).length;
-    const beforePresentation = await hist(run, names.navigationInput);
+    const beforePresentation = await hist(run, fixturePresentedName);
     await run.input.call("key", { chord: "new-tab" });
     await run.input.call("key", { chord: "address" });
     await addressReady(run);
     await run.input.call("text", { text: url });
     await run.input.call("key", { chord: "return" });
-    // CDP's load event precedes native embed presentation/focus handoff. Finish
-    // this input-served navigation before preparing the next tab; no guessed sleep.
-    const navigationInputMs = await observation(run, names.navigationInput, beforePresentation);
+    // Cold interactivity is one-shot. This separate fixture-only boolean proves
+    // each new document reached the native compositor before the next tab.
+    const fixturePresentations = await observation(run, fixturePresentedName, beforePresentation);
+    assert.equal(fixturePresentations, 1, "Expected one native fixture presentation");
     await until(
       "new native fixture tab load",
       async () => (await loadedFixturePages(run)).length === before + 1,
     );
-    return { fixtureTabs: before + 1, navigationInputMs };
+    return { fixtureTabs: before + 1, nativeFixturePresentations: fixturePresentations };
   }
   function seedHistory(profile) {
     const history = join(profile, "Default/History");

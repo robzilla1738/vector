@@ -282,3 +282,67 @@ index af5027f..28b0d30 100644
    if (method == "performance.commitQuery" && NativePerformance::Enabled()) {
      const auto query = list->size() == 1 ? (*list)[0].GetIfInt() : std::nullopt;
      auto* window = WebUIBrowserWindow::FromWebShellWebContents(
+diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
+--- a/chrome/browser/ui/performance/native_performance.cc
++++ b/chrome/browser/ui/performance/native_performance.cc
+@@ -92,7 +92,7 @@
+            frame->GetLastCommittedURL() == fixture;
+   }
+   void Present(bool tab_switch, base::TimeTicks input) {
+-    if (!web_contents() || !web_contents()->GetPrimaryMainFrame() || input.is_null()) return;
++    if (!web_contents() || !web_contents()->GetPrimaryMainFrame() || (tab_switch && input.is_null())) return;
+     auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+     if (!Current(document)) return;
+     web_contents()->GetPrimaryMainFrame()->GetRenderWidgetHost()->InsertVisualStateCallback(
+@@ -111,8 +111,9 @@
+   void Presented(content::WeakDocumentPtr document, base::TimeTicks input,
+                  bool tab_switch, const viz::FrameTimingDetails& details) {
+     const auto time = details.presentation_feedback.timestamp;
+-    if (!Current(document) || time.is_null() || time < input) return;
++    if (!Current(document) || time.is_null()) return;
+     if (tab_switch) {
++      if (input.is_null() || time < input) return;
+       if (input != owner_->tab_input_time_) return;
+       owner_->tab_input_time_ = base::TimeTicks();
+       const auto& feedback = details.presentation_feedback;
+@@ -129,7 +130,13 @@
+                                          interval);
+       return;
+     }
+-    if (owner_->interactive_recorded_) return;
++    // A distinct fixture document has reached the original active compositor.
++    // Preparation needs every document; cold interactivity remains one-shot.
++    if (!fixture_presented_) {
++      fixture_presented_ = true;
++      base::UmaHistogramBoolean("AuxPerf.FixturePresented", true);
++    }
++    if (input.is_null() || time < input || owner_->interactive_recorded_) return;
+     const auto start = OriginalProcessStart();
+     if (start.is_null() || time < start) return;
+     owner_->interactive_recorded_ = true;
+@@ -141,7 +148,7 @@
+     auto* active = tabs->GetActiveWebContents();
+     if (active == web_contents()) return;
+     weak_factory_.InvalidateWeakPtrs();
+-    loaded_ = painted_ = false;
++    loaded_ = painted_ = fixture_presented_ = false;
+     Observe(active);
+     Present(true, owner_->tab_input_time_);
+   }
+@@ -155,7 +162,7 @@
+   void DidStartNavigation(content::NavigationHandle* navigation) override {
+     if (!navigation->IsInPrimaryMainFrame() || navigation->IsSameDocument()) return;
+     weak_factory_.InvalidateWeakPtrs();
+-    loaded_ = painted_ = false;
++    loaded_ = painted_ = fixture_presented_ = false;
+     navigation_input_ = owner_->input_time_;
+   }
+   void DidFinishLoad(content::RenderFrameHost* frame, const GURL&) override {
+@@ -172,6 +179,7 @@
+   base::TimeTicks navigation_input_;
+   bool loaded_ = false;
+   bool painted_ = false;
++  bool fixture_presented_ = false;
+   base::WeakPtrFactory<NativePerformancePage> weak_factory_{this};
+ };
+ 

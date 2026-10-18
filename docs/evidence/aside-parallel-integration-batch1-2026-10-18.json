@@ -1,0 +1,87 @@
+{
+  "atUTC": "2026-10-18T22:45:56.830746+00:00",
+  "status": "Integrated source; full check passed; native compilation and acceptance pending",
+  "agentWorktrees": {
+    "UI": "/tmp/aux-ui-final-0a5c27653",
+    "AI/data": "/tmp/aux-ai-data-final-0a5c27653",
+    "Tools/integrations": "/tmp/aux-tools-final-0a5c27653"
+  },
+  "integrated": [
+    {
+      "sourceCommit": "55c7ea2819801c2e0c9b2f1f05a6bba59340644c",
+      "localMainCommit": "b8d3a09e0",
+      "scope": "Explicit32px Tidy action; reference636px Routines Create outdent; combined Selection&Capture outlined/filled role",
+      "agentFocused": "43tests/5files5.64s; renderer types/scopedformat/lint passed; no native claim"
+    },
+    {
+      "sourceCommit": "adb4654b0cbd1399e0777950102cf9ce2c73a24c",
+      "localMainCommit": "357b2c04f",
+      "scope": "Queued message fingerprint includes original selected/source/account identities; stale reorders rejected without moving messages",
+      "agentBefore": "11 reproduced source/authority fingerprint failures",
+      "upgradeLimit": "Old queued-source fingerprints require review/resend; no compatibility replay."
+    },
+    {
+      "sourceCommit": "efd7b37e70e4d0c9addeb7553641dbde9f217346",
+      "localMainCommit": "a8687ffd7",
+      "scope": "Oversized UTF-8 source line gives explicit bounded no-content refusal rather than a repeating pagination cursor",
+      "agentBefore": "1 reproduced empty zero-progress source read",
+      "agentFocused": "AI/data final84tests/7files plus19unique cases =103unique/11files; isolated dist rebuilt first; types/scopedformat/lint pass"
+    },
+    {
+      "sourceCommit": "ec24a213d8996980c5e409bc5fc3342196d203de",
+      "localMainCommit": "d4eb6c2cb",
+      "scope": "Bind refresh, shared waiting and publication/revocation joins to exact original rotated Google credential identity",
+      "agentBefore": "5 reproduced failures: stale400/401/scope-loss, replacement sharing retired task, early revocation acknowledgment",
+      "agentFocused": "98tests/4files after isolated dist rebuild; types/scopedformat/lint pass",
+      "manifest": {
+        "path": "/tmp/aux-tools-final-0a5c27653/.native/tools-google-refresh-v1/manifest.json",
+        "sha256": "e89e862ca6268bc39b1808a130b9f8aca3ae8a780d26d88fb8fa85fa149e0fe4"
+      },
+      "limits": "Synthetic provider responses and actual bounded loopback OAuth callbacks. Registrations/live connections remain explicit setup dependencies; no real sends or Calendar grant expansion."
+    }
+  ],
+  "performance": {
+    "failedReport": {
+      "path": "/tmp/aux-paired155-334-descendant-2026-10-18T2234Z/report.json",
+      "sha256": "209cf60de329755dbb331f1c26a46b416149d834d40f68a00ffc483962e9d6c4"
+    },
+    "session": 78907,
+    "exit": 1,
+    "completeSamples": 0,
+    "cause": "NavigationInputToPresented is deliberately one-shot behind owner_->interactive_recorded_; cannot serve as a repeated ten-tab preparation barrier.",
+    "sourceCorrection": "Separate AuxPerf.FixturePresented boolean counter for distinct active admitted loopback fixture document presentation. All existing latency guards and target clocks retained. Aux/stock source changed identically in the common observer logic.",
+    "nativeArea": "0037-native-window-performance.patch",
+    "auxPatch": {
+      "path": "/tmp/aux-native-fixture-ready-2026-10-18/aux.patch",
+      "sha256": "78def2be0dbd6d8b80ba9f4434a254cd5ae594cc1916581ac2c426f7c1de385d"
+    },
+    "stockPatch": {
+      "path": "/tmp/aux-native-fixture-ready-2026-10-18/stock.patch",
+      "sha256": "c947011a14bc6913bb4bc82f4dba9a6f166b31d54f9b92bbb54bdbf93618568c"
+    },
+    "canonicalReplay": {
+      "path": "/tmp/aux-native-fixture-ready-replay-2026-10-18/proof.json",
+      "sha256": "5254c4c79595c1e9d42fdc33ae616e1c4403f411b07b234848c2d644c79c2dfc"
+    },
+    "areas": 69,
+    "pathsModes": 975,
+    "mismatches": 0,
+    "limit": "Counter uncompiled/unobserved; no qualified performance report yet. Rapid native navigation/new-tab focus state remains independently open."
+  },
+  "remaining": "Second agent batches (Theme-only native picker alignment, PDF artifact admission, exact Dream operation cancellation) are separate private fixes, not integrated or accepted yet. Native/full reference/long conversation/Dream/provider/browser/crash acceptance remains root-owned.",
+  "integratedCheck": {
+    "exit": 0,
+    "tests": 6121,
+    "files": 866,
+    "seconds": 102.81,
+    "runtimeDistRebuiltBeforeTests": true,
+    "nativeCompilerConcurrent": false,
+    "log": "/tmp/aux-parallel-batch1-integrated-2026-10-18.log",
+    "sha256": "b68ac6bf1ab7776c8e41bb104e509ba3be8e09f57b7df2ac70e0149fa30e1db8"
+  },
+  "benchmarkFocused": {
+    "tests": 16,
+    "failures": 0,
+    "log": "/tmp/aux-parallel-batch1-benchmark-focused-2026-10-18.log"
+  }
+}

@@ -8,6 +8,24 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [first parallel implementation batch](evidence/aside-parallel-integration-batch1-2026-10-18.json)
+is integrated in coherent local commits: reference-backed Tidy/Routines/selection
+controls, complete queued source/account binding, bounded Unicode Memory reads,
+and original-credential Google refresh publication/revocation fencing. Isolated
+focused checks and the combined full check pass: **6,121 tests / 866 files**
+in102.81s, with runtime dist rebuilt first and no concurrent native compiler.
+Native acceptance remains pending.
+Older queued fingerprints require review/resend, preserving messages without replay.
+The execution graph now assigns three isolated implementation lanes and root ownership
+of native builds, GUI, performance, crash and integration.
+
+The latest paired performance attempt also retires with0complete samples. Its
+new-tab preparation barrier incorrectly reused a deliberately one-shot cold
+navigation histogram. A separate fixture-document native presentation counter is
+now applied identically to Aux and stock observer logic; latency clocks/targets
+stay unchanged. All69areas/975paths and modes replay exactly. Both native builds
+and a live counter observation remain pending; no performance pass is claimed.
+
 The [benchmark focus follow-up](evidence/aside-perf-active-descendant-2026-10-18.json)
 recognizes the exact address combobox through its linked selected autocomplete row,
 retaining process/window/label ownership. A native diagnostic creates10fixture tabs,
