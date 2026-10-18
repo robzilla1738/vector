@@ -8,40 +8,42 @@ Older entries there are not current operating instructions.
 
 ## Current build ownership
 
-No accepted product preview is running. The last native product candidate is
-`c366c7dc8` (Chromium154, areas through0057); its disposable launcher retired
-normally. Area0058's redirect correction and area0059's compact Quick Ask still
-need native compilation and changed-flow acceptance.
+No accepted product preview is running. The last accepted unchanged product
+observations belong to `c366c7dc8` (Chromium154, areas through0057); its disposable
+launcher retired normally. Area0058 compiled in the155baseline and still needs
+changed-flow acceptance. Area0059's compact Quick Ask awaits native compilation.
 
-The Chromium155 migration is building in the isolated
-`aux-readiness-chromium` web worktree at frozen `96f772c6d`, branch
-`codex/chromium-155-security`. Source is
-`/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`, official
-155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`, with58native areas.
-GN generated36,045targets. The first cold build completed 40,613 objects before
-one WebSocket compile error: the old patch forwarded a storage-access argument
-that Chromium155 now owns on the connector. Owner90979 exited and released its
-lock normally. Area0007 now uses that constructor-bound state and removes the
-obsolete callback/helper argument; its changed hunks reverse-check successfully.
-Replacement owner67020 compiled that boundary and completed another12,628objects
-before a removed password-store callback type stopped the build. It exited and
-released its lock normally. Area0015 now consumes Chromium155's expected stored-
-credential result, converting values through its normal PasswordForm boundary.
-Owner85228 compiled both credential implementation and native controls objects
-successfully, then resumed the incremental build/temporary preview. Current log:
-`/tmp/aux-chromium-155-credential-build.log`. Earlier failure logs are
+The isolated `aux-readiness-chromium` worktree, branch
+`codex/chromium-155-security`, completed its58-area baseline at `96f772c6d`.
+Source is `/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`,
+official155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`.
+The first two cold attempts exposed a changed WebSocket storage-access callback
+and the removed password-store result type. Those boundaries were rebased in
+areas0007/0015; their original owners90979/67020 retired normally. Owner85228
+compiled both affected credential objects and completed the remaining build in
+29m28.15s (`/tmp/aux-chromium-155-credential-build.log`). All58areas replay across
+890owned paths with matching bytes/modes (`/tmp/aux-chromium-155-final-replay.log`).
+
+The155app launched as2370 with disposableProfile`aux-dev-USiBHb`. Its first
+runtime worker timed out awaiting `native.profileStorageFactor`; a subsequent
+worker reachedReady in46.66ms and answered the normal `runtime.describe` API.
+The sanitized receipt is `/tmp/aux-155-baseline-runtime.json`. The1s native sample
+was collected after the initial stall cleared and does not establish its cause.
+No storage-factor timeout workaround was introduced without diagnosis. Original
+launcher85228 then retired app/runtime/Profile/plainlock normally, all verified.
+
+Integrate current local main into this isolated candidate, retaining its155pin
+and rebased areas, then apply0059 and build/launch the latest complete source under
+one owner. Recheck fresh-Profile startup and capture the native stack during any
+recurrence. This is candidate integration; root main/product remain pinned154
+until migration and changed-flow acceptance are supported. Stable product/stock
+checkouts remain untouched. Earlier logs:
 `/tmp/aux-chromium-155-websocket-build.log` and
 `/tmp/aux-chromium-155-native-generated.log`.
-Do not start another native builder or clear its plain lock. That worktree predates the
-new provider and compact-surface commits. Accept the migration before merging its
-pin/rebased patches into local main, then stage the later source and area0059.
-The current main/product pin remains154 until migration evidence is ready.
-A fresh replay of all58areas reproduces all890owned paths byte-for-byte and with
-matching modes after the WebSocket and credential callback fixes
-(`/tmp/aux-chromium-155-final-replay.log`). This is patch coherence, not native
-runtime acceptance. Local fixture96158 serves address POST→303,302navigation and
-a synthetic test-card form at `http://127.0.0.1:4826` for the pending walkthrough;
-no form fields are logged. Its previous owner87871 retired normally.
+
+Local fixture96158 serves address POST→303,302navigation and a synthetic test-card
+form at `http://127.0.0.1:4826`; no form fields are logged. Its prior owner87871
+retired normally. This setup is not native acceptance.
 
 Native UI control currently reports `Sky Computer Use native pipe startup failed`,
 including after resetting its session. No current live Aside or Aux visual check
