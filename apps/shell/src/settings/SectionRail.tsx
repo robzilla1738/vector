@@ -13,7 +13,6 @@ import {
   shellIconFilter,
   shellIconLock,
   shellIconModel,
-  shellIconResult,
   shellIconPerson,
 } from "../ui/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
@@ -47,6 +46,8 @@ import {
   settingsIconRoutinesActive,
   settingsIconQuickAsk,
   settingsIconQuickAskActive,
+  settingsIconSelectionCapture,
+  settingsIconSelectionCaptureActive,
 } from "./rail-icons";
 
 interface RailItem {
@@ -203,7 +204,13 @@ const items: readonly RailItem[] = [
     icon: settingsIconQuickAsk,
     activeIcon: settingsIconQuickAskActive,
   },
-  { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
+  {
+    label: "Selection & Capture",
+    category: "Selection & Capture",
+    group: "Features",
+    icon: settingsIconSelectionCapture,
+    activeIcon: settingsIconSelectionCaptureActive,
+  },
   {
     label: "Developers",
     category: "Connections",

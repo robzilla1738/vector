@@ -15,6 +15,7 @@ export function SettingsDialogControl({
   label,
   action,
   actionIcon,
+  actionSize = "sm",
   navigation = false,
   defaultOpen = false,
   size = "regular",
@@ -25,6 +26,7 @@ export function SettingsDialogControl({
   label: string;
   action: string;
   actionIcon?: ReactNode;
+  actionSize?: "sm" | "md";
   navigation?: boolean;
   defaultOpen?: boolean;
   size?: "regular" | "wide";
@@ -71,8 +73,7 @@ export function SettingsDialogControl({
   return (
     <>
       <button
-        {...smallButtonProps}
-        className={navigation ? "icon-btn" : smallButtonProps.className}
+        className={navigation ? "icon-btn" : actionSize === "sm" ? smallButtonProps.className : "btn"}
         ref={trigger}
         type="button"
         aria-label={label}

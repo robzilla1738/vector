@@ -266,6 +266,7 @@ export function AppearanceSettings({
             label="Customize Tidy Tabs"
             action="Configure"
             actionIcon={shellIconSliders}
+            actionSize="md"
             showClose
           >
             {(close) => (
