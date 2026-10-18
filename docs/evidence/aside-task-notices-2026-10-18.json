@@ -31,11 +31,12 @@
   },
   "completeOriginalImageReview": {
     "path": "docs/evidence/aside-ui-original-image-review-2026-10-18.json",
-    "sha256": "90437e61171e1325d347cd74281be1a9db7406de10303670f11a7123d9ddf625",
-    "availableOriginalPngs": 182,
+    "sha256": "b7292ae079209d4f49153626296e8f6e23a522f8ffb9bcb675fd20fbb0772e86",
     "actuallyViewed": 182,
     "manifestEntries": 192,
-    "currentNativeComparison": false
+    "currentNativeComparison": false,
+    "availableOriginalImages": 182,
+    "fileFormat": "182 JPEG images with .png filenames; dimensions independently decoded and match manifest"
   },
   "remaining": [
     "Current native both-theme/narrow/interaction/accessibility acceptance.",

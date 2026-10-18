@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "sourceHead": "fecd35fdc74b02178c116dce5a6540c3eaabeb22",
   "captureRoot": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16",
   "manifestSha256": "8d8003155728d81ebe012869c4d434e3a72e3f2abc8a2f6a008043ef34383b44",
@@ -25,12 +25,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/001-new-tab-default.png",
       "imageSha256": "2b518230e2c1d351fcadf5cb3968a007d2fa4cbd228c27ead2c4ab44b0f2ceb9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "New tab default"
+      "observedState": "New tab default",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 2,
@@ -53,12 +57,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/002-new-tab-profile-menu.png",
       "imageSha256": "593741148df62fd659e59c5f60e8ae5fff8f76b2dcc77823a30a908bf0e3cfe6",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "New tab profile menu"
+      "observedState": "New tab profile menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 3,
@@ -81,12 +89,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/003-new-tab-ask-composer.png",
       "imageSha256": "c99b0244324c6c682e8671c8a64f5f50c3b27fe0bb53811cf1191dc18f247981",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "New tab ask composer"
+      "observedState": "New tab ask composer",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 4,
@@ -109,12 +121,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/004-new-tab-routines.png",
       "imageSha256": "665d5c8bae99d0807473ae77fb619a8fe2a71a4f159b526857c8ff38792488a9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "New tab routines"
+      "observedState": "New tab routines",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 5,
@@ -137,8 +153,8 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/005-new-tab-suggested-tasks.png",
       "imageSha256": "f1fe0025149cdd60d67c02177309b22b77a1b4400cc46159bb0d721d20559e64",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
@@ -147,7 +163,11 @@
       "currentSourceRechecked": [
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/SuggestedTasks.tsx",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/SuggestedTasks.css"
-      ]
+      ],
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 6,
@@ -170,12 +190,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/006-composer-options-dropdown.png",
       "imageSha256": "90b5ca810b74cd43a48d8ad4fcf1efcbd502eede9a6f5faf8f45cf71fe5ff037",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Composer options dropdown"
+      "observedState": "Composer options dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 7,
@@ -198,12 +222,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/007-composer-project-picker.png",
       "imageSha256": "5115fdfb8d8f809dfd55eac8d9038a2d4df6a7d08dee455f13b520285483605b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer project picker"
+      "observedState": "Composer project picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 8,
@@ -226,12 +254,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/008-composer-permission-guard.png",
       "imageSha256": "9d5481bd7efea072e969af406aed98deca9df3f293a4bbf3b343937acb912ba0",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer permission guard"
+      "observedState": "Composer permission guard",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 9,
@@ -254,12 +286,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/009-composer-model-picker.png",
       "imageSha256": "c56bb8b5b575da02a994e376f949e595d5e02b838656b3776e86a7fa06ea6786",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer model picker"
+      "observedState": "Composer model picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 10,
@@ -282,12 +318,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/010-composer-model-provider-row-focused.png",
       "imageSha256": "372a975664f1f87574435be855e59268333276de0138cf602c1339bca83e3d3b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer model provider row focused"
+      "observedState": "Composer model provider row focused",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 11,
@@ -310,12 +350,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/011-composer-aside-models-expanded.png",
       "imageSha256": "c86053b3f7dc0f50c29fa20f2b07b6ccc0b03bd9c36056461adc6346b7a9cb86",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer aside models expanded"
+      "observedState": "Composer aside models expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 12,
@@ -338,12 +382,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/012-composer-chatgpt-models-expanded.png",
       "imageSha256": "a0253cd366ab85fabd770116df404e4aaeed1e8f9aa16c5afbe04dd55ecbb052",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer chatgpt models expanded"
+      "observedState": "Composer chatgpt models expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 13,
@@ -366,12 +414,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/013-composer-reasoning-effort.png",
       "imageSha256": "8eaeb5019d3db431f1215cd235e5eacc30c2e793e16821a60c5aa89e46e909ea",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer reasoning effort"
+      "observedState": "Composer reasoning effort",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 14,
@@ -394,12 +446,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/014-composer-context-mention.png",
       "imageSha256": "a36f9c23e6eefb15ab872a5b8e639dd6486b7c9a400554f5cad5e8387f79ca20",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Composer context mention"
+      "observedState": "Composer context mention",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 15,
@@ -419,12 +475,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/015-settings-general-top.png",
       "imageSha256": "6f63ef11612e259a95918092cf615a6a644b224e30dd68155681cf5ed2ec4455",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings general top"
+      "observedState": "Settings general top",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 16,
@@ -444,12 +504,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/016-settings-search-engine-dropdown.png",
       "imageSha256": "e00390c478a7d7014b99aad33cac616032a6d25bd06aa56ece99daf113373daf",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings search engine dropdown"
+      "observedState": "Settings search engine dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 17,
@@ -469,12 +533,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/017-settings-new-tab-mode-dropdown.png",
       "imageSha256": "ff2cafff88ce51b41b26dd049e4783034bcf68231c1ca32b46bf5bfc31f0fdc4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings new tab mode dropdown"
+      "observedState": "Settings new tab mode dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 18,
@@ -494,12 +562,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/018-settings-language-configuration.png",
       "imageSha256": "728f890b43857c384d34dd12e888c9e03e55ffa5a6311ffbdce9315c1a943eb8",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings language configuration"
+      "observedState": "Settings language configuration",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 19,
@@ -519,12 +591,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/019-settings-add-language-dropdown.png",
       "imageSha256": "64a2bd347ebf2725147453100d0c8864c50655ce4a0e5bf3a6093902453168c5",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings add language dropdown"
+      "observedState": "Settings add language dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 20,
@@ -544,12 +620,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/020-settings-browser-import-dialog.png",
       "imageSha256": "ca95f7417168d732676bd901c87193b5a225454db78adcf2270aa29a152f954d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings browser import dialog"
+      "observedState": "Settings browser import dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 21,
@@ -569,12 +649,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/021-settings-import-browser-picker.png",
       "imageSha256": "84c29e91bfd35ef4d75708ce64269100af47a6d807997c707afa6ddc2d14bd66",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings import browser picker"
+      "observedState": "Settings import browser picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 22,
@@ -594,12 +678,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/022-settings-general-about-section.png",
       "imageSha256": "578f7886c50da6b4505d866f290f730613c5262b29e806e278d15fe5fd166322",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings general about section"
+      "observedState": "Settings general about section",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 23,
@@ -619,12 +707,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/023-settings-appearance-top.png",
       "imageSha256": "aa25ec12a8f69de4234910ba2e13e9dd145269796757619905429323874ef0c1",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings appearance top"
+      "observedState": "Settings appearance top",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 24,
@@ -644,12 +736,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/024-appearance-theme-dropdown.png",
       "imageSha256": "5fd203f4aa6ada9ee858aace60f21a1bbbf98d42dea645bff3f5ef0079488e4f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance theme dropdown"
+      "observedState": "Appearance theme dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 25,
@@ -669,12 +765,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/025-appearance-zoom-dropdown.png",
       "imageSha256": "e361f10b5ffd6333583507beb3cb24bbfb1ed4664f44013f80487eca148b25fb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance zoom dropdown"
+      "observedState": "Appearance zoom dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 26,
@@ -694,12 +794,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/026-appearance-tab-position-dropdown.png",
       "imageSha256": "12789f9b06ad17912872fab280e975fe35eb284275c36ea32dd6f3f635c51fd9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance tab position dropdown"
+      "observedState": "Appearance tab position dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 27,
@@ -719,12 +823,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/027-appearance-sidebar-sections-dropdown.png",
       "imageSha256": "63e2e43544d72ea44f788a9ad65d229dec007137b16ca19f5d43409573cae92d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance sidebar sections dropdown"
+      "observedState": "Appearance sidebar sections dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 28,
@@ -744,12 +852,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/028-appearance-recent-chats-dropdown.png",
       "imageSha256": "701732a2b903d667c06af31cc219bdcf7947b1645df66b4c7e3db70248778aae",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance recent chats dropdown"
+      "observedState": "Appearance recent chats dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 29,
@@ -769,12 +881,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/029-appearance-tab-order-dropdown.png",
       "imageSha256": "9ffc8614510be17b0fef9257e547b871a04c63b4fcb23156860de2d1c7c1694e",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance tab order dropdown"
+      "observedState": "Appearance tab order dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 30,
@@ -794,12 +910,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/030-appearance-tidy-tabs-configuration.png",
       "imageSha256": "98afb5adc713caac1544e9a9df8d68b65d8db529dc336f44a95dbd4345164fb4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Appearance tidy tabs configuration"
+      "observedState": "Appearance tidy tabs configuration",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 31,
@@ -819,12 +939,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/031-appearance-keyboard-shortcuts.png",
       "imageSha256": "21d2ffeba2d0c9c74d433015ff4e5be5d6d03f1c38b0fd2c227a060f2b2d288e",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Appearance keyboard shortcuts"
+      "observedState": "Appearance keyboard shortcuts",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 32,
@@ -844,12 +968,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/032-settings-account.png",
       "imageSha256": "c555d1d316e6bd3d551a39530c8bbac438d65999c72094122d26e84dd56e50ec",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings account"
+      "observedState": "Settings account",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 33,
@@ -869,12 +997,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/033-account-device-actions.png",
       "imageSha256": "1c75e383e59fa394de46e457812e8acefa1e74fe764d7d5ca377cd6134a61e73",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Account device actions"
+      "observedState": "Account device actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 34,
@@ -894,12 +1026,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/034-settings-plan-and-usage.png",
       "imageSha256": "276ba9b63f115254b58b6d677b606c1d6186c80dbe196aea8407f0f463f411f2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings plan and usage"
+      "observedState": "Settings plan and usage",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 35,
@@ -919,12 +1055,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/035-settings-plan-loaded.png",
       "imageSha256": "6a15d2dcd34bfc35d357e06294f05fa4b147728ef31010e1b70511c962ce8ff4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings plan loaded"
+      "observedState": "Settings plan loaded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 36,
@@ -944,12 +1084,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/036-plan-selection-dialog.png",
       "imageSha256": "a2501925aef3d2a0c3bc74c540b95336a2c7d91c431a7d1619894b2c728b5c81",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Plan selection dialog"
+      "observedState": "Plan selection dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 37,
@@ -969,12 +1113,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/037-plan-selection-yearly.png",
       "imageSha256": "af485ccff895eafb544f85b1b40894593617f439e93d82bab716dec6111236ee",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Plan selection yearly"
+      "observedState": "Plan selection yearly",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 38,
@@ -994,12 +1142,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/038-buy-credits-dialog.png",
       "imageSha256": "d1908d7d932d34f4939c0a25e84bc160e01118dca5a46b07a242e965dd11eff2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Buy credits dialog"
+      "observedState": "Buy credits dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 39,
@@ -1019,12 +1171,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/039-buy-credits-custom-input.png",
       "imageSha256": "63614c54f2f872aeefbdefcdf04c2a392a4f1ee3fb1e2b9661a9b42987062d77",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Buy credits custom input"
+      "observedState": "Buy credits custom input",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 40,
@@ -1044,12 +1200,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/040-settings-security-privacy.png",
       "imageSha256": "76d7d7da9fe9d9293cd652b41bdc1002859879d3ec9e3cc079c8e6f46075efd9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings security privacy"
+      "observedState": "Settings security privacy",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 41,
@@ -1069,12 +1229,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/041-security-adblock-filter-dialog.png",
       "imageSha256": "022aedc97cb5c12c5b4ba9054c629994ba12840ab48e329afae78c60a4105450",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Security adblock filter dialog"
+      "observedState": "Security adblock filter dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 42,
@@ -1094,12 +1258,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/042-security-filter-popover-dismissed.png",
       "imageSha256": "1b760441c77fd4f55d864e0669e1dcb6383fea676a4e0a09274252988dea0d4b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Security filter popover dismissed"
+      "observedState": "Security filter popover dismissed",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 43,
@@ -1119,8 +1287,8 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/043-security-filter-actions-expanded.png",
       "imageSha256": "e64e43b9edb784af668856eaa49cba3cc10faaf78e9176cc078d39b194e29091",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
@@ -1129,7 +1297,11 @@
       "currentSourceRechecked": [
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/FilterSettings.tsx",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/FilterListManager.tsx"
-      ]
+      ],
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 44,
@@ -1149,12 +1321,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/044-security-cookie-policy-dropdown.png",
       "imageSha256": "b4ce3f7fb0e6119451b8c52270563b1c0dfafb2fe7058ff7c91c6028792c3ee0",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Security cookie policy dropdown"
+      "observedState": "Security cookie policy dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 45,
@@ -1174,12 +1350,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/045-settings-agents.png",
       "imageSha256": "42732915e007ec220738b5634086294a1dab9067fef139380ee6e0249b86bcf4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings agents"
+      "observedState": "Settings agents",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 46,
@@ -1199,8 +1379,8 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/046-agents-notification-dropdown.png",
       "imageSha256": "f6035d16e6056d016bae651ceb1f4ab7805bdf9a401a1b495d427c3f6e1e4f9b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
@@ -1210,7 +1390,11 @@
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/agent/TaskAttentionSettings.tsx",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/agent/TaskAttentionSettings.css",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/ui/popover.css"
-      ]
+      ],
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 47,
@@ -1230,12 +1414,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/047-agents-default-permission-dropdown.png",
       "imageSha256": "1434e0964244dd22ae17c1a9f11b146f7e57da2af501fc6ad8908ce0f1c01033",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents default permission dropdown"
+      "observedState": "Agents default permission dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 48,
@@ -1255,12 +1443,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/048-agents-followup-behavior-dropdown.png",
       "imageSha256": "567f8f5ac1126fc39191795c68b1d913c49019e2d588808a09d042122c8fccfa",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents followup behavior dropdown"
+      "observedState": "Agents followup behavior dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 49,
@@ -1280,12 +1472,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/049-agents-tab-switch-dropdown.png",
       "imageSha256": "211c95e6f15ef4e50665abadbc08e89213badf95f2b3b9a21494ea57fc3a454d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents tab switch dropdown"
+      "observedState": "Agents tab switch dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 50,
@@ -1305,12 +1501,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/050-agents-cleanup-tabs-dropdown.png",
       "imageSha256": "cace300af25d73e8f5fc592b80b3f78e9c71fcc4dd256e25e88b9e1f3e75f29d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents cleanup tabs dropdown"
+      "observedState": "Agents cleanup tabs dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 51,
@@ -1330,12 +1530,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/051-agents-file-permissions-section.png",
       "imageSha256": "e8f30369ab107752f46dc6844b9007d220906497866691ff892c6c0141991c9f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents file permissions section"
+      "observedState": "Agents file permissions section",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 52,
@@ -1355,12 +1559,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/052-agents-tool-permissions-section.png",
       "imageSha256": "a3f7264a828469c0570e892b8f37658c46d689ae0ff96ffa56cdd7e0eb81c61b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents tool permissions section"
+      "observedState": "Agents tool permissions section",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 53,
@@ -1380,12 +1588,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/053-agents-add-rule-dialog.png",
       "imageSha256": "5592906d0340d5a7bbb9e0f352fda4743ac9298c5f86248a450310816ac26340",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Agents add rule dialog"
+      "observedState": "Agents add rule dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 54,
@@ -1405,12 +1617,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/054-agents-runtime-section.png",
       "imageSha256": "3d63f43c42d60f0ce03d8f744fbeec58168d2a248c8732eeb0be06c930ab3cbc",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Agents runtime section"
+      "observedState": "Agents runtime section",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 55,
@@ -1430,12 +1646,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/055-settings-projects.png",
       "imageSha256": "14e4210646b260d51d61481eafa733cbaa8f9f06b024685cbe6e2be979f7d2ae",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings projects"
+      "observedState": "Settings projects",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 56,
@@ -1455,12 +1675,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/056-project-create-dialog.png",
       "imageSha256": "c4894974d938c4cf7794a8cc4ef1dfa1cb1b847f088e6be21387e44cbb72f033",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Project create dialog"
+      "observedState": "Project create dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 57,
@@ -1480,12 +1704,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/057-project-icon-color-picker.png",
       "imageSha256": "8bba446567c59668a54bdc7f4605c165a089f0f0fb8b49b4b2f08008f1bd9373",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Project icon color picker"
+      "observedState": "Project icon color picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 58,
@@ -1505,12 +1733,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/058-settings-models.png",
       "imageSha256": "fd67f261a54642170596c2f47e20f313be7138d0fe58d11cb958fae47a4403b1",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings models"
+      "observedState": "Settings models",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 59,
@@ -1530,12 +1762,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/059-models-connect-provider-dialog.png",
       "imageSha256": "ebc00daa937e198a597dfa4d1ce76129a480b57f9015e0aeb2eb404768b72a91",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Models connect provider dialog"
+      "observedState": "Models connect provider dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 60,
@@ -1555,12 +1791,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/060-models-custom-provider-form.png",
       "imageSha256": "0302b04f2f171544fdc591e9942cc0402330ea74e1b88a2b273092cbd2222102",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Models custom provider form"
+      "observedState": "Models custom provider form",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 61,
@@ -1580,12 +1820,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/03 Agents projects and models/061-models-image-generation-dropdown.png",
       "imageSha256": "d74358a4090db9034fa9a7aef161573658cd213aea971a081030b2afcc4161a1",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Models image generation dropdown"
+      "observedState": "Models image generation dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 62,
@@ -1605,12 +1849,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/062-models-image-selector-dismissed.png",
       "imageSha256": "3db9eedd6407dac19f28760caa917f46602a62053ea9ab87a3b175e6d18b7a21",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Models image selector dismissed"
+      "observedState": "Models image selector dismissed",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 63,
@@ -1629,12 +1877,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/063-settings-plugins-loaded.png",
       "imageSha256": "fcf8ef9495e67a62f086e9aa17ad405201742d98b0e7df6fa2b726a5a4067293",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings plugins loaded"
+      "observedState": "Settings plugins loaded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 64,
@@ -1653,12 +1905,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/064-plugins-system-skills.png",
       "imageSha256": "57caa7cde8cc0e0b615a36f1e853fda736befef705e0c432aa4d43c39e38175c",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Plugins system skills"
+      "observedState": "Plugins system skills",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 65,
@@ -1677,12 +1933,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/065-plugins-password-manager-skills.png",
       "imageSha256": "dbdb5415ffd2c0023b55643913df0549bbeb47ee831cb3fa252e2bfe4068939a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Plugins password manager skills"
+      "observedState": "Plugins password manager skills",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 66,
@@ -1701,12 +1961,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/066-plugins-import-actions.png",
       "imageSha256": "ac142f27d723546827627561d82fb98a1026b7be53a415f24b43a2131381ed71",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Plugins import actions"
+      "observedState": "Plugins import actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 67,
@@ -1726,12 +1990,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/067-settings-mcps.png",
       "imageSha256": "f934166f03ce2865a4c5e4294d5373276d760ea326bb1807063c0e29495c7854",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings mcps"
+      "observedState": "Settings mcps",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 68,
@@ -1751,12 +2019,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/068-mcp-connect-dialog.png",
       "imageSha256": "733559d52d993963c4c694e66f34e406585d5fadc3dcaeb3c730a3b8ea2f08bb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Mcp connect dialog"
+      "observedState": "Mcp connect dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 69,
@@ -1776,12 +2048,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/069-mcp-transport-dropdown.png",
       "imageSha256": "22b9484d44961adcf5de7d839a0c542f0a49939982e2c5f5a212f03c05aa7c8e",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Mcp transport dropdown"
+      "observedState": "Mcp transport dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 70,
@@ -1801,12 +2077,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/070-mcp-authentication-dropdown.png",
       "imageSha256": "e09edc8fe942ab1b6a357712eac4c66eb31e3d7cf4e0cf5b4ac87735c97cf298",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Mcp authentication dropdown"
+      "observedState": "Mcp authentication dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 71,
@@ -1826,12 +2106,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/04 Skills and MCPs/071-mcp-advanced-settings.png",
       "imageSha256": "6a27d8741e4a3fcb7e2da467f7d13acefaaa55829f310ada651a967cd3ae9475",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Mcp advanced settings"
+      "observedState": "Mcp advanced settings",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 72,
@@ -1853,12 +2137,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/072-settings-memory.png",
       "imageSha256": "68c33b932700a456c8408740813819d974642ab7851a6974cf20ec91487cff19",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings memory"
+      "observedState": "Settings memory",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 73,
@@ -1880,12 +2168,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/073-memory-overview.png",
       "imageSha256": "1410bcd57179f50d57361db998f334e74ab862fbd3db6fafcda9c4afb9ab3f83",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Memory overview"
+      "observedState": "Memory overview",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 74,
@@ -1907,12 +2199,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/074-memory-history.png",
       "imageSha256": "0b0ee477a5e2429c63eeeab9914167e1bdd7f2934d0d54bc95bee27775baa2f1",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Memory history"
+      "observedState": "Memory history",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 75,
@@ -1934,12 +2230,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/075-memory-configuration.png",
       "imageSha256": "c5ecfaa98d065ae0a950843815abe2002434c701bf57ae59a7cb89c3f197e488",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Memory configuration"
+      "observedState": "Memory configuration",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 76,
@@ -1961,12 +2261,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/076-memory-retention-dropdown.png",
       "imageSha256": "e313e370cdba0d3a9289d95e8b40d49d4467e3b73e57f12580ffb36aa73f10d0",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Memory retention dropdown"
+      "observedState": "Memory retention dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 77,
@@ -1985,12 +2289,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/077-settings-context-awareness.png",
       "imageSha256": "08878bb1c406ec13b4f6b9eb602ad64af652b73ead7b0be5725df475b3edc1bb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings context awareness"
+      "observedState": "Settings context awareness",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 78,
@@ -2009,12 +2317,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/078-settings-passwords.png",
       "imageSha256": "d083974d3e5148c7b6b75b5f2696675e16ce0ceaa1977065f190b3555a067563",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings passwords"
+      "observedState": "Settings passwords",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 79,
@@ -2033,12 +2345,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/079-passwords-vault-getting-started.png",
       "imageSha256": "e04511dab759f22a48842f87a1b231dc327892d60fb5a27941f5bdbc20dca4c2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Passwords vault getting started"
+      "observedState": "Passwords vault getting started",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 80,
@@ -2057,12 +2373,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/080-passwords-1password-menu.png",
       "imageSha256": "330e44512294f9010ce2003bfc62d384f182058ba22f1a9e096d33db1dfb5469",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Passwords 1password menu"
+      "observedState": "Passwords 1password menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 81,
@@ -2081,12 +2401,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/081-passwords-external-manager-picker.png",
       "imageSha256": "957a0bc9fad0dd4b60893eed9df398cba6a0efbbd1bf06a43b90f345f49a3ab5",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Passwords external manager picker"
+      "observedState": "Passwords external manager picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 82,
@@ -2105,12 +2429,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/05 Memory context and passwords/082-passwords-other-managers-expanded.png",
       "imageSha256": "58fee1c255b65ea519242017d1bd4b91ea7961772808d80babf2ab3f397f0460",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Passwords other managers expanded"
+      "observedState": "Passwords other managers expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 83,
@@ -2131,12 +2459,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/083-settings-routines.png",
       "imageSha256": "20f37257927b996eabafa682a79375b4010ee6ceb06e8636e4ade8a8e207b764",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings routines"
+      "observedState": "Settings routines",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 84,
@@ -2157,12 +2489,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/084-routine-create-form.png",
       "imageSha256": "3c480f5ce3db0508792c8827b80062c7e22fe4c608a32a1391d6d4dc0f742030",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine create form"
+      "observedState": "Routine create form",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 85,
@@ -2183,12 +2519,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/085-routine-repeat-dropdown.png",
       "imageSha256": "0222c8b825e76f4ea78f427fd17dbcec6f3692e48553733bd4ca12eab5d6c5bc",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine repeat dropdown"
+      "observedState": "Routine repeat dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 86,
@@ -2209,12 +2549,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/086-routine-time-picker.png",
       "imageSha256": "3ae0732aea4f898b95ade1a41da1d95968e01a89f42a3f5356f05c3d47ff6e6d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine time picker"
+      "observedState": "Routine time picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 87,
@@ -2235,12 +2579,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/087-routine-advanced-form.png",
       "imageSha256": "be3757f817ddb504fa7bcc44cc948ec6f6895a9b956f62dfc2b3317085cf7267",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Routine advanced form"
+      "observedState": "Routine advanced form",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 88,
@@ -2261,12 +2609,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/088-routine-type-dropdown.png",
       "imageSha256": "dc3616aed0ff17d2cf164e4dc5f946011ab2b8039b72e39bc7f882ba4af00c19",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine type dropdown"
+      "observedState": "Routine type dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 89,
@@ -2287,12 +2639,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/089-routine-environment-dropdown.png",
       "imageSha256": "842be39549b391491744cbd9052358d0e557dbb1ff0f7ba0d777e6739ced7f17",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine environment dropdown"
+      "observedState": "Routine environment dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 90,
@@ -2313,12 +2669,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/090-routine-permission-dropdown.png",
       "imageSha256": "462679c531af6e7943044eb2ce7b7bd73dd04b8b441a4aac5da65039949e9cfc",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Routine permission dropdown"
+      "observedState": "Routine permission dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 91,
@@ -2338,12 +2698,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/091-settings-channels.png",
       "imageSha256": "e1c0e659f235acc6852c24fb6cb6a11782dac1094f6c672d4dbc1cf34964b428",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings channels"
+      "observedState": "Settings channels",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 92,
@@ -2363,12 +2727,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/092-channels-add-menu.png",
       "imageSha256": "fab2b21414b8f8b046322d0ded7ab48efa7b39ce13f28ae2cfa32081a7b3d227",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Channels add menu"
+      "observedState": "Channels add menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 93,
@@ -2388,12 +2756,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/093-channel-slack-settings.png",
       "imageSha256": "67e5790d7adf98857002d0be9d423dee2d56a1ff607ed06052595f1e17ff1b3b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Channel slack settings"
+      "observedState": "Channel slack settings",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 94,
@@ -2413,12 +2785,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/094-channel-access-dropdown.png",
       "imageSha256": "72b4570e939fba2d352c584e1034c5d696a09a911d8e9f14b6b26247494dec8b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Channel access dropdown"
+      "observedState": "Channel access dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 95,
@@ -2438,12 +2814,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/095-channel-followup-dropdown.png",
       "imageSha256": "6bdbf44398cbf7ca592df76047162e047bfda5ca8324ad670f098aa25780a781",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Channel followup dropdown"
+      "observedState": "Channel followup dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 96,
@@ -2463,12 +2843,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/06 Routines and channels/096-channel-pairing-tab.png",
       "imageSha256": "da0d3132758a83e75cdd92dc057c8ee1e7d93b9280decb84982ddd07e79a34fd",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Channel pairing tab"
+      "observedState": "Channel pairing tab",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 97,
@@ -2489,12 +2873,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/097-settings-developers.png",
       "imageSha256": "3e336d56d1671694fe230e71a33ad10a071040a39450e2ace65de1759596afe9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings developers"
+      "observedState": "Settings developers",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 98,
@@ -2515,12 +2903,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/098-developers-cli-options-menu.png",
       "imageSha256": "514ff99114d2d4565a0c0db7581fc9b09092ab728bf11d1d012cf10dd47224e0",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Developers cli options menu"
+      "observedState": "Developers cli options menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 99,
@@ -2541,12 +2933,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/099-developers-skill-install-menu.png",
       "imageSha256": "fa569df3f60911286c5a20e1817ae8122be40b572104b04cd9eb469187491673",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Developers skill install menu"
+      "observedState": "Developers skill install menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 100,
@@ -2567,12 +2963,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/100-developers-mcp-setup-popover.png",
       "imageSha256": "92ec06db6c3e9c3f9bd40bb54c36911f310c693ec964f8750a73db7eb99e453b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Developers mcp setup popover"
+      "observedState": "Developers mcp setup popover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 101,
@@ -2593,12 +2993,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/101-developers-remote-control-popover.png",
       "imageSha256": "66c44e329a56787772a74bcbdf21821042e0173415c146164dec010e8959c41e",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Developers remote control popover"
+      "observedState": "Developers remote control popover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 102,
@@ -2619,12 +3023,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/102-developers-faqs-expanded.png",
       "imageSha256": "789ee600b02d601e3af5d9ea88737f3feacc2876509349726393ed82f0c710c4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Developers faqs expanded"
+      "observedState": "Developers faqs expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 103,
@@ -2644,12 +3052,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/103-settings-mini-popup.png",
       "imageSha256": "6f11cf9bac8d73ff9d5aa8aaa06266e90f921517067f32f8f2ece5c858117ba2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Settings mini popup"
+      "observedState": "Settings mini popup",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 104,
@@ -2669,12 +3081,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/104-mini-popup-shortcut-attempt-settings-remain.png",
       "imageSha256": "1d9d7a33f7d5855cc86b6fa1464c3592222f7a704e8e51258abd6cb2fc7a454c",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Mini popup shortcut attempt settings remain"
+      "observedState": "Mini popup shortcut attempt settings remain",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 105,
@@ -2693,12 +3109,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/105-settings-lasso.png",
       "imageSha256": "b3a74f65907a2774c7b40d8eb3a119b599b715881e85bacf987a161423a66f02",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings lasso"
+      "observedState": "Settings lasso",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 106,
@@ -2717,12 +3137,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/106-lasso-hotkey-dropdown.png",
       "imageSha256": "a43bb361a4ce176b6c069618983e6fb0f0a9841e1eb970463d6f4844403d512b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Lasso hotkey dropdown"
+      "observedState": "Lasso hotkey dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 107,
@@ -2741,12 +3165,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/107-lasso-add-shortcut-dialog.png",
       "imageSha256": "cbdf0344e9499906ec2d63d0a71ccc57525bb9d2030ebe6dd825a3619eb8d5a4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Lasso add shortcut dialog"
+      "observedState": "Lasso add shortcut dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 108,
@@ -2765,12 +3193,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/108-lasso-shortcut-action-dropdown.png",
       "imageSha256": "21bc2c7006cb6299a57b1dcd34fc5c76fced262fb848d27a1eded925ca0a6187",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Lasso shortcut action dropdown"
+      "observedState": "Lasso shortcut action dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 109,
@@ -2789,12 +3221,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/109-settings-archived-chats.png",
       "imageSha256": "d415260ebf4195498ee9a6a3f1a884187246bdd8026b39b10ede0c6831aeb86f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Settings archived chats"
+      "observedState": "Settings archived chats",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 110,
@@ -2812,12 +3248,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/110-feedback-menu.png",
       "imageSha256": "a58f73b54ef3b7c2c6373bcd377544c98e33298f94bcb52521e589c2b82a1496",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Feedback menu"
+      "observedState": "Feedback menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 111,
@@ -2836,12 +3276,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/07 Developers lasso and archive/111-archived-chat-actions.png",
       "imageSha256": "32fda8f49c9e723bcbc6e769ef3246c7b9b49a0a7d5ae542a76a33048a43c591",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Archived chat actions"
+      "observedState": "Archived chat actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 112,
@@ -2864,12 +3308,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/112-all-chats-page.png",
       "imageSha256": "5b303a39decbe77670c47bb2e2e11c48d6b93c6883858f01388d8967e97e1e82",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "All chats page"
+      "observedState": "All chats page",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 113,
@@ -2892,12 +3340,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/113-all-chats-loaded.png",
       "imageSha256": "63b77fb0bc2d16f380b45eeeb2198a95c4bcd9fd64af53cdafb5a5a32205b172",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "All chats loaded"
+      "observedState": "All chats loaded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 114,
@@ -2920,12 +3372,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/114-chats-filter-dropdown.png",
       "imageSha256": "32bfed57cd900bd302817a73040d99c62ac6f685b0ab7fd00207d71405469df5",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chats filter dropdown"
+      "observedState": "Chats filter dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 115,
@@ -2948,12 +3404,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/115-chats-sort-dropdown.png",
       "imageSha256": "ab4325429493238388820dc6bdd88c4df97847e52fd61eab3f437a3ffecb2422",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chats sort dropdown"
+      "observedState": "Chats sort dropdown",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 116,
@@ -2976,12 +3436,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/116-chats-search-expanded.png",
       "imageSha256": "3abbf0edea2a8b64fbb3ae153bd78da1eeaf33cca03e7d0b78a1a538567cd34d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chats search expanded"
+      "observedState": "Chats search expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 117,
@@ -3004,8 +3468,8 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/117-chats-card-view.png",
       "imageSha256": "513f0de60bdaa42afae35bb7148548ab0eecac4cb155fa259d9e2fd0c5aead90",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
@@ -3013,7 +3477,11 @@
       "currentSourceRechecked": [
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/chat-list/ChatCard.tsx",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/styles/surfaces.css"
-      ]
+      ],
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 118,
@@ -3036,12 +3504,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/118-chat-detail-open.png",
       "imageSha256": "9a6e99efa7b8947c04cfa34bc85b3337ef9f830722f105f2dadf1508db17da53",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Chat detail open"
+      "observedState": "Chat detail open",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 119,
@@ -3064,12 +3536,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/119-chat-header-actions.png",
       "imageSha256": "93a6b29b4235f5a0899e829befa4aa8d9993ff5e73938f3e9214298a21f057b0",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat header actions"
+      "observedState": "Chat header actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 120,
@@ -3092,12 +3568,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/120-chat-share-popover.png",
       "imageSha256": "fcdcca3126426a1ac6dfff44aa8627f6427f05632085ebc12227552f48a1e26a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat share popover"
+      "observedState": "Chat share popover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 121,
@@ -3120,12 +3600,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/121-chat-sidebar-expanded.png",
       "imageSha256": "552c32d5680c28367d5b75e5fc78ee73fe575db352e9bbf151c0a2d03fc2099a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat sidebar expanded"
+      "observedState": "Chat sidebar expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 122,
@@ -3148,12 +3632,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/122-chat-sidepanel-add-menu-attempt.png",
       "imageSha256": "0ba76e6d5943c0e5df7a5b02ad965bf1d951fb6ef72e110872dbd5bb0a6685de",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat sidepanel add menu attempt"
+      "observedState": "Chat sidepanel add menu attempt",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 123,
@@ -3176,12 +3664,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/123-chat-new-side-chat.png",
       "imageSha256": "bf9943c56f0d7924af965e4cc22dce9b8528e1faf7ee938bc40d5abee1764de7",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat new side chat"
+      "observedState": "Chat new side chat",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 124,
@@ -3204,12 +3696,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/124-chat-work-log-expanded.png",
       "imageSha256": "c808ff273087dfe062a5a2fbdf89da16ce99b59c42d6ab1d24cbd0e128fdd143",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat work log expanded"
+      "observedState": "Chat work log expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 125,
@@ -3232,12 +3728,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/125-chat-citation-attempt-scrolled-transcript.png",
       "imageSha256": "552d0f1b4b17e9d90d48f417bbed616a67df8535c686575c9c4775d3a6bb03b4",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat citation attempt scrolled transcript"
+      "observedState": "Chat citation attempt scrolled transcript",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 126,
@@ -3260,12 +3760,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/126-chat-inline-image-reference.png",
       "imageSha256": "3f7b3b0e0585106f101bd325fbc425106619aa1e4dd91a599b612d52df171c0b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat inline image reference"
+      "observedState": "Chat inline image reference",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 127,
@@ -3287,12 +3791,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/127-browser-tab-search.png",
       "imageSha256": "d8a761242cb0126b8d6553722145a6bfa3e09cb0c223c89537911656438a2495",
       "pixelSize": [
-        4718592,
-        4292935744
+        1240,
+        680
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser tab search"
+      "observedState": "Browser tab search",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 128,
@@ -3314,12 +3822,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/128-browser-workspace-profile-menu-attempt.png",
       "imageSha256": "9516c24e57e921e209ff571b8625d7e48ee335af3407781a914c8bdee96cdf22",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser workspace profile menu attempt"
+      "observedState": "Browser workspace profile menu attempt",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 129,
@@ -3341,12 +3853,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/129-browser-profile-actions-attempt.png",
       "imageSha256": "4d3064f9950c41976aac91d7c9230b192b89540b4c6700caa6b404f2eaee51bd",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser profile actions attempt"
+      "observedState": "Browser profile actions attempt",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 130,
@@ -3368,12 +3884,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/130-browser-sidebar-collapsed.png",
       "imageSha256": "e319504984975c4e606a151f01a966c9cff29614461ab6e5335275329d5f3b5a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser sidebar collapsed"
+      "observedState": "Browser sidebar collapsed",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 131,
@@ -3395,12 +3915,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/131-browser-sidebar-collapsed-clean.png",
       "imageSha256": "d8ff2d8d546153b9d1f6e2cd1df85e7ace73a6cc43fd3c7cf61532136ee3977b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser sidebar collapsed clean"
+      "observedState": "Browser sidebar collapsed clean",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 132,
@@ -3422,12 +3946,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/132-browser-downloads-popover.png",
       "imageSha256": "0b67cc38041a9c248a9cc3cfe088373420e226f3abdf296dd28888668318148d",
       "pixelSize": [
-        4718592,
-        4292935744
+        640,
+        1088
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Browser downloads popover"
+      "observedState": "Browser downloads popover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 133,
@@ -3449,12 +3977,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/133-browser-extensions-popover.png",
       "imageSha256": "491ec4d579b49426dd6ca98423703e5b1093b3cc7d7afc635a3c48ec45665f5d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser extensions popover"
+      "observedState": "Browser extensions popover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 134,
@@ -3476,12 +4008,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/134-browser-address-bar-focused.png",
       "imageSha256": "2ecb565008c112ec835212a6456d11990bc60ca769879e285a78e36332a29541",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser address bar focused"
+      "observedState": "Browser address bar focused",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 135,
@@ -3503,12 +4039,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/135-browser-bookmark-all-tabs-dialog.png",
       "imageSha256": "2ce3a5ba6fcc956eda049203c6ae39ff7f2665707ded2412d37a93a773364203",
       "pixelSize": [
-        4718592,
-        4292935744
+        1024,
+        1172
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser bookmark all tabs dialog"
+      "observedState": "Browser bookmark all tabs dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 136,
@@ -3658,12 +4198,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/146-browser-sidebar-restored.png",
       "imageSha256": "d1ec02b2a108a57c45f3f43fda0ae3c43fd25388851d642437ad9d561d67c78d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser sidebar restored"
+      "observedState": "Browser sidebar restored",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 147,
@@ -3683,12 +4227,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/147-browser-tabs-section-hover.png",
       "imageSha256": "d06a6b954d84a3a3118b71db40607686340a220ce4daa68f8b05fddaf9e7bbeb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser tabs section hover"
+      "observedState": "Browser tabs section hover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 148,
@@ -3708,12 +4256,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/148-browser-bookmarks-section-hover.png",
       "imageSha256": "13a8af47aac2866f271597168cf0e8930bf19a8f67a732580426534cb1f9485d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser bookmarks section hover"
+      "observedState": "Browser bookmarks section hover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 149,
@@ -3733,12 +4285,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/149-browser-pinned-tab-hover.png",
       "imageSha256": "50dd27c859e49529cb0ebb46936a685a146d0efafa8e328f7928b85b7652e91a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3404,
+        1966
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser pinned tab hover"
+      "observedState": "Browser pinned tab hover",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 150,
@@ -3758,12 +4314,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/150-browser-tab-context-inventory-with-window.png",
       "imageSha256": "3246fd27e72c0e41e7abe15725337eb8aec607baa5f99a13a40d673fe6890d6c",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser tab context inventory with window"
+      "observedState": "Browser tab context inventory with window",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 151,
@@ -3783,12 +4343,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/151-chat-first-work-log-expanded.png",
       "imageSha256": "f83e05df4f6ff5a7436deaccee14641b0b41f09057a3d51283e4161b05820c07",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat first work log expanded"
+      "observedState": "Chat first work log expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 152,
@@ -3808,12 +4372,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/152-chat-work-trace-visible.png",
       "imageSha256": "c6d9095cf2410e6bb00d887a43b0a78ec995b89ebfd6a525dc4b99a2cf505389",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat work trace visible"
+      "observedState": "Chat work trace visible",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 153,
@@ -3833,12 +4401,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/153-chat-tool-activity-expanded.png",
       "imageSha256": "5bb2c963241f768ce301c2736a8a0864ef3db20609be084d9d543ebb865bd899",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat tool activity expanded"
+      "observedState": "Chat tool activity expanded",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 154,
@@ -3858,12 +4430,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/154-chat-tool-call-details.png",
       "imageSha256": "4db1eaa990990804341a727e9777feb5d363137aceb43f4ce09d52366dc1ca65",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "prior frozen37-image visual review",
-      "observedState": "Chat tool call details"
+      "observedState": "Chat tool call details",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 155,
@@ -3883,12 +4459,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/155-chat-new-empty.png",
       "imageSha256": "29e7f862d177f1e9c0d5891e2e81d53ae04da2af7124f6067aac157c7d7effe3",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat new empty"
+      "observedState": "Chat new empty",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 156,
@@ -3908,12 +4488,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/156-chat-skill-mention-picker.png",
       "imageSha256": "b5dfcd6efe3ebf43a9dea31ac75fcd0dde84436b7f0f0dfc6ad6432bcb9e121b",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat skill mention picker"
+      "observedState": "Chat skill mention picker",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 157,
@@ -3933,12 +4517,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/08 Chats and activity/157-chat-composer-options.png",
       "imageSha256": "11bc588ea39a015d6be86303d9107cd742dfad6ea281d1d592fcd2fbcac5689a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Chat composer options"
+      "observedState": "Chat composer options",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 158,
@@ -3957,12 +4545,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/158-browser-profile-open-error-dialog.png",
       "imageSha256": "508ed8665b513f48f9fb59c7c5973cf5a8f96e8351f8327262564cff2ea86fa3",
       "pixelSize": [
-        4718592,
-        4292935744
+        520,
+        416
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser profile open error dialog"
+      "observedState": "Browser profile open error dialog",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 159,
@@ -3981,12 +4573,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/159-browser-fresh-profile-onboarding.png",
       "imageSha256": "bc05abfd30bdc9063d9ffd65815c30851007b0194ab24e3698768fb3bafb2917",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser fresh profile onboarding"
+      "observedState": "Browser fresh profile onboarding",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 160,
@@ -4005,12 +4601,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/160-browser-profile-edit-menu.png",
       "imageSha256": "2bcc1999ddbb5bb3a990877d8eacb4fdc0ad7b066fb5af393efa46ff679886c9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser profile edit menu"
+      "observedState": "Browser profile edit menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 161,
@@ -4029,12 +4629,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/161-browser-profile-actions-current.png",
       "imageSha256": "fb0322dad901aa642a9f0408c16053e99cf86bfc45f3fc60cd1ccff2b5a6473d",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser profile actions current"
+      "observedState": "Browser profile actions current",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 162,
@@ -4053,12 +4657,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/162-browser-profile-switcher-visible.png",
       "imageSha256": "9fca4c785f6237e4c9107dbdccc605fb88ef4c575bf197957df67514a07686ca",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser profile switcher visible"
+      "observedState": "Browser profile switcher visible",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 163,
@@ -4077,12 +4685,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/163-browser-history-submenu.png",
       "imageSha256": "d6318ee386efe6b458b587577b2e5fa6b042678e3c8a096d0495efb708905eb9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser history submenu"
+      "observedState": "Browser history submenu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 164,
@@ -4101,12 +4713,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/164-browser-history-page.png",
       "imageSha256": "863cd19b08c8f0c40b0c171ba439de0d0c0edfabb180adc545a6cf6326fd11cb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser history page"
+      "observedState": "Browser history page",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 165,
@@ -4125,12 +4741,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/165-history-group-view.png",
       "imageSha256": "ac816982d754ce0218b73ea8196a54b4bcb4bad2ec7e3cc9a1ddea8dca278486",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "History group view"
+      "observedState": "History group view",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 166,
@@ -4149,12 +4769,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/166-history-item-actions.png",
       "imageSha256": "47bfb9c53ed9173f15c62a02a58bf7f248d05f2072179e26c8c8da508d8aedc9",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "History item actions"
+      "observedState": "History item actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 167,
@@ -4173,12 +4797,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/167-browser-bookmarks-submenu.png",
       "imageSha256": "2bb17bb6768f373a5582a8c63d8bcda65ade09129ce231bb9e972955b1ae1357",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser bookmarks submenu"
+      "observedState": "Browser bookmarks submenu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 168,
@@ -4197,12 +4825,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/168-browser-bookmark-manager.png",
       "imageSha256": "f5f504e878c88c13fc6b6f312f279bcb79701a0d9e88832cdf1464017a51daf1",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser bookmark manager"
+      "observedState": "Browser bookmark manager",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 169,
@@ -4221,12 +4853,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/169-bookmarks-organize-menu.png",
       "imageSha256": "3691fdd8cb3879e5cbd007f6e2ef4028251997ddb339343af4dac6df4b1abfde",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Bookmarks organize menu"
+      "observedState": "Bookmarks organize menu",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 170,
@@ -4245,12 +4881,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/170-bookmark-item-actions.png",
       "imageSha256": "ad6a8122b8ac6f837fa44bbe7d6b63ab13efc9c0db46ea59fdc37f01a093945f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Bookmark item actions"
+      "observedState": "Bookmark item actions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 171,
@@ -4266,12 +4906,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/171-browser-advanced-security.png",
       "imageSha256": "56458d948a00b7df3d92d5f9f18e963f84b353463f412fc581c0170f8926004f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser advanced security"
+      "observedState": "Browser advanced security",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 172,
@@ -4287,12 +4931,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/172-browser-settings-profile.png",
       "imageSha256": "00a4214c12e3ddf89f7d670a90eb45efabf5ae80e9219797082dea3de6137c5f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings profile"
+      "observedState": "Browser settings profile",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 173,
@@ -4308,12 +4956,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/173-browser-settings-autofill.png",
       "imageSha256": "6204770c0e053295bbd71dbde242ce91c9ef1b3da4d69a4de48ec728d3d1afe7",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings autofill"
+      "observedState": "Browser settings autofill",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 174,
@@ -4329,12 +4981,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/174-browser-settings-privacy.png",
       "imageSha256": "97585da6340442d58cd954c71dba68469ae78adba2973348b2f654bb4cf51b8e",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings privacy"
+      "observedState": "Browser settings privacy",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 175,
@@ -4350,12 +5006,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/175-browser-settings-performance.png",
       "imageSha256": "5a2e86bf2f8c87a90fcee1e1bb59878f1ec04a33000429e18993632fa9a9795c",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings performance"
+      "observedState": "Browser settings performance",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 176,
@@ -4371,12 +5031,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/176-browser-settings-appearance.png",
       "imageSha256": "cd521fbb6818b439dfe3453240302412952585c7f23e2f0ea884bca73be20835",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings appearance"
+      "observedState": "Browser settings appearance",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 177,
@@ -4392,12 +5056,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/177-browser-settings-search-engine.png",
       "imageSha256": "c96b8709eba83c55e4b5f65b2e3be35f9534cf0d8bb86fdedb3c941159e186af",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings search engine"
+      "observedState": "Browser settings search engine",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 178,
@@ -4413,12 +5081,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/178-browser-settings-default-browser.png",
       "imageSha256": "e7c6c3ace6f61a5a8add906777807c936f3f325f6de955de23337b8fb77217eb",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings default browser"
+      "observedState": "Browser settings default browser",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 179,
@@ -4434,12 +5106,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/179-browser-settings-startup.png",
       "imageSha256": "f4a378b32a032e579b00bfcb29e1408ca2da15d3a32d01d4fd9dce3002eb6d00",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings startup"
+      "observedState": "Browser settings startup",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 180,
@@ -4455,12 +5131,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/180-browser-settings-languages.png",
       "imageSha256": "302c57b35570dc7a764db911695213f0d0f583df058b2eecb77067d7d07994d2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings languages"
+      "observedState": "Browser settings languages",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 181,
@@ -4476,12 +5156,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/181-browser-settings-downloads.png",
       "imageSha256": "2ba185f746dc08b5472849ccf63e94d7c601cd543534512be90314c273635c75",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings downloads"
+      "observedState": "Browser settings downloads",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 182,
@@ -4497,12 +5181,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/182-browser-settings-accessibility.png",
       "imageSha256": "fb9d8c2c99f39a608fdaf6507a6745f75a956ea6ad1c6214f1d6d0f6a8b1ba47",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings accessibility"
+      "observedState": "Browser settings accessibility",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 183,
@@ -4518,12 +5206,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/183-browser-settings-system.png",
       "imageSha256": "a0596c48ef2fff286e7b2e07b7a26b8ee2935e88dddb5832fc19d37362d1a729",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings system"
+      "observedState": "Browser settings system",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 184,
@@ -4539,12 +5231,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/184-browser-settings-reset.png",
       "imageSha256": "dc00fb9bd6f5ab057f2c91a3f094d770fa3b882712a23b2d8521b792fa2ceebd",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser settings reset"
+      "observedState": "Browser settings reset",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 185,
@@ -4560,12 +5256,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/185-browser-third-party-cookies.png",
       "imageSha256": "051e70cf337be54acf29f41cd0e87e522a9605bc2e301437c35077e8b3bfedae",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser third party cookies"
+      "observedState": "Browser third party cookies",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 186,
@@ -4581,12 +5281,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/186-browser-site-settings-top.png",
       "imageSha256": "a8507f658a3d078be6bfcabdc9113a6a27cf8fd63c3af334f5324b937e3c5f5f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser site settings top"
+      "observedState": "Browser site settings top",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 187,
@@ -4602,12 +5306,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/187-browser-location-permission-page.png",
       "imageSha256": "028f5343309bd59b03c79f6d9c48047c1b5df75376959643ac1a7344290c00f2",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser location permission page"
+      "observedState": "Browser location permission page",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 188,
@@ -4623,12 +5331,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/188-browser-camera-permissions.png",
       "imageSha256": "86efa9dbdb6b66fc34b53fb942d57c426e28089a7fc2a3436ebdce64896da89f",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser camera permissions"
+      "observedState": "Browser camera permissions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 189,
@@ -4644,12 +5356,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/189-browser-microphone-permissions.png",
       "imageSha256": "db26621c83b75c2cd5a24a55835ac6899decb58b83c1efa4c366cba0a51f2310",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser microphone permissions"
+      "observedState": "Browser microphone permissions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 190,
@@ -4665,12 +5381,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/190-browser-notification-permissions.png",
       "imageSha256": "44665ac8c4063653a2f9e9dd818bc533ef4d13f0e2c463f9d3f3432b67509bfa",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser notification permissions"
+      "observedState": "Browser notification permissions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 191,
@@ -4686,12 +5406,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/191-browser-embedded-content-permissions.png",
       "imageSha256": "7c6b5981188e930e9b3add80dcad1e0f76a2ceb62909b7a3e9322dd4d34af729",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser embedded content permissions"
+      "observedState": "Browser embedded content permissions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     },
     {
       "id": 192,
@@ -4707,12 +5431,16 @@
       "imagePath": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/11 Underlying browser settings/192-browser-javascript-permissions.png",
       "imageSha256": "7665e16dd795c8316520862fc7db8a25008313c7d560e907e4ed8953c057a16a",
       "pixelSize": [
-        4718592,
-        4292935744
+        3424,
+        1978
       ],
       "actuallyViewed": true,
       "viewEvidence": "2026-10-18 original PNG full-surface review via view_image",
-      "observedState": "Browser javascript permissions"
+      "observedState": "Browser javascript permissions",
+      "imageFormat": "JPEG",
+      "imageMediaType": "image/jpeg",
+      "manifestDimensionsMatch": true,
+      "dimensionsEvidence": "Pillow 11.3.0 Image.open + complete Image.load; no image writes"
     }
   ],
   "totalEntries": 192,
@@ -4721,14 +5449,14 @@
   "newOriginalViews": 145,
   "priorOriginalViews": 37,
   "notes": [
-    "182/182 available original PNGs actually inspected across prior37 and this145; all192 entries retain their exact IDs/filenames and text inventory. No thumbnail/contact sheet substituted for a full image read.",
-    "Full-surface original3424\u00d71978 PNGs returned at2048\u00d71183 by image display; native crop127 and135/158 viewed at their supplied sizes. These are sufficient to inspect layout/text; this pass does not establish subpixel measurements or current native rendered equality.",
+    "182/182 available original image files (named .png; decoded as JPEG) actually inspected across prior37 and this145; all192 entries retain exact IDs/filenames and text inventory. No thumbnail/contact sheet substituted for full image reads.",
+    "Decoder verified actual originals against manifest dimensions. Most full-surface originals are3424×1978 and image display returned2048×1183; supplied native crops retain their decoder-measured sizes below. Manual review did not establish subpixel geometry or current native rendered equality.",
     "005/159 suggested-task illustration cards exist in actual Aux SuggestedTasks with real draft/settings actions; no new missing-feature finding.117 square result-bearing cards likewise have existing ChatCard/ResultExcerpt rendering; no unproven missing-thumbnail claim.",
-    "032\u2013039 account/credits/plan purchase and remote-host/vendor/password setup remain explicit semantic adaptations or unsupported capabilities; no Aside billing or fabricated connection states are imported.",
-    "104 is a shortcut attempt with Settings remaining visible, not evidence that Aside Quick Ask opened.042/062 are dismissed/supplemental states;151 first work-log attempt remains collapsed.136\u2013145 have text only.",
-    "171\u2013192 are underlying Chromium settings, separate from custom Aux Settings. Existing native Chromium155 implementation/branding is their source mapping; actual matching native observations remain required.",
-    "Prior P01\u2013P05/L01\u2013L06 source corrections are present in fecd35. L07 detailed trace/L08 turn navigation are assigned separately; hosted sharing/side-chat/feedback/native-menu deviations remain in prior ledger and are not silently cleared.",
-    "Corrected historical inventory actualPngSize/logicalReferenceSize: previous code read the wrong PNG offsets. New pixelSize reads PNG IHDR16..24; raw original hashes and manifest width/height were unaffected. No pixel-diff tool used."
+    "032–039 account/credits/plan purchase and remote-host/vendor/password setup remain explicit semantic adaptations or unsupported capabilities; no Aside billing or fabricated connection states are imported.",
+    "104 is a shortcut attempt with Settings remaining visible, not evidence that Aside Quick Ask opened.042/062 are dismissed/supplemental states;151 first work-log attempt remains collapsed.136–145 have text only.",
+    "171–192 are underlying Chromium settings, separate from custom Aux Settings. Existing native Chromium155 implementation/branding is their source mapping; actual matching native observations remain required.",
+    "Prior P01–P05/L01–L06 source corrections are present in fecd35. L07 detailed trace/L08 turn navigation are assigned separately; hosted sharing/side-chat/feedback/native-menu deviations remain in prior ledger and are not silently cleared.",
+    "v3 supersedes the erroneous v2 dimension metadata: file extension was not MIME. Pillow11.3.0 decoded all182 JPEG originals, verified manifest width/height and preserved original hashes. Previous v2 JSON remains immutable with its recorded SHA256. No pixel-diff tool or image edits used."
   ],
   "newFindings": [
     {
@@ -4738,7 +5466,7 @@
       ],
       "kind": "confirmed source geometry/material-role divergence",
       "reference": "Dropdown menu w-72 (288px), canonical dropdown checkbox rows, 2px stacked-title gap. Original PNG046 independently shows compact three-row checkbox dropdown; extracted current reference agents-CH7tvxG0.js confirms w-72 and flex-col gap-0.5.",
-      "current": "TaskAttentionSettings.tsx95 uses generic Popover (22.4px radius) rather than menu (16.8px). TaskAttentionSettings.css48 row radius5.6px, padding6px/10px, gap12px;55 fixes width308px. Generic popover.css70\u201371 font:inherit overrides row line-height with inherited14px/21px; small description inherits this computed line-height. Description margin3px differs from reference2px.",
+      "current": "TaskAttentionSettings.tsx95 uses generic Popover (22.4px radius) rather than menu (16.8px). TaskAttentionSettings.css48 row radius5.6px, padding6px/10px, gap12px;55 fixes width308px. Generic popover.css70–71 font:inherit overrides row line-height with inherited14px/21px; small description inherits this computed line-height. Description margin3px differs from reference2px.",
       "paths": [
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/agent/TaskAttentionSettings.tsx:95",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/agent/TaskAttentionSettings.css:41",
@@ -4753,7 +5481,7 @@
       ],
       "kind": "confirmed missing interaction/capability distinction",
       "reference": "Split Configure control separates filter-list selection from Update/Clear cache/Debug menu.",
-      "current": "FilterSettings.tsx60\u201373 has a single Configure button opening list selection; FilterListManager.tsx236\u2013247 exposes functioning Update enabled lists only inside manager. No verified Aux clear-filter-cache or filter-debug bridge route found. This is not fixed by canonical row styles.",
+      "current": "FilterSettings.tsx60–73 has a single Configure button opening list selection; FilterListManager.tsx236–247 exposes functioning Update enabled lists only inside manager. No verified Aux clear-filter-cache or filter-debug bridge route found. This is not fixed by canonical row styles.",
       "paths": [
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/settings/sections/FilterSettings.tsx:60",
         "/Users/rcourson/Documents/Vibe/web/apps/shell/src/components/FilterListManager.tsx:236"
@@ -4775,5 +5503,63 @@
     "/Users/rcourson/Documents/Vibe/web/apps/shell/src/ui/dialog.css": "e429fe1b2b56094a77c5bc2dc3aea32f6262d34788691b4363b27b90e76eceac",
     "/Users/rcourson/Documents/Vibe/web/apps/shell/src/ui/popover.css": "be8a6f60b57f35f312a20748d5f553b7ccfceec8503aad826ce3d0ce320b9b3c"
   },
-  "priorLedger": "/tmp/aux-ui-completeness-2026-10-18-v1.json"
+  "priorLedger": "/tmp/aux-ui-completeness-2026-10-18-v1.json",
+  "metadataCorrection": {
+    "previousArtifact": "/tmp/aux-ui-original-images-fecd35-2026-10-18-v2.json",
+    "previousCommittedPath": "docs/evidence/aside-ui-original-image-review-2026-10-18.json",
+    "previousSha256": "90437e61171e1325d347cd74281be1a9db7406de10303670f11a7123d9ddf625",
+    "reason": "v2 incorrectly assumed .png filenames contained PNG bytes and interpreted JPEG JFIF header bytes16..24 as PNG IHDR dimensions. All182 v2 pixelSize values were invalid. Decode format rather than trust extension.",
+    "decoder": "Pillow 11.3.0",
+    "verification": "All182 originals completely decoded read-only; original SHA256 matched v2 before and after decode; all decoder dimensions equal original manifest width/height. No capture pixels, source mappings or actuallyViewed/view evidence fields changed.",
+    "formatCounts": {
+      "JPEG": 182
+    },
+    "pixelSizeCounts": [
+      {
+        "pixelSize": [
+          520,
+          416
+        ],
+        "count": 1
+      },
+      {
+        "pixelSize": [
+          640,
+          1088
+        ],
+        "count": 1
+      },
+      {
+        "pixelSize": [
+          1024,
+          1172
+        ],
+        "count": 1
+      },
+      {
+        "pixelSize": [
+          1240,
+          680
+        ],
+        "count": 1
+      },
+      {
+        "pixelSize": [
+          3404,
+          1966
+        ],
+        "count": 1
+      },
+      {
+        "pixelSize": [
+          3424,
+          1978
+        ],
+        "count": 177
+      }
+    ],
+    "manualViewsUnchanged": true,
+    "nativeComparisonAdded": false,
+    "scopeLimit": "This is dimension/MIME metadata correction, not a new source/native parity assessment. Invalid v2 pixelSize fields must not be used as measurement evidence."
+  }
 }

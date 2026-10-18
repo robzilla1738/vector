@@ -39,7 +39,7 @@ restoration, without overwriting newer results or replaying inference. Independe
 fault tests reproduce both failures and verify the fix; current native populated
 Dream acceptance remains open. [The Memory integration record](evidence/aside-memory-boundaries-2026-10-18.json)
 records exact patches, independent review and limitations. All182 original reference
-PNGs have now been manually inspected in the source audit; this is not all-surface
+images have now been manually inspected in the source audit; this is not all-surface
 native comparison. Remaining native states and confirmed feature-menu gaps continue.
 
 The current renderer parity slice removes Sidebar More's custom35px/12px rows
@@ -61,10 +61,13 @@ Task notification types now use the canonical288px menu and checkbox rows,
 with actual three-choice preferences,2px title/description spacing and existing
 focus/keyboard behavior. Sound selection remains its distinct Popover. The
 [complete original-image source ledger](evidence/aside-ui-original-image-review-2026-10-18.json)
-records all192 entries and182 actual original PNG views, with exact hashes and
-source mappings. It corrects an older PNG-size header-offset calculation without
-changing original files or manifest dimensions. Display-scale limits and remaining
-native comparisons are explicit; this is not182 matched native acceptances.
+records all192 entries and182 actual original-image views, with exact hashes and
+source mappings. All182 files named `.png` actually contain JPEG images. Full
+read-only decoding confirms every dimension matches the original manifest and
+every image hash is unchanged. Version3 corrects invalid dimensions from the
+previous PNG-header assumption; that superseded ledger remains in Git history
+and its exact hash is recorded. Display-scale limits and remaining native
+comparisons are explicit; this is not182 matched native acceptances.
 [Notification evidence](evidence/aside-task-notices-2026-10-18.json) records this
 small implementation and the actual preference/keyboard fixtures.
 
