@@ -82,7 +82,7 @@ it("stores an Aux-owned registered client only in Keychain and uses its exact re
     await service.clear(remote);
     expect(await service.status(remote)).toEqual({ connected: false, expiresAt: undefined });
   } finally {
-    service.close();
+    await service.close();
   }
 });
 it("refuses issuer substitution and retires held setup after disconnect", async () => {
@@ -108,14 +108,21 @@ it("refuses issuer substitution and retires held setup after disconnect", async 
       service.configure(remote, { ...setup, issuer: "https://substituted.test" }),
     ).rejects.toMatchObject({ code: "permission_denied" });
     held = true;
-    const pending = service.configure(remote, setup);
+    const pending = service.configure(remote, setup).catch((error: unknown) => error);
     while (!release) await Promise.resolve();
-    await service.clear(remote);
+    let retired = false;
+    const retirement = service.clear(remote).then(() => {
+      retired = true;
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(retired).toBe(false);
+    await expect(service.configure(remote, setup)).rejects.toMatchObject({ code: "cancelled" });
     release();
-    await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+    expect(await pending).toMatchObject({ code: "cancelled" });
+    await retirement;
     expect([...values.values()].filter(Boolean)).toHaveLength(0);
   } finally {
-    service.close();
+    await service.close();
   }
 });
 it("accepts a discovered parent resource through SDK validation without changing the MCP endpoint", async () => {
@@ -152,6 +159,6 @@ it("accepts a discovered parent resource through SDK validation without changing
     expect(new URL(started.url).searchParams.get("resource")).toBe("https://provider.test");
     expect(remote.source.url).toBe("https://provider.test/mcp");
   } finally {
-    service.close();
+    await service.close();
   }
 });

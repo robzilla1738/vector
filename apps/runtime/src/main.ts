@@ -4199,9 +4199,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       },
       {
         stage: "mcp-oauth",
-        run: () => {
-          serviceContainer.peek("mcpOAuth")?.close();
-        },
+        run: () => serviceContainer.peek("mcpOAuth")?.close(),
       },
       { stage: "run-hooks", run: () => stopRunEndHooks?.() },
       {

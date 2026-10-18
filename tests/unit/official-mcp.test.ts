@@ -107,7 +107,7 @@ it("requires eligible Slack registration, secret and explicit supported scopes b
     expect([...values.values()].join()).toContain("test-secret");
     expect(await service.status(remote)).toMatchObject({ connected: false });
   } finally {
-    service.close();
+    await service.close();
   }
 });
 
@@ -217,12 +217,12 @@ it.each(["notion", "slack"] as const)(
       await expect(service.token(remote, originalGeneration)).rejects.toMatchObject({ code: "cancelled" });
       expect(await service.status(remote)).not.toHaveProperty("account");
     } finally {
-      service.close();
+      await service.close();
     }
   },
 );
 
-it("does not let a retired OAuth callback close a newer authorization attempt", async () => {
+it("joins a retired OAuth callback before admitting a newer authorization attempt", async () => {
   const { native } = storage();
   let release!: () => void;
   let reached!: () => void;
@@ -259,11 +259,18 @@ it("does not let a retired OAuth callback close a newer authorization attempt", 
     firstUrl.searchParams.set("iss", "https://issuer.test");
     const oldResponse = fetch(firstUrl);
     await entered;
-    await service.clear(remote);
-    const second = await service.start(remote);
-    if (second.state !== "authorization") throw new Error("Expected authorization");
+    let retired = false;
+    const retirement = service.clear(remote).then(() => {
+      retired = true;
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(retired).toBe(false);
+    await expect(service.start(remote)).rejects.toMatchObject({ code: "cancelled" });
     release();
     expect((await oldResponse).status).toBe(400);
+    await retirement;
+    const second = await service.start(remote);
+    if (second.state !== "authorization") throw new Error("Expected authorization");
     const next = JSON.parse((await native.readSecret(`mcp-oauth-${server.serverId}`)).value!);
     const secondUrl = new URL(next.redirectUrl);
     secondUrl.searchParams.set("code", "current");
@@ -273,6 +280,6 @@ it("does not let a retired OAuth callback close a newer authorization attempt", 
     expect(await service.status(remote)).toMatchObject({ connected: true });
   } finally {
     release();
-    service.close();
+    await service.close();
   }
 });

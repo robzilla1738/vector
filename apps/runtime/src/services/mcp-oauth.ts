@@ -37,8 +37,22 @@ type Saved = {
   issParameterSupported?: boolean;
   ownClient?: { issuer: string; information: StoredOAuthClientInformation; redirectUrl: string };
 };
-type Pending = { server: Server; timer: NodeJS.Timeout; state: string; consumed: boolean };
+type Pending = {
+  server: Server;
+  timer: NodeJS.Timeout;
+  state: string;
+  consumed: boolean;
+  controller: AbortController;
+};
+type Operation = {
+  key: string;
+  sourceDigest: string;
+  generation: number;
+  controller: AbortController;
+  promise: Promise<unknown>;
+};
 const lifetimeMs = 5 * 60_000;
+const retirementTimeoutMs = 5_000;
 
 function publicHttps(value: string | URL): URL {
   const url = new URL(value);
@@ -64,6 +78,10 @@ export class McpOAuthService {
   private writes = new Map<string, Promise<void>>();
   private clearing = new Map<string, number>();
   private tokenRequests = new Map<string, Promise<string>>();
+  private operations = new Set<Operation>();
+  private callbacksClosing = new Map<Server, { key: string; promise: Promise<void> }>();
+  private clears = new Map<string, Promise<{ connected: false }>>();
+  private closing?: Promise<void>;
   constructor(
     private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
     private networkFetch: typeof fetch = fetch,
@@ -74,6 +92,85 @@ export class McpOAuthService {
   private key(server: RemoteServer) {
     return `mcp-oauth-${server.serverId}`;
   }
+  private own<T>(server: RemoteServer, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    const key = this.key(server);
+    const generation = this.authorizationGeneration(server);
+    if (this.clearing.has(key)) throw new AuxError("cancelled", "MCP disconnect is in progress.");
+    const controller = new AbortController();
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (error: unknown) => void;
+    const original = new Promise<T>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
+    const operation: Operation = {
+      key,
+      sourceDigest: server.sourceDigest,
+      generation,
+      controller,
+      promise: original.finally(() => this.operations.delete(operation)),
+    };
+    this.operations.add(operation);
+    try {
+      Promise.resolve(work(controller.signal)).then((value) => {
+        if (this.closed || controller.signal.aborted)
+          reject(new AuxError("cancelled", "MCP authorization was cancelled."));
+        else resolve(value);
+      }, reject);
+    } catch (error) {
+      reject(error);
+    }
+    return operation.promise as Promise<T>;
+  }
+
+  private async joinOriginals(key?: string): Promise<void> {
+    for (;;) {
+      const originals = [
+        ...Array.from(this.operations)
+          .filter((task) => key === undefined || task.key === key)
+          .map((task) => task.promise),
+        ...Array.from(this.callbacksClosing.values())
+          .filter((task) => key === undefined || task.key === key)
+          .map((task) => task.promise),
+        ...Array.from(this.writes)
+          .filter(([writeKey]) => key === undefined || writeKey === key)
+          .map(([, task]) => task),
+      ];
+      if (!originals.length) return;
+      await Promise.allSettled(originals);
+    }
+  }
+
+  private async boundRetirement(original: Promise<void>): Promise<void> {
+    let timer!: NodeJS.Timeout;
+    const deadline = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new AuxError(
+              "backend_unavailable",
+              "MCP authorization work has not stopped. Retirement was not acknowledged.",
+            ),
+          ),
+        retirementTimeoutMs,
+      );
+    });
+    try {
+      await Promise.race([original, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private closeCallback(serverId: string, callback: Server) {
+    if (this.callbacksClosing.has(callback)) return;
+    const promise = new Promise<void>((resolve) => {
+      callback.close(() => resolve());
+    });
+    this.callbacksClosing.set(callback, { key: `mcp-oauth-${serverId}`, promise });
+    void promise.finally(() => this.callbacksClosing.delete(callback));
+  }
+
   private async read(server: RemoteServer): Promise<Saved> {
     const value = (await this.native.readSecret(this.key(server))).value;
     if (value)
@@ -103,6 +200,8 @@ export class McpOAuthService {
         if (this.closed || (this.generations.get(key) ?? 0) !== generation)
           throw new AuxError("cancelled", "MCP authorization was cancelled.");
         await this.native.storeSecret(key, value);
+        if (this.closed || (this.generations.get(key) ?? 0) !== generation)
+          throw new AuxError("cancelled", "MCP authorization was cancelled.");
       });
     this.writes.set(key, current);
     try {
@@ -111,38 +210,49 @@ export class McpOAuthService {
       if (this.writes.get(key) === current) this.writes.delete(key);
     }
   }
-  private readonly oauthFetch: typeof fetch = async (input, init) => {
-    const url = publicHttps(input instanceof Request ? input.url : String(input));
-    const signals = [init?.signal, input instanceof Request ? input.signal : undefined].filter(
-      (value): value is AbortSignal => !!value,
-    );
-    const response = await this.networkFetch(url, {
-      ...init,
-      redirect: "error",
-      signal: AbortSignal.any([...signals, AbortSignal.timeout(15_000)]),
-    });
-    // Discovery and token responses are small JSON documents, never unbounded server streams.
-    const reader = response.body?.getReader();
-    if (!reader) return response;
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    try {
-      for (;;) {
-        const next = await reader.read();
-        if (next.done) break;
-        size += next.value.byteLength;
-        if (size > 1_048_576) throw new AuxError("permission_denied", "MCP OAuth response is too large.");
-        chunks.push(next.value);
+  private oauthFetch(originalSignal: AbortSignal): typeof fetch {
+    return async (input, init) => {
+      originalSignal.throwIfAborted();
+      const url = publicHttps(input instanceof Request ? input.url : String(input));
+      const signals = [
+        originalSignal,
+        init?.signal,
+        input instanceof Request ? input.signal : undefined,
+      ].filter((value): value is AbortSignal => !!value);
+      const response = await this.networkFetch(url, {
+        ...init,
+        redirect: "error",
+        signal: AbortSignal.any([...signals, AbortSignal.timeout(15_000)]),
+      });
+      // Discovery and token responses are small JSON documents, never unbounded server streams.
+      const reader = response.body?.getReader();
+      if (!reader) {
+        originalSignal.throwIfAborted();
+        return response;
       }
-    } finally {
-      await reader.cancel().catch(() => undefined);
-    }
-    return new Response(Buffer.concat(chunks), {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
-  };
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      try {
+        for (;;) {
+          originalSignal.throwIfAborted();
+          const next = await reader.read();
+          originalSignal.throwIfAborted();
+          if (next.done) break;
+          size += next.value.byteLength;
+          if (size > 1_048_576) throw new AuxError("permission_denied", "MCP OAuth response is too large.");
+          chunks.push(next.value);
+        }
+      } finally {
+        await reader.cancel().catch(() => undefined);
+      }
+      originalSignal.throwIfAborted();
+      return new Response(Buffer.concat(chunks), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    };
+  }
 
   private provider(
     server: RemoteServer,
@@ -231,12 +341,21 @@ export class McpOAuthService {
   }
 
   async requirements(server: RemoteServer) {
+    return this.own(server, (signal) => this.requirementsOwned(server, signal));
+  }
+
+  private async requirementsOwned(server: RemoteServer, signal: AbortSignal) {
     const generation = this.authorizationGeneration(server);
-    const [info, saved] = await Promise.all([
-      this.discover(publicHttps(server.source.url), { fetchFn: this.oauthFetch }),
+    // Both admitted operations remain owned even when one branch fails first.
+    const [discovery, credentials] = await Promise.allSettled([
+      this.discover(publicHttps(server.source.url), { fetchFn: this.oauthFetch(signal) }),
       this.read(server),
     ]);
-    if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+    if (discovery.status === "rejected") throw discovery.reason;
+    if (credentials.status === "rejected") throw credentials.reason;
+    const info = discovery.value,
+      saved = credentials.value;
+    if (this.authorizationGeneration(server) !== generation)
       throw new AuxError("cancelled", "MCP connection changed during discovery.");
     const metadata = info.authorizationServerMetadata;
     if (!metadata || !metadata.code_challenge_methods_supported?.includes("S256"))
@@ -273,6 +392,10 @@ export class McpOAuthService {
   }
 
   async configure(server: RemoteServer, input: McpOAuthClientSetup) {
+    return this.own(server, () => this.configureOwned(server, input));
+  }
+
+  private async configureOwned(server: RemoteServer, input: McpOAuthClientSetup) {
     const setup = McpOAuthClientSetupSchema.parse(input);
     if (setup.serverId !== server.serverId)
       throw new AuxError("permission_denied", "MCP client registration belongs to a different server.");
@@ -320,6 +443,10 @@ export class McpOAuthService {
   }
 
   async status(server: RemoteServer) {
+    return this.own(server, () => this.statusOwned(server));
+  }
+
+  private async statusOwned(server: RemoteServer) {
     const generation = this.authorizationGeneration(server);
     const saved = await this.read(server);
     if (this.authorizationGeneration(server) !== generation || this.clearing.has(this.key(server)))
@@ -343,11 +470,16 @@ export class McpOAuthService {
     return this.generations.get(this.key(server)) ?? 0;
   }
 
-  private tokenFetch(server: RemoteServer, saved: Saved, generation: number): typeof fetch {
+  private tokenFetch(
+    server: RemoteServer,
+    saved: Saved,
+    generation: number,
+    signal: AbortSignal,
+  ): typeof fetch {
     return async (input, init) => {
       if (this.authorizationGeneration(server) !== generation)
         throw new AuxError("cancelled", "MCP authorization changed.");
-      const response = await this.oauthFetch(input, init);
+      const response = await this.oauthFetch(signal)(input, init);
       if (this.authorizationGeneration(server) !== generation)
         throw new AuxError("cancelled", "MCP authorization changed.");
       const url = input instanceof Request ? input.url : String(input);
@@ -403,8 +535,13 @@ export class McpOAuthService {
     };
   }
 
-  async start(
+  async start(server: RemoteServer) {
+    return this.own(server, (signal) => this.startOwned(server, signal));
+  }
+
+  private async startOwned(
     server: RemoteServer,
+    signal: AbortSignal,
   ): Promise<{ state: "connected" } | { state: "authorization"; url: string; expiresAt: number }> {
     publicHttps(server.source.url);
     if (this.clearing.has(this.key(server)))
@@ -421,12 +558,16 @@ export class McpOAuthService {
     const generation = this.authorizationGeneration(server) + 1;
     this.generations.set(this.key(server), generation);
     const saved = await this.read(server);
-    if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+    if (this.authorizationGeneration(server) !== generation)
       throw new AuxError("cancelled", "MCP authorization was cancelled.");
+    const controller = new AbortController();
+    const authorizationSignal = AbortSignal.any([signal, controller.signal]);
     let authorizationUrl = "";
     let redirectUrl = "";
     let provider!: OAuthClientProvider;
     const callback = createServer((request, response) => {
+      // One callback owns one response; retirement never waits for a reusable idle socket.
+      response.setHeader("connection", "close");
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
       const pending = this.pending.get(server.serverId);
       if (
@@ -457,16 +598,26 @@ export class McpOAuthService {
         response.writeHead(400).end("MCP authorization was not granted. Return to Aux.");
         return;
       }
-      void this.runAuth(provider, {
-        serverUrl: server.source.url,
-        authorizationCode: code,
-        iss: issuer ?? undefined,
-        fetchFn: this.tokenFetch(server, saved, generation),
-        scope: saved.requestedScopes?.join(" ") ?? (official === "notion" ? "default" : undefined),
-      })
+      void this.own(server, (callbackSignal) =>
+        this.runAuth(provider, {
+          serverUrl: server.source.url,
+          authorizationCode: code,
+          iss: issuer ?? undefined,
+          fetchFn: this.tokenFetch(
+            server,
+            saved,
+            generation,
+            AbortSignal.any([authorizationSignal, callbackSignal]),
+          ),
+          scope: saved.requestedScopes?.join(" ") ?? (official === "notion" ? "default" : undefined),
+        }),
+      )
         .then((result) => {
           const authorized =
-            result === "AUTHORIZED" && (this.generations.get(this.key(server)) ?? 0) === generation;
+            !this.closed &&
+            !authorizationSignal.aborted &&
+            result === "AUTHORIZED" &&
+            (this.generations.get(this.key(server)) ?? 0) === generation;
           this.finishPending(server.serverId, state);
           response.writeHead(authorized ? 200 : 400, {
             "content-type": "text/html; charset=utf-8",
@@ -498,9 +649,13 @@ export class McpOAuthService {
         resolve();
       });
     });
+    if (this.closed || signal.aborted || (this.generations.get(this.key(server)) ?? 0) !== generation) {
+      this.closeCallback(server.serverId, callback);
+      throw new AuxError("cancelled", "MCP authorization was cancelled.");
+    }
     const address = callback.address();
     if (!address || typeof address === "string") {
-      callback.close();
+      this.closeCallback(server.serverId, callback);
       throw new AuxError("backend_unavailable", "Cannot start the MCP sign-in callback.");
     }
     redirectUrl = `http://127.0.0.1:${address.port}/oauth/mcp`;
@@ -513,6 +668,8 @@ export class McpOAuthService {
       },
       state,
       () =>
+        !this.closed &&
+        !authorizationSignal.aborted &&
         this.pending.get(server.serverId)?.state === state &&
         (this.generations.get(this.key(server)) ?? 0) === generation,
       generation,
@@ -520,7 +677,7 @@ export class McpOAuthService {
     const expiresAt = Date.now() + lifetimeMs;
     const timer = setTimeout(() => this.finishPending(server.serverId, state), lifetimeMs);
     timer.unref();
-    this.pending.set(server.serverId, { server: callback, timer, state, consumed: false });
+    this.pending.set(server.serverId, { server: callback, timer, state, consumed: false, controller });
     try {
       if (saved.redirectUrl !== redirectUrl) {
         saved.clients = {};
@@ -533,10 +690,10 @@ export class McpOAuthService {
       }
       const result = await this.runAuth(provider, {
         serverUrl: server.source.url,
-        fetchFn: this.tokenFetch(server, saved, generation),
+        fetchFn: this.tokenFetch(server, saved, generation, authorizationSignal),
         scope: saved.requestedScopes?.join(" ") ?? (official === "notion" ? "default" : undefined),
       });
-      if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+      if (this.authorizationGeneration(server) !== generation || authorizationSignal.aborted)
         throw new AuxError("cancelled", "MCP authorization was cancelled.");
       if (result === "AUTHORIZED") {
         this.finishPending(server.serverId, state);
@@ -560,11 +717,13 @@ export class McpOAuthService {
     const key = JSON.stringify([server.serverId, server.sourceDigest, expectedGeneration]);
     const existing = this.tokenRequests.get(key);
     if (existing) return existing;
-    const task = this.tokenOwned(server, expectedGeneration).then((token) => {
-      if (this.authorizationGeneration(server) !== expectedGeneration)
-        throw new AuxError("cancelled", "MCP authorization changed.");
-      return token;
-    });
+    const task = this.own(server, (signal) => this.tokenOwned(server, expectedGeneration, signal)).then(
+      (token) => {
+        if (this.authorizationGeneration(server) !== expectedGeneration)
+          throw new AuxError("cancelled", "MCP authorization changed.");
+        return token;
+      },
+    );
     this.tokenRequests.set(key, task);
     try {
       return await task;
@@ -573,14 +732,18 @@ export class McpOAuthService {
     }
   }
 
-  private async tokenOwned(server: RemoteServer, expectedGeneration: number): Promise<string> {
+  private async tokenOwned(
+    server: RemoteServer,
+    expectedGeneration: number,
+    signal: AbortSignal,
+  ): Promise<string> {
     if (this.authorizationGeneration(server) !== expectedGeneration)
       throw new AuxError("cancelled", "MCP authorization changed.");
     if (this.clearing.has(this.key(server)))
       throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
     const generation = this.generations.get(this.key(server)) ?? 0;
     const saved = await this.read(server);
-    if (this.clearing.has(this.key(server)) || (this.generations.get(this.key(server)) ?? 0) !== generation)
+    if (this.clearing.has(this.key(server)) || this.authorizationGeneration(server) !== generation)
       throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
     if (!saved.issuer) throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
     const provider = this.provider(
@@ -589,7 +752,7 @@ export class McpOAuthService {
       saved.redirectUrl,
       undefined,
       undefined,
-      () => (this.generations.get(this.key(server)) ?? 0) === generation,
+      () => !this.closed && !signal.aborted && (this.generations.get(this.key(server)) ?? 0) === generation,
       generation,
     );
     if (
@@ -602,7 +765,7 @@ export class McpOAuthService {
     try {
       const result = await this.runAuth(provider, {
         serverUrl: server.source.url,
-        fetchFn: this.tokenFetch(server, saved, generation),
+        fetchFn: this.tokenFetch(server, saved, generation, signal),
         scope: saved.requestedScopes?.join(" "),
       });
       if (
@@ -617,17 +780,31 @@ export class McpOAuthService {
     }
   }
 
-  async clear(server: RemoteServer) {
-    this.finishPending(server.serverId);
+  async clear(server: RemoteServer): Promise<{ connected: false }> {
+    this.authorizationGeneration(server);
     const key = this.key(server);
+    const existing = this.clears.get(key);
+    if (existing) return existing;
     const generation = (this.generations.get(key) ?? 0) + 1;
     this.generations.set(key, generation);
     this.clearing.set(key, generation);
-    try {
-      await this.write(server, generation, "");
-      return { connected: false };
-    } finally {
+    const wipe = this.write(server, generation, "");
+    const task = this.boundRetirement(
+      (async () => {
+        const [, removed] = await Promise.allSettled([this.joinOriginals(key), wipe]);
+        if (removed.status === "rejected") throw removed.reason;
+      })(),
+    ).then(() => {
       if (this.clearing.get(key) === generation) this.clearing.delete(key);
+      return { connected: false as const };
+    });
+    this.clears.set(key, task);
+    for (const original of this.operations) if (original.key === key) original.controller.abort();
+    this.finishPending(server.serverId);
+    try {
+      return await task;
+    } finally {
+      if (this.clears.get(key) === task) this.clears.delete(key);
     }
   }
 
@@ -636,10 +813,21 @@ export class McpOAuthService {
     if (!pending || (state !== undefined && pending.state !== state)) return;
     this.pending.delete(serverId);
     clearTimeout(pending.timer);
-    pending.server.close();
+    pending.controller.abort();
+    this.closeCallback(serverId, pending.server);
   }
-  close() {
+
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
     this.closed = true;
+    this.closing = this.boundRetirement(
+      Promise.resolve().then(async () => {
+        await this.joinOriginals();
+        await Promise.allSettled(this.clears.values());
+      }),
+    );
+    for (const original of this.operations) original.controller.abort();
     for (const serverId of this.pending.keys()) this.finishPending(serverId);
+    return this.closing;
   }
 }

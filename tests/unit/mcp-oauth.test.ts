@@ -74,7 +74,7 @@ it("never shares a pending credential read with a different reviewed source", as
     expect(f.network).not.toHaveBeenCalled();
   } finally {
     finish();
-    f.service.close();
+    await f.service.close();
   }
 });
 
@@ -100,7 +100,7 @@ it.each(["disconnect", "close"] as const)(
       expect(f.secrets.size).toBe(action === "disconnect" ? 0 : 1);
     } finally {
       finish();
-      f.service.close();
+      await f.service.close();
     }
   },
 );
@@ -189,7 +189,7 @@ it("binds MCP OAuth callback state and source identity while storing tokens only
     expect(await service.status(server)).toMatchObject({ connected: false });
     expect(secrets.size).toBe(0);
   } finally {
-    service.close();
+    await service.close();
   }
 });
 
@@ -266,7 +266,7 @@ it("does not restore a credential when disconnect races an in-flight OAuth excha
     expect(secrets.size).toBe(0);
     expect(await service.status(server)).toMatchObject({ connected: false });
   } finally {
-    service.close();
+    await service.close();
   }
 });
 
@@ -364,7 +364,7 @@ it.each(["single", "concurrent"] as const)(
       expect(codeExchange?.get("code_verifier")).toBeTruthy();
       expect(refreshExchange?.get("refresh_token")).toBe("sdk-refresh");
     } finally {
-      service.close();
+      await service.close();
     }
   },
 );
