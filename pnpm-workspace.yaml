@@ -22,3 +22,6 @@ catalog:
 # Native canvas is only for pdf.js rendering; Aux extracts PDF text without it.
 ignoredOptionalDependencies:
   - "@napi-rs/canvas"
+
+patchedDependencies:
+  vite@7.3.6: patches/vite@7.3.6.patch

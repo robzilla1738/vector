@@ -1,0 +1,718 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "baseline": "79765d9dca6182dacd1f990a20de2f0f063526c4",
+  "scope": "Repair actual generated lazy stylesheet recovery in the pinned build producer. SetPanel style relocation is not part of this correction.",
+  "baselineDiagnostic": {
+    "kind": "isolated actual-emitted-helper/consumer diagnostic; no browser/native/network/build",
+    "inputs": {
+      "app": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/dist/assets/App-Dhh7uiHv.js",
+        "sha256": "8eafab74707638a3d86663b67772ecbd89763e6c353a053565bf3962fde1e6d8",
+        "bytes": 184041
+      },
+      "helper": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/dist/assets/index-n_cBZXqe.js",
+        "sha256": "e9c1ae84e9da1f0b81e1e7eb9dac8dd46143c3ade86c18e14de5c29a264c25f1",
+        "bytes": 4217
+      },
+      "find": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/dist/assets/Cr4xumah.js",
+        "sha256": "0d52d15e79feb752014c853521819dc5dcae092c6cebbc1c08e47cd660272083",
+        "bytes": 4325
+      },
+      "css": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/dist/assets/FindBar-0nZcLHVt.css",
+        "sha256": "914ff2cbb8b10648629d9048450f21c48241717d28db76413571e0ae60e5d672",
+        "bytes": 605
+      },
+      "manifest": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/dist/.vite/manifest.json",
+        "sha256": "35fc3608c31080132bd863c50474a76f28a3a87bc5e90aa7ec8e270e605e8dc9",
+        "bytes": 89705
+      },
+      "deferredSource": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/src/components/DeferredSurface.tsx",
+        "sha256": "0fa1a0c01881e4553ce20ea0c7f903719e8eb07c390939e1c401876746dc1fd6",
+        "bytes": 7059
+      },
+      "findSource": {
+        "path": "/tmp/aux-dead-css-22-4ded-v1/web/apps/shell/src/components/FindBar.tsx",
+        "sha256": "ddc07f3082add89cdf3ae6453a368a165d77f6ec8b5e5f837b8201890a13fd5c",
+        "bytes": 9243
+      }
+    },
+    "extracts": {
+      "helperDecl": {
+        "sha256": "9262ec4a68814dc074e7df5f43cea2a8e8d3ea90183d54b43e2438c469a21112",
+        "bytes": 1094
+      },
+      "deferred": {
+        "sha256": "185d5a833dd702562e4c9ee0588aa6debc77bb2c1305670ba6de70efb0e98532",
+        "bytes": 2622
+      },
+      "findFunction": {
+        "sha256": "733bb328f9c05e7755ff61c50d768f040e551cb4083dd18b120c0684ee74135f",
+        "bytes": 3946
+      },
+      "caller": {
+        "sha256": "f0763c9079f669e8d214724b8355df503a20460e8648e93f8455973f9404fc81",
+        "bytes": 118
+      },
+      "mapDeps": {
+        "sha256": "aaeacb57d43a1bc085874d2e2733bb2c83bd18a8a10db757dc4c76c548c1cfd0",
+        "bytes": 3748
+      },
+      "assetPrefix": {
+        "sha256": "0fb46ecbcb4ed04263d11c4bf63eea3941378699c1fa874d61a5a4c20274f45b",
+        "bytes": 12
+      }
+    },
+    "mechanism": "Actual compiled App Qn loader+dependency map, Vite L preload helper, DeferredSurface Et/real Try again, and FindBar ie function executed unchanged. VM dynamic import returns actual compiled FindBar with only store/native/icon/props dependencies injected. JSDOM does not fetch resources; explicit load/error simulates transport completion. Successful other CSS dependency acknowledged locally; FindBar CSS never loaded. No computed/native visual claim.",
+    "events": [
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/Cr4xumah.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/ZuJDY128.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/index-n_cBZXqe.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/main-CBGLVpqz.css",
+        "rel": "stylesheet"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/C6j_4RrI.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/BINvSRgH.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B4gWd7HN.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B2Bts-Xg.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/8wqFSNjZ.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B52uKuR6.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/FindBar-0nZcLHVt.css",
+        "rel": "stylesheet"
+      },
+      {
+        "phase": "cold",
+        "type": "css-load",
+        "href": "/assets/main-CBGLVpqz.css"
+      },
+      {
+        "phase": "cold",
+        "type": "css-error",
+        "href": "/assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "cold",
+        "type": "vite:preloadError",
+        "message": "Error: Unable to preload CSS for /assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "retry",
+        "type": "import-module",
+        "spec": "./Cr4xumah.js"
+      }
+    ],
+    "snapshots": [
+      {
+        "label": "01-css-error",
+        "phase": "cold",
+        "findMounted": false,
+        "findValue": null,
+        "findText": "retained find draft",
+        "imports": 0,
+        "links": [
+          {
+            "href": "/assets/main-CBGLVpqz.css",
+            "sheet": false
+          },
+          {
+            "href": "/assets/FindBar-0nZcLHVt.css",
+            "sheet": false
+          }
+        ],
+        "styleSheets": 1,
+        "failedCssLinkCount": 1,
+        "failedCssApplied": false
+      },
+      {
+        "label": "02-after-real-retry",
+        "phase": "retry",
+        "findMounted": true,
+        "findValue": "retained find draft",
+        "findText": "retained find draft",
+        "imports": 1,
+        "links": [
+          {
+            "href": "/assets/main-CBGLVpqz.css",
+            "sheet": false
+          },
+          {
+            "href": "/assets/FindBar-0nZcLHVt.css",
+            "sheet": false
+          }
+        ],
+        "styleSheets": 1,
+        "failedCssLinkCount": 1,
+        "failedCssApplied": false
+      }
+    ],
+    "findings": [
+      "confirmed: actual DeferredSurface Retry mounts actual compiled FindBar after its CSS failed without reattempt or stylesheet application"
+    ]
+  },
+  "reviewAndProposalArtifacts": [
+    {
+      "path": "/tmp/aux-lazy-css-retry-797-diagnostic-v1/result.json",
+      "sha256": "64cb76d1255be740d350e10c7497c83f47d966d50c5079ffac18e400b26a396c"
+    },
+    {
+      "path": "/tmp/aux-lazy-css-retry-797-independent-review-v1.json",
+      "sha256": "efe7ce71b20ff29b98eb46ba340b42dc35bef0e9e12b1721ea9b314b93db6487"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-797-proposal-v1.md",
+      "sha256": "b330d1355e9571b593ef3cb9d5756db91fdf340b1a067f9494ff4bfebb15dd28"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-797-proposal-v1.json",
+      "sha256": "8addc04982cc176b5f337f0ee2827ea1cbb9dcce7a6906ee2484da1f8746df32"
+    },
+    {
+      "path": "/tmp/aux-set-panel-css-476-review-criteria-v1.json",
+      "sha256": "ad7412c2a9578477b78065716792382074d2e29a6ed2ab09ca65471d0f088b84"
+    }
+  ],
+  "rootDecision": "After actual emitted FindBar failure and independent review, authorize only canonical exact-version pnpm Vite7.3.6 producer patch, generated lock and meaningful actual-producer tests. Share original pending CSS promise; clear identity-bound failed ownership and original link; preserve existing Aux APIs/drafts/styles and JS/SSR/CSP/error semantics.",
+  "primarySources": [
+    "https://pnpm.io/cli/patch",
+    "https://pnpm.io/cli/patch-commit",
+    "https://raw.githubusercontent.com/vitejs/vite/main/packages/vite/src/node/plugins/importAnalysisBuild.ts"
+  ],
+  "limits": [
+    "Baseline VM/JSDOM uses exact emitted helper/Retry/component functions with injected store/native/icon/props/import boundaries and explicit resource events, not browser/native painting.",
+    "JSDOM sheet=null alone proves nothing. The actual missing second CSS attempt plus original cache control and module callback/mount establish the missing retry gate.",
+    "Current native control remains unavailable because the older unowned Aux instance is untouched pending permission. Native failure/visual/first-paint acceptance is open."
+  ],
+  "implementation": {
+    "sourceFiles": [
+      {
+        "path": "patches/vite@7.3.6.patch",
+        "before": null,
+        "after": "9e6df330a4ea8ca21506db2dcee2e2c35d191f5809f3d00dac7c3abeb1c78a37",
+        "beforeBytes": null,
+        "afterBytes": 1908
+      },
+      {
+        "path": "pnpm-workspace.yaml",
+        "before": "fe5c84d61d308ea58c3e5c7881afad5654f53176787341f873e150ad466dd0c7",
+        "after": "bc334cc17eb0c690bb11e1a3ab50bdbfe9e8134e9cdef7e77d12672bd3217589",
+        "beforeBytes": 451,
+        "afterBytes": 512
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "before": "87147c9ed898e5a9b5f7404203aacf2d6fa1c070477bc366b633f656c15664a0",
+        "after": "8a80df80b2e3cc2565643fdc2241008a8d9fb3eb98410496aa2d3e4150cd5246",
+        "beforeBytes": 203332,
+        "afterBytes": 204280
+      },
+      {
+        "path": "tests/unit/vite-css-preload.test.ts",
+        "before": null,
+        "after": "f740b6717a4c8e802223d3266d0ad1fea721d0c63b433945ffabe9e628455711",
+        "beforeBytes": null,
+        "afterBytes": 9277
+      }
+    ],
+    "dependencyVersion": "7.3.6",
+    "upgraded": false,
+    "dependencyPatchSha256": "9e6df330a4ea8ca21506db2dcee2e2c35d191f5809f3d00dac7c3abeb1c78a37",
+    "installedProducer": {
+      "version": "7.3.6",
+      "path": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/vite@7.3.6_patch_hash=9e6df330a4ea8ca21506db2dcee2e2c35d191f5809f3d00dac7c3abeb1c78a37__048111ea6c7974bff7225e1944f092cb/node_modules/vite/dist/node/chunks/config.js",
+      "sha256": "fc5577506045944cad800cb6e3a5cbcad1a2f71efeb13c0ff0e0de2e74fdb830",
+      "exactReviewedProducer": true,
+      "offlineFrozenInstallExitCode": 0
+    },
+    "producerProof": {
+      "beforeSha256": "c2fcfa51206dc1f8d22120ef4a82af8b9acdc02f4476520b6a0897d12a724ba3",
+      "afterSha256": "fc5577506045944cad800cb6e3a5cbcad1a2f71efeb13c0ff0e0de2e74fdb830",
+      "beforeBytes": 1336507,
+      "afterBytes": 1337096,
+      "unchangedPrefix": true,
+      "unchangedSuffix": true,
+      "onlyFunction": "preload",
+      "dependencyPatchSha256": "9e6df330a4ea8ca21506db2dcee2e2c35d191f5809f3d00dac7c3abeb1c78a37",
+      "installedPackageVersion": "7.3.6"
+    },
+    "lockProof": {
+      "patch": {
+        "vite@7.3.6": "9e6df330a4ea8ca21506db2dcee2e2c35d191f5809f3d00dac7c3abeb1c78a37"
+      },
+      "otherLockDataEqual": true
+    },
+    "sourceFootprint": "Only pinned Vite preload producer, canonical patch registration/generated lock and one meaningful producer-output test. Aux UI, DeferredSurface and styles unchanged.",
+    "insertionFailureDifference": "Newly owned CSS insertion throws now reject through the stylesheet promise/preloadError path with original error identity. This is explicit normalized CSS failure behavior; direct-JS insertion path remains unchanged.",
+    "noGlobalReloadOrAutomaticRetry": true,
+    "setPanelMove": false
+  },
+  "rootIntegrated": {
+    "command": "npm run check",
+    "runtimeDistRebuiltBeforeTests": true,
+    "exitCode": 0,
+    "tests": 5905,
+    "files": 857,
+    "durationSeconds": 128.84,
+    "lintAdvisories": 572,
+    "unchangedAdvisories": true,
+    "log": {
+      "path": "/tmp/aux-vite-css-retry-integrated-check-2026-10-18.log",
+      "sha256": "906a491971e258c293c2c4de35278a814af2e62c1b78667584c725d3209602b5"
+    },
+    "lintComparison": {
+      "path": "/tmp/aux-vite-css-retry-lint-comparison-2026-10-18.json",
+      "sha256": "6e733cc6a24d85ef89d7e54c25339b7688f9ba2aa970c8337c87eec3098eea82"
+    }
+  },
+  "privateValidation": {
+    "baseline": "79765d9dca6182dacd1f990a20de2f0f063526c4",
+    "patch": "/tmp/aux-vite-css-retry-797-v1.patch",
+    "patchSha256": "8bb2a3eebcf360abbd4f71d49736eae14c9f90dd080716be6790954380a58982",
+    "sourceFiles": 4,
+    "checks": {
+      "finalAffected": {
+        "files": 3,
+        "passed": 17,
+        "log": "affected-tests.log"
+      },
+      "producerUniqueCases": 10,
+      "existingDeferredSurfaceCases": 7,
+      "shellTypes": true,
+      "ownedTestTypes": true,
+      "lintErrors": 0,
+      "lintWarnings": 0,
+      "format": true,
+      "productionViteBuildCount": 1,
+      "productionViteBuildPassed": true,
+      "rootCheckRun": false,
+      "nativeObservation": false,
+      "networkProviderRequests": false
+    },
+    "chronology": [
+      "Initial setup command stopped before pnpm because its workdir would have been main. Only disposable copy processes stopped; root git status clean, root pnpm patch never ran. Setup restarted with explicit private workdir.",
+      "Canonical private patch extraction and patch-commit; downloaded0/reused578; expected missing private runtime-bin warnings because runtime dist was not built (unneeded for these tests/renderer).",
+      "Producer-tests1 failed10 before helper execution because the test evaluator lacked a semicolon after generated function declaration. Fixed only test evaluator.",
+      "Producer-tests2 passed10; initial scoped lint had2 valid-expect async advisories from stored assertion chains; rewritten to immediate awaited assertions; final lint0.",
+      "Final coherent affected17/17 passes after all intended source/test formatting; shell/test types and format pass.",
+      "Single production Vite build; actual emitted FindBar diagnostic fixed; matched2016source/config/contract inputs and normalizedlock proof."
+    ],
+    "frozenLogs": {
+      "patch-extract.log": {
+        "sha256": "3f465054ac41402709796bc3303fca65d0cd9ff3da9ee3e3ac04778ff1ca55f4",
+        "bytes": 179
+      },
+      "patch-commit.log": {
+        "sha256": "634d28d6d3a3143fa3124c321e4997bf58fe7aed58a69a81a18adce439da0d28",
+        "bytes": 932
+      },
+      "producer-tests1.log": {
+        "sha256": "8bece2a073ea80012287a704cf5ca2d398daa2c0c5e6a93da9065fe8d8450b4c",
+        "bytes": 8419
+      },
+      "producer-tests2.log": {
+        "sha256": "184f96823e1b8bc6aebf80bcd23d24cee5b147431b15bcab5cbe5528c221af0b",
+        "bytes": 308
+      },
+      "affected-tests.log": {
+        "sha256": "cbe63d3ec4ba5842fda8e4d93a0340a047ece5884afd78b189007135ceb4f146",
+        "bytes": 472
+      },
+      "shell-types1.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "test-types1.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "lint1.log": {
+        "sha256": "9f0a03ac6f5ab327ac81e159999e7e9592afcffa2b2263f68aec543786e627ac",
+        "bytes": 289
+      },
+      "lint2.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "format-write.log": {
+        "sha256": "d874bce40b20fa2100cd64a49b705e31700e343c3db9cc8163f0ee0ef2d66824",
+        "bytes": 79
+      },
+      "format-write2.log": {
+        "sha256": "2362eead1079bd3f5ce8951024c953e68d2258d6e9121a9417823f3b94b2476d",
+        "bytes": 53
+      },
+      "format-write3.log": {
+        "sha256": "2b4c53920f69d0071607728fe0ba2e9d48f303b04fb334e82ea6d3890db13276",
+        "bytes": 53
+      },
+      "format-check.log": {
+        "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+        "bytes": 66
+      },
+      "vite-build.log": {
+        "sha256": "418d57bc550155654f81964541c96f19675b9394b8113f8ef26ec001fa71fdb4",
+        "bytes": 31614
+      },
+      "measure.log": {
+        "sha256": "35423860b4f7e8fd2fd9496f7ac7937194fe080bf2085099d1c9acfca900185d",
+        "bytes": 510
+      },
+      "baseline-input-proof.json": {
+        "sha256": "c668a5fab950fd713aa132fe6f4ef15e8d5ddfc62af76cb01e1db089471e995a",
+        "bytes": 500202
+      },
+      "lock-proof.json": {
+        "sha256": "bdb6e65a83716d27fe6a919117ba40e51da58ddc5d53dd79aeb7f6ac0a1b3596",
+        "bytes": 136
+      },
+      "producer-proof.json": {
+        "sha256": "b45e4f2fef43b62f08ff3d69a94a8c3b890f1903835d58d0aac4c1e6dcc86eda",
+        "bytes": 441
+      },
+      "apply-proof.json": {
+        "sha256": "66251607b72da11a76c36d99eb4443c9c08820149bea524f515e49e58aa6ad0d",
+        "bytes": 1408
+      },
+      "bundle-comparison.json": {
+        "sha256": "cf364a5e63a1d8fb2bcefdc0fda897972a8aee571108c8b3fd3c08d9f1b2d621",
+        "bytes": 179195
+      },
+      "emitted-diagnostic/repro.mjs": {
+        "sha256": "1944fb1760457bbd5fe8c4a5d75be9f20eb08dde2ad46e227cbde3fe54d3a937",
+        "bytes": 10603
+      },
+      "emitted-diagnostic/result.json": {
+        "sha256": "a00aa5ff1720987a440a45c5e41d72616933a93e2b2cc081494225771c278a30",
+        "bytes": 8778
+      },
+      "emitted-diagnostic/run.log": {
+        "sha256": "c0d599c82493d5885f6efa390d58d7fb52faace7b1ee9cca1aee109f8bf4224c",
+        "bytes": 893
+      }
+    }
+  },
+  "correctedEmittedDiagnostic": {
+    "kind": "isolated actual-emitted-helper/consumer diagnostic; no browser/native/network/build",
+    "inputs": {
+      "app": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/dist/assets/App-C_vdSwXd.js",
+        "sha256": "16525e09448264d89ea4506240f2371ef04d85659987df0f2061f970b3ec2f47",
+        "bytes": 184041
+      },
+      "helper": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/dist/assets/index-BJaLB5qP.js",
+        "sha256": "06b6a3760ca0d1294f8e182a699f18b708856cc3d4abdf5840e9a3c101871cce",
+        "bytes": 4453
+      },
+      "find": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/dist/assets/Bw-95_sh.js",
+        "sha256": "57a5267641f0e072aeffa531087638fd2703c2888972fb048cc4683268c126c0",
+        "bytes": 4325
+      },
+      "css": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/dist/assets/FindBar-0nZcLHVt.css",
+        "sha256": "914ff2cbb8b10648629d9048450f21c48241717d28db76413571e0ae60e5d672",
+        "bytes": 605
+      },
+      "manifest": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/dist/.vite/manifest.json",
+        "sha256": "fb848d7c2a4044ec6dc2a88f609a0f2cc56ef302e6ab122627caa337c8bbdca0",
+        "bytes": 89705
+      },
+      "deferredSource": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/src/components/DeferredSurface.tsx",
+        "sha256": "0fa1a0c01881e4553ce20ea0c7f903719e8eb07c390939e1c401876746dc1fd6",
+        "bytes": 7059
+      },
+      "findSource": {
+        "path": "/tmp/aux-vite-css-retry-797-v1/web/apps/shell/src/components/FindBar.tsx",
+        "sha256": "ddc07f3082add89cdf3ae6453a368a165d77f6ec8b5e5f837b8201890a13fd5c",
+        "bytes": 9243
+      }
+    },
+    "extracts": {
+      "helperDecl": {
+        "sha256": "681b5a02fe99d3593383c0498e649a1b3d2a9aed5d6586d4bb6124b4eb1d6bdd",
+        "bytes": 1330
+      },
+      "deferred": {
+        "sha256": "185d5a833dd702562e4c9ee0588aa6debc77bb2c1305670ba6de70efb0e98532",
+        "bytes": 2622
+      },
+      "findFunction": {
+        "sha256": "733bb328f9c05e7755ff61c50d768f040e551cb4083dd18b120c0684ee74135f",
+        "bytes": 3946
+      },
+      "caller": {
+        "sha256": "12e4e3f804f332a35de7d50a1a26f8c1402559b18a669f6c6f10638d2baccabd",
+        "bytes": 118
+      },
+      "mapDeps": {
+        "sha256": "c3a19265a7477d8f6cc7a2e0f95ed59440f00ca3e9e02ad27da78ebfad8a9eae",
+        "bytes": 3748
+      },
+      "assetPrefix": {
+        "sha256": "0fb46ecbcb4ed04263d11c4bf63eea3941378699c1fa874d61a5a4c20274f45b",
+        "bytes": 12
+      }
+    },
+    "mechanism": "Actual compiled App Qn loader+dependency map, Vite L preload helper, DeferredSurface Et/real Try again, and FindBar ie function executed unchanged. VM dynamic import returns actual compiled FindBar with only store/native/icon/props dependencies injected. JSDOM does not fetch resources; explicit load/error simulates transport completion. Successful other CSS dependency acknowledged locally; FindBar retry CSS success is explicitly controlled after verifying no mount while held; JSDOM sheet=null is not a styling assertion. No computed/native visual claim.",
+    "events": [
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/Bw-95_sh.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/BOq8gfqA.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/index-BJaLB5qP.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/main-CBGLVpqz.css",
+        "rel": "stylesheet"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/D0cpJ-oc.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/BINvSRgH.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B4gWd7HN.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B2Bts-Xg.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/J_Yw4Xu2.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/B52uKuR6.js",
+        "rel": "modulepreload"
+      },
+      {
+        "phase": "cold",
+        "type": "link-appended",
+        "href": "/assets/FindBar-0nZcLHVt.css",
+        "rel": "stylesheet"
+      },
+      {
+        "phase": "cold",
+        "type": "css-load",
+        "href": "/assets/main-CBGLVpqz.css"
+      },
+      {
+        "phase": "cold",
+        "type": "css-error",
+        "href": "/assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "cold",
+        "type": "vite:preloadError",
+        "message": "Error: Unable to preload CSS for /assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "retry",
+        "type": "link-appended",
+        "href": "/assets/FindBar-0nZcLHVt.css",
+        "rel": "stylesheet"
+      },
+      {
+        "phase": "retry",
+        "type": "css-held",
+        "href": "/assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "retry-css-success",
+        "type": "css-load",
+        "href": "/assets/FindBar-0nZcLHVt.css"
+      },
+      {
+        "phase": "retry-css-success",
+        "type": "import-module",
+        "spec": "./Bw-95_sh.js"
+      }
+    ],
+    "snapshots": [
+      {
+        "label": "01-css-error",
+        "phase": "cold",
+        "findMounted": false,
+        "findValue": null,
+        "findText": "retained find draft",
+        "imports": 0,
+        "stylesheetUrls": [
+          "/assets/main-CBGLVpqz.css"
+        ]
+      },
+      {
+        "label": "02-real-retry-waits-for-new-css",
+        "phase": "retry",
+        "findMounted": false,
+        "findValue": null,
+        "findText": "retained find draft",
+        "imports": 0,
+        "stylesheetUrls": [
+          "/assets/main-CBGLVpqz.css",
+          "/assets/FindBar-0nZcLHVt.css"
+        ]
+      },
+      {
+        "label": "03-css-success-mounts-findbar",
+        "phase": "retry-css-success",
+        "findMounted": true,
+        "findValue": "retained find draft",
+        "findText": "retained find draft",
+        "imports": 1,
+        "stylesheetUrls": [
+          "/assets/main-CBGLVpqz.css",
+          "/assets/FindBar-0nZcLHVt.css"
+        ]
+      }
+    ],
+    "findings": [
+      "fixed: actual DeferredSurface Retry creates new CSS link and blocks actual compiled FindBar until that new link receives success; original findText and sibling draft retained"
+    ],
+    "limit": "Controlled JSDOM events establish gating; external sheets are never fetched or applied. Original sheet/failedCssApplied fields are not evidence of browser appearance."
+  },
+  "matchedBuild": {
+    "before": {
+      "startupJsBytes": 618803,
+      "startupCssBytes": 199011,
+      "totalJsBytes": 3181214,
+      "totalCssBytes": 447575
+    },
+    "after": {
+      "startupJsBytes": 619039,
+      "startupCssBytes": 199011,
+      "totalJsBytes": 3181450,
+      "totalCssBytes": 447575
+    },
+    "cssAssetHashesUnchanged": 63,
+    "relevantBaselineInputsExact": 2016,
+    "sourceOfBaseline": "Preserved exact CSS22 after renderer cohort, matched on relevant renderer/config/contracts inputs; separate from unstaged current native bundle.",
+    "interpretation": "236-byte startup/total JS increase is measured recovery cost, not speed improvement. CSS unchanged; native timing remains unobserved."
+  },
+  "finalReviewAndRootArtifacts": [
+    {
+      "path": "/tmp/aux-vite-css-retry-797-v1/handoff.md",
+      "sha256": "fa9938693923e42d7c28d1da9daac3dfb3a5a8130543629030df85a466a4892a"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-797-v1/hashes.json",
+      "sha256": "7d865cf13aff30992c69878cc11c90b1013654849886a5b45184e76fcc57d6d9"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-797-v1/validation.json",
+      "sha256": "49c45adb3eac3c82f11ec2800a761eef3c2e2651e466dad5535fa1285593ee82"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-797-v1-independent-review.json",
+      "sha256": "372b68ee80e0bb6c58238c8161ab845c0c4456f27912f7c1990d17c9dab5e704"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-root-apply-2026-10-18.json",
+      "sha256": "9afaae784f9185fbc4769625de8669551225269834ee0d482b339823f32ba296"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-root-install-2026-10-18.log",
+      "sha256": "268170a50292a1faf97391cfc6ffcb46486907b33046bcf27df88a110cc16e88"
+    },
+    {
+      "path": "/tmp/aux-vite-css-retry-root-installed-proof-2026-10-18.json",
+      "sha256": "a51d8e0a883b94172c6859ee17b7dabcb35ddda9c96e21fa091f7fc38cd7641b"
+    }
+  ],
+  "rootInstall": {
+    "command": "pnpm install --offline --frozen-lockfile --ignore-scripts",
+    "exitCode": 0,
+    "downloaded": 0,
+    "reused": 5,
+    "seconds": 2.6,
+    "exactReviewedProducer": true
+  },
+  "result": "Exact pinned producer installed through frozen offline pnpm workflow; rebuilt cumulative checks pass. Actual emitted Retry gates component mount on fresh controlled stylesheet success. Native visual/browser/performance/manual20 and original155 crash acceptance remain open."
+}

@@ -226,6 +226,17 @@ The rebuilt cumulative check passes 5,895 tests across 856 files in 128.49s with
 572 unchanged advisories. [The deletion evidence](evidence/aside-dead-surface-css-2026-10-18.json)
 keeps private renderer bytes separate from current native acceptance.
 
+The A1/A3 lazy-CSS failure discovery produced an actual compiled Find bar
+regression: Retry mounted after stylesheet failure without retrying CSS. The
+pinned Vite7.3.6 producer now shares pending ownership and removes only failed
+owned links/cache entries. Canonical pnpm patch installation is verified; source
+components/Retry/styles are unchanged. Rebuilt cumulative checks pass 5,905 tests
+across 857 files in 128.84s with 572 unchanged advisories. Actual emitted Retry
+waits for a fresh controlled load and preserves drafts in VM/JSDOM; matched JS
+grows 236 bytes, with all CSS unchanged. [The recovery record](evidence/aside-lazy-css-retry-2026-10-18.json)
+separates this evidence from native painting. SetPanel relocation remains an
+optional source proposal; all A9 native acceptance gates remain open.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

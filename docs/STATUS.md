@@ -8,6 +8,22 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+A reproduced lazy-style failure is now corrected in the pinned Vite producer.
+After Find bar CSS failed, the original compiled Retry mounted the bar without
+a second stylesheet attempt. Owned CSS now shares its pending promise, retires
+failed links/cache entries and waits for a fresh successful load on explicit Retry.
+The real emitted Retry/component sequence preserves both drafts in a controlled
+VM/JSDOM diagnostic; it does not establish native appearance. The canonical
+pnpm dependency patch leaves Aux components/styles and existing Retry controls
+unchanged. Root installed the exact reviewed producer offline with the frozen
+lockfile, then rebuilt and passed all 5,905 tests across 857 files in 128.84s,
+with 572 unchanged advisories. Matched startup/total JavaScript each grow by
+236 bytes; all 63 CSS assets are unchanged. [The loader recovery record](evidence/aside-lazy-css-retry-2026-10-18.json)
+preserves the original failure, owned-link/concurrency tests, exact patch/install
+identity and insertion-error normalization. The optional SetPanel style move
+remains a source proposal. Current native comparisons, manual20-task smoke,
+matching-stock performance and original crash resolution remain incomplete.
+
 The next startup slice removes 22 proven obsolete task-save, takeover-card and
 library-filter rules plus one obsolete selector branch. Current Take over, task
 and library controls, shared wait styles and all other declarations stay intact.
