@@ -8,6 +8,35 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [successor source](evidence/aside-native-input-download-integration-2026-10-18.json)
+is committed on local main. Original-input/download continuation is `454ea27cd`,
+process retirement `2b81d27dc`, composer menus `b9870419a`, disposable window sizing
+`efdd7ee9b` and pinned performance-helper reuse `2728ac6c6`. The tested product is
+clean; nothing was pushed. The integrated check passes **6,003 tests across
+861 files** in 102.34s, with 580 lint advisories and no type/lint errors. Runtime
+dist was rebuilt first, without a concurrent native compiler.
+
+All seven selected native input cases pass in 239ms, and all 12 download cases
+pass. Three merged production objects compile. The first input run's two link
+failures were corrected with explicit fixture font, hit geometry and trusted-event
+checks; the original navigation assertions remain unchanged. All 68 canonical
+patches replay across 973 paths and modes. The successor app builds 2,720 steps
+in 23m02.30s; preserved framework/dSYM match UUID
+`4C4C4420-5555-3144-A1C6-6E3050EC3960`. Its exact native implementation, generated
+280-method binding and 297 renderer assets are recorded independently of the
+native dirty source label. Corrected runtime staging and a fresh disposable
+launch are next; current native acceptance is still open.
+
+Earlier integrated checks exposed missing fixture capabilities and a genuine
+process-retirement error. The independently reviewed
+[retirement correction](evidence/aside-coding-process-retirement-2026-10-18.json)
+passes all 11 real-process cases after the main dist rebuild. It bounds denied
+Stop, retains uncertain cleanup debt across restart, and never signals an
+unproven post-reap group. No source-only shutdown acceptance is claimed.
+Hash-pinned helper reuse passes five focused tests without changing OS permissions
+or existing performance reports. The model submenu and Home Project/confirmation
+ordering/placement corrections also await current native observation.
+
 The `b0236f538` native app rebuild completes 43 steps in 9m27.24s. Its original
 normal application-menu Quit now acknowledges an unforced runtime exit 0; the
 original launcher exits 0 and removes its disposable Profile and plain lock. All
@@ -38,9 +67,10 @@ Forced or nonzero exit retains private-data ownership as cleanup debt instead
 of claiming joined resource cleanup. The 10-second native watchdog is unchanged.
 Both initial compile failures and their narrow corrections remain in the
 [bounded-retirement record](evidence/aside-native-bounded-retirement-2026-10-18.json).
-Areas 0001/0004/0060 preserve the implementation; all 68 patches replay with 942
-paths and modes matching. Full-app rebuild, real normal/active/startup Quit,
-private/multiple-Profile observation and Crashpad comparison remain pending.
+Areas 0001/0004/0060 preserve the implementation; that checkpoint's 68 patches
+replay with 942 paths and modes matching. The subsequent full-app rebuild, one
+idle normal Quit and Crashpad comparison are recorded above. Active/startup Quit
+and private/multiple-Profile observations remain pending.
 
 Original CDP commands now have a separate finite protocol-response deadline,
 bounded by 30 seconds and their captured native lease expiry. Retirement settles
@@ -51,10 +81,11 @@ unwinds. The [response-lifetime record](evidence/aside-native-cdp-response-lifet
 includes actual held-command fixtures with a disconnected host. The search-engine
 popup also uses intrinsic width with its actual trigger minimum, retaining Aux's
 Geist font; [native width comparison](evidence/aside-search-picker-intrinsic-width-2026-10-18.json)
-remains pending. The rebuilt integrated check passes all 5,937 tests across 858
-files in 112.49s, with 572 advisories and no type/lint errors. These source fixes
-still require a rebuilt native candidate; input-triggered navigation, exact
-download continuation and bounded native child retirement remain in progress.
+was subsequently observed in the native comparison above. That checkpoint's
+rebuilt integrated check passes all 5,937 tests across 858 files in 112.49s,
+with 572 advisories and no type/lint errors. These fixes are included in the
+rebuilt b0236 candidate; input-triggered navigation and exact download
+continuation are being integrated into its successor.
 
 The matching stock 155 benchmark now includes the current paired microsecond
 latency/frame-interval signals and warm-window presentation/control clocks.
@@ -84,8 +115,10 @@ still removes its disposable Profile and plain lock. All prior 41 authorized
 Crashpad reports remain byte-identical. Exact matching symbols were preserved
 before launch. The [new watchdog dump](evidence/aside-native-teardown-watchdog-2026-10-18.json) proves
 main-thread shutdown waiting on the Aux runtime worker, which calls a 60-second
-child-termination wait against the 10-second macOS watchdog. A destructor also
-has an unbounded fallback wait. Both need bounded cleanup; no fix is qualified.
+child-termination wait against the 10-second macOS watchdog. That historical
+candidate also has an unbounded destructor fallback. The bounded cleanup fix
+and its limited native qualification are recorded above; active retirement
+acceptance remains open.
 The older browser-main155 SIGTRAP remains separate and unresolved. The [campaign record](evidence/aside-native-navigation-campaign-2026-10-18.json)
 retains the source/build identity, actual task receipts, failures and limits.
 The complete 20-task run, current native surface comparisons, paired performance and

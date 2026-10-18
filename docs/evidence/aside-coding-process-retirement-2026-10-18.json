@@ -1,0 +1,102 @@
+{
+  "recordedAt": "2026-10-18T17:38:12.847090+00:00",
+  "status": "Reviewed source integrated; main runtime dist rebuilt, focused11tests and complete6003-test integrated check pass. Native loaded-runtime acceptance pending.",
+  "trigger": {
+    "integratedLog": "/tmp/aux-input-download-model-integrated-check4-2026-10-18.log",
+    "passed": 5994,
+    "failed": 1,
+    "unhandledErrors": 1,
+    "failure": "Synchronous kill EPERM in ChildProcess close callback escaped before original completion settled, leaving test and cleanup waiting."
+  },
+  "implementation": {
+    "completion": "One promise-owned retirement attempt with captured waiter, retained original log/pipes and explicit deduped retry. Event, timer and AbortSignal callbacks retain errors instead of throwing.",
+    "stop": "Uncertain until original group absence and pipe/log join; publish terminal receipt after asynchronous artifact work.",
+    "signalling": "Active work uses its still-live ChildProcess closure. Post-reap retries are absence-only, never authority to signal numeric PGID. Surviving unproven groups remain uncertain.",
+    "recovery": "All uncertain receipts with known PID retain absence-only owned cleanup debt, including an already-reaped leader. An initial recovery signal uses the existing recorded lstart/PGID leader identity; this is not a new kernel-birth guarantee. Unrelated operations remain available; close/closeRun cannot acknowledge surviving debt.",
+    "publication": "Recheck the exact original encrypted receipt before and after absence/log hashing; deletion or replacement refuses publication. Resolved recovered effects remain interrupted, never replayed."
+  },
+  "proposal": {
+    "path": "/tmp/aux-coding-group-retirement-ui-primitives-final-v5/proposal.patch",
+    "sha256": "ac957f4952ac92436181837852bbfc060086fa083fe43ebb43d0cee7e30d32ed",
+    "rootApplication": "/tmp/aux-root-coding-process-retirement-apply-2026-10-18.json",
+    "sourceReview": "/tmp/aux-coding-retirement-v5-independent-review.json",
+    "exportReview": "/tmp/aux-coding-retirement-final-v5-export-review.json",
+    "priorReviewCorrection": "/tmp/aux-coding-retirement-v4-review-correction.json"
+  },
+  "mainFocused": {
+    "runtimeBuildLog": "/tmp/aux-coding-process-retirement-root-build-2026-10-18.log",
+    "runtimeBuildSHA256": "27653cb3bc65b196caa3c435767c6f0cec40997f2bdb84ca0e7eca37fdfed69a",
+    "runtimeBuildExit": 0,
+    "testLog": "/tmp/aux-coding-process-retirement-root-tests-2026-10-18.log",
+    "testLogSHA256": "7fe47bc72e699e133ffbcb8ba7f96b23f31eeaa9530756234d3d820ada58a534",
+    "exitCode": 0,
+    "testsPassed": 11,
+    "testsFailed": 0,
+    "files": 1,
+    "seconds": 19.05,
+    "testMilliseconds": 18421
+  },
+  "privateFocused": {
+    "testLog": "/tmp/aux-coding-group-retirement-ui-primitives-v1/private-tests-v5-first.log",
+    "testLogSHA256": "f1efa3928d47090ab232916405d527a12be335035e08a3eb924d332d6c187940",
+    "testsPassed": 11,
+    "testsFailed": 0,
+    "seconds": 24.3,
+    "lintErrors": 0,
+    "lintAdvisories": 1,
+    "formatExit": 0
+  },
+  "limitations": [
+    "OS/log I/O does not carry a hard overall five-second guarantee; native shutdown has its separate original-child deadline.",
+    "No claim that arbitrary commands which escape their process group are universally reversible or terminated.",
+    "Existing starting/running recovery and historical unknown-PID uncertainty policy remain unchanged.",
+    "Source and focused tests do not establish native active/startup/private shutdown acceptance."
+  ],
+  "integrated": {
+    "log": "/tmp/aux-input-download-model-process-integrated-check5-2026-10-18.log",
+    "sha256": "74332f1102863920e34167581360e91cfea7e362284a74cf60fc4666eae8fb38",
+    "exitCode": 0,
+    "testsPassed": 6003,
+    "testsFailed": 0,
+    "filesPassed": 861,
+    "seconds": 102.34,
+    "lintWarnings": 580,
+    "lintErrors": 0,
+    "typecheckExit": 0,
+    "runtimeRebuiltBeforeTests": true,
+    "nativeCompilerConcurrent": false
+  },
+  "sourceCommits": [
+    {
+      "group": "input-download",
+      "title": "Preserve original click navigation and downloaded artifacts",
+      "commit": "454ea27cd248828e13d9bc580878626d0f12a6a2"
+    },
+    {
+      "group": "process-retirement",
+      "title": "Retain process cleanup ownership through failures and restart",
+      "commit": "2b81d27dc2bedcc85e786425fccda1baddf59e06"
+    },
+    {
+      "group": "composer-ui",
+      "title": "Align composer menus and narrow model navigation",
+      "commit": "b9870419a64056eaf43093ca4e7231a4e021b7db"
+    },
+    {
+      "group": "native-window-size",
+      "title": "Allow measured disposable native window sizes",
+      "commit": "efdd7ee9bc0085650bc8df2611cf9c6359425056"
+    },
+    {
+      "group": "perf-helper",
+      "title": "Reuse explicitly pinned native performance input helpers",
+      "commit": "2728ac6c6605581248962b1ad7d744e9324b9d63"
+    }
+  ],
+  "testedProductIdentity": {
+    "commit": "efdd7ee9bc0085650bc8df2611cf9c6359425056",
+    "tree": "6c2d88660d9cef249f51f7c834792f62ff7d01cf",
+    "dirty": false,
+    "label": "efdd7ee9bc0085650bc8df2611cf9c6359425056"
+  }
+}

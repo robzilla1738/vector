@@ -1,0 +1,190 @@
+{
+  "recordedAt": "2026-10-18T17:38:12.847090+00:00",
+  "status": "Reviewed source integrated, all19 selected native fixtures and final6003-test check pass; corrected runtime staging and current native acceptance pending",
+  "baselineCommit": "ed89de67b",
+  "scope": {
+    "input": "Original governed left-button click dispatch can continue across its exact native document commit or download; original host, lease, RFH/document and cancellation remain bound. Other input forms are not claimed by this slice.",
+    "download": "Actual navigation identity reaches the document-associated DownloadItem GUID. One-use native admission captures bounded immutable original-item file bytes, preserving the downloaded file, and publishes through the existing encrypted ArtifactStore under the original run/source checks.",
+    "ui": "Model submenus use available owning content width and remain inside the popup with Back when narrow. Composer Project precedes confirmation, which uses left-aligned automatic vertical menu placement. Native verification pending.",
+    "performance": "Explicit existing-helper path plus binary/source SHA256 pins permit reuse without replacement or recompilation. Real AX/browser ownership checks remain unchanged. OS permission remains pending."
+  },
+  "sourceReviews": {
+    "input": "/tmp/aux-input-navigation-v3-independent-review.json",
+    "download": "/tmp/aux-navigation-download-v2-independent-review.json"
+  },
+  "nativeSource": {
+    "applied": "/tmp/aux-root-download-native-apply-2026-10-18.json",
+    "inputObjectTargetsCompiled": 11,
+    "inputFixtureCasesExecuted": 7,
+    "downloadFixtureCasesExecuted": 12,
+    "focusedBuildLog": "/tmp/aux-root-focused-native-fixtures-retry16-2026-10-18.log",
+    "canonicalAreas": {
+      "patches": 68,
+      "pathsAndModesMatched": 973,
+      "mismatches": 0,
+      "proof": "/tmp/aux-root-input-geometry-series-replay-2026-10-18.json",
+      "deltaSHA256": "561a5d243732fcce564f3f50333ede40acbce76089698aa3fb6a7c4d57c0bd75",
+      "applied": "/tmp/aux-root-download-area-apply-2026-10-18.json",
+      "repairs": "/tmp/aux-root-download-span-repair-2026-10-18.json",
+      "geometryRepair": "/tmp/aux-root-input-geometry-repair-2026-10-18.json"
+    },
+    "downloadFixtureCasesPassed": 12,
+    "inputFixtureCasesPassed": 7,
+    "inputFixtureCasesFailed": 0,
+    "nativeFixtureLog": "/tmp/aux-root-focused-native-fixtures-repair2-2026-10-18.log",
+    "actualDownloadAndProductionLog": "/tmp/aux-root-native-download-and-production-2026-10-18.log",
+    "downloadExecutableUUID": "4C4C445A-5555-3144-A1AF-346155886A1C",
+    "mergedProductionObjectsCompiled": [
+      "cdp_broker",
+      "runtime_host",
+      "document_jobs"
+    ],
+    "productionCompileSeconds": 31.4,
+    "inputFixtureRepair": "Normal 16px/24px fixture font, positive hit geometry, actual elementFromPoint target and trusted mousedown/up/click checks added. Original six semantic test bodies unchanged. Updated executable rebuild succeeds in332.40s; all7 selected native cases pass in239ms.",
+    "inputFixtureInitialFailures": "RealLinkReleaseCarriesExactTicket and UnchangedReleaseDoesNotTagLaterPersonNavigation each observed0 navigation requests, expected1. Fixture font/geometry setup under investigation; not qualified.",
+    "inputFixtureRerunLog": "/tmp/aux-root-input-geometry-repair-2026-10-18.log",
+    "inputFixtureRerunLogSHA256": "c8848215ed4e01b0792ca4b4c9d49e83311ed8d677075ec54ecc957a089e64d0",
+    "fullAppBuild": {
+      "status": "passed; original sixteen-worker launcher joined0, no native compiler during check5",
+      "initialLog": "/tmp/aux-root-successor-native-app-build-2026-10-18.log",
+      "workerAdjustment": "/tmp/aux-root-successor-native-workers-2026-10-18.json",
+      "currentLog": "/tmp/aux-root-successor-native-app-retry16-2026-10-18.log",
+      "record": "/tmp/aux-root-successor-native-app-retry16-2026-10-18.json",
+      "runtimeStaging": "not done; runtime correction and final integrated check required before launch",
+      "buildSeconds": 1383.23,
+      "ninjaSeconds": 1382.3,
+      "steps": 2720,
+      "exitCode": 0
+    },
+    "frozenBuildInputs": "/tmp/aux-successor-compiled-source-snapshot-2026-10-18.json",
+    "frozenBuildInputsSHA256": "5c172ddea107002283d0926715ace527d3a87c67f272b7a9a5e7402afc842705",
+    "matchingSymbols": {
+      "identity": "/tmp/aux-input-download-ff6f-native-symbols-2026-10-18/identity.json",
+      "frameworkAndDsymUUID": "4C4C4420-5555-3144-A1C6-6E3050EC3960",
+      "artifactCount": 5,
+      "nativeSourceLabel": "b0236f5387eda242826ed52fbcb72c2145a5e3ce+dirty",
+      "note": "Exact native and renderer inputs are bound separately by the frozen source snapshot; corrected runtime staging remains pending."
+    }
+  },
+  "actualChecks": {
+    "integrated": {
+      "log": "/tmp/aux-input-download-model-integrated-check3-2026-10-18.log",
+      "sha256": "0c85d1d4948eaf65b600b1692d9dda30bc87066e10de2aaec0528fbfc7cc6ead",
+      "passed": 5993,
+      "failed": 2,
+      "filesPassed": 859,
+      "filesFailed": 2,
+      "seconds": 112.72,
+      "runtimeBuiltBeforeTests": true,
+      "outcome": "Two missing fixture capabilities; not an integrated pass. Earlier two attempts stopped at conditional-assertion lint errors before tests."
+    },
+    "correctedBoundaryFixtures": {
+      "log": "/tmp/aux-input-boundary-fixture-root-tests3-2026-10-18.log",
+      "sha256": "6c90ac9f50c7a56076c5a057e9fb0c5c572e518112772566b7b414b972af3e5b",
+      "passed": 21,
+      "failed": 0,
+      "files": 2,
+      "seconds": 2.55,
+      "meaning": "Actual ProgramExecutor and shared controlled-input consumer preserve protection-before-click and original document/session for a properly created run-owned agent tab. Typed native outcome is a test double, not native admission proof."
+    },
+    "perfHelper": {
+      "log": "/tmp/aux-native-perf-helper-root-tests-2026-10-18.log",
+      "sha256": "e78d07ec68c0e12f1350267931afbe147400c01ba394315c4caa9a59bd8f96f3",
+      "passed": 5,
+      "failed": 0,
+      "milliseconds": 160.13425,
+      "nativeBrowserSyntaxExit": 0,
+      "meaning": "Pinned reuse, absent/mismatched pins, changed source/bytes/file identity, symlink/non-executable refusal and no replacement/recompilation are exercised with local files; no OS permission granted."
+    },
+    "renderer": {
+      "log": "/tmp/aux-composer-model-permission-root-tests-2026-10-18.log",
+      "sha256": "ed82f0dea9bebec4ed9e35480b690302ac56c282e475f6f7063e432161d64ecd",
+      "passed": 23,
+      "failed": 0,
+      "files": 4,
+      "seconds": 1.54,
+      "nativeAcceptance": false
+    },
+    "integratedRetry": {
+      "log": "/tmp/aux-input-download-model-integrated-check4-2026-10-18.log",
+      "status": "failed; no concurrent native compiler",
+      "passed": 5994,
+      "failed": 1,
+      "filesPassed": 860,
+      "filesFailed": 1,
+      "seconds": 111.6,
+      "unhandledErrors": 1,
+      "sha256": "d23d768469d8247dfeaa04808d5a6241da7a7a87c68b25404a3e66752a306dfd",
+      "failure": "CodingProcesses close callback throws kill EPERM before settling original stopped promise, causing test and cleanup timeout. Genuine process-retirement bug; private correction pending."
+    },
+    "processRetirement": {
+      "status": "Exact independently reviewed finalv5 integrated; main dist rebuilt; root focused11/11pass19.05s; fullcheck5pending until nativebuilderends",
+      "evidence": "docs/evidence/aside-coding-process-retirement-2026-10-18.json"
+    },
+    "finalIntegrated": {
+      "log": "/tmp/aux-input-download-model-process-integrated-check5-2026-10-18.log",
+      "sha256": "74332f1102863920e34167581360e91cfea7e362284a74cf60fc4666eae8fb38",
+      "exitCode": 0,
+      "testsPassed": 6003,
+      "testsFailed": 0,
+      "filesPassed": 861,
+      "seconds": 102.34,
+      "lintWarnings": 580,
+      "lintErrors": 0,
+      "typecheckExit": 0,
+      "runtimeRebuiltBeforeTests": true,
+      "nativeCompilerConcurrent": false
+    }
+  },
+  "retainedComparisons": {
+    "ledger": "/tmp/aux-native-b0236f538-acceptance/native-comparisons.json",
+    "sha256": "c5904515b182a2f1afb327ee3e97d4d282c3abe54d492123ca3fd58cc3cf18c0",
+    "newObservedPartialReferences": [
+      1,
+      3,
+      8,
+      9
+    ],
+    "nativeCandidate": "b0236f538",
+    "acceptance": "No surface accepted; themes, states, populated data and narrow/computed geometry remain open."
+  },
+  "limitations": [
+    "Original155 SIGTRAP is unresolved without matching framework UUID/symbols; separate shutdown-watchdog fix has only limited current native qualification.",
+    "No fresh full20 smoke or successful paired performance result is claimed.",
+    "Native file hash absent remains unverified network-origin content; file identity at immutable capture is the proven scope.",
+    "Current app still needs generated binding staging, full rebuild and matching symbols before native acceptance."
+  ],
+  "sourceCommits": [
+    {
+      "group": "input-download",
+      "title": "Preserve original click navigation and downloaded artifacts",
+      "commit": "454ea27cd248828e13d9bc580878626d0f12a6a2"
+    },
+    {
+      "group": "process-retirement",
+      "title": "Retain process cleanup ownership through failures and restart",
+      "commit": "2b81d27dc2bedcc85e786425fccda1baddf59e06"
+    },
+    {
+      "group": "composer-ui",
+      "title": "Align composer menus and narrow model navigation",
+      "commit": "b9870419a64056eaf43093ca4e7231a4e021b7db"
+    },
+    {
+      "group": "native-window-size",
+      "title": "Allow measured disposable native window sizes",
+      "commit": "efdd7ee9bc0085650bc8df2611cf9c6359425056"
+    },
+    {
+      "group": "perf-helper",
+      "title": "Reuse explicitly pinned native performance input helpers",
+      "commit": "2728ac6c6605581248962b1ad7d744e9324b9d63"
+    }
+  ],
+  "testedProductIdentity": {
+    "commit": "efdd7ee9bc0085650bc8df2611cf9c6359425056",
+    "tree": "6c2d88660d9cef249f51f7c834792f62ff7d01cf",
+    "dirty": false,
+    "label": "efdd7ee9bc0085650bc8df2611cf9c6359425056"
+  }
+}
