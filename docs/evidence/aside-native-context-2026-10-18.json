@@ -1,0 +1,121 @@
+{
+  "recordedAt": "2026-10-18T06:06:43.298903+00:00",
+  "state": "working-source and focused native test runners; full application not yet rebuilt",
+  "nativeRevision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+  "chromium": "155.0.8059.85",
+  "patch": "chromium/patches/aux/0066-native-context-input-proof.patch",
+  "sha256": "bfadd024f190501829267f91fac768e29e59ad0fe97ffe28fd1be3feb72e52e4",
+  "patchOwnedPaths": 35,
+  "sourceProof": {
+    "prefix": "All65 preceding areas applied from exact pinned revision; frozen935-path replay retained",
+    "currentArea": "Reverse prior0066 then apply current0066 with index checks; all935 patch-owned paths match actual bytes and modes",
+    "replayTree": "f4f0cccb4773a0eb888a847269dd100e2089ac3e",
+    "fullSeriesProof": "/tmp/aux-native66-full-series-proof-jpnyykve",
+    "currentAreaProofPathRecord": "/tmp/aux-native66-current-series-proof-path",
+    "unexplainedMismatches": 0
+  },
+  "build": {
+    "log": "/tmp/aux-native66-runners-build10.log",
+    "steps": 9,
+    "seconds": 567.59,
+    "success": true
+  },
+  "tests": {
+    "blink": {
+      "summary": "/tmp/aux-blink-context-final-results.json",
+      "tests": 49,
+      "allSuccess": true,
+      "retries": 0,
+      "cases": [
+        "AuxContextActionsTest.AppliesExistingImeWriterExactlyOnce",
+        "AuxContextActionsTest.BeforeInputFocusChangeCannotWriteToAnotherEditor",
+        "AuxContextActionsTest.BeforeInputRecipientChangeCannotInsertAfterDispatchedHandler",
+        "AuxContextActionsTest.BoundaryEventsAloneAreUncertainNotApplied",
+        "AuxContextActionsTest.ClickWithoutIntentEventsCannotClaimApplied",
+        "AuxContextActionsTest.ExplicitRetirementNeverReplays",
+        "AuxContextActionsTest.ExplicitUncertaintyCannotBecomeRefusalWithoutObservedDomEvents",
+        "AuxContextActionsTest.LegacyTextInputMutationIsCheckedBeforeTypingCommand",
+        "AuxContextActionsTest.MissingNativeRegionCannotPrepare",
+        "AuxContextActionsTest.MouseDownMutationRefusesReleaseAndCannotReenter",
+        "AuxContextActionsTest.NativeRetirementBeforeInputHasZeroInvocations",
+        "AuxContextActionsTest.NativeRetirementInsideBeforeInputIsUncertainWithoutInsertion",
+        "AuxContextActionsTest.OriginalNativeDeadlineCannotBeRenewedByRenderer",
+        "AuxContextActionsTest.PointerDownMutationCannotReachMouseDownOrClick",
+        "AuxContextActionsTest.PressAndReleaseWithoutClickCannotClaimApplied",
+        "AuxContextActionsTest.PressWithoutReleaseOrClickCannotClaimApplied",
+        "AuxContextActionsTest.RefusesHiddenOrOutsideEditor",
+        "AuxContextActionsTest.RefusesProtectedEditor",
+        "AuxContextActionsTest.RefusesRecipientSwitchWithUnchangedFormValue",
+        "AuxContextActionsTest.RefusesReplacedRootEvenWithIdenticalText",
+        "AuxContextActionsTest.SameDocumentNavigationCannotReplaceSource",
+        "AuxContextActionsTest.WrongOwnerCannotConsumeForNewOwner",
+        "AuxContextActionsTest.WrongPointerTargetBeforeEventsIsRefused",
+        "AuxContextWidgetTest.ActualWidgetClickDispatchesIntentExactlyOnce",
+        "AuxContextWidgetTest.ActualWidgetFillCompletesExistingTextCommand",
+        "AuxContextWidgetTest.AncestorOpacityChangeBeforeClickRefusesWithoutEvents",
+        "AuxContextWidgetTest.AncestorOpacityChangeBeforeFillRefusesWithoutEvents",
+        "AuxContextWidgetTest.CanceledSameTextFillCannotClaimCommitFromMatchingText",
+        "AuxContextWidgetTest.CarriageReturnNormalizationCannotChangeApprovedContent",
+        "AuxContextWidgetTest.ClippedEditorBeforeFillRefusesWithoutEvents",
+        "AuxContextWidgetTest.CoverInsideBeforeInputIsUncertainWithoutInsertion",
+        "AuxContextWidgetTest.CoveredEditorBeforeFillRefusesWithoutEvents",
+        "AuxContextWidgetTest.DisabledOrdinaryNormalizationDoesNotAdmitLiteralCarriageReturns",
+        "AuxContextWidgetTest.DragSuppressionRefusesWithoutEvents",
+        "AuxContextWidgetTest.ExactMaxlengthFillStillUsesTheExistingWriter",
+        "AuxContextWidgetTest.ExactMultilineTextAreaFillIsStillApplied",
+        "AuxContextWidgetTest.IgnoredWidgetInputRefusesWithoutEvents",
+        "AuxContextWidgetTest.MaxlengthChangedBeforeApplyCannotInsertATruncatedDraft",
+        "AuxContextWidgetTest.MaxlengthReducedInBeforeInputCannotInsertATruncatedDraft",
+        "AuxContextWidgetTest.NativeRetirementInFinalClickRetainsUncertainty",
+        "AuxContextWidgetTest.NativeRetirementInInputKeepsInsertedTextAndUncertainty",
+        "AuxContextWidgetTest.OffscreenEditorBeforeFillRefusesWithoutFocusOrScroll",
+        "AuxContextWidgetTest.OpacityChangeInsideFocusIsUncertainWithoutInsertion",
+        "AuxContextWidgetTest.OrdinaryImeWithoutAuxProofRetainsItsExistingMaxlengthFilter",
+        "AuxContextWidgetTest.PartiallyTransparentAncestorKeepsActualVisibleFill",
+        "AuxContextWidgetTest.RecipientChangeInFinalClickRetainsUncertainty",
+        "AuxContextWidgetTest.ShadowHostOpacityChangeBeforeFillRefusesWithoutEvents",
+        "AuxContextWidgetTest.SingleLineInputCannotRewriteApprovedNewlinesToSpaces",
+        "AuxContextWidgetTest.SuppressionInsideMouseDownKeepsUncertaintyWithoutReleaseOrClick"
+      ]
+    },
+    "mac": {
+      "summary": "/tmp/aux-mac-retirement-final-results.json",
+      "tests": 9,
+      "allSuccess": true,
+      "retries": 0,
+      "cases": [
+        "RenderWidgetHostViewMacNativeInputBFCacheTest.CacheRestoreReacquiresAdmissionWithoutReusingOriginalSubscription",
+        "RenderWidgetHostViewMacNativeInputTest.CocoaAckAfterNavigationCannotAdmitOriginalDocument",
+        "RenderWidgetHostViewMacNativeInputTest.CocoaAckAfterViewDestructionCannotCompleteOriginalAdmission",
+        "RenderWidgetHostViewMacNativeInputTest.NavigationRetiresOriginalSubscriptionBeforeReplacementAdmission",
+        "RenderWidgetHostViewMacNativeInputTest.OriginalAdmissionRetiresOnceAcrossViewReplacement",
+        "RenderWidgetHostViewMacNativeInputTest.QueuedAdmissionCannotFollowAReplacementNativeBridgeBinding",
+        "RenderWidgetHostViewMacNativeInputTest.QueuedAdmissionResultCannotSurviveNativeViewDestruction",
+        "RenderWidgetHostViewMacTest.NativeContextRetirementRequiresBoundDocument",
+        "RenderWidgetHostViewMacTest.UnsupportedViewCannotProduceContextRetirement"
+      ]
+    }
+  },
+  "limitations": [
+    "No live LinkedIn input or third-party message was sent.",
+    "The initial41-case Blink run exposed three incorrect focus fixtures; corrected real widget focus is covered by this49-case result.",
+    "Source replay, focused runner compilation and these native checks do not establish a packaged application build, matched UI parity, crash resolution or daily-use acceptance."
+  ],
+  "integratedCheck": {
+    "log": "/tmp/aux-native-context-sheets-integrated-check.log",
+    "runtimeDistRebuiltBeforeTests": true,
+    "typecheck": "passed",
+    "lint": "passed",
+    "testFiles": 835,
+    "tests": 5458,
+    "failed": 0,
+    "seconds": 96.87
+  },
+  "runtimeApprovalContinuation": {
+    "patchSha256": "012ccebf0dd4ca643dda382374b182e10c81ea580d92a1e272b610692cb9b89c",
+    "isolatedFocusedTests": 89,
+    "originalSourceBinding": "Immutable original backend-node capture; distinct from short-lived dispatch input ticket.",
+    "approval": "Actual one-time existing ApprovalStore/Gate approval; no ref rebinding or original-owner lease renewal on continuation.",
+    "liveThirdPartyInputSent": false
+  }
+}

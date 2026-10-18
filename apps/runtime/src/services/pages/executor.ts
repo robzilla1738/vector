@@ -129,6 +129,26 @@ export class ProgramExecutor {
             throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
         };
         const allSteps = collectProgramSteps(program);
+        if (
+          ctx.targetPreconditions &&
+          (!this.pages.deps.safetyGate ||
+            !admittedDriver.actionTarget ||
+            !admittedDriver.withActionTarget ||
+            ctx.targetPreconditions.length !== allSteps.length ||
+            program.nodes?.some((node) => node.kind !== "step"))
+        )
+          throw new AuxError(
+            "permission_denied",
+            "Original target proofs require the exact flat step program.",
+          );
+        if (
+          ctx.linkedInPrecondition &&
+          (allSteps.length !== 1 || program.nodes?.some((node) => node.kind !== "step"))
+        )
+          throw new AuxError(
+            "permission_denied",
+            "A native LinkedIn context admission owns one concrete action.",
+          );
         if (!ctx.journaled) {
           ctx = {
             ...ctx,
@@ -161,186 +181,248 @@ export class ProgramExecutor {
         const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
         // Same rule as the external page lease: a read uses the task page, and
         // any non-read step (including hover, scroll, and stop) takes transmission protection.
-        if (ctx.runId && allSteps.some((step) => classifyStep(step.op) !== "read"))
+        if (ctx.runId && !ctx.linkedInCapture?.source && allSteps.some((step) => classifyStep(step.op) !== "read"))
           await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
         let batchPreparation: Parameters<SafetyDispatchGate["check"]>[0][] | undefined;
         let projectedSteps: Step[] = [];
         let dispatchTarget:
           { target: string; proof: import("@aux/chromium-driver").ObservedActionTarget } | undefined;
+        let contextDispatch: import("@aux/chromium-driver").PreparedContextAction | undefined;
         let credentialDispatch: { target: SavedCredentialTarget; policyRevision: number } | undefined;
         const authorize = async (
           step: Step,
           projectedOrigin?: string,
           phase: "preflight" | "dispatch" = "dispatch",
         ) => {
+          if (contextDispatch) await contextDispatch.retire();
+          contextDispatch = undefined;
           credentialDispatch = undefined;
           dispatchTarget = undefined;
-          checkIncarnation();
-          if (phase === "preflight" && ctx.isStepApplied?.(step)) return;
-          if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
-          ctx.taskRead?.check();
-          ctx.sourcePageCheck?.();
-          const access = classifyStep(step.op) === "read" ? "read" : "act";
-          if (mentionTurn && ctx.runId)
-            await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
-          checkIncarnation();
-          const documentEpoch = lp.target.documentEpoch;
-          const topOrigin = liveOrigin();
-          const targets = [
-            "target" in step && typeof step.target === "string" ? step.target : undefined,
-            step.op === "dragTo" ? step.to : undefined,
-          ].filter((target): target is string => !!target);
-          const ambiguousInput =
-            step.op === "clickPoint" || step.op === "dialog" || (step.op === "press" && targets.length === 0);
-          const fallbackOrigin =
-            projectedOrigin ?? (ambiguousInput && lp.driver!.hasForeignFrames?.() ? "" : liveOrigin());
-          const origins = targets.length
-            ? await Promise.all(
-                targets.map((target) =>
-                  projectedOrigin !== undefined && !isElementRef(target)
-                    ? projectedOrigin
-                    : (lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)),
-                ),
-              )
-            : [fallbackOrigin];
-          checkIncarnation();
-          let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
-          for (const actionOrigin of origins) {
-            const auth = authorizeProfileProgram([step], isReadOnlyProfile(run?.config?.subagentProfile));
-            if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
-            if (this.pages.deps.safetyGate && (ctx.runId || classifyStep(step.op) !== "read")) {
-              const destination =
-                step.op === "navigate"
-                  ? (() => {
-                      try {
-                        return new URL(step.url, lp.driver!.url()).origin;
-                      } catch {
-                        return "";
-                      }
-                    })()
-                  : actionOrigin;
-              const metadata = ctx.safety?.steps?.[step.id];
-              const observedTarget =
-                targets.length === 1 && lp.driver!.actionTarget
-                  ? await lp.driver!.actionTarget(targets[0]!, batchPreparation ? projectedSteps : undefined)
-                  : undefined;
-              checkIncarnation();
-              if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
-                throw new AuxError("ref_stale", "The document changed while reading the action target.");
-              let credentialTarget: SavedCredentialTarget | undefined;
-              if (step.op === "fillCredential") {
-                if (!this.pages.deps.native.credentialContext || !lp.target.sessionId)
-                  throw new AuxError(
-                    "backend_unavailable",
-                    "The original native credential context is unavailable.",
-                  );
-                const expectedUrl = lp.driver!.url();
-                const native = await this.pages.deps.native.credentialContext({ pageId, expectedUrl });
+          let keepContext = false;
+          try {
+            checkIncarnation();
+            if (phase === "preflight" && ctx.isStepApplied?.(step)) return;
+            if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
+            ctx.taskRead?.check();
+            ctx.sourcePageCheck?.();
+            const access = classifyStep(step.op) === "read" ? "read" : "act";
+            if (mentionTurn && ctx.runId)
+              await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
+            checkIncarnation();
+            const documentEpoch = lp.target.documentEpoch;
+            const topOrigin = liveOrigin();
+            const targets = [
+              "target" in step && typeof step.target === "string" ? step.target : undefined,
+              step.op === "dragTo" ? step.to : undefined,
+            ].filter((target): target is string => !!target);
+            const ambiguousInput =
+              step.op === "clickPoint" ||
+              step.op === "dialog" ||
+              (step.op === "press" && targets.length === 0);
+            const fallbackOrigin =
+              projectedOrigin ?? (ambiguousInput && lp.driver!.hasForeignFrames?.() ? "" : liveOrigin());
+            let origins: string[];
+            if (ctx.linkedInPrecondition) {
+              // Only original main-frame backend nodes may reach this native consumer.
+              origins = [new URL(ctx.linkedInPrecondition.source.url).origin];
+            } else origins = targets.length
+              ? await Promise.all(
+                  targets.map((target) =>
+                    projectedOrigin !== undefined && !isElementRef(target)
+                      ? projectedOrigin
+                      : (lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)),
+                  ),
+                )
+              : [fallbackOrigin];
+            checkIncarnation();
+            let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
+            for (const actionOrigin of origins) {
+              const auth = authorizeProfileProgram([step], isReadOnlyProfile(run?.config?.subagentProfile));
+              if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
+              if (this.pages.deps.safetyGate && (ctx.runId || classifyStep(step.op) !== "read")) {
+                const destination =
+                  step.op === "navigate"
+                    ? (() => {
+                        try {
+                          return new URL(step.url, lp.driver!.url()).origin;
+                        } catch {
+                          return "";
+                        }
+                      })()
+                    : actionOrigin;
+                const metadata = ctx.safety?.steps?.[step.id];
+                const observedTarget = ctx.linkedInCapture?.observedTarget ?? (
+                  targets.length === 1 && lp.driver!.actionTarget
+                    ? await lp.driver!.actionTarget(
+                        targets[0]!,
+                        batchPreparation ? projectedSteps : undefined,
+                      )
+                    : undefined);
                 checkIncarnation();
+                if (phase === "dispatch" && ctx.targetPreconditions) {
+                  const expected = ctx.targetPreconditions[allSteps.indexOf(step)];
+                  if (
+                    !expected?.nodeIdentity ||
+                    !expected.stateDigest ||
+                    expected.nodeIdentity !== observedTarget?.nodeIdentity ||
+                    expected.stateDigest !== observedTarget?.stateDigest
+                  )
+                    throw new AuxError(
+                      "ref_stale",
+                      "The original workflow input target changed before dispatch.",
+                      { browserInputDispatched: false },
+                    );
+                }
+                if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
+                  throw new AuxError("ref_stale", "The document changed while reading the action target.");
+                let credentialTarget: SavedCredentialTarget | undefined;
+                if (step.op === "fillCredential") {
+                  if (!this.pages.deps.native.credentialContext || !lp.target.sessionId)
+                    throw new AuxError(
+                      "backend_unavailable",
+                      "The original native credential context is unavailable.",
+                    );
+                  const expectedUrl = lp.driver!.url();
+                  const native = await this.pages.deps.native.credentialContext({ pageId, expectedUrl });
+                  checkIncarnation();
+                  if (
+                    native.pageId !== pageId ||
+                    native.expectedUrl !== expectedUrl ||
+                    lp.driver!.url() !== expectedUrl ||
+                    lp.target.documentEpoch !== documentEpoch
+                  )
+                    throw new AuxError(
+                      "ref_stale",
+                      "The credential document changed while preparing approval.",
+                    );
+                  const nativeContext = {
+                    documentToken: native.documentToken,
+                    windowId: native.windowId,
+                    ownerIncarnation: native.ownerIncarnation,
+                    connectionGeneration: native.connectionGeneration,
+                  };
+                  credentialTarget = SavedCredentialTargetSchema.parse({
+                    pageId,
+                    sessionId: lp.target.sessionId,
+                    documentEpoch,
+                    expectedUrl,
+                    passwordSelector: step.passwordSelector,
+                    ...(step.usernameSelector ? { usernameSelector: step.usernameSelector } : {}),
+                    nativeContext,
+                  });
+                }
                 if (
-                  native.pageId !== pageId ||
-                  native.expectedUrl !== expectedUrl ||
-                  lp.driver!.url() !== expectedUrl ||
-                  lp.target.documentEpoch !== documentEpoch
+                  ctx.linkedInPrecondition?.context &&
+                  lp.driver?.captureLinkedInContext &&
+                  ctx.linkedInCapture
+                ) {
+                  try {
+                    ctx.linkedInCapture.source ??= await lp.driver.captureLinkedInContext(
+                      ctx.linkedInPrecondition,
+                    );
+                    if (observedTarget) ctx.linkedInCapture.observedTarget ??= structuredClone(observedTarget);
+                    checkIncarnation();
+                    ctx.sourcePageCheck?.();
+                    if (ctx.signal?.aborted) throw new AuxError("cancelled", "The original input stopped.");
+                  } catch (error) {
+                    await contextDispatch?.retire();
+                    contextDispatch = undefined;
+                    if (!(error instanceof AuxError) || error.code !== "capability_unsupported") throw error;
+                  }
+                }
+                const taskId = ctx.taskId ?? run?.config?.taskId;
+                const safetyInput: Parameters<SafetyDispatchGate["check"]>[0] = {
+                  step,
+                  origin: destination,
+                  phase,
+                  context: {
+                    taskRead: ctx.taskRead,
+                    linkedInPrecondition: ctx.linkedInPrecondition,
+                    nativeContextAction: contextDispatch,
+                    linkedInContextSource: ctx.linkedInCapture?.source,
+                    pageId,
+                    observedTarget,
+                    credentialTarget,
+                    actor:
+                      run?.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
+                    profileId: this.pages.deps.profileId ?? "default",
+                    scope: taskId
+                      ? { kind: "task", id: taskId }
+                      : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+                    ...(ctx.runId ? { runId: ctx.runId } : {}),
+                    turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
+                    threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
+                    sessionId: lp.target.sessionId ?? undefined,
+                    documentEpoch,
+                    checkOwner: () => {
+                      checkIncarnation();
+                      ctx.sourcePageCheck?.();
+                      if (ctx.signal?.aborted)
+                        throw new AuxError("cancelled", "The run stopped before this action.");
+                    },
+                    approvalId: ctx.linkedInCapture?.approvalId ?? metadata?.approvalId,
+                    review: metadata?.review,
+                    turnToolCallCount: ctx.safety?.turnToolCallCount,
+                    sensitiveData: metadata?.sensitiveData,
+                    restrictedRetry: metadata?.restrictedRetry,
+                    trustedEval: ctx.allowEval === true,
+                  },
+                };
+                let provenance: AuthorizationProvenance | undefined;
+                if (batchPreparation) batchPreparation.push(safetyInput);
+                else provenance = await this.pages.deps.safetyGate.check(safetyInput);
+                if (phase === "dispatch" && ctx.linkedInCapture?.source) {
+                  contextDispatch = await ctx.linkedInCapture.source.prepare();
+                  checkIncarnation();
+                  ctx.sourcePageCheck?.();
+                  if (ctx.signal?.aborted) throw new AuxError("cancelled", "The original input stopped.");
+                }
+                checkIncarnation();
+                if (provenance) authorized = provenance;
+                if (phase === "dispatch" && observedTarget && targets.length === 1)
+                  dispatchTarget = { target: targets[0]!, proof: observedTarget };
+                if (credentialTarget && phase === "dispatch")
+                  credentialDispatch = {
+                    target: credentialTarget,
+                    policyRevision: this.pages.deps.safetyGate.policyRevision(),
+                  };
+              }
+            }
+            if (phase === "dispatch" && classifyStep(step.op) !== "read") {
+              // Guardian and target-origin resolution can await. A navigation or
+              // frame swap during that window invalidates the authorization.
+              if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
+                throw new AuxError(
+                  "ref_stale",
+                  "The document changed while authorizing this action. Observe it again.",
+                );
+              if (targets.length && lp.driver!.originForTarget && !ctx.linkedInPrecondition) {
+                const fresh = await Promise.all(targets.map((target) => lp.driver!.originForTarget!(target)));
+                if (
+                  fresh.some((value, index) => value !== origins[index]) ||
+                  lp.target.documentEpoch !== documentEpoch ||
+                  liveOrigin() !== topOrigin
                 )
                   throw new AuxError(
                     "ref_stale",
-                    "The credential document changed while preparing approval.",
+                    "The target frame changed while authorizing this action. Observe it again.",
                   );
-                const nativeContext = {
-                  documentToken: native.documentToken,
-                  windowId: native.windowId,
-                  ownerIncarnation: native.ownerIncarnation,
-                  connectionGeneration: native.connectionGeneration,
-                };
-                credentialTarget = SavedCredentialTargetSchema.parse({
-                  pageId,
-                  sessionId: lp.target.sessionId,
-                  documentEpoch,
-                  expectedUrl,
-                  passwordSelector: step.passwordSelector,
-                  ...(step.usernameSelector ? { usernameSelector: step.usernameSelector } : {}),
-                  nativeContext,
-                });
               }
-              const taskId = ctx.taskId ?? run?.config?.taskId;
-              const safetyInput: Parameters<SafetyDispatchGate["check"]>[0] = {
-                step,
-                origin: destination,
-                phase,
-                context: {
-                  taskRead: ctx.taskRead,
-                  linkedInPrecondition: ctx.linkedInPrecondition,
-                  pageId,
-                  observedTarget,
-                  credentialTarget,
-                  actor:
-                    run?.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
-                  profileId: this.pages.deps.profileId ?? "default",
-                  scope: taskId
-                    ? { kind: "task", id: taskId }
-                    : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-                  ...(ctx.runId ? { runId: ctx.runId } : {}),
-                  turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
-                  threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
-                  sessionId: lp.target.sessionId ?? undefined,
-                  documentEpoch,
-                  checkOwner: () => {
-                    checkIncarnation();
-                    ctx.sourcePageCheck?.();
-                    if (ctx.signal?.aborted)
-                      throw new AuxError("cancelled", "The run stopped before this action.");
-                  },
-                  approvalId: metadata?.approvalId,
-                  review: metadata?.review,
-                  turnToolCallCount: ctx.safety?.turnToolCallCount,
-                  sensitiveData: metadata?.sensitiveData,
-                  restrictedRetry: metadata?.restrictedRetry,
-                  trustedEval: ctx.allowEval === true,
-                },
-              };
-              let provenance: AuthorizationProvenance | undefined;
-              if (batchPreparation) batchPreparation.push(safetyInput);
-              else provenance = await this.pages.deps.safetyGate.check(safetyInput);
-              checkIncarnation();
-              if (provenance) authorized = provenance;
-              if (phase === "dispatch" && observedTarget && targets.length === 1)
-                dispatchTarget = { target: targets[0]!, proof: observedTarget };
-              if (credentialTarget && phase === "dispatch")
-                credentialDispatch = {
-                  target: credentialTarget,
-                  policyRevision: this.pages.deps.safetyGate.policyRevision(),
-                };
+            }
+            if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
+            if (mentionTurn && ctx.runId)
+              await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
+            ctx.taskRead?.check();
+            ctx.sourcePageCheck?.();
+            checkIncarnation();
+            keepContext = phase === "dispatch";
+            return authorized;
+          } finally {
+            if (!keepContext) {
+              await contextDispatch?.retire();
+              contextDispatch = undefined;
             }
           }
-          if (phase === "dispatch" && classifyStep(step.op) !== "read") {
-            // Guardian and target-origin resolution can await. A navigation or
-            // frame swap during that window invalidates the authorization.
-            if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
-              throw new AuxError(
-                "ref_stale",
-                "The document changed while authorizing this action. Observe it again.",
-              );
-            if (targets.length && lp.driver!.originForTarget) {
-              const fresh = await Promise.all(targets.map((target) => lp.driver!.originForTarget!(target)));
-              if (
-                fresh.some((value, index) => value !== origins[index]) ||
-                lp.target.documentEpoch !== documentEpoch ||
-                liveOrigin() !== topOrigin
-              )
-                throw new AuxError(
-                  "ref_stale",
-                  "The target frame changed while authorizing this action. Observe it again.",
-                );
-            }
-          }
-          if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
-          if (mentionTurn && ctx.runId)
-            await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
-          ctx.taskRead?.check();
-          ctx.sourcePageCheck?.();
-          checkIncarnation();
-          return authorized;
         };
         // Fail fast while the current document is knowable. A write can navigate
         // or replace a frame, so later steps are checked against live origins at
@@ -517,8 +599,19 @@ export class ProgramExecutor {
               },
               authorizeStep: (step) => authorize(step),
               dispatchStep: async (_step, execute) => {
+                const context = contextDispatch;
+                contextDispatch = undefined;
                 const admission = dispatchTarget;
                 dispatchTarget = undefined;
+                if (context) {
+                  if (!admittedDriver.withContextAction) {
+                    await context.retire();
+                    throw new AuxError("permission_denied", "The original native input consumer retired.");
+                  }
+                  return admittedDriver.withContextAction(context, execute);
+                }
+                if (ctx.linkedInPrecondition)
+                  throw new AuxError("permission_denied", "The original native LinkedIn input attestation is required.");
                 if (admission && admittedDriver.withActionTarget)
                   return admittedDriver.withActionTarget(admission.target, admission.proof, execute);
                 return execute();
@@ -694,6 +787,8 @@ export class ProgramExecutor {
             span?.end("failed", { error: e instanceof Error ? e.message : String(e) });
             throw e;
           } finally {
+            await contextDispatch?.retire();
+            contextDispatch = undefined;
             if (needsStage) await this.pages.deps.native.releaseStage(pageId).catch(() => {});
           }
           settleWrite(this.pages.deps.durableWrites, journal.intentId, result);

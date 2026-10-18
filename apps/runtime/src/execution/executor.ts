@@ -26,8 +26,11 @@ function pageDocumentEpoch(page: DriverPage): number | undefined {
 }
 
 export interface ExecContext {
+  /** Original private workflow target proofs in exact program step order. */
+  targetPreconditions?: readonly import("@aux/chromium-driver").ObservedActionTarget[];
   /** Private sealed producer context. Never accepted from program/tool input. */
   linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
+  linkedInCapture?: import("@aux/chromium-driver").ContextActionCapture;
   runId?: string;
   resumeStep?: (step: Step) => StepOutcome | undefined;
   isStepApplied?: (step: Step) => boolean;
@@ -331,7 +334,13 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
             })()
           : await runStep(page, step, ctx).catch(async (e) => {
               const code = e instanceof AuxError ? e.code : undefined;
-              if (!code || !RETRYABLE_RESOLUTION_CODES.has(code) || ctx.signal?.aborted) throw e;
+              if (
+                ctx.targetPreconditions ||
+                !code ||
+                !RETRYABLE_RESOLUTION_CODES.has(code) ||
+                ctx.signal?.aborted
+              )
+                throw e;
               await page
                 .waitFor({ kind: "settled", policy: "interactive" })
                 .catch(() => ({ ok: false, timedOut: false }));

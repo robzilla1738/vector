@@ -120,7 +120,9 @@ export interface LoopToolDeps {
     actionId?: string;
     /** Private original workflow ownership fence and source seal, never tool input. */
     sourceCheck?: () => void;
+    targetPreconditions?: readonly import("@aux/chromium-driver").ObservedActionTarget[];
     linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
+    linkedInCapture?: import("@aux/chromium-driver").ContextActionCapture;
     pageId: string;
     steps: import("@aux/contracts").Step[];
   }) => Promise<LoopToolResult>;
@@ -128,6 +130,10 @@ export interface LoopToolDeps {
    * Cookie-free web fetch; the destination runs through decide() first —
    * an `ask` parks the loop on the suspension it creates.
    */
+  sheetsNavigation?: (
+    input: import("@aux/contracts").SheetsNavigationInput,
+    context: { actionId: string },
+  ) => Promise<LoopToolResult>;
   linkedInWorkflow?: (
     input: import("@aux/contracts/linkedin").LinkedInToolInput,
     context: { actionId: string },

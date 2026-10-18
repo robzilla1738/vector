@@ -1,3 +1,4 @@
+import { SheetsWorkflows, confirmSheetsSelection, sheetsInputsUndispatched } from "../sheets-workflows.js";
 import { taskMessage } from "./task-message.js";
 import { X_OPERATIONS } from "@aux/contracts/x";
 import { LinkedInWorkflows } from "../linkedin-workflows.js";
@@ -489,6 +490,11 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
   };
   const linkedInSignals = new WeakMap<AbortSignal, string>();
   const linkedIn = new LinkedInWorkflows({
+    approval: (approvalId) =>
+      self.deps.approvals?.continuation(approvalId, { runId, turnId: runId, threadId }),
+    undispatched: (steps, actionId, pageId) =>
+      !self.durable.unresolved(runId).some((intent) => intent.pageId === pageId) &&
+      sheetsInputsUndispatched(self.durable, steps, actionId),
     checkOwner: () => {
       if (signal.aborted || self.controls.get(runId) !== c || steerPending())
         throw new AuxError("cancelled", "The original LinkedIn run stopped or changed.");
@@ -602,11 +608,154 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         checkOwner,
       };
     },
-    act: (steps, actionId, sourceCheck, linkedInPrecondition) => {
+    act: async (steps, actionId, sourceCheck, linkedInPrecondition, linkedInCapture) => {
       if (!activePageId || !deps.act)
         throw new AuxError("capability_unsupported", "The original governed act executor is unavailable.");
       sourceCheck?.();
-      return deps.act({ pageId: activePageId, steps, actionId, sourceCheck, linkedInPrecondition });
+      const pageId = linkedInPrecondition?.source.pageId ?? activePageId;
+      try {
+        return await deps.act({
+          pageId,
+          steps,
+          actionId,
+          sourceCheck,
+          linkedInPrecondition,
+          linkedInCapture,
+        });
+      } catch (error) {
+        const pending = self.suspensions.pending(runId);
+        if (error instanceof AuxError && error.code === "needs_input" && pending)
+          return {
+            park: {
+              kind: pending.kind,
+              instruction: pending.request.instruction ?? error.message,
+              ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}),
+            },
+          };
+        throw error;
+      }
+    },
+  });
+  const sheets = new SheetsWorkflows({
+    approval: (approvalId) =>
+      self.deps.approvals?.continuation(approvalId, { runId, turnId: runId, threadId }),
+    undispatched: (capture, actionId) => sheetsInputsUndispatched(self.durable, capture.steps, actionId),
+    checkOwner: () => {
+      if (signal.aborted || self.controls.get(runId) !== c || steerPending())
+        throw new AuxError("cancelled", "The original Sheets run stopped or changed.");
+      self.deps.checkRunSource?.(runId);
+      self.deps.turnMentions.skills(runId);
+    },
+    capture: async (request) => {
+      if (activePageId !== request.pageId || !self.deps.pages.supportsSheetsNavigation?.(request.pageId))
+        throw new AuxError(
+          "capability_unsupported",
+          "Original native Sheets input admission is unavailable.",
+        );
+      const config = self.get(runId).config;
+      if (!config?.taskId || !config.taskRevision)
+        throw new AuxError("permission_denied", "Sheets navigation requires the original admitted task.");
+      const originalSignal = signal,
+        model = self.deps.agentLoop?.modelGeneration?.();
+      const owner = recallOwner({ runId, threadId, turnId: runId }),
+        pageCheck = self.pageSourceCheck(runId, request.pageId);
+      const authority = JSON.stringify([
+        runId,
+        config.messageRevision,
+        config.taskId,
+        config.taskRevision,
+        config.contextWorkspaceId,
+        config.contextWorkspaceRevision,
+        config.nativeTurnContext,
+        model,
+      ]);
+      const check = () => {
+        owner();
+        pageCheck();
+        if (
+          activePageId !== request.pageId ||
+          signal !== originalSignal ||
+          self.deps.agentLoop?.modelGeneration?.() !== model
+        )
+          throw new AuxError("ref_stale", "The original Sheets page or model changed.");
+      };
+      check();
+      const observed = await observePage(request.pageId, { scope: "all" });
+      check();
+      if (
+        !observed.profileId ||
+        observed.documentEpoch !== request.expectedDocumentEpoch ||
+        observed.content.url !== request.expectedUrl
+      )
+        throw new AuxError("ref_stale", "The native Profile/document observation changed.");
+      recordObs(observed);
+      const captured = await self.usePage(runId, request.pageId, "act", () =>
+        self.deps.pages.captureSheetsNavigation(
+          {
+            taskId: config.taskId!,
+            expectedRevision: config.taskRevision!,
+            kind: "google-sheets",
+            view: "selection",
+            pageId: request.pageId,
+            expectedUrl: request.expectedUrl,
+            expectedDocumentEpoch: request.expectedDocumentEpoch,
+            sheetGid: request.sheetGid,
+          },
+          request.a1,
+        ),
+      );
+      check();
+      const originalCheck = captured.check;
+      return {
+        ...captured,
+        authority: JSON.stringify([authority, observed.profileId]),
+        unresolvedEffects: self.durable.unresolved(runId).some((intent) => intent.pageId === request.pageId),
+        check: () => {
+          check();
+          originalCheck();
+        },
+      };
+    },
+    act: async (capture, actionId) => {
+      if (!activePageId || !deps.act)
+        throw new AuxError("capability_unsupported", "Original governed Sheets executor is unavailable.");
+      capture.check();
+      try {
+        return await deps.act({
+          pageId: activePageId,
+          steps: capture.steps,
+          actionId,
+          sourceCheck: capture.check,
+          targetPreconditions: capture.preconditions,
+        });
+      } catch (error) {
+        const pending = self.suspensions.pending(runId);
+        if (error instanceof AuxError && error.code === "needs_input" && pending)
+          return {
+            park: {
+              kind: pending.kind,
+              instruction: pending.request.instruction ?? error.message,
+              ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}),
+            },
+          };
+        throw error;
+      }
+    },
+    confirm: (capture, actionId, execution, evidence) => {
+      capture.check();
+      if (!activePageId) throw new AuxError("ref_stale", "The original Sheets active page retired.");
+      const confirmedIntentId = confirmSheetsSelection(self.durable, {
+        runId,
+        pageId: activePageId,
+        documentEpoch: self.deps.pages.get(activePageId).documentEpoch,
+        actionId,
+        steps: capture.steps,
+        execution,
+        selection: evidence,
+      });
+      noteUnresolved();
+      self.persistCheckpoint(self.get(runId));
+      return confirmedIntentId;
     },
   });
   const deps: LoopToolDeps = {
@@ -656,6 +805,16 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           },
         }
       : {}),
+    sheetsNavigation:
+      self.deps.approvals &&
+      run.config?.taskId &&
+      run.config.taskRevision &&
+      activePageId &&
+      !self.deps.readOnly &&
+      !isReadOnlyProfile(run.config?.subagentProfile) &&
+      self.deps.pages.supportsSheetsNavigation?.(activePageId)
+        ? (input, context) => sheets.invoke(input, context.actionId)
+        : undefined,
     linkedInWorkflow: (input, context) => linkedIn.invoke(input, context.actionId),
     ...(capturedGoogle.length && self.deps.googleOperation
       ? {
@@ -894,7 +1053,15 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       const obs = await observePage(pageId, { scope, subtreeRef });
       return recordObs(obs);
     },
-    act: async ({ pageId, steps, actionId, sourceCheck, linkedInPrecondition }): Promise<LoopToolResult> => {
+    act: async ({
+      pageId,
+      steps,
+      actionId,
+      sourceCheck,
+      linkedInPrecondition,
+      linkedInCapture,
+      targetPreconditions,
+    }): Promise<LoopToolResult> => {
       sourceCheck?.();
       const maxSteps = self.get(runId).config?.maxSteps ?? 0;
       const used = self.deps.repo.listSteps(runId).length;
@@ -1008,6 +1175,8 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               };
             })(),
             linkedInPrecondition,
+            linkedInCapture,
+            targetPreconditions,
             onStep: (outcome, step) => {
               outcomes.push(outcome);
               writeDispatches.set(outcome.stepId, { pageId, revision: obs.revision });
@@ -3403,6 +3572,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   } finally {
     linkedIn.close();
+    sheets.close();
     const latestContextRun = self.deps.repo.getRun(runId);
     const context = latestContextRun?.config?.contextCompaction;
     if (

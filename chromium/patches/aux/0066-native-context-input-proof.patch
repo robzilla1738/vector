@@ -1,0 +1,4343 @@
+diff --git a/chrome/browser/ui/aux/cdp_broker.cc b/chrome/browser/ui/aux/cdp_broker.cc
+index 80b20e0f53877ad8e0800ffbd9f83bcb389a7f5c..f8dbf36ffd42c6841989b2b18d3129453398868c 100644
+--- a/chrome/browser/ui/aux/cdp_broker.cc
++++ b/chrome/browser/ui/aux/cdp_broker.cc
+@@ -5,38 +5,43 @@
+ #include "chrome/browser/ui/aux/cdp_broker.h"
+ 
+ #include <array>
++#include <cmath>
+ #include <cstddef>
+ #include <cstdint>
+-#include <cmath>
+ #include <optional>
+ #include <set>
+ #include <utility>
+ #include <vector>
+ 
++#include "base/atomicops.h"
++#include "base/callback_list.h"
+ #include "base/containers/span.h"
+ #include "base/functional/bind.h"
+-#include "base/task/sequenced_task_runner.h"
+-#include "base/timer/timer.h"
+-#include "base/time/time.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
++#include "base/memory/read_only_shared_memory_region.h"
+ #include "base/memory/weak_ptr.h"
+-#include "base/unguessable_token.h"
+-#include "chrome/browser/ui/aux/egress_controller.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/strings/string_number_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/unguessable_token.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/browser/devtools/devtools_agent_host_impl.h"
++#include "content/browser/devtools/protocol/input_handler.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/devtools_agent_host_client.h"
+-#include "content/public/browser/web_contents.h"
+-#include "content/public/browser/web_contents_observer.h"
+-#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
+ #include "url/gurl.h"
+ 
+ namespace aux {
+@@ -91,11 +96,14 @@ bool IsCdpMethodAllowed(const std::string& method) {
+ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+                                  public content::WebContentsObserver {
+  public:
+-  Session(Profile* profile, uint64_t connection_generation,
++  Session(Profile* profile,
++          uint64_t connection_generation,
+           std::string page_id,
+-          std::string scope, base::DictValue lease,
++          std::string scope,
++          base::DictValue lease,
+           scoped_refptr<content::DevToolsAgentHost> host,
+-          MessageCallback on_message, NavigationCallback on_navigation)
++          MessageCallback on_message,
++          NavigationCallback on_navigation)
+       : content::WebContentsObserver(host->GetWebContents()),
+         profile_(profile),
+         connection_generation_(connection_generation),
+@@ -103,14 +111,26 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+         scope_(std::move(scope)),
+         lease_(std::move(lease)),
+         attachment_id_(base::UnguessableToken::Create().ToString()),
+-        document_(host->GetWebContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr()),
++        document_(host->GetWebContents()
++                      ->GetPrimaryMainFrame()
++                      ->GetWeakDocumentPtr()),
+         host_(std::move(host)),
+         on_message_(std::move(on_message)),
+         on_navigation_(std::move(on_navigation)),
+         owner_failure_epoch_(EgressController::ForProfile(profile)
+-                                 ->owner_mutations().failure_epoch()) {}
++                                 ->owner_mutations()
++                                 .failure_epoch()) {
++    auto* egress = EgressController::ForProfile(profile_);
++    context_authority_subscription_ =
++        egress->ObserveAuthority(base::BindRepeating(
++            &Session::CheckContextAuthority, weak_factory_.GetWeakPtr()));
++    context_mutation_subscription_ =
++        egress->owner_mutations().Observe(base::BindRepeating(
++            &Session::CheckContextAuthority, weak_factory_.GetWeakPtr()));
++  }
+ 
+   ~Session() override {
++    RetireContextAuthority();
+     weak_factory_.InvalidateWeakPtrs();
+     auto waiters = std::move(navigation_waiters_);
+     auto navigations = std::move(pending_navigations_);
+@@ -206,17 +226,116 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+       }
+       return false;
+     }
+-    host_->DispatchProtocolMessage(this, base::as_byte_span(message));
+-    if (weak && root_command && method == "Page.navigate")
++    std::string outgoing = message;
++    if (method == "Input.prepareAuxContextAction" ||
++        method == "Input.applyAuxContextAction" ||
++        method == "Input.retireAuxContextAction") {
++      if (!root_command) {
++        return false;
++      }
++      auto value = base::JSONReader::Read(message, base::JSON_PARSE_RFC);
++      auto* envelope = value ? value->GetIfDict() : nullptr;
++      auto* params = envelope ? envelope->FindDict("params") : nullptr;
++      if (!params) {
++        return false;
++      }
++      if (method == "Input.prepareAuxContextAction") {
++        if (context_authority_retired_) {
++          return false;
++        }
++        if (!context_input_subscription_) {
++          auto* frame = document_.AsRenderFrameHostIfValid();
++          auto* widget = frame ? frame->GetRenderWidgetHost() : nullptr;
++          auto* view = widget ? widget->GetView() : nullptr;
++          if (!view) {
++            return false;
++          }
++          context_input_subscription_ =
++              view->ObserveNativeInputAdmissionRetirement(
++                  document_,
++                  base::BindRepeating(&Session::RetireContextAuthority,
++                                      weak_factory_.GetWeakPtr()));
++          if (!context_input_subscription_) {
++            return false;
++          }
++        }
++        if (!context_authority_.IsValid()) {
++          context_authority_ = base::ReadOnlySharedMemoryRegion::Create(
++              sizeof(base::subtle::Atomic32));
++          if (!context_authority_.IsValid()) {
++            return false;
++          }
++          base::subtle::Release_Store(
++              context_authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(),
++              1);
++        }
++        const auto deadline =
++            base::TimeTicks::Now() +
++            base::Milliseconds(std::min(
++                2000.0, acknowledged_expires_at -
++                            base::Time::Now().InMillisecondsFSinceUnixEpoch()));
++        auto* agent = static_cast<content::DevToolsAgentHostImpl*>(host_.get());
++        const auto handlers =
++            content::protocol::InputHandler::ForAgentHost(agent);
++        if (handlers.empty()) {
++          return false;
++        }
++        for (auto* handler : handlers) {
++          handler->RegisterAuxContextOwner(
++              context_action_owner_, context_authority_.region.Duplicate(),
++              deadline);
++        }
++      }
++      params->Set("owner", context_action_owner_);
++      auto encoded = base::WriteJson(*envelope);
++      if (!encoded) {
++        return false;
++      }
++      outgoing = std::move(*encoded);
++      // Encoding cannot re-enter script, but retain the actual final owner
++      // fence.
++      if (!Current() || !AcknowledgedExpiryCurrent(acknowledged_expires_at) ||
++          !EgressController::ForProfile(profile_)->RecordFinalCdpDispatch(
++              {document_, page_id_, "cdp"}, lease_)) {
++        return false;
++      }
++    }
++    host_->DispatchProtocolMessage(this, base::as_byte_span(outgoing));
++    if (weak && root_command && method == "Page.navigate") {
+       navigation_dispatches_.pop_back();
++    }
+     return true;
+   }
+ 
+-  void DidStartProtocolNavigation(content::NavigationHandle* navigation) override {
++  // This read-only renderer signal is never a grant. The real Session creates
++  // it only after original native admission and can retire it permanently. The
++  // renderer's final acquire-load is the input admission linearization point.
++  void RetireContextAuthority() {
++    context_authority_retired_ = true;
++    if (context_authority_.IsValid()) {
++      base::subtle::Release_Store(
++          context_authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 0);
++    }
++  }
++  void CheckContextAuthority() {
++    if (context_authority_.IsValid() && !Current()) {
++      RetireContextAuthority();
++    }
++  }
++  void DidStartNavigation(content::NavigationHandle* navigation) override {
++    if (navigation && navigation->IsInPrimaryMainFrame() &&
++        !navigation->IsSameDocument()) {
++      RetireContextAuthority();
++    }
++  }
++  void WebContentsDestroyed() override { RetireContextAuthority(); }
++  void DidStartProtocolNavigation(
++      content::NavigationHandle* navigation) override {
+     if (!navigation || navigation_dispatches_.empty() || !Current() ||
+         navigation->GetWebContents() != web_contents() ||
+-        !navigation->IsInPrimaryMainFrame())
++        !navigation->IsInPrimaryMainFrame()) {
+       return;
++    }
+     auto it = pending_navigations_.find(navigation_dispatches_.back());
+     if (it == pending_navigations_.end() || it->second.navigation_id)
+       return;
+@@ -600,6 +719,13 @@ class CdpBroker::Session final : public content::DevToolsAgentHostClient,
+   std::map<int, PendingNavigation> pending_navigations_;
+   std::map<int, std::unique_ptr<NavigationWaiter>> navigation_waiters_;
+   std::vector<int> navigation_dispatches_;
++  base::MappedReadOnlyRegion context_authority_;
++  bool context_authority_retired_ = false;
++  base::CallbackListSubscription context_authority_subscription_;
++  base::CallbackListSubscription context_mutation_subscription_;
++  base::CallbackListSubscription context_input_subscription_;
++  const std::string context_action_owner_ =
++      base::UnguessableToken::Create().ToString();
+   scoped_refptr<content::DevToolsAgentHost> host_;
+   std::map<std::string, content::WeakDocumentPtr> child_sessions_;
+   MessageCallback on_message_;
+diff --git a/components/input/render_input_router.cc b/components/input/render_input_router.cc
+index f6a35a61c842ef4601c65ad28ac80f6af93c26ea..61f569493d869ebc7b60ce24ba0a9f2e316e4d83 100644
+--- a/components/input/render_input_router.cc
++++ b/components/input/render_input_router.cc
+@@ -45,6 +45,21 @@ using ::perfetto::protos::pbzero::ChromeLatencyInfo2;
+ 
+ class UnboundWidgetInputHandler : public blink::mojom::WidgetInputHandler {
+  public:
++  // An unbound widget cannot produce or apply a native context admission.
++  void PrepareAuxContextAction(
++      blink::mojom::AuxContextActionParamsPtr,
++      PrepareAuxContextActionCallback callback) override {
++    std::move(callback).Run("");
++  }
++  void ApplyAuxContextAction(const std::string&,
++                             const std::string&,
++                             float,
++                             const gfx::PointF&,
++                             ApplyAuxContextActionCallback callback) override {
++    std::move(callback).Run(blink::mojom::AuxContextActionResult::kRefused);
++  }
++  void RetireAuxContextAction(const std::string&, const std::string&) override {
++  }
+   void SetFocus(blink::mojom::FocusState focus_state) override {
+     DLOG(WARNING) << "Input request on unbound interface";
+   }
+diff --git a/content/browser/devtools/protocol/input_handler.cc b/content/browser/devtools/protocol/input_handler.cc
+index 411d7835ac4c964dc11d110ec363aff860697fd3..b7e7858865bdd695bc8ba0f9452dbe0339dd0a83 100644
+--- a/content/browser/devtools/protocol/input_handler.cc
++++ b/content/browser/devtools/protocol/input_handler.cc
+@@ -11,6 +11,7 @@
+ #include <utility>
+ #include <vector>
+ 
++#include "base/atomicops.h"
+ #include "base/check.h"
+ #include "base/check_deref.h"
+ #include "base/functional/bind.h"
+@@ -46,6 +47,7 @@
+ #include "third_party/blink/public/common/dom/dom_node_id.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/common/page/page_zoom.h"
++#include "third_party/blink/public/mojom/input/input_handler.mojom.h"
+ #include "ui/base/clipboard/clipboard_constants.h"
+ #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-shared.h"
+ #include "ui/events/base_event_utils.h"
+@@ -1141,7 +1143,9 @@ InputHandler::InputHandler(bool allow_file_access,
+       allow_file_access_(allow_file_access),
+       allow_sending_input_to_browser_(allow_sending_input_to_browser) {}
+ 
+-InputHandler::~InputHandler() = default;
++InputHandler::~InputHandler() {
++  RetireAuxContextActions();
++}
+ 
+ // static
+ std::vector<InputHandler*> InputHandler::ForAgentHost(
+@@ -1278,6 +1282,206 @@ void InputHandler::DispatchKeyEvent(
+       ->InjectKeyboardEvent(event, std::move(commands), std::move(callback));
+ }
+ 
++void InputHandler::RegisterAuxContextOwner(
++    const std::string& owner,
++    base::ReadOnlySharedMemoryRegion authority,
++    base::TimeTicks deadline) {
++  std::vector<std::string> expired;
++  for (const auto& entry : aux_context_owners_) {
++    if (entry.second.deadline <= base::TimeTicks::Now()) {
++      expired.push_back(entry.first);
++    }
++  }
++  for (const auto& key : expired) {
++    aux_context_owners_.erase(key);
++  }
++  if (owner.size() != 32 || !authority.IsValid() ||
++      authority.GetSize() != sizeof(base::subtle::Atomic32) ||
++      deadline <= base::TimeTicks::Now() ||
++      deadline > base::TimeTicks::Now() + base::Seconds(2)) {
++    return;
++  }
++  if (aux_context_owners_.size() >= 8 && !aux_context_owners_.contains(owner)) {
++    return;
++  }
++  aux_context_owners_.insert_or_assign(
++      owner, AuxContextOwner{std::move(authority), deadline});
++}
++void InputHandler::PrepareAuxContextAction(
++    std::unique_ptr<Input::AuxContextAction> context,
++    const std::string& owner,
++    std::unique_ptr<PrepareAuxContextActionCallback> callback) {
++  const auto admitted_owner = aux_context_owners_.find(owner);
++  if (!host_ || !web_contents_ || host_->GetParent() ||
++      !host_->GetRenderWidgetHost() ||
++      admitted_owner == aux_context_owners_.end() ||
++      admitted_owner->second.deadline <= base::TimeTicks::Now() ||
++      owner.size() != 32 || context->GetActionId().empty() ||
++      context->GetActionId().size() > 256 ||
++      context->GetSourceDigest().size() != 64 ||
++      context->GetRecipientUrl().size() > 2048 ||
++      context->GetBeforeText().size() > 32000 ||
++      context->GetText().size() > 32000) {
++    callback->sendFailure(
++        Response::ServerError("Original context action source is unavailable"));
++    return;
++  }
++  auto params = blink::mojom::AuxContextActionParams::New();
++  params->root_node_id = context->GetRootNodeId();
++  params->recipient_node_id = context->GetRecipientNodeId();
++  params->editor_node_id = context->GetEditorNodeId();
++  params->action_node_id = context->GetActionNodeId();
++  params->recipient_url = context->GetRecipientUrl();
++  params->before_text = context->GetBeforeText();
++  params->text = context->GetText();
++  params->action_id = context->GetActionId();
++  params->source_digest = context->GetSourceDigest();
++  params->owner = owner;
++  params->input_scale = ScaleFactor();
++  params->authority = admitted_owner->second.authority.Duplicate();
++  params->authority_deadline = admitted_owner->second.deadline;
++  aux_context_owners_.erase(admitted_owner);
++  params->invitation = context->GetInvitation();
++  params->operation = context->GetOperation() == "fill"
++                          ? blink::mojom::AuxContextActionOperation::kFill
++                          : blink::mojom::AuxContextActionOperation::kClick;
++  ExpireAuxContextActions();
++  auto original = host_->GetWeakDocumentPtr();
++  auto widget = host_->GetRenderWidgetHost()->GetWeakPtr();
++  auto authority = params->authority.Map();
++  const auto deadline = params->authority_deadline;
++  host_->GetRenderWidgetHost()
++      ->GetWidgetInputHandler()
++      ->PrepareAuxContextAction(
++          std::move(params),
++          base::BindOnce(
++              [](base::WeakPtr<InputHandler> self,
++                 content::WeakDocumentPtr document,
++                 base::WeakPtr<RenderWidgetHostImpl> widget, std::string owner,
++                 base::ReadOnlySharedMemoryMapping authority,
++                 base::TimeTicks deadline,
++                 std::unique_ptr<PrepareAuxContextActionCallback> done,
++                 const std::string& token) {
++                auto* frame = document.AsRenderFrameHostIfValid();
++                if (!self || !frame || frame != self->host_ || !widget ||
++                    token.empty() || !authority.IsValid() ||
++                    base::subtle::Acquire_Load(
++                        authority.GetMemoryAs<base::subtle::Atomic32>()) != 1 ||
++                    deadline <= base::TimeTicks::Now() ||
++                    self->aux_context_tickets_.size() >= 8) {
++                  if (widget && !token.empty()) {
++                    widget->GetWidgetInputHandler()->RetireAuxContextAction(
++                        token, owner);
++                  }
++                  done->sendFailure(Response::ServerError(
++                      "Exact action context changed or is unsupported"));
++                  return;
++                }
++                self->aux_context_tickets_.emplace(
++                    token, AuxContextTicket{owner, document, widget, deadline,
++                                            std::move(authority)});
++                self->ExpireAuxContextActions();
++                done->sendSuccess(token);
++              },
++              weak_factory_.GetWeakPtr(), original, widget, owner,
++              std::move(authority), deadline, std::move(callback)));
++}
++
++void InputHandler::ApplyAuxContextAction(
++    const std::string& token,
++    const std::string& owner,
++    std::unique_ptr<ApplyAuxContextActionCallback> callback) {
++  ExpireAuxContextActions();
++  auto found = aux_context_tickets_.find(token);
++  if (!host_ || host_->GetParent() || !host_->GetRenderWidgetHost() ||
++      found == aux_context_tickets_.end() || found->second.owner != owner ||
++      found->second.document.AsRenderFrameHostIfValid() != host_ ||
++      found->second.widget.get() != host_->GetRenderWidgetHost() ||
++      !host_->GetRenderWidgetHost()->GetView()) {
++    callback->sendSuccess("refused");
++    return;
++  }
++  // Browser and renderer each consume once before callbacks or any input.
++  auto ticket = std::move(found->second);
++  aux_context_tickets_.erase(found);
++  auto weak = weak_factory_.GetWeakPtr();
++  ticket.widget->Focus();
++  // Focus may re-enter native/page ownership. The original callback remains
++  // owned locally even if that re-entrancy destroys this handler.
++  if (!weak || !ticket.widget || !ticket.widget->GetView() ||
++      ticket.document.AsRenderFrameHostIfValid() != weak->host_) {
++    callback->sendSuccess("uncertain");
++    return;
++  }
++  ticket.widget->GetWidgetInputHandler()->ApplyAuxContextAction(
++      token, owner, weak->ScaleFactor(),
++      gfx::PointF(ticket.widget->GetView()->GetViewBounds().origin()),
++      base::BindOnce(
++          [](std::unique_ptr<ApplyAuxContextActionCallback> done,
++             blink::mojom::AuxContextActionResult result) {
++            done->sendSuccess(
++                result == blink::mojom::AuxContextActionResult::kApplied
++                    ? "applied"
++                    : "uncertain");
++          },
++          std::move(callback)));
++}
++Response InputHandler::RetireAuxContextAction(const std::string& token,
++                                              const std::string& owner) {
++  auto found = aux_context_tickets_.find(token);
++  if (found != aux_context_tickets_.end() && found->second.owner == owner) {
++    auto ticket = std::move(found->second);
++    aux_context_tickets_.erase(found);
++    if (ticket.widget) {
++      ticket.widget->GetWidgetInputHandler()->RetireAuxContextAction(token,
++                                                                     owner);
++    }
++  }
++  return Response::Success();
++}
++void InputHandler::ExpireAuxContextActions() {
++  aux_context_timer_.Stop();
++  std::vector<std::string> expired;
++  std::optional<base::TimeTicks> next;
++  for (const auto& [token, ticket] : aux_context_tickets_) {
++    if (ticket.deadline <= base::TimeTicks::Now() || !ticket.widget ||
++        !ticket.authority.IsValid() ||
++        base::subtle::Acquire_Load(
++            ticket.authority.GetMemoryAs<base::subtle::Atomic32>()) != 1 ||
++        ticket.document.AsRenderFrameHostIfValid() != host_) {
++      expired.push_back(token);
++    } else if (!next || ticket.deadline < *next) {
++      next = ticket.deadline;
++    }
++  }
++  for (const auto& token : expired) {
++    auto ticket = std::move(aux_context_tickets_.at(token));
++    aux_context_tickets_.erase(token);
++    if (ticket.widget) {
++      ticket.widget->GetWidgetInputHandler()->RetireAuxContextAction(
++          token, ticket.owner);
++    }
++  }
++  if (next) {
++    aux_context_timer_.Start(
++        FROM_HERE, *next - base::TimeTicks::Now(),
++        base::BindOnce(&InputHandler::ExpireAuxContextActions,
++                       weak_factory_.GetWeakPtr()));
++  }
++}
++void InputHandler::RetireAuxContextActions() {
++  aux_context_owners_.clear();
++  aux_context_timer_.Stop();
++  auto tickets = std::move(aux_context_tickets_);
++  aux_context_tickets_.clear();
++  for (const auto& [token, ticket] : tickets) {
++    if (ticket.widget) {
++      ticket.widget->GetWidgetInputHandler()->RetireAuxContextAction(
++          token, ticket.owner);
++    }
++  }
++}
++
+ void InputHandler::InsertText(const std::string& text,
+                               std::unique_ptr<InsertTextCallback> callback) {
+   std::u16string text16 = base::UTF8ToUTF16(text);
+@@ -2305,8 +2509,10 @@ void InputHandler::SynthesizeTapGesture(
+ }
+ 
+ void InputHandler::ClearInputState() {
+-  while (!injectors_.empty())
++  RetireAuxContextActions();
++  while (!injectors_.empty()) {
+     (*injectors_.begin())->Cleanup();
++  }
+   // TODO(dgozman): cleanup touch callbacks as well?
+   pointer_ids_.clear();
+ }
+diff --git a/content/browser/devtools/protocol/input_handler.h b/content/browser/devtools/protocol/input_handler.h
+index 4c25a8c1c26c32fdc91915e0395acb26ec597adb..4778077b0140d884a2464df27dc4544b1ab3c859 100644
+--- a/content/browser/devtools/protocol/input_handler.h
++++ b/content/browser/devtools/protocol/input_handler.h
+@@ -15,14 +15,18 @@
+ #include "base/containers/unique_ptr_adapters.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
++#include "base/memory/read_only_shared_memory_region.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
+ #include "content/browser/devtools/protocol/devtools_domain_handler.h"
+ #include "content/browser/devtools/protocol/input.h"
+ #include "content/browser/renderer_host/render_widget_host_view_base.h"
++#include "content/common/content_export.h"
+ #include "content/common/input/synthetic_gesture.h"
+ #include "content/common/input/synthetic_pointer_action_list_params.h"
+ #include "content/common/input/synthetic_smooth_scroll_gesture_params.h"
+ #include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/web_contents.h"
+ #include "third_party/blink/public/common/input/pointer_id.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+@@ -50,7 +54,8 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+ 
+   ~InputHandler() override;
+ 
+-  static std::vector<InputHandler*> ForAgentHost(DevToolsAgentHostImpl* host);
++  static CONTENT_EXPORT std::vector<InputHandler*> ForAgentHost(
++      DevToolsAgentHostImpl* host);
+ 
+   void Wire(UberDispatcher* dispatcher) override;
+   void SetRenderer(int process_host_id,
+@@ -76,6 +81,21 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+   void DragEnded();
+ 
+   Response Disable() override;
++  // Native broker only: the protocol client cannot register its own region.
++  CONTENT_EXPORT void RegisterAuxContextOwner(
++      const std::string& owner,
++      base::ReadOnlySharedMemoryRegion authority,
++      base::TimeTicks deadline);
++  void PrepareAuxContextAction(
++      std::unique_ptr<Input::AuxContextAction> context,
++      const std::string& owner,
++      std::unique_ptr<PrepareAuxContextActionCallback> callback) override;
++  void ApplyAuxContextAction(
++      const std::string& token,
++      const std::string& owner,
++      std::unique_ptr<ApplyAuxContextActionCallback> callback) override;
++  Response RetireAuxContextAction(const std::string& token,
++                                  const std::string& owner) override;
+ 
+   void DispatchKeyEvent(
+       const std::string& type,
+@@ -348,6 +368,22 @@ class InputHandler : public DevToolsDomainHandler, public Input::Backend {
+ 
+   float ScaleFactor();
+ 
++  struct AuxContextOwner {
++    base::ReadOnlySharedMemoryRegion authority;
++    base::TimeTicks deadline;
++  };
++  base::flat_map<std::string, AuxContextOwner> aux_context_owners_;
++  struct AuxContextTicket {
++    std::string owner;
++    content::WeakDocumentPtr document;
++    base::WeakPtr<RenderWidgetHostImpl> widget;
++    base::TimeTicks deadline;
++    base::ReadOnlySharedMemoryMapping authority;
++  };
++  void ExpireAuxContextActions();
++  void RetireAuxContextActions();
++  base::flat_map<std::string, AuxContextTicket> aux_context_tickets_;
++  base::OneShotTimer aux_context_timer_;
+   raw_ptr<RenderFrameHostImpl> host_ = nullptr;
+   // WebContents associated with the |host_|.
+   raw_ptr<WebContentsImpl> web_contents_ = nullptr;
+diff --git a/content/browser/devtools/protocol_config.json b/content/browser/devtools/protocol_config.json
+index f902b9360bbb3b3f8b2a7b8560ff66f614fd738a..d331294ec7ebd3853b1d3040895ef38945af6eac 100644
+--- a/content/browser/devtools/protocol_config.json
++++ b/content/browser/devtools/protocol_config.json
+@@ -1,279 +1,493 @@
+ {
+-    "use_snake_file_names": true,
+-    "use_title_case_methods": true,
++  "use_snake_file_names": true,
++  "use_title_case_methods": true,
+ 
+-    "protocol": {
+-        "package": "content/browser/devtools/protocol",
+-        "output": "protocol",
+-        "namespace": ["content", "protocol"],
+-        "export_macro": "CONTENT_EXPORT",
+-        "export_header": "content/common/content_export.h",
+-        "options": [
+-            {
+-                "domain": "Audits",
+-                "include": ["enable", "disable"]
+-            },
+-            {
+-                "domain": "BackgroundService",
+-                "async": ["startObserving"]
+-            },
+-            {
+-                "domain": "Browser",
+-                "include": ["getVersion", "getHistograms", "getHistogram", "getBrowserCommandLine", "grantPermissions", "setDownloadBehavior", "cancelDownload", "resetPermissions", "crash", "crashGpuProcess", "setPermission", "getGlobalPrivacyControl", "setGlobalPrivacyControl", "addMockCamera"],
+-                "async": ["grantPermissions", "resetPermissions", "setPermission"]
+-            },
+-            {
+-                "domain": "DOM",
+-                "include": ["setFileInputFiles", "getFileInfo"],
+-                "include_events": []
+-            },
+-            {
+-              "domain": "DeviceOrientation",
+-              "async": [
+-                "setDeviceOrientationOverride"
+-              ]
+-            },
+-            {
+-                "domain": "Emulation",
+-                "include": [
+-                  "getOverriddenSensorInformation",
+-                  "setSensorOverrideEnabled",
+-                  "setSensorOverrideReadings",
++  "protocol": {
++    "package": "content/browser/devtools/protocol",
++    "output": "protocol",
++    "namespace": [
++      "content",
++      "protocol"
++    ],
++    "export_macro": "CONTENT_EXPORT",
++    "export_header": "content/common/content_export.h",
++    "options": [
++      {
++        "domain": "Audits",
++        "include": [
++          "enable",
++          "disable"
++        ]
++      },
++      {
++        "domain": "BackgroundService",
++        "async": [
++          "startObserving"
++        ]
++      },
++      {
++        "domain": "Browser",
++        "include": [
++          "getVersion",
++          "getHistograms",
++          "getHistogram",
++          "getBrowserCommandLine",
++          "grantPermissions",
++          "setDownloadBehavior",
++          "cancelDownload",
++          "resetPermissions",
++          "crash",
++          "crashGpuProcess",
++          "setPermission",
++          "getGlobalPrivacyControl",
++          "setGlobalPrivacyControl",
++          "addMockCamera"
++        ],
++        "async": [
++          "grantPermissions",
++          "resetPermissions",
++          "setPermission"
++        ]
++      },
++      {
++        "domain": "DOM",
++        "include": [
++          "setFileInputFiles",
++          "getFileInfo"
++        ],
++        "include_events": []
++      },
++      {
++        "domain": "DeviceOrientation",
++        "async": [
++          "setDeviceOrientationOverride"
++        ]
++      },
++      {
++        "domain": "Emulation",
++        "include": [
++          "getOverriddenSensorInformation",
++          "setSensorOverrideEnabled",
++          "setSensorOverrideReadings",
+ 
+-                  "setDevicePostureOverride",
+-                  "clearDevicePostureOverride",
++          "setDevicePostureOverride",
++          "clearDevicePostureOverride",
+ 
+-                  "setDisplayFeaturesOverride",
+-                  "clearDisplayFeaturesOverride",
++          "setDisplayFeaturesOverride",
++          "clearDisplayFeaturesOverride",
+ 
+-                  "setPressureSourceOverrideEnabled",
+-                  "setPressureStateOverride",
++          "setPressureSourceOverrideEnabled",
++          "setPressureStateOverride",
+ 
+-                  "setIdleOverride",
+-                  "clearIdleOverride",
+-                  "setGeolocationOverride",
+-                  "clearGeolocationOverride",
+-                  "setEmitTouchEventsForMouse",
+-                  "canEmulate",
+-                  "setDeviceMetricsOverride",
+-                  "clearDeviceMetricsOverride",
+-                  "setVisibleSize",
+-                  "setUserAgentOverride",
+-                  "setFocusEmulationEnabled",
+-                  "setEmulatedMedia"
+-                ],
+-                "async": [
+-                  "getOverriddenSensorInformation",
+-                  "setSensorOverrideReadings",
+-                  "setPressureStateOverride"
+-                ]
+-            },
+-            {
+-                "domain": "FedCm"
+-            },
+-            {
+-                "domain": "DigitalCredentials"
+-            },
+-            {
+-                "domain": "Input",
+-                "async": ["dispatchKeyEvent", "insertText", "imeSetComposition", "dispatchMouseEvent", "dispatchDragEvent", "dispatchTouchEvent", "cancelDragging", "synthesizePinchGesture", "synthesizeScrollGesture", "synthesizeTapGesture"]
+-            },
+-            {
+-                "domain": "Inspector"
+-            },
+-            {
+-                "domain": "IO",
+-                "async": ["read"],
+-                "exclude": ["resolveBlob"]
+-            },
+-            {
+-                "domain": "Log",
+-                "include": ["LogEntry", "entryAdded", "enable", "disable"]
+-            },
+-            {
+-                "domain": "Memory",
+-                "include": ["getBrowserSamplingProfile", "setPressureNotificationsSuppressed", "simulatePressureNotification", "prepareForLeakDetection", "getDOMCountersForLeakDetection"],
+-                "async": ["prepareForLeakDetection", "getDOMCountersForLeakDetection"]
+-            },
+-            {
+-                "domain": "NativeProfiling",
+-                "include": ["dumpProfilingDataOfAllProcesses"],
+-                "async": ["dumpProfilingDataOfAllProcesses"]
+-            },
+-            {
+-                "domain": "Network",
+-                "include": [
+-                  "enable",
+-                  "disable",
+-                  "clearBrowserCache",
+-                  "clearBrowserCookies",
+-                  "getCookies",
+-                  "getAllCookies",
+-                  "deleteCookies",
+-                  "setCookie",
+-                  "setCookies",
+-                  "setExtraHTTPHeaders",
+-                  "canEmulateNetworkConditions",
+-                  "emulateNetworkConditions",
+-                  "emulateNetworkConditionsByRule",
+-                  "setBypassServiceWorker",
+-                  "setRequestInterception",
+-                  "continueInterceptedRequest",
+-                  "getResponseBody",
+-                  "searchInResponseBody",
+-                  "getResponseBodyForInterception",
+-                  "setCacheDisabled",
+-                  "takeResponseBodyForInterceptionAsStream",
+-                  "getSecurityIsolationStatus",
+-                  "loadNetworkResource",
+-                  "enableReportingApi",
+-                  "enableDeviceBoundSessions",
+-                  "fetchSchemefulSite",
+-                  "deleteDeviceBoundSession",
+-                  "setCookieControls",
+-                  "configureDurableMessages"
+-                ],
+-                "include_events": ["requestWillBeSent", "responseReceived", "loadingFinished", "loadingFailed", "requestIntercepted", "signedExchangeReceived", "requestWillBeSentExtraInfo", "responseReceivedExtraInfo", "responseReceivedEarlyHints", "trustTokenOperationDone", "policyUpdated", "reportingApiReportAdded", "reportingApiReportUpdated", "reportingApiEndpointsChangedForOrigin", "deviceBoundSessionsAdded", "deviceBoundSessionEventOccurred"],
+-                "async": [
+-                  "configureDurableMessages",
+-                  "clearBrowserCookies",
+-                  "clearBrowserCache",
+-                  "getCookies",
+-                  "getAllCookies",
+-                  "deleteCookies",
+-                  "setCookie",
+-                  "setCookies",
+-                  "continueInterceptedRequest",
+-                  "getResponseBody",
+-                  "searchInResponseBody",
+-                  "getResponseBodyForInterception",
+-                  "takeResponseBodyForInterceptionAsStream",
+-                  "loadNetworkResource"
+-                ]
+-            },
+-            {
+-                "domain": "Overlay",
+-                "include": ["enable", "setInspectMode", "setPausedInDebuggerMessage"]
+-            },
+-            {
+-                "domain": "Page",
+-                "include": ["enable", "disable", "reload", "navigate", "stopLoading", "getNavigationHistory", "navigateToHistoryEntry", "resetNavigationHistory", "captureScreenshot",
+-                    "startScreencast", "stopScreencast", "startScreenRecording", "stopScreenRecording", "screencastFrameAck", "handleJavaScriptDialog", "setColorPickerEnabled",
+-                    "bringToFront", "setDownloadBehavior", "getAppManifest", "crash", "close", "setWebLifecycleState", "captureSnapshot", "getInstallabilityErrors", "getManifestIcons", "setBypassCSP", "getAppId", "addCompilationCache", "setPrerenderingAllowed", "getAnnotatedPageContent",
+-                    "addScriptToEvaluateOnNewDocument", "removeScriptToEvaluateOnNewDocument", "addScriptToEvaluateOnLoad", "removeScriptToEvaluateOnLoad"],
+-                "include_events": ["frameDetached", "colorPicked", "interstitialShown", "interstitialHidden", "javascriptDialogOpening",
+-                     "javascriptDialogClosed", "downloadWillBegin", "downloadProgress", "screencastVisibilityChanged", "screencastFrame",
+-                     "backForwardCacheNotUsed", "frameStartedLoading", "frameStoppedLoading", "frameStartedNavigating"],
+-                "async": ["captureScreenshot", "navigate", "getAppManifest", "reload", "captureSnapshot", "getInstallabilityErrors", "getManifestIcons", "getAppId", "getAnnotatedPageContent", "stopScreenRecording"]
+-            },
+-            {
+-                "domain": "Preload",
+-                "include": ["enable", "disable"],
+-                "include_events": ["prefetchStatusUpdated", "prerenderStatusUpdated", "preloadEnabledStateUpdated"]
+-            },
+-            {
+-                "domain": "Runtime",
+-                "include_events": [],
+-                "include": []
+-            },
+-            {
+-                "domain": "Schema"
+-            },
+-            {
+-                "domain": "Security"
+-            },
+-            {
+-                "domain": "ServiceWorker",
+-                "async": ["stopAllWorkers"]
+-            },
+-            {
+-                "domain": "Storage",
+-                "exclude": ["runBounceTrackingMitigations", "getRelatedWebsiteSets"],
+-                "async": ["getUsageAndQuota", "clearDataForOrigin", "clearDataForStorageKey", "getCookies", "setCookies", "clearCookies", "overrideQuotaForOrigin", "getTrustTokens", "clearTrustTokens", "getStorageBucketList"]
+-            },
+-            {
+-                "domain": "SystemInfo",
+-                "include": ["getInfo", "getProcessInfo", "getFeatureState"],
+-                "async": ["getInfo", "getProcessInfo"]
+-            },
+-            {
+-                "domain": "Target",
+-                "async": ["createBrowserContext", "disposeBrowserContext", "setAutoAttach", "autoAttachRelated", "exposeDevToolsProtocol" ]
+-            },
+-            {
+-                "domain": "Tethering",
+-                "async": ["bind", "unbind"]
+-            },
+-            {
+-                "domain": "Tracing",
+-                "async": ["start", "getCategories", "requestMemoryDump", "getTrackEventDescriptor"]
+-            },
+-            {
+-                "domain": "VisualDebugger",
+-                "include": ["filterStream", "startStream", "stopStream"],
+-                "include_events": ["frameResponse"]
+-            },
+-            {
+-                "domain": "Fetch",
+-                "async": ["enable", "continueRequest", "failRequest", "fulfillRequest", "continueWithAuth", "continueResponse", "getResponseBody", "takeResponseBodyAsStream"]
+-            },
+-            {
+-                "domain": "WebAuthn",
+-                "async": ["addCredential", "getCredential", "getCredentials"]
+-            },
+-            {
+-                "domain": "DeviceAccess",
+-                "include": ["enable", "disable", "selectPrompt", "cancelPrompt"],
+-                "include_events": ["deviceRequestPrompted"]
+-            },
+-            {
+-                "domain": "BluetoothEmulation",
+-                "async": [
+-                    "setSimulatedCentralState",
+-                    "simulatePreconnectedPeripheral",
+-                    "simulateAdvertisement",
+-                    "simulateGATTOperationResponse",
+-                    "simulateCharacteristicOperationResponse",
+-                    "simulateDescriptorOperationResponse",
+-                    "addService",
+-                    "removeService",
+-                    "addCharacteristic",
+-                    "removeCharacteristic",
+-                    "addDescriptor",
+-                    "removeDescriptor",
+-                    "simulateGATTDisconnection"
+-                ]
+-            },
+-            {
+-                "domain": "SmartCardEmulation"
+-            },
+-            {
+-                "domain": "WebMCP",
+-                "async": ["invokeTool"]
+-            },
+-            {
+-                "domain": "Debugger",
+-                "include": [
+-                    "SearchMatch",
+-                    "setBreakpointByUrl",
+-                    "removeBreakpoint"
+-                ],
+-                "exclude": [
+-                    "setBreakpoint"
+-                ]
+-            }
++          "setIdleOverride",
++          "clearIdleOverride",
++          "setGeolocationOverride",
++          "clearGeolocationOverride",
++          "setEmitTouchEventsForMouse",
++          "canEmulate",
++          "setDeviceMetricsOverride",
++          "clearDeviceMetricsOverride",
++          "setVisibleSize",
++          "setUserAgentOverride",
++          "setFocusEmulationEnabled",
++          "setEmulatedMedia"
++        ],
++        "async": [
++          "getOverriddenSensorInformation",
++          "setSensorOverrideReadings",
++          "setPressureStateOverride"
++        ]
++      },
++      {
++        "domain": "FedCm"
++      },
++      {
++        "domain": "DigitalCredentials"
++      },
++      {
++        "domain": "Input",
++        "async": [
++          "prepareAuxContextAction",
++          "applyAuxContextAction",
++          "dispatchKeyEvent",
++          "insertText",
++          "imeSetComposition",
++          "dispatchMouseEvent",
++          "dispatchDragEvent",
++          "dispatchTouchEvent",
++          "cancelDragging",
++          "synthesizePinchGesture",
++          "synthesizeScrollGesture",
++          "synthesizeTapGesture"
++        ]
++      },
++      {
++        "domain": "Inspector"
++      },
++      {
++        "domain": "IO",
++        "async": [
++          "read"
++        ],
++        "exclude": [
++          "resolveBlob"
++        ]
++      },
++      {
++        "domain": "Log",
++        "include": [
++          "LogEntry",
++          "entryAdded",
++          "enable",
++          "disable"
++        ]
++      },
++      {
++        "domain": "Memory",
++        "include": [
++          "getBrowserSamplingProfile",
++          "setPressureNotificationsSuppressed",
++          "simulatePressureNotification",
++          "prepareForLeakDetection",
++          "getDOMCountersForLeakDetection"
++        ],
++        "async": [
++          "prepareForLeakDetection",
++          "getDOMCountersForLeakDetection"
++        ]
++      },
++      {
++        "domain": "NativeProfiling",
++        "include": [
++          "dumpProfilingDataOfAllProcesses"
++        ],
++        "async": [
++          "dumpProfilingDataOfAllProcesses"
++        ]
++      },
++      {
++        "domain": "Network",
++        "include": [
++          "enable",
++          "disable",
++          "clearBrowserCache",
++          "clearBrowserCookies",
++          "getCookies",
++          "getAllCookies",
++          "deleteCookies",
++          "setCookie",
++          "setCookies",
++          "setExtraHTTPHeaders",
++          "canEmulateNetworkConditions",
++          "emulateNetworkConditions",
++          "emulateNetworkConditionsByRule",
++          "setBypassServiceWorker",
++          "setRequestInterception",
++          "continueInterceptedRequest",
++          "getResponseBody",
++          "searchInResponseBody",
++          "getResponseBodyForInterception",
++          "setCacheDisabled",
++          "takeResponseBodyForInterceptionAsStream",
++          "getSecurityIsolationStatus",
++          "loadNetworkResource",
++          "enableReportingApi",
++          "enableDeviceBoundSessions",
++          "fetchSchemefulSite",
++          "deleteDeviceBoundSession",
++          "setCookieControls",
++          "configureDurableMessages"
++        ],
++        "include_events": [
++          "requestWillBeSent",
++          "responseReceived",
++          "loadingFinished",
++          "loadingFailed",
++          "requestIntercepted",
++          "signedExchangeReceived",
++          "requestWillBeSentExtraInfo",
++          "responseReceivedExtraInfo",
++          "responseReceivedEarlyHints",
++          "trustTokenOperationDone",
++          "policyUpdated",
++          "reportingApiReportAdded",
++          "reportingApiReportUpdated",
++          "reportingApiEndpointsChangedForOrigin",
++          "deviceBoundSessionsAdded",
++          "deviceBoundSessionEventOccurred"
++        ],
++        "async": [
++          "configureDurableMessages",
++          "clearBrowserCookies",
++          "clearBrowserCache",
++          "getCookies",
++          "getAllCookies",
++          "deleteCookies",
++          "setCookie",
++          "setCookies",
++          "continueInterceptedRequest",
++          "getResponseBody",
++          "searchInResponseBody",
++          "getResponseBodyForInterception",
++          "takeResponseBodyForInterceptionAsStream",
++          "loadNetworkResource"
++        ]
++      },
++      {
++        "domain": "Overlay",
++        "include": [
++          "enable",
++          "setInspectMode",
++          "setPausedInDebuggerMessage"
++        ]
++      },
++      {
++        "domain": "Page",
++        "include": [
++          "enable",
++          "disable",
++          "reload",
++          "navigate",
++          "stopLoading",
++          "getNavigationHistory",
++          "navigateToHistoryEntry",
++          "resetNavigationHistory",
++          "captureScreenshot",
++          "startScreencast",
++          "stopScreencast",
++          "startScreenRecording",
++          "stopScreenRecording",
++          "screencastFrameAck",
++          "handleJavaScriptDialog",
++          "setColorPickerEnabled",
++          "bringToFront",
++          "setDownloadBehavior",
++          "getAppManifest",
++          "crash",
++          "close",
++          "setWebLifecycleState",
++          "captureSnapshot",
++          "getInstallabilityErrors",
++          "getManifestIcons",
++          "setBypassCSP",
++          "getAppId",
++          "addCompilationCache",
++          "setPrerenderingAllowed",
++          "getAnnotatedPageContent",
++          "addScriptToEvaluateOnNewDocument",
++          "removeScriptToEvaluateOnNewDocument",
++          "addScriptToEvaluateOnLoad",
++          "removeScriptToEvaluateOnLoad"
++        ],
++        "include_events": [
++          "frameDetached",
++          "colorPicked",
++          "interstitialShown",
++          "interstitialHidden",
++          "javascriptDialogOpening",
++          "javascriptDialogClosed",
++          "downloadWillBegin",
++          "downloadProgress",
++          "screencastVisibilityChanged",
++          "screencastFrame",
++          "backForwardCacheNotUsed",
++          "frameStartedLoading",
++          "frameStoppedLoading",
++          "frameStartedNavigating"
++        ],
++        "async": [
++          "captureScreenshot",
++          "navigate",
++          "getAppManifest",
++          "reload",
++          "captureSnapshot",
++          "getInstallabilityErrors",
++          "getManifestIcons",
++          "getAppId",
++          "getAnnotatedPageContent",
++          "stopScreenRecording"
++        ]
++      },
++      {
++        "domain": "Preload",
++        "include": [
++          "enable",
++          "disable"
++        ],
++        "include_events": [
++          "prefetchStatusUpdated",
++          "prerenderStatusUpdated",
++          "preloadEnabledStateUpdated"
++        ]
++      },
++      {
++        "domain": "Runtime",
++        "include_events": [],
++        "include": []
++      },
++      {
++        "domain": "Schema"
++      },
++      {
++        "domain": "Security"
++      },
++      {
++        "domain": "ServiceWorker",
++        "async": [
++          "stopAllWorkers"
++        ]
++      },
++      {
++        "domain": "Storage",
++        "exclude": [
++          "runBounceTrackingMitigations",
++          "getRelatedWebsiteSets"
++        ],
++        "async": [
++          "getUsageAndQuota",
++          "clearDataForOrigin",
++          "clearDataForStorageKey",
++          "getCookies",
++          "setCookies",
++          "clearCookies",
++          "overrideQuotaForOrigin",
++          "getTrustTokens",
++          "clearTrustTokens",
++          "getStorageBucketList"
++        ]
++      },
++      {
++        "domain": "SystemInfo",
++        "include": [
++          "getInfo",
++          "getProcessInfo",
++          "getFeatureState"
++        ],
++        "async": [
++          "getInfo",
++          "getProcessInfo"
++        ]
++      },
++      {
++        "domain": "Target",
++        "async": [
++          "createBrowserContext",
++          "disposeBrowserContext",
++          "setAutoAttach",
++          "autoAttachRelated",
++          "exposeDevToolsProtocol"
++        ]
++      },
++      {
++        "domain": "Tethering",
++        "async": [
++          "bind",
++          "unbind"
++        ]
++      },
++      {
++        "domain": "Tracing",
++        "async": [
++          "start",
++          "getCategories",
++          "requestMemoryDump",
++          "getTrackEventDescriptor"
++        ]
++      },
++      {
++        "domain": "VisualDebugger",
++        "include": [
++          "filterStream",
++          "startStream",
++          "stopStream"
++        ],
++        "include_events": [
++          "frameResponse"
++        ]
++      },
++      {
++        "domain": "Fetch",
++        "async": [
++          "enable",
++          "continueRequest",
++          "failRequest",
++          "fulfillRequest",
++          "continueWithAuth",
++          "continueResponse",
++          "getResponseBody",
++          "takeResponseBodyAsStream"
++        ]
++      },
++      {
++        "domain": "WebAuthn",
++        "async": [
++          "addCredential",
++          "getCredential",
++          "getCredentials"
++        ]
++      },
++      {
++        "domain": "DeviceAccess",
++        "include": [
++          "enable",
++          "disable",
++          "selectPrompt",
++          "cancelPrompt"
++        ],
++        "include_events": [
++          "deviceRequestPrompted"
++        ]
++      },
++      {
++        "domain": "BluetoothEmulation",
++        "async": [
++          "setSimulatedCentralState",
++          "simulatePreconnectedPeripheral",
++          "simulateAdvertisement",
++          "simulateGATTOperationResponse",
++          "simulateCharacteristicOperationResponse",
++          "simulateDescriptorOperationResponse",
++          "addService",
++          "removeService",
++          "addCharacteristic",
++          "removeCharacteristic",
++          "addDescriptor",
++          "removeDescriptor",
++          "simulateGATTDisconnection"
++        ]
++      },
++      {
++        "domain": "SmartCardEmulation"
++      },
++      {
++        "domain": "WebMCP",
++        "async": [
++          "invokeTool"
++        ]
++      },
++      {
++        "domain": "Debugger",
++        "include": [
++          "SearchMatch",
++          "setBreakpointByUrl",
++          "removeBreakpoint"
++        ],
++        "exclude": [
++          "setBreakpoint"
+         ]
+-    },
++      }
++    ]
++  },
+ 
+-    "lib": {
+-        "package": "content/browser/devtools/protocol",
+-        "output": "protocol",
+-        "protocol_traits": "third_party/inspector_protocol/crdtp/chromium/protocol_traits.h",
+-        "export_macro": "CONTENT_EXPORT",
+-        "export_header": "content/common/content_export.h"
+-    },
++  "lib": {
++    "package": "content/browser/devtools/protocol",
++    "output": "protocol",
++    "protocol_traits": "third_party/inspector_protocol/crdtp/chromium/protocol_traits.h",
++    "export_macro": "CONTENT_EXPORT",
++    "export_header": "content/common/content_export.h"
++  },
+ 
+-    "crdtp": {
+-        "namespace": "crdtp"
+-    }
++  "crdtp": {
++    "namespace": "crdtp"
++  }
+ }
+diff --git a/content/browser/renderer_host/render_widget_host_view_base.cc b/content/browser/renderer_host/render_widget_host_view_base.cc
+index 148be1ddb856054607ce231f2d8e7adaa9f3368c..f39273b150d85b20a2e4f45054d9214f0dcde3b8 100644
+--- a/content/browser/renderer_host/render_widget_host_view_base.cc
++++ b/content/browser/renderer_host/render_widget_host_view_base.cc
+@@ -66,6 +66,19 @@
+ #endif
+ 
+ namespace content {
++base::CallbackListSubscription
++RenderWidgetHostView::ObserveNativeInputAdmissionRetirement(
++    const WeakDocumentPtr&,
++    base::RepeatingClosure) {
++  return {};
++}
++base::CallbackListSubscription
++RenderWidgetHostViewBase::ObserveEmbeddedNativeInputAdmissionRetirement(
++    RenderWidgetHostViewBase*,
++    const WeakDocumentPtr&,
++    base::RepeatingClosure) {
++  return {};
++}
+ bool RenderWidgetHostViewBase::HasEmbeddedNativeInputAdmission(
+     RenderWidgetHostViewBase*,
+     const WeakDocumentPtr&) const {
+diff --git a/content/browser/renderer_host/render_widget_host_view_base.h b/content/browser/renderer_host/render_widget_host_view_base.h
+index e47816d6bbb88efdf87975ca5bb7a864865eeacc..79bf5e0a50c47063444f522f03f8da2c8de48868 100644
+--- a/content/browser/renderer_host/render_widget_host_view_base.h
++++ b/content/browser/renderer_host/render_widget_host_view_base.h
+@@ -168,6 +168,10 @@ class CONTENT_EXPORT RenderWidgetHostViewBase
+   void ProcessGestureEvent(const blink::WebGestureEvent& event,
+                            const ui::LatencyInfo& latency) override;
+   RenderWidgetHostViewBase* GetRootView() override;
++  virtual base::CallbackListSubscription
++  ObserveEmbeddedNativeInputAdmissionRetirement(RenderWidgetHostViewBase*,
++                                                const WeakDocumentPtr&,
++                                                base::RepeatingClosure);
+   virtual bool HasEmbeddedNativeInputAdmission(
+       RenderWidgetHostViewBase* child,
+       const WeakDocumentPtr& document) const;
+diff --git a/content/browser/renderer_host/render_widget_host_view_child_frame.cc b/content/browser/renderer_host/render_widget_host_view_child_frame.cc
+index 450ea4386af31205a2131c89aac9d0689e740fb2..fedd6c54b4407385bb9879edd76afeba97432d08 100644
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.cc
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.cc
+@@ -121,6 +121,17 @@ void RenderWidgetHostViewChildFrame::
+   selection_controller_client_.reset();
+ }
+ 
++base::CallbackListSubscription
++RenderWidgetHostViewChildFrame::ObserveNativeInputAdmissionRetirement(
++    const WeakDocumentPtr& document,
++    base::RepeatingClosure callback) {
++  auto* root = GetRootRenderWidgetHostView();
++  if (!root || !HasNativeInputAdmissionForDocument(document)) {
++    return {};
++  }
++  return root->ObserveEmbeddedNativeInputAdmissionRetirement(
++      this, document, std::move(callback));
++}
+ bool RenderWidgetHostViewChildFrame::HasNativeInputAdmissionForDocument(
+     const WeakDocumentPtr& document) const {
+   auto* root = GetRootRenderWidgetHostView();
+diff --git a/content/browser/renderer_host/render_widget_host_view_child_frame.h b/content/browser/renderer_host/render_widget_host_view_child_frame.h
+index 05dbc352eac34610f8fa79bc648a1d5e38ab7440..136987db4dbdcbcecedc411a2406dc99b9937316 100644
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.h
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.h
+@@ -77,6 +77,9 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
+       const RenderWidgetHostViewChildFrame&) = delete;
+ 
+   void SetFrameConnector(FrameConnector* frame_connector);
++  base::CallbackListSubscription ObserveNativeInputAdmissionRetirement(
++      const WeakDocumentPtr& document,
++      base::RepeatingClosure callback) override;
+   bool HasNativeInputAdmissionForDocument(
+       const WeakDocumentPtr& document) const override;
+   void AwaitNativeInputAdmissionForDocument(
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac.h b/content/browser/renderer_host/render_widget_host_view_mac.h
+index ec8d01b5c82708bb463be76b4d932b7e34eae470..0431be8ff8fdf0d7400e131de25142d390a58505 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac.h
++++ b/content/browser/renderer_host/render_widget_host_view_mac.h
+@@ -401,6 +401,10 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+   void OnScreenInfosChanged(const display::ScreenInfos& screen_infos) override;
+   void AdmitNativeInputEvent(
+       remote_cocoa::mojom::NativeInputEventPtr input) override;
++  base::CallbackListSubscription ObserveEmbeddedNativeInputAdmissionRetirement(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document,
++      base::RepeatingClosure callback) override;
+   bool HasEmbeddedNativeInputAdmission(
+       RenderWidgetHostViewBase* child,
+       const WeakDocumentPtr& document) const override;
+@@ -410,6 +414,9 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+       base::OnceCallback<void(bool)> callback) override;
+   void RetireEmbeddedNativeInputAdmission(
+       RenderWidgetHostViewBase* child) override;
++  base::CallbackListSubscription ObserveNativeInputAdmissionRetirement(
++      const WeakDocumentPtr& document,
++      base::RepeatingClosure callback) override;
+   bool HasNativeInputAdmissionForDocument(
+       const content::WeakDocumentPtr& document) const override;
+   void AwaitNativeInputAdmissionForDocument(
+@@ -796,6 +803,7 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+     uint64_t epoch = 0;
+     bool ready = false;
+     std::vector<base::OnceCallback<void(bool)>> callbacks;
++    base::RepeatingClosureList retirement_observers;
+     base::OneShotTimer timer;
+   };
+   bool EmbeddedNativeInputDocumentCurrent(
+@@ -812,6 +820,7 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+   std::map<std::string, std::unique_ptr<EmbeddedNativeInputBinding>>
+       embedded_native_input_bindings_;
+ 
++  base::OnceClosureList native_input_retirement_observers_;
+   struct NativeInputAdmissionWaiter {
+     std::string binding;
+     content::WeakDocumentPtr document;
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
+index 985e771098c157be988879a8bfea4feb78f8966c..fa3761b0f5ce565d2a5f0c3dd53cc9c2168ec286 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac.mm
++++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
+@@ -2593,15 +2593,29 @@ void RenderWidgetHostViewMac::SetRemoteAccessibilityWindowToken(
+ // mojom::RenderWidgetHostNSViewHost functions that translate events and
+ // forward them to the RenderWidgetHostNSViewHostHelper implementation:
+ 
++base::CallbackListSubscription
++RenderWidgetHostViewMac::ObserveNativeInputAdmissionRetirement(
++    const WeakDocumentPtr& document,
++    base::RepeatingClosure callback) {
++  if (!HasNativeInputAdmissionForDocument(document)) {
++    return {};
++  }
++  return native_input_retirement_observers_.Add(
++      base::OnceClosure(std::move(callback)));
++}
+ void RenderWidgetHostViewMac::RetireNativeInputBinding() {
++  // Reentrant observers must see the old generation as retired. Consume each
++  // original subscription once, even across navigation, cache and destruction.
+   ++native_input_epoch_;
+-  RetireEmbeddedNativeInputAdmission(nullptr);
+   native_input_ready_ = false;
+   native_input_binding_.clear();
+   native_input_document_ = {};
+   FinishNativeInputAdmissionWaiters(false);
+-  if (ns_view_)
++  if (ns_view_) {
+     ns_view_->SetNativeInputDocumentBinding({}, base::DoNothing());
++  }
++  native_input_retirement_observers_.Notify();
++  RetireEmbeddedNativeInputAdmission(nullptr);
+ }
+ 
+ bool RenderWidgetHostViewMac::EmbeddedNativeInputDocumentCurrent(
+@@ -2620,6 +2634,24 @@ bool RenderWidgetHostViewMac::EmbeddedNativeInputDocumentCurrent(
+          frame->IsRenderFrameLive();
+ }
+ 
++base::CallbackListSubscription
++RenderWidgetHostViewMac::ObserveEmbeddedNativeInputAdmissionRetirement(
++    RenderWidgetHostViewBase* child,
++    const WeakDocumentPtr& document,
++    base::RepeatingClosure callback) {
++  if (!HasEmbeddedNativeInputAdmission(child, document)) {
++    return {};
++  }
++  for (const auto& [binding, entry] : embedded_native_input_bindings_) {
++    if (entry->child.get() == child && entry->epoch == native_input_epoch_ &&
++        entry->ready &&
++        entry->document.AsRenderFrameHostIfValid() ==
++            document.AsRenderFrameHostIfValid()) {
++      return entry->retirement_observers.Add(std::move(callback));
++    }
++  }
++  return {};
++}
+ bool RenderWidgetHostViewMac::HasEmbeddedNativeInputAdmission(
+     RenderWidgetHostViewBase* child,
+     const WeakDocumentPtr& document) const {
+@@ -2645,6 +2677,7 @@ void RenderWidgetHostViewMac::RetireEmbeddedNativeInputBinding(
+   }
+   auto entry = std::move(found->second);
+   embedded_native_input_bindings_.erase(found);
++  entry->retirement_observers.Notify();
+   entry->timer.Stop();
+   if (ns_view_) {
+     ns_view_->SetEmbeddedNativeInputDocumentBinding(binding, false,
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac_unittest.mm b/content/browser/renderer_host/render_widget_host_view_mac_unittest.mm
+index 8858d55b2cf3bbf740ba0dcc373f8b512c6f075e..e4076f29a3a8c7b7ad955bad8d31aa13df71a5f1 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac_unittest.mm
++++ b/content/browser/renderer_host/render_widget_host_view_mac_unittest.mm
+@@ -11,12 +11,15 @@
+ #include <stdint.h>
+ 
+ #include <limits>
++#include <memory>
+ #include <string>
+ 
+ #include "base/apple/scoped_cftyperef.h"
+ #include "base/apple/scoped_nsautorelease_pool.h"
+ #include "base/command_line.h"
+ #include "base/containers/queue.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/location.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/memory/raw_ptr.h"
+@@ -25,6 +28,7 @@
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
++#include "base/test/bind.h"
+ #include "base/test/metrics/histogram_tester.h"
+ #include "base/test/run_until.h"
+ #include "base/test/scoped_feature_list.h"
+@@ -44,16 +48,20 @@
+ #include "content/common/features.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host_view_mac_delegate.h"
+ #include "content/public/common/content_switches.h"
+ #include "content/public/common/page_visibility_state.h"
++#include "content/public/test/back_forward_cache_util.h"
+ #include "content/public/test/mock_render_process_host.h"
++#include "content/public/test/navigation_simulator.h"
+ #include "content/public/test/test_browser_context.h"
+ #include "content/public/test/test_utils.h"
+ #include "content/test/mock_render_input_router.h"
+ #include "content/test/mock_render_widget_host_delegate.h"
+ #include "content/test/mock_widget_input_handler.h"
+ #include "content/test/stub_render_widget_host_owner_delegate.h"
++#include "content/test/test_render_frame_host.h"
+ #include "content/test/test_render_view_host.h"
+ #include "content/test/test_render_widget_host.h"
+ #include "content/test/test_web_contents.h"
+@@ -102,6 +110,34 @@ using testing::Bool;
+ 
+ @end
+ 
++// Interleave work after the real Cocoa binding setter, before its bridge ACK.
++// This does not replace binding installation or fabricate admission/ACK state.
++@interface NativeInputBindingInterleave : NSObject {
++ @public
++  base::OnceClosure callback;
++}
++@end
++@implementation NativeInputBindingInterleave
++@end
++
++namespace {
++char kNativeInputBindingInterleave;
++}
++
++@interface InterleavedNativeInputRenderWidgetHostViewCocoa
++    : RenderWidgetHostViewCocoa
++@end
++@implementation InterleavedNativeInputRenderWidgetHostViewCocoa
++- (void)setNativeInputDocumentBinding:(const std::string&)binding {
++  [super setNativeInputDocumentBinding:binding];
++  NativeInputBindingInterleave* interleave =
++      objc_getAssociatedObject(self, &kNativeInputBindingInterleave);
++  if (!binding.empty() && interleave && interleave->callback) {
++    std::move(interleave->callback).Run();
++  }
++}
++@end
++
+ // Helper class with methods used to mock -[NSEvent phase], used by
+ // |MockScrollWheelEventWithPhase()|.
+ @interface MockPhaseMethods : NSObject {
+@@ -696,7 +732,362 @@ INSTANTIATE_TEST_SUITE_P(OptimizeCachedFirstRect,
+                          RenderWidgetHostViewMacCachedFirstRectTest,
+                          Bool());
+ 
+-TEST_F(RenderWidgetHostViewMacTest, Basic) {
++TEST_F(RenderWidgetHostViewMacTest, Basic) {}
++
++TEST_F(RenderWidgetHostViewMacTest,
++       NativeContextRetirementRequiresBoundDocument) {
++  unsigned retired = 0;
++  auto subscription = rwhv_mac_->ObserveNativeInputAdmissionRetirement(
++      WeakDocumentPtr(),
++      base::BindRepeating([](unsigned* count) { ++*count; }, &retired));
++  EXPECT_FALSE(subscription);
++  EXPECT_FALSE(
++      rwhv_mac_->HasNativeInputAdmissionForDocument(WeakDocumentPtr()));
++  EXPECT_EQ(retired, 0u);
++}
++
++TEST_F(RenderWidgetHostViewMacTest,
++       UnsupportedViewCannotProduceContextRetirement) {
++  auto* original = host_->GetView();
++  {
++    TestRenderWidgetHostView unsupported(host_.get());
++    auto subscription = unsupported.ObserveNativeInputAdmissionRetirement(
++        WeakDocumentPtr(), base::DoNothing());
++    EXPECT_FALSE(subscription);
++    EXPECT_FALSE(
++        unsupported.HasNativeInputAdmissionForDocument(WeakDocumentPtr()));
++    host_->SetView(nullptr);
++  }
++  host_->SetView(original);
++}
++
++namespace {
++
++// The NSView is retained across destruction so its class/association can always
++// be restored, including when the real view is destroyed before bridge ACK.
++class ScopedNativeInputBindingInterleave {
++ public:
++  ScopedNativeInputBindingInterleave(RenderWidgetHostViewCocoa* view,
++                                     base::OnceClosure callback)
++      : view_(view), original_class_(object_getClass(view)) {
++    auto* interleave = [[NativeInputBindingInterleave alloc] init];
++    interleave->callback = std::move(callback);
++    objc_setAssociatedObject(view_, &kNativeInputBindingInterleave, interleave,
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++    object_setClass(view_,
++                    [InterleavedNativeInputRenderWidgetHostViewCocoa class]);
++  }
++  ScopedNativeInputBindingInterleave(
++      const ScopedNativeInputBindingInterleave&) = delete;
++  ScopedNativeInputBindingInterleave& operator=(
++      const ScopedNativeInputBindingInterleave&) = delete;
++
++  ~ScopedNativeInputBindingInterleave() {
++    object_setClass(view_, original_class_);
++    objc_setAssociatedObject(view_, &kNativeInputBindingInterleave, nil,
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++  }
++
++ private:
++  RenderWidgetHostViewCocoa* __strong view_;
++  Class original_class_;
++};
++
++}  // namespace
++
++// Unlike RenderWidgetHostViewMacTest's separate mock widget/delegate, this
++// fixture uses the widget owned by contents()'s actual live primary RFH.
++class RenderWidgetHostViewMacNativeInputTest
++    : public RenderViewHostImplTestHarness {
++ public:
++  void SetUp() override {
++    RenderViewHostImplTestHarness::SetUp();
++    window_ = [[CocoaTestHelperWindow alloc] init];
++    window_.releasedWhenClosed = NO;
++    window_.pretendIsKeyWindow = YES;
++    NavigateAndCommit(GURL("https://native-input.test/first"));
++    ASSERT_NO_FATAL_FAILURE(InstallPrimaryMacView());
++  }
++
++  void TearDown() override {
++    DeleteContents();
++    base::RunLoop().RunUntilIdle();
++    [window_ close];
++    window_ = nil;
++    RenderViewHostImplTestHarness::TearDown();
++  }
++
++ protected:
++  void InstallPrimaryMacView() {
++    ASSERT_TRUE(main_rfh()->IsActive());
++    ASSERT_TRUE(main_rfh()->IsRenderFrameLive());
++    auto* widget = contents()->GetPrimaryMainFrame()->GetRenderWidgetHost();
++    if (auto* previous = widget->GetView()) {
++      static_cast<RenderWidgetHostViewBase*>(previous)->DestroyOrDefer();
++    }
++    ASSERT_EQ(widget->GetView(), nullptr);
++    auto* view = new RenderWidgetHostViewMac(widget);
++    view_ = view->GetWeakPtr();
++    auto* cocoa = view->GetInProcessNSView();
++    ASSERT_NE(cocoa, nil);
++    [window_.contentView addSubview:cocoa];
++    [cocoa setFrame:window_.contentView.bounds];
++    view->ShowWithVisibility(PageVisibilityState::kVisible);
++  }
++
++  RenderWidgetHostViewMac* view() {
++    return static_cast<RenderWidgetHostViewMac*>(view_.get());
++  }
++
++  void AdmitPrimaryDocument() {
++    ASSERT_TRUE(view());
++    view()->InitAsChild(gfx::NativeView(window_.contentView));
++    ASSERT_TRUE(view()->HasNativeInputAdmissionForDocument(
++        main_rfh()->GetWeakDocumentPtr()));
++  }
++
++  CocoaTestHelperWindow* __strong window_;
++  base::WeakPtr<RenderWidgetHostViewBase> view_;
++};
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       OriginalAdmissionRetiresOnceAcrossViewReplacement) {
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  auto document = main_rfh()->GetWeakDocumentPtr();
++  auto original_view = view_;
++  unsigned retired = 0;
++  auto subscription = view()->ObserveNativeInputAdmissionRetirement(
++      document,
++      base::BindRepeating(
++          [](RenderWidgetHostViewMac* view, WeakDocumentPtr document,
++             unsigned* retired) {
++            ++*retired;
++            EXPECT_FALSE(view->HasNativeInputAdmissionForDocument(document));
++            auto reentrant = view->ObserveNativeInputAdmissionRetirement(
++                document, base::DoNothing());
++            EXPECT_FALSE(reentrant);
++          },
++          view(), document, &retired));
++  ASSERT_TRUE(subscription);
++  view()->DestroyOrDefer();
++  EXPECT_FALSE(original_view);
++  EXPECT_EQ(retired, 1u);
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(retired, 1u);
++
++  // The same live document may acquire a new native view generation. The old
++  // original subscription must not follow it or fire when the new view retires.
++  ASSERT_NO_FATAL_FAILURE(InstallPrimaryMacView());
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  EXPECT_TRUE(view()->HasNativeInputAdmissionForDocument(document));
++  view()->DestroyOrDefer();
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(retired, 1u);
++}
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       NavigationRetiresOriginalSubscriptionBeforeReplacementAdmission) {
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  auto document = main_rfh()->GetWeakDocumentPtr();
++  auto original_view = view_;
++  unsigned retired = 0;
++  auto subscription = view()->ObserveNativeInputAdmissionRetirement(
++      document,
++      base::BindRepeating([](unsigned* count) { ++*count; }, &retired));
++  ASSERT_TRUE(subscription);
++  NavigateAndCommit(GURL("https://native-input.test/second"));
++  EXPECT_EQ(retired, 1u);
++  if (original_view) {
++    EXPECT_FALSE(static_cast<RenderWidgetHostViewMac*>(original_view.get())
++                     ->HasNativeInputAdmissionForDocument(document));
++  }
++  ASSERT_NO_FATAL_FAILURE(InstallPrimaryMacView());
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  auto replacement = main_rfh()->GetWeakDocumentPtr();
++  ASSERT_NE(replacement.AsRenderFrameHostIfValid(),
++            document.AsRenderFrameHostIfValid());
++  EXPECT_FALSE(view()->HasNativeInputAdmissionForDocument(document));
++  EXPECT_TRUE(view()->HasNativeInputAdmissionForDocument(replacement));
++  NavigateAndCommit(GURL("https://native-input.test/third"));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(retired, 1u);
++}
++
++class RenderWidgetHostViewMacNativeInputBFCacheTest
++    : public RenderWidgetHostViewMacNativeInputTest {
++ public:
++  void SetUp() override {
++    bfcache_features_.InitWithFeaturesAndParameters(
++        GetDefaultEnabledBackForwardCacheFeaturesForTesting(),
++        GetDefaultDisabledBackForwardCacheFeaturesForTesting());
++    RenderWidgetHostViewMacNativeInputTest::SetUp();
++  }
++
++ private:
++  base::test::ScopedFeatureList bfcache_features_;
++};
++
++TEST_F(RenderWidgetHostViewMacNativeInputBFCacheTest,
++       CacheRestoreReacquiresAdmissionWithoutReusingOriginalSubscription) {
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  const auto frame = contents()->GetPrimaryMainFrame()->GetWeakPtr();
++  const auto document = main_rfh()->GetWeakDocumentPtr();
++  const auto original_view = view_;
++  unsigned original_retired = 0;
++  auto original_subscription = view()->ObserveNativeInputAdmissionRetirement(
++      document, base::BindRepeating([](unsigned* count) { ++*count; },
++                                    &original_retired));
++  ASSERT_TRUE(original_subscription);
++  NavigateAndCommit(GURL("https://native-input-cache-next.test/second"));
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(frame);
++  ASSERT_TRUE(frame->IsInBackForwardCache());
++  ASSERT_FALSE(frame->IsActive());
++  ASSERT_TRUE(original_view);
++  EXPECT_FALSE(static_cast<RenderWidgetHostViewMac*>(original_view.get())
++                   ->HasNativeInputAdmissionForDocument(document));
++  EXPECT_EQ(original_retired, 1u);
++
++  ASSERT_EQ(NavigationSimulator::GoBack(contents()), frame.get());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(main_rfh(), frame.get());
++  ASSERT_TRUE(frame->IsActive());
++  ASSERT_EQ(main_rfh()->GetRenderWidgetHost()->GetView(), original_view.get());
++  view_ = original_view;
++  // No manual InitAsChild or synthetic ready state: actual restore hooks must
++  // publish a fresh binding and receive the real Cocoa acknowledgement.
++  ASSERT_TRUE(view()->HasNativeInputAdmissionForDocument(document));
++  EXPECT_EQ(original_retired, 1u);
++  unsigned restored_retired = 0;
++  auto restored_subscription = view()->ObserveNativeInputAdmissionRetirement(
++      document, base::BindRepeating([](unsigned* count) { ++*count; },
++                                    &restored_retired));
++  ASSERT_TRUE(restored_subscription);
++  NavigateAndCommit(GURL("https://native-input-cache-third.test/third"));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(original_retired, 1u);
++  EXPECT_EQ(restored_retired, 1u);
++}
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       QueuedAdmissionResultCannotSurviveNativeViewDestruction) {
++  const auto document = main_rfh()->GetWeakDocumentPtr();
++  auto admission_results = std::make_shared<std::vector<bool>>();
++  bool setter_ran = false;
++  ScopedNativeInputBindingInterleave interleave(
++      view()->GetInProcessNSView(), base::BindLambdaForTesting([&] {
++        setter_ran = true;
++        EXPECT_FALSE(view()->HasNativeInputAdmissionForDocument(document));
++        view()->AwaitNativeInputAdmissionForDocument(
++            document, base::BindLambdaForTesting(
++                          [results = admission_results](bool admitted) {
++                            results->push_back(admitted);
++                          }));
++      }));
++  // Use the real local bridge migration boundary to install a fresh binding.
++  view()->MigrateNSViewBridge(nullptr, 0);
++  ASSERT_TRUE(setter_ran);
++  ASSERT_TRUE(view()->HasNativeInputAdmissionForDocument(document));
++  EXPECT_TRUE(admission_results->empty());
++  view()->DestroyOrDefer();
++  EXPECT_FALSE(view_);
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(*admission_results, std::vector<bool>({false}));
++}
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       QueuedAdmissionCannotFollowAReplacementNativeBridgeBinding) {
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  const auto document = main_rfh()->GetWeakDocumentPtr();
++  unsigned original_retired = 0;
++  auto subscription = view()->ObserveNativeInputAdmissionRetirement(
++      document, base::BindRepeating([](unsigned* count) { ++*count; },
++                                    &original_retired));
++  ASSERT_TRUE(subscription);
++  auto admission_results = std::make_shared<std::vector<bool>>();
++  bool setter_ran = false;
++  ScopedNativeInputBindingInterleave interleave(
++      view()->GetInProcessNSView(), base::BindLambdaForTesting([&] {
++        setter_ran = true;
++        view()->AwaitNativeInputAdmissionForDocument(
++            document, base::BindLambdaForTesting(
++                          [results = admission_results](bool admitted) {
++                            results->push_back(admitted);
++                          }));
++      }));
++  view()->MigrateNSViewBridge(nullptr, 0);
++  ASSERT_TRUE(setter_ran);
++  ASSERT_TRUE(view()->HasNativeInputAdmissionForDocument(document));
++  EXPECT_TRUE(admission_results->empty());
++  // View and document remain alive; only the genuine bridge binding changes.
++  view()->MigrateNSViewBridge(nullptr, 0);
++  ASSERT_TRUE(view()->HasNativeInputAdmissionForDocument(document));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(*admission_results, std::vector<bool>({false}));
++  EXPECT_EQ(original_retired, 1u);
++  bool replacement_admitted = false;
++  view()->AwaitNativeInputAdmissionForDocument(
++      document,
++      base::BindOnce([](bool* result, bool admitted) { *result = admitted; },
++                     &replacement_admitted));
++  EXPECT_TRUE(replacement_admitted);
++}
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       CocoaAckAfterViewDestructionCannotCompleteOriginalAdmission) {
++  const auto document = main_rfh()->GetWeakDocumentPtr();
++  auto admission_results = std::make_shared<std::vector<bool>>();
++  bool setter_ran = false;
++  ScopedNativeInputBindingInterleave interleave(
++      view()->GetInProcessNSView(), base::BindLambdaForTesting([&] {
++        setter_ran = true;
++        EXPECT_FALSE(view()->HasNativeInputAdmissionForDocument(document));
++        view()->AwaitNativeInputAdmissionForDocument(
++            document, base::BindLambdaForTesting(
++                          [results = admission_results](bool admitted) {
++                            results->push_back(admitted);
++                          }));
++        // The genuine Cocoa setter ran; destroy before the bridge returns ACK.
++        view()->DestroyOrDefer();
++      }));
++  view()->MigrateNSViewBridge(nullptr, 0);
++  EXPECT_TRUE(setter_ran);
++  EXPECT_FALSE(view_);
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(*admission_results, std::vector<bool>({false}));
++}
++
++TEST_F(RenderWidgetHostViewMacNativeInputTest,
++       CocoaAckAfterNavigationCannotAdmitOriginalDocument) {
++  const auto document = main_rfh()->GetWeakDocumentPtr();
++  const auto original_view = view_;
++  auto admission_results = std::make_shared<std::vector<bool>>();
++  bool setter_ran = false;
++  ScopedNativeInputBindingInterleave interleave(
++      view()->GetInProcessNSView(), base::BindLambdaForTesting([&] {
++        setter_ran = true;
++        EXPECT_FALSE(view()->HasNativeInputAdmissionForDocument(document));
++        view()->AwaitNativeInputAdmissionForDocument(
++            document, base::BindLambdaForTesting(
++                          [results = admission_results](bool admitted) {
++                            results->push_back(admitted);
++                          }));
++        NavigateAndCommit(
++            GURL("https://native-input.test/late-ack-replacement"));
++      }));
++  view()->MigrateNSViewBridge(nullptr, 0);
++  ASSERT_TRUE(setter_ran);
++  if (original_view) {
++    EXPECT_FALSE(static_cast<RenderWidgetHostViewMac*>(original_view.get())
++                     ->HasNativeInputAdmissionForDocument(document));
++  }
++  ASSERT_NO_FATAL_FAILURE(InstallPrimaryMacView());
++  ASSERT_NO_FATAL_FAILURE(AdmitPrimaryDocument());
++  EXPECT_FALSE(view()->HasNativeInputAdmissionForDocument(document));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(*admission_results, std::vector<bool>({false}));
++  EXPECT_TRUE(view()->HasNativeInputAdmissionForDocument(
++      main_rfh()->GetWeakDocumentPtr()));
+ }
+ 
+ TEST_F(RenderWidgetHostViewMacTest, AcceptsFirstResponder) {
+diff --git a/content/public/browser/render_widget_host_view.h b/content/public/browser/render_widget_host_view.h
+index ae876aac7b1df310e799f04025d594f982c3a91d..fc53e38610cf396e273f95e030489847295f6297 100644
+--- a/content/public/browser/render_widget_host_view.h
++++ b/content/public/browser/render_widget_host_view.h
+@@ -4,21 +4,20 @@
+ 
+ #ifndef CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
+ #define CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
+-#include <vector>
+-
+ #include <optional>
+ #include <string>
+ #include <utility>
++#include <vector>
+ 
+-#include "base/functional/callback.h"
+-
++#include "base/callback_list.h"
+ #include "base/containers/flat_map.h"
+ #include "base/containers/flat_set.h"
++#include "base/functional/callback.h"
+ #include "base/types/expected.h"
+ #include "build/build_config.h"
+-#include "content/common/content_export.h"
+-#include "components/viz/common/surfaces/surface_id.h"
+ #include "components/viz/common/frame_sinks/copy_output_result.h"
++#include "components/viz/common/surfaces/surface_id.h"
++#include "content/common/content_export.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/mojom/input/pointer_lock_result.mojom.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -101,6 +100,12 @@ class CONTENT_EXPORT RenderWidgetHostView {
+       const WeakDocumentPtr& document,
+       base::OnceCallback<void(bool)> callback);
+ 
++  // Last-mile retirement only, never grants permission. Unsupported views
++  // return no subscription and cannot produce guarded context input proofs.
++  virtual base::CallbackListSubscription ObserveNativeInputAdmissionRetirement(
++      const WeakDocumentPtr&,
++      base::RepeatingClosure);
++
+   // Initialize this object for use as a drawing area.  |parent_view| may be
+   // left as nullptr on platforms where a parent view is not required to
+   // initialize a child window.
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index de99ad761f486ec5037d82eba9bc04b5d7737fed..497331df87eabd9cdaadfd1822ef9b938848dbb1 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -3864,3 +3864,41 @@ if (is_fuchsia) {
+     ]
+   }
+ }
++
++# Run the real Mac fixture without the unrelated content unit-test corpus.
++if (is_mac && !is_component_build) {
++  test("aux_native_input_retirement_unittests") {
++    sources = [
++      "../browser/renderer_host/render_widget_host_view_mac_unittest.mm",
++    ]
++    configs += [ "//build/config:precompiled_headers" ]
++    deps = [
++      ":run_all_unittests",
++      ":test_support",
++      "//base/test:test_support",
++      "//components/viz/common",
++      "//content/browser:for_content_tests",
++      "//content/common:for_content_tests",
++      "//gpu/ipc/service",
++      "//mojo/public/cpp/bindings",
++      "//third_party/ocmock",
++      "//ui/base:test_support",
++      "//ui/base/ime:text_input_types",
++      "//ui/base/ime/mojom",
++      "//ui/compositor",
++      "//ui/events",
++      "//ui/events:test_support",
++      "//ui/events/blink",
++      "//ui/gfx/range",
++    ]
++    data = [ "$root_out_dir/content_shell.pak" ]
++    data_deps = [
++      "//content/shell:pak",
++      "//tools/v8_context_snapshot",
++    ]
++    frameworks = [
++      "Cocoa.framework",
++      "Foundation.framework",
++    ]
++  }
++}
+diff --git a/content/test/mock_widget_input_handler.cc b/content/test/mock_widget_input_handler.cc
+index b65d52fdcb184599af0d2ff535cc0a4a0c1a137b..9bf8f55844b23102d4824e8c01b6eb5e14dd3257 100644
+--- a/content/test/mock_widget_input_handler.cc
++++ b/content/test/mock_widget_input_handler.cc
+@@ -264,9 +264,10 @@ MockWidgetInputHandler::DispatchedEventMessage::DispatchedEventMessage(
+ 
+ MockWidgetInputHandler::DispatchedEventMessage::~DispatchedEventMessage() {
+   if (callback_) {
+-    std::move(callback_).Run(
+-        blink::mojom::InputEventResultSource::kUnknown, ui::LatencyInfo(),
+-        blink::mojom::InputEventResultState::kNotConsumed, nullptr, nullptr);
++    std::move(callback_).Run(blink::mojom::InputEventResultSource::kUnknown,
++                             ui::LatencyInfo(),
++                             blink::mojom::InputEventResultState::kNotConsumed,
++                             nullptr, nullptr, nullptr);
+     base::RunLoop().RunUntilIdle();
+   }
+ }
+@@ -280,7 +281,8 @@ void MockWidgetInputHandler::DispatchedEventMessage::CallCallback(
+     blink::mojom::InputEventResultState state) {
+   if (callback_) {
+     std::move(callback_).Run(blink::mojom::InputEventResultSource::kMainThread,
+-                             ui::LatencyInfo(), state, nullptr, nullptr);
++                             ui::LatencyInfo(), state, nullptr, nullptr,
++                             nullptr);
+     base::RunLoop().RunUntilIdle();
+   }
+ }
+@@ -293,7 +295,7 @@ void MockWidgetInputHandler::DispatchedEventMessage::CallCallback(
+     blink::mojom::TouchActionOptionalPtr touch_action) {
+   if (callback_) {
+     std::move(callback_).Run(source, latency_info, state, std::move(overscroll),
+-                             std::move(touch_action));
++                             std::move(touch_action), nullptr);
+     base::RunLoop().RunUntilIdle();
+   }
+ }
+@@ -347,4 +349,19 @@ MockWidgetInputHandler::DispatchedFinishComposingMessage::ToFinishComposing() {
+   return this;
+ }
+ 
++void MockWidgetInputHandler::PrepareAuxContextAction(
++    blink::mojom::AuxContextActionParamsPtr,
++    PrepareAuxContextActionCallback callback) {
++  std::move(callback).Run("");
++}
++
++void MockWidgetInputHandler::ApplyAuxContextAction(
++    const std::string&,
++    const std::string&,
++    float,
++    const gfx::PointF&,
++    ApplyAuxContextActionCallback callback) {
++  std::move(callback).Run(blink::mojom::AuxContextActionResult::kRefused);
++}
++
+ }  // namespace content
+diff --git a/content/test/mock_widget_input_handler.h b/content/test/mock_widget_input_handler.h
+index 2571fc36fd75fc49609523bd87d30ec85c0e489c..12e959911a964114543903234343c1dce12ee52a 100644
+--- a/content/test/mock_widget_input_handler.h
++++ b/content/test/mock_widget_input_handler.h
+@@ -246,6 +246,17 @@ class MockWidgetInputHandler : public blink::mojom::WidgetInputHandler {
+     const bool keep_selection_;
+   };
+ 
++  // Unrelated fixture widgets must never manufacture an actual context proof.
++  void PrepareAuxContextAction(
++      blink::mojom::AuxContextActionParamsPtr,
++      PrepareAuxContextActionCallback callback) override;
++  void ApplyAuxContextAction(const std::string&,
++                             const std::string&,
++                             float,
++                             const gfx::PointF&,
++                             ApplyAuxContextActionCallback callback) override;
++  void RetireAuxContextAction(const std::string&, const std::string&) override {
++  }
+   // blink::mojom::WidgetInputHandler override.
+   void SetFocus(blink::mojom::FocusState focus_state) override;
+   void MouseCaptureLost() override;
+diff --git a/third_party/blink/public/devtools_protocol/domains/Input.pdl b/third_party/blink/public/devtools_protocol/domains/Input.pdl
+index 815bf7c4147c4dd89ea6e9c7a0440517cb5a4937..c1dabd0956755a08e942374429f7706409e06a2f 100644
+--- a/third_party/blink/public/devtools_protocol/domains/Input.pdl
++++ b/third_party/blink/public/devtools_protocol/domains/Input.pdl
+@@ -6,6 +6,45 @@
+ 
+ domain Input
+ 
++  # Aux-private; root broker injects owner. No arbitrary script or selectors.
++  experimental type AuxContextAction extends object
++    properties
++      integer rootNodeId
++      integer recipientNodeId
++      integer editorNodeId
++      integer actionNodeId
++      string recipientUrl
++      string beforeText
++      string text
++      string actionId
++      string sourceDigest
++      boolean invitation
++      enum operation
++        fill
++        click
++
++  experimental command prepareAuxContextAction
++    parameters
++      AuxContextAction context
++      string owner
++    returns
++      string token
++
++  experimental command applyAuxContextAction
++    parameters
++      string token
++      string owner
++    returns
++      enum state
++        refused
++        applied
++        uncertain
++
++  experimental command retireAuxContextAction
++    parameters
++      string token
++      string owner
++
+   type TouchPoint extends object
+     properties
+       # X coordinate of the event relative to the main frame's viewport in CSS pixels.
+diff --git a/third_party/blink/public/mojom/input/input_handler.mojom b/third_party/blink/public/mojom/input/input_handler.mojom
+index 7e2548916f765486de469332bfeccba18cf8f7b6..e425b0aed424465ff18e573cd763ca39de9555a2 100644
+--- a/third_party/blink/public/mojom/input/input_handler.mojom
++++ b/third_party/blink/public/mojom/input/input_handler.mojom
+@@ -12,6 +12,7 @@ import "cc/mojom/overscroll_behavior.mojom";
+ import "cc/mojom/touch_action.mojom";
+ import "mojo/public/mojom/base/big_buffer.mojom";
+ import "mojo/public/mojom/base/string16.mojom";
++import "mojo/public/mojom/base/shared_memory.mojom";
+ import "mojo/public/mojom/base/time.mojom";
+ import "third_party/blink/public/mojom/dom/dom_node_id.mojom";
+ import "third_party/blink/public/mojom/input/gesture_event.mojom";
+@@ -493,7 +494,34 @@ struct NativeMouseDownLink {
+   string href;
+ };
+ 
++// Private Aux proof adjunct. Values are inspected only in the original main
++// document; the normal trusted input implementation remains the sole writer.
++enum AuxContextActionOperation { kFill, kClick };
++enum AuxContextActionResult { kRefused, kApplied, kUncertain };
++struct AuxContextActionParams {
++  int32 root_node_id;
++  int32 recipient_node_id;
++  int32 editor_node_id;
++  int32 action_node_id;
++  string recipient_url;
++  string before_text;
++  string text;
++  string action_id;
++  string source_digest;
++  string owner;
++  bool invitation;
++  AuxContextActionOperation operation;
++  // Native browser coordinate scale; never supplied by the protocol client.
++  float input_scale;
++  mojo_base.mojom.ReadOnlySharedMemoryRegion authority;
++  mojo_base.mojom.TimeTicks authority_deadline;
++};
++
+ interface WidgetInputHandler {
++  PrepareAuxContextAction(AuxContextActionParams params) => (string token);
++  ApplyAuxContextAction(string token, string owner, float input_scale, gfx.mojom.PointF screen_origin) => (AuxContextActionResult result);
++  RetireAuxContextAction(string token, string owner);
++
+   // Tells widget focus has been changed.
+   SetFocus(FocusState state);
+ 
+diff --git a/third_party/blink/renderer/controller/BUILD.gn b/third_party/blink/renderer/controller/BUILD.gn
+index 05b4956d84bb02328a07495d0f68612dc7e128b7..feb28e16b270a8694016015d90bf85c16d43a287 100644
+--- a/third_party/blink/renderer/controller/BUILD.gn
++++ b/third_party/blink/renderer/controller/BUILD.gn
+@@ -261,6 +261,40 @@ source_set("blink_bindings_test_sources") {
+   ]
+ }
+ 
++# Focused Aux input-proof fixtures reuse the real Blink/content test environment.
++test("aux_context_actions_unittests") {
++  sources = [
++    "../core/frame/aux_context_actions_test.cc",
++    "tests/run_all_tests.cc",
++    "tests/thread_state_test_environment.h",
++  ]
++  deps = [
++    ":controller",
++    "//base",
++    "//base:i18n",
++    "//base/test:test_support",
++    "//content/test:test_support",
++    "//gpu:test_support",
++    "//testing/gmock",
++    "//testing/gtest",
++    "//third_party/blink/renderer/core:testing",
++    "//third_party/blink/renderer/core:unit_test_support",
++    "//third_party/blink/renderer/modules",
++    "//third_party/blink/renderer/modules/exported:test_support",
++    "//third_party/blink/renderer/platform",
++    "//third_party/blink/renderer/platform:test_support",
++    "//third_party/blink/renderer/platform/wtf",
++    "//url",
++    "//v8",
++  ]
++  configs += [
++    "//third_party/blink/renderer:config",
++    "//third_party/blink/renderer:inside_blink",
++    "//third_party/blink/renderer/core:blink_core_pch",
++  ]
++  data_deps = [ "//content/shell:pak" ]
++}
++
+ source_set("blink_unittests_sources") {
+   visibility = []  # Allow re-assignment of list.
+   visibility = [ "*" ]
+diff --git a/third_party/blink/renderer/core/editing/commands/typing_command.cc b/third_party/blink/renderer/core/editing/commands/typing_command.cc
+index cbc88f335559c22d33194662c695300451061414..e3ed45130b081adfa667203ffccb1b5cfe97b800 100644
+--- a/third_party/blink/renderer/core/editing/commands/typing_command.cc
++++ b/third_party/blink/renderer/core/editing/commands/typing_command.cc
+@@ -52,6 +52,7 @@
+ #include "third_party/blink/renderer/core/editing/visible_units.h"
+ #include "third_party/blink/renderer/core/events/before_text_inserted_event.h"
+ #include "third_party/blink/renderer/core/events/text_event.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/html/html_br_element.h"
+@@ -464,10 +465,16 @@ void TypingCommand::InsertText(
+   // needs to be audited. see http://crbug.com/590369 for more details.
+   document.UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+ 
++  // Use the normal editor's actual filtered/normalized payload, after all
++  // preceding text handlers and layout, before either existing insertion path.
++  ABORT_EDITING_COMMAND_IF(!AuxContextActions::ValidateActiveTextInsertion(
++      document, NormalizeTextForInsertion(new_text)));
++
+   const PlainTextRange selection_offsets = GetSelectionOffsets(
+       passed_selection_for_insertion_as_undo_step.AsSelection());
+-  if (selection_offsets.IsNull())
++  if (selection_offsets.IsNull()) {
+     return;
++  }
+   const wtf_size_t selection_start = selection_offsets.Start();
+ 
+   frame->GetEditor().NotifyAccessibilityOfDeletionOrInsertionInTextField(
+@@ -505,6 +512,9 @@ void TypingCommand::InsertText(
+     last_typing_command->InsertTextInternal(NormalizeTextForInsertion(new_text),
+                                             options & kSelectInsertedText,
+                                             editing_state);
++    if (!editing_state->IsAborted()) {
++      AuxContextActions::DidCompleteActiveTextCommand(text);
++    }
+     return;
+   }
+ 
+@@ -533,6 +543,7 @@ void TypingCommand::InsertText(
+   command->input_type_ = input_type;
+   command->password_echo_behavior_ = password_echo_behavior;
+   ABORT_EDITING_COMMAND_IF(!command->Apply());
++  AuxContextActions::DidCompleteActiveTextCommand(text);
+ 
+   if (change_selection) {
+     const SelectionInDomTree& current_selection_as_dom =
+diff --git a/third_party/blink/renderer/core/editing/editor.cc b/third_party/blink/renderer/core/editing/editor.cc
+index b6526cb1fd41698a1e831a892e0152edabf917c4..accd90a1a326947b1019daf3d72316675b1dbd6b 100644
+--- a/third_party/blink/renderer/core/editing/editor.cc
++++ b/third_party/blink/renderer/core/editing/editor.cc
+@@ -69,6 +69,7 @@
+ #include "third_party/blink/renderer/core/editing/visible_units.h"
+ #include "third_party/blink/renderer/core/events/keyboard_event.h"
+ #include "third_party/blink/renderer/core/events/text_event.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+@@ -497,9 +498,14 @@ bool Editor::InsertTextWithoutSendingTextEvent(
+     DataTransfer* data_transfer) {
+   const VisibleSelection& selection =
+       CreateVisibleSelection(SelectionForCommand(triggering_event));
+-  if (!selection.IsContentEditable())
++  if (!selection.IsContentEditable()) {
+     return false;
++  }
+ 
++  if (!AuxContextActions::ValidateActiveTextContext(
++          *GetFrame().GetDocument())) {
++    return false;
++  }
+   EditingState editing_state;
+   // Insert the text
+   TypingCommand::InsertText(
+diff --git a/third_party/blink/renderer/core/editing/ime/input_method_controller.cc b/third_party/blink/renderer/core/editing/ime/input_method_controller.cc
+index d1785e509ac2b924b1d8a7747f5cf6124153c5d3..dd2e3ac96e50b06bf96bb78c349ee8bfcb138718 100644
+--- a/third_party/blink/renderer/core/editing/ime/input_method_controller.cc
++++ b/third_party/blink/renderer/core/editing/ime/input_method_controller.cc
+@@ -59,6 +59,7 @@
+ #include "third_party/blink/renderer/core/editing/state_machines/backward_code_point_state_machine.h"
+ #include "third_party/blink/renderer/core/editing/state_machines/forward_code_point_state_machine.h"
+ #include "third_party/blink/renderer/core/events/composition_event.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+@@ -925,8 +926,12 @@ bool InputMethodController::InsertText(const String& text) {
+   if (DispatchBeforeInputInsertText(GetDocument().FocusedElement(), text) !=
+       DispatchEventResult::kNotCanceled)
+     return false;
+-  if (!IsAvailable())
++  if (!IsAvailable()) {
+     return false;
++  }
++  if (!AuxContextActions::ValidateActiveTextContext(GetDocument())) {
++    return false;
++  }
+   GetEditor().InsertText(text, nullptr);
+   return true;
+ }
+diff --git a/third_party/blink/renderer/core/frame/aux_context_actions.cc b/third_party/blink/renderer/core/frame/aux_context_actions.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..73822e373aa2b0741819d2dad54de85b0d25d213
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/aux_context_actions.cc
+@@ -0,0 +1,477 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
++
++#include <algorithm>
++#include <cmath>
++
++#include "base/atomicops.h"
++#include "base/auto_reset.h"
++#include "base/memory/read_only_shared_memory_region.h"
++#include "base/time/time.h"
++#include "base/unguessable_token.h"
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
++#include "third_party/blink/renderer/core/dom/element.h"
++#include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
++#include "third_party/blink/renderer/core/dom/node_traversal.h"
++#include "third_party/blink/renderer/core/dom/text.h"
++#include "third_party/blink/renderer/core/dom/tree_scope.h"
++#include "third_party/blink/renderer/core/editing/editing_utilities.h"
++#include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
++#include "third_party/blink/renderer/core/frame/local_frame.h"
++#include "third_party/blink/renderer/core/geometry/dom_rect.h"
++#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
++#include "third_party/blink/renderer/core/html/forms/text_control_element.h"
++#include "third_party/blink/renderer/core/html/html_anchor_element.h"
++#include "third_party/blink/renderer/core/html_names.h"
++#include "third_party/blink/renderer/core/style/computed_style.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
++#include "third_party/blink/renderer/platform/weborigin/kurl.h"
++#include "ui/gfx/geometry/rect.h"
++
++namespace blink {
++namespace {
++// Validate refreshes layout once before inspecting any source node. Walk the
++// flat tree so an invisible shadow host cannot leave a visible-looking editor.
++bool Visible(Element& node) {
++  if (!node.isConnected() || !node.GetLayoutObject() ||
++      !node.GetComputedStyle() ||
++      node.GetComputedStyle()->Visibility() != EVisibility::kVisible) {
++    return false;
++  }
++  unsigned depth = 0;
++  for (Node& ancestor : FlatTreeTraversal::InclusiveAncestorsOf(node)) {
++    if (++depth > 128) {
++      return false;
++    }
++    auto* element = DynamicTo<Element>(ancestor);
++    if (!element) {
++      continue;
++    }
++    const auto* style = element->GetComputedStyle();
++    if (element->hasAttribute(html_names::kInertAttr) ||
++        element->getAttribute(html_names::kAriaHiddenAttr) == "true" ||
++        (style && style->Opacity() == 0.f)) {
++      return false;
++    }
++  }
++  return !node.VisibleBoundsInLocalRoot().IsEmpty();
++}
++bool ExposedEditor(Element& editor) {
++  auto* box = editor.GetBoundingClientRect();
++  if (!box || box->width() <= 0 || box->height() <= 0) {
++    return false;
++  }
++  // Filling must not focus/scroll an offscreen editor or write behind an
++  // overlay. Use the same CSS client coordinates as native click admission;
++  // hit testing enforces viewport and ancestor clips without retargeting.
++  auto* hit = editor.GetTreeScope().ElementFromPoint(
++      box->x() + box->width() / 2, box->y() + box->height() / 2);
++  return hit && editor.contains(hit);
++}
++bool MemberURL(const KURL& url) {
++  return url.ProtocolIs("https") && !url.HasPort() && url.User().empty() &&
++         url.Pass().empty() &&
++         (url.Host() == "www.linkedin.com" || url.Host() == "linkedin.com") &&
++         url.GetPath().starts_with("/in/") && url.GetPath().length() > 4;
++}
++String MemberPath(const KURL& url) {
++  String path = url.GetPath().ToString();
++  return path.ends_with("/") ? path.substr(0, path.length() - 1) : path;
++}
++bool Sensitive(Element& node) {
++  const auto raw_type = node.getAttribute(html_names::kTypeAttr);
++  const auto raw_autocomplete =
++      node.getAttribute(html_names::kAutocompleteAttr);
++  const auto raw_name = node.getAttribute(html_names::kNameAttr);
++  if (raw_type.length() > 32 || raw_autocomplete.length() > 512 ||
++      raw_name.length() > 512) {
++    return true;
++  }
++  const auto type = raw_type.ToAsciiLower();
++  const auto autocomplete = raw_autocomplete.ToAsciiLower();
++  if (type == "password" || type == "hidden" ||
++      autocomplete.contains("password") ||
++      autocomplete.contains("one-time-code") || autocomplete.contains("cc-")) {
++    return true;
++  }
++  const auto name = raw_name.ToAsciiLower();
++  return name.length() > 512 || name.contains("password") ||
++         name.contains("secret") || name.contains("token") ||
++         name.contains("credential") || name.contains("api-key") ||
++         name.contains("api_key") || name.contains("credit") ||
++         name.contains("card-number");
++}
++bool Editable(Element& node) {
++  if (Sensitive(node) || node.IsDisabledFormControl() ||
++      node.hasAttribute(html_names::kReadonlyAttr) ||
++      node.getAttribute(html_names::kAriaReadonlyAttr) == "true") {
++    return false;
++  }
++  if (auto* input = DynamicTo<HTMLInputElement>(node)) {
++    return input->IsTextField();
++  }
++  return DynamicTo<TextControlElement>(node) || IsEditable(node);
++}
++String Caption(Element& action) {
++  String value = action.getAttribute(html_names::kAriaLabelAttr);
++  if (value.empty()) {
++    unsigned nodes = 0;
++    for (Node& node : NodeTraversal::InclusiveDescendantsOf(action)) {
++      if (++nodes > 128) {
++        return String();
++      }
++      if (auto* text = DynamicTo<Text>(node)) {
++        if (value.length() + text->data().length() > 512) {
++          return String();
++        }
++        value = value + text->data();
++      }
++    }
++  }
++  return value.length() > 512 ? String()
++                              : value.StripWhiteSpace().ToAsciiLower();
++}
++bool SendControl(Element& action, bool invitation) {
++  if (!action.HasTagName(html_names::kButtonTag) &&
++      action.getAttribute(html_names::kRoleAttr) != "button") {
++    return false;
++  }
++  if (action.IsDisabledFormControl() ||
++      action.getAttribute(html_names::kAriaDisabledAttr) == "true") {
++    return false;
++  }
++  const auto caption = Caption(action);
++  return invitation ? caption == "send invitation" || caption == "send now"
++                    : caption == "send";
++}
++}  // namespace
++
++class AuxContextActionRecord final
++    : public GarbageCollected<AuxContextActionRecord> {
++ public:
++  explicit AuxContextActionRecord(mojom::blink::AuxContextActionParamsPtr value)
++      : params(std::move(value)),
++        deadline(std::min(params->authority_deadline,
++                          base::TimeTicks::Now() + base::Seconds(2))) {
++    if (params->authority.IsValid() &&
++        params->authority.GetSize() == sizeof(base::subtle::Atomic32)) {
++      authority = params->authority.Map();
++    }
++    root = DynamicTo<Element>(DOMNodeIds::NodeForId(params->root_node_id));
++    recipient =
++        DynamicTo<Element>(DOMNodeIds::NodeForId(params->recipient_node_id));
++    editor = DynamicTo<Element>(DOMNodeIds::NodeForId(params->editor_node_id));
++    action = DynamicTo<Element>(DOMNodeIds::NodeForId(params->action_node_id));
++    document = root ? &root->GetDocument() : nullptr;
++    source_url = document ? document->Url() : KURL();
++  }
++  bool AuthorityCurrent() const {
++    return authority.IsValid() && base::TimeTicks::Now() < deadline &&
++           base::subtle::Acquire_Load(
++               authority.GetMemoryAs<base::subtle::Atomic32>()) == 1;
++  }
++  bool Validate(Document& current,
++                bool focus = false,
++                bool result_text = false) const {
++    if (!AuthorityCurrent() || document != &current ||
++        current.Url() != source_url || !current.GetFrame() ||
++        !current.GetFrame()->IsMainFrame()) {
++      return false;
++    }
++    current.UpdateStyleAndLayout(DocumentUpdateReason::kInput);
++    // Layout work may run lifecycle callbacks: recheck original authority,
++    // document and exact nodes before inspecting the refreshed source.
++    if (!AuthorityCurrent() || current.Url() != source_url || !root ||
++        !recipient || !editor || !action || document != &current ||
++        base::TimeTicks::Now() >= deadline || !current.GetFrame() ||
++        !current.GetFrame()->IsMainFrame() ||
++        !current.Url().ProtocolIs("https") || current.Url().HasPort() ||
++        (current.Url().Host() != "www.linkedin.com" &&
++         current.Url().Host() != "linkedin.com") ||
++        root == current.documentElement() || root == current.body() ||
++        &recipient->GetDocument() != &current ||
++        &editor->GetDocument() != &current ||
++        &action->GetDocument() != &current || !root->contains(recipient) ||
++        !root->contains(editor) || !root->contains(action) || !Visible(*root) ||
++        !Visible(*recipient) || !Visible(*editor) || !Visible(*action) ||
++        !Editable(*editor) || action->IsDisabledFormControl() ||
++        action->getAttribute(html_names::kAriaDisabledAttr) == "true" ||
++        (params->invitation &&
++         root->getAttribute(html_names::kRoleAttr) != "dialog") ||
++        current.GetFrame()->GetInputMethodController().HasComposition() ||
++        current.GetFrame()->GetInputMethodController().GetActiveEditContext() ||
++        editor->editContext() ||
++        (focus && current.FocusedElement() != editor)) {
++      return false;
++    }
++    auto* link = DynamicTo<HTMLAnchorElement>(recipient.Get());
++    KURL expected(params->recipient_url);
++    if (!link || link->getAttribute(html_names::kHrefAttr).length() > 2048 ||
++        !MemberURL(expected) || !MemberURL(link->Href()) ||
++        MemberPath(expected) != MemberPath(link->Href())) {
++      return false;
++    }
++    unsigned nodes = 0, recipient_count = 0, editor_count = 0, action_count = 0;
++    for (Node& descendant : NodeTraversal::InclusiveDescendantsOf(*root)) {
++      if (++nodes > 512) {
++        return false;
++      }
++      auto* element = DynamicTo<Element>(descendant);
++      if (!element) {
++        continue;
++      }
++      Element& node = *element;
++      if (Sensitive(node)) {
++        return false;
++      }
++      if (!Visible(node)) {
++        continue;
++      }
++      if (auto* anchor = DynamicTo<HTMLAnchorElement>(node);
++          anchor &&
++          anchor->getAttribute(html_names::kHrefAttr).length() <= 2048 &&
++          MemberURL(anchor->Href())) {
++        ++recipient_count;
++      }
++      if (Editable(node) &&
++          (!node.parentElement() || !IsEditable(*node.parentElement()))) {
++        ++editor_count;
++      }
++      if (SendControl(node, params->invitation)) {
++        ++action_count;
++      }
++    }
++    if (recipient_count != 1 || editor_count != 1 ||
++        AuxContextActions::EditorText(*editor).IsNull() ||
++        AuxContextActions::EditorText(*editor) !=
++            (result_text ? params->text : params->before_text)) {
++      return false;
++    }
++    if (params->operation == mojom::blink::AuxContextActionOperation::kFill) {
++      return action == editor && ExposedEditor(*editor) && AuthorityCurrent();
++    }
++    return action != editor && action_count == 1 &&
++           params->before_text == params->text &&
++           SendControl(*action, params->invitation) && AuthorityCurrent();
++  }
++
++  void Trace(Visitor* visitor) const {
++    visitor->Trace(root);
++    visitor->Trace(recipient);
++    visitor->Trace(editor);
++    visitor->Trace(action);
++    visitor->Trace(document);
++  }
++  mojom::blink::AuxContextActionParamsPtr params;
++  WeakMember<Element> root, recipient, editor, action;
++  WeakMember<Document> document;
++  base::TimeTicks deadline;
++  base::ReadOnlySharedMemoryMapping authority;
++  KURL source_url;
++  bool refused = false;
++  bool input_dispatched = false;
++  bool press_dispatched = false;
++  bool release_dispatched = false;
++  bool click_dispatched = false;
++  bool text_command_completed = false;
++};
++namespace {
++thread_local AuxContextActionRecord* active_text_context = nullptr;
++}
++
++String AuxContextActions::EditorText(Element& node) {
++  unsigned count = 0, text_length = 0;
++  for (Node& descendant : NodeTraversal::InclusiveDescendantsOf(node)) {
++    if (++count > 512) {
++      return String();
++    }
++    if (auto* element = DynamicTo<Element>(descendant);
++        element && Sensitive(*element)) {
++      return String();
++    }
++    if (auto* text = DynamicTo<Text>(descendant)) {
++      if (text->data().length() > 8000 - text_length) {
++        return String();
++      }
++      text_length += text->data().length();
++    }
++  }
++  String value = DynamicTo<TextControlElement>(node)
++                     ? To<TextControlElement>(node).Value()
++                     : node.innerText();
++  return value.length() <= 8000 ? value : String();
++}
++String AuxContextActions::Prepare(
++    Document& document,
++    mojom::blink::AuxContextActionParamsPtr params) {
++  if (!params || params->owner.length() != 32 || params->action_id.empty() ||
++      params->action_id.length() > 256 ||
++      params->source_digest.length() != 64 ||
++      params->before_text.length() > 8000 || params->text.length() > 8000 ||
++      params->recipient_url.length() > 2048 ||
++      !std::isfinite(params->input_scale) || params->input_scale <= 0 ||
++      params->input_scale > 100) {
++    return String();
++  }
++  Vector<String> stale;
++  for (const auto& entry : records_) {
++    if (!entry.value->Validate(document)) {
++      stale.push_back(entry.key);
++    }
++  }
++  for (const auto& key : stale) {
++    records_.erase(key);
++  }
++  if (records_.size() >= 8) {
++    return String();
++  }
++  auto* record =
++      MakeGarbageCollected<AuxContextActionRecord>(std::move(params));
++  if (!record->Validate(document)) {
++    return String();
++  }
++  String token = String::FromUtf8(base::UnguessableToken::Create().ToString());
++  records_.Set(token, record);
++  return token;
++}
++AuxContextActions::Result AuxContextActions::Apply(
++    Document& document,
++    const String& token,
++    const String& owner,
++    base::OnceCallback<Result(const mojom::blink::AuxContextActionParams&)>
++        input) {
++  auto it = records_.find(token);
++  if (it == records_.end()) {
++    return Result::kRefused;
++  }
++  Persistent<AuxContextActionRecord> record(it->value.Get());
++  // Consume before any focus, event listener, input, callback or re-entrant
++  // apply.
++  records_.erase(it);
++  if (record->params->owner != owner || !record->Validate(document)) {
++    return Result::kRefused;
++  }
++  base::AutoReset<AuxContextActionRecord*> scope(&active_text_context,
++                                                 record.Get());
++  const auto result = std::move(input).Run(*record->params);
++  // A successful transport/handler return is not evidence of the intended
++  // click: drag, lifecycle, inspector and input suppression can return early.
++  const bool incomplete_click =
++      record->params->operation ==
++          mojom::blink::AuxContextActionOperation::kClick &&
++      !(record->press_dispatched && record->release_dispatched &&
++        record->click_dispatched);
++  const bool incomplete_fill =
++      record->params->operation ==
++          mojom::blink::AuxContextActionOperation::kFill &&
++      !record->text_command_completed;
++  // The final event handler may revoke native ownership, replace the source or
++  // redirect the recipient after input began. Effects cannot be undone here;
++  // retain uncertainty without replay and never change the admission payload.
++  const bool changed_after_input =
++      !record->Validate(document,
++                        record->params->operation ==
++                            mojom::blink::AuxContextActionOperation::kFill,
++                        true);
++  return record->refused || incomplete_click || incomplete_fill ||
++                 changed_after_input
++             ? (result == Result::kUncertain || record->input_dispatched
++                    ? Result::kUncertain
++                    : Result::kRefused)
++             : result;
++}
++void AuxContextActions::Retire(const String& token, const String& owner) {
++  auto it = records_.find(token);
++  if (it != records_.end() && it->value->params->owner == owner) {
++    records_.erase(it);
++  }
++}
++bool AuxContextActions::ValidateActiveTextContext(Document& document) {
++  if (!active_text_context) {
++    return true;
++  }
++  if (!ValidateActiveContext(document, true)) {
++    return false;
++  }
++  const auto range =
++      document.GetFrame()->GetInputMethodController().GetSelectionOffsets();
++  const bool valid =
++      !range.IsNull() && range.Start() == 0 &&
++      range.End() == active_text_context->params->before_text.length() &&
++      active_text_context->AuthorityCurrent();
++  active_text_context->refused |= !valid;
++  return valid;
++}
++bool AuxContextActions::ValidateActiveTextInsertion(Document& document,
++                                                    const String& text) {
++  if (!active_text_context) {
++    return true;
++  }
++  // The normal editor may truncate maxlength or rewrite line endings. Never
++  // insert a different payload under an exact-content approval. Literal CR is
++  // unsupported even when the ordinary newline-normalization flag is disabled.
++  const bool valid = ValidateActiveTextContext(document) &&
++                     active_text_context->params->operation ==
++                         mojom::blink::AuxContextActionOperation::kFill &&
++                     active_text_context->params->text == text &&
++                     !text.contains('\r') &&
++                     active_text_context->AuthorityCurrent();
++  active_text_context->refused |= !valid;
++  return valid;
++}
++bool AuxContextActions::ValidateActiveContext(Document& document, bool focus) {
++  if (!active_text_context) {
++    return true;
++  }
++  const bool valid = !active_text_context->refused &&
++                     active_text_context->Validate(document, focus);
++  active_text_context->refused |= !valid;
++  return valid;
++}
++bool AuxContextActions::ValidateActivePointerTarget(Node* target,
++                                                    bool actionable) {
++  if (!active_text_context) {
++    return true;
++  }
++  const bool valid =
++      target && !active_text_context->refused &&
++      active_text_context->Validate(target->GetDocument()) &&
++      (!actionable || active_text_context->action->contains(target));
++  active_text_context->refused |= !valid;
++  return valid;
++}
++bool AuxContextActions::MarkActiveInputDispatched(InputEvent event) {
++  if (!active_text_context) {
++    return true;
++  }
++  // Final acquire-load linearizes this input event's admission against native
++  // owner retirement. It cannot retroactively cancel an already admitted event.
++  if (active_text_context->refused ||
++      !active_text_context->AuthorityCurrent()) {
++    active_text_context->refused = true;
++    return false;
++  }
++  active_text_context->input_dispatched = true;
++  active_text_context->press_dispatched |= event == InputEvent::kPress;
++  active_text_context->release_dispatched |= event == InputEvent::kRelease;
++  active_text_context->click_dispatched |= event == InputEvent::kClick;
++  return true;
++}
++bool AuxContextActions::DidDispatchActivePress() {
++  return active_text_context && active_text_context->press_dispatched;
++}
++void AuxContextActions::DidCompleteActiveTextCommand(const String& text) {
++  if (active_text_context &&
++      active_text_context->params->operation ==
++          mojom::blink::AuxContextActionOperation::kFill &&
++      active_text_context->params->text == text) {
++    active_text_context->text_command_completed = true;
++  }
++}
++void AuxContextActions::Trace(Visitor* visitor) const {
++  visitor->Trace(records_);
++}
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/aux_context_actions.h b/third_party/blink/renderer/core/frame/aux_context_actions.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ad39c2c64c0d2881fa0fd51514edb25411d14318
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/aux_context_actions.h
+@@ -0,0 +1,52 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_AUX_CONTEXT_ACTIONS_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_AUX_CONTEXT_ACTIONS_H_
++
++#include "base/functional/callback.h"
++#include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
++#include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
++#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
++#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
++
++namespace blink {
++class Document;
++class Element;
++class Node;
++class AuxContextActionRecord;
++// Evidence adjunct only. The widget's existing trusted input implementation is
++// the only writer. A record never authorizes a new document, event or payload.
++class CORE_EXPORT AuxContextActions final
++    : public GarbageCollected<AuxContextActions> {
++ public:
++  using Result = mojom::blink::AuxContextActionResult;
++  enum class InputEvent { kOther, kPress, kRelease, kClick };
++  String Prepare(Document&, mojom::blink::AuxContextActionParamsPtr);
++  Result Apply(
++      Document&,
++      const String& token,
++      const String& owner,
++      base::OnceCallback<Result(const mojom::blink::AuxContextActionParams&)>);
++  void Retire(const String& token, const String& owner);
++  // Called after page beforeinput handlers and before the existing editor
++  // write. Ordinary person/IME input without a scoped context record is
++  // unchanged.
++  static bool ValidateActiveTextContext(Document&);
++  // Inspect the existing editor's filtered/normalized insertion before
++  // mutation.
++  static bool ValidateActiveTextInsertion(Document&, const String&);
++  static bool ValidateActiveContext(Document&, bool focus);
++  static bool ValidateActivePointerTarget(Node*, bool actionable);
++  static bool MarkActiveInputDispatched(InputEvent = InputEvent::kOther);
++  static bool DidDispatchActivePress();
++  static void DidCompleteActiveTextCommand(const String& text);
++  static String EditorText(Element&);
++  void Trace(Visitor*) const;
++
++ private:
++  HeapHashMap<String, Member<AuxContextActionRecord>> records_;
++};
++}  // namespace blink
++#endif
+diff --git a/third_party/blink/renderer/core/frame/aux_context_actions_test.cc b/third_party/blink/renderer/core/frame/aux_context_actions_test.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..36f2e2d3b8178c066b3a6296709a1d769466389a
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/aux_context_actions_test.cc
+@@ -0,0 +1,871 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
++
++#include "base/atomicops.h"
++#include "base/memory/read_only_shared_memory_region.h"
++#include "base/test/bind.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/input/web_mouse_event.h"
++#include "third_party/blink/public/platform/web_drag_data.h"
++#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
++#include "third_party/blink/renderer/core/dom/events/event.h"
++#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
++#include "third_party/blink/renderer/core/dom/shadow_root.h"
++#include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
++#include "third_party/blink/renderer/core/event_type_names.h"
++#include "third_party/blink/renderer/core/exported/web_view_impl.h"
++#include "third_party/blink/renderer/core/frame/local_frame.h"
++#include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
++#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
++#include "third_party/blink/renderer/core/geometry/dom_rect.h"
++#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
++#include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
++#include "third_party/blink/renderer/core/html/html_element.h"
++#include "third_party/blink/renderer/core/html_names.h"
++#include "third_party/blink/renderer/core/input/event_handler.h"
++#include "third_party/blink/renderer/core/page/page.h"
++#include "third_party/blink/renderer/core/testing/page_test_base.h"
++#include "third_party/blink/renderer/core/testing/sim/sim_request.h"
++#include "third_party/blink/renderer/core/testing/sim/sim_test.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
++#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
++#include "third_party/skia/include/core/SkBitmap.h"
++namespace blink {
++namespace {
++class MutateOnInput final : public NativeEventListener {
++ public:
++  explicit MutateOnInput(base::RepeatingClosure callback)
++      : callback_(std::move(callback)) {}
++  void Invoke(ExecutionContext*, Event*) override { callback_.Run(); }
++
++ private:
++  base::RepeatingClosure callback_;
++};
++class CancelOnInput final : public NativeEventListener {
++ public:
++  void Invoke(ExecutionContext*, Event* event) override {
++    event->preventDefault();
++  }
++};
++class AuxContextActionsTest : public PageTestBase {
++ protected:
++  using Result = mojom::blink::AuxContextActionResult;
++  void SetUp() override {
++    PageTestBase::SetUp(gfx::Size(800, 600));
++    GetDocument().SetURL(KURL("https://www.linkedin.com/messaging/"));
++    SetBodyInnerHTML(
++        R"HTML(<section id="root"><a id="recipient" href="https://www.linkedin.com/in/alex/">Alex</a><textarea id="editor">Old draft</textarea><button id="send">Send</button></section><textarea id="other"></textarea>)HTML");
++    UpdateAllLifecyclePhasesForTest();
++    proofs_ = MakeGarbageCollected<AuxContextActions>();
++    authority_ = base::ReadOnlySharedMemoryRegion::Create(
++        sizeof(base::subtle::Atomic32));
++    ASSERT_TRUE(authority_.IsValid());
++    base::subtle::Release_Store(
++        authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 1);
++  }
++  Element* Node(const char* id) {
++    return GetDocument().getElementById(AtomicString(id));
++  }
++  mojom::blink::AuxContextActionParamsPtr Params(bool fill = true) {
++    auto value = mojom::blink::AuxContextActionParams::New();
++    value->root_node_id = DOMNodeIds::IdForNode(Node("root"));
++    value->recipient_node_id = DOMNodeIds::IdForNode(Node("recipient"));
++    value->editor_node_id = DOMNodeIds::IdForNode(Node("editor"));
++    value->action_node_id =
++        DOMNodeIds::IdForNode(Node(fill ? "editor" : "send"));
++    value->recipient_url = "https://www.linkedin.com/in/alex/";
++    value->before_text = "Old draft";
++    value->text = fill ? "Requested draft" : "Old draft";
++    value->action_id = "original-action";
++    value->source_digest = String::FromUtf8(std::string(64, 'a'));
++    value->owner = owner_;
++    value->input_scale = 1;
++    value->authority = authority_.region.Duplicate();
++    value->authority_deadline = base::TimeTicks::Now() + base::Seconds(2);
++    value->invitation = false;
++    value->operation = fill ? mojom::blink::AuxContextActionOperation::kFill
++                            : mojom::blink::AuxContextActionOperation::kClick;
++    return value;
++  }
++  String Prepare(bool fill = true) {
++    return proofs_->Prepare(GetDocument(), Params(fill));
++  }
++  Result Fill(const String& token) {
++    return proofs_->Apply(
++        GetDocument(), token, owner_,
++        base::BindLambdaForTesting(
++            [this](const mojom::blink::AuxContextActionParams& params) {
++              auto* editor = To<HTMLTextAreaElement>(Node("editor"));
++              if (!AuxContextActions::MarkActiveInputDispatched()) {
++                return Result::kRefused;
++              }
++              editor->Focus();
++              editor->select();
++              const bool applied =
++                  GetFrame().GetInputMethodController().CommitText(params.text,
++                                                                   {}, 0);
++              return applied ? Result::kApplied : Result::kUncertain;
++            }));
++  }
++  Persistent<AuxContextActions> proofs_;
++  base::MappedReadOnlyRegion authority_;
++  String owner_ = String::FromUtf8(std::string(32, 'A'));
++};
++TEST_F(AuxContextActionsTest, AppliesExistingImeWriterExactlyOnce) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Fill(token), Result::kApplied);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(),
++            "Requested draft");
++  EXPECT_EQ(Fill(token), Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, WrongOwnerCannotConsumeForNewOwner) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  unsigned calls = 0;
++  EXPECT_EQ(
++      proofs_->Apply(GetDocument(), token, "other-owner",
++                     base::BindLambdaForTesting(
++                         [&](const mojom::blink::AuxContextActionParams&) {
++                           ++calls;
++                           return Result::kApplied;
++                         })),
++      Result::kRefused);
++  EXPECT_EQ(calls, 0u);
++  EXPECT_EQ(Fill(token), Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, RefusesRecipientSwitchWithUnchangedFormValue) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("recipient")
++      ->setAttribute(html_names::kHrefAttr,
++                     AtomicString("https://www.linkedin.com/in/other/"));
++  EXPECT_EQ(Fill(token), Result::kRefused);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextActionsTest, RefusesReplacedRootEvenWithIdenticalText) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  SetBodyInnerHTML(
++      R"HTML(<section id="root"><a id="recipient" href="https://www.linkedin.com/in/alex/">Alex</a><textarea id="editor">Old draft</textarea><button>Send</button></section>)HTML");
++  UpdateAllLifecyclePhasesForTest();
++  EXPECT_EQ(Fill(token), Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, RefusesHiddenOrOutsideEditor) {
++  Node("editor")->setAttribute(html_names::kHiddenAttr, g_empty_atom);
++  UpdateAllLifecyclePhasesForTest();
++  EXPECT_TRUE(Prepare().empty());
++  Node("editor")->removeAttribute(html_names::kHiddenAttr);
++  auto params = Params();
++  params->editor_node_id = DOMNodeIds::IdForNode(Node("other"));
++  UpdateAllLifecyclePhasesForTest();
++  EXPECT_TRUE(proofs_->Prepare(GetDocument(), std::move(params)).empty());
++}
++TEST_F(AuxContextActionsTest, RefusesProtectedEditor) {
++  SetBodyInnerHTML(
++      R"HTML(<section id="root"><a id="recipient" href="https://www.linkedin.com/in/alex/">Alex</a><input id="editor" type="password" value="Old draft"><button>Send</button></section>)HTML");
++  UpdateAllLifecyclePhasesForTest();
++  EXPECT_TRUE(Prepare().empty());
++}
++TEST_F(AuxContextActionsTest,
++       BeforeInputRecipientChangeCannotInsertAfterDispatchedHandler) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kBeforeinput,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        Node("recipient")
++            ->setAttribute(html_names::kHrefAttr,
++                           AtomicString("https://www.linkedin.com/in/other/"));
++      })),
++      false);
++  EXPECT_EQ(Fill(token), Result::kUncertain);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextActionsTest,
++       BeforeInputFocusChangeCannotWriteToAnotherEditor) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kBeforeinput,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([this] { Node("other")->Focus(); })),
++      false);
++  EXPECT_EQ(Fill(token), Result::kUncertain);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  EXPECT_TRUE(To<HTMLTextAreaElement>(Node("other"))->Value().empty());
++}
++TEST_F(AuxContextActionsTest,
++       LegacyTextInputMutationIsCheckedBeforeTypingCommand) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      AtomicString("textInput"),
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        Node("recipient")
++            ->setAttribute(html_names::kHrefAttr,
++                           AtomicString("https://www.linkedin.com/in/other/"));
++      })),
++      false);
++  EXPECT_EQ(Fill(token), Result::kUncertain);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextActionsTest, MouseDownMutationRefusesReleaseAndCannotReenter) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  unsigned releases = 0;
++  auto result = proofs_->Apply(
++      GetDocument(), token, owner_,
++      base::BindLambdaForTesting(
++          [&](const mojom::blink::AuxContextActionParams&) {
++            EXPECT_EQ(Fill(token), Result::kRefused);
++            AuxContextActions::MarkActiveInputDispatched();
++            Node("recipient")
++                ->setAttribute(
++                    html_names::kHrefAttr,
++                    AtomicString("https://www.linkedin.com/in/other/"));
++            if (!AuxContextActions::ValidateActiveContext(GetDocument(),
++                                                          false)) {
++              return Result::kUncertain;
++            }
++            ++releases;
++            return Result::kApplied;
++          }));
++  EXPECT_EQ(result, Result::kUncertain);
++  EXPECT_EQ(releases, 0u);
++}
++TEST_F(AuxContextActionsTest, MissingNativeRegionCannotPrepare) {
++  auto params = Params();
++  params->authority = base::ReadOnlySharedMemoryRegion();
++  EXPECT_TRUE(proofs_->Prepare(GetDocument(), std::move(params)).empty());
++}
++TEST_F(AuxContextActionsTest, OriginalNativeDeadlineCannotBeRenewedByRenderer) {
++  auto params = Params();
++  params->authority_deadline = base::TimeTicks::Now() - base::Milliseconds(1);
++  EXPECT_TRUE(proofs_->Prepare(GetDocument(), std::move(params)).empty());
++}
++TEST_F(AuxContextActionsTest, NativeRetirementBeforeInputHasZeroInvocations) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  unsigned inputs = 0;
++  base::subtle::Release_Store(
++      authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 0);
++  EXPECT_EQ(
++      proofs_->Apply(GetDocument(), token, owner_,
++                     base::BindLambdaForTesting(
++                         [&](const mojom::blink::AuxContextActionParams&) {
++                           ++inputs;
++                           return Result::kApplied;
++                         })),
++      Result::kRefused);
++  EXPECT_EQ(inputs, 0u);
++}
++TEST_F(AuxContextActionsTest,
++       NativeRetirementInsideBeforeInputIsUncertainWithoutInsertion) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  unsigned before = 0, inserted = 0;
++  Node("editor")->addEventListener(
++      event_type_names::kBeforeinput,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([&] {
++        ++before;
++        base::subtle::Release_Store(
++            authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 0);
++      })),
++      false);
++  Node("editor")->addEventListener(
++      event_type_names::kInput,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([&] { ++inserted; })),
++      false);
++  EXPECT_EQ(Fill(token), Result::kUncertain);
++  EXPECT_EQ(before, 1u);
++  EXPECT_EQ(inserted, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextActionsTest, WrongPointerTargetBeforeEventsIsRefused) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  unsigned events = 0;
++  EXPECT_EQ(
++      proofs_->Apply(GetDocument(), token, owner_,
++                     base::BindLambdaForTesting(
++                         [&](const mojom::blink::AuxContextActionParams&) {
++                           if (!AuxContextActions::ValidateActivePointerTarget(
++                                   Node("other"), true)) {
++                             return Result::kRefused;
++                           }
++                           AuxContextActions::MarkActiveInputDispatched();
++                           ++events;
++                           return Result::kApplied;
++                         })),
++      Result::kRefused);
++  EXPECT_EQ(events, 0u);
++}
++TEST_F(AuxContextActionsTest, PointerDownMutationCannotReachMouseDownOrClick) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  unsigned pointer_down = 0, mouse_down = 0, clicked = 0;
++  Node("send")->addEventListener(
++      event_type_names::kPointerdown,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([&] {
++        ++pointer_down;
++        Node("recipient")
++            ->setAttribute(html_names::kHrefAttr,
++                           AtomicString("https://www.linkedin.com/in/other/"));
++      })),
++      false);
++  Node("send")->addEventListener(
++      event_type_names::kMousedown,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([&] { ++mouse_down; })),
++      false);
++  Node("send")->addEventListener(
++      event_type_names::kClick,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([&] { ++clicked; })),
++      false);
++  EXPECT_EQ(
++      proofs_->Apply(
++          GetDocument(), token, owner_,
++          base::BindLambdaForTesting(
++              [&](const mojom::blink::AuxContextActionParams&) {
++                auto* rect = Node("send")->GetBoundingClientRect();
++                const gfx::PointF point(rect->x() + rect->width() / 2,
++                                        rect->y() + rect->height() / 2);
++                WebMouseEvent down(WebInputEvent::Type::kMouseDown, point,
++                                   point, WebPointerProperties::Button::kLeft,
++                                   1, WebInputEvent::kLeftButtonDown,
++                                   WebInputEvent::GetStaticTimeStampForTests());
++                GetFrame().GetEventHandler().HandleMousePressEvent(down);
++                if (!AuxContextActions::ValidateActiveContext(GetDocument(),
++                                                              false)) {
++                  return Result::kUncertain;
++                }
++                WebMouseEvent up(WebInputEvent::Type::kMouseUp, point, point,
++                                 WebPointerProperties::Button::kLeft, 1,
++                                 WebInputEvent::kNoModifiers,
++                                 WebInputEvent::GetStaticTimeStampForTests());
++                GetFrame().GetEventHandler().HandleMouseReleaseEvent(up);
++                return Result::kApplied;
++              })),
++      Result::kUncertain);
++  EXPECT_EQ(pointer_down, 1u);
++  EXPECT_EQ(mouse_down, 0u);
++  EXPECT_EQ(clicked, 0u);
++}
++TEST_F(AuxContextActionsTest, SameDocumentNavigationCannotReplaceSource) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  GetDocument().SetURL(KURL("https://www.linkedin.com/in/other/"));
++  EXPECT_EQ(Fill(token), Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, ExplicitRetirementNeverReplays) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  proofs_->Retire(token, owner_);
++  EXPECT_EQ(Fill(token), Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, ClickWithoutIntentEventsCannotClaimApplied) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(proofs_->Apply(GetDocument(), token, owner_,
++                           base::BindLambdaForTesting(
++                               [](const mojom::blink::AuxContextActionParams&) {
++                                 return Result::kApplied;
++                               })),
++            Result::kRefused);
++}
++TEST_F(AuxContextActionsTest, BoundaryEventsAloneAreUncertainNotApplied) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(proofs_->Apply(GetDocument(), token, owner_,
++                           base::BindLambdaForTesting(
++                               [](const mojom::blink::AuxContextActionParams&) {
++                                 AuxContextActions::MarkActiveInputDispatched();
++                                 return Result::kApplied;
++                               })),
++            Result::kUncertain);
++}
++TEST_F(AuxContextActionsTest, PressWithoutReleaseOrClickCannotClaimApplied) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(proofs_->Apply(GetDocument(), token, owner_,
++                           base::BindLambdaForTesting(
++                               [](const mojom::blink::AuxContextActionParams&) {
++                                 AuxContextActions::MarkActiveInputDispatched(
++                                     AuxContextActions::InputEvent::kPress);
++                                 return Result::kApplied;
++                               })),
++            Result::kUncertain);
++}
++TEST_F(AuxContextActionsTest, PressAndReleaseWithoutClickCannotClaimApplied) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(proofs_->Apply(GetDocument(), token, owner_,
++                           base::BindLambdaForTesting(
++                               [](const mojom::blink::AuxContextActionParams&) {
++                                 AuxContextActions::MarkActiveInputDispatched(
++                                     AuxContextActions::InputEvent::kPress);
++                                 AuxContextActions::MarkActiveInputDispatched(
++                                     AuxContextActions::InputEvent::kRelease);
++                                 return Result::kApplied;
++                               })),
++            Result::kUncertain);
++}
++TEST_F(AuxContextActionsTest,
++       ExplicitUncertaintyCannotBecomeRefusalWithoutObservedDomEvents) {
++  auto token = Prepare(false);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(proofs_->Apply(GetDocument(), token, owner_,
++                           base::BindLambdaForTesting(
++                               [](const mojom::blink::AuxContextActionParams&) {
++                                 return Result::kUncertain;
++                               })),
++            Result::kUncertain);
++}
++class AuxContextWidgetTest : public SimTest {
++ protected:
++  using Result = mojom::blink::AuxContextActionResult;
++  void SetUp() override {
++    SimTest::SetUp();
++    ResizeView(gfx::Size(800, 600));
++    SimRequest request("https://www.linkedin.com/messaging/", "text/html");
++    LoadURL("https://www.linkedin.com/messaging/");
++    request.Complete(
++        R"HTML(<section id="root"><a id="recipient" href="https://www.linkedin.com/in/alex/">Alex</a><textarea id="editor">Old draft</textarea><button id="send">Send</button></section>)HTML");
++    Compositor().BeginFrame();
++    GetWebFrameWidget().UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
++    // Match the native InputHandler's real widget focus before editor input.
++    GetWebFrameWidget().SetFocus(true);
++    authority_ = base::ReadOnlySharedMemoryRegion::Create(
++        sizeof(base::subtle::Atomic32));
++    ASSERT_TRUE(authority_.IsValid());
++    base::subtle::Release_Store(
++        authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 1);
++    Node("send")->addEventListener(
++        event_type_names::kMousedown,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++presses_; })),
++        false);
++    Node("send")->addEventListener(
++        event_type_names::kMouseup,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++releases_; })),
++        false);
++    Node("send")->addEventListener(
++        event_type_names::kClick,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++clicks_; })),
++        false);
++    CountEditorEvents(*Node("editor"));
++  }
++  void TearDown() override {
++    SetIgnored(false);
++    SimTest::TearDown();
++  }
++  Element* Node(const char* id) {
++    return GetDocument().getElementById(AtomicString(id));
++  }
++  void CountEditorEvents(Element& editor) {
++    editor.addEventListener(
++        event_type_names::kFocus,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++focuses_; })),
++        false);
++    editor.addEventListener(
++        event_type_names::kBeforeinput,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++before_inputs_; })),
++        false);
++    editor.addEventListener(
++        event_type_names::kInput,
++        MakeGarbageCollected<MutateOnInput>(
++            base::BindLambdaForTesting([this] { ++inputs_; })),
++        false);
++  }
++  HTMLInputElement* UseSingleLineEditor() {
++    auto* input = To<HTMLInputElement>(
++        GetDocument().CreateRawElement(html_names::kInputTag));
++    input->setAttribute(html_names::kIdAttr, AtomicString("editor"));
++    input->setAttribute(html_names::kValueAttr, AtomicString("Old draft"));
++    Node("root")->ReplaceChild(input, Node("editor"));
++    CountEditorEvents(*input);
++    return input;
++  }
++  void SetIgnored(bool ignored) {
++    const auto token = WebView().GetPage()->BrowsingContextGroupToken();
++    if (WebFrameWidgetImpl::IgnoreInputEvents(token) != ignored) {
++      WebFrameWidgetImpl::SetIgnoreInputEvents(token, ignored);
++    }
++  }
++  String Prepare(bool fill = false, const String& text = "Requested draft") {
++    auto params = mojom::blink::AuxContextActionParams::New();
++    params->root_node_id = DOMNodeIds::IdForNode(Node("root"));
++    params->recipient_node_id = DOMNodeIds::IdForNode(Node("recipient"));
++    params->editor_node_id = DOMNodeIds::IdForNode(Node("editor"));
++    params->action_node_id =
++        DOMNodeIds::IdForNode(Node(fill ? "editor" : "send"));
++    params->recipient_url = "https://www.linkedin.com/in/alex/";
++    params->before_text = "Old draft";
++    params->text = fill ? text : "Old draft";
++    params->action_id = "original-action";
++    params->source_digest = String::FromUtf8(std::string(64, 'a'));
++    params->owner = owner_;
++    params->input_scale = 1;
++    params->authority = authority_.region.Duplicate();
++    params->authority_deadline = base::TimeTicks::Now() + base::Seconds(2);
++    params->invitation = false;
++    params->operation = fill ? mojom::blink::AuxContextActionOperation::kFill
++                             : mojom::blink::AuxContextActionOperation::kClick;
++    return GetWebFrameWidget().PrepareAuxContextAction(std::move(params));
++  }
++  Result Apply(const String& token) {
++    return GetWebFrameWidget().ApplyAuxContextAction(token, owner_, 1,
++                                                     gfx::PointF());
++  }
++  void CoverEditor() {
++    auto* overlay = GetDocument().CreateRawElement(html_names::kDivTag);
++    overlay->setAttribute(
++        html_names::kStyleAttr,
++        AtomicString("position:fixed;inset:0;z-index:99999;background:black"));
++    GetDocument().body()->AppendChild(overlay);
++  }
++  void ExpectNoFillEvents() {
++    EXPECT_EQ(focuses_, 0u);
++    EXPECT_EQ(before_inputs_, 0u);
++    EXPECT_EQ(inputs_, 0u);
++    EXPECT_EQ(presses_, 0u);
++    EXPECT_EQ(releases_, 0u);
++    EXPECT_EQ(clicks_, 0u);
++    EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  }
++  base::MappedReadOnlyRegion authority_;
++  String owner_ = String::FromUtf8(std::string(32, 'A'));
++  unsigned presses_ = 0, releases_ = 0, clicks_ = 0;
++  unsigned focuses_ = 0, before_inputs_ = 0, inputs_ = 0;
++};
++TEST_F(AuxContextWidgetTest, ActualWidgetClickDispatchesIntentExactlyOnce) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kApplied);
++  EXPECT_EQ(presses_, 1u);
++  EXPECT_EQ(releases_, 1u);
++  EXPECT_EQ(clicks_, 1u);
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(clicks_, 1u);
++}
++TEST_F(AuxContextWidgetTest, IgnoredWidgetInputRefusesWithoutEvents) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  SetIgnored(true);
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(presses_, 0u);
++  EXPECT_EQ(releases_, 0u);
++  EXPECT_EQ(clicks_, 0u);
++}
++TEST_F(AuxContextWidgetTest, DragSuppressionRefusesWithoutEvents) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  GetWebFrameWidget().StartDragging(MainFrame().GetFrame(), WebDragData(),
++                                    kDragOperationCopy, SkBitmap(),
++                                    gfx::Vector2d(), gfx::Rect());
++  ASSERT_TRUE(GetWebFrameWidget().DoingDragAndDrop());
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(presses_, 0u);
++  EXPECT_EQ(releases_, 0u);
++  EXPECT_EQ(clicks_, 0u);
++}
++TEST_F(AuxContextWidgetTest,
++       SuppressionInsideMouseDownKeepsUncertaintyWithoutReleaseOrClick) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("send")->addEventListener(
++      event_type_names::kMousedown,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([this] { SetIgnored(true); })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(presses_, 1u);
++  EXPECT_EQ(releases_, 0u);
++  EXPECT_EQ(clicks_, 0u);
++}
++TEST_F(AuxContextWidgetTest, ActualWidgetFillCompletesExistingTextCommand) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kApplied);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(),
++            "Requested draft");
++}
++TEST_F(AuxContextWidgetTest,
++       AncestorOpacityChangeBeforeFillRefusesWithoutEvents) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  // Leave layout dirty: application must not consult the old computed style.
++  GetDocument().body()->setAttribute(html_names::kStyleAttr,
++                                     AtomicString("opacity:0"));
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  ExpectNoFillEvents();
++  EXPECT_EQ(Apply(token), Result::kRefused);
++}
++TEST_F(AuxContextWidgetTest,
++       AncestorOpacityChangeBeforeClickRefusesWithoutEvents) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  GetDocument().body()->setAttribute(html_names::kStyleAttr,
++                                     AtomicString("opacity:0"));
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  ExpectNoFillEvents();
++}
++TEST_F(AuxContextWidgetTest,
++       OffscreenEditorBeforeFillRefusesWithoutFocusOrScroll) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  auto* scroller = GetDocument().ScrollingElementNoLayout();
++  ASSERT_TRUE(scroller);
++  const double original_x = scroller->scrollLeft(),
++               original_y = scroller->scrollTop();
++  Node("editor")->setAttribute(
++      html_names::kStyleAttr,
++      AtomicString("position:absolute;left:10000px;top:10000px"));
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  ExpectNoFillEvents();
++  EXPECT_EQ(scroller->scrollLeft(), original_x);
++  EXPECT_EQ(scroller->scrollTop(), original_y);
++}
++TEST_F(AuxContextWidgetTest, CoveredEditorBeforeFillRefusesWithoutEvents) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  CoverEditor();
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  ExpectNoFillEvents();
++}
++TEST_F(AuxContextWidgetTest, ClippedEditorBeforeFillRefusesWithoutEvents) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("root")->setAttribute(html_names::kStyleAttr,
++                             AtomicString("height:1px;overflow:hidden"));
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  ExpectNoFillEvents();
++}
++TEST_F(AuxContextWidgetTest,
++       ShadowHostOpacityChangeBeforeFillRefusesWithoutEvents) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  auto* editor = To<HTMLTextAreaElement>(Node("editor"));
++  auto* root = Node("root");
++  auto* host = GetDocument().CreateRawElement(html_names::kDivTag);
++  GetDocument().body()->AppendChild(host);
++  host->AttachShadowRootForTesting(ShadowRootMode::kOpen).AppendChild(root);
++  host->setAttribute(html_names::kStyleAttr, AtomicString("opacity:0"));
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(focuses_, 0u);
++  EXPECT_EQ(before_inputs_, 0u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(editor->Value(), "Old draft");
++}
++TEST_F(AuxContextWidgetTest,
++       OpacityChangeInsideFocusIsUncertainWithoutInsertion) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kFocus,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        Node("root")->setAttribute(html_names::kStyleAttr,
++                                   AtomicString("opacity:0"));
++      })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 0u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(focuses_, 1u);
++}
++TEST_F(AuxContextWidgetTest,
++       CoverInsideBeforeInputIsUncertainWithoutInsertion) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kBeforeinput,
++      MakeGarbageCollected<MutateOnInput>(
++          base::BindLambdaForTesting([this] { CoverEditor(); })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(before_inputs_, 1u);
++}
++TEST_F(AuxContextWidgetTest,
++       PartiallyTransparentAncestorKeepsActualVisibleFill) {
++  GetDocument().body()->setAttribute(html_names::kStyleAttr,
++                                     AtomicString("opacity:0.5"));
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kApplied);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 1u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(),
++            "Requested draft");
++}
++TEST_F(AuxContextWidgetTest,
++       MaxlengthChangedBeforeApplyCannotInsertATruncatedDraft) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("editor")->setAttribute(html_names::kMaxlengthAttr, AtomicString("5"));
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(before_inputs_, 1u);
++}
++TEST_F(AuxContextWidgetTest,
++       MaxlengthReducedInBeforeInputCannotInsertATruncatedDraft) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kBeforeinput,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        Node("editor")->setAttribute(html_names::kMaxlengthAttr,
++                                     AtomicString("5"));
++      })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(before_inputs_, 1u);
++}
++TEST_F(AuxContextWidgetTest,
++       SingleLineInputCannotRewriteApprovedNewlinesToSpaces) {
++  auto* input = UseSingleLineEditor();
++  auto token = Prepare(true, "First\nSecond");
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(input->Value(), "Old draft");
++}
++TEST_F(AuxContextWidgetTest,
++       CarriageReturnNormalizationCannotChangeApprovedContent) {
++  ScopedNormalizeLineEndingsInInsertTextForTest normalization(true);
++  auto token = Prepare(true, "First\r\nSecond");
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextWidgetTest,
++       DisabledOrdinaryNormalizationDoesNotAdmitLiteralCarriageReturns) {
++  ScopedNormalizeLineEndingsInInsertTextForTest normalization(false);
++  auto token = Prepare(true, "First\rSecond");
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++TEST_F(AuxContextWidgetTest, ExactMaxlengthFillStillUsesTheExistingWriter) {
++  Node("editor")->setAttribute(html_names::kMaxlengthAttr, AtomicString("5"));
++  auto token = Prepare(true, "Exact");
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kApplied);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_EQ(inputs_, 1u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Exact");
++}
++TEST_F(AuxContextWidgetTest, ExactMultilineTextAreaFillIsStillApplied) {
++  const String requested = "First\nSecond";
++  auto token = Prepare(true, requested);
++  ASSERT_FALSE(token.empty());
++  EXPECT_EQ(Apply(token), Result::kApplied);
++  EXPECT_EQ(focuses_, 1u);
++  EXPECT_EQ(before_inputs_, 1u);
++  EXPECT_GT(inputs_, 0u);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), requested);
++}
++TEST_F(AuxContextWidgetTest,
++       OrdinaryImeWithoutAuxProofRetainsItsExistingMaxlengthFilter) {
++  auto* editor = To<HTMLTextAreaElement>(Node("editor"));
++  editor->setAttribute(html_names::kMaxlengthAttr, AtomicString("5"));
++  editor->Focus();
++  editor->select();
++  EXPECT_TRUE(GetDocument().GetFrame()->GetInputMethodController().CommitText(
++      "Requested draft", {}, 0));
++  EXPECT_EQ(editor->Value(), "Reque");
++  EXPECT_GT(inputs_, 0u);
++}
++TEST_F(AuxContextWidgetTest, RecipientChangeInFinalClickRetainsUncertainty) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("send")->addEventListener(
++      event_type_names::kClick,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        Node("recipient")
++            ->setAttribute(html_names::kHrefAttr,
++                           AtomicString("https://www.linkedin.com/in/other/"));
++      })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(presses_, 1u);
++  EXPECT_EQ(releases_, 1u);
++  EXPECT_EQ(clicks_, 1u);
++  EXPECT_EQ(Apply(token), Result::kRefused);
++  EXPECT_EQ(clicks_, 1u);
++}
++TEST_F(AuxContextWidgetTest, NativeRetirementInFinalClickRetainsUncertainty) {
++  auto token = Prepare();
++  ASSERT_FALSE(token.empty());
++  Node("send")->addEventListener(
++      event_type_names::kClick,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        base::subtle::Release_Store(
++            authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 0);
++      })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(clicks_, 1u);
++}
++TEST_F(AuxContextWidgetTest,
++       NativeRetirementInInputKeepsInsertedTextAndUncertainty) {
++  auto token = Prepare(true);
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(
++      event_type_names::kInput,
++      MakeGarbageCollected<MutateOnInput>(base::BindLambdaForTesting([this] {
++        base::subtle::Release_Store(
++            authority_.mapping.GetMemoryAs<base::subtle::Atomic32>(), 0);
++      })),
++      false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(),
++            "Requested draft");
++}
++TEST_F(AuxContextWidgetTest,
++       CanceledSameTextFillCannotClaimCommitFromMatchingText) {
++  auto token = Prepare(true, "Old draft");
++  ASSERT_FALSE(token.empty());
++  Node("editor")->addEventListener(event_type_names::kBeforeinput,
++                                   MakeGarbageCollected<CancelOnInput>(),
++                                   false);
++  EXPECT_EQ(Apply(token), Result::kUncertain);
++  EXPECT_EQ(To<HTMLTextAreaElement>(Node("editor"))->Value(), "Old draft");
++}
++}  // namespace
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/build.gni b/third_party/blink/renderer/core/frame/build.gni
+index 88a2a1caf05c68fbe4f953965b7298214d02a944..f1608cdefd3cea842b94d8faae83850758c7e98c 100644
+--- a/third_party/blink/renderer/core/frame/build.gni
++++ b/third_party/blink/renderer/core/frame/build.gni
+@@ -66,6 +66,8 @@ blink_core_sources_frame = [
+   "permissions_policy_violation_report_body.h",
+   "find_in_page.cc",
+   "find_in_page.h",
++  "aux_context_actions.cc",
++  "aux_context_actions.h",
+   "frame.cc",
+   "frame.h",
+   "frame_client.h",
+@@ -288,6 +290,7 @@ blink_core_tests_frame = [
+   "visual_viewport_test.cc",
+   "webdx_feature_tracing_test.cc",
+   "web_frame_test.cc",
++  "aux_context_actions_test.cc",
+   "web_frame_widget_test.cc",
+   "web_local_frame_client_test.cc",
+ ]
+diff --git a/third_party/blink/renderer/core/frame/frame_test_helpers.cc b/third_party/blink/renderer/core/frame/frame_test_helpers.cc
+index eb9b6c165ef37aad2d8b70cd51ec4afe1c1784c1..81c64b8896d2c474b552b3b44ddabc873e1063cf 100644
+--- a/third_party/blink/renderer/core/frame/frame_test_helpers.cc
++++ b/third_party/blink/renderer/core/frame/frame_test_helpers.cc
+@@ -1053,9 +1053,11 @@ void TestWebFrameWidget::DispatchThroughCcInputHandler(
+           [](TestWebFrameWidget* widget, mojom::blink::InputEventResultSource,
+              const ui::LatencyInfo&, mojom::blink::InputEventResultState,
+              mojom::blink::DidOverscrollParamsPtr overscroll,
+-             mojom::blink::TouchActionOptionalPtr) {
+-            if (widget)
++             mojom::blink::TouchActionOptionalPtr,
++             mojom::blink::NativeMouseDownLinkPtr) {
++            if (widget) {
+               widget->last_overscroll_ = std::move(overscroll);
++            }
+           },
+           WrapWeakPersistent(this)));
+   FlushInputHandlerTasks();
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+index f3cea4974ffe89855fa57ba8a8aeab7d263bbbbd..e0d52d55861166b82b3ee90ff0f970f02283a1bb 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -100,6 +100,7 @@
+ #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
+ #include "third_party/blink/renderer/core/editing/reveal_selection_scope.h"
+ #include "third_party/blink/renderer/core/editing/selection_template.h"
++#include "third_party/blink/renderer/core/editing/set_selection_options.h"
+ #include "third_party/blink/renderer/core/editing/visible_selection.h"
+ #include "third_party/blink/renderer/core/events/clipboard_event.h"
+ #include "third_party/blink/renderer/core/events/current_input_event.h"
+@@ -110,6 +111,7 @@
+ #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+ #include "third_party/blink/renderer/core/exported/web_settings_impl.h"
+ #include "third_party/blink/renderer/core/exported/web_view_impl.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+@@ -120,6 +122,7 @@
+ #include "third_party/blink/renderer/core/frame/visual_viewport.h"
+ #include "third_party/blink/renderer/core/frame/web_feature.h"
+ #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
++#include "third_party/blink/renderer/core/geometry/dom_rect.h"
+ #include "third_party/blink/renderer/core/html/anchor_element_viewport_position_tracker.h"
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+ #include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
+@@ -1692,6 +1695,7 @@ void WebFrameWidgetImpl::RequestDecode(const cc::DrawImage& image,
+ }
+ 
+ void WebFrameWidgetImpl::Trace(Visitor* visitor) const {
++  visitor->Trace(aux_context_actions_);
+   visitor->Trace(local_root_);
+   visitor->Trace(current_drag_data_);
+   visitor->Trace(frame_widget_host_);
+@@ -4398,6 +4402,159 @@ bool WebFrameWidgetImpl::SetComposition(
+       selection_start, selection_end, ime_state);
+ }
+ 
++String WebFrameWidgetImpl::PrepareAuxContextAction(
++    mojom::blink::AuxContextActionParamsPtr params) {
++  if (!LocalRootImpl() || !LocalRootImpl()->GetFrame() ||
++      !LocalRootImpl()->GetFrame()->IsMainFrame() || IsProvisional()) {
++    return String();
++  }
++  if (!aux_context_actions_) {
++    aux_context_actions_ = MakeGarbageCollected<AuxContextActions>();
++  }
++  return aux_context_actions_->Prepare(
++      *LocalRootImpl()->GetFrame()->GetDocument(), std::move(params));
++}
++mojom::blink::AuxContextActionResult WebFrameWidgetImpl::ApplyAuxContextAction(
++    const String& token,
++    const String& owner,
++    float input_scale,
++    const gfx::PointF& screen_origin) {
++  using Result = mojom::blink::AuxContextActionResult;
++  if (!aux_context_actions_ || !LocalRootImpl() ||
++      !LocalRootImpl()->GetFrame() || IsProvisional()) {
++    return Result::kRefused;
++  }
++  auto* document = LocalRootImpl()->GetFrame()->GetDocument();
++  return aux_context_actions_->Apply(
++      *document, token, owner,
++      BindOnce(
++          [](WebFrameWidgetImpl* self, Document* document, float input_scale,
++             gfx::PointF screen_origin,
++             const mojom::blink::AuxContextActionParams& params) {
++            if (params.input_scale != input_scale) {
++              return Result::kRefused;
++            }
++            auto* editor = DynamicTo<Element>(
++                DOMNodeIds::NodeForId(params.editor_node_id));
++            auto* action = DynamicTo<Element>(
++                DOMNodeIds::NodeForId(params.action_node_id));
++            if (!editor || !action) {
++              return Result::kRefused;
++            }
++            if (params.operation ==
++                mojom::blink::AuxContextActionOperation::kFill) {
++              // This is the normal IME/editor writer, never
++              // setValue/innerText/JS click.
++              if (!AuxContextActions::MarkActiveInputDispatched()) {
++                return Result::kRefused;
++              }
++              editor->Focus();
++              if (!AuxContextActions::ValidateActiveContext(*document, true)) {
++                return Result::kUncertain;
++              }
++              if (auto* control = DynamicTo<TextControlElement>(editor)) {
++                control->select();
++              } else {
++                document->GetFrame()->Selection().SetSelection(
++                    SelectionInDomTree::Builder()
++                        .SelectAllChildren(*editor)
++                        .Build(),
++                    SetSelectionOptions());
++              }
++              if (!AuxContextActions::ValidateActiveTextContext(*document)) {
++                return Result::kUncertain;
++              }
++              self->CommitText(params.text, {}, gfx::Range::InvalidRange(), 0,
++                               DOMNodeIdType());
++              const String observed = AuxContextActions::EditorText(*editor);
++              return !observed.IsNull() && observed == params.text
++                         ? Result::kApplied
++                         : Result::kUncertain;
++            }
++            const auto can_dispatch_click = [self, document] {
++              return self->LocalRootImpl() &&
++                     self->LocalRootImpl()->GetFrame() &&
++                     self->LocalRootImpl()->GetFrame()->GetDocument() ==
++                         document &&
++                     !self->IsProvisional() && !self->doing_drag_and_drop_ &&
++                     self->GetPage() &&
++                     !self->GetPage()
++                          ->GetPageLifecycleState()
++                          ->is_in_back_forward_cache &&
++                     !self->ShouldIgnoreInputEvents() &&
++                     !self->GetPage()
++                          ->GetPointerLockController()
++                          .IsPointerLocked() &&
++                     !self->mouse_capture_element_;
++            };
++            // Alternate pointer/plugin capture and suppressed input are
++            // unsupported; they must not activate a different target or claim
++            // an applied click.
++            if (!can_dispatch_click()) {
++              return Result::kRefused;
++            }
++            auto* rect = action->GetBoundingClientRect();
++            const float x = rect->x() + rect->width() / 2,
++                        y = rect->y() + rect->height() / 2;
++            auto* hit = document->ElementFromPoint(x, y);
++            if (!hit || !action->contains(hit)) {
++              return Result::kRefused;
++            }
++            WebMouseEvent down(
++                WebInputEvent::Type::kMouseDown,
++                WebInputEvent::kFromDebugger | WebInputEvent::kLeftButtonDown,
++                base::TimeTicks::Now());
++            const gfx::PointF position(x * input_scale, y * input_scale);
++            const gfx::PointF screen(position.x() + screen_origin.x(),
++                                     position.y() + screen_origin.y());
++            down.SetPositionInWidget(position);
++            down.SetPositionInScreen(screen);
++            down.button = WebMouseEvent::Button::kLeft;
++            down.click_count = 1;
++            self->HandleInputEvent(
++                WebCoalescedInputEvent(down, ui::LatencyInfo()));
++            // A mousedown listener can replace recipient, root or action. Never
++            // release-click a substitute.
++            if (!AuxContextActions::DidDispatchActivePress() ||
++                !can_dispatch_click() ||
++                !AuxContextActions::ValidateActiveContext(*document, false)) {
++              if (document->GetFrame()) {
++                document->GetFrame()
++                    ->GetEventHandler()
++                    .ClearMouseEventManager();
++              }
++              return Result::kUncertain;
++            }
++            auto* next_hit = document->ElementFromPoint(x, y);
++            if (!next_hit || !action->contains(next_hit)) {
++              if (document->GetFrame()) {
++                document->GetFrame()
++                    ->GetEventHandler()
++                    .ClearMouseEventManager();
++              }
++              return Result::kUncertain;
++            }
++            WebMouseEvent up(WebInputEvent::Type::kMouseUp,
++                             WebInputEvent::kFromDebugger,
++                             base::TimeTicks::Now());
++            up.SetPositionInWidget(position);
++            up.SetPositionInScreen(screen);
++            up.button = WebMouseEvent::Button::kLeft;
++            up.click_count = 1;
++            self->HandleInputEvent(
++                WebCoalescedInputEvent(up, ui::LatencyInfo()));
++            return Result::kApplied;
++          },
++          WrapPersistent(this), WrapPersistent(document), input_scale,
++          screen_origin));
++}
++void WebFrameWidgetImpl::RetireAuxContextAction(const String& token,
++                                                const String& owner) {
++  if (aux_context_actions_) {
++    aux_context_actions_->Retire(token, owner);
++  }
++}
++
+ void WebFrameWidgetImpl::CommitText(
+     const String& text,
+     const Vector<ui::ImeTextSpan>& ime_text_spans,
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+index e74d8a7fd48a03b071ede036145feeade5e6a1ab..3dc44b978153ba6640c089768eac9026117e8f94 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+@@ -104,6 +104,8 @@ class PointF;
+ }  // namespace gfx
+ 
+ namespace blink {
++class AuxContextActions;
++
+ class AnimationWorkletMutatorDispatcherImpl;
+ class ExecutionContext;
+ class HitTestResult;
+@@ -317,6 +319,14 @@ class CORE_EXPORT WebFrameWidgetImpl
+                       int selection_end,
+                       mojom::blink::ImeState ime_state,
+                       DOMNodeIdType target_dom_node_id) override;
++  String PrepareAuxContextAction(
++      mojom::blink::AuxContextActionParamsPtr) override;
++  mojom::blink::AuxContextActionResult ApplyAuxContextAction(
++      const String&,
++      const String&,
++      float input_scale,
++      const gfx::PointF& screen_origin) override;
++  void RetireAuxContextAction(const String&, const String&) override;
+   void CommitText(const String& text,
+                   const Vector<ui::ImeTextSpan>& ime_text_spans,
+                   const gfx::Range& replacement_range,
+@@ -1204,6 +1214,7 @@ class CORE_EXPORT WebFrameWidgetImpl
+   mojom::blink::InputCursorAnchorInfoPtr last_cursor_anchor_info_;
+ 
+   // A copy of the web drop data object we received from the browser.
++  Member<AuxContextActions> aux_context_actions_;
+   Member<DataObject> current_drag_data_;
+ 
+   // The available drag operations (copy, move link...) allowed by the source.
+diff --git a/third_party/blink/renderer/core/input/mouse_event_manager.cc b/third_party/blink/renderer/core/input/mouse_event_manager.cc
+index 09de09bc424dee3b6c8baf6616459a629a747cce..f1b32362ce05d8ec550817e9e5e0fd2c0a6f72f1 100644
+--- a/third_party/blink/renderer/core/input/mouse_event_manager.cc
++++ b/third_party/blink/renderer/core/input/mouse_event_manager.cc
+@@ -24,6 +24,7 @@
+ #include "third_party/blink/renderer/core/events/mouse_event.h"
+ #include "third_party/blink/renderer/core/events/pointer_event_factory.h"
+ #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+@@ -221,6 +222,14 @@ MouseEventManager::DispatchMouseEvent(
+ 
+   if (target && target->ToNode()) {
+     Node* target_node = target->ToNode();
++    const bool actionable = mouse_event_type == event_type_names::kMousedown ||
++                            mouse_event_type == event_type_names::kMouseup ||
++                            mouse_event_type == event_type_names::kClick ||
++                            mouse_event_type == event_type_names::kAuxclick;
++    if (!AuxContextActions::ValidateActivePointerTarget(target_node,
++                                                        actionable)) {
++      return {nullptr, WebInputEventResult::kHandledSuppressed};
++    }
+     int click_count = 0;
+     if (mouse_event_type == event_type_names::kMouseup ||
+         mouse_event_type == event_type_names::kMousedown ||
+@@ -267,6 +276,21 @@ MouseEventManager::DispatchMouseEvent(
+       UIEventTiming event_timing(frame_, *event);
+ 
+       if (should_dispatch) {
++        if (!AuxContextActions::ValidateActivePointerTarget(target_node,
++                                                            actionable)) {
++          return {nullptr, WebInputEventResult::kHandledSuppressed};
++        }
++        const auto context_event =
++            mouse_event_type == event_type_names::kMousedown
++                ? AuxContextActions::InputEvent::kPress
++            : mouse_event_type == event_type_names::kMouseup
++                ? AuxContextActions::InputEvent::kRelease
++            : mouse_event_type == event_type_names::kClick
++                ? AuxContextActions::InputEvent::kClick
++                : AuxContextActions::InputEvent::kOther;
++        if (!AuxContextActions::MarkActiveInputDispatched(context_event)) {
++          return {nullptr, WebInputEventResult::kHandledSuppressed};
++        }
+         input_event_result = event_handling_util::ToWebInputEventResult(
+             target->DispatchEvent(*event));
+         return {event, input_event_result};
+@@ -284,6 +308,21 @@ MouseEventManager::DispatchMouseEvent(
+       UIEventTiming event_timing(frame_, *event);
+ 
+       if (should_dispatch) {
++        if (!AuxContextActions::ValidateActivePointerTarget(target_node,
++                                                            actionable)) {
++          return {nullptr, WebInputEventResult::kHandledSuppressed};
++        }
++        const auto context_event =
++            mouse_event_type == event_type_names::kMousedown
++                ? AuxContextActions::InputEvent::kPress
++            : mouse_event_type == event_type_names::kMouseup
++                ? AuxContextActions::InputEvent::kRelease
++            : mouse_event_type == event_type_names::kClick
++                ? AuxContextActions::InputEvent::kClick
++                : AuxContextActions::InputEvent::kOther;
++        if (!AuxContextActions::MarkActiveInputDispatched(context_event)) {
++          return {nullptr, WebInputEventResult::kHandledSuppressed};
++        }
+         input_event_result = event_handling_util::ToWebInputEventResult(
+             target->DispatchEvent(*event));
+         return {event, input_event_result};
+diff --git a/third_party/blink/renderer/core/input/pointer_event_manager.cc b/third_party/blink/renderer/core/input/pointer_event_manager.cc
+index a7fa0844245bf06b1344f4fde848dcd84acbead8..bde0d1dc3b0e3857e40c2f09717f8f83db8d24c9 100644
+--- a/third_party/blink/renderer/core/input/pointer_event_manager.cc
++++ b/third_party/blink/renderer/core/input/pointer_event_manager.cc
+@@ -12,6 +12,7 @@
+ #include "third_party/blink/renderer/core/dom/pseudo_element.h"
+ #include "third_party/blink/renderer/core/event_type_names.h"
+ #include "third_party/blink/renderer/core/events/mouse_event.h"
++#include "third_party/blink/renderer/core/frame/aux_context_actions.h"
+ #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+@@ -156,6 +157,12 @@ WebInputEventResult PointerEventManager::DispatchPointerEvent(
+     return WebInputEventResult::kNotHandled;
+ 
+   const AtomicString& event_type = pointer_event->type();
++  const bool actionable = event_type == event_type_names::kPointerdown ||
++                          event_type == event_type_names::kPointerup;
++  if (!AuxContextActions::ValidateActivePointerTarget(target->ToNode(),
++                                                      actionable)) {
++    return WebInputEventResult::kHandledSuppressed;
++  }
+   bool should_filter = ShouldFilterEvent(pointer_event);
+   // We are about to dispatch this event. It has to be trusted at this point.
+   pointer_event->SetTrusted(true);
+@@ -219,6 +226,18 @@ WebInputEventResult PointerEventManager::DispatchPointerEvent(
+       !check_for_listener || target->HasEventListeners(event_type);
+ 
+   if (!should_filter || listeners_exist) {
++    if (!AuxContextActions::ValidateActivePointerTarget(target->ToNode(),
++                                                        actionable)) {
++      return WebInputEventResult::kHandledSuppressed;
++    }
++    const auto context_event = event_type == event_type_names::kPointerdown
++                                   ? AuxContextActions::InputEvent::kPress
++                               : event_type == event_type_names::kPointerup
++                                   ? AuxContextActions::InputEvent::kRelease
++                                   : AuxContextActions::InputEvent::kOther;
++    if (!AuxContextActions::MarkActiveInputDispatched(context_event)) {
++      return WebInputEventResult::kHandledSuppressed;
++    }
+     DispatchEventResult dispatch_result = target->DispatchEvent(*pointer_event);
+     return event_handling_util::ToWebInputEventResult(dispatch_result);
+   }
+diff --git a/third_party/blink/renderer/platform/widget/frame_widget.cc b/third_party/blink/renderer/platform/widget/frame_widget.cc
+index efc07e6f1186f5b1f476e4033144417a50f90271..85de109e3b5d5fe7379ddcffcd2167cf45bc1755 100644
+--- a/third_party/blink/renderer/platform/widget/frame_widget.cc
++++ b/third_party/blink/renderer/platform/widget/frame_widget.cc
+@@ -5,6 +5,18 @@
+ #include "third_party/blink/renderer/platform/widget/frame_widget.h"
+ 
+ namespace blink {
++String FrameWidget::PrepareAuxContextAction(
++    mojom::blink::AuxContextActionParamsPtr) {
++  return String();
++}
++mojom::blink::AuxContextActionResult FrameWidget::ApplyAuxContextAction(
++    const String&,
++    const String&,
++    float,
++    const gfx::PointF&) {
++  return mojom::blink::AuxContextActionResult::kRefused;
++}
++void FrameWidget::RetireAuxContextAction(const String&, const String&) {}
+ 
+ void FrameWidget::RequestAnimationAfterDelay(cc::BeginMainFrameReason,
+                                              const base::TimeDelta& delay,
+diff --git a/third_party/blink/renderer/platform/widget/frame_widget.h b/third_party/blink/renderer/platform/widget/frame_widget.h
+index b75564df1d249efa779835d9dfe23cc269f25d61..cd52e0dfaa8bbb150f4490641d477aa0bb37b038 100644
+--- a/third_party/blink/renderer/platform/widget/frame_widget.h
++++ b/third_party/blink/renderer/platform/widget/frame_widget.h
+@@ -218,6 +218,14 @@ class PLATFORM_EXPORT FrameWidget {
+ 
+   // This message deletes the current composition, inserts specified text, and
+   // moves the cursor.
++  virtual String PrepareAuxContextAction(
++      mojom::blink::AuxContextActionParamsPtr);
++  virtual mojom::blink::AuxContextActionResult ApplyAuxContextAction(
++      const String&,
++      const String&,
++      float,
++      const gfx::PointF&);
++  virtual void RetireAuxContextAction(const String&, const String&);
+   virtual void CommitText(const String& text,
+                           const Vector<ui::ImeTextSpan>& ime_text_spans,
+                           const gfx::Range& replacement_range,
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.cc b/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.cc
+index 42befad486aafb305c62067aad463a035c62e668..06d7afc2878c5e565c5032cc3faa3fce84e4c802 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.cc
++++ b/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.cc
+@@ -22,9 +22,11 @@
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/renderer/platform/graphics/dom_node_id.h"
+ #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
++#include "third_party/blink/renderer/platform/widget/frame_widget.h"
+ #include "third_party/blink/renderer/platform/widget/input/frame_widget_input_handler_impl.h"
+ #include "third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h"
+ #include "third_party/blink/renderer/platform/widget/widget_base.h"
++#include "third_party/blink/renderer/platform/widget/widget_base_client.h"
+ 
+ namespace blink {
+ 
+@@ -140,6 +142,53 @@ void WidgetInputHandlerImpl::ImeSetComposition(
+       std::move(callback)));
+ }
+ 
++void WidgetInputHandlerImpl::PrepareAuxContextAction(
++    mojom::blink::AuxContextActionParamsPtr params,
++    PrepareAuxContextActionCallback callback) {
++  RunOnMainThread(base::BindOnce(
++      [](base::WeakPtr<WidgetBase> widget,
++         scoped_refptr<base::SingleThreadTaskRunner> runner,
++         mojom::blink::AuxContextActionParamsPtr value,
++         PrepareAuxContextActionCallback done) {
++        auto* frame = widget ? widget->client()->FrameWidget() : nullptr;
++        String token =
++            frame ? frame->PrepareAuxContextAction(std::move(value)) : String();
++        runner->PostTask(FROM_HERE, base::BindOnce(std::move(done), token));
++      },
++      widget_, base::SingleThreadTaskRunner::GetCurrentDefault(),
++      std::move(params), std::move(callback)));
++}
++void WidgetInputHandlerImpl::ApplyAuxContextAction(
++    const String& token,
++    const String& owner,
++    float input_scale,
++    const gfx::PointF& screen_origin,
++    ApplyAuxContextActionCallback callback) {
++  RunOnMainThread(base::BindOnce(
++      [](base::WeakPtr<WidgetBase> widget,
++         scoped_refptr<base::SingleThreadTaskRunner> runner, String token,
++         String owner, float input_scale, gfx::PointF screen_origin,
++         ApplyAuxContextActionCallback done) {
++        auto* frame = widget ? widget->client()->FrameWidget() : nullptr;
++        auto result = frame ? frame->ApplyAuxContextAction(
++                                  token, owner, input_scale, screen_origin)
++                            : mojom::blink::AuxContextActionResult::kRefused;
++        runner->PostTask(FROM_HERE, base::BindOnce(std::move(done), result));
++      },
++      widget_, base::SingleThreadTaskRunner::GetCurrentDefault(), token, owner,
++      input_scale, screen_origin, std::move(callback)));
++}
++void WidgetInputHandlerImpl::RetireAuxContextAction(const String& token,
++                                                    const String& owner) {
++  RunOnMainThread(base::BindOnce(
++      [](base::WeakPtr<WidgetBase> widget, String token, String owner) {
++        if (widget && widget->client()->FrameWidget()) {
++          widget->client()->FrameWidget()->RetireAuxContextAction(token, owner);
++        }
++      },
++      widget_, token, owner));
++}
++
+ static void ImeCommitTextOnMainThread(
+     base::WeakPtr<WidgetBase> widget,
+     scoped_refptr<base::SingleThreadTaskRunner> callback_task_runner,
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.h b/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.h
+index 051616f0edc12fedd00e64493f1d522c3e6f8603..b929c1c7a36d77ff3d4145398b280c1339b38071 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.h
++++ b/third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.h
+@@ -44,6 +44,15 @@ class WidgetInputHandlerImpl : public mojom::blink::WidgetInputHandler {
+   void SetReceiver(mojo::PendingReceiver<mojom::blink::WidgetInputHandler>
+                        interface_receiver);
+ 
++  void PrepareAuxContextAction(mojom::blink::AuxContextActionParamsPtr,
++                               PrepareAuxContextActionCallback) override;
++  void ApplyAuxContextAction(const String& token,
++                             const String& owner,
++                             float input_scale,
++                             const gfx::PointF& screen_origin,
++                             ApplyAuxContextActionCallback) override;
++  void RetireAuxContextAction(const String& token,
++                              const String& owner) override;
+   void SetFocus(mojom::blink::FocusState focus_state) override;
+   void MouseCaptureLost() override;
+   void SetEditCommandsForNextKeyEvent(

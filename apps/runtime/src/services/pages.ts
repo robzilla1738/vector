@@ -1,3 +1,4 @@
+import { captureSheetsNavigation } from "../agent/sheets-navigation.js";
 import { NativeRecorderObserver } from "./native-recorder-observer.js";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import { ActivationPolicy } from "./pages/activation.js";
@@ -330,6 +331,30 @@ export class PageService {
   console: PageDiagnostics["console"] = (...args) => this.diagnostics.console(...args);
   dialog: PageDiagnostics["dialog"] = (...args) => this.diagnostics.dialog(...args);
   network: PageDiagnostics["network"] = (...args) => this.diagnostics.network(...args);
+  supportsSheetsNavigation(pageId: string): boolean {
+    const page = this.pages.live.get(pageId);
+    return !!(
+      page?.target.backend === "aux" &&
+      page.target.sessionId &&
+      page.target.windowId &&
+      this.pages.deps.native.available() &&
+      this.pages.deps.safetyGate &&
+      this.pages.deps.durableWrites &&
+      page.driver?.isAttached() &&
+      page.driver.actionTarget &&
+      page.driver.withActionTarget
+    );
+  }
+  captureSheetsNavigation(input: MethodParams<"sites.read">, a1: string) {
+    const gate = this.pages.deps.safetyGate;
+    if (!gate || !this.supportsSheetsNavigation(input.pageId))
+      throw new AuxError("capability_unsupported", "Original governed native Sheets input is unavailable.");
+    const fence = gate.policyFence();
+    return captureSheetsNavigation(this.pages, input, a1, (url) => {
+      fence();
+      return url.origin === "https://docs.google.com";
+    });
+  }
   readSiteContent(input: MethodParams<"sites.read">, allowOrigin: (url: URL) => boolean) {
     return new SiteAdapters(this.pages, allowOrigin).read(input);
   }

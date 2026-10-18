@@ -1,3 +1,4 @@
+import { SheetsNavigationInputSchema } from "@aux/contracts/site-adapters";
 import { DesktopContextSearchSchema, DesktopContextReadSchema } from "@aux/contracts/desktop-context";
 import { XToolInputSchema, type XOperation } from "@aux/contracts/x";
 import { LinkedInToolInputSchema } from "@aux/contracts/linkedin";
@@ -883,10 +884,21 @@ export function buildToolManifest(selection: ToolOperationSelection = {}): LoopT
       execute: async (raw, ctx) =>
         need(ctx.deps.pageSummary, "page_summary")(PageSummaryInputSchema.parse(raw)),
     },
+    sheets_navigation: {
+      available: (deps) => !!deps.sheetsNavigation,
+      description:
+        "Navigate only within the current accessible Google Sheets sheet. Prepare an exact A1 cell/rectangle first, then execute its one-use recipe. Requires original native document/input and actual visible Name box. Success requires independent actual grid selection; canvas/ambiguous editors hand back. Never replay consumed/parked/uncertain recipes. No cross-sheet switches, named ranges or formulas.",
+      byline: "Aux governed Sheets selection",
+      inputSchema: SheetsNavigationInputSchema,
+      execute: (raw, ctx) =>
+        need(ctx.deps.sheetsNavigation, "sheets_navigation")(SheetsNavigationInputSchema.parse(raw), {
+          actionId: `${ctx.runId}:${ctx.toolCallId ?? ctx.turnId}:sheets`,
+        }),
+    },
     linkedin_workflow: {
       available: (deps) => !!deps.linkedInWorkflow,
       description:
-        "Read current LinkedIn profile/company/job/inbox evidence or prepare a recipient-bound workflow. Use prepare first; execute only the returned live one-use recipeId. Exact current native refs, original Profile/Space/task and fresh recipient/draft evidence are required. Browser actions use normal act/ledger. Draft/send steps currently require concrete on-page handoff because native recipient+composer proof is unavailable. Never replay uncertain writes or blind-click Connect. No private APIs or API grants.",
+        "Read current LinkedIn profile/company/job/inbox evidence or prepare a recipient-bound workflow. Use prepare first; execute only the returned live one-use recipeId. Exact current native refs, original Profile/Space/task and fresh recipient/draft evidence are required. Browser actions use normal act/ledger. Draft/send requires actual native proof of the original recipient, editor and action. Ask approval resumes only the sealed original action; unsupported or stale native sources hand back without input. Never replay uncertain writes or blind-click Connect. No private APIs or API grants.",
       byline: "Aux governed LinkedIn browser workflow",
       inputSchema: LinkedInToolInputSchema,
       execute: (raw, ctx) =>

@@ -97,6 +97,35 @@ export interface RecorderObserver {
   close(): Promise<void>;
 }
 
+/** A real renderer-held native admission. Token stays inside its original driver closure. */
+export interface PreparedContextAction {
+  readonly actionId: string;
+  readonly sourceDigest: string;
+  readonly target: string;
+  readonly operation: "fill" | "click";
+  readonly text: string;
+  apply(): Promise<void>;
+  retire(): Promise<void>;
+}
+
+/** Immutable original backend-node/source binding; not an input ticket or approval. */
+export interface CapturedContextAction {
+  readonly actionId: string;
+  readonly sourceDigest: string;
+  readonly target: string;
+  readonly operation: "fill" | "click";
+  readonly text: string;
+  prepare(): Promise<PreparedContextAction>;
+  retire(): void;
+}
+
+/** Private holder shared by the original workflow and existing executor only. */
+export interface ContextActionCapture {
+  source?: CapturedContextAction;
+  observedTarget?: ObservedActionTarget;
+  approvalId?: string;
+}
+
 export interface DriverPage {
   /** Owner-started, isolated CDP recording; it never acquires action control. */
   openRecorderObserver?(): Promise<RecorderObserver>;
@@ -135,6 +164,10 @@ export interface DriverPage {
    * controls report "{redacted}", never the raw value.
    */
   /** Metadata only: no credential values are read. Resolves the live target in its frame. */
+  captureLinkedInContext?(
+    context: import("@aux/contracts/linkedin").LinkedInActionPrecondition,
+  ): Promise<CapturedContextAction>;
+  withContextAction?<T>(proof: PreparedContextAction, execute: () => Promise<T>): Promise<T>;
   actionTarget?(target: string, projectedSteps?: readonly Step[]): Promise<ObservedActionTarget>;
   /** Runtime-only dispatch admission pins the reviewed DOM node for the actual primitive. */
   withActionTarget?<T>(target: string, proof: ObservedActionTarget, execute: () => Promise<T>): Promise<T>;

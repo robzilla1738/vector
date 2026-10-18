@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readSheetsSelectionInPage } from "./sheets-selection.js";
 import { readDocsSelectionInPage } from "./docs-selection.js";
 import { AuxError, SiteReadResultSchema, type MethodParams, type MethodResult } from "@aux/contracts";
 import type { PageRegistry } from "../services/pages/registry.js";
@@ -22,8 +23,11 @@ const MAX_TEXT_BYTES = 2_000_000;
 /** Only URLs for the currently open document can be used as export sources. */
 export function siteExportUrl(input: SiteRead): URL {
   const page = new URL(input.expectedUrl);
-  if (input.view !== undefined && input.kind !== "google-docs")
-    throw new AuxError("invalid_params", "Live DOM selection is supported only for Google Docs.");
+  if (input.view !== undefined && !["google-docs", "google-sheets"].includes(input.kind))
+    throw new AuxError(
+      "invalid_params",
+      "Live DOM selection is supported only for Google Docs or Google Sheets.",
+    );
   if (input.kind !== "google-sheets" && input.sheetGid !== undefined)
     throw new AuxError("invalid_params", "A sheet ID is accepted only for a Google Sheets export.");
   if (input.kind !== "youtube" && input.language !== undefined)
@@ -251,9 +255,10 @@ export class SiteAdapters {
       if (before.backend !== "aux" || !before.sessionId)
         throw new AuxError(
           "capability_unsupported",
-          "Live Docs selection requires the original attached browser session.",
+          "Live editor selection requires the original attached browser session.",
         );
       const source = JSON.stringify([
+        before.backend,
         before.sessionId,
         before.documentEpoch,
         before.url,
@@ -266,6 +271,7 @@ export class SiteAdapters {
         if (
           source !==
             JSON.stringify([
+              after.backend,
               after.sessionId,
               after.documentEpoch,
               after.url,
@@ -279,9 +285,54 @@ export class SiteAdapters {
         )
           throw new AuxError(
             "ref_stale",
-            "The original Docs tab, session, document, control or policy changed.",
+            "The original editor tab, session, document, control or policy changed.",
           );
       };
+      if (input.kind === "google-sheets") {
+        if (!before.windowId || !Number.isSafeInteger(before.controllerEpoch) || before.controllerEpoch < 0)
+          throw new AuxError(
+            "capability_unsupported",
+            "Sheets selection requires its original native window and controller.",
+          );
+        const expression = `(${readSheetsSelectionInPage.toString()})(${JSON.stringify({ expectedUrl: input.expectedUrl, sheetGid: input.sheetGid })})`;
+        check();
+        const selected = (await driver.evaluate(expression)) as ReturnType<typeof readSheetsSelectionInPage>;
+        check();
+        if (!selected?.ok)
+          throw new AuxError(
+            "capability_unsupported",
+            "This Sheets editor does not expose an unambiguous visible accessible grid selection. Canvas, hidden buffers and toolbar selections require Take over.",
+            { reason: selected?.reason ?? "selection-unavailable", handback: true },
+          );
+        const verified = await driver.evaluate(expression);
+        check();
+        if (JSON.stringify(verified) !== JSON.stringify(selected))
+          throw new AuxError(
+            "ref_stale",
+            "The actual Sheets selection changed during capture. Inspect it again.",
+          );
+        return SiteReadResultSchema.parse({
+          pageId: input.pageId,
+          url: input.expectedUrl,
+          documentEpoch: input.expectedDocumentEpoch,
+          capturedAt: Date.now(),
+          kind: input.kind,
+          sourceUrl: input.expectedUrl,
+          mediaType: "text/plain",
+          text: JSON.stringify({
+            sheet: selected.selection.sheet,
+            activeCell: selected.selection.activeCell,
+            selection: selected.selection.selection,
+          }),
+          sheetsSelection: {
+            ...selected.selection,
+            sessionId: before.sessionId,
+            windowId: before.windowId,
+            controllerEpoch: before.controllerEpoch,
+            sourceSha256: createHash("sha256").update(JSON.stringify(selected.selection)).digest("hex"),
+          },
+        });
+      }
       const expression = `(${readDocsSelectionInPage.toString()})(${JSON.stringify({ expectedUrl: input.expectedUrl })})`;
       check();
       const selected = (await driver.evaluate(expression)) as ReturnType<typeof readDocsSelectionInPage>;

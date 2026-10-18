@@ -14,7 +14,7 @@ export const SiteReadParamsSchema = z
       .literal("selection")
       .optional()
       .describe(
-        "Google Docs only: read a real accessible DOM selection/caret; canvas-only editors require handback.",
+        "Google Docs or Sheets only: read actual accessible selection metadata; unsupported canvas editors require handback.",
       ),
     sheetGid: z
       .string()
@@ -55,6 +55,69 @@ export const SiteReadResultSchema = z
         after: z.string().max(256),
       })
       .strict()
+      .optional(),
+    sheetsSelection: z
+      .object({
+        basis: z.literal("live-dom-aria-grid"),
+        documentId: z.string().min(20).max(200),
+        sessionId: z.string().min(1),
+        windowId: z.string().min(1),
+        controllerEpoch: z.number().int().nonnegative(),
+        sourceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        gridId: z.string().min(1).max(200),
+        gridPath: z.array(z.number().int().nonnegative()).max(64),
+        sheet: z
+          .object({
+            tabId: z.string().min(1).max(200),
+            title: z.string().min(1).max(300),
+            gid: z
+              .string()
+              .regex(/^\d{1,20}$/)
+              .optional(),
+            tabPath: z.array(z.number().int().nonnegative()).max(64),
+          })
+          .strict(),
+        activeCell: z
+          .object({
+            row: z.number().int().min(1).max(10_000_000),
+            column: z.number().int().min(1).max(18_278),
+            a1: z.string().regex(/^[A-Z]{1,3}[1-9][0-9]{0,7}$/),
+          })
+          .strict(),
+        selection: z
+          .object({
+            extent: z.enum(["active-cell-only", "complete"]),
+            observedSelectedCells: z.number().int().min(1).max(256),
+            range: z
+              .object({
+                startRow: z.number().int().min(1).max(10_000_000),
+                startColumn: z.number().int().min(1).max(18_278),
+                endRow: z.number().int().min(1).max(10_000_000),
+                endColumn: z.number().int().min(1).max(18_278),
+                a1: z.string().max(40),
+              })
+              .strict()
+              .optional(),
+          })
+          .strict(),
+      })
+      .strict()
+      .superRefine((value, ctx) => {
+        const range = value.selection.range;
+        if (
+          (value.selection.extent === "complete") !== !!range ||
+          (range &&
+            (range.endRow < range.startRow ||
+              range.endColumn < range.startColumn ||
+              (range.endRow - range.startRow + 1) * (range.endColumn - range.startColumn + 1) !==
+                value.selection.observedSelectedCells ||
+              value.activeCell.row < range.startRow ||
+              value.activeCell.row > range.endRow ||
+              value.activeCell.column < range.startColumn ||
+              value.activeCell.column > range.endColumn))
+        )
+          ctx.addIssue({ code: "custom", message: "Selection completeness and range evidence disagree." });
+      })
       .optional(),
     linkedin: LinkedInReadSchema.optional(),
     transcript: z
@@ -102,3 +165,25 @@ export const SiteReadResultSchema = z
       .optional(),
   })
   .strict();
+
+/** Browser selection/navigation only; never named ranges, formulas or cross-sheet switching. */
+export const SheetsNavigationInputSchema = z.discriminatedUnion("action", [
+  z
+    .object({
+      action: z.literal("prepare"),
+      pageId: z.string().min(1),
+      expectedUrl: z.string().url().max(8192),
+      expectedDocumentEpoch: z.number().int().nonnegative(),
+      a1: z
+        .string()
+        .regex(/^[A-Z]{1,3}[1-9][0-9]{0,7}(?::[A-Z]{1,3}[1-9][0-9]{0,7})?$/)
+        .max(40),
+      sheetGid: z
+        .string()
+        .regex(/^\d{1,20}$/)
+        .optional(),
+    })
+    .strict(),
+  z.object({ action: z.literal("execute"), recipeId: z.string().uuid() }).strict(),
+]);
+export type SheetsNavigationInput = z.infer<typeof SheetsNavigationInputSchema>;

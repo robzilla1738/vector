@@ -103,4 +103,14 @@ export type LinkedInActionPrecondition = {
   exactContent: string;
   targetRef: string;
   effect: "draft" | "external-message" | "external-invitation";
+  /** Exact observed nodes, still evidence rather than native authority. */
+  actionId?: string;
+  invitation?: boolean;
+  context?: {
+    rootRef: string;
+    recipientRef: string;
+    editorRef: string;
+    actionRef: string;
+    beforeContent: string;
+  };
 };

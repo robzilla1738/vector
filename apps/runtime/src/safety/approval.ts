@@ -225,6 +225,58 @@ export class ApprovalStore {
     return row?.approvalId;
   }
 
+  /** Read-only private continuation gate. Authorization is still consumed by normal dispatch. */
+  continuation(
+    approvalId: string,
+    owner: { runId: string; turnId: string; threadId: string },
+    now = Date.now(),
+  ): { state: "pending" | "accepted"; identity: string; expiresAt: number } | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT fingerprint,action_json,turn_id,thread_id,lifetime,expires_at,state,decision FROM safety_approval_requests WHERE approval_id=?",
+      )
+      .get(approvalId) as
+      | {
+          fingerprint: string;
+          action_json: string;
+          turn_id: string;
+          thread_id: string;
+          lifetime: string;
+          expires_at: number;
+          state: string;
+          decision: string | null;
+        }
+      | undefined;
+    if (
+      !row ||
+      row.lifetime !== "turn" ||
+      row.expires_at <= now ||
+      row.turn_id !== owner.turnId ||
+      row.thread_id !== owner.threadId ||
+      !["pending", "accepted"].includes(row.state)
+    )
+      return undefined;
+    const action = this.parseAction(row.action_json, approvalId);
+    if (
+      action.runId !== owner.runId ||
+      action.turnId !== owner.turnId ||
+      action.threadId !== owner.threadId ||
+      row.fingerprint !== fingerprint(action, "turn") ||
+      (action.policyRevision ?? 0) !== this.currentPolicy().agentPolicyRevision ||
+      (action.runAuthorityRevision ?? 0) !== this.runAuthorityRevision(owner.runId) ||
+      (this.resolveRun && !this.runIsActive(owner.runId)) ||
+      (row.state === "accepted" && row.decision !== "accept")
+    )
+      return undefined;
+    return {
+      state: row.state as "pending" | "accepted",
+      expiresAt: row.expires_at,
+      identity: createHash("sha256")
+        .update(JSON.stringify([approvalId, row.fingerprint, row.expires_at, action]))
+        .digest("hex"),
+    };
+  }
+
   pending(
     threadId: string,
     now = Date.now(),

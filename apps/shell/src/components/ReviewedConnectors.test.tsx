@@ -175,6 +175,8 @@ it("shows MCP authority and opens its management surface", async () => {
   await flush();
   selectConnector("Research tools");
   expect(container.textContent).toContain("search · enabled · tools revision 3");
+  expect(container.querySelector(".reviewed-connectors-state")?.textContent).toBe("Registered");
+  expect(container.textContent).toContain("Required authorization and tool discovery");
   act(() => button("Manage server and tools").click());
   expect(onManage).toHaveBeenCalledWith("mcp");
   expect(rpc).not.toHaveBeenCalledWith("mcp.grants.create", expect.anything());
@@ -220,4 +222,21 @@ it("distinguishes a loaded empty catalog from an unavailable catalog without inv
   expect(container.textContent).not.toContain("No connections yet.");
   expect(container.textContent).toContain("Connection access could not be loaded.");
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Runtime unavailable");
+});
+
+it("keeps an unconfigured MCP registration distinct from a connected account", async () => {
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list") return [{ workspaceId, name: "Product" }];
+    if (method === "tasks.list") return [task];
+    if (method === "connectors.catalog") return { entries, bindings: {}, access: [] };
+    throw new Error(`Unexpected RPC ${method}`);
+  });
+  await act(async () => root.render(<ReviewedConnectors onManage={vi.fn()} />));
+  await flush();
+  await flush();
+  expect(container.querySelector(".reviewed-connectors-state")?.textContent).toBe("Connected");
+  selectConnector("Research tools");
+  expect(container.querySelector(".reviewed-connectors-state")?.textContent).toBe("Registered");
+  expect(container.textContent).toContain("No access for this task revision.");
+  expect(rpc.mock.calls.map(([method]) => method)).not.toContain("mcp.oauth.start");
 });

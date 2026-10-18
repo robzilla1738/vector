@@ -1,5 +1,22 @@
 # Quick Ask context ownership and compact layout
 
+## Current implementation supersedes the initial picker proposal
+
+Commit `8772143f7` keeps native file/image intake and the compact owned-dialog
+layout described below. Browser sources from another window require admission
+that the native Quick Ask caller does not currently have. Quick Ask therefore
+offers **Open in Aux** for browser tabs and capture; it does not expose the
+initial browser-source picker. The normal-window run-start ownership guard stays
+in place. Drafts and selected source references survive handback for review, and
+new browser choices are rejected before start, queue, steer or answer
+acknowledgement. Text followups may retain an existing run's original authority.
+
+The initial source proposal and synthetic renderer states below are historical
+evidence, not proof of native cross-window admission. Current behavior and
+remaining native acceptance are recorded in [STATUS](../STATUS.md). A future
+snapshot or live-source path needs a genuine native producer and original-owner
+retirement; a chat ID or same-Profile relationship cannot supply that authority.
+
 ## Observed failure and source cause
 
 The current packaged `10d3` preview was observed at 440×92 with an empty draft and 440×200 with a long draft. Clicking Add context, or focusing it and pressing Return, produced only the focus ring: no native dialog or accessibility-tree change. This is native evidence from the owner-controlled preview; the corrected source below still requires a subsequent native observation.

@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-10-18T06:10:33.537085+00:00",
+  "authorization": "Owner allowed crash-report inspection only; no other Profile data accessed or changed.",
+  "reportId": "832d9c38-164e-4292-8250-d11662a42991",
+  "sha256": "cad4197c5c1f9d28240b787086d738be50f4f64533749aaca3708142f48de84e",
+  "bytes": 1509440,
+  "unchangedAfterInspection": true,
+  "pid": 7136,
+  "chromium": "155.0.8059.85",
+  "createdAt": "2026-10-18T00:36:27Z",
+  "dumpTimestamp": "2026-10-18T00:40:25Z",
+  "reportMtime": "2026-10-18T00:40:26.161523Z",
+  "thread": "CrBrowserMain",
+  "exception": "EXC_BREAKPOINT / EXC_ARM_BREAKPOINT; original SIGTRAP5",
+  "originalSourceReceipt": "d253a1242e72242052c67d5bef22358f977eaae6 / native areas through0059; associated by launch record, not minidump commit metadata",
+  "originalFrameworkUUID": "4C4C4483-5555-3144-A1C0-52EB39B455CA",
+  "currentFrameworkAndDsymUUID": "4C4C4413-5555-3144-A12A-4A086ACAAEF2",
+  "faultingOriginalFrameworkOffset": "0x421eb54",
+  "recoveredFramePointerCodeFrames": 45,
+  "frameworkFrames": 30,
+  "originalFrameworkFramesSymbolized": false,
+  "structuredAssertionTextRecorded": false,
+  "faultingCodeBytesRecorded": false,
+  "matchingExecutableOnly": "Aux main wrapper chrome_exe_main_mac.cc226; does not identify cause",
+  "diagnosis": "Native breakpoint confirmed; function and cause unresolved. No source fix justified by these offsets alone.",
+  "nextEvidence": "Matching original framework symbols or exact historical reconstruction with checked UUID; current controlled debugger reproduction remains separate.",
+  "privateLocalEvidence": "/tmp/aux-155-original-dump-diagnosis.md",
+  "limitations": [
+    "No raw memory, page text, arbitrary annotation values, credentials or crash dump committed or uploaded.",
+    "Rebuilt current symbols cannot identify original frames when UUIDs differ.",
+    "This record does not close the daily-use crash gate."
+  ]
+}

@@ -189,7 +189,7 @@ it.each(["selection", "session", "control", "policy"])(
 );
 it("rejects selection mode on other site kinds and gives explicit canvas handback", async () => {
   expect(SiteReadParamsSchema.safeParse(input).success).toBe(true);
-  expect(() => siteExportUrl({ ...input, kind: "google-sheets" })).toThrow(/only for Google Docs/);
+  expect(() => siteExportUrl({ ...input, kind: "youtube" })).toThrow(/Google Docs or Google Sheets/);
   const f = adapter();
   document.body.innerHTML = "<canvas></canvas>";
   window.getSelection()!.removeAllRanges();

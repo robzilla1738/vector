@@ -28,7 +28,7 @@ function errorText(reason: unknown) {
 function stateLabel(entry: ConnectorEntry) {
   switch (entry.state) {
     case "active":
-      return "Connected";
+      return entry.kind === "mcp" ? "Registered" : "Connected";
     case "needs_reauth":
       return "Reconnect required";
     case "revoked":
@@ -182,8 +182,8 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
         </button>
       </header>
       <p {...staticHintProps}>
-        Review each connection and the access currently available to a saved task. Connected MCP servers make
-        enabled tools available; Calendar access remains scoped to the selected task.
+        Review each connection and the access currently available to a saved task. MCP authorization and tool
+        discovery are managed in server settings; Calendar access remains scoped to the selected task.
       </p>
       {!workspaces.length ? (
         <p {...staticHintProps}>{loading ? "Loading Spaces…" : "Create a Space to review connectors."}</p>
@@ -388,8 +388,9 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                     {entry.kind === "mcp" && (
                       <>
                         <p {...staticHintProps}>
-                          Adding an MCP server enables its tools in this Space. Individual tools can be
-                          disabled in Permissions.
+                          Registration records this server in this Space. Required authorization and tool
+                          discovery are separate; review their status in server settings. Individual tools can
+                          be disabled in Permissions.
                         </p>
                         {task &&
                           access

@@ -25,6 +25,8 @@ import type { SuspensionStore } from "./suspensions.js";
 export interface StepSafetyContext {
   /** In-process workflow seal only; no API schema admits this context. */
   linkedInPrecondition?: import("@aux/contracts/linkedin").LinkedInActionPrecondition;
+  nativeContextAction?: import("@aux/chromium-driver").PreparedContextAction;
+  linkedInContextSource?: import("@aux/chromium-driver").CapturedContextAction;
   /** Only the selected account's original adapter can supply this validated endpoint. */
   configuredModelDestination?: string;
   taskRead?: ValidatedTaskRead;
@@ -115,6 +117,17 @@ export class SafetyDispatchGate {
             input.context.sessionId,
             input.context.documentEpoch,
             input.context.observedTarget,
+            ...(input.context.linkedInPrecondition
+              ? [
+                  {
+                    source: input.context.linkedInPrecondition.source.authorityDigest,
+                    recipient: input.context.linkedInPrecondition.recipientUrl,
+                    content: input.context.linkedInPrecondition.exactContent,
+                    effect: input.context.linkedInPrecondition.effect,
+                    before: input.context.linkedInPrecondition.context?.beforeContent,
+                  },
+                ]
+              : []),
           ]),
         )
         .digest("hex"),
@@ -145,21 +158,43 @@ export class SafetyDispatchGate {
           "ref_stale",
           "The sealed LinkedIn recipient/draft source no longer matches this action.",
         );
-      // The current native target proof binds its form, but cannot bind a LinkedIn recipient
-      // header and rich composer subtree together. Never reinterpret that gap as authority.
-      const instruction = `Complete this ${draft ? "draft edit" : precondition.effect === "external-message" ? "message send" : "invitation"} directly in the current LinkedIn page.\nRecipient: ${precondition.recipientUrl}\nExact content: ${precondition.exactContent || "(no note)"}\nAux cannot currently attest this recipient and composer together at native dispatch. No browser input was dispatched. Return to Aux for a fresh inspection; never repeat an uncertain send.`;
-      this.park(
-        request,
-        input.context,
-        {
-          kind: "handoff",
-          instruction,
-          guidance:
-            "Use the displayed exact recipient/content on the page. Continuing only permits a fresh inspection, never replay of this recipe.",
-        },
-        input.origin,
-      );
-      throw new AuxError("needs_input", instruction, { suspensionKind: "handoff" });
+      // Bind owner review/grants to the exact member and content, including autosave fills.
+      request.recipient =
+        precondition.recipientUrl.length <= 200
+          ? precondition.recipientUrl
+          : `linkedin-member:${createHash("sha256").update(precondition.recipientUrl).digest("hex")}`;
+      request.action = draft
+        ? "linkedin.draft"
+        : precondition.effect === "external-invitation"
+          ? "linkedin.invite"
+          : "linkedin.send";
+      request.dataClasses = [...new Set([...request.dataClasses, "form" as const])];
+      const native = input.context.nativeContextAction ?? input.context.linkedInContextSource;
+      if (
+        native &&
+        (native.actionId !== precondition.actionId ||
+          native.sourceDigest !== original.authorityDigest ||
+          native.target !== precondition.targetRef ||
+          native.text !== precondition.exactContent ||
+          native.operation !== (draft ? "fill" : "click"))
+      )
+        throw new AuxError("ref_stale", "The native context admission belongs to another action.");
+      if (!native) {
+        // A missing actual native producer remains a concrete handback, including autosave edits.
+        const instruction = `Complete this ${draft ? "draft edit" : precondition.effect === "external-message" ? "message send" : "invitation"} directly in the current LinkedIn page.\nRecipient: ${precondition.recipientUrl}\nExact content: ${precondition.exactContent || "(no note)"}\nAux cannot currently attest this recipient and composer together at native dispatch. No browser input was dispatched. Return to Aux for a fresh inspection; never repeat an uncertain send.`;
+        this.park(
+          request,
+          input.context,
+          {
+            kind: "handoff",
+            instruction,
+            guidance:
+              "Use the displayed exact recipient/content on the page. Continuing only permits a fresh inspection, never replay of this recipe.",
+          },
+          input.origin,
+        );
+        throw new AuxError("needs_input", instruction, { suspensionKind: "handoff" });
+      }
     }
     return this.checkRequest(request, input.context, input.phase, input.origin);
   }
@@ -433,6 +468,19 @@ export class SafetyDispatchGate {
         ...(context.sessionId ? { sessionId: context.sessionId } : {}),
         ...(context.approvalId ? { approvalId: context.approvalId } : {}),
         ...(context.review ? { review: context.review } : {}),
+        reviewedActions: context.linkedInPrecondition
+          ? [
+              {
+                action:
+                  context.linkedInPrecondition.effect === "draft"
+                    ? "Edit LinkedIn draft"
+                    : "Send on LinkedIn",
+                target: context.linkedInPrecondition.recipientUrl,
+                destination: context.linkedInPrecondition.recipientUrl,
+                arguments: context.linkedInPrecondition.exactContent || "(no note)",
+              },
+            ]
+          : undefined,
         turnToolCallCount: context.turnToolCallCount,
         sensitiveData: context.sensitiveData,
         restrictedRetry: context.restrictedRetry,

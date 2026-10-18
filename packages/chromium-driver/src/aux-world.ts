@@ -1,4 +1,7 @@
 import type { BrowserContext, CDPSession, Page } from "playwright-core";
+import { AuxError } from "@aux/contracts";
+import type { LinkedInActionPrecondition } from "@aux/contracts/linkedin";
+import type { CapturedContextAction, PreparedContextAction } from "./types.js";
 import { collectObservation } from "./observe-script.js";
 
 /**
@@ -298,6 +301,136 @@ export class AuxWorld {
     params: Record<string, unknown>,
   ): Promise<unknown> {
     return this.session.send(method, params as never);
+  }
+
+  /** Private fixed native input proof, never a Runtime JS writer. */
+  async captureContextAction(context: LinkedInActionPrecondition): Promise<CapturedContextAction> {
+    context = structuredClone(context);
+    const refs = context.context;
+    if (!refs || !context.actionId)
+      throw new AuxError("capability_unsupported", "The workflow has no exact editor context.");
+    const actionId = context.actionId;
+    const executionContextId = await this.contextId();
+    const resolve = async (ref: string) => {
+      if (!/^r[1-9][0-9]*$/.test(ref)) throw new AuxError("ref_stale", "Use original observed refs.");
+      const remote = await this.session.send("Runtime.evaluate", {
+        expression: `globalThis.__auxStore?.refs.get(${JSON.stringify(ref)})`,
+        contextId: executionContextId,
+        returnByValue: false,
+      });
+      const objectId = remote.result.objectId;
+      if (!objectId || remote.exceptionDetails) throw new AuxError("ref_stale", "The context node retired.");
+      try {
+        return (await this.session.send("DOM.describeNode", { objectId })).node.backendNodeId;
+      } finally {
+        await this.session.send("Runtime.releaseObject", { objectId });
+      }
+    };
+    const [rootNodeId, recipientNodeId, editorNodeId, actionNodeId] = await Promise.all(
+      [refs.rootRef, refs.recipientRef, refs.editorRef, refs.actionRef].map(resolve),
+    );
+    // These private commands are implemented by the matched Aux native protocol;
+    // Playwright's upstream protocol declarations do not include downstream commands.
+    const send = (method: string, params: Record<string, unknown>): Promise<unknown> =>
+      this.session.send(method as never, params as never);
+    let retired = false;
+    const captured: CapturedContextAction = Object.freeze({
+      actionId,
+      sourceDigest: context.source.authorityDigest,
+      target: context.targetRef,
+      operation: context.effect === "draft" ? ("fill" as const) : ("click" as const),
+      text: context.exactContent,
+      retire: () => {
+        retired = true;
+      },
+      prepare: async (): Promise<PreparedContextAction> => {
+        if (retired || (await this.contextId()) !== executionContextId || retired)
+          throw new AuxError("ref_stale", "The original context document retired.");
+        let token: string;
+        try {
+          const result = await send("Input.prepareAuxContextAction", {
+            context: {
+              rootNodeId,
+              recipientNodeId,
+              editorNodeId,
+              actionNodeId,
+              recipientUrl: context.recipientUrl,
+              beforeText: refs.beforeContent,
+              text: context.exactContent,
+              actionId,
+              sourceDigest: context.source.authorityDigest,
+              invitation: context.invitation === true,
+              operation: context.effect === "draft" ? "fill" : "click",
+            },
+          });
+          if (
+            !result ||
+            typeof result !== "object" ||
+            !("token" in result) ||
+            typeof result.token !== "string" ||
+            !/^[A-F0-9]{32}$/.test(result.token) ||
+            result.token === "0".repeat(32)
+          )
+            throw new Error("No actual native proof was returned.");
+          token = result.token;
+          if (retired || (await this.contextId()) !== executionContextId || retired) {
+            await send("Input.retireAuxContextAction", { token });
+            throw new AuxError("ref_stale", "The original context document retired during preparation.");
+          }
+        } catch {
+          throw new AuxError(
+            "capability_unsupported",
+            "Native recipient/editor proof is unavailable or the exact context changed.",
+            {
+              browserInputDispatched: false,
+            },
+          );
+        }
+        let consumed = false;
+        return {
+          actionId,
+          sourceDigest: context.source.authorityDigest,
+          target: context.targetRef,
+          operation: context.effect === "draft" ? "fill" : "click",
+          text: context.exactContent,
+          apply: async () => {
+            if (consumed || retired)
+              throw new AuxError("ref_stale", "The native input proof was consumed or its source retired.");
+            consumed = true;
+            let result: unknown;
+            try {
+              result = await send("Input.applyAuxContextAction", { token });
+            } catch {
+              throw new AuxError(
+                "target_detached",
+                "Native input completion is unknown. Inspect before repeating work.",
+                { browserInputDispatched: true },
+              );
+            }
+            if (!result || typeof result !== "object" || !("state" in result) || result.state !== "applied")
+              throw new AuxError(
+                "ref_stale",
+                "The exact native action context changed. Inspect before repeating work.",
+                {
+                  browserInputDispatched: !(
+                    result &&
+                    typeof result === "object" &&
+                    "state" in result &&
+                    result.state === "refused"
+                  ),
+                },
+              );
+          },
+          retire: async () => {
+            consumed = true;
+            await send("Input.retireAuxContextAction", { token }).catch(() => {});
+          },
+        };
+      },
+    });
+    const probe = await captured.prepare();
+    await probe.retire();
+    return captured;
   }
 
   async dispose() {

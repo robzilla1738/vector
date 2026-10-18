@@ -248,6 +248,8 @@ describe("LinkedIn sealed recipes use the same normal act callback once", () => 
     const checkOwner = vi.fn(() => {});
     const recipes = new LinkedInWorkflows({
       checkOwner,
+      approval: () => undefined,
+      undispatched: () => true,
       capture: async () => structuredClone(current),
       act,
       now: () => now,
@@ -293,6 +295,7 @@ describe("LinkedIn sealed recipes use the same normal act callback once", () => 
         exactContent: "Hello Alex",
         targetRef: "fresh-send",
       }),
+      {},
     );
     await expect(h.recipes.invoke({ action: "execute", recipeId }, "retry")).rejects.toMatchObject({
       code: "ref_stale",

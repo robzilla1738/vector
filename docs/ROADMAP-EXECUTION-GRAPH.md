@@ -59,8 +59,10 @@ and remaining matched UI observations.
 Skills/MCP/activity geometry and the Quick Ask context admission/scroll fixes are
 integrated. Google adds revision-bound Docs ranges/readback, separately granted
 Sheet grid reads, verified underline/link insertion and inspected Gmail originals; genuine Docs DOM caret/ranges
-remain distinct from API indices and unsupported canvas editors. Verified active
-Sheet navigation and rich structural Docs editing remain open. Account setup remains explicit per
+remain distinct from API indices and unsupported canvas editors. Working Sheets
+navigation adds original-target input, one-time approval continuation and
+independent grid readback, with42 integrated cases passing. Actual Google editor
+compatibility and rich structural Docs editing remain open. Account setup remains explicit per
 the owner's decision; adapters use fixtures until registrations exist.
 
 Foundation7806e41fc, capability07199225f and owned-services34117c740 have limited
@@ -72,8 +74,14 @@ Main-window live context has no original Quick caller admission: source now offe
 Open in Aux, preserves drafts and fences new/queued/steered browser choices.
 A genuine cross-window source producer remains an explicit implementation gap. Native build identity
 is34117+dirty, not a clean10d3 combined build. The original preview retired normally.
-One AppKit sharing-indicator negative-geometry path is diagnosed; the older155
-SIGTRAP remains unresolved. Matching155 stock requires its full compile; no paired
+Area0066 now has a complete source replay proof plus49 passing actual Blink
+input cases and nine passing Mac retirement/acknowledgement cases, without
+retries or skips. Its full application rebuild and live workflow observation
+remain next. One AppKit sharing-indicator negative-geometry path is diagnosed;
+the older155 SIGTRAP remains unresolved. The owner authorized crash-report-only
+inspection; the exact original155 dump is identified, and its mismatched framework
+UUID prevents direct symbolization with the current rebuilt symbols.
+Matching155 stock requires its full compile; no paired
 timing result exists. Source, compiled objects, observed current behavior and
 accepted outcomes stay separate. See STATUS for exact evidence.
 

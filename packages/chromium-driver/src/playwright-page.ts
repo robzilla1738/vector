@@ -1,3 +1,5 @@
+import type { PreparedContextAction } from "./types.js";
+import type { LinkedInActionPrecondition } from "@aux/contracts/linkedin";
 import { errors } from "playwright-core";
 import { createHash, randomUUID } from "node:crypto";
 import { extractElements } from "./extract-script.js";
@@ -844,11 +846,61 @@ export class PlaywrightDriverPage implements DriverPage {
 
   // ---------- actions ----------
 
+  private contextAdmission?: PreparedContextAction;
+  async captureLinkedInContext(context: LinkedInActionPrecondition) {
+    if (this.identity.backend !== "aux" || !context.context)
+      throw new AuxError("capability_unsupported", "This browser has no native context proof.");
+    const { rootRef, recipientRef, editorRef, actionRef } = context.context;
+    const refs = [rootRef, recipientRef, editorRef, actionRef];
+    if (refs.some((ref) => this.refs.resolve(this.identity.pageId, ref)?.frame !== "main"))
+      throw new AuxError(
+        "capability_unsupported",
+        "Native context input requires exact original main-frame refs.",
+      );
+    const world = await this.world;
+    if (!world) throw new AuxError("capability_unsupported", "The original isolated world retired.");
+    const captured = await world.captureContextAction(context);
+    if ((await this.world) !== world) {
+      captured.retire();
+      throw new AuxError("ref_stale", "The original driver world retired.");
+    }
+    return captured;
+  }
+  async withContextAction<T>(proof: PreparedContextAction, execute: () => Promise<T>): Promise<T> {
+    if (this.contextAdmission) throw new AuxError("conflict", "Another context input is active.");
+    this.contextAdmission = proof;
+    try {
+      return await execute();
+    } finally {
+      this.contextAdmission = undefined;
+      await proof.retire();
+    }
+  }
+  private async applyContext(target: string, operation: "click" | "fill", value?: string): Promise<boolean> {
+    const proof = this.contextAdmission;
+    if (!proof) return false;
+    if (
+      proof.target !== target ||
+      proof.operation !== operation ||
+      (operation === "fill" && proof.text !== value)
+    )
+      throw new AuxError("permission_denied", "The original native context operation changed.");
+    await proof.apply();
+    return true;
+  }
+
   async click(
     target: string,
     button: "left" | "right" | "middle" = "left",
     timeoutMs = DEFAULT_STEP_TIMEOUT,
   ) {
+    if (this.contextAdmission) {
+      if (button !== "left")
+        throw new AuxError("permission_denied", "Native context input supports left click only.");
+      await this.applyContext(target, "click");
+      await this.settleClickNavigation();
+      return;
+    }
     if (await this.rawPointer(target, button, 1)) {
       await this.settleClickNavigation();
       return;
@@ -868,6 +920,7 @@ export class PlaywrightDriverPage implements DriverPage {
     await loc.hover({ timeout: timeoutMs });
   }
   async fill(target: string, value: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    if (await this.applyContext(target, "fill", value)) return;
     // select-all + Input.insertText, exactly Playwright's fill minus the
     // actionability waits: frameworks see trusted beforeinput/input events
     const world = await this.rawFocus(target, true);

@@ -24,9 +24,19 @@ registration setup explicit and finish adapters/fixture tests. No working connec
 is simulated; no real third-party message has been sent.
 
 A separate working native-context slice extends LinkedIn with typed original-owner
-prepare/apply input proof. Its consolidated area0066 is source-proven but still
-compiling through actual native API fixes;32 Blink cases and2 Mac cases remain
-unexecuted. Current committed LinkedIn writes retain concrete on-page handoff.
+prepare/apply input proof. Its consolidated area0066 is source-proven. All49 real
+Blink input cases and nine Mac retirement/Cocoa-acknowledgement/BFCache cases pass
+without retries or skips. The first41-case Blink run exposed missing real widget
+focus in three new fixtures; corrected native focus setup and eight additional
+exact-text insertion cases pass. The focused runners built in9m27.59s after the
+fixture correction. The full application has not yet been rebuilt with0066.
+The integrated TypeScript route now keeps immutable original backend nodes
+through actual one-time approval and creates a separate short-lived input ticket
+only at dispatch. Accepted review cannot re-resolve a replacement target or
+renew the original native owner lease. All89 affected isolated continuation,
+driver, workflow and Sheets cases pass; the combined integrated check also passes.
+Missing or unsupported native context retains concrete on-page handoff. No live
+LinkedIn input or third-party message has been sent.
 Unsupported contexts and uncertain outcomes never acquire automatic replay.
 
 Startup validation and utility glyphs now follow their actual feature boundaries.
@@ -47,17 +57,13 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The earlier working-source integrated check passed typecheck/lint and5,223tests
-across821files. The current roles/Docs/startup integrated check passed typecheck/lint
-and5,331tests, with3stale assertions across2files for the replaced Quick Ask source
-selection flow. The repaired fixtures verify truthful handback, draft/focus/92px
-continuity and normal-window source updates. All50affected cases pass; the separate
-six-case queued/steered/answer handback fixture also passes after integration.
-Runtime dist was rebuilt before tests. No final all-files-pass claim is made for
-the combined source after those focused repairs. Logs are
-`/tmp/aux-roles-inline-startup-integrated-check.log` and
-`/tmp/aux-roles-inline-quick-affected-tests.log` and
-`/tmp/aux-roles-inline-quick-queued-tests.log`.
+The latest integrated check passes typecheck, lint and all **5,458tests across
+835files** in96.87s. Runtime dist was rebuilt before tests. This includes the
+repaired Quick Ask handback/queue fixtures, native-context approval continuation,
+accessible Sheets selection/navigation and named offline MCP/Google cases.
+Log: `/tmp/aux-native-context-sheets-integrated-check.log`. Native runner results
+and source replay are recorded separately in
+[the native-context evidence](evidence/aside-native-context-2026-10-18.json).
 
 Google fixtures now cover revision-bound Docs API ranges and verified plain-body
 edits with bold/italic/underline and HTTP(S) link setting/clearing, separately granted bounded Sheets grid data, and native-inspected Gmail
@@ -66,8 +72,27 @@ matrix verification handles omitted empty cells and compares USER_ENTERED parsed
 values/formulas with independent readback. The fixed uncached Docs DOM selection
 reader preserves actual local UTF-16 caret/range provenance; canvas-only or hidden
 editor buffers require handback. It never claims API indices or OAuth account
-identity. Rich structural Docs edits and verified active Sheets navigation remain
-open; registrations/live account verification remain explicitly unconfigured.
+identity. Rich structural Docs edits remain open; registrations/live account
+verification remain explicitly unconfigured.
+
+The next working adapter slice adds an uncached accessible Sheets selection
+reader. It distinguishes a proven active cell from a complete rectangular range,
+retains original native source ownership and refuses unsupported canvas/ambiguous
+grids. All62affected integrated reader cases pass after rebuilding runtime dist;
+no live Google selection or navigation observation is claimed. MCP review now
+labels active registrations Registered, since registration alone does not prove
+OAuth or tool discovery. New offline Google service and named Notion/Slack SDK
+fixtures cover dispatch, partial errors, retirement and uncertain writes. They
+do not establish live connectivity or an actual file-byte upload.
+
+The working Sheets navigation adapter now captures the original visible Name
+box and accessible grid, binds an exact bounded A1 target, and dispatches through
+the existing governed executor. A sealed continuation uses the actual one-time
+approval; partial input and uncertain outcomes cannot replay. Success requires
+independent selection readback from the original grid, rather than echoed Name
+box text. All42 integrated navigation cases pass after rebuilding runtime dist.
+Canvas-only and ambiguous editors hand back; actual Google editor compatibility
+and native account observations remain unverified.
 
 Skills/MCP/activity roles have60renderer states and6accessibility/keyboard states.
 The next shared-role slice adds66renderer states plus8narrow follow-ups for context
@@ -123,14 +148,20 @@ exact diagnostic limitations are in the [follow-on native record](evidence/aside
 LLDB captured a negative-geometry path in AppKit's
 NSWindowSharingSessionRecipientIndicator: the OS sharing-indicator update supplied
 (-1,-1) to setFrameSize. This does not establish the cause of every warning or
-resolve the older SIGTRAP. No blanket content-size clamp was added. All25 available
-older crash reports identify Chromium154; none identifies earlier155 app7136.
-The original155 SIGTRAP remains unresolved.
+resolve the older SIGTRAP. No blanket content-size clamp was added. The earlier
+25 OS reports identify Chromium154. With the owner's crash-report-only permission,
+the default Crashpad report for original155 app7136 was found and decoded. It
+confirms a native breakpoint on CrBrowserMain and45 recovered code frames.
+Original framework symbols do not match the rebuilt UUID, and no structured
+assertion text or faulting code bytes were recorded. The cause remains unresolved;
+[the sanitized crash evidence](evidence/aside-original-155-crash-2026-10-18.json)
+records the exact identity and limits. The report was preserved unchanged.
 
 The latest original launcher71243/app71389/runtime71405 retired normally through
 application-menu Quit; its disposable Profile and plain lock are gone. Earlier
 interactive debugger SIGINT retirements were deliberate diagnostic interruptions,
-not reproduced application crashes. No owner Profile was read or modified.
+not reproduced application crashes. Only the specifically authorized Crashpad
+report was decoded; no other owner Profile data was read or changed.
 
 ## Validation and remaining acceptance
 

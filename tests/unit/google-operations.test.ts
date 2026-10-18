@@ -18,7 +18,12 @@ import {
   type GoogleDispatch,
 } from "../../apps/runtime/src/services/google-operations.js";
 import type { GoogleAccountService } from "../../apps/runtime/src/services/google-accounts.js";
-import { type GoogleAccount, type GoogleOperation } from "@aux/contracts/google";
+import {
+  GOOGLE_OPERATIONS,
+  GoogleScopeSchema,
+  type GoogleAccount,
+  type GoogleOperation,
+} from "@aux/contracts/google";
 const closes: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const close of closes.splice(0)) await close();
@@ -42,7 +47,14 @@ function fixture(
     accountKey: "me@example.test",
     label: "Fixture",
     revision: "a".repeat(64),
-    scopes: ["https://www.googleapis.com/auth/gmail.send"],
+    scopes: GoogleScopeSchema.array().parse([
+      ...new Set([
+        ...operations.flatMap((operation) => GOOGLE_OPERATIONS[operation].scopes),
+        ...(operations.some((operation) => operation === "gmail.reply" || operation === "gmail.replyAll")
+          ? ["https://www.googleapis.com/auth/gmail.readonly"]
+          : []),
+      ]),
+    ]),
     state: "active",
     operations,
     createdAt: 1,
@@ -61,11 +73,13 @@ function fixture(
     withAccess: async (
       id: string,
       revision: string,
-      _scopes: readonly string[],
+      scopes: readonly string[],
       signal: AbortSignal,
       op: (access: unknown) => Promise<unknown>,
     ) => {
       if (id !== account.connectionId || revision !== account.revision) throw Error("retired account");
+      if (!scopes.some((scope) => account.scopes.some((granted) => granted === scope)))
+        throw Error("missing fixture account scope");
       return op({
         token: "fixture-never-live",
         signal,
@@ -940,4 +954,185 @@ it("refuses a rich edit if the original revision changes at the final pre-dispat
     ),
   ).rejects.toThrow();
   expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(0);
+});
+
+it.each([
+  {
+    operation: "gmail.thread",
+    args: { threadId: "thread-fixture" },
+    data: { id: "thread-fixture", messages: [{ id: "message-fixture", snippet: "Bounded original thread" }] },
+  },
+  {
+    operation: "people.batch",
+    args: { resourceNames: ["people/first", "people/unavailable"] },
+    data: {
+      responses: [
+        {
+          requestedResourceName: "people/first",
+          person: { resourceName: "people/first", names: [{ displayName: "Fixture contact" }] },
+        },
+        { requestedResourceName: "people/unavailable", status: { code: 404, message: "Not found" } },
+      ],
+    },
+  },
+  {
+    operation: "youtube.search",
+    args: { query: "Fixture video", pageToken: "page-one" },
+    data: {
+      items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "Fixture video" } }],
+      nextPageToken: "page-two",
+    },
+  },
+  {
+    operation: "youtube.videos",
+    args: { videoIds: ["abcdefghijk"] },
+    data: { items: [{ id: "abcdefghijk", contentDetails: { duration: "PT1M" } }] },
+  },
+  {
+    operation: "youtube.comments",
+    args: { videoId: "abcdefghijk", pageToken: "page-one" },
+    data: { items: [{ id: "thread-one", snippet: { totalReplyCount: 2 } }], nextPageToken: "page-two" },
+  },
+  {
+    operation: "youtube.replies",
+    args: { parentId: "comment-parent", pageToken: "page-one" },
+    data: {
+      items: [{ id: "reply-one", snippet: { parentId: "comment-parent", textDisplay: "Fixture reply" } }],
+      nextPageToken: "page-two",
+    },
+  },
+] satisfies { operation: GoogleOperation; args: unknown; data: Record<string, unknown> }[])(
+  "publishes $operation only with original account/task sources and preserves provider partial data",
+  async ({ operation, args, data }) => {
+    const f = fixture([operation]);
+    f.http.mockImplementation(async (_url, init) => {
+      expect(f.authorize).toHaveBeenCalledOnce();
+      expect(init).toMatchObject({ method: "GET", redirect: "error" });
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer fixture-never-live");
+      return Response.json(data);
+    });
+    const output = await f.service.invoke(f.input(operation, args), new AbortController().signal);
+    expect(output.result).toEqual(data);
+    expect(output).not.toHaveProperty("receiptId");
+    expect(output.source).toMatchObject({
+      connectionId: f.account.connectionId,
+      accountRevision: f.account.revision,
+      accountKey: f.account.accountKey,
+      operation,
+    });
+    expect(f.authorize.mock.calls[0]![0]).toMatchObject({
+      operation,
+      effect: "read",
+      taskId: f.task.taskId,
+      taskRevision: f.task.revision,
+      workspaceId: f.space.workspaceId,
+      grantId: f.grant.grantId,
+      source: f.account,
+    });
+    expect(f.http).toHaveBeenCalledOnce();
+    expect(f.repo.db.prepare("SELECT count(*) AS count FROM action_intents").get()).toMatchObject({
+      count: 0,
+    });
+  },
+);
+
+it("joins a paginated YouTube read to the same original grant and refuses a later task revision", async () => {
+  const f = fixture(["youtube.comments"]);
+  f.http
+    .mockResolvedValueOnce(Response.json({ items: [{ id: "first" }], nextPageToken: "next-page" }))
+    .mockResolvedValueOnce(Response.json({ items: [{ id: "second" }] }));
+  const first = await f.service.invoke(
+    f.input("youtube.comments", { videoId: "abcdefghijk" }),
+    new AbortController().signal,
+  );
+  const second = await f.service.invoke(
+    f.input("youtube.comments", { videoId: "abcdefghijk", pageToken: first.result.nextPageToken }),
+    new AbortController().signal,
+  );
+  expect(second.result).toEqual({ items: [{ id: "second" }] });
+  expect(
+    f.authorize.mock.calls.every(
+      ([input]) => input.grantId === f.grant.grantId && input.accountRevision === f.account.revision,
+    ),
+  ).toBe(true);
+  await expect(
+    f.service.invoke(
+      { ...f.input("youtube.comments", { videoId: "abcdefghijk" }), taskRevision: f.task.revision + 1 },
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(f.http).toHaveBeenCalledTimes(2);
+});
+
+it("records and authorizes the exact Drive comment before its single write acknowledgement", async () => {
+  const f = fixture(["docs.comment"]);
+  const args = { documentId: "doc-fixture", content: "Reviewed comment", quotedText: "Exact source quote" };
+  f.http.mockImplementation(async (_url, init) => {
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({ status: "pending" });
+    expect(f.authorize.mock.calls[0]![0]).toMatchObject({
+      operation: "docs.comment",
+      effect: "write",
+      source: f.account,
+      request: { objectId: args.documentId },
+    });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      content: args.content,
+      quotedFileContent: { mimeType: "text/plain", value: args.quotedText },
+    });
+    return Response.json({ id: "comment-fixture", content: args.content });
+  });
+  const output = await f.service.invoke(f.input("docs.comment", args), new AbortController().signal);
+  expect(output).toMatchObject({
+    result: { id: "comment-fixture", content: args.content },
+    source: { operation: "docs.comment", objectId: args.documentId },
+  });
+  expect(output.receiptId).toBeTypeOf("string");
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({ status: "confirmed" });
+  expect(f.http).toHaveBeenCalledOnce();
+});
+
+it("keeps an unacknowledged Drive comment uncertain and does not retry the original write", async () => {
+  const f = fixture(["docs.comment"]);
+  f.http.mockResolvedValue(Response.json({ content: "No provider comment identity" }));
+  await expect(
+    f.service.invoke(
+      f.input("docs.comment", { documentId: "doc-fixture", content: "Reviewed comment" }),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow(/did not confirm/);
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").get()).toMatchObject({ status: "uncertain" });
+  expect(f.http).toHaveBeenCalledOnce();
+});
+
+it("preserves a YouTube account access denial and withholds a People batch after account retirement", async () => {
+  const denied = fixture(["youtube.comments"]);
+  denied.http.mockResolvedValue(
+    Response.json({ error: { message: "Fixture comments unavailable" } }, { status: 403 }),
+  );
+  await expect(
+    denied.service.invoke(
+      denied.input("youtube.comments", { videoId: "abcdefghijk" }),
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(denied.http).toHaveBeenCalledOnce();
+  const retired = fixture(["people.batch"]);
+  retired.http.mockImplementation(async () => {
+    retired.account.revision = "b".repeat(64);
+    return Response.json({
+      responses: [
+        { requestedResourceName: "people/first", person: { names: [{ displayName: "Late result" }] } },
+      ],
+    });
+  });
+  await expect(
+    retired.service.invoke(
+      retired.input("people.batch", { resourceNames: ["people/first"] }),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow(/retired/);
+  expect(retired.http).toHaveBeenCalledOnce();
+  expect(retired.repo.db.prepare("SELECT status FROM operation_invocations").get()).toMatchObject({
+    status: "failed",
+  });
 });
