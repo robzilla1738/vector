@@ -8,6 +8,31 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+Matching stock Chromium155 now builds successfully after correcting its benchmark
+header's `FrameTimingDetails` declaration from `struct` to upstream's `class`.
+The canonical155 input patch preserves the correction; no warning was suppressed
+and no Aux authority code was copied into stock. The completed stock app and dSYM
+share UUID `4C4C447E-5555-3144-A16E-DBC9D0CB3D4C`. This is build evidence, not
+measured performance. The smoke report now retains per-call provider duration,
+actual versus estimated cost, explicit zero and unknown usage. Missing native
+receipts remain unknown, and the shared benchmark ledger is no longer reported
+as native spend. Fourteen focused accounting tests pass. The integrated retry
+passes all5,905 tests across857 files in106.16s, with572 unchanged advisories;
+two original worktree timeouts under concurrent compiler load remain in the
+[acceptance instrumentation record](evidence/aside-native-acceptance-instrumentation-2026-10-18.json).
+
+The owner-authorized older Aux instance is closed without window or Profile
+inspection. A newer report has exact matched library symbols and diagnoses a
+separate Aperitif renderer helper abort at sandbox policy-header EOF, before
+policy parsing/application. Its parent and shutdown causation are unproven.
+The original browser-main155 SIGTRAP still lacks matching framework symbols or
+captured fault instructions, and its dump hash is unchanged. The
+[bounded investigation record](evidence/aside-aperitif-policy-eof-2026-10-18.json)
+preserves the distinction. Current Aux staging/native comparisons, manual20-task
+smoke, paired performance and daily-use acceptance remain open.
+
+### Earlier implementation records
+
 A reproduced lazy-style failure is now corrected in the pinned Vite producer.
 After Find bar CSS failed, the original compiled Retry mounted the bar without
 a second stylesheet attempt. Owned CSS now shares its pending promise, retires

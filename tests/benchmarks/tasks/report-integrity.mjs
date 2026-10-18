@@ -42,7 +42,8 @@ export async function readRunMetrics(rpc, runId) {
     suspensions = 0,
     takeovers = 0,
     ledgerDuplicates = 0;
-  const calls = [];
+  const calls = [],
+    modelCallMetrics = [];
   const tokenCount = (value) => Number.isSafeInteger(value) && value >= 0;
   for (;;) {
     const page = await rpc("runs.events", { runId, sinceSeq: cursor, limit: 2000, streamId });
@@ -64,6 +65,21 @@ export async function readRunMetrics(rpc, runId) {
       if (event.type === "model.call") {
         calls.push({ type: event.type, payload: { modelId: payload.modelId } });
         const cached = payload.providerMetadata?.usage?.cachedInputTokens;
+        modelCallMetrics.push({
+          seq: event.seq,
+          modelId: typeof payload.modelId === "string" ? payload.modelId : null,
+          role: typeof payload.role === "string" ? payload.role : null,
+          durationMs: nonnegative(payload.durationMs) ? payload.durationMs : null,
+          inputTokens: tokenCount(payload.inputTokens) ? payload.inputTokens : null,
+          outputTokens: tokenCount(payload.outputTokens) ? payload.outputTokens : null,
+          cachedInputTokens:
+            tokenCount(cached) && tokenCount(payload.inputTokens) && cached <= payload.inputTokens
+              ? cached
+              : null,
+          costUsd: nonnegative(payload.costUsd) ? payload.costUsd : null,
+          costEstimated: typeof payload.costEstimated === "boolean" ? payload.costEstimated : null,
+          failed: typeof payload.error === "string",
+        });
         if (tokenCount(payload.inputTokens)) inputTokens += payload.inputTokens;
         else inputComplete = false;
         if (tokenCount(payload.outputTokens)) outputTokens += payload.outputTokens;
@@ -83,7 +99,22 @@ export async function readRunMetrics(rpc, runId) {
     if (page.lastSeq === cursor) break;
     cursor = page.lastSeq;
   }
+  const observed = modelCallMetrics
+    .filter((call) => call.costEstimated === false)
+    .map((call) => call.costUsd);
+  const estimated = modelCallMetrics
+    .filter((call) => call.costEstimated === true)
+    .map((call) => call.costUsd);
+  const costComplete = calls.length > 0 && observed.length === calls.length && observed.every(nonnegative);
   return {
+    modelCallMetrics,
+    costUsd: costComplete ? sumComplete(observed) : null,
+    costComplete,
+    knownObservedCostUsd: sumKnown(observed),
+    knownEstimatedCostUsd: sumKnown(estimated),
+    modelDurationMs: sumComplete(modelCallMetrics.map((call) => call.durationMs)),
+    durationComplete: calls.length > 0 && modelCallMetrics.every((call) => nonnegative(call.durationMs)),
+    outputTokens: calls.length && outputComplete ? outputTokens : null,
     tokens: calls.length && inputComplete && outputComplete ? inputTokens + outputTokens : null,
     inputTokens: calls.length && inputComplete ? inputTokens : null,
     cachedInputTokens: calls.length && cacheComplete ? cachedInputTokens : null,
@@ -95,6 +126,52 @@ export async function readRunMetrics(rpc, runId) {
     interventions: suspensions + takeovers,
     ledgerDuplicates,
     ...modelAttribution(calls),
+  };
+}
+
+const nonnegative = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+const sumComplete = (values) =>
+  values.length && values.every(nonnegative) ? values.reduce((sum, value) => sum + value, 0) : null;
+const sumKnown = (values) => {
+  const known = values.filter(nonnegative);
+  return known.length ? known.reduce((sum, value) => sum + value, 0) : null;
+};
+
+/** Partial known costs stay subtotals; missing native receipts never become zero. */
+export function summarizeObservedMetrics(rows) {
+  const total = (field) => sumComplete(rows.map((row) => row[field]));
+  const inputTokens = total("inputTokens"),
+    cachedInputTokens = total("cachedInputTokens");
+  const receiptComplete =
+    rows.length > 0 &&
+    rows.every(
+      (row) =>
+        Array.isArray(row.durableIntents?.ids) &&
+        Number.isSafeInteger(row.durableIntents.unresolved) &&
+        row.durableIntents.unresolved >= 0,
+    );
+  return {
+    tokens: total("tokens"),
+    inputTokens,
+    outputTokens: total("outputTokens"),
+    cachedInputTokens,
+    cachedInputRatio: inputTokens > 0 && cachedInputTokens !== null ? cachedInputTokens / inputTokens : null,
+    modelDurationMs: rows.every((row) => row.durationComplete === true) ? total("modelDurationMs") : null,
+    durationComplete:
+      rows.length > 0 &&
+      rows.every((row) => row.durationComplete === true && nonnegative(row.modelDurationMs)),
+    costUsd: rows.every((row) => row.costComplete === true) ? total("costUsd") : null,
+    costComplete:
+      rows.length > 0 && rows.every((row) => row.costComplete === true && nonnegative(row.costUsd)),
+    knownObservedCostUsd: sumKnown(rows.map((row) => row.knownObservedCostUsd)),
+    knownEstimatedCostUsd: sumKnown(rows.map((row) => row.knownEstimatedCostUsd)),
+    durableIntents: receiptComplete
+      ? rows.reduce((sum, row) => sum + row.durableIntents.ids.length, 0)
+      : null,
+    unresolvedDurableIntents: receiptComplete
+      ? rows.reduce((sum, row) => sum + row.durableIntents.unresolved, 0)
+      : null,
+    ledgerDuplicates: total("ledgerDuplicates"),
   };
 }
 

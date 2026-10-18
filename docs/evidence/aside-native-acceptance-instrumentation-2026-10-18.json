@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "baseline": "3111efeeee124c5434cc20d755d96e9b064dd06f",
+  "scope": "Native acceptance instrumentation; no native score/performance/parity acceptance from source checks",
+  "benchmark": {
+    "baseline": "3111efeeee124c5434cc20d755d96e9b064dd06f",
+    "patch": "/tmp/aux-benchmark-integrity-3111-v1.patch",
+    "patchSha256": "ba59456c7fc73f9c730cb3792ad06ba79c93b2fb124f34cda387c708119eb889",
+    "files": [
+      {
+        "path": "tests/benchmarks/tasks/report-integrity.mjs",
+        "before": "1f46af46467e27e675dea05ec7b57e155f250fd70e1957d331634f5b6a80322a",
+        "after": "6682a10c8841a47fe4c109316e800cb6996401ab55a44c3e69777c5031921114",
+        "beforeBytes": 8347,
+        "afterBytes": 12155
+      },
+      {
+        "path": "tests/benchmarks/tasks/report-integrity.test.mjs",
+        "before": "cd916bc2bf8d9b76c14868b666a0ca19350d8173b166db1eb30e5379f3a7567c",
+        "after": "9d6c160a55971768f66cb9a9c2b7e314f1eacf6fad11bb0a14006533e932ff76",
+        "beforeBytes": 5766,
+        "afterBytes": 14078
+      },
+      {
+        "path": "tests/benchmarks/tasks/run.mjs",
+        "before": "5f734762818f2d3858ee9883d46c891b88606b9bb0046e891495c84de631e3ed",
+        "after": "53f66af57820a27948bb332e9ae404917814a43630af471adfc8b9bb8695daba",
+        "beforeBytes": 49009,
+        "afterBytes": 49698
+      }
+    ],
+    "finalNodeTest": {
+      "passed": 14,
+      "failed": 0,
+      "log": "frozen-focused-tests.log"
+    },
+    "lint": "zero errors/warnings (empty log)",
+    "syntax": "node --check run.mjs passed",
+    "format": "explicit original repository config, final check passed",
+    "runtimeSourceEdited": false,
+    "runtimeDistBuildRequired": false,
+    "rootFullCheckRun": false,
+    "liveHarnessRun": false,
+    "nativeGuiProviderActions": false,
+    "logs": {
+      "focused-tests.log": {
+        "bytes": 1305,
+        "sha256": "528e25b800eb94af5e10dd2f13756a3de992205fcb3453b6ec4475179dd2c1d2"
+      },
+      "final-focused-tests.log": {
+        "bytes": 1310,
+        "sha256": "d799ce5dd1be19969e6e1d59df2c3e0cd9dc6a5f587e9ddc634ddada67a1bf6b"
+      },
+      "frozen-focused-tests.log": {
+        "bytes": 1421,
+        "sha256": "0401fa2570ba54eb6225c71bc4470e7da92cc53a371ee7afb210d03ed4efbd56"
+      },
+      "frozen-lint.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "frozen-syntax.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "frozen-format.log": {
+        "bytes": 66,
+        "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+      }
+    },
+    "chronology": [
+      "First13cases pass. Added actual single-event complete-zero regression; final14case command passes.",
+      "Initial formatter on absolute temp paths used default width80, which broadened unrelated formatting; restored unchanged content from preimages and reapplied semantic edits with explicit original .prettierrc.json. Final patch contains only owned changes. No failed product tests.",
+      "Static git diff --no-index returns1 for intended differences; no harness/API/module execution except pure node:test accounting fixture."
+    ]
+  },
+  "stockPreparation": {
+    "scope": "Read-only diagnostic and exact temporary proposal; no main/native/build/lock/Profile/GUI mutation",
+    "baselineRepo": "3111efeeee124c5434cc20d755d96e9b064dd06f",
+    "pinnedSource": {
+      "stockHead": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "auxHead": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "version": "MAJOR=155\nMINOR=0\nBUILD=8059\nPATCH=85\n",
+      "upstreamDefinition": {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/components/viz/common/frame_timing_details.h",
+        "sha256": "662195a1557b2729e1476c4b5ecac0dc5cd92e64688989da50043675beecbd94",
+        "line": 15,
+        "kind": "class"
+      },
+      "existingOmniboxForwardDeclaration": {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-stock-155/chromium/src/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.h",
+        "line": 27,
+        "kind": "class"
+      }
+    },
+    "failure": {
+      "log": "/tmp/aux-stock155-build-resume11-2026-10-18.log",
+      "sha256": "b6962a78d5010b494f4703436af7a580ae228e88e11a159a294fa30295f26062",
+      "object": "obj/chrome/browser/ui/views/omnibox/impl/omnibox_popup_view_views.o",
+      "cause": "Two diagnostics for one mismatched struct forward declaration; compiler -Werror,-Wmismatched-tags. No warning suppression needed.",
+      "recordedProgress": "4023/10503 at11m54.77; build failed, not performance evidence."
+    },
+    "proposal": {
+      "nativeBeforeSha256": "76c1160b675b0a9365c24bdc5c5d1a9eebfa95ec79d027ccd5c44750c05ed67c",
+      "nativeAfterSha256": "2b47b0ee56d381222620bc0962fde289dfbc6650f60871ed7ccbd017c4e622c6",
+      "originalGitBlob": "ac1bfc5d8d6d3e6a245b244b511cd58c6d74220e",
+      "correctedGitBlob": "03cb76fb0f055bc372cf566f73ede62e18e3122c",
+      "nativeDeltaSha256": "35698ee8b57aad3f203cfffd5d7d25bd07f1bfdb0507ab26ee5eb56585b8cd97",
+      "repoInputPath": "chromium/patches/benchmark/0052-native-performance-stock-155.patch",
+      "repoInputBeforeSha256": "fc1f7be7352747fec6ca3032ac7f189ee2d1cd7c71f4edc9bc5e92aaba65e8c2",
+      "repoInputAfterSha256": "8455e6b117c8f542bbf3cdcd26f971e57db5e66a99788c73c4822b77749b6d84",
+      "repoDeltaSha256": "04399c2968bba9e505120949d1d412b91462ccea2c9513ae049e06b688673660",
+      "canonicalPatchHeaderMatchesActualStockBytes": true,
+      "changes": "Only struct\u2192class plus canonical new-file Git blob hash; no Aux-only Profile/surface/admission code copied."
+    },
+    "matchingFlags": {
+      "stockArgsSha256": "c353e9d19fabfab9ff832b288e75cafedfdc9e24dd628f53914a2938659abc70",
+      "auxArgsSha256": "ab4d3d1eb00a5230239f25a9e43de0ebae5477b9766d5cfa387e98e28a19286a",
+      "stockArgsAllMatchAux": true,
+      "common": [
+        "is_debug = false",
+        "is_official_build = true",
+        "is_component_build = false",
+        "use_thin_lto = true",
+        "chrome_pgo_phase = 2",
+        "symbol_level = 1",
+        "enable_dsyms = true",
+        "enable_stripping = true",
+        "proprietary_codecs = true",
+        "ffmpeg_branding = \"Chrome\"",
+        "enable_widevine = true",
+        "dcheck_always_on = false",
+        "target_cpu = \"arm64\""
+      ],
+      "auxOnly": [
+        "enable_aux_shell = true",
+        "aux_test_hooks = false"
+      ],
+      "limit": "This compares recorded GN source args, not all expanded generated flags or a completed stock app. Both build graphs still require matching final perf evidence."
+    },
+    "canonicalProducer": "No repository benchmark extraction/generation script found. Canonical155input is explicit0052, outside Aux series; old0050/0051 remain historical154 inputs. Do not regenerate155 from0050 without an explicit pinned declaration check. Proposed checker guard is separate, not claimed wired."
+  },
+  "rootIntegration": {
+    "patchAppliedExact": true,
+    "focusedTests": {
+      "passed": 14,
+      "failed": 0
+    },
+    "integratedCheck": {
+      "log": "/tmp/aux-native-accounting-integrated-check-2026-10-18.log",
+      "sha256": "c149b913c345d7a9d64ae4084cc5b636bec1c7117af49c8c49359116dd22b049",
+      "exitCode": 1,
+      "passed": 5903,
+      "failed": 2,
+      "durationSeconds": 185.25,
+      "failures": "Two existing coder-worktrees 60-second timeouts while full suite and native compiler ran concurrently; no assertion failures"
+    },
+    "unchangedIsolatedRetry": {
+      "log": "/tmp/aux-native-accounting-worktree-isolation-2026-10-18.log",
+      "sha256": "a2a61af5037951858d4e00bfe606bd6e72c759fe61d73387a290d24fd057c304",
+      "passed": 3,
+      "failed": 0,
+      "durationSeconds": 122.1,
+      "testSeconds": 108.4,
+      "timeoutsUnchanged": true
+    },
+    "integratedRetry": {
+      "log": "/tmp/aux-native-accounting-integrated-retry-2026-10-18.log",
+      "sha256": "b3044b6c2bd80a0a6954b61acd46c14865c7f79e0bd6e74c159b9bceb44df55f",
+      "exitCode": 0,
+      "tests": 5905,
+      "files": 857,
+      "durationSeconds": 106.16,
+      "concurrentNativeCompiler": false,
+      "warnings": 572,
+      "warningChange": 0
+    },
+    "stockBuild": {
+      "log": "/tmp/aux-stock155-build-resume12-2026-10-18.log",
+      "status": "completed, exit0; originalplainlock retired normally",
+      "sha256": "61152b8dcf4955a5a4bbd101164f039dc351147f70a0272195359a12eaa32ffd",
+      "buildSeconds": 1757.93,
+      "steps": 5118,
+      "performanceAccepted": false,
+      "version": "155.0.8059.85",
+      "frameworkAndDsymUUID": "4C4C447E-5555-3144-A16E-DBC9D0CB3D4C"
+    }
+  }
+}

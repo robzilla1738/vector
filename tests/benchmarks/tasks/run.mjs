@@ -56,6 +56,7 @@ import {
   corpusFingerprint,
   readRunMetrics,
   summarizeIntents,
+  summarizeObservedMetrics,
 } from "./report-integrity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -340,8 +341,8 @@ const report = {
     multiStepTaskIds: tasks.filter((task) => task.multiStep).map((task) => task.id),
   },
   spendLedger: {
-    forecastUsd,
-    before: ledgerBefore,
+    forecastUsd: nativeRuntimeFile ? null : forecastUsd,
+    before: nativeRuntimeFile ? null : ledgerBefore,
     after: null,
     attribution: nativeRuntimeFile
       ? "Native runtime budgets govern spending; this runner makes no model calls. Shared benchmark ledger is not native-run spend."
@@ -354,7 +355,7 @@ const report = {
 mkdirSync(reportsDir, { recursive: true });
 const outPath = join(reportsDir, `tasks-${suite.suite}-${report.startedAt.replace(/[:.]/g, "-")}.json`);
 const saveReport = () => {
-  report.spendLedger.after = spendLedger.summary();
+  report.spendLedger.after = nativeRuntimeFile ? null : spendLedger.summary();
   report.abReadiness = abReadiness(report);
   writeFileSync(`${outPath}.tmp`, JSON.stringify(report, null, 2));
   renameSync(`${outPath}.tmp`, outPath);
@@ -391,7 +392,7 @@ try {
       configuredEngine: cfg.env?.AUX_RUN_ENGINE ?? (cfg.kind === "runtime" ? "agent" : null),
       configuredModel: modelId,
       configuredMaxModelCalls: maxStepsFlag ? maxToolSteps : "product default",
-      spendLedgerBefore: adapterLedgerBefore,
+      spendLedgerBefore: nativeRuntimeFile ? null : adapterLedgerBefore,
     };
     saveReport();
     let invalidReason = null;
@@ -473,7 +474,7 @@ try {
         ...report.adapters[name],
         invalid: invalidReason,
         rows,
-        spendLedgerAfter: spendLedger.summary(),
+        spendLedgerAfter: nativeRuntimeFile ? null : spendLedger.summary(),
       };
       report.valid = false;
       invalidAdapters++;
@@ -517,9 +518,7 @@ try {
         3,
       ),
       tokensMean: mean(rows.map((r) => r.tokens)),
-      durableIntents: rows.reduce((n, r) => n + (r.durableIntents?.ids.length ?? 0), 0),
-      unresolvedDurableIntents: rows.reduce((n, r) => n + (r.durableIntents?.unresolved ?? 0), 0),
-      ledgerDuplicates: rows.reduce((n, r) => n + (r.ledgerDuplicates ?? 0), 0),
+      ...summarizeObservedMetrics(rows),
       errors: rows.filter((r) => r.error).length,
       oracleFailures: rows.filter((r) => r.oracle && !r.oracle.pass).length,
       families: Object.fromEntries(
@@ -557,7 +556,7 @@ try {
       summary,
       rows,
       readiness,
-      spendLedgerAfter: spendLedger.summary(),
+      spendLedgerAfter: nativeRuntimeFile ? null : spendLedger.summary(),
     };
     saveReport();
     console.log(
@@ -743,6 +742,14 @@ function nativeManualAdapter(runtime) {
               status: run.status,
               answer: run.result == null ? null : extractAnswer(run.result),
               runId,
+              engine: run.config?.implementation,
+              requestedRuntimeModel: run.config?.modelId ?? modelId,
+              modelCalls: run.config?.modelCalls ?? null,
+              ...(await metricsForRun(rpc, runId)),
+              durableIntents: null,
+              receiptAttribution:
+                "Native durable receipts remain in Aux; independent fixture effects and completed status determine this manual smoke score.",
+              backend: "native manual",
               error: "Manual task timed out; original native run cancellation acknowledged.",
             };
           await sleep(250);
@@ -845,7 +852,15 @@ async function metricsForRun(rpc, runId) {
     return await readRunMetrics(rpc, runId);
   } catch {
     return {
+      modelCallMetrics: null,
+      costUsd: null,
+      costComplete: false,
+      knownObservedCostUsd: null,
+      knownEstimatedCostUsd: null,
+      modelDurationMs: null,
+      durationComplete: false,
       tokens: null,
+      outputTokens: null,
       inputTokens: null,
       cachedInputTokens: null,
       cachedInputRatio: null,

@@ -371,7 +371,7 @@ index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b939438
 +}
 diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..ac1bfc5d8d6d3e6a245b244b511cd58c6d74220e
+index 0000000000000000000000000000000000000000..03cb76fb0f055bc372cf566f73ede62e18e3122c
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
 @@ -0,0 +1,84 @@
@@ -392,7 +392,7 @@ index 0000000000000000000000000000000000000000..ac1bfc5d8d6d3e6a245b244b511cd58c
 +#include "ui/events/event_handler.h"
 +#include "ui/views/widget/widget_observer.h"
 +
-+namespace viz { struct FrameTimingDetails; }
++namespace viz { class FrameTimingDetails; }
 +namespace ui { class Compositor; }
 +namespace views { class Widget; }
 +class TabStripModel;

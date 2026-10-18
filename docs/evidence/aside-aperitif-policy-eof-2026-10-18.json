@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "scope": "Authorized Aux Crashpad report-only investigation; no window, chats, history, credentials or unrelated Profile contents inspected",
+  "baseline": "3111efeeee124c5434cc20d755d96e9b064dd06f",
+  "olderInstanceRetirement": {
+    "authorization": "User explicitly authorized closing older Aux without window inspection on2026-10-18",
+    "pid": 46159,
+    "command": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/MacOS/Aux",
+    "started": "Sun Oct 18 01:52:25 2026",
+    "signal": "SIGTERM",
+    "windowInspection": false,
+    "profileInspection": false,
+    "sentAtUTC": "2026-10-18T12:35:37.456713+00:00",
+    "exitObservation": "Exact originalPID disappeared afterSIGTERM; psreturnedheaderonly/exit1 before any windowinspection. Closurecompleted."
+  },
+  "original155": {
+    "frameworkUUID": "4C4C4483-5555-3144-A1C0-52EB39B455CA",
+    "matchingArtifactFound": false,
+    "faultInstructionBytesCaptured": false,
+    "boundedArtifactSearch": {
+      "additionalHeaderCandidates": 17,
+      "projectReleaseSearch": {
+        "roots": [
+          "/Users/rcourson/Documents/Vibe/web/release",
+          "/Users/rcourson/Documents/Vibe/aux-readiness-chromium/release",
+          "/Users/rcourson/Documents/Vibe/aux-readiness-product/release",
+          "/Users/rcourson/Documents/Code/aux-archive/2026-10-05-v3/.native",
+          "/Users/rcourson/Documents/Code/aux-archive/2026-10-05-v3/release"
+        ],
+        "maximumDepth": 5,
+        "skip": [
+          ".git",
+          "node_modules",
+          "Profile",
+          "Profiles",
+          "Default",
+          "Crashpad",
+          "Cache",
+          "runtime",
+          "test-artifacts"
+        ],
+        "result": "No native Aux framework/dSYM/archive found; archive release contains an older Electron Aux Browser.app only, not original155."
+      },
+      "sources": [
+        {
+          "path": "/tmp/aux-measurement-crash-artifact-uuid-2026-10-18.json",
+          "bytes": 8775,
+          "sha256": "9390b590048c1d9ed8f81192f1301c9f9e7b9e7e27b325ec53e157edefc8e269"
+        },
+        {
+          "path": "/tmp/aux-measurement-crash-report-headers-2026-10-18.json",
+          "bytes": 45966,
+          "sha256": "4635e633e5c140910bd0b5ae26f6931a7ece02c5aa2d16223cccda76d40c2cde"
+        },
+        {
+          "path": "/tmp/aux-measurement-crash-report-headers-2026-10-18.py",
+          "bytes": 4217,
+          "sha256": "906ed7ba9f355e26d1bde20cae424f1d58ee6962ff9a0458630b8624c3d12abf"
+        },
+        {
+          "path": "/tmp/aux-measurement-original155-code-boundary-2026-10-18.json",
+          "bytes": 878,
+          "sha256": "356370b870321c0a6b3cefe11f60cb8070dc4e0c7d805db5a4066d6a5c2193c3"
+        }
+      ]
+    },
+    "status": "Original browser-main SIGTRAP remains unresolved; no offset/function inference using mismatched frameworks",
+    "reportHashRecheckedUnchanged": "cad4197c5c1f9d28240b787086d738be50f4f64533749aaca3708142f48de84e"
+  },
+  "newer99Helper": {
+    "report": "1389d449-bae7-4f28-b314-7391b3791f8e.dmp",
+    "sha256": "c2e52a502a86044e884396a296ee38c508370ab9648915cfacfade2096bdc4db",
+    "dumpTimeUTC": "2026-10-18T12:35:37Z",
+    "processId": 96540,
+    "executable": "Aux Helper (Aperitif Renderer)",
+    "signal": "SIGABRT",
+    "frameworkUUID": "4C4C4483-5555-3144-A18E-F9CAF8C16DE4",
+    "symbolication": {
+      "method": "atos -arch arm64 -o exact libaperitif.dylib.dSYM -l 0x10225c000, return address minus4 on ARM64",
+      "uuid": "4C4C4443-5555-3144-A183-FDBD30695963",
+      "verifiedModuleAndDSYMUUIDMatch": true,
+      "frames": [
+        {
+          "frameIndex": 3,
+          "returnOffset": "0x22a4",
+          "symbolAddressOffset": "0x22a0",
+          "symbol": "content::aperitif::(anonymous namespace)::FatalError(char const*, ...)",
+          "source": "aperitif_mac.cc:45"
+        },
+        {
+          "frameIndex": 4,
+          "returnOffset": "0x934",
+          "symbolAddressOffset": "0x930",
+          "symbol": "_GLOBAL__sub_I_aperitif_mac.cc",
+          "source": "aperitif_mac.cc:84"
+        }
+      ],
+      "otherFrames": "Recorded22-frame FP chain retained as native module+offset; no unverified system or framework symbolication."
+    },
+    "symbolicationArtifacts": [
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/libaperitif.dylib.dSYM/Contents/Resources/DWARF/libaperitif.dylib",
+        "bytes": 119647,
+        "sha256": "1c4b7b50fc7db7d677e13a00d9ae0fd4f830fd6553bbb7f9ce660f0d579fcab1"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+        "bytes": 69760,
+        "sha256": "3e3238b7059028b91fda16d0910cba9b62c4edb8c7c6c5ea6ff38fd709aa0fa3"
+      }
+    ],
+    "staticReasons": [
+      {
+        "module": "libaperitif.dylib",
+        "reason": "SeatbeltExec: buffer length read failed"
+      },
+      {
+        "module": "libsystem_c.dylib",
+        "reason": "aperitif: Failed to initialize sandbox"
+      }
+    ],
+    "conclusion": "Policy-pipe EOF while completing8-byte length header; policy Deserialize/Apply not reached. Closed peer cause, parent ownership and browser shutdown causation remain unknown.",
+    "parentPID": null,
+    "causation": "Same-second older-browser SIGTERM is temporal correlation only. No recorded parent identity; normal-exit or parent-death cause not established. This is not the original browser-main SIGTRAP.",
+    "provenance": "Pinned Chromium builds/links the Aperitif helper; it is not a Codex injected library.",
+    "sourceHashes": [
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/app/aperitif_mac.cc",
+        "sha256": "a093313bf480cb9c5e38765ee1ff2a8008f7cc33084201c5d8e8844736f258b8"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/app/mac_helpers.gni",
+        "sha256": "4bec319e818e66c5802d949ba60aca1b710dafda6df838272c338871b2142d94"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/app/BUILD.gn",
+        "sha256": "04092495be650e424ca3e0816a59e2491d960eef21596d632b01df748f40933b"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/BUILD.gn",
+        "sha256": "62509599ac68edc72dddc9881738c696c78de016e1b87a856c2ace4962948924"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/app/chrome_exe_main_mac.c",
+        "sha256": "0fa0397215afd619d9448f02231af0dca007003c1019af0fe03ff768be91898e"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sandbox/mac/seatbelt_exec.cc",
+        "sha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/crashpad/crashpad/util/mach/exception_types.cc",
+        "sha256": "f54822ad8bb3ed9159aff7034c094b03e6986d0a3bf6e6caff37c4ceeb8c913e"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/crashpad/crashpad/snapshot/mac/exception_snapshot_mac.cc",
+        "sha256": "e88b6b4733387cbdfba13d1ef2d6ec0212cb00665ed6e064366e0af53e6ebfe4"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sandbox/mac/seatbelt_exec.cc",
+        "sha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sandbox/mac/sandbox_serializer.cc",
+        "sha256": "8a18d7b993e288b4d994bb54101b04147b0955364076c7e2728489ff54ebe0b5"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sandbox/mac/sandbox_logging.cc",
+        "sha256": "b1d0f09356fdcb92c3f316c607efd591d77f192af7cf3477fcda075380b702c9"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sandbox/mac/sandbox_crash_message.cc",
+        "sha256": "52a6062e7fd4b21bf4f2e49fddcd915267bc40ecd970ce1db9b0cf6c01921cc2"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/child_process_launcher_helper_mac.cc",
+        "sha256": "9be8f233064e315009400054f9a13c7f69823ffb88679d99c6e85e240f707c4e"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/child_process_launcher_helper.cc",
+        "sha256": "bc2e38e6529bf113d2d6b8c49e72ea1bf7dcbec466ae0ecb1385d3436f8d911a"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/child_process_launcher.cc",
+        "sha256": "de4dbbaf4151f49045f2d86aab7a44b68d3318019ae8b5c6f8951195f1df4ee5"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main_posix.cc",
+        "sha256": "69a12e47a301da6846cca662d4642e5c16e0230834a0a58a7994abbc75684bde"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/lifetime/browser_shutdown.cc",
+        "sha256": "798b0669fd8c3bd88686a87309a69fa49e5c90ee64448ac46b47ec0883a4907e"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+        "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+      }
+    ]
+  },
+  "investigationArtifacts": [
+    {
+      "path": "/tmp/aux-measurement-crash-candidates-2026-10-18-v1/evidence.json",
+      "sha256": "1cb7948431765b4042ff79afabb05837c83908fc5b3bff19a86cbe9222dec104"
+    },
+    {
+      "path": "/tmp/aux-measurement-crash-candidates-2026-10-18-v2/evidence.json",
+      "sha256": "6c039f69bb1685b2f14d2f5f26895dbdb7cbc2976edd4d72bdb5d67f9965f5f8"
+    },
+    {
+      "path": "/tmp/aux-measurement-candidate99-reason-read-boundary-2026-10-18.json",
+      "sha256": "4fcd533799a014745823e372b07a75fc31f2b18ca37d7e2ca714ece5e17e1675"
+    },
+    {
+      "path": "/tmp/aux-measurement-crash-candidates-2026-10-18-v2/observations.md",
+      "sha256": "50c47478e9f264e099ad6cf5e81a0dab680753cdbb31b90f30244812a3ef0749"
+    }
+  ],
+  "nextNativeObservations": "Exact current disposable candidate identity, owned process ancestry, startup/Ready/local-render/menu-Quit timeline, stderr static categories and Crashpad report delta. No abort suppression or sandbox-policy change."
+}
