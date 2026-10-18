@@ -26,6 +26,15 @@ two new Selection advisories recorded. The first run’s six outdated parent-fix
 failures remain in the record; the corrected fixture uses the new real action
 command while retaining its ACK/error/retirement/timer coverage.
 
+Two bounded live project-key SDK probes now confirm the Sonnet5.5 model accepts
+all 67 canonical tool schemas and returns the exact synthetic marker without
+calling tools. Each reports 49,780 input and 15 output tokens; cache usage is
+explicitly 0 then 49,776. The warm response reports actual cost $0.0051356; the
+first filtered record leaves cost unknown. This used the project development key,
+not a Profile or native chat, and does not count toward the manual20-task smoke.
+[Live schema evidence](evidence/aside-live-tool-schema-2026-10-18.json) pins source,
+rebuilt dist, dispatched schema hashes and the original filtered-cost limitation.
+
 Local commits7806e41fc,07199225f and34117c740 contain the shared reference UI
 foundation; long-conversation compaction and queue ordering; Memory documents,
 Dream/diffs/revert and retrieval; richer channels/routines; isolated PDF/audio

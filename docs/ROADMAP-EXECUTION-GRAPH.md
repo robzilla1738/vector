@@ -190,6 +190,14 @@ passes with 570 unchanged advisories and two new Selection advisories. Current
 native appearance, browser/performance and default-route manual acceptance remain
 separate; no outcome node is marked complete by source tests.
 
+Live project-key SDK probes now accept all 67 canonical tool schemas on the
+Sonnet5.5 model using a project key, with exact synthetic output and no tool
+execution. Native account/provider filters were not loaded. Actual cache counts
+0 and 49,776 remain distinct, and the warm actual cost is
+$0.0051356. This independently verifies schema acceptance/cache fields, not
+native publication/approvals or the required manual20-task smoke; see
+[the live record](evidence/aside-live-tool-schema-2026-10-18.json).
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

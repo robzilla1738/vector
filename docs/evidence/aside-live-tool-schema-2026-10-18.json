@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "sourceCommit": "264205119fa32b5ea9d51c76a8a8cfbee702d5a4",
+  "scope": "Two bounded live synthetic schema/cache requests through actual rebuilt GatewayModelClient; independent of native task smoke. No product code changed.",
+  "authorization": "Workspace instructions explicitly permit real providers with configured keys; existing ignored project .env reused without printing secrets. No owner Profile or native process accessed.",
+  "provider": {
+    "model": "anthropic/claude-sonnet-5.5",
+    "reasoning": "medium",
+    "catalog": {
+      "path": "/tmp/aux-live-schema-catalog-2026-10-18.json",
+      "sha256": "a8870214bc9d9ed713f97ecd8049fb81418f7a19b0242f15835d12f7b15d53f0"
+    },
+    "liveCatalogModels": 476,
+    "declaredModelPresent": true,
+    "catalogURL": "https://ai-gateway.vercel.sh/v1/models"
+  },
+  "schemas": {
+    "count": 67,
+    "bytes": 103522,
+    "sha256": "eadf2dd40395b92fee10b519749445c566e643ec6c6841f5fb61de22116b2724",
+    "mode": "references"
+  },
+  "requests": [
+    {
+      "scope": "Single synthetic Gateway SDK schema-acceptance probe; no Profile/GUI/actions/tool execution; not native manual task smoke",
+      "modelId": "anthropic/claude-sonnet-5.5",
+      "reasoning": "medium",
+      "clientMaxAttempts": 1,
+      "maxOutputTokens": 256,
+      "inferenceRequests": 1,
+      "otherGatewayRequests": 0,
+      "schemas": [
+        {
+          "count": 67,
+          "bytes": 103522,
+          "sha256": "eadf2dd40395b92fee10b519749445c566e643ec6c6841f5fb61de22116b2724",
+          "objectRootsOnly": true
+        }
+      ],
+      "startedAt": "2026-10-18T11:06:22.617Z",
+      "catalogSha256": "a8870214bc9d9ed713f97ecd8049fb81418f7a19b0242f15835d12f7b15d53f0",
+      "prepared": {
+        "count": 67,
+        "bytes": 103522,
+        "sha256": "eadf2dd40395b92fee10b519749445c566e643ec6c6841f5fb61de22116b2724",
+        "mode": "references"
+      },
+      "outcome": "response_received",
+      "markerMatched": true,
+      "responseText": "AUX_SCHEMA_OK",
+      "toolCallsReturned": 0,
+      "toolsExecuted": 0,
+      "finishReason": "stop",
+      "resolvedModelId": "anthropic/claude-sonnet-5.5",
+      "durationMs": 2404,
+      "inputTokens": 49780,
+      "outputTokens": 15,
+      "cachedInputTokens": 0,
+      "providerCostUsd": null,
+      "retriesRecorded": 0,
+      "exactPreparedSchemasDispatched": true,
+      "suppressedSdkDiagnostics": 0,
+      "finishedAt": "2026-10-18T11:06:25.385Z"
+    },
+    {
+      "scope": "One additional identical synthetic Gateway SDK warm-cache probe; no Profile/GUI/actions/tool execution; not native manual task smoke",
+      "modelId": "anthropic/claude-sonnet-5.5",
+      "reasoning": "medium",
+      "clientMaxAttempts": 1,
+      "maxOutputTokens": 256,
+      "inferenceRequests": 1,
+      "otherGatewayRequests": 0,
+      "schemas": [
+        {
+          "count": 67,
+          "bytes": 103522,
+          "sha256": "eadf2dd40395b92fee10b519749445c566e643ec6c6841f5fb61de22116b2724",
+          "payloadSha256": "1c353fb2226435546153ba03c71bd4ede691fa4f8526150a9d74991d03d33bfc",
+          "objectRootsOnly": true
+        }
+      ],
+      "startedAt": "2026-10-18T11:06:47.544Z",
+      "catalogSha256": "a8870214bc9d9ed713f97ecd8049fb81418f7a19b0242f15835d12f7b15d53f0",
+      "prepared": {
+        "count": 67,
+        "bytes": 103522,
+        "sha256": "eadf2dd40395b92fee10b519749445c566e643ec6c6841f5fb61de22116b2724",
+        "mode": "references"
+      },
+      "outcome": "response_received",
+      "markerMatched": true,
+      "responseText": "AUX_SCHEMA_OK",
+      "toolCallsReturned": 0,
+      "toolsExecuted": 0,
+      "finishReason": "stop",
+      "resolvedModelId": "anthropic/claude-sonnet-5.5",
+      "durationMs": 1547,
+      "inputTokens": 49780,
+      "outputTokens": 15,
+      "cachedInputTokens": 49776,
+      "providerCostUsd": 0.0051356,
+      "costEstimateUsd": null,
+      "providerCostFieldType": "string",
+      "retriesRecorded": 0,
+      "exactPreparedSchemasDispatched": true,
+      "suppressedSdkDiagnostics": 0,
+      "finishedAt": "2026-10-18T11:06:49.145Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/aux-live-schema-probe-2026-10-18.mjs",
+      "sha256": "f5b3d67c81cc295e07137196d757afe53e368779eae81346e6afc0cf453453f3"
+    },
+    {
+      "path": "/tmp/aux-live-schema-probe-2026-10-18.json",
+      "sha256": "5bce01332a4950a58e06c1057d57defdf0d9305e27f33e7256bd4c551afa0a0d"
+    },
+    {
+      "path": "/tmp/aux-live-schema-probe-2026-10-18.log",
+      "sha256": "5bce01332a4950a58e06c1057d57defdf0d9305e27f33e7256bd4c551afa0a0d"
+    },
+    {
+      "path": "/tmp/aux-live-schema-warm-probe-2026-10-18.mjs",
+      "sha256": "75df406f1823cf81fe59e5be39979714025eb7af9ef60dfee3062a1d5be117d2"
+    },
+    {
+      "path": "/tmp/aux-live-schema-warm-probe-2026-10-18.json",
+      "sha256": "a9660613b809d85232c2c981c4bd61b528af65f6b75174a07e23361d5d9abe10"
+    },
+    {
+      "path": "/tmp/aux-live-schema-warm-probe-2026-10-18.log",
+      "sha256": "a9660613b809d85232c2c981c4bd61b528af65f6b75174a07e23361d5d9abe10"
+    }
+  ],
+  "sourceAndDistHashes": {
+    "apps/runtime/src/agent/gateway-client.ts": "8596a1b86d9ca0a3ec239c54fc2782cf9e0688f879e2f5335313ecf5db499620",
+    "apps/runtime/src/agent/loop/tools.ts": "76368710c56b8a31f62633eb36a5692c4009eefc1765d3489090f8d1e9910f80",
+    "apps/runtime/src/agent/loop/loop.ts": "204fac36a35e1e36430013e4d1452a621cffa04c542eaf6db9b21a216d376b8a",
+    "apps/runtime/src/agent/tool-input-schema.ts": "49503d47a83d2bba29d8018a30020534d979511a9933cedf0c2615d3f6425934",
+    "apps/runtime/src/agent/model-client.ts": "c1655fc64c7ad607e9c0591cd32541b430086487546d5e9cc668622b92b82041",
+    "apps/runtime/dist/agent/gateway-client.js": "d072013b6a8e496b5c4d0b42020d44ce7b01c03b75d47e470b10dd88bdb0b52d",
+    "apps/runtime/dist/agent/loop/tools.js": "38d1df47d06fcaf575c519764646a006b2d29dcd9d5d70113aa77a41cd73dee0",
+    "apps/runtime/dist/agent/loop/loop.js": "87fb2b29d40bfafa49d296a804500e5d995cde6a13b39280da2946c49e1e0c13",
+    "apps/runtime/dist/agent/tool-input-schema.js": "ef681691004457fe0404a4014bee7d60307e2264b616a9a39e47d3f38eba698d",
+    "apps/runtime/dist/agent/model-client.js": "5b797b4706874c833edc0ae0c75b485dfef6473101b2e1f05386426c16767dbd"
+  },
+  "interpretation": [
+    "Both actual inference dispatches carry all67 canonical tool schemas with exact103,522-byte references-mode projection and identical SHA256; every root is object with no top-level anyOf/oneOf/allOf. Both receive exact marker with0tool calls/execution.",
+    "Actual returned usage preserves explicit0cache on first request and49,776cached tokens on matching follow-up; each reports49,780input/15output tokens. This exercises actual Gateway SDK/client accounting, not invoice/event/benchmark integration.",
+    "Second response cost is an actual string value converted by canonical modelCallCost:0.0051356USD, not an estimate. First filtered probe accepted numeric costs only; it did not retain a possible string cost, so first cost remains unknown. No extra request was made solely to recover it.",
+    "One client inference HTTP call per probe, maxAttempts1/maxRetries0,45s signal and256maximum output. No request/body/headers/keys/personal text committed. No fallback model or route settings changed."
+  ],
+  "sdk": {
+    "installed": "7.0.93",
+    "latestObserved": "7.0.143",
+    "changed": false,
+    "bundledDocsUsed": "node_modules/ai/docs/07-reference/01-ai-sdk-core/02-stream-text.mdx",
+    "officialDocs": "https://vercel.com/docs/ai-gateway/getting-started"
+  },
+  "limits": [
+    "Model ID and effort match the previously observed native default, but this direct project-key client does not load Profile account identity or Settings-level provider ordering/only filters. Exact native route identity and native task admission remain unverified.",
+    "This uses the full canonical manifest with no executors, not a captured native run capability/account/source snapshot. No tool action, Ask approval or third-party message performed.",
+    "Request durations2404/1547ms are individual client observations, not native startup/model latency benchmark or general performance claim.",
+    "No dashboard Logs generation lookup; server-internal provider attempts/cost of first filtered request remain unknown.",
+    "Original native L01 retry, required20-task>=18/20 manual smoke, UI/browser/native performance and original155crash remain open."
+  ],
+  "result": "Live SDK schema and zero/positive cache probe passed; full program remains incomplete."
+}
