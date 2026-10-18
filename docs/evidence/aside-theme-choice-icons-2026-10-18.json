@@ -1,0 +1,67 @@
+{
+  "atUTC": "2026-10-18T22:14:31.904045+00:00",
+  "status": "Source implementation/checks passed; native build and visual/interaction acceptance pending",
+  "base": "85b56a9e6",
+  "reference": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/appearance-BJJFtsKy.js",
+      "sha256": "c435f1c6909fa3c90c96175f6b3eef61692a607d18e64eef25328bd02b5bf224"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/sun-D8BpbEmt.js",
+      "sha256": "8037b26cf98d94127ae17aa6489fc7ea400c0fee9ccc041a07efb9732d08176b"
+    }
+  ],
+  "visualReference": {
+    "path": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/02 Personal settings/024-appearance-theme-dropdown.png",
+    "sha256": "5fd203f4aa6ada9ee858aace60f21a1bbbf98d42dea645bff3f5ef0079488e4f"
+  },
+  "implementation": [
+    "Copy exact monitor, sun and filled moon path bytes from source; no reference JavaScript executed.",
+    "Use existing shared native Select, preserving original options, accessible name, values, typeahead, form semantics and React-owned change callback.",
+    "Decorative 16px masks in selectedcontent and native option rows use existing6px gap and secondary semantic ink. Use data-theme-choice to avoid global theme token selectors.",
+    "CSS specificity exceeds existing selectedcontent block rule; forced colors uses ButtonText. No custom popup or focus stack."
+  ],
+  "assets": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/public/icons/theme-system.svg",
+      "sha256": "08000a8185429a0e9b949535c0bafab0e432e2c6b54458f3347dae80e3081fb8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/public/icons/theme-light.svg",
+      "sha256": "48f0a77a052c9ac141eb6aa4aca3ce29d3ecf15c03bc530e3edfa5c764f4f5f0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/apps/shell/public/icons/theme-dark.svg",
+      "sha256": "af21ed08b075a9726dd395d711f09c5e82d920b7ed6fa43c2f4c9a3075fe0f07"
+    }
+  ],
+  "checks": {
+    "focused": {
+      "tests": 5,
+      "files": 2,
+      "seconds": 4.76,
+      "log": {
+        "path": "/tmp/aux-theme-choice-focused-2026-10-18.log",
+        "sha256": "dc01e780d382229c8da65c493ee33ad75f09c69da46825442f305ef44b718603"
+      }
+    },
+    "integrated": {
+      "tests": 6100,
+      "files": 866,
+      "seconds": 119.81,
+      "exit": 0,
+      "log": {
+        "path": "/tmp/aux-theme-choice-integrated-2026-10-18.log",
+        "sha256": "5e2c91dee7de94fe4f6b48ebf29f520c1472eb38d5ef856dda137dc6d37bac2c"
+      },
+      "nativeCompilerConcurrent": false
+    },
+    "review": "Final selector specificity and data attribute namespace reviewed during check; final native observation still required."
+  },
+  "pending": [
+    "Native selected-label and popup icons, keyboard/typeahead/focus return in both themes.",
+    "Reference selected-item vertical alignment remains unresolved; this slice does not change picker positioning.",
+    "Built app remains334b882ac; these source assets are not in that candidate."
+  ]
+}

@@ -1,0 +1,36 @@
+/* Decorative source-exact glyphs keep native option labels/typeahead intact.
+ * The native selectedcontent clone contains text; its icon follows the saved value. */
+@layer overrides {
+  .settings-theme-select[data-theme-choice="system"],
+  .settings-theme-select option[value="system"] {
+    --theme-choice-icon: url("/icons/theme-system.svg");
+  }
+  .settings-theme-select[data-theme-choice="light"],
+  .settings-theme-select option[value="light"] {
+    --theme-choice-icon: url("/icons/theme-light.svg");
+  }
+  .settings-theme-select[data-theme-choice="dark"],
+  .settings-theme-select option[value="dark"] {
+    --theme-choice-icon: url("/icons/theme-dark.svg");
+  }
+  .ui-select.settings-theme-select:not([multiple]):not([size]) > button > selectedcontent {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1-5);
+  }
+  .settings-theme-select > button > selectedcontent::before,
+  .settings-theme-select option::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    background: var(--ink-2);
+    mask: var(--theme-choice-icon) center / contain no-repeat;
+  }
+  @media (forced-colors: active) {
+    .settings-theme-select > button > selectedcontent::before,
+    .settings-theme-select option::before {
+      background: ButtonText;
+    }
+  }
+}

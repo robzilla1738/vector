@@ -1,4 +1,4 @@
-import { Button, SettingsGroup } from "../../ui";
+import { Button, Select, SettingsGroup } from "../../ui";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
@@ -15,6 +15,7 @@ import { errorMessage } from "../../error-message";
 import { NativeSettingsLink } from "../NativeSettingsLink";
 import { AppearanceChoice } from "./AppearanceChoice";
 import { shellIconSliders } from "../../ui/icons";
+import "./AppearanceTheme.css";
 
 const COMMON_SHORTCUTS = [
   "sidebar",
@@ -173,7 +174,9 @@ export function AppearanceSettings({
     <SettingsSection name="Appearance" className="appearance-preferences" hidden={!active}>
       <div className="settings-card">
         <SettingsField compact label="Theme" description="Choose how Aux looks.">
-          <select
+          <Select
+            className="settings-theme-select"
+            data-theme-choice={theme}
             aria-label="Theme"
             value={theme}
             onChange={(event) => void set({ theme: event.target.value })}
@@ -181,7 +184,7 @@ export function AppearanceSettings({
             <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
-          </select>
+          </Select>
         </SettingsField>
         <SettingsField
           compact

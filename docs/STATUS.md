@@ -8,6 +8,12 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [theme-selector follow-up](evidence/aside-theme-choice-icons-2026-10-18.json)
+adds source-exact System/Light/Dark glyphs using the shared native select and
+original text options. Five affected checks and6,100integrated tests/866files pass
+(119.81s). Native compilation and icon/keyboard observation remain pending;
+selected-row popup positioning is still open. This source postdates the built334 candidate.
+
 The current native candidate is clean product `334b882ac`. Its incremental build
 passes 25 native steps in 8m54.05s; preserved framework/dSYM share UUID
 `4C4C4490-5555-3144-A14B-64A5A937C72D`.
@@ -37,8 +43,8 @@ cloned encrypted storage losing its exact Profile credential owner. The
 initializes standard application accessibility and prepares each final Profile in
 place, without relaxing focus labels, clocks, targets or security. All16 focused
 benchmark tests and the integrated **6,100 tests / 866 files** pass (113.89s), with
-no native compiler concurrent. Updated helper registration and corrected paired
-measurements remain pending. The historical Chromium155 SIGTRAP remains unresolved;
+no native compiler concurrent. The owner approved Touch ID; the exact updated helper was selected in macOS and
+its access is on. Exact live helper trust and corrected paired measurements remain pending. The historical Chromium155 SIGTRAP remains unresolved;
 current non-reproduction does not identify its cause.
 
 The [renderer follow-up](evidence/aside-stage-context-rail-integration-2026-10-18.json)
