@@ -8,62 +8,44 @@ Older entries there are not current operating instructions.
 
 ## Current build ownership
 
-No accepted product preview is running. The last accepted unchanged product
-observations belong to `c366c7dc8` (Chromium154, areas through0057); its disposable
-launcher retired normally. Area0058 compiled in the155baseline and still needs
-changed-flow acceptance. Area0059's compact Quick Ask compiled in the155candidate
-and still needs changed-flow acceptance.
-
-The isolated `aux-readiness-chromium` worktree, branch
-`codex/chromium-155-security`, completed its58-area baseline at `96f772c6d`.
+The current local preview is the isolated155candidate `a22cc01b2`, containing
+main through `d494c0688` (owner documents and final popup/motion overrides).
 Source is `/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`,
-official155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`.
-The first two cold attempts exposed a changed WebSocket storage-access callback
-and the removed password-store result type. Those boundaries were rebased in
-areas0007/0015; their original owners90979/67020 retired normally. Owner85228
-compiled both affected credential objects and completed the remaining build in
-29m28.15s (`/tmp/aux-chromium-155-credential-build.log`). All58areas replay across
-890owned paths with matching bytes/modes (`/tmp/aux-chromium-155-final-replay.log`).
+official155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`, with59areas.
+Its35-step incremental native build passed in8m55.53s
+(`/tmp/aux-155-final-popup-native-build.log`). Runtime Ready took71.23ms.
 
-The155app launched as2370 with disposableProfile`aux-dev-USiBHb`. Its first
-runtime worker timed out awaiting `native.profileStorageFactor`; a subsequent
-worker reachedReady in46.66ms and answered the normal `runtime.describe` API.
-The sanitized receipt is `/tmp/aux-155-baseline-runtime.json`. The1s native sample
-was collected after the initial stall cleared and does not establish its cause.
-No storage-factor timeout workaround was introduced without diagnosis. Original
-launcher85228 then retired app/runtime/Profile/plainlock normally, all verified.
+Original builder15811 and its disposable app18882, debugserver18883 and runtime
+18910 retired through the normal launcher. The observed Profile-removal event
+found all four target processes gone and the lock absent
+(`/tmp/aux-155-debugger-retirement.json`). LLDB now has detach-on-error disabled;
+the earlier orphaned-target behavior did not recur. That Profile was removed.
 
-Current main through6351de349 was merged into the155candidate at `d253a1242`,
-including area0059. Owner3890 completed its40-step incremental build in8m48.63s
-(`/tmp/aux-chromium-155-current-source-build.log`). Disposableapp7136 reachedReady
-in63.75ms and answered461API methods with matching native/runtime commit receipts
-(`/tmp/aux-155-current-runtime.json`). It then exited withSIGTRAP; its log does
-not identify the trapping native frame. This is not accepted startup stability.
+The same compiled native/renderer assets were reopened with the standard launcher
+and ABI-checked runtime staging. Current owner is19445, app19611, disposable
+Profile`aux-dev-BWXBny`; the app remains under LLDB for crash capture. Runtime Ready
+took82.42ms. The receipt `/tmp/aux-155-popup-preview-runtime.json` verifies matching
+native/runtime commit, a clean runtime tree,462API methods and the new owner-
+document method. All273product host methods are advertised; the274thgenerated
+method is appearanceSnapshot, an explicitly conditional test/observation hook.
+Compiled ABI remains274methods/30events/hash4afd8361e388.
 
-The same candidate ran under LLDB as9344/Profile`aux-dev-OH9Hh6`, owner9023,
-and reachedReady in82.58ms. The crash did not recur during that observation.
-Retiring LLDB exposed its default detach-on-error behavior: app9344 survived in a
-separate process group after launcher9023 exited. That exact disposable target
-was terminated and verified gone. The launcher now sets target.detach-on-error
-false so debugserver kills its original target on disconnect; native retirement
-verification of this setting remains pending. No active target/lock from this
-probe remains. Diagnostic log: `/tmp/aux-155-debug-current.log`.
+The earlier candidate app7136 exited withSIGTRAP after startup; its exact native
+frame is unresolved. The trap did not recur during these startup/retirement
+observations. The first155storage-factor timeout also has no established cause;
+subsequent fresh Profiles started without it and no timeout workaround was added.
+This is build/startup/retirement evidence, not migration or full-browser acceptance.
+Root main remains pinned154; stable product/stock checkouts are unchanged.
 
-Integrate the completed owner-document and popup/motion source into the155
-candidate, then build under one owner. Capture the actual stack ifSIGTRAP recurs
-and inspect changed surfaces when native UI control is available. Root main stays
-pinned154 until migration acceptance; stable product/stock checkouts remain
-untouched. No storage-factor workaround was added. Earlier logs remain in place.
+Native UI control is unavailable: Sky reports a native-pipe startup error, and
+CUA initialization references a removed browser plugin26.1013.31256 while the
+installed bundle is26.1013.40934. Resetting the kernel did not restore control.
+No current live Aside/Aux visual comparison is claimed. Never reuse retired app
+bindings: verify the owned app PID and disposable Profile before any new binding.
 
-Local fixture96158 serves address POST→303,302navigation and a synthetic test-card
-form at `http://127.0.0.1:4826`; no form fields are logged. Its prior owner87871
-retired normally. This setup is not native acceptance.
-
-Native UI control currently reports `Sky Computer Use native pipe startup failed`,
-including after resetting its session. No current live Aside or Aux visual check
-is claimed. CUA bindings from retired previews must not be reused: a stale binding
-can launch the default Profile. Check the owned app PID and disposable Profile
-argument before creating a new binding. Only disposable Profiles are authorized.
+Local fixture96158 serves POST→303,302navigation and a synthetic test-card form
+at `http://127.0.0.1:4826`; no form fields are logged. No payment was made and no
+real messenger message sent. Earlier ownership/probe notes are historical.
 
 ## Shared popup glass and fluid motion — integrated source
 

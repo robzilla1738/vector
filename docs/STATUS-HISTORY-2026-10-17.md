@@ -3101,3 +3101,65 @@ the native reset request. Typecheck/lint pass;4,584/4,585 tests pass across734 f
 (only coder-worktrees60s timeout). CDP reconnect passed in this run. Renderer2.01s.
 This renderer change also postdates active nativea8e2a2ea8; native Reset acceptance
 must use a build containing it. Native74686 remains alive generating debug symbols.
+
+
+## Retired ownership notes before the final popup preview
+
+## Current build ownership
+
+No accepted product preview is running. The last accepted unchanged product
+observations belong to `c366c7dc8` (Chromium154, areas through0057); its disposable
+launcher retired normally. Area0058 compiled in the155baseline and still needs
+changed-flow acceptance. Area0059's compact Quick Ask compiled in the155candidate
+and still needs changed-flow acceptance.
+
+The isolated `aux-readiness-chromium` worktree, branch
+`codex/chromium-155-security`, completed its58-area baseline at `96f772c6d`.
+Source is `/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`,
+official155.0.8059.85 / `0e66b94549a8bd85f03fbdf189b752d6e7b63c32`.
+The first two cold attempts exposed a changed WebSocket storage-access callback
+and the removed password-store result type. Those boundaries were rebased in
+areas0007/0015; their original owners90979/67020 retired normally. Owner85228
+compiled both affected credential objects and completed the remaining build in
+29m28.15s (`/tmp/aux-chromium-155-credential-build.log`). All58areas replay across
+890owned paths with matching bytes/modes (`/tmp/aux-chromium-155-final-replay.log`).
+
+The155app launched as2370 with disposableProfile`aux-dev-USiBHb`. Its first
+runtime worker timed out awaiting `native.profileStorageFactor`; a subsequent
+worker reachedReady in46.66ms and answered the normal `runtime.describe` API.
+The sanitized receipt is `/tmp/aux-155-baseline-runtime.json`. The1s native sample
+was collected after the initial stall cleared and does not establish its cause.
+No storage-factor timeout workaround was introduced without diagnosis. Original
+launcher85228 then retired app/runtime/Profile/plainlock normally, all verified.
+
+Current main through6351de349 was merged into the155candidate at `d253a1242`,
+including area0059. Owner3890 completed its40-step incremental build in8m48.63s
+(`/tmp/aux-chromium-155-current-source-build.log`). Disposableapp7136 reachedReady
+in63.75ms and answered461API methods with matching native/runtime commit receipts
+(`/tmp/aux-155-current-runtime.json`). It then exited withSIGTRAP; its log does
+not identify the trapping native frame. This is not accepted startup stability.
+
+The same candidate ran under LLDB as9344/Profile`aux-dev-OH9Hh6`, owner9023,
+and reachedReady in82.58ms. The crash did not recur during that observation.
+Retiring LLDB exposed its default detach-on-error behavior: app9344 survived in a
+separate process group after launcher9023 exited. That exact disposable target
+was terminated and verified gone. The launcher now sets target.detach-on-error
+false so debugserver kills its original target on disconnect; native retirement
+verification of this setting remains pending. No active target/lock from this
+probe remains. Diagnostic log: `/tmp/aux-155-debug-current.log`.
+
+Integrate the completed owner-document and popup/motion source into the155
+candidate, then build under one owner. Capture the actual stack ifSIGTRAP recurs
+and inspect changed surfaces when native UI control is available. Root main stays
+pinned154 until migration acceptance; stable product/stock checkouts remain
+untouched. No storage-factor workaround was added. Earlier logs remain in place.
+
+Local fixture96158 serves address POST→303,302navigation and a synthetic test-card
+form at `http://127.0.0.1:4826`; no form fields are logged. Its prior owner87871
+retired normally. This setup is not native acceptance.
+
+Native UI control currently reports `Sky Computer Use native pipe startup failed`,
+including after resetting its session. No current live Aside or Aux visual check
+is claimed. CUA bindings from retired previews must not be reused: a stale binding
+can launch the default Profile. Check the owned app PID and disposable Profile
+argument before creating a new binding. Only disposable Profiles are authorized.

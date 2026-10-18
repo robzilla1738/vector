@@ -19,8 +19,10 @@ on c366c7dc8. Redirect area0058 and compact-window area0059 await native accepta
 the isolated155candidate compiled with59areas and booted, then exited withSIGTRAP.
 An LLDB observation did not reproduce that trap but exposed debugger detachment
 on launcher retirement; the original target was explicitly retired and LLDB's
-ownership setting corrected. Latest-source integration, native retirement
-verification and crash diagnosis remain open. STATUS is the current build-ownership
+ownership setting corrected. The latest owner-document/popup source compiled at a22cc01b2; fresh startup and
+original debugger-target/runtime/Profile/lock retirement were observed. Current
+preview belongs to19445 with disposableProfileaux-dev-BWXBny. Native visual and
+changed-flow acceptance, and the earlier crash diagnosis, remain open. STATUS is the current build-ownership
 record; older preview entries below are historical.
 
 ```mermaid
@@ -36,7 +38,7 @@ flowchart LR
 | Batch | State | Outcome and acceptance |
 | --- | --- | --- |
 | R1 | active | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations. |
-| R2 | active | Official155.0.8059.85 with59areas compiled and launched, then trapped. DiagnoseSIGTRAP, verify debugger-target retirement, integrate latest main and accept fresh startup/changed flows before moving root main's pin. Preserve stable product/stock checkouts. |
+| R2 | active | Official155.0.8059.85 with59areas compiled and launched, then trapped. Latest main is compiled at a22cc01b2; fresh startup and debugger-target retirement pass. Diagnose the earlierSIGTRAP and accept native changed flows before moving root main's pin. Preserve stable product/stock checkouts. |
 | R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
 | R4 | active | Shared tool schemas halve the known SDK payload bytes; actual provider token/cache/latency and valid paired native startup/interaction/memory measurements against matching stock remain. |
 | R5 | active | Named custom providers have integrated source and protocol/private/UI checks; real inference and combined picker remain. Accept live channel transport/pairing/reply/native flows; implement personal-assistant capabilities; supported subscription setup; Memory root/automatic document authority, real-note extraction and file-diff/Dream flows (approved-note restore review is integrated); routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. |
