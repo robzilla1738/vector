@@ -66,6 +66,26 @@ export const MemoryPipelineRevisionSchema = z.object({
   summary: z.string().max(2000),
   sourceRunIds: z.array(z.string().min(1)).max(200),
 });
+export const MemoryRevisionPreviewSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    revisionId: z.string().uuid(),
+    expectedGeneration: z.string().min(1),
+    changes: z
+      .array(
+        z
+          .object({
+            claimId: z.string().uuid(),
+            path: z.string().regex(/^episodic\/\d{4}-\d{2}-\d{2}\.md$/),
+            before: MemoryClaimSchema.nullable(),
+            after: MemoryClaimSchema.nullable(),
+          })
+          .strict(),
+      )
+      .max(400),
+  })
+  .strict();
+export type MemoryRevisionPreview = z.infer<typeof MemoryRevisionPreviewSchema>;
 export const MemoryExtractionSchema = z.object({
   activityId: z.string().uuid(),
   sourceRunId: z.string().min(1),

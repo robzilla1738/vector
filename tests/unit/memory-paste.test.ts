@@ -194,7 +194,11 @@ it("Forget scrubs pending, accepted, historical copies and old keys while a retr
     restorable: 0,
     removed: 2,
   });
-  await f.pipeline.revert(f.workspaceId, history[0]!.revisionId);
+  await f.pipeline.revert(
+    f.workspaceId,
+    history[0]!.revisionId,
+    (await f.pipeline.previewRevision(f.workspaceId, history[0]!.revisionId)).expectedGeneration,
+  );
   expect((await f.pipeline.overview(f.workspaceId)).summary).toBe("");
   expect(await f.restart().commitPaste(selection(p))).toMatchObject({ removed: 2 });
   await expect(f.pipeline.commitPaste(selection(stale))).rejects.toThrow(/expired|restarted/);

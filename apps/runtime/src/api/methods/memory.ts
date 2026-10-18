@@ -47,10 +47,12 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   if (method === "memory.pipeline.inbox") return pipeline.inbox(params.workspaceId);
   if (method === "memory.pipeline.claims") return pipeline.claims(params.workspaceId);
   if (method === "memory.pipeline.history") return pipeline.history(params.workspaceId);
+  if (method === "memory.pipeline.previewRevision")
+    return pipeline.previewRevision(params.workspaceId, params.revisionId);
   if (method === "memory.pipeline.activity") return pipeline.activity(params.workspaceId);
   if (method === "memory.pipeline.reindex") return changed(await pipeline.reindex(params.workspaceId));
   if (method === "memory.pipeline.revert")
-    return changed(await pipeline.revert(params.workspaceId, params.revisionId));
+    return changed(await pipeline.revert(params.workspaceId, params.revisionId, params.expectedGeneration));
   if (method === "memory.pipeline.review")
     return changed(await pipeline.review(params.workspaceId, params.claimId, params.decision));
   if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
@@ -122,6 +124,7 @@ export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
   "memory.pipeline.reindex": h_memory_pipeline_policy,
   "memory.pipeline.documents": h_memory_pipeline_policy,
   "memory.pipeline.edit": h_memory_pipeline_policy,
+  "memory.pipeline.previewRevision": h_memory_pipeline_policy,
   "memory.pipeline.revert": h_memory_pipeline_policy,
   "memory.pipeline.review": h_memory_pipeline_policy,
   "memory.pipeline.overview": h_memory_pipeline_policy,

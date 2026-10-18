@@ -142,3 +142,58 @@
     line-height: 1.6;
   }
 }
+
+@layer components {
+  .memory-restore-dialog {
+    width: min(800px, calc(100vw - var(--space-8)));
+  }
+  .memory-restore-dialog header p {
+    color: var(--ink-2);
+    margin-top: var(--space-2);
+  }
+  .memory-restore-changes {
+    overflow-y: auto;
+    min-height: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+  .memory-restore-change {
+    padding: var(--space-4);
+    background: var(--settings-control-fill);
+    border-radius: var(--r-lg);
+  }
+  .memory-restore-change h4 {
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+  .memory-restore-change > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+  }
+  .memory-restore-change h5 {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .memory-restore-change details {
+    margin-top: var(--space-3);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .memory-restore-change details p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .memory-restore-dialog footer {
+    display: flex;
+    justify-content: end;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  @media (max-width: 600px) {
+    .memory-restore-change > div {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}

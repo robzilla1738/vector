@@ -89,7 +89,11 @@ it("consolidates the real protected pipeline under a lease, rebuilds recall, and
     expect((await pipeline.overview(workspace.workspaceId)).summary).toBe("");
     expect((await pipeline.history(workspace.workspaceId)).length).toBe(before + 1);
     expect(await pipeline.reindex(workspace.workspaceId)).toEqual({ indexed: 2 });
-    await pipeline.revert(workspace.workspaceId, consolidated.revisionId);
+    await pipeline.revert(
+      workspace.workspaceId,
+      consolidated.revisionId,
+      (await pipeline.previewRevision(workspace.workspaceId, consolidated.revisionId)).expectedGeneration,
+    );
     expect(await pipeline.search(workspace.workspaceId, "fixture")).toHaveLength(2);
   } finally {
     db.close();

@@ -272,6 +272,7 @@ import {
   MemoryPipelineInboxSchema,
   MemoryPipelineSourceSchema,
   MemoryPipelineRevisionSchema,
+  MemoryRevisionPreviewSchema,
   MemoryExtractionViewSchema,
 } from "./memory-pipeline.js";
 import {
@@ -1534,7 +1535,10 @@ export const MethodSchemas = {
   "memory.pipeline.reindex": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.documents": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.edit": MemoryDocumentEditParams,
-  "memory.pipeline.revert": z.object({ workspaceId: id, revisionId: z.string().uuid() }).strict(),
+  "memory.pipeline.previewRevision": z.object({ workspaceId: id, revisionId: z.string().uuid() }).strict(),
+  "memory.pipeline.revert": z
+    .object({ workspaceId: id, revisionId: z.string().uuid(), expectedGeneration: id })
+    .strict(),
   "memory.pipeline.review": z
     .object({ workspaceId: id, claimId: z.string().uuid(), decision: z.enum(["accept", "discard"]) })
     .strict(),
@@ -2334,6 +2338,7 @@ const AutomationResultSchemas = {
   "memory.pipeline.inbox": MemoryPipelineInboxSchema,
   "memory.pipeline.claims": MemoryPipelineInboxSchema,
   "memory.pipeline.history": z.array(MemoryPipelineRevisionSchema),
+  "memory.pipeline.previewRevision": MemoryRevisionPreviewSchema,
   "memory.pipeline.activity": z.array(MemoryExtractionViewSchema).max(200),
   "memory.pipeline.reindex": z.object({ indexed: z.number().int().nonnegative() }),
   "memory.pipeline.documents": MemoryClaimDocumentsSchema,

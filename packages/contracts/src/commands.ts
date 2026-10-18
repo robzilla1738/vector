@@ -731,6 +731,11 @@ export const COMMANDS = [
     ["close", "-detail", "Close remembered", ""],
     ["toggle", "-actions", "Toggle remembered", " actions"],
   ]),
+  ...G(browserContextControl, "-memory-revision-", [
+    ["confirm", "restore", "Restore reviewed Memory notes"],
+    ["cancel", "restore", "Cancel Memory restoration"],
+    ["refresh", "preview", "Refresh Memory restoration preview"],
+  ]),
   ...G(browserContextControl, "-space-memory", [
     ["toggle", "-pipeline", "Toggle Space memory notes"],
     ["toggle", "-import", "Toggle pasted notes import"],

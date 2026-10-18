@@ -116,6 +116,13 @@ function response(method: string, params: { workspaceId: string; enabled?: boole
   if (method === "memory.pipeline.inbox") return [note];
   if (method === "memory.pipeline.claims") return [approved];
   if (method === "memory.pipeline.history") return [revision];
+  if (method === "memory.pipeline.previewRevision")
+    return {
+      workspaceId: params.workspaceId,
+      revisionId: revision.revisionId,
+      expectedGeneration: "reviewed-generation",
+      changes: [{ claimId: approved.claimId, path: "episodic/2026-10-17.md", before: approved, after: null }],
+    };
   if (method === "memory.pipeline.activity") return [];
   if (method === "memory.pipeline.setPolicy") {
     enabled = !!params.enabled;
@@ -217,9 +224,16 @@ it("actual review/revert/import/history controls retain original claim and revis
       .click(),
   );
   await click("restore-space-memory-revision");
+  expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.previewRevision", {
+    workspaceId: "space",
+    revisionId: revision.revisionId,
+  });
+  expect(mocks.call.mock.calls.filter(([method]) => method === "memory.pipeline.revert")).toHaveLength(0);
+  await click("confirm-memory-revision-restore");
   expect(mocks.call).toHaveBeenCalledWith("memory.pipeline.revert", {
     workspaceId: "space",
     revisionId: revision.revisionId,
+    expectedGeneration: "reviewed-generation",
   });
   await click("toggle-space-memory-import");
   expect(control("toggle-space-memory-import").getAttribute("aria-expanded")).toBe("true");

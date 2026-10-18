@@ -14,6 +14,11 @@ async function editClaim(
   return (await pipeline.editDocuments({ ...owner, edits: [{ claimId, text }] }))[0]!;
 }
 
+async function restoreRevision(pipeline: MemoryPipeline, workspaceId: string, revisionId: string) {
+  const preview = await pipeline.previewRevision(workspaceId, revisionId);
+  return pipeline.revert(workspaceId, revisionId, preview.expectedGeneration);
+}
+
 function fixture(extractor = fixtureMemoryExtractor) {
   const directory = mkdtempSync(join(tmpdir(), "aux-memory-pipeline-"));
   const db = openDb(":memory:");
@@ -286,15 +291,15 @@ it("reverts accepted memory and scrubs forgotten claims from every recoverable r
     }
     const history = await f.pipeline.history(f.workspace.workspaceId);
     expect(history.map((item) => item.claimCount)).toEqual([2, 1]);
-    await f.pipeline.revert(f.workspace.workspaceId, history[1]!.revisionId);
+    await restoreRevision(f.pipeline, f.workspace.workspaceId, history[1]!.revisionId);
     expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toEqual([]);
-    await f.pipeline.revert(f.workspace.workspaceId, history[0]!.revisionId);
+    await restoreRevision(f.pipeline, f.workspace.workspaceId, history[0]!.revisionId);
     expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toHaveLength(1);
     await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-one" });
     const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
       expect(revision.summary).not.toContain("amber");
-      await restarted.revert(f.workspace.workspaceId, revision.revisionId);
+      await restoreRevision(restarted, f.workspace.workspaceId, revision.revisionId);
       expect(await restarted.search(f.workspace.workspaceId, "amber")).toEqual([]);
     }
   } finally {
@@ -318,7 +323,7 @@ it("forgets a claim that exists only in an older revision and preserves the pre-
     const earlier = (await f.pipeline.history(f.workspace.workspaceId)).find(
       (revision) => revision.claimCount === 1,
     )!;
-    await f.pipeline.revert(f.workspace.workspaceId, earlier.revisionId);
+    await restoreRevision(f.pipeline, f.workspace.workspaceId, earlier.revisionId);
     expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toEqual([]);
     expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.summary).toContain("violet");
     expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.sourceRunIds).toContain("run-two");
@@ -329,7 +334,7 @@ it("forgets a claim that exists only in an older revision and preserves the pre-
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
       expect(revision.summary).not.toContain("violet");
       expect(revision.sourceRunIds).not.toContain("run-two");
-      await restarted.revert(f.workspace.workspaceId, revision.revisionId);
+      await restoreRevision(restarted, f.workspace.workspaceId, revision.revisionId);
       expect(await restarted.search(f.workspace.workspaceId, "violet")).toEqual([]);
     }
   } finally {
@@ -1355,6 +1360,62 @@ it("keeps Never forget notes through consolidation and withholds expired recall 
     expect((await f.pipeline.overview(workspaceId)).summary).toBe("");
   } finally {
     time.mockRestore();
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("previews actual note changes and refuses stale or paused restoration publication", async () => {
+  const f = fixture();
+  const workspaceId = f.workspace.workspaceId;
+  try {
+    f.save("restore-preview-source", "The synthetic cedar workshop meets on Tuesday afternoons.");
+    await f.pipeline.extractRun(workspaceId, "restore-preview-source");
+    const note = (await f.pipeline.inbox(workspaceId))[0]!;
+    await f.pipeline.review(workspaceId, note.claimId, "accept");
+    const revision = (await f.pipeline.history(workspaceId))[0]!;
+    await editClaim(f.pipeline, {
+      workspaceId,
+      expectedGeneration: (await f.pipeline.documents(workspaceId)).generation,
+      claimId: note.claimId,
+      text: "The owner-edited synthetic workshop now meets on Wednesday afternoons.",
+    });
+    const preview = await f.pipeline.previewRevision(workspaceId, revision.revisionId);
+    expect(preview.changes).toMatchObject([
+      { claimId: note.claimId, before: { ownerEdit: { revision: 1 } }, after: { text: note.text } },
+    ]);
+    expect(preview.changes[0]?.path).toMatch(/^episodic\/\d{4}-\d{2}-\d{2}\.md$/);
+    await editClaim(f.pipeline, {
+      workspaceId,
+      expectedGeneration: preview.expectedGeneration,
+      claimId: note.claimId,
+      text: "The newer synthetic workshop note must survive a stale restoration.",
+    });
+    await expect(
+      f.pipeline.revert(workspaceId, revision.revisionId, preview.expectedGeneration),
+    ).rejects.toThrow("Memory changed");
+    expect((await f.pipeline.claims(workspaceId))[0]?.ownerEdit?.revision).toBe(2);
+    const refreshed = await f.pipeline.previewRevision(workspaceId, revision.revisionId);
+    const store = f.native.storeSecret.bind(f.native);
+    let paused = false;
+    f.native.storeSecret = async (name, value) => {
+      await store(name, value);
+      if (!paused && name.startsWith("mem_") && value) {
+        paused = true;
+        f.pipeline.setPolicy(workspaceId, false);
+      }
+      return { ok: true };
+    };
+    await expect(
+      f.pipeline.revert(workspaceId, revision.revisionId, refreshed.expectedGeneration),
+    ).rejects.toThrow("paused before publication");
+    expect(paused).toBe(true);
+    expect((await f.pipeline.documents(workspaceId)).documents[0]?.claim.ownerEdit?.revision).toBe(2);
+    f.pipeline.setPolicy(workspaceId, true);
+    await f.pipeline.revert(workspaceId, revision.revisionId, refreshed.expectedGeneration);
+    expect((await f.pipeline.claims(workspaceId))[0]?.ownerEdit).toBeUndefined();
+    expect((await f.pipeline.claims(workspaceId))[0]?.text).toBe(note.text);
+  } finally {
     await f.pipeline.close();
     f.close();
   }

@@ -2850,3 +2850,15 @@ its existing process; its wrapper and xterm canvas now share one background.
 Renderer build and changed behavior checks pass; STATUS records the integrated
 suite and isolated recovery of a native-build-contention timeout. This does not
 establish matched native screenshot acceptance.
+
+
+## October17 — reviewed approved-note restoration
+
+History Restore now opens an actual current/target note comparison with daily
+paths and original quotes. Confirmation carries the preview's exact generation;
+changed Memory must be reviewed again. An already-matching revision has no write.
+Pause is checked at encrypted publication. Memory events redact the open review
+and invalidate pending reads, and retired owners cannot reveal late results.
+Shared dialog/button/material/type tokens provide the surface. Root-document and
+Dream file receipts remain separate scope. Dist,94focused tests, renderer build
+and integrated verification are recorded in STATUS; native comparison is open.

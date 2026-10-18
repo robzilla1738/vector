@@ -110,6 +110,30 @@ existing lifecycle test now also proves appearance changes preserve its original
 process. No unchanged full suite was repeated. Native visual acceptance remains
 open while computer control is unavailable.
 
+## Reviewed, conflict-safe approved-note restoration
+
+Memory history now reads a concrete restoration preview on demand. It shows each
+approved note's full current/restored text, daily document path, addition/change/
+removal and original source quote before an explicit Restore action. An unchanged
+revision offers no write. A refreshed preview never silently authorizes different
+changes. Root MEMORY.md and automatic document organization remain separate scope.
+
+Restore requires the exact previewed generation, refusing later edits, Forget or
+other Memory updates. It preserves the former current state in encrypted history.
+Lease and pause checks run again at actual publication after native key writes.
+The replaced unchecked restore signature is removed. Preview/restore use normal
+Aux WebUI authorization; external/code-mode management remains denied. Retired
+window/Space owners cannot publish previews; Memory-update events immediately
+clear reviewed content and invalidate admitted reads, including after Forget.
+
+Dist rebuild,94focused tests/6files and renderer build pass. Integrated typecheck/
+lint passed;4,775/4,776tests passed in89.85s
+(`/tmp/aux-memory-restore-integration-check.log`). One older workspace fixture
+expected immediate restoration; it now verifies preview/no-op behavior and passed
+alone in67ms (`/tmp/aux-memory-restore-workspace-retry.log`). No unchanged full
+suite was repeated. Host ABI remains274methods/30events,`4afd8361e388`; runtime
+authorization/feature maps are regenerated. Native review remains pending.
+
 ## Model-based Memory extraction — integrated source
 
 The production sentence splitter is replaced by a budget-admitted structured

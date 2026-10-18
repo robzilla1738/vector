@@ -1,4 +1,4 @@
-import { memoryClaimText, MemoryDocumentEditParams } from "@aux/contracts";
+import { memoryClaimText, MemoryDocumentEditParams, type MemoryRevisionPreview } from "@aux/contracts";
 import {
   buildMemorySearchIndex,
   validMemorySearchIndex,
@@ -1148,15 +1148,48 @@ export class MemoryPipeline {
     });
   }
 
-  async revert(workspaceId: string, revisionId: string) {
-    return this.own(() => this.revertOwned(workspaceId, revisionId));
+  async previewRevision(workspaceId: string, revisionId: string): Promise<MemoryRevisionPreview> {
+    return this.own(async () => {
+      this.requireSpace(workspaceId);
+      if (!this.policy(workspaceId).enabled)
+        throw new AuxError("permission_denied", "Enable Space memory first.");
+      const { claims, history, prior } = await this.readClaims(workspaceId);
+      const selected = history.find((revision) => revision.revisionId === revisionId);
+      if (!selected || !prior)
+        throw new AuxError("not_found", "Memory revision is unavailable or was forgotten.");
+      const before = new Map(claims.map((claim) => [claim.claimId, claim]));
+      const after = new Map(selected.claims.map((claim) => [claim.claimId, claim]));
+      const changes: MemoryRevisionPreview["changes"] = [];
+      for (const claimId of new Set([...before.keys(), ...after.keys()])) {
+        const original = before.get(claimId) ?? null;
+        const restored = after.get(claimId) ?? null;
+        if (JSON.stringify(original) === JSON.stringify(restored)) continue;
+        const claim = restored ?? original!;
+        changes.push({
+          claimId,
+          path: `episodic/${new Date(claim.capturedAt).toISOString().slice(0, 10)}.md`,
+          before: original,
+          after: restored,
+        });
+      }
+      return { workspaceId, revisionId, expectedGeneration: prior.generation, changes };
+    });
   }
 
-  private async revertOwned(workspaceId: string, revisionId: string) {
+  async revert(workspaceId: string, revisionId: string, expectedGeneration: string) {
+    return this.own(() => this.revertOwned(workspaceId, revisionId, expectedGeneration));
+  }
+
+  private async revertOwned(workspaceId: string, revisionId: string, expectedGeneration: string) {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory first.");
-    return this.leased(workspaceId, async () => {
+    return this.leased(workspaceId, async (checkLease) => {
       const { claims: current, inbox, history, prior } = await this.readClaims(workspaceId);
+      if (!prior || prior.generation !== expectedGeneration)
+        throw new AuxError(
+          "conflict",
+          "Memory changed. Review a fresh restoration preview before continuing.",
+        );
       const selected = history.find((revision) => revision.revisionId === revisionId);
       if (!selected) throw new AuxError("not_found", "Memory revision is unavailable or was forgotten.");
       const claims = [...selected.claims];
@@ -1166,6 +1199,13 @@ export class MemoryPipeline {
         inbox,
         [...history, this.snapshot(current)].slice(-10),
         prior,
+        undefined,
+        undefined,
+        () => {
+          checkLease();
+          if (!this.policy(workspaceId).enabled)
+            throw new AuxError("cancelled", "Memory restoration paused before publication.");
+        },
       );
       return this.overview(workspaceId);
     });
