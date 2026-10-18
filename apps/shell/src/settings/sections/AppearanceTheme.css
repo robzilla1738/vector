@@ -1,6 +1,9 @@
 /* Decorative source-exact glyphs keep native option labels/typeahead intact.
  * The native selectedcontent clone contains text; its icon follows the saved value. */
 @layer overrides {
+  .ui-select.settings-theme-select:not([multiple]):not([size])::picker(select) {
+    min-width: anchor-size(width);
+  }
   .settings-theme-select[data-theme-choice="system"],
   .settings-theme-select option[value="system"] {
     --theme-choice-icon: url("/icons/theme-system.svg");

@@ -10,6 +10,20 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+// jsdom drops priorities on custom properties; preserve the browser's CSSOM contract.
+function customPropertyPriorities(style: CSSStyleDeclaration) {
+  const priorities = new Map<string, string>();
+  const setProperty = style.setProperty.bind(style);
+  const getPriority = style.getPropertyPriority.bind(style);
+  vi.spyOn(style, "getPropertyPriority").mockImplementation((name) =>
+    priorities.has(name) ? priorities.get(name)! : getPriority(name),
+  );
+  return vi.spyOn(style, "setProperty").mockImplementation((name, value, priority = "") => {
+    setProperty(name, value, priority);
+    priorities.set(name, priority);
+  });
+}
+
 async function fixture() {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const host = document.createElement("div");
@@ -232,12 +246,8 @@ it.each(["resize", "scroll", "reset", "disabled"])("retires the exact opening on
 it("restores original styles and retires listeners and queued work when the opt-in control detaches", async () => {
   const f = await fixture();
   try {
+    const setProperty = customPropertyPriorities(f.select.style);
     f.select.style.setProperty("--ui-select-picker-left", "23px", "important");
-    // jsdom drops custom-property priorities; assert the browser-facing restore call.
-    vi.spyOn(f.select.style, "getPropertyPriority").mockImplementation((name) =>
-      name === "--ui-select-picker-left" ? "important" : "",
-    );
-    const setProperty = vi.spyOn(f.select.style, "setProperty");
     f.select.style.setProperty("--ui-select-picker-top", "17px");
     f.select.setAttribute("data-ui-select-positioned", "previous");
     await f.open();
@@ -259,6 +269,27 @@ it("restores original styles and retires listeners and queued work when the opt-
     await f.dispose();
   }
 });
+
+it.each(["close", "detach"])(
+  "preserves a newer identical value with important priority on %s",
+  async (action) => {
+    const f = await fixture();
+    try {
+      customPropertyPriorities(f.select.style);
+      f.select.style.setProperty("--ui-select-picker-left", "23px");
+      await f.open();
+      expect(f.position()).toEqual(["596px", "130px"]);
+      f.select.style.setProperty("--ui-select-picker-left", "596px", "important");
+      if (action === "close") await f.close();
+      else await f.render("dark", false);
+      expect(f.position()).toEqual(["596px", ""]);
+      expect(f.select.style.getPropertyPriority("--ui-select-picker-left")).toBe("important");
+      expect(f.changed).not.toHaveBeenCalled();
+    } finally {
+      await f.dispose();
+    }
+  },
+);
 
 it("ignores an old opening's queued check and preserves a newer style owner on close", async () => {
   const f = await fixture();

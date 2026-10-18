@@ -59,7 +59,8 @@ function applyPosition(select: HTMLSelectElement, position: Position) {
   return () => {
     // Restore only the values this opening still owns.
     for (const { name, value, previous, priority } of properties) {
-      if (select.style.getPropertyValue(name) !== value) continue;
+      if (select.style.getPropertyValue(name) !== value || select.style.getPropertyPriority(name) !== "")
+        continue;
       if (previous) select.style.setProperty(name, previous, priority);
       else select.style.removeProperty(name);
     }
