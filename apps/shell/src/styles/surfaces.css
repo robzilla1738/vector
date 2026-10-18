@@ -1110,7 +1110,7 @@
     right: var(--space-2);
     padding: var(--space-0-5) var(--space-2);
     border-radius: var(--r-pill);
-    background: rgb(0 0 0 / 28%);
+    background: var(--surface-menu);
     color: var(--ink-1);
     font-size: var(--fs-2xs);
     font-weight: var(--fw-medium);
@@ -1137,7 +1137,7 @@
     border: 0;
     border-radius: var(--r-lg);
     corner-shape: squircle;
-    background: rgb(255 255 255 / 3%);
+    background: var(--settings-control-fill);
     box-shadow: var(--line-inset);
     color: var(--ink-0);
     font-size: var(--fs-xs);

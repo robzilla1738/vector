@@ -1231,7 +1231,12 @@
     }
   }
   .tl-status.running {
-    background: linear-gradient(90deg, var(--warn) 0%, rgb(255 255 255 / 75%) 50%, var(--warn) 100%);
+    background: linear-gradient(
+      90deg,
+      var(--warn) 0%,
+      color-mix(in srgb, var(--liquid-white) 75%, transparent) 50%,
+      var(--warn) 100%
+    );
     background-size: 200% 100%;
     -webkit-background-clip: text;
     background-clip: text;

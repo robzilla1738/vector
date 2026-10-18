@@ -554,7 +554,7 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 30%, transparent);
   }
   .settings-visual-option:has(input[value="vertical"]):is(.selected) img {
-    box-shadow: 0 0 0 3px rgb(251 146 60 / 30%);
+    box-shadow: 0 0 0 3px var(--layout-vertical-selection-ring);
   }
   .settings-visual-option:hover {
     color: var(--ink-0);

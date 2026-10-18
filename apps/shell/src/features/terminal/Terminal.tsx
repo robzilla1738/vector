@@ -36,11 +36,18 @@ export default function Terminal({
       sequence = 0,
       pendingInput = "";
     let inputWork: Promise<void> | undefined;
+    const appearance = () => {
+      const style = getComputedStyle(container.current!);
+      return {
+        fontFamily: style.fontFamily,
+        fontSize: Number.parseFloat(style.fontSize),
+        theme: { background: style.backgroundColor, foreground: style.color },
+      };
+    };
     const terminal = new Xterm({
       cursorBlink: true,
       scrollback: 2000,
-      fontFamily: "Geist Mono, monospace",
-      fontSize: 13,
+      ...appearance(),
       convertEol: false,
     });
     const fit = new FitAddon();
@@ -145,7 +152,7 @@ export default function Terminal({
       pendingInput += data;
       flushInput(owned);
     });
-    const resize = new ResizeObserver(() => {
+    const resizeTerminal = () => {
       if (!current || stopping || !container.current?.clientWidth || !container.current.clientHeight) return;
       fit.fit();
       const owned = session;
@@ -155,8 +162,15 @@ export default function Terminal({
           cols: terminal.cols,
           rows: terminal.rows,
         }).catch(fail);
-    });
+    };
+    const resize = new ResizeObserver(resizeTerminal);
     resize.observe(container.current);
+    const theme = new MutationObserver(() => {
+      if (!current || stopping) return;
+      Object.assign(terminal.options, appearance());
+      resizeTerminal();
+    });
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "style"] });
     void started
       .then(async (started) => {
         session = started;
@@ -175,6 +189,7 @@ export default function Terminal({
       if (timer) clearTimeout(timer);
       input.dispose();
       resize.disconnect();
+      theme.disconnect();
       terminal.dispose();
       void stop().catch((reason) =>
         console.error("Terminal termination needs acknowledgement", errorMessage(reason)),

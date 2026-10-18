@@ -2838,3 +2838,15 @@ overlap. Default400px width restored;104 shows final native Run options. A secon
 synthetic no-tool request returned AUX READY with Low/local/Ask first and no page
 context. No diagnostic CSS was injected. Current launcher/Profile ownership is
 recorded inSTATUS. Full Aside parity and the20-task smoke remain incomplete.
+
+
+## October17 — remaining color tokens and live Terminal appearance
+
+The remaining29raw CSS colors across Home, project controls, Settings artwork,
+Developer previews and Terminal now use central semantic/artwork definitions.
+The raw-color scan reports0outside tokens.css. Terminal reads the actual shared
+computed palette/type values and refits after theme/text changes while retaining
+its existing process; its wrapper and xterm canvas now share one background.
+Renderer build and changed behavior checks pass; STATUS records the integrated
+suite and isolated recovery of a native-build-contention timeout. This does not
+establish matched native screenshot acceptance.

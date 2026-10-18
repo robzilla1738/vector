@@ -36,6 +36,12 @@ Do not start another native builder or clear its plain lock. That worktree preda
 new provider and compact-surface commits. Accept the migration before merging its
 pin/rebased patches into local main, then stage the later source and area0059.
 The current main/product pin remains154 until migration evidence is ready.
+A fresh replay of all58areas reproduces all890owned paths byte-for-byte and with
+matching modes after the WebSocket and credential callback fixes
+(`/tmp/aux-chromium-155-final-replay.log`). This is patch coherence, not native
+runtime acceptance. Local fixture96158 serves address POST→303,302navigation and
+a synthetic test-card form at `http://127.0.0.1:4826` for the pending walkthrough;
+no form fields are logged. Its previous owner87871 retired normally.
 
 Native UI control currently reports `Sky Computer Use native pipe startup failed`,
 including after resetting its session. No current live Aside or Aux visual check
@@ -84,6 +90,26 @@ credential was read or real message sent. Native visual and live messenger
 acceptance, including provider permissions/reconnect, remain open. Personal-
 assistant cards require separate implementation; full channel readiness is open.
 
+## Shared visual tokens and live Terminal appearance
+
+All29remaining raw CSS colors outside `tokens.css` now use shared semantic tokens
+or existing liquid palette values. Settings illustration gradients remain grouped
+as artwork tokens; project icon colors, layout selection and Home controls use
+central definitions. Home status pills and actions follow theme surfaces.
+Terminal spacing/radius/type use the shared scale. Its actual xterm canvas reads
+the computed background, foreground and font, and updates/refits on theme or
+interface-text changes without restarting its original shell session. The same
+observer retires with that session's view.
+
+Renderer build passes (`/tmp/aux-token-renderer-build.log`), and the raw-color audit
+reports0outside the token file. Typecheck/lint pass; integrated tests passed
+4,771/4,772 in147.78s (`/tmp/aux-token-terminal-metrics-check.log`). The unchanged
+coder-worktree fixture exceeded60s during native compilation; only that failed
+case was rerun and passed in23.94s (`/tmp/aux-token-coder-retry.log`). Terminal's
+existing lifecycle test now also proves appearance changes preserve its original
+process. No unchanged full suite was repeated. Native visual acceptance remains
+open while computer control is unavailable.
+
 ## Model-based Memory extraction — integrated source
 
 The production sentence splitter is replaced by a budget-admitted structured
@@ -111,8 +137,16 @@ metadata and original Settings controls passed39tests in2.24s. The RPC result
 declaration is split into typed domains to avoid TypeScript's oversized-inference
 limit while preserving validators. No unchanged full suite was repeated.
 
-Real-provider extraction and native populated/error/light/narrow comparison remain
-pending. USER/TAXONOMY/site/routine document authority, actual file diffs and Dream
+Two bounded real-provider requests used the configured development Gateway key
+and disposable in-memory state, with no personal Profile reads. The untrusted
+fictional report completed in1.239s with0proposals,823input/36output tokens,
+actual Gateway cost$0.001003 and one settled memory invoice. The second request
+with verified public Aux facts failed after33.429s; it produced one unpriced
+failure invoice and no automatic retry. Logs contain synthetic/nonsecret results:
+`/tmp/aux-real-memory-untrusted-report.json` and
+`/tmp/aux-real-memory-extraction.json`. This establishes transport/accounting and
+safe failure behavior, not successful real-note publication. Native populated/
+error/light/narrow comparison and real-proposal acceptance remain pending. USER/TAXONOMY/site/routine document authority, actual file diffs and Dream
 remain open; proposed-note disclosures are not file-change receipts.
 
 ## Compact Quick Ask and recent downloads — integrated source
@@ -203,7 +237,11 @@ Known OpenAI/Anthropic tool calls share local JSON-schema definitions. The exact
 51-tool SDK payload fell from109,361 to54,559bytes. Custom/compatible transports
 keep inline schemas; original Zod validation, governed dispatch and conservative
 budget estimates remain. Real provider token/latency and native performance
-measurements remain open; byte reduction is not a latency claim.
+measurements remain open; byte reduction is not a latency claim. Live catalog
+inspection returned387models and listed every configured default/fallback route
+(`/tmp/aux-live-provider-catalog.json`); listing does not establish inference
+availability. Explicit zero cache-read tokens now survive SDK usage normalization;
+unknown cache usage remains absent.
 
 ## Accepted behavior retained
 
@@ -233,7 +271,7 @@ source is newer than those accepted previews.
   performance acceptance without reusing unmatched154stock numbers.
 - R5: supported subscription setup/inference; combined provider picker; Memory
   USER/TAXONOMY/site/routine authority, real-model extraction acceptance, file diffs/Dream;
-  real channel persistence/transports/pairing/replies; standalone routine lifecycle;
+  live channel/pairing/reply acceptance and personal assistants; standalone routine lifecycle;
   cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification
   acceptance. See the implementation boundaries in `docs/design/`.
 - R6: matched light/dark, normal/narrow and populated/error/focus comparisons across

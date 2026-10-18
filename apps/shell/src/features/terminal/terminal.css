@@ -1,3 +1,20 @@
-.aux-terminal { margin-top: 12px; }
-.aux-terminal-controls { display: flex; gap: 8px; margin: 8px 0; }
-.aux-terminal-screen { height: 360px; padding: 8px; overflow: hidden; border-radius: 8px; background: #101014; }
+@layer components {
+  .aux-terminal {
+    margin-top: var(--space-3);
+  }
+  .aux-terminal-controls {
+    display: flex;
+    gap: var(--space-2);
+    margin: var(--space-2) 0;
+  }
+  .aux-terminal-screen {
+    height: 360px;
+    padding: var(--space-2);
+    overflow: hidden;
+    border-radius: var(--r-lg);
+    background: var(--terminal-background);
+    color: var(--terminal-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+  }
+}

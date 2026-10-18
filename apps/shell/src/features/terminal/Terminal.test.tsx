@@ -6,6 +6,7 @@ import type { TerminalSession } from "@aux/contracts/terminal";
 import Terminal from "./Terminal";
 
 const rpc = vi.hoisted(() => vi.fn());
+const terminals = vi.hoisted(() => [] as { options: Record<string, unknown> }[]);
 vi.mock("../../store", () => ({ call: rpc }));
 vi.mock("../../ui", () => ({
   Button: (props: ComponentProps<"button"> & { size?: number }) => (
@@ -16,6 +17,9 @@ vi.mock("../../ui", () => ({
 }));
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
+    constructor(readonly options: Record<string, unknown>) {
+      terminals.push(this);
+    }
     cols = 80;
     rows = 24;
     loadAddon() {}
@@ -63,6 +67,7 @@ it("joins a concurrent read failure to Stop and keeps Start disabled until the o
     state: "running",
   };
   rpc.mockReset();
+  terminals.length = 0;
   rpc.mockImplementation((method: string) => {
     if (method === "terminal.start") return Promise.resolve(original);
     if (method === "terminal.read") return read;
@@ -82,7 +87,24 @@ it("joins a concurrent read failure to Stop and keeps Start disabled until the o
     await act(async () =>
       root.render(<Terminal workspaceId="space" folderId="folder" path="/project" onSession={onSession} />),
     );
+    const screen = host.querySelector<HTMLElement>(".aux-terminal-screen")!;
+    Object.assign(screen.style, {
+      fontSize: "13px",
+      fontFamily: "monospace",
+      backgroundColor: "rgb(21, 21, 21)",
+      color: "rgb(212, 212, 212)",
+    });
     await act(async () => button("Start").click());
+    expect(terminals[0]?.options).toMatchObject({
+      fontSize: 13,
+      theme: { background: "rgb(21, 21, 21)", foreground: "rgb(212, 212, 212)" },
+    });
+    await act(async () => {
+      screen.style.fontSize = "16px";
+      document.documentElement.dataset.theme = "light";
+    });
+    expect(terminals[0]?.options.fontSize).toBe(16);
+    expect(rpc.mock.calls.filter(([method]) => method === "terminal.start")).toHaveLength(1);
     expect(onSession).toHaveBeenLastCalledWith(original.terminalId);
     await act(async () => button("Stop").click());
     await act(async () => {
@@ -103,5 +125,6 @@ it("joins a concurrent read failure to Stop and keeps Start disabled until the o
   } finally {
     await act(async () => root.unmount());
     host.remove();
+    delete document.documentElement.dataset.theme;
   }
 });
