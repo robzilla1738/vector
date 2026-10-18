@@ -116,7 +116,7 @@ export class MemoryPipeline {
   private recallEngine = new MemoryRecall();
   private dreamWork = new Map<
     string,
-    { controller: AbortController; promise: Promise<MemoryDreamOperation> }
+    { operationId: string; controller: AbortController; promise: Promise<MemoryDreamOperation> }
   >();
   private recallWork = new Map<string, Set<AbortController>>();
   private recallPending = new Map<string, Set<Promise<unknown>>>();
@@ -1963,7 +1963,9 @@ export class MemoryPipeline {
       const state = await this.readClaims(workspaceId);
       const active =
         state.dreams.findLast(
-          (operation) => operation.status === "running" && this.dreamWork.has(workspaceId),
+          (operation) =>
+            operation.status === "running" &&
+            this.dreamWork.get(workspaceId)?.operationId === operation.operationId,
         ) ?? null;
       const last = state.dreams.findLast((operation) => operation.status !== "running");
       const sessions = await this.eligibleDreamSessions(
@@ -1978,7 +1980,7 @@ export class MemoryPipeline {
         eligibleSessions: sessions.length,
         due:
           this.policy(workspaceId).enabled &&
-          !active &&
+          !this.dreamWork.has(workspaceId) &&
           sessions.length > 0 &&
           (sessions.length >= 5 || Date.now() - (last?.startedAt ?? oldest) >= 86400000),
       };
@@ -2032,9 +2034,12 @@ export class MemoryPipeline {
   ): Promise<MemoryDreamOperation> {
     if (this.dreamWork.has(workspaceId))
       return Promise.reject(new AuxError("conflict", "Dream is already running in this Space."));
+    const operationId = randomUUID();
     const controller = new AbortController();
-    const promise = this.own(() => this.dreamOwned(workspaceId, trigger, controller, ownerCurrent));
-    this.dreamWork.set(workspaceId, { controller, promise });
+    const promise = this.own(() =>
+      this.dreamOwned(workspaceId, operationId, trigger, controller, ownerCurrent),
+    );
+    this.dreamWork.set(workspaceId, { operationId, controller, promise });
     void promise
       .finally(() => {
         if (this.dreamWork.get(workspaceId)?.promise === promise) this.dreamWork.delete(workspaceId);
@@ -2076,6 +2081,7 @@ export class MemoryPipeline {
 
   private async dreamOwned(
     workspaceId: string,
+    operationId: string,
     trigger: "manual" | "idle",
     controller: AbortController,
     ownerCurrent?: () => Promise<void>,
@@ -2126,7 +2132,7 @@ export class MemoryPipeline {
         checkCurrent();
         checkLease();
         operation = {
-          operationId: randomUUID(),
+          operationId,
           trigger,
           status: "running",
           startedAt: Date.now(),
@@ -2423,7 +2429,7 @@ export class MemoryPipeline {
     const state = await this.readClaims(workspaceId);
     const operation = state.dreams.find((entry) => entry.operationId === operationId);
     if (!operation) throw new AuxError("not_found", "Dream operation is unavailable.");
-    if (operation.status === "running" && work) {
+    if (operation.status === "running" && work?.operationId === operationId) {
       work.controller.abort();
       return work.promise;
     }

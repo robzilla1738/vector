@@ -258,6 +258,54 @@ it("joins original Dream cancellation before Forget and removes derived document
   const recovered = await f.pipeline.recoverySnapshot();
   expect(recovered[0]!.retiredSources!.sourceHashes).toContain(sha(claim.sourceRunId));
 });
+it("never cancels a replacement Dream through an interrupted operation's saved identity", async () => {
+  const f = fixture({
+    generation: () => "one",
+    consolidate: async () => ({ status: "completed", changes: [] }),
+  });
+  await f.source();
+  const old = await f.pipeline.dream(f.workspaceId);
+  const state = await f.store.read(f.workspaceId);
+  state.files.set("dream-operations.json.enc", JSON.stringify([{ ...old, status: "running" }]));
+  await f.store.write(f.workspaceId, state.files, state.history, state.prior);
+  const replacement = f.pipeline.dream(f.workspaceId);
+  const cancelled = await f.pipeline.dreamCancel(f.workspaceId, old.operationId);
+  expect(cancelled.operationId).toBe(old.operationId);
+  expect(await replacement).toMatchObject({ status: "no-change" });
+});
+it("joins the exact active Dream after cancellation and retains its measured usage", async () => {
+  let complete!: () => void;
+  let signal!: AbortSignal;
+  const f = fixture({
+    generation: () => "one",
+    consolidate: async (input) => {
+      signal = input.signal;
+      await new Promise<void>((resolve) => {
+        complete = resolve;
+      });
+      return { status: "completed", changes: [], inputTokens: 9, outputTokens: 0 };
+    },
+  });
+  await f.source();
+  const original = f.pipeline.dream(f.workspaceId);
+  await vi.waitFor(() => expect(complete).toBeTypeOf("function"));
+  const active = (await f.pipeline.dreamStatus(f.workspaceId)).active!;
+  let settled = false;
+  const cancellation = f.pipeline.dreamCancel(f.workspaceId, active.operationId).then((value) => {
+    settled = true;
+    return value;
+  });
+  await vi.waitFor(() => expect(signal.aborted).toBe(true));
+  expect(settled).toBe(false);
+  complete();
+  expect(await cancellation).toMatchObject({
+    operationId: active.operationId,
+    status: "cancelled",
+    inputTokens: 9,
+    outputTokens: 0,
+  });
+  expect(await original).toEqual(await cancellation);
+});
 it("keeps heading and exact line ranges and rejects stale search/read identity after an owner edit", async () => {
   const f = fixture();
   f.tasks.setWorkspaceMemory(
