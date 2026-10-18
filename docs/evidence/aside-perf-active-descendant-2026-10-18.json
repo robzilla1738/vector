@@ -1,0 +1,106 @@
+{
+  "atUTC": "2026-10-18T22:33:07.711857+00:00",
+  "status": "Source, Swift compile, native diagnostic ownership checks and integrated checks passed; paired performance remains unqualified",
+  "base": "9bf8a6f56",
+  "builtApp": "334b882acfa212fe3fcfca941a2a55f42d1c8912",
+  "failedPairedRun": {
+    "report": {
+      "path": "/tmp/aux-paired155-334-corrected-2026-10-18T2216Z/report.json",
+      "sha256": "c8c93e2dc7c136eb53103e710d9b44198ad53e291b64f80294d597d661845c38"
+    },
+    "session": 44690,
+    "exit": 1,
+    "completeSamples": 0,
+    "setup": "All five final Aux Profiles prepared in place; exact helper accessibility trusted. Initial address focus passed; later workload open() rejected focus. Original browsers/locks retired."
+  },
+  "findings": [
+    "Chromium BrowserAccessibilityManager::GetFocusFromThisOrDescendantFrame returns GetActiveDescendant(obj). Native AX focus can therefore be the selected option while keyboard input remains owned by its combobox.",
+    "Exact original CUA observation reports selected suggestion; native unsent native-focus-probe appears in the original address combo. No navigation or submission in that probe.",
+    "Closest list parent does not necessarily contain the owning input in the unignored native AX tree. Bounded ancestor scopes are necessary; exact AXLinkedUIElements relationship is retained.",
+    "A separate rapid navigation/new-tab diagnostic reaches selected New Tab Home with AXWebArea focus; explicit subsequent Cmd-L recovers. Cause not established. Steady500ms diagnostic succeeds; this guessed pause is NOT adopted as benchmark readiness."
+  ],
+  "typingProbe": [
+    {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-oU557w/cua-failed-focus.ax.txt",
+      "sha256": "0c21e79e816b6dc3db8d733fc552db199343397aa5c5b988e530c8a18eb22c4b"
+    },
+    {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-oU557w/cua-typed-probe.ax.txt",
+      "sha256": "fcc760c8c00a54894752a1aaaa9d0305d1d8a0cdd63fb0a120c48618534c6022"
+    }
+  ],
+  "transientFocus": {
+    "record": {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-6IqOhG/result.json",
+      "sha256": "e7d3cf3cdadfa1a9e4e2d5e63a1f4435105fb1cfae23020a387b4724a8a4d036"
+    },
+    "ax": {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-6IqOhG/cua-failed-focus.ax.txt",
+      "sha256": "ba1932df1039ac18b344a56087352f4ee22e6c9e2aa8f4c4df808dfb3215a939"
+    },
+    "recovery": {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-6IqOhG/cua-address-recovery.ax.txt",
+      "sha256": "4aa8fb3b95050191a0852b06431f5c09b1d4ffa735cac9741bf03d806cbefac6"
+    },
+    "status": "Open readiness investigation; not fixed by this benchmark change. External human input was not independently monitored."
+  },
+  "implementation": [
+    "Preserve original process birth/image, foreground, exact address label and optional original window checks.",
+    "Accept active-descendant focus only for a selected focused row/ancestor in a list linked from the exact expanded address owner, with same original PID and focused native window. Bound focused ancestors12, owner scopes6, candidate nodes96 and child depth3/width32.",
+    "Return bounded role/relationship diagnostics without input values or suggestion labels. Reject arbitrary static text and unrelated labels.",
+    "During ten-tab workload preparation, wait for the actual input-served native navigation presentation before preparing the next tab. Retain those actual setup timings. No fixed delay, new target threshold or omitted workload."
+  ],
+  "nativeDiagnostic": {
+    "record": {
+      "path": "/tmp/aux-perf-newtab-diagnostic-334-BKapnq/result.json",
+      "sha256": "92375d8429c58138456fddb72f10e5009832f661056adaa0d8377560fb73943e"
+    },
+    "fixtureTabs": 10,
+    "transitions": 9,
+    "direct": 1,
+    "activeDescendant": 8,
+    "wrongLabelRejections": 9,
+    "CUADuringThisDiagnostic": false,
+    "exit": 0,
+    "scope": "Diagnostic contains500ms settling only to distinguish states. No qualified performance timings or pass claim."
+  },
+  "checks": {
+    "focused": {
+      "pass": 16,
+      "fail": 0,
+      "log": {
+        "path": "/tmp/aux-perf-descendant-focused-2026-10-18.log",
+        "sha256": "1b693ba9cadb9d2a4d6d6c0a55f5ccee5a16962f24a30202d636748720e09e71"
+      }
+    },
+    "integrated": {
+      "pass": 6100,
+      "files": 866,
+      "seconds": 114.68,
+      "exit": 0,
+      "nativeCompilerConcurrent": false,
+      "log": {
+        "path": "/tmp/aux-perf-descendant-integrated-2026-10-18.log",
+        "sha256": "81763bdfff43475223b1504a039e6dd2588a8eee1064414cf9203f9d36b4d3b4"
+      }
+    },
+    "swiftCompile": {
+      "session": 16717,
+      "exit": 0,
+      "warnings": 0
+    }
+  },
+  "helper": {
+    "path": "/tmp/aux-native-perf-descendant-v3-2026-10-18/native-perf",
+    "sha256": "66a82f1b65e249bbf19f83a565a8e145ddd70e1c4794618bc2af97e69d3a7082"
+  },
+  "helperSource": {
+    "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/native-perf.swift",
+    "sha256": "0c3d34a9cfa6173e78ed336b84c20a0b2627e8f7257967ae4150c7b125f36ab4"
+  },
+  "limits": [
+    "No valid paired performance report yet.",
+    "Active-descendant negative checks cover incorrect label; full live warm-window ownership verification remains in paired runner.",
+    "Theme-icon source remains newer than native app334; full native UI/browser/crash gates stay open."
+  ]
+}

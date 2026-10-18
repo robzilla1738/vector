@@ -8,6 +8,16 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The [benchmark focus follow-up](evidence/aside-perf-active-descendant-2026-10-18.json)
+recognizes the exact address combobox through its linked selected autocomplete row,
+retaining process/window/label ownership. A native diagnostic creates10fixture tabs,
+passes9transitions and rejects9incorrect labels. It is diagnostic evidence, not a
+performance pass. The corrected paired attempt still produced0complete samples.
+Workload preparation now waits for actual native navigation presentation; all16
+focused and6,100integrated checks/866files pass (114.68s). A separate rapid
+navigation/new-tab state reaches Home document focus; later explicit Cmd-L recovers.
+Its cause remains open and must not be hidden by benchmark setup changes.
+
 The [theme-selector follow-up](evidence/aside-theme-choice-icons-2026-10-18.json)
 adds source-exact System/Light/Dark glyphs using the shared native select and
 original text options. Five affected checks and6,100integrated tests/866files pass

@@ -154,27 +154,91 @@ while let line = readLine() {
       guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
         throw NSError(domain: "Original browser input permission/focus unavailable", code: 1)
       }
-      var focused: CFTypeRef?
-      let status = AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &focused)
-      var ready = false
-      if status == .success, let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() {
-        let element = focused as! AXUIElement
-        func attribute(_ name: String) -> String {
-          var value: CFTypeRef?
-          guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return "" }
-          return value as? String ?? ""
-        }
-        let role = attribute(kAXRoleAttribute)
+      let application = AXUIElementCreateApplication(pid)
+      func value(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+        var result: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, name as CFString, &result) == .success ? result : nil
+      }
+      func element(_ item: CFTypeRef?) -> AXUIElement? {
+        guard let item, CFGetTypeID(item) == AXUIElementGetTypeID() else { return nil }
+        return (item as! AXUIElement)
+      }
+      func text(_ element: AXUIElement, _ name: String) -> String {
+        value(element, name) as? String ?? ""
+      }
+      func matchesAddress(_ candidate: AXUIElement) -> Bool {
+        let role = text(candidate, kAXRoleAttribute)
         let label = [kAXTitleAttribute, kAXDescriptionAttribute, kAXHelpAttribute]
-          .map(attribute).joined(separator: " ").lowercased()
-        ready = [kAXTextFieldRole, kAXComboBoxRole].contains(role)
-          && (label.contains("address") || label.contains("search"))
-        if let expectedLabel = request["expectedLabel"] as? String {
-          ready = ready && label.contains(expectedLabel.lowercased())
+          .map { text(candidate, $0) }.joined(separator: " ").lowercased()
+        guard [kAXTextFieldRole, kAXComboBoxRole].contains(role),
+              label.contains("address") || label.contains("search") else { return false }
+        if let expected = request["expectedLabel"] as? String {
+          return label.contains(expected.lowercased())
+        }
+        return true
+      }
+      let focused = element(value(application, kAXFocusedUIElementAttribute))
+      var ready = focused.map(matchesAddress) ?? false
+      var focusKind = ready ? "direct" : "unavailable"
+      var focusProbe: [[String: Any]] = []
+      // Chromium reports a combobox's active descendant as AX focus. Its
+      // aria-controls list is exposed through AXLinkedUIElements. Accept only
+      // the exact expanded address owner linked to the selected focused row,
+      // in the same original focused window; never accept an arbitrary row.
+      if !ready, let focused,
+         let focusedWindow = element(value(application, kAXFocusedWindowAttribute)) {
+        var ancestor: AXUIElement? = focused
+        var descendants: [AXUIElement] = []
+        for _ in 0..<12 {
+          guard let node = ancestor else { break }
+          descendants.append(node)
+          let selected = value(node, kAXSelectedChildrenAttribute) as? [AXUIElement] ?? []
+          let selectedFocus = selected.contains { row in descendants.contains { CFEqual(row, $0) } }
+          focusProbe.append(["ancestorRole": text(node, kAXRoleAttribute), "selectedCount": selected.count, "selectedFocus": selectedFocus])
+          if text(node, kAXRoleAttribute) == kAXListRole,
+             selectedFocus,
+             let parent = element(value(node, kAXParentAttribute)) {
+            var container: AXUIElement? = parent
+            var inspected: [AXUIElement] = []
+            for _ in 0..<6 {
+              guard let scope = container, !ready, inspected.count < 96 else { break }
+              focusProbe.append(["scopeRole": text(scope, kAXRoleAttribute)])
+              var pending = [(scope, 0)]
+              while !pending.isEmpty && inspected.count < 96 {
+                let (candidate, depth) = pending.removeLast()
+                if CFEqual(candidate, node) || inspected.contains(where: { CFEqual($0, candidate) }) { continue }
+                inspected.append(candidate)
+                var candidatePID: pid_t = 0
+                let links = value(candidate, kAXLinkedUIElementsAttribute) as? [AXUIElement] ?? []
+                if matchesAddress(candidate) {
+                  let candidateWindow = element(value(candidate, kAXWindowAttribute))
+                  focusProbe.append(["addressCandidate": true, "expanded": (value(candidate, kAXExpandedAttribute) as? Bool) ?? false, "linkedCount": links.count, "linkedList": links.contains { CFEqual($0, node) }, "sameWindow": candidateWindow.map { CFEqual($0, focusedWindow) } ?? false])
+                }
+                if matchesAddress(candidate),
+                   AXUIElementGetPid(candidate, &candidatePID) == .success, candidatePID == pid,
+                   (value(candidate, kAXExpandedAttribute) as? Bool) == true,
+                   let window = element(value(candidate, kAXWindowAttribute)), CFEqual(window, focusedWindow),
+                   links.contains(where: { CFEqual($0, node) }) {
+                  ready = true
+                  focusKind = "active-descendant"
+                  break
+                }
+                if depth < 3 {
+                  let children = value(candidate, kAXChildrenAttribute) as? [AXUIElement] ?? []
+                  pending.append(contentsOf: children.prefix(32).map { ($0, depth + 1) })
+                }
+              }
+              container = element(value(scope, kAXParentAttribute))
+            }
+            break
+          }
+          ancestor = element(value(node, kAXParentAttribute))
         }
       }
       try current()
-      result = ["ready": ready]
+      result = ["ready": ready, "focusKind": focusKind,
+                "focusedRole": focused.map { text($0, kAXRoleAttribute) } ?? "",
+                "focusProbe": ready ? [] : focusProbe]
     case "key":
       guard let chord = request["chord"] as? String else { throw NSError(domain: "Missing chord", code: 1) }
       let windowID = request["windowId"] as? Int

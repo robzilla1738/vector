@@ -608,15 +608,20 @@ try {
   }
   async function open(run) {
     const before = (await loadedFixturePages(run)).length;
+    const beforePresentation = await hist(run, names.navigationInput);
     await run.input.call("key", { chord: "new-tab" });
     await run.input.call("key", { chord: "address" });
     await addressReady(run);
     await run.input.call("text", { text: url });
     await run.input.call("key", { chord: "return" });
+    // CDP's load event precedes native embed presentation/focus handoff. Finish
+    // this input-served navigation before preparing the next tab; no guessed sleep.
+    const navigationInputMs = await observation(run, names.navigationInput, beforePresentation);
     await until(
       "new native fixture tab load",
       async () => (await loadedFixturePages(run)).length === before + 1,
     );
+    return { fixtureTabs: before + 1, navigationInputMs };
   }
   function seedHistory(profile) {
     const history = join(profile, "Default/History");
@@ -718,7 +723,8 @@ try {
             "first native fixture tab load",
             async () => (await loadedFixturePages(run)).length > 0,
           );
-          for (let i = 1; i < 10; i++) await open(run);
+          sample.workloadPreparation = [];
+          for (let i = 1; i < 10; i++) sample.workloadPreparation.push(await open(run));
           for (const page of ordinaryPages(run)) if (page.url() !== url) await page.close();
           const pages = await loadedFixturePages(run);
           assert.equal(pages.length, 10, "The native workload must have exactly ten fixture tabs");
