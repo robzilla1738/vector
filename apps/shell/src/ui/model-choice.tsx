@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ModelProviderMark, modelProviderName } from "./model-provider";
 import { Popover } from "./popover";
 import { Check, ChevronDown, Search } from "./icons";
@@ -11,20 +11,7 @@ import "../settings/sections/ModelsOverview.css";
 
 export type ModelOption = { id: string; name?: string; provider?: string; textGeneration?: boolean };
 
-export function ModelChoice({
-  label,
-  hint,
-  value,
-  automatic,
-  automaticLabel = "Automatic",
-  options,
-  disabled,
-  pending = false,
-  loading,
-  onChange,
-  actions,
-  children,
-}: {
+type ModelChoiceProps = {
   label: string;
   hint: string;
   value: string;
@@ -37,16 +24,77 @@ export function ModelChoice({
   onChange(value: string | undefined): Promise<boolean>;
   actions?: MenuAction[];
   children?: ReactNode;
-}) {
-  const [query, setQuery] = useState("");
+};
+
+export function ModelChoice(props: ModelChoiceProps) {
+  const { label, hint, value, options, disabled, actions, children } = props;
   const search = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const attachTrigger = useCallback((node: HTMLButtonElement | null) => {
     trigger.current = node;
   }, []);
-  const [providerOpen, setProviderOpen] = useState<string | null>(null);
   const selected = options.find((model) => model.id === value);
   const name = selected?.name ?? value.split("/").at(-1) ?? "Choose model";
+  return (
+    <SettingsField compact label={label} hint={hint}>
+      <div className="settings-model-control">
+        <Popover
+          label={`${label} selection`}
+          triggerControl={attachTrigger}
+          align="end"
+          className="settings-model-trigger"
+          disabled={disabled}
+          initialFocusRef={search}
+          trigger={
+            <>
+              <ModelProviderMark provider={selected?.provider} />
+              <span title={name || "Choose model"}>{name || "Choose model"}</span>
+              <ChevronDown />
+            </>
+          }
+        >
+          {(close) => <ModelChoiceMenu {...props} search={search} trigger={trigger} close={close} />}
+        </Popover>
+        {actions?.length ? <ActionMenu label={`${label} options`} actions={actions} /> : null}
+      </div>
+      {children}
+    </SettingsField>
+  );
+}
+
+/** Search and provider state belong to one mounted popup opening. */
+function ModelChoiceMenu({
+  label,
+  value,
+  automatic,
+  automaticLabel = "Automatic",
+  options,
+  disabled,
+  pending = false,
+  loading,
+  onChange,
+  search,
+  trigger,
+  close,
+}: ModelChoiceProps & {
+  search: RefObject<HTMLInputElement | null>;
+  trigger: RefObject<HTMLButtonElement | null>;
+  close(): void;
+}) {
+  const [query, setQuery] = useState("");
+  const [providerOpen, setProviderOpen] = useState<string | null>(null);
+  const current = useRef(true);
+  useLayoutEffect(() => {
+    current.current = true;
+    return () => {
+      current.current = false;
+    };
+  }, []);
+  const choose = (value: string | undefined) => {
+    void onChange(value).then((ok) => {
+      if (ok && current.current) close();
+    });
+  };
   const matched = options.filter((model) =>
     `${model.id} ${model.name ?? ""} ${modelProviderName(model.provider ?? "")}`
       .toLowerCase()
@@ -57,7 +105,7 @@ export function ModelChoice({
     const group = model.provider ?? "";
     groups.set(group, [...(groups.get(group) ?? []), model]);
   }
-  const modelRows = (models: ModelOption[], close: () => void, root: boolean) =>
+  const modelRows = (models: ModelOption[], root: boolean) =>
     models.map((model) => (
       <button
         type="button"
@@ -66,24 +114,23 @@ export function ModelChoice({
         role="menuitemradio"
         data-model-root={root ? "" : undefined}
         aria-checked={!automatic && value === model.id}
-        onClick={() =>
-          void onChange(model.id).then((ok) => {
-            if (ok) {
-              setProviderOpen(null);
-              close();
-            }
-          })
-        }
+        onClick={() => choose(model.id)}
       >
         <ModelProviderMark provider={model.provider} />
         <span>{model.name ?? model.id}</span>
         {!automatic && value === model.id && <Check />}
       </button>
     ));
-  const control = (close: () => void): ReactNode => (
+  return (
     <div
       className="settings-model-picker model-choice-picker"
       onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing || event.keyCode === 229) {
+          event.stopPropagation();
+          return;
+        }
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+          return;
         if (event.target === search.current) {
           if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
           event.preventDefault();
@@ -123,10 +170,10 @@ export function ModelChoice({
               onOpen={() => setProviderOpen(group)}
               onClose={() => setProviderOpen(null)}
             >
-              {modelRows(models, close, false)}
+              {modelRows(models, false)}
             </ModelProviderMenu>
           ) : (
-            <div key={group}>{modelRows(models, close, true)}</div>
+            <div key={group}>{modelRows(models, true)}</div>
           ),
         )}
         {automatic !== undefined && (
@@ -137,41 +184,12 @@ export function ModelChoice({
             role="menuitemradio"
             aria-checked={automatic}
             disabled={disabled || pending}
-            onClick={() =>
-              void onChange(undefined).then((ok) => {
-                if (ok) close();
-              })
-            }
+            onClick={() => choose(undefined)}
           >
             {automaticLabel} {automatic && <Check />}
           </button>
         )}
       </div>
     </div>
-  );
-  return (
-    <SettingsField compact label={label} hint={hint}>
-      <div className="settings-model-control">
-        <Popover
-          label={`${label} selection`}
-          triggerControl={attachTrigger}
-          align="end"
-          className="settings-model-trigger"
-          disabled={disabled}
-          initialFocusRef={search}
-          trigger={
-            <>
-              <ModelProviderMark provider={selected?.provider} />
-              <span title={name || "Choose model"}>{name || "Choose model"}</span>
-              <ChevronDown />
-            </>
-          }
-        >
-          {control}
-        </Popover>
-        {actions?.length ? <ActionMenu label={`${label} options`} actions={actions} /> : null}
-      </div>
-      {children}
-    </SettingsField>
   );
 }

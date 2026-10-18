@@ -123,9 +123,11 @@ async function mount(width: number, regionRight = width, settings = false) {
   await act(async () => root.render(<Picker />));
   const dialog = document.querySelector<HTMLDialogElement>('dialog[aria-label="Choose a model"]')!;
   const trigger = dialog.querySelector<HTMLButtonElement>("[data-model-root]")!;
-  const key = async (target: HTMLElement, value: string) =>
+  const key = async (target: HTMLElement, value: string, state: KeyboardEventInit = {}) =>
     act(async () => {
-      target.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true }));
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true, ...state }),
+      );
     });
   return {
     host,
@@ -147,6 +149,32 @@ async function mount(width: number, regionRight = width, settings = false) {
     },
   };
 }
+
+it.each([{ isComposing: true }, { keyCode: 229 }])(
+  "retains the current menu and focus while composing: %j",
+  async (state) => {
+    const f = await mount(853);
+    try {
+      await act(async () => f.trigger.focus());
+      await f.key(f.trigger, "ArrowRight", state);
+      expect(f.panel()).toBeNull();
+      expect(document.activeElement).toBe(f.trigger);
+      await f.key(f.trigger, "ArrowRight");
+      const model = document.activeElement as HTMLElement;
+      for (const key of ["ArrowLeft", "Escape"]) {
+        await f.key(model, key, state);
+        expect(f.panel()?.contains(model)).toBe(true);
+        expect(document.activeElement).toBe(model);
+        expect(f.dialog.isConnected).toBe(true);
+      }
+      await f.key(model, "Escape");
+      expect(f.panel()).toBeNull();
+      expect(document.activeElement).toBe(f.trigger);
+    } finally {
+      await f.dispose();
+    }
+  },
+);
 
 it("nests choices for the actual573px page inside an853px window and restores controls/focus on Back", async () => {
   const f = await mount(853);

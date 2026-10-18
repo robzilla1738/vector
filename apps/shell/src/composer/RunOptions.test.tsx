@@ -183,6 +183,24 @@ it("searches model names, IDs and providers and moves keyboard focus through the
   await openModels();
   const search = modelMenu().querySelector<HTMLInputElement>('[aria-label="Search models"]')!;
   expect(document.activeElement).toBe(search);
+  for (const state of [
+    { isComposing: true },
+    { keyCode: 229 },
+    { altKey: true },
+    { ctrlKey: true },
+    { metaKey: true },
+    { shiftKey: true },
+  ]) {
+    for (const key of "isComposing" in state || "keyCode" in state
+      ? ["ArrowDown", "Escape"]
+      : ["ArrowDown"]) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...state });
+      await act(async () => search.dispatchEvent(event));
+      expect(document.activeElement).toBe(search);
+      expect(event.defaultPrevented).toBe(false);
+      expect(modelMenu()).not.toBeNull();
+    }
+  }
   const beta = [...modelMenu().querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
     (button) => button.textContent === "Beta",
   )!;

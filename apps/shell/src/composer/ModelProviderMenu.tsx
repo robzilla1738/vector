@@ -13,6 +13,17 @@ function modelMenuBounds(anchor: HTMLElement | null) {
   };
 }
 
+function focusModelChoice(panel: HTMLElement | null, index = 0) {
+  if (!panel) return;
+  const choices = panel.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not(:disabled)');
+  (
+    choices[index] ??
+    choices[0] ??
+    panel.querySelector<HTMLElement>(".composer-model-submenu-back") ??
+    panel
+  ).focus({ preventScroll: true });
+}
+
 /** A submenu stays inside the owning native dialog's focus and dismissal scope. */
 export function ModelProviderMenu({
   label,
@@ -124,8 +135,7 @@ export function ModelProviderMenu({
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", place);
     if (settled && enter.current) {
-      const choices = panel.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not(:disabled)');
-      (choices[focusIndex.current] ?? choices[0])?.focus({ preventScroll: true });
+      focusModelChoice(panel, focusIndex.current);
       enter.current = false;
     }
     return () => {
@@ -152,7 +162,7 @@ export function ModelProviderMenu({
     enter.current = true;
     onOpen();
     if (open && nextNarrow === narrow) {
-      submenu.current?.querySelector<HTMLElement>('[role="menuitemradio"]:not(:disabled)')?.focus();
+      focusModelChoice(submenu.current);
       enter.current = false;
     }
   };
@@ -169,7 +179,11 @@ export function ModelProviderMenu({
       aria-label={`${label} models`}
       className={`composer-model-list composer-model-submenu${owner ? " composer-model-submenu-nested" : " popup-material"}`}
       onKeyDown={(event) => {
-        if (event.nativeEvent.isComposing || event.key === "Tab") return;
+        if (event.nativeEvent.isComposing || event.keyCode === 229) {
+          event.stopPropagation();
+          return;
+        }
+        if (event.defaultPrevented || event.key === "Tab") return;
         event.stopPropagation();
         if (event.key === "Escape" || event.key === "ArrowLeft") {
           event.preventDefault();
@@ -210,7 +224,11 @@ export function ModelProviderMenu({
         }}
         onClick={focusChoices}
         onKeyDown={(event) => {
-          if (event.key !== "ArrowRight" || event.nativeEvent.isComposing) return;
+          if (event.nativeEvent.isComposing || event.keyCode === 229) {
+            event.stopPropagation();
+            return;
+          }
+          if (event.key !== "ArrowRight" || event.defaultPrevented) return;
           event.preventDefault();
           event.stopPropagation();
           focusChoices();

@@ -81,7 +81,20 @@ export function ComposerModelPicker({
     close();
   };
   function searchKey(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.nativeEvent.isComposing || event.key === "Escape" || event.key === "Tab") return;
+    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+      event.stopPropagation();
+      return;
+    }
+    if (
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.key === "Escape" ||
+      event.key === "Tab"
+    )
+      return;
     event.stopPropagation();
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     event.preventDefault();
