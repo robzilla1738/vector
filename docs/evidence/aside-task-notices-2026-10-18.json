@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-18",
+  "baseCommit": "b6488351e",
+  "status": "source_and_integrated_fixtures_pass_native_pending",
+  "reference": "046-agents-notification-dropdown.png",
+  "patch": {
+    "path": "/tmp/aux-task-notices-fecd35-v1.patch",
+    "sha256": "baa7cd4cc7f2d654e693ac88d5a7570c6fb95ae29f135e22312787b7a4042376"
+  },
+  "sourceReview": "Root reviewed actual patch plus canonical Menu positioning/focus and shared role cascade; no blocker found.",
+  "changes": [
+    "Actual three notification preferences now use canonical Menu/menuitemcheckbox, remain open after toggles, and merge latest preferences.",
+    "288px end-aligned menu,16.8px root,11.2px rows,14px/20px text,16px right check,2px copy gap and12px/16px descriptions.",
+    "Keyboard first/last/Arrow/Home/End/Escape and return-focus use existing Menu. Inactive owner retires open state.",
+    "Sound Popover and existing Focus Mode/system-notice behavior retained. Replaced notification width/row recipes removed."
+  ],
+  "validation": {
+    "authorTypecheck": "pass; fresh runtime dist rebuilt",
+    "authorAffectedTests": 17,
+    "rootIntegrated": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5666,
+      "testFilesPassed": 848,
+      "durationSeconds": 123.85,
+      "log": "/tmp/aux-task-notices-integrated-check.log"
+    },
+    "native": "not observed on current source"
+  },
+  "completeOriginalImageReview": {
+    "path": "docs/evidence/aside-ui-original-image-review-2026-10-18.json",
+    "sha256": "90437e61171e1325d347cd74281be1a9db7406de10303670f11a7123d9ddf625",
+    "availableOriginalPngs": 182,
+    "actuallyViewed": 182,
+    "manifestEntries": 192,
+    "currentNativeComparison": false
+  },
+  "remaining": [
+    "Current native both-theme/narrow/interaction/accessibility acceptance.",
+    "Ref043 split Configure Update exists inside manager; cache-clear/debug actions lack proven Aux routes and are not fabricated.",
+    "Work trace/turn navigation and native menus remain independent in-progress slices."
+  ]
+}

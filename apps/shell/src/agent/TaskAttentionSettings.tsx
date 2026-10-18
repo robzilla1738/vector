@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Switch } from "../ui";
 import { SettingsField as Field } from "../settings/primitives";
 import { Popover } from "../ui/popover";
+import { Menu } from "../ui/dialog";
 import { ChevronDown, Check, Volume2 } from "../ui/icons";
 import { playTaskSound, taskSounds, type TaskSound } from "./task-sound";
 import "./TaskAttentionSettings.css";
@@ -54,6 +55,9 @@ function AttentionSwitch({
 /** Local Profile attention controls. Focus Mode always wins over both delivery surfaces. */
 export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
   const [kinds, setKinds] = useState(readTaskNoticeKinds);
+  const [noticeMenu, setNoticeMenu] = useState<"first" | "last" | null>(null);
+  const noticeTrigger = useRef<HTMLButtonElement>(null);
+  if (!active && noticeMenu !== null) setNoticeMenu(null);
   const [sound, setSound] = useState(readTaskSound);
   const [lastSound, setLastSound] = useState<TaskSound>(readSelectedTaskSound);
   const [previewing, setPreviewing] = useState(false);
@@ -92,55 +96,72 @@ export function TaskAttentionSettings({ active = true }: { active?: boolean }) {
           label="Task notifications"
           hint="Choose which task events can notify you. Focus Mode pauses all alerts."
         >
-          <Popover
-            label="Task notification types"
-            align="end"
+          <button
+            type="button"
+            ref={noticeTrigger}
+            className="btn task-notice-trigger"
+            aria-label="Task notification types"
+            aria-haspopup="menu"
+            aria-expanded={noticeMenu !== null}
             disabled={!active}
-            trigger={
-              <>
-                {selected === 3
-                  ? "Everything"
-                  : selected === 0
-                    ? "Off"
-                    : selected === 2
-                      ? "2 types"
-                      : kinds.attention
-                        ? "Needs attention"
-                        : kinds.completion
-                          ? "Task completions"
-                          : "Routine completions"}
-                <ChevronDown />
-              </>
-            }
+            onClick={() => setNoticeMenu((current) => (current === null ? "first" : null))}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              setNoticeMenu(event.key === "ArrowUp" ? "last" : "first");
+            }}
           >
-            {() => (
-              <div className="task-notice-choices task-notice-types">
-                {(
-                  [
-                    ["attention", "Needs attention", "Approvals, questions and handoffs"],
-                    ["completion", "Task completions", "Tasks you start when they finish"],
-                    ["routine", "Routine completions", "Tasks started by routines when they finish"],
-                  ] as const
-                ).map(([key, label, hint]) => (
-                  <button
-                    type="button"
-                    key={key}
-                    role="checkbox"
-                    aria-checked={kinds[key]}
-                    onClick={() =>
-                      writeTaskNoticeKinds({ ...readTaskNoticeKinds(), [key]: !readTaskNoticeKinds()[key] })
-                    }
-                  >
-                    <span>
-                      {label}
-                      <small>{hint}</small>
-                    </span>
-                    {kinds[key] && <Check />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </Popover>
+            <span>
+              {selected === 3
+                ? "Everything"
+                : selected === 0
+                  ? "Off"
+                  : selected === 2
+                    ? "2 types"
+                    : kinds.attention
+                      ? "Needs attention"
+                      : kinds.completion
+                        ? "Task completions"
+                        : "Routine completions"}
+            </span>
+            <ChevronDown />
+          </button>
+          {active && noticeMenu !== null && (
+            <Menu
+              label="Task notification types"
+              className="ctx-menu task-notice-types"
+              anchor={noticeTrigger}
+              returnFocus={noticeTrigger}
+              atEnd={noticeMenu === "last"}
+              onClose={() => setNoticeMenu(null)}
+            >
+              {(
+                [
+                  ["attention", "Needs attention", "Approvals, questions and handoffs"],
+                  ["completion", "Task completions", "Tasks you start when they finish"],
+                  ["routine", "Routine completions", "Tasks started by routines when they finish"],
+                ] as const
+              ).map(([key, label, hint]) => (
+                <button
+                  type="button"
+                  key={key}
+                  className="menu-item"
+                  role="menuitemcheckbox"
+                  aria-checked={kinds[key]}
+                  onClick={() => {
+                    const current = readTaskNoticeKinds();
+                    writeTaskNoticeKinds({ ...current, [key]: !current[key] });
+                  }}
+                >
+                  <span className="task-notice-copy">
+                    <span>{label}</span>
+                    <small>{hint}</small>
+                  </span>
+                  {kinds[key] && <Check />}
+                </button>
+              ))}
+            </Menu>
+          )}
         </Field>
         <Field
           compact

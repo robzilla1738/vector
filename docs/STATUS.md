@@ -57,6 +57,17 @@ reference672px exception and288–384px editor. Native verification remains pend
 [The renderer integration record](evidence/aside-ui-parity-2026-10-18.json) records
 exact patches, reviews, tests and remaining reference gaps.
 
+Task notification types now use the canonical288px menu and checkbox rows,
+with actual three-choice preferences,2px title/description spacing and existing
+focus/keyboard behavior. Sound selection remains its distinct Popover. The
+[complete original-image source ledger](evidence/aside-ui-original-image-review-2026-10-18.json)
+records all192 entries and182 actual original PNG views, with exact hashes and
+source mappings. It corrects an older PNG-size header-offset calculation without
+changing original files or manifest dimensions. Display-scale limits and remaining
+native comparisons are explicit; this is not182 matched native acceptances.
+[Notification evidence](evidence/aside-task-notices-2026-10-18.json) records this
+small implementation and the actual preference/keyboard fixtures.
+
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
 byte-upload/completion protocols. Schema12 protects transfer manifests and private
@@ -122,8 +133,11 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The Memory integrated check passes typecheck/lint and5,663tests across846files;
-one existing coder-worktree case hits its original60s timeout. Its unchanged
+The latest integrated check passes typecheck/lint and all5,666tests across848files
+in123.85s, including the Memory corrections and notification-menu interaction.
+Runtime dist was rebuilt first. Log: `/tmp/aux-task-notices-integrated-check.log`.
+The preceding Memory check passed5,663tests across846files;
+one existing coder-worktree case hit its original60s timeout. Its unchanged
 quiet rerun passes all3cases within the original limits (50.10/32.78/26.89s).
 Logs: `/tmp/aux-memory-boundaries-integrated-check.log` and
 `/tmp/aux-memory-boundaries-coder-rerun.log`. Runtime dist was rebuilt first.

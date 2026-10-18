@@ -51,8 +51,47 @@
     line-height: 1.35;
     color: var(--ink-1);
   }
-  .anchored-panel:has(> .task-notice-types) {
-    width: 308px;
+  .task-notice-trigger {
+    width: 160px;
+    justify-content: space-between;
+  }
+  .task-notice-trigger > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .task-notice-trigger > svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .task-notice-types {
+    width: 288px;
+  }
+  .task-notice-types > .menu-item {
+    position: relative;
+    width: 100%;
+    padding-right: 32px;
+    text-align: left;
+  }
+  .task-notice-types > .menu-item > svg {
+    position: absolute;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+  }
+  .task-notice-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .task-notice-copy > small {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 16px;
   }
   .task-notice-choices > button > span {
     min-width: 0;
