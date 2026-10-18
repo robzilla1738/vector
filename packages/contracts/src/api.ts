@@ -214,6 +214,7 @@ import {
   WorkspaceSchema,
   WorkspaceMemorySchema,
   WorkspaceMemoryItemSchema,
+  OwnerMemoryDocumentSetParams,
   BrowsingMemoryPolicySchema,
   WorkspaceBrowsingMemorySchema,
   ContentMemoryPolicySchema,
@@ -1289,6 +1290,7 @@ export const MethodSchemas = {
   "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
   "workspaces.memory.search": z.object({ query: z.string().trim().min(1).max(1000) }),
+  "workspaces.memory.setDocument": OwnerMemoryDocumentSetParams,
   "workspaces.memory.set": z.object({
     workspaceId: id,
     expectedRevision: z.number().int().nonnegative(),
@@ -2068,6 +2070,7 @@ const AgentResultSchemas = {
     z.object({ workspaceId: id, name: z.string(), excerpt: z.string(), enabled: z.boolean() }),
   ),
   "workspaces.memory.set": WorkspaceMemorySchema,
+  "workspaces.memory.setDocument": WorkspaceMemorySchema,
   "tasks.create": TaskSchema,
   "tasks.promote": TaskSchema,
   "tasks.update": TaskSchema,

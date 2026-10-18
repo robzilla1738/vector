@@ -203,6 +203,12 @@ async function fixture() {
   const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId, fixtureMemoryExtractor);
   memory.setPolicy(space.workspaceId, true);
   await memory.extractRun(space.workspaceId, "recovery-run");
+  tasks.setWorkspaceMemoryDocument({
+    workspaceId: space.workspaceId,
+    expectedRevision: 0,
+    path: "USER.md",
+    content: "Protected owner document for the recovered Space.",
+  });
   const targetDb = openDb(join(targetDir, "state.sqlite"));
   const targetCipher = await initializeFieldCodec(targetDb, targetNative.bridge, targetId);
   const target = new Repo(targetDb, targetCipher);
@@ -251,6 +257,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     "Protected article memory",
     "Protected artifact evidence",
     "Protected task document evidence",
+    "Protected owner document",
   ])
     expect(bytes.includes(secret)).toBe(false);
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
@@ -324,6 +331,10 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
   const channels = new ChannelStore(restored);
+  expect(
+    new TaskService(restored, new EventBus(restored)).workspaceMemory(f.space.workspaceId).documents,
+  ).toMatchObject([{ path: "USER.md", content: "Protected owner document for the recovered Space." }]);
+
   expect(channels.get(f.channel.connection.connectionId)?.name).toBe("Protected messenger connection");
   expect(channels.key(f.channel.connection.connectionId, "peer", "200")).toBe(f.channel.peerKey);
   expect(channels.peer(f.channel.connection.connectionId, f.channel.peerKey)?.name).toBe("Protected person");

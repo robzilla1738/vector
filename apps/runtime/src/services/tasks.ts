@@ -1,4 +1,6 @@
 import { readWorkspaceMemory } from "./workspace-memory.js";
+import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
+import { memoryOwnerTextSensitivity } from "./memory-paste.js";
 import { BrowsingMemory } from "./browsing-memory.js";
 import { memoryOrigin } from "@aux/contracts/memory-context";
 import { randomUUID } from "node:crypto";
@@ -8,6 +10,7 @@ import {
   TaskSchema,
   TaskUpdateParams,
   WorkspaceMemoryItemSchema,
+  OwnerMemoryDocumentSetParams,
   AuxError,
   taskConversationId,
   taskMatchesQuery,
@@ -52,6 +55,7 @@ export class TaskService {
         const memory = this.workspaceMemory(workspace.workspaceId),
           searchable = [
             memory.content,
+            ...(memory.documents ?? []).map((document) => `${document.path}\n${document.content}`),
             ...(memory.items ?? []).map((item) => `${item.content} ${item.sourceUrl ?? ""}`),
           ].join("\n"),
           index = searchable.toLocaleLowerCase().indexOf(needle);
@@ -104,6 +108,9 @@ export class TaskService {
       items: items ?? prior.items ?? [],
       enabled: enabled ?? prior.enabled ?? true,
       content: content.slice(0, 16_000),
+      documents: prior.documents,
+      contentUpdatedAt:
+        prior.content === content.slice(0, 16000) ? (prior.contentUpdatedAt ?? prior.updatedAt) : Date.now(),
       revision: prior.revision + 1,
       updatedAt: Date.now(),
     };
@@ -119,6 +126,38 @@ export class TaskService {
     });
     this.events.emit("workspace.memory.updated", { workspaceId, revision: next.revision });
     return next;
+  }
+
+  setWorkspaceMemoryDocument(raw: unknown, beforeSave?: () => void): WorkspaceMemory {
+    const input = OwnerMemoryDocumentSetParams.parse(raw);
+    const prior = this.workspaceMemory(input.workspaceId);
+    if (prior.revision !== input.expectedRevision)
+      throw new AuxError(
+        "conflict",
+        "Memory changed. Compare the current document before saving your draft.",
+      );
+    if (
+      input.content !== null &&
+      (memoryOwnerTextSensitivity(input.content) || memoryContentSensitivityReason(input.content))
+    )
+      throw new AuxError("permission_denied", "Remove sensitive details before saving this Memory document.");
+    const documents = (prior.documents ?? []).filter((document) => document.path !== input.path);
+    const updatedAt = Date.now();
+    if (input.content !== null) documents.push({ path: input.path, content: input.content, updatedAt });
+    const memory = {
+      ...prior,
+      documents,
+      contentUpdatedAt: prior.contentUpdatedAt ?? prior.updatedAt,
+      revision: prior.revision + 1,
+      updatedAt,
+    };
+    beforeSave?.();
+    this.repo.setSetting(`workspaceMemory:${input.workspaceId}`, memory);
+    this.events.emit("workspace.memory.updated", {
+      workspaceId: input.workspaceId,
+      revision: memory.revision,
+    });
+    return memory;
   }
 
   create(input: unknown, origin: "desktop" | "external" = "desktop"): Task {
@@ -390,8 +429,12 @@ export class TaskService {
     if (task.state === "archived") throw new AuxError("conflict", "Restore this task before starting a run");
     if (externalSessionRunId) {
       const session = this.repo.getRun(externalSessionRunId);
-      if (!session || session.config?.implementation !== "external-agent" || !session.config.externalConnectionId ||
-          !["running", "needs_input"].includes(session.status))
+      if (
+        !session ||
+        session.config?.implementation !== "external-agent" ||
+        !session.config.externalConnectionId ||
+        !["running", "needs_input"].includes(session.status)
+      )
         throw new AuxError("permission_denied", "The original external session is unavailable.");
     }
     this.requireIdle(taskId, undefined, externalSessionRunId);
@@ -460,9 +503,13 @@ export class TaskService {
     if (
       this.repo.db
         .prepare(
-          `SELECT 1 FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? AND r.status IN ${ACTIVE_RUNS} ${except} ${exceptRunId ? 'AND r.run_id != ?' : ''} LIMIT 1`,
+          `SELECT 1 FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? AND r.status IN ${ACTIVE_RUNS} ${except} ${exceptRunId ? "AND r.run_id != ?" : ""} LIMIT 1`,
         )
-        .get(taskId, ...(exceptImplementation ? [exceptImplementation] : []), ...(exceptRunId ? [exceptRunId] : []))
+        .get(
+          taskId,
+          ...(exceptImplementation ? [exceptImplementation] : []),
+          ...(exceptRunId ? [exceptRunId] : []),
+        )
     ) {
       throw new AuxError(
         "conflict",

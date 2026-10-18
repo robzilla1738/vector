@@ -66,8 +66,12 @@ Space. History defaults to extraction activity; Recovery revisions retains Resto
 through the existing scoped command and original revision ID. Context controls
 continue to use separate browsing-title and page-content policies. Model-based
 extraction now has source telemetry and safe retries. Episodic retention and the
-approved-note index are implemented; broader document authority, file diffs and
-Dream behavior remain open. Current native evidence belongs in STATUS.
+approved-note index are implemented. Explicit owner-written USER.md/TAXONOMY.md
+live in the encrypted workspace record beside the independent root. Normal-window
+proof and the workspace revision own every mutation; removal reviews an exact
+body/revision and retires derived context and older managed recovery generations.
+Search/recall include these bodies within the existing bounded Space budget; they
+grant no execution authority. Site/routine documents, file diffs and Dream remain open. Current native evidence belongs in STATUS.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 

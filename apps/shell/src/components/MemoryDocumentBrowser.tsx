@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { memoryClaimText, type MemoryClaimDocuments, type WorkspaceMemory } from "@aux/contracts";
+import {
+  OWNER_MEMORY_DOCUMENT_PATHS,
+  memoryClaimText,
+  type OwnerMemoryDocument,
+  type MemoryClaimDocuments,
+  type WorkspaceMemory,
+} from "@aux/contracts";
 import { useMemoryDrafts } from "../memory-drafts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { errorMessage } from "../error-message";
+import { ActionMenu, Dialog } from "../ui";
 import { MemoryDocument } from "./MemoryDocument";
 import {
   shellIconFolder,
@@ -21,21 +28,31 @@ function noteHeading(text: string) {
   return line.length > 72 ? `${line.slice(0, 72).replace(/\s+\S*$/, "")}…` : line;
 }
 
-/** The document view edits authoritative Space content and provenance-preserving approved notes. */
-export function MemoryDocumentBrowser({
-  memory,
-  onSaved,
-  active,
-  onManage,
-  onClose,
-}: {
+type Props = {
   memory: WorkspaceMemory;
   onSaved(memory: WorkspaceMemory): void;
   active: boolean;
   onManage(): void;
   onClose(): void;
-}) {
+};
+
+/** A document draft never follows a Space, private mode or native window change. */
+export function MemoryDocumentBrowser(props: Props) {
+  if (bridge.privateMode) return null;
+  return (
+    <MemoryDocumentBrowserBody key={JSON.stringify([props.memory.workspaceId, bridge.windowId])} {...props} />
+  );
+}
+
+function MemoryDocumentBrowserBody({ memory, onSaved, active, onManage, onClose }: Props) {
   const workspaceId = memory.workspaceId;
+  const savedMemory = useRef(memory);
+  const savedCallback = useRef(onSaved);
+  useLayoutEffect(() => {
+    if (memory.revision >= savedMemory.current.revision) savedMemory.current = memory;
+    savedCallback.current = onSaved;
+  }, [memory, onSaved]);
+
   const layout = useStore((state) => state.layout);
   const identities = JSON.stringify(
     [...layout.spaces, ...(layout.archivedSpaces ?? [])]
@@ -65,6 +82,14 @@ export function MemoryDocumentBrowser({
   }, [owner, identities, workspaceId, windowId]);
   const [documents, setDocuments] = useState<MemoryClaimDocuments | null>(null);
   const [selected, setSelected] = useState(ROOT);
+  const [newDocuments, setNewDocuments] = useState<OwnerMemoryDocument["path"][]>([]);
+  const [removing, setRemoving] = useState<{
+    path: OwnerMemoryDocument["path"];
+    revision: number;
+    content: string;
+  } | null>(null);
+  const savedOwnerPaths = useRef(new Set(memory.documents?.map((document) => document.path) ?? []));
+
   const rootDraft = useMemoryDrafts((state) => state.drafts[workspaceId]);
   const storageError = useMemoryDrafts((state) => state.storageError);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -73,6 +98,18 @@ export function MemoryDocumentBrowser({
   const [expanded, setExpanded] = useState(true);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
+  useEffect(() => {
+    const paths = new Set(memory.documents?.map((document) => document.path) ?? []);
+    const removed = [...savedOwnerPaths.current].filter((path) => !paths.has(path));
+    savedOwnerPaths.current = paths;
+    if (removed.length)
+      setDrafts((previous) =>
+        Object.fromEntries(
+          Object.entries(previous).filter(([path]) => !removed.some((removedPath) => removedPath === path)),
+        ),
+      );
+  }, [memory.documents]);
+
   const request = useRef(0);
   const navigation = useRef<HTMLElement>(null);
   const refresh = useCallback(async () => {
@@ -91,7 +128,8 @@ export function MemoryDocumentBrowser({
     setDrafts((previous) =>
       Object.fromEntries(
         Object.entries(previous).flatMap(([path, draft]) => {
-          if (path === ROOT) return [[path, draft]];
+          if (path === ROOT || OWNER_MEMORY_DOCUMENT_PATHS.some((ownerPath) => path === ownerPath))
+            return [[path, draft]];
           if (!paths.has(path)) return [];
           return [
             [
@@ -113,13 +151,33 @@ export function MemoryDocumentBrowser({
     });
     return bridge.onEvent((event) => {
       if (event.type === "workspace.memory.updated" && event.payload.workspaceId === workspaceId)
-        void refresh().catch((reason) => {
+        void Promise.all([
+          refresh(),
+          call("workspaces.memory.get", { workspaceId }).then((value) => {
+            if (!current()) return;
+            if (value.workspaceId !== workspaceId) throw new Error("The original Memory Space changed.");
+            if (value.revision < savedMemory.current.revision) return;
+            savedMemory.current = value;
+            savedCallback.current(value);
+          }),
+        ]).catch((reason) => {
           if (current()) setError(errorMessage(reason));
         });
     });
   }, [active, current, refresh, workspaceId]);
   const paths = [...new Set(documents?.documents.map((document) => document.path) ?? [])].sort().reverse();
-  const path = selected === ROOT || paths.includes(selected) ? selected : ROOT;
+  const ownerPaths = OWNER_MEMORY_DOCUMENT_PATHS.filter(
+    (path) => newDocuments.includes(path) || memory.documents?.some((document) => document.path === path),
+  );
+  const path =
+    selected === ROOT || paths.includes(selected) || ownerPaths.some((path) => path === selected)
+      ? selected
+      : ROOT;
+  const ownerPath = OWNER_MEMORY_DOCUMENT_PATHS.find((ownerPath) => ownerPath === path);
+  const ownerDocument = memory.documents?.find((document) => document.path === ownerPath);
+  const textDocument = path === ROOT || ownerPath !== undefined;
+  const documentText = path === ROOT ? memory.content : (ownerDocument?.content ?? "");
+
   const notes = documents?.documents.filter((document) => document.path === path) ?? [];
   const draft: Draft | undefined =
     path === ROOT
@@ -127,15 +185,12 @@ export function MemoryDocumentBrowser({
       : drafts[path];
   const stale =
     !!draft &&
-    (path === ROOT ? draft.revision !== memory.revision : draft.generation !== documents?.generation);
-  const changedAt =
-    path === ROOT
-      ? memory.updatedAt
-      : notes.length
-        ? Math.max(...notes.map((note) => note.updatedAt))
-        : undefined;
+    (textDocument ? draft.revision !== memory.revision : draft.generation !== documents?.generation);
+  let changedAt = ownerDocument?.updatedAt;
+  if (path === ROOT) changedAt = memory.contentUpdatedAt ?? (memory.documents ? undefined : memory.updatedAt);
+  if (!textDocument && notes.length) changedAt = Math.max(...notes.map((note) => note.updatedAt));
   const startEdit = () => {
-    if (!current() || pending.current || (path !== ROOT && !documents?.generation)) return;
+    if (!current() || pending.current || (!textDocument && !documents?.generation)) return;
     setError("");
     if (path === ROOT) {
       useMemoryDrafts.getState().write(workspaceId, { content: memory.content, revision: memory.revision });
@@ -145,11 +200,10 @@ export function MemoryDocumentBrowser({
       ...previous,
       [path]: {
         revision: memory.revision,
-        generation: documents?.generation ?? null,
-        texts:
-          path === ROOT
-            ? { [ROOT]: memory.content }
-            : Object.fromEntries(notes.map((note) => [note.claim.claimId, memoryClaimText(note.claim)])),
+        generation: textDocument ? null : (documents?.generation ?? null),
+        texts: textDocument
+          ? { [path]: documentText }
+          : Object.fromEntries(notes.map((note) => [note.claim.claimId, memoryClaimText(note.claim)])),
       },
     }));
   };
@@ -164,6 +218,8 @@ export function MemoryDocumentBrowser({
       delete next[path];
       return next;
     });
+    if (ownerPath && !ownerDocument)
+      setNewDocuments((previous) => previous.filter((item) => item !== ownerPath));
   };
   const save = async () => {
     if (!current() || !draft || stale || pending.current) return;
@@ -180,6 +236,16 @@ export function MemoryDocumentBrowser({
         if (!current()) return;
         onSaved(result);
         useMemoryDrafts.getState().write(workspaceId, null);
+      } else if (ownerPath) {
+        const result = await call("workspaces.memory.setDocument", {
+          workspaceId,
+          expectedRevision: draft.revision,
+          path: ownerPath,
+          content: draft.texts[path] ?? "",
+        });
+        if (!current()) return;
+        onSaved(result);
+        setNewDocuments((previous) => previous.filter((item) => item !== ownerPath));
       } else {
         const edits = notes
           .filter(
@@ -209,6 +275,47 @@ export function MemoryDocumentBrowser({
           }),
         ]).catch(() => {});
       }
+    } finally {
+      pending.current = false;
+      if (current()) setBusy(false);
+    }
+  };
+  const addDocument = (path: OwnerMemoryDocument["path"]) => {
+    if (!current() || pending.current) return;
+    setNewDocuments((previous) => [...previous, path]);
+    setDrafts((previous) => ({
+      ...previous,
+      [path]: { revision: memory.revision, generation: null, texts: { [path]: "" } },
+    }));
+    setSelected(path);
+    setError("");
+  };
+  const removeDocument = async () => {
+    const selection = removing;
+    if (!selection || !current() || pending.current) return;
+    const path = selection.path;
+    pending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await call("workspaces.memory.setDocument", {
+        workspaceId,
+        expectedRevision: selection.revision,
+        path,
+        content: null,
+      });
+      if (!current()) return;
+      onSaved(result);
+      setRemoving(null);
+      setNewDocuments((previous) => previous.filter((item) => item !== path));
+      setDrafts((previous) => {
+        const next = { ...previous };
+        delete next[path];
+        return next;
+      });
+      setSelected((previous) => (previous === path ? ROOT : previous));
+    } catch (reason) {
+      if (current()) setError(errorMessage(reason));
     } finally {
       pending.current = false;
       if (current()) setBusy(false);
@@ -305,6 +412,32 @@ export function MemoryDocumentBrowser({
           {ROOT}
           {rootDraft ? " •" : ""}
         </button>
+        {ownerPaths.map((ownerPath) => (
+          <button
+            type="button"
+            key={ownerPath}
+            aria-current={path === ownerPath ? "page" : undefined}
+            onClick={() => {
+              setSelected(ownerPath);
+              setError("");
+            }}
+          >
+            {ownerPath}
+            {drafts[ownerPath] ? " •" : ""}
+          </button>
+        ))}
+        {ownerPaths.length < OWNER_MEMORY_DOCUMENT_PATHS.length && (
+          <div className="memory-document-add">
+            <ActionMenu
+              label="Add Memory document"
+              actions={OWNER_MEMORY_DOCUMENT_PATHS.filter((path) => !ownerPaths.includes(path)).map(
+                (path) => ({ label: path, disabled: busy, onSelect: () => addDocument(path) }),
+              )}
+            >
+              Add document
+            </ActionMenu>
+          </div>
+        )}
         <button type="button" className="memory-review-link" onClick={onManage}>
           Review and manage notes
         </button>
@@ -326,7 +459,7 @@ export function MemoryDocumentBrowser({
                 type="button"
                 className="btn sm"
                 disabled={
-                  busy || stale || (path !== ROOT && Object.values(draft.texts).some((text) => !text.trim()))
+                  busy || stale || (!textDocument && Object.values(draft.texts).some((text) => !text.trim()))
                 }
                 onClick={() => void save()}
               >
@@ -337,10 +470,26 @@ export function MemoryDocumentBrowser({
             <button
               type="button"
               className="btn sm memory-document-edit"
-              disabled={busy || (path !== ROOT && !documents?.generation)}
+              disabled={busy || (!textDocument && !documents?.generation)}
               onClick={startEdit}
             >
               Edit
+            </button>
+          )}
+          {ownerDocument && !draft && (
+            <button
+              type="button"
+              className="btn sm"
+              disabled={busy}
+              onClick={() =>
+                setRemoving({
+                  path: ownerDocument.path,
+                  revision: memory.revision,
+                  content: ownerDocument.content,
+                })
+              }
+            >
+              Delete
             </button>
           )}
           <button
@@ -387,8 +536,8 @@ export function MemoryDocumentBrowser({
                     The saved document changed. Your draft is preserved. Compare the latest version before
                     saving.
                   </p>
-                  {path === ROOT ? (
-                    <MemoryDocument text={memory.content || "No saved content."} />
+                  {textDocument ? (
+                    <MemoryDocument text={documentText || "No saved content."} />
                   ) : (
                     notePreview(false)
                   )}
@@ -407,16 +556,15 @@ export function MemoryDocumentBrowser({
                             [path]: {
                               ...draft,
                               revision: memory.revision,
-                              generation: documents?.generation ?? null,
-                              texts:
-                                path === ROOT
-                                  ? draft.texts
-                                  : Object.fromEntries(
-                                      notes.map((note) => [
-                                        note.claim.claimId,
-                                        draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim),
-                                      ]),
-                                    ),
+                              generation: textDocument ? null : (documents?.generation ?? null),
+                              texts: textDocument
+                                ? draft.texts
+                                : Object.fromEntries(
+                                    notes.map((note) => [
+                                      note.claim.claimId,
+                                      draft.texts[note.claim.claimId] ?? memoryClaimText(note.claim),
+                                    ]),
+                                  ),
                             },
                           }))
                     }
@@ -425,16 +573,21 @@ export function MemoryDocumentBrowser({
                   </button>
                 </section>
               )}
-              {path === ROOT ? (
+              {textDocument ? (
                 <textarea
-                  aria-label="Edit MEMORY.md"
+                  aria-label={`Edit ${path}`}
                   maxLength={16000}
-                  value={draft.texts[ROOT]}
+                  value={draft.texts[path] ?? ""}
                   disabled={busy}
                   onChange={(event) =>
-                    useMemoryDrafts
-                      .getState()
-                      .write(workspaceId, { content: event.target.value, revision: draft.revision })
+                    path === ROOT
+                      ? useMemoryDrafts
+                          .getState()
+                          .write(workspaceId, { content: event.target.value, revision: draft.revision })
+                      : setDrafts((previous) => ({
+                          ...previous,
+                          [path]: { ...draft, texts: { [path]: event.target.value } },
+                        }))
                   }
                 />
               ) : (
@@ -461,12 +614,13 @@ export function MemoryDocumentBrowser({
                 ))
               )}
             </>
-          ) : path === ROOT ? (
-            <MemoryDocument
-              text={
-                memory.content || "No Space notes yet. Choose Edit to add context you want Aux to remember."
-              }
-            />
+          ) : textDocument ? (
+            <>
+              {ownerPath && <p className="hint">Owner-written context for this Space.</p>}
+              <MemoryDocument
+                text={documentText || "No saved content. Choose Edit to add context for this Space."}
+              />
+            </>
           ) : (
             <>
               <h2>{path.split("/").at(-1)?.replace(/\.md$/, "")}</h2>
@@ -475,6 +629,36 @@ export function MemoryDocumentBrowser({
           )}
         </div>
       </section>
+      {removing && current() && (
+        <Dialog
+          label={`Remove ${removing.path}`}
+          className="aux-dialog-surface popup-material"
+          kind="alertdialog"
+          onClose={() => {
+            if (!busy) setRemoving(null);
+          }}
+        >
+          <h3>Remove {removing.path}?</h3>
+          <p>This document will be removed from Memory for this Space.</p>
+          <div className="memory-owner-removal-preview">
+            <MemoryDocument text={removing.content || "Empty document."} />
+          </div>
+          {error && <p role="alert">{error}</p>}
+          <footer>
+            <button type="button" className="btn ghost" disabled={busy} onClick={() => setRemoving(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn danger"
+              disabled={busy}
+              onClick={() => void removeDocument()}
+            >
+              Remove document
+            </button>
+          </footer>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -5,6 +5,11 @@ import { MEMORY_PASTE_MAX_BYTES, MEMORY_PASTE_MAX_NOTES } from "@aux/contracts/m
 export function memoryPasteSensitivity(text: string): string | undefined {
   if (Buffer.byteLength(text, "utf8") > MEMORY_PASTE_MAX_BYTES)
     return "Paste at most 32 KiB. Nothing was saved.";
+  return memoryOwnerTextSensitivity(text);
+}
+
+/** Shared content checks; each owner surface applies its own size limit first. */
+export function memoryOwnerTextSensitivity(text: string): string | undefined {
   // eslint-disable-next-line no-control-regex -- Hidden control characters make owner review ambiguous.
   if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(text))
     return "Remove hidden control characters before reviewing these notes.";

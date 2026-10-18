@@ -26,6 +26,9 @@ export function workspaceMemoryText(
   if (!memory || memory.enabled === false) return "";
   const notes = [
     memory.content,
+    ...(memory.documents ?? [])
+      .filter((document) => document.content.trim())
+      .map((document) => `Owner-written ${document.path} (Space context):\n${document.content}`),
     ...(memory.items ?? [])
       .filter(
         (item) =>

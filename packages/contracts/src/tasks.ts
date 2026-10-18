@@ -71,14 +71,41 @@ export const WorkspaceMemoryItemSchema = z.object({
   expiresAt: z.number().optional(),
 });
 export type WorkspaceMemoryItem = z.infer<typeof WorkspaceMemoryItemSchema>;
+export const OWNER_MEMORY_DOCUMENT_PATHS = ["USER.md", "TAXONOMY.md"] as const;
+export const OwnerMemoryDocumentPathSchema = z.enum(OWNER_MEMORY_DOCUMENT_PATHS);
+export const OwnerMemoryDocumentSchema = z
+  .object({
+    path: OwnerMemoryDocumentPathSchema,
+    content: z.string().max(16000),
+    updatedAt: z.number().int().nonnegative(),
+  })
+  .strict();
+export const OwnerMemoryDocumentSetParams = z
+  .object({
+    workspaceId: text,
+    expectedRevision: z.number().int().nonnegative(),
+    path: OwnerMemoryDocumentPathSchema,
+    content: z.string().max(16000).nullable(),
+  })
+  .strict();
+export type OwnerMemoryDocument = z.infer<typeof OwnerMemoryDocumentSchema>;
 export const WorkspaceMemorySchema = z.object({
   workspaceId: text,
   excludedOrigins: z.array(z.string().max(2048)).max(100).optional(),
   items: z.array(WorkspaceMemoryItemSchema).max(40).optional(),
   enabled: z.boolean().optional(),
   content: z.string().max(16_000),
+  documents: z
+    .array(OwnerMemoryDocumentSchema)
+    .max(2)
+    .refine(
+      (documents) => new Set(documents.map((document) => document.path)).size === documents.length,
+      "Memory document paths must be unique.",
+    )
+    .optional(),
   revision: z.number().int().nonnegative(),
   updatedAt: z.number().optional(),
+  contentUpdatedAt: z.number().optional(),
 });
 export const TaskCreateParams = TaskDefinitionSchema.extend({
   workspaceId: text,

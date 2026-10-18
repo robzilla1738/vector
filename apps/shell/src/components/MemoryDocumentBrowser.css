@@ -172,3 +172,19 @@
     }
   }
 }
+
+@layer components {
+  .memory-document-add > button {
+    width: auto;
+    padding: var(--space-2);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+}
+
+@layer components {
+  .memory-owner-removal-preview {
+    overflow-y: auto;
+    max-height: 40vh;
+  }
+}

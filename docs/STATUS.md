@@ -51,6 +51,30 @@ is claimed. CUA bindings from retired previews must not be reused: a stale bindi
 can launch the default Profile. Check the owned app PID and disposable Profile
 argument before creating a new binding. Only disposable Profiles are authorized.
 
+## Owner-written Memory documents — integrated source
+
+Each Space can explicitly create, edit and remove USER.md and TAXONOMY.md beside
+its independent MEMORY.md. Documents have distinct bodies and modification times,
+revision-bound saves and concrete deletion review. Conflicting drafts remain
+available for comparison; a Space/window change retires their local state.
+Generated daily notes retain their original quotes and separate generation rules.
+No placeholder owner files are synthesized.
+
+Original normal-window proof owns writes. The encrypted workspace record and
+cross-Profile recovery retain these documents; replacement/removal retires older
+managed backups and derived context through the existing Memory boundary. Root
+edits preserve owner documents. Recall and search include their text within the
+existing bounded Space context; they grant no site, tool or routine authority.
+Site/routine documents, file diffs and Dream remain open.
+
+Runtime dist and renderer typecheck passed. The62focused document/authority/
+context/paste/task/recovery tests passed in6.28s
+(`/tmp/aux-owner-memory-focused.log`). The integrated combined document/material
+check passed typecheck/lint and4,782of4,784tests/762files in102.27s; two existing CSS
+recipe assertions needed the new shared material/entrance names. Those two passed
+alone after updating the expectations (`/tmp/aux-popup-chrome-check-retry.log`).
+Renderer build passed. Native document acceptance remains open.
+
 ## Channels — integrated transport, task and Settings source
 
 Slack Socket Mode, Telegram long polling and Discord Gateway have real independent
@@ -296,7 +320,7 @@ source is newer than those accepted previews.
   stock155, plus actual provider prompt/token/cache/latency evidence. Run phase
   performance acceptance without reusing unmatched154stock numbers.
 - R5: supported subscription setup/inference; combined provider picker; Memory
-  USER/TAXONOMY/site/routine authority, real-model extraction acceptance, file diffs/Dream;
+  owner-document native acceptance, site/routine authority, real-model extraction acceptance, file diffs/Dream;
   live channel/pairing/reply acceptance and personal assistants; standalone routine lifecycle;
   cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification
   acceptance. See the implementation boundaries in `docs/design/`.
