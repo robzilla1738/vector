@@ -183,10 +183,10 @@ it("hidden/unfocused controls refuse original close or display mutation", async 
   await expect(executeCommand(details)).rejects.toThrow();
   expect(close).not.toHaveBeenCalled();
 });
-it("all remaining actions remain original normal scoped controls", () => {
+it("document preview controls admit Quick Ask with original scoped authority", () => {
   for (const id of [details, retry, closeId])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal", "private"],
+      windows: ["normal", "private", "quick-ask"],
       palette: false,
       bindings: [],
       intercept: true,

@@ -260,7 +260,10 @@ async function untilTerminal(repo: Repo, runId: string, timeoutMs = 5000): Promi
     if (TERMINAL.has(r.status)) return r;
     await sleep(10);
   }
-  throw new Error(`run ${runId} never settled: ${repo.getRun(runId)?.status}`);
+  const final = repo.getRun(runId);
+  // The final sleep can cross the deadline after the run has already settled.
+  if (final && TERMINAL.has(final.status)) return final;
+  throw new Error(`run ${runId} never settled: ${final?.status}`);
 }
 /** Wait until no member is queued/running (or the timeout passes). */
 async function untilMembersSettled(repo: Repo, setId: string, timeoutMs = 3000) {

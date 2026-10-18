@@ -1,3 +1,5 @@
+import "./McpOAuthSetup.css";
+import { Button } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import type { MethodResult } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -46,15 +48,15 @@ export function McpOAuthSetup({ serverId, onConfigured }: { serverId: string; on
     if (result.redirectUrl) setRedirectUrl(result.redirectUrl);
   };
   return (
-    <fieldset>
+    <fieldset className="mcp-oauth-setup">
       <legend>Provider client registration</legend>
       <p>
         Check the provider's current requirements before signing in. Aux keeps registered client credentials
         in this Profile's Keychain.
       </p>
-      <button type="button" disabled={busy} onClick={() => void work(discover)}>
+      <Button type="button" disabled={busy} onClick={() => void work(discover)}>
         Check registration requirements
-      </button>
+      </Button>
       {requirements && (
         <>
           <p>
@@ -124,7 +126,7 @@ export function McpOAuthSetup({ serverId, onConfigured }: { serverId: string; on
                   autoComplete="off"
                 />
               </label>
-              <button
+              <Button
                 type="button"
                 disabled={
                   busy ||
@@ -152,7 +154,7 @@ export function McpOAuthSetup({ serverId, onConfigured }: { serverId: string; on
                 }
               >
                 Save Aux client registration
-              </button>
+              </Button>
             </>
           )}
         </>

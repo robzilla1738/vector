@@ -1,9 +1,19 @@
+import { verifyGoogleValuesWrite } from "./google-values.js";
+import {
+  projectGoogleDocumentRange,
+  prepareGoogleDocumentEdit,
+  verifyGoogleDocumentEdit,
+  type GoogleDocumentEditExpectation,
+} from "./google-documents.js";
+import { projectGoogleGrid } from "./google-grid.js";
+import { googleAttachmentMetadata, type InspectGoogleAttachment } from "./google-attachments.js";
 import { isReadOnlyProfile } from "../agent/permissions.js";
 import { createHash, randomUUID } from "node:crypto";
 import { AuxError } from "@aux/contracts";
 import {
   GOOGLE_OPERATIONS,
   GoogleOperationSchema,
+  GoogleArguments,
   type GoogleOperation,
   type GoogleAccount,
 } from "@aux/contracts/google";
@@ -82,7 +92,15 @@ export class GoogleOperationService {
       writes: DurableWriteLedger;
       authorize(input: GoogleDispatch, signal: AbortSignal): Promise<() => void>;
       fetch?: typeof fetch;
-      saveAttachment?(input: { runId: string; bytes: Buffer; sha256: string; checkCurrent(): void }): {
+      inspectAttachment?: InspectGoogleAttachment;
+      saveAttachment?(input: {
+        runId: string;
+        bytes: Buffer;
+        sha256: string;
+        filename: string;
+        mediaType: string;
+        checkCurrent(): void;
+      }): {
         artifactId: string;
         mediaType: string;
         size: number;
@@ -175,6 +193,9 @@ export class GoogleOperationService {
       dispatched = false,
       completed = false,
       recordStarted = false;
+    let expectedDocument: GoogleDocumentEditExpectation | undefined,
+      verificationSha256: string | undefined,
+      verificationRevision: string | undefined;
     const operationId = `aux-google-${input.operation.replaceAll(".", "-")}`;
     const record = (status: string, effectOutcome: string, error?: string) =>
       this.deps.repo.saveInvocation({
@@ -290,16 +311,21 @@ export class GoogleOperationService {
             if (!request.preflight) return;
             const value = await read(request.preflight);
             const observed =
-              request.preflight.operation === "gmail.draft.read"
-                ? googleRawMessageHash(value)
-                : googleValuesHash(value.values ?? []);
-            if (observed !== request.expectedPreflightHash)
+              request.preflight.operation === "docs.read"
+                ? value.revisionId
+                : request.preflight.operation === "gmail.draft.read"
+                  ? googleRawMessageHash(value)
+                  : googleValuesHash(value.values ?? []);
+            if (observed !== (request.expectedRevisionId ?? request.expectedPreflightHash))
               throw new AuxError(
                 "conflict",
                 "The original Google object changed. Read it again before editing or sending.",
               );
+            return value;
           };
-          await checkPreflight();
+          const originalDocument = await checkPreflight();
+          if (input.operation === "docs.edit")
+            expectedDocument = prepareGoogleDocumentEdit(originalDocument!, input.args);
           if (input.operation === "gmail.reply" || input.operation === "gmail.replyAll") {
             const source = await read(
               prepareGoogleRequest(
@@ -354,7 +380,10 @@ export class GoogleOperationService {
               logicalActionId: `google:${input.runId}:${input.actionId}`,
               taskId: input.taskId,
               taskRevision: input.taskRevision,
-              summary: { ops: [input.operation], beforeLineHashes: [requestDigest] },
+              summary: {
+                ops: [input.operation],
+                beforeLineHashes: [requestDigest],
+              },
             });
             if (begun.duplicate)
               throw new AuxError(
@@ -374,14 +403,24 @@ export class GoogleOperationService {
           if (request.verify) {
             const observed = await read(request.verify);
             if (
-              request.expectedGrid
-                ? !verifyGoogleGrid(observed, request.expectedGrid)
-                : googleValuesHash(observed.values ?? []) !== googleValuesHash(request.expectedValues)
+              expectedDocument
+                ? !verifyGoogleDocumentEdit(observed, expectedDocument)
+                : input.operation === "sheets.write"
+                  ? !verifyGoogleValuesWrite(
+                      GoogleArguments["sheets.write"].parse(input.args),
+                      value,
+                      observed,
+                    )
+                  : request.expectedGrid
+                    ? !verifyGoogleGrid(observed, request.expectedGrid)
+                    : googleValuesHash(observed.values ?? []) !== googleValuesHash(request.expectedValues)
             )
               throw new AuxError(
                 "conflict",
                 "Google write was sent, but the resulting range could not be verified. Inspect the original receipt.",
               );
+            verificationSha256 = sha(JSON.stringify(observed));
+            if (typeof observed.revisionId === "string") verificationRevision = observed.revisionId;
           }
           if (request.effect !== "read") {
             const idRequired = input.operation.startsWith("gmail.") || input.operation === "docs.comment";
@@ -402,12 +441,24 @@ export class GoogleOperationService {
                 operation: input.operation,
                 requestDigest,
                 providerObjectId: typeof value.id === "string" ? value.id : request.objectId,
+                ...(verificationSha256 ? { verificationSha256 } : {}),
               }),
             );
           completed = true;
           current();
           authorization();
-          let projected = { ...value };
+          let projected: Record<string, unknown> = { ...value };
+          if (input.operation === "docs.read")
+            projected = projectGoogleDocumentRange(value, GoogleArguments["docs.read"].parse(input.args));
+          if (input.operation === "sheets.grid.read")
+            projected = projectGoogleGrid(value, GoogleArguments["sheets.grid.read"].parse(input.args));
+          if (expectedDocument)
+            projected.verification = {
+              scope: "api-body-ranges",
+              sha256: verificationSha256,
+              revisionId: verificationRevision,
+              tabIds: [...expectedDocument.bodies.keys()],
+            };
           if (input.operation === "gmail.attachment") {
             if (!this.deps.saveAttachment)
               throw new AuxError("capability_unsupported", "Attachment artifact storage is unavailable.");
@@ -425,12 +476,82 @@ export class GoogleOperationService {
                 "Google attachment byte size or encoding could not be verified.",
               );
             const digest = createHash("sha256").update(bytes).digest("hex");
+            let filename = `attachment-${digest.slice(0, 8)}.bin`,
+              mediaType = "application/octet-stream";
+            let admission: {
+              status: "verified" | "unsupported";
+              reason?: string;
+            } = {
+              status: "unsupported",
+              reason: "Native attachment inspection is unavailable; original bytes retained.",
+            };
+            try {
+              const metadata = await read(
+                prepareGoogleRequest(
+                  "gmail.message",
+                  {
+                    messageId: (input.args as { messageId: string }).messageId,
+                  },
+                  input.actionId,
+                ),
+              );
+              const original = googleAttachmentMetadata(
+                metadata,
+                (input.args as { messageId: string }).messageId,
+                (input.args as { attachmentId: string }).attachmentId,
+              );
+              filename = original.filename;
+              if (original.size !== bytes.length)
+                throw new AuxError(
+                  "capability_unsupported",
+                  "The provider attachment size did not match its original bytes.",
+                );
+              if (this.deps.inspectAttachment) {
+                const inspected = await this.deps.inspectAttachment({
+                  bytes: Buffer.from(bytes),
+                  filename,
+                  mediaType: original.mediaType,
+                  sha256: digest,
+                  signal: deadline,
+                  checkCurrent: current,
+                });
+                current();
+                if (
+                  inspected.sourceSha256 !== digest ||
+                  ![
+                    "application/pdf",
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "text/plain",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  ].includes(inspected.mediaType)
+                )
+                  throw new AuxError(
+                    "capability_unsupported",
+                    "Native inspection did not verify the original attachment identity.",
+                  );
+                mediaType = inspected.mediaType;
+                admission = { status: "verified" };
+              }
+            } catch (error) {
+              current();
+              admission = {
+                status: "unsupported",
+                reason:
+                  error instanceof AuxError && error.code === "capability_unsupported"
+                    ? error.message
+                    : "Attachment metadata or native inspection was not verified; original bytes retained.",
+              };
+            }
             current();
             authorization();
             const artifact = this.deps.saveAttachment({
               runId: input.runId,
               bytes,
               sha256: digest,
+              filename,
+              mediaType,
               checkCurrent: () => {
                 current();
                 authorization();
@@ -438,7 +559,12 @@ export class GoogleOperationService {
             });
             current();
             authorization();
-            projected = { ...artifact, sha256: digest };
+            if (artifact.mediaType !== mediaType || artifact.size !== bytes.length)
+              throw new AuxError(
+                "backend_unavailable",
+                "The saved attachment identity did not match its original bytes.",
+              );
+            projected = { ...artifact, sha256: digest, filename, admission };
           }
           if (input.operation === "gmail.draft.read") projected.messageSha256 = googleRawMessageHash(value);
           if (input.operation === "gmail.message") projected.sourceSha256 = googleMessageHash(value);
@@ -458,7 +584,11 @@ export class GoogleOperationService {
         },
       );
       record("completed", request.effect === "read" ? "observed" : "applied");
-      return { invocationId, ...result, ...(intent ? { receiptId: intent.id } : {}) };
+      return {
+        invocationId,
+        ...result,
+        ...(intent ? { receiptId: intent.id } : {}),
+      };
     } catch (error) {
       if (intent && !completed) {
         if (dispatched) this.deps.writes.fail(intent.id);

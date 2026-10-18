@@ -8,8 +8,10 @@ import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { OFFICIAL_MCP_CONNECTORS } from "@aux/contracts";
+import { Select } from "../ui";
+import { SettingsField } from "../settings/primitives";
 import { SettingsDialogControl } from "../settings/SettingsDialogControl";
 import { McpOAuthSetup } from "./McpOAuthSetup";
 import type { OutboundMcpServer, OutboundMcpTool, Task, Workspace } from "@aux/contracts";
@@ -126,6 +128,7 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
 }
 
 export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}) {
+  const controlId = useId();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -327,9 +330,8 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
         </p>
       ) : (
         <>
-          <label>
-            Space
-            <select
+          <SettingsField compact label="Space">
+            <Select
               aria-label="MCP Space"
               value={workspaceId}
               disabled={busy}
@@ -346,8 +348,8 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                   {workspace.name}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </SettingsField>
           <SettingsDialogControl
             active={active}
             size="wide"
@@ -398,18 +400,10 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                 role="group"
                 aria-label="Server connection"
               >
-                <label>
-                  Server name
-                  <input
-                    value={name}
-                    maxLength={200}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="A name you recognize"
-                  />
-                </label>
-                <label>
+                <label htmlFor={`${controlId}-source`}>
                   Source
-                  <select
+                  <Select
+                    id={`${controlId}-source`}
                     aria-label="MCP source type"
                     value={sourceKind}
                     onChange={(event) => {
@@ -420,7 +414,16 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                     <option value="remote">Remote HTTPS</option>
                     <option value="local">Local command</option>
                     <option value="bundle">.mcpb or .dxt bundle</option>
-                  </select>
+                  </Select>
+                </label>
+                <label>
+                  Server name
+                  <input
+                    value={name}
+                    maxLength={200}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="A name you recognize"
+                  />
                 </label>
                 {sourceKind === "remote" && (
                   <>
@@ -433,12 +436,16 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                         placeholder="https://example.com/mcp"
                       />
                     </label>
-                    <label>
+                    <label htmlFor={`${controlId}-authentication`}>
                       Authentication
-                      <select value={auth} onChange={(event) => setAuth(event.target.value as typeof auth)}>
+                      <Select
+                        id={`${controlId}-authentication`}
+                        value={auth}
+                        onChange={(event) => setAuth(event.target.value as typeof auth)}
+                      >
                         <option value="oauth">OAuth</option>
                         <option value="none">None</option>
-                      </select>
+                      </Select>
                     </label>
                   </>
                 )}
@@ -539,9 +546,8 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
           <div {...auxClassDrawerSectionProps}>Servers in this Space</div>
           {!servers.length && <p {...staticHintProps}>No MCP servers saved in this Space.</p>}
           {!!servers.length && (
-            <label>
-              Review server
-              <select
+            <SettingsField compact label="Review server">
+              <Select
                 aria-label="Review MCP server"
                 value={selectedServerId}
                 onChange={(event) => {
@@ -556,8 +562,8 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                     {server.name} · {server.state}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </SettingsField>
           )}
           {selectedServer && (
             <div className="mcp-server-card">
@@ -775,9 +781,10 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                 !selectedServer.disabledTools.includes(toolName) && (
                   <div className="mcp-tool-test">
                     <h4>Call {toolName}</h4>
-                    <label>
+                    <label htmlFor={`${controlId}-scope`}>
                       Task context
-                      <select
+                      <Select
+                        id={`${controlId}-scope`}
                         aria-label="MCP call scope"
                         value={scopeKind}
                         disabled={busy}
@@ -787,12 +794,13 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                       >
                         <option value="workspace">This Space</option>
                         <option value="task">One task</option>
-                      </select>
+                      </Select>
                     </label>
                     {scopeKind === "task" && (
-                      <label>
+                      <label htmlFor={`${controlId}-task`}>
                         Task
-                        <select
+                        <Select
+                          id={`${controlId}-task`}
                           aria-label="MCP call task"
                           value={taskId}
                           disabled={busy}
@@ -804,7 +812,7 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                               {task.title} · revision {task.revision}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                     )}
                     <label>

@@ -17,12 +17,12 @@ function owner(pageId: string) {
   cleanups.push(registerScopedControl(button, "update-browser-source", pageId, invoke));
   return { button, invoke };
 }
-it("adds exactly one normal-window core command with genuine remapping", () => {
+it("adds one normal and Quick Ask source command with genuine remapping", () => {
   const defs = COMMANDS.filter((row) => row.id === "update-browser-source");
   expect(defs).toHaveLength(1);
   expect(defs[0]).toMatchObject({
     handler: "shell",
-    windows: ["normal"],
+    windows: ["normal", "quick-ask"],
     focusShell: true,
     intercept: true,
     bindings: [],

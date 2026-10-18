@@ -10,6 +10,7 @@ const host = vi.hoisted(() => ({
   error: vi.fn(),
   state: { connected: true, layout: { activeSpaceId: "space" } },
   windowId: "window",
+  kind: "normal",
   privateMode: false,
 }));
 vi.mock("../bridge", () => ({
@@ -23,7 +24,9 @@ vi.mock("../bridge", () => ({
     get privateMode() {
       return host.privateMode;
     },
-    windowKind: "normal",
+    get windowKind() {
+      return host.kind;
+    },
   },
 }));
 vi.mock("../store", () => ({
@@ -70,6 +73,7 @@ beforeEach(async () => {
   host.state.connected = true;
   host.state.layout.activeSpaceId = "space";
   host.windowId = "window";
+  host.kind = "normal";
   host.privateMode = false;
   host.pick.mockReset().mockResolvedValue({ selectionId: "selection", count: 30 });
   host.read
@@ -90,43 +94,48 @@ afterEach(async () => {
   element.remove();
   vi.unstubAllGlobals();
 });
-it("imports thirty selected files sequentially into its new chat, keeping valid files after one read fails", async () => {
-  const firstRead = held<ReturnType<typeof makeDocumentRead>>(),
-    firstSave = held<{ attachments: [] }>();
-  host.read.mockImplementation(async (_selection, index) => {
-    if (index === 0) return firstRead.promise;
-    if (index === 9) return { kind: "unreadable", filename: "bad.pdf", reason: "encrypted" };
-    return makeDocumentRead(`body ${index}`, `${index}.txt`);
-  });
-  host.call.mockReturnValueOnce(firstSave.promise);
-  let completion!: Promise<void>;
-  await act(async () => {
-    completion = actions.start();
-  });
-  expect(host.read).toHaveBeenCalledExactlyOnceWith("selection", 0);
-  expect(host.call).not.toHaveBeenCalled();
-  await render("allocated-chat");
-  await act(async () => firstRead.resolve(makeDocumentRead("body 0", "0.txt")));
-  expect(host.read).toHaveBeenCalledTimes(1);
-  expect(host.call).toHaveBeenCalledExactlyOnceWith("conversations.attachments.import", {
-    chatId: "allocated-chat",
-    selectionId: "selection",
-    index: 0,
-    snapshotId: makeDocumentRead().document.snapshotId,
-    sourceSha256: makeDocumentRead().document.sourceSha256,
-  });
-  await act(async () => {
-    firstSave.resolve({ attachments: [] });
-    await completion;
-  });
-  expect(host.read).toHaveBeenCalledTimes(30);
-  expect(host.call).toHaveBeenCalledTimes(29);
-  expect(host.call.mock.calls.every(([, input]) => input.chatId === "allocated-chat")).toBe(true);
-  expect(actions.progress).toMatchObject({ count: 30, attached: 29, busy: false });
-  expect(actions.progress?.errors).toEqual([expect.stringContaining("bad.pdf")]);
-  expect(changed).toHaveBeenCalledTimes(29);
-  expect(host.release).toHaveBeenCalledExactlyOnceWith("selection");
-});
+it.each(["normal", "quick-ask"])(
+  "imports admitted files sequentially into the original chat, retaining partial success (%s)",
+  async (kind) => {
+    host.kind = kind;
+    await render();
+    const firstRead = held<ReturnType<typeof makeDocumentRead>>(),
+      firstSave = held<{ attachments: [] }>();
+    host.read.mockImplementation(async (_selection, index) => {
+      if (index === 0) return firstRead.promise;
+      if (index === 9) return { kind: "unreadable", filename: "bad.pdf", reason: "encrypted" };
+      return makeDocumentRead(`body ${index}`, `${index}.txt`);
+    });
+    host.call.mockReturnValueOnce(firstSave.promise);
+    let completion!: Promise<void>;
+    await act(async () => {
+      completion = actions.start();
+    });
+    expect(host.read).toHaveBeenCalledExactlyOnceWith("selection", 0);
+    expect(host.call).not.toHaveBeenCalled();
+    await render("allocated-chat");
+    await act(async () => firstRead.resolve(makeDocumentRead("body 0", "0.txt")));
+    expect(host.read).toHaveBeenCalledTimes(1);
+    expect(host.call).toHaveBeenCalledExactlyOnceWith("conversations.attachments.import", {
+      chatId: "allocated-chat",
+      selectionId: "selection",
+      index: 0,
+      snapshotId: makeDocumentRead().document.snapshotId,
+      sourceSha256: makeDocumentRead().document.sourceSha256,
+    });
+    await act(async () => {
+      firstSave.resolve({ attachments: [] });
+      await completion;
+    });
+    expect(host.read).toHaveBeenCalledTimes(30);
+    expect(host.call).toHaveBeenCalledTimes(29);
+    expect(host.call.mock.calls.every(([, input]) => input.chatId === "allocated-chat")).toBe(true);
+    expect(actions.progress).toMatchObject({ count: 30, attached: 29, busy: false });
+    expect(actions.progress?.errors).toEqual([expect.stringContaining("bad.pdf")]);
+    expect(changed).toHaveBeenCalledTimes(29);
+    expect(host.release).toHaveBeenCalledExactlyOnceWith("selection");
+  },
+);
 it("cancel keeps an accepted in-flight file and never reads the next selected file", async () => {
   const save = held<{ attachments: [] }>();
   host.call.mockReturnValueOnce(save.promise);
@@ -184,4 +193,23 @@ it("stops the entire selection when native ownership is lost", async () => {
   expect(host.call).not.toHaveBeenCalled();
   expect(host.release).toHaveBeenCalledExactlyOnceWith("selection");
   expect(actions.progress).toMatchObject({ count: 30, attached: 0, busy: false });
+});
+
+it("retires the original Quick Ask native selection when its window kind changes before read publication", async () => {
+  host.kind = "quick-ask";
+  await render("chat");
+  const read = held<ReturnType<typeof makeDocumentRead>>();
+  host.read.mockReturnValueOnce(read.promise);
+  let completion!: Promise<void>;
+  await act(async () => {
+    completion = actions.start();
+  });
+  expect(host.read).toHaveBeenCalledExactlyOnceWith("selection", 0);
+  host.kind = "normal";
+  await act(async () => {
+    read.resolve(makeDocumentRead("retired", "retired.txt"));
+    await completion;
+  });
+  expect(host.call).not.toHaveBeenCalled();
+  expect(host.release).toHaveBeenCalledExactlyOnceWith("selection");
 });

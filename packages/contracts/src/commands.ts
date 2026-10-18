@@ -171,6 +171,14 @@ const browserContextControl = {
   intercept: true,
 } as const;
 const privateConversationControl = { ...browserContextControl, windows: ["normal", "private"] } as const;
+const quickAskConversationControl = {
+  ...privateConversationControl,
+  windows: ["normal", "private", "quick-ask"],
+} as const;
+const quickAskBrowserContextControl = {
+  ...browserContextControl,
+  windows: ["normal", "quick-ask"],
+} as const;
 const shellApplication = {
   section: "Application",
   handler: "shell",
@@ -342,10 +350,9 @@ export const COMMANDS = [
     ["cancel-", "-key-removal", "Cancel ", " key removal"],
   ]),
 
-  ...GL(privateConversationControl, "-conversation-", " conversation ", [
+  ...GL(quickAskConversationControl, "-conversation-", " conversation ", [
     ["choose", "image", "Choose", "image"],
     ["capture", "page", "Capture", "page"],
-    ["select", "image-region", "Select", "image region"],
     ["attach", "image", "Attach", "image"],
     ["cancel", "image", "Cancel", "image review"],
     ["use-whole", "image", "Use whole", "image"],
@@ -361,6 +368,8 @@ export const COMMANDS = [
     ["attach", "document", "Attach", "documents"],
     ["cancel", "document-import", "Cancel", "document import"],
   ]),
+  S("select-conversation-image-region", "Select conversation image region", privateConversationControl),
+  S("toggle-conversation-context", "Toggle conversation context choices", quickAskConversationControl),
   ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
     ["load-", "-history", "Load ", " history"],
     ["reload-", "-context", "Reload ", " context"],
@@ -384,7 +393,6 @@ export const COMMANDS = [
     ["continue-", "-in-rail", "Continue ", " in side panel"],
     ["toggle-", "-browser-preview", "Toggle ", " browser preview"],
     ["jump-", "-to-latest", "Jump to latest ", " message"],
-    ["toggle-", "-context", "Toggle ", " context choices"],
     ["toggle-", "-preview-menu", "Choose where to open ", " preview"],
     ["activate-", "-preview-page", "Open ", " preview in tab"],
     ["split-", "-preview-page", "Open ", " preview in split view"],
@@ -397,23 +405,25 @@ export const COMMANDS = [
     ["cancel-", "-source-profile", "Cancel Calendar source Profile choice", ""],
   ]),
   ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
+    ["preview-", "-result", "Preview saved ", " result"],
+    ["toggle-", "-result", "Include or exclude saved ", " result"],
+  ]),
+  ...singleScopedRows(quickAskConversationControl, "conversation", "conversation", [
     ["preview-", "-document", "Preview ", " document"],
     ["toggle-", "-document", "Include or exclude ", " document"],
     ["remove-", "-document", "Remove ", " document"],
-    ["preview-", "-result", "Preview saved ", " result"],
-    ["toggle-", "-result", "Include or exclude saved ", " result"],
     ["open-", "-supporting-content", "Open supporting ", " content"],
     ["close-", "-supporting-content", "Close supporting ", " content"],
     ["increase-", "-supporting-width", "Widen supporting ", " content"],
     ["decrease-", "-supporting-width", "Narrow supporting ", " content"],
     ["reset-", "-supporting-width", "Reset supporting ", " content width"],
   ]),
-  ...singleScopedRows(privateConversationControl, "conversation", "", [
+  ...singleScopedRows(quickAskConversationControl, "conversation", "", [
     ["retry-", "-document-read", "Retry document snapshot read", ""],
     ["toggle-", "-document-details", "Toggle document snapshot details", ""],
     ["close-", "-document-preview", "Close document snapshot preview", ""],
   ]),
-  ...singleScopedRows(privateConversationControl, "document-section", "document section", [
+  ...singleScopedRows(quickAskConversationControl, "document-section", "document section", [
     ["previous-", "", "Previous ", ""],
     ["next-", "", "Next ", ""],
     ["copy-", "", "Copy current ", ""],
@@ -742,7 +752,7 @@ export const COMMANDS = [
   C("open-run-tab", "Open this run’s temporary tab", runControl),
   C("take-page-control", "Take control of this page", runControl),
   C("return-agent-control", "Return control to agent", runControl),
-  ...GL(browserContextControl, "-browser-", " browser ", [
+  ...GL(quickAskBrowserContextControl, "-browser-", " browser ", [
     ["remove", "source", "Remove selected", "source"],
     ["toggle", "source", "Select additional", "source"],
     ["select", "context", "Choose", "context"],
@@ -792,7 +802,7 @@ export const COMMANDS = [
     ["toggle", "-enabled", "Toggle Space memory"],
     ["toggle", "-overview", "Toggle Space overview"],
   ]),
-  S("update-browser-source", "Use current browser source", browserContextControl),
+  S("update-browser-source", "Use current browser source", quickAskBrowserContextControl),
   C("mention-insert", "Mention source", mentionControl),
   C("mention-remove", "Remove source mention", mentionControl),
 

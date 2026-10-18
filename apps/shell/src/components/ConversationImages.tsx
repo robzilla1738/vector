@@ -426,6 +426,7 @@ export function ConversationImages({
   const canCapture =
     page && /^https?:\/\//.test(page.url) && !["crashed", "detached"].includes(page.viewStatus ?? "");
   const onPage =
+    kind !== "quick-ask" &&
     canCapture &&
     useStore.getState().mode === "focus" &&
     useStore.getState().activePageId === page.pageId &&
@@ -587,7 +588,13 @@ export function ConversationImages({
         originalRef={lassoTrigger}
         {...smallButtonProps}
         disabled={disabled || busy || !onPage || images.length >= 4}
-        title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"}
+        title={
+          kind === "quick-ask"
+            ? "Open in Aux to select an image region on the visible page."
+            : onPage
+              ? "Select directly on the visible page"
+              : "Show this page by itself to select an area"
+        }
         current={() =>
           current() &&
           !!onPage &&

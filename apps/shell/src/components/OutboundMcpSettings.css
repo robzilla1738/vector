@@ -1,20 +1,53 @@
 @layer components {
   .outbound-mcp {
     display: grid;
+    min-width: 0;
     gap: var(--space-3);
+    font-size: var(--fs-md);
+  }
+
+  .settings-content .outbound-mcp.field > .hint,
+  .outbound-mcp .mcp-source-details {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
+  }
+
+  .outbound-mcp > .hint {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .outbound-mcp .mcp-server-card {
+    min-width: 0;
     background: var(--settings-card);
-    border: 1px solid var(--line);
+    border: var(--hairline) solid var(--line);
     border-radius: var(--r-xl);
     padding: var(--space-3-5);
+    overflow-wrap: anywhere;
+  }
+
+  .outbound-mcp > .drawer-section {
+    color: var(--ink-2);
+    font-size: var(--fs-md);
+    font-weight: 550;
+    line-height: 20px;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  .mcp-server-card > strong,
+  .mcp-server-card > .field > strong {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
   }
 
   .outbound-mcp .mcp-source-details {
     display: grid;
-    gap: 8px;
-    margin: 12px 0;
+    min-width: 0;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
   }
 
   .outbound-mcp .mcp-source-details > div {
@@ -51,7 +84,7 @@
     overflow-wrap: anywhere;
   }
 
-  @media (max-width: 700px) {
+  @container settings-content (max-width: 440px) {
     .outbound-mcp .mcp-source-details > div {
       grid-template-columns: 1fr;
       gap: 2px;
@@ -88,7 +121,26 @@
   }
   .mcp-add-editor label {
     display: grid;
+    min-width: 0;
     gap: var(--space-1-5);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
+  }
+  .mcp-add-editor .settings-editor-fields.inline-labels > label {
+    grid-template-columns: 160px minmax(0, 1fr);
+    column-gap: var(--space-3);
+  }
+  .mcp-add-editor .mcp-official-connections p {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 16px;
+    overflow-wrap: anywhere;
+  }
+  @container (width < 400px) {
+    .mcp-add-editor .settings-editor-fields.inline-labels > label {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   .mcp-add-editor :is(input, select, textarea) {
     width: 100%;

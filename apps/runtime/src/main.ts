@@ -1,3 +1,4 @@
+import { nativeGoogleAttachmentInspector } from "./services/google-attachments.js";
 import { DesktopContextRunSources } from "./services/desktop-context-run-sources.js";
 import { XAccountService } from "./services/x-accounts.js";
 import { XAccountRecords } from "./services/x-store.js";
@@ -883,13 +884,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         accounts: runtimeServices.googleAccounts,
         grants: runtimeServices.googleGrants,
         writes: runtimeServices.durableWrites,
-        saveAttachment: ({ runId, bytes, sha256, checkCurrent }) => {
+        inspectAttachment: nativeGoogleAttachmentInspector(native),
+        saveAttachment: ({ runId, bytes, filename, mediaType, checkCurrent }) => {
           checkCurrent();
           const artifact = runtimeServices.artifacts.save({
             runId,
-            label: `google-attachment-${sha256.slice(0, 8)}.bin`,
+            label: filename,
             buffer: bytes,
-            mediaType: "application/octet-stream",
+            mediaType,
           });
           checkCurrent();
           return { artifactId: artifact.artifactId, mediaType: artifact.mediaType, size: artifact.size };

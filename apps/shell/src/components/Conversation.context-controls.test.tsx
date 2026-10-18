@@ -315,9 +315,9 @@ it("opt-in Popover receives the genuine original click event and invokes its sam
   expect(panel("Owned event")).not.toBeNull();
   await cancel("Owned event");
 });
-it("the context row is normal scoped and remappable", () => {
+it("the context row supports its original normal, private and Quick Ask surfaces and is remappable", () => {
   expect(COMMANDS.find((row) => row.id === "toggle-conversation-context")).toMatchObject({
-    windows: ["normal", "private"],
+    windows: ["normal", "private", "quick-ask"],
     palette: false,
     bindings: [],
     intercept: true,

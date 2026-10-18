@@ -21,6 +21,7 @@ export type GoogleRequest = {
   limitBytes: number;
   preflight?: GoogleRequest;
   expectedPreflightHash?: string;
+  expectedRevisionId?: string;
   verify?: GoogleRequest;
   expectedValues?: unknown;
   expectedGrid?: {
@@ -100,6 +101,7 @@ export function prepareGoogleRequest(
   const input = parsed as Record<string, unknown>;
   let preflight: GoogleRequest | undefined,
     expectedPreflightHash: string | undefined,
+    expectedRevisionId: string | undefined,
     verify: GoogleRequest | undefined,
     expectedValues: unknown,
     expectedGrid: GoogleRequest["expectedGrid"];
@@ -147,7 +149,11 @@ export function prepareGoogleRequest(
     method = "PUT";
     preflight = prepareGoogleRequest("gmail.draft.read", { draftId: objectId }, actionId);
     expectedPreflightHash = String(input.expectedMessageSha256);
-    body = { message: { raw: mime(GoogleDraftUpdateSchema.parse(parsed).message, actionId) } };
+    body = {
+      message: {
+        raw: mime(GoogleDraftUpdateSchema.parse(parsed).message, actionId),
+      },
+    };
   } else if (operation.startsWith("docs.")) {
     objectId = String(input.documentId);
     if (operation === "docs.comment") {
@@ -158,7 +164,12 @@ export function prepareGoogleRequest(
       body = {
         content: input.content,
         ...(input.quotedText
-          ? { quotedFileContent: { mimeType: "text/plain", value: input.quotedText } }
+          ? {
+              quotedFileContent: {
+                mimeType: "text/plain",
+                value: input.quotedText,
+              },
+            }
           : {}),
       };
     } else {
@@ -167,6 +178,9 @@ export function prepareGoogleRequest(
       if (operation === "docs.read") query.set("includeTabsContent", "true");
       else {
         const value = GoogleArguments["docs.edit"].parse(parsed);
+        preflight = prepareGoogleRequest("docs.read", { documentId: value.documentId }, actionId);
+        expectedRevisionId = value.requiredRevisionId;
+        verify = preflight;
         path += ":batchUpdate";
         method = "POST";
         body = {
@@ -187,7 +201,10 @@ export function prepareGoogleRequest(
               : [
                   {
                     insertText: {
-                      location: { index: edit.index, ...(edit.tabId ? { tabId: edit.tabId } : {}) },
+                      location: {
+                        index: edit.index,
+                        ...(edit.tabId ? { tabId: edit.tabId } : {}),
+                      },
                       text: edit.text,
                     },
                   },
@@ -223,7 +240,15 @@ export function prepareGoogleRequest(
     path = `/spreadsheets/${objectId}`;
     if (operation === "sheets.discover")
       query.set("fields", "spreadsheetId,spreadsheetUrl,properties,sheets.properties,namedRanges");
-    else if (operation === "sheets.read") {
+    else if (operation === "sheets.grid.read") {
+      sheetDimensions(String(input.range));
+      query.set("ranges", String(input.range));
+      query.set("includeGridData", "true");
+      query.set(
+        "fields",
+        "spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat,effectiveFormat,note))))",
+      );
+    } else if (operation === "sheets.read") {
       sheetDimensions(String(input.range));
       path += `/values/${encodeURIComponent(String(input.range))}`;
       query.set("valueRenderOption", input.formulas ? "FORMULA" : "UNFORMATTED_VALUE");
@@ -241,7 +266,11 @@ export function prepareGoogleRequest(
         throw new AuxError("invalid_params", "Sheet matrices must be rectangular.");
       preflight = prepareGoogleRequest(
         "sheets.read",
-        { spreadsheetId: value.spreadsheetId, range: value.range, formulas: true },
+        {
+          spreadsheetId: value.spreadsheetId,
+          range: value.range,
+          formulas: true,
+        },
         actionId,
       );
       expectedPreflightHash = value.expectedValuesSha256;
@@ -250,7 +279,9 @@ export function prepareGoogleRequest(
       body = {
         valueInputOption: value.valueInputOption,
         includeValuesInResponse: true,
-        responseValueRenderOption: "UNFORMATTED_VALUE",
+        responseValueRenderOption:
+          value.valueInputOption === "USER_ENTERED" ? "FORMULA" : "UNFORMATTED_VALUE",
+        responseDateTimeRenderOption: "SERIAL_NUMBER",
         data: [{ range: value.range, majorDimension: "ROWS", values: value.values }],
       };
       verify = prepareGoogleRequest(
@@ -329,7 +360,10 @@ export function prepareGoogleRequest(
       const change = (
         body as {
           requests: {
-            repeatCell?: { range: NonNullable<GoogleRequest["expectedGrid"]>; cell: Record<string, unknown> };
+            repeatCell?: {
+              range: NonNullable<GoogleRequest["expectedGrid"]>;
+              cell: Record<string, unknown>;
+            };
             updateCells?: {
               range: NonNullable<GoogleRequest["expectedGrid"]>;
               rows: { values: Record<string, unknown>[] }[];
@@ -346,7 +380,10 @@ export function prepareGoogleRequest(
         method: "POST",
         objectId,
         url: `${root}/spreadsheets/${objectId}:getByDataFilter?fields=sheets(properties.sheetId,data(startRow,startColumn,rowData.values(note,userEnteredFormat)))`,
-        body: JSON.stringify({ dataFilters: [{ gridRange }], includeGridData: true }),
+        body: JSON.stringify({
+          dataFilters: [{ gridRange }],
+          includeGridData: true,
+        }),
         limitBytes: 2_000_000,
       };
     }
@@ -416,8 +453,9 @@ export function prepareGoogleRequest(
     url: `${root}${path}${query.size ? `?${query}` : ""}`,
     objectId,
     ...(serialized ? { body: serialized } : {}),
-    limitBytes: operation === "gmail.attachment" ? 8_000_000 : 1_000_000,
-    ...(preflight ? { preflight, expectedPreflightHash } : {}),
+    limitBytes:
+      operation === "gmail.attachment" ? 8_000_000 : operation === "sheets.grid.read" ? 2_000_000 : 1_000_000,
+    ...(preflight ? { preflight, expectedPreflightHash, expectedRevisionId } : {}),
     ...(verify ? { verify, expectedValues, expectedGrid } : {}),
   };
 }

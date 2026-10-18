@@ -286,7 +286,7 @@ it("hidden, unfocused and detached actual controls refuse without closing a newe
   await expect(executeCommand("open-conversation-supporting-content")).rejects.toThrow();
   expect(closed).not.toHaveBeenCalled();
 });
-it("all five normal scoped rows retain remapping and no palette authority", () => {
+it("all five supporting controls admit Quick Ask while retaining remapping and no palette authority", () => {
   for (const id of [
     "open-conversation-supporting-content",
     "close-conversation-supporting-content",
@@ -295,7 +295,7 @@ it("all five normal scoped rows retain remapping and no palette authority", () =
     "reset-conversation-supporting-width",
   ])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal", "private"],
+      windows: ["normal", "private", "quick-ask"],
       palette: false,
       bindings: [],
       intercept: true,

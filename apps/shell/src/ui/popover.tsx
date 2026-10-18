@@ -67,12 +67,17 @@ export function Popover({
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(node);
     if (button.current) observer?.observe(button.current);
+    const onScroll = (event: Event) => {
+      // Measuring clears maxHeight; doing it during the popup's own scroll resets its scrollTop.
+      if (event.target instanceof Node && node.contains(event.target)) return;
+      place();
+    };
     window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("scroll", onScroll, true);
       requestAnimationFrame(requestStageReport);
     };
   }, [open, align]);

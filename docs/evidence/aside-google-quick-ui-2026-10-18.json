@@ -1,0 +1,41 @@
+{
+  "program": "Aside adoption",
+  "status": "verified source slice; full program acceptance open",
+  "baseCommit": "ca8ff7f8d",
+  "checks": {
+    "runtimeRebuilt": true,
+    "typecheck": "passed",
+    "lint": "passed",
+    "integratedPassedTests": 5278,
+    "integratedFailures": 8,
+    "correctedAffectedTestsPassed": 131,
+    "correctedDeadline": "final terminal status read; unchanged5000ms limit",
+    "log": "/tmp/aux-google-quick-integrated-check.log",
+    "repairLog": "/tmp/aux-quick-metadata-fixture-tests.log",
+    "newCombinedAllFilesPass": false
+  },
+  "focusedRoot": {
+    "googleInitial": 49,
+    "googleValues": 43,
+    "docsSelection": 15,
+    "quickContext": 40,
+    "catalogResync": 10
+  },
+  "scope": [
+    "Google exact source/revision readback and immutable inspected attachment admission",
+    "separately granted Sheet grid data and canonical matrix readback",
+    "uncached real Docs DOM caret/text selection with local UTF16 provenance",
+    "QuickAsk original-owner context/intake controls and bounded owned portals",
+    "popup internal scroll preservation",
+    "shared Skills/MCP/activity roles",
+    "catalog read-race coalescing without command replay"
+  ],
+  "setup": "OAuth registrations explicitly unconfigured; no real third-party messages",
+  "native": "area66 source is separate uncommitted compiling work; new packaged UI observation pending",
+  "limitations": [
+    "Docs canvas selection and structural rich editing remain unsupported",
+    "verified Sheet active-cell navigation remains open",
+    "no new paired performance or provider20task smoke",
+    "original155SIGTRAP unresolved; permission pending for default crash reports"
+  ]
+}

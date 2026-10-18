@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Popover } from "./popover";
+import * as placement from "../position-context-menu";
 
 it("opens an accessible dialog, focuses its first control, and restores its trigger on Escape", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -39,6 +40,37 @@ it("opens an accessible dialog, focuses its first control, and restores its trig
   } finally {
     await act(async () => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("preserves its own bounded scroll while following scroll outside its popup", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const place = vi.spyOn(placement, "positionAnchoredPopover");
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <Popover label="Scrollable context" trigger="Context">
+          {() => <button>Last context option</button>}
+        </Popover>,
+      ),
+    );
+    await act(async () => host.querySelector("button")!.click());
+    const panel = document.querySelector<HTMLDialogElement>('dialog[aria-label="Scrollable context"]')!;
+    const count = place.mock.calls.length;
+    panel.scrollTop = 16;
+    panel.dispatchEvent(new Event("scroll", { bubbles: false }));
+    expect(place).toHaveBeenCalledTimes(count);
+    expect(panel.scrollTop).toBe(16);
+    host.dispatchEvent(new Event("scroll", { bubbles: false }));
+    expect(place).toHaveBeenCalledTimes(count + 1);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
 });

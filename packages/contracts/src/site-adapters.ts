@@ -10,6 +10,12 @@ export const SiteReadParamsSchema = z
     expectedDocumentEpoch: z.number().int().nonnegative(),
     expectedUrl: z.string().url().max(8192),
     kind: z.enum(["google-docs", "google-sheets", "youtube", "image-search", "linkedin"]),
+    view: z
+      .literal("selection")
+      .optional()
+      .describe(
+        "Google Docs only: read a real accessible DOM selection/caret; canvas-only editors require handback.",
+      ),
     sheetGid: z
       .string()
       .regex(/^\d{1,20}$/)
@@ -31,6 +37,25 @@ export const SiteReadResultSchema = z
     sourceUrl: z.string().url(),
     mediaType: z.enum(["text/plain", "text/csv"]),
     text: z.string().max(2_000_000),
+    docsSelection: z
+      .object({
+        basis: z.literal("live-dom-root-utf16"),
+        sessionId: z.string().min(1),
+        mode: z.enum(["range", "caret"]),
+        documentId: z.string().min(20).max(200),
+        framePath: z.array(z.number().int().nonnegative()).max(4),
+        frameUrl: z.string().url().max(8192),
+        rootPath: z.array(z.number().int().nonnegative()).max(64),
+        rootTextSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        rootTextLength: z.number().int().min(0).max(20_000),
+        start: z.number().int().nonnegative().max(20_000),
+        end: z.number().int().nonnegative().max(20_000),
+        direction: z.enum(["forward", "backward", "none"]),
+        before: z.string().max(256),
+        after: z.string().max(256),
+      })
+      .strict()
+      .optional(),
     linkedin: LinkedInReadSchema.optional(),
     transcript: z
       .object({

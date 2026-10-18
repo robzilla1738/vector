@@ -23,10 +23,11 @@ recovery restores inactive authority. The owner explicitly chose to keep OAuth
 registration setup explicit and finish adapters/fixture tests. No working connection
 is simulated; no real third-party message has been sent.
 
-LinkedIn draft/send currently requires concrete on-page handoff. Its existing
-native action proof does not bind recipient and rich-editor content through every
-synchronous input event. A typed native prepare/apply proof is under isolated
-implementation; it is not yet a published completed capability.
+A separate working native-context slice extends LinkedIn with typed original-owner
+prepare/apply input proof. Its consolidated area0066 is source-proven but still
+compiling through actual native API fixes;32 Blink cases and2 Mac cases remain
+unexecuted. Current committed LinkedIn writes retain concrete on-page handoff.
+Unsupported contexts and uncertain outcomes never acquire automatic replay.
 
 Startup validation and utility glyphs now follow their actual feature boundaries.
 The production renderer measures **627 KB startup JS /213 KB CSS /3,049 KB total
@@ -42,12 +43,33 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The integrated check passed typecheck/lint and5,204 tests, with six failures in
-three files. Three exposed the prepared-read availability defect, now corrected.
-The unchanged coder and100-step lifecycle cases passed quietly; all85 tests in
-the three affected files pass after rebuilding runtime dist
-(`/tmp/aux-followup-failure-recheck.log`). Another143 focused tests passed before
-that integrated run. No final all-files-pass claim is made.
+The earlier working-source integrated check passed typecheck/lint and5,223tests
+across821files. The next Google/Quick Ask/catalog source check passed typecheck/lint
+and5,278tests, with8failed assertions across6files. Seven were stale command-window
+inventories after adding the actual Quick Ask controls. One test helper missed a
+run completing during its final sleep; its final status read now accepts that
+completion without extending its5sdeadline. All131affected tests pass after those
+repairs (`/tmp/aux-quick-metadata-fixture-tests.log`). Runtime dist was rebuilt.
+No final all-files-pass claim is made for the newer combined source.
+
+Google fixtures now cover revision-bound Docs API ranges and verified plain-body
+edits, separately granted bounded Sheets grid data, and native-inspected Gmail
+attachment admission with inert original retention on inspection failure. Sheets
+matrix verification handles omitted empty cells and compares USER_ENTERED parsed
+values/formulas with independent readback. The fixed uncached Docs DOM selection
+reader preserves actual local UTF-16 caret/range provenance; canvas-only or hidden
+editor buffers require handback. It never claims API indices or OAuth account
+identity. Rich structural Docs edits and verified active Sheets navigation remain
+open; registrations/live account verification remain explicitly unconfigured.
+
+Skills/MCP/activity roles have60renderer states and6accessibility/keyboard states.
+Quick Ask context admission, supported intake commands, owned-dialog sizing and
+internal popup scrolling are repaired in source:54focused cases and18renderer
+states in both themes. Empty remains92px; owned picker/review bounds cap at360px.
+Region lasso supplies an explicit Open in Aux path. These are renderer/source
+proofs; the corrected packaged native interaction still awaits staging.
+The separately reproduced catalog snapshot/patch race has10passing actual-store
+regressions and retains command revision rejection with zero write replay.
 
 ## Current native evidence
 
@@ -73,11 +95,11 @@ navigation, Back, Find and isolated Reload work with the original runtime paused
 the fixture's unsent filter reset on Reload while ps still showed that runtime
 stopped. Resume retires the liveness presentation without replacing its child.
 The rapid Back→Reload catalog-version rejection remains a valid command fence.
-A separate lost follow-up snapshot race is reproduced and under isolated repair.
+A separate lost follow-up snapshot race is repaired in source and covered by actual-store fixtures.
 
 Quick Ask retains its440×92 logical empty window and expands to440×200 for a
 long unsent draft with focus retained. Its context opener did not open during
-this preview and remains under investigation. The unified empty Memory tree
+this preview; the integrated source correction awaits a fresh native observation. The unified empty Memory tree
 renders; populated native activity/diff acceptance remains open. Captures and
 exact diagnostic limitations are in the [follow-on native record](evidence/aside-native-followup-2026-10-18.json).
 

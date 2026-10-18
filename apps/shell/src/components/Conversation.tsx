@@ -2169,6 +2169,20 @@ function ConversationContent({
               }}
             />
             <div className="home-tools-context">{browserContextControls}</div>
+            {quickAsk && (
+              <button
+                type="button"
+                className="context-choice"
+                onClick={() => {
+                  if (!conversationCurrent()) return;
+                  close();
+                  quickAsk.onExpand();
+                }}
+              >
+                {shellIconOpen}
+                <span>Open Quick Ask in Aux</span>
+              </button>
+            )}
             {home && (
               <HomeEntryAction
                 className="context-choice"

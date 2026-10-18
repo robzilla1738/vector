@@ -382,10 +382,12 @@ it("hidden preview and detached original element cannot gain mutation authority"
   await expect(executeCommand(remove)).rejects.toThrow();
   expect(bridge.invoke).not.toHaveBeenCalledWith("conversations.attachments.remove", expect.anything());
 });
-it("five metadata rows remain normal scoped and remappable", () => {
+it("attachment controls admit Quick Ask while saved-result controls retain their original windows", () => {
   for (const id of ["preview-conversation-document", toggle, remove, "preview-conversation-result", result])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
       palette: false,
-      windows: ["normal", "private"],
+      windows: ["preview-conversation-document", toggle, remove].includes(id)
+        ? ["normal", "private", "quick-ask"]
+        : ["normal", "private"],
     });
 });

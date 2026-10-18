@@ -17,12 +17,12 @@ function owner(command: string, value: string) {
   retired.push(registerScopedControl(element, command, value, invoke));
   return { element, invoke };
 }
-it.each(ids)("registers %s exactly once as remappable normal core action", (id) => {
+it.each(ids)("registers %s exactly once for normal and Quick Ask context", (id) => {
   expect(COMMANDS.filter((row) => row.id === id)).toHaveLength(1);
   expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
     handler: "shell",
     palette: false,
-    windows: ["normal"],
+    windows: ["normal", "quick-ask"],
     bindings: [],
     intercept: true,
     focusShell: true,

@@ -1,3 +1,5 @@
+import "./AuxPackages.css";
+import { shellIconExtension } from "../ui/icons";
 import { useEffect, useState } from "react";
 import type { MethodResult } from "@aux/contracts";
 import { call } from "../store";
@@ -34,17 +36,25 @@ export function AuxPackages() {
     }
   }
   return (
-    <section className="field" aria-label="Aux Packages" data-setting="Aux Packages" tabIndex={-1}>
+    <section
+      className="field aux-packages"
+      aria-label="Aux Packages"
+      data-setting="Aux Packages"
+      tabIndex={-1}
+    >
       <h4>Aux Packages</h4>
       <p>
         Skills, agent profiles and prompt templates for Aux. Select packages per run or choose defaults here.
       </p>
+      {!library && !error && <output>Loading Aux Packages…</output>}
+      {library?.packages.length === 0 && <output>No Aux Packages installed.</output>}
       <SettingsGroup>
         {library?.packages.map((item) => (
           <SettingsField
             key={item.name}
             searchable={false}
             compact
+            icon={shellIconExtension}
             label={item.name}
             hint={item.description}
             details={

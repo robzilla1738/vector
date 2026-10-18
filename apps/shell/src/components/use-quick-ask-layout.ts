@@ -1,5 +1,31 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { bridge, inNativeHost } from "../bridge";
+import { onStageReport } from "../stage-obstruction";
+import { ownedDialogs } from "../ui/modal-stack";
+
+/** Follow actual controls from this composer; unrelated global dialogs never resize it. */
+function composerDialogs(panel: HTMLElement): Set<HTMLDialogElement> {
+  const roots: HTMLElement[] = [panel];
+  const dialogs = new Set<HTMLDialogElement>();
+  for (const root of roots) {
+    for (const trigger of root.querySelectorAll('[aria-expanded="true"][aria-controls]')) {
+      for (const id of trigger.getAttribute("aria-controls")!.split(/\s+/)) {
+        const dialog = document.getElementById(id);
+        if (
+          dialog instanceof HTMLDialogElement &&
+          dialog.open &&
+          dialog.isConnected &&
+          ownedDialogs.has(dialog) &&
+          !dialogs.has(dialog)
+        ) {
+          dialogs.add(dialog);
+          roots.push(dialog);
+        }
+      }
+    }
+  }
+  return dialogs;
+}
 
 /** Keep the native draft compact; a submitted conversation gets room for its transcript. */
 export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, chatId: string | null) {
@@ -10,14 +36,57 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
     let frame = 0,
       last = "",
       live = true;
-    const windowId = bridge.windowId;
+    const windowId = bridge.windowId,
+      privateMode = bridge.privateMode;
+    const current = () => {
+      if (
+        bridge.windowId !== windowId ||
+        bridge.privateMode !== privateMode ||
+        bridge.windowKind !== "quick-ask"
+      )
+        live = false;
+      return live;
+    };
+    type Layout = Parameters<typeof bridge.quickAskLayout>[0];
+    let desired: Layout | undefined,
+      sending = false;
+    const publish = () => {
+      if (!current() || sending || !desired) return;
+      const original = desired;
+      sending = true;
+      void Promise.resolve()
+        .then(() => {
+          if (current() && desired === original) return bridge.quickAskLayout(original);
+        })
+        .catch(() => {
+          if (current()) last = "";
+        })
+        .finally(() => {
+          sending = false;
+          if (current() && desired !== original) publish();
+        });
+    };
+    const observedDialogs = new Set<HTMLDialogElement>();
     const measure = () => {
       frame = 0;
-      if (!live || bridge.windowId !== windowId || bridge.windowKind !== "quick-ask") return;
+      if (!current()) return;
       const conversation = panel.querySelector(".conversation");
       if (!conversation) return;
       for (const item of panel.querySelectorAll(".composer-context, .composer-footer, .quick-ask-connection"))
         resize.observe(item);
+      const dialogs = composerDialogs(panel);
+      for (const dialog of observedDialogs) {
+        if (!dialogs.has(dialog)) {
+          resize.unobserve(dialog);
+          observedDialogs.delete(dialog);
+        }
+      }
+      for (const dialog of dialogs) {
+        if (!observedDialogs.has(dialog)) {
+          resize.observe(dialog);
+          observedDialogs.add(dialog);
+        }
+      }
       const expanded = !conversation.hasAttribute("data-empty-transcript");
       let draftHeight = 92;
       if (!expanded) {
@@ -54,14 +123,15 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
           Math.min(360, Math.ceil(header + footer + context + notice + mirror.scrollHeight + 12)),
         );
         mirror.remove();
+        // The same native draft window temporarily makes room for its owned picker.
+        for (const dialog of dialogs)
+          draftHeight = Math.max(draftHeight, Math.min(360, Math.ceil(dialog.scrollHeight + footer + 24)));
       }
       const key = `${expanded}:${draftHeight}`;
       if (last === key) return;
       last = key;
-      void bridge.quickAskLayout({ conversation: expanded, draftHeight }).catch(() => {
-        // A retired window has no result surface. Keep the editor usable if native sizing fails.
-        if (live) last = "";
-      });
+      desired = { conversation: expanded, draftHeight };
+      publish();
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -75,6 +145,7 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
       attributes: true,
       attributeFilter: ["data-empty-transcript"],
     });
+    const stopStageReport = onStageReport(schedule);
     textarea.addEventListener("input", schedule);
     schedule();
     return () => {
@@ -82,6 +153,7 @@ export function useQuickAskLayout(input: RefObject<HTMLTextAreaElement | null>, 
       cancelAnimationFrame(frame);
       resize.disconnect();
       mutations.disconnect();
+      stopStageReport();
       textarea.removeEventListener("input", schedule);
     };
   }, [input, chatId]);

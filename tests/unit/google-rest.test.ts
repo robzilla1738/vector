@@ -222,3 +222,35 @@ it("encodes Unicode subjects into bounded RFC2047 words without splitting charac
   expect(raw.split("\r\n").every((line) => line.length <= 998)).toBe(true);
   expect(raw).toContain(",\r\n person-");
 });
+
+it("uses separately granted bounded grid reads and revision-bound Docs edit preflight/readback", () => {
+  const grid = prepareGoogleRequest(
+    "sheets.grid.read",
+    { spreadsheetId: "sheet1", range: "'Tab One'!A1:C4" },
+    "fixture",
+  );
+  expect(grid.effect).toBe("read");
+  expect(grid.method).toBe("GET");
+  const url = new URL(grid.url);
+  expect(url.searchParams.get("ranges")).toBe("'Tab One'!A1:C4");
+  expect(url.searchParams.get("includeGridData")).toBe("true");
+  expect(url.searchParams.get("fields")).toMatch(/userEnteredFormat.*note/);
+  expect(grid.limitBytes).toBe(2_000_000);
+  expect(() =>
+    prepareGoogleRequest("sheets.grid.read", { spreadsheetId: "sheet1", range: "Tab!A1:Z1000" }, "fixture"),
+  ).toThrow(/10,000/);
+  const edit = prepareGoogleRequest(
+    "docs.edit",
+    {
+      documentId: "doc1",
+      requiredRevisionId: "revision1",
+      edits: [{ kind: "insert", index: 1, text: "Hello" }],
+    },
+    "fixture",
+  );
+  expect(edit).toMatchObject({
+    expectedRevisionId: "revision1",
+    preflight: { operation: "docs.read", method: "GET" },
+    verify: { operation: "docs.read", method: "GET" },
+  });
+});

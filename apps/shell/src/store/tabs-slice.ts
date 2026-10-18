@@ -93,8 +93,9 @@ const reconcileWindowOrder = (
   ]);
 };
 
-/** one in-flight catalog resync per shell — gap storms collapse into a single fetch */
-let tabsResyncing = false;
+/** One native read per shell; requests behind it share one follow-up. */
+type TabsResyncRead = { promise: ReturnType<typeof bridge.tabsSince>; published: boolean };
+let tabsResyncing: TabsResyncRead | undefined;
 
 function syncBatterySaverState(active: boolean | undefined) {
   if (active !== undefined) document.documentElement.dataset.batterySaver = String(active);
@@ -334,17 +335,31 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   },
 
   resyncTabs: async (valid = () => true) => {
-    if (!valid() || tabsResyncing) return;
-    tabsResyncing = true;
+    if (!valid()) return;
+    // A gap may arrive before an older snapshot response on the other IPC
+    // interface. Each queued caller retains its own validity and joins one
+    // fresh read after the in-flight read; a retired caller cannot strand it.
+    const previous = tabsResyncing;
+    if (previous) await previous.promise.catch(() => {});
+    if (!valid()) return;
     try {
-      const result = await bridge.tabsSince(get().catalogVersion);
-      if (!valid()) return;
+      if (!tabsResyncing) {
+        const reading: TabsResyncRead = {
+          promise: bridge.tabsSince(get().catalogVersion).finally(() => {
+            if (tabsResyncing === reading) tabsResyncing = undefined;
+          }),
+          published: false,
+        };
+        tabsResyncing = reading;
+      }
+      const reading = tabsResyncing;
+      const result = await reading.promise;
+      if (!valid() || reading.published) return;
+      reading.published = true;
       if (result.kind === "snapshot") get().syncTabsSnapshot(result.snapshot);
       else for (const patch of result.patches) get().applyTabsPatch(patch);
     } catch {
-      /* the next patch re-triggers the resync */
-    } finally {
-      tabsResyncing = false;
+      /* a later genuine request may start another read; no command is replayed */
     }
   },
 

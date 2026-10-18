@@ -32,6 +32,7 @@ export const GOOGLE_OPERATIONS = {
   "docs.edit": { effect: "write", scopes: [scope("documents")] },
   "docs.comment": { effect: "write", scopes: [scope("drive.file")] },
   "sheets.discover": { effect: "read", scopes: [scope("spreadsheets.readonly"), scope("spreadsheets")] },
+  "sheets.grid.read": { effect: "read", scopes: [scope("spreadsheets.readonly"), scope("spreadsheets")] },
   "sheets.read": { effect: "read", scopes: [scope("spreadsheets.readonly"), scope("spreadsheets")] },
   "sheets.write": { effect: "write", scopes: [scope("spreadsheets")] },
   "sheets.format": { effect: "write", scopes: [scope("spreadsheets")] },
@@ -147,7 +148,24 @@ export const GoogleArguments = {
     .object({ draftId: id, expectedMessageSha256: z.string().regex(/^[a-f0-9]{64}$/) })
     .strict(),
   "gmail.send": GoogleMailMessageSchema,
-  "docs.read": z.object({ documentId: id }).strict(),
+  "docs.read": z
+    .object({
+      documentId: id,
+      bodyRange: z
+        .object({
+          revisionId: token,
+          tabId: id,
+          startIndex: z.number().int().min(1).max(200_000),
+          endIndex: z.number().int().min(2).max(200_000),
+        })
+        .strict()
+        .refine((value) => value.endIndex > value.startIndex && value.endIndex - value.startIndex <= 20_000)
+        .describe(
+          "Explicit revision-bound API body range in UTF-16 indices and an actual document tab; this is not the current editor cursor or selection.",
+        )
+        .optional(),
+    })
+    .strict(),
   "docs.edit": z
     .object({
       documentId: id,
@@ -188,6 +206,7 @@ export const GoogleArguments = {
     })
     .strict(),
   "sheets.discover": z.object({ spreadsheetId: id }).strict(),
+  "sheets.grid.read": z.object({ spreadsheetId: id, range }).strict(),
   "sheets.read": z.object({ spreadsheetId: id, range, formulas: z.boolean().default(false) }).strict(),
   "sheets.write": z
     .object({
@@ -357,6 +376,10 @@ export const GoogleInvokeParamsSchema = z.discriminatedUnion("operation", [
   GoogleInvocationBase.extend({
     operation: z.literal("sheets.discover"),
     args: GoogleArguments["sheets.discover"],
+  }),
+  GoogleInvocationBase.extend({
+    operation: z.literal("sheets.grid.read"),
+    args: GoogleArguments["sheets.grid.read"],
   }),
   GoogleInvocationBase.extend({ operation: z.literal("sheets.read"), args: GoogleArguments["sheets.read"] }),
   GoogleInvocationBase.extend({

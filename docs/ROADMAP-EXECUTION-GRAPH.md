@@ -53,8 +53,12 @@ current follow-on source. Exact prepared schema bytes and actual optional-tool
 publication now cover saved/idle compaction and captured operation grants.
 Canonical Select ownership and remaining compact Settings roles are integrated;
 utility glyph modules reduce measured startup JS to627KB. Isolated work completes
-typed LinkedIn native recipient/editor proof, remaining Skills/MCP/activity geometry
-and concrete Docs/Sheets/Gmail adapter gaps. Account setup remains explicit per
+typed LinkedIn native recipient/editor proof and remaining matched UI observations.
+Skills/MCP/activity geometry and the Quick Ask context admission/scroll fixes are
+integrated. Google adds revision-bound Docs ranges/readback, separately granted
+Sheet grid reads and inspected Gmail originals; genuine Docs DOM caret/ranges
+remain distinct from API indices and unsupported canvas editors. Verified active
+Sheet navigation and rich structural Docs editing remain open. Account setup remains explicit per
 the owner's decision; adapters use fixtures until registrations exist.
 
 Foundation7806e41fc, capability07199225f and owned-services34117c740 have limited

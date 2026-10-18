@@ -1,3 +1,12 @@
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ArtifactStore } from "../../apps/runtime/src/services/artifacts.js";
+import {
+  listPdfSources,
+  withPdfSources,
+  type PdfSourceDependencies,
+} from "../../apps/runtime/src/services/pdf-sources.js";
 import { randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { Repo, openDb, EventBus, TaskService } from "@aux/runtime";
@@ -17,6 +26,7 @@ afterEach(async () => {
 function fixture(
   operations: GoogleOperation[] = ["gmail.send"],
   initialConfig: Record<string, unknown> = {},
+  extra: Partial<ConstructorParameters<typeof GoogleOperationService>[0]> = {},
 ) {
   const repo = new Repo(openDb(":memory:"));
   const tasks = new TaskService(repo, new EventBus(repo));
@@ -102,10 +112,11 @@ function fixture(
     writes,
     authorize,
     fetch: http,
-    saveAttachment: ({ bytes, checkCurrent }) => {
+    saveAttachment: ({ bytes, mediaType, checkCurrent }) => {
       checkCurrent();
-      return { artifactId: "saved-attachment", mediaType: "application/octet-stream", size: bytes.length };
+      return { artifactId: "saved-attachment", mediaType, size: bytes.length };
     },
+    ...extra,
   });
   closes.push(async () => {
     await service.close();
@@ -326,6 +337,70 @@ it("keeps Sheet result mismatches uncertain instead of reporting a successful wr
   ]);
   expect(f.http.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
 });
+it.each(["RAW", "USER_ENTERED"] as const)(
+  "verifies %s Sheet writes with trailing empty cells and real parsed values",
+  async (valueInputOption) => {
+    const f = fixture(["sheets.write"]);
+    const { googleValuesHash } = await import("../../apps/runtime/src/services/google-rest.js");
+    const values = valueInputOption === "RAW" ? [["42", "literal"]] : [[42, "=SUM(1,2)"]];
+    const observed = { range: "'Sheet1'!A1:B2", majorDimension: "ROWS", values };
+    f.http
+      .mockResolvedValueOnce(Response.json({ values: [] }))
+      .mockResolvedValueOnce(Response.json({ values: [] }))
+      .mockResolvedValueOnce(
+        Response.json({
+          spreadsheetId: "sheet1",
+          responses: [{ spreadsheetId: "sheet1", updatedData: observed }],
+        }),
+      )
+      .mockResolvedValueOnce(Response.json(observed));
+    await f.service.invoke(
+      f.input("sheets.write", {
+        spreadsheetId: "sheet1",
+        range: "Sheet1!A1:B2",
+        values: [
+          ["42", valueInputOption === "RAW" ? "literal" : "=SUM(1,2)"],
+          ["", ""],
+        ],
+        expectedValuesSha256: googleValuesHash([]),
+        valueInputOption,
+      }),
+      new AbortController().signal,
+    );
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+      expect.objectContaining({ status: "confirmed" }),
+    ]);
+    const writes = f.http.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(String(writes[0]![1]!.body)).responseValueRenderOption).toBe(
+      valueInputOption === "RAW" ? "UNFORMATTED_VALUE" : "FORMULA",
+    );
+  },
+);
+it("keeps missing parsed Sheet write acknowledgements uncertain and never replays them", async () => {
+  const f = fixture(["sheets.write"]);
+  const { googleValuesHash } = await import("../../apps/runtime/src/services/google-rest.js");
+  f.http
+    .mockResolvedValueOnce(Response.json({ values: [] }))
+    .mockResolvedValueOnce(Response.json({ values: [] }))
+    .mockResolvedValueOnce(Response.json({ spreadsheetId: "sheet1" }))
+    .mockResolvedValueOnce(Response.json({ range: "Sheet1!A1", values: [[42]] }));
+  const input = f.input("sheets.write", {
+    spreadsheetId: "sheet1",
+    range: "Sheet1!A1",
+    values: [["42"]],
+    expectedValuesSha256: googleValuesHash([]),
+    valueInputOption: "USER_ENTERED",
+  });
+  await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow(
+    /could not be verified/,
+  );
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+    expect.objectContaining({ status: "uncertain" }),
+  ]);
+  await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow();
+  expect(f.http.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+});
 it("rejects protected grant index tampering and a changed reserved operation registration", async () => {
   const f = fixture();
   f.repo.db.prepare("UPDATE google_task_grants SET task_revision=99 WHERE grant_id=?").run(f.grant.grantId);
@@ -401,4 +476,364 @@ it("saves verified attachment bytes as an inert owned artifact instead of sendin
       new AbortController().signal,
     ),
   ).rejects.toThrow(/byte size/);
+});
+
+function docs(text: string, revisionId = "revision-1", bold = false) {
+  return {
+    documentId: "doc1",
+    revisionId,
+    tabs: [
+      {
+        tabProperties: { tabId: "tab1" },
+        documentTab: {
+          body: {
+            content: [
+              { startIndex: 0, endIndex: 1, sectionBreak: {} },
+              {
+                startIndex: 1,
+                endIndex: text.length + 1,
+                paragraph: {
+                  elements: [
+                    {
+                      startIndex: 1,
+                      endIndex: text.length + 1,
+                      textRun: { content: text, textStyle: { bold } },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+  };
+}
+it("confirms Docs edits only after exact revision preflight and text/style readback", async () => {
+  const f = fixture(["docs.edit"]);
+  f.http
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json(docs("A\n")))
+    .mockResolvedValueOnce(Response.json({ documentId: "doc1", replies: [{}] }))
+    .mockResolvedValueOnce(Response.json(docs("xA\n", "revision-2", true)));
+  const result = await f.service.invoke(
+    f.input("docs.edit", {
+      documentId: "doc1",
+      requiredRevisionId: "revision-1",
+      edits: [{ kind: "insert", index: 1, text: "x", bold: true, tabId: "tab1" }],
+    }),
+    new AbortController().signal,
+  );
+  expect(result.result).toMatchObject({
+    verification: {
+      scope: "api-body-ranges",
+      revisionId: "revision-2",
+      tabIds: ["tab1"],
+      sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    },
+  });
+  expect(f.http.mock.calls.map((call) => call[1]?.method)).toEqual(["GET", "GET", "POST", "GET"]);
+  expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+    expect.objectContaining({ status: "confirmed" }),
+  ]);
+});
+it.each(["text", "style", "unavailable"])(
+  "retains uncertain Docs writes without replay on %s readback failure",
+  async (failure) => {
+    const f = fixture(["docs.edit"]),
+      input = f.input("docs.edit", {
+        documentId: "doc1",
+        requiredRevisionId: "revision-1",
+        edits: [{ kind: "insert", index: 1, text: "x", bold: true }],
+      });
+    f.http
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json(docs("A\n")))
+      .mockResolvedValueOnce(Response.json({ documentId: "doc1" }))
+      .mockResolvedValueOnce(
+        failure === "unavailable"
+          ? new Response("Unavailable", { status: 503 })
+          : Response.json(docs(failure === "text" ? "wrong\n" : "xA\n", "revision-2", false)),
+      );
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toThrow();
+    expect(f.repo.db.prepare("SELECT status FROM action_intents").all()).toEqual([
+      expect.objectContaining({ status: "uncertain" }),
+    ]);
+    await expect(f.service.invoke(input, new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(f.http.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(1);
+  },
+);
+it("refuses stale revisions and unsupported Docs structure before write dispatch", async () => {
+  const f = fixture(["docs.edit"]);
+  f.http.mockResolvedValueOnce(Response.json(docs("A\n", "another-revision")));
+  await expect(
+    f.service.invoke(
+      f.input("docs.edit", {
+        documentId: "doc1",
+        requiredRevisionId: "revision-1",
+        edits: [{ kind: "insert", index: 1, text: "x" }],
+      }),
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "conflict" });
+  expect(f.repo.db.prepare("SELECT * FROM action_intents").all()).toEqual([]);
+  expect(f.http.mock.calls.some((call) => call[1]?.method === "POST")).toBe(false);
+});
+it("does not broaden values-only task grants to notes and formatting grid reads", async () => {
+  const f = fixture(["sheets.read"]);
+  await expect(
+    f.service.invoke(
+      f.input("sheets.grid.read", {
+        spreadsheetId: "sheet1",
+        range: "Tab!A1:A2",
+      }),
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(f.http).not.toHaveBeenCalled();
+  const allowed = fixture(["sheets.grid.read"]);
+  allowed.http.mockResolvedValueOnce(
+    Response.json({
+      spreadsheetId: "sheet1",
+      sheets: [
+        {
+          properties: { sheetId: 0, title: "Tab" },
+          data: [
+            {
+              rowData: [
+                {
+                  values: [
+                    {
+                      note: "Original",
+                      userEnteredValue: { formulaValue: "=1+2" },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const result = await allowed.service.invoke(
+    allowed.input("sheets.grid.read", {
+      spreadsheetId: "sheet1",
+      range: "Tab!A1:A2",
+    }),
+    new AbortController().signal,
+  );
+  expect(result.result).toMatchObject({
+    cells: [{ note: "Original", userEnteredValue: { formulaValue: "=1+2" } }],
+    concurrency: "observed-range-not-an-atomic-revision",
+  });
+  expect(allowed.http.mock.calls[0]?.[1]?.method).toBe("GET");
+});
+it.each(["unsupported", "mismatched-hash", "missing-inspector"])(
+  "preserves sanitized original attachment bytes after %s inspection",
+  async (failure) => {
+    const bytes = Buffer.from("%PDF-1.7 original bytes"),
+      saved = vi.fn();
+    const f = fixture(
+      ["gmail.attachment"],
+      {},
+      {
+        inspectAttachment:
+          failure === "missing-inspector"
+            ? undefined
+            : async () => {
+                if (failure === "unsupported") throw Error("Decoder unavailable");
+                return {
+                  mediaType: "application/pdf",
+                  sourceSha256: "0".repeat(64),
+                };
+              },
+        saveAttachment: (value) => {
+          saved({ ...value, bytes: Buffer.from(value.bytes) });
+          return {
+            artifactId: "original",
+            mediaType: value.mediaType,
+            size: value.bytes.length,
+          };
+        },
+      },
+    );
+    f.http
+      .mockResolvedValueOnce(
+        Response.json({
+          size: bytes.length,
+          data: bytes.toString("base64url"),
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          id: "message1",
+          payload: {
+            parts: [
+              {
+                filename: "../Report\u202e.pdf",
+                mimeType: "application/pdf",
+                body: { attachmentId: "attachment1", size: bytes.length },
+              },
+            ],
+          },
+        }),
+      );
+    const result = await f.service.invoke(
+      f.input("gmail.attachment", {
+        messageId: "message1",
+        attachmentId: "attachment1",
+      }),
+      new AbortController().signal,
+    );
+    expect(result.result).toMatchObject({
+      filename: ".._Report.pdf",
+      mediaType: "application/octet-stream",
+      admission: { status: "unsupported" },
+    });
+    expect(saved.mock.calls[0]?.[0].bytes).toEqual(bytes);
+    expect(f.http.mock.calls[1]?.[0]).toMatch(/messages\/message1\?/);
+  },
+);
+it("does not publish attachments when the original owner retires during inspection", async () => {
+  const bytes = Buffer.from("%PDF-1.7 original"),
+    saved = vi.fn();
+  let retire!: () => void, enter!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+      enter = resolve;
+    }),
+    resumed = new Promise<void>((resolve) => {
+      retire = resolve;
+    });
+  const f = fixture(
+    ["gmail.attachment"],
+    {},
+    {
+      inspectAttachment: async (input) => {
+        enter();
+        await resumed;
+        input.checkCurrent();
+        return { sourceSha256: input.sha256, mediaType: "application/pdf" };
+      },
+      saveAttachment: saved,
+    },
+  );
+  f.http
+    .mockResolvedValueOnce(Response.json({ size: bytes.length, data: bytes.toString("base64url") }))
+    .mockResolvedValueOnce(
+      Response.json({
+        id: "message1",
+        payload: {
+          filename: "report.pdf",
+          mimeType: "application/pdf",
+          body: { attachmentId: "attachment1", size: bytes.length },
+        },
+      }),
+    );
+  const pending = f.service.invoke(
+    f.input("gmail.attachment", {
+      messageId: "message1",
+      attachmentId: "attachment1",
+    }),
+    new AbortController().signal,
+  );
+  await waiting;
+  f.repo.db.prepare("UPDATE tasks SET state='archived' WHERE task_id=?").run(f.task.taskId);
+  retire();
+  await expect(pending).rejects.toThrow();
+  expect(saved).not.toHaveBeenCalled();
+});
+it("makes inspected Gmail PDF originals available to the owned pdf_sources route without altering bytes", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "aux-google-pdf-fixture-"));
+  const objects = [
+    "<</Type /Catalog /Pages 2 0 R>>",
+    "<</Type /Pages /Kids [3 0 R] /Count 1>>",
+    "<</Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources <<>> /Contents 4 0 R>>",
+    "<</Length 0>>\nstream\n\nendstream",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 5\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
+    .join("")}trailer\n<</Size 5 /Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+  const bytes = Buffer.from(pdf);
+  let artifacts!: ArtifactStore;
+  const inspect = vi.fn(async (input: { sha256: string }) => ({
+    sourceSha256: input.sha256,
+    mediaType: "application/pdf",
+  }));
+  const f = fixture(
+    ["gmail.attachment"],
+    {},
+    {
+      inspectAttachment: inspect,
+      saveAttachment: (input) => {
+        input.checkCurrent();
+        return artifacts.save({
+          runId: input.runId,
+          label: input.filename,
+          buffer: Buffer.from(input.bytes),
+          mediaType: input.mediaType,
+        });
+      },
+    },
+  );
+  artifacts = new ArtifactStore(dir, f.repo, new EventBus(f.repo));
+  closes.push(async () => rmSync(dir, { recursive: true, force: true }));
+  f.http
+    .mockResolvedValueOnce(Response.json({ size: bytes.length, data: bytes.toString("base64url") }))
+    .mockResolvedValueOnce(
+      Response.json({
+        id: "message1",
+        payload: {
+          filename: "Original.pdf",
+          mimeType: "application/pdf",
+          body: { attachmentId: "attachment1", size: bytes.length },
+        },
+      }),
+    );
+  const result = await f.service.invoke(
+    f.input("gmail.attachment", {
+      messageId: "message1",
+      attachmentId: "attachment1",
+    }),
+    new AbortController().signal,
+  );
+  expect(result.result).toMatchObject({
+    filename: "Original.pdf",
+    mediaType: "application/pdf",
+    admission: { status: "verified" },
+  });
+  const deps = { repo: f.repo } as PdfSourceDependencies,
+    run = f.repo.getRun(f.input().runId)!;
+  const owner = {
+    run,
+    signal: new AbortController().signal,
+    checkCurrent() {},
+  };
+  const inventory = await listPdfSources(deps, {}, owner);
+  expect(inventory.sources).toMatchObject([
+    {
+      status: "available",
+      source: { kind: "artifact", artifactId: result.result.artifactId },
+    },
+  ]);
+  await withPdfSources(
+    deps,
+    [{ kind: "artifact", artifactId: result.result.artifactId as string }],
+    owner,
+    async (admitted) => {
+      expect(admitted[0]?.bytes).toEqual(bytes);
+      expect(readFileSync(f.repo.getArtifact(result.result.artifactId as string)!.path)).toEqual(bytes);
+    },
+  );
+  expect(inspect).toHaveBeenCalledTimes(1);
 });

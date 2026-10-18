@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readDocsSelectionInPage } from "./docs-selection.js";
 import { AuxError, SiteReadResultSchema, type MethodParams, type MethodResult } from "@aux/contracts";
 import type { PageRegistry } from "../services/pages/registry.js";
 import { readImageResultsInPage } from "./image-search-adapter.js";
@@ -20,6 +22,8 @@ const MAX_TEXT_BYTES = 2_000_000;
 /** Only URLs for the currently open document can be used as export sources. */
 export function siteExportUrl(input: SiteRead): URL {
   const page = new URL(input.expectedUrl);
+  if (input.view !== undefined && input.kind !== "google-docs")
+    throw new AuxError("invalid_params", "Live DOM selection is supported only for Google Docs.");
   if (input.kind !== "google-sheets" && input.sheetGid !== undefined)
     throw new AuxError("invalid_params", "A sheet ID is accepted only for a Google Sheets export.");
   if (input.kind !== "youtube" && input.language !== undefined)
@@ -243,6 +247,83 @@ export class SiteAdapters {
     if (before.documentEpoch !== input.expectedDocumentEpoch || before.url !== input.expectedUrl)
       throw new AuxError("conflict", "The page changed before site extraction.");
     const driver = this.pages.driverPageLenient(input.pageId);
+    if (input.view === "selection") {
+      if (before.backend !== "aux" || !before.sessionId)
+        throw new AuxError(
+          "capability_unsupported",
+          "Live Docs selection requires the original attached browser session.",
+        );
+      const source = JSON.stringify([
+        before.sessionId,
+        before.documentEpoch,
+        before.url,
+        before.controllerEpoch,
+        before.workspaceId,
+        before.windowId,
+      ]);
+      const check = () => {
+        const after = this.pages.get(input.pageId);
+        if (
+          source !==
+            JSON.stringify([
+              after.sessionId,
+              after.documentEpoch,
+              after.url,
+              after.controllerEpoch,
+              after.workspaceId,
+              after.windowId,
+            ]) ||
+          !driver.isAttached() ||
+          this.pages.driverPageLenient(input.pageId) !== driver ||
+          !this.allowOrigin(exportUrl)
+        )
+          throw new AuxError(
+            "ref_stale",
+            "The original Docs tab, session, document, control or policy changed.",
+          );
+      };
+      const expression = `(${readDocsSelectionInPage.toString()})(${JSON.stringify({ expectedUrl: input.expectedUrl })})`;
+      check();
+      const selected = (await driver.evaluate(expression)) as ReturnType<typeof readDocsSelectionInPage>;
+      check();
+      if (!selected?.ok)
+        throw new AuxError(
+          "capability_unsupported",
+          "The current Docs editor does not expose a readable live DOM selection. Take over and select accessible document text; canvas, toolbar, comment and hidden-buffer selections are unsupported.",
+          { reason: selected?.reason ?? "selection-unavailable", handback: true },
+        );
+      if (
+        typeof selected.rootText !== "string" ||
+        selected.rootText.length > 20_000 ||
+        selected.text.length > 8000 ||
+        selected.selection.start > selected.selection.end ||
+        selected.rootText.slice(selected.selection.start, selected.selection.end) !== selected.text
+      )
+        throw new AuxError(
+          "capability_unsupported",
+          "The live Docs selection exceeded its bounded source projection.",
+        );
+      // Selection changes are not DOM mutations. Never use the observation cache or publish a stale cursor.
+      const verified = await driver.evaluate(expression);
+      check();
+      if (JSON.stringify(verified) !== JSON.stringify(selected))
+        throw new AuxError("ref_stale", "The live Docs selection changed during capture. Select it again.");
+      return SiteReadResultSchema.parse({
+        pageId: input.pageId,
+        url: input.expectedUrl,
+        documentEpoch: input.expectedDocumentEpoch,
+        capturedAt: Date.now(),
+        kind: input.kind,
+        sourceUrl: input.expectedUrl,
+        mediaType: "text/plain",
+        text: selected.text,
+        docsSelection: {
+          ...selected.selection,
+          sessionId: before.sessionId,
+          rootTextSha256: createHash("sha256").update(selected.rootText).digest("hex"),
+        },
+      });
+    }
     let result: InPageResult;
     try {
       const reader =

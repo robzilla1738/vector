@@ -1,3 +1,4 @@
+import { Select } from "../ui";
 import { AuxPackages } from "./AuxPackages";
 import { useFeature } from "../use-feature";
 import { lazySection } from "../settings/LazySettingsSection";
@@ -182,7 +183,7 @@ export function PluginsPanel({ destination, active = true }: { destination?: str
           <div className="plugin-review-actions">
             <label>
               Space
-              <select
+              <Select
                 aria-label="Plugin space"
                 value={workspaceId}
                 onChange={(event) => {
@@ -196,7 +197,7 @@ export function PluginsPanel({ destination, active = true }: { destination?: str
                     {space.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button {...smallGhostButtonProps} disabled={busy || !workspaceId} onClick={() => choose("file")}>
               Choose Aux bundle…
