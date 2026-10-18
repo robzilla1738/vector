@@ -406,6 +406,14 @@ checked only Chromium's known diagnostic source-location format in the recorded
 strings, assertion body or runtime values, and verified the authorized report's
 original hash/size/mtime unchanged. This bounded negative result does not rule out
 an optimized assertion or resolve the original trap.
+Read-only linker inspection also identifies a concrete limit on reconstructing
+the missing original framework: its UUID includes pre-strip linked bytes, which
+can contain absolute debug-map paths and random ThinLTO temporary object paths.
+A different clone directory is not a direct UUID seed, but a fresh relink cannot
+be presumed to reproduce the original identifier, even at the same root.
+[The feasibility addendum](evidence/aside-original155-uuid-feasibility-2026-10-18.json)
+records pinned source, actual linker identity and the unrecovered-fork caveat.
+No reconstruction build or approximate framework symbolization was performed.
 
 The earlier launcher71243/app71389/runtime71405 retired normally through
 application-menu Quit. Its Profile and lock are gone; earlier interactive debugger

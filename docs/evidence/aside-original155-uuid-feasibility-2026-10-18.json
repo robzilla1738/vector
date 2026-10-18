@@ -1,0 +1,127 @@
+{
+  "recordedAt": "2026-10-18",
+  "kind": "read-only-reconstruction-feasibility",
+  "targetFrameworkAndDsymUuid": "4C4C4483-5555-3144-A1C0-52EB39B455CA",
+  "crashResolved": false,
+  "historicalImageRecovered": false,
+  "cloneOrBuildAttempted": false,
+  "decision": "A unique historical clone is not ruled out solely by its directory name, but exact original UUID recovery is unproven. Do not spend the native lane on a reconstruction presented as reliable recovery.",
+  "findings": [
+    "Pinned upstream LLD hashes the entire pre-strip linked buffer plus final output basename, before code-signature hashing. Absolute output directory is not separately seeded.",
+    "Participating debug-map object/archive absolute paths and source compilation directories can change those bytes. Later stripping does not recalculate the UUID.",
+    "Current Chromium ThinLTO driver creates a random temporary saved-object directory. Participating debug-bearing LTO objects can therefore change debug-map path bytes even on a same-root fresh link. This is a source mechanism, not a performed two-build comparison.",
+    "External app resources and separate dSYM paths are not automatic framework UUID inputs; they matter only through bytes or identifiers actually linked into the framework."
+  ],
+  "requiredGate": "Full original framework and dSYM UUID equality remains necessary before original framework symbolization. Never force a UUID or use approximate current offsets.",
+  "sourcePin": "62397f8b3c3986f54187ce08f00b3448ea1f8880",
+  "installedStamp": "llvmorg-24-init-7747-g62397f8b-27",
+  "installedVersion": "LLD 24.0.0 (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project 86922d51225db089fffb99475eefc4904f79e3c8)",
+  "sourceCaveat": "Embedded86922 revision unavailable from official public mirror/GitHub at audit. Source pinned to stamped full upstream62397f8b3c3986f54187ce08f00b3448ea1f8880 plus local build recipe two explicit cherry-picks; actual historical installed tree not independently recovered.",
+  "localHashesIndependentlyVerified": true,
+  "local": {
+    "tools/clang/scripts/update.py": {
+      "bytes": 14960,
+      "sha256": "ccfa143af769e45e715565dbe35c705d18f0e7902e048b1b5fd723f2724ac51f"
+    },
+    "tools/clang/scripts/build.py": {
+      "bytes": 68991,
+      "sha256": "a05e271a9c55265343552dcfc12c156dd041371528d8266c1e8098cbf05cc83c"
+    },
+    "third_party/llvm-build/Release+Asserts/cr_build_revision": {
+      "bytes": 34,
+      "sha256": "3f0cc66123867a49db6038913483eb4008008e9f9cec6297e8e4f0854cd38697"
+    },
+    "third_party/llvm-build/Release+Asserts/bin/lld": {
+      "bytes": 77665200,
+      "sha256": "2bc7f5af1d5fd32e9bfe5305baa0996b93a4170b484907b71ef8740f5e6fbe79"
+    },
+    "build/config/compiler/compiler.gni": {
+      "bytes": 19173,
+      "sha256": "251c239416334d20a7c34eebd2b345dfe81359e83ab2c57d196bb96c8cb0a0c4"
+    },
+    "build/config/compiler/BUILD.gn": {
+      "bytes": 118492,
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3"
+    },
+    "build/toolchain/apple/linker_driver.py": {
+      "bytes": 21507,
+      "sha256": "0b0f5458b7f6d763a76285dd17494bf6a5ea0936c11cdcb193d6fa988bdc0ef5"
+    },
+    "out/AuxFast/obj/chrome/chrome_framework_shared_library.ninja": {
+      "bytes": 2217648,
+      "sha256": "a9338650bd9c0d60a979af833732dc9b4bbcbac77e1e38e72d2f81a08b0a6c4b"
+    }
+  },
+  "upstreamSources": [
+    {
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/62397f8b3c3986f54187ce08f00b3448ea1f8880/lld/MachO/Writer.cpp",
+      "sha256": "76e902c8ec0907bebc2e61c14ae16f76d01fe1968a09de84dd55f42bd1b79ae5",
+      "lines": 1465
+    },
+    {
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/62397f8b3c3986f54187ce08f00b3448ea1f8880/lld/MachO/SyntheticSections.cpp",
+      "sha256": "27a60fd0848bc04b61bb957b1747b005e5643fd46d164d7b866d6d30e0c3f4a0",
+      "lines": 2604
+    },
+    {
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/62397f8b3c3986f54187ce08f00b3448ea1f8880/lld/MachO/Driver.cpp",
+      "sha256": "159ace9278824861efc3a676dc0dc39c8e09d171bf1ae5cfe71566a07dc64080",
+      "lines": 2572
+    },
+    {
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/62397f8b3c3986f54187ce08f00b3448ea1f8880/lld/MachO/InputFiles.cpp",
+      "sha256": "73f6008b28ddeb355ea0099300ce8ad26924c3c95da5c2d6c8e1b3867156b736",
+      "lines": 2482
+    },
+    {
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/62397f8b3c3986f54187ce08f00b3448ea1f8880/lld/MachO/LTO.cpp",
+      "sha256": "399475313d49ea90a6d0ff423864360a863556cb879f9a7c07d649277a6b6734",
+      "lines": 324
+    }
+  ],
+  "cherryPicks": [
+    {
+      "url": "https://api.github.com/repos/llvm/llvm-project/commits/061865f32607cd064ab944407cc863186702d6f1",
+      "sha": "061865f32607cd064ab944407cc863186702d6f1",
+      "title": "[clang][win] Fix __global_delete breaking __attribute__((used)) (#217753)",
+      "files": [
+        "clang/lib/CodeGen/CodeGenModule.cpp",
+        "clang/test/CodeGenCXX/msvc-global-delete-llvm-used.cpp"
+      ]
+    },
+    {
+      "url": "https://api.github.com/repos/llvm/llvm-project/commits/b8007a8e4020b8bca2b12e941660e10bf5bf6716",
+      "sha": "b8007a8e4020b8bca2b12e941660e10bf5bf6716",
+      "title": "[ld64.lld, llvm-otool] Minimal arm64e.x1 support (#222721)",
+      "files": [
+        "lld/test/MachO/arm64-x1.s",
+        "llvm/include/llvm/BinaryFormat/MachO.h",
+        "llvm/include/llvm/TargetParser/Triple.h",
+        "llvm/include/llvm/TextAPI/Architecture.def",
+        "llvm/lib/BinaryFormat/MachO.cpp",
+        "llvm/lib/Object/MachOObjectFile.cpp",
+        "llvm/lib/TargetParser/Triple.cpp",
+        "llvm/test/tools/llvm-readobj/MachO/file-headers-arm64.test",
+        "llvm/test/tools/llvm-readobj/macho-arm64e_x1.test",
+        "llvm/tools/llvm-objdump/MachODump.cpp",
+        "llvm/tools/llvm-readobj/MachODumper.cpp",
+        "llvm/unittests/BinaryFormat/MachOTest.cpp"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/aux-155-reconstruction-uuid-feasibility-addendum-2026-10-18.md",
+      "sha256": "b0440e0bd2835793a4cd1320682ec34b498b74236e3481b2cfb7a082ec5bfa25"
+    },
+    {
+      "path": "/tmp/aux-155-uuid-source-evidence-2026-10-18.json",
+      "sha256": "70fcaabbdfba201c31108fbeea402ad1c599d14f82c4cfd36e4ed43a5f81c097"
+    }
+  ],
+  "limits": [
+    "No historical linker binary or complete original link command/input/debug-map state recovered.",
+    "No native clone/build/link experiment, Profile access, owner process attachment or symbolization performed. LLD was invoked only with --version.",
+    "Original crash remains unresolved; exact macOS event-loop symbols and absent fatal headers do not establish its cause."
+  ]
+}
