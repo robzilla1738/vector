@@ -126,6 +126,34 @@ export class TranscriptStore {
     }));
   }
 
+  /** Bounded historical inspection uses the same encrypted rows as the loop. */
+  pageEntries(runId: string, beforeSeq?: number) {
+    const rows = this.db
+      .prepare(
+        `SELECT seq,message FROM run_transcript WHERE run_id=? AND kind='message' AND seq<? ORDER BY seq DESC LIMIT 81`,
+      )
+      .all(runId, beforeSeq ?? Number.MAX_SAFE_INTEGER) as { seq: number; message: string }[];
+    const page = rows.slice(0, 80);
+    return {
+      entries: page
+        .reverse()
+        .map((row) => ({
+          seq: row.seq,
+          message: this.decode<ModelMessage>(runId, row.seq, "message", row.message),
+        })),
+      earlierSequence: rows.length > 80 ? page[0]!.seq : undefined,
+    };
+  }
+
+  messageAfter(runId: string, sequence: number): ModelMessage | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT seq,message FROM run_transcript WHERE run_id=? AND kind='message' AND seq>? ORDER BY seq LIMIT 1`,
+      )
+      .get(runId, sequence) as { seq: number; message: string } | undefined;
+    return row && this.decode<ModelMessage>(runId, row.seq, "message", row.message);
+  }
+
   /** One open park per run — parking again superseded by a newer row is impossible. */
   park(runId: string, parked: ParkedCall, at = Date.now()): void {
     const open = this.openPark(runId);

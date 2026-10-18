@@ -90,6 +90,7 @@ export const RuntimeWindowContextMethods = [
   "runs.branch.list",
   "runs.continueBudget",
   "runs.context.cancelCompaction",
+  "runs.workTrace.get",
   "runs.context.compact",
   "runs.reconcileStart",
   "runs.retry",

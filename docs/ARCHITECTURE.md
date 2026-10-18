@@ -414,3 +414,12 @@ Primary buttons use neutral semantic foreground/background tokens in both themes
 matching the reference's primary control role. Brand/link/selection accents remain
 separate. Regular dialogs are384px and wide setup dialogs512px; fields can use the
 shared inline-label layout, which stacks within narrow editor containers.
+
+Conversation work inspection is a separate read through the existing API stack.
+It projects bounded, redacted call/result excerpts from original encrypted
+transcript rows only after current native viewer and retained-source admission.
+Historical reads do not renew model/action/capture authority. Explicit source
+retirement aborts and joins the original pending reads before key removal and
+Forget acknowledgement. The renderer loads work on disclosure, keeps ordinary
+run evidence independent and retires held/cached work on canonical Space changes.
+Turn navigation reuses loaded runs and the existing virtualized reveal path.

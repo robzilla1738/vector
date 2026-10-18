@@ -115,8 +115,12 @@ have integrated fault regressions; native populated Dream acceptance remains ope
 Native area0067 adds guarded File New Chat and oriented Tab split chooser commands.
 All67 areas replay exactly across940 source paths; the four affected objects compile
 in94.58s/10steps. Current full-app build and native menu behavior remain open.
-Measured optional Dialog extraction and durable work-trace/turn navigation are
-separate integration slices; no unbuilt result is treated as native acceptance.
+Measured optional Dialog extraction, Filter split Update controls and durable
+work-trace/turn navigation are integrated with reviewed source and fixtures.
+Trace loads only on disclosure and retires held/cached data on canonical Space
+changes; exact source Forget joins original reads before removal. Its generated
+native producer row and all current UI observations remain open. No unbuilt result
+is treated as native acceptance.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

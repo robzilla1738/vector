@@ -424,3 +424,38 @@ it("all four view controls remain normal scoped remappable commands", () => {
       intercept: true,
     });
 });
+
+it("jumps through real loaded turns with keyboard navigation while preserving draft and refusing a stale window", async () => {
+  runs = [0, 1, 2].map((index) =>
+    makeRun({
+      runId: `turn-${index}`,
+      goal: `Recorded turn ${index}`,
+      status: "completed",
+      pageIds: [],
+      createdAt: index,
+      config: { chatId: "a" },
+    }),
+  );
+  useStore.setState({ runs });
+  await render();
+  const nav = host.querySelector<HTMLElement>('nav[aria-label="Turn navigation"]')!;
+  const choices = [...nav.querySelectorAll<HTMLButtonElement>("button")];
+  expect(choices).toHaveLength(3);
+  expect(choices[0]!.getAttribute("aria-label")).toContain("Recorded turn 0");
+  await act(async () => {
+    choices[2]!.focus();
+    choices[2]!.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+  });
+  expect(document.activeElement).toBe(choices[0]);
+  await act(async () => choices[0]!.click());
+  expect(choices[0]!.getAttribute("aria-current")).toBe("location");
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Keep A draft");
+  expect(
+    vi
+      .mocked(bridge.invoke)
+      .mock.calls.some(([method]) => method === "runs.start" || method === "runs.queue"),
+  ).toBe(false);
+  bridge.windowId = "replacement-window";
+  await act(async () => choices[1]!.click());
+  expect(choices[0]!.getAttribute("aria-current")).toBe("location");
+});

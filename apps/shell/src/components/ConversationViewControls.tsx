@@ -13,7 +13,8 @@ export function ConversationViewAction({
     | "export-conversation-markdown"
     | "continue-conversation-in-rail"
     | "toggle-conversation-browser-preview"
-    | "jump-conversation-to-latest";
+    | "jump-conversation-to-latest"
+    | "jump-conversation-to-turn";
   current(): boolean;
   invoke(): unknown;
 }) {

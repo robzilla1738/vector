@@ -200,7 +200,7 @@ describe("durable transcript activity", () => {
       expect(invoke).toHaveBeenCalledWith("runs.get", { runId: failed.runId });
       expect(host.querySelectorAll(".transcript-error")).toHaveLength(1);
       expect(host.querySelector(".transcript-error")?.textContent).toContain("Connection interrupted");
-      expect(host.querySelector(".transcript-tools summary")?.textContent).toContain("1");
+      expect(host.querySelector(".transcript-tools summary")?.textContent).toContain("Recorded work");
       expect(host.querySelector(".run-failure")).toBeNull();
     } finally {
       await act(async () => root.unmount());

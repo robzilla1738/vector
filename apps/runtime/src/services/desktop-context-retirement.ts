@@ -20,6 +20,7 @@ export async function retireDesktopContextOutputs(
     retireCompactions(chatId: string): Promise<void>;
     cancelQueue(chatId: string): void;
     purgeBranches(): void;
+    retireHistoricalReads?(runIds: readonly string[]): Promise<void>;
     connectorFileTransferLifecycle?: (runIds: readonly string[], mode: "retire" | "forget") => Promise<void>;
   },
   scope: DesktopContextRemoval,
@@ -83,6 +84,7 @@ export async function retireDesktopContextOutputs(
         if (affected.has(run.runId))
           deps.repo.saveRun({ ...run, config: { ...run.config, contextMemoryRevoked: true } });
     });
+  if (!options.cancelOnly) await deps.retireHistoricalReads?.([...affected]);
   for (const chatId of chats) {
     deps.cancelQueue(chatId);
     await deps.retireCompactions(chatId);

@@ -667,3 +667,221 @@ it("opens the exact cited document capture and retires a held section when its r
     await act(async () => root.unmount());
   }
 });
+
+it("renders actual work as inert excerpts, pages its original run and hides retired data", async () => {
+  const source = makeRun({
+    runId: "work-original",
+    status: "completed",
+    pageIds: [],
+    config: { implementation: "agent-loop" },
+  });
+  useStore.setState({ runs: [source], steps: {} });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
+    if (method === "runs.get")
+      return { run: source, steps: [], transcript: { runId: source.runId, items: [] } };
+    if (method !== "runs.workTrace.get") throw new Error("Work inspection must not dispatch another method");
+    const cursor = (params as { beforeSeq?: number }).beforeSeq;
+    return {
+      runId: source.runId,
+      calls: [
+        {
+          toolCallId: cursor ? "old-call" : "latest-call",
+          toolName: "repl",
+          sequence: cursor ? 2 : 84,
+          status: cursor ? "pending" : "completed",
+          input: "console.log('Original')",
+          ...(cursor ? {} : { output: "<script>window.workExecuted=true</script>" }),
+          inputTruncated: false,
+          outputTruncated: true,
+        },
+      ],
+      omittedCalls: 0,
+      ...(cursor ? {} : { earlierSequence: 84 }),
+    };
+  });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunTranscriptDetails run={source} />));
+    const disclosure = host.querySelector<HTMLDetailsElement>(".transcript-tools")!;
+    await act(async () => {
+      disclosure.open = true;
+      disclosure.dispatchEvent(new Event("toggle"));
+    });
+    const detail = disclosure.querySelector<HTMLDetailsElement>("ol details")!;
+    detail.open = true;
+    expect(host.querySelector('pre[aria-label="Recorded output"]')?.textContent).toContain("<script>");
+    expect(host.querySelector("script")).toBeNull();
+    expect(host.textContent).toContain("Output excerpt");
+    await act(async () => {
+      disclosure.open = false;
+      disclosure.dispatchEvent(new Event("toggle"));
+    });
+    expect(host.querySelector('[aria-label="Recorded work pages"]')).toBeNull();
+    await act(async () => {
+      disclosure.open = true;
+      disclosure.dispatchEvent(new Event("toggle"));
+    });
+    expect(host.querySelector('[data-command-id="older-run-work"]')).not.toBeNull();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-command-id="older-run-work"]')!.click(),
+    );
+    expect(invoke).toHaveBeenCalledWith("runs.workTrace.get", { runId: source.runId, beforeSeq: 84 });
+    expect(host.textContent).toContain("Latest work");
+    expect(host.textContent).toContain("No result recorded");
+    expect(host.textContent).not.toContain("Result pending");
+    const retired = { ...source, config: { ...source.config, contextMemoryRevoked: true } };
+    useStore.setState({ runs: [retired] });
+    await act(async () => root.render(<RunTranscriptDetails run={retired} />));
+    expect(host.querySelector('pre[aria-label="Recorded output"]')).toBeNull();
+    expect(
+      invoke.mock.calls.every(([method]) => method === "runs.get" || method === "runs.workTrace.get"),
+    ).toBe(true);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("loads basic evidence for 50 mounted turns without reading collapsed work, then reads one opened turn", async () => {
+  const turns = Array.from({ length: 50 }, (_, index) =>
+    makeRun({
+      runId: `lazy-work-${index}`,
+      status: "completed",
+      pageIds: [],
+      config: { implementation: "agent-loop" },
+    }),
+  );
+  useStore.setState({ runs: turns });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
+    const runId = (params as { runId: string }).runId;
+    if (method === "runs.get")
+      return { run: turns.find((run) => run.runId === runId), steps: [], transcript: { runId, items: [] } };
+    if (method === "runs.workTrace.get") return { runId, calls: [], omittedCalls: 0 };
+    throw new Error("Unexpected work dispatch");
+  });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <>
+          {turns.map((run) => (
+            <RunTranscriptDetails key={run.runId} run={run} />
+          ))}
+        </>,
+      ),
+    );
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.get")).toHaveLength(50);
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.workTrace.get")).toHaveLength(0);
+    const detail = host.querySelector<HTMLDetailsElement>(".transcript-tools")!;
+    await act(async () => {
+      detail.open = true;
+      detail.dispatchEvent(new Event("toggle"));
+    });
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.workTrace.get")).toEqual([
+      ["runs.workTrace.get", { runId: turns[0]!.runId }],
+    ]);
+    expect(detail.textContent).toContain("No tool calls recorded");
+    await act(async () => {
+      detail.open = false;
+      detail.dispatchEvent(new Event("toggle"));
+    });
+    const updated = turns.map((run, index) =>
+      index ? run : { ...run, statusMessage: "Saved status changed" },
+    );
+    useStore.setState({ runs: updated });
+    await act(async () =>
+      root.render(
+        <>
+          {updated.map((run) => (
+            <RunTranscriptDetails key={run.runId} run={run} />
+          ))}
+        </>,
+      ),
+    );
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.workTrace.get")).toHaveLength(1);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it.each(["held reply", "retained reply"])(
+  "retires %s on a canonical organization Space transition without unmounting the chat",
+  async (mode) => {
+    const run = makeRun({
+      runId: "space-work",
+      status: "completed",
+      pageIds: [],
+      config: { implementation: "agent-loop" },
+    });
+    const initial = useStore.getState().layout;
+    const spaces: typeof initial.spaces = [
+      { id: "work-a", name: "A", color: "blue", grain: 0, workspaceId: "workspace-a" },
+      { id: "work-b", name: "B", color: "green", grain: 0, workspaceId: "workspace-b" },
+    ];
+    useStore.setState({ runs: [run], layout: { ...initial, spaces, activeSpaceId: "work-a" } });
+    let release!: (value: unknown) => void;
+    const pending = new Promise((done) => {
+      release = done;
+    });
+    const work = {
+      runId: run.runId,
+      protectedWorkspaceId: "workspace-a",
+      calls: [
+        {
+          toolCallId: "private-call",
+          toolName: "repl",
+          sequence: 1,
+          status: "completed",
+          input: "Protected original input",
+          output: "Protected original result",
+          inputTruncated: false,
+          outputTruncated: false,
+        },
+      ],
+      omittedCalls: 0,
+    };
+    const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+      if (method === "runs.get") return { run, steps: [], transcript: { runId: run.runId, items: [] } };
+      if (method === "runs.workTrace.get") return mode === "held reply" ? pending : work;
+      throw new Error("Unexpected work dispatch");
+    });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const open = async () =>
+      act(async () => {
+        const detail = host.querySelector<HTMLDetailsElement>(".transcript-tools")!;
+        detail.open = true;
+        detail.dispatchEvent(new Event("toggle"));
+      });
+    try {
+      await act(async () => root.render(<RunTranscriptDetails run={run} />));
+      await open();
+      expect(host.textContent?.includes("Protected original result")).toBe(mode === "retained reply");
+      // Same direct canonical layout publication as onOrganizationChanged: no mode/chat reset.
+      await act(async () => useStore.setState({ layout: { ...initial, spaces, activeSpaceId: "work-b" } }));
+      if (mode === "held reply")
+        await act(async () => {
+          release(work);
+          await pending;
+        });
+      expect(host.textContent).not.toContain("Protected original result");
+      expect(host.querySelector('pre[aria-label="Recorded input"]')).toBeNull();
+      expect(host.querySelector('[aria-label="Run evidence and recovery"]')).not.toBeNull();
+      await act(async () => useStore.setState({ layout: { ...initial, spaces, activeSpaceId: "work-a" } }));
+      expect(host.textContent).not.toContain("Protected original result");
+      expect(invoke.mock.calls.filter(([method]) => method === "runs.workTrace.get")).toHaveLength(1);
+      await open();
+      expect(host.textContent).toContain("Protected original result");
+      expect(invoke.mock.calls.filter(([method]) => method === "runs.workTrace.get")).toHaveLength(2);
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  },
+);

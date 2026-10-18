@@ -4,6 +4,8 @@ import { setImmediate as idle } from "node:timers/promises";
 import {
   AuxError,
   CapturedSourceSchema,
+  sameCapturedSource,
+  type CapturedSource,
   type MethodParams,
   ContentMemoryPolicySchema,
   type ContentMemoryPolicy,
@@ -1475,6 +1477,61 @@ export class ContentMemoryStore {
       }
       check();
       return sources;
+    });
+  }
+
+  /** Historical owner inspection does not re-enable ingestion or grant model access. */
+  assertHistoricalSources(workspaceId: string, refs: readonly CapturedSource[]) {
+    return this.own(async () => {
+      this.requireSpace(workspaceId);
+      if (refs.length > MAX_PAGES_PER_SPACE || refs.some((ref) => ref.workspaceId !== workspaceId))
+        throw new AuxError("permission_denied", "The recorded article sources belong to another Space.");
+      const rows = refs.map(
+        (ref) =>
+          this.repo.db
+            .prepare(
+              "SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory WHERE memory_id=? AND profile_id=? AND workspace_id=?",
+            )
+            .get(ref.memoryId, this.profileId, workspaceId) as Row | undefined,
+      );
+      if (rows.some((row) => !row))
+        throw new AuxError("permission_denied", "A recorded article was removed.");
+      const key = await this.key();
+      if (this.closed) throw new AuxError("cancelled", "Article storage is closed.");
+      const bodies = rows.map((row) => this.authenticated(key, row!, workspaceId));
+      const check = () => {
+        const policy = this.policy(workspaceId),
+          memory = readWorkspaceMemory(this.repo, workspaceId);
+        if (this.closed) throw new AuxError("cancelled", "Article storage is closed.");
+        for (let index = 0; index < refs.length; index++) {
+          const body = bodies[index]!,
+            row = rows[index]!;
+          const current = this.repo.db
+            .prepare(
+              "SELECT ciphertext,expires_at FROM content_memory WHERE memory_id=? AND profile_id=? AND workspace_id=?",
+            )
+            .get(body.memoryId, this.profileId, workspaceId) as
+            Pick<Row, "ciphertext" | "expires_at"> | undefined;
+          const { text: _text, sessionId: _session, ...metadata } = body;
+          if (
+            !current ||
+            current.ciphertext !== row.ciphertext ||
+            current.expires_at <= this.now() ||
+            body.capturedAt <= this.now() - policy.retentionDays * DAY ||
+            !sameCapturedSource(refs[index]!, CapturedSourceSchema.parse(metadata)) ||
+            !memoryOriginAllowed(policy, new URL(body.url).origin) ||
+            memorySourceExcluded(memory, body.url) ||
+            memorySensitivityReason(body.url, body.title) ||
+            memoryContentSensitivityReason(body.text)
+          )
+            throw new AuxError(
+              "permission_denied",
+              "A recorded article expired, was forgotten or is excluded.",
+            );
+        }
+      };
+      check();
+      return check;
     });
   }
 

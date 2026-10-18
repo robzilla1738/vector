@@ -1,0 +1,51 @@
+@layer components {
+  .conversation-main:has(> .conversation-turn-nav) {
+    position: relative;
+  }
+  .conversation-turn-nav {
+    position: absolute;
+    z-index: 2;
+    inset-inline-start: 4px;
+    top: 25%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-height: 45%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .conversation-turn-nav button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 20px;
+    flex: none;
+    border-radius: var(--r-md);
+  }
+  .conversation-turn-nav button > span {
+    width: 6px;
+    height: 2px;
+    background: var(--ink-3);
+    border-radius: 2px;
+  }
+  .conversation-turn-nav button[aria-current] > span {
+    width: 12px;
+    background: var(--ink-1);
+  }
+  .conversation-turn-nav button:is(:hover, :focus-visible) {
+    background: var(--bg-hover);
+  }
+  .conversation-turn-nav button:is(:hover, :focus-visible) > span {
+    width: 12px;
+    background: var(--ink-0);
+  }
+  .conversation-main:has(> .conversation-turn-nav) > .conversation-scroll {
+    padding-inline-start: max(32px, var(--space-4));
+  }
+  @container (max-width: 400px) {
+    .conversation-turn-nav {
+      inset-inline-start: 0;
+    }
+  }
+}

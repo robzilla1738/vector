@@ -15,12 +15,25 @@ async function branchOwner(ctx: MethodCtx) {
     native = ctx.s.native;
   const read = native?.turnSourceContext;
   if (ctx.client.external || ctx.client.codeMode || !token || !read)
-    throw new AuxError("permission_denied", "Branch history from the original Aux window.");
+    throw new AuxError("permission_denied", "Read conversation history from the original Aux window.");
   const original = await read.call(native, token);
-  const current = async () => {
+  const current = async (workspaceId?: string) => {
     const owner = await read.call(native, token);
     if (owner.windowId !== original.windowId)
       throw new AuxError("permission_denied", "The original conversation window changed.");
+    if (
+      workspaceId &&
+      !owner.layout?.shared.spaces.some(
+        (space) =>
+          space.id === owner.layout?.window.activeSpaceId &&
+          !space.archived &&
+          space.workspaceId === workspaceId,
+      )
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Select the recorded work’s original Space to inspect its protected sources.",
+      );
   };
   return { windowId: original.windowId, current };
 }
@@ -172,6 +185,11 @@ async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
     transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId }), steps),
     suspension: currentRunSuspension(run, suspensions.pending(run.runId)),
   };
+}
+async function h_runs_work_trace_get(ctx: MethodCtx): Promise<unknown> {
+  const input = MethodSchemas["runs.workTrace.get"].parse(ctx.params);
+  const owner = await branchOwner(ctx);
+  return ctx.s.runs.workTrace(input.runId, input.beforeSeq, owner.current, input.limit);
 }
 async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
   const { params, s, scope, scopedTasks } = ctx;
@@ -452,6 +470,7 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.branch": h_runs_branch,
   "runs.branch.list": h_runs_branch_list,
   "runs.get": h_runs_get,
+  "runs.workTrace.get": h_runs_work_trace_get,
   "runs.list": h_runs_list,
   "runs.context.stats": h_runs_context_stats,
   "runs.context.compact": h_runs_context_compact,

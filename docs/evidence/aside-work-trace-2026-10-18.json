@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-18",
+  "integrationBase": "8625413a8",
+  "status": "reviewed_source_and_fixtures_pass_current_native_pending",
+  "patches": [
+    {
+      "path": "/tmp/aux-chat-work-trace-fecd-v1.patch",
+      "sha256": "6facf3afeafeb52369bdb8866e19355b94d2058b06a5512f7c50b1407196e438"
+    },
+    {
+      "path": "/tmp/aux-chat-work-trace-fecd-v2-delta.patch",
+      "sha256": "c5f971de0c0e2bb98af8feadb8b9e51c2708463ca700f6acbcd0738d8fe67808"
+    },
+    {
+      "path": "/tmp/aux-chat-work-trace-fecd-v3-delta.patch",
+      "sha256": "b58bcac8bd51d247a11f42d729b452055e371ebc00e88d9366fb4e39f3a28ab4"
+    },
+    {
+      "path": "/tmp/aux-chat-work-trace-fecd-v4-delta.patch",
+      "sha256": "ced78cc4190d4f5f0c380e5115144532cf9d9368d36983effb474fbe514296c3"
+    }
+  ],
+  "finalPathsVerified": 31,
+  "independentReviews": [
+    "/tmp/aux-measurement-trace-v1-independent-review.json",
+    "/tmp/aux-measurement-trace-v3-independent-review.json",
+    "/tmp/aux-measurement-trace-v4-independent-review.json"
+  ],
+  "changes": [
+    "Dedicated aux-webui-only runs.workTrace.get reads bounded original encrypted transcript rows and exact call/result pairs. Current viewer native proof and original protected Space/source eligibility precede decryption and final publication. Existing runs.get remains unchanged.",
+    "Only an opened work disclosure loads trace;50 mounted turns issue no trace read until requested. Actual loading/empty/failure/retry, bounded omission, exact cursor paging and missing-result states are explicit. No model calls, action replay or invented effect success/tokens/timing.",
+    "Retained/held work is bound to run/window/private/kind/current canonical Space. Direct organization layout changes invalidate cache/request generation/cursor/open state, including leave-and-return without unmount. Protected workspace identity is derived only from admitted original sources.",
+    "Historical completed/stopped/archived work is distinct from new model/action admission. Capture or Memory off alone does not erase retained owner history; explicit exclusion/retention/source retirement still denies. Original model/action guards remain unchanged.",
+    "Exact affected source retirement aborts and joins original pending work reads before source/key removal and Forget acknowledgement. Final native viewer-await fixture proves original join and no canceled publication.",
+    "Turn markers use actual loaded turns and existing virtualized reveal/scroll ownership, with keyboard navigation and no second catalog. Pagination exists only while its actual work disclosure is open."
+  ],
+  "bounds": {
+    "pageMessageRows": 80,
+    "maximumDistinctMessagesIncludingFollowingBoundary": 81,
+    "calls": 40,
+    "inputExcerptUtf8Bytes": 8192,
+    "outputExcerptUtf8Bytes": 16384,
+    "source": "Original run_transcript only; no second persistence or full history decrypt. Following-result reads may repeat already decoded in-page rows."
+  },
+  "validation": {
+    "author": "v1 affected137 unique cases; final v3/v4 renderer corrections separately pass19/13/13 case runs; runtime and shell types clean. Exact source/series replay verified.",
+    "rootIntegratedBeforeFinalUiGate": {
+      "command": "npm run check",
+      "runtimeDistRebuilt": true,
+      "typecheck": "pass",
+      "lint": "pass; advisory warnings remain",
+      "testsPassed": 5707,
+      "testFilesPassed": 851,
+      "durationSeconds": 122.69,
+      "log": "/tmp/aux-work-trace-integrated-check.log",
+      "scope": "Exact v1+v2+v3 source; predates two-file v4 pagination UI gate."
+    },
+    "rootFinalUiGate": {
+      "command": "npx vitest run --project unit apps/shell/src/transcript/run-transcript.test.tsx",
+      "testsPassed": 13,
+      "durationSeconds": 7.8,
+      "log": "/tmp/aux-work-trace-v4-renderer-check.log"
+    },
+    "currentNative": "not observed"
+  },
+  "nativeIntegration": {
+    "handAuthoredAreaRequired": false,
+    "producer": "Existing area0061 generic RuntimeMethodNeedsWindowContext -> CallApiFromWindow; regenerated table row staged by original producer.",
+    "hostAbi": "278 methods/hash550bdeb5fbbd unchanged; does not prove new metadata or trace functionality.",
+    "oldNative": "Without the new row, native token is absent and branchOwner refuses before transcript access. Runtime declared method list is not proof of native readiness.",
+    "required": "Fresh full generated native table/staging/compile and current-window observations; no fallback token or empty area patch."
+  },
+  "remaining": [
+    "Current native normal/narrow/both-theme/keyboard/work disclosure/turn navigator observations.",
+    "Real completed/stopped/archive/new-window/sameSpace versus retired/changedSpace interactions.",
+    "Provider20-task, original crash, paired performance and broader browser readiness remain independent."
+  ]
+}

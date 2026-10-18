@@ -986,3 +986,80 @@ it("pages thirty exact capture metadata identities and exposes recapture and for
   });
   expect(changed.selected.some((source) => source.memoryId === saved[1]!.memoryId)).toBe(false);
 });
+
+it("allows original historical article proof with ingestion off but refuses expiry, exclusions and actual Forget", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  const saved = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "historical",
+    documentEpoch: 1,
+    url: "https://example.test/history",
+    title: "Workshop history",
+    text: "The workshop meets Tuesday.",
+  });
+  const refs = (await f.memory.list(workspaceId, { workspaceId, selectedIds: [saved.memoryId] })).selected;
+  f.tasks.setWorkspaceMemory(workspaceId, 0, "", false);
+  expect((await f.memory.list(workspaceId, { workspaceId, selectedIds: [saved.memoryId] })).selected).toEqual(
+    [],
+  );
+  const current = await f.memory.assertHistoricalSources(workspaceId, refs);
+  current();
+  await f.memory.forget(workspaceId, saved.memoryId);
+  expect(current).toThrow(/forgotten/);
+  await expect(f.memory.assertHistoricalSources(workspaceId, refs)).rejects.toThrow(/removed/);
+});
+it("refuses an authenticated historical article when Forget deletes it during its original key await", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  const saved = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "pending-history",
+    documentEpoch: 1,
+    url: "https://example.test/pending",
+    title: "History",
+    text: "Original workshop history.",
+  });
+  const refs = (await f.memory.list(workspaceId, { workspaceId, selectedIds: [saved.memoryId] })).selected;
+  const pending = f.memory.assertHistoricalSources(workspaceId, refs);
+  const removal = f.memory.forget(workspaceId, saved.memoryId);
+  const proof = await pending;
+  await removal;
+  expect(proof).toThrow(/forgotten/);
+});
+it("expires original historical article proof even with ingestion off", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  const saved = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "expiry",
+    documentEpoch: 1,
+    url: "https://example.test/expiry",
+    title: "History",
+    text: "Original workshop history.",
+  });
+  const refs = (await f.memory.list(workspaceId, { workspaceId, selectedIds: [saved.memoryId] })).selected;
+  const current = await f.memory.assertHistoricalSources(workspaceId, refs);
+  f.advance(31 * 86400000);
+  expect(current).toThrow(/expired/);
+});
+
+it("refuses original historical article proof after an explicit source exclusion", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  const saved = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "excluded-history",
+    documentEpoch: 1,
+    url: "https://example.test/excluded",
+    title: "History",
+    text: "Original workshop history.",
+  });
+  const refs = (await f.memory.list(workspaceId, { workspaceId, selectedIds: [saved.memoryId] })).selected;
+  const check = await f.memory.assertHistoricalSources(workspaceId, refs);
+  f.tasks.setWorkspaceMemory(workspaceId, 0, "", false, undefined, ["https://example.test"]);
+  expect(check).toThrow(/excluded|forgotten/);
+  await expect(f.memory.assertHistoricalSources(workspaceId, refs)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+});

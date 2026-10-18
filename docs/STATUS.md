@@ -91,6 +91,21 @@ comparisons are explicit; this is not182 matched native acceptances.
 [Notification evidence](evidence/aside-task-notices-2026-10-18.json) records this
 small implementation and the actual preference/keyboard fixtures.
 
+Conversation work details now read bounded original encrypted call/result pairs
+through the existing API stack, with a dedicated current-window read. Only opening
+the actual disclosure requests work;50 mounted turns make no trace reads. Actual
+loading/empty/failure/paging and missing-result states do not invent effects or
+usage. Current canonical Space changes clear retained/held protected work even
+when the chat remains mounted. Explicit source Forget aborts and joins the original
+reads before removal/acknowledgement; ordinary capture/Memory off and Stop do not
+erase retained owner history or grant new model authority. Turn markers use real
+loaded turns and the existing virtualized reveal route.
+The existing generic native producer needs its regenerated metadata row and full
+current build; unchanged278-method host ABI does not prove that row is installed.
+Old native fails closed without its genuine window proof. No new hand-authored
+native area or alternate API stack was added.
+[Trace evidence](evidence/aside-work-trace-2026-10-18.json) records the checks and limits.
+
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
 byte-upload/completion protocols. Schema12 protects transfer manifests and private
@@ -172,11 +187,13 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated Filter check passes typecheck/lint and all5,683tests across
-850files in115.37s. The preceding Dialog check passes all5,673tests/849files in
-123.24s, including provider-envelope and Memory corrections. Runtime dist was
-rebuilt first. Logs: `/tmp/aux-filter-actions-integrated-check.log` and
-`/tmp/aux-startup-dialog-integrated-check.log`.
+The work-trace v1–v3 integrated check passes typecheck/lint and all5,707tests across
+851files in122.69s. The final two-file v4 pagination gate then passes all13 actual
+transcript renderer cases; this is not described as a single final-v4 full run.
+Runtime dist was rebuilt before the integrated check. Logs:
+`/tmp/aux-work-trace-integrated-check.log` and `/tmp/aux-work-trace-v4-renderer-check.log`.
+The preceding Filter check passes all5,683tests/850files in115.37s; the Dialog check
+passes all5,673tests/849files in123.24s, including provider-envelope and Memory fixes.
 The preceding native-menu check passed5,671tests; two unchanged coder-worktree
 cases hit60s limits, then their unchanged isolated file passed3/3 in74.01s.
 The preceding provider check passed5,672tests; one unchanged delayed-exec300ms
@@ -323,7 +340,7 @@ image. No provider upload or real third-party write was performed. Page navigati
 Back, Forward, independently witnessed Reload and Find also work while the same
 original runtime is SIGSTOPped; it resumes without a replacement child.
 
-Two concrete failures remain: accepting a native address while Settings is open
+That ea9 preview exposed two concrete failures: accepting a native address while Settings is open
 loads the page underneath without closing Settings, and a synthetic request through
 the actual default anthropic/claude-sonnet-5.5 route fails before inference because
 one published tool schema lacks a root object type. The latter has a source
@@ -353,7 +370,7 @@ the exact first manual task reaches the configured Gateway route for
 anthropic/claude-sonnet-5.5. It fails before inference: root object type is present,
 but top-level oneOf/allOf/anyOf is rejected. Only1task was submitted and failed;
 the harness stopped before L02. Usage/cache/cost remain unknown. Portable schema
-publication is still active work. Aux menu Quit returns the original launcher0;
+publication now has a reviewed source correction; configured retry remains open. Aux menu Quit returns the original launcher0;
 its lock retires and the newly created disposable Profile is removed. No active
 capture shutdown claim follows from absence of a warning. The earlier debugger
 stall and original155 crash remain unresolved.

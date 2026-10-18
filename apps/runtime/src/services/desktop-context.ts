@@ -673,6 +673,64 @@ export class DesktopContextService {
       false,
     );
   }
+  /** Existing owner history may be inspected while capture is off; this is never model admission. */
+  assertHistoricalQuotes(raw: readonly DesktopContextQuote[]) {
+    const quotes = DesktopContextQuotesSchema.parse(raw);
+    const controller = new AbortController();
+    const check = () => {
+      if (this.closed || controller.signal.aborted)
+        throw new AuxError("cancelled", "Desktop history owner retired.");
+      const settings = this.settings();
+      for (const quote of quotes)
+        if (
+          quote.expiresAt <= this.now() ||
+          !settings.selectedApps.some((app) => app.bundleId === quote.appBundleId) ||
+          this.deps.store.sourceVersion(quote.workspaceId, quote.captureId) !== quote.version
+        )
+          fail("A recorded desktop source expired or was removed.");
+    };
+    const done = (async () => {
+      check();
+      const captures: DesktopContextCapture[] = [];
+      for (const workspaceId of new Set(quotes.map((quote) => quote.workspaceId)))
+        captures.push(
+          ...(await this.deps.store.read(
+            workspaceId,
+            check,
+            quotes.filter((quote) => quote.workspaceId === workspaceId).map((quote) => quote.captureId),
+          )),
+        );
+      const current = () => {
+        check();
+        for (const quote of quotes) {
+          const capture = captures.find(
+            (capture) => capture.workspaceId === quote.workspaceId && capture.captureId === quote.captureId,
+          );
+          if (
+            !capture ||
+            capture.sha256 !== quote.sha256 ||
+            capture.app.bundleId !== quote.appBundleId ||
+            capture.expiresAt !== quote.expiresAt ||
+            !this.deps.sourceEligible(capture) ||
+            digest(
+              JSON.stringify([
+                capture.text.slice(quote.startOffset, quote.endOffset),
+                quote.includeSelection ? capture.selection : "",
+              ]),
+            ) !== quote.quoteSha256
+          )
+            fail("A recorded desktop source no longer matches its original quote or policy.");
+        }
+      };
+      current();
+      return current;
+    })();
+    const entry = { controller, done };
+    this.work.add(entry);
+    void done.finally(() => this.work.delete(entry)).catch(() => {});
+    return done;
+  }
+
   assertQuotes(raw: readonly DesktopContextQuote[]) {
     const quotes = DesktopContextQuotesSchema.parse(raw),
       settings = this.settings();

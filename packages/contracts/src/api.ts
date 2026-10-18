@@ -166,7 +166,7 @@ import {
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
 import { WebmcpToolSchema } from "./webmcp.js";
 import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
-import { RunTranscriptProjectionSchema } from "./transcript.js";
+import { RunWorkTraceSchema, RunTranscriptProjectionSchema } from "./transcript.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z
@@ -1632,6 +1632,13 @@ export const MethodSchemas = {
   "runs.branch": z.object({ runId: id, mode: z.enum(["branch", "edit"]) }).strict(),
   "runs.branch.list": z.object({}).strict(),
   "runs.get": RunsGetParams,
+  "runs.workTrace.get": z
+    .object({
+      runId: id,
+      beforeSeq: z.number().int().positive().optional(),
+      limit: z.number().int().min(1).max(40).optional(),
+    })
+    .strict(),
   "runs.list": RunsListParams,
   "runs.context.stats": RunContextStatsParams,
   "runs.context.compact": RunContextCompactParams,
@@ -2514,6 +2521,7 @@ const BrowserAndRunResultSchemas = {
     transcript: RunTranscriptProjectionSchema.optional(),
     suspension: SuspensionSchema.nullable().optional(),
   }),
+  "runs.workTrace.get": RunWorkTraceSchema,
   "runs.list": z.array(RunSchema),
   "runs.context.stats": RunContextStatsSchema,
   "runs.context.compact": RunContextStatsSchema,

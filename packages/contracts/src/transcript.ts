@@ -1,6 +1,32 @@
 import { DocumentResultCitationSchema } from "./document-citation.js";
 import { z } from "zod";
 
+export const RunWorkTraceSchema = z
+  .object({
+    runId: z.string().min(1).max(200),
+    protectedWorkspaceId: z.string().min(1).max(200).optional(),
+    calls: z
+      .array(
+        z
+          .object({
+            toolCallId: z.string().max(300),
+            toolName: z.string().max(100),
+            sequence: z.number().int().nonnegative(),
+            status: z.enum(["completed", "failed", "pending"]),
+            input: z.string().max(8_192),
+            output: z.string().max(16_384).optional(),
+            inputTruncated: z.boolean(),
+            outputTruncated: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(40),
+    omittedCalls: z.number().int().nonnegative(),
+    earlierSequence: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type RunWorkTrace = z.infer<typeof RunWorkTraceSchema>;
+
 /** Presentation only. Run, safety, artifact and event records remain authoritative. */
 export const RunTranscriptItemSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("answer"), text: z.string(), terminal: z.literal(true) }),

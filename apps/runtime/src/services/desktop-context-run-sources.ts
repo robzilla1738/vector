@@ -192,6 +192,9 @@ export class DesktopContextRunSources {
     original.check();
     return result;
   }
+  async assertHistorical(runId: string) {
+    return this.deps.service.assertHistoricalQuotes(desktopRunQuotes(this.deps.repo, runId));
+  }
   assertCurrent(runId: string) {
     const quotes = desktopRunQuotes(this.deps.repo, runId);
     if (quotes.length) this.deps.service.assertQuotes(quotes);

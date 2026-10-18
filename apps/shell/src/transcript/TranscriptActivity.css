@@ -89,3 +89,57 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+.transcript-work-calls > li {
+  display: block;
+}
+.transcript-work-calls details {
+  min-width: 0;
+  width: 100%;
+}
+.transcript-work-calls summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  cursor: pointer;
+  list-style: none;
+}
+.transcript-work-calls summary::-webkit-details-marker {
+  display: none;
+}
+.transcript-work-calls summary > .ci {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-2);
+}
+.transcript-work-calls details[open] > summary > .ci {
+  transform: rotate(90deg);
+}
+.transcript-call-content {
+  margin: 4px 0 8px 8px;
+  padding: 10px;
+  background: var(--bg-hover);
+  border-radius: var(--r-lg);
+  border: var(--hairline) solid var(--line);
+}
+.transcript-call-content pre {
+  margin: 0;
+  max-height: 224px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+}
+.transcript-call-content pre + pre,
+.transcript-call-content pre ~ pre {
+  margin-top: 12px;
+}
+.transcript-work-pages {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}

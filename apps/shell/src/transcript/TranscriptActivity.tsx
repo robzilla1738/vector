@@ -1,3 +1,4 @@
+import type { RunWorkTrace } from "@aux/contracts/transcript";
 import type { RunTranscriptItem } from "@aux/contracts";
 import "./TranscriptActivity.css";
 import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
@@ -51,28 +52,91 @@ export function WaitingItem({ item }: { item: Waiting }) {
   );
 }
 
-/** Step names and statuses only. Inputs, outputs, URLs and page text are never rendered here. */
-export function ToolFold({ tools, summary }: { tools: readonly Tool[]; summary?: Summary }) {
-  if (!tools.length) return null;
+/** Safe action summaries, plus authorized bounded excerpts from the original work trace. */
+export function ToolFold({
+  tools,
+  summary,
+  work,
+  onOpenChange,
+  loading = false,
+  failure,
+}: {
+  tools: readonly Tool[];
+  summary?: Summary;
+  work?: RunWorkTrace;
+  onOpenChange?(open: boolean): void;
+  loading?: boolean;
+  failure?: React.ReactNode;
+}) {
+  if (!tools.length && !work?.calls.length && !onOpenChange) return null;
   const total = summary?.total ?? tools.length;
   return (
-    <details className="transcript-tools">
+    <details className="transcript-tools" onToggle={(event) => onOpenChange?.(event.currentTarget.open)}>
       <summary>
-        <span>Recorded actions · {total}</span>
+        <span>{work || onOpenChange ? "Recorded work" : `Recorded actions · ${total}`}</span>
         {shellIconRight}
       </summary>
-      <ol>
-        {tools.map((item, index) => (
-          <li key={`${item.op}-${index}`} data-state={item.status}>
-            <span className="transcript-tool-icon" aria-hidden="true">
-              {item.status === "ok" ? shellIconCheck : item.status === "failed" ? shellIconClose : <span />}
-            </span>
-            <span>{TOOL_LABELS[item.op] ?? "Recorded action"}</span>{" "}
-            <span className="transcript-tool-status">{item.status}</span>
-          </li>
-        ))}
-      </ol>
-      {!!summary?.omitted && <p>{summary.omitted} earlier actions are available in the full run record.</p>}
+      {loading && <output>Loading recorded work…</output>}
+      {failure}
+      {work && !work.calls.length && <p>No tool calls recorded in this message window.</p>}
+      {work && work.calls.length > 0 ? (
+        <ol className="transcript-work-calls">
+          {work.calls.map((call) => (
+            <li key={`${call.sequence}:${call.toolCallId}`}>
+              <details>
+                <summary>
+                  <span>{call.toolName}</span>
+                  <span className="transcript-tool-status">
+                    {call.status === "pending"
+                      ? "No result recorded"
+                      : call.status === "failed"
+                        ? "Error recorded"
+                        : "Result recorded"}
+                  </span>
+                  {shellIconRight}
+                </summary>
+                <div className="transcript-call-content">
+                  <span className="sr-only">Recorded input</span>
+                  <pre aria-label="Recorded input">{call.input}</pre>
+                  {call.inputTruncated && <p>Input excerpt. The complete record is retained in this chat.</p>}
+                  {call.output !== undefined && (
+                    <>
+                      <span className="sr-only">Recorded output</span>
+                      <pre aria-label="Recorded output">{call.output}</pre>
+                    </>
+                  )}
+                  {call.outputTruncated && (
+                    <p>Output excerpt. The complete record is retained in this chat.</p>
+                  )}
+                  {call.status === "pending" && (
+                    <p>No result was recorded for this call. Inspect its effects before repeating it.</p>
+                  )}
+                </div>
+              </details>
+            </li>
+          ))}
+          {work.omittedCalls > 0 && (
+            <li>
+              {work.omittedCalls} additional calls in this message window are omitted from this bounded view.
+            </li>
+          )}
+        </ol>
+      ) : (
+        <ol>
+          {tools.map((item, index) => (
+            <li key={`${item.op}-${index}`} data-state={item.status}>
+              <span className="transcript-tool-icon" aria-hidden="true">
+                {item.status === "ok" ? shellIconCheck : item.status === "failed" ? shellIconClose : <span />}
+              </span>
+              <span>{TOOL_LABELS[item.op] ?? "Recorded action"}</span>{" "}
+              <span className="transcript-tool-status">{item.status}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {!work && !!summary?.omitted && (
+        <p>{summary.omitted} earlier actions are available in the full run record.</p>
+      )}
     </details>
   );
 }

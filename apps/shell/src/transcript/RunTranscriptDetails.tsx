@@ -9,6 +9,7 @@ import {
   type Suspension,
 } from "@aux/contracts";
 import { bridge } from "../bridge";
+import type { RunWorkTrace } from "@aux/contracts/transcript";
 import type { DocumentResultCitation } from "@aux/contracts/document-citation";
 import { DocumentSnapshot } from "../components/DocumentSnapshot";
 import { locatorLabel } from "../components/DocumentPages";
@@ -58,10 +59,54 @@ export function RunTranscriptDetails({
   readOnly?: boolean;
   suspensionInComposer?: boolean;
 }) {
-  const [projection, setProjection] = useState<RunTranscriptProjection | null>(null);
+  const [savedProjection, setProjection] = useState<{
+    value: RunTranscriptProjection;
+    windowId: string;
+    privateMode: boolean;
+    windowKind: typeof bridge.windowKind;
+  } | null>(null);
+  const projection =
+    savedProjection?.windowId === bridge.windowId &&
+    savedProjection.privateMode === bridge.privateMode &&
+    savedProjection.windowKind === bridge.windowKind &&
+    savedProjection.value.runId === run.runId &&
+    !run.config?.contextMemoryRevoked &&
+    !run.config?.desktopContextRetired
+      ? savedProjection.value
+      : null;
   const [suspension, setSuspension] = useState<Suspension | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const layout = useStore((state) => state.layout);
+  const spaceId = layout.activeSpaceId;
+  const workspaceId = layout.spaces.find((space) => space.id === spaceId)?.workspaceId;
+  const workScope = JSON.stringify([
+    run.runId,
+    bridge.windowId,
+    bridge.privateMode,
+    bridge.windowKind,
+    spaceId,
+    workspaceId,
+  ]);
+  const [workOpen, setWorkOpen] = useState<string>();
+  const [workBefore, setWorkBefore] = useState<{ scope: string; sequence: number }>();
+  const workBeforeSeq = workBefore?.scope === workScope ? workBefore.sequence : undefined;
+  const workGeneration = useRef(0);
+  const [savedWork, setWork] = useState<{
+    scope: string;
+    value?: RunWorkTrace;
+    loading?: boolean;
+    error?: string;
+  }>();
+  const canInspectWork =
+    run.config?.implementation === "agent-loop" &&
+    !run.config?.contextMemoryRevoked &&
+    !run.config?.desktopContextRetired;
+  const workState = canInspectWork && savedWork?.scope === workScope ? savedWork : undefined;
+  const work =
+    workState?.value?.protectedWorkspaceId && workState.value.protectedWorkspaceId !== workspaceId
+      ? undefined
+      : workState?.value;
   const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState<ArtifactItem | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<{
@@ -103,7 +148,13 @@ export function RunTranscriptDetails({
     void call("runs.get", { runId: run.runId })
       .then((response) => {
         if (current() && response.run.runId === run.runId && response.run.status === run.status) {
-          if (response.transcript?.runId === run.runId) setProjection(response.transcript);
+          if (response.transcript?.runId === run.runId)
+            setProjection({
+              value: response.transcript,
+              windowId,
+              privateMode,
+              windowKind,
+            });
           const pending = response.suspension?.runId === run.runId ? response.suspension : null;
           setSuspension(pending);
           if (pending && !readOnly && foregroundRunId(useStore.getState()) === run.runId) {
@@ -121,7 +172,87 @@ export function RunTranscriptDetails({
       active = false;
       ++previewRequest.current;
     };
-  }, [run.runId, run.status, run.statusMessage, refresh, windowId, privateMode, windowKind, readOnly]);
+  }, [
+    run.runId,
+    run.status,
+    run.statusMessage,
+    run.config?.contextMemoryRevoked,
+    run.config?.desktopContextRetired,
+    refresh,
+    windowId,
+    privateMode,
+    windowKind,
+    readOnly,
+  ]);
+
+  useEffect(
+    () =>
+      useStore.subscribe((next, previous) => {
+        const identity = (state: typeof next) =>
+          JSON.stringify([
+            state.layout.activeSpaceId,
+            state.layout.spaces.find((space) => space.id === state.layout.activeSpaceId)?.workspaceId,
+          ]);
+        if (identity(next) === identity(previous)) return;
+        ++workGeneration.current;
+        setWork(undefined);
+        setWorkOpen(undefined);
+        setWorkBefore(undefined);
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!canInspectWork || workOpen !== workScope) return;
+    let active = true;
+    const generation = workGeneration.current;
+    const current = () => {
+      const owner = useStore.getState().layout;
+      return (
+        active &&
+        generation === workGeneration.current &&
+        bridge.windowId === windowId &&
+        bridge.privateMode === privateMode &&
+        bridge.windowKind === windowKind &&
+        owner.activeSpaceId === spaceId &&
+        owner.spaces.find((space) => space.id === spaceId)?.workspaceId === workspaceId
+      );
+    };
+    setWork({ scope: workScope, loading: true });
+    void call("runs.workTrace.get", {
+      runId: run.runId,
+      ...(workBeforeSeq !== undefined ? { beforeSeq: workBeforeSeq } : {}),
+    })
+      .then((response) => {
+        if (!current()) return;
+        if (
+          response.runId !== run.runId ||
+          (response.protectedWorkspaceId && response.protectedWorkspaceId !== workspaceId)
+        )
+          throw new Error("The recorded work no longer belongs to this view.");
+        setWork({ scope: workScope, value: response });
+      })
+      .catch(() => {
+        if (current()) setWork({ scope: workScope, error: "Recorded work could not be loaded." });
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    canInspectWork,
+    workOpen,
+    workScope,
+    workBeforeSeq,
+    refresh,
+    run.runId,
+    run.status,
+    run.statusMessage,
+    windowId,
+    privateMode,
+    windowKind,
+    spaceId,
+    workspaceId,
+  ]);
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const proposals =
@@ -280,6 +411,11 @@ export function RunTranscriptDetails({
     !listedArtifacts.length &&
     !proposals.length &&
     !tools.length &&
+    !canInspectWork &&
+    !work?.calls.length &&
+    work?.earlierSequence === undefined &&
+    !loadError &&
+    !workState?.error &&
     !recovery &&
     !waiting &&
     !errorItem &&
@@ -314,7 +450,57 @@ export function RunTranscriptDetails({
       {proposals.map((item, index) => (
         <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />
       ))}
-      <ToolFold tools={tools} summary={toolSummary} />
+      {!run.config?.contextMemoryRevoked && !run.config?.desktopContextRetired && (
+        <>
+          <ToolFold
+            key={workScope}
+            tools={tools}
+            summary={toolSummary}
+            work={work}
+            loading={workState?.loading}
+            onOpenChange={canInspectWork ? (open) => setWorkOpen(open ? workScope : undefined) : undefined}
+            failure={
+              workState?.error && (
+                <output>
+                  {workState.error}{" "}
+                  <RunPanelAction
+                    command="retry-run-evidence"
+                    run={run}
+                    {...smallGhostButtonProps}
+                    invoke={() => setRefresh((value) => value + 1)}
+                  >
+                    Retry loading
+                  </RunPanelAction>
+                </output>
+              )
+            }
+          />
+          {workOpen === workScope && (work?.earlierSequence !== undefined || workBeforeSeq !== undefined) && (
+            <nav className="transcript-work-pages" aria-label="Recorded work pages">
+              {work?.earlierSequence !== undefined && (
+                <RunPanelAction
+                  command="older-run-work"
+                  run={run}
+                  {...smallGhostButtonProps}
+                  invoke={() => setWorkBefore({ scope: workScope, sequence: work!.earlierSequence! })}
+                >
+                  Earlier work
+                </RunPanelAction>
+              )}
+              {workBeforeSeq !== undefined && (
+                <RunPanelAction
+                  command="newer-run-work"
+                  run={run}
+                  {...smallGhostButtonProps}
+                  invoke={() => setWorkBefore(undefined)}
+                >
+                  Latest work
+                </RunPanelAction>
+              )}
+            </nav>
+          )}
+        </>
+      )}
       {citations.length > 0 && (
         <RunPanelDisclosure
           command="toggle-run-citations"

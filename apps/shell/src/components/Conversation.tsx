@@ -1,3 +1,4 @@
+import { ConversationTurnNavigator } from "./ConversationTurnNavigator";
 import type { FirstFrameActivation } from "../first-frame";
 import { SourceCollection } from "./SourceCollection";
 import { registerConversationSearchSurface } from "../conversation-search";
@@ -457,7 +458,15 @@ function ConversationContent({
   const visibleTurns = searchWindow
     ? turns.filter((run) => searchWindow.runs.some((item) => item.runId === run.runId))
     : turns;
-  const revealedTurn = searchTarget?.runId;
+  const [navigationTurn, setNavigationTurn] = useState<{ chatId: string | null; runId: string }>();
+  const navigationRunId =
+    navigationTurn?.chatId === id && visibleTurns.some((turn) => turn.runId === navigationTurn.runId)
+      ? navigationTurn.runId
+      : undefined;
+  const revealedTurn = searchTarget?.runId ?? navigationRunId;
+  useLayoutEffect(() => {
+    if (navigationRunId) revealTurn(navigationRunId);
+  }, [navigationRunId, revealTurn]);
   const searchReveal = useRef<{
     resolve(element: HTMLElement): void;
     reject(error: Error): void;
@@ -987,7 +996,10 @@ function ConversationContent({
       refreshVersion = 0;
     const refresh = () => {
       const version = ++refreshVersion;
-      void Promise.all([call("runs.messages.list", { chatId: id, runIds: JSON.parse(messageRunIds) }), call("runs.messages.order", { chatId: id })])
+      void Promise.all([
+        call("runs.messages.list", { chatId: id, runIds: JSON.parse(messageRunIds) }),
+        call("runs.messages.order", { chatId: id }),
+      ])
         .then(([messages, order]) => {
           if (current && version === refreshVersion) {
             setQueuedMessages(messages);
@@ -2366,19 +2378,29 @@ function ConversationContent({
   const reorderQueued = async (messageId: string, targetId: string) => {
     if (!id || !queueOrder || reorderingQueue || archived || !conversationCurrent()) return;
     const originalOwner = conversationCurrent;
-    const from = queueOrder.messageIds.indexOf(messageId), to = queueOrder.messageIds.indexOf(targetId);
+    const from = queueOrder.messageIds.indexOf(messageId),
+      to = queueOrder.messageIds.indexOf(targetId);
     if (from < 0 || to < 0 || from === to) return;
     const messageIds = [...queueOrder.messageIds];
     messageIds.splice(to, 0, messageIds.splice(from, 1)[0]!);
     setReorderingQueue(true);
     try {
-      const order = await call("runs.messages.reorder", { chatId: id, expectedRevision: queueOrder.revision, messageIds });
+      const order = await call("runs.messages.reorder", {
+        chatId: id,
+        expectedRevision: queueOrder.revision,
+        messageIds,
+      });
       if (!originalOwner()) return;
       setQueueOrder(order);
       setMessageRefresh((value) => value + 1);
     } catch (reason) {
-      if (originalOwner()) { errToast(reason); setMessageRefresh((value) => value + 1); }
-    } finally { if (originalOwner()) setReorderingQueue(false); }
+      if (originalOwner()) {
+        errToast(reason);
+        setMessageRefresh((value) => value + 1);
+      }
+    } finally {
+      if (originalOwner()) setReorderingQueue(false);
+    }
   };
   const closedPage = !linked && !!last?.pageIds.length;
   const openPreview = (where: "tab" | "split") => {
@@ -2624,6 +2646,16 @@ function ConversationContent({
       )}
       <div className="conversation-body">
         <div className="conversation-main">
+          <ConversationTurnNavigator
+            turns={visibleTurns}
+            activeTurn={scrolling.activeTurn}
+            current={conversationCurrent}
+            reveal={(runId) => {
+              if (!conversationCurrent() || !visibleTurns.some((run) => run.runId === runId)) return;
+              setNavigationTurn({ chatId: id, runId });
+              revealTurn(runId);
+            }}
+          />
           <div
             className="conversation-scroll"
             tabIndex={-1}
@@ -2821,16 +2853,42 @@ function ConversationContent({
                   </header>
                   <ol>
                     {queued.map((message, index) => (
-                      <li key={message.messageId} data-message-id={message.messageId}
-                        draggable={!archived && !reorderingQueue && !!queueOrder && queued.every((item) => item.status !== "delivering")}
-                        onDragStart={(event) => { draggedQueueMessage.current = message.messageId; event.dataTransfer.setData("text/plain", message.messageId); event.dataTransfer.effectAllowed = "move"; }}
-                        onDragEnd={() => { draggedQueueMessage.current = null; }}
-                        onDragOver={(event) => { if (draggedQueueMessage.current) event.preventDefault(); }}
-                        onDrop={(event) => { event.preventDefault(); const source = draggedQueueMessage.current; draggedQueueMessage.current = null; if (source) void reorderQueued(source, message.messageId); }}
+                      <li
+                        key={message.messageId}
+                        data-message-id={message.messageId}
+                        draggable={
+                          !archived &&
+                          !reorderingQueue &&
+                          !!queueOrder &&
+                          queued.every((item) => item.status !== "delivering")
+                        }
+                        onDragStart={(event) => {
+                          draggedQueueMessage.current = message.messageId;
+                          event.dataTransfer.setData("text/plain", message.messageId);
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => {
+                          draggedQueueMessage.current = null;
+                        }}
+                        onDragOver={(event) => {
+                          if (draggedQueueMessage.current) event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const source = draggedQueueMessage.current;
+                          draggedQueueMessage.current = null;
+                          if (source) void reorderQueued(source, message.messageId);
+                        }}
                       >
                         <p>{message.text}</p>
-                        {message.context && (message.context.attachmentRefs.length > 0 || message.context.imageArtifactIds.length > 0) &&
-                          <small>{message.context.attachmentRefs.length} documents · {message.context.imageArtifactIds.length} images captured with this message</small>}
+                        {message.context &&
+                          (message.context.attachmentRefs.length > 0 ||
+                            message.context.imageArtifactIds.length > 0) && (
+                            <small>
+                              {message.context.attachmentRefs.length} documents ·{" "}
+                              {message.context.imageArtifactIds.length} images captured with this message
+                            </small>
+                          )}
                         <div className="queued-message-state">
                           <span role={message.status === "needs_attention" ? "alert" : undefined}>
                             {message.status === "needs_attention"
@@ -2841,14 +2899,42 @@ function ConversationContent({
                           </span>
                           {message.status !== "delivering" && (
                             <>
-                              {queued.length > 1 && queueOrder && <>
-                                <button {...auxReuseNativeButtonTypeProps} aria-label={`Move queued message ${index + 1} up`}
-                                  disabled={archived || reorderingQueue || index === 0 || queued.some((item) => item.status === "delivering")}
-                                  onClick={() => { if (index > 0) void reorderQueued(message.messageId, queued[index - 1]!.messageId); }}>Move up</button>
-                                <button {...auxReuseNativeButtonTypeProps} aria-label={`Move queued message ${index + 1} down`}
-                                  disabled={archived || reorderingQueue || index === queued.length - 1 || queued.some((item) => item.status === "delivering")}
-                                  onClick={() => { if (index + 1 < queued.length) void reorderQueued(message.messageId, queued[index + 1]!.messageId); }}>Move down</button>
-                              </>}
+                              {queued.length > 1 && queueOrder && (
+                                <>
+                                  <button
+                                    {...auxReuseNativeButtonTypeProps}
+                                    aria-label={`Move queued message ${index + 1} up`}
+                                    disabled={
+                                      archived ||
+                                      reorderingQueue ||
+                                      index === 0 ||
+                                      queued.some((item) => item.status === "delivering")
+                                    }
+                                    onClick={() => {
+                                      if (index > 0)
+                                        void reorderQueued(message.messageId, queued[index - 1]!.messageId);
+                                    }}
+                                  >
+                                    Move up
+                                  </button>
+                                  <button
+                                    {...auxReuseNativeButtonTypeProps}
+                                    aria-label={`Move queued message ${index + 1} down`}
+                                    disabled={
+                                      archived ||
+                                      reorderingQueue ||
+                                      index === queued.length - 1 ||
+                                      queued.some((item) => item.status === "delivering")
+                                    }
+                                    onClick={() => {
+                                      if (index + 1 < queued.length)
+                                        void reorderQueued(message.messageId, queued[index + 1]!.messageId);
+                                    }}
+                                  >
+                                    Move down
+                                  </button>
+                                </>
+                              )}
                               <ConversationQueuedControls
                                 message={message}
                                 current={conversationCurrent}
@@ -3068,7 +3154,12 @@ function ConversationContent({
                     />
                   )}
                   {last?.config?.implementation === "agent-loop" && (
-                    <RunContext key={last.runId} runId={last.runId} active={last.status === "running"} disabled={archived} />
+                    <RunContext
+                      key={last.runId}
+                      runId={last.runId}
+                      active={last.status === "running"}
+                      disabled={archived}
+                    />
                   )}
                   {imageTray}
                 </div>

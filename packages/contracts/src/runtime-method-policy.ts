@@ -308,6 +308,7 @@ export const RuntimeMethodPolicy = {
   "runs.branch": { feature: "core", auth: "aux-webui" },
   "runs.branch.list": { feature: "core", auth: "aux-webui" },
   "runs.get": { feature: "core", auth: "standard" },
+  "runs.workTrace.get": { feature: "core", auth: "aux-webui" },
   "runs.list": { feature: "core", auth: "standard" },
   "runs.context.stats": { feature: "core", auth: "standard" },
   "runs.context.compact": { feature: "core", auth: "aux-webui" },

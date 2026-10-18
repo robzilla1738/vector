@@ -1,3 +1,5 @@
+import { desktopSourceRuns } from "./desktop-context-run-sources.js";
+import { projectRunWorkTrace } from "./run-work-trace.js";
 import { retireDesktopContextOutputs, type DesktopContextRemoval } from "./desktop-context-retirement.js";
 import type { DesktopContextRunSources } from "./desktop-context-run-sources.js";
 import { statSync } from "node:fs";
@@ -249,6 +251,15 @@ export class RunService {
   private closed = false;
   private readonly startReceipts: RunStartReceipts;
   private ownedOperations = new Set<Promise<unknown>>();
+  private historicalReads = new Set<{ runId: string; controller: AbortController; done: Promise<unknown> }>();
+  private retiredHistoricalRuns = new Set<string>();
+  private async retireHistoricalReads(runIds: readonly string[]) {
+    const affected = new Set(runIds);
+    for (const runId of affected) this.retiredHistoricalRuns.add(runId);
+    const original = [...this.historicalReads].filter((entry) => affected.has(entry.runId));
+    for (const entry of original) entry.controller.abort();
+    await Promise.allSettled(original.map((entry) => entry.done));
+  }
   private connectorOwnerNonces = new WeakMap<object, string>();
   private connectorMentionNonces = new WeakMap<RunControl, { turn: symbol; nonce: string }>();
   private readonly idleCompactions: IdleConversationCompactions;
@@ -590,6 +601,7 @@ export class RunService {
         cancelQueue: (chatId) => this.messages.cancelForChat(chatId),
         purgeBranches: () => this.branches.purgeRevoked(),
         connectorFileTransferLifecycle: this.deps.connectorFileTransferLifecycle,
+        retireHistoricalReads: (runIds) => this.retireHistoricalReads(runIds),
       },
       scope,
       { cancelOnly },
@@ -667,6 +679,7 @@ export class RunService {
       this.setRunControls.get(id)?.cancel();
       this.retirePendingAuthority(id);
     }
+    await this.retireHistoricalReads([...affected]);
     for (const id of active) await this.cancel(id, "A selected saved article is being forgotten.");
     await this.deps.connectorFileTransferLifecycle?.([...affected], "forget");
   }
@@ -908,6 +921,97 @@ export class RunService {
     if (allowed && !allowed.includes("*"))
       for (const name of Object.keys(manifest)) if (!allowed.includes(name)) delete manifest[name];
     return modelTools(manifest).bytes;
+  }
+
+  async workTrace(
+    runId: string,
+    beforeSeq: number | undefined,
+    checkOwner: (workspaceId?: string) => Promise<void>,
+    limit = 40,
+  ) {
+    const controller = new AbortController();
+    const done = this.ownOperation(async () => {
+      const sources = desktopSourceRuns(this.deps.repo, runId);
+      const identity = (run: Run) =>
+        JSON.stringify([queuedSourceHash(run), run.config?.desktopContextQuotes]);
+      const snapshots = sources.map(identity);
+      const current = () => {
+        if (this.closed || controller.signal.aborted)
+          throw new AuxError("cancelled", "The recorded work owner retired.");
+        sources.forEach((source, index) => {
+          const latest = this.deps.repo.getRun(source.runId);
+          if (
+            this.retiredHistoricalRuns.has(source.runId) ||
+            !latest ||
+            latest.config?.contextMemoryRevoked ||
+            latest.config?.desktopContextRetired ||
+            identity(latest) !== snapshots[index]
+          )
+            throw new AuxError(
+              "permission_denied",
+              "This recorded work or its source was retired or changed.",
+            );
+          runAncestry(this.deps.repo, source.runId);
+        });
+      };
+      current();
+      const protectedSpaces = new Set(
+        sources.flatMap((run) => [
+          ...(run.config?.contextMemoryRefs ?? []).map((ref) => ref.workspaceId),
+          ...(run.config?.desktopContextQuotes ?? []).map((quote) => quote.workspaceId),
+        ]),
+      );
+      if (protectedSpaces.size > 1)
+        throw new AuxError("permission_denied", "Recorded protected work belongs to more than one Space.");
+      const workspaceId = [...protectedSpaces][0];
+      if (
+        sources.some((source) =>
+          [...(source.config?.contextMemoryRefs ?? []), ...(source.config?.desktopContextQuotes ?? [])].some(
+            (ref) => ref.workspaceId !== source.config?.contextWorkspaceId,
+          ),
+        )
+      )
+        throw new AuxError("permission_denied", "A protected source no longer matches its original Space.");
+      await checkOwner(workspaceId);
+      const checks: (() => void)[] = [];
+      for (const source of sources) {
+        const refs = source.config?.contextMemoryRefs ?? [];
+        if (source.config?.contextMemoryIds?.length && !refs.length)
+          throw new AuxError("permission_denied", "The original saved article source is unavailable.");
+        if (refs.length) {
+          if (
+            !this.deps.contentMemory ||
+            !source.config?.contextWorkspaceId ||
+            refs.some((ref) => ref.workspaceId !== source.config?.contextWorkspaceId)
+          )
+            throw new AuxError("permission_denied", "The original article Space is unavailable.");
+          checks.push(
+            await this.deps.contentMemory.assertHistoricalSources(source.config.contextWorkspaceId, refs),
+          );
+        }
+      }
+      if (sources.some((run) => run.config?.desktopContextQuotes?.length)) {
+        if (!this.deps.desktopContextSources)
+          throw new AuxError("permission_denied", "The original desktop source is unavailable.");
+        checks.push(await this.deps.desktopContextSources.assertHistorical(runId));
+      }
+      await checkOwner(workspaceId);
+      current();
+      for (const check of checks) check();
+      const trace = projectRunWorkTrace(
+        new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher),
+        runId,
+        beforeSeq,
+        limit,
+      );
+      current();
+      for (const check of checks) check();
+      return { ...trace, ...(workspaceId ? { protectedWorkspaceId: workspaceId } : {}) };
+    });
+    const entry = { runId, controller, done };
+    this.historicalReads.add(entry);
+    void done.finally(() => this.historicalReads.delete(entry)).catch(() => {});
+    return done;
   }
 
   contextStats(runId: string): RunContextStats {

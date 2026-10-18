@@ -397,6 +397,7 @@ export const COMMANDS = [
     ["continue-", "-in-rail", "Continue ", " in side panel"],
     ["toggle-", "-browser-preview", "Toggle ", " browser preview"],
     ["jump-", "-to-latest", "Jump to latest ", " message"],
+    ["jump-", "-to-turn", "Jump to ", " turn"],
     ["toggle-", "-preview-menu", "Choose where to open ", " preview"],
     ["activate-", "-preview-page", "Open ", " preview in tab"],
     ["split-", "-preview-page", "Open ", " preview in split view"],
@@ -567,6 +568,8 @@ export const COMMANDS = [
   ...G(runPanelControl, "-run", [
     ["close", "-artifact", "Close saved run artifact"],
     ["retry", "-evidence", "Retry loading run evidence"],
+    ["older", "-work", "Show earlier recorded work"],
+    ["newer", "-work", "Show latest recorded work"],
     ["toggle", "-citations", "Toggle verified run citations"],
     ["toggle", "-artifacts", "Toggle saved run artifacts"],
     ["inspect", "-citation", "Inspect cited run snapshot"],

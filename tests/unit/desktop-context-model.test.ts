@@ -601,3 +601,42 @@ it("keeps admitted source quotes valid while new captures append during response
   await f.service.forget("space", f.settings().revision, "test.editor", undefined, async () => {}, "owner");
   await expect(sources.validate(f.owner)).rejects.toBeInstanceOf(AuxError);
 });
+
+it("inspects retained historical desktop quotes after capture off without renewing a native lease", async () => {
+  const f = await fixture();
+  await f.enable();
+  const capture = await f.capture();
+  const sources = f.sources();
+  await sources.search({ queries: ["workshop"], mode: "lexical" }, f.owner);
+  await f.service.configure(
+    f.settings().revision,
+    { ...f.settings(), enabled: false },
+    "real-owner-token",
+    async () => {},
+  );
+  f.repo.saveRun({ ...f.repo.getRun("run")!, status: "completed" });
+  const nativeCalls = f.native.status.mock.calls.length;
+  const current = await sources.assertHistorical("run");
+  current();
+  expect(f.native.status.mock.calls.length).toBe(nativeCalls);
+  expect(() => sources.assertCurrent("run")).toThrow();
+  f.clock(capture.expiresAt);
+  expect(current).toThrow(/expired/);
+});
+it("keeps historical desktop inspection bounded to retained app/source identities and explicit Forget", async () => {
+  const f = await fixture();
+  await f.enable();
+  await f.capture();
+  const sources = f.sources();
+  await sources.search({ queries: ["workshop"], mode: "lexical" }, f.owner);
+  const current = await sources.assertHistorical("run");
+  current();
+  await f.service.configure(
+    f.settings().revision,
+    { ...f.settings(), enabled: false, selectedApps: [] },
+    "real-owner-token",
+    async () => {},
+  );
+  expect(current).toThrow(/removed|retired/);
+  await expect(sources.assertHistorical("run")).rejects.toThrow(/forgotten|retired/);
+});

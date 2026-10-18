@@ -158,6 +158,15 @@ it("keeps a 300-turn chat responsive while its composer changes", async () => {
     await act(async () => enter(false));
     expect(old.querySelector('[data-testid="run-panel"]')).toBeNull();
     expect(old.style.height).toBe("600px");
+    // Navigation remounts the actual old body without sending a turn or changing the draft.
+    const previousStarts = invoke.mock.calls.filter(([method]) => method === "runs.start").length;
+    const turnButton = host.querySelector<HTMLButtonElement>(
+      '[aria-label="Jump to loaded turn 2: Question 1"]',
+    )!;
+    await act(async () => turnButton.click());
+    expect(host.querySelector('[data-turn-id="run-001"] [data-testid="run-panel"]')).not.toBeNull();
+    expect(textarea.value).toBe("Still writing without losing my place");
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(previousStarts);
     // Search a turn outside the currently loaded latest history page.
     await act(async () => useStore.setState({ runs: runs.slice(-50) }));
     let finding!: Promise<void>;
