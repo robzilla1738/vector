@@ -2862,3 +2862,21 @@ and invalidate pending reads, and retired owners cannot reveal late results.
 Shared dialog/button/material/type tokens provide the surface. Root-document and
 Dream file receipts remain separate scope. Dist,94focused tests, renderer build
 and integrated verification are recorded in STATUS; native comparison is open.
+
+
+## October17 — shared popup material and motion
+
+Stage dialogs and floating inspectors now inherit the common popup recipe.
+Model-provider submenus, mentions, citations, tooltips, reader contents and
+notifications join anchored menus/command search on shared glass, edge, shadow
+and readable secondary-text tokens. Opaque duplicate surfaces/entrances were
+removed. Menu positioning happens before paint; submenus follow resize and
+anchors. Sidebars/page bounds share layout timing; direct drag and reduced-motion
+behavior remain immediate. Reduced transparency/forced colors retain solid
+fallbacks. Native OS menus retain their material.
+
+Integrated checks cover4,784tests after two old CSS assertions were updated and
+rerun alone. Renderer build and the actual popup contrast computation pass;
+raw CSS colors outside tokens remain0. The current desktop-control pipe is
+unavailable, so matched native popup/sidebar light/dark/narrow acceptance remains
+open. No full parity claim follows from source changes.

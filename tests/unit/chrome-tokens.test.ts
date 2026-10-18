@@ -153,7 +153,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
     expectCss(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
     expectCss(styles).toContain(
-      ":root select:not([multiple]):not([size])::picker(select) { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup));",
+      ":root select:not([multiple]):not([size])::picker(select) { background: var(--popup-tint); backdrop-filter: blur(var(--blur-popup)) saturate(var(--popup-saturation));",
     );
     expectCss(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
     expect(styles).toMatch(/\.folder-kids\s*\{[^}]*overflow:\s*hidden/s);
@@ -235,8 +235,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/(?:html|:root|\.app|\.main-col|\.stage-wrap):has\(/);
   });
 
-  it("uses one menu entrance, solid scrims and no white favicon plates", () => {
-    expect(styles.match(/animation:\s*menu-enter/g)).toHaveLength(1);
+  it("uses one popup entrance, solid scrims and no white favicon plates", () => {
+    expect(styles.match(/animation:\s*popup-reveal/g)).toHaveLength(1);
     expectCss(styles).not.toContain("@keyframes dialog-enter");
     expect(styles).toMatch(/\.scrim-soft\s*\{[^}]*background:\s*var\(--scrim\)/);
     expect(styles).not.toMatch(/\.scrim-soft\s*\{[^}]*backdrop-filter/);

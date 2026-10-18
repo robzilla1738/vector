@@ -40,7 +40,9 @@ export function ModelProviderMenu({
     const frame = requestAnimationFrame(place);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(panel);
+    observer?.observe(button);
     window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
     if (enter.current) {
       panel.querySelector<HTMLElement>('[role="menuitemradio"]:not(:disabled)')?.focus();
       enter.current = false;
@@ -49,6 +51,7 @@ export function ModelProviderMenu({
       cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
   }, [open]);
   const focusChoices = () => {
@@ -88,7 +91,7 @@ export function ModelProviderMenu({
           id={id}
           role="menu"
           aria-label={`${label} models`}
-          className="composer-model-submenu"
+          className="composer-model-submenu popup-material"
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing || event.key === "Tab") return;
             event.stopPropagation();

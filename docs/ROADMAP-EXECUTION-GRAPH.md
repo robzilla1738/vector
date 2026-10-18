@@ -11,8 +11,9 @@ browser readiness, the manual 20-task smoke and performance acceptance remain op
 Current source adds isolated named providers, compact Quick Ask/downloads,
 model-based Memory extraction and Channels transport/storage/pairing/run/reply/
 Settings integration, shared visual tokens and reviewed generation-bound Memory
-restoration. Latest verification covers4,776tests including one updated UI fixture
-rerun in isolation; STATUS records the exact integrated results. Live messenger
+restoration, explicit owner USER.md/TAXONOMY.md documents and common popup glass/
+sidebar motion. Latest verification covers4,784tests, with two updated CSS recipe
+assertions rerun in isolation; STATUS records the exact integrated results. Live messenger
 and native channel acceptance remain open. Native address save/edit/cancel/update and refill are accepted
 on c366c7dc8. Redirect area0058 and compact-window area0059 await native acceptance;
 the isolated155baseline compiled and booted after an initial storage-factor

@@ -4,12 +4,9 @@
   width: min(330px, calc(100vw - 24px));
   max-height: min(360px, 50vh);
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-1);
+  border-radius: var(--menu-radius);
   color: var(--ink-0);
-  box-shadow: 0 8px 30px var(--shadow-overlay-tint);
-  padding: 8px;
+  padding: var(--menu-padding);
 }
 .mention-popup [role="group"] > strong {
   display: block;

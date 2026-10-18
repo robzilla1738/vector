@@ -51,6 +51,31 @@ is claimed. CUA bindings from retired previews must not be reused: a stale bindi
 can launch the default Profile. Check the owned app PID and disposable Profile
 argument before creating a new binding. Only disposable Profiles are authorized.
 
+## Shared popup glass and fluid motion — integrated source
+
+Every shared Dialog now uses popup material, including stage dialogs and floating
+inspectors. Model-provider submenus, mention suggestions, citation previews,
+tooltips, reader contents and notifications now use the same recipe as anchored
+menus, command search and native-select pickers. The shared backing,16px blur,
+125% saturation, edge/shadow pair and secondary text tokens own their appearance;
+replaced opaque surfaces and duplicate material/entrance rules were removed.
+Reduced-transparency, forced-colors and increased-contrast modes retain explicit
+fallbacks. OS-owned menus keep their native material.
+
+Menus/popovers position before first paint; anchor size changes and model-submenu
+window resizing update their bounds. One opacity entrance avoids animating blur
+or moving anchors. Left/chat/right sidebar widths and page spacers share the200ms
+layout timing; disclosure and hover timings use shared tokens. Direct resizing
+stays immediate and reduced motion disables layout/reveal transitions.
+
+The integrated document/material check and two updated assertion reruns are
+recorded below. Renderer build passed; raw CSS colors outside tokens remain0.
+The contrast check now evaluates actual popup material instead of a removed CSS
+navigation tint (native navigation glass belongs to the OS). Secondary popup text
+passes4.5:1 over both black/white underlays in both themes: minimum4.69:1
+(`/tmp/aux-popup-glass-contrast.log`). These computations do not replace matched
+native captures or prove every surface's liquid-glass appearance.
+
 ## Owner-written Memory documents — integrated source
 
 Each Space can explicitly create, edit and remove USER.md and TAXONOMY.md beside

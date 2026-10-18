@@ -63,7 +63,7 @@ export function Dialog({
       ref={ref}
       tabIndex={-1}
       role={kind}
-      className={`aux-native-dialog ${placement === "stage" ? "aux-stage-dialog" : "popup-material"} ${className}`}
+      className={`aux-native-dialog popup-material${placement === "stage" ? " aux-stage-dialog" : ""} ${className}`}
       aria-label={label}
       aria-modal="true"
       aria-describedby={descriptionId}
@@ -165,7 +165,7 @@ export function Menu({
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useNativeDialog(true, ref, returnFocus);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     const place = () => {

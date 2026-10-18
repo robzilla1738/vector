@@ -10,7 +10,7 @@
     color: var(--sb-ink-0);
     background: transparent;
     -webkit-app-region: drag;
-    transition: width var(--t-fast) var(--ease-in-out);
+    transition: width var(--t-layout) var(--ease-emphasized);
   }
   .rail.open {
     width: var(--rail-w);
@@ -31,8 +31,8 @@
     transform: translateX(16px);
     pointer-events: none;
     transition:
-      opacity var(--t-fast) var(--ease-out),
-      transform var(--t-fast) var(--ease-in-out);
+      opacity var(--t-layout) var(--ease-emphasized),
+      transform var(--t-layout) var(--ease-emphasized);
   }
   .rail.open .rail-inner {
     transform: none;

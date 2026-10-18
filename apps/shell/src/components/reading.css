@@ -66,12 +66,9 @@
     max-width: calc(100vw - 16px);
     max-height: calc(100vh - 16px);
     overflow: auto;
-    border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--bg-1);
     color: var(--ink-0);
     padding: var(--space-3);
-    box-shadow: var(--shadow-pop);
     pointer-events: none;
     font-size: var(--fs-sm);
     overflow-wrap: anywhere;

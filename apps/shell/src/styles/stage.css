@@ -443,10 +443,7 @@
     width: var(--sb-w, var(--sidebar-w));
   }
   .app .chat-sidebar {
-    transition: width var(--t-fast) var(--ease-emphasized);
-  }
-  .app .chat-sidebar.open {
-    transition-duration: var(--t-layout);
+    transition: width var(--t-layout) var(--ease-emphasized);
   }
   .app.minimal-ui .rail {
     display: none;

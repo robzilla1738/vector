@@ -50,7 +50,7 @@ export function CitationChip({
       </a>
       {open &&
         createPortal(
-          <span id={id} ref={card} role="tooltip" className="citation-preview ctx-menu">
+          <span id={id} ref={card} role="tooltip" className="citation-preview ctx-menu popup-material">
             <strong>{source.title || hostOf(source.url)}</strong>
             <span>{sourceDescription(source)}</span>
             <small>{source.url}</small>

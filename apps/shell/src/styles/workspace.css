@@ -896,7 +896,7 @@
     white-space: nowrap;
     background: var(--sb-bg);
     color: var(--sb-ink-1);
-    transition: width var(--t-slow) var(--ease-out);
+    transition: width var(--t-layout) var(--ease-emphasized);
   }
   .chat-sidebar.open {
     width: var(--sb-w, 280px);
@@ -1930,7 +1930,7 @@
     transform: translateX(0);
     transition:
       opacity var(--t-fast) var(--ease-out),
-      transform var(--t-slow) var(--ease-out);
+      transform var(--t-layout) var(--ease-emphasized);
   }
   .sidebar:not(.expanded) .sidebar-content {
     opacity: 0;

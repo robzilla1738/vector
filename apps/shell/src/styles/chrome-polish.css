@@ -22,9 +22,9 @@
 
   /* Shared interaction rhythm: quick entry, gentle departure, stationary hit areas. */
   :root {
-    --hover-in: 100ms;
-    --hover-out: 300ms;
-    --disclosure-duration: 180ms;
+    --hover-in: var(--t-quick);
+    --hover-out: var(--t-hover-out);
+    --disclosure-duration: var(--t-disclosure);
   }
   :is(
     .icon-btn,

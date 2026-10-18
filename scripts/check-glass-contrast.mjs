@@ -10,9 +10,6 @@ const floatingOpacity =
     )?.[1],
   ) / 100;
 assert.ok(floatingOpacity > 0 && floatingOpacity <= 1, "floating glass opacity must be present");
-const navigationOpacity =
-  Number(surfaces.match(/--navigation-glass-tint:[\s\S]*?max\((\d+)%,/)?.[1]) / 100;
-assert.ok(navigationOpacity > 0 && navigationOpacity <= 1, "navigation opacity must be present");
 const palette = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
 const dark = palette.match(/:root\s*\{([^}]*)\}/)?.[1];
 const light = palette.match(/\[data-theme="light"\]\s*\{([^}]*)\}/)?.[1];
@@ -66,12 +63,13 @@ for (const [theme, sheet] of [
   const glass = tokenColor(sheet, "glass");
   const strong = tokenColor(sheet, "glass-strong");
   const floating = tokenColor(sheet, "floating-sidebar-surface");
-  const sidebarInk = tokenColor(sheet, "sb-ink-2");
+  const popup = tokenColor(sheet, "popup-tint");
+  const popupInk = tokenColor(sheet, "popup-ink-secondary");
   for (const [surface, material, foreground] of [
     ["glass", glass, ink],
     ["strong glass", strong, ink],
     ["floating glass", { ...floating, alpha: floatingOpacity }, ink],
-    ["navigation glass", { ...floating, alpha: navigationOpacity }, sidebarInk],
+    ["popup glass", popup, popupInk],
   ]) {
     for (const [underlay, behind] of [
       ["black", 0],

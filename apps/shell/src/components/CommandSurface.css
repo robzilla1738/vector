@@ -82,9 +82,6 @@
     box-shadow: none;
     animation: none;
   }
-  .command-surface {
-    animation: command-surface-appear var(--t-popup, 82ms) var(--ease-in-out) both;
-  }
   .command-surface .cmdbar:has(input:focus-visible) {
     outline: 1px solid var(--focus-line);
     outline-offset: -1px;
@@ -95,19 +92,6 @@
   .command-surface button:focus-visible {
     outline: 2px solid var(--focus-line);
     outline-offset: 2px;
-  }
-  @keyframes command-surface-appear {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .command-surface {
-      animation: none;
-    }
   }
   @media (prefers-reduced-transparency: reduce) {
     .command-surface {
