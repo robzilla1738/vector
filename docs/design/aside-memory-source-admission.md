@@ -1,4 +1,14 @@
-# Legacy derived Memory: bounded model-admission correction (design only, v2)
+# Legacy derived Memory: bounded model-admission correction
+
+Implementation checkpoint, October 18: the reviewed v1→v2→v3 correction is now
+integrated with the detached-generation restore changes. The
+[implementation record](../evidence/aside-memory-source-admission-2026-10-18.json)
+records exact source, merge preservation, failures and validation. The design
+below remains the historical v2 proposal; its old source anchors and proposed
+status are not current implementation evidence. No current native or live-provider
+acceptance is established by this document.
+
+## Historical v2 design (preserved)
 
 Evidence date: 2026-10-18. Current HEAD 73c3f3448 is docs-only over production SOURCE 599198322 (not staged); compiled native candidate 99d6203af. This design reads current source and immutable writer-v1 postimages. Writer-v2 authenticated family↔typed-dependency fixed-point correction is a prerequisite wherever its closure is reused; v1 is not cleared. No implementation, tests, build, provider request, native action, or live data access occurred for this design.
 

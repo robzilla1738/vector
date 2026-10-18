@@ -1,32 +1,24 @@
 import { originalTask as ownTask } from "../agent/loop/original-task-message.js";
-import { createHash } from "node:crypto";
 import { setImmediate as yieldTurn } from "node:timers/promises";
 import { AuxError, SubagentSchema, SubagentGroupSchema, type Run } from "@aux/contracts";
 import {
-  MemoryDocumentMethodSchemas,
-  MemoryDocumentResultSchemas,
-  MemoryRecallQuerySchema,
-  MemoryRecallResultSchema,
-} from "@aux/contracts/memory-documents";
+  memoryToolNames as MEMORY,
+  memorySearchInput as searchInput,
+  memoryReadInput as readInput,
+  memorySearchResult,
+  memoryReadResult,
+  memoryEvidenceHash as hash,
+  memoryEvidenceObject as object,
+  originalMemoryCalls as readOriginalMemoryCalls,
+} from "./memory-call-metadata.js";
 import type { Repo } from "../store/repo.js";
 import { closedTranscriptEntries, type TranscriptStore } from "../agent/loop/transcript.js";
 import type { ModelMessage } from "../agent/loop/types.js";
 import { runAncestry } from "./run-lineage.js";
 
-const MEMORY = new Set(["memory_search", "memory_read"]);
-const searchInput = MemoryRecallQuerySchema.omit({ workspaceId: true });
-const readInput = MemoryDocumentMethodSchemas["memory.pipeline.readSource"].omit({ workspaceId: true });
 const MAX_RUNS = 4096;
 const MAX_BYTES = 256 * 1024 * 1024;
 const MAX_ROWS = 262144;
-const hash = (value: unknown) =>
-  createHash("sha256")
-    .update(JSON.stringify(value) ?? "undefined")
-    .digest("hex");
-const object = (value: unknown): Record<string, unknown> | undefined =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
 function unavailable(reason: string): never {
   throw new AuxError(
     "permission_denied",
@@ -68,14 +60,9 @@ function storedRunIds(repo: Repo): string[] {
   return rows.map((row) => row.run_id);
 }
 function originalMemoryCalls(repo: Repo, id: string) {
-  const rows = repo.db
-    .prepare(
-      "SELECT tool_call_id,tool_name,started_at FROM run_tool_calls WHERE run_id=? ORDER BY tool_call_id LIMIT 16385",
-    )
-    .all(id);
-  if (rows.length > 16384 || Buffer.byteLength(JSON.stringify(rows)) > 1024 * 1024)
-    unavailable("original execution receipts exceed their inspection budget");
-  return rows as { tool_call_id: string; tool_name: string; started_at: number }[];
+  return readOriginalMemoryCalls(repo, id, () =>
+    unavailable("original execution receipts exceed their inspection budget"),
+  );
 }
 function authorityFingerprint(repo: Repo, id: string): string {
   const run = repo.getRun(id);
@@ -302,8 +289,8 @@ export async function inspectLegacyArticleHistory(
       if (output?.type !== "json") unavailable("an old successful Memory output is untyped or truncated");
       const parsed =
         call.name === "memory_search"
-          ? MemoryRecallResultSchema.safeParse(output.value)
-          : MemoryDocumentResultSchemas["memory.pipeline.readSource"].safeParse(output.value);
+          ? memorySearchResult.safeParse(output.value)
+          : memoryReadResult.safeParse(output.value);
       if (!parsed.success) unavailable("a successful Memory result is malformed");
       const original = snapshots.get(call.origin)?.run;
       const workspaceId = original?.config?.contextWorkspaceId;

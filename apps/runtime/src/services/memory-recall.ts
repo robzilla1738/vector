@@ -1,3 +1,4 @@
+import { memorySearchFallbackReasons } from "./memory-source-outcomes.js";
 import { AuxError } from "@aux/contracts";
 import type {
   MemoryRecallSource,
@@ -71,12 +72,25 @@ function lexicalScore(chunk: MemoryRecallMatch, query: string) {
   );
 }
 /** Aside daemon reference: semantic .70 + 30-day recency .15 + path-token overlap .15. */
-export function memoryRecallScore(chunk: MemoryRecallMatch, queries: string[], relevance: number, now: number) {
+export function memoryRecallScore(
+  chunk: MemoryRecallMatch,
+  queries: string[],
+  relevance: number,
+  now: number,
+) {
   const words = [...new Set(queries.flatMap(terms))];
-  const path = chunk.path.toLocaleLowerCase().replace(/\.md$/, "").split(/[/._-]+/).filter((term) => term.length > 1);
-  const matches = path.filter((part) => words.some((word) => part.includes(word) || word.includes(part))).length;
+  const path = chunk.path
+    .toLocaleLowerCase()
+    .replace(/\.md$/, "")
+    .split(/[/._-]+/)
+    .filter((term) => term.length > 1);
+  const matches = path.filter((part) =>
+    words.some((word) => part.includes(word) || word.includes(part)),
+  ).length;
   const pathScore = words.length ? Math.min(1, matches / words.length) : 0;
-  const recency = chunk.updatedAt ? Math.max(0, 1 - Math.max(0, now - chunk.updatedAt) / (30 * 86400000)) : 0.5;
+  const recency = chunk.updatedAt
+    ? Math.max(0, 1 - Math.max(0, now - chunk.updatedAt) / (30 * 86400000))
+    : 0.5;
   return Math.max(0, relevance) * 0.7 + recency * 0.15 + pathScore * 0.15;
 }
 
@@ -192,9 +206,7 @@ export class MemoryRecall {
         }
         mode = "semantic";
         modelId = model.modelId;
-        if (selected.length < chunks.length)
-          fallbackReason =
-            "Local semantic ranking covers up to 256 diversified chunks; remaining eligible sources retain keyword ranking.";
+        if (selected.length < chunks.length) fallbackReason = memorySearchFallbackReasons.partial;
       } catch (error) {
         signal.throwIfAborted();
         this.shutdown.signal.throwIfAborted();
@@ -204,8 +216,7 @@ export class MemoryRecall {
           !(error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name))
         )
           throw error;
-        fallbackReason =
-          "Installed local embeddings are unavailable or exceeded the search deadline. Showing keyword matches.";
+        fallbackReason = memorySearchFallbackReasons.deadline;
       }
     }
     const now = Date.now();

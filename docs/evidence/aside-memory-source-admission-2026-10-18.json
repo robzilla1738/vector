@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "integratedBase": "437bdcba164631c224030add7b3593346dfe2620",
+  "nativeCandidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "nativeStaged": false,
+  "scope": "K2 bounded model-source admission, integrated with K1 CURRENT Space-generation restore ownership; full program remains incomplete.",
+  "series": [
+    {
+      "path": "/tmp/aux-memory-admission-99-v1.patch",
+      "sha256": "955fcf3fca1efd0513829ded06022915255c5e2b750cb0dc4a474c7f27824184"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-99-v2-delta.patch",
+      "sha256": "1b65c55f876ac08642c6740e47a0bab6cdb1d948c988784d4ba62b8edbba6ff7"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-99-v3-delta.patch",
+      "sha256": "5cb4b8cc325437d95b6b56dc628670e72c8a5edcc09bf6b224e2542c9ee7e2f9"
+    }
+  ],
+  "seriesProof": {
+    "path": "/tmp/aux-memory-admission-99-v3-series-proof.json",
+    "sha256": "9a5d6278076e71791c5b7039bb349be7319387a03ea4eccb880a0c473873fd06"
+  },
+  "handoff": {
+    "path": "/tmp/aux-memory-admission-99-v3-handoff.md",
+    "sha256": "c6405d9b8624f2a1cbf473648cba2fe72fe882da15ab1fa326b3202d47e35f4d"
+  },
+  "writerEvidence": {
+    "path": "/tmp/aux-memory-admission-99-v3-evidence.json",
+    "sha256": "739c8de3b42bfbb1e6cfef9946237302f773180d8d67f340f3bc3869dfb5d4db"
+  },
+  "rootMerge": {
+    "path": "/tmp/aux-memory-admission-root-437-merged-v1.patch",
+    "sha256": "3cef4e94b4c9c9aa191a18630868a663027818fc38a2545767cfe4620054595f"
+  },
+  "rootMergeProof": {
+    "path": "/tmp/aux-memory-admission-root-437-merged-v1-proof.json",
+    "sha256": "2cc48d8ab895f9cb180a72236aae3e4577965cb8a51ffe265a328950788dce75"
+  },
+  "rootApplyProof": {
+    "path": "/tmp/aux-memory-admission-root-437-applied-v1.json",
+    "sha256": "1d42887d59b4c1080c322d95bdb047b97fba3e2a244ff268e24edce733549627"
+  },
+  "finalSourcePostimages": {
+    "apps/runtime/src/agent/loop/transcript.ts": "a2f47c05a45663d942e9a62b792f6eedde46dc6590b7e90f96191c2a0fdeb7fe",
+    "apps/runtime/src/services/legacy-memory-retirement.ts": "57e2ab80258cfa690cfa989938ad4513ec82bbdaf898d81320bdf0b30212b6ac",
+    "apps/runtime/src/services/memory-call-metadata.ts": "a59021dda5500b184dec29b16ac5c2ef2975f394c04740906e310d54055578ed",
+    "apps/runtime/src/services/memory-source-admission.ts": "ce2741e529325f990abc2b9819c0912dc13c59ff023f7ce76108c2388f5aff0d",
+    "apps/runtime/src/services/memory-source-outcomes.ts": "d20981e07a37d685d512281585d0254959f06fcc3b7b8f34af20284ff3f48c81",
+    "apps/runtime/src/services/memory-pipeline.ts": "4d3a8c1a4c68103da5e7f2ffc014361270714e0685ce08d29001efc15a68d3ac",
+    "apps/runtime/src/services/memory-recall.ts": "f31f8080330bc1f5c62e7176c58f3f3ed953571d8cb48228e46258b2dd1b37fc",
+    "tests/fixtures/historical-memory.ts": "6cdca8e4dec22ef121cbdb7d5e9f4d82b1a3603df23e39473cdbf1909996778e",
+    "tests/unit/memory-article-provenance.test.ts": "7be1095277159a7f7f12a21795d41e9f95af69ae4affffb28960e1d0b8f06432",
+    "tests/unit/memory-pipeline.test.ts": "dada374ce016060527032125e662cd41a125a00e46257adcec738f18620aa6a9",
+    "apps/runtime/src/services/memory-source-policy.ts": "e4910bc625ba9a5e5f9561a232d4afc754e8180ef117caaaab19bc1055edb89a"
+  },
+  "mergePreservation": {
+    "conflictRegions": 3,
+    "resolution": "Concatenate both independent empty-base additions; remove only duplicate identical historical-fixture import. No method/test body dropped or rewritten.",
+    "unchangedSharedFixture": "tests/fixtures/historical-memory.ts",
+    "twoIndependentReviewsClear": true,
+    "k1LifetimesAndGenerationMethodsExact": true,
+    "asyncDreamCountAwaitPreserved": true
+  },
+  "changes": [
+    "Operation-local candidate and authenticated original/copied-source family proof; canonical page/private/sensitivity/derived-context policy, including refs-only Memory context, applies to every original family member. No global retirement scan or persistent admission cache.",
+    "Actual original ledger first; unsealed/legacy Memory use refuses without decrypting article history. Modern calls require exact codec-backed message/park pairing and ledger. Only genuine empty search or exact producer-owned no-content read outcome preserves otherwise independent research.",
+    "Original family membership, receipt/run/ledger metadata, policy and encrypted row fingerprints are rechecked through model/index egress and generation publication. Orphan/corrupt candidate evidence refuses that source; operation-wide bounds, cancellation and owner failures abort.",
+    "Extraction, acceptance, overview, recall/search/read, discovery and Dream counts share prepared proof. Dream old bodies come only from eligible prepared documents; released preparation leases do not falsely invalidate the original live Dream owner.",
+    "Retired owner-edit tombstones remain inspection-only across recovery. Unrelated owner docs/pastes remain available. Historical unsafe fixtures use canonical encrypted original records, not new unsafe extraction or fabricated modern markers."
+  ],
+  "bounds": {
+    "candidateIds": 4096,
+    "inspectedRuns": 4096,
+    "transcriptRows": 4096,
+    "operationEvidenceBytes": 8388608,
+    "maximumRowOrRunMetadataBytes": 1048576,
+    "ledgerRecords": 16384,
+    "ledgerBytes": 1048576,
+    "copyDepth": 32,
+    "overflow": "explicit operation unavailable; no truncated clean proof"
+  },
+  "interfaces": {
+    "newPublicMethods": 0,
+    "newResultFields": 0,
+    "sqlMigration": false,
+    "nativeProtocolChange": false,
+    "backfilledAdmissionAuthority": false
+  },
+  "reviews": [
+    {
+      "path": "/tmp/aux-memory-admission-99-v1-independent-review.json",
+      "sha256": "aec579c5b28ef6c491208c10a0dac4c832f27bf1599bab12bdd8c4ecc00a554a"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-99-v1-root-review.json",
+      "sha256": "119cf63a7122d12f1a454b92c3cd577f57fd02cf0e1c72ccaf78515ed6d0888e"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-99-v2-independent-review.json",
+      "sha256": "fbe12d02b72bbac830ef515f6c5a33ce2e68a26c58b3c843b15692ac656e8366"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-99-v3-independent-review.json",
+      "sha256": "9480b47a2df1a7e827a8fc71184360dbf3458f8e11a751aa88311b46695324bf"
+    },
+    {
+      "path": "/tmp/aux-measurement-k1-k2-root437-review-v1.json",
+      "sha256": "7aca6f72cb0879fa2077b99203c73855f90b0bc61b4f2bfa233b9077f0cc2ce6"
+    },
+    {
+      "path": "/tmp/aux-memory-admission-final-437-independent-review.json",
+      "sha256": "e1d696d2d2ab4efd652acd8d03ac37bb2fa104be0263bb5b807f1e2882507c48"
+    }
+  ],
+  "privateValidation": {
+    "build": {
+      "command": "node_modules/.bin/tsc -b",
+      "exitCode": 0,
+      "rebuiltBeforeTests": true
+    },
+    "affected": {
+      "files": 10,
+      "tests": 185,
+      "passed": 185,
+      "failed": 0,
+      "seconds": 18.49,
+      "command": "node_modules/.bin/vitest run --project unit tests/unit/memory-article-provenance.test.ts tests/unit/memory-pipeline.test.ts tests/unit/memory-documents.test.ts tests/unit/memory-dream.test.ts tests/unit/memory-dream-boundaries.test.ts tests/unit/memory-paste.test.ts tests/unit/memory-methods.test.ts tests/unit/memory-recovery-methods.test.ts tests/unit/memory-model-source.test.ts tests/unit/memory-extractor.test.ts"
+    },
+    "log": {
+      "path": "/tmp/aux-memory-admission-99-v3-affected-final1.log",
+      "sha256": "851900658ff4b45ebd799254a82bd95e0082a5f90b112f464a0777a02d3549bd"
+    },
+    "lintExitCode": 0,
+    "formatExitCode": 0,
+    "scopeFiles": 11
+  },
+  "priorFailures": {
+    "preserved": true,
+    "summary": "Initial interrupted run; missing signal and false-vs-throw fixture errors; v1 affected117/136 including real stale Dream lease/tombstone failures and one unchanged30s held test; v2 immutable-privacy/KV fixture and no-collection syntax failures. Final185/185 is one coherent rebuilt command, not a sum of exploratory runs.",
+    "chronology": {
+      "path": "/tmp/aux-memory-admission-99-v2-checkpoint-note.md",
+      "sha256": "1055cb1dddbcaf2fc1772b580fbe0ad9d561705bb522a5a499d4a534abd7b3b2"
+    }
+  },
+  "rootIntegratedCheck": {
+    "command": "npm run check",
+    "status": "passed",
+    "exitCode": 0,
+    "runtimeDist": "rebuilt by initial typecheck before backend tests",
+    "log": {
+      "path": "/tmp/aux-memory-admission-integrated-check-2026-10-18.log",
+      "sha256": "ca90817e379492f7211cfa5907b0e2c0fdd27ebbc2779b4e740d8f00a5acbacf"
+    },
+    "typecheck": "passed",
+    "lint": {
+      "result": "passed;570 existing advisory warnings unchanged",
+      "comparison": {
+        "path": "/tmp/aux-memory-admission-lint-comparison-2026-10-18.json",
+        "sha256": "cc25964b106e474568c510be839b7af7ed179b231a508762db570467d36e231e"
+      }
+    },
+    "testsPassed": 5798,
+    "testsFailed": 0,
+    "filesPassed": 853,
+    "seconds": 123.78
+  },
+  "stockBuildInterruption": {
+    "ownerPid": 16047,
+    "signal": "SIGINT to original scripts/dev.mjs owner only",
+    "completedDynamicSteps": 261,
+    "dynamicTotalAtStop": 29754,
+    "elapsed": "4m27.95s",
+    "log": {
+      "path": "/tmp/aux-stock155-build-resume5-2026-10-18.log",
+      "sha256": "aca5843185b6798c6c6f96c5e355c16d5fa9b8d515f78879a6965cf1f5dec434"
+    },
+    "cleanup": "Original session1819 joined; original plain lock absent and no matching siso/clang descendants before root check. No app staging or Profile mutation.",
+    "classification": "intentional quiet-check interruption, not compile error"
+  },
+  "limits": [
+    "Old canonical subagent records lack a fork-mode flag. A fully removed copied prefix leaving exact modern own-task sequence0 cannot prove historical fork mode; recursively authenticated original source/family policy and own ledger/results remain mandatory. No invented marker or complete-prefix-removal detection claim.",
+    "Admission is not physical erasure of stored historical claim bytes. K1 ordinary restore and explicit Forget own their distinct retirement/generation lifecycle.",
+    "No new native/provider/GUI/packaged performance observation. Existing older unowned Aux instance remains untouched pending explicit close permission under workspace Profile rule.",
+    "Current native staging, default-route20task smoke, original155crash resolution, full matched UI comparison and matching-stock performance remain open."
+  ],
+  "completion": "A5 and full Aside adoption/browser readiness remain active and incomplete."
+}

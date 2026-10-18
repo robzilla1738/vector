@@ -150,7 +150,10 @@ export class TranscriptStore {
   }
 
   /** Explicit retirement only: bounded authenticated message AND parked-result inspection. */
-  *retirementPages(runId: string): Generator<{
+  *retirementPages(
+    runId: string,
+    decode = true,
+  ): Generator<{
     rows: { seq: number; kind: "message" | "park"; value: unknown }[];
     fingerprint: string;
     bytes: number;
@@ -204,7 +207,11 @@ export class TranscriptStore {
           );
         digest.update(JSON.stringify([row.seq, row.kind, encoded]));
         after = row.seq;
-        return { seq: row.seq, kind: column, value: this.decode<unknown>(runId, row.seq, column, encoded) };
+        return {
+          seq: row.seq,
+          kind: column,
+          value: decode ? this.decode<unknown>(runId, row.seq, column, encoded) : undefined,
+        };
       });
       yield { rows: page, fingerprint: digest.copy().digest("hex"), bytes: total };
     }

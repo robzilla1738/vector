@@ -195,9 +195,24 @@ durably checkpoints its DB and parent, then retires exact prior factors. Stale
 pre-native apply can reach that owner without granting key authority; hostless or
 unverified ownership fails closed. Successful apply does not cancel its active new
 factors. [The restore record](evidence/aside-memory-restore-ownership-2026-10-18.json)
-separates source/tests from unobserved native behavior. Legacy derived notes can
-still remain recall-eligible after article expiry before discovery; the separate
-[source admission correction](design/aside-memory-source-admission.md) is pending.
+separates source/tests from unobserved native behavior.
+
+Automatic report-derived Memory now requires a bounded operation-local source
+independence proof. Explicit candidates and authenticated execution/copied-source
+families share the canonical page, privacy, sensitivity and derived-context policy.
+Original ledger/message/park pairing must account for every Memory call; only
+proven modern empty search or exact no-content read outcomes preserve otherwise
+independent research. Legacy/unproven, nonempty or malformed outcomes refuse
+without backfilling references, markers or access. Family, policy, receipt, ledger
+and encrypted-row identities are rechecked before model/index use and publication.
+Candidate-local corruption does not disable independent owner documents/pastes;
+operation-wide budget, cancellation and ownership failures remain failures.
+Dream counts and old-body lookup use these same eligible sources. Old subagent
+records cannot prove historical fork mode after complete copied-prefix removal;
+authenticated originals and their full current families remain mandatory even
+for a modern sequence-zero task. This is not historical fork-mode detection.
+[Admission evidence](evidence/aside-memory-source-admission-2026-10-18.json)
+separates the integrated correction from current native/provider acceptance.
 
 Conversation documents preserve complete metadata collections with separately encrypted immutable bodies and previews. Accepted turns store exact chat/attachment/content-hash references. Provider requests resolve relevant excerpts one body at a time under the remaining input budget and original cancellation/source fences; raw document context is not copied into new durable run configurations. Used sources survive removal for exact retries and branches; source-chat deletion and Forget retire the corresponding bodies and references. Historical inline collections convert atomically on first access rather than blocking startup with a full scan.
 

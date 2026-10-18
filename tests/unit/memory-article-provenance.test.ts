@@ -11,6 +11,7 @@ import {
   currentSpaceMemory,
   spaceMemoryDigest,
 } from "../../apps/runtime/dist/services/space-memory-backup.js";
+import { MemorySourceAdmission } from "../../apps/runtime/dist/services/memory-source-admission.js";
 import { SpaceMemoryStore } from "../../apps/runtime/dist/services/space-memory-store.js";
 import { toErrorPayload } from "@aux/contracts";
 import { inspectLegacyArticleHistory } from "../../apps/runtime/dist/services/legacy-memory-retirement.js";
@@ -47,7 +48,7 @@ import { initializeFieldCodec } from "../../apps/runtime/dist/store/field-codec.
 import { backup, DatabaseSync } from "node:sqlite";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { afterEach, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -81,6 +82,7 @@ async function fixture(
   dreamer?: import("../../apps/runtime/dist/services/memory-dream.js").MemoryDreamer,
   beforeRead?: (signal: AbortSignal) => Promise<void>,
   profileId = "recall-provenance",
+  publicWeb = false,
 ) {
   const directory = mkdtempSync(join(tmpdir(), "aux-recall-provenance-"));
   const native = profileSecrets(profileId).native;
@@ -123,6 +125,9 @@ async function fixture(
     memoryPipeline: pipeline,
     nativeAvailable: () => false,
     agentLoop: {
+      ...(publicWeb
+        ? { webFetch: async () => ({ output: { text: "Independent synthetic public web fixture." } }) }
+        : {}),
       modelGeneration: () => settings.modelCacheGeneration(),
       memorySearch: (query, ctx) => pipeline.recall({ ...query, workspaceId }, ctx.signal, ctx.checkOwner),
       memoryReadSource: async (input, ctx) => {
@@ -1736,7 +1741,7 @@ it("retires legacy typed article output and extracted episode through the origin
       ],
     },
   ]);
-  expect((await f.pipeline.extractRun(f.workspaceId, "legacy-episode")).extracted).toBe(1);
+  await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, "legacy-episode");
   expect(await f.pipeline.inbox(f.workspaceId)).toHaveLength(1);
   let proof: Awaited<ReturnType<RunService["retireArticleTransferSources"]>> | undefined;
   await f.memory.forget(f.workspaceId, f.article.memoryId, async () => {
@@ -2032,9 +2037,7 @@ it("preserves exact separately authored edits in inspectable tombstones, never i
   const f = await fixture({ generation: () => "fixture-dream", consolidate });
   f.pipeline.setPolicy(f.workspaceId, true);
   const source = await legacyArticle(f);
-  await f.pipeline.extractRun(f.workspaceId, source.runId);
-  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
-  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, source.runId, true);
   await f.pipeline.editDocuments({
     workspaceId: f.workspaceId,
     expectedGeneration: (await f.pipeline.documents(f.workspaceId)).generation,
@@ -2234,7 +2237,7 @@ it("discovers only actually pruned legacy page exposures when the original prune
   const f = await fixture();
   f.pipeline.setPolicy(f.workspaceId, true);
   const source = await legacyArticle(f);
-  await f.pipeline.extractRun(f.workspaceId, source.runId);
+  await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, source.runId);
   f.repo.db.prepare("UPDATE content_memory SET expires_at=0 WHERE memory_id=?").run(f.article.memoryId);
   const pruned = await f.memory.prune();
   expect(pruned.workspaceIds).toEqual([f.workspaceId]);
@@ -2313,20 +2316,18 @@ it("blocks actual idle compaction and new branch creation before model dispatch 
   expect(f.transcript.load(source.runId)).toHaveLength(3);
 });
 
-it("retires actual episodic search/read into a separate modern chat after original article Forget", async () => {
+it("retires historical episodic search/read into a separate modern chat after original article Forget", async () => {
   const f = await fixture();
   f.pipeline.setPolicy(f.workspaceId, true);
   const original = await legacyArticle(f);
-  await f.pipeline.extractRun(f.workspaceId, original.runId);
-  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
-  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, original.runId, true);
   const independent = await f.pipeline.documentSet({
     workspaceId: f.workspaceId,
     target: { kind: "site", origin: "https://article.test" },
     expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
     content: "Independent owner instructions for the site.",
   });
-  await recallArticle(f, { kinds: ["episodic"] });
+  await seedHistoricalEpisodicReceiver(f.repo, f.workspaceId, claim);
   const run = f.repo.getRun("recall-run")!;
   expect(run.config?.memoryRecallAdmissionVersion).toBe(1);
   expect(run.config?.contextMemoryRefs).toBeUndefined();
@@ -2431,9 +2432,7 @@ it("preserves anomalous owner document content with retired provenance and suppo
   const f = await fixture();
   f.pipeline.setPolicy(f.workspaceId, true);
   const original = await legacyArticle(f);
-  await f.pipeline.extractRun(f.workspaceId, original.runId);
-  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
-  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, original.runId, true);
   const created = await f.pipeline.documentSet({
     workspaceId: f.workspaceId,
     target: { kind: "site", origin: "https://article.test" },
@@ -2505,7 +2504,7 @@ it("keeps legacy model-reset diagnostics out of sanitized public API error field
   expect(wire.message).not.toContain("Use New Chat");
 });
 
-it("retires typed episodic receivers after authenticated family expansion in live Forget and portable restore", async () => {
+it("retires historical typed episodic receivers after authenticated family expansion in live Forget and portable restore", async () => {
   const f = await fixture();
   f.pipeline.setPolicy(f.workspaceId, true);
   const child = await legacyArticle(f, "family-article-child");
@@ -2526,10 +2525,8 @@ it("retires typed episodic receivers after authenticated family expansion in liv
   });
   const set = await f.sets.create({ name: "Review family", source: "urls", urls: [f.article.url] });
   setReceipt(f, set.setId, f.repo.listMembers(set.setId)[0]!.memberId, child.runId, parentId);
-  expect((await f.pipeline.extractRun(f.workspaceId, parentId)).extracted).toBe(1);
-  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, parentId, true);
   expect(claim.sourceRunId).toBe(parentId);
-  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
   const ownerDocument = await f.pipeline.documentSet({
     workspaceId: f.workspaceId,
     target: { kind: "site", origin: "https://independent.test" },
@@ -2566,7 +2563,7 @@ it("retires typed episodic receivers after authenticated family expansion in liv
   f.transcript.append("independent-family-parent", [
     { role: "user", content: "Preserve unrelated human history." },
   ]);
-  await recallArticle(f, { kinds: ["episodic"] });
+  await seedHistoricalEpisodicReceiver(f.repo, f.workspaceId, claim);
   expect(f.repo.getRun("recall-run")?.config?.contextMemoryIds).toBeUndefined();
   expect(f.repo.getRun("recall-run")?.config?.contextRunIds).toBeUndefined();
   expect(JSON.stringify(f.transcript.load("recall-run"))).toContain(claim.claimId);
@@ -3264,4 +3261,978 @@ it("ordinary restore refuses prior-key retirement if the applied database lost i
   expect(memoryRestoreTransition(f.restored)?.role).toBe("destination");
   renameSync(moved, f.destination);
   await f.owner.startup();
+});
+
+async function independentEmptySearch(
+  f: Awaited<ReturnType<typeof fixture>>,
+  options: { readFailure?: boolean; secondMemory?: boolean } = {},
+) {
+  let step = 0;
+  f.model.toolCallStep = vi.fn(async () => {
+    const call =
+      ++step === 1
+        ? options.readFailure
+          ? {
+              toolCallId: "empty-read",
+              toolName: "memory_read",
+              input: { sourceId: "claim:missing", revision: "0", sha256: "0".repeat(64) },
+            }
+          : {
+              toolCallId: "empty-search",
+              toolName: "memory_search",
+              input: { queries: ["independent nonexistent subject"], kinds: ["episodic"], mode: "lexical" },
+            }
+        : step === 2
+          ? options.secondMemory
+            ? {
+                toolCallId: "content-search",
+                toolName: "memory_search",
+                input: { queries: ["independent owner"], kinds: ["site"], mode: "lexical" },
+              }
+            : { toolCallId: "fresh-time", toolName: "get_time", input: {} }
+          : {
+              toolCallId: "independent-done",
+              toolName: "submit_result",
+              input: { report: "Independent research completed after the empty saved Memory search." },
+            };
+    return {
+      message: { role: "assistant" as const, content: [{ type: "tool-call" as const, ...call }] },
+      toolCalls: [call],
+      durationMs: 1,
+      inputTokens: 1,
+      outputTokens: 1,
+      costUsd: 0,
+    };
+  });
+  await f.runs.coordinator.start({
+    runId: "independent-empty",
+    goal: "Research a new independent subject",
+    pageIds: [],
+    modelId: "fixture",
+    contextWorkspaceId: f.workspaceId,
+  });
+  await vi.waitFor(() => expect(f.repo.getRun("independent-empty")?.status).toBe("completed"));
+  return "independent-empty";
+}
+
+it("permits first-task learning after a genuine modern empty search and independent subsequent tool use", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const runId = await independentEmptySearch(f);
+  expect(f.repo.getRun(runId)?.config?.memoryRecallAdmissionVersion).toBe(1);
+  expect(
+    f.repo.db
+      .prepare("SELECT tool_name FROM run_tool_calls WHERE run_id=? ORDER BY started_at,tool_call_id")
+      .all(runId),
+  ).toEqual(expect.arrayContaining([{ tool_name: "memory_search" }, { tool_name: "get_time" }]));
+  const outputs = f.transcript
+    .load(runId)
+    .flatMap((message) =>
+      message.role === "tool" ? message.content.filter((part) => part.type === "tool-result") : [],
+    );
+  expect(outputs.find((part) => part.toolName === "memory_search")?.output).toMatchObject({
+    type: "json",
+    value: { matches: [], total: 0 },
+  });
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([runId]);
+  expect(proof.allows(runId)).toBe(true);
+  expect(await f.pipeline.extractRun(f.workspaceId, runId)).toMatchObject({ extracted: 1 });
+  const claim = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, claim.claimId, "accept");
+  expect((await f.pipeline.overview(f.workspaceId)).summary).toContain("Independent research completed");
+});
+
+it("refuses historical article-derived notes before expiry, after expiry and after recapture without erasing inspection", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const source = await legacyArticle(f);
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, source.runId, true);
+  const extract = vi.spyOn(fixtureMemoryExtractor, "extract");
+  await expect(f.pipeline.extractRun(f.workspaceId, source.runId)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  expect(extract).not.toHaveBeenCalled();
+  expect(await f.pipeline.search(f.workspaceId, "quartz")).toEqual([]);
+  expect((await f.pipeline.overview(f.workspaceId)).summary).not.toContain(f.article.text);
+  f.repo.db.prepare("UPDATE content_memory SET expires_at=0 WHERE memory_id=?").run(f.article.memoryId);
+  expect(await f.memory.recallDocuments(f.workspaceId, new AbortController().signal)).toEqual([]);
+  expect(
+    (
+      await f.pipeline.recall({
+        workspaceId: f.workspaceId,
+        queries: ["quartz"],
+        kinds: ["episodic"],
+        mode: "lexical",
+      })
+    ).matches,
+  ).toEqual([]);
+  await expect(
+    f.pipeline.readSource({
+      workspaceId: f.workspaceId,
+      sourceId: `claim:${claim.claimId}`,
+      revision: "0",
+      sha256: digest(claim.text),
+    }),
+  ).rejects.toMatchObject({ code: "conflict" });
+  await f.memory.saveEligible({
+    workspaceId: f.workspaceId,
+    pageId: "source-page",
+    documentEpoch: 2,
+    url: f.article.url,
+    title: "Workshop",
+    text: "Fresh explicit capture has different content and authority.",
+  });
+  expect(await f.pipeline.search(f.workspaceId, "quartz")).toEqual([]);
+  expect((await f.pipeline.documents(f.workspaceId)).documents[0]!.claim).toEqual(claim);
+  expect(f.transcript.load(source.runId)).not.toEqual([]);
+  const owner = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://independent.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent owner instructions remain available.",
+  });
+  expect((await f.pipeline.overview(f.workspaceId)).summary).toContain(owner.document!.content);
+});
+
+it("does not decrypt known legacy Memory execution history or enumerate unrelated runs for candidate refusal", async () => {
+  const f = await fixture();
+  const source = await legacyArticle(f);
+  const pages = vi.spyOn(TranscriptStore.prototype, "retirementPages");
+  const prepare = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([source.runId]);
+  expect(prepare.allows(source.runId)).toBe(false);
+  expect(pages).not.toHaveBeenCalled();
+  expect(f.repo.getRun(source.runId)?.config?.memoryRecallAdmissionVersion).toBeUndefined();
+});
+
+it("detects exact encrypted empty-result replacement before any later publication", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id]);
+  expect(proof.allows(id)).toBe(true);
+  f.transcript.append(id, [
+    {
+      role: "assistant",
+      content: [
+        {
+          type: "tool-call",
+          toolCallId: "unpaired",
+          toolName: "memory_search",
+          input: { queries: ["new query"] },
+        },
+      ],
+    },
+  ]);
+  expect(() => proof.check()).toThrow("transcript changed");
+  const current = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id]);
+  expect(current.allows(id)).toBe(false);
+});
+
+it("fences original Memory ledger changes across generation-key preparation", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const id = await independentEmptySearch(f);
+  const store = f.native.storeSecret.bind(f.native);
+  let release!: () => void;
+  const gate = new Promise<void>((done) => (release = done));
+  let held = false;
+  vi.spyOn(f.native, "storeSecret").mockImplementation(async (name, value) => {
+    if (value && !held) {
+      held = true;
+      await gate;
+    }
+    return store(name, value);
+  });
+  const pending = f.pipeline.extractRun(f.workspaceId, id).then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
+  await vi.waitFor(() => expect(held).toBe(true), { timeout: 5000 });
+  f.repo.db
+    .prepare("INSERT INTO run_tool_calls VALUES(?,?,?,?)")
+    .run(id, "new-original-call", "memory_read", Date.now());
+  release();
+  expect(await pending).toMatchObject({ error: { code: "cancelled" } });
+  expect(await f.pipeline.inbox(f.workspaceId)).toEqual([]);
+});
+
+it("never restores a blocked generated same-path body to Dream through an independent valid site claim", async () => {
+  const consolidate = vi.fn<
+    import("../../apps/runtime/dist/services/memory-dream.js").MemoryDreamer["consolidate"]
+  >(async (input) => {
+    input.checkCurrent();
+    return { status: "completed", changes: [] };
+  });
+  const f = await fixture({ generation: () => "independent-dream", consolidate });
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const original = await legacyArticle(f);
+  const old = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, original.runId, true);
+  await f.pipeline.editDocuments({
+    workspaceId: f.workspaceId,
+    expectedGeneration: (await f.pipeline.documents(f.workspaceId)).generation,
+    edits: [{ claimId: old.claimId, text: "Separately authored owner correction remains inspectable." }],
+  });
+  const ownerEdit = (await f.pipeline.documents(f.workspaceId)).documents[0]!.claim.ownerEdit;
+  const runId = "independent-site-report",
+    pageId = "independent-site-page",
+    url = "https://article.test/new-research";
+  const quote = "Independent new evidence verifies a green fixture with three units.";
+  f.repo.upsertPage({
+    pageId,
+    backend: "aux",
+    targetId: pageId,
+    url,
+    title: "Independent research",
+    documentEpoch: 1,
+    lastRevision: 1,
+    viewStatus: "visible",
+    controller: "human",
+    controllerEpoch: 0,
+    ownedByRuntime: false,
+    createdAt: 1,
+    lastActiveAt: 1,
+  });
+  const artifactId = "independent-observation",
+    path = join(f.directory, "independent-observation.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      observationId: artifactId,
+      pageId,
+      documentEpoch: 1,
+      revision: 1,
+      observedAt: 1,
+      scope: "full",
+      content: {
+        url,
+        title: "Independent research",
+        viewport: { width: 100, height: 100, scale: 1 },
+        scroll: { x: 0, y: 0, maxY: 0 },
+        frames: [],
+        text: quote,
+        headings: [],
+        elements: [],
+        formFields: [],
+        tables: [],
+        links: [],
+        dialogs: [],
+        truncated: false,
+        stats: { elementsTotal: 0, elementsShown: 0, textChars: quote.length, approxTokens: 20 },
+      },
+    }),
+  );
+  f.repo.saveArtifact({
+    artifactId,
+    runId,
+    pageId,
+    path,
+    mediaType: "application/json",
+    size: Buffer.byteLength(readFileSync(path)),
+    status: "complete",
+    createdAt: 1,
+  });
+  f.repo.saveRun({
+    runId,
+    goal: "Independent site research",
+    pageIds: [pageId],
+    status: "completed",
+    createdAt: Date.now(),
+    endedAt: Date.now(),
+    config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+    result: { report: quote, citations: [{ observationId: artifactId, quote }] },
+  });
+  await f.pipeline.extractRun(f.workspaceId, runId);
+  const valid = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, valid.claimId, "accept");
+  const store = new SpaceMemoryStore(f.repo, f.native, "recall-provenance"),
+    state = await store.read(f.workspaceId);
+  const documentPath = `sites/article.test-${digest("https://article.test").slice(0, 12)}.md`;
+  const stored = {
+    documentId: randomUUID(),
+    target: { kind: "site", origin: "https://article.test" },
+    path: documentPath,
+    revision: 1,
+    authoredBy: "generated",
+    content: f.article.text,
+    contentSha256: digest(f.article.text),
+    updatedAt: Date.now(),
+    sourceRefs: [
+      { claimId: old.claimId, sourceRunId: old.sourceRunId, quoteSha256: old.source!.quoteSha256 },
+    ],
+  };
+  state.files.set("documents.json.enc", JSON.stringify([stored]));
+  await store.write(f.workspaceId, state.files, state.history, state.prior);
+  expect(await f.pipeline.dream(f.workspaceId)).toMatchObject({ status: "no-change" });
+  expect(consolidate).toHaveBeenCalledTimes(1);
+  expect(
+    consolidate.mock.calls[0]![0].documents.find((document) => document.path === documentPath)?.content,
+  ).toBe("");
+  expect(JSON.stringify(consolidate.mock.calls[0]![0])).not.toContain(f.article.text);
+  expect(consolidate.mock.calls[0]![0].claims).toEqual([{ claimId: valid.claimId, text: valid.text }]);
+  expect(
+    (await f.pipeline.documents(f.workspaceId)).documents.find(
+      (document) => document.claim.claimId === old.claimId,
+    )!.claim.ownerEdit,
+  ).toEqual(ownerEdit);
+  expect((await f.pipeline.documentList(f.workspaceId)).documents).toEqual([stored]);
+});
+
+it("permits only exact original modern no-content failures and never clears another nonempty Memory call", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f, { readFailure: true });
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id]);
+  expect(proof.allows(id)).toBe(true);
+  const original = f.transcript.entries(id).find((entry) => entry.message.role === "tool")!;
+  expect(original.message).toMatchObject({
+    role: "tool",
+    content: [
+      {
+        toolName: "memory_read",
+        output: {
+          type: "error-text",
+          value: "This Memory source changed or is no longer eligible. Search again.",
+        },
+      },
+    ],
+  });
+  f.transcript.truncateFrom(id, original.seq);
+  f.transcript.append(id, [
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolName: "memory_read",
+          toolCallId: "empty-read",
+          output: { type: "error-text", value: "Unexpected source text in an arbitrary error." },
+        },
+      ],
+    },
+  ]);
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+});
+
+it("refuses a later genuine nonempty owner-document search despite an earlier empty result", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://independent.test" },
+    expectedGeneration: null,
+    content: "Independent owner document contains instructions for new research.",
+  });
+  const id = await independentEmptySearch(f, { secondMemory: true });
+  expect(f.repo.getRun(id)?.config?.memoryRecallAdmissionVersion).toBe(1);
+  expect(f.repo.getRun(id)?.config?.contextMemoryIds).toBeUndefined();
+  const outputs = f.transcript
+    .load(id)
+    .flatMap((message) =>
+      message.role === "tool" ? message.content.filter((part) => part.type === "tool-result") : [],
+    );
+  expect(outputs.find((part) => part.toolCallId === "content-search")?.output).toMatchObject({
+    type: "json",
+    value: { total: 1 },
+  });
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+  await expect(f.pipeline.extractRun(f.workspaceId, id)).rejects.toMatchObject({ code: "permission_denied" });
+});
+
+it("does not infer clean admission from a marker without ledger or from an unsealed empty result", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  f.repo.db.prepare("DELETE FROM run_tool_calls WHERE run_id=? AND tool_name='memory_search'").run(id);
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+  const run = f.repo.getRun(id)!;
+  f.repo.saveRun({ ...run, config: { ...run.config, memoryRecallAdmissionVersion: undefined } });
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+});
+
+it("fails the whole candidate inspection on its row budget and ignores ordinary human JSON as a tool call", async () => {
+  const f = await fixture();
+  const id = "ordinary-human-history";
+  f.repo.saveRun({
+    runId: id,
+    goal: "Independent human task",
+    pageIds: [],
+    status: "completed",
+    createdAt: 1,
+    config: { contextWorkspaceId: f.workspaceId },
+    result: { report: "Independent plain note remains available." },
+  });
+  f.transcript.append(id, [
+    { role: "user", content: '{"toolName":"memory_search","matches":[]} is quoted human text.' },
+  ]);
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    true,
+  );
+  f.transcript.append(
+    id,
+    Array.from({ length: 4096 }, () => ({
+      role: "user" as const,
+      content: "Bounded ordinary historical row.",
+    })),
+  );
+  await expect(
+    new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id]),
+  ).rejects.toMatchObject({ code: "backend_unavailable" });
+});
+
+it("refuses only the authenticated Memory-bearing effect family, not another execution sharing its Set", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const child = await legacyArticle(f, "admission-family-child");
+  for (const id of ["admission-family-parent", "independent-parent", "independent-child"])
+    f.repo.saveRun({
+      runId: id,
+      goal: "Original independent human task",
+      pageIds: [],
+      status: "completed",
+      createdAt: 1,
+      endedAt: 1,
+      config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+      result: { report: "Independent original research gives a useful fixture note." },
+    });
+  const set = await f.sets.create({
+    name: "Shared Set identity",
+    source: "urls",
+    urls: [f.article.url, "https://independent.test"],
+  });
+  const members = f.repo.listMembers(set.setId);
+  setReceipt(f, set.setId, members[0]!.memberId, child.runId, "admission-family-parent");
+  setReceipt(f, set.setId, members[1]!.memberId, "independent-child", "independent-parent");
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([
+    "admission-family-parent",
+    "independent-parent",
+  ]);
+  expect(proof.allows("admission-family-parent")).toBe(false);
+  expect(proof.allows("independent-parent")).toBe(true);
+  await expect(f.pipeline.extractRun(f.workspaceId, "admission-family-parent")).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  expect(await f.pipeline.extractRun(f.workspaceId, "independent-parent")).toMatchObject({ extracted: 1 });
+});
+
+it("authenticates copied source boundaries and rechecks the exact original branch receipt", async () => {
+  const f = await fixture();
+  const source = await independentEmptySearch(f);
+  const child = "independent-copied-child",
+    chatId = "admission-copy";
+  const original = f.repo.getRun(source)!;
+  const childRun = {
+    ...original,
+    runId: child,
+    goal: "Independent copied task",
+    config: { ...original.config, chatId, branchSourceRunIds: [source] },
+    result: { report: "Independent copied research report." },
+  };
+  f.repo.saveRun(childRun);
+  f.repo.setSetting(`conversationBranch:${chatId}`, {
+    sourceRunId: source,
+    sourceRunIds: [source],
+    mode: "branch",
+    windowId: "original-window",
+  });
+  const { originalTask } = await import("../../apps/runtime/dist/agent/loop/original-task-message.js");
+  f.transcript.append(child, [
+    ...f.transcript.forkEntries(source).map((entry) => entry.message),
+    originalTask(childRun),
+  ]);
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([child]);
+  expect(proof.allows(child)).toBe(true);
+  f.repo.setSetting(`conversationBranch:${chatId}`, {
+    sourceRunId: source,
+    sourceRunIds: [],
+    mode: "branch",
+    windowId: "original-window",
+  });
+  expect(() => proof.check()).toThrow("execution changed");
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([child])).allows(child),
+  ).toBe(false);
+});
+
+it("cancels original extraction when authenticated family membership grows during the model await", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const id = await independentEmptySearch(f),
+    original = f.repo.getRun(id)!;
+  const extract = fixtureMemoryExtractor.extract.bind(fixtureMemoryExtractor);
+  let entered = false,
+    release!: () => void;
+  const gate = new Promise<void>((done) => (release = done));
+  vi.spyOn(fixtureMemoryExtractor, "extract").mockImplementation(async (input) => {
+    entered = true;
+    await gate;
+    return extract(input);
+  });
+  const pending = f.pipeline.extractRun(f.workspaceId, id).then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
+  await vi.waitFor(() => expect(entered).toBe(true));
+  const child = "new-original-family-member";
+  f.repo.saveRun({
+    runId: child,
+    goal: "Independent child",
+    pageIds: [],
+    status: "completed",
+    createdAt: 1,
+    endedAt: 1,
+    config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+    result: { report: "Independent child report." },
+  });
+  const set = await f.sets.create({
+    name: "New authenticated original family",
+    source: "urls",
+    urls: ["https://independent.test"],
+  });
+  setReceipt(f, set.setId, f.repo.listMembers(set.setId)[0]!.memberId, child, id);
+  release();
+  expect(await pending).toMatchObject({ error: { code: "cancelled" } });
+  expect(f.repo.getRun(id)?.result).toEqual(original.result);
+  expect(await f.pipeline.inbox(f.workspaceId)).toEqual([]);
+});
+
+it("decodes each candidate once per operation and checks original ciphertext without another decode", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  const pages = vi.spyOn(TranscriptStore.prototype, "retirementPages");
+  const proof = new MemorySourceAdmission(f.repo, f.workspaceId, () => {});
+  await proof.prepare([id, id]);
+  await proof.prepare([id]);
+  proof.check();
+  expect(proof.allows(id)).toBe(true);
+  expect(pages.mock.calls.filter(([, decode]) => decode !== false)).toEqual([[id]]);
+  expect(pages.mock.calls.filter(([, decode]) => decode === false)).toHaveLength(3);
+});
+
+it("refuses extra source-bearing fields hidden beside an otherwise empty canonical result", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  const row = f.transcript.entries(id).find((entry) => entry.message.role === "tool")!;
+  if (row.message.role !== "tool") throw new Error("Original result missing");
+  const part = row.message.content[0]!;
+  if (part.type !== "tool-result" || part.output.type !== "json")
+    throw new Error("Original typed result missing");
+  const { MemoryRecallResultSchema } = await import("@aux/contracts/memory-documents");
+  const original = MemoryRecallResultSchema.parse(part.output.value);
+  f.transcript.truncateFrom(id, row.seq);
+  f.transcript.append(id, [
+    {
+      role: "tool",
+      content: [
+        {
+          ...part,
+          output: { type: "json", value: { ...original, unreviewedSourceText: "Unproven recalled bytes" } },
+        },
+      ],
+    },
+  ]);
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+});
+
+it("never treats a parked pending Memory outcome as a completed empty result", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  const row = f.transcript.entries(id).find((entry) => entry.message.role === "tool")!;
+  f.transcript.truncateFrom(id, row.seq);
+  f.transcript.park(id, {
+    toolCallId: "empty-search",
+    toolName: "memory_search",
+    pendingResults: [{ toolCallId: "empty-search", toolName: "memory_search", parked: true }],
+  });
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
+});
+
+it("keeps independent owner documents and accepted pastes usable beside an unretired historical orphan", async () => {
+  const f = await fixture();
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const original = await legacyArticle(f);
+  const claim = await seedHistoricalRunMemory(f.pipeline, f.repo, f.workspaceId, original.runId, true);
+  f.repo.db.prepare("DELETE FROM runs WHERE run_id=?").run(original.runId);
+  const owner = await f.pipeline.documentSet({
+    workspaceId: f.workspaceId,
+    target: { kind: "site", origin: "https://owner-independent.test" },
+    expectedGeneration: (await f.pipeline.documentList(f.workspaceId)).generation,
+    content: "Independent owner guidance uses an emerald notebook.",
+  });
+  const preview = await f.pipeline.previewPaste({
+    workspaceId: f.workspaceId,
+    text: "My independent preference is a violet project folder.",
+  });
+  if (preview.status !== "ready") throw new Error("Expected ordinary owner paste preview");
+  await f.pipeline.commitPaste({
+    workspaceId: f.workspaceId,
+    previewId: preview.previewId,
+    selectedIds: preview.candidates.map((item) => item.candidateId),
+  });
+  const pasted = (await f.pipeline.inbox(f.workspaceId))[0]!;
+  await f.pipeline.review(f.workspaceId, pasted.claimId, "accept");
+  const overview = await f.pipeline.overview(f.workspaceId);
+  expect(overview.summary).toContain(owner.document!.content);
+  expect(overview.summary).toContain(pasted.text);
+  expect(overview.summary).not.toContain(claim.text);
+  const recall = await f.pipeline.recall({
+    workspaceId: f.workspaceId,
+    queries: ["independent"],
+    kinds: ["site", "episodic"],
+    mode: "lexical",
+  });
+  expect(recall.matches.map((match) => match.sourceId)).toEqual(
+    expect.arrayContaining([`document:${owner.document!.documentId}`, `claim:${pasted.claimId}`]),
+  );
+  expect(recall.matches.some((match) => match.sourceId === `claim:${claim.claimId}`)).toBe(false);
+  for (const match of recall.matches)
+    expect(
+      (
+        await f.pipeline.readSource({
+          workspaceId: f.workspaceId,
+          sourceId: match.sourceId,
+          revision: match.revision,
+          sha256: match.sha256,
+        })
+      ).text,
+    ).toBeTruthy();
+  expect(
+    (await f.pipeline.documents(f.workspaceId)).documents.find((item) => item.claim.claimId === claim.claimId)
+      ?.claim,
+  ).toEqual(claim);
+});
+
+it("refuses refs-only captured Memory on an authenticated family member without poisoning independent sources", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  for (const runId of ["refs-family-parent", "refs-family-child"])
+    f.repo.saveRun({
+      runId,
+      goal: "Independent fixture task",
+      pageIds: [],
+      status: "completed",
+      createdAt: 1,
+      config: { contextWorkspaceId: f.workspaceId },
+      result: { report: "Independent useful plain research report." },
+    });
+  const child = f.repo.getRun("refs-family-child")!;
+  f.repo.saveRun({
+    ...child,
+    config: {
+      ...child.config,
+      contextMemoryRefs: [
+        {
+          memoryId: f.article.memoryId,
+          profileId: "recall-provenance",
+          workspaceId: f.workspaceId,
+          pageId: f.article.pageId,
+          documentEpoch: f.article.documentEpoch,
+          url: f.article.url,
+          title: f.article.title,
+          capturedAt: f.article.capturedAt,
+        },
+      ],
+    },
+  });
+  const set = await f.sets.create({ name: "Original refs family", source: "urls", urls: [f.article.url] });
+  setReceipt(f, set.setId, f.repo.listMembers(set.setId)[0]!.memberId, child.runId, "refs-family-parent");
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([
+    "refs-family-parent",
+    id,
+  ]);
+  expect(proof.allows("refs-family-parent")).toBe(false);
+  expect(proof.allows(id)).toBe(true);
+  expect(f.repo.getRun(child.runId)?.config?.contextMemoryIds).toBeUndefined();
+});
+
+it("admits genuine normal spawn and copied forkSelf independently, with original family policy and prefix fences", async () => {
+  const f = await fixture(undefined, undefined, "recall-provenance", true);
+  f.pipeline.setPolicy(f.workspaceId, true);
+  const subagents = new SubagentService(f.repo, f.events, f.runs, undefined, ["webfetch"]);
+  cleanup.unshift(async () => subagents.close());
+  let parentStep = 0;
+  f.model.toolCallStep = vi.fn(async (options: Parameters<MockModelClient["toolCallStep"]>[0]) => {
+    const child = options.messages.some(
+      (message) =>
+        message.role === "user" &&
+        typeof message.content === "string" &&
+        /Task: (Normal independent child|Copied independent child)/u.test(message.content),
+    );
+    const call = child
+      ? {
+          toolCallId: randomUUID(),
+          toolName: "submit_result",
+          input: { report: "Independent child research established a teal fixture with four units." },
+        }
+      : ++parentStep === 1
+        ? { toolCallId: "parent-clock", toolName: "get_time", input: {} }
+        : {
+            toolCallId: "parent-question",
+            toolName: "ask_user_question",
+            input: { question: "Keep independent research open?" },
+          };
+    return {
+      message: { role: "assistant" as const, content: [{ type: "tool-call" as const, ...call }] },
+      toolCalls: [call],
+      durationMs: 1,
+      inputTokens: 1,
+      outputTokens: 1,
+      costUsd: 0,
+    };
+  });
+  await f.runs.coordinator.start({
+    runId: "actual-spawn-parent",
+    goal: "Independent original parent",
+    pageIds: [],
+    modelId: "fixture",
+    contextWorkspaceId: f.workspaceId,
+  });
+  await vi.waitFor(() => expect(f.repo.getRun("actual-spawn-parent")?.status).toBe("needs_input"));
+  const group = subagents.createGroup({
+    parentRunId: "actual-spawn-parent",
+    tokenBudget: 0,
+    costBudgetUsd: 0,
+    timeBudgetMs: 0,
+  });
+  const args = {
+    groupId: group.groupId,
+    pageIds: [],
+    profile: "read_only",
+    tokenAllocation: 0,
+    costAllocationUsd: 0,
+    maxModelCalls: 4,
+  };
+  const normal = await subagents.spawn({ ...args, goal: "Normal independent child" });
+  const fork = await subagents.forkSelf({
+    ...args,
+    goal: "Copied independent child",
+    sourceRunId: "actual-spawn-parent",
+  });
+  for (const agent of [normal, fork])
+    await vi.waitFor(() => expect(f.repo.getRun(agent.runId!)?.status).toBe("completed"));
+  const { originalTask } = await import("../../apps/runtime/dist/agent/loop/original-task-message.js");
+  const original = f.repo.getRun("actual-spawn-parent")!;
+  expect(f.repo.getRun(normal.runId!)?.config?.memoryRecallAdmissionVersion).toBe(1);
+  expect(f.transcript.load(normal.runId!)[0]).toEqual(originalTask(f.repo.getRun(normal.runId!)!));
+  const copied = f.transcript.load(fork.runId!);
+  expect(copied[0]).toEqual(originalTask(original));
+  expect(
+    copied.findIndex(
+      (message) => JSON.stringify(message) === JSON.stringify(originalTask(f.repo.getRun(fork.runId!)!)),
+    ),
+  ).toBeGreaterThan(0);
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([
+    normal.runId!,
+    fork.runId!,
+  ]);
+  expect(proof.allows(normal.runId!)).toBe(true);
+  expect(proof.allows(fork.runId!)).toBe(true);
+  expect(await f.pipeline.extractRun(f.workspaceId, normal.runId!)).toMatchObject({ extracted: 1 });
+  const modernChild = f.repo.getRun(normal.runId!)!;
+  f.repo.saveRun({
+    ...modernChild,
+    config: { ...modernChild.config, memoryRecallAdmissionVersion: undefined },
+  });
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.saveRun({ ...f.repo.getRun(normal.runId!)!, config: modernChild.config });
+  const forkBoundary = copied.findIndex(
+    (message) => JSON.stringify(message) === JSON.stringify(originalTask(f.repo.getRun(fork.runId!)!)),
+  );
+  // Old records have no durable fork flag. Removing the prefix never removes source-family policy.
+  f.transcript.truncateFrom(fork.runId!, 0);
+  f.transcript.append(fork.runId!, copied.slice(forkBoundary));
+  f.repo.saveRun({
+    ...f.repo.getRun(original.runId)!,
+    config: { ...original.config, chatId: "replacement-private-source", privateTask: true },
+  });
+  expect(() => proof.check()).toThrow(/changed/);
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.saveRun({
+    ...f.repo.getRun(original.runId)!,
+    config: {
+      ...original.config,
+      contextMemoryRefs: [
+        {
+          memoryId: f.article.memoryId,
+          profileId: "recall-provenance",
+          workspaceId: f.workspaceId,
+          pageId: f.article.pageId,
+          documentEpoch: f.article.documentEpoch,
+          url: f.article.url,
+          title: f.article.title,
+          capturedAt: f.article.capturedAt,
+        },
+      ],
+    },
+  });
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.saveRun({ ...f.repo.getRun(original.runId)!, config: original.config });
+  const pageId = "original-parent-page",
+    url = "https://independent-parent.test/research";
+  f.repo.upsertPage({
+    pageId,
+    backend: "aux",
+    targetId: pageId,
+    url,
+    title: "Independent parent source",
+    sessionId: "parent-session",
+    documentEpoch: 1,
+    lastRevision: 1,
+    viewStatus: "visible",
+    controller: "human",
+    controllerEpoch: 0,
+    ownedByRuntime: false,
+    createdAt: 1,
+    lastActiveAt: 1,
+  });
+  f.repo.saveRun({
+    ...f.repo.getRun(original.runId)!,
+    config: {
+      ...original.config,
+      contextPageRefs: [{ pageId, url, sessionId: "parent-session", documentEpoch: 1 }],
+    },
+  });
+  const pageProof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!]);
+  expect(pageProof.allows(normal.runId!)).toBe(true);
+  f.repo.upsertPage({ ...f.repo.getPage(pageId)!, windowKind: "private" });
+  expect(() => pageProof.check()).toThrow(/eligibility changed/);
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.upsertPage({ ...f.repo.getPage(pageId)!, windowKind: "normal" });
+  f.repo.upsertPage({ ...f.repo.getPage(pageId)!, viewStatus: "detached" });
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.upsertPage({ ...f.repo.getPage(pageId)!, viewStatus: "visible" });
+  const { readWorkspaceMemory } = await import("../../apps/runtime/dist/services/workspace-memory.js");
+  const memory = readWorkspaceMemory(f.repo, f.workspaceId);
+  f.repo.setSetting(`workspaceMemory:${f.workspaceId}`, {
+    ...memory,
+    excludedOrigins: [new URL(url).origin],
+  });
+  expect(
+    (await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!])).allows(
+      normal.runId!,
+    ),
+  ).toBe(false);
+  f.repo.setSetting(`workspaceMemory:${f.workspaceId}`, memory);
+  f.repo.saveRun({ ...f.repo.getRun(original.runId)!, config: original.config });
+  f.transcript.truncateFrom(fork.runId!, 0);
+  f.transcript.append(fork.runId!, [
+    { role: "user", content: "A replacement copied prefix is not the admitted source." },
+    ...copied.slice(1),
+  ]);
+  expect(
+    (
+      await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([normal.runId!, fork.runId!])
+    ).allows(fork.runId!),
+  ).toBe(false);
+});
+
+it("includes a copied source's authenticated Memory-bearing child without poisoning another family in the same Set", async () => {
+  const f = await fixture();
+  for (const id of ["copied-family-parent", "other-copy-parent", "other-copy-child"]) {
+    f.repo.saveRun({
+      runId: id,
+      goal: "Original independent human task",
+      pageIds: [],
+      status: "completed",
+      createdAt: 1,
+      endedAt: 1,
+      config: { implementation: "agent-loop", contextWorkspaceId: f.workspaceId },
+      result: { report: "Independent original report supplies useful fixture knowledge." },
+    });
+    f.transcript.append(id, [{ role: "user", content: "Original independent human history." }]);
+  }
+  const branches = new ConversationBranches(f.repo);
+  const draft = await branches.create("copied-family-parent", "branch", "original-window", async () => {});
+  const copiedRun = {
+    runId: "historical-consumed-copy",
+    goal: "Follow independent copied history",
+    pageIds: [],
+    status: "completed" as const,
+    createdAt: 2,
+    endedAt: 2,
+    config: {
+      implementation: "agent-loop" as const,
+      contextWorkspaceId: f.workspaceId,
+      chatId: draft.chatId,
+      branchSourceRunIds: ["copied-family-parent"],
+    },
+    result: { report: "Independent copied fixture report remains a historical record." },
+  };
+  const { originalTask } = await import("../../apps/runtime/dist/agent/loop/original-task-message.js");
+  // Canonical historical consumed branch: actual original receipt and exact producer prefix.
+  // It is not a current model/read admission and receives no retroactive marker.
+  f.repo.saveRun(copiedRun);
+  f.transcript.append(copiedRun.runId, [...branches.prefix(draft.chatId)!, originalTask(copiedRun)]);
+  const prior = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([copiedRun.runId]);
+  expect(prior.allows(copiedRun.runId)).toBe(true);
+  const child = await legacyArticle(f, "copied-family-memory-child");
+  const set = await f.sets.create({
+    source: "urls",
+    name: "Original copied-source Set",
+    urls: [f.article.url, "https://other-copy.test"],
+  });
+  const members = f.repo.listMembers(set.setId);
+  setReceipt(f, set.setId, members[0]!.memberId, child.runId, "copied-family-parent");
+  setReceipt(f, set.setId, members[1]!.memberId, "other-copy-child", "other-copy-parent");
+  expect(() => prior.check()).toThrow("family changed");
+  const proof = await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([
+    copiedRun.runId,
+    "other-copy-parent",
+  ]);
+  expect(proof.allows(copiedRun.runId)).toBe(false);
+  expect(proof.allows("other-copy-parent")).toBe(true);
+});
+
+it("never treats a read-only diagnostic transplanted onto an actual modern search as canonical no-content", async () => {
+  const f = await fixture();
+  const id = await independentEmptySearch(f);
+  const entry = f.transcript.entries(id).find((row) => row.message.role === "tool")!;
+  f.transcript.truncateFrom(id, entry.seq);
+  f.transcript.append(id, [
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "empty-search",
+          toolName: "memory_search",
+          output: {
+            type: "error-text",
+            value: "This Memory source changed or is no longer eligible. Search again.",
+          },
+        },
+      ],
+    },
+  ]);
+  expect((await new MemorySourceAdmission(f.repo, f.workspaceId, () => {}).prepare([id])).allows(id)).toBe(
+    false,
+  );
 });

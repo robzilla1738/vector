@@ -163,9 +163,16 @@ authenticated pre-API finalization. Independent review clears the source;163
 private affected cases pass. The root integrated check passes5,777tests/853files
 in125.68s after rebuilding dist, with unchanged570 advisory warnings. The
 [restore record](evidence/aside-memory-restore-ownership-2026-10-18.json) preserves
-initial failures and the unobserved hardware/native limits. A5 still requires the
-[expired-source admission correction](design/aside-memory-source-admission.md),
-which is being implemented separately. A5/A6/work-details acceptance stays open; see
+initial failures and the unobserved hardware/native limits. The
+[expired-source admission correction](evidence/aside-memory-source-admission-2026-10-18.json)
+is now integrated with that restore work. Bounded candidate/family proof gates
+extraction, recall/index use and Dream without a global scan or backfilled access.
+Modern no-content outcomes require exact ledger/message/park evidence. Two
+independent merge reviews preserve both lifecycles; the private185-case check and
+combined5,798tests/853files in123.78s pass after rebuilding dist, with570 unchanged
+advisories. Old records still cannot prove historical fork mode after complete
+prefix removal; current original source/family checks remain mandatory. Current
+native staging and A5/A6/work-details acceptance stay open; see
 [retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json) and
 [the legacy correction](evidence/aside-legacy-memory-retirement-2026-10-18.json).
 

@@ -163,10 +163,19 @@ After rebuilding dist, the integrated check passes all5,777tests/853files in
 preserves the initial failures and separates source durability from hardware/native
 acceptance. These changes are not staged in the compiled candidate.
 
-The separate legacy-derived model-admission gap remains open: an old extracted
-note can still be recalled after article expiry before explicit discovery.
-[That correction](design/aside-memory-source-admission.md) is being implemented
-and reviewed separately. A5 and integrated readiness remain incomplete.
+The legacy-derived model-admission correction is now integrated: automatic
+run-report Memory requires bounded original execution/family independence proof.
+Canonical ledger/message/park outcomes distinguish genuine modern no-content
+calls from legacy, nonempty or unprovable Memory use. Source policy, rows and
+family membership are rechecked at model/index use and publication; unrelated
+owner documents/pastes remain available. Dream counts and same-path old bodies
+use only eligible sources. Two independent reviews verify the merge preserves
+restore ownership and all original tests. The private rebuilt185-case check passes;
+the combined integrated check passes all5,798tests/853files in123.78s after
+rebuilding dist, with570 unchanged advisory warnings.
+[Admission evidence](evidence/aside-memory-source-admission-2026-10-18.json)
+preserves failures, exact patches and the old-record fork-mode limitation. This
+is current source, not staged native evidence. A5 and readiness remain incomplete.
 
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/

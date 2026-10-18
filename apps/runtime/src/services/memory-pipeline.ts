@@ -2,6 +2,9 @@ import { basename } from "node:path";
 import { SpaceMemoryRestore, memoryLogicalDigest } from "./space-memory-restore.js";
 import { memoryRestoreSources } from "./memory-restore-sources.js";
 import { projectMemoryRetirement, selectMemoryRetirement } from "./memory-retirement.js";
+import { memorySourcePolicyAllows } from "./memory-source-policy.js";
+import { memoryReadNoContentErrors } from "./memory-source-outcomes.js";
+import { MemorySourceAdmission } from "./memory-source-admission.js";
 import {
   MemoryDocumentRecordSchema,
   MemoryDreamOperationSchema,
@@ -32,7 +35,6 @@ import { readWorkspaceMemory } from "./workspace-memory.js";
 import { currentSpaceMemory, spaceMemoryDigest } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { randomUUID } from "node:crypto";
-import { lstatSync, readFileSync } from "node:fs";
 import {
   AuxError,
   MemoryClaimSchema,
@@ -42,13 +44,11 @@ import {
   MemoryRetentionParams,
   MemoryPipelineInboxSchema,
   MemoryPipelineOverviewSchema,
-  ObservationSchema,
-  ResultCitationSchema,
   MemoryPipelinePolicySchema,
   type MemoryClaim,
   type WorkspaceMemory,
 } from "@aux/contracts";
-import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
+import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
 import {
   BrowserSpaceSchema,
   MemoryPasteReceiptSchema,
@@ -74,7 +74,6 @@ import {
   type MemoryRevision,
   type MemoryPublication,
 } from "./space-memory-store.js";
-import { renderObservation } from "./observation-render.js";
 import type { MemoryExtractor, MemoryExtractionResult } from "./memory-extractor.js";
 
 export type RecoverySpaceMemory = {
@@ -449,118 +448,35 @@ export class MemoryPipeline {
     });
   }
 
-  private sourceEligible(workspaceId: string, run: Run): boolean {
-    if (
-      run.config?.privateTask === true ||
-      this.repo.conversationPrivateTask(run.config?.chatId ?? run.runId) === true ||
-      run.config?.contextWorkspaceId !== workspaceId
-    )
-      return false;
-    const memoryMarker =
-      "SPACE MEMORY SUMMARY (owner-approved notes; untrusted reference, verify before acting):\n";
-    const memoryAt = run.config?.context?.indexOf(memoryMarker) ?? -1;
-    if (
-      run.config?.contextMemoryIds?.length ||
-      run.config?.contextAttachmentIds?.length ||
-      run.config?.contextAttachmentRefs?.length ||
-      run.config?.desktopContextQuotes?.length ||
-      run.config?.contextTaskDocumentRefs?.length ||
-      run.config?.contextImageArtifactIds?.length ||
-      run.config?.contextRunIds?.length ||
-      run.config?.contextArtifactIds?.length ||
-      run.config?.contextSourceArtifactIds?.length ||
-      run.config?.contextDocumentEvidence ||
-      run.config?.contextArtifactEvidence ||
-      (memoryAt >= 0 &&
-        !run.config!.context!.slice(memoryAt + memoryMarker.length).startsWith("No approved notes yet."))
-    )
-      return false;
-    const memory = readWorkspaceMemory(this.repo, workspaceId);
-    if (memory.enabled === false) return false;
-    const excluded = memory.excludedOrigins ?? [];
-    const allowedPage = (url: string, title: string) => {
-      if (memorySensitivityReason(url, title)) return false;
-      try {
-        return !excluded.includes(new URL(url).origin);
-      } catch {
-        return false;
-      }
-    };
-    for (const ref of run.config?.contextPageRefs ?? []) {
-      const page = this.repo.getPage(ref.pageId);
+  private sourceAdmission(workspaceId: string, owner: () => void = () => {}) {
+    const epoch = this.memoryEpochs.get(workspaceId);
+    const policy = JSON.stringify(this.policy(workspaceId));
+    const revision = readWorkspaceMemory(this.repo, workspaceId).revision;
+    return new MemorySourceAdmission(this.repo, workspaceId, () => {
+      owner();
+      this.liveMemorySpace(workspaceId);
       if (
-        !page ||
-        page.url !== ref.url ||
-        page.documentEpoch !== ref.documentEpoch ||
-        page.sessionId !== ref.sessionId ||
-        page.windowKind === "private" ||
-        page.agentIsolation?.mode === "private" ||
-        !allowedPage(ref.url, page.title)
+        this.closed ||
+        this.memoryEpochs.get(workspaceId) !== epoch ||
+        JSON.stringify(this.policy(workspaceId)) !== policy ||
+        readWorkspaceMemory(this.repo, workspaceId).revision !== revision
       )
-        return false;
-    }
-    for (const pageId of run.pageIds) {
-      const page = this.repo.getPage(pageId);
-      if (
-        !page ||
-        page.viewStatus === "detached" ||
-        page.viewStatus === "crashed" ||
-        page.windowKind === "private" ||
-        page.agentIsolation?.mode === "private" ||
-        !allowedPage(page.url, page.title)
-      )
-        return false;
-    }
-    const report = [run.result?.report, run.result?.answer, run.result?.text].find(
-      (value) => typeof value === "string",
-    ) as string | undefined;
-    if (report && memoryContentSensitivityReason(report)) return false;
-    // A page-backed report must have the S5 terminal verifier's citation and
-    // its run-owned observation. A report quote alone is not page evidence.
-    if (run.pageIds.length && !this.verifiedPageEvidence(run)) return false;
-    return true;
+        throw new AuxError("cancelled", "The original Memory admission owner changed.");
+    });
   }
 
-  private verifiedPageEvidence(run: Run): boolean {
-    if (run.config?.implementation !== "agent-loop" || !Array.isArray(run.result?.citations)) return false;
-    const citations = ResultCitationSchema.array().max(32).safeParse(run.result.citations);
-    if (!citations.success || !citations.data.length) return false;
-    if (citations.data.some((citation) => memoryContentSensitivityReason(citation.quote))) return false;
-    return citations.data.every((citation) => {
-      if ("kind" in citation || !citation.observationId) return false;
-      const artifact = this.repo.getArtifact(citation.observationId);
-      if (
-        !artifact ||
-        artifact.runId !== run.runId ||
-        !artifact.pageId ||
-        !run.pageIds.includes(artifact.pageId) ||
-        artifact.status !== "complete" ||
-        artifact.mediaType !== "application/json"
-      )
-        return false;
-      try {
-        const info = lstatSync(artifact.path);
-        if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) return false;
-        const parsed = ObservationSchema.safeParse(JSON.parse(readFileSync(artifact.path, "utf8")));
-        if (
-          !parsed.success ||
-          parsed.data.pageId !== artifact.pageId ||
-          memoryContentSensitivityReason(parsed.data.content.text) ||
-          memorySensitivityReason(parsed.data.content.url, parsed.data.content.title)
-        )
-          return false;
-        const page = this.repo.getPage(artifact.pageId);
-        return (
-          !!page &&
-          page.documentEpoch === parsed.data.documentEpoch &&
-          page.url === parsed.data.content.url &&
-          page.viewStatus !== "detached" &&
-          renderObservation(parsed.data).includes(citation.quote)
-        );
-      } catch {
-        return false;
-      }
-    });
+  private sourceEligible(workspaceId: string, run: Run, admission?: MemorySourceAdmission): boolean {
+    if (!admission?.has(run.runId))
+      throw new AuxError("backend_unavailable", "Original Memory source independence was not prepared.");
+    return admission.allows(run.runId) && memorySourcePolicyAllows(this.repo, workspaceId, run);
+  }
+
+  private async claimAdmission(workspaceId: string, claims: MemoryClaim[], owner?: () => void) {
+    return this.sourceAdmission(workspaceId, owner).prepare(
+      claims
+        .filter((claim) => !claim.sourceRetired && claim.source?.kind !== "owner-paste")
+        .map((claim) => claim.sourceRunId),
+    );
   }
 
   private report(run: Run | undefined): string | undefined {
@@ -569,7 +485,11 @@ export class MemoryPipeline {
     ) as string | undefined;
   }
 
-  private eligibleForRecall(workspaceId: string, claim: MemoryClaim): boolean {
+  private eligibleForRecall(
+    workspaceId: string,
+    claim: MemoryClaim,
+    admission?: MemorySourceAdmission,
+  ): boolean {
     if (claim.sourceRetired || !this.retained(workspaceId, claim)) return false;
     if (claim.source?.kind === "owner-paste")
       return (
@@ -586,7 +506,7 @@ export class MemoryPipeline {
       run.status === "completed" &&
       run.config?.contextWorkspaceId === workspaceId &&
       !!report &&
-      this.sourceEligible(workspaceId, run) &&
+      this.sourceEligible(workspaceId, run, admission) &&
       report.includes(claim.text) &&
       (!claim.source ||
         (claim.source.kind === "run-report" &&
@@ -1175,7 +1095,8 @@ export class MemoryPipeline {
       const run = this.repo.getRun(runId);
       if (!run || run.status !== "completed" || run.config?.contextWorkspaceId !== workspaceId)
         throw new AuxError("conflict", "Only a completed run from this Space can be extracted.");
-      if (!this.sourceEligible(workspaceId, run))
+      const admission = await this.sourceAdmission(workspaceId, checkLease).prepare([runId]);
+      if (!this.sourceEligible(workspaceId, run, admission))
         throw new AuxError(
           "permission_denied",
           "This run includes a sensitive, excluded, or unverifiable source.",
@@ -1213,6 +1134,7 @@ export class MemoryPipeline {
       const checkCurrent = () => {
         controller.signal.throwIfAborted();
         checkLease();
+        admission.check();
         const current = this.repo.getRun(runId);
         if (
           !this.policy(workspaceId).enabled ||
@@ -1221,7 +1143,7 @@ export class MemoryPipeline {
           !current ||
           current.status !== "completed" ||
           current.config?.contextWorkspaceId !== workspaceId ||
-          !this.sourceEligible(workspaceId, current) ||
+          !this.sourceEligible(workspaceId, current, admission) ||
           this.report(current) !== sourceReport ||
           this.extractor?.generation() !== modelGeneration
         )
@@ -1242,7 +1164,7 @@ export class MemoryPipeline {
                 memoryGeneration: prior?.generation ?? null,
                 ownerRevision,
                 policyDigest,
-                sourceDigest: sha(JSON.stringify([runId, sourceReport])),
+                sourceDigest: sha(JSON.stringify([runId, sourceReport, admission.digest()])),
               },
             })
           : { quotes: [], status: "failed" as const, errorCode: "model_unavailable" as const };
@@ -1301,7 +1223,12 @@ export class MemoryPipeline {
   }
 
   sources(workspaceId: string) {
+    return this.own(() => this.sourcesOwned(workspaceId));
+  }
+
+  private async sourcesOwned(workspaceId: string) {
     this.requireSpace(workspaceId);
+    const admission = this.sourceAdmission(workspaceId);
     const sources: { runId: string; goal: string; endedAt: number }[] = [];
     let offset = 0;
     for (;;) {
@@ -1313,17 +1240,24 @@ export class MemoryPipeline {
         ORDER BY ended_at DESC,run_id DESC LIMIT 100 OFFSET ?`,
         )
         .all(workspaceId, workspaceId, offset) as { runId: string }[];
+      await admission.prepare(candidates.map((candidate) => candidate.runId));
       for (const candidate of candidates) {
         const run = this.repo.getRun(candidate.runId);
         if (
           run &&
           (run.result?.report || run.result?.answer || run.result?.text) &&
-          this.sourceEligible(workspaceId, run)
+          this.sourceEligible(workspaceId, run, admission)
         )
           sources.push({ runId: run.runId, goal: run.goal, endedAt: run.endedAt! });
-        if (sources.length >= 20) return sources;
+        if (sources.length >= 20) {
+          admission.check();
+          return sources;
+        }
       }
-      if (candidates.length < 100) return sources;
+      if (candidates.length < 100) {
+        admission.check();
+        return sources;
+      }
       offset += candidates.length;
     }
   }
@@ -1354,7 +1288,8 @@ export class MemoryPipeline {
       const accepted = new Set(claims.map((claim) => claim.claimId));
       return [...activity].reverse().flatMap((entry) => {
         const run = this.repo.getRun(entry.sourceRunId);
-        return run?.config?.contextWorkspaceId === workspaceId && this.sourceEligible(workspaceId, run)
+        return run?.config?.contextWorkspaceId === workspaceId &&
+          memorySourcePolicyAllows(this.repo, workspaceId, run)
           ? [
               {
                 ...entry,
@@ -1403,17 +1338,23 @@ export class MemoryPipeline {
       throw new AuxError("permission_denied", "Enable Space memory before consolidation.");
     return this.leased(workspaceId, async () => {
       const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
+      const admission = await this.claimAdmission(workspaceId, claims);
+      const eligible = (claim: MemoryClaim) => this.eligibleForRecall(workspaceId, claim, admission);
       const consolidated = [
-        ...claims.filter((claim) => claim.sourceRetired),
-        ...consolidateMemoryClaims(
-          claims.filter((claim) => !claim.sourceRetired),
-          Date.now(),
-          (claim) => this.eligibleForRecall(workspaceId, claim),
-          Number.POSITIVE_INFINITY,
-        ),
+        ...claims.filter((claim) => !eligible(claim)),
+        ...consolidateMemoryClaims(claims.filter(eligible), Date.now(), eligible, Number.POSITIVE_INFINITY),
       ];
       const revision = this.snapshot(claims);
-      await this.writeGeneration(workspaceId, consolidated, inbox, [...history, revision].slice(-10), prior);
+      await this.writeGeneration(
+        workspaceId,
+        consolidated,
+        inbox,
+        [...history, revision].slice(-10),
+        prior,
+        undefined,
+        undefined,
+        () => admission.check(),
+      );
       return {
         revisionId: revision.revisionId,
         before: claims.length,
@@ -1574,8 +1515,9 @@ export class MemoryPipeline {
       const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
       const note = inbox.find((item) => item.claimId === claimId);
       if (!note) throw new AuxError("not_found", "Pending memory note does not exist.");
+      const admission = decision === "accept" ? await this.claimAdmission(workspaceId, [note]) : undefined;
       if (decision === "accept") {
-        if (!this.eligibleForRecall(workspaceId, note))
+        if (!this.eligibleForRecall(workspaceId, note, admission))
           throw new AuxError(
             "conflict",
             "This note no longer meets its source and safety requirements for recall.",
@@ -1594,6 +1536,9 @@ export class MemoryPipeline {
         remaining,
         decision === "accept" ? [...history, this.snapshot(accepted)].slice(-10) : history,
         prior,
+        undefined,
+        undefined,
+        () => admission?.check(),
       );
       return { accepted: decision === "accept", remaining: remaining.length };
     });
@@ -1622,8 +1567,12 @@ export class MemoryPipeline {
         claimCount: 0,
         sourceCount: 0,
       });
-    const { claims, files, documents } = await this.readClaims(workspaceId);
+    const { claims, files, documents, prior } = await this.readClaims(workspaceId);
+    const admission = await this.claimAdmission(workspaceId, claims);
     const index = this.searchIndex(files, claims);
+    admission.check();
+    if ((this.storage.generation(workspaceId)?.generation ?? null) !== (prior?.generation ?? null))
+      throw new AuxError("cancelled", "Memory changed during overview preparation.");
     return MemoryPipelineOverviewSchema.parse({
       index: {
         status: index ? "ready" : files.has("search-index.json.enc") ? "needs-rebuild" : "not-built",
@@ -1635,11 +1584,12 @@ export class MemoryPipeline {
       summary: [
         this.summary(
           claims.filter(
-            (claim) => !claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim),
+            (claim) =>
+              !claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim, admission),
           ),
         ),
         ...documents
-          .filter((document) => this.documentEligible(workspaceId, document, claims))
+          .filter((document) => this.documentEligible(workspaceId, document, claims, admission))
           .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 4)
           .map(
@@ -1666,14 +1616,18 @@ export class MemoryPipeline {
       .filter((term) => term.length > 1)
       .slice(0, 8);
     if (!terms.length) return [];
-    const { claims, files } = await this.readClaims(workspaceId);
+    const { claims, files, prior } = await this.readClaims(workspaceId);
+    const admission = await this.claimAdmission(workspaceId, claims);
     const index = this.searchIndex(files, claims) ?? buildMemorySearchIndex(claims);
     const matchingIds = searchMemoryIndex(index, terms);
+    admission.check();
+    if ((this.storage.generation(workspaceId)?.generation ?? null) !== (prior?.generation ?? null))
+      throw new AuxError("cancelled", "Memory changed during search preparation.");
     return claims
       .filter(
         (claim) =>
           !claim.contradictionIds?.length &&
-          this.eligibleForRecall(workspaceId, claim) &&
+          this.eligibleForRecall(workspaceId, claim, admission) &&
           !memoryContentSensitivityReason(memoryClaimText(claim)) &&
           matchingIds.has(claim.claimId),
       )
@@ -1743,6 +1697,7 @@ export class MemoryPipeline {
       sha(JSON.stringify(this.policy(workspaceId))) !== policyDigest
     )
       throw new AuxError("conflict", "Memory changed during discovery preparation.");
+    const admission = await this.sourceAdmission(workspaceId).prepare(runIds);
     const sources = runIds.map((runId) => {
       const run = this.repo.getRun(runId);
       if (
@@ -1750,14 +1705,21 @@ export class MemoryPipeline {
         run.status !== "completed" ||
         (run.endedAt ?? run.createdAt) <= retired.before ||
         retired.sourceHashes.includes(sha(runId)) ||
-        !this.sourceEligible(workspaceId, run)
+        !this.sourceEligible(workspaceId, run, admission)
       )
         throw new AuxError(
           "permission_denied",
           "A completed source is no longer eligible for Memory discovery.",
         );
-      return { runId, sourceDigest: sha(JSON.stringify(run)) };
+      return { runId, sourceDigest: sha(JSON.stringify([run, admission.digest()])) };
     });
+    admission.check();
+    if (
+      (this.storage.generation(workspaceId)?.generation ?? null) !== generation ||
+      readWorkspaceMemory(this.repo, workspaceId).revision !== ownerRevision ||
+      sha(JSON.stringify(this.policy(workspaceId))) !== policyDigest
+    )
+      throw new AuxError("conflict", "Memory changed during discovery source inspection.");
     return { workspaceId, ownerRevision, generation, policyDigest, sources };
   }
 
@@ -1780,13 +1742,15 @@ export class MemoryPipeline {
       .get(target.routineId, workspaceId);
   }
 
-  private sourceFence(workspaceId: string, claims: MemoryClaim[]) {
+  private async sourceFence(workspaceId: string, claims: MemoryClaim[], prepared?: MemorySourceAdmission) {
+    const admission = prepared ?? (await this.claimAdmission(workspaceId, claims));
     const reports = new Map<string, string | undefined>();
     for (const claim of claims)
       if (claim.source?.kind !== "owner-paste" && !reports.has(claim.sourceRunId))
         reports.set(claim.sourceRunId, this.report(this.repo.getRun(claim.sourceRunId)));
     const check = () => {
-      if (claims.some((claim) => !this.eligibleForRecall(workspaceId, claim)))
+      admission.check();
+      if (claims.some((claim) => !this.eligibleForRecall(workspaceId, claim, admission)))
         throw new AuxError("cancelled", "The original Memory source eligibility changed.");
       for (const [runId, report] of reports) {
         const run = this.repo.getRun(runId);
@@ -1798,7 +1762,11 @@ export class MemoryPipeline {
     return {
       check,
       digest: sha(
-        JSON.stringify([claims, [...reports].map(([runId, report]) => [runId, sha(report ?? "")])]),
+        JSON.stringify([
+          claims,
+          [...reports].map(([runId, report]) => [runId, sha(report ?? "")]),
+          admission.digest(),
+        ]),
       ),
     };
   }
@@ -1831,7 +1799,12 @@ export class MemoryPipeline {
     };
   }
 
-  private refsEligible(workspaceId: string, refs: MemoryDocumentRecord["sourceRefs"], claims: MemoryClaim[]) {
+  private refsEligible(
+    workspaceId: string,
+    refs: MemoryDocumentRecord["sourceRefs"],
+    claims: MemoryClaim[],
+    admission?: MemorySourceAdmission,
+  ) {
     return refs.every((ref) => {
       const claim = claims.find((item) => item.claimId === ref.claimId);
       return (
@@ -1841,18 +1814,24 @@ export class MemoryPipeline {
         ((ref.effectiveSha256 === undefined && ref.claimRevision === undefined && !claim.ownerEdit) ||
           (ref.effectiveSha256 === sha(memoryClaimText(claim)) &&
             ref.claimRevision === (claim.ownerEdit?.revision ?? 0))) &&
-        this.eligibleForRecall(workspaceId, claim)
+        this.eligibleForRecall(workspaceId, claim, admission)
       );
     });
   }
 
-  private documentEligible(workspaceId: string, document: MemoryDocumentRecord, claims: MemoryClaim[]) {
+  private documentEligible(
+    workspaceId: string,
+    document: MemoryDocumentRecord,
+    claims: MemoryClaim[],
+    admission?: MemorySourceAdmission,
+  ) {
     return (
       !document.sourceRetired &&
       this.targetEligible(workspaceId, document.target) &&
       !memoryContentSensitivityReason(document.content) &&
-      (document.authoredBy === "owner" ||
-        (document.sourceRefs.length > 0 && this.refsEligible(workspaceId, document.sourceRefs, claims)))
+      ((document.authoredBy === "owner" && document.sourceRefs.length === 0) ||
+        (document.sourceRefs.length > 0 &&
+          this.refsEligible(workspaceId, document.sourceRefs, claims, admission)))
     );
   }
 
@@ -1938,13 +1917,14 @@ export class MemoryPipeline {
     );
   }
 
-  private eligibleDreamSessions(
+  private async eligibleDreamSessions(
     workspaceId: string,
     since: number,
     retired: { before: number; sourceHashes: string[] },
   ) {
     const cutoff = Math.max(since, retired.before, Date.now() - 14 * 86400000);
     const sessions: Run[] = [];
+    const admission = this.sourceAdmission(workspaceId);
     let cursor = { endedAt: Number.MAX_SAFE_INTEGER, runId: "" };
     for (;;) {
       const rows = this.repo.db
@@ -1960,13 +1940,14 @@ export class MemoryPipeline {
         runId: string;
         endedAt: number;
       }[];
+      await admission.prepare(rows.map((row) => row.runId));
       for (const row of rows) {
         const run = this.repo.getRun(row.runId);
         if (
           run &&
           this.report(run)?.trim() &&
           !retired.sourceHashes.includes(sha(row.runId)) &&
-          this.sourceEligible(workspaceId, run)
+          this.sourceEligible(workspaceId, run, admission)
         )
           sessions.push(run);
         if (sessions.length === 200) return sessions;
@@ -1985,7 +1966,11 @@ export class MemoryPipeline {
           (operation) => operation.status === "running" && this.dreamWork.has(workspaceId),
         ) ?? null;
       const last = state.dreams.findLast((operation) => operation.status !== "running");
-      const sessions = this.eligibleDreamSessions(workspaceId, last?.startedAt ?? 0, state.retiredSources);
+      const sessions = await this.eligibleDreamSessions(
+        workspaceId,
+        last?.startedAt ?? 0,
+        state.retiredSources,
+      );
       const oldest = sessions.reduce((at, run) => Math.min(at, run.endedAt ?? Date.now()), Date.now());
       return {
         active,
@@ -2058,10 +2043,15 @@ export class MemoryPipeline {
     return promise;
   }
 
-  private dreamTargets(workspaceId: string, documents: MemoryDocumentRecord[], claims: MemoryClaim[]) {
+  private dreamTargets(
+    workspaceId: string,
+    documents: MemoryDocumentRecord[],
+    claims: MemoryClaim[],
+    admission: MemorySourceAdmission,
+  ) {
     const targets = new Map(
       documents
-        .filter((document) => this.documentEligible(workspaceId, document, claims))
+        .filter((document) => this.documentEligible(workspaceId, document, claims, admission))
         .map((document) => [document.path, document.target]),
     );
     for (const claim of claims) {
@@ -2101,7 +2091,7 @@ export class MemoryPipeline {
     let operation: MemoryDreamOperation | undefined;
     let selection: MemoryDreamResult | undefined;
     let committedPublicationUncertain = false;
-    let sources: ReturnType<MemoryPipeline["sourceFence"]> | undefined;
+    let sources: Awaited<ReturnType<MemoryPipeline["sourceFence"]>> | undefined;
     const started = performance.now();
     const checkCurrent = () => {
       controller.signal.throwIfAborted();
@@ -2121,14 +2111,18 @@ export class MemoryPipeline {
     try {
       const prepared = await this.leased(workspaceId, async (checkLease) => {
         const state = await this.readClaims(workspaceId);
+        const admission = await this.claimAdmission(workspaceId, state.claims, () =>
+          controller.signal.throwIfAborted(),
+        );
+        checkLease();
         const claims = state.claims.filter(
           (claim) =>
             claim.capturedAt > Date.now() - 14 * 86400000 &&
             !claim.contradictionIds?.length &&
-            this.eligibleForRecall(workspaceId, claim),
+            this.eligibleForRecall(workspaceId, claim, admission),
         );
         expectedGeneration = state.prior?.generation ?? null;
-        sources = this.sourceFence(workspaceId, claims);
+        sources = await this.sourceFence(workspaceId, claims, admission);
         checkCurrent();
         checkLease();
         operation = {
@@ -2174,9 +2168,12 @@ export class MemoryPipeline {
         );
         expectedGeneration = this.storage.generation(workspaceId)!.generation;
         this.recallDependencies?.changed?.(workspaceId);
-        return { state, claims };
+        const documents = state.documents.filter((document) =>
+          this.documentEligible(workspaceId, document, state.claims, admission),
+        );
+        return { state, claims, documents, admission };
       });
-      const targets = this.dreamTargets(workspaceId, prepared.state.documents, prepared.claims);
+      const targets = this.dreamTargets(workspaceId, prepared.documents, prepared.claims, prepared.admission);
       const ownerDocuments = [{ path: "MEMORY.md", content: owner.content }, ...(owner.documents ?? [])];
       if (
         ownerDocuments.some(
@@ -2192,9 +2189,7 @@ export class MemoryPipeline {
         ...ownerDocuments,
         ...[...targets].map(([path]) => ({
           path,
-          content:
-            prepared.state.documents.find((document) => document.path === path && !document.sourceRetired)
-              ?.content ?? "",
+          content: prepared.documents.find((document) => document.path === path)?.content ?? "",
         })),
       ];
       const modelInputGeneration = expectedGeneration;
@@ -2251,6 +2246,7 @@ export class MemoryPipeline {
               claimRevision: claim.ownerEdit?.revision ?? 0,
             })),
             state.claims,
+            prepared.admission,
           )
         )
           throw new AuxError("cancelled", "Dream source eligibility changed.");
@@ -2451,21 +2447,26 @@ export class MemoryPipeline {
         const change = operation?.changes.find((entry) => entry.changeId === input.changeId);
         if (!operation || !change || change.state !== "pending")
           throw new AuxError("conflict", "This Dream proposal is no longer pending.");
+        const admission =
+          input.decision === "accept"
+            ? await this.claimAdmission(input.workspaceId, state.claims, checkLease)
+            : undefined;
         const updated = { ...change };
         const documents = [...state.documents];
-        let sources: ReturnType<MemoryPipeline["sourceFence"]> | undefined;
+        let sources: Awaited<ReturnType<MemoryPipeline["sourceFence"]>> | undefined;
         let commitEffect: (() => () => void) | undefined;
         if (input.decision === "reject") updated.state = "rejected";
         else {
           this.liveMemorySpace(input.workspaceId);
           if (
             !this.policy(input.workspaceId).enabled ||
-            !this.refsEligible(input.workspaceId, change.sourceRefs, state.claims)
+            !this.refsEligible(input.workspaceId, change.sourceRefs, state.claims, admission)
           )
             throw new AuxError("permission_denied", "This proposal no longer has eligible Memory sources.");
-          sources = this.sourceFence(
+          sources = await this.sourceFence(
             input.workspaceId,
             state.claims.filter((claim) => change.sourceRefs.some((ref) => ref.claimId === claim.claimId)),
+            admission,
           );
           if (change.ownerPath) {
             const owner = readWorkspaceMemory(this.repo, input.workspaceId);
@@ -2568,11 +2569,12 @@ export class MemoryPipeline {
         if (!changes.length)
           throw new AuxError("conflict", "This Dream operation has no applied changes to revert.");
         const owner = readWorkspaceMemory(this.repo, input.workspaceId);
+        const admission = await this.claimAdmission(input.workspaceId, state.claims, checkLease);
         for (const change of changes) {
           if (
-            !this.refsEligible(input.workspaceId, change.sourceRefs, state.claims) ||
+            !this.refsEligible(input.workspaceId, change.sourceRefs, state.claims, admission) ||
             (change.beforeSourceRefs &&
-              !this.refsEligible(input.workspaceId, change.beforeSourceRefs, state.claims))
+              !this.refsEligible(input.workspaceId, change.beforeSourceRefs, state.claims, admission))
           )
             throw new AuxError(
               "conflict",
@@ -2603,9 +2605,10 @@ export class MemoryPipeline {
           }
         }
         const refs = changes.flatMap((change) => [...change.sourceRefs, ...(change.beforeSourceRefs ?? [])]);
-        const sources = this.sourceFence(
+        const sources = await this.sourceFence(
           input.workspaceId,
           state.claims.filter((claim) => refs.some((ref) => ref.claimId === claim.claimId)),
+          admission,
         );
         const ownerChanges = changes
           .filter((change) => change.ownerPath)
@@ -2674,12 +2677,17 @@ export class MemoryPipeline {
     );
   }
 
-  private async recallSources(workspaceId: string, signal: AbortSignal) {
+  private async recallSources(workspaceId: string, signal: AbortSignal, admission: MemorySourceAdmission) {
     this.liveMemorySpace(workspaceId);
     if (!this.policy(workspaceId).enabled) return [];
     const owner = readWorkspaceMemory(this.repo, workspaceId);
     const state = await this.readClaims(workspaceId);
     signal.throwIfAborted();
+    await admission.prepare(
+      state.claims
+        .filter((claim) => !claim.sourceRetired && claim.source?.kind !== "owner-paste")
+        .map((claim) => claim.sourceRunId),
+    );
     const sources: MemoryRecallSource[] = [];
     const add = (source: Omit<MemoryRecallSource, "sha256">) => {
       if (source.text && !memoryContentSensitivityReason(source.text))
@@ -2720,7 +2728,7 @@ export class MemoryPipeline {
           sourceRefs: [],
         });
     for (const claim of state.claims)
-      if (!claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim))
+      if (!claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim, admission))
         add({
           sourceId: `claim:${claim.claimId}`,
           kind: "episodic",
@@ -2740,7 +2748,7 @@ export class MemoryPipeline {
           ],
         });
     for (const document of state.documents)
-      if (this.documentEligible(workspaceId, document, state.claims))
+      if (this.documentEligible(workspaceId, document, state.claims, admission))
         add({
           sourceId: `document:${document.documentId}`,
           kind: document.target.kind,
@@ -2767,6 +2775,7 @@ export class MemoryPipeline {
           url: entry.url,
           sourceRefs: [],
         });
+    admission.check();
     return sources;
   }
 
@@ -2827,10 +2836,17 @@ export class MemoryPipeline {
   async recall(raw: unknown, signal?: AbortSignal, checkOwner?: () => void) {
     const input = MemoryDocumentMethodSchemas["memory.pipeline.recall"].parse(raw);
     return this.ownRecall(input.workspaceId, signal, checkOwner, async (signal, check) => {
-      const sources = await this.recallSources(input.workspaceId, signal);
+      const admission = this.sourceAdmission(input.workspaceId, () => {
+        signal.throwIfAborted();
+        check();
+      });
+      const sources = await this.recallSources(input.workspaceId, signal, admission);
       check();
-      const result = await this.recallEngine.search(sources, input, signal, check);
-      const current = await this.recallSources(input.workspaceId, signal);
+      const result = await this.recallEngine.search(sources, input, signal, () => {
+        check();
+        admission.check();
+      });
+      const current = await this.recallSources(input.workspaceId, signal, admission);
       check();
       const identity = (sources: MemoryRecallSource[]) =>
         sha(JSON.stringify(sources.map((source) => [source.sourceId, source.revision, source.sha256])));
@@ -2843,14 +2859,18 @@ export class MemoryPipeline {
   async readSource(raw: unknown, signal?: AbortSignal, checkOwner?: () => void) {
     const input = MemoryDocumentMethodSchemas["memory.pipeline.readSource"].parse(raw);
     return this.ownRecall(input.workspaceId, signal, checkOwner, async (signal, check) => {
-      const sources = await this.recallSources(input.workspaceId, signal);
+      const admission = this.sourceAdmission(input.workspaceId, () => {
+        signal.throwIfAborted();
+        check();
+      });
+      const sources = await this.recallSources(input.workspaceId, signal, admission);
       check();
       const source = sources.find((source) => source.sourceId === input.sourceId);
       if (!source || source.revision !== input.revision || source.sha256 !== input.sha256)
-        throw new AuxError("conflict", "This Memory source changed or is no longer eligible. Search again.");
+        throw new AuxError("conflict", memoryReadNoContentErrors.changed);
       const lines = source.text.split("\n");
       if (input.startLine > lines.length)
-        throw new AuxError("invalid_params", "The requested line is outside this source.");
+        throw new AuxError("invalid_params", memoryReadNoContentErrors.outside);
       const selected: string[] = [];
       let bytes = 0;
       for (const line of lines.slice(input.startLine - 1, input.startLine - 1 + input.limitLines)) {
@@ -2858,12 +2878,12 @@ export class MemoryPipeline {
         selected.push(line);
         bytes += Buffer.byteLength(line) + 1;
       }
-      const current = (await this.recallSources(input.workspaceId, signal)).find(
+      const current = (await this.recallSources(input.workspaceId, signal, admission)).find(
         (entry) => entry.sourceId === input.sourceId,
       );
       check();
       if (!current || current.revision !== source.revision || current.sha256 !== source.sha256)
-        throw new AuxError("cancelled", "The source changed while reading.");
+        throw new AuxError("cancelled", memoryReadNoContentErrors.retired);
       const endLine = input.startLine + selected.length - 1;
       return {
         ...source,
@@ -2949,7 +2969,7 @@ export class MemoryPipeline {
       const retirementNeeded =
         expiredBefore === undefined &&
         (forgetAll
-          ? this.eligibleDreamSessions(input.workspaceId, retirement.before, retirement).length > 0
+          ? (await this.eligibleDreamSessions(input.workspaceId, retirement.before, retirement)).length > 0
           : !!input.sourceRunId && !retirement.sourceHashes.includes(sha(input.sourceRunId)));
       const nextRetirement = {
         before: forgetAll || retiredIds.length > 5000 ? Date.now() : retirement.before,

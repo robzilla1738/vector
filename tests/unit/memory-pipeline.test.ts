@@ -1,3 +1,4 @@
+import { MemorySourceAdmission } from "../../apps/runtime/dist/services/memory-source-admission.js";
 import { expect, it, vi } from "vitest";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -1427,6 +1428,9 @@ it("passes the saved extraction operation identity and exact eligible report bou
   try {
     const report = "The synthetic workshop happens every Tuesday and should be remembered.";
     f.save("original-completed", report);
+    const proof = await new MemorySourceAdmission(f.repo, f.workspace.workspaceId, () => {}).prepare([
+      "original-completed",
+    ]);
     await f.pipeline.extractRun(f.workspace.workspaceId, "original-completed", "manual");
     const input = extract.mock.calls[0]![0];
     expect(input.job).toMatchObject({
@@ -1438,7 +1442,7 @@ it("passes the saved extraction operation identity and exact eligible report bou
     expect(input.job.operationId).toMatch(/^[a-f0-9-]{36}$/);
     expect(input.job.sourceDigest).toBe(
       createHash("sha256")
-        .update(JSON.stringify(["original-completed", report]))
+        .update(JSON.stringify(["original-completed", report, proof.digest()]))
         .digest("hex"),
     );
     expect(input.job.policyDigest).toBe(
