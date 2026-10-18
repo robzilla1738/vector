@@ -171,6 +171,8 @@ export const TabSpaceMigrationSchema = z
   .max(512);
 
 export const WindowTabsSchema = z.object({
+  /** Native HTML fullscreen owner; browser/pseudo fullscreen never hides shell chrome. */
+  tabFullscreenPageId: id.nullable().optional(),
   windowId: id,
   windowKind: WindowKindSchema.optional(),
   order: z.array(id),

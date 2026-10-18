@@ -1,3 +1,4 @@
+import { tabFullscreenPageId } from "../tab-fullscreen";
 import { useShallow } from "zustand/react/shallow";
 import { useCommittedSurfaceWitness } from "../committed-surface-witness";
 import { useOrganizationEditor } from "../features/organization-state";
@@ -59,6 +60,7 @@ export const Stage = memo(
     );
     const page = movedCovered ? undefined : localSelection;
     const mode = useStore((s) => s.mode);
+    const fullscreenPageId = useStore((state) => tabFullscreenPageId(state, bridge.windowId));
     const splitting = useFeature("splitView");
     const surfaceState = useSurfaceState();
     const overlay = useStore((s) => s.overlay);
@@ -71,7 +73,8 @@ export const Stage = memo(
     const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
     const organizationCovered = !!useOrganizationEditor();
-    const covered = organizationCovered || !!surfaceState.dragging || surfaceState.picker;
+    const covered =
+      !fullscreenPageId && (organizationCovered || !!surfaceState.dragging || surfaceState.picker);
     const splitGroup = useStore((state) => {
       const group = splitting && page ? splitGroupForPage(state.layout, page.pageId) : null;
       return group?.panes.every((id) => {
@@ -90,7 +93,15 @@ export const Stage = memo(
       splitGroup &&
       splitGroup.panes.every((id) => {
         const item = pages.find((page) => page.pageId === id);
-        return item && nativePageId({ mode, overlay, activePageId: id, ...item });
+        return (
+          item &&
+          nativePageId({
+            mode: fullscreenPageId ? "focus" : mode,
+            overlay: fullscreenPageId ? null : overlay,
+            activePageId: id,
+            ...item,
+          })
+        );
       });
     const splitVisible = !covered && selectedSplit;
     const retainedPage =
@@ -99,8 +110,8 @@ export const Stage = memo(
     const selectedPage =
       !!page &&
       nativePageId({
-        mode,
-        overlay,
+        mode: fullscreenPageId ? "focus" : mode,
+        overlay: fullscreenPageId ? null : overlay,
         activePageId: page.pageId,
         url: page.url,
         backend: page.backend,
@@ -123,25 +134,29 @@ export const Stage = memo(
       mode,
       overlay,
       covered,
-      splitVisible
-        ? splitGroup!.panes.map((id) => {
-            const item = pages.find((page) => page.pageId === id)!;
-            return [id, item.documentEpoch];
-          })
-        : showingPage && page
-          ? [[page.pageId, page.documentEpoch]]
-          : [],
+      fullscreenPageId && page
+        ? [[fullscreenPageId, page.documentEpoch]]
+        : splitVisible
+          ? splitGroup!.panes.map((id) => {
+              const item = pages.find((page) => page.pageId === id)!;
+              return [id, item.documentEpoch];
+            })
+          : showingPage && page
+            ? [[page.pageId, page.documentEpoch]]
+            : [],
     ]);
     useCommittedSurfaceWitness(stageNode, "stage", () => committedSelection);
 
     const visibleIds = JSON.stringify(
-      covered
-        ? []
-        : selectedSplit
-          ? splitGroup!.panes
-          : selectedPage && page && isLocal(page) && !page.ownedByRuntime
-            ? [page.pageId]
-            : [],
+      fullscreenPageId
+        ? [fullscreenPageId]
+        : covered
+          ? []
+          : selectedSplit
+            ? splitGroup!.panes
+            : selectedPage && page && isLocal(page) && !page.ownedByRuntime
+              ? [page.pageId]
+              : [],
     );
     useEffect(() => {
       if (inNativeHost) void bridge.setStageVisible(JSON.parse(visibleIds) as string[]).catch(errToast);
@@ -156,11 +171,12 @@ export const Stage = memo(
     return (
       <div
         inert={
-          organizationCovered ||
-          overlay === "command-surface" ||
-          overlay === "tasks" ||
-          overlay === "settings" ||
-          overlay === "saved-pages"
+          !fullscreenPageId &&
+          (organizationCovered ||
+            overlay === "command-surface" ||
+            overlay === "tasks" ||
+            overlay === "settings" ||
+            overlay === "saved-pages")
         }
         className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`}
         data-controller={page?.controller ?? "none"}
@@ -212,7 +228,8 @@ export const Stage = memo(
                   <SplitStage
                     group={splitGroup}
                     pages={pages}
-                    presented={!!splitVisible && overlay !== "command-surface"}
+                    presented={!!splitVisible && (!!fullscreenPageId || overlay !== "command-surface")}
+                    fullscreenPageId={fullscreenPageId}
                   />
                 </Suspense>
               ) : (

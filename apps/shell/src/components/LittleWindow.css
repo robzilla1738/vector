@@ -141,3 +141,8 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Preserve the native page embed while the exact Little tab owns fullscreen. */
+.little-window.native-host[data-tab-fullscreen] > .little-strip {
+  display: none;
+}

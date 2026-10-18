@@ -1,3 +1,5 @@
+import { tabFullscreenPageId } from "./tab-fullscreen";
+import "./tab-fullscreen.css";
 import { useTabChats } from "./agent/tab-chats";
 import { useRunAttention } from "./app/use-run-attention";
 import { useNativeObservers } from "./app/use-native-observers";
@@ -215,7 +217,9 @@ export function App() {
     useShallow((s) => placementFields(s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined)),
   );
   const { minimal, hideToolbar, layoutMotion, sidebarWidth } = useLayoutChrome();
+  const fullscreenPageId = useStore((state) => tabFullscreenPageId(state, bridge.windowId));
   const pageChrome =
+    !fullscreenPageId &&
     inNativeHost &&
     !quickAsk &&
     (minimal ||
@@ -236,18 +240,20 @@ export function App() {
   const [toolbarReady, setToolbarReady] = useState(false);
   const confirming = useStore((s) => !!s.confirmation);
   const nativeShowing =
-    !organizationCovered &&
-    !!nativePageId({
-      mode,
-      overlay,
-      activePageId,
-      url: activePage?.url,
-      backend: activePage?.backend,
-      viewStatus: activePage?.viewStatus,
-      navigationError: activePage?.navigationError,
-      showBlankDocument: activePage?.showBlankDocument,
-    });
-  const toolbarHidden = (minimal || (pageChrome && nativeShowing)) && !toolbarReveal.revealed;
+    !!fullscreenPageId ||
+    (!organizationCovered &&
+      !!nativePageId({
+        mode,
+        overlay,
+        activePageId,
+        url: activePage?.url,
+        backend: activePage?.backend,
+        viewStatus: activePage?.viewStatus,
+        navigationError: activePage?.navigationError,
+        showBlankDocument: activePage?.showBlankDocument,
+      }));
+  const toolbarHidden =
+    !!fullscreenPageId || ((minimal || (pageChrome && nativeShowing)) && !toolbarReveal.revealed);
   const floatingSidebar = sidebarPeek && (minimal || sidebar !== "expanded");
   const [peekCovering, setPeekCovering] = useState(false);
   useEffect(() => {
@@ -262,6 +268,7 @@ export function App() {
   const surfaceCovered = useSurfaceCovering();
   const surfaceCovering = useFeature("splitView") && surfaceCovered && nativeShowing;
   const nativeOverlayCovering =
+    !fullscreenPageId &&
     inNativeHost &&
     nativeShowing &&
     (organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering);
@@ -329,6 +336,7 @@ export function App() {
             ...spaceThemeStyle({ theme: spaceTheme }),
           } as React.CSSProperties
         }
+        data-tab-fullscreen={fullscreenPageId ?? undefined}
         data-overlay={overlay ?? undefined}
         onKeyDown={(e) => {
           if (

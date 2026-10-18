@@ -4124,3 +4124,71 @@ diff --git a/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc b/chrome
  }
  
  bool WebUIStubLocationBar::IsFullscreen() const {
+diff --git a/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc b/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
+--- a/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
++++ b/chrome/browser/ui/webui_browser/webui_stub_location_bar.cc
+@@ -15,7 +15,10 @@
+ #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_controller.h"
+ #include "chrome/browser/ui/views/permissions/chip/webui_permission_dashboard.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/bubble/bubble_border.h"
++#include "ui/views/view.h"
++#include "ui/views/view_class_properties.h"
+ #include "ui/views/widget/widget.h"
+ 
+ WebUIStubLocationBar::WebUIStubLocationBar(WebUIBrowserWindow* window)
+@@ -112,10 +115,23 @@
+   ui::TrackedElement* location_button = GetAnchorOrNull();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   // Aux owns its toolbar DOM and does not register Webium's location icon.
+-  // Use the original native window, as other WebUI bubbles already do.
++  // Keep a tiny fallback in the original window's top toolbar area. Anchoring
++  // to the entire contents view places the bubble below (or above) the window.
+   if (!location_button) {
+-    return {{views::BubbleAnchor(window_->widget()->GetContentsView()),
+-             std::nullopt, views::BubbleBorder::TOP_LEFT}};
++    if (!aux_bubble_anchor_) {
++      auto anchor = std::make_unique<views::View>();
++      constexpr int kFallbackToolbarTopInset = 40;
++      anchor->SetBounds(bubble_anchor_util::kNoToolbarLeftOffset,
++                        kFallbackToolbarTopInset, 1, 1);
++      anchor->SetProperty(views::kViewIgnoredByLayoutKey, true);
++      anchor->SetCanProcessEventsWithinSubtree(false);
++      anchor->GetViewAccessibility().SetIsIgnored(true);
++      aux_bubble_anchor_.SetView(
++          window_->widget()->GetContentsView()->AddChildView(
++              std::move(anchor)));
++    }
++    return {{views::BubbleAnchor(aux_bubble_anchor_.view()), std::nullopt,
++             views::BubbleBorder::TOP_LEFT}};
+   }
+ #endif
+   return {{views::BubbleAnchor(location_button), std::nullopt,
+diff --git a/chrome/browser/ui/webui_browser/webui_stub_location_bar.h b/chrome/browser/ui/webui_browser/webui_stub_location_bar.h
+--- a/chrome/browser/ui/webui_browser/webui_stub_location_bar.h
++++ b/chrome/browser/ui/webui_browser/webui_stub_location_bar.h
+@@ -8,8 +8,13 @@
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/content_settings/content_setting_image_view_delegate.h"
+ #include "chrome/browser/ui/location_bar/location_bar.h"
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "ui/views/view_tracker.h"
++#endif
+ 
+ class BrowserWindowInterface;
+ class PermissionDashboardController;
+@@ -72,6 +77,9 @@
+ 
+  private:
+   const raw_ptr<WebUIBrowserWindow> window_;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  views::ViewTracker aux_bubble_anchor_;
++#endif
+   std::unique_ptr<WebUIPermissionDashboard> permission_dashboard_;
+   std::unique_ptr<PermissionDashboardController>
+       permission_dashboard_controller_;

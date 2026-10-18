@@ -66,3 +66,4 @@ aux/0065-runtime-liveness-tab-search.patch
 aux/0066-native-context-input-proof.patch
 aux/0067-native-chat-split-menus.patch
 aux/0068-person-omnibox-handback.patch
+aux/0069-content-fullscreen.patch

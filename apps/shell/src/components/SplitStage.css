@@ -122,3 +122,20 @@
 .split-favicons > :not(:first-child) {
   margin-left: calc(-1 * var(--space-1));
 }
+
+/* Keep Blink's plugin layout and its original SurfaceEmbed connector. */
+.split-stage[data-fullscreen-page-id] .split-pane[aria-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.split-stage[data-fullscreen-page-id] .split-pane-header,
+.split-stage[data-fullscreen-page-id] .fluid-split-divider {
+  display: none;
+}
+.split-stage[data-fullscreen-page-id] .split-pane {
+  border-radius: 0;
+  box-shadow: none;
+}
+.split-stage[data-fullscreen-page-id] .split-pane-page {
+  top: 0;
+}

@@ -111,6 +111,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   restoringTabs: true,
   pendingRestoreIds: [],
   catalogVersion: 0,
+  tabFullscreenPageId: null,
 
   /**
    * Main-owned catalog patches (§7.2). Ops apply in order inside one state
@@ -124,7 +125,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     set((st) => {
       if (patch.baseVersion !== st.catalogVersion) {
         resyncNeeded = true;
-        return {};
+        return { tabFullscreenPageId: null };
       }
       syncBatterySaverState(patch.batterySaverActive);
       let pages = orderedPages(st.pages);
@@ -135,6 +136,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       let zoomLevels = st.zoomLevels;
       let activePageId = st.activePageId;
       let splitPageId = st.splitPageId;
+      let tabFullscreenPageId = st.tabFullscreenPageId;
       for (const op of patch.ops) {
         if (op.op === "upsert") {
           const tab = op.tab;
@@ -183,6 +185,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
             }
           }
         } else if (op.op === "remove") {
+          if (tabFullscreenPageId === op.pageId) tabFullscreenPageId = null;
           const applied = applyRemoval(
             {
               ...st,
@@ -214,6 +217,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
             layoutDirty = true;
           }
           activePageId = op.window.activePageId;
+          tabFullscreenPageId = op.window.tabFullscreenPageId ?? null;
           if (pages.some((page) => page.pageId === activePageId && isLocal(page)))
             rememberMovedSelection(null);
         }
@@ -236,6 +240,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         activePageId,
         splitPageId,
         catalogVersion: patch.version,
+        tabFullscreenPageId,
       };
     });
     if (resyncNeeded) void get().resyncTabs();
@@ -293,6 +298,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         activePageId,
         splitPageId: splitForPage(layout, pages, activePageId),
         catalogVersion: snapshot.version,
+        tabFullscreenPageId: mine?.tabFullscreenPageId ?? null,
       };
     });
   },

@@ -1,0 +1,97 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -41,6 +41,8 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
++#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+ #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -52,6 +54,7 @@
+ #include "components/split_tabs/split_tab_visual_data.h"
+ #include "components/tabs/public/split_tab_data.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/fullscreen_types.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/reload_type.h"
+@@ -205,6 +208,7 @@
+     model->RemoveObserver(this);
+   }
+   observed_.clear();
++  fullscreen_subscriptions_.clear();
+   browsers_ = nullptr;
+   profile_ = nullptr;
+ }
+@@ -217,6 +221,12 @@
+   TabStripModel* model = browser->GetTabStripModel();
+   if (model && observed_.insert(model).second) {
+     model->AddObserver(this);
++    if (auto* manager = ExclusiveAccessManager::From(browser)) {
++      fullscreen_subscriptions_.emplace(
++          model, manager->fullscreen_controller()->RegisterOnFullscreenStateChanged(
++                     base::BindRepeating(&TabCatalog::Changed,
++                                         weak_factory_.GetWeakPtr())));
++    }
+     if (auto* active = model->GetActiveWebContents()) {
+       LoadPersonRestoredTab(profile_, active);
+     }
+@@ -226,6 +236,7 @@
+ void TabCatalog::ForgetBrowser(BrowserWindowInterface* browser) {
+   TabStripModel* model = browser->GetTabStripModel();
+   if (model && observed_.erase(model)) {
++    fullscreen_subscriptions_.erase(model);
+     model->RemoveObserver(this);
+   }
+ }
+@@ -363,6 +374,7 @@
+ }
+ 
+ void TabCatalog::OnTabStripModelDestroyed(TabStripModel* model) {
++  fullscreen_subscriptions_.erase(model);
+   observed_.erase(model);
+   Changed();
+ }
+@@ -642,6 +654,16 @@
+                                                            : "normal");
+       window.Set("order", std::move(order));
+       window.Set("activePageId", std::move(active));
++      base::Value tab_fullscreen_page;
++      auto* manager = ExclusiveAccessManager::From(browser);
++      auto* contents = model->GetActiveWebContents();
++      if (manager && contents &&
++          manager->fullscreen_controller()->GetFullscreenState(contents)
++                  .target_mode == content::FullscreenMode::kContent) {
++        tab_fullscreen_page =
++            base::Value(PageIdentity::GetOrCreate(profile_, contents));
++      }
++      window.Set("tabFullscreenPageId", std::move(tab_fullscreen_page));
+       windows.Append(std::move(window));
+       return true;
+     });
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+--- a/chrome/browser/ui/aux/tab_catalog.h
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -122,6 +122,8 @@
+       performance_manager::user_tuning::BatterySaverModeManager::Observer>
+       battery_observation_{this};
+   std::set<TabStripModel*> observed_;
++  std::map<TabStripModel*, base::CallbackListSubscription>
++      fullscreen_subscriptions_;
+   std::map<std::string, int64_t> created_at_;
+   std::map<std::string, int64_t> last_active_at_;
+   std::map<std::string, int> generations_;
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -242,6 +242,7 @@
+     ":surface_headers",
+     "//chrome/browser/ui/aux/generated:methods",
+     "//chrome/browser/ui/browser_window",
++    "//chrome/browser/ui/exclusive_access",
+     "//chrome/browser/ui/login:login",
+     "//chrome/browser/ui/tabs:tabs_public",
+     "//chrome/common:mojo_bindings",

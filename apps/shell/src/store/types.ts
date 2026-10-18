@@ -119,11 +119,29 @@ export interface Workspace {
   setAgentDraft(text: string): void;
   composerPreferences: Record<
     string,
-    { privateTask: boolean; executionTarget?: "local" | "cloud"; profile?: string; projectRoot?: string; packageNames?: string[]; modelId?: string; agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high" }
+    {
+      privateTask: boolean;
+      executionTarget?: "local" | "cloud";
+      profile?: string;
+      projectRoot?: string;
+      packageNames?: string[];
+      modelId?: string;
+      agentMode?: import("@aux/contracts").AgentMode;
+      reasoning?: "low" | "medium" | "high";
+    }
   >;
   setComposerPreferences(
     key: string,
-    value: { privateTask: boolean; executionTarget?: "local" | "cloud"; profile?: string; projectRoot?: string; packageNames?: string[]; modelId?: string; agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high" },
+    value: {
+      privateTask: boolean;
+      executionTarget?: "local" | "cloud";
+      profile?: string;
+      projectRoot?: string;
+      packageNames?: string[];
+      modelId?: string;
+      agentMode?: import("@aux/contracts").AgentMode;
+      reasoning?: "low" | "medium" | "high";
+    },
   ): void;
   conversationDrafts: Record<string, string>;
   setConversationDraft(id: string, text: string): void;
@@ -215,8 +233,11 @@ export interface Workspace {
       privateTask?: boolean;
       executionTarget?: "local" | "cloud";
       modelId?: string;
-      profile?: string; projectRoot?: string; packageNames?: string[];
-      agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high";
+      profile?: string;
+      projectRoot?: string;
+      packageNames?: string[];
+      agentMode?: import("@aux/contracts").AgentMode;
+      reasoning?: "low" | "medium" | "high";
       pageId?: string | null;
       pageIds?: string[];
       contextPageRefs?: PageContextRef[];
@@ -294,6 +315,8 @@ export interface Workspace {
   applyDownload(d: Download): void;
   /** last applied catalog patch version — gap detection for the patch stream */
   catalogVersion: number;
+  /** Transient native tab-fullscreen owner; never stored as a layout preference. */
+  tabFullscreenPageId: string | null;
   applyTabsPatch(patch: TabPatch): void;
   syncTabsSnapshot(snapshot: TabCatalogSnapshot): void;
   /** Workspace placement relayed with a `move` — the destination window files
@@ -408,6 +431,7 @@ export type TabKeys =
   | "reopeningTab"
   | "tabAudio"
   | "catalogVersion"
+  | "tabFullscreenPageId"
   | "applyTabsPatch"
   | "syncTabsSnapshot"
   | "applyTabsPlacement"

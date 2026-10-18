@@ -1,3 +1,4 @@
+import { tabFullscreenPageId } from "../tab-fullscreen";
 import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticMenuItemProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
@@ -19,6 +20,7 @@ const PageSurface = lazy(() => import("./PageSurface").then((module) => ({ defau
 const Downloads = lazy(() => import("./Downloads").then((module) => ({ default: module.Downloads })));
 
 export function LittleWindow() {
+  const fullscreenPageId = useStore((state) => tabFullscreenPageId(state, bridge.windowId));
   const page = useStore((state) =>
     ownPages(orderedPages(state.pages)).find((item) => item.pageId === state.activePageId),
   );
@@ -74,7 +76,11 @@ export function LittleWindow() {
   }, [panel, spacesReady, spaces]);
   const host = page && /^https?:/.test(page.url) ? new URL(page.url).host : "New Little window";
   return (
-    <main className={`little-window${inNativeHost ? " native-host" : ""}`} aria-label="Little window">
+    <main
+      className={`little-window${inNativeHost ? " native-host" : ""}`}
+      data-tab-fullscreen={fullscreenPageId ?? undefined}
+      aria-label="Little window"
+    >
       <header className="little-strip">
         <span className="little-host" title={page?.url}>
           {page?.url.startsWith("https:") && (

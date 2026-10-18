@@ -74,10 +74,12 @@ export function SplitStage({
   group,
   pages,
   presented = true,
+  fullscreenPageId = null,
 }: {
   group: SplitGroup;
   pages: PageTarget[];
   presented?: boolean;
+  fullscreenPageId?: string | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<Box>({ x: 0, y: 0, width: 0, height: 0 });
@@ -98,8 +100,8 @@ export function SplitStage({
       resize(start.index, start.ratio);
   }, [group.id, resize]);
   useLayoutEffect(() => {
-    if (!presented) cancelDrag();
-  }, [presented, cancelDrag]);
+    if (!presented || fullscreenPageId) cancelDrag();
+  }, [presented, fullscreenPageId, cancelDrag]);
   useEffect(() => {
     window.addEventListener("blur", cancelDrag);
     return () => {
@@ -122,7 +124,7 @@ export function SplitStage({
     () => [...group.panes, ...geometry.dividers.map((divider) => `${group.id}:divider:${divider.index}`)],
     [group.id, group.panes, geometry.dividers],
   );
-  const rects = useSpringRects(targets, ids, resizing);
+  const rects = useSpringRects(targets, ids, resizing || !!fullscreenPageId);
   const committedPages = JSON.stringify(
     group.panes.map((id) => [id, pages.find((page) => page.pageId === id)?.documentEpoch ?? null]),
   );
@@ -132,16 +134,24 @@ export function SplitStage({
     return renderedGeometry === null ? null : JSON.stringify([committedPages, renderedGeometry]);
   });
   return (
-    <section className="split-stage" ref={root} aria-label={`${group.panes.length} split panes`}>
+    <section
+      className="split-stage"
+      ref={root}
+      aria-label={`${group.panes.length} split panes`}
+      data-fullscreen-page-id={fullscreenPageId ?? undefined}
+    >
       {group.panes.map((id, index) => {
         const page = pages.find((page) => page.pageId === id)!;
-        const rect = rects[index] ?? geometry.panes[index]!;
+        const hidden = !!fullscreenPageId && fullscreenPageId !== id;
+        const rect = fullscreenPageId === id ? box : (rects[index] ?? geometry.panes[index]!);
         return (
           <section
             key={id}
             className={`split-pane ${group.focused === id ? "focused" : ""}`}
             style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
             aria-label={`Split pane: ${page.title}`}
+            aria-hidden={hidden}
+            inert={hidden}
           >
             <header className="split-pane-header">
               <span>{hostOf(page.url)}</span>
