@@ -174,9 +174,25 @@ function DesktopContextBody({ active }: { active: boolean }) {
   if (!active) return null;
   return (
     <SettingsSection name="Desktop context" className="desktop-context-settings">
+      <SettingsField
+        layout="feature"
+        label="Remember what you choose"
+        description="Recall visible text and selections from selected apps. Desktop context is separate from Memory and stays off until you enable it."
+        details={
+          <img
+            className="setting-illustration"
+            src="/settings/desktop-context.svg"
+            width={288}
+            height={160}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        }
+      />
       <p className="hint desktop-context-intro">
-        Remember visible text and selections from apps you choose. Capture stays on this Mac, encrypted, for
-        14 days. It uses no model or network request. AI use follows your normal context and sharing controls.
+        Captures stay encrypted on this Mac for 14 days. Capture uses no model or network request. AI use
+        follows your normal context and sharing controls.
       </p>
       {confirmation}
       {error && (

@@ -99,6 +99,15 @@ and independent reviews do not establish live account compatibility. Next curren
 native acceptance must verify the default-route schema correction and Settings
 navigation fix before the manual20-task smoke.
 
+The next renderer integration applies the full-corpus source corrections for
+Home/menu/Memory/selection/CLI and Settings controls, MCP form ownership and
+custom JSON. Current runtime-only native acceptance is blocked before task
+submission: direct runtime reads and authenticated native background calls work,
+but the chat retry does not reach the runtime. No20-task result or cause is claimed.
+The original debug launcher retired after SIGINT; fresh final-source native
+acceptance remains required. Memory fault fixes remain isolated until exact
+publication/rollback failure reviews pass.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

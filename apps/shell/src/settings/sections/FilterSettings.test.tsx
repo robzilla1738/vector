@@ -29,6 +29,13 @@ it("searches filters and reviews a recommendation without downloading on selecti
     });
     const menu = document.querySelector('[role="menu"]')!;
     expect(menu.textContent).toContain("EasyPrivacy");
+    expect(
+      [...menu.querySelectorAll('button[role="menuitem"]')].every((row) =>
+        row.classList.contains("menu-item"),
+      ),
+    ).toBe(true);
+    expect(menu.querySelector(".menu-label")?.textContent).toBe("Recommended");
+    expect(menu.querySelector("hr.menu-sep")).not.toBeNull();
     expect(menu.textContent).not.toContain("EasyList");
     await act(async () =>
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),

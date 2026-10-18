@@ -17,12 +17,19 @@
   .selection-action-row + .selection-action-row {
     border-top: var(--hairline) solid var(--line);
   }
-  .selection-action-row > span:first-child {
+  .selection-action-title {
     flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .selection-action-glyph {
+    display: flex;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--ink-2);
   }
   .selection-action-state {
     color: var(--ink-2);
@@ -39,6 +46,46 @@
   .selection-action-row > .btn:hover {
     background: var(--bg-hover);
   }
+  .selection-action-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .selection-action-symbol {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-lg);
+    background: var(--settings-control-fill);
+    box-shadow: var(--line-inset);
+    color: var(--ink-2);
+  }
+  .selection-action-kind,
+  .selection-action-template {
+    display: grid;
+    gap: 8px;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
+  }
+  .selection-action-kind > span:first-child {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .selection-action-kind-value {
+    min-height: 32px;
+    padding: 5px 10px;
+    border-radius: var(--r-lg);
+    box-shadow: var(--line-inset);
+    background: var(--settings-control-fill);
+  }
+  .selection-action-template textarea {
+    min-height: 128px;
+    resize: vertical;
+  }
   .selection-action-editor {
     display: grid;
     gap: var(--space-3);
@@ -50,6 +97,8 @@
     margin: 0;
   }
   .selection-action-name {
+    flex: 1;
+    min-width: 0;
     display: grid;
     gap: var(--space-1-5);
   }

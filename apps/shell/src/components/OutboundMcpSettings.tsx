@@ -8,9 +8,9 @@ import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { OFFICIAL_MCP_CONNECTORS } from "@aux/contracts";
-import { Select } from "../ui";
+import { Button, Select } from "../ui";
 import { SettingsField } from "../settings/primitives";
 import { SettingsDialogControl } from "../settings/SettingsDialogControl";
 import { McpOAuthSetup } from "./McpOAuthSetup";
@@ -31,6 +31,54 @@ type BundleInspection = {
 };
 function errorText(reason: unknown) {
   return errorMessage(reason);
+}
+
+function AddServerForm({
+  busy,
+  canSubmit,
+  submit,
+  close,
+  children,
+}: {
+  busy: boolean;
+  canSubmit: boolean;
+  submit(): Promise<boolean>;
+  close(): void;
+  children: ReactNode;
+}) {
+  const mounted = useRef(false);
+  const submitting = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  return (
+    <form
+      className="outbound-mcp mcp-add-editor"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (busy || !canSubmit || submitting.current) return;
+        submitting.current = true;
+        try {
+          if ((await submit()) && mounted.current) close();
+        } finally {
+          submitting.current = false;
+        }
+      }}
+    >
+      {children}
+      <footer>
+        <Button tone="ghost" disabled={busy} onClick={close}>
+          Cancel
+        </Button>
+        <Button tone="primary" type="submit" disabled={busy || !canSubmit}>
+          {busy ? "Adding…" : "Add server"}
+        </Button>
+      </footer>
+    </form>
+  );
 }
 
 function ServerSource({ server }: { server: OutboundMcpServer }) {
@@ -256,8 +304,10 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
     setMessage("");
     try {
       await work();
+      return true;
     } catch (reason) {
       setError(errorText(reason));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -276,7 +326,7 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
     }
   };
   const register = async () => {
-    if (!workspaceId || !name.trim()) return;
+    if (!workspaceId || !name.trim()) return false;
     let source: OutboundMcpServer["source"];
     if (sourceKind === "local")
       source = {
@@ -288,8 +338,8 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
     else if (sourceKind === "remote") source = { kind: "remote", url: url.trim(), auth };
     else if (bundle)
       source = { kind: "bundle", path: bundle.path, sha256: bundle.sha256, format: bundle.format };
-    else return;
-    await action(async () => {
+    else return false;
+    return action(async () => {
       const server = await call("mcp.servers.register", { workspaceId, name: name.trim(), source });
       await refreshServers(server.serverId);
       setName("");
@@ -356,192 +406,201 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
             label="Add an MCP server"
             action="＋ Add server…"
           >
-            <div className="outbound-mcp mcp-add-editor">
-              <details className="mcp-official-connections">
-                <summary>Official remote connections</summary>
-                {OFFICIAL_MCP_CONNECTORS.map((connector) => (
-                  <div key={connector.id}>
-                    <strong>{connector.name}</strong>
-                    <p>{connector.help}</p>
-                    <p>
-                      <code>{connector.url}</code>
-                    </p>
-                    <button
-                      type="button"
-                      className="btn sm ghost"
+            {(close) => (
+              <AddServerForm
+                busy={busy}
+                canSubmit={
+                  !!workspaceId &&
+                  !!name.trim() &&
+                  (sourceKind === "bundle"
+                    ? !!bundle
+                    : sourceKind === "local"
+                      ? !!command.trim() && !!cwd.trim()
+                      : url.startsWith("https://"))
+                }
+                submit={register}
+                close={close}
+              >
+                <details className="mcp-official-connections">
+                  <summary>Official remote connections</summary>
+                  {OFFICIAL_MCP_CONNECTORS.map((connector) => (
+                    <div key={connector.id}>
+                      <strong>{connector.name}</strong>
+                      <p>{connector.help}</p>
+                      <p>
+                        <code>{connector.url}</code>
+                      </p>
+                      <button
+                        type="button"
+                        className="btn sm ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          setSourceKind("remote");
+                          setName(connector.name);
+                          setUrl(connector.url);
+                          setAuth("oauth");
+                          setMessage(`Review ${connector.name} below, then add it to this Space.`);
+                        }}
+                      >
+                        Set up {connector.name}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn sm ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          void action(async () => {
+                            await bridge.openExternal(connector.registrationUrl);
+                          })
+                        }
+                      >
+                        Open {connector.name} registration guide
+                      </button>
+                    </div>
+                  ))}
+                </details>
+                <div
+                  className="settings-editor-fields inline-labels"
+                  role="group"
+                  aria-label="Server connection"
+                >
+                  <label htmlFor={`${controlId}-source`}>
+                    Source
+                    <Select
                       disabled={busy}
-                      onClick={() => {
-                        setSourceKind("remote");
-                        setName(connector.name);
-                        setUrl(connector.url);
-                        setAuth("oauth");
-                        setMessage(`Review ${connector.name} below, then add it to this Space.`);
+                      id={`${controlId}-source`}
+                      aria-label="MCP source type"
+                      value={sourceKind}
+                      onChange={(event) => {
+                        setSourceKind(event.target.value as typeof sourceKind);
+                        setBundle(null);
                       }}
                     >
-                      Set up {connector.name}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn sm ghost"
+                      <option value="remote">Remote HTTPS</option>
+                      <option value="local">Local command</option>
+                      <option value="bundle">.mcpb or .dxt bundle</option>
+                    </Select>
+                  </label>
+                  <label>
+                    Server name
+                    <input
                       disabled={busy}
-                      onClick={() =>
-                        void action(async () => {
-                          await bridge.openExternal(connector.registrationUrl);
-                        })
-                      }
-                    >
-                      Open {connector.name} registration guide
-                    </button>
-                  </div>
-                ))}
-              </details>
-              <div
-                className="settings-editor-fields inline-labels"
-                role="group"
-                aria-label="Server connection"
-              >
-                <label htmlFor={`${controlId}-source`}>
-                  Source
-                  <Select
-                    id={`${controlId}-source`}
-                    aria-label="MCP source type"
-                    value={sourceKind}
-                    onChange={(event) => {
-                      setSourceKind(event.target.value as typeof sourceKind);
-                      setBundle(null);
-                    }}
-                  >
-                    <option value="remote">Remote HTTPS</option>
-                    <option value="local">Local command</option>
-                    <option value="bundle">.mcpb or .dxt bundle</option>
-                  </Select>
-                </label>
-                <label>
-                  Server name
-                  <input
-                    value={name}
-                    maxLength={200}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="A name you recognize"
-                  />
-                </label>
-                {sourceKind === "remote" && (
-                  <>
-                    <label>
-                      HTTPS endpoint
-                      <input
-                        type="url"
-                        value={url}
-                        onChange={(event) => setUrl(event.target.value)}
-                        placeholder="https://example.com/mcp"
-                      />
-                    </label>
-                    <label htmlFor={`${controlId}-authentication`}>
-                      Authentication
-                      <Select
-                        id={`${controlId}-authentication`}
-                        value={auth}
-                        onChange={(event) => setAuth(event.target.value as typeof auth)}
+                      value={name}
+                      maxLength={200}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="A name you recognize"
+                    />
+                  </label>
+                  {sourceKind === "remote" && (
+                    <>
+                      <label>
+                        HTTPS endpoint
+                        <input
+                          disabled={busy}
+                          type="url"
+                          value={url}
+                          onChange={(event) => setUrl(event.target.value)}
+                          placeholder="https://example.com/mcp"
+                        />
+                      </label>
+                      <label htmlFor={`${controlId}-authentication`}>
+                        Authentication
+                        <Select
+                          disabled={busy}
+                          id={`${controlId}-authentication`}
+                          value={auth}
+                          onChange={(event) => setAuth(event.target.value as typeof auth)}
+                        >
+                          <option value="oauth">OAuth</option>
+                          <option value="none">None</option>
+                        </Select>
+                      </label>
+                    </>
+                  )}
+                  {sourceKind === "local" && (
+                    <>
+                      <p {...staticHintProps}>
+                        Enter an executable and one argument per line. Aux does not run it while you edit this
+                        form. The working directory is readable by the server. Network and file writes are
+                        blocked. Do not put secrets in arguments.
+                      </p>
+                      <label>
+                        Executable path
+                        <input
+                          disabled={busy}
+                          value={command}
+                          onChange={(event) => setCommand(event.target.value)}
+                          placeholder="/absolute/path/to/server"
+                        />
+                      </label>
+                      <label>
+                        Working directory
+                        <input
+                          disabled={busy}
+                          value={cwd}
+                          onChange={(event) => setCwd(event.target.value)}
+                          placeholder="/absolute/project/path"
+                        />
+                      </label>
+                      <label>
+                        Arguments, one per line
+                        <textarea
+                          disabled={busy}
+                          rows={3}
+                          value={argumentsText}
+                          onChange={(event) => setArgumentsText(event.target.value)}
+                        />
+                      </label>
+                    </>
+                  )}
+                  {sourceKind === "bundle" && (
+                    <>
+                      <p {...staticHintProps}>
+                        Aux supports self-contained Node bundles with static arguments and bundled files.
+                        Python, UV, binary servers, host settings and environment values are not supported
+                        yet.
+                      </p>
+                      <button
+                        {...smallButtonProps}
+                        {...auxNativeButtonTypeProps}
+                        disabled={busy}
+                        onClick={() => void inspectBundle()}
                       >
-                        <option value="oauth">OAuth</option>
-                        <option value="none">None</option>
-                      </Select>
-                    </label>
-                  </>
-                )}
-                {sourceKind === "local" && (
-                  <>
-                    <p {...staticHintProps}>
-                      Enter an executable and one argument per line. Aux does not run it while you edit this
-                      form. The working directory is readable by the server. Network and file writes are
-                      blocked. Do not put secrets in arguments.
-                    </p>
-                    <label>
-                      Executable path
-                      <input
-                        value={command}
-                        onChange={(event) => setCommand(event.target.value)}
-                        placeholder="/absolute/path/to/server"
-                      />
-                    </label>
-                    <label>
-                      Working directory
-                      <input
-                        value={cwd}
-                        onChange={(event) => setCwd(event.target.value)}
-                        placeholder="/absolute/project/path"
-                      />
-                    </label>
-                    <label>
-                      Arguments, one per line
-                      <textarea
-                        rows={3}
-                        value={argumentsText}
-                        onChange={(event) => setArgumentsText(event.target.value)}
-                      />
-                    </label>
-                  </>
-                )}
-                {sourceKind === "bundle" && (
-                  <>
-                    <p {...staticHintProps}>
-                      Aux supports self-contained Node bundles with static arguments and bundled files.
-                      Python, UV, binary servers, host settings and environment values are not supported yet.
-                    </p>
-                    <button
-                      {...smallButtonProps}
-                      {...auxNativeButtonTypeProps}
-                      disabled={busy}
-                      onClick={() => void inspectBundle()}
-                    >
-                      Choose and inspect bundle…
-                    </button>
-                    {bundle && (
-                      <div className="mcp-source-details">
-                        <div>
-                          <span {...staticMcpSourceLabelProps}>Original bundle</span>
-                          <div {...staticMcpSourceValueProps}>
-                            <code>{bundle.path}</code>
+                        Choose and inspect bundle…
+                      </button>
+                      {bundle && (
+                        <div className="mcp-source-details">
+                          <div>
+                            <span {...staticMcpSourceLabelProps}>Original bundle</span>
+                            <div {...staticMcpSourceValueProps}>
+                              <code>{bundle.path}</code>
+                            </div>
+                          </div>
+                          <div>
+                            <span {...staticMcpSourceLabelProps}>Format</span>
+                            <div {...staticMcpSourceValueProps}>{bundle.format.toUpperCase()}</div>
+                          </div>
+                          <div>
+                            <span {...staticMcpSourceLabelProps}>SHA-256</span>
+                            <div {...staticMcpSourceValueProps}>
+                              <code>{bundle.sha256}</code>
+                            </div>
+                          </div>
+                          <div>
+                            <span {...staticMcpSourceLabelProps}>Manifest server</span>
+                            <div {...staticMcpSourceValueProps}>
+                              <code>{JSON.stringify(bundle.server)}</code>
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <span {...staticMcpSourceLabelProps}>Format</span>
-                          <div {...staticMcpSourceValueProps}>{bundle.format.toUpperCase()}</div>
-                        </div>
-                        <div>
-                          <span {...staticMcpSourceLabelProps}>SHA-256</span>
-                          <div {...staticMcpSourceValueProps}>
-                            <code>{bundle.sha256}</code>
-                          </div>
-                        </div>
-                        <div>
-                          <span {...staticMcpSourceLabelProps}>Manifest server</span>
-                          <div {...staticMcpSourceValueProps}>
-                            <code>{JSON.stringify(bundle.server)}</code>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-                <button
-                  className="btn primary"
-                  {...auxNativeButtonTypeProps}
-                  disabled={
-                    busy ||
-                    !name.trim() ||
-                    (sourceKind === "bundle" && !bundle) ||
-                    (sourceKind === "local" && (!command.trim() || !cwd.trim())) ||
-                    (sourceKind === "remote" && !url.startsWith("https://"))
-                  }
-                  onClick={() => void register()}
-                >
-                  Add server
-                </button>
-              </div>
-              {error && <p role="alert">{error}</p>}
-              {message && <output>{message}</output>}
-            </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                {error && <p role="alert">{error}</p>}
+                {message && <output>{message}</output>}
+              </AddServerForm>
+            )}
           </SettingsDialogControl>
           <div {...auxClassDrawerSectionProps}>Servers in this Space</div>
           {!servers.length && <p {...staticHintProps}>No MCP servers saved in this Space.</p>}

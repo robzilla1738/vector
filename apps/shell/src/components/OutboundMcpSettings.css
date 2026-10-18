@@ -116,8 +116,10 @@
     margin: var(--space-1) 0;
     color: var(--ink-2);
   }
-  .mcp-add-editor .settings-editor-fields > .btn.primary {
-    justify-self: end;
+  .mcp-add-editor > footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
   .mcp-add-editor label {
     display: grid;

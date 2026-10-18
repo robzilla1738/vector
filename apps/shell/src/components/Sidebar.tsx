@@ -1358,6 +1358,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                   onClose={() => setMoreOpen(false)}
                 >
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Agent"
                     data-command-id="agent-rail"
@@ -1369,6 +1370,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                   </button>
                   {activeController === "human" && (
                     <button
+                      className="menu-item"
                       {...nativeMenuItemRoleProps}
                       data-command-id="return-agent-control"
                       onClick={() => {
@@ -1380,6 +1382,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     </button>
                   )}
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Chats"
                     data-command-id="open-chat-history"
@@ -1390,6 +1393,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("open-chat-history") && <kbd>{key("open-chat-history")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Tasks"
                     data-command-id="open-tasks"
@@ -1400,6 +1404,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("open-tasks") && <kbd>{key("open-tasks")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Bookmarks"
                     data-command-id="command-bookmarks"
@@ -1410,6 +1415,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Reading list and saved tabs"
                     data-command-id="command-saved-pages"
@@ -1419,6 +1425,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     <span>Reading list and saved tabs</span>
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Downloads"
                     data-command-id="downloads"
@@ -1428,8 +1435,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     <span>Downloads</span>
                     {key("downloads") && <kbd>{key("downloads")}</kbd>}
                   </button>
-                  <hr />
+                  <hr className="menu-sep" />
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label={saved ? "Remove bookmark" : "Bookmark this page"}
                     disabled={!web}
@@ -1441,6 +1449,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("bookmark") && <kbd>{key("bookmark")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"}
                     disabled={!web}
@@ -1452,6 +1461,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("command-reading-list") && <kbd>{key("command-reading-list")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Tab overview"
                     data-command-id="overview"
@@ -1462,6 +1472,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                     {key("overview") && <kbd>{key("overview")}</kbd>}
                   </button>
                   <button
+                    className="menu-item"
                     {...nativeMenuItemRoleProps}
                     aria-label="Settings"
                     data-command-id="settings"

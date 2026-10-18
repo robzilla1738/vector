@@ -106,23 +106,29 @@ export function FilterSettings({ active }: { active: boolean }) {
             {error && (
               <div role="alert">
                 <p>{error}</p>
-                <button role="menuitem" onClick={() => setRetry((value) => value + 1)}>
+                <button className="menu-item" role="menuitem" onClick={() => setRetry((value) => value + 1)}>
                   Retry
                 </button>
               </div>
             )}
             {status?.backend === "unavailable" && <p className="hint">Native filtering unavailable.</p>}
-            {!!configured.length && <p className="hint">Configured</p>}
+            {!!configured.length && <p className="menu-label">Configured</p>}
             {configured.map((source) => (
-              <button key={source.id} role="menuitem" onClick={() => edit({ id: source.id })}>
+              <button
+                className="menu-item"
+                key={source.id}
+                role="menuitem"
+                onClick={() => edit({ id: source.id })}
+              >
                 <span>{source.name}</span>
                 <small>{source.enabled ? "Enabled" : "Paused"}</small>
               </button>
             ))}
-            {!!recommended.length && <p className="hint">Recommended</p>}
+            {!!recommended.length && <p className="menu-label">Recommended</p>}
             {recommended.map((source) => (
               <button
                 key={source.id}
+                className="menu-item"
                 role="menuitem"
                 disabled={!status || status.backend === "unavailable"}
                 onClick={() => edit({ source: { name: source.name, url: source.url, kind: source.kind } })}
@@ -134,7 +140,8 @@ export function FilterSettings({ active }: { active: boolean }) {
               <p className="hint">No matching filters.</p>
             )}
           </div>
-          <button role="menuitem" className="filter-settings-add" onClick={() => edit({})}>
+          <hr className="menu-sep" />
+          <button className="menu-item" role="menuitem" onClick={() => edit({})}>
             {shellIconPlusSm} Add filter
           </button>
         </Menu>

@@ -1,4 +1,4 @@
-import { staticFieldErrorProps, staticHintProps } from "../../ui/class-props";
+import { staticFieldErrorProps, staticHintProps, staticMenuItemProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useMemo, useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
@@ -90,6 +90,7 @@ function AddLanguage({
           {options.map((code) => (
             <PreferenceAction
               key={code}
+              {...staticMenuItemProps}
               command="add-site-language"
               scopeId={scopeId}
               aria-label={`Add ${name(code)}`}
@@ -101,8 +102,9 @@ function AddLanguage({
               {name(code)}
             </PreferenceAction>
           ))}
-          <hr />
+          <hr className="menu-sep" />
           <button
+            {...staticMenuItemProps}
             type="button"
             onClick={() => {
               if (!current()) return;

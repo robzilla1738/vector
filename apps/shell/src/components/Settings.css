@@ -318,7 +318,10 @@
     display: flex;
     align-items: flex-start;
     gap: var(--space-2);
-    font-size: var(--fs-sm);
+    min-height: 52px;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    line-height: 20px;
   }
   .memory-use-toggle input {
     margin-top: 3px;
@@ -326,9 +329,11 @@
   }
   .memory-use-toggle small {
     display: block;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
     color: var(--ink-2);
-    margin-top: var(--space-1);
-    line-height: 1.5;
+    margin-top: 0;
+    line-height: 16px;
   }
   .memory-search-results {
     display: grid;

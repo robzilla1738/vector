@@ -97,20 +97,11 @@
     overscroll-behavior: contain;
   }
   .language-add-menu > button {
-    min-height: 32px;
-    padding: 6px 10px;
-    color: var(--ink-1);
+    width: 100%;
     text-align: left;
-    border-radius: var(--r-md);
   }
   .language-add-menu > hr {
-    width: 100%;
     border: 0;
-    border-top: var(--hairline) solid var(--line);
-    margin: 4px 0;
-  }
-  .language-add-menu > button:hover {
-    background: var(--bg-hover);
   }
   @media (hover: none) {
     .language-row-actions {

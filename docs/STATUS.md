@@ -38,6 +38,21 @@ earlier passing tests. Further granular captured-surface audits have also identi
 remaining Home/menu/Settings/selection layout differences; native all-surface parity
 remains open.
 
+The current renderer parity slice removes Sidebar More's custom35px/12px rows
+and uses shared32px/14px menu roles. Home Ask focus and synchronous initialization
+use the reference ring/shadow/geometry. Memory owner rows use14px/500 labels and
+52px minimum geometry; Desktop Context has Aux-branded288×160 artwork in the
+existing168px feature hero. Selection actions retain real revision-bound global
+Save/Reload, fixed supported Prompt kind and existing commands while adopting the
+reference row/editor anatomy. Per-action Cancel/Save remains an explicit deviation.
+CLI uses the standard32px control. Settings plain controls now compute32px;
+Filter, language-add and provider-connect choices use canonical menu roles. MCP
+has one actual Cancel/Add footer and disables source inputs through registration;
+late replies cannot close a replacement editor. Custom-provider JSON retains the
+reference672px exception and288–384px editor. Native verification remains pending.
+[The renderer integration record](evidence/aside-ui-parity-2026-10-18.json) records
+exact patches, reviews, tests and remaining reference gaps.
+
 The integrated runtime slice implements selected-original PDF/DOCX file
 transfers through the concrete supported Notion multipart and Slack allocation/
 byte-upload/completion protocols. Schema12 protects transfer manifests and private
@@ -103,9 +118,11 @@ the separate immediate callback. Standard Settings Select owns native selected
 content; the connection-specific wrapper was deleted. Remaining Models,
 Permissions, Capture, Sidebar and Project controls use shared measured roles.
 
-The latest integrated check passes typecheck, lint and all **5,640tests across
-846files** in105.17s. Runtime dist was rebuilt before tests.
-Log: `/tmp/aux-navigation-shutdown-integrated-check.log`.
+The latest renderer integrated check passes typecheck, lint and all **5,643tests
+across846files** in120.08s. Runtime dist was rebuilt before tests.
+Log: `/tmp/aux-ui-parity-integrated-check.log`.
+The preceding navigation/shutdown check passed5,640tests/846files in105.17s
+(`/tmp/aux-navigation-shutdown-integrated-check.log`).
 The preceding rich-Docs slice passed5,621tests/844files in100.83s
 (`/tmp/aux-docs-rich-integrated-check.log`).
 The preceding connector/schema slice passed5,593tests/843files after repairing an
@@ -250,6 +267,17 @@ retired the preview after Aux menu Quit and debugger quit: browser exit0, origin
 Profile and plain lock removed. Runtime shutdown still reported a desktop-context
 stop acknowledgement after the original host channel closed; that cleanup ordering
 requires a narrow fix and fresh retirement observation.
+
+The follow-on runtime-only preview combines the clean fc9e41ba runtime/schema12
+with the compiled ea9a82ec native host/renderer and matching host ABI. It stalls
+at Loading chats; a second window shows runtime reconnecting. Direct disposable
+loopback reads succeed, and metadata-only tracing shows authenticated native
+background requests completing in0–2ms, while the chat retry does not reach the
+runtime. The root cause remains unresolved. No smoke task was submitted and no
+provider success is claimed. The debugger interrupt ended the launch with SIGINT;
+its original launcher retired children/Profile/lock. This is not normal-Quit
+acceptance. [The bootstrap evidence](evidence/aside-native-fc9-bootstrap-2026-10-18.json)
+records identities, diagnostics and limits.
 
 ## Validation and remaining acceptance
 

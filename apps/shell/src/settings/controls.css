@@ -3,9 +3,9 @@
 @layer components {
   :is(.settings-content, .aux-native-dialog) .btn {
     min-height: var(--control-h-lg);
-    height: auto;
+    height: var(--control-h-lg);
     max-width: 100%;
-    padding: var(--space-1-5) var(--space-2-5);
+    padding: 0 var(--space-2-5);
     gap: var(--space-1-5);
     border: var(--hairline) solid transparent;
     border-radius: var(--r-lg);
@@ -15,6 +15,10 @@
     line-height: 20px;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+  :is(.settings-content, .aux-native-dialog) .btn:not(.sm):not([data-control-size]) {
+    height: auto;
+    padding-block: calc((var(--control-h-lg) - 20px) / 2 - var(--hairline));
   }
   :is(.settings-content, .aux-native-dialog) .btn:not(.ghost):not(.primary):not(.danger) {
     border-color: var(--line);

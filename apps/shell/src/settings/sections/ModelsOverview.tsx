@@ -14,6 +14,7 @@ import {
   type AgentModelRouteChain,
 } from "@aux/contracts/model-registry";
 import { call } from "../../store";
+import { staticMenuItemProps } from "../../ui/class-props";
 import { errorMessage } from "../../error-message";
 import { Dialog } from "../../ui/dialog";
 import { Popover } from "../../ui/popover";
@@ -378,7 +379,7 @@ function ConnectModels({
     >
       {(close) => (
         <div
-          className="settings-model-picker"
+          className="settings-model-picker settings-provider-picker"
           onKeyDown={(event) => {
             if (event.target === search.current) {
               if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
@@ -406,10 +407,11 @@ function ConnectModels({
               const matches = accounts.filter((option) => option.group === group);
               return matches.length ? (
                 <div key={group}>
-                  <p>{group}</p>
+                  <p className="menu-label">{group}</p>
                   {matches.map((option) => (
                     <button
                       key={option.id}
+                      {...staticMenuItemProps}
                       type="button"
                       onClick={() => {
                         close();
@@ -423,12 +425,13 @@ function ConnectModels({
                 </div>
               ) : null;
             })}
-            {providers.length > 0 && <p>API</p>}
+            {providers.length > 0 && <p className="menu-label">API</p>}
             {!providers.length && !accounts.length && <p>No matching providers</p>}
             {providers.map((provider) => (
               <button
                 type="button"
                 key={provider}
+                {...staticMenuItemProps}
                 onClick={() => {
                   close();
                   void onSelect(provider);

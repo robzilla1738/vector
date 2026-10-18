@@ -152,7 +152,7 @@
     max-height: min(360px, 50vh);
     overflow-y: auto;
   }
-  .settings-model-options button {
+  .settings-model-options button:not(.menu-item) {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -161,17 +161,24 @@
     text-align: left;
     padding: 8px;
   }
-  .settings-model-options button:is(:hover, [aria-expanded="true"]) {
+  .settings-model-options button:not(.menu-item):is(:hover, [aria-expanded="true"]) {
     background: var(--bg-hover);
     border-radius: var(--r-md);
   }
   .settings-model-options button span {
     overflow-wrap: anywhere;
   }
-  .settings-model-options p {
+  .settings-model-options p:not(.menu-label) {
     color: var(--ink-2);
     font-size: var(--fs-sm);
     padding: 8px;
+  }
+  .settings-provider-picker .menu-item {
+    width: 100%;
+    text-align: left;
+  }
+  .settings-provider-picker .menu-label {
+    margin: 0;
   }
   .model-task-roles {
     margin: var(--space-2-5) calc(-1 * var(--space-3-5));
@@ -244,7 +251,7 @@
       outline: none;
       background: var(--bg-hover);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-line) 65%, transparent);
-      border-radius: var(--r-md);
+      border-radius: var(--r-lg);
     }
   }
 }

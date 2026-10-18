@@ -1,5 +1,17 @@
 # Aside UI parity — October 16, 2026
 
+October18 full-corpus source review maps all192 manifest entries (182 original
+PNGs/192 TXTs) with exact hashes. The current renderer slice corrects Home Ask
+focus/loading, Sidebar More menus, Memory row geometry, Aux Desktop Context art,
+selection/CLI anatomy, plain Settings buttons, Filter/language/provider choices,
+MCP footer/pending fields and custom-provider JSON geometry. These are reviewed
+source changes with integrated fixtures, not native all-surface acceptance.
+[The current evidence](../evidence/aside-ui-parity-2026-10-18.json) records patch
+identity, exact scope and native gaps. Per-action selection Cancel/Save, work
+trace detail, turn navigation, native menu entries, hosted sharing/tabbed sidechat
+and working feedback remain separate gaps; no placeholder capability was added.
+
+
 October17 packaged **a51e5a915**: native History → Delete browsing data → Cancel
 returns directly to History. No deletion performed. Developers grouping and plain
 Tool permissions surface observed. New source consolidates Settings/dialog buttons,

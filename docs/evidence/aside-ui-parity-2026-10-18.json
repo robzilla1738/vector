@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-18",
+  "baseCommit": "fc9e41ba63e4c5871554b360c980a4648391e885",
+  "status": "source_and_integrated_fixtures_pass_native_acceptance_pending",
+  "referenceInventory": {
+    "entries": 192,
+    "originalPngs": 182,
+    "textCaptures": 192,
+    "inventory": "/tmp/aux-ui-completeness-2026-10-18-v1.json",
+    "manuallyViewedImagesThisInventoryPass": 37,
+    "allImagesComparedNatively": false
+  },
+  "changes": [
+    "Home Ask focused and initializing geometry/material; initialization CSS is synchronous, editor ownership untouched.",
+    "Sidebar More removes custom rows and consumes canonical menu roles.",
+    "Memory owner row52px anatomy,14px/500 labels; real revision semantics preserved.",
+    "Aux-branded288x160 Desktop Context feature art in168px hero, capture remains independent and off.",
+    "Selection list/editor row anatomy and128px template; fixed supported Prompt kind and globalSave/Reload preserved.",
+    "CLI standard32px action.",
+    "Plain Settings single-line controls32px; existing explicit variants/wrapping preserved.",
+    "Filter, language-add and provider-connect actual nodes use canonical menu roles; popover generic font reset excludes these roles so14px/20px survives. Generic ModelChoice selection geometry retained.",
+    "MCP one real Cancel/Add formfooter, original mounted form fencing and all source inputs disabled during registration, including local arguments.",
+    "Custom model JSON672px exception with288\u2013384px mono editor."
+  ],
+  "validation": {
+    "integratedCommand": "npm run check",
+    "runtimeDist": "rebuilt by initial typecheck before tests",
+    "typecheck": "pass",
+    "lint": "pass; advisory warnings remain",
+    "tests": 5643,
+    "testFiles": 846,
+    "durationSeconds": 120.08,
+    "log": "/tmp/aux-ui-parity-integrated-check.log",
+    "format": "changed source formatted; exact final popup selector checked separately",
+    "native": "pending full current-source build/observations"
+  },
+  "reviews": [
+    {
+      "path": "/tmp/aux-layout-parity-94f25-v1.patch",
+      "sha256": "9c021aa3bfee788d7abcb48b1d4de17d02717184fb6a6327c8078adc17893b8c"
+    },
+    {
+      "path": "/tmp/aux-settings-parity-fc9-v1.patch",
+      "sha256": "ca0dc2f01b487fc10c6e8faaaccb609ea696f009e1482405f59c825b61b9bada"
+    },
+    {
+      "path": "/tmp/aux-settings-parity-fc9-v2-separator.patch",
+      "sha256": "4671032b59cdc261f69b48081a050534c59c1e860218ca058f1811676fc283d6"
+    },
+    {
+      "path": "/tmp/aux-settings-parity-fc9-v3-pending-args.patch",
+      "sha256": "5b072b1b9fa7b1aa230a355fd2ced009c67662fcc62a01eb8080dc2d5c8dbba0"
+    },
+    {
+      "path": "/tmp/aux-root-menu-roles-fc9-v2.patch",
+      "sha256": "abf632ef844393dd0e114148bd3a0413185b60d0c72b17803a36be28e1820093"
+    },
+    {
+      "path": "/tmp/aux-layout-parity-v1-independent-review.json",
+      "sha256": "26f41140d3809b6f45a720ae836f6295186733257d323399c8df547566b32dab"
+    },
+    {
+      "path": "/tmp/aux-settings-parity-v1-v2-independent-review.json",
+      "sha256": "41c9c811c744e70b004702f2095151f33271d5f412a558fcbd3c9411dbf3e572"
+    },
+    {
+      "path": "/tmp/aux-settings-final-source-review-2026-10-18.json",
+      "sha256": "619df5131689429a4b4bbce1304624857845e984c2c5a335680773c408591d61"
+    }
+  ],
+  "remaining": [
+    "Every current native both-theme/narrow/hover/focus/disabled/loading/accessibility state still needs its own evidence.",
+    "Selection per-action transactional Cancel/Save remains an explicit deviation from reference.",
+    "Real work trace/turn navigation, native File/Tab menu entries, hosted sharing/tabbed sidechat and working feedback are separately open.",
+    "No real OAuth registration, upload or third-party message attempted.",
+    "Native runtime-only fc9 bootstrap stall remains unresolved; separate evidence records failed acceptance."
+  ]
+}

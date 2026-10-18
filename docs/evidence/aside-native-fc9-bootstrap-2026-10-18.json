@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-18",
+  "source": "fc9e41ba63e4c5871554b360c980a4648391e885",
+  "status": "acceptance_blocked",
+  "launch": {
+    "mode": "original dev launcher --temp-profile --runtime-only --debug-native",
+    "nativeRendererSource": "ea9a82ecfb95572920ba28a9c2421570c8a49e5d",
+    "runtimeSource": "fc9e41ba63e4c5871554b360c980a4648391e885",
+    "schema": 12,
+    "hostMethods": 278,
+    "runtimeMethods": 500,
+    "compiledHostAbi": "550bdeb5fbbd",
+    "launcherPid": 59331,
+    "browserPid": 59521,
+    "runtimePid": 59556
+  },
+  "observed": [
+    "Main window remains at Loading chats and Loading recent work. New native window also shows runtime reconnecting.",
+    "Native chat Retry enters loading, but metadata-only runtime trace receives no conversations.list request for that action.",
+    "Direct disposable loopback runtime.describe, pages.list and conversations.list return HTTP 200.",
+    "Authenticated native runtime.liveness, nightShift.list, nightShift.summary and workspaces.browsingMemory.record requests receive responses in 0\u20132ms in sampled frames.",
+    "Native main-thread sample is responsive/idle; this does not identify the stalled renderer request.",
+    "Guest DevTools shows about:blank; it does not inspect the privileged shell."
+  ],
+  "diagnostics": {
+    "captured": "frame direction, request ID, method name, timestamp and error code only",
+    "argumentsLogged": false,
+    "inspector": "Original disposable runtime only; conditional breakpoints removed and inspector closed before retirement. An initial inspector-only dynamic import cleanup expression failed; corrected built-in inspector closure succeeded. No product source changed.",
+    "original155Crash": "Not reproduced or resolved by this session."
+  },
+  "retirement": {
+    "outcome": "debug session interrupted",
+    "detail": "An attempted TTY debugger interrupt caused lldb to exit SIGINT. Original launcher retired its children and removed the disposable Profile and plain lock. This is not normal Aux-menu Quit evidence.",
+    "remainingProcesses": false,
+    "forceClearedLock": false
+  },
+  "manual20": {
+    "startedModelTasks": 0,
+    "result": "not run; harness stopped while awaiting first native submission",
+    "providerUsage": "unknown; no provider inference claim"
+  },
+  "limits": [
+    "Runtime-only combination; no current renderer/native rebuild acceptance.",
+    "No evidence establishes root cause. No speculative product fix applied.",
+    "No owner real Profile read, real third-party write or provider upload.",
+    "Browser navigation/readiness and schema fix require a fresh successful native session."
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/aux-fc9-runtime-native-debug.log",
+      "sha256": "c975c4a76494f318f7aec7120774cb3b02887f9f516f3210074cdb15e880c0d9"
+    },
+    {
+      "path": "/tmp/aux-fc9-native-sample.txt",
+      "sha256": "280b3e94d52fce8dfb85320987f167311b3f2d69d54de812b64a93b687fc15a1"
+    },
+    {
+      "path": "/tmp/aux-fc9-ipc-diagnostic-v2-controller.log",
+      "sha256": "30888bbddc4da618b410dd0b21e26d521b0366e936754168d71539663b8e97ea"
+    }
+  ]
+}

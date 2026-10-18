@@ -175,7 +175,7 @@
   .memory-settings .memory-use-toggle {
     align-items: center;
     gap: 16px;
-    padding: 14px 16px;
+    padding: 8px 14px;
     border-radius: var(--r-lg);
     background: var(--surface-secondary);
   }

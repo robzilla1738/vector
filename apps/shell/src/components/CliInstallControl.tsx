@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
 import { errorMessage } from "../error-message";
 import { SettingsField } from "../settings/primitives";
+import { Button } from "../ui";
 
 /** Explicit human installation; no agent configuration or credential sharing. */
 export function CliInstallControl() {
@@ -74,9 +75,9 @@ export function CliInstallControl() {
         />
       }
     >
-      <button className="btn sm" disabled={busy} onClick={() => void install()}>
+      <Button disabled={busy} onClick={() => void install()}>
         Install aux CLI
-      </button>
+      </Button>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
     </SettingsField>

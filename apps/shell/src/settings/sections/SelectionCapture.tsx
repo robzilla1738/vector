@@ -31,6 +31,7 @@ import { SettingsField, SettingsSection } from "../primitives";
 import { SettingsGroup, Switch } from "../../ui";
 import { SettingsDialogControl } from "../SettingsDialogControl";
 import "./SelectionCapture.css";
+import { shellIconAgentSm } from "../../ui/icons";
 import {
   staticPrimaryButtonProps as auxClassPrimaryButtonProps,
   staticGhostButtonProps as auxClassGhostButtonProps,
@@ -172,7 +173,10 @@ function ActionRow({
   const nameInput = useRef<HTMLInputElement>(null);
   return (
     <li className="selection-action-row">
-      <span>{action.name || "Untitled action"}</span>
+      <span className="selection-action-glyph" aria-hidden="true">
+        {shellIconAgentSm}
+      </span>
+      <span className="selection-action-title">{action.name || "Untitled action"}</span>
       {!action.enabled && <span className="selection-action-state">Off</span>}
       <SettingsDialogControl
         active={active}
@@ -181,15 +185,35 @@ function ActionRow({
         action="⋯"
       >
         <div className="selection-action-editor">
-          <label className="selection-action-name">
-            Name
-            <input
-              ref={nameInput}
-              aria-label={`Action ${index + 1} name`}
-              maxLength={60}
-              value={action.name}
+          <div className="selection-action-heading">
+            <span className="selection-action-symbol" aria-hidden="true">
+              {shellIconAgentSm}
+            </span>
+            <label className="selection-action-name">
+              <span className="sr-only">Name</span>
+              <input
+                ref={nameInput}
+                aria-label={`Action ${index + 1} name`}
+                maxLength={60}
+                value={action.name}
+                disabled={disabled}
+                onChange={(event) => change(action.id, { name: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="selection-action-kind">
+            <span>Action</span>
+            <span className="selection-action-kind-value">Prompt</span>
+          </div>
+          <label className="selection-action-template">
+            <span className="sr-only">Prompt template</span>
+            <textarea
+              aria-label={`Action ${index + 1} template`}
+              maxLength={2000}
+              rows={6}
+              value={action.template}
               disabled={disabled}
-              onChange={(event) => change(action.id, { name: event.target.value })}
+              onChange={(event) => change(action.id, { template: event.target.value })}
             />
           </label>
           <div className="settings-editor-actions">
@@ -232,14 +256,6 @@ function ActionRow({
               ↓
             </PreferenceAction>
           </div>
-          <textarea
-            aria-label={`Action ${index + 1} template`}
-            maxLength={2000}
-            rows={3}
-            value={action.template}
-            disabled={disabled}
-            onChange={(event) => change(action.id, { template: event.target.value })}
-          />
           <p className="hint">
             Use {"{text}"} for quoted text, {"{code}"} for code, or {"{image}"} for a capture. Edits stay in
             this draft until you save Selection &amp; Capture.

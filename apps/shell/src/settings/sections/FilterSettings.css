@@ -6,7 +6,6 @@
   }
   .filter-settings-menu {
     width: 290px;
-    padding: var(--space-2);
   }
   .filter-settings-search {
     display: flex;
@@ -24,25 +23,20 @@
     max-height: min(340px, 55vh);
     overflow: auto;
   }
-  .filter-settings-options > p {
+  .filter-settings-options > p:not(.menu-label) {
     padding: var(--space-2);
     margin: 0;
   }
-  .filter-settings-menu button[role="menuitem"] {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+  .filter-settings-menu .menu-item {
     width: 100%;
     text-align: left;
-    padding: var(--space-2);
+  }
+  .filter-settings-menu > .menu-sep {
+    border: 0;
   }
   .filter-settings-menu button small {
     margin-left: auto;
     color: var(--ink-2);
-  }
-  .filter-settings-add {
-    border-top: var(--hairline) solid var(--line);
-    margin-top: var(--space-2);
   }
   .filter-settings-dialog {
     width: min(680px, calc(100vw - 32px));

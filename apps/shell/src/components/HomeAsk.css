@@ -48,6 +48,12 @@
     border-radius: 22.4px;
     corner-shape: round;
   }
+  .home-ask .conversation .composer-frame:focus-within {
+    box-shadow:
+      0 0 0 1px var(--border-surface),
+      0 20px 25px -5px var(--shadow-tint),
+      0 8px 10px -6px var(--shadow-tint);
+  }
   .home-ask .conversation-message-field {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -119,13 +125,6 @@
     background: var(--surface-primary);
     color: var(--ink-0);
     box-shadow: var(--shadow-card);
-  }
-  .home-ask-loading {
-    padding: var(--space-5);
-    border-radius: var(--r-composer);
-    background: var(--surface-input);
-    color: var(--ink-2);
-    font-size: var(--fs-sm);
   }
   @container start-page (max-width: 360px) {
     .home-ask {
