@@ -1,0 +1,67 @@
+{
+  "atUTC": "2026-10-18T22:53:08.714319+00:00",
+  "status": "Source integrated; combined full check passed; native acceptance pending",
+  "integrated": [
+    {
+      "owner": "UI",
+      "sourceCommit": "a124a64ea",
+      "mainCommit": "5bf9cc151",
+      "scope": "Native Theme picker selection alignment; native interaction retained",
+      "focusedEvidence": "15 placement fixtures and30 affected/4files; renderer typecheck passed"
+    },
+    {
+      "owner": "UI",
+      "sourceCommit": "ffc62e4d5",
+      "mainCommit": "4a5b5fb48",
+      "scope": "Preserve newer CSS priority owner; source-backed Theme-only width minimum",
+      "focusedEvidence": "21 focused/2files; renderer typecheck/format/lint pass"
+    },
+    {
+      "owner": "AI/data",
+      "sourceCommit": "88b322197",
+      "mainCommit": "163ed055c",
+      "scope": "Cancel and report exact Dream operation; join actual original provider",
+      "focusedEvidence": "Recovered-operation race failed before; active cancellation usage retained"
+    },
+    {
+      "owner": "AI/data",
+      "sourceCommit": "ae5940e6d",
+      "mainCommit": "913d80380",
+      "scope": "Failed/cancelled Dream preserves unprocessed sessions;24h bounded auto retry; manual immediate",
+      "focusedEvidence": "32 unique affected tests across Dream/docs/retirement; isolated dist/types pass"
+    },
+    {
+      "owner": "Tools",
+      "sourceCommit": "18d31a710",
+      "mainCommit": "6fdd82c37",
+      "scope": "PDF final-file symlink/FIFO substitution rejected with no-follow/nonblocking admission",
+      "focusedEvidence": "2 before failures;28 focused after dist/type/format/lint pass"
+    },
+    {
+      "owner": "Tools",
+      "sourceCommit": "63934c555",
+      "mainCommit": "3868d5af5",
+      "scope": "Share MCP refresh only within original source/authorization generation",
+      "focusedEvidence": "Real SDK duplicate refresh failed before;23 affected tests pass after isolated dist"
+    }
+  ],
+  "limits": [
+    "Native Theme selected alignment,width,keys,pointer and narrow acceptance pending",
+    "PDF native saved appearance/output proof distinct from file-admission fixtures",
+    "Dream populated native/live provider and compaction/recovery acceptance pending",
+    "MCP dedup uses synthetic server/SDK; actual registrations and grants remain setup dependencies",
+    "MCP close/cancel lifecycle work is separate and not included yet"
+  ],
+  "fullCheck": {
+    "session": 57258,
+    "log": "/tmp/aux-parallel-batch2-integrated-2026-10-18.log",
+    "runtimeDistRebuiltBeforeTests": true,
+    "nativeCompilerConcurrent": false,
+    "exit": 0,
+    "tests": 6150,
+    "files": 867,
+    "seconds": 105.14,
+    "sha256": "1d3d0c30132b6d9c63a3caf0e7e9eaea885038849513728c8202cff691c0d4f1"
+  },
+  "next": "After this check joins: preserve exact prior stock symbols; sequential native Aux and stock counter builds under original launcher locks; observe counter before new timed campaign."
+}

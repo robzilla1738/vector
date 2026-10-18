@@ -19,6 +19,14 @@ Older queued fingerprints require review/resend, preserving messages without rep
 The execution graph now assigns three isolated implementation lanes and root ownership
 of native builds, GUI, performance, crash and integration.
 
+The [second parallel batch](evidence/aside-parallel-integration-batch2-2026-10-18.json)
+adds Theme-only native selected-row alignment and intrinsic width, original-operation
+Dream cancel/join, retained failed-Dream sessions with a24h automatic retry cadence,
+PDF file-substitution rejection and exact-generation MCP refresh sharing. Focused
+regressions and the combined full check pass: **6,150 tests /867 files** in105.14s,
+with runtime dist rebuilt first and no concurrent native compiler. Native/live acceptance remains
+separate. MCP shutdown joins are still being completed in the isolated tools lane.
+
 The latest paired performance attempt also retires with0complete samples. Its
 new-tab preparation barrier incorrectly reused a deliberately one-shot cold
 navigation histogram. A separate fixture-document native presentation counter is

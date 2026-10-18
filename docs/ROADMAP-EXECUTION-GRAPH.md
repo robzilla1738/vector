@@ -64,6 +64,20 @@ status documents require coordination before edits. No lane runs a native build,
 changes the owner's Profile, sends real messages, pushes or releases. Inconclusive
 investigations preserve their reproductions and limits while independent fixes advance.
 
+### Remaining requirements, owners and evidence
+
+| Requirement                                                  | Owner                | Current evidence / next acceptance                                                                                                                                                                                                         |
+| ------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Theme placement, narrow menus, keyboard and reference states | UI + integrator      | Two Theme commits integrated; exact reference width roles and21 focused cases. Current native comparison pending. First batch Tidy/Routines/selection controls passed combined check.                                                      |
+| Compaction, queue and retirement/recovery                    | AI/data + integrator | Queue source identities and bounded Memory reads integrated; exact Dream cancel/join and24h failure retry integrated.32 affected Dream cases; long-conversation/Forget native acceptance open.                                             |
+| PDF/image/channel/connector authority                        | tools + integrator   | Google refresh98 cases, PDF admission28 and MCP refresh23 cases. MCP shutdown joins in progress. Native artifacts and actual scoped connections remain separate gates.                                                                     |
+| Native readiness, crash and performance                      | integrator           | Built334 manual smoke20/20 and bounded GUI observations. Original155 crash unsymbolicated; new-tab focus independently open. New fixture counter replay69areas/975paths exact; actual native build/observation and paired timings pending. |
+| Whole reference set and real-user daily use                  | integrator           | Every unavailable theme/width/state observation remains open; no phase/readiness/parity completion claim.                                                                                                                                  |
+
+[Batch1](evidence/aside-parallel-integration-batch1-2026-10-18.json) passes6,121tests/866files.
+[Batch2](evidence/aside-parallel-integration-batch2-2026-10-18.json) preserves per-fix
+source and focused evidence separately from its combined check and native observations.
+
 ### Current reservations and integration
 
 The current built product334b882ac passes25native steps and has preserved matching
