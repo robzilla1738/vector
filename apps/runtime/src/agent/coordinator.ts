@@ -1387,6 +1387,7 @@ export class RunCoordinator {
             nativeTurnContext: run.config?.nativeTurnContext,
             privateTask: run.config?.privateTask,
             sourcePageIds:
+              run.config?.contextPageRefs !== undefined ||
               run.config?.setMemberSource ||
               run.config?.projectRoot ||
               run.config?.subagentProfile ||
@@ -1648,11 +1649,48 @@ export class RunCoordinator {
     const preparedRun = this.get(runId);
     run.pageIds = preparedRun.pageIds;
     run.config = preparedRun.config;
+    const selectedRefs = structuredClone(run.config?.contextPageRefs);
+    const selectedState = JSON.stringify([
+      run.pageIds,
+      selectedRefs,
+      run.config?.mentions,
+      run.config?.nativeTurnContext,
+      run.config?.messageRevision,
+    ]);
+    const checkSelection = () => {
+      const current = this.get(runId);
+      if (
+        this.controls.get(runId) !== control ||
+        signal.aborted ||
+        JSON.stringify([
+          current.pageIds,
+          current.config?.contextPageRefs,
+          current.config?.mentions,
+          current.config?.nativeTurnContext,
+          current.config?.messageRevision,
+        ]) !== selectedState
+      )
+        throw new AuxError("ref_stale", "The selected browser context changed during source preparation.");
+      for (const ref of selectedRefs ?? []) {
+        const page = browserContextPage(() => this.deps.pages.get(ref.pageId));
+        if (
+          !page ||
+          page.ownedByRuntime ||
+          ["detached", "crashed"].includes(page.viewStatus) ||
+          page.url !== ref.url ||
+          page.documentEpoch !== ref.documentEpoch ||
+          page.sessionId !== ref.sessionId
+        )
+          throw new AuxError("ref_stale", "The selected browser context changed during source preparation.");
+      }
+    };
+    checkSelection();
     await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
       workspaceId: run.config?.contextWorkspaceId,
       nativeTurnContext: run.config?.nativeTurnContext,
       privateTask: run.config?.privateTask,
       sourcePageIds:
+        run.config?.contextPageRefs !== undefined ||
         run.config?.setMemberSource ||
         run.config?.projectRoot ||
         run.config?.externalParentRunId ||
@@ -1663,6 +1701,7 @@ export class RunCoordinator {
       taskId: run.config?.taskId,
       taskRevision: run.config?.taskRevision,
     });
+    checkSelection();
     if (run.config?.privateTask && !run.config?.isolatedPageSources) {
       run.pageIds = this.deps.turnMentions.sourcePages(runId).map((page) => page.pageId);
       this.deps.repo.saveRun(run);

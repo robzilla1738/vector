@@ -68,7 +68,7 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--debug-native] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
+      "Usage: node scripts/dev.mjs [--temp-profile] [--runtime-only] [--debug-native] [--fake-media-devices] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
     );
     return;
   }
@@ -76,13 +76,19 @@ async function main() {
   let flavor = nativeFlavor;
   const runtimeOnly = args.includes("--runtime-only");
   const debugNative = args.includes("--debug-native");
+  const fakeMediaDevices = args.includes("--fake-media-devices");
   if (runtimeOnly && (commandIndex >= 0 || !args.includes("--temp-profile")))
     throw new Error("Use --runtime-only with --temp-profile and no custom command.");
   if (debugNative && (commandIndex >= 0 || !args.includes("--temp-profile")))
     throw new Error("Use --debug-native with --temp-profile and no custom command.");
+  if (fakeMediaDevices && (commandIndex >= 0 || !args.includes("--temp-profile")))
+    throw new Error("Use --fake-media-devices with --temp-profile and no custom command.");
   if (commandIndex < 0) {
     for (let index = 0; index < args.length; index++) {
-      if (["--temp-profile", "--runtime-only", "--debug-native"].includes(args[index])) continue;
+      if (
+        ["--temp-profile", "--runtime-only", "--debug-native", "--fake-media-devices"].includes(args[index])
+      )
+        continue;
       if (args[index] === "--flavor" && ["dev", "fast"].includes(args[index + 1])) {
         flavor = args[++index];
         continue;
@@ -122,6 +128,7 @@ async function main() {
     const launchArgs = [
       `--user-data-dir=${profile}`,
       ...(temporary ? ["--enable-logging=stderr"] : []),
+      ...(fakeMediaDevices ? ["--use-fake-device-for-media-stream"] : []),
     ];
     if (debugNative)
       await run("lldb", [

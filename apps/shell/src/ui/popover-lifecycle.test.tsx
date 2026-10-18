@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useState } from "react";
+import { act, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { Popover } from "./popover";
@@ -137,5 +137,32 @@ it("an action initiated in the portal survives closing without losing the parent
     expect(view.host.querySelector("textarea")!.value).toBe("Keep my draft");
   } finally {
     await view.dispose();
+  }
+});
+
+it("retires a selected picker when its exact trigger detaches, without stealing focus", async () => {
+  function Picker() {
+    const selected = useRef<HTMLButtonElement>(null);
+    return (
+      <Popover label="Selected choice" trigger="Choice" selectedItemRef={selected}>
+        {() => <button ref={selected}>Current option</button>}
+      </Popover>
+    );
+  }
+  const view = await mount(<Picker />);
+  const outside = document.createElement("input");
+  document.body.append(outside);
+  try {
+    const trigger = view.host.querySelector<HTMLButtonElement>("button")!;
+    await act(async () => trigger.click());
+    expect(document.activeElement).toBe(dialog("Selected choice").querySelector("button"));
+    view.host.remove();
+    outside.focus();
+    await act(async () => window.dispatchEvent(new Event("resize")));
+    expect(dialog("Selected choice")).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  } finally {
+    await view.dispose();
+    outside.remove();
   }
 });

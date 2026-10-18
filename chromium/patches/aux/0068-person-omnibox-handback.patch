@@ -1,0 +1,39 @@
+diff --git a/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc b/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc
+--- a/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc
++++ b/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc
+@@ -8,9 +8,11 @@
+ #include <utility>
+ #include <vector>
+ 
++#include "base/functional/bind.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/predictors/autocomplete_action_predictor.h"
+ #include "chrome/browser/predictors/autocomplete_action_predictor_factory.h"
+@@ -87,7 +89,22 @@
+     }
+     for (const auto& [name, value] : match.extra_headers)
+       params.extra_headers += name + ": " + value + "\r\n";
+-    web_contents_->OpenURL(params, {});
++    auto navigate = base::BindOnce(
++        [](base::WeakPtr<content::WebContents> shell,
++           content::OpenURLParams params) {
++          if (shell)
++            shell->OpenURL(params, {});
++        },
++        web_contents_->GetWeakPtr(), std::move(params));
++    if (current && disposition == WindowOpenDisposition::CURRENT_TAB) {
++      // The resolved current tab is the browser's navigation destination.
++      // A returned session document retains its task-network tombstone; only
++      // this accepted native omnibox navigation may acquire person authority.
++      aux::EgressController::ForProfile(profile_)->NavigateForPerson(
++          current, std::move(navigate));
++    } else {
++      std::move(navigate).Run();
++    }
+   }
+   bool CurrentPageExists() const override { return !!target_; }
+   const GURL& GetURL() const override { return url_; }

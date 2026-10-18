@@ -247,3 +247,64 @@ it("retains failure recovery against the original source after its temporary cop
   await act(async () => button.click());
   expect(retry).toHaveBeenCalledExactlyOnceWith("original");
 });
+
+it.each(["session", "document"] as const)(
+  "shows changed original %s context without calling a still-open tab unavailable",
+  async (change) => {
+    const { source, copy } = protectedContext();
+    useStore.setState((state) => ({
+      pages: normalizePages(
+        orderedPages(state.pages)
+          .filter((page) => page.pageId !== copy.pageId)
+          .map((page) =>
+            page.pageId === source.pageId
+              ? {
+                  ...page,
+                  sessionId: change === "session" ? "fresh-retired-session" : page.sessionId,
+                  documentEpoch: change === "document" ? page.documentEpoch + 1 : page.documentEpoch,
+                }
+              : page,
+          ),
+      ),
+    }));
+    await act(async () =>
+      root.render(
+        <RunPanel runId="original" conversation latest retryPageId={source.pageId} controlsInComposer />,
+      ),
+    );
+    expect(host.textContent).toContain("The original tab context changed");
+    expect(host.textContent).not.toContain("The original tab is unavailable");
+    const original = host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!;
+    expect(original.disabled).toBe(true);
+    await act(async () => original.click());
+    expect(retry).not.toHaveBeenCalled();
+    const replacement = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Retry in selected tab",
+    )!;
+    expect(replacement.disabled).toBe(false);
+    await act(async () => replacement.click());
+    expect(retry).toHaveBeenCalledExactlyOnceWith("original", source.pageId);
+  },
+);
+
+it("reports mixed missing and changed original tabs without offering a retry subset", async () => {
+  const { source, copy } = protectedContext();
+  useStore.setState((state) => ({
+    pages: normalizePages(
+      orderedPages(state.pages)
+        .filter((page) => page.pageId !== copy.pageId)
+        .map((page) => (page.pageId === source.pageId ? { ...page, sessionId: "fresh-session" } : page)),
+    ),
+    runs: state.runs.map((run) => ({
+      ...run,
+      pageIds: [source.pageId, "missing-source"],
+      config: { ...run.config, isolatedPageSources: undefined },
+    })),
+  }));
+  await act(async () =>
+    root.render(<RunPanel runId="original" conversation latest retryPageId="selected" controlsInComposer />),
+  );
+  expect(host.textContent).toContain("Original tabs are missing");
+  expect(host.textContent).not.toContain("Retry in selected tab");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!.disabled).toBe(true);
+});

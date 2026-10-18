@@ -67,7 +67,7 @@
   :root .aux-native-dialog.anchored-panel {
     padding: var(--menu-padding);
   }
-  .anchored-panel :is(button, select, input):not(.menu-item) {
+  .anchored-panel :is(button, select, input):not(.menu-item):not(.ui-select-option) {
     font: inherit;
   }
   .anchored-panel select {

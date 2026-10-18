@@ -391,6 +391,8 @@ export const RunPanel = memo(function RunPanel({
           source!.sessionId === ref.sessionId)
       );
     });
+  const originalTabsMissing =
+    retryIds === null || retryIds.some((id) => !usable(runPages.find((item) => item.pageId === id)));
   const multiTabBlocked = run.pageIds.length > 1 && !retryAvailable;
   const retryPage =
     !retryAvailable && !multiTabBlocked && run.pageIds.length === 1
@@ -546,10 +548,12 @@ export const RunPanel = memo(function RunPanel({
         (!run.failure || run.failure.retryable) && (
           <section className="run-failure" {...nativeStatusRoleProps}>
             <div className="run-failure-copy">
-              <strong>The original tab is unavailable</strong>
+              <strong>
+                {originalTabsMissing ? "The original tab is unavailable" : "The original tab context changed"}
+              </strong>
               <p>
                 Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same;
-                the browser page changes.
+                its browser context is captured again.
               </p>
             </div>
             <RunPanelAction
@@ -566,10 +570,12 @@ export const RunPanel = memo(function RunPanel({
       {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && (
         <section className="run-failure" {...nativeStatusRoleProps}>
           <div className="run-failure-copy">
-            <strong>Original tabs are missing</strong>
+            <strong>
+              {originalTabsMissing ? "Original tabs are missing" : "Original tab context changed"}
+            </strong>
             <p>
-              This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry
-              a subset.
+              This turn used {run.pageIds.length} tabs. Review their context in a new turn. Aux will not retry
+              a subset or reuse changed context.
             </p>
           </div>
         </section>

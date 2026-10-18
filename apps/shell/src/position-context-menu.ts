@@ -19,3 +19,21 @@ export function positionAnchoredPopover(
   const left = align === "end" ? anchor.right - menu.offsetWidth : anchor.left;
   positionContextMenu(menu, left, upwards ? anchor.top - 8 - menu.offsetHeight : anchor.bottom + 8);
 }
+
+/** Match the selected row to its trigger, keeping long pickers inside the viewport. */
+export function positionSelectedPopover(
+  menu: HTMLElement,
+  anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  selected: HTMLElement | null,
+) {
+  menu.style.maxHeight = `${Math.max(0, Math.min(360, window.innerHeight - 16))}px`;
+  if (!selected || !menu.contains(selected)) {
+    positionContextMenu(menu, anchor.left - 4, anchor.bottom + 4);
+    return;
+  }
+  const row = selected.getBoundingClientRect();
+  const offset = row.top - menu.getBoundingClientRect().top + menu.scrollTop + row.height / 2;
+  const top = (anchor.top + anchor.bottom) / 2 - offset;
+  positionContextMenu(menu, anchor.left - 4, top);
+  menu.scrollTop = Math.max(0, Number.parseFloat(menu.style.top) - top);
+}

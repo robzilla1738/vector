@@ -31,6 +31,40 @@ captured fault instructions, and its dump hash is unchanged. The
 preserves the distinction. Current Aux staging/native comparisons, manual20-task
 smoke, paired performance and daily-use acceptance remain open.
 
+The first current-source native smoke campaign is retained as **incomplete: two
+passes and two failures**, stopped before submitting L05. L01/L02 used the actual
+default Sonnet5.5 route and reported cache0/34,840 and invoice costs
+$0.092618/$0.0062195. L03/L04 failed before inference after ordinary native source
+admission widened the captured tab selection to other Space tabs. Source now
+preserves explicit selection, including none, and checks original context across
+awaited admission. Retry copy distinguishes changed context from missing tabs
+without weakening session fences. A separate native omnibox correction routes
+accepted current-tab person navigation through the existing egress admission;
+this addresses the observed post-agent blocked navigation. Its object compiles
+and all68 patches replay against pinned155 across940 paths. Full app behavior is
+still unverified. [The handback record](evidence/aside-native-selection-handback-2026-10-18.json)
+retains the failed campaign and implementation limits.
+
+The current preview retired normally through Aux menu Quit, browser exit0 and
+original launcher/Profile/lock cleanup. All41 authorized default Crashpad report
+hashes stayed unchanged. A late helper's own stderr follows an immediate code0
+rendezvous failure path, distinct from the previously symbolicated helper abort;
+neither observation resolves the original browser-main155 SIGTRAP. A development
+launcher option admits synthetic media devices only with a disposable Profile;
+it preserves real site permission UI and has not yet qualified permissions or
+hardware behavior. Fresh Home Search mode is intentional; Ask first governs
+agent confirmation. The search-engine popup's measured bordered-option defect now has a source
+correction: common select rows, selected alignment/focus and bounded scrolling,
+with38 focused renderer tests. Current native verification remains pending.
+
+The rebuilt integrated retry passes all5,924 tests across857 files in103.49s,
+with574 advisories and no lint/type errors. The first check's four failures remain
+recorded: three direct-coordinator steering fixtures omitted their producer's
+session ID, and an unchanged Settings-navigation assertion passed9/9 in isolation.
+Fixture refs now derive from the canonical page producer; new missing/replacement
+session cases prove refusal before model/write dispatch. Production authority
+checks remain exact. The native compiler was stopped throughout both checks.
+
 ### Earlier implementation records
 
 A reproduced lazy-style failure is now corrected in the pinned Vite producer.
@@ -642,8 +676,8 @@ row is a pass. Automatic browser-import discovery must remain closed until an
 owned-source protocol is established: a temporary Profile does not isolate HOME,
 and Cancel cannot undo discovery reads. Synthetic file import is a separate route.
 
-Matching155 stock source/flags and benchmark patch are prepared and source-proven,
-but the full stock compile has not completed. No paired performance result exists.
+Matching155 stock source/flags and benchmark patch are source-proven and the full
+stock compile has completed. No paired performance result exists.
 The phase-end `pnpm perf` and default-route20-task manual smoke (at least18/20),
 with actual provider usage/cache/token/latency evidence, remain open. So do current
 Stop/Take over, restore, sleep/wake, imports/extensions/files/media/permissions,

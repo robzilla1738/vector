@@ -111,7 +111,15 @@ function harness(
   return { repo, coordinator, messages, pageOwnership };
 }
 
-const refs = [{ pageId: "page", url: "https://example.test/", documentEpoch: 1 }];
+const sourcePage = fixturePage("page", "https://example.test/", 1);
+const refs = [
+  {
+    pageId: sourcePage.pageId,
+    url: sourcePage.url,
+    documentEpoch: sourcePage.documentEpoch,
+    sessionId: sourcePage.sessionId,
+  },
+];
 const steer = (runId: string) => ({
   messageId: "11111111-1111-4111-8111-111111111111",
   runId,
@@ -375,3 +383,26 @@ describe("steering v2", () => {
     expect(steer).toHaveBeenCalledTimes(2);
   });
 });
+
+it.each([undefined, "replacement-session"])(
+  "refuses a captured steering source with unmatched session %s before model or write dispatch",
+  async (sessionId) => {
+    const modelStep = vi.fn(async () => toolStep("submit_result", { report: "Must not publish" }));
+    const execute = vi.fn(async () => ({ status: "completed" as const, steps: [] }));
+    const { repo, coordinator, messages } = harness(toolModel(modelStep), execute);
+    try {
+      const run = await coordinator.start({
+        goal: "Use the original page",
+        pageIds: [sourcePage.pageId],
+        chatId: "chat",
+        contextPageRefs: refs.map((ref) => ({ ...ref, sessionId })),
+      });
+      await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("failed"));
+      expect(repo.getRun(run.runId)?.error).toMatch(/selected browser context changed/);
+      expect(modelStep).not.toHaveBeenCalled();
+      expect(execute).not.toHaveBeenCalled();
+    } finally {
+      await messages.stop();
+    }
+  },
+);

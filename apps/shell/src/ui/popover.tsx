@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { positionAnchoredPopover } from "../position-context-menu";
+import { positionAnchoredPopover, positionSelectedPopover } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
 import { Dialog } from "./dialog";
 import "./popover.css";
@@ -25,6 +25,7 @@ export function Popover({
   align = "start",
   children,
   initialFocusRef,
+  selectedItemRef,
   triggerControl,
   onTrigger,
 }: {
@@ -36,6 +37,7 @@ export function Popover({
   align?: "start" | "end";
   children(close: () => void): ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  selectedItemRef?: RefObject<HTMLElement | null>;
   triggerControl?: (node: HTMLButtonElement | null, activate: () => void) => void;
   onTrigger?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
@@ -59,8 +61,16 @@ export function Popover({
     if (!open || !panel.current) return;
     const node = panel.current;
     const place = () => {
-      const rect = button.current?.getBoundingClientRect();
-      if (rect) positionAnchoredPopover(node, rect, align);
+      const trigger = button.current;
+      if (selectedItemRef && !trigger?.isConnected) {
+        setOpen(false);
+        return;
+      }
+      const rect = trigger?.getBoundingClientRect();
+      if (rect) {
+        if (selectedItemRef) positionSelectedPopover(node, rect, selectedItemRef.current);
+        else positionAnchoredPopover(node, rect, align);
+      }
       requestStageReport();
     };
     place();
@@ -80,7 +90,7 @@ export function Popover({
       window.removeEventListener("scroll", onScroll, true);
       requestAnimationFrame(requestStageReport);
     };
-  }, [open, align]);
+  }, [open, align, selectedItemRef]);
   return (
     <>
       <button
@@ -103,8 +113,8 @@ export function Popover({
           dialogRef={panel}
           placement="anchored"
           returnFocus={button}
-          initialFocusRef={initialFocusRef}
-          className="anchored-panel ctx-menu"
+          initialFocusRef={initialFocusRef ?? selectedItemRef}
+          className={`anchored-panel ctx-menu${selectedItemRef ? " ui-select-menu" : ""}`}
           label={label}
           onClose={close}
         >

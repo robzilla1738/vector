@@ -1,0 +1,402 @@
+{
+  "status": "implementation; native rerun pending",
+  "baseline": "43726977bdd10904c280bd774a44b2552dbe0248",
+  "date": "2026-10-18",
+  "partialNativeCampaign": {
+    "atUTC": "2026-10-18T13:29:55.755712+00:00",
+    "candidate": "43726977bdd10904c280bd774a44b2552dbe0248",
+    "frameworkUUID": "4C4C4495-5555-3144-A128-A75B9CC341FC",
+    "ownerRecord": "/tmp/aux-current-native-owner-43726977b.json",
+    "report": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/reports/tasks-local-2026-10-18T13-25-35-070Z.json",
+    "reportSHA256": "6adf72bb97c66e699284bd0dd22b7bdd66a6cb0dcb259d5ad01d66a9779265f3",
+    "reportComplete": false,
+    "scoredTasks": [
+      {
+        "id": "L01-owner",
+        "runId": "run_mvduz5ey_0re0n0",
+        "score": 1,
+        "modelCalls": 1,
+        "runtimeModel": "anthropic/claude-sonnet-5.5",
+        "costUsd": 0.092618,
+        "costComplete": true,
+        "cachedInputTokens": 0
+      },
+      {
+        "id": "L02-status",
+        "runId": "run_mvduzzg0_5me5fk",
+        "score": 1,
+        "modelCalls": 1,
+        "runtimeModel": "anthropic/claude-sonnet-5.5",
+        "costUsd": 0.0062195,
+        "costComplete": true,
+        "cachedInputTokens": 34840
+      },
+      {
+        "id": "L03-count-approved",
+        "runId": "run_mvdv0b5o_a4c795",
+        "score": 0,
+        "modelCalls": 0,
+        "runtimeModel": null,
+        "costUsd": null,
+        "costComplete": false,
+        "cachedInputTokens": null
+      },
+      {
+        "id": "L04-title",
+        "runId": "run_mvdv2k19_bz16jb",
+        "score": 0,
+        "modelCalls": 0,
+        "runtimeModel": null,
+        "costUsd": null,
+        "costComplete": false,
+        "cachedInputTokens": null
+      }
+    ],
+    "stopped": "OriginalmanualharnessPID20832 SIGTERM, originalsession10919joinedexit143 AFTERL04terminal/scoredandL05awaitingsubmissionwithNOnewrun. No agentrun cancelled/replayed, fixturesnotresetbyroot. Partialcampaignnot20taskacceptance.",
+    "observations": [
+      "SettingsCmdcomma\u2192General\u2192CmdLrecords showed correctly painted fixture body, no lingeringSettings overlay",
+      "Initial freshprofile newtabmodeSearch despite directionAskfirst: inspectdefaults, notsilentlyadjustforacceptance",
+      "L01returnedJordanLee in1call; L02inreview1call actualdefaultmodelSonnet5.5 andcache0/34840 invoice0.092618/0.0062195",
+      "AfterL01newconversation humanCmdLsameexistingtabblockedERR_BLOCKED_BY_CLIENT(-20), freshCmdTtabloads",
+      "CompletedL01/L02 retrywarningoriginaltabunavailable; exactpageIdURL/docEpochsometimesstablebutruntimeCDPsessionIdregeneratedafteregressrelease",
+      "L03onevisiblecontextchip originalrefs1 became2runpages; L04became3; failpreflight0calls missingoldtargetatabdf59",
+      "SourcecoordinatorinitializeRun usesimplicitallactiveSpacetabs forordinarynative; explicitcontextPageRefs notpassedassourcePageIds",
+      "OmniboxOnAutocompleteAccept directlyOpenURLbypassesexistingNavigateForPersonadmission; guardedtombstonepreservedafterborrowedrunrelease"
+    ]
+  },
+  "nativePatchReview": {
+    "verdict": "cleared-source-and-full-series-replay; native behavior validation remains required",
+    "patchPath": "/Users/rcourson/Documents/Vibe/web/chromium/patches/aux/0068-person-omnibox-handback.patch",
+    "patchSHA256": "8bc156eacb43b9d1b2ee439f889600d251d09db6a801669633f0429891a1e8b9",
+    "seriesSHA256": "ba8b09c1ef621a7b9da54e3a7b4285bdd237578a2db4d98925003aaff5cdb9fa",
+    "replayProof": "/tmp/aux-native68-full-series-replay-2026-10-18.json",
+    "replayProofSHA256": "8d2e98fcad487060a55a9cc7201ad68c6eb39abd25124a0a8f7151c4ff8a0153",
+    "areasPassed": 68,
+    "changedPaths": 940,
+    "allContentsAndGitModesMatch": true,
+    "postimageSHA256": "2a58a0c41899cb46f813543aedf9354b6c5fbf8ecd01d6149d56c86ce48c2f59",
+    "routingFindings": [
+      {
+        "source": "aux_omnibox_handler.cc61\u2013110",
+        "finding": "Original query/accepted destination/current resolver/WeakDocument guards precede unchanged params construction. Only actual current guest and CURRENT_TAB enters NavigateForPerson; other dispositions invoke same shell OpenURL route."
+      },
+      {
+        "source": "webui_browser_ui.cc1653\u20131661; webui_browser_web_contents_delegate.cc50\u201377; browser.cc543\u2013552",
+        "finding": "Native resolver returns this browser active WebContents; shell OpenURL for ordinary URLs delegates to that browser normal OpenURL. Existing destination behavior retained; no direct LoadURL replacement, model-selected source, or new API."
+      },
+      {
+        "source": "egress_controller.cc980\u20131028;1174\u20131209;1156\u20131172",
+        "finding": "Returned borrowed document keeps task tombstone. Existing helper binds new browser-initiated primary NavigationRequest to original page+WeakDocument+control generation, with empty lease/no isolation; exact receipt admitted only after navigation invocation and original source remains current."
+      },
+      {
+        "source": "egress_url_loader.cc548\u2013590;egress_controller.cc2263\u20132292",
+        "finding": "Network path captures same native NavigationRequest receipt; only valid person navigation/redirect bypasses agent preflight. Old subresource factories, renderer-initiated navigation and runtime TabCatalog paths do not acquire this receipt. No protection/lease/run intent relaxed."
+      },
+      {
+        "source": "aux_omnibox_handler.cc89\u2013110",
+        "finding": "WeakPtr shell prevents use after shell retirement. Bound original OpenURLParams preserve search POST bodies and extra headers. No async work added between existing source check and synchronous navigation wrapper."
+      }
+    ],
+    "noConcreteSourceBlockers": true,
+    "validationLimits": "This independent pass executes only source replay, not compilation/tests/native launch or behavior. New native same-tab post-terminal navigation/redirect and stale-task request refusal must be observed by root under original disposable launcher. No broad speculative changes requested.",
+    "sourceHashes": [
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc",
+        "sha256": "2a58a0c41899cb46f813543aedf9354b6c5fbf8ecd01d6149d56c86ce48c2f59"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+        "sha256": "509ea0c06fd1323c9050400fbbcad2981e3ad9387a52962e782bbfe3383f450d"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc",
+        "sha256": "45ceaad85c15c5d52d03241c05eab80fbe4a174efd546e63a2c91e6c08bca61b"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser.cc",
+        "sha256": "185e71f8910d634dde2cf32218a8820ee42599a6210ae33dd116a20d3ca4123f"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/egress_controller.cc",
+        "sha256": "2ef68f2ac269794e488f6466b03f610c9f0be9b5018b57d8fb3d38f019c606e2"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/egress_url_loader.cc",
+        "sha256": "35072294b042ba7e4936ec2acb2d18a312bb6bd89f7633158e85b18d825eab38"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/tab_catalog.cc",
+        "sha256": "e7db4e816f98d3f640b7a0a677cd035a6f8dd9faa22a890edcf5d8395e0af27a"
+      }
+    ],
+    "method": "Read stable native via git ls-tree/cat-file and file bytes; reconstructed pinned HEAD touched paths in isolated git repo with its own explicitly separate index; applied all68 with git apply --check --index then --index there only. Never reset/applied/unapplied stable checkout or wrote its index/objectDB. No lock/build/Profile/GUI."
+  },
+  "normalQuitCrashpad": {
+    "conclusion": "No new report in authorized Aux default Crashpad pending/completed/new. All41 baseline report hashes/sizes unchanged. No new minidump fault/exception/stack to decode or classify.",
+    "timeline": [
+      {
+        "atUTC": "2026-10-18T13:22:12.312007+00:00",
+        "event": "process_seen",
+        "pid": 17892,
+        "parentPid": 12919,
+        "birth": "Sun Oct 18 08:22:12 2026",
+        "executable": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/MacOS/Aux",
+        "originalOwnerAncestryObserved": true
+      },
+      {
+        "atUTC": "2026-10-18T13:31:35.510177+00:00",
+        "event": "process_seen",
+        "pid": 24719,
+        "parentPid": 17892,
+        "birth": "Sun Oct 18 08:31:35 2026",
+        "executable": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+        "originalOwnerAncestryObserved": true
+      },
+      {
+        "atUTC": "2026-10-18T13:31:35.510295+00:00",
+        "event": "process_no_longer_seen",
+        "pid": 17892,
+        "parentPid": 12919,
+        "birth": "Sun Oct 18 08:22:12 2026",
+        "executable": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/MacOS/Aux"
+      },
+      {
+        "atUTC": "2026-10-18T13:31:35.753666+00:00",
+        "event": "process_no_longer_seen",
+        "pid": 24719,
+        "parentPid": 17892,
+        "birth": "Sun Oct 18 08:31:35 2026",
+        "executable": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)"
+      },
+      {
+        "atUTC": "2026-10-18T13:31:35.998890+00:00",
+        "event": "observer_owner_retired",
+        "ownerPid": 12919
+      }
+    ],
+    "ownNativeStderrCategories": [
+      "[24719:8824426:1018/083135.513912:ERROR:base/apple/mach_port_rendezvous_mac.cc:256] bootstrap_look_up dev.aux.browser.MachPortRendezvousServer.1: Permission denied (1100)",
+      "[24719:8824426:1018/083135.514360:ERROR:base/memory/shared_memory_switch.cc:261] No rendezvous client, terminating process (parent died?)"
+    ],
+    "sourceClassification": "The actual helper stderr takes MachPortRendezvous bootstrap lookup failure, then shared_memory_switch.cc261\u2013262 explicitly TerminateCurrentProcessImmediately(0). This is a code0 immediate exit path, not the prior Aperitif SIGABRT path. Process observer proves helper24719 parent17892 and same-quit-time birth/disappearance, but the lookup error alone does not establish why permission was denied.",
+    "limits": "No wait/restart/new inventory scheduled; snapshot after normal cleanup only. Original155SIGTRAP unresolved and independent. No dump content decoded in this task; cryptographic integrity hashing only.",
+    "hashes": [
+      {
+        "path": "/tmp/aux-43726977b-normal-quit-crashpad-delta-2026-10-18-v1.json",
+        "bytes": 9588,
+        "sha256": "b85a445129be0848449c1f38b9fd021eaa17ea9d7885e3601024d1cb218a6c5a"
+      },
+      {
+        "path": "/tmp/aux-native-43726977b-process-timeline-2026-10-18.jsonl",
+        "bytes": 16848,
+        "sha256": "1a5b2ae664e86fcc4b6ef7edeffd5527fb7e5398e655e6db7133dc57b5bbfbc3"
+      },
+      {
+        "path": "/tmp/aux-current-43726977b-native-2026-10-18.log",
+        "bytes": 51660,
+        "sha256": "a093c8a19b6b70f12b88a78910cb1633630c42751e0b19b53747be22a9c4fcfe"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/memory/shared_memory_switch.cc",
+        "bytes": 16273,
+        "sha256": "f00cd09c7eb1dd1c8064423d90c2e08a87eac38f25d0b3d878a251a6ff934f06"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous_mac.cc",
+        "bytes": 14130,
+        "sha256": "1de18c3104a1b7edc92f9e7ec9615c4dc1d49be114d564baf0b4ec94c2f46d34"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+        "bytes": 11817,
+        "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+      }
+    ]
+  },
+  "nativeObject": {
+    "log": "/tmp/aux-0068-omnibox-object-build-2026-10-18.log",
+    "exitCode": 0,
+    "steps": 1,
+    "seconds": 28.53
+  },
+  "runtimeFix": {
+    "patchSHA256": "f107a9a31ad33509cea8e69b9dc81f80da335e3f83b2f80bec25ab5af571bd7d",
+    "capturedSelection": "Explicit captured refs, including empty selection, constrain original source admission; uncaptured implicit selection preserved.",
+    "staleBoundary": "Exact run selection and original URL/document/session checked before and after awaited source admission.",
+    "privateFocusedTests": 131,
+    "integratedCheck": "passed after fixture repair"
+  },
+  "retryUI": {
+    "patchSHA256": "a9f25e71d5fae7f3906a354463653acc0652f4d11b80a38ace814692f0bc1024",
+    "behavior": "Present but changed context is distinguished from missing tabs; original retry authority remains exact; explicit selected-tab retry recaptures through existing admission."
+  },
+  "syntheticMedia": {
+    "flag": "--fake-media-devices",
+    "requires": "--temp-profile and no custom command",
+    "forwardedFlag": "--use-fake-device-for-media-stream",
+    "fakeUI": false,
+    "nativeVerification": "pending",
+    "hardwareQualification": false
+  },
+  "corrections": [
+    "Fresh Home Search mode is intentional; Ask first refers to confirmation, not Home input mode.",
+    "No full 20-task result or all-surface comparison passes follow from this partial campaign.",
+    "No new Crashpad report during current normal quit does not resolve original browser-main SIGTRAP."
+  ],
+  "runtimeIndependentReview": {
+    "verdict": "cleared",
+    "runtimePatchSHA256": "f107a9a31ad33509cea8e69b9dc81f80da335e3f83b2f80bec25ab5af571bd7d",
+    "uiPatchSHA256": "a9f25e71d5fae7f3906a354463653acc0652f4d11b80a38ace814692f0bc1024",
+    "baseline": "43726977bdd10904c280bd774a44b2552dbe0248",
+    "freshApplyProof": "/tmp/aux-native-selection-437-independent-proof.json",
+    "freshApplyProofSHA256": "e4e1ad8f4cc057d7f61cc0a662a262a1f0d2948628947cf5eea0b52b14001efe",
+    "findings": [],
+    "reviewedInvariants": [
+      {
+        "topic": "Exact captured selection",
+        "result": "contextPageRefs presence, including[], passes original runpageIDs to existing trusted TurnMention.sourcePageIds; legacyundefined retains prior implicit nativeSpace fallback. Explicit tab/group/Space mention selection still takes precedence in existing authority; no synthetic refs or new native grant."
+      },
+      {
+        "topic": "Original async owner",
+        "result": "Initialization captures after legitimate prepareSources, before awaited TurnMention.begin. Exact originalRunControl + original abort signal + pageIds/refs/mentions/nativeTurnContext/messageRevision rechecked before and after await; each capturedref must retain original URL/documentEpoch/session and nonruntime/noncrashed/nondetached source. Same run-selection mutation is refused before inference."
+      },
+      {
+        "topic": "Legitimate initialization",
+        "result": "TurnMention.begin writes only service-owned starts/turns/authority/default source sets, not Repo/run config. prepareReadPage may publish PageTarget state; absent refs leaves no per-ref false check. Set source creation completes before snapshot and private copy acquisition occurs after snapshot check. Fingerprint excludes unrelated status/usage/checkpoint properties rather than entire run; no known legitimate self-mutation is rejected."
+      },
+      {
+        "topic": "Existing source/current fences",
+        "result": "Native source token resolution, TurnMention actual source metadata/default scope/mention authority and later original model/browser/current dispatch checks remain unchanged. Snapshot comparison does not by itself create source authority or loosen native/CDP input-binding."
+      },
+      {
+        "topic": "Retry presentation",
+        "result": "Only new variable computes missing vs changed presentation from already-filtered source pages; retryAvailable/ordinary retrydisabled, explicit retryRun(original,actualselectedpage), readOnly and multi-tab no-subset conditions unchanged. RunService.retry existing fresh recapture and start validation unchanged; no session equality removed."
+      }
+    ],
+    "authorEvidenceInspected": {
+      "freshRuntimeDistBeforeTests": true,
+      "tests": "131/131 in3files per exact verified tests1 log; seven new runtime +threeUIcases",
+      "shellTypes": "passed per verified log",
+      "lint": "0errors,5existingRunPanel advisories",
+      "format": "passed",
+      "testLogSHA256": "ae5623b71d9c14befc2ff7fedcd447170b5ac0aa69c0644b767812b522a9e817",
+      "chronology": "Initial source assertion abort/typefixture corrections and unintended offline ignore-scripts main dependency command disclosed in author evidence; no hidden duplicate product tests."
+    },
+    "reviewLimits": "No duplicate tests/builds/provider/native/Profile/GUI or main/native edits. All4exact pre/post and actual437 Gitpreimages verified, fresh2patch apply matches every postimage,9logSHA/size bindings verified. Does not claim live native20 acceptance or solve separate multi-page CDP ACK/factory problem."
+  },
+  "searchEngineSelect": {
+    "baseline": "43726977bdd10904c280bd774a44b2552dbe0248",
+    "patchSHA256": "444abd3ff6ea6144f0848cf54c853e585e1e949fbf5e306ebfc8c5215c590f7a",
+    "sourceFiles": 9,
+    "privateFocusedTests": 38,
+    "behavior": "Remove obsolete option button classes and local row geometry. Share measured native/custom select role with 20px option leading; retain 200px surface width. Optional selected-row focus/alignment; ordinary Popover path unchanged.",
+    "nativeVerification": "pending",
+    "validation": {
+      "head": "43726977bdd10904c280bd774a44b2552dbe0248",
+      "patchSha256": "444abd3ff6ea6144f0848cf54c853e585e1e949fbf5e306ebfc8c5215c590f7a",
+      "patchBytes": 17545,
+      "files": 9,
+      "freshApplyExact": true,
+      "allMainPreimagesMatch": true,
+      "offlineInstallMetadataUnchanged": {
+        "pnpm-lock.yaml": true,
+        "pnpm-workspace.yaml": true,
+        "package.json": true
+      },
+      "checks": {
+        "tests3-final.log": "38/38 across6files;7newmeaningful cases",
+        "dependency-types.log": "clean own driver/contracts declarations",
+        "types2.log": "clean shell inclrenderer tests",
+        "lint1.log": "0errors/twoexistingwarnings",
+        "format.log": "pass",
+        "format-final.log": "pass"
+      },
+      "chronology": [
+        "initial source archive Python unsupported filter arg corrected before extracting trusted Git archive",
+        "first fixture run37passed/1React-owned-node removal fixturefailure+2JSDOMscrollIntoView errors; corrected fixtures only",
+        "first shell types lacked own driver dist; own tsc-b packages/chromium-driver then fullshell types passed",
+        "finalCSS-only correction excludes .ui-select-option from generic popup font reset, preserving explicit20px leading; no JS changed after final38test run"
+      ],
+      "logs": {
+        "install.log": "71156a26dc101837ab6571fb164eb9225e1a9300826f6aaa066e5b2ac5ee75ff",
+        "tests1.log": "bb2bed2da3d3780b2a8f5f781d951756e1225a2261a83b542d56e0fe69166df9",
+        "tests2.log": "f13d0326b56eccb3a99e437a54f078d61e91c0ff78649bc708435b964849756b",
+        "tests3-final.log": "6a9633ebbdd9e808f16c65262ba54a00b25a45f83e631b1fce0c4b1a1390bbac",
+        "types1.log": "0e02e4e70aa188ca575a548c05f3e3dc1ef2aa744cdc5f1c6f0da3d8d8bd6343",
+        "types2.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "dependency-types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lint1.log": "e8d2d111108760d0b6174a9ec1fc0d3f0f91c9b96028a5e4b09c2a4f61780ffa",
+        "format.log": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+        "format-final.log": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+        "source-proof.json": "e11126aeef2f45f40be4069b52e196d568bc4665eceb8b4d55386e559569fc08"
+      },
+      "limits": [
+        "No Vite production build required for renderer-only local CSS/positioning change; no runtime/native changes.",
+        "No actual browser computed-style or native visual observation; root must rebuild renderer/fullnative staging and compare ref016.",
+        "Source AST confirms native declarations unchanged except measured line-height20px; shared ordinary popup positioning functions exact byte prefix."
+      ]
+    },
+    "independentReview": {
+      "verdict": "cleared-source-review",
+      "findings": [],
+      "patchSHA256": "444abd3ff6ea6144f0848cf54c853e585e1e949fbf5e306ebfc8c5215c590f7a",
+      "all9ExactPairsAnd437PreimagesVerified": true,
+      "freshApplyExact": true,
+      "freshApplyDirectory": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-search-select-review-3hnw8xgr",
+      "verifiedAllManifestLogHashes": true,
+      "positioning": "Selected offset removes current visual scroll with +menu.scrollTop before recomputing clamp; next scrollTop derives from clamped-vs-ideal top, so repeat placement does not accumulate prior scroll. Parent-owned scroll/resize and ResizeObserver remeasure; own menu scroll is deliberately excluded. Maxheight/axis clamp bounded; near viewport extremes natural scrollMax can prevent exact center but keeps viewport/focus bounds. Existing ordinary position helpers unchanged.",
+      "reactFocus": "Stable selectedItem useRef, React callback detach/attach clears/replaces selected node; preset/custom branches always nominate actual selected item. Native Dialog owns initial focus and captured opener return. Detached trigger closes selected picker; available focus logic prevents disconnected-opener theft. Existing scoped save/falseACK/current owner behavior unchanged.",
+      "cascade": "Removed btn classes prevent generic Settings/dialog button decoration. ui-select-option shares canonical native option declarations in overrides; later popup font reset now expressly excludes it so20px leading retained. ui-select-menu uses existing popup-material/Dialog path; native-specific picker appearance/anchor margin remain exclusive. Existing ordinaryPopover selectors/position branch unaffected except intentional class exclusion matching onlynewrole.",
+      "authorValidation": "Inspected exact38/38six-suite log,types/lint/format and sourceproof; no tests/build rerun. Native computedgeometry/focus and both-theme visual acceptance remain unobserved here.",
+      "limits": "Read-only frozen artifacts/source and temp-only freshapply; no main/native edits, GUI, Profiles, tests or builds."
+    },
+    "independentReviewPreservedArtifact": {
+      "path": "/tmp/aux-search-select-437-v1-measurement-review-preserved.json",
+      "sha256": "7f29a1cba61c3ff4f08a76a0e3dca9fd290a734b6c4991911b78ed9bebca6832",
+      "reason": "Exact earlier reviewed JSON preserved after independent reviewer output path collision; original hash reproduced."
+    }
+  },
+  "integratedChecks": [
+    {
+      "log": "/tmp/aux-native-handback-select-integrated-check-2026-10-18.log",
+      "exitCode": 1,
+      "passed": 5918,
+      "failed": 4,
+      "files": 857,
+      "seconds": 110.65,
+      "failures": [
+        "run-steer needs-input",
+        "run-steer correction during uncertain write",
+        "run-steer uncertain write without correction",
+        "CommandBar Settings selected-history display assertion"
+      ],
+      "diagnosis": "Three direct coordinator fixtures omit original session although canonical fixturePage has one; existing RunService.start already requires exact session. Production guard retained. Settings isolated unchanged9/9pass."
+    },
+    {
+      "log": "/tmp/aux-native-handback-settings-isolation-2026-10-18.log",
+      "exitCode": 0,
+      "passed": 9,
+      "seconds": 1.14,
+      "unchangedSource": true
+    },
+    {
+      "log": "/tmp/aux-native-handback-select-integrated-retry-2026-10-18.log",
+      "sha256": "d5817e819d920a2d98c6ba2f3f4be42bf6b64bf64733e9a7255080f7b29f3bdf",
+      "exitCode": 0,
+      "passed": 5924,
+      "files": 857,
+      "seconds": 103.49,
+      "advisories": 574,
+      "note": "Native compiler stopped. Existing advisories plus selected-picker disconnected trigger synchronization advisory; no lint errors."
+    }
+  ],
+  "steeringFixtureCorrection": {
+    "patchSHA256": "0a6602af4db8d682f036a019e0df73d3b179e45bcceb07bc6f0098b8613685d5",
+    "scope": "tests/unit/run-steer.test.ts only",
+    "reason": "Derive original refs from canonical fixturePage including session. Actual RunService.start already enforces exact session. Three existing steering/uncertain-write bodies unchanged.",
+    "negativeCases": "Missing and replacement sessions fail before model/write calls.",
+    "privateAffectedPass": 124,
+    "seconds": 14.22,
+    "productionGuardChanged": false
+  }
+}

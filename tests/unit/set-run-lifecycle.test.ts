@@ -26,6 +26,7 @@ import {
 } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
+import type { TurnSourceContext } from "@aux/contracts/turn-source-context";
 import type { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
 import { usageFields, withAttempts } from "../../apps/runtime/src/agent/model-client.js";
@@ -131,7 +132,13 @@ function fakePages(opts: { execMs: number }) {
 }
 
 function harness(
-  opts: { execMs?: number; maxWorkers?: number; model?: ModelClient | null; protectedPages?: boolean } = {},
+  opts: {
+    execMs?: number;
+    maxWorkers?: number;
+    model?: ModelClient | null;
+    protectedPages?: boolean;
+    turnSourceContext?: () => Promise<TurnSourceContext>;
+  } = {},
 ) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
@@ -196,6 +203,7 @@ function harness(
     removeFiles: (paths: string[]) => removedArtifacts.push(...paths),
   } as unknown as ArtifactStore;
   const turnMentions = new TurnMentionService({
+    turnSourceContext: opts.turnSourceContext,
     page: (id) => targets.get(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
@@ -3177,3 +3185,143 @@ it("joins an ordinary in-flight provider dispatch before repository shutdown", a
     }
   }
 });
+
+function nativeSelectionContext(pageIds: string[]): TurnSourceContext {
+  return {
+    windowId: "main",
+    activePageId: pageIds[0] ?? null,
+    revision: 1,
+    layout: {
+      window: { activeSpaceId: "native-space", activeTabs: {}, splitRatio: 0.5 },
+      shared: {
+        spaces: [{ id: "native-space", name: "Native fixture", color: "blue", grain: 0 }],
+        archivedSpaces: [],
+        pins: {},
+        folders: [],
+        tabSpace: Object.fromEntries(pageIds.map((id) => [id, "native-space"])),
+        order: pageIds,
+        tabFolder: {},
+        tabNames: {},
+        splitGroups: [],
+      },
+    },
+  };
+}
+
+it.each(["selected", "none", "implicit", "mentioned"] as const)(
+  "keeps native %s context at its actual captured scope through coordinator admission",
+  async (selection) => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Complete." }]);
+    let context = nativeSelectionContext([]);
+    const h = harness({ model, turnSourceContext: async () => context });
+    try {
+      const a = await h.pages.open({
+        url: "https://selected.test/",
+        ownedByRuntime: false,
+        background: true,
+      });
+      const b = await h.pages.open({
+        url: "https://other-space-tab.test/",
+        ownedByRuntime: false,
+        background: true,
+      });
+      context = nativeSelectionContext([a.pageId, b.pageId]);
+      const refs = [{ pageId: a.pageId, url: a.url, documentEpoch: a.documentEpoch, sessionId: a.sessionId }];
+      const run = await h.runs.start({
+        goal: "Use only the selected context",
+        nativeTurnContext: "11111111-1111-4111-8111-111111111111",
+        pageIds: selection === "none" ? [] : [a.pageId],
+        ...(selection === "implicit" ? {} : { contextPageRefs: selection === "none" ? [] : refs }),
+        ...(selection === "mentioned"
+          ? {
+              mentions: [
+                {
+                  kind: "tab" as const,
+                  pageId: b.pageId,
+                  url: b.url,
+                  title: "Explicit source",
+                  documentEpoch: b.documentEpoch,
+                  sessionId: b.sessionId!,
+                  access: "read" as const,
+                },
+              ],
+            }
+          : {}),
+      });
+      const finished = await untilTerminal(h.repo, run.runId);
+      expect(finished.status).toBe("completed");
+      expect(finished.pageIds).toEqual(
+        selection === "none"
+          ? []
+          : selection === "implicit"
+            ? [a.pageId, b.pageId]
+            : selection === "mentioned"
+              ? [b.pageId]
+              : [a.pageId],
+      );
+      expect(h.repo.listModelCalls(run.runId)).toHaveLength(1);
+      expect(finished.config?.contextPageRefs).toEqual(
+        selection === "implicit" ? undefined : selection === "none" ? [] : refs,
+      );
+    } finally {
+      await h.runs.close();
+      h.repo.close();
+    }
+  },
+);
+
+it.each(["document", "session", "run-selection"] as const)(
+  "refuses original native %s drift while source admission is awaiting the owner",
+  async (change) => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Must not publish." }]);
+    let entered!: () => void, release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let context = nativeSelectionContext([]);
+    const h = harness({
+      model,
+      turnSourceContext: async () => {
+        entered();
+        await hold;
+        return context;
+      },
+    });
+    try {
+      const a = await h.pages.open({
+        url: "https://selected.test/",
+        ownedByRuntime: false,
+        background: true,
+      });
+      const b = await h.pages.open({ url: "https://other.test/", ownedByRuntime: false, background: true });
+      context = nativeSelectionContext([a.pageId, b.pageId]);
+      const run = await h.runs.start({
+        goal: "Use the original page",
+        nativeTurnContext: "11111111-1111-4111-8111-111111111111",
+        pageIds: [a.pageId],
+        contextPageRefs: [
+          { pageId: a.pageId, url: a.url, documentEpoch: a.documentEpoch, sessionId: a.sessionId },
+        ],
+      });
+      await ready;
+      if (change === "document") a.documentEpoch++;
+      if (change === "session") a.sessionId = "replacement-person-session";
+      if (change === "run-selection") {
+        const current = h.repo.getRun(run.runId)!;
+        h.repo.saveRun({ ...current, pageIds: [b.pageId] });
+      }
+      release();
+      const finished = await untilTerminal(h.repo, run.runId);
+      expect(finished.status).toBe("failed");
+      expect(finished.error).toMatch(/selected browser context changed/);
+      expect(h.repo.listModelCalls(run.runId)).toHaveLength(0);
+    } finally {
+      release();
+      await h.runs.close();
+      h.repo.close();
+    }
+  },
+);

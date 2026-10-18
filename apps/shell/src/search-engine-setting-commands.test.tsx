@@ -69,6 +69,7 @@ async function edit(next: string) {
   });
 }
 beforeEach(() => {
+  Element.prototype.scrollIntoView ??= () => {};
   state.windowId = "one";
   state.privateMode = false;
   state.toast.mockReset();
@@ -265,4 +266,39 @@ it("keeps different endpoints and search placeholders custom", async () => {
     expect(button("Brave").getAttribute("aria-pressed")).toBe("false");
     expect(input().value).toBe(template);
   }
+});
+
+it("opens at the actual selected choice, traverses options and restores the same trigger on Escape", async () => {
+  await render();
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Default search engine"]')!;
+  const panel = document.querySelector<HTMLDialogElement>('dialog[aria-label="Default search engine"]')!;
+  expect(panel.classList.contains("popup-material")).toBe(true);
+  expect(panel.classList.contains("ui-select-menu")).toBe(true);
+  expect(document.activeElement).toBe(button("DuckDuckGo"));
+  await act(async () =>
+    button("DuckDuckGo").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(button("Brave"));
+  await act(async () =>
+    button("Brave").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(button("Custom…"));
+  await act(async () =>
+    panel.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  expect(document.querySelector('dialog[aria-label="Default search engine"]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(save).not.toHaveBeenCalled();
+});
+
+it("aligns and focuses Custom for a persisted non-preset without saving or changing its editor draft", async () => {
+  value = "https://search.example/find?q=%s";
+  await render();
+  expect(document.activeElement).toBe(button("Custom…"));
+  expect(input().value).toBe(value);
+  expect(save).not.toHaveBeenCalled();
 });

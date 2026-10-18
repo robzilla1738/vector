@@ -84,6 +84,7 @@ export function SearchEngineSetting({
       }),
     [identity, value],
   );
+  const selectedItem = useRef<HTMLButtonElement>(null);
   const draftRef = useRef(draft);
   useLayoutEffect(() => {
     draftRef.current = draft;
@@ -131,6 +132,7 @@ export function SearchEngineSetting({
     <div className="search-engine-setting">
       <Popover
         key={JSON.stringify([windowId, privateMode])}
+        selectedItemRef={selectedItem}
         label="Default search engine"
         trigger={
           <>
@@ -143,7 +145,8 @@ export function SearchEngineSetting({
           <SearchEngineMenu value={value} close={close}>
             {ENGINES.map((engine) => (
               <button
-                ref={(element) =>
+                ref={(element) => {
+                  if (presetFor(value)?.url === engine.url) selectedItem.current = element;
                   publish(engine.name, "select-search-engine", element, () => {
                     const original = getOwner();
                     const completion = save(engine.url);
@@ -151,10 +154,10 @@ export function SearchEngineSetting({
                       if (saved && current(original)) close();
                       return saved;
                     });
-                  })
-                }
+                  });
+                }}
                 key={engine.name}
-                {...smallButtonProps}
+                className="ui-select-option"
                 disabled={busy}
                 aria-pressed={presetFor(value)?.url === engine.url}
                 onClick={(event) => run("select-search-engine", event)}
@@ -165,15 +168,16 @@ export function SearchEngineSetting({
             ))}
             <hr />
             <button
-              ref={(element) =>
+              ref={(element) => {
+                if (!presetFor(value)) selectedItem.current = element;
                 publish("custom", "toggle-custom-search-engine", element, () => {
                   if (!current(getOwner()) || getOwner().pending)
                     throw new Error("Choose the current search engine control.");
                   edit((active) => ({ custom: !active.custom }));
                   close();
-                })
-              }
-              {...smallGhostButtonProps}
+                });
+              }}
+              className="ui-select-option"
               disabled={busy}
               aria-expanded={custom}
               onClick={(event) => run("toggle-custom-search-engine", event)}
