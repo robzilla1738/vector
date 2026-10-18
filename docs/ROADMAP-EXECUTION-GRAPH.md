@@ -208,6 +208,16 @@ retains the distinct original-dist baseline and unchanged live CSS proofs.
 The rebuilt integrated check passes5,867tests/855files in129.30s with the same
 572 advisory warnings; native acceptance remains open.
 
+The A4/A8 Gateway effort correction is integrated: supported OpenAI/Anthropic/Google
+requests retain selected shared effort, including OpenAI xhigh, with original
+direct/native-caller and lifecycle behavior preserved. Rebuilt checks pass
+5,895tests/856files in130.31s and572 unchanged advisories. A single bounded live
+Exa probe confirms medium on the wire, exact query/domain/two-result arguments
+and two genuine IANA source identities. Cost components remain separate and
+internal provider thinking/native manual20 remain unproven; see
+[the exact source/live record](evidence/aside-gateway-effort-search-2026-10-18.json).
+No outcome node is marked complete by this client probe.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

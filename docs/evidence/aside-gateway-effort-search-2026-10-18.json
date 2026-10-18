@@ -1,0 +1,398 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "baseline": "4ded324c179026ea0e715aa8c76c86f03eff8520",
+  "scope": "Correct selected Gateway effort in the existing common SDK request. Root integrated verification and one bounded public search probe are recorded separately below.",
+  "defects": [
+    "Fresh baseline actual SDK wire omitted selected Sonnet5.5 medium reasoning.",
+    "Local OpenAI mapping downgraded every xhigh selection to high even when the current model supports xhigh."
+  ],
+  "implementation": [
+    "Pass selected relative effort through shared AI SDK7 reasoning only for actual Gateway OpenAI, Anthropic and Google models with known supported/required reasoning.",
+    "Omit only Aux-generated OpenAI native effort when selected effort exists. Preserve legacy unset helper minimal, explicit caller native precedence, session/routing/cache and direct-provider behavior.",
+    "Preserve original loop, response/usage accounting, output limits, beforeDispatch/spend reservations, cancellation and per-candidate routing. No SDK/model-registry/contract/native changes."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/runtime/src/agent/gateway-client.ts",
+      "before": "8596a1b86d9ca0a3ec239c54fc2782cf9e0688f879e2f5335313ecf5db499620",
+      "after": "b256106e98d3535a48e6b8118823497d847b1ca7732166c8b4ebe1c2c371958d",
+      "beforeBytes": 40685,
+      "afterBytes": 40785
+    },
+    {
+      "path": "tests/unit/gateway-client.test.ts",
+      "before": "5366902ac285b3d0cc709b3ce7de1f1a92791e0104e8bee7ca135189c4b5f19b",
+      "after": "1fd8041ad8135140a3f99f71d20735f4f181d3544bc7d98044844e88b7d99658",
+      "beforeBytes": 3276,
+      "afterBytes": 3351
+    },
+    {
+      "path": "tests/unit/gateway-reasoning.test.ts",
+      "before": null,
+      "after": "ba98f4bff23c3e0d5055843808376b49016a06115274d279c463650a7bcc2aee",
+      "beforeBytes": null,
+      "afterBytes": 10475
+    }
+  ],
+  "primarySources": [
+    "https://vercel.com/docs/ai-gateway/models-and-providers/reasoning",
+    "https://vercel.com/docs/ai-gateway/models-and-providers/reasoning/anthropic",
+    "https://vercel.com/docs/ai-gateway/models-and-providers/reasoning/google"
+  ],
+  "installedSDK": {
+    "ai": "7.0.93",
+    "gateway": "4.0.75",
+    "upgraded": false
+  },
+  "privateValidation": {
+    "scope": "Recorded private fresh runtime/type build and actual mocked SDK wire; no paid generation/native/fullcheck",
+    "patchSha256": "60dd550ae56ff7d50548ed9c7925bc702176acff2f50ecd7637f4463e62f4b51",
+    "logs": [
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-baseline.log",
+        "sha256": "12f109f6285156fb5879e878ce0a842bff62da486efe185c15885b65da9d680b"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-baseline2.log",
+        "sha256": "c6d9c8867b527076efeee85eba4302bb7b98325ea5b59b2f2a6cb65e1e25a628"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-baseline3.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-baseline-wire-repro.log",
+        "sha256": "59e2f535bd7d277072cbfb21d8e6461080b11759c8246b8e3aff3b0c6db59c3e"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-final1.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-final2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-final3.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-build-final4.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-tests1.log",
+        "sha256": "16221f91b3130b6e1d64787d27ec72c5fd46c51c29c7a1305ddb8ac29034b5cd"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-affected-final1.log",
+        "sha256": "92fd383f94a80788bfe5c7cd7746ce3c608d3a94431780b48d63b565faf90483"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-lint1.log",
+        "sha256": "e80c54409bf6b7469cad84d6bea1b2f19088bc2007b952791d5a90039d03ba85"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-lint2.log",
+        "sha256": "cd9dfb4c154563608a7a5e363b02eb0ed92a0f4467b812c6823b2a30f4e18098"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-lint-final2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-gateway-reasoning-4ded-v1-format-final2.log",
+        "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+      }
+    ],
+    "finalRuntimeAndTestTypes": {
+      "log": "/tmp/aux-gateway-reasoning-4ded-v1-build-final4.log",
+      "exitCode": 0
+    },
+    "finalAffected": {
+      "log": "/tmp/aux-gateway-reasoning-4ded-v1-affected-final1.log",
+      "files": 9,
+      "passed": 95,
+      "durationSeconds": 7.27,
+      "exitCode": 0
+    },
+    "finalScopedLint": {
+      "log": "/tmp/aux-gateway-reasoning-4ded-v1-lint-final2.log",
+      "exitCode": 0,
+      "errors": 0,
+      "warnings": 0
+    },
+    "finalScopedFormat": {
+      "log": "/tmp/aux-gateway-reasoning-4ded-v1-format-final2.log",
+      "exitCode": 0
+    },
+    "chronology": [
+      "Proposal1 frozen before implementation validation; additive2 records documented legacybudget mapping, additive3 adds root-approved OpenAI selected-effort preservation.",
+      "Full private baseline build first caught fixture-only nativeCases/index types; a fixture edit initially left a syntax delimiter, retained baseline2 log. Corrected baseline3 build clean with product source unchanged.",
+      "Fresh baseline actual SDK wire repro expected-failed exactly1Sonnet5.5medium case: request reasoning undefined. Other19draftcases unselected.",
+      "Production correction authored once; final1 clean runtime build before initial actual28wirecases pass.",
+      "Fixture-only lint rules required unconditional expectation/matcher placement and original asynchronous rejection collection; corrected without production edits. Buildsfinal2/final3/final4 clean; final4 includes final fixture types.",
+      "Coherent affected command final95/95ninefiles against rebuilt private runtime. Actual mocked429 test emits expected SDK diagnostics; no paid request. No timeout raised.",
+      "All3mainpreimages/dependencyhashes and exactpostimages/freshapply verified at freeze."
+    ],
+    "limits": [
+      "Shared effort is requested relative effort, not observed native thinking/internal token budget.",
+      "Mock Gateway fetch proves actual installed SDK serialization, override retention and client lifecycle only; server translation follows linked primary docs and was not paid-tested.",
+      "Direct provider request preparation remains exact; no SDK migration, contract/generated/native change or second loop.",
+      "Root must rebuild dist and perform the integrated check on its own final source before acceptance."
+    ]
+  },
+  "independentReview": {
+    "result": "No blocking source findings",
+    "path": "/tmp/aux-gateway-reasoning-4ded-v1-independent-review.json",
+    "sha256": "407c9a66d442710b91703df6d8c90897b0db8aafbba3bdee5b0f22dae27bd4c5"
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1.patch",
+      "sha256": "60dd550ae56ff7d50548ed9c7925bc702176acff2f50ecd7637f4463e62f4b51"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1-hashes.json",
+      "sha256": "d5f6c6408ac887db493b27bc1804202d56385d577dd818b7b69daba66566c5b3"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1-handoff.md",
+      "sha256": "e87a19ee0b4ffd76496d1073e1728075376341c93cda18093c7dd5477ed0606a"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1-validation.json",
+      "sha256": "252538006f0b9dc18920e4fdf52547d08f2d34c233835a053d1f05b87a76b5dc"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1-independent-review.json",
+      "sha256": "407c9a66d442710b91703df6d8c90897b0db8aafbba3bdee5b0f22dae27bd4c5"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-v1-apply-proof.json",
+      "sha256": "abff8c2b15518297e28a908fcc2333ae7e55deb6190ca8aed195fcef9f4df59c"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-root-apply-2026-10-18.json",
+      "sha256": "8715bff86f08b10cdf459d76900c6246635ebaa3ac604b2caee8dd46008d57eb"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-proposal-v1.md",
+      "sha256": "5ab2daf04943a21a9d91712734dd501c5e17594e2906aebd5dc807c0b4f6fb89"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-proposal-v2-addendum.md",
+      "sha256": "e7d93e98175d16595b857be2479c85a3cd1554b05711c6263d89c276bb4d9962"
+    },
+    {
+      "path": "/tmp/aux-gateway-reasoning-4ded-proposal-v3-addendum.md",
+      "sha256": "1cb1babe7546af2b027523cf4df3bacfadfd3d9edf55fc7a079b8565d342bf9e"
+    }
+  ],
+  "limits": [
+    "Shared effort is requested relative configuration. Provider-owned translation can map levels differently; serialization and a successful response do not prove exact internal thinking or token budgets.",
+    "The existing route resolver may already supply candidate/default medium; this fix adds no new default. Legacy unset minimal describes the helper branch only.",
+    "Earlier two live canonical-schema probes requested medium but did not retain actual wire reasoning. The then-current source omitted Anthropic effort; those historical results establish schema/cache acceptance, not medium effort application.",
+    "Current native candidate99d6203 lacks this correction and subsequent source slices. Native task smoke, matched UI/browser performance and original Chromium155 crash remain open."
+  ],
+  "rootIntegrated": {
+    "command": "npm run check",
+    "runtimeDistRebuiltBeforeTests": true,
+    "exitCode": 0,
+    "tests": 5895,
+    "files": 856,
+    "durationSeconds": 130.31,
+    "lintWarnings": 572,
+    "unchangedWarnings": true,
+    "log": {
+      "path": "/tmp/aux-gateway-reasoning-integrated-check-2026-10-18.log",
+      "sha256": "c32ef7287bfacfa87ee60f7bd3bb8da46ff0ddcb81672b19cb95bc263a1afda0"
+    },
+    "lintComparison": {
+      "path": "/tmp/aux-gateway-reasoning-lint-comparison-2026-10-18.json",
+      "sha256": "f5048158d08f07b3cbd630e8e4f975ee0a82d9b130a50889d39de0dd7848f834"
+    }
+  },
+  "liveSearch": {
+    "scope": "One explicit Aux GatewayModelClient.searchWeb client acceptance probe; public query/sources only. No Profile, GUI, native runtime, agent actions, external writes or native/manual-smoke claim.",
+    "modelId": "anthropic/claude-sonnet-5.5",
+    "reasoningRequested": "medium",
+    "request": {
+      "query": "IANA reserved example domains official documentation",
+      "backend": "gateway",
+      "provider": "exa",
+      "maxResults": 2,
+      "includeDomains": [
+        "iana.org"
+      ]
+    },
+    "startedAt": "2026-10-18T11:26:36.956Z",
+    "finishedAt": "2026-10-18T11:26:43.034Z",
+    "installed": {
+      "ai": "7.0.93",
+      "@ai-sdk/gateway": "4.0.75"
+    },
+    "code": [
+      {
+        "module": "agent/gateway-client",
+        "sourceSha256": "b256106e98d3535a48e6b8118823497d847b1ca7732166c8b4ebe1c2c371958d",
+        "rebuiltDistSha256": "d286e68a0f0a64619b24ec3d906894f9584e38643bb646eda750adf192c96dd7"
+      },
+      {
+        "module": "agent/gateway-search",
+        "sourceSha256": "c24c935e1ae0d3163e1449cd7dbb75cee2ddb9ab30a4a7580bab8e2b10971ce5",
+        "rebuiltDistSha256": "e9e6ad82f607fef5c833acb6bee4f079cb524f6f47404567b3bfc36cd3c8ff25"
+      },
+      {
+        "module": "agent/model-client",
+        "sourceSha256": "c1655fc64c7ad607e9c0591cd32541b430086487546d5e9cc668622b92b82041",
+        "rebuiltDistSha256": "5b797b4706874c833edc0ae0c75b485dfef6473101b2e1f05386426c16767dbd"
+      }
+    ],
+    "wire": {
+      "endpoint": "https://ai-gateway.vercel.sh/v4/ai/language-model",
+      "modelId": "anthropic/claude-sonnet-5.5",
+      "streaming": "true",
+      "requestBodySha256": "c1a2fbb7d98f9a1d0368e22e53214564746a91363d6f4fef23fda61a15ad63ca",
+      "toolChoice": {
+        "type": "tool",
+        "toolName": "search"
+      },
+      "tools": [
+        {
+          "type": "provider",
+          "name": "search",
+          "id": "gateway.exa_search",
+          "args": {
+            "numResults": 2,
+            "type": "auto",
+            "contents": {
+              "text": {
+                "maxCharacters": 8000
+              },
+              "highlights": {
+                "maxCharacters": 1000
+              }
+            },
+            "includeDomains": [
+              "iana.org"
+            ]
+          }
+        }
+      ],
+      "requestedReasoning": "medium",
+      "observedGenericReasoning": "medium",
+      "observedAnthropicEffort": null,
+      "observedAnthropicThinking": null,
+      "observedOpenAiEffort": null,
+      "maxOutputTokens": 768
+    },
+    "inferenceHttpRequests": 1,
+    "inferenceFetchInvocations": 1,
+    "beforeDispatchCalls": 1,
+    "recordedRetries": 0,
+    "actualSourceCount": 2,
+    "actualProviderExecutedSearchCount": 1,
+    "actualQueryAndFilters": [
+      {
+        "toolCallId": "toolu_bdrk_01XqtrzhX7wQqXXVvE76amVt",
+        "requestId": "994c677fdf6d094712959aa9aa80c8ce",
+        "observedInput": {
+          "query": "IANA reserved example domains official documentation",
+          "num_results": 2,
+          "include_domains": [
+            "iana.org"
+          ]
+        },
+        "exactRequestedQueryObserved": true,
+        "requestedIncludeDomainsObserved": true,
+        "requestedMaxResultsObserved": 2
+      }
+    ],
+    "returnedSourcesMatchRequestedDomain": true,
+    "usage": {
+      "modelId": "anthropic/claude-sonnet-5.5",
+      "resolvedModelId": "anthropic/claude-sonnet-5.5",
+      "inputTokens": 5861,
+      "outputTokens": 427,
+      "cachedInputTokens": 1678,
+      "durationMs": 5905,
+      "canonicalCostUsd": null,
+      "canonicalCostEstimated": null,
+      "gatewayReportedCostFieldType": "string",
+      "searchChargeInGatewayTotal": "not-verified"
+    },
+    "pricing": {
+      "gatewayReportedCostUsd": 0.0206428,
+      "providerSearchCostUsd": 0.007,
+      "searchCostIncludedInGatewayTotal": "not-verified",
+      "canonical": {
+        "modelId": "anthropic/claude-sonnet-5.5",
+        "resolvedModelId": "anthropic/claude-sonnet-5.5",
+        "inputTokens": 5861,
+        "outputTokens": 427,
+        "cachedInputTokens": 1678,
+        "durationMs": 5905,
+        "canonicalCostUsd": null,
+        "canonicalCostEstimated": null,
+        "gatewayReportedCostFieldType": "string",
+        "searchChargeInGatewayTotal": "not-verified"
+      },
+      "totalPaidCostUsd": null,
+      "totalPaidCostUnknownReason": "Search inclusion in Gateway total is not verified; no sum or zero is manufactured."
+    },
+    "outcome": "response_received",
+    "suppressedSdkDiagnostics": 2,
+    "sources": [
+      {
+        "sourceId": "f696a2a39af52982d49ef88069ffc980b4d230cee4b9e7b9fe9e1cee83e25aa9",
+        "providerSourceId": "https://www.iana.org/domains/reserved",
+        "requestId": "994c677fdf6d094712959aa9aa80c8ce",
+        "toolCallId": "toolu_bdrk_01XqtrzhX7wQqXXVvE76amVt",
+        "title": "IANA-managed Reserved Domains",
+        "url": "https://www.iana.org/domains/reserved"
+      },
+      {
+        "sourceId": "4daac53a3f38ff71d24ecf51f597cc00bf9584b76b41254ed23f2df7f53c3131",
+        "providerSourceId": "https://www.iana.org/help/example-domains",
+        "requestId": "994c677fdf6d094712959aa9aa80c8ce",
+        "toolCallId": "toolu_bdrk_01XqtrzhX7wQqXXVvE76amVt",
+        "title": "Example Domains",
+        "url": "https://www.iana.org/help/example-domains"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "/tmp/aux-live-gateway-search-probe-2026-10-18-v1.mjs",
+        "sha256": "ffe71674b6ab256a68e80ba3bc908b7d05af0c5ceb5c4245b919cc8a225cb3a9"
+      },
+      {
+        "path": "/tmp/aux-live-gateway-search-probe-2026-10-18-v1-constraints.json",
+        "sha256": "1002557d9366bf21d01e26a57c5e863cba404de9191f800559f2a96c353b1c05"
+      },
+      {
+        "path": "/tmp/aux-live-gateway-search-probe-2026-10-18-v1.json",
+        "sha256": "97bb3b8ae5fdba53d31c4a0181597eaf2efa1cd0476979e15192f2f9925e6539"
+      },
+      {
+        "path": "/tmp/aux-live-gateway-search-probe-2026-10-18-v1.log",
+        "sha256": "97bb3b8ae5fdba53d31c4a0181597eaf2efa1cd0476979e15192f2f9925e6539"
+      }
+    ],
+    "interpretation": [
+      "One original beforeDispatch, one client inference HTTP, one provider-executed Exa search, no client retry/fallback. Exact requested query/domain/num_results observed and two distinct original provider/source IDs returned.",
+      "Shared medium is on the accepted request wire; exact internal provider reasoning remains unobserved.",
+      "Observed5861input/427output/1678cached tokens and5905ms client duration are single-request observations, not general latency/performance targets.",
+      "Gateway reports0.0206428USD and Exa reports0.007USD separately. Search inclusion in Gateway total is unverified, so canonical combined cost/total paid cost remain unknown, not zero and not summed.",
+      "Project-key client does not load Profile account/provider filters or native task admission. No owner Profile/native GUI/third-party writes or default-route manual task were used."
+    ]
+  },
+  "sourceAndDistHashes": {
+    "apps/runtime/src/agent/gateway-client.ts": "b256106e98d3535a48e6b8118823497d847b1ca7732166c8b4ebe1c2c371958d",
+    "tests/unit/gateway-client.test.ts": "1fd8041ad8135140a3f99f71d20735f4f181d3544bc7d98044844e88b7d99658",
+    "tests/unit/gateway-reasoning.test.ts": "ba98f4bff23c3e0d5055843808376b49016a06115274d279c463650a7bcc2aee",
+    "apps/runtime/dist/agent/gateway-client.js": "d286e68a0f0a64619b24ec3d906894f9584e38643bb646eda750adf192c96dd7"
+  },
+  "result": "Selected effort correction passes rebuilt integrated checks and one live bounded structured search probe. Full Aside/native/browser-readiness program remains incomplete."
+}

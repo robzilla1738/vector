@@ -62,9 +62,8 @@ describe("structured output parsing", () => {
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner).openai).toEqual({
       reasoningEffort: "minimal",
     });
-    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner, "high").openai).toEqual({
-      reasoningEffort: "high",
-    });
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner, "high").openai).toBeUndefined();
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner, "xhigh").openai).toBeUndefined();
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
     const client = new GatewayModelClient("vg_test", {

@@ -176,7 +176,7 @@ export function isFailoverStatus(e: unknown): boolean {
   return visit(e);
 }
 
-/** OpenAI reasoning effort goes only to registry models that reason; others reject or ignore it. */
+/** Keep routing/cache defaults; selected effort uses the shared request field. */
 export function gatewayProviderOptions(
   only?: string[],
   modelId?: string,
@@ -194,14 +194,7 @@ export function gatewayProviderOptions(
       ...(effective?.length ? { only: effective } : {}),
       ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
-    ...(reasons
-      ? {
-          openai: {
-            reasoningEffort: (effort === "xhigh" ? "high" : (effort ?? "minimal")) as
-              "low" | "medium" | "high" | "minimal",
-          },
-        }
-      : {}),
+    ...(reasons && effort === undefined ? { openai: { reasoningEffort: "minimal" as const } } : {}),
   };
 }
 
@@ -480,12 +473,9 @@ export class GatewayModelClient implements ModelClient {
       : undefined;
     const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
     const capability = modelCapabilities(opts.modelId, this.capabilities());
+    const supportsReasoning = capability?.reasoning === "supported" || capability?.reasoning === "required";
     const reasoning: Record<string, Record<string, unknown>> = {};
-    if (
-      !this.gateway &&
-      opts.reasoning &&
-      (capability?.reasoning === "supported" || capability?.reasoning === "required")
-    ) {
+    if (!this.gateway && opts.reasoning && supportsReasoning) {
       if (provider === "openai") reasoning.openai = { reasoningEffort: opts.reasoning, forceReasoning: true };
       if (provider === "anthropic")
         reasoning.anthropic = {
@@ -500,6 +490,12 @@ export class GatewayModelClient implements ModelClient {
       model,
       abortSignal: opts.signal,
       maxRetries: 0 as const,
+      ...(this.gateway &&
+      (provider === "openai" || provider === "anthropic" || provider === "google") &&
+      supportsReasoning &&
+      opts.reasoning
+        ? { reasoning: opts.reasoning }
+        : {}),
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       instructions: anthropic ? stampAnthropicCache({ role: "system", content: opts.system }) : opts.system,
       messages: cachedMessages,

@@ -8,6 +8,20 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+Gateway now forwards selected relative effort through the shared SDK7 request
+for known reasoning-capable OpenAI, Anthropic and Google models. This fixes omitted
+Anthropic/Google effort and removes the local OpenAI xhigh→high downgrade, while
+retaining caller-native precedence, direct-provider preparation and the existing
+unset helper policy. The rebuilt check passes all5,895tests/856files in130.31s
+with572 unchanged advisories. One bounded live project-key Exa probe sends medium
+on the actual wire, executes the exact public query/domain/two-result parameters
+and returns two IANA sources with distinct source IDs. Gateway and search costs
+remain separate observations because inclusion is unverified. This is client/SDK
+evidence, without Profile/native route or internal-thinking claims; earlier schema
+probes did not retain actual effort wire data. [The effort/search record](evidence/aside-gateway-effort-search-2026-10-18.json)
+preserves the baseline reproduction, reviews and actual usage. Current native
+staging, manual20-task acceptance, performance and crash resolution remain open.
+
 The latest audit correction binds queued follow-ups to their original task PDFs,
 bounds native-socket pending output by actual UTF-8 bytes and a finite drain/close
 deadline, and fences compaction controls to the committed run state. Selection
