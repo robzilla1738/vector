@@ -12,8 +12,8 @@ The [successor source](evidence/aside-native-input-download-integration-2026-10-
 is committed on local main. Original-input/download continuation is `454ea27cd`,
 process retirement `2b81d27dc`, composer menus `b9870419a`, disposable window sizing
 `efdd7ee9b` and pinned performance-helper reuse `2728ac6c6`. The tested product is
-clean; nothing was pushed. The integrated check passes **6,003 tests across
-861 files** in 102.34s, with 580 lint advisories and no type/lint errors. Runtime
+clean; nothing was pushed. The latest integrated check passes **6,003 tests across
+861 files** in 107.36s, with 580 lint advisories and no type/lint errors. Runtime
 dist was rebuilt first, without a concurrent native compiler.
 
 All seven selected native input cases pass in 239ms, and all 12 download cases
@@ -24,8 +24,25 @@ patches replay across 973 paths and modes. The successor app builds 2,720 steps
 in 23m02.30s; preserved framework/dSYM match UUID
 `4C4C4420-5555-3144-A1C6-6E3050EC3960`. Its exact native implementation, generated
 280-method binding and 297 renderer assets are recorded independently of the
-native dirty source label. Corrected runtime staging and a fresh disposable
-launch are next; current native acceptance is still open.
+native dirty source label. The first fresh launch exposed two implemented input
+methods missing from capability registration. The
+[registry correction](evidence/aside-native-method-publication-2026-10-18.json)
+is committed as `587bdaf5e`; all 68 patches replay across 973 paths and modes,
+and its native rebuild passes seven steps in 7m52.05s. The new preserved
+framework/dSYM match UUID `4C4C4405-5555-3144-A11F-D378A9476D99`. Actual native
+metadata now advertises both methods: 279 available methods, with only the
+intentionally conditional appearance observer absent from the generated 280.
+Native and runtime identify the same clean product commit.
+
+That disposable candidate survives a timed 237.061-second startup/idle interval
+with 16 identity-checked heartbeats, a maximum 15.026-second gap and no dedicated
+crash report. No agent GUI action occurred during the timer; external human
+activity was not independently monitored. This is current-source
+non-reproduction, **not resolution of the historical SIGTRAP**. Its original
+launcher retains cleanup ownership while a new default-route manual20 campaign
+runs. A separate first attempt stopped before any task submission on a fixture
+reset transport failure; its zero-row report is retained. Current UI acceptance,
+browser daily-use readiness and paired performance remain open.
 
 Earlier integrated checks exposed missing fixture capabilities and a genuine
 process-retirement error. The independently reviewed

@@ -1,0 +1,121 @@
+{
+  "recordedUTC": "2026-10-18T18:13:58.211090+00:00",
+  "status": "Native registry correction compiled and actually advertised; full program and browser readiness remain incomplete",
+  "sourceCommit": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+  "problem": {
+    "previousGenerated": 280,
+    "previousAdvertised": 277,
+    "unintentionallyAbsent": [
+      "native.cdpArmInput",
+      "native.cdpTakeInputOutcome"
+    ],
+    "intentionallyConditional": "appearanceSnapshot"
+  },
+  "change": {
+    "native.cdpArmInput": "Registered in existing kCdp group",
+    "native.cdpTakeInputOutcome": "Registered in existing kAsync group; original asynchronous generation/cancellation handler preserved",
+    "canonicalArea": "chromium/patches/aux/0066-native-context-input-proof.patch",
+    "canonicalAreaSHA256": "ee4ee0786705222571d880a98b4aa07c65e60a7b9587f6188e3aa0dcb61778de"
+  },
+  "canonicalReplay": {
+    "areas": 68,
+    "pathsAndModes": 973,
+    "mismatches": 0,
+    "proof": "/tmp/aux-input-method-registry-integrated-replay-2026-10-18/proof.json",
+    "sha256": "720e3b2682bc929ceebd804a0a270fc8cab05ff891d4e9825d37974109e92915"
+  },
+  "nativeBuild": {
+    "session": 94037,
+    "ownerPID": 12397,
+    "exitCode": 0,
+    "steps": 7,
+    "seconds": 472.05,
+    "record": "/tmp/aux-input-method-registry-apply-build-2026-10-18.json",
+    "recordSHA256": "b3091be2254cbe939cc6e11893db124554f6e9662fe287999c25206dfb2b5919",
+    "log": "/tmp/aux-input-method-registry-apply-build-2026-10-18.log",
+    "logSHA256": "f515092ca83e3e8dc21c7cdfcccef3b668d0362a040ee392fc6085f1bdbb7f68",
+    "renderer": "297 staged assets unchanged; no renderer rebuild in this slice",
+    "oldSymbolCopies": "All five old preserved artifacts and their identity rehashed unchanged after rebuild"
+  },
+  "matchingSymbols": {
+    "identity": "/tmp/aux-input-registry-587-native-symbols-2026-10-18/identity.json",
+    "identitySHA256": "68864a6256cffb7c37de81b0ab2beff908af74cd2e755dc769348f8dcb5b723d",
+    "frameworkAndDWARFUUID": "4C4C4405-5555-3144-A11F-D378A9476D99"
+  },
+  "integratedCheck": {
+    "session": 60259,
+    "exitCode": 0,
+    "testFiles": 861,
+    "tests": 6003,
+    "seconds": 107.36,
+    "lintAdvisories": 580,
+    "typeOrLintErrors": 0,
+    "nativeCompilerConcurrent": false,
+    "log": "/tmp/aux-native-registry-integrated-check-2026-10-18.log",
+    "logSHA256": "fe58c595f550c528064fee5fd09250fcadeb9a7d704c4e38968d95a729845b57"
+  },
+  "liveNative": {
+    "runtimeIdentity": {
+      "commit": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+      "tree": "74cdbf7b770c05841e0b331288f60d59974ba912",
+      "dirty": false,
+      "label": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed"
+    },
+    "native": {
+      "buildId": "155.0.8059.85+ff6f68f1b2581578cd11e7a8ba46cd517daa53ef7f0426bffd62b1e0873ba7b6+587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+      "sourceCommit": "587bdaf5ee917e9a0957425b00dbcccd0cbd7aed",
+      "methodCount": 279,
+      "methodSetSHA256": "14734941ae74d82816ecbdabe44a689d425352e5e4ec1985f0a27da61fd0c25e",
+      "armInput": true,
+      "takeInputOutcome": true,
+      "appearanceSnapshot": false,
+      "downloadOriginal": true
+    },
+    "apiMethodCount": 501,
+    "backends": [
+      "aux"
+    ]
+  },
+  "startupIdle": {
+    "session": 20101,
+    "exitCode": 0,
+    "elapsedMs": 237061,
+    "heartbeatCount": 16,
+    "maximumActualGapMs": 15026,
+    "dedicatedCrashReports": 0,
+    "agentGUIActions": 0,
+    "originalIdentityUnchanged": true,
+    "record": "/tmp/aux-native-587-acceptance-2026-10-18/timed-idle/idle-observation.json",
+    "recordSHA256": "1c2ab8ca6231b7a0888af752e5beabf7806bf227e82073b0e81904aacb1cdf89",
+    "limits": "Current candidate non-reproduction only; original historical SIGTRAP remains unresolved. External human activity was not independently monitored."
+  },
+  "ownership": {
+    "launcherSession": 99332,
+    "launcherPID": 17100,
+    "browserPID": 17239,
+    "runtimePID": 17253,
+    "record": "/tmp/aux-native-587-acceptance-2026-10-18/ownership.json",
+    "status": "Live disposable Profile; original launcher retains normal retirement ownership"
+  },
+  "performance": {
+    "helperIdentityOnly": "/tmp/aux-native-587-acceptance-2026-10-18/perf-helper-identity-preflight.json",
+    "accessibility": false,
+    "newBenchmarkAttempt": false,
+    "targetsPassed": false,
+    "OSPermissionChanged": false
+  },
+  "manual20": {
+    "status": "Active separate campaign; not yet a completed20 result",
+    "log": "/tmp/aux-manual20-587-attempt2-2026-10-18.log",
+    "report": "tests/benchmarks/reports/tasks-local-2026-10-18T18-09-53-028Z.json",
+    "bootstrapFailure": "Earlier attempt stopped before any task submission on fixture-reset transport failure;0-row report18-09-05 retained separately."
+  },
+  "remaining": [
+    "Fresh20-task smoke completion and actual provider/cache/latency evidence",
+    "Current native UI comparisons, both themes and narrow states",
+    "Apply and native-verify source-backed Home827px and compact composer menu corrections",
+    "Browser daily-use observations, active/startup/private/multiple-Profile retirement",
+    "Original155 SIGTRAP cause",
+    "Actual paired performance requires benchmark-helper Accessibility permission"
+  ]
+}
