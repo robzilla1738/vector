@@ -234,6 +234,7 @@ export function ChatHistory({ composer }: { composer?: ReactNode }) {
                     key={String(value)}
                     type="button"
                     role="menuitemradio"
+                    className="menu-item"
                     aria-checked={oldestFirst === value}
                     disabled={saving}
                     onClick={() => {

@@ -1,0 +1,308 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "integratedBase": "cfe2998b371c60fd83007b6372ba412b3fe9d5fc",
+  "nativeCandidateSource": "99d6203afd1ac9953f9a736766967cd3d637126a",
+  "nativeStaged": false,
+  "scope": "One reviewed combined A3/A4/A8 source-audit correction batch; source evidence only, full adoption/browser-readiness program incomplete.",
+  "sourcePostimages": {
+    "apps/runtime/src/host-socket.ts": "d55468664ededc20b6893608ff5df896226198509424e7d822a172b5b88c7264",
+    "apps/runtime/src/services/queue-context.ts": "7f54bf2e390079e26edbb7a22bcfa50cf09889fcbb66f5f22bffcd062ec110c8",
+    "apps/runtime/src/services/runs.ts": "7b3c1ecf9c6e39df95217fb688ec125bb5c3a21fb3c024a144fb5a203462dc1a",
+    "apps/shell/src/chat-list/ChatHistory.tsx": "d74769cc1f383ccc9601c8a4a996f1deb52ed5dca9ab88fd9d13a53dff8e9239",
+    "apps/shell/src/components/Conversation.tsx": "0dd9e22f42e6e620643f0d03a0e4e2e2dded9f54ce446f41c19e7947d11777da",
+    "apps/shell/src/components/RunContext.test.tsx": "6d446eb30ca0c19dd049a6b4583c1de0c67ee8ac7b31b0cd22eeea67664f629e",
+    "apps/shell/src/components/RunContext.tsx": "fe099999a091a502e1710ba1b65ebd8a821e56f94edbaff03940274b22fae2e1",
+    "apps/shell/src/settings/sections/SelectionActionEditor.tsx": "d1928166bb31f4364eef466d9cd94da6a9a4298c5cf6b82e1262e5d5d894cc9f",
+    "apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx": "8f0ce1704679af4b514fc7f76609ff13b27af29700bf572fd8d39f02e6403416",
+    "apps/shell/src/settings/sections/SelectionCapture.equivalence.test.tsx": "3af7694fe0a2df5a0b65734dbef5d78babba5847fb0dbe170e2337d9064ab16e",
+    "apps/shell/src/settings/sections/SelectionCapture.owner-callbacks.test.tsx": "c61dd5b5da8ec2a9ba58322b95165c1516d24df6c705cf2c9c3a3ea24b6ec9cb",
+    "apps/shell/src/settings/sections/SelectionCapture.test.tsx": "78d94ce3b510bdd7ee38a1eaaa6d35a70be3f9d5fb7e715ef12ed1d15b928121",
+    "apps/shell/src/settings/sections/SelectionCapture.tsx": "c14a0237f1d0bbf5904d3d3da8f9f897222347e8907afe47701ba5853c0ec4ce",
+    "apps/shell/src/styles/workspace.css": "fcdc3e7dec5cec964fee59ae5affd09f4059e245dcbb55325f9ec9cd254fa662",
+    "packages/contracts/src/command-routing.generated.ts": "2c3e90160023663e185804b57a5556f9102c5b391b05775894cf635b461dfea2",
+    "packages/contracts/src/commands.ts": "086a4a28d8c3d7f6d9bcc1955a1618d939c26290937bf25a2bc26b2e90eb3ba3",
+    "packages/contracts/src/ipc-channel.ts": "a57f1d6dfc6ab5ce5e00fcfe8b21562089c0d58fc677f0e1e9d8f2f7c8914df0",
+    "tests/unit/google-operations.test.ts": "76e2cb015d90380ccf8b93a1b06b057c1a5c32bb06ff430bc1351cc5ea4777b5",
+    "tests/unit/host-socket.test.ts": "a976b6a8ad54e70543ce93409289440ed666963ea3140ab288696497777ee42f",
+    "tests/unit/ipc-channel.test.ts": "75ac6eda83739f780807db54b5e3fcd4530597aa55034a03327e9aa683972aee",
+    "tests/unit/queued-task-documents.test.ts": "3507b474207d22195493162fd155caedfd74a3317e258a3deb70b495051a1752",
+    "tests/unit/x-operations.test.ts": "5b052d4c80788149079700426ead6f73b4cba6d71a5e5d19d37c369f13d6665d",
+    "apps/shell/src/components/Settings.selection-owner.test.tsx": "e3c366110db906ecf8e6aee18ac9b4018079adac15053811bfec1a09b4be9330"
+  },
+  "groups": {
+    "queue": {
+      "patches": [
+        {
+          "path": "/tmp/aux-queued-task-pdf-correction-cfe-v1.patch",
+          "sha256": "0a39e668926800d3bac51de3e3a9db6fbf66b89cf8f2f0ba57187d35c697e91b"
+        }
+      ],
+      "proofs": [
+        {
+          "path": "/tmp/aux-queued-task-pdf-probe-cfe-v1-handoff.md",
+          "sha256": "72bc3c5a7684374a7a0e27bc65d5d74a9a789c2b68fbeb8b863eb882448065f5"
+        },
+        {
+          "path": "/tmp/aux-queued-task-pdf-correction-cfe-v1-handoff.md",
+          "sha256": "816a2dffba89ed147398017fd3ae4e6743f897105ea1c8fe1bd84af97b58c393"
+        },
+        {
+          "path": "/tmp/aux-queued-task-pdf-correction-cfe-v1-independent-review.json",
+          "sha256": "c394cf29157541eb9959adec5fe21820f6e179662011bf319129698bd92481a9"
+        },
+        {
+          "path": "/tmp/aux-queued-task-pdf-correction-cfe-v1-validation.json",
+          "sha256": "c92a74fa5cf87b0ccdb57c177d5c6ce6d24ec2ffdd1119155ec170e9f2aad0df"
+        }
+      ],
+      "changes": [
+        "Bind nonempty original task-PDF references into the queued source hash, retaining exact ordinary empty-context hashes.",
+        "Fresh delivery validates original references against current task evidence, then clones the accepted snapshot after prepared metadata. Later imports never expand it; changed or missing originals refuse delivery."
+      ],
+      "focused": {
+        "passed": 22,
+        "files": 4,
+        "strengthenedRegressionRerun": 7
+      },
+      "limits": [
+        "Actual encrypted services, queue delivery and admitted original bytes are exercised with synthetic intake and MockModelClient. No native PDF/parser claim."
+      ]
+    },
+    "transportAndContext": {
+      "patches": [
+        {
+          "path": "/tmp/aux-a4-host-437-final-v4.patch",
+          "sha256": "d42fe203bb767a1256ed9446d3ce428a24539b6d3353b53ffc83ffb7d4380818"
+        },
+        {
+          "path": "/tmp/aux-a4-rpc-437-v1.patch",
+          "sha256": "1ac4c87a70de3806db65fdcec79d25559c7d452fb97fc6f5d8b71cd7cfc7ac59"
+        },
+        {
+          "path": "/tmp/aux-a4-context-ui-437-final-v3.patch",
+          "sha256": "7d17925380b8af2faa634d86063e2c3bdfe73e1e2ffc0946c5d34b4274118ba3"
+        }
+      ],
+      "proofs": [
+        {
+          "path": "/tmp/aux-a4-reliability-437-final-handoff.md",
+          "sha256": "1f6a495a506083db9837fc5e72fc3868690c15f585ada11eb8d998d678e5f679"
+        },
+        {
+          "path": "/tmp/aux-a4-reliability-437-final-series-proof.json",
+          "sha256": "f0c5a10578f8e76f6bcfeb821594af3d17d9e32f4619de17be75c9e82c6d6e71"
+        },
+        {
+          "path": "/tmp/aux-measurement-a4-transport-437-review-v3-addendum.json",
+          "sha256": "6043b18d06d4025f013c57b510fcd4e18ba5ea8a7704f8cd5466e7f1dc3f587c"
+        }
+      ],
+      "changes": [
+        "Bound actual UTF8 Buffer output to32MiB pending bytes with existing16MiB frame cap and one nonextendable5s blocked-output/graceful-close deadline. Refuse sends and further packed/backlog callbacks after closing begins; actual socket close alone retires owners.",
+        "Clean pending RPC calls on synchronous send failure; failed response sends never retry as error responses. No ACK or successful receipt is fabricated.",
+        "Compaction controls use actual run status and committed owner lifetimes. Ineligible waiting turns expose a truthful wait state; active compaction remains cancellable. Abandoned renders and old ACKs cannot replace current context."
+      ],
+      "focused": {
+        "passed": 69,
+        "files": 7,
+        "seconds": 7.85
+      },
+      "limits": [
+        "Owned temporary Unix sockets and injected clock advancement exercise transport correctness, not native wall-clock or performance acceptance.",
+        "The32MiB ceiling bounds pending userland output, not cumulative kernel-consumed traffic or general RPC in-flight concurrency."
+      ]
+    },
+    "ui": {
+      "patches": [
+        {
+          "path": "/tmp/aux-sort-menu-437-v1.patch",
+          "sha256": "ec3a048026ab2f9277743ae2fefe28501eee6b9c2bf806700cbbd4a2f4420d3c"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v1.patch",
+          "sha256": "08d830b99b4eebde8c337c33cd1dc0b4ad4d9bdb40dc77576bf6879d52a2f481"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v2-delta.patch",
+          "sha256": "39d0939a84bb18bcf160d76e9680fe5dbe20c7bedfff86ca09c05616ba279921"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v3-delta.patch",
+          "sha256": "6d0ea534388cf98af20a9f18f394d71a69fa251bbce1c0f5802035d5fad94754"
+        },
+        {
+          "path": "/tmp/aux-selection-parent-ack-cfe-v1.patch",
+          "sha256": "8e0c10876752d9aad4f0fc31d55574e014ce07749fa82b4e65144f54aa9f0e98"
+        }
+      ],
+      "proofs": [
+        {
+          "path": "/tmp/aux-ui-requirement-audit-437-k2-v1.json",
+          "sha256": "37dbf85c3090da873181026032a6dd69d67b5722e2a27f9e4a8b5ce186cba328"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v3-delta-handoff.md",
+          "sha256": "04351ec293ddcd2f88807c26297640690e5d93b6006fec58f6c90462e7de1ead"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v3-series-proof.json",
+          "sha256": "0330e9ceb90f6350723ed88194e000a12f6558aca74077e12f3bbf586826f460"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-v3-independent-review.json",
+          "sha256": "e71d7da304135a779d0a3a44a052df85e46580c960ae1c77342e7bb0d4ce6e76"
+        },
+        {
+          "path": "/tmp/aux-selection-parent-ack-cfe-v1-handoff.md",
+          "sha256": "df333b4cefbcc318dea6d9cec84689d9628adced8bf145b27c43770af4408ef0"
+        },
+        {
+          "path": "/tmp/aux-selection-action-437-integrated-lint-addendum.json",
+          "sha256": "dffd83553f5b752d2eb9f4848be3796945ed771829a807fd802f29a1cbdd068f"
+        },
+        {
+          "path": "/tmp/aux-selection-parent-ack-cfe-v1-independent-review.json",
+          "sha256": "dcb0864baa605acdf7433bf1a039b40e3059cc14373f21fa96633fd4c240f075"
+        }
+      ],
+      "changes": [
+        "Chats sort adopts canonical32px minimum,14px/20px text,4px/10px padding,8px gap and11.2px row radius; replaced overrides are deleted. Actual sort, radio state, dismissal and focus callbacks remain unchanged.",
+        "Selection action Cancel/Save/Update/Remove are real local transactions through existing revision-bound whole-settings CAS. Action-only persistence does not submit unrelated page drafts; canonical broadcast before ACK is not success.",
+        "Same-window outages retain the same dialog/key/draft read-only. Resume requires original pending completion, exact unchanged canonical base and fresh owner; changed settings require explicit Reload. Old callbacks/ACKs cannot close or mutate the resumed editor. Window/Private/route retirement still closes it.",
+        "Existing parent ACK/toast/timer/retirement fixtures now invoke the real action Save command through actual Settings/store/bridge; own broadcast followed by ACK closes the dialog and reopening proves the persisted template."
+      ],
+      "focused": {
+        "selectionPassed": 38,
+        "selectionFiles": 4,
+        "selectionSeconds": 2.44,
+        "sortPassed": 5,
+        "sortFiles": 2,
+        "actualSettingsParentPassed": 7
+      },
+      "limits": [
+        "Renderer fixtures and inspected reference sources do not prove native geometry, both-theme/narrow appearance, IME or focus acceptance.",
+        "Canonical root lint records two new advisories: external-editor retirement synchronization effect and status-container semantic-tag preference. Private scoped lint reported only the former. Neither is suppressed."
+      ]
+    },
+    "adapterFixtures": {
+      "patches": [
+        {
+          "path": "/tmp/aux-x-service-fixtures-437-v1.patch",
+          "sha256": "9a1c0fb4e07ebf3eaebf6bd51310c8ad825e68893ae1ce442ba09919f304212e"
+        },
+        {
+          "path": "/tmp/aux-google-service-fixtures-cfe-v1.patch",
+          "sha256": "8c2d78650fa07a080daf12830a0da1c05f753dec60643039b6f597164d6eaf95"
+        }
+      ],
+      "proofs": [
+        {
+          "path": "/tmp/aux-x-service-fixtures-437-v1-handoff.md",
+          "sha256": "d21159a1494bc5b96cde0e2b46abae3bcc1107af9f442551b10a0b886d707584"
+        },
+        {
+          "path": "/tmp/aux-google-service-fixtures-cfe-v1-handoff.md",
+          "sha256": "a5891103bbe9e9420bc3e4a94ae1354eea731293bbe2e6e31774f43f26bfb403"
+        },
+        {
+          "path": "/tmp/aux-measurement-a8-ledger-root437-v2.md",
+          "sha256": "5dcb0ac0029ce3122f9864b07576f20d898a1fa2f5581c43d93a56e7b91d2597"
+        }
+      ],
+      "changes": [
+        "Fifteen X service cases cover actual one-use governed bookmark/relationship/DM writes, two-page reads, partial results, account retirement and uncertain acknowledgement barriers.",
+        "Nine Google service cases cover distinct Gmail draft/send task grants, immutable reviewed draft identity, bounded Sheets formatting/notes with independent range readback, retirement and uncertain-result barriers."
+      ],
+      "focused": {
+        "xPassed": 25,
+        "xFiles": 2,
+        "googlePassed": 70,
+        "googleFiles": 2
+      },
+      "limits": [
+        "All OAuth credentials and HTTP results are injected synthetic fixtures. Existing production adapters are unchanged; live registration/product/account compatibility and native acceptance remain open.",
+        "Account setup remains explicit under the owner decision. No real third-party message, upload or network write occurred."
+      ]
+    }
+  },
+  "rootApplyProof": {
+    "path": "/tmp/aux-final-audit-root-cfe-apply-proof.json",
+    "sha256": "c91b23d723a10edca7361ec820261445a19d2d5fa881fcfa2be28991b3ea842d"
+  },
+  "priorFailures": [
+    "Actual pre-correction queued task-PDF race reproduced through original services/queue and admitted later bytes; unsafe assertion is preserved outside committed tests.",
+    "A4 first affected run68/69: incorrect cumulative-vs-pending fixture assertion also exposed real string-vs-UTF8-byte accounting. Actual Buffer writes and unconditional pre-write assertions corrected both; final69/69.",
+    "Selection expanded outage run37/38: fixture changed Explain while helper opened Ask; exact actual action corrected. Final38/38.",
+    "Queue initial inferred heterogeneous hash-array type and conditional fixture assertions corrected before rebuilt22/22 and strengthened7/7.",
+    "X private include-only type config initially omitted canonical project references; corrected config without source/casts/interface change.",
+    "Root integrated attempt1:5861 passed/6 failed,855files131.08s. Existing actual-parent action fixtures still invoked global Save inside the new Dialog. One fixture-only helper/portal/post-save-reopen correction preserves all seven cases and production focus fencing; focused7/7 before integrated retry."
+  ],
+  "nativeLimits": [
+    "Older unowned Aux process46159, born Sun Oct18 01:52:25 2026, remains untouched pending explicit close permission under workspace Profile rule. No app staging or GUI access.",
+    "Original155Crashpad report inspection alone is authorized; original report unchanged and cause unresolved.",
+    "Current-source native comparisons, browser acceptance, default-route20-task smoke >=18/20 and matched-stock pnpm perf remain open."
+  ],
+  "rootIntegratedCheck": {
+    "status": "passed after one fixture-only correction",
+    "command": "npm run check",
+    "runtimeDist": "rebuilt by initial typecheck before backend tests",
+    "attempts": [
+      {
+        "log": {
+          "path": "/tmp/aux-audit-reliability-integrated-check-2026-10-18.log",
+          "sha256": "e85e0c39a5e4e231d0fc206dcd26b95bcb71d688f8a9e90345681bfad582eb46"
+        },
+        "exitCode": 1,
+        "testsPassed": 5861,
+        "testsFailed": 6,
+        "filesPassed": 854,
+        "filesFailed": 1,
+        "seconds": 131.08,
+        "failure": "Six original Settings parent ownership cases edited an action but invoked the former global Save while the new action Dialog correctly owned focus. They failed before bridge dispatch. Exact actual-parent coverage is being migrated to the new action scoped command, without weakening production focus guards.",
+        "lint": "0 errors;570 original advisories unchanged plus2 new Selection advisories"
+      },
+      {
+        "log": {
+          "path": "/tmp/aux-audit-reliability-integrated-check2-2026-10-18.log",
+          "sha256": "1f8b371d144030e2f4739d7112b81c72eaa84bb67954bff42fa02274b1dd4f0a"
+        },
+        "exitCode": 0,
+        "testsPassed": 5867,
+        "testsFailed": 0,
+        "filesPassed": 855,
+        "seconds": 138.58
+      }
+    ],
+    "exitCode": 0,
+    "typecheck": "passed; dist rebuilt before tests",
+    "lint": {
+      "status": "passed",
+      "errors": 0,
+      "advisories": 572,
+      "existingUnchanged": 570,
+      "added": 2,
+      "comparison": {
+        "path": "/tmp/aux-audit-reliability-lint-comparison2-2026-10-18.json",
+        "sha256": "c925758cbc81e9028b0af38352190d57a4fb2e1d1b2bf1cb0dfe505b0d1edc17"
+      }
+    },
+    "testsPassed": 5867,
+    "filesPassed": 855,
+    "seconds": 138.58
+  },
+  "stockBuildInterruption": {
+    "ownerPid": 21432,
+    "session": 47367,
+    "signal": "SIGINT to original dev launcher; joined exit1; original plain lock absent/no matching compile descendants",
+    "classification": "intentional quiet-check interruption, no compile error",
+    "log": {
+      "path": "/tmp/aux-stock155-build-resume6-2026-10-18.log",
+      "sha256": "94576a2f38c49c7524f1fcfdbb82dfaa61672c955137710d34950a22fa17f992"
+    },
+    "completedDynamicSteps": 5439,
+    "dynamicTotalAtStop": 28992,
+    "elapsed": "22m01.61s"
+  },
+  "completion": "A3/A4/A8/A9 and full program remain active; no native or daily-use acceptance claimed."
+}

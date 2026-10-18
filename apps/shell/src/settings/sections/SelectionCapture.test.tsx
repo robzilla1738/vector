@@ -4,11 +4,13 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defaultSelectionCaptureSettings } from "@aux/contracts";
 import { bridge } from "../../bridge";
+import { useStore } from "../../store";
 import { SelectionCaptureSettings } from "./SelectionCapture";
 import { collectSettingsFields } from "../search";
 
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const save = vi.fn();
+let originalConnected: boolean;
 const initial = () => ({ selectionCapture: defaultSelectionCaptureSettings() });
 function Fixture() {
   const [settings, setSettings] = useState(initial);
@@ -30,6 +32,8 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 160, height: 36 },
   ] as unknown as DOMRectList);
+  originalConnected = useStore.getState().connected;
+  useStore.setState({ connected: true });
   save.mockReset().mockResolvedValue(true);
   host = document.createElement("div");
   document.body.append(host);
@@ -38,6 +42,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  useStore.setState({ connected: originalConnected });
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -82,7 +87,7 @@ it("indexes the overview and controls and previews/reorders/edits actions withou
   );
   expect(save).not.toHaveBeenCalled();
   expect(invoke).not.toHaveBeenCalled();
-  await click(button("Save Selection & Capture"));
+  await click(button("Update"));
   expect(save.mock.calls[0]![0].selectionCapture.actions[0]).toMatchObject({
     id: "explain",
     template: "Translate into Spanish: {text}",
@@ -95,25 +100,25 @@ it("indexes the overview and controls and previews/reorders/edits actions withou
 it("preserves edits after a failed save and provides explicit recovery", async () => {
   await act(async () => root.render(<Fixture />));
   await click(button("Add selection action"));
-  expect(document.querySelector('[aria-label="Edit New action"][role="dialog"]')).not.toBeNull();
+  expect(document.querySelector('[aria-label="Add selection action"][role="dialog"]')).not.toBeNull();
   expect(document.activeElement).toBe(document.querySelector('[aria-label="Action 5 name"]'));
   save.mockResolvedValueOnce(false);
-  await click(button("Save Selection & Capture"));
+  await click(button("Save"));
   expect(document.body.textContent).toContain("Your edits are still here");
-  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(5);
-  await click(button("Reload saved settings"));
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
+  await click(button("Cancel"));
   expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
 });
 
 it("retains an acknowledged save while the settings broadcast is still in flight", async () => {
   await act(async () => root.render(<SelectionCaptureSettings active settings={initial()} onSave={save} />));
   await click(button("Add selection action"));
-  await click(button("Save Selection & Capture"));
+  await click(button("Save"));
   expect(host.querySelectorAll(".selection-action-row")).toHaveLength(5);
   expect(button("Save Selection & Capture").disabled).toBe(true);
   await openAction("New action");
   await write(document.querySelector<HTMLInputElement>('[aria-label="Action 5 name"]')!, "Next revision");
-  await click(button("Save Selection & Capture"));
+  await click(button("Update"));
   expect(save.mock.calls[1]![0].selectionCapture.revision).toBe(1);
 });
 
@@ -134,7 +139,8 @@ it("detects external revisions without overwriting an unsaved template", async (
   );
   expect(document.body.textContent).toContain("changed in another window");
   expect(button("Save Selection & Capture").disabled).toBe(true);
-  await click(button("Reload saved settings"));
+  expect(button("Update").disabled).toBe(true);
+  await click(button("Reload saved action"));
   expect(
     document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!.value,
   ).not.toContain("My unsaved");
@@ -192,4 +198,173 @@ it("only displays a native acknowledgement for the exact saved preference revisi
   );
   expect(document.body.textContent).not.toContain("Registered for this Profile");
   expect(document.body.textContent).toContain("has not been confirmed");
+});
+
+it("cancels only the local action and returns focus while keeping the unrelated page draft", async () => {
+  await act(async () => root.render(<Fixture />));
+  const inline = host.querySelector<HTMLInputElement>('[aria-label="Enable inline assist"]')!;
+  await click(inline);
+  const trigger = named("Edit Explain");
+  await click(trigger);
+  await write(document.querySelector<HTMLTextAreaElement>("dialog textarea")!, "Discard this edit {text}");
+  await click(named("Move Explain up"));
+  expect(host.querySelector(".selection-action-title")?.textContent).toBe("Ask Aux");
+  await click(button("Cancel"));
+  expect(document.activeElement).toBe(trigger);
+  expect(save).not.toHaveBeenCalled();
+  expect(inline.checked).toBe(false);
+  await openAction("Explain");
+  expect(document.querySelector<HTMLTextAreaElement>("dialog textarea")!.value).not.toContain("Discard");
+  await click(button("Cancel"));
+  await click(button("Add selection action"));
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
+  await click(button("Cancel"));
+  expect(document.activeElement).toBe(button("Add selection action"));
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
+  expect(save).not.toHaveBeenCalled();
+});
+
+it("saves only the action then rebases pending inline and shortcut edits onto its exact acknowledged revision", async () => {
+  await act(async () => root.render(<Fixture />));
+  const inline = host.querySelector<HTMLInputElement>('[aria-label="Enable inline assist"]')!;
+  await click(inline);
+  const record = named("Record region-capture shortcut");
+  await click(record);
+  await act(async () =>
+    record.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "9", metaKey: true, altKey: true, bubbles: true }),
+    ),
+  );
+  await openAction("Explain");
+  await write(
+    document.querySelector<HTMLTextAreaElement>("dialog textarea")!,
+    "Save just this action {text}",
+  );
+  await click(button("Update"));
+  expect(document.querySelector("dialog")).toBeNull();
+  expect(save).toHaveBeenCalledTimes(1);
+  const actionSave = save.mock.calls[0]![0].selectionCapture;
+  expect(actionSave).toMatchObject({ revision: 0, inlineAssist: true, regionCapture: null });
+  expect(actionSave.actions[1].template).toBe("Save just this action {text}");
+  expect(actionSave.actions.filter((action: { id: string }) => action.id !== "explain")).toEqual(
+    initial().selectionCapture.actions.filter((action) => action.id !== "explain"),
+  );
+  expect(inline.checked).toBe(false);
+  expect(button("Save Selection & Capture").disabled).toBe(false);
+  await click(button("Save Selection & Capture"));
+  expect(save.mock.calls[1]![0].selectionCapture).toMatchObject({
+    revision: 1,
+    inlineAssist: false,
+    regionCapture: { key: "9", command: true, alt: true },
+  });
+  expect(save.mock.calls[1]![0].selectionCapture.actions).toEqual(actionSave.actions);
+});
+
+it("retains the original local action across replacement and explicitly reloads its exact current identity", async () => {
+  let settings = initial();
+  const render = () =>
+    act(async () => root.render(<SelectionCaptureSettings active settings={settings} onSave={save} />));
+  await render();
+  await click(host.querySelector<HTMLInputElement>('[aria-label="Enable inline assist"]')!);
+  await openAction("Explain");
+  await write(document.querySelector<HTMLTextAreaElement>("dialog textarea")!, "Original local draft {text}");
+  const replacement = {
+    ...settings.selectionCapture.actions[1]!,
+    name: "Replaced Explain",
+    template: "External source template {text}",
+  };
+  settings = {
+    selectionCapture: {
+      ...settings.selectionCapture,
+      revision: 1,
+      actions: settings.selectionCapture.actions.map((action) =>
+        action.id === replacement.id ? replacement : action,
+      ),
+    },
+  };
+  await render();
+  expect(document.querySelector<HTMLTextAreaElement>("dialog textarea")!.value).toBe(
+    "Original local draft {text}",
+  );
+  expect(button("Update").disabled).toBe(true);
+  expect(save).not.toHaveBeenCalled();
+  await click(button("Reload saved action"));
+  expect(document.querySelector<HTMLTextAreaElement>("dialog textarea")!.value).toBe(replacement.template);
+  await write(
+    document.querySelector<HTMLTextAreaElement>("dialog textarea")!,
+    "Reviewed current action {text}",
+  );
+  await click(button("Update"));
+  expect(save.mock.calls[0]![0].selectionCapture).toMatchObject({ revision: 1, inlineAssist: true });
+  expect(save.mock.calls[0]![0].selectionCapture.actions[1]).toMatchObject({
+    id: "explain",
+    name: "Replaced Explain",
+    template: "Reviewed current action {text}",
+  });
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Enable inline assist"]')!.checked).toBe(false);
+});
+
+it("never replaces a removed original action when explicitly reloading an old editor", async () => {
+  let settings = initial();
+  const render = () =>
+    act(async () => root.render(<SelectionCaptureSettings active settings={settings} onSave={save} />));
+  await render();
+  await openAction("Explain");
+  await write(
+    document.querySelector<HTMLTextAreaElement>("dialog textarea")!,
+    "Preserved removed action {text}",
+  );
+  settings = {
+    selectionCapture: {
+      ...settings.selectionCapture,
+      revision: 1,
+      actions: settings.selectionCapture.actions.filter((action) => action.id !== "explain"),
+    },
+  };
+  await render();
+  await click(button("Reload saved action"));
+  expect(document.body.textContent).toContain("original action was removed");
+  expect(document.querySelector<HTMLTextAreaElement>("dialog textarea")!.value).toBe(
+    "Preserved removed action {text}",
+  );
+  expect(button("Update").disabled).toBe(true);
+  expect(save).not.toHaveBeenCalled();
+  await click(button("Cancel"));
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(3);
+});
+
+it("preserves a new local action through explicit review of a newer saved revision without committing another owner's changes", async () => {
+  let settings = initial();
+  const render = () =>
+    act(async () => root.render(<SelectionCaptureSettings active settings={settings} onSave={save} />));
+  await render();
+  await click(button("Add selection action"));
+  await write(
+    document.querySelector<HTMLInputElement>('dialog input:not([type="checkbox"])')!,
+    "My new action",
+  );
+  await write(
+    document.querySelector<HTMLTextAreaElement>("dialog textarea")!,
+    "Keep the new unsaved source {text}",
+  );
+  settings = { selectionCapture: { ...settings.selectionCapture, revision: 1, inlineAssist: false } };
+  await render();
+  expect(button("Save").disabled).toBe(true);
+  expect(save).not.toHaveBeenCalled();
+  await click(button("Review current settings"));
+  expect(document.querySelector<HTMLInputElement>('dialog input:not([type="checkbox"])')!.value).toBe(
+    "My new action",
+  );
+  expect(document.querySelector<HTMLTextAreaElement>("dialog textarea")!.value).toBe(
+    "Keep the new unsaved source {text}",
+  );
+  await click(button("Save"));
+  expect(save.mock.calls[0]![0].selectionCapture).toMatchObject({ revision: 1, inlineAssist: false });
+  expect(save.mock.calls[0]![0].selectionCapture.actions.slice(0, 4)).toEqual(
+    settings.selectionCapture.actions,
+  );
+  expect(save.mock.calls[0]![0].selectionCapture.actions[4]).toMatchObject({
+    name: "My new action",
+    template: "Keep the new unsaved source {text}",
+  });
 });

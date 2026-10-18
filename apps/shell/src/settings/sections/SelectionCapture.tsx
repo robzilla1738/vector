@@ -1,20 +1,10 @@
 import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CaptureHotkeySchema,
   SelectionCaptureSettingsSchema,
   readSelectionCaptureSettings,
-  renderSelectionTemplate,
   bindingLabel,
   captureShortcutConflict,
   type CaptureHotkey,
@@ -29,14 +19,14 @@ import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
 import { SettingsField, SettingsSection } from "../primitives";
 import { SettingsGroup, Switch } from "../../ui";
-import { SettingsDialogControl } from "../SettingsDialogControl";
+import { SelectionActionEditor, type ActionEdit, type ActionDraft } from "./SelectionActionEditor";
 import "./SelectionCapture.css";
 import { shellIconAgentSm } from "../../ui/icons";
 import {
   staticPrimaryButtonProps as auxClassPrimaryButtonProps,
   staticGhostButtonProps as auxClassGhostButtonProps,
 } from "../../ui/class-props";
-import { nativeAlertRoleProps, nativeCheckboxTypeProps } from "../../ui/native-attribute-props";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 export interface SelectionCaptureNativeStatus {
   /** A native registration result is meaningful only for the current saved revision. */
@@ -135,160 +125,6 @@ function Hotkey({
   );
 }
 
-function ActionRow({
-  action,
-  active,
-  defaultOpen,
-  previewContent,
-  saveControls,
-  index,
-  count,
-  disabled,
-  scopeId,
-  publish,
-  run,
-  toggle,
-  change,
-  move,
-  preview,
-  remove,
-}: {
-  action: Preferences["actions"][number];
-  active: boolean;
-  defaultOpen: boolean;
-  previewContent?: ReactNode;
-  saveControls: ReactNode;
-  index: number;
-  count: number;
-  disabled: boolean;
-  scopeId: string;
-  publish: ReturnType<typeof useScopedCommandControls>[0];
-  run: ReturnType<typeof useScopedCommandControls>[1];
-  toggle(id: string): void;
-  change(id: string, patch: Partial<Preferences["actions"][number]>): void;
-  move(id: string, delta: number): void;
-  preview(id: string): void;
-  remove(id: string): void;
-}) {
-  const nameInput = useRef<HTMLInputElement>(null);
-  return (
-    <li className="selection-action-row">
-      <span className="selection-action-glyph" aria-hidden="true">
-        {shellIconAgentSm}
-      </span>
-      <span className="selection-action-title">{action.name || "Untitled action"}</span>
-      {!action.enabled && <span className="selection-action-state">Off</span>}
-      <SettingsDialogControl
-        active={active}
-        defaultOpen={defaultOpen}
-        label={`Edit ${action.name || "action"}`}
-        action="⋯"
-      >
-        <div className="selection-action-editor">
-          <div className="selection-action-heading">
-            <span className="selection-action-symbol" aria-hidden="true">
-              {shellIconAgentSm}
-            </span>
-            <label className="selection-action-name">
-              <span className="sr-only">Name</span>
-              <input
-                ref={nameInput}
-                aria-label={`Action ${index + 1} name`}
-                maxLength={60}
-                value={action.name}
-                disabled={disabled}
-                onChange={(event) => change(action.id, { name: event.target.value })}
-              />
-            </label>
-          </div>
-          <div className="selection-action-kind">
-            <span>Action</span>
-            <span className="selection-action-kind-value">Prompt</span>
-          </div>
-          <label className="selection-action-template">
-            <span className="sr-only">Prompt template</span>
-            <textarea
-              aria-label={`Action ${index + 1} template`}
-              maxLength={2000}
-              rows={6}
-              value={action.template}
-              disabled={disabled}
-              onChange={(event) => change(action.id, { template: event.target.value })}
-            />
-          </label>
-          <div className="settings-editor-actions">
-            <label className="settings-editor-checkbox">
-              <input
-                {...nativeCheckboxTypeProps}
-                checked={action.enabled}
-                disabled={disabled}
-                ref={(element) =>
-                  publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))
-                }
-                onChange={(event) => run("toggle-selection-action", event)}
-              />{" "}
-              Enabled
-            </label>
-            <PreferenceAction
-              command="move-selection-action-up"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              aria-label={`Move ${action.name || "action"} up`}
-              disabled={disabled || index === 0}
-              invoke={() => {
-                move(action.id, -1);
-                nameInput.current?.focus();
-              }}
-            >
-              ↑
-            </PreferenceAction>
-            <PreferenceAction
-              command="move-selection-action-down"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              aria-label={`Move ${action.name || "action"} down`}
-              disabled={disabled || index === count - 1}
-              invoke={() => {
-                move(action.id, 1);
-                nameInput.current?.focus();
-              }}
-            >
-              ↓
-            </PreferenceAction>
-          </div>
-          <p className="hint">
-            Use {"{text}"} for quoted text, {"{code}"} for code, or {"{image}"} for a capture. Edits stay in
-            this draft until you save Selection &amp; Capture.
-          </p>
-          <div className="settings-editor-actions">
-            <PreferenceAction
-              command="preview-selection-action"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              disabled={disabled}
-              invoke={() => preview(action.id)}
-            >
-              Preview {action.name || "action"}
-            </PreferenceAction>
-            <PreferenceAction
-              command="remove-selection-action"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              aria-label={`Remove ${action.name || "action"}`}
-              disabled={disabled}
-              invoke={() => remove(action.id)}
-            >
-              Remove
-            </PreferenceAction>
-          </div>
-          {previewContent}
-          {saveControls}
-        </div>
-      </SettingsDialogControl>
-    </li>
-  );
-}
-
 export function SelectionCaptureSettings({
   active,
   settings,
@@ -300,14 +136,28 @@ export function SelectionCaptureSettings({
   onSave(patch: Record<string, unknown>, present?: () => boolean): Promise<boolean>;
   nativeStatus?: SelectionCaptureNativeStatus;
 }) {
-  const saved = readSelectionCaptureSettings(settings.selectionCapture);
-  const savedKey = JSON.stringify(saved);
   const windowId = bridge.windowId,
     kind = bridge.windowKind,
     privateMode = bridge.privateMode;
   const connected = useStore((state) => state.connected);
+  const sourceScope = useMemo(
+    () => ({ windowId, kind, privateMode, connected }),
+    [windowId, kind, privateMode, connected],
+  );
+  const [acknowledged, setAcknowledged] = useState<{ scope: typeof sourceScope; value: Preferences } | null>(
+    null,
+  );
+  const observed = useMemo(
+    () => readSelectionCaptureSettings(settings.selectionCapture),
+    [settings.selectionCapture],
+  );
+  const saved =
+    acknowledged?.scope === sourceScope && observed.revision < acknowledged.value.revision
+      ? acknowledged.value
+      : observed;
+  const savedKey = JSON.stringify(saved);
   const unavailable = !active || privateMode || kind !== "normal";
-  const acknowledgedKey = useRef<string | null>(null);
+  const acknowledgedKey = acknowledged?.scope === sourceScope ? JSON.stringify(acknowledged.value) : null;
   const pendingSave = useRef<{ owner: SettingsSaveOwner; baseKey: string; expectedKey: string } | null>(null);
   const receipt = pendingSave.current;
   // The runtime broadcasts persisted settings before replying to the save request.
@@ -315,7 +165,7 @@ export function SelectionCaptureSettings({
   const ownBroadcast =
     !!receipt?.owner.active &&
     receipt.owner.pending &&
-    (receipt.expectedKey === savedKey || acknowledgedKey.current === savedKey);
+    (receipt.expectedKey === savedKey || acknowledgedKey === savedKey);
   const ownerSavedKey = ownBroadcast ? receipt.baseKey : savedKey;
   const identity = useMemo(
     () => [active, ownerSavedKey, windowId, kind, privateMode, connected],
@@ -353,8 +203,14 @@ export function SelectionCaptureSettings({
   const [baseKey, setBaseKey] = useState(savedKey);
   const setError = (message: string) => (message ? fail(getOwner(), message) : clearFailure());
   const [message, setMessage] = useState("");
-  const [previewId, setPreviewId] = useState<string | null>(null);
-  const [createdActionId, setCreatedActionId] = useState<string | null>(null);
+  const [editor, setEditorValue] = useState<ActionEdit | null>(null);
+  const editorRef = useRef(editor);
+  const setEditor = useCallback((value: ActionEdit | null) => {
+    editorRef.current = value;
+    setEditorValue(value);
+  }, []);
+  const baseRef = useRef(saved);
+  const removalFocus = useRef<{ windowId: string; savedKey: string } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const draftRef = useRef(draft);
   useLayoutEffect(() => {
@@ -364,10 +220,25 @@ export function SelectionCaptureSettings({
   const changedElsewhere = !ownBroadcast && savedKey !== baseKey && saved.revision >= draft.revision;
   useEffect(() => {
     if (!dirty && !busy && saved.revision >= draft.revision) {
-      setDraft(readSelectionCaptureSettings(settings.selectionCapture));
+      draftRef.current = saved;
+      baseRef.current = saved;
+      setDraft(saved);
       setBaseKey(savedKey);
     }
-  }, [savedKey, dirty, busy, settings.selectionCapture, saved.revision, draft.revision]);
+  }, [saved, savedKey, dirty, busy, draft.revision]);
+  useLayoutEffect(() => {
+    const target = removalFocus.current;
+    if (editor || !target) return;
+    removalFocus.current = null;
+    if (
+      active &&
+      !privateMode &&
+      kind === "normal" &&
+      bridge.windowId === target.windowId &&
+      savedKey === target.savedKey
+    )
+      addButton.current?.focus();
+  }, [editor, active, privateMode, kind, savedKey]);
   const update = (patch: Partial<Preferences>) => {
     requireCurrent();
     const next = { ...draftRef.current, ...patch };
@@ -376,45 +247,88 @@ export function SelectionCaptureSettings({
     setMessage("");
     setError("");
   };
-  const readAction = (id: string) => {
-    requireCurrent();
-    const actions = draftRef.current.actions,
-      matches = actions.filter((action) => action.id === id);
-    if (matches.length !== 1) throw new Error("Choose the original Selection & Capture action.");
-    return { action: matches[0]!, index: actions.findIndex((action) => action.id === id) };
-  };
-  const updateAction = (id: string, patch: Partial<Preferences["actions"][number]>) => {
-    readAction(id);
-    update({
-      actions: draftRef.current.actions.map((action) =>
-        action.id === id ? { ...action, ...patch } : action,
-      ),
+  useEffect(() => {
+    if (unavailable || (editor && editor.windowId !== windowId)) setEditor(null);
+  }, [unavailable, windowId, editor, setEditor]);
+  const openAction = (action: Preferences["actions"][number] | null, trigger: HTMLButtonElement) => {
+    const owner = requireCurrent();
+    setError("");
+    setEditor({
+      key: crypto.randomUUID(),
+      kind: action ? "edit" : "add",
+      action: action ?? {
+        id: crypto.randomUUID(),
+        name: "New action",
+        enabled: true,
+        template: "Explain this selection.\n\n{text}",
+      },
+      position: action ? saved.actions.findIndex((item) => item.id === action.id) : saved.actions.length,
+      base: saved,
+      owner,
+      windowId,
+      connected,
+      returnFocus: { current: trigger },
     });
   };
-  const move = (id: string, delta: number) => {
-    const { index } = readAction(id),
-      actions = [...draftRef.current.actions];
-    if (index + delta < 0 || index + delta >= actions.length)
-      throw new Error("Choose the current Selection & Capture position.");
-    [actions[index], actions[index + delta]] = [actions[index + delta]!, actions[index]!];
-    update({ actions });
+  const closeEditor = (edit: ActionEdit) => {
+    if (editorRef.current === edit && !edit.owner.pending) setEditor(null);
   };
-  const toggleAction = (id: string) => {
-    requireCurrent();
-    updateAction(id, { enabled: !readAction(id).action.enabled });
-  };
-  const moveAction = (id: string, delta: number) => {
-    requireCurrent();
-    move(id, delta);
-  };
-  const previewAction = (id: string) => {
-    readAction(id);
-    setPreviewId(id);
-  };
-  const removeAction = (id: string) => {
-    readAction(id);
-    update({ actions: draftRef.current.actions.filter((value) => value.id !== id) });
-    addButton.current?.focus();
+  const commitAction = (
+    edit: ActionEdit,
+    value: ActionDraft,
+    valueRef: { current: ActionDraft },
+    operation: "save" | "remove",
+  ) => {
+    const original = requireCurrent();
+    if (
+      !connected ||
+      editorRef.current !== edit ||
+      !current(edit.owner) ||
+      JSON.stringify(edit.base) !== savedKey
+    )
+      throw new Error("This action changed in another window. Reload the saved action before trying again.");
+    if (value.action.id !== edit.action.id)
+      throw new Error("Choose the original Selection & Capture action.");
+    const actions = saved.actions.filter((action) => action.id !== edit.action.id);
+    if (edit.kind === "edit" && actions.length !== saved.actions.length - 1)
+      throw new Error("The original Selection & Capture action is unavailable.");
+    if (edit.kind === "add" && actions.length !== saved.actions.length)
+      throw new Error("The new Selection & Capture action identity is already used.");
+    if (operation === "save") actions.splice(value.position, 0, value.action);
+    const submitted = SelectionCaptureSettingsSchema.parse({ ...saved, actions });
+    const next = readSelectionCaptureSettings({ ...submitted, revision: submitted.revision + 1 });
+    pendingSave.current = { owner: original, baseKey: savedKey, expectedKey: JSON.stringify(next) };
+    return perform(
+      original,
+      value,
+      valueRef,
+      (present) => onSave({ selectionCapture: submitted }, () => present() && editorRef.current === edit),
+      () => {
+        if (editorRef.current !== edit) return;
+        const previous = draftRef.current;
+        const rebased: Preferences = { ...next };
+        for (const key of ["inlineAssist", "selectionDoubleTap", "regionCapture"] as const) {
+          if (JSON.stringify(previous[key]) !== JSON.stringify(baseRef.current[key])) {
+            if (key === "inlineAssist") rebased.inlineAssist = previous.inlineAssist;
+            else rebased[key] = previous[key];
+          }
+        }
+        setAcknowledged({ scope: sourceScope, value: next });
+        baseRef.current = next;
+        draftRef.current = rebased;
+        setDraft(rebased);
+        setBaseKey(JSON.stringify(next));
+        setMessage("Saved for this Profile. New selections use these actions.");
+        if (operation === "remove") removalFocus.current = { windowId, savedKey: JSON.stringify(next) };
+        setEditor(null);
+      },
+      "This action was not saved. Your edits are still here.",
+      {
+        accepted: (ack) => !!ack,
+        rejected: (reason) =>
+          reason instanceof Error ? reason.message : "This action was not saved. Your edits are still here.",
+      },
+    );
   };
   const validation = SelectionCaptureSettingsSchema.safeParse(draft);
   const conflict = captureShortcutConflict(
@@ -423,6 +337,7 @@ export function SelectionCaptureSettings({
     bridge.platform,
   );
   const save = () => {
+    if (editorRef.current) throw new Error("Finish the original selection action editor first.");
     const original = requireCurrent(),
       savedDraft = draftRef.current;
     const saveValidation = SelectionCaptureSettingsSchema.safeParse(savedDraft);
@@ -450,7 +365,8 @@ export function SelectionCaptureSettings({
       draftRef,
       (present) => onSave({ selectionCapture: saveValidation.data }, present),
       () => {
-        acknowledgedKey.current = JSON.stringify(next);
+        setAcknowledged({ scope: sourceScope, value: next });
+        baseRef.current = next;
         draftRef.current = next;
         setDraft(next);
         setBaseKey(JSON.stringify(next));
@@ -472,18 +388,6 @@ export function SelectionCaptureSettings({
       ? "Registered for this Profile."
       : status.error || "Shortcut unavailable. Choose another shortcut and save again.";
   };
-  const selectedPreview = draft.actions.find((action) => action.id === previewId);
-  let preview = "";
-  if (selectedPreview) {
-    try {
-      preview = renderSelectionTemplate(selectedPreview.template, {
-        text: "A short example selection.\nconst count = 2;",
-        image: "A locally captured example image",
-      });
-    } catch (reason) {
-      preview = reason instanceof Error ? reason.message : "Invalid template.";
-    }
-  }
   const saveControls = (
     <>
       {changedElsewhere && dirty && (
@@ -501,7 +405,9 @@ export function SelectionCaptureSettings({
           command="save-selection-capture-settings"
           scopeId={scopeId}
           {...auxClassPrimaryButtonProps}
-          disabled={busy || unavailable || !dirty || changedElsewhere || !validation.success || !!conflict}
+          disabled={
+            busy || unavailable || !!editor || !dirty || changedElsewhere || !validation.success || !!conflict
+          }
           invoke={save}
         >
           {busy ? "Saving…" : "Save Selection & Capture"}
@@ -515,6 +421,7 @@ export function SelectionCaptureSettings({
             invoke={() => {
               requireCurrent();
               draftRef.current = saved;
+              baseRef.current = saved;
               setDraft(saved);
               setBaseKey(savedKey);
               setError("");
@@ -555,71 +462,40 @@ export function SelectionCaptureSettings({
           searchTerms={["Lasso", "prompt", "template", "sort", "double tap"]}
         >
           <ol className="selection-action-list">
-            {draft.actions.map((action, index) => (
-              <ActionRow
-                key={action.id}
-                action={action}
-                defaultOpen={action.id === createdActionId}
-                saveControls={saveControls}
-                active={!unavailable}
-                previewContent={
-                  <>
-                    {selectedPreview?.id === action.id && (
-                      <section aria-label="Selection action preview">
-                        <strong>Local preview · example content</strong>
-                        <pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre>
-                        <PreferenceAction
-                          command="close-selection-action-preview"
-                          scopeId={scopeId}
-                          {...smallGhostButtonProps}
-                          invoke={() => {
-                            if (!current())
-                              throw new Error("Choose the current Selection & Capture preview.");
-                            setPreviewId(null);
-                          }}
-                        >
-                          Close preview
-                        </PreferenceAction>
-                      </section>
-                    )}
-                  </>
-                }
-                index={index}
-                count={draft.actions.length}
-                disabled={busy || unavailable}
-                scopeId={scopeId}
-                publish={publish}
-                run={run}
-                toggle={toggleAction}
-                change={updateAction}
-                move={moveAction}
-                preview={previewAction}
-                remove={removeAction}
-              />
+            {saved.actions.map((action) => (
+              <li className="selection-action-row" key={action.id}>
+                <span className="selection-action-glyph" aria-hidden="true">
+                  {shellIconAgentSm}
+                </span>
+                <span className="selection-action-title">{action.name}</span>
+                {!action.enabled && <span className="selection-action-state">Off</span>}
+                <button
+                  {...smallButtonProps}
+                  type="button"
+                  aria-label={`Edit ${action.name}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={editor?.kind === "edit" && editor.action.id === action.id}
+                  disabled={busy || unavailable}
+                  onClick={(event) => openAction(action, event.currentTarget)}
+                >
+                  ⋯
+                </button>
+              </li>
             ))}
           </ol>
           <button
             ref={(element) => {
               addButton.current = element;
               publish("add", "add-selection-action", element, () => {
-                const id = crypto.randomUUID();
-                update({
-                  actions: [
-                    ...draftRef.current.actions,
-                    {
-                      id,
-                      name: "New action",
-                      enabled: true,
-                      template: "Explain this selection.\n\n{text}",
-                    },
-                  ],
-                });
-                setCreatedActionId(id);
+                if (!element) throw new Error("Choose the original Add selection action control.");
+                openAction(null, element);
               });
             }}
             {...smallButtonProps}
-            disabled={busy || unavailable || draft.actions.length >= 12}
+            disabled={busy || unavailable || saved.actions.length >= 12}
             data-command-id="add-selection-action"
+            aria-haspopup="dialog"
+            aria-expanded={editor?.kind === "add"}
             onClick={(event) => run("add-selection-action", event)}
           >
             Add selection action
@@ -685,6 +561,49 @@ export function SelectionCaptureSettings({
         source site’s policy.
       </p>
       {saveControls}
+      {editor && !unavailable && editor.windowId === windowId && (
+        <SelectionActionEditor
+          key={editor.key}
+          edit={editor}
+          connected={connected}
+          busy={busy || editor.owner.pending}
+          error={error}
+          current={() => editorRef.current === editor && current(editor.owner)}
+          conflict={!ownBroadcast && JSON.stringify(editor.base) !== savedKey}
+          count={saved.actions.length}
+          onClose={() => closeEditor(editor)}
+          onResume={() => {
+            if (editorRef.current !== editor || editor.owner.pending || !connected) return;
+            const owner = requireCurrent();
+            if (JSON.stringify(editor.base) !== savedKey) return;
+            setEditor({ ...editor, owner, connected });
+          }}
+          onCommit={(value, valueRef, operation) => commitAction(editor, value, valueRef, operation)}
+          onReload={(value) => {
+            if (editorRef.current !== editor || editor.owner.pending || !connected) return;
+            requireCurrent();
+            const action =
+              editor.kind === "add"
+                ? value.action
+                : saved.actions.find((item) => item.id === editor.action.id);
+            if (!action) {
+              setError("The original action was removed. Cancel this editor to continue.");
+              return;
+            }
+            setEditor({
+              ...editor,
+              key: crypto.randomUUID(),
+              action,
+              base: saved,
+              owner: getOwner(),
+              position:
+                editor.kind === "add"
+                  ? Math.min(value.position, saved.actions.length)
+                  : saved.actions.findIndex((item) => item.id === action.id),
+            });
+          }}
+        />
+      )}
     </SettingsSection>
   );
 }

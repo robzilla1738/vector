@@ -176,6 +176,20 @@ native staging and A5/A6/work-details acceptance stay open; see
 [retirement evidence](evidence/aside-protected-recall-retirement-2026-10-18.json) and
 [the legacy correction](evidence/aside-legacy-memory-retirement-2026-10-18.json).
 
+The subsequent reviewed A3/A4/A8 audit batch closes the reproduced queued
+task-PDF scope expansion, bounds native-socket output and RPC failure handling,
+and gives compaction controls committed run ownership. Selection now uses actual
+action-only Cancel/Save/Update/Remove with read-only outage draft retention and
+explicit fresh-owner resume; Chats sort shares the measured menu role. Google/X
+service fixtures cover the remaining bounded draft/grid/write/paging proofs with
+synthetic accounts, while setup/live compatibility stay explicit. See
+[the integration record](evidence/aside-audit-reliability-2026-10-18.json).
+The rebuilt integrated retry passes 5,867 tests across 855 files in138.58s; its six original
+parent-fixture failures and exact test-only correction remain recorded. Root lint
+passes with 570 unchanged advisories and two new Selection advisories. Current
+native appearance, browser/performance and default-route manual acceptance remain
+separate; no outcome node is marked complete by source tests.
+
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.
 Runtime edits rebuild dist before tests. After integration, dispatch the next

@@ -10,6 +10,7 @@ import { reportCommandCompletionFailure } from "../../command-completion";
 import { SelectionCaptureSettings } from "./SelectionCapture";
 const ids = [
   "save-selection-capture-settings",
+  "save-selection-action",
   "reload-selection-capture-settings",
   "toggle-selection-action",
   "move-selection-action-up",
@@ -46,6 +47,11 @@ const button = (label: string) =>
     ...host.querySelectorAll<HTMLButtonElement>("button"),
   ].find((node) => node.textContent?.trim() === label)!;
 const template = () => document.querySelector<HTMLTextAreaElement>("dialog textarea")!;
+const saveButton = () =>
+  document.querySelector<HTMLButtonElement>('dialog button[type="submit"]') ??
+  button("Save Selection & Capture");
+const saveCommand = () => saveButton().dataset.commandId!;
+const invokeSave = () => invokeScopedControl(saveCommand());
 async function render() {
   await act(async () =>
     root.render(<SelectionCaptureSettings active={active} settings={settings} onSave={save} />),
@@ -105,7 +111,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-it("registers exactly twelve focused normal Settings commands without adding shortcuts", () => {
+it("registers the focused normal Settings commands without adding shortcuts", () => {
   for (const id of ids) {
     const rows = COMMANDS.filter((row) => row.id === id);
     expect(rows).toHaveLength(1);
@@ -135,15 +141,18 @@ it("uses the exact focused original row for moves/preview/removal and retains lo
   await invoke("remove-selection-action", named("Remove Explain"));
   expect(host.querySelectorAll(".selection-action-row")).toHaveLength(3);
   expect(document.activeElement).toBe(button("Add selection action"));
-  expect(save).not.toHaveBeenCalled();
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(
+    save.mock.calls[0]![0].selectionCapture.actions.some((action: { id: string }) => action.id === "explain"),
+  ).toBe(false);
   expect(native).not.toHaveBeenCalled();
 });
 it("requires current-window admission before an original save dispatch", async () => {
   await render();
   await write("Draft to preserve {text}");
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   bridge.windowId = "replacement";
-  expect(() => invokeScopedControl("save-selection-capture-settings")).toThrow("current");
+  expect(() => invokeSave()).toThrow("current");
   expect(save).not.toHaveBeenCalled();
 });
 it("reserves same-tick saves and returns the original false ACK with retained draft", async () => {
@@ -151,11 +160,11 @@ it("reserves same-tick saves and returns the original false ACK with retained dr
   await write("Same tick {text}");
   const old = held<boolean>();
   save.mockReturnValueOnce(old.promise);
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   let completion!: Promise<unknown>;
   await act(async () => {
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
-    expect(() => invokeScopedControl("save-selection-capture-settings")).toThrow("current");
+    completion = invokeSave() as Promise<unknown>;
+    expect(() => invokeSave()).toThrow("current");
   });
   expect(save).toHaveBeenCalledTimes(1);
   await act(async () => old.resolve(false));
@@ -169,17 +178,17 @@ it("does not let retired success overwrite a fresh window draft or clear its pen
   const old = held<boolean>(),
     fresh = held<boolean>();
   save.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   let oldCompletion!: Promise<unknown>, freshCompletion!: Promise<unknown>;
   await act(async () => {
-    oldCompletion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    oldCompletion = invokeSave() as Promise<unknown>;
   });
   bridge.windowId = "replacement";
   await render();
   await write("Fresh draft {text}");
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   await act(async () => {
-    freshCompletion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    freshCompletion = invokeSave() as Promise<unknown>;
   });
   await act(async () => old.resolve(true));
   expect(await oldCompletion).toBe(true);
@@ -196,10 +205,10 @@ it("returns a retired original rejection without publishing it after committed P
   await write("Original draft {text}");
   const old = held<boolean>();
   save.mockReturnValueOnce(old.promise);
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   let completion!: Promise<unknown>;
   await act(async () => {
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    completion = invokeSave() as Promise<unknown>;
   });
   const reason = new Error("Original protected transport <diagnostic>");
   const observed = completion.catch((error) => error);
@@ -221,10 +230,10 @@ it("retains actual external-revision conflict and suppresses stale acknowledged 
   await write("My unsaved source {text}");
   const old = held<boolean>();
   save.mockReturnValueOnce(old.promise);
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   let completion!: Promise<unknown>;
   await act(async () => {
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    completion = invokeSave() as Promise<unknown>;
   });
   settings = { selectionCapture: { ...settings.selectionCapture, revision: 1, inlineAssist: false } };
   await render();
@@ -233,7 +242,7 @@ it("retains actual external-revision conflict and suppresses stale acknowledged 
   expect(template().value).toBe("My unsaved source {text}");
   expect(document.body.textContent).toContain("changed in another window");
   expect(document.body.textContent).not.toContain("Saved for this Profile");
-  await invoke("reload-selection-capture-settings", button("Reload saved settings"));
+  await act(async () => button("Reload saved action").click());
   expect(template().value).not.toContain("My unsaved");
 });
 it("retires recording across connected incarnation and retains genuine Escape/modified-key input semantics", async () => {
@@ -259,7 +268,7 @@ it("retires recording across connected incarnation and retains genuine Escape/mo
       new KeyboardEvent("keydown", { key: "9", metaKey: true, altKey: true, bubbles: true }),
     ),
   );
-  await invoke("save-selection-capture-settings", button("Save Selection & Capture"));
+  await invoke(saveCommand(), saveButton());
   expect(save.mock.calls[0]![0].selectionCapture.regionCapture).toEqual({
     key: "9",
     command: true,
@@ -274,10 +283,11 @@ it("reproduces the original late-ACK busy leak using actual Save clicks after wi
   await write("Original pending action {text}");
   const old = held<boolean>();
   save.mockReturnValueOnce(old.promise);
-  await act(async () => button("Save Selection & Capture").click());
+  await act(async () => saveButton().click());
   expect(template().disabled).toBe(true);
   bridge.windowId = "replacement";
   await render();
+  await openAction();
   try {
     expect(template().disabled).toBe(false);
   } finally {
@@ -303,7 +313,8 @@ it("dispatches original checkbox, add and shortcut-disable controls without nati
   expect(inline.checked).toBe(!previous);
   const count = host.querySelectorAll(".selection-action-row").length;
   await invoke("add-selection-action", button("Add selection action"));
-  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(count + 1);
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(count);
+  await act(async () => button("Cancel").click());
   const record = named("Record selection double-tap shortcut");
   await invoke("record-selection-capture-shortcut", record);
   await act(async () =>
@@ -314,7 +325,7 @@ it("dispatches original checkbox, add and shortcut-disable controls without nati
   const off = button("Turn off");
   expect(off).toBeDefined();
   await invoke("disable-selection-capture-shortcut", off);
-  await invoke("save-selection-capture-settings", button("Save Selection & Capture"));
+  await invoke(saveCommand(), saveButton());
   expect(save.mock.calls[0]![0].selectionCapture.selectionDoubleTap).toBe(null);
   expect(save.mock.calls[0]![0].selectionCapture.inlineAssist).toBe(!previous);
   expect(native).not.toHaveBeenCalled();
@@ -326,16 +337,16 @@ it("preserves a synchronous original save rejection and recovers through the sam
   save.mockImplementationOnce(() => {
     throw reason;
   });
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   let completion!: Promise<unknown>;
   await act(async () => {
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    completion = invokeSave() as Promise<unknown>;
     await expect(completion).rejects.toBe(reason);
   });
   expect(template().value).toBe("Recover my draft {text}");
   expect(document.body.textContent).toContain(reason.message);
-  expect(button("Save Selection & Capture").disabled).toBe(false);
-  expect(await invoke("save-selection-capture-settings", button("Save Selection & Capture"))).toBe(true);
+  expect(saveButton().disabled).toBe(false);
+  expect(await invoke(saveCommand(), saveButton())).toBe(true);
   expect(document.body.textContent).toContain("Saved for this Profile");
 });
 
@@ -350,8 +361,8 @@ it("validates and saves the exact latest same-tick original draft", async () => 
       "Latest original draft {text}",
     );
     target.dispatchEvent(new Event("input", { bubbles: true }));
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
     await completion;
   });
   expect(save.mock.calls[0]![0].selectionCapture.actions[0].template).toBe("Latest original draft {text}");
@@ -360,11 +371,11 @@ it("validates and saves the exact latest same-tick original draft", async () => 
 it("permanently retires an observed uncommitted window mismatch rather than reviving A", async () => {
   await render();
   await write("Original before mismatch {text}");
-  button("Save Selection & Capture").focus();
+  saveButton().focus();
   bridge.windowId = "replacement";
-  expect(() => invokeScopedControl("save-selection-capture-settings")).toThrow("current");
+  expect(() => invokeSave()).toThrow("current");
   bridge.windowId = "original";
-  expect(() => invokeScopedControl("save-selection-capture-settings")).toThrow("current");
+  expect(() => invokeSave()).toThrow("current");
   expect(save).not.toHaveBeenCalled();
 });
 it("does not revive held original ACK delivery after an observed no-render window ABA", async () => {
@@ -376,12 +387,12 @@ it("does not revive held original ACK delivery after an observed no-render windo
   save.mockReturnValueOnce(old.promise);
   let completion!: Promise<unknown>;
   await act(async () => {
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
   });
-  button("Close preview").focus();
+  const present = save.mock.calls[0]![1] as () => boolean;
   bridge.windowId = "replacement";
-  expect(() => invokeScopedControl("close-selection-action-preview")).toThrow("current");
+  expect(present()).toBe(false);
   bridge.windowId = "original";
   await act(async () => old.resolve(true));
   expect(await completion).toBe(true);
@@ -396,8 +407,8 @@ it("accepts its exact persisted revision broadcast before the save acknowledgeme
   save.mockReturnValueOnce(pending.promise);
   let completion!: Promise<unknown>;
   await act(async () => {
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
   });
   const submitted = save.mock.calls[0]![0].selectionCapture;
   settings = { selectionCapture: { ...submitted, revision: submitted.revision + 1 } };
@@ -407,7 +418,8 @@ it("accepts its exact persisted revision broadcast before the save acknowledgeme
   await act(async () => pending.resolve(true));
   expect(await completion).toBe(true);
   expect(document.body.textContent).toContain("Saved for this Profile");
-  expect(button("Save Selection & Capture").disabled).toBe(true);
+  expect(saveButton().disabled).toBe(true);
+  await openAction();
   expect(template().value).toBe("My native save {text}");
 });
 
@@ -418,8 +430,8 @@ it("does not turn a matching broadcast into a successful save without an accepte
   save.mockReturnValueOnce(pending.promise);
   let completion!: Promise<unknown>;
   await act(async () => {
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
   });
   const submitted = save.mock.calls[0]![0].selectionCapture;
   settings = { selectionCapture: { ...submitted, revision: submitted.revision + 1 } };
@@ -428,21 +440,21 @@ it("does not turn a matching broadcast into a successful save without an accepte
   expect(await completion).toBe(false);
   expect(document.body.textContent).not.toContain("Saved for this Profile");
   expect(template().value).toBe("Still waiting for acknowledgement {text}");
-  expect(button("Reload saved settings")).toBeDefined();
+  expect(button("Reload saved action")).toBeDefined();
 });
 
 it("does not retire a second save when the previous acknowledged broadcast arrives late", async () => {
   await render();
   await write("First accepted action {text}");
-  await invoke("save-selection-capture-settings", button("Save Selection & Capture"));
+  await invoke(saveCommand(), saveButton());
   const first = save.mock.calls[0]![0].selectionCapture;
   await write("Second accepted action {text}");
   const pending = held<boolean>();
   save.mockReturnValueOnce(pending.promise);
   let completion!: Promise<unknown>;
   await act(async () => {
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
   });
   settings = { selectionCapture: { ...first, revision: first.revision + 1 } };
   await render();
@@ -450,5 +462,113 @@ it("does not retire a second save when the previous acknowledged broadcast arriv
   await act(async () => pending.resolve(true));
   expect(await completion).toBe(true);
   expect(document.body.textContent).toContain("Saved for this Profile");
+  await openAction();
   expect(template().value).toBe("Second accepted action {text}");
 });
+
+it("reserves the actual local transaction before same-tick Cancel or Escape can dismiss a dispatched save", async () => {
+  await render();
+  await write("Keep the exact pending action {text}");
+  const pending = held<boolean>();
+  save.mockReturnValueOnce(pending.promise);
+  const dialog = document.querySelector<HTMLDialogElement>("dialog")!;
+  const cancel = button("Cancel");
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
+    cancel.click();
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(document.querySelector("dialog")).toBe(dialog);
+  });
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(button("Cancel").disabled).toBe(true);
+  await act(async () => pending.resolve(false));
+  expect(await completion).toBe(false);
+  expect(template().value).toBe("Keep the exact pending action {text}");
+  await act(async () => button("Cancel").click());
+  expect(document.querySelector("dialog")).toBeNull();
+});
+
+it("preserves the same-window local draft read-only across an outage and requires explicit current-owner resume after the original ACK retires", async () => {
+  await render();
+  await write("Keep through the outage {text}");
+  const pending = held<boolean>();
+  save.mockReturnValueOnce(pending.promise);
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    saveButton().focus();
+    completion = invokeSave() as Promise<unknown>;
+  });
+  const originalDialog = document.querySelector("dialog");
+  await act(async () => useStore.setState({ connected: false }));
+  expect(document.querySelector("dialog")).toBe(originalDialog);
+  expect(template().value).toBe("Keep through the outage {text}");
+  expect(template().disabled).toBe(true);
+  expect(document.body.textContent).toContain("runtime disconnected");
+  expect(button("Resume editing")).toBeUndefined();
+  await act(async () => useStore.setState({ connected: true }));
+  expect(button("Resume editing").disabled).toBe(true);
+  expect(save).toHaveBeenCalledTimes(1);
+  await act(async () => pending.resolve(true));
+  expect(await completion).toBe(true);
+  expect(document.querySelector("dialog")).toBe(originalDialog);
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
+  expect(template().disabled).toBe(true);
+  expect(template().value).toBe("Keep through the outage {text}");
+  expect(save).toHaveBeenCalledTimes(1);
+  await act(async () => button("Resume editing").click());
+  expect(document.querySelector("dialog")).toBe(originalDialog);
+  expect(template().value).toBe("Keep through the outage {text}");
+  expect(template().disabled).toBe(false);
+  expect(save).toHaveBeenCalledTimes(1);
+  await invoke(saveCommand(), saveButton());
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(save.mock.calls[1]![0].selectionCapture).toMatchObject({
+    revision: 0,
+    actions: expect.arrayContaining([
+      { ...settings.selectionCapture.actions[0], template: "Keep through the outage {text}" },
+    ]),
+  });
+});
+
+it("retains an outage draft but requires explicit saved-action reload if canonical settings changed before reconnect", async () => {
+  await render();
+  await write("Local disconnected draft {text}");
+  await act(async () => useStore.setState({ connected: false }));
+  settings = {
+    selectionCapture: {
+      ...settings.selectionCapture,
+      revision: 1,
+      actions: settings.selectionCapture.actions.map((action) =>
+        action.id === "ask" ? { ...action, template: "New persisted version {text}" } : action,
+      ),
+    },
+  };
+  await render();
+  expect(template().value).toBe("Local disconnected draft {text}");
+  expect(button("Reload saved action").disabled).toBe(true);
+  await act(async () => useStore.setState({ connected: true }));
+  expect(template().value).toBe("Local disconnected draft {text}");
+  expect(template().disabled).toBe(true);
+  expect(button("Resume editing")).toBeUndefined();
+  await act(async () => button("Reload saved action").click());
+  expect(template().value).toBe("New persisted version {text}");
+  expect(template().disabled).toBe(false);
+  expect(save).not.toHaveBeenCalled();
+});
+
+it.each(["window", "private", "route"] as const)(
+  "still retires the retained outage action editor when its original %s is retired",
+  async (kind) => {
+    await render();
+    await write("Local retired draft {text}");
+    await act(async () => useStore.setState({ connected: false }));
+    if (kind === "window") bridge.windowId = "replacement";
+    else if (kind === "private") bridge.privateMode = true;
+    else active = false;
+    await render();
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  },
+);

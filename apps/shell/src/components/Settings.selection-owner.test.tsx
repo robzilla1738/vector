@@ -88,8 +88,8 @@ async function write(value: string) {
 async function save() {
   let completion!: Promise<unknown>;
   await act(async () => {
-    button("Save Selection & Capture").focus();
-    completion = invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;
+    document.querySelector<HTMLButtonElement>('dialog [data-command-id="save-selection-action"]')!.focus();
+    completion = invokeScopedControl("save-selection-action") as Promise<unknown>;
   });
   return { completion };
 }
@@ -156,6 +156,8 @@ it("accepts its own persisted broadcast before the native ACK without reporting 
   await act(async () => pending.resolve({}));
   expect(await completion).toBe(true);
   expect(document.body.textContent).toContain("Saved for this Profile");
+  expect(document.querySelector(".selection-action-dialog")).toBeNull();
+  await act(async () => host.querySelector<HTMLButtonElement>(".selection-action-row button")!.click());
   expect(template().value).toBe("Native broadcast before ACK {text}");
   expect(toast).not.toHaveBeenCalled();
 });
@@ -193,7 +195,7 @@ it("preserves original current parent toast/false ACK and real registered recove
   expect(await completion).toBe(false);
   expect(toast).toHaveBeenCalledWith("Original active backend error", "error", undefined);
   expect(template().value).toBe("Current retained draft {text}");
-  expect(host.textContent).toContain("Your edits are still here");
+  expect(document.body.textContent).toContain("Your edits are still here");
   const fresh = await save();
   expect(await fresh.completion).toBe(true);
   expect(host.querySelector(".saved")?.textContent).toContain("Saved");

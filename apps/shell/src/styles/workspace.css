@@ -1109,12 +1109,7 @@
     min-width: 136px;
   }
   .history-sort-menu > button {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    min-height: 32px;
-    padding: 6px 8px;
   }
   .history-filters {
     width: 220px;

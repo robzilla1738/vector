@@ -27,6 +27,7 @@ const r20={"handler":"shell","windows":["normal","private"],"intercept":true,"bi
 export const STARTUP_COMMANDS=[
   {id:"save-selection-capture-settings",...r0},
   {id:"reload-selection-capture-settings",...r0},
+  {id:"save-selection-action",...r0},
   {id:"toggle-selection-action",...r0},
   {id:"move-selection-action-up",...r0},
   {id:"move-selection-action-down",...r0},

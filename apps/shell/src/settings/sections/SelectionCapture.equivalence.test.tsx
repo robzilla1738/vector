@@ -3,15 +3,18 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { bridge } from "../../bridge";
+import { useStore } from "../../store";
 import { invokeScopedControl } from "../../scoped-control-commands";
 import { SelectionCaptureSettings } from "./SelectionCapture";
 import { AutofillSetting } from "../../components/AutofillSetting";
-it("keeps action drafts across editor dismissal and retires its registered controls", async () => {
+it("discards only the local action draft on editor dismissal and retires its registered controls", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as never);
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
+  const originalConnected = useStore.getState().connected;
+  useStore.setState({ connected: true });
   const saved = vi.fn();
   const native = vi.spyOn(bridge, "invoke");
   try {
@@ -40,7 +43,7 @@ it("keeps action drafts across editor dismissal and retires its registered contr
     await act(async () => retired.click());
     expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
     await act(async () => trigger.click());
-    expect(document.querySelector("dialog textarea")).toHaveProperty("value", "Review {text}");
+    expect(document.querySelector("dialog textarea")).not.toHaveProperty("value", "Review {text}");
     expect(saved).not.toHaveBeenCalled();
     expect(native).not.toHaveBeenCalled();
     await act(async () =>
@@ -50,6 +53,7 @@ it("keeps action drafts across editor dismissal and retires its registered contr
   } finally {
     await act(async () => root.unmount());
     host.remove();
+    useStore.setState({ connected: originalConnected });
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }

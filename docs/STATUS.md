@@ -8,6 +8,24 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
+The latest audit correction binds queued follow-ups to their original task PDFs,
+bounds native-socket pending output by actual UTF-8 bytes and a finite drain/close
+deadline, and fences compaction controls to the committed run state. Selection
+actions now have real Cancel/Save/Update/Remove transactions instead of the prior
+global-save deviation. Same-window outages preserve read-only drafts with explicit
+reconnect review; stale callbacks cannot alter a resumed editor. Chats sort uses
+shared measured menu rows. Added Google/X governed-service fixtures exercise
+original approvals, independent readback, pagination and uncertain-write barriers.
+[The audit integration record](evidence/aside-audit-reliability-2026-10-18.json)
+separates actual producers, synthetic fixtures, preserved failures and native gates.
+These changes are not staged in the compiled candidate.
+
+After rebuilding dist, the integrated retry passes all 5,867 tests across 855 files in
+138.58s. Typechecking/linting pass; 570 existing advisories are unchanged, with
+two new Selection advisories recorded. The first run’s six outdated parent-fixture
+failures remain in the record; the corrected fixture uses the new real action
+command while retaining its ACK/error/retirement/timer coverage.
+
 Local commits7806e41fc,07199225f and34117c740 contain the shared reference UI
 foundation; long-conversation compaction and queue ordering; Memory documents,
 Dream/diffs/revert and retrieval; richer channels/routines; isolated PDF/audio
@@ -67,9 +85,9 @@ The current renderer parity slice removes Sidebar More's custom35px/12px rows
 and uses shared32px/14px menu roles. Home Ask focus and synchronous initialization
 use the reference ring/shadow/geometry. Memory owner rows use14px/500 labels and
 52px minimum geometry; Desktop Context has Aux-branded288×160 artwork in the
-existing168px feature hero. Selection actions retain real revision-bound global
-Save/Reload, fixed supported Prompt kind and existing commands while adopting the
-reference row/editor anatomy. Per-action Cancel/Save remains an explicit deviation.
+existing168px feature hero. Selection actions initially retained revision-bound global
+Save/Reload as a recorded deviation; the current transaction correction above
+supersedes that interaction while retaining the supported Prompt kind.
 CLI uses the standard32px control. Settings plain controls now compute32px;
 Filter, language-add and provider-connect choices use canonical menu roles. MCP
 has one actual Cancel/Add footer and disables source inputs through registration;

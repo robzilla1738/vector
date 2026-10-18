@@ -86,6 +86,13 @@ chunks, original revision/line ranges and source eligibility through publication
 local semantic ranking has an explicit lexical fallback. Native populated
 Dream/diff acceptance remains open in STATUS.
 
+The runtime-to-native socket bounds each UTF-8 frame to 16 MiB and its actual
+queued Buffer bytes to 32 MiB. The first blocked write or graceful close starts a
+nonextendable 5s deadline; subsequent sends refuse once closing begins. Only the
+actual socket close retires channel owners. RPC send failures clean pending calls
+and never retry a failed response as another response. This transport bound does
+not claim to bound cumulative bytes already accepted by the kernel.
+
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 
 The runtime’s services coordinate agent execution, snapshots, policy decisions, durable effect receipts, artifacts, memory, routines and external tools. Observed element references are scoped to page and document epochs. Navigation or takeover invalidates earlier authority; Stop and Take over must fence in-flight work. Model and page content remain untrusted.
@@ -98,7 +105,10 @@ revision; independently retained constraints, task state, sources, approvals and
 unresolved effects survive compaction. Steering, cancellation, model/Space changes
 and Forget retire the original publication. Queue edits atomically move text,
 attachments and source references against the original queued-message revision;
-delivery fences further edits. Provider transport and context accounting prepare
+delivery fences further edits. Queued task-document references are part of the
+original source hash when nonempty. Delivery verifies every original against current
+task evidence and retains that exact snapshot; later imports cannot enlarge the
+follow-up. Existing empty-document hashes remain unchanged. Provider transport and context accounting prepare
 the same tool-schema representation, retaining the original runtime validation.
 Provider-incompatible root object compositions use a strict SDK-generated `input`
 envelope; its original Zod transform returns the validated flat execution input.
@@ -455,15 +465,19 @@ current compact window. The renderer measures draft height outside the flex layo
 deduplicates requests and retires observers with the window. Native code clamps the
 draft range and keeps both draft/conversation bounds within the current display.
 Editors mount only while open; their section supplies active state to retire them
-when navigating away. Selection action drafts and save ownership stay in the
-section, so closing an action editor does not discard the unsaved draft. Skills
+when navigating away. Selection actions use a local editor transaction: Cancel
+discards its action draft, while Save/Update/Remove await the existing whole-settings
+revision CAS. Unrelated page drafts are not submitted. Same-window runtime outages
+retain the action draft read-only; explicit Resume captures a fresh owner only after
+the original request settles and the canonical base still matches. Changed settings
+require explicit Reload. Window/Private/route retirement still closes the editor. Skills
 and MCP keep visited tab content mounted, while search waits for its destination
 panel to become visible before focusing it. Feature Settings mounts receive active
 state for the same lifecycle contract.
 
 Settings editors share regular/wide width tokens and `settings-editor-fields` /
-`settings-editor-actions` layout primitives. New Selection actions use the dialog's
-initial-open state; the parent retains unsaved action drafts. Cloud account setup
+`settings-editor-actions` layout primitives. Selection uses the same measured
+Dialog footer and current-opener focus lifecycle. Cloud account setup
 owns its credential draft inside the mounted editor, clearing it on dismissal.
 Selection and Night shift save owners recognize an exact pending broadcast before
 the request ACK without treating it as another window's edit. This does not admit

@@ -273,6 +273,7 @@ export const COMMANDS = [
     ["reload", "settings", "Reload saved ", ""],
   ]),
   ...singleScopedRows(memoryControl, "-selection-action", " selection action", [
+    ["save", "", "Save", ""],
     ["toggle", "", "Toggle", ""],
     ["move", "-up", "Move", " up"],
     ["move", "-down", "Move", " down"],
