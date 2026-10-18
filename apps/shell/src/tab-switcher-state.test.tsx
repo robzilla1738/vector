@@ -2,7 +2,7 @@
 import { act, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { PageTarget } from "@aux/contracts";
+import type { HostEventPayload, PageTarget } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { normalizePages } from "./store/pages";
@@ -17,6 +17,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let activate: ReturnType<typeof vi.fn>;
+let nativeShortcut: ((event: HostEventPayload<"onShortcut">) => void) | undefined;
 const originalActivate = useStore.getState().activate;
 const tabs = ["one", "two", "three"].map((pageId, index) => ({
   pageId,
@@ -42,6 +43,12 @@ function Harness({ interrupt = false }: { interrupt?: boolean }) {
   );
 }
 beforeEach(async () => {
+  vi.spyOn(bridge, "onShortcut").mockImplementation((callback) => {
+    nativeShortcut = callback;
+    return () => {
+      nativeShortcut = undefined;
+    };
+  });
   activate = vi.fn().mockResolvedValue(undefined);
   useStore.setState({
     pages: normalizePages(tabs),
@@ -72,6 +79,115 @@ const key = async (type: "keydown" | "keyup", value: string, flags = {}) => {
     window.dispatchEvent(new KeyboardEvent(type, { key: value, bubbles: true, cancelable: true, ...flags })),
   );
 };
+
+const nativeTab = (backward = false) =>
+  nativeShortcut!({
+    commandId: backward ? "tab-previous" : "tab-next",
+    key: "Tab",
+    ctrl: true,
+    shift: backward,
+    meta: false,
+    alt: false,
+  });
+const nativeControlRelease = () =>
+  nativeShortcut!({
+    key: "Control",
+    ctrl: false,
+    meta: false,
+    shift: false,
+    alt: false,
+  });
+
+it("commits a native Control release once even when its DOM keyup also arrives", async () => {
+  await act(async () => nativeTab());
+  await act(async () => nativeControlRelease());
+  expect(activate).toHaveBeenCalledExactlyOnceWith("three");
+  expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+  await key("keyup", "Control");
+  await act(async () => nativeControlRelease());
+  expect(activate).toHaveBeenCalledTimes(1);
+});
+
+it("does not treat another command or a held Control event as preview release", async () => {
+  await act(async () => nativeTab());
+  await act(async () =>
+    nativeShortcut!({ key: "Control", ctrl: true, meta: false, shift: false, alt: false }),
+  );
+  await act(async () =>
+    nativeShortcut!({
+      key: "Control",
+      ctrl: false,
+      meta: false,
+      shift: false,
+      alt: false,
+      commandId: "not-a-release",
+    }),
+  );
+  expect(activate).not.toHaveBeenCalled();
+  expect(selected()).toBe("three");
+  await act(async () => nativeControlRelease());
+  expect(activate).toHaveBeenCalledExactlyOnceWith("three");
+});
+
+it("ignores a native release after the preview loses window focus", async () => {
+  await act(async () => nativeTab());
+  await act(async () => window.dispatchEvent(new Event("blur")));
+  await act(async () => nativeControlRelease());
+  expect(activate).not.toHaveBeenCalled();
+  expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+});
+
+it("commits a native-accelerator preview exactly once on the original Control release", async () => {
+  await act(async () => nativeTab());
+  expect(selected()).toBe("three");
+  expect(activate).not.toHaveBeenCalled();
+  await key("keyup", "Tab", { ctrlKey: true });
+  await key("keyup", "Control", { code: "ControlLeft", ctrlKey: true });
+  expect(activate).not.toHaveBeenCalled();
+  await key("keyup", "Control", { code: "ControlRight", ctrlKey: false });
+  expect(activate).toHaveBeenCalledExactlyOnceWith("three");
+  expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+  await key("keyup", "Control");
+  expect(activate).toHaveBeenCalledTimes(1);
+});
+
+it("cancels native-accelerator preview with Escape before Control release", async () => {
+  await act(async () => nativeTab());
+  await act(async () =>
+    document
+      .querySelector('[aria-label="Switch tabs"]')!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  await act(async () => nativeControlRelease());
+  await key("keyup", "Control");
+  expect(activate).not.toHaveBeenCalled();
+  expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+});
+
+it("commits a fast native-accelerator tap before its preview modal mounts", async () => {
+  await act(async () => {
+    nativeTab();
+    expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "Control", bubbles: true }));
+  });
+  expect(activate).toHaveBeenCalledExactlyOnceWith("three");
+  expect(document.querySelector('[aria-label="Switch tabs"]')).toBeNull();
+});
+it("commits native preview through the browser command while the runtime is unavailable", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Runtime unavailable"));
+  const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue({
+    commandId: "native-activate",
+    status: "applied",
+    catalogVersion: 1,
+    pageId: "three",
+  });
+  useStore.setState({ connected: false, pendingRestoreIds: [], activate: originalActivate });
+  await act(async () => nativeTab());
+  await act(async () => nativeControlRelease());
+  expect(command).toHaveBeenCalledExactlyOnceWith({ kind: "activate", pageId: "three" }, undefined);
+  expect(useStore.getState().activePageId).toBe("three");
+  expect(invoke).not.toHaveBeenCalled();
+});
 
 it("previews one stable MRU sequence and activates only on Control release", async () => {
   await key("keydown", "Tab", { ctrlKey: true });

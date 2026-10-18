@@ -24,7 +24,27 @@ export function useShellShortcuts(findInput: RefObject<HTMLInputElement | null>)
   const dispatchShortcut = (shortcut: Shortcut) =>
     dispatchCommandShortcut(shortcut, { findInput, tabSwitcher: tabSwitcher.current });
 
-  useEffect(() => bridge.onShortcut(dispatchShortcut), []);
+  useEffect(
+    () =>
+      bridge.onShortcut((shortcut) => {
+        // A browser-handled Ctrl-Tab can suppress DOM keyup on its original host.
+        // The native window forwards only its owned physical Control release.
+        if (
+          shortcut.key === "Control" &&
+          shortcut.ctrl === false &&
+          shortcut.commandId === undefined &&
+          shortcut.websitePassThrough === undefined &&
+          !shortcut.meta &&
+          !shortcut.alt &&
+          !shortcut.shift
+        ) {
+          finishTabPreview(true);
+          return;
+        }
+        dispatchShortcut(shortcut);
+      }),
+    [],
+  );
 
   // renderer-side keys (when the shell itself has focus)
   useEffect(() => {
