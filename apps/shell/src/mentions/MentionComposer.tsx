@@ -270,7 +270,7 @@ export function MentionComposer({
       )}
       {query &&
         createPortal(
-          <div className="mention-popup" style={{ left: anchor.left, top: anchor.top }}>
+          <div className="mention-popup popup-material" style={{ left: anchor.left, top: anchor.top }}>
             <div
               id={listId}
               ref={rows}

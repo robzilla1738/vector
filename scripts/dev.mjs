@@ -123,7 +123,17 @@ async function main() {
       ...(temporary ? ["--enable-logging=stderr"] : []),
     ];
     if (debugNative)
-      await run("lldb", ["-o", "settings set target.disable-aslr false", "-o", "run", "--", executable, ...launchArgs]);
+      await run("lldb", [
+        "-o",
+        "settings set target.disable-aslr false",
+        "-o",
+        "settings set target.detach-on-error false",
+        "-o",
+        "run",
+        "--",
+        executable,
+        ...launchArgs,
+      ]);
     else await run(executable, launchArgs);
   } finally {
     if (temporary) rmSync(temporary, { recursive: true, force: true });

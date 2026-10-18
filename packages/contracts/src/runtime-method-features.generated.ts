@@ -40,6 +40,7 @@ export const RuntimeMethodFeatures = {
   "agent.inlineAssist.cancel": feature4,
   "workspaces.contentMemory.semanticSearch": feature5,
   "workspaces.contentMemory.embeddingModels": feature5,
+  "workspaces.memory.setDocument": feature5,
   "vault.status": feature6,
   "vault.list": feature6,
   "vault.save": feature6,

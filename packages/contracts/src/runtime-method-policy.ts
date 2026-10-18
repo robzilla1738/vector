@@ -67,6 +67,7 @@ export const RuntimeMethodPolicy = {
   "workspaces.contentMemory.forget": { feature: "core", auth: "handler-guarded" },
   "workspaces.memory.get": { feature: "core", auth: "handler-guarded" },
   "workspaces.memory.search": { feature: "core", auth: "handler-guarded" },
+  "workspaces.memory.setDocument": { feature: "memory", auth: "aux-webui" },
   "workspaces.memory.set": { feature: "core", auth: "handler-guarded" },
   "tasks.create": { feature: "core", auth: "handler-guarded" },
   "tasks.promote": { feature: "core", auth: "handler-guarded" },

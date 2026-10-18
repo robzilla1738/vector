@@ -1,7 +1,8 @@
 import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName, WorkspaceMemory } from "@aux/contracts";
-import { AuxError } from "@aux/contracts";
+import { normalWindowOwner } from "./normal-window-owner.js";
+import { AuxError, MethodSchemas } from "@aux/contracts";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
 import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
@@ -291,6 +292,39 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
   return memory;
 }
 
+async function h_workspaces_memory_setDocument(ctx: MethodCtx): Promise<unknown> {
+  const owner = await normalWindowOwner(ctx);
+  const input = MethodSchemas["workspaces.memory.setDocument"].parse(ctx.params);
+  return withRunAuthorityMutation(ctx.s.repo, async () => {
+    await owner.current();
+    const prior = ctx.tasks.workspaceMemory(input.workspaceId);
+    const previous = prior.documents?.find((document) => document.path === input.path);
+    let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
+    const beforeSave =
+      previous && (input.content === null || !input.content.includes(previous.content))
+        ? () => {
+            generation = advanceManagedRecoveryGeneration(ctx.s.settings.all().dataDir);
+          }
+        : undefined;
+    let memory: WorkspaceMemory;
+    try {
+      memory = ctx.tasks.setWorkspaceMemoryDocument(input, beforeSave);
+    } catch (error) {
+      if (generation)
+        throw new AuxError(
+          "conflict",
+          "Memory update could not be confirmed. Review Memory and create a fresh local backup.",
+        );
+      throw error;
+    }
+    await ctx.s.contentMemory?.invalidateDerivatives();
+    await ctx.revokeWorkspaceContext(input.workspaceId, false);
+    await ctx.s.runs.redactForgottenArticleOutputs(input.workspaceId);
+    if (generation) await attemptFreshManagedBackup(ctx.s.repo, ctx.s.settings.all().dataDir, generation);
+    return memory;
+  });
+}
+
 export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.create": h_workspaces_create,
   "workspaces.list": h_workspaces_list,
@@ -314,4 +348,5 @@ export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.contentMemory.forget": h_workspaces_contentMemory_policy,
   "workspaces.memory.get": h_workspaces_memory_get,
   "workspaces.memory.set": h_workspaces_memory_set,
+  "workspaces.memory.setDocument": h_workspaces_memory_setDocument,
 };

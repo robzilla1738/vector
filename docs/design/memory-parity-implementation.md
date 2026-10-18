@@ -8,7 +8,7 @@ broader document authority still need native acceptance.
 
 | Reference | Required behavior | Current implementation |
 | --- | --- | --- |
-| 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Daily approved-note files and authoritative MEMORY.md now editable; USER/TAXONOMY/site/routine authorities remain open |
+| 072–073 | Folder/document tree, selected document breadcrumb, modification time, rendered Markdown and Edit; episodic, sites, routines and root documents | Daily approved-note files, authoritative MEMORY.md and explicit owner-written USER.md/TAXONOMY.md are editable; site/routine authorities remain open |
 | 074 | Extraction activity grouped by date, source title, trigger, duration, model, token/cache usage, cost, file changes and Dream now | Model quote selection with extraction-owned usage/cost, safe failures/retries and proposed notes is source-implemented. Recovery revisions stay separate. Real model/native acceptance, file diffs and Dream remain open |
 | 075–076 | Index health, update time, chunk count, Rebuild, extraction enable and episodic retention | Approved-note search index now has encrypted chunks, update time, verification and Rebuild; approved owner edits rebuild the same index; broader document indexing remains open; Never forget/30/90-day retention is implemented in source with confirmation, policy conflict checks and idle cleanup, pending native acceptance |
 | 077 | Context awareness controls | Existing browsing/content memory controls; matched native comparison remains open |
@@ -133,7 +133,10 @@ are not persisted across closing Settings. New fragments are preserved when an
 owner explicitly rebases a daily-file draft. Review/import/Forget and individual
 manual notes remain available through Review and manage notes.
 
-USER.md/TAXONOMY.md and site/routine document authority remain unimplemented. The
-browser exposes no placeholder files for those concepts. Native498b9a550 acceptance covers root saving, two-fragment daily editing, original
+Explicit USER.md/TAXONOMY.md now have independent encrypted bodies, revision-bound
+normal-window writes, modification dates and concrete deletion review. New files
+remain local drafts until Save. Root writes preserve them; Space/window retirement
+clears their local drafts. Recovery retains the bodies; recall remains bounded.
+Site/routine document authority remains unimplemented, with no placeholder files. Native498b9a550 acceptance covers root saving, two-fragment daily editing, original
 quote preservation, reindex/refresh persistence and dark/light populated views.
 Narrow comparison and the subsequent toolbar refinement remain unverified natively.

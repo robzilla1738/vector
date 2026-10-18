@@ -326,10 +326,7 @@
     max-height: min(50vh, 400px);
     overflow: auto;
     padding: var(--space-2);
-    border: 1px solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--bg-1);
-    box-shadow: 0 12px 32px var(--shadow-soft-overlay-tint);
   }
   .reader-contents button {
     display: block;
@@ -669,7 +666,7 @@
     position: relative;
     color: var(--sb-ink-0);
     -webkit-app-region: drag;
-    transition: width var(--t-slow) var(--ease-out);
+    transition: width var(--t-layout) var(--ease-emphasized);
     /* Docked glass runs to the window edge; only floating panels round themselves. */
     border-radius: 0;
   }
@@ -1448,8 +1445,8 @@
     min-height: 0;
     opacity: 0;
     transition:
-      grid-template-rows var(--t-fast) var(--ease-in-out),
-      opacity var(--t-fast) var(--ease-in-out);
+      grid-template-rows var(--t-disclosure) var(--ease-emphasized),
+      opacity var(--t-disclosure-fade) var(--ease-out);
   }
   .sidebar-section-body.open {
     grid-template-rows: 1fr;
@@ -1639,20 +1636,6 @@
       color var(--t-fast) var(--ease-in-out),
       opacity var(--t-fast) var(--ease-in-out),
       scale var(--t-fast) var(--ease-in-out);
-  }
-  @keyframes menu-enter {
-    from {
-      opacity: 0;
-    }
-  }
-  /* The one entrance for menus and popovers; dialogs use .pop-in. */
-  .menu,
-  .history-menu,
-  .cb-pop,
-  .sb-more-menu,
-  .anchored-panel {
-    animation: menu-enter var(--t-popup) var(--ease-in-out);
-    transform-origin: top;
   }
   .space-menu,
   .sb-more-menu {

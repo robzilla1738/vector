@@ -1,5 +1,4 @@
 import { Button, IconButton } from "./index";
-import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useState } from "react";
 import { shellIconAlert, shellIconCheck, shellIconClose } from "./icons";
 import "./toast.css";
@@ -30,7 +29,7 @@ export function Toast({
   }, [id, kind, action, held, onDismiss]);
   return (
     <div
-      className={`toast rise ${kind}`}
+      className={`toast popup-material ${kind}`}
       role={kind === "error" ? "alert" : "status"}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
@@ -39,7 +38,6 @@ export function Toast({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
       }}
     >
-      <GlassMaterial />
       {kind === "error" ? shellIconAlert : shellIconCheck}
       <span className="toast-text">{text}</span>
       {action && (

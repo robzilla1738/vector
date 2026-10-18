@@ -269,7 +269,7 @@ export function ReaderView() {
             ref={contentsMenu}
             onKeyDown={(event) => moveListFocus(event, "button")}
             id="reader-contents"
-            className="reader-contents"
+            className="reader-contents popup-material"
             aria-label="Article contents"
           >
             {sections.map((section, index) => (

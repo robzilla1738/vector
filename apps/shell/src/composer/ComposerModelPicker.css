@@ -114,11 +114,8 @@
     max-height: min(360px, calc(100dvh - 16px));
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 6px;
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-xl);
-    background: var(--surface-menu);
-    box-shadow: var(--shadow-pop);
+    padding: var(--menu-padding);
+    border-radius: var(--menu-radius);
   }
   .composer-model-list button[aria-expanded="true"] {
     background: var(--bg-hover);

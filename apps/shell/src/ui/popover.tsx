@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent,
@@ -54,7 +55,7 @@ export function Popover({
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !panel.current) return;
     const node = panel.current;
     const place = () => {
@@ -65,6 +66,7 @@ export function Popover({
     place();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(node);
+    if (button.current) observer?.observe(button.current);
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     return () => {
