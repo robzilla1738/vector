@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "date": "2026-10-18",
+  "originalDumpSha256": "cad4197c5c1f9d28240b787086d738be50f4f64533749aaca3708142f48de84e",
+  "originalFaultingImageUUID": "4C4C4483-5555-3144-A1C0-52EB39B455CA",
+  "input": {
+    "sanitizedMetadata": "/tmp/aux-155-original-dump-structured.json",
+    "sha256": "227db8105b037c07e867cf8fbfb2877bce65c785e6baa698c676a7edcf8610ca"
+  },
+  "method": "Load only three named Apple system libraries into an owned Python process, inspect their mapped Mach-O LC_UUID, require exact original dump UUIDs, then run atos with the original image load bases and ARM64e saved-return-address-minus4 callsites. Cached system images have no standalone file at their framework paths; atos resolves the installed shared cache.",
+  "systemImages": [
+    {
+      "name": "CoreFoundation",
+      "originalUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalBase": "0x187de9000",
+      "loadedSystemImage": {
+        "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "uuid": "727E905E-F344-3823-8E13-E7A096388321",
+        "architecture": "arm64e",
+        "loadedHeader": "0x187de9000"
+      },
+      "exactUUIDMatch": true
+    },
+    {
+      "name": "AppKit",
+      "originalUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalBase": "0x18c3e7000",
+      "loadedSystemImage": {
+        "path": "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+        "uuid": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+        "architecture": "arm64e",
+        "loadedHeader": "0x18c3e7000"
+      },
+      "exactUUIDMatch": true
+    },
+    {
+      "name": "HIToolbox",
+      "originalUUID": "5D739A34-36B7-39B9-BA3B-7608B59C07A8",
+      "originalBase": "0x1951e1000",
+      "loadedSystemImage": {
+        "path": "/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox",
+        "uuid": "5D739A34-36B7-39B9-BA3B-7608B59C07A8",
+        "architecture": "arm64e",
+        "loadedHeader": "0x1951e1000"
+      },
+      "exactUUIDMatch": true
+    }
+  ],
+  "frames": [
+    {
+      "frame": 17,
+      "module": "CoreFoundation",
+      "moduleUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalReturnAddress": "0x187e6a944",
+      "originalOffset": "0x81944",
+      "callsiteAddress": "0x187e6a940",
+      "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__ (in CoreFoundation) + 24"
+    },
+    {
+      "frame": 18,
+      "module": "CoreFoundation",
+      "moduleUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalReturnAddress": "0x187e6a8d8",
+      "originalOffset": "0x818d8",
+      "callsiteAddress": "0x187e6a8d4",
+      "symbol": "__CFRunLoopDoSource0 (in CoreFoundation) + 220"
+    },
+    {
+      "frame": 19,
+      "module": "CoreFoundation",
+      "moduleUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalReturnAddress": "0x187e6a610",
+      "originalOffset": "0x81610",
+      "callsiteAddress": "0x187e6a60c",
+      "symbol": "__CFRunLoopDoSources0 (in CoreFoundation) + 228"
+    },
+    {
+      "frame": 20,
+      "module": "CoreFoundation",
+      "moduleUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalReturnAddress": "0x187e691e0",
+      "originalOffset": "0x801e0",
+      "callsiteAddress": "0x187e691dc",
+      "symbol": "__CFRunLoopRun (in CoreFoundation) + 828"
+    },
+    {
+      "frame": 21,
+      "module": "CoreFoundation",
+      "moduleUUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "originalReturnAddress": "0x187f4382c",
+      "originalOffset": "0x15a82c",
+      "callsiteAddress": "0x187f43828",
+      "symbol": "_CFRunLoopRunSpecificWithOptions (in CoreFoundation) + 532"
+    },
+    {
+      "frame": 22,
+      "module": "HIToolbox",
+      "moduleUUID": "5D739A34-36B7-39B9-BA3B-7608B59C07A8",
+      "originalReturnAddress": "0x19529c590",
+      "originalOffset": "0xbb590",
+      "callsiteAddress": "0x19529c58c",
+      "symbol": "RunCurrentEventLoopInMode (in HIToolbox) + 316"
+    },
+    {
+      "frame": 23,
+      "module": "HIToolbox",
+      "moduleUUID": "5D739A34-36B7-39B9-BA3B-7608B59C07A8",
+      "originalReturnAddress": "0x19529f91c",
+      "originalOffset": "0xbe91c",
+      "callsiteAddress": "0x19529f918",
+      "symbol": "ReceiveNextEventCommon (in HIToolbox) + 488"
+    },
+    {
+      "frame": 24,
+      "module": "HIToolbox",
+      "moduleUUID": "5D739A34-36B7-39B9-BA3B-7608B59C07A8",
+      "originalReturnAddress": "0x195422380",
+      "originalOffset": "0x241380",
+      "callsiteAddress": "0x19542237c",
+      "symbol": "_BlockUntilNextEventMatchingListInMode (in HIToolbox) + 44"
+    },
+    {
+      "frame": 25,
+      "module": "AppKit",
+      "moduleUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalReturnAddress": "0x18c76329c",
+      "originalOffset": "0x37c29c",
+      "callsiteAddress": "0x18c763298",
+      "symbol": "_DPSBlockUntilNextEventMatchingListInMode (in AppKit) + 288"
+    },
+    {
+      "frame": 26,
+      "module": "AppKit",
+      "moduleUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalReturnAddress": "0x18c4204fc",
+      "originalOffset": "0x394fc",
+      "callsiteAddress": "0x18c4204f8",
+      "symbol": "_DPSNextEvent (in AppKit) + 576"
+    },
+    {
+      "frame": 27,
+      "module": "AppKit",
+      "moduleUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalReturnAddress": "0x18cc98748",
+      "originalOffset": "0x8b1748",
+      "callsiteAddress": "0x18cc98744",
+      "symbol": "-[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:] (in AppKit) + 776"
+    },
+    {
+      "frame": 28,
+      "module": "AppKit",
+      "moduleUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalReturnAddress": "0x18cc9826c",
+      "originalOffset": "0x8b126c",
+      "callsiteAddress": "0x18cc98268",
+      "symbol": "-[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:] (in AppKit) + 288"
+    },
+    {
+      "frame": 32,
+      "module": "AppKit",
+      "moduleUUID": "2688AFBC-5C39-3132-BCF5-8D00D32D7615",
+      "originalReturnAddress": "0x18c41390c",
+      "originalOffset": "0x2c90c",
+      "callsiteAddress": "0x18c413908",
+      "symbol": "-[NSApplication run] (in AppKit) + 392"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/aux-original155-system-symbols/inspect-images.py",
+      "sha256": "d4806f985b8f06a75d19321e82bd0da428d0fde97306fc3eb27b9996426083c5"
+    },
+    {
+      "path": "/tmp/aux-original155-system-symbols/image-identities.json",
+      "sha256": "cce3da50a04551b5e6158c32e28b408aea43e934a510815371440d9bab570855"
+    },
+    {
+      "path": "/tmp/aux-original155-system-symbols/atos-results.json",
+      "sha256": "0db857080331a95c02f3500528261555bef98d812cbec304c6738a2afcf71d34"
+    }
+  ],
+  "observed": "All13 matching system frames resolve to CoreFoundation/HIToolbox/AppKit event-loop dispatch.",
+  "limits": [
+    "These are recorded return frames from a bounded frame-pointer walk, not the faulting Aux instruction or a complete CFI unwind.",
+    "The failing native Aux callback remains among30 unsymbolized framework frames; no matching original Aux framework/dSYM was recovered.",
+    "Event-loop frames do not identify an assertion, establish a geometry cause or justify a source fix.",
+    "No owner process was attached or controlled; no Profile data or raw dump was reopened. Only sanitized crash metadata and own-process system-image identities were read.",
+    "No Aux app was launched or modified by this diagnostic, and no native build or test was started for it. The separate original-owned stock build continued unchanged."
+  ],
+  "crashResolved": false,
+  "atosExecutable": {
+    "path": "/usr/bin/atos",
+    "sha256": "54c7316a21f2f803d391deb25cae6980298d22fe510e0cef06b3a17c92168149"
+  }
+}

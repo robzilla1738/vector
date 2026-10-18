@@ -385,6 +385,14 @@ Original framework symbols do not match the rebuilt UUID, and no structured
 assertion text or faulting code bytes were recorded. The cause remains unresolved;
 [the sanitized crash evidence](evidence/aside-original-155-crash-2026-10-18.json)
 records the exact identity and limits. The report was preserved unchanged.
+Thirteen recorded macOS return frames now resolve with exact original
+CoreFoundation/AppKit/HIToolbox UUID matches. They identify event-loop dispatch,
+not the failing Aux callback or its assertion. The30 original framework frames
+remain unsymbolized; neither a geometry cause nor a fix follows from this result.
+[System-frame evidence](evidence/aside-original155-system-frames-2026-10-18.json)
+records the identity checks and original callsite addresses. This diagnostic used
+sanitized metadata and an owned system-library process, without reopening the raw
+dump, attaching to an owner process or reading other Profile data.
 
 The earlier launcher71243/app71389/runtime71405 retired normally through
 application-menu Quit. Its Profile and lock are gone; earlier interactive debugger
