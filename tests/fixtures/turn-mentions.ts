@@ -6,7 +6,7 @@ export function fixtureTurnMentions(page: (pageId: string) => PageTarget | undef
     page,
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
 }
 

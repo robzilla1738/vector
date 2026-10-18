@@ -37,3 +37,23 @@ export const LocalModelServerSchema = z
   })
   .strict();
 export type LocalModelServer = z.infer<typeof LocalModelServerSchema>;
+
+/** Voice transcription is separately selected and defaults to Off. */
+export const TranscriptionModelSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/);
+export const AudioTranscriptionReceiptSchema = z
+  .object({
+    callId: z.string().min(1),
+    modelId: TranscriptionModelSchema,
+    sourceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    dispatched: z.boolean(),
+    durationMs: z.number().finite().nonnegative(),
+    audioDurationSeconds: z.number().finite().positive().max(600),
+    costUsd: z.number().finite().nonnegative().optional(),
+    costEstimated: z.boolean(),
+  })
+  .strict();
+export type AudioTranscriptionReceipt = z.infer<typeof AudioTranscriptionReceiptSchema>;

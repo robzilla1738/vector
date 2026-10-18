@@ -1,5 +1,6 @@
+import { ModelCapabilitySchema } from "@aux/contracts/model-registry";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   IMAGE_MODELS,
   DEFAULT_IMAGE_MODEL_ID,
@@ -9,7 +10,7 @@ import {
   type ModelProvider,
   type ModelConnectionStatus,
 } from "@aux/contracts";
-import { toast, errToast } from "../../store";
+import { call, toast, errToast } from "../../store";
 import { ModelProviderMark } from "../../ui/model-provider";
 import { ActionMenu } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
@@ -46,7 +47,12 @@ export function ModelConnections({
     .safeParse(settings.modelConnections);
   const owner = useModelControlOwner(
     active,
-    JSON.stringify([settings.modelProvider, settings.modelConnections, settings.imageModel]),
+    JSON.stringify([
+      settings.modelProvider,
+      settings.modelConnections,
+      settings.imageModel,
+      settings.transcriptionModel,
+    ]),
   );
   const reviewOwner = useModelControlOwner(active, "key-removal-review");
   const undoOwner = useModelControlOwner(active, "connection-toggle-undo");
@@ -54,6 +60,7 @@ export function ModelConnections({
     settings.modelProvider,
     parsed.success ? parsed.data : null,
     settings.imageModel,
+    settings.transcriptionModel,
   ]);
   const currentConnections = useRef(connectionSnapshot);
   useLayoutEffect(() => {
@@ -70,6 +77,7 @@ export function ModelConnections({
       settings.modelProvider,
       parsed.data.map((item) => (item.provider === connection.provider ? { ...item, enabled } : item)),
       settings.imageModel,
+      settings.transcriptionModel,
     ]);
     const saved = await onSave({ modelConnection: { provider: connection.provider, enabled } });
     if (!saved || !original.current()) return saved;
@@ -200,6 +208,47 @@ export function ModelConnections({
     scopeId,
     (original) => work(() => onSave({ imageModel: original.value === "off" ? null : original.value })),
   );
+  const [voice, setVoice] = useState<{
+    owner: ModelControlOwner;
+    models: { id: string; name?: string }[];
+    available: boolean;
+    error?: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let live = true;
+    void call("models.transcription.list", {})
+      .then((result) => {
+        if (!live || !owner.current()) return;
+        const models = ModelCapabilitySchema.array()
+          .max(500)
+          .parse(result.models)
+          .filter((model) => model.transcription?.batch);
+        setVoice({ owner, models, available: result.available });
+      })
+      .catch(() => {
+        if (live && owner.current())
+          setVoice({
+            owner,
+            models: [],
+            available: false,
+            error:
+              "Voice model discovery is unavailable. Check the Gateway connection and try reopening Settings.",
+          });
+      });
+    return () => {
+      live = false;
+    };
+  }, [active, owner]);
+  const voiceState = voice?.owner === owner ? voice : null;
+  const voiceModels = voiceState?.models ?? [];
+  const voiceValue = typeof settings.transcriptionModel === "string" ? settings.transcriptionModel : "off";
+  const voiceOptions = [{ id: "off", name: "Off" }, ...voiceModels];
+  if (voiceValue !== "off" && !voiceOptions.some((model) => model.id === voiceValue))
+    voiceOptions.push({ id: voiceValue, name: `${voiceValue} (unavailable)` });
+  const voiceHint =
+    "Voice attachments use your regular Gateway account. Selecting a model makes no transcription request. Limits: 20 MB, 10 minutes, stereo, 192 kHz. Costs count toward your spending limits and are estimated when the provider omits a price; audio token usage may be unknown.";
+  const saveVoice = (id: string) => work(() => onSave({ transcriptionModel: id === "off" ? null : id }));
   const gateway = parsed.success ? parsed.data.find((item) => item.provider === "gateway") : undefined;
   return (
     <>
@@ -306,6 +355,58 @@ export function ModelConnections({
             <p {...staticHintProps}>
               Image requests count toward your spending limits. Usage may be charged; image costs are
               estimated when the provider does not return a price.
+            </p>
+          )}
+        </SettingsField>
+      )}
+      {concise ? (
+        <ModelChoice
+          label="Voice-transcription model"
+          hint={voiceHint}
+          value={voiceValue}
+          automaticLabel="Off"
+          automatic={voiceValue === "off"}
+          options={voiceOptions}
+          disabled={!active || !parsed.success}
+          pending={disabled || busy}
+          loading={!voiceState}
+          onChange={async (id) => {
+            try {
+              return (await saveVoice(id ?? "off")) === true;
+            } catch {
+              return false;
+            }
+          }}
+        >
+          {voiceState?.error && <p {...staticHintProps}>{voiceState.error}</p>}
+          {voiceValue !== "off" && !voiceState?.available && (
+            <p {...staticHintProps}>
+              Voice transcription is unavailable until its Gateway account, batch model and native audio
+              decoder are ready. Originals are retained.
+            </p>
+          )}
+        </ModelChoice>
+      ) : (
+        <SettingsField label="Voice-transcription model" description={voiceHint} hint={voiceHint}>
+          <select
+            aria-label="Voice-transcription model"
+            disabled={disabled || busy || !parsed.success || !voiceState}
+            value={voiceValue}
+            onChange={(event) => {
+              void saveVoice(event.currentTarget.value).catch(errToast);
+            }}
+          >
+            {voiceOptions.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name ?? model.id}
+              </option>
+            ))}
+          </select>
+          {voiceState?.error && <p {...staticHintProps}>{voiceState.error}</p>}
+          {voiceValue !== "off" && !voiceState?.available && (
+            <p {...staticHintProps}>
+              Voice transcription is unavailable until its Gateway account, batch model and native audio
+              decoder are ready. Originals are retained.
             </p>
           )}
         </SettingsField>

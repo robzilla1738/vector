@@ -15,11 +15,16 @@ function record(value: unknown): Record<string, unknown> | undefined {
 function positive(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
-function price(value: unknown): number | undefined {
+function unitPrice(value: unknown): number | undefined {
   if (typeof value !== "string" && typeof value !== "number") return undefined;
   if (typeof value === "string" && !value.trim()) return undefined;
   const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n * 1_000_000 : undefined;
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
+function price(value: unknown): number | undefined {
+  const n = unitPrice(value);
+  return n === undefined ? undefined : n * 1_000_000;
 }
 
 function textGeneration(model: Record<string, unknown>, provider: ModelProvider): boolean | undefined {
@@ -58,12 +63,26 @@ export function parseModelCatalog(value: unknown, provider: ModelProvider): Mode
     const modalities = record(m.modalities)?.input ?? record(m.architecture)?.input_modalities;
     const pricing = record(m.pricing);
     const generatesText = textGeneration(m, provider);
+    const durationPrice = unitPrice(pricing?.transcription_duration_cost_per_second);
+    // These batch file routes are documented by their provider and supported by
+    // the maintained Gateway V4 adapter. Streaming-only/token-priced entries do
+    // not establish a bounded batch admission contract.
+    const batchTranscription =
+      provider === "gateway" &&
+      m.type === "transcription" &&
+      ["openai/whisper-1", "microsoft/mai-transcribe-2", "fish-audio/transcribe-1"].includes(id) &&
+      Array.isArray(m.supported_specifications) &&
+      m.supported_specifications.includes("v4") &&
+      durationPrice !== undefined;
     const candidate: ModelCapability = {
       id,
       provider: provider === "gateway" && typeof m.owned_by === "string" ? m.owned_by : provider,
       source: "catalog",
       status: "verified",
       ...(generatesText === undefined ? {} : { textGeneration: generatesText }),
+      ...(batchTranscription
+        ? { transcription: { batch: true as const, usdPerSecond: durationPrice! } }
+        : {}),
       ...(typeof (m.name ?? m.display_name ?? m.displayName) === "string" && provider !== "google"
         ? { name: String(m.name ?? m.display_name ?? m.displayName).slice(0, 500) }
         : typeof m.displayName === "string"

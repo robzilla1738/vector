@@ -1,0 +1,21 @@
+.google-operation-options {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+}
+.google-operation-options > label {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.google-operation-options input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+[data-settings-section="Google accounts"] .field.ui-setting.ui-setting-feature {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}

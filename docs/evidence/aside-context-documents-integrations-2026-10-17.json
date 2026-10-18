@@ -1,0 +1,159 @@
+{
+  "baselineCommit": "07199225f7fe7a5f829f6dda5ad1a9da26dcb235",
+  "status": "source slice verified; new clean native observation and program acceptance remain open",
+  "checks": {
+    "integrated": {
+      "command": "npm run check",
+      "log": "/tmp/aux-connected-integrated-check2.log",
+      "typecheck": "passed",
+      "lint": "passed",
+      "passed": 5088,
+      "failed": 1,
+      "filesPassed": 804,
+      "failure": "existing coder worktree case exceeded original 60000ms while native linker active"
+    },
+    "failedFileRerun": {
+      "log": "/tmp/aux-connected-coder-rerun.log",
+      "passed": 3,
+      "failed": 0,
+      "originalTimeoutsUnchanged": true
+    },
+    "subsequentGoogleRestoreFix": {
+      "runtimeRebuilt": true,
+      "log": "/tmp/aux-google-restore-main-tests.log",
+      "passed": 27,
+      "failed": 0,
+      "scopedLint": "passed"
+    },
+    "nativePdfAudioImport": {
+      "log": "/tmp/aux-native-pdf-audio-current-tests2.log",
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "renderer": {
+    "startupJsKb": 749,
+    "startupCssKb": 213,
+    "totalJsKb": 2995,
+    "targetsMet": false,
+    "log": "/tmp/aux-connected-bundle-budget.log"
+  },
+  "native": {
+    "version": "155.0.8059.85",
+    "methods": 278,
+    "events": 30,
+    "abi": "550bdeb5fbbd",
+    "sourceAreas": [
+      {
+        "sourceRevision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+        "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+        "affectedPaths": 29,
+        "proofTree": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-native-areas-0nuzmfy0",
+        "areas": [
+          {
+            "area": "aux/0061-runtime-window-proof-routing.patch",
+            "sha256": "676ba706dc4d047435a0a2447a73a34cf2776d5b53ab3add65aeff4bf677c3a2",
+            "paths": ["chrome/browser/ui/webui_browser/webui_browser_ui.cc"]
+          },
+          {
+            "area": "aux/0062-isolated-document-audio-jobs.patch",
+            "sha256": "ca72e5e7385c2871df3506b9a2dc1b1f7531e378813dcd2f65fa4d6551715a24",
+            "paths": [
+              "chrome/browser/ui/aux/BUILD.gn",
+              "chrome/browser/ui/aux/document_jobs.cc",
+              "chrome/browser/ui/aux/document_jobs.h",
+              "chrome/browser/ui/aux/method_registry.cc",
+              "chrome/browser/ui/aux/runtime_host.cc",
+              "chrome/browser/ui/aux/runtime_host.h",
+              "chrome/services/aux_document/BUILD.gn",
+              "chrome/services/aux_document/audio_inspection.cc",
+              "chrome/services/aux_document/audio_inspection_unittest.cc",
+              "chrome/services/aux_document/document_extractor.cc",
+              "chrome/services/aux_document/document_extractor.h",
+              "chrome/services/aux_document/media_jobs.h",
+              "chrome/services/aux_document/pdf_jobs.cc",
+              "chrome/services/aux_document/pdf_jobs_unittest.cc",
+              "chrome/services/aux_document/pdf_safety.cc",
+              "chrome/services/aux_document/pdf_safety.h",
+              "chrome/services/aux_document/public/mojom/document_extractor.mojom",
+              "content/browser/service_host/utility_process_client.cc",
+              "content/browser/service_host/utility_process_client.h",
+              "content/browser/service_host/utility_process_host.cc",
+              "content/browser/service_host/utility_process_host.h",
+              "content/public/browser/service_process_host.h"
+            ]
+          },
+          {
+            "area": "aux/0063-selected-app-desktop-context.patch",
+            "sha256": "0b87b9520e78331470ce0158c2cad16716407b37acaf905bdaf205b0612aba56",
+            "paths": [
+              "chrome/browser/prefs/browser_prefs.cc",
+              "chrome/browser/ui/aux/BUILD.gn",
+              "chrome/browser/ui/aux/desktop_context_mac.h",
+              "chrome/browser/ui/aux/desktop_context_mac.mm",
+              "chrome/browser/ui/aux/method_registry.cc",
+              "chrome/browser/ui/aux/runtime_desktop_context_mac.cc",
+              "chrome/browser/ui/aux/runtime_host.cc",
+              "chrome/browser/ui/aux/runtime_host.h",
+              "chrome/browser/ui/aux/tab_catalog.cc",
+              "chrome/browser/ui/aux/tab_catalog.h",
+              "chrome/browser/ui/webui_browser/webui_browser_ui.cc"
+            ]
+          }
+        ],
+        "forwardReverseAndFinalBytes": "passed"
+      },
+      {
+        "sourceRevision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+        "paths": [
+          "chrome/browser/ui/aux/evidence_documents.cc",
+          "chrome/browser/ui/aux/evidence_documents.h",
+          "chrome/browser/ui/aux/method_registry.cc",
+          "chrome/browser/ui/aux/runtime_host.cc",
+          "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+          "chrome/browser/ui/webui_browser/webui_browser_ui.h",
+          "chrome/services/aux_document/pdf_document.cc",
+          "chrome/services/aux_document/pdf_jobs_unittest.cc"
+        ],
+        "patch": "/Users/rcourson/Documents/Vibe/web/chromium/patches/aux/0064-immutable-selected-pdf-originals.patch",
+        "sha256": "3814ab538aceaf9fe97fa0ad73747066677bc8bfb5de1e92a3bfb9aacec4b1a2",
+        "forwardReverseActualBytes": "passed",
+        "proofTree": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-native64-proof-06dj24di"
+      }
+    ],
+    "newCleanAppObserved": false
+  },
+  "stock": {
+    "sourceRevision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+    "paths": [
+      "chrome/browser/prefs/browser_prefs.cc",
+      "chrome/browser/ui/BUILD.gn",
+      "chrome/browser/ui/performance/native_performance.cc",
+      "chrome/browser/ui/performance/native_performance.h",
+      "chrome/browser/ui/views/frame/browser_view.cc",
+      "chrome/browser/ui/views/frame/browser_view.h",
+      "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc",
+      "chrome/common/pref_names.h"
+    ],
+    "patch": "/Users/rcourson/Documents/Vibe/web/chromium/patches/benchmark/0052-native-performance-stock-155.patch",
+    "sha256": "fc1f7be7352747fec6ca3032ac7f189ee2d1cd7c71f4edc9bc5e92aaba65e8c2",
+    "forwardReverseActualBytes": "passed",
+    "proofTree": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-stock155-proof-lb28cyer",
+    "build": "not complete; fresh stock graph requires full native compile; interrupted through original builder before current product verification"
+  },
+  "setup": {
+    "googleXSlackRegistration": "explicit; owner requested adapters and fixtures without registration setup",
+    "desktopCaptureEnabled": false,
+    "osCapturePermissionGranted": false,
+    "liveTranscriptionVerified": false,
+    "realThirdPartyMessagesSent": false
+  },
+  "open": [
+    "X and LinkedIn adapter integration",
+    "desktop model-source use and retirement",
+    "all captured UI states and current native browser workflows",
+    "original155 SIGTRAP diagnosis",
+    "matching155stock performance",
+    "default-route20task smoke at least18/20"
+  ]
+}

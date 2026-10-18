@@ -113,13 +113,17 @@ export function mentionCandidates(input: {
         ref: { kind: "skill", routineId: routine.routineId, revision: routine.revision },
       });
   for (const connector of input.connectors?.entries ?? [])
-    if (connector.state === "active")
+    if (connector.state === "active" && input.connectors?.bindings[connector.connectorId])
       candidates.push({
         id: `connector:${connector.connectorId}`,
         section: "Connectors",
         label: connector.label,
         detail: "Available for this turn · current permissions apply",
-        ref: { kind: "connector", connectorId: connector.connectorId },
+        ref: {
+          kind: "connector",
+          connectorId: connector.connectorId,
+          authorityDigest: input.connectors.bindings[connector.connectorId],
+        },
       });
   return candidates;
 }

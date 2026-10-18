@@ -520,6 +520,7 @@ export class ChannelRunService {
         models: this.deps.models,
         connection,
         authorityId: peer.authorityId!,
+        peerKey: peer.peerKey,
         thread,
         checkCurrent: () => {
           this.current(owner);

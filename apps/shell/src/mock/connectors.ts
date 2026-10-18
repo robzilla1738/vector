@@ -1,5 +1,6 @@
 import {
   ConnectorCatalogSchema,
+  connectorAuthorityInput,
   OutboundMcpToolToggleParams,
   MethodSchemas,
   OutboundMcpRegisterParams,
@@ -68,6 +69,7 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
               connectionId: calendarId,
               label: account.label,
               accountKey: account.accountKey,
+              revision: "b".repeat(64),
               state: "active" as const,
               authority: "calendar_account" as const,
             },
@@ -77,6 +79,8 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
         kind: "mcp" as const,
         connectorId: `mcp:${item.serverId}`,
         serverId: item.serverId,
+        sourceDigest: item.sourceDigest,
+        toolsRevision: item.toolsRevision,
         label: item.name,
         state: item.state,
         authority: "connected_server" as const,
@@ -114,7 +118,25 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
             ),
         ]
       : [];
-    return ConnectorCatalogSchema.parse({ entries, access });
+    const context = {
+      workspaceId,
+      ...(task ? { taskId: task.taskId, expectedRevision: task.revision } : {}),
+    };
+    const bindings = Object.fromEntries(
+      await Promise.all(
+        entries.map(async (entry) => {
+          const hash = await crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(connectorAuthorityInput(entry, access, context)),
+          );
+          return [
+            entry.connectorId,
+            Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join(""),
+          ];
+        }),
+      ),
+    );
+    return ConnectorCatalogSchema.parse({ entries, access, bindings });
   };
   return {
     "connectors.catalog": catalog,

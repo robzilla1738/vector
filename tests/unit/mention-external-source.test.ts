@@ -77,7 +77,7 @@ function fixture() {
     page: (id) => targets.get(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
   const agentConnections = new AgentConnectionService(repo);

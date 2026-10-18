@@ -1,3 +1,6 @@
+import { GoogleToolInputSchema } from "@aux/contracts/google";
+import { WebSearchInputSchema } from "@aux/contracts/web-search";
+import { pdfToolManifest } from "./pdf-tools.js";
 import { codingToolManifest } from "./coding-tools.js";
 import { PageSummaryInputSchema } from "@aux/contracts/page-summary";
 import { MemoryRecallQuerySchema, MemoryDocumentMethodSchemas } from "@aux/contracts/memory-documents";
@@ -172,17 +175,17 @@ export function buildToolManifest(): LoopToolManifest {
 
   const websearch: LoopTool = {
     description:
-      "Search the web through the configured search engine; returns title, text and links. Same egress rules as webfetch.",
+      "Search through the selected Gateway connection (Perplexity or Exa) with structured sources and supported filters. Without Gateway, unfiltered auto search uses an explicitly labelled configured-engine HTML fallback. Factory filters are defaults; read observed execution provenance.",
     byline: "Aux web search",
-    inputSchema: z.object({ query: z.string().min(1).max(500) }),
+    inputSchema: WebSearchInputSchema,
     independentRead: (ctx) => !!ctx.deps.prepareWebSearch,
     prepare: (raw, ctx) => {
-      const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
-      return need(ctx.deps.prepareWebSearch, "websearch")(query, ctx);
+      const request = WebSearchInputSchema.parse(raw);
+      return need(ctx.deps.prepareWebSearch, "websearch")(request, ctx);
     },
     execute: async (raw, ctx) => {
-      const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
-      return need(ctx.deps.webSearch, "websearch")(query, {
+      const request = WebSearchInputSchema.parse(raw);
+      return need(ctx.deps.webSearch, "websearch")(request, {
         runId: ctx.runId,
         threadId: ctx.threadId,
         turnId: ctx.turnId,
@@ -728,6 +731,14 @@ export function buildToolManifest(): LoopToolManifest {
     return span > 0 && span <= 31 * 24 * 60 * 60 * 1000;
   }, "Choose a calendar range of at most 31 days.");
   return {
+    google_operation: {
+      description:
+        "Invoke an operation explicitly granted to this original saved task and Google account. Use only grant IDs and operations in the captured Google accounts metadata. Reads return source identities; original writes have durable receipts and must never be retried when uncertain. Sheet preflight is optimistic, not atomic.",
+      byline: "Task-granted Google account",
+      inputSchema: GoogleToolInputSchema,
+      execute: (raw, ctx) =>
+        need(ctx.deps.googleOperation, "google_operation")(GoogleToolInputSchema.parse(raw), ctx),
+    },
     calendar_events_list: {
       description:
         "Read events from an account explicitly granted to this saved task. Use only a grantId listed in this run’s captured Calendar accounts; later grants do not expand this run.",
@@ -768,6 +779,7 @@ export function buildToolManifest(): LoopToolManifest {
     request_action_confirmation: requestActionConfirmation,
     write_todos: writeTodos,
     ...codingToolManifest(),
+    ...pdfToolManifest(),
     bash,
     page_summary: {
       description:

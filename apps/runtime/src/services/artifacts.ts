@@ -99,14 +99,19 @@ export class ArtifactStore {
   }
 
   /** Writes every file before committing any row; a failed batch leaves no partial files. */
-  async saveManyStrict(items: ArtifactInput[]): Promise<Artifact[]> {
+  async saveManyStrict(items: ArtifactInput[], beforeCommit?: () => void): Promise<Artifact[]> {
     if (!items.length) return [];
     const placed = items.map((item) => this.place(item));
     await Promise.all(
       [...new Set(placed.map((item) => item.dir))].map((dir) => mkdir(dir, { recursive: true })),
     );
     try {
-      await Promise.all(placed.map((item, index) => writeFile(item.artifact.path, items[index]!.buffer)));
+      const writes = await Promise.allSettled(
+        placed.map((item, index) => writeFile(item.artifact.path, items[index]!.buffer)),
+      );
+      const failed = writes.find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
+      beforeCommit?.();
       this.repo.transaction(() => {
         for (const item of placed) this.repo.saveArtifact(item.artifact);
       });

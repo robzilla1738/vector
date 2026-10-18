@@ -232,3 +232,43 @@ it("drains aborted discovery before repository shutdown and refuses later reques
   await expect(f.service.list(input)).rejects.toMatchObject({ code: "cancelled" });
   expect(request).toHaveBeenCalledTimes(1);
 });
+
+it("admits only documented V4 duration-priced batch audio and preserves zero", () => {
+  const entries = [
+    {
+      id: "openai/whisper-1",
+      type: "transcription",
+      supported_specifications: ["v4"],
+      pricing: { transcription_duration_cost_per_second: "0" },
+    },
+    {
+      id: "microsoft/mai-transcribe-2",
+      type: "transcription",
+      supported_specifications: ["v4"],
+      pricing: { input: "0", transcription_duration_cost_per_second: "0.00002778" },
+    },
+    {
+      id: "openai/gpt-4o-transcribe",
+      type: "transcription",
+      supported_specifications: ["v4"],
+      pricing: { audio_input: "0.000001" },
+    },
+    {
+      id: "google/gemini-3.5-transcribe-live",
+      type: "transcription",
+      supported_specifications: ["v4"],
+      tags: ["websocket-transcription"],
+      pricing: { transcription_duration_cost_per_second: "0.001" },
+    },
+    {
+      id: "fish-audio/transcribe-1",
+      type: "transcription",
+      supported_specifications: ["v3"],
+      pricing: { transcription_duration_cost_per_second: "0.001" },
+    },
+  ];
+  const models = parseModelCatalog({ data: entries }, "gateway");
+  expect(models[0]).toMatchObject({ textGeneration: false, transcription: { batch: true, usdPerSecond: 0 } });
+  expect(models[1]).toMatchObject({ inputUsdPerMTok: 0, transcription: { usdPerSecond: 0.00002778 } });
+  expect(models.slice(2).every((model) => !model.transcription && model.textGeneration === false)).toBe(true);
+});

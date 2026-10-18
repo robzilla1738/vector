@@ -1,3 +1,9 @@
+import {
+  captureDocumentOriginal,
+  readDocumentOriginal,
+  documentOriginalFence,
+  type DocumentOriginalSource,
+} from "./document-originals.js";
 import { createHash, randomUUID } from "node:crypto";
 import { setImmediate } from "node:timers/promises";
 import { z } from "zod";
@@ -31,6 +37,7 @@ export type DocumentOwner = {
   documentId: string;
 };
 export type DocumentSource = {
+  original?: DocumentOriginalSource;
   read(cursor: string | undefined, signal: AbortSignal): Promise<DocumentReadResult>;
 };
 export type DocumentImportContext = {
@@ -76,6 +83,10 @@ export class DocumentSnapshots {
   private pending = new Map<
     AbortController,
     { owner: DocumentOwner; operation: Promise<DocumentSnapshot> }
+  >();
+  private originalReads = new Map<
+    AbortController,
+    { owner: DocumentOwner; operation: Promise<unknown>; channel?: { connectionId: string; peerKey: string } }
   >();
   private closing?: Promise<void>;
   private closed = false;
@@ -243,7 +254,22 @@ export class DocumentSnapshots {
             result.completed.textSha256 !== textHash.digest("hex")
           )
             throw new AuxError("ref_stale", "The complete document did not match its extraction receipt.");
-          const captured = { document: result.document, completed: result.completed };
+          const original =
+            source.original && ["pdf", "docx"].includes(result.document.format)
+              ? await captureDocumentOriginal(
+                  this.repo,
+                  owner,
+                  result.document,
+                  source.original,
+                  context.signal,
+                  check,
+                )
+              : undefined;
+          const captured = {
+            document: result.document,
+            completed: result.completed,
+            ...(original ? { original } : {}),
+          };
           const snapshot = { ...captured, sha256: digest(documentSnapshotDigestInput(captured)) };
           check();
           this.repo.transaction(() => {
@@ -310,6 +336,87 @@ export class DocumentSnapshots {
     )
       throw new AuxError("ref_stale", "The saved document no longer matches its original identity.");
     return { snapshot, manifest: row.manifest };
+  }
+
+  async useOriginal<T>(
+    owner: DocumentOwner,
+    sha256: string,
+    signal: AbortSignal,
+    checkCurrent: () => void,
+    use: (bytes: Buffer, signal: AbortSignal, checkCurrent: () => void) => Promise<T>,
+  ): Promise<T> {
+    if (this.closed) throw new AuxError("cancelled", "Document storage is closed.");
+    const controller = new AbortController();
+    const combined = AbortSignal.any([signal, controller.signal]);
+    const original = this.original(owner, sha256);
+    const checkSource = documentOriginalFence(this.repo, original.snapshot);
+    const check = () => {
+      checkSource();
+      combined.throwIfAborted();
+      checkCurrent();
+      if (this.original(owner, sha256).manifest !== original.manifest)
+        throw new AuxError("ref_stale", "The original document owner or manifest changed.");
+    };
+    const operation = Promise.resolve().then(async () => {
+      const bytes = await readDocumentOriginal(this.repo, owner, original.snapshot, combined, check);
+      try {
+        check();
+        const result = await use(bytes, combined, check);
+        check();
+        return result;
+      } finally {
+        bytes.fill(0);
+      }
+    });
+    this.originalReads.set(controller, {
+      owner,
+      operation,
+      ...(original.snapshot.original?.kind === "channel" ? { channel: original.snapshot.original } : {}),
+    });
+    try {
+      return await operation;
+    } finally {
+      this.originalReads.delete(controller);
+    }
+  }
+
+  async retireChannel(connectionId: string, peerKey?: string): Promise<void> {
+    const jobs = [...this.originalReads].filter(
+      ([, job]) =>
+        job.channel?.connectionId === connectionId && (!peerKey || job.channel.peerKey === peerKey),
+    );
+    for (const [controller] of jobs)
+      controller.abort(new AuxError("cancelled", "The original channel document retired."));
+    await this.joinOriginals(jobs.map(([, job]) => job.operation));
+  }
+
+  async retireOwner(kind: DocumentOwner["kind"], ownerId: string): Promise<void> {
+    this.cancelOwner(kind, ownerId);
+    const owned = [...this.pending.values(), ...this.originalReads.values()].filter(
+      (job) => job.owner.kind === kind && job.owner.ownerId === ownerId,
+    );
+    const originals = [...this.originalReads.values()]
+      .filter((job) => job.owner.kind === kind && job.owner.ownerId === ownerId)
+      .map((job) => job.operation);
+    await Promise.allSettled(owned.map((job) => job.operation));
+    await this.joinOriginals(originals);
+  }
+
+  private async joinOriginals(operations: Promise<unknown>[]): Promise<void> {
+    const results = await Promise.allSettled(operations);
+    const failures = results.flatMap((result) => {
+      if (result.status === "fulfilled") return [];
+      const error: unknown = result.reason;
+      if (error instanceof Error && error.name === "AbortError") return [];
+      if (
+        error instanceof AuxError &&
+        ["cancelled", "ref_stale", "permission_denied", "not_found"].includes(error.code)
+      )
+        return [];
+      return [error];
+    });
+    if (failures.length)
+      throw new AggregateError(failures, "Original document work could not be retired cleanly.");
   }
 
   read(owner: DocumentOwner, sha256: string, cursor?: string): SavedDocumentPage {
@@ -435,23 +542,22 @@ export class DocumentSnapshots {
   }
 
   cancelOwner(kind: DocumentOwner["kind"], ownerId: string) {
-    for (const [controller, pending] of this.pending)
+    for (const [controller, pending] of [...this.pending, ...this.originalReads])
       if (pending.owner.kind === kind && pending.owner.ownerId === ownerId) controller.abort();
   }
 
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
-    for (const controller of this.pending.keys()) controller.abort();
-    this.closing = Promise.allSettled([...this.pending.values()].map(({ operation }) => operation)).then(
-      () => {
-        if (this.cleanupFailures.length)
-          throw new AggregateError(
-            this.cleanupFailures,
-            "Unpublished document imports could not be retired.",
-          );
-      },
-    );
+    for (const controller of [...this.pending.keys(), ...this.originalReads.keys()]) controller.abort();
+    const originals = [...this.originalReads.values()].map(({ operation }) => operation);
+    this.closing = Promise.allSettled(
+      [...this.pending.values(), ...this.originalReads.values()].map(({ operation }) => operation),
+    ).then(async () => {
+      await this.joinOriginals(originals);
+      if (this.cleanupFailures.length)
+        throw new AggregateError(this.cleanupFailures, "Unpublished document imports could not be retired.");
+    });
     return this.closing;
   }
 }

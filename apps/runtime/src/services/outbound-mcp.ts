@@ -10,6 +10,7 @@ import {
   type OutboundMcpServer,
 } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
+import { officialMcpEffect } from "./official-mcp.js";
 import { inspectMcpBundle } from "./mcp-bundle.js";
 
 type ServerRow = { body: string; state: OutboundMcpServer["state"]; updated_at: number };
@@ -179,6 +180,15 @@ export class OutboundMcpService {
     for (const controller of this.active.get(serverId) ?? []) controller.abort();
   }
 
+  /** Credential replacement retires durable connector captures as well as live transports. */
+  invalidateAuthorization(serverId: string): void {
+    const server = this.get(serverId);
+    server.toolsRevision += 1;
+    server.updatedAt = Date.now();
+    this.saveServer(server);
+    this.cancelActive(serverId);
+  }
+
   setEnabled(raw: unknown): OutboundMcpServer {
     const input = OutboundMcpToolToggleParams.parse(raw);
     this.repo.db.exec("BEGIN IMMEDIATE");
@@ -292,7 +302,7 @@ export class OutboundMcpService {
       const cursors = new Set<string>();
       let cursor: string | undefined;
       do {
-        const page = await client.listTools(cursor ? { cursor } : undefined, {signal});
+        const page = await client.listTools(cursor ? { cursor } : undefined, { signal });
         tools.push(...page.tools);
         if (Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
           throw new AuxError("invalid_params", "MCP tool catalog exceeds the metadata limit.");
@@ -304,16 +314,30 @@ export class OutboundMcpService {
       const current = this.get(serverId);
       if (current.state !== "active" || current.toolsRevision !== server.toolsRevision)
         throw new AuxError("conflict", "MCP tool access changed while listing tools.");
-      const catalog = tools.map((tool) => OutboundMcpToolSchema.parse({
-        name: tool.name,
-        enabled: !current.disabledTools.includes(tool.name),
-        description: tool.description?.slice(0, 2000),
-        inputSchema: tool.inputSchema,
-      }));
-      const names = [...new Set(catalog.map(tool => tool.name))].sort();
+      const catalog = tools.map((tool) =>
+        OutboundMcpToolSchema.parse({
+          name: tool.name,
+          enabled: !current.disabledTools.includes(tool.name),
+          description: tool.description?.slice(0, 2000),
+          inputSchema: tool.inputSchema,
+          annotations: tool.annotations,
+          effect: officialMcpEffect(current.source, tool.name, tool.annotations),
+        }),
+      );
+      const names = [...new Set(catalog.map((tool) => tool.name))].sort();
       if (names.length !== catalog.length)
         throw new AuxError("invalid_params", "MCP tool catalog contains duplicate names.");
-      if (JSON.stringify(names) !== JSON.stringify(current.toolNames)) {
+      const catalogDigest = createHash("sha256")
+        .update(
+          JSON.stringify(
+            catalog
+              .map(({ enabled: _enabled, ...tool }) => tool)
+              .sort((a, b) => a.name.localeCompare(b.name)),
+          ),
+        )
+        .digest("hex");
+      if (catalogDigest !== current.catalogDigest) {
+        current.catalogDigest = catalogDigest;
         current.toolNames = names;
         current.toolsRevision += 1;
         current.updatedAt = Date.now();

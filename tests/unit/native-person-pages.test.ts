@@ -333,7 +333,7 @@ it("binds explicit read mentions to a native session and refuses same-URL replac
     prepareReadPage: (id) => f.pages.prepareReadPage(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const page = f.original.target;
   await service.begin(
@@ -368,7 +368,7 @@ it("listing tab metadata grants no native page preparation or read access", asyn
     },
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   await service.begin("run", [{ kind: "tabs" }], []);
   expect(preparations).toBe(0);

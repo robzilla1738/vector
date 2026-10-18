@@ -23,6 +23,7 @@ const copilotSetup = CopilotSetupSchema.parse({
   catalogOnly: true,
 });
 function modelRead(method: string) {
+  if (method === "models.transcription.list") return { models: [], available: false, configuredModel: null };
   if (method === "models.copilot.setup") return copilotSetup;
   if (method === "models.copilot.accounts") return [];
   if (method === "settings.cloud.status") return { configured: false, revision: 0 };
@@ -77,7 +78,9 @@ it("tests the configured ChatGPT route without a key and retires its result when
   let resolve!: (result: { ok: boolean; modelId: string }) => void;
   call.mockImplementation(async (method) =>
     method === "models.probe"
-      ? new Promise((done) => { resolve = done; })
+      ? new Promise((done) => {
+          resolve = done;
+        })
       : modelRead(method),
   );
   const account = {
@@ -93,14 +96,20 @@ it("tests the configured ChatGPT route without a key and retires its result when
   expect(host.textContent).not.toContain("No key configured.");
   await act(async () => button("Test connection").click());
   expect(call).toHaveBeenCalledWith("models.probe", { modelId: account.plannerModel });
-  await act(async () => root.render(
-    <ModelsSettings active settings={{
-      ...account,
-      modelConfigured: false,
-      modelApiKey: "••••••••",
-      modelCredentialError: "Sign in to ChatGPT again to unlock this account.",
-    }} onSave={save} />,
-  ));
+  await act(async () =>
+    root.render(
+      <ModelsSettings
+        active
+        settings={{
+          ...account,
+          modelConfigured: false,
+          modelApiKey: "••••••••",
+          modelCredentialError: "Sign in to ChatGPT again to unlock this account.",
+        }}
+        onSave={save}
+      />,
+    ),
+  );
   expect(button("Test connection").disabled).toBe(true);
   await act(async () => resolve({ ok: true, modelId: account.plannerModel }));
   expect(host.textContent).toContain("Sign in to ChatGPT again");
@@ -110,52 +119,88 @@ it("tests the configured ChatGPT route without a key and retires its result when
 });
 it("uses live text compatibility in model choices without losing a custom ID or selecting a non-text local model", async () => {
   const known = DEFAULT_AGENT_MODEL_ROUTES.standard.modelId;
-  call.mockImplementation(async (method) => method === "models.list" ? {
-    models: [
-      { id: known, textGeneration: false, source: "catalog" },
-      { id: "future/language", textGeneration: true, source: "catalog" },
-    ],
-    localServers: [{
-      kind: "compatible", endpoint: "http://127.0.0.1:8080/v1", models: [
-        { id: "local/vector", textGeneration: false, source: "catalog" },
-        { id: "local/new", source: "catalog" },
-      ],
-    }],
-  } : modelRead(method));
+  call.mockImplementation(async (method) =>
+    method === "models.list"
+      ? {
+          models: [
+            { id: known, textGeneration: false, source: "catalog" },
+            { id: "future/language", textGeneration: true, source: "catalog" },
+          ],
+          localServers: [
+            {
+              kind: "compatible",
+              endpoint: "http://127.0.0.1:8080/v1",
+              models: [
+                { id: "local/vector", textGeneration: false, source: "catalog" },
+                { id: "local/new", source: "catalog" },
+              ],
+            },
+          ],
+        }
+      : modelRead(method),
+  );
   const save = vi.fn(async () => true);
-  await act(async () => root.render(<ModelsSettings active settings={{
-    modelProvider: "gateway", plannerModel: "my/custom-image-name",
-  }} onSave={save} />));
-  const choices = [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")]
-    .map((option) => option.value);
+  await act(async () =>
+    root.render(
+      <ModelsSettings
+        active
+        settings={{
+          modelProvider: "gateway",
+          plannerModel: "my/custom-image-name",
+        }}
+        onSave={save}
+      />,
+    ),
+  );
+  const choices = [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")].map(
+    (option) => option.value,
+  );
   expect(choices).toContain("future/language");
   expect(choices).toContain("my/custom-image-name");
   expect(choices).not.toContain(known);
   expect(button("Use local/vector")).toBeUndefined();
   await act(async () => button("Use local/new").click());
   expect(save).toHaveBeenCalledWith({
-    modelProvider: "openai-compatible", compatibleEndpoint: "http://127.0.0.1:8080/v1",
-    plannerModel: "local/new", modelConnection: { provider: "openai-compatible", enabled: true },
+    modelProvider: "openai-compatible",
+    compatibleEndpoint: "http://127.0.0.1:8080/v1",
+    plannerModel: "local/new",
+    modelConnection: { provider: "openai-compatible", enabled: true },
   });
 });
 it("retires old account catalogs and probe ACKs through same-provider A to B to A transitions", async () => {
-  const catalogs: { resolve(result: { models: { id: string }[] }): void; reject(error: unknown): void }[] = [];
+  const catalogs: { resolve(result: { models: { id: string }[] }): void; reject(error: unknown): void }[] =
+    [];
   let finishProbe!: (result: { ok: boolean; modelId: string }) => void;
   call.mockImplementation(async (method) => {
     if (method === "models.list") return new Promise((resolve, reject) => catalogs.push({ resolve, reject }));
-    if (method === "models.probe") return new Promise((resolve) => { finishProbe = resolve; });
+    if (method === "models.probe")
+      return new Promise((resolve) => {
+        finishProbe = resolve;
+      });
     return modelRead(method);
   });
   const account = {
-    modelProvider: "openai", modelAuthentication: "chatgpt", modelConfigured: true,
+    modelProvider: "openai",
+    modelAuthentication: "chatgpt",
+    modelConfigured: true,
     plannerModel: "same-model-in-both-accounts",
   };
   const save = vi.fn(async () => true);
-  const render = (revision: string) => root.render(<ModelsSettings active settings={{
-    ...account, modelConnectionRevision: revision,
-  }} onSave={save} />);
-  const choices = () => [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")]
-    .map((option) => option.value);
+  const render = (revision: string) =>
+    root.render(
+      <ModelsSettings
+        active
+        settings={{
+          ...account,
+          modelConnectionRevision: revision,
+        }}
+        onSave={save}
+      />,
+    );
+  const choices = () =>
+    [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")].map(
+      (option) => option.value,
+    );
   await act(async () => render("account-A-original"));
   await act(async () => catalogs[0]!.resolve({ models: [{ id: "A-original-visible" }] }));
   expect(choices()).toContain("A-original-visible");
@@ -294,6 +339,7 @@ it("hidden/inactive and foreign focused owners cannot issue actual model produce
       ([method]) =>
         method === "settings.cloud.status" ||
         method === "models.list" ||
+        method === "models.transcription.list" ||
         method === "models.copilot.setup" ||
         method === "models.copilot.accounts",
     ),

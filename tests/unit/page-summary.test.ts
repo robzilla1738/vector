@@ -153,7 +153,7 @@ async function fixture(privateTask = false) {
     organization: async () => ({ revision: 0, shared: null }),
     turnSourceContext: native.turnSourceContext,
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const pages = {
     get: (id: string) => {

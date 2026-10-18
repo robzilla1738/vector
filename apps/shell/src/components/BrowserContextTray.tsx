@@ -120,10 +120,22 @@ const SourceChip = memo(function SourceChip({
     });
   }, [status, disabled, busy, page, source, onRefresh]);
   return (
-    <span className={status === "current" ? "" : "stale"}>
-      {shellIconGlobe}
-      <span title={source.url}>{source.pageId === primaryPageId ? `Pinned live tab · ${label}` : label}</span>
-      {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
+    <span className="browser-source-card" data-status={status} data-disabled={disabled || busy || undefined}>
+      <span className="browser-source-icon" aria-hidden="true">
+        {shellIconGlobe}
+      </span>
+      <span className="browser-source-label" title={source.url}>
+        <strong>{label}</strong>
+        <small>
+          {status === "changed"
+            ? "Page changed"
+            : status === "missing"
+              ? "Tab closed"
+              : source.pageId === primaryPageId
+                ? "Pinned live tab"
+                : hostOf(source.url)}
+        </small>
+      </span>
       {status === "changed" && (
         <button
           ref={updateButton}

@@ -79,10 +79,10 @@ and new renderer packaging; live changed-flow verification remains pending. Its
 original builder51531 has retired and its lock is absent. Use the existing launcher
 for the next disposable clean candidate, and do not clear an active lock.
 
-Manual compaction currently requires a running agent-loop turn; completed, paused
-and waiting turns expose read-only context statistics. Idle-chat compaction remains
-an explicit follow-up. Source, compilation, native observation and full program
-acceptance remain separate evidence.
+At07199225f manual compaction required a running agent-loop turn. The following
+working slice adds owned idle-chat compaction; its current evidence is recorded
+below. Source, compilation, native observation and full program acceptance remain
+separate evidence.
 
 Configured voice transcription, isolated native byte document intake/seven PDF jobs,
 selected-app desktop context, connected-app adapters, remaining UI states, default
@@ -90,6 +90,116 @@ selected-app desktop context, connected-app adapters, remaining UI states, defau
 open. Account-only background Memory model routes still require a supported
 background admission source and honestly refuse without one; API-key/local routes
 use existing admission. No real channel messages, pushes or releases were made.
+
+## Current clean native observation and follow-on slice
+
+The clean `07199225f` candidate built successfully in25steps/8m08.12s
+(`/tmp/aux-aside-capabilities-native.log`) and its General pane advertised exactly
+source07199225f / Chromium155.0.8059.85 / ABIcf5a4db25bd7. Runtime Ready77.87ms
+is one diagnostic observation, not a performance result. In its disposable Profile,
+Home Ask retained pasted Unicode text and native selection. This does not prove
+IME composition or early first-input transfer. Memory's new workbench rendered,
+but a Create action correctly refused: native ingress omitted the required
+original-window proof. The routing audit also found Channels and an older task
+replacement action omitted from that manual list. A contract-generated routing
+list plus source regression checks is replacing the list; changed-flow native
+verification is required before accepting those controls.
+
+Captures are `/tmp/aux-aside-071992-native/`. The original launcher59647/app65535,
+Profile`aux-dev-An0QA0` and plain lock retired normally through application-menu
+Quit. The former disconnected-channel powerRelease shutdown error did not recur.
+This observation does not resolve the earlier SIGTRAP or browser-readiness gates.
+
+The following source slice adds four Aux artwork heroes,180×44 context cards and
+nine glyph corrections, plus explicit account/permission UI. Isolated both-theme
+geometry at1712/700/400px is recorded in [artwork evidence](design/aside-ui-artwork-2026-10-17.md).
+These are renderer observations, not current native all-surface acceptance.
+
+Working source now contains:
+
+- Genuine idle-chat compaction utility accounting, protected exact-boundary
+  inheritance, original cancellation and next-turn use. Active private-window
+  compact/cancel controls retain their actual run/window token ownership rather
+  than borrowing the normal-window-only idle path. The26 focused owner/idle/routing
+  checks pass (`/tmp/aux-compaction-owner-tests.log`).
+- Background Memory model-job admission through API/local/Vercel/ChatGPT routes,
+  exact sources/consent/model generations, actual usage/cache receipts and joined
+  retirement. Copilot/private background routes explicitly refuse unsupported
+  admission; no live inference acceptance is claimed.
+- Separate encrypted selected-app desktop context with capture off by default,
+  native consent counters distinct from restored Settings, bounded AX/local OCR
+  and join-before-retirement. No desktop capture was enabled and no OS permission
+  was granted. Model source admission/retirement is still being completed.
+- Optional channel transcription using an explicitly selected Gateway transcriber,
+  immutable complete-decode native inspection, original per-file receipts and
+  partial-failure retention. WAV/Ogg/FLAC/MP3/AAC-in-MP4 are inspected; WebM is
+  explicitly unsupported. No development Gateway key was present, so the standalone
+  synthetic probe sent no request and establishes no live transcription result.
+- Seven isolated PDF operations, snapshot-bound immutable original byte reads,
+  selected/run-owned source inventory, encrypted manual/task originals and exact
+  channel-original reuse. Scanned PDFs preserve bytes with honest empty located
+  text/warnings. Schema10 includes Google9 grants and original document chunks;
+  recovery rekeys bytes and retires restored account/grant authority.
+- Six normal-window Google setup/account/grant methods and real governed loop
+  dispatch through the original RunControl, Stop and durable write ledger. Calendar
+  retains its existing grants. Gmail/Docs/Sheets/People and four read-only YouTube
+  search/video/comment/reply operations have sealed REST requests. YouTube needs
+  its own scope; caption downloads are not advertised. Authorized watch-page reads
+  preserve actual cue timing/language and reject stale video identity.
+- Official Notion/eligible Slack MCP setup, discovered capabilities and provider
+  OAuth behavior; captured connector selections bind exact account/source/tool
+  authority. Gateway Perplexity/Exa structured search retains actual sources,
+  requested/default/observed filter provenance, original funding/cancellation and
+  unknown search-cost components. HTML fallback is labelled and rejects unsupported
+  filters. Authorized Google/Bing image-page extraction returns source links and
+  only page-supplied dimensions, without fetching image bytes.
+
+The integrated `npm run check` passed typecheck/lint and **5,088 tests across804
+files**, with one existing coder-worktree case timing out at60s while the native
+linker was active (`/tmp/aux-connected-integrated-check2.log`). The unchanged failed
+file passes all3 cases in a quiet rerun (65.10s total, each case below its original
+60s limit; `/tmp/aux-connected-coder-rerun.log`). No timeout was raised.
+The preceding100-case focused run exposed two historical schema fixtures that
+left the new document table behind; those fixtures were corrected while production
+inventory validation remained strict.
+
+The renderer builds (`/tmp/aux-connected-shell-build.log`), measuring **749 KB
+startup JS /213 KB CSS /2,995 KB total JS** through the corrected closure traversal
+(`/tmp/aux-connected-bundle-budget.log`). Byte targets remain unmet; these are not
+native startup timings.
+
+Native areas0061–0064 cover window-proof routing, isolated media jobs, selected-app
+context and immutable PDF originals. Forward/reverse checks and actual-source byte
+proofs are `/tmp/aux-native-followup-area-proof.json` and `/tmp/aux-native64-proof.json`.
+A baseline204-step app build passed in11m07.94s
+(`/tmp/aux-desktop-media-native-build.log`); it predates the latest source/renderer.
+The subsequent12-step PDF byte/parser/host object build passed in1m52.71s
+(`/tmp/aux-pdf-source-object-build2.log`). Expanded PDF/audio fixtures previously
+passed9/9 (`/tmp/aux-media-expanded-native-fixtures.log`); the current10/10 native
+PDF/audio/import tests pass, including canonical empty-text digest, counted
+warning and unchanged source bytes (`/tmp/aux-native-pdf-audio-current-tests2.log`).
+The final fixture rebuild passed2steps/2m00.35s
+(`/tmp/aux-pdf-import-fixture-build2.log`). Current ABI is278methods/30events/hash550bdeb5fbbd.
+A new clean native app build and changed-flow observation remain required.
+
+The separate155 stock source/dependency checkout is pinned to the same upstream
+revision. Its eight-path benchmark patch passes source replay/byte proof
+(`/tmp/aux-stock155-proof.json`). The fresh stock graph requires a full compile;
+its original builder was interrupted normally to prioritize product verification.
+No matching-stock timing result exists. Existing154 trees were not reset.
+
+All25 available Aux crash reports identify154.0.8037.98; none identifies155app7136.
+The old155SIGTRAP remains unresolved and is not excused by later successful starts.
+The default-route20-task smoke, current native matched-dimension comparisons,
+browser workflows and performance acceptance remain open. A subsequent Google recovery fix
+validates original account lookup identity and rebuilds the destination Profile
+HMAC after re-encryption. Its rebuilt runtime, scoped lint and27 affected
+recovery/restore/account tests pass (`/tmp/aux-google-restore-main-tests.log`); the
+regression instantiates the restored Google account service and verifies the
+destination lookup rather than merely checking row state.
+X and LinkedIn adapters and desktop model-use completion remain active. Google/X/Slack registration and
+account access stay explicit setup dependencies per the owner's decision; no fake
+connections, real third-party messages, pushes or releases were made.
 
 ## Local main consolidation — October 17
 

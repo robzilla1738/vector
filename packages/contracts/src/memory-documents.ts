@@ -70,6 +70,7 @@ export const MemoryDreamOperationSchema = z
     errorCode: z
       .enum([
         "model_unavailable",
+        "account_requires_window",
         "context_exceeded",
         "budget_exceeded",
         "inference_failed",
@@ -83,7 +84,7 @@ export const MemoryDreamOperationSchema = z
 export const MemoryRecallSourceSchema = z
   .object({
     sourceId: id,
-    kind: z.enum(["owner", "episodic", "site", "routine", "page", "history"]),
+    kind: z.enum(["owner", "episodic", "site", "routine", "page", "history", "desktop"]),
     path: z.string().max(8192),
     title: z.string().max(500),
     text: z.string().max(65536),
@@ -98,7 +99,7 @@ export const MemoryRecallQuerySchema = z
   .object({
     workspaceId: id,
     queries: z.array(z.string().trim().min(2).max(500)).min(1).max(8),
-    kinds: z.array(MemoryRecallSourceSchema.shape.kind).max(6).optional(),
+    kinds: z.array(MemoryRecallSourceSchema.shape.kind).max(7).optional(),
     domains: z.array(z.string().min(1).max(253)).max(20).optional(),
     from: z.number().nonnegative().optional(),
     to: z.number().nonnegative().optional(),

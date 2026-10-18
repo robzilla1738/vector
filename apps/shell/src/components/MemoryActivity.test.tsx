@@ -56,6 +56,11 @@ it("shows extraction-owned usage, proposed quotes, safe failures and the origina
     await act(async () => host.querySelector<HTMLButtonElement>("section button")!.click());
     expect(retry).toHaveBeenCalledExactlyOnceWith("original-source");
     await act(async () =>
+      root.render(<MemoryActivity entries={[{ ...failed, errorCode: "account_requires_window" }]} />),
+    );
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Vercel and ChatGPT");
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Choose another connection");
+    await act(async () =>
       root.render(
         <MemoryActivity
           entries={[

@@ -1,3 +1,5 @@
+import { googleMethods } from "./google.js";
+import { desktopContextMethods } from "./desktop-context.js";
 import { packagesMethods } from "./packages.js";
 import { codingMethods } from "./coding.js";
 import { projectMethods } from "./projects.js";
@@ -69,6 +71,7 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...agentMethods,
   ...sitesMethods,
   ...calendarMethods,
+  ...googleMethods,
   ...connectorsMethods,
   ...agentConnectionsMethods,
   ...channelsMethods,
@@ -81,6 +84,7 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...workspacesMethods,
   ...spacesMethods,
   ...memoryMethods,
+  ...desktopContextMethods,
   ...installationMethods,
   ...vaultMethods,
   ...routinesMethods,

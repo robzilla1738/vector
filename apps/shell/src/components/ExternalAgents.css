@@ -16,30 +16,3 @@
     width: 100%;
   }
 }
-
-@layer components {
-  .developer-cli-preview {
-    display: grid;
-    align-items: end;
-    width: 100%;
-    padding: var(--space-4) 0 0 var(--space-4);
-    border-radius: var(--r-lg);
-    min-height: 164px;
-    background: var(--preview-developer-backdrop);
-    overflow: hidden;
-  }
-  .developer-cli-preview > div {
-    display: grid;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: var(--hairline) solid var(--line);
-    border-radius: var(--r-lg) 0 0 0;
-    background: var(--surface-primary);
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
-  }
-  .developer-cli-preview code {
-    color: var(--ink-0);
-    overflow-wrap: anywhere;
-  }
-}

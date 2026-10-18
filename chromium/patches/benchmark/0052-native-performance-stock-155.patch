@@ -1,0 +1,548 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 2653e37becbfa113d92456139d86c321f09ed8b5..f991e0676857c86fcd6bde1e32a40048ffecf3b0 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1413,6 +1413,8 @@ std::string GetCountry() {
+ }
+ 
+ void RegisterLocalState(PrefRegistrySimple* registry) {
++  registry->RegisterBooleanPref(prefs::kNativeBenchmarkEnabled, false);
++  registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+   // keep this list alphabetized.
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index 82f397571fefaff0096247d0e98c28c20db709bd..1e919b478ff33dccc4086fac3f6c911a6c1bc0a7 100644
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2711,6 +2711,8 @@ static_library("ui") {
+ 
+   if (toolkit_views) {
+     sources += [
++      "performance/native_performance.cc",
++      "performance/native_performance.h",
+       "views/browser_commands_views.cc",
+       "views/browser_dialogs_views.cc",
+       "views/frame/app_menu_button.cc",
+diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ec2a39929144ae1054f9e8d4b9394380b698fb3
+--- /dev/null
++++ b/chrome/browser/ui/performance/native_performance.cc
+@@ -0,0 +1,339 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#include "chrome/browser/ui/performance/native_performance.h"
++
++#include <map>
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include <libproc.h>
++#include <sys/resource.h>
++#include <unistd.h>
++#endif
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/metrics/histogram_functions.h"
++#include "base/no_destructor.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "content/public/browser/navigation_handle.h"
++#include "net/http/http_response_headers.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++#include "ui/events/keycodes/keyboard_codes.h"
++#include "chrome/common/pref_names.h"
++#include "components/prefs/pref_service.h"
++#include "components/startup_metric_utils/browser/startup_metric_utils.h"
++#include "components/viz/common/frame_timing_details.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/blink/public/common/input/web_input_event.h"
++#include "ui/compositor/compositor.h"
++#include "ui/events/event.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++#include "url/gurl.h"
++
++namespace {
++base::TimeTicks OriginalProcessStart() {
++#if BUILDFLAG(IS_MAC)
++  // Kernel birth includes launch/dyld work before Chromium's main entry point.
++  // Query only the original current browser process; never adopt another PID.
++  rusage_info_v0 usage{};
++  if (proc_pid_rusage(getpid(), RUSAGE_INFO_V0,
++                     reinterpret_cast<rusage_info_t*>(&usage)) != 0 ||
++      !usage.ri_proc_start_abstime || usage.ri_proc_exit_abstime) return {};
++  return base::TimeTicks::FromMachAbsoluteTime(usage.ri_proc_start_abstime);
++#else
++  return startup_metric_utils::GetBrowser().GetApplicationStartTicksForStartup();
++#endif
++}
++std::map<views::Widget*, NativePerformance*>& Registry() {
++  static base::NoDestructor<std::map<views::Widget*, NativePerformance*>> registry;
++  return *registry;
++}
++}  // namespace
++
++// Tracks only the served fixture in this original browser's active tab. A
++// renderer load/paint notification alone is never recorded as presentation.
++class NativePerformancePage : public content::WebContentsObserver,
++                              public TabStripModelObserver {
++ public:
++  NativePerformancePage(NativePerformance* owner, TabStripModel* tabs)
++      : owner_(owner), tabs_(tabs) {
++    if (tabs_) {
++      tabs_->AddObserver(this);
++      Observe(tabs_->GetActiveWebContents());
++    }
++  }
++  ~NativePerformancePage() override {
++    if (tabs_) tabs_->RemoveObserver(this);
++  }
++ private:
++  bool Current(content::WeakDocumentPtr document) const {
++    auto* frame = document.AsRenderFrameHostIfValid();
++    if (!frame || !tabs_ || !web_contents() ||
++        tabs_->GetActiveWebContents() != web_contents() ||
++        web_contents()->GetPrimaryMainFrame() != frame ||
++        !owner_->widget_ || !owner_->widget_->IsActive()) return false;
++    const auto* response = frame->GetLastResponseHead();
++    if (frame->IsErrorDocument() || !response || !response->headers ||
++        response->headers->response_code() != 200) return false;
++    const GURL fixture(g_browser_process->local_state()->GetString(
++        prefs::kNativeBenchmarkFixtureUrl));
++    return fixture.is_valid() && fixture.SchemeIs("http") &&
++           (fixture.host() == "127.0.0.1" || fixture.host() == "[::1]") &&
++           fixture.path().starts_with("/aux-native-perf/") &&
++           !fixture.has_username() && !fixture.has_password() &&
++           frame->GetLastCommittedURL() == fixture;
++  }
++  void Present(bool tab_switch, base::TimeTicks input) {
++    if (!web_contents() || !web_contents()->GetPrimaryMainFrame() || input.is_null()) return;
++    auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    if (!Current(document)) return;
++    web_contents()->GetPrimaryMainFrame()->GetRenderWidgetHost()->InsertVisualStateCallback(
++        base::BindOnce(&NativePerformancePage::Submitted,
++                       weak_factory_.GetWeakPtr(), document, input, tab_switch));
++  }
++  void Submitted(content::WeakDocumentPtr document, base::TimeTicks input,
++                 bool tab_switch, bool success) {
++    if (!success || !Current(document) || !owner_->widget_->GetCompositor()) return;
++    auto* compositor = owner_->widget_->GetCompositor();
++    compositor->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
++        &NativePerformancePage::Presented, weak_factory_.GetWeakPtr(),
++        document, input, tab_switch));
++    compositor->ScheduleFullRedraw();
++  }
++  void Presented(content::WeakDocumentPtr document, base::TimeTicks input,
++                 bool tab_switch, const viz::FrameTimingDetails& details) {
++    const auto time = details.presentation_feedback.timestamp;
++    if (!Current(document) || time.is_null() || time < input) return;
++    if (tab_switch) {
++      if (input != owner_->tab_input_time_) return;
++      owner_->tab_input_time_ = base::TimeTicks();
++      base::UmaHistogramTimes("AuxPerf.TabSwitchInputToPresented", time - input);
++      return;
++    }
++    if (owner_->interactive_recorded_) return;
++    const auto start = OriginalProcessStart();
++    if (start.is_null() || time < start) return;
++    owner_->interactive_recorded_ = true;
++    base::UmaHistogramLongTimes("AuxPerf.ColdLaunchToUsableContent", time - start);
++    base::UmaHistogramTimes("AuxPerf.NavigationInputToPresented", time - input);
++  }
++  void OnTabStripModelChanged(TabStripModel* tabs,
++      const TabStripModelChange&, const TabStripSelectionChange&) override {
++    auto* active = tabs->GetActiveWebContents();
++    if (active == web_contents()) return;
++    weak_factory_.InvalidateWeakPtrs();
++    loaded_ = painted_ = false;
++    Observe(active);
++    Present(true, owner_->tab_input_time_);
++  }
++  void OnTabStripModelDestroyed(TabStripModel* tabs) override {
++    CHECK(tabs == tabs_);
++    // ModelDestroyed already removed this observer before this notification.
++    tabs_ = nullptr;
++    weak_factory_.InvalidateWeakPtrs();
++    Observe(nullptr);
++  }
++  void DidStartNavigation(content::NavigationHandle* navigation) override {
++    if (!navigation->IsInPrimaryMainFrame() || navigation->IsSameDocument()) return;
++    weak_factory_.InvalidateWeakPtrs();
++    loaded_ = painted_ = false;
++    navigation_input_ = owner_->input_time_;
++  }
++  void DidFinishLoad(content::RenderFrameHost* frame, const GURL&) override {
++    if (frame != web_contents()->GetPrimaryMainFrame()) return;
++    loaded_ = true;
++    if (painted_) Present(false, navigation_input_);
++  }
++  void DidFirstVisuallyNonEmptyPaint() override {
++    painted_ = true;
++    if (loaded_) Present(false, navigation_input_);
++  }
++  raw_ptr<NativePerformance> owner_;
++  raw_ptr<TabStripModel> tabs_;
++  base::TimeTicks navigation_input_;
++  bool loaded_ = false;
++  bool painted_ = false;
++  base::WeakPtrFactory<NativePerformancePage> weak_factory_{this};
++};
++
++bool NativePerformance::Enabled() {
++  return g_browser_process && g_browser_process->local_state() &&
++         g_browser_process->local_state()->GetBoolean(prefs::kNativeBenchmarkEnabled);
++}
++std::unique_ptr<NativePerformance> NativePerformance::Install(
++    views::Widget* widget, content::WebContents* shell, TabStripModel* tabs) {
++  if (!Enabled()) return nullptr;
++  return std::make_unique<NativePerformance>(widget, shell, tabs);
++}
++NativePerformance* NativePerformance::ForWidget(views::Widget* widget) {
++  const auto found = Registry().find(widget);
++  return found == Registry().end() ? nullptr : found->second;
++}
++NativePerformance::NativePerformance(views::Widget* widget,
++                                     content::WebContents* shell, TabStripModel* tabs)
++    : content::WebContentsObserver(shell), widget_(widget) {
++  CHECK(widget_);
++  CHECK(!Registry().contains(widget_));
++  Registry().emplace(widget_, this);
++  widget_->AddObserver(this);
++  widget_->GetRootView()->AddPreTargetHandler(this);
++  AttachInputHost();
++  page_ = std::make_unique<NativePerformancePage>(this, tabs);
++}
++NativePerformance::~NativePerformance() {
++  page_.reset();
++  DetachInputHost();
++  if (widget_) {
++    widget_->GetRootView()->RemovePreTargetHandler(this);
++    widget_->RemoveObserver(this);
++    Registry().erase(widget_);
++  }
++}
++void NativePerformance::OnWidgetDestroying(views::Widget* widget) {
++  CHECK(widget == widget_);
++  weak_factory_.InvalidateWeakPtrs();
++  page_.reset();
++  DetachInputHost();
++  widget_->GetRootView()->RemovePreTargetHandler(this);
++  widget_->RemoveObserver(this);
++  Registry().erase(widget_);
++  widget_ = nullptr;
++}
++void NativePerformance::Input(base::TimeTicks timestamp) {
++  if (retired_ || !widget_ || !widget_->IsVisible() || timestamp.is_null() ||
++      timestamp == input_time_) return;
++  input_time_ = timestamp;
++  ++input_serial_;
++}
++void NativePerformance::OnKeyEvent(ui::KeyEvent* event) {
++  if (event->type() == ui::EventType::kKeyPressed &&
++      event->key_code() == ui::VKEY_TAB && event->IsControlDown())
++    tab_input_time_ = event->time_stamp();
++  if (event->type() == ui::EventType::kKeyPressed &&
++      !(event->flags() & (ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN | ui::EF_ALT_DOWN))) {
++    Input(event->time_stamp());
++  }
++}
++void NativePerformance::OnInputEvent(
++    const content::RenderWidgetHost& host,
++    const blink::WebInputEvent& event,
++    content::RenderWidgetHost::InputEventObserver::InputEventSource) {
++  if (&host == input_host_ && event.GetType() == blink::WebInputEvent::Type::kChar)
++    Input(event.TimeStamp());
++}
++void NativePerformance::AttachInputHost() {
++  if (retired_ || !web_contents() || !web_contents()->GetPrimaryMainFrame()) return;
++  input_host_ = web_contents()->GetPrimaryMainFrame()->GetRenderWidgetHost();
++  input_host_->AddInputEventObserver(this);
++  input_host_->AddObserver(this);
++}
++void NativePerformance::DetachInputHost() {
++  if (!input_host_) return;
++  input_host_->RemoveInputEventObserver(this);
++  input_host_->RemoveObserver(this);
++  input_host_ = nullptr;
++}
++void NativePerformance::RenderWidgetHostDestroyed(content::RenderWidgetHost* host) {
++  if (host == input_host_) DetachInputHost();
++}
++void NativePerformance::PrimaryPageChanged(content::Page&) {
++  // The initial shell navigation is expected. A replacement after its first
++  // presentation retires the original measurement owner rather than adopting it.
++  if (first_frame_recorded_) {
++    retired_ = true;
++    page_.reset();
++  }
++  weak_factory_.InvalidateWeakPtrs();
++  DetachInputHost();
++  input_time_ = base::TimeTicks();
++  committed_query_id_ = 0;
++  AttachInputHost();
++}
++void NativePerformance::CommitQuery(int query_id) {
++  if (!widget_ || !web_contents() || !input_host_ || input_time_.is_null() ||
++      query_id <= committed_query_id_ || recorded_serial_ == input_serial_) return;
++  committed_query_id_ = query_id;
++  auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  input_host_->InsertVisualStateCallback(base::BindOnce(
++      &NativePerformance::QuerySubmitted, weak_factory_.GetWeakPtr(),
++      document, input_time_, input_serial_, query_id));
++}
++void NativePerformance::QuerySubmitted(content::WeakDocumentPtr document,
++                                      base::TimeTicks input,
++                                      uint64_t serial,
++                                      int query_id,
++                                      bool success) {
++  if (!success || !document.AsRenderFrameHostIfValid() || !widget_ ||
++      !widget_->IsVisible() || serial != input_serial_ ||
++      query_id != committed_query_id_ || !widget_->GetCompositor()) return;
++  auto* compositor = widget_->GetCompositor();
++  compositor->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
++      &NativePerformance::QueryPresented, weak_factory_.GetWeakPtr(),
++      document, input, serial, query_id));
++  // The visual-state roundtrip already submitted the committed result frame.
++  // Request a real draw so a previously drawn frame cannot leave feedback pending.
++  compositor->ScheduleFullRedraw();
++}
++void NativePerformance::QueryPresented(content::WeakDocumentPtr document,
++                                      base::TimeTicks input,
++                                      uint64_t serial,
++                                      int query_id,
++                                      const viz::FrameTimingDetails& details) {
++  const auto presentation = details.presentation_feedback.timestamp;
++  if (!document.AsRenderFrameHostIfValid() || !widget_ || !widget_->IsVisible() ||
++      serial != input_serial_ || query_id != committed_query_id_ ||
++      recorded_serial_ == serial || presentation.is_null() || presentation < input) return;
++  recorded_serial_ = serial;
++  base::UmaHistogramTimes("AuxPerf.CommandBarInputToPresented", presentation - input);
++}
++void NativePerformance::CommitStockQuery(ui::Compositor* compositor) {
++  if (!widget_ || !widget_->IsVisible() || !compositor || input_time_.is_null() ||
++      recorded_serial_ == input_serial_) return;
++  compositor->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
++      [](base::WeakPtr<NativePerformance> self, base::TimeTicks input,
++         uint64_t serial, const viz::FrameTimingDetails& details) {
++        const auto presentation = details.presentation_feedback.timestamp;
++        if (!self || !self->widget_ || !self->widget_->IsVisible() ||
++            self->input_serial_ != serial || self->recorded_serial_ == serial ||
++            presentation.is_null() || presentation < input) return;
++        self->recorded_serial_ = serial;
++        base::UmaHistogramTimes("AuxPerf.CommandBarInputToPresented", presentation - input);
++      }, weak_factory_.GetWeakPtr(), input_time_, input_serial_));
++}
++void NativePerformance::OnWidgetVisibilityChanged(views::Widget* widget,
++                                                  bool visible) {
++  if (widget != widget_ || !visible || window_shown_recorded_) return;
++  const auto start = OriginalProcessStart();
++  if (start.is_null()) return;
++  window_shown_recorded_ = true;
++  base::UmaHistogramLongTimes("AuxPerf.WindowShown", base::TimeTicks::Now() - start);
++}
++void NativePerformance::RecordFirstFrame(base::TimeTicks presentation) {
++  const auto start = OriginalProcessStart();
++  if (first_frame_recorded_ || !widget_ || presentation.is_null() ||
++      start.is_null() || presentation < start) return;
++  first_frame_recorded_ = true;
++  base::UmaHistogramLongTimes("AuxPerf.FirstFrame", presentation - start);
++}
++void NativePerformance::DidFirstVisuallyNonEmptyPaint() {
++  if (!widget_ || !input_host_ || !web_contents() || first_frame_recorded_) return;
++  const auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  input_host_->InsertVisualStateCallback(base::BindOnce(
++      [](base::WeakPtr<NativePerformance> self, content::WeakDocumentPtr document,
++         bool success) {
++        if (!self || !success || !document.AsRenderFrameHostIfValid() ||
++            !self->widget_ || !self->widget_->GetCompositor()) return;
++        auto* compositor = self->widget_->GetCompositor();
++        compositor->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
++            [](base::WeakPtr<NativePerformance> self,
++               content::WeakDocumentPtr document,
++               const viz::FrameTimingDetails& details) {
++              if (self && document.AsRenderFrameHostIfValid())
++                self->RecordFirstFrame(details.presentation_feedback.timestamp);
++            }, self, document));
++        compositor->ScheduleFullRedraw();
++      }, weak_factory_.GetWeakPtr(), document));
++}
+diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ac1bfc5d8d6d3e6a245b244b511cd58c6d74220e
+--- /dev/null
++++ b/chrome/browser/ui/performance/native_performance.h
+@@ -0,0 +1,84 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
++#define CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
++
++#include <memory>
++#include <cstdint>
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/render_widget_host_observer.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "ui/events/event_handler.h"
++#include "ui/views/widget/widget_observer.h"
++
++namespace viz { struct FrameTimingDetails; }
++namespace ui { class Compositor; }
++namespace views { class Widget; }
++class TabStripModel;
++class NativePerformancePage;
++
++// Installed only in an explicitly opted-in disposable benchmark Local State.
++// Owns the original native widget and its shell document; no product authority,
++// synthetic readiness clock, input dispatch, or background sampling is exposed.
++class NativePerformance : public views::WidgetObserver,
++                          public ui::EventHandler,
++                          public content::WebContentsObserver,
++                          public content::RenderWidgetHostObserver,
++                          public content::RenderWidgetHost::InputEventObserver {
++ public:
++  static bool Enabled();
++  static std::unique_ptr<NativePerformance> Install(views::Widget* widget,
++                                                  content::WebContents* shell,
++                                                  TabStripModel* tabs);
++  static NativePerformance* ForWidget(views::Widget* widget);
++  explicit NativePerformance(views::Widget* widget,
++                             content::WebContents* shell, TabStripModel* tabs);
++  ~NativePerformance() override;
++  // Call only after the current native query results have committed to the DOM.
++  void CommitQuery(int query_id);
++  void CommitStockQuery(ui::Compositor* compositor);
++  void RecordFirstFrame(base::TimeTicks presentation);
++
++ private:
++  void OnWidgetDestroying(views::Widget* widget) override;
++  void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
++  void OnKeyEvent(ui::KeyEvent* event) override;
++  void OnInputEvent(const content::RenderWidgetHost& host,
++                    const blink::WebInputEvent& event,
++                    content::RenderWidgetHost::InputEventObserver::InputEventSource source) override;
++  void RenderWidgetHostDestroyed(content::RenderWidgetHost* host) override;
++  void PrimaryPageChanged(content::Page& page) override;
++  void DidFirstVisuallyNonEmptyPaint() override;
++  void AttachInputHost();
++  void DetachInputHost();
++  void Input(base::TimeTicks timestamp);
++  void QuerySubmitted(content::WeakDocumentPtr document,
++                      base::TimeTicks input,
++                      uint64_t serial,
++                      int query_id,
++                      bool success);
++  void QueryPresented(content::WeakDocumentPtr document,
++                      base::TimeTicks input,
++                      uint64_t serial,
++                      int query_id,
++                      const viz::FrameTimingDetails& details);
++  friend class NativePerformancePage;
++  std::unique_ptr<NativePerformancePage> page_;
++  raw_ptr<views::Widget> widget_;
++  raw_ptr<content::RenderWidgetHost> input_host_ = nullptr;
++  base::TimeTicks input_time_;
++  base::TimeTicks tab_input_time_;
++  bool interactive_recorded_ = false;
++  uint64_t input_serial_ = 0;
++  uint64_t recorded_serial_ = 0;
++  int committed_query_id_ = 0;
++  bool retired_ = false;
++  bool first_frame_recorded_ = false;
++  bool window_shown_recorded_ = false;
++  base::WeakPtrFactory<NativePerformance> weak_factory_{this};
++};
++#endif
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..518b22c21d871045b3835214039eb66ebd802fa9 100644
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/performance/native_performance.h"
+ 
+ #include <stdint.h>
+ 
+@@ -4966,6 +4967,7 @@ void BrowserView::AddedToWidget() {
+   }
+ 
+   views::ClientView::AddedToWidget();
++  native_performance_ = NativePerformance::Install(GetWidget(), nullptr, browser_->GetTabStripModel());
+ 
+ #if BUILDFLAG(IS_WIN)
+   // Register for screen capture exclusion updates. This is specific to
+@@ -6121,6 +6123,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+ 
+ void BrowserView::OnFirstPresentation(
+     const viz::FrameTimingDetails& frame_timing_details) {
++  if (native_performance_)
++    native_performance_->RecordFirstFrame(frame_timing_details.presentation_feedback.timestamp);
+   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
+     manager->OnBrowserWindowFirstPresentation(
+         frame_timing_details.presentation_feedback.timestamp);
+diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/views/frame/browser_view.h
+index d786fede5da896d28046083eeca53e429d9df975..db14b9d6f9aae7854bee6b18befd39c99dd80ccc 100644
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -75,6 +75,7 @@
+ class AccessibilityFocusHighlight;
+ class BookmarkBarController;
+ class BookmarkBarView;
++class NativePerformance;
+ class BrowserWindowInterface;
+ class BrowserViewLayout;
+ class ContentsContainerView;
+@@ -1405,6 +1406,7 @@ class BrowserView : public BrowserWindow,
+   base::EnumSet<TabStripAndWebAppViewsReparentedState>
+       tab_strip_web_apps_reparented_state_;
+ 
++  std::unique_ptr<NativePerformance> native_performance_;
+   mutable base::WeakPtrFactory<BrowserView> weak_ptr_factory_{this};
+ };
+ 
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
+index 23971d8b4188f5f4e3583dc26ba8cf48f6da6ec4..937d6d8334abe887aa61c3f0a7e730fbc884682f 100644
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.h"
++#include "chrome/browser/ui/performance/native_performance.h"
+ 
+ #include <memory>
+ #include <numeric>
+@@ -660,6 +661,10 @@ void OmniboxPopupViewViews::OnMatchIconUpdated(size_t match_index) {
+ 
+ void OmniboxPopupViewViews::OnContentsChanged() {
+   UpdatePopupAppearance();
++  if (widget_ && widget_->IsVisible()) {
++    if (auto* perf = NativePerformance::ForWidget(location_bar_view_->GetWidget()))
++      perf->CommitStockQuery(widget_->GetCompositor());
++  }
+ }
+ 
+ void OmniboxPopupViewViews::OnPopupFirstPaintPresented(
+diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
+index a4b175a64f5a58eec344df0b38c49df459f16ba7..fd1a0edac064434624cf980209c88bddbbee92f5 100644
+--- a/chrome/common/pref_names.h
++++ b/chrome/common/pref_names.h
+@@ -30,6 +30,10 @@
+ 
+ namespace prefs {
+ 
++// Opt-in native measurement, used only in a disposable benchmark Local State.
++inline constexpr char kNativeBenchmarkEnabled[] = "performance.native_benchmark";
++inline constexpr char kNativeBenchmarkFixtureUrl[] = "performance.native_benchmark_fixture_url";
++
+ // *************** PROFILE PREFS ***************
+ // These are attached to the user profile
+ 

@@ -38,3 +38,30 @@ it("ignores title churn while distinguishing Changed and Closed snapshot chips",
   expect(mentionChipStatus(ref, [{ ...page, sessionId: "reattached" }])).toBe("Changed");
   expect(mentionChipStatus(ref, [])).toBe("Closed");
 });
+
+it("carries the catalog account authority into selected connector refs", () => {
+  const entry = {
+    kind: "mcp" as const,
+    connectorId: "mcp:fixture",
+    serverId: "11111111-1111-4111-8111-111111111111",
+    label: "Research",
+    state: "active" as const,
+    authority: "connected_server" as const,
+    sourceDigest: "a".repeat(64),
+    toolsRevision: 2,
+  };
+  expect(
+    mentionCandidates({ pages: [], connectors: { entries: [entry], access: [], bindings: {} } }).filter(
+      (candidate) => candidate.section === "Connectors",
+    ),
+  ).toEqual([]);
+  const selected = mentionCandidates({
+    pages: [],
+    connectors: { entries: [entry], access: [], bindings: { "mcp:fixture": "b".repeat(64) } },
+  }).find((candidate) => candidate.section === "Connectors");
+  expect(selected?.ref).toEqual({
+    kind: "connector",
+    connectorId: "mcp:fixture",
+    authorityDigest: "b".repeat(64),
+  });
+});

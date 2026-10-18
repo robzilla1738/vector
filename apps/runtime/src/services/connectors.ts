@@ -1,4 +1,10 @@
-import { AuxError, ConnectorCatalogSchema, type ConnectorCatalog } from "@aux/contracts";
+import { createHash } from "node:crypto";
+import {
+  AuxError,
+  connectorAuthorityInput,
+  ConnectorCatalogSchema,
+  type ConnectorCatalog,
+} from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
 import type { OutboundMcpService } from "./outbound-mcp.js";
@@ -13,6 +19,8 @@ export class ConnectorCatalogService {
       tasks: TaskService;
       settings: SettingsService;
       calendar?: CalendarConnectionService;
+      googleAccounts?: import("./google-accounts.js").GoogleAccountService;
+      googleGrants?: import("./google-grants.js").GoogleGrantService;
       mcp: OutboundMcpService;
     },
   ) {}
@@ -32,13 +40,26 @@ export class ConnectorCatalogService {
 
     const calendar = this.deps.calendar?.list().connections ?? [];
     const servers = this.deps.mcp.list(workspaceId);
+    const google =
+      this.deps.googleAccounts
+        ?.list()
+        .connections.filter((account) =>
+          account.scopes.some((scope) => !scope.endsWith("calendar.readonly")),
+        ) ?? [];
     const entries = [
+      ...google.map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...account }) => ({
+        ...account,
+        kind: "google" as const,
+        connectorId: `google:${account.connectionId}`,
+        authority: "google_account" as const,
+      })),
       ...calendar.map((connection) => ({
         kind: "calendar" as const,
         connectorId: `calendar:${connection.connectionId}`,
         connectionId: connection.connectionId,
         label: connection.label,
         accountKey: connection.accountKey,
+        revision: this.deps.calendar!.connectionRevision(connection.connectionId),
         state: connection.state,
         authority: "calendar_account" as const,
       })),
@@ -46,6 +67,8 @@ export class ConnectorCatalogService {
         kind: "mcp" as const,
         connectorId: `mcp:${server.serverId}`,
         serverId: server.serverId,
+        sourceDigest: server.sourceDigest,
+        toolsRevision: server.toolsRevision,
         label: server.name,
         state: server.state,
         authority: "connected_server" as const,
@@ -69,6 +92,23 @@ export class ConnectorCatalogService {
             authority: "calendar_task_grant",
           });
       }
+      for (const grant of this.deps.googleGrants?.list(task.taskId) ?? []) {
+        const account = google.find(
+          (account) =>
+            account.connectionId === grant.connectionId && account.revision === grant.accountRevision,
+        );
+        const operations = grant.operations.filter((operation) => account?.operations.includes(operation));
+        if (grant.taskRevision === task.revision && operations.length)
+          access.push({
+            kind: "google",
+            connectorId: `google:${grant.connectionId}`,
+            taskId: task.taskId,
+            taskRevision: task.revision,
+            grantId: grant.grantId,
+            operations,
+            authority: "google_task_grant",
+          });
+      }
       for (const server of servers) {
         if (server.state !== "active") continue;
         for (const toolName of server.toolNames) {
@@ -85,6 +125,14 @@ export class ConnectorCatalogService {
         }
       }
     }
-    return ConnectorCatalogSchema.parse({ entries, access });
+    const bindings = Object.fromEntries(
+      entries.map((entry) => [
+        entry.connectorId,
+        createHash("sha256")
+          .update(connectorAuthorityInput(entry, access, input))
+          .digest("hex"),
+      ]),
+    );
+    return ConnectorCatalogSchema.parse({ entries, access, bindings });
   }
 }

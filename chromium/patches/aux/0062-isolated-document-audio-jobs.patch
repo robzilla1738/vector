@@ -1,0 +1,3065 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 82c7cffdf0b51a9312fef0ec68522eda1d86c79e..aa0dbce4413fe73a96f54b141b069707e273e8db 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -38,6 +38,8 @@ source_set("runtime") {
+     "browser_profile_readers.cc",
+     "browser_profile_snapshot.h",
+     "browser_profile_snapshot.cc",
++    "document_jobs.cc",
++    "document_jobs.h",
+     "image_normalize.cc",
+     "image_normalize.h",
+     "native_project.cc",
+diff --git a/chrome/browser/ui/aux/document_jobs.cc b/chrome/browser/ui/aux/document_jobs.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..67809f5844dff83cf635b424961eea2144b9457a
+--- /dev/null
++++ b/chrome/browser/ui/aux/document_jobs.cc
+@@ -0,0 +1,423 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/document_jobs.h"
++
++#include <algorithm>
++#include <utility>
++#include <vector>
++
++#include "base/base64.h"
++#include "base/containers/span.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/memory/shared_memory_mapping.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_view_util.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/unguessable_token.h"
++#include "chrome/services/aux_document/public/mojom/document_extractor.mojom.h"
++#include "content/public/browser/service_process_host.h"
++#include "content/public/browser/service_process_info.h"
++#include "crypto/hash.h"
++#include "mojo/public/cpp/bindings/remote.h"
++namespace aux {
++namespace {
++constexpr size_t kSourceLimit = 64 * 1024 * 1024;
++constexpr size_t kOutputLimit = 32 * 1024 * 1024;
++constexpr size_t kChunkLimit = 256 * 1024;
++using Reply = base::OnceCallback<void(base::DictValue)>;
++base::DictValue Fault(std::string code, std::string message) {
++  return base::DictValue().Set("error",
++                               base::DictValue()
++                                   .Set("code", std::move(code))
++                                   .Set("message", std::move(message)));
++}
++base::DictValue Result(base::DictValue value) {
++  return base::DictValue().Set("result", std::move(value));
++}
++std::string Hash(base::span<const uint8_t> bytes) {
++  return base::HexEncodeLower(crypto::hash::Sha256(bytes));
++}
++struct Source {
++  size_t size = 0;
++  size_t received = 0;
++  std::string hash;
++  std::string media_type;
++  std::vector<std::string> chunks;
++};
++struct Prepared {
++  std::vector<document::mojom::JobSourcePtr> sources;
++  std::string failure;
++};
++Prepared Prepare(std::vector<Source> sources,
++                 std::shared_ptr<std::atomic_bool> cancelled) {
++  Prepared result;
++  for (auto& source : sources) {
++    if (cancelled->load()) {
++      result.failure = "Original job cancelled";
++      return result;
++    }
++    auto memory = base::ReadOnlySharedMemoryRegion::Create(source.size);
++    if (!memory.IsValid()) {
++      result.failure = "Source allocation failed";
++      return result;
++    }
++    auto target = memory.mapping.GetMemoryAsSpan<uint8_t>();
++    size_t offset = 0;
++    for (auto& chunk : source.chunks) {
++      target.subspan(offset, chunk.size()).copy_from(base::as_byte_span(chunk));
++      offset += chunk.size();
++      std::fill(chunk.begin(), chunk.end(), 0);
++    }
++    if (offset != source.size || Hash(target) != source.hash) {
++      result.failure = "Original source bytes do not match their admitted hash";
++      return result;
++    }
++    auto admitted = document::mojom::JobSource::New();
++    admitted->source = std::move(memory.region);
++    admitted->size = source.size;
++    admitted->sha256 = source.hash;
++    admitted->media_type = source.media_type;
++    result.sources.push_back(std::move(admitted));
++  }
++  return result;
++}
++}  // namespace
++class NativeDocumentJobs::Job final
++    : public base::RefCounted<Job>,
++      public content::ServiceProcessHost::Observer {
++ public:
++  Job(std::vector<Source> sources, base::DictValue request)
++      : sources_(std::move(sources)), request_(std::move(request)) {
++    expires_ = base::TimeTicks::Now() + base::Minutes(2);
++    timer_.Start(FROM_HERE, base::Milliseconds(100), this, &Job::Check);
++  }
++  size_t bytes() const { return source_bytes_; }
++  bool closed() const { return state_ == State::kClosed; }
++  void set_bytes(size_t bytes) { source_bytes_ = bytes; }
++  void Append(const base::DictValue& params, Reply callback) {
++    const auto index = params.FindInt("sourceIndex"),
++               offset = params.FindInt("offset");
++    const auto* encoded = params.FindString("bytesBase64");
++    std::string bytes;
++    if (state_ != State::kUploading || params.size() != 5 || !index ||
++        *index < 0 || static_cast<size_t>(*index) >= sources_.size() ||
++        !offset || *offset < 0 || !encoded ||
++        !base::Base64Decode(*encoded, &bytes) || bytes.empty() ||
++        bytes.size() > kChunkLimit || base::Base64Encode(bytes) != *encoded) {
++      std::move(callback).Run(
++          Fault("invalid_params", "Invalid document upload chunk"));
++      return;
++    }
++    auto& source = sources_[*index];
++    if (source.received != static_cast<size_t>(*offset) ||
++        bytes.size() > source.size - source.received) {
++      std::move(callback).Run(
++          Fault("conflict", "Document chunks must append once in exact order"));
++      return;
++    }
++    source.received += bytes.size();
++    source.chunks.push_back(std::move(bytes));
++    expires_ = base::TimeTicks::Now() + base::Minutes(2);
++    std::move(callback).Run(
++        Result(base::DictValue()
++                   .Set("action", "append")
++                   .Set("offset", static_cast<int>(source.received))));
++  }
++  void Run(std::shared_ptr<std::atomic_bool> cancelled, Reply callback) {
++    if (state_ != State::kUploading ||
++        std::ranges::any_of(
++            sources_, [](const Source& s) { return s.received != s.size; })) {
++      std::move(callback).Run(Fault(
++          "conflict", "Document job requires every immutable source once"));
++      return;
++    }
++    state_ = State::kPreparing;
++    cancelled_ = std::move(cancelled);
++    pending_ = std::move(callback);
++    expires_ = base::TimeTicks::Now() + base::Seconds(60);
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::TaskPriority::USER_VISIBLE},
++        base::BindOnce(&Prepare, std::move(sources_), cancelled_),
++        base::BindOnce(&Job::PreparedSources, base::RetainedRef(this)));
++  }
++  void Read(const base::DictValue& params, Reply callback) {
++    auto index = params.FindInt("outputIndex"),
++         offset = params.FindInt("offset");
++    if (state_ != State::kComplete || params.size() != 4 || !index ||
++        *index < 0 || static_cast<size_t>(*index) >= outputs_.size() ||
++        !offset || *offset < 0 ||
++        static_cast<size_t>(*offset) > outputs_[*index].size()) {
++      std::move(callback).Run(
++          Fault("ref_stale", "Document output is unavailable at this offset"));
++      return;
++    }
++    auto bytes = outputs_[*index].GetMemoryAsSpan<const uint8_t>();
++    auto chunk = bytes.subspan(static_cast<size_t>(*offset),
++                               std::min(kChunkLimit, bytes.size() - *offset));
++    expires_ = base::TimeTicks::Now() + base::Minutes(2);
++    std::move(callback).Run(
++        Result(base::DictValue()
++                   .Set("action", "read")
++                   .Set("offset", *offset)
++                   .Set("bytesBase64", base::Base64Encode(chunk))
++                   .Set("done", *offset + chunk.size() == bytes.size())));
++  }
++  void Close(Reply callback) {
++    if (state_ == State::kClosed) {
++      std::move(callback).Run(
++          Result(base::DictValue().Set("action", "close").Set("joined", true)));
++      return;
++    }
++    closers_.push_back(std::move(callback));
++    Retire("cancelled", "Original document job retired");
++  }
++  void Retire(std::string code, std::string reason) {
++    fault_ = Fault(std::move(code), std::move(reason));
++    if (cancelled_) {
++      cancelled_->store(true);
++    }
++    sources_.clear();
++    outputs_.clear();
++    if (state_ == State::kPreparing) {
++      return;  // The original worker still owns its bytes.
++    }
++    if (state_ == State::kRunning) {
++      remote_.reset();
++      return;
++    }
++    FinishClosed();
++  }
++  void OnServiceProcessLaunchFailed(int) override {
++    fault_ = Fault("backend_unavailable",
++                   "The original document utility could not be launched");
++    remote_.reset();
++    Terminated();
++  }
++  void OnServiceProcessTerminatedNormally(
++      const content::ServiceProcessInfo&) override {
++    Terminated();
++  }
++  void OnServiceProcessCrashed(const content::ServiceProcessInfo&) override {
++    Terminated();
++  }
++
++ private:
++  friend class base::RefCounted<Job>;
++  ~Job() override = default;
++  enum class State { kUploading, kPreparing, kRunning, kComplete, kClosed };
++  void Check() {
++    if ((cancelled_ && cancelled_->load()) ||
++        base::TimeTicks::Now() >= expires_) {
++      Retire("cancelled", "Document job cancelled or expired");
++    }
++  }
++  void PreparedSources(Prepared prepared) {
++    if (!fault_.empty() || cancelled_->load() || !prepared.failure.empty()) {
++      if (fault_.empty()) {
++        fault_ = Fault("invalid_params", prepared.failure.empty()
++                                             ? "Document job cancelled"
++                                             : prepared.failure);
++      }
++      FinishClosed();
++      return;
++    }
++    state_ = State::kRunning;
++    self_until_exit_ = this;
++    content::ServiceProcessHost::Launch(
++        remote_.BindNewPipeAndPassReceiver(),
++        content::ServiceProcessHost::Options()
++            .WithDisplayName("Aux document computation")
++            .WithObserver(weak_factory_.GetWeakPtr())
++            .Pass());
++    remote_.set_disconnect_handler(
++        base::BindOnce(&Job::Disconnected, weak_factory_.GetWeakPtr()));
++    remote_->Execute(
++        std::move(prepared.sources), std::move(request_),
++        base::BindOnce(&Job::Computed, weak_factory_.GetWeakPtr()));
++  }
++  void Computed(document::mojom::JobResultPtr result) {
++    if (!result->failure.empty()) {
++      fault_ = Fault("invalid_params", result->failure);
++    }
++    if (fault_.empty()) {
++      base::ListValue descriptions;
++      size_t total = 0;
++      for (auto& output : result->outputs) {
++        total += output->size;
++        auto mapping = output->source.Map();
++        if (result->outputs.size() > 40 || total > kOutputLimit ||
++            !output->size || !mapping.IsValid() ||
++            mapping.size() != output->size ||
++            Hash(mapping.GetMemoryAsSpan<const uint8_t>()) != output->sha256) {
++          fault_ = Fault("backend_unavailable",
++                         "Isolated document output identity failed");
++          break;
++        }
++        descriptions.Append(base::DictValue()
++                                .Set("sha256", output->sha256)
++                                .Set("size", static_cast<int>(output->size))
++                                .Set("mediaType", output->media_type)
++                                .Set("label", output->label));
++        outputs_.push_back(std::move(mapping));
++      }
++      reply_ = Result(base::DictValue()
++                          .Set("action", "run")
++                          .Set("report", std::move(result->report))
++                          .Set("outputs", std::move(descriptions)));
++    }
++    computed_ = true;
++    remote_.reset();  // Reply only after this exact utility has exited.
++  }
++  void Disconnected() {
++    if (!computed_ && fault_.empty()) {
++      fault_ = Fault("backend_unavailable",
++                     "Original document utility disconnected");
++    }
++    remote_.reset();
++  }
++  void Terminated() {
++    scoped_refptr<Job> hold(this);
++    if (!computed_ && fault_.empty()) {
++      fault_ = Fault("backend_unavailable",
++                     "Original document utility exited before its result");
++    }
++    if (!fault_.empty() || !closers_.empty()) {
++      FinishClosed();
++    } else {
++      state_ = State::kComplete;
++      cancelled_.reset();
++      expires_ = base::TimeTicks::Now() + base::Minutes(2);
++      if (pending_) {
++        std::move(pending_).Run(std::move(reply_));
++      }
++    }
++    self_until_exit_.reset();
++  }
++  void FinishClosed() {
++    state_ = State::kClosed;
++    source_bytes_ = 0;
++    sources_.clear();
++    outputs_.clear();
++    timer_.Stop();
++    if (pending_) {
++      std::move(pending_).Run(fault_.empty()
++                                  ? Fault("cancelled", "Document job closed")
++                                  : fault_.Clone());
++    }
++    for (auto& callback : closers_) {
++      std::move(callback).Run(
++          Result(base::DictValue().Set("action", "close").Set("joined", true)));
++    }
++    closers_.clear();
++  }
++  State state_ = State::kUploading;
++  size_t source_bytes_ = 0;
++  std::vector<Source> sources_;
++  base::DictValue request_, reply_, fault_;
++  std::vector<base::ReadOnlySharedMemoryMapping> outputs_;
++  mojo::Remote<document::mojom::DocumentExtractor> remote_;
++  std::shared_ptr<std::atomic_bool> cancelled_;
++  Reply pending_;
++  std::vector<Reply> closers_;
++  bool computed_ = false;
++  base::TimeTicks expires_;
++  base::RepeatingTimer timer_;
++  scoped_refptr<Job> self_until_exit_;
++  base::WeakPtrFactory<Job> weak_factory_{this};
++};
++NativeDocumentJobs::NativeDocumentJobs() = default;
++NativeDocumentJobs::~NativeDocumentJobs() {
++  for (auto& [id, job] : jobs_) {
++    job->Retire("ref_stale", "Original native connection retired");
++  }
++}
++void NativeDocumentJobs::Dispatch(const base::DictValue& params,
++                                  std::shared_ptr<std::atomic_bool> cancelled,
++                                  Reply callback) {
++  const auto* action = params.FindString("action");
++  if (!action || cancelled->load()) {
++    std::move(callback).Run(
++        Fault("cancelled", "Document action owner unavailable"));
++    return;
++  }
++  if (*action == "begin") {
++    std::erase_if(jobs_,
++                  [](const auto& entry) { return entry.second->closed(); });
++    const auto* descriptions = params.FindList("sources");
++    const auto* request = params.FindDict("request");
++    size_t total = 0, occupied = 0;
++    for (const auto& [id, job] : jobs_) {
++      occupied += job->bytes();
++    }
++    std::vector<Source> sources;
++    if (params.size() != 3 || jobs_.size() >= 4 || !descriptions ||
++        descriptions->empty() || descriptions->size() > 8 || !request) {
++      std::move(callback).Run(
++          Fault("invalid_params", "Invalid document job or active job limit"));
++      return;
++    }
++    for (const auto& value : *descriptions) {
++      const auto* description = value.GetIfDict();
++      auto size = description ? description->FindInt("size") : std::nullopt;
++      const auto* hash =
++          description ? description->FindString("sha256") : nullptr;
++      const auto* type =
++          description ? description->FindString("mediaType") : nullptr;
++      if (!description || description->size() != 3 || !size || *size <= 0 ||
++          *size > static_cast<int>(kSourceLimit) || !hash ||
++          hash->size() != 64 ||
++          !std::ranges::all_of(*hash,
++                               [](char c) {
++                                 return (c >= '0' && c <= '9') ||
++                                        (c >= 'a' && c <= 'f');
++                               }) ||
++          !type || type->empty() || type->size() > 200) {
++        std::move(callback).Run(
++            Fault("invalid_params", "Invalid immutable document source"));
++        return;
++      }
++      total += *size;
++      sources.push_back(
++          Source{static_cast<size_t>(*size), 0, *hash, *type, {}});
++    }
++    if (total > kSourceLimit || occupied + total > 128 * 1024 * 1024) {
++      std::move(callback).Run(
++          Fault("invalid_params", "Document source memory limit exceeded"));
++      return;
++    }
++    const auto id = base::UnguessableToken::Create().ToString();
++    auto job = base::MakeRefCounted<Job>(std::move(sources), request->Clone());
++    job->set_bytes(total);
++    jobs_.emplace(id, std::move(job));
++    std::move(callback).Run(
++        Result(base::DictValue().Set("action", "begin").Set("jobId", id)));
++    return;
++  }
++  const auto* id = params.FindString("jobId");
++  auto found = id ? jobs_.find(*id) : jobs_.end();
++  if (found == jobs_.end()) {
++    std::move(callback).Run(
++        Fault("ref_stale", "Original document job is unavailable"));
++    return;
++  }
++  if (*action == "append") {
++    found->second->Append(params, std::move(callback));
++  } else if (*action == "run" && params.size() == 2) {
++    found->second->Run(std::move(cancelled), std::move(callback));
++  } else if (*action == "read") {
++    found->second->Read(params, std::move(callback));
++  } else if (*action == "close" && params.size() == 2) {
++    auto job = found->second;
++    jobs_.erase(found);
++    job->Close(std::move(callback));
++  } else {
++    std::move(callback).Run(
++        Fault("invalid_params", "Unsupported document action"));
++  }
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/document_jobs.h b/chrome/browser/ui/aux/document_jobs.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..dad8b41c7d010c3dc2d2bde2e6460c0af846e510
+--- /dev/null
++++ b/chrome/browser/ui/aux/document_jobs.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_DOCUMENT_JOBS_H_
++#define CHROME_BROWSER_UI_AUX_DOCUMENT_JOBS_H_
++#include <atomic>
++#include <map>
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/values.h"
++namespace aux {
++// A controller belongs to one authenticated native connection, never a path or
++// a replacement runtime. Each computation has its own sandboxed utility.
++class NativeDocumentJobs {
++ public:
++  NativeDocumentJobs();
++  ~NativeDocumentJobs();
++  void Dispatch(const base::DictValue& params,
++                std::shared_ptr<std::atomic_bool> cancelled,
++                base::OnceCallback<void(base::DictValue)> callback);
++
++ private:
++  class Job;
++  std::map<std::string, scoped_refptr<Job>> jobs_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 92c37e4379fabf5c7bd7903d4c41f89cc4034e82..613285ef6180b8e513ba9abe3b46f69bcc095042 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -143,7 +143,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+ #if BUILDFLAG(IS_MAC)
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+-      {"native.evidenceDocumentRead", "native.evidenceDocumentsRelease", "native.imageNormalize"});
++      {"native.evidenceDocumentRead", "native.evidenceDocumentsRelease", "native.imageNormalize", "native.documentJob"});
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+       {"native.foundationModelsStatus", "native.foundationModelsStart",
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 17400e80e0c49b60d03d8f7948addfa8ef502be4..a02ef2ded3a026674c6a4a1286337f5308da0d57 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1,3 +1,4 @@
++#include "chrome/browser/ui/aux/document_jobs.h"
+ #include "chrome/browser/ui/aux/image_normalize.h"
+ #include "chrome/browser/ui/aux/native_project.h"
+ // Copyright 2026 The Aux Authors
+@@ -2298,6 +2299,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+     power_activity_->End();
+   }
+ #endif
++  native_document_jobs_.reset();
+   credential_admissions_.clear();
+   if (native_content_blocker_) {
+     native_content_blocker_->RetireConnection(generation);
+@@ -3630,6 +3632,15 @@ void AuxRuntimeHost::Worker::DispatchNative(
+               state->Complete();
+               return;
+             }
++            if (method == "native.documentJob") {
++              if (!owner->native_document_jobs_)
++                owner->native_document_jobs_ = std::make_unique<aux::NativeDocumentJobs>();
++              owner->native_document_jobs_->Dispatch(params, state->cancelled,
++                  base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
++                    state->reply = std::move(reply); state->Complete();
++                  }, state));
++              return;
++            }
+             if (method == "native.imageNormalize") {
+               aux::NormalizeImage(
+                   params, state->cancelled,
+@@ -4035,6 +4046,7 @@ void AuxRuntimeHost::Worker::DispatchNativeRequest(int id,
+   request->deadline.Start(
+       FROM_HERE,
+       base::Seconds(method == "native.recoveryOwnerAuth"      ? 120
++                    : method == "native.documentJob" ? 70
+                     : method == "native.evidenceDocumentRead" ? 65
+                     : method == "native.fillSavedPassword"    ? 60
+                                                               : 30),
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 90a757e33950e895fc608a81c1bf554f0ed3a90f..23c4dd88916a5a3cf952501729e76c240b00edf3 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -51,6 +51,7 @@ class DeviceAuthenticator;
+ namespace aux {
+ class EgressController;
+ class ContentBlockingController;
++class NativeDocumentJobs;
+ class PowerActivityMac;
+ class CdpBroker;
+ class ProfileLibrary;
+@@ -499,6 +500,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+                                    uint64_t connection) const;
+   std::string native_person_connection_id_;
+   bool shutting_down_ = false;
++  std::unique_ptr<aux::NativeDocumentJobs> native_document_jobs_;
+   base::WeakPtr<aux::ContentBlockingController> native_content_blocker_;
+   base::WeakPtr<aux::EgressController> owner_mutation_egress_;
+   std::set<std::string> owner_mutation_tokens_;
+diff --git a/chrome/services/aux_document/BUILD.gn b/chrome/services/aux_document/BUILD.gn
+index e63476b880b082c8d657c1e96dffbc264e74d9e1..42740d90d068e036624b3cfdc26df7a04941b7a4 100644
+--- a/chrome/services/aux_document/BUILD.gn
++++ b/chrome/services/aux_document/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ import("//chrome/browser/buildflags.gni")
+ import("//pdf/features.gni")
++import("//testing/test.gni")
+ assert(enable_aux_shell && enable_pdf)
+ source_set("types") {
+   sources = [
+@@ -14,10 +15,15 @@ source_set("types") {
+   deps = [ "//base" ]
+ }
+ source_set("lib") {
+-  visibility = [ "//chrome/utility:*" ]
++  visibility = [ "//chrome/utility:*", ":aux_document_jobs_unittests" ]
+   configs += [ "//pdf:pdfium_includes" ]
+   sources = [
+     "document_extractor.cc",
++    "media_jobs.h",
++    "audio_inspection.cc",
++    "pdf_jobs.cc",
++    "pdf_safety.cc",
++    "pdf_safety.h",
+     "document_extractor.h",
+     "document_segments.cc",
+     "document_segments.h",
+@@ -30,9 +36,17 @@ source_set("lib") {
+     "//base",
+     "//content/public/common",
+     "//crypto",
++    "//media",
++    "//third_party/ffmpeg",
++    "//ui/gfx/codec",
+     "//mojo/public/cpp/bindings",
+     "//third_party/libxml",
+     "//third_party/pdfium",
+     "//third_party/zlib/google:zip",
+   ]
+ }
++
++test("aux_document_jobs_unittests") {
++  sources = [ "pdf_jobs_unittest.cc", "audio_inspection_unittest.cc" ]
++  deps = [ ":lib", "//base", "//base/test:run_all_unittests", "//base/test:test_support", "//testing/gtest" ]
++}
+diff --git a/chrome/services/aux_document/audio_inspection.cc b/chrome/services/aux_document/audio_inspection.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..d0bb3da048d1769d27a6ba9be516b364b518b924
+--- /dev/null
++++ b/chrome/services/aux_document/audio_inspection.cc
+@@ -0,0 +1,418 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <algorithm>
++#include <array>
++#include <memory>
++#include <optional>
++#include <string_view>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_view_util.h"
++#include "chrome/services/aux_document/media_jobs.h"
++#include "crypto/hash.h"
++#include "media/ffmpeg/ffmpeg_common.h"
++#include "media/ffmpeg/scoped_av_packet.h"
++#include "media/filters/ffmpeg_glue.h"
++#include "media/filters/in_memory_url_protocol.h"
++namespace aux::document {
++namespace {
++uint32_t Little(base::span<const uint8_t> bytes, size_t offset, size_t count) {
++  uint32_t value = 0;
++  for (size_t i = 0; i < count; ++i) {
++    value |= uint32_t(bytes[offset + i]) << (8 * i);
++  }
++  return value;
++}
++std::optional<uint64_t> WavFrames(base::span<const uint8_t> bytes) {
++  const auto text = base::as_string_view(bytes);
++  if (bytes.size() < 44 || !text.starts_with("RIFF") ||
++      text.substr(8, 4) != "WAVE" ||
++      uint64_t(Little(bytes, 4, 4)) + 8 != bytes.size()) {
++    return std::nullopt;
++  }
++  size_t offset = 12;
++  uint32_t align = 0;
++  std::optional<uint64_t> frames;
++  while (offset < bytes.size()) {
++    if (bytes.size() - offset < 8) {
++      return std::nullopt;
++    }
++    const size_t size = Little(bytes, offset + 4, 4);
++    const auto kind = text.substr(offset, 4);
++    offset += 8;
++    if (size > bytes.size() - offset) {
++      return std::nullopt;
++    }
++    if (kind == "fmt ") {
++      if (align || size < 16 || size > 40) {
++        return std::nullopt;
++      }
++      const auto format = Little(bytes, offset, 2),
++                 channels = Little(bytes, offset + 2, 2);
++      const auto rate = Little(bytes, offset + 4, 4),
++                 bits = Little(bytes, offset + 14, 2);
++      align = Little(bytes, offset + 12, 2);
++      if ((format != 1 && format != 3) || channels < 1 || channels > 2 ||
++          !rate || rate > 192000 ||
++          (bits != 8 && bits != 16 && bits != 24 && bits != 32) ||
++          (format == 3 && bits != 32) || align != channels * bits / 8 ||
++          Little(bytes, offset + 8, 4) != rate * align) {
++        return std::nullopt;
++      }
++    } else if (kind == "data") {
++      if (!align || frames || !size || size % align) {
++        return std::nullopt;
++      }
++      frames = size / align;
++    }
++    offset += size;
++    if (size % 2) {
++      if (offset == bytes.size()) {
++        return std::nullopt;
++      }
++      ++offset;
++    }
++  }
++  return frames;
++}
++uint64_t Big(base::span<const uint8_t> bytes, size_t offset, size_t count) {
++  uint64_t value = 0;
++  for (size_t i = 0; i < count; ++i) {
++    value = (value << 8) | bytes[offset + i];
++  }
++  return value;
++}
++std::optional<uint64_t> FlacFrames(base::span<const uint8_t> bytes) {
++  if (bytes.size() < 42 || base::as_string_view(bytes).substr(0, 4) != "fLaC") {
++    return std::nullopt;
++  }
++  size_t offset = 4;
++  bool last = false;
++  uint64_t frames = 0;
++  while (!last) {
++    if (bytes.size() - offset < 4 || offset > 1024 * 1024) {
++      return std::nullopt;
++    }
++    const uint8_t type = bytes[offset] & 127;
++    last = (bytes[offset] & 128) != 0;
++    const size_t size = Big(bytes, offset + 1, 3);
++    if (size > bytes.size() - offset - 4 || type == 127 ||
++        (offset == 4 ? type != 0 : type == 0)) {
++      return std::nullopt;
++    }
++    offset += 4;
++    if (type == 0) {
++      if (size != 34) {
++        return std::nullopt;
++      }
++      const uint64_t stream = Big(bytes, offset + 10, 8);
++      const uint64_t rate = stream >> 44;
++      const uint64_t channels = ((stream >> 41) & 7) + 1;
++      frames = stream & 0xfffffffffULL;
++      if (!rate || rate > 192000 || channels > 2 || !frames ||
++          frames > rate * 600) {
++        return std::nullopt;
++      }
++    }
++    offset += size;
++  }
++  return offset < bytes.size() && frames ? std::optional(frames) : std::nullopt;
++}
++std::optional<uint64_t> Mp3Frames(base::span<const uint8_t> bytes) {
++  const auto text = base::as_string_view(bytes);
++  size_t offset = 0, end = bytes.size();
++  if (text.starts_with("ID3")) {
++    if (bytes.size() < 10 || bytes[3] < 2 || bytes[3] > 4 || bytes[4] == 255) {
++      return std::nullopt;
++    }
++    size_t length = 0;
++    for (size_t i = 6; i < 10; ++i) {
++      if (bytes[i] & 128) {
++        return std::nullopt;
++      }
++      length = (length << 7) | bytes[i];
++    }
++    offset = 10 + length + ((bytes[3] == 4 && (bytes[5] & 16)) ? 10 : 0);
++    if (offset > bytes.size() || offset > 1024 * 1024) {
++      return std::nullopt;
++    }
++  }
++  if (end >= 128 && text.substr(end - 128, 3) == "TAG") {
++    end -= 128;
++  }
++  constexpr std::array<int, 14> mpeg1 = {32,  40,  48,  56,  64,  80,  96,
++                                         112, 128, 160, 192, 224, 256, 320};
++  constexpr std::array<int, 14> mpeg2 = {8,  16, 24, 32,  40,  48,  56,
++                                         64, 80, 96, 112, 128, 144, 160};
++  constexpr std::array<int, 3> rates = {44100, 48000, 32000};
++  int original_rate = 0, original_channels = 0;
++  uint64_t samples = 0;
++  while (offset < end) {
++    if (end - offset < 4) {
++      return std::nullopt;
++    }
++    const uint32_t header = Big(bytes, offset, 4);
++    const int version = (header >> 19) & 3, layer = (header >> 17) & 3;
++    const int bitrate = (header >> 12) & 15, sampling = (header >> 10) & 3;
++    if ((header & 0xffe00000U) != 0xffe00000U || version == 1 || layer != 1 ||
++        !bitrate || bitrate == 15 || sampling == 3 || (header & 3) == 2) {
++      return std::nullopt;
++    }
++    const int rate = rates[sampling] / (version == 3   ? 1
++                                        : version == 2 ? 2
++                                                       : 4);
++    const int channels = ((header >> 6) & 3) == 3 ? 1 : 2;
++    if (original_rate &&
++        (original_rate != rate || original_channels != channels)) {
++      return std::nullopt;
++    }
++    original_rate = rate;
++    original_channels = channels;
++    const int kbps = (version == 3 ? mpeg1 : mpeg2)[bitrate - 1];
++    const size_t length =
++        (version == 3 ? 144 : 72) * kbps * 1000 / rate + ((header >> 9) & 1);
++    if (length < 4 || length > end - offset) {
++      return std::nullopt;
++    }
++    samples += version == 3 ? 1152 : 576;
++    if (samples > uint64_t(rate) * 601) {
++      return std::nullopt;
++    }
++    offset += length;
++  }
++  return samples ? std::optional(samples) : std::nullopt;
++}
++bool Mp4Container(base::span<const uint8_t> bytes) {
++  const auto text = base::as_string_view(bytes);
++  if (bytes.size() < 24 || text.substr(4, 4) != "ftyp") {
++    return false;
++  }
++  size_t offset = 0;
++  bool movie = false, data = false;
++  unsigned boxes = 0;
++  while (offset < bytes.size()) {
++    if (++boxes > 1024 || bytes.size() - offset < 8) {
++      return false;
++    }
++    uint64_t size = Big(bytes, offset, 4);
++    size_t header = 8;
++    const auto type = text.substr(offset + 4, 4);
++    if (size == 1) {
++      if (bytes.size() - offset < 16) {
++        return false;
++      }
++      size = Big(bytes, offset + 8, 8);
++      header = 16;
++    }
++    // Reject open-ended and fragmented containers. All decoding uses
++    // memory-only IO.
++    if (size < header || size > bytes.size() - offset) {
++      return false;
++    }
++    if (type == "moov") {
++      if (movie) {
++        return false;
++      }
++      movie = true;
++    } else if (type == "mdat") {
++      if (data || size == header) {
++        return false;
++      }
++      data = true;
++    } else if (type != "ftyp" && type != "free" && type != "skip" &&
++               type != "wide") {
++      return false;
++    }
++    if (type == "ftyp" &&
++        (offset || size < header + 8 || (size - header) % 4)) {
++      return false;
++    }
++    offset += static_cast<size_t>(size);
++  }
++  return movie && data;
++}
++// The container must agree with the declared source. Never pass a URL to
++// FFmpeg.
++bool Header(base::span<const uint8_t> bytes, std::string_view type) {
++  const auto text = base::as_string_view(bytes);
++  if (type == "audio/wav" || type == "audio/x-wav" || type == "audio/wave") {
++    return WavFrames(bytes).has_value();
++  }
++  if (type == "audio/ogg" || type == "application/ogg" ||
++      type == "audio/opus") {
++    // A complete final Ogg page must explicitly end its logical bitstream.
++    if (!text.starts_with("OggS")) {
++      return false;
++    }
++    size_t offset = 0;
++    bool ended = false;
++    uint32_t serial = 0, sequence = 0;
++    bool continued = false;
++    while (offset < bytes.size()) {
++      if (bytes.size() - offset < 27 || text.substr(offset, 4) != "OggS" ||
++          bytes[offset + 4] != 0 || ended) {
++        return false;
++      }
++      const size_t segments = bytes[offset + 26];
++      if (bytes.size() - offset < 27 + segments) {
++        return false;
++      }
++      size_t size = 27 + segments;
++      for (size_t i = 0; i < segments; ++i) {
++        size += bytes[offset + 27 + i];
++      }
++      if (size > bytes.size() - offset ||
++          ((bytes[offset + 5] & 1) != 0) != continued ||
++          (offset == 0 ? !(bytes[offset + 5] & 2) : (bytes[offset + 5] & 2))) {
++        return false;
++      }
++      if (!offset) {
++        serial = Little(bytes, offset + 14, 4);
++      }
++      if (Little(bytes, offset + 14, 4) != serial ||
++          Little(bytes, offset + 18, 4) != sequence++) {
++        return false;
++      }
++      uint32_t crc = 0;
++      for (size_t i = 0; i < size; ++i) {
++        const uint8_t value = i >= 22 && i < 26 ? 0 : bytes[offset + i];
++        crc ^= uint32_t(value) << 24;
++        for (int bit = 0; bit < 8; ++bit) {
++          crc = (crc << 1) ^ ((crc & 0x80000000) ? 0x04c11db7 : 0);
++        }
++      }
++      if (crc != Little(bytes, offset + 22, 4)) {
++        return false;
++      }
++      continued = segments && bytes[offset + 26 + segments] == 255;
++      ended = (bytes[offset + 5] & 4) != 0;
++      offset += size;
++    }
++    return ended && !continued;
++  }
++  if (type == "audio/flac" || type == "audio/x-flac") {
++    return FlacFrames(bytes).has_value();
++  }
++  if (type == "audio/mpeg" || type == "audio/mp3") {
++    return Mp3Frames(bytes).has_value();
++  }
++  if (type == "audio/mp4" || type == "audio/x-m4a") {
++    return Mp4Container(bytes);
++  }
++  return false;
++}
++}  // namespace
++JobResult InspectAudio(base::span<const uint8_t> bytes,
++                       const std::string& media_type) {
++  JobResult result;
++  auto fail = [&](std::string reason) {
++    result.failure = std::move(reason);
++    return std::move(result);
++  };
++  if (bytes.empty() || bytes.size() > 20 * 1024 * 1024 ||
++      !Header(bytes, media_type)) {
++    return fail("Unsupported, truncated or falsely declared audio container");
++  }
++  media::InMemoryUrlProtocol protocol(bytes, false);
++  media::FFmpegGlue glue(&protocol);
++  if (!glue.OpenContext()) {
++    return fail("Audio container could not be opened");
++  }
++  auto* format = glue.format_context();
++  format->error_recognition =
++      AV_EF_EXPLODE | AV_EF_CRCCHECK | AV_EF_BITSTREAM | AV_EF_BUFFER;
++  if (avformat_find_stream_info(format, nullptr) < 0) {
++    return fail("Audio stream information is invalid");
++  }
++  const auto streams = media::AVFormatContextToSpan(format);
++  if (streams.size() != 1 ||
++      streams[0]->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
++    return fail("Only a single audio stream is supported");
++  }
++  auto context = media::AVStreamToAVCodecContext(streams[0]);
++  if (!context) {
++    return fail("Audio codec configuration is invalid");
++  }
++  const AVCodec* codec = avcodec_find_decoder(context->codec_id);
++  context->thread_count = 1;
++  context->err_recognition =
++      AV_EF_EXPLODE | AV_EF_CRCCHECK | AV_EF_BITSTREAM | AV_EF_BUFFER;
++  if (!codec || avcodec_open2(context.get(), codec, nullptr) < 0) {
++    return fail("This build does not support the audio codec");
++  }
++  const int rate = context->sample_rate,
++            channels = context->ch_layout.nb_channels;
++  if (rate <= 0 || rate > 192000 || channels < 1 || channels > 2) {
++    return fail("Audio rate or channel count exceeds admission bounds");
++  }
++  std::unique_ptr<AVFrame, media::ScopedPtrAVFreeFrame> frame(av_frame_alloc());
++  auto packet = media::ScopedAVPacket::Allocate();
++  if (!frame || !packet) {
++    return fail("Audio decoder allocation failed");
++  }
++  uint64_t frames = 0;
++  bool invalid = false;
++  auto drain = [&]() {
++    int status;
++    while ((status = avcodec_receive_frame(context.get(), frame.get())) >= 0) {
++      if (frame->sample_rate != rate ||
++          frame->ch_layout.nb_channels != channels || frame->nb_samples <= 0 ||
++          frame->decode_error_flags || (frame->flags & AV_FRAME_FLAG_CORRUPT)) {
++        invalid = true;
++      }
++      frames += std::max(frame->nb_samples, 0);
++      av_frame_unref(frame.get());
++      if (invalid || frames > uint64_t(rate) * 600) {
++        return AVERROR_INVALIDDATA;
++      }
++    }
++    return status;
++  };
++  int read;
++  while ((read = av_read_frame(format, packet.get())) >= 0) {
++    if (packet->stream_index != 0 || (packet->flags & AV_PKT_FLAG_CORRUPT) ||
++        avcodec_send_packet(context.get(), packet.get()) < 0) {
++      return fail("Audio packet decoding failed");
++    }
++    av_packet_unref(packet.get());
++    if (drain() != AVERROR(EAGAIN)) {
++      return fail("Audio decoding failed or exceeded limits");
++    }
++  }
++  if (read != AVERROR_EOF ||
++      (format->pb && format->pb->error && format->pb->error != AVERROR_EOF) ||
++      avcodec_send_packet(context.get(), nullptr) < 0 ||
++      drain() != AVERROR_EOF || invalid || !frames) {
++    return fail("Audio did not decode completely");
++  }
++  if ((media_type == "audio/wav" || media_type == "audio/x-wav" ||
++       media_type == "audio/wave") &&
++      WavFrames(bytes) != frames) {
++    return fail("WAV decoded frames do not match its complete sample data");
++  }
++  if ((media_type == "audio/flac" || media_type == "audio/x-flac") &&
++      FlacFrames(bytes) != frames) {
++    return fail("FLAC decoded frames do not match the complete stream receipt");
++  }
++  if (media_type == "audio/mpeg" || media_type == "audio/mp3") {
++    const auto encoded = Mp3Frames(bytes);
++    if (!encoded || frames > *encoded || *encoded - frames > 3456) {
++      return fail("MP3 decoded frames do not match complete frame boundaries");
++    }
++  }
++  const std::string hash = base::HexEncodeLower(crypto::hash::Sha256(bytes));
++  result.report.Set("kind", "audioInspect");
++  result.report.Set("sourceSha256", base::ListValue().Append(hash));
++  result.report.Set("audio",
++                    base::DictValue()
++                        .Set("sourceSha256", hash)
++                        .Set("mediaType", media_type)
++                        .Set("decodedFrames", static_cast<double>(frames))
++                        .Set("sampleRate", rate)
++                        .Set("channels", channels)
++                        .Set("durationSeconds", double(frames) / rate)
++                        .Set("complete", true));
++  return result;
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/audio_inspection_unittest.cc b/chrome/services/aux_document/audio_inspection_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..123c242fab77b40069cf82c174c14c493106816e
+--- /dev/null
++++ b/chrome/services/aux_document/audio_inspection_unittest.cc
+@@ -0,0 +1,260 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <cstdint>
++#include <vector>
++
++#include "base/base64.h"
++#include "base/containers/span.h"
++#include "chrome/services/aux_document/media_jobs.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux::document {
++namespace {
++std::vector<uint8_t> Wave() {
++  std::vector<uint8_t> bytes(44 + 3200, 0);
++  auto text = [&](size_t at, std::string_view value) {
++    base::span(bytes)
++        .subspan(at, value.size())
++        .copy_from(base::as_byte_span(value));
++  };
++  auto number = [&](size_t at, uint32_t value, int count) {
++    for (int i = 0; i < count; ++i) {
++      bytes[at + i] = (value >> (i * 8)) & 255;
++    }
++  };
++  text(0, "RIFF");
++  number(4, bytes.size() - 8, 4);
++  text(8, "WAVEfmt ");
++  number(16, 16, 4);
++  number(20, 1, 2);
++  number(22, 1, 2);
++  number(24, 16000, 4);
++  number(28, 32000, 4);
++  number(32, 2, 2);
++  number(34, 16, 2);
++  text(36, "data");
++  number(40, 3200, 4);
++  return bytes;
++}
++TEST(AuxAudioInspection, DecodesWholeImmutableWaveWithoutRetainedSamples) {
++  const auto bytes = Wave();
++  const auto before = bytes;
++  auto result = InspectAudio(bytes, "audio/wav");
++  ASSERT_TRUE(result.failure.empty()) << result.failure;
++  EXPECT_TRUE(result.outputs.empty());
++  const auto* audio = result.report.FindDict("audio");
++  ASSERT_TRUE(audio);
++  EXPECT_EQ(audio->FindDouble("decodedFrames"), 1600);
++  EXPECT_EQ(audio->FindInt("sampleRate"), 16000);
++  EXPECT_EQ(audio->FindInt("channels"), 1);
++  EXPECT_EQ(audio->FindDouble("durationSeconds"), 0.1);
++  EXPECT_TRUE(audio->FindBool("complete").value_or(false));
++  EXPECT_EQ(bytes, before);
++}
++TEST(AuxAudioInspection, RejectsTruncatedOrFalselyDeclaredSources) {
++  auto bytes = Wave();
++  EXPECT_FALSE(InspectAudio(bytes, "audio/mpeg").failure.empty());
++  bytes.pop_back();
++  EXPECT_FALSE(InspectAudio(bytes, "audio/wav").failure.empty());
++  bytes[4] -= 1;
++  EXPECT_FALSE(InspectAudio(bytes, "audio/wav").failure.empty());
++  bytes = Wave();
++  bytes[22] = 3;
++  EXPECT_FALSE(InspectAudio(bytes, "audio/wav").failure.empty());
++  bytes = Wave();
++  bytes[40] -= 2;
++  EXPECT_FALSE(InspectAudio(bytes, "audio/wav").failure.empty());
++  EXPECT_FALSE(InspectAudio({}, "audio/wav").failure.empty());
++}
++// Synthetic 440Hz / 200ms mono sources generated locally with FFmpeg. No user
++// audio.
++TEST(AuxAudioInspection,
++     ValidatesCompleteCompressedContainersAndDecodedFrames) {
++  const std::pair<std::string_view, std::string_view> sources[] = {
++      {"audio/flac",
++       "ZkxhQwAAACIEAAQAAABvAAGPA+"
++       "gA8AAADIBO9t9rRzHnHF0T8yjdE5gkhAAALAwAAABMYXZmNjMuMS4xMDIBAAAAFAAAAGVuY"
++       "29k"
++       "ZXI9TGF2ZjYzLjEuMTAy//ilCACqTgAAAsAFawftCjIMKg3FDvbmKYzIFfGoJGfTgNN/"
++       "1n8bgAEsKTQKZQKYSmQiZMlJM58yhKZh"
++       "oUM5MKGcw58k8w5CIZknChhSclCk0JSUJmEQmZhnhSZMkIhmQ84TMkoVDlIWEochEMwiGWG"
++       "aBnOHmTJJmFhmUhQpk5QpkykySeSZ"
++       "SaBTPJQpQ5OFDkLDhZlAszKZJQ5zoFM0kyWZ4UIUmGhLCk0CmUCmEpkImTJSTOfMoSmYaFD"
++       "OTChnMOfJPMOQiGZJwoYUnJQpNCUl"
++       "CZhEJmYZ4UmTJCIZkPOEzJKFQ5SFhKHIRDMIhlhmgZzh5kySZhYZlIUKZOUKZMpMknkmUmg"
++       "UzyUKUOThQ5Cw4WZQLMymSUOc6BTN"
++       "JMlmeFCFJhoSwpNAplAphKZCJkyUkznzKEpmGhQzkwoZzDnyTzDkIhmScKGFJyUKTQlJQmY"
++       "RCZmGeFJkyQiGZDzhMyShUOUhYShy"
++       "EQzCWb7/+KUIAa1MDYEOxw+cD/sP3w9KDkHmLJSvWDNv6N/UUQm/"
++       "CgAJYFCykMww5JMwIkzKShEpMlCmTChkknmZToEQoZnChQLJ"
++       "MKHIUnCkygRJhhQwkoFJSdAiZplJSZmBECUJhYbChsCIUIgRChzCRChMNMpSfMiBzMOFAw5"
++       "woZyhT8kzMMkIgUKZkoUIhPKFJocl"
++       "DmEQOUoUuEQ4ckIgZkMw4czIgRhZQlIShSEiBQoEQKFJlgULKQzDDkkzAiTMpKESkyUKZMK"
++       "GSSeZlOgRChmcKFAskwochScKTKBE"
++       "mGFDCSgUlJ0CJmmUlJmYEQJQmFhsKGwIhQiBEKHMJEKEw0ylJ8yIHMw4UDDnChnKFPyTMwy"
++       "QiBQpmShQiE8oUmhyUOYRA5ShS4RD"
++       "hyQiBmQzDhzMiBGFlCUhKFISIFCgRAoUmWBQspDMMOSTMCJMykoRKTJQpkwoZJJ5mU6BEKG"
++       "ZwoUCyTChyFJwpMoESYYUMJKBSUnQ"
++       "ImaZSUmZgRAlCYWGwobAiFCIEQocwkQoTDTKKTf/"
++       "+KUIAqRMDnoNFwtQCTMG0AQ5AYLmKx69QAlEF9e44Uy+vQAIYUJTM0iFOcKG"
++       "ZDDJJyT6FyIUyTIUMKEMkKFJppoaYRCYZhhkhQmHMiHSXOEySQoHAyUkYYhZIhShEMpDDgY"
++       "cMh5m8pQsMzIYFDJkoUzSnyeSSFCT"
++       "AoZ5oUoVOhQ5DIZCkMoFlMpToWUmYFJDhJks+"
++       "hEkThwJSBQnAoYUCmGlJEpKaSZkJJhhQlMzSIU5woZkMMknJPoXIhTJMhQwoQyQ"
++       "oUmmmhphEJhmGGSFCYcyIdJc4TJJCgcDJSRhiFkiFKEQykMOBhwyHmbylCwzMhgUMmShTNK"
++       "fJ5JIUJMChnmhShU6FDkMhkKQygWU"
++       "ylOhZSZgUkOEmSz6ESROHAlIFCcChhQKYaUkSkppJmQkmGFCUzNIhTnChmQwySck+"
++       "hciFMkyFDChDJChSaaaGmEQmGYYZIUJhzIh"
++       "0lzhMkkKBwMlJGGIWSIUoRDKQw4GHDIeZvKULDMyGBAwXP/4ZQgDf7BOAgL/"
++       "QPyD+eH3bvU881zx3eYw+oKC1bak6hWdMcLrvoMA"
++       "RY6ckIRhiBDDCCGMzJrHhVFoehaPSxYkNA0DECGECMExsT791O5ylPR49kaCYZgjAiBiCEI"
++       "iRi48FcpSnV3/szIJgwA3RQ=="},
++      {"audio/mpeg",
++       "SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYzLjEuMTAyAAAAAAAAAAAAAAD/"
++       "80jEABx4jmwVWDAAJVr1TqnVOqdU6p13sTa+sIiY"
++       "XIToaOATm2JzibSmgRgAWYLwKCMQciHJYTJgMBgMLJpg4CAIAg6Jwf5R050+c5fznL+"
++       "7p92UBMHz6w+CAYlAGD75MEDmXf3cuD4P"
++       "g+HwQBAEAQAYPg+D4fBAEAQckTg+IAkggQBoEGBYHb5/mDIVAQH/"
++       "80jEESCh9mwtnaAAnQyAPoOmIxPmuyVGDRVGxB6mEYvHDIwg"
++       "YuCBoB4GGFgYpiCgsnAMliAaDF0NmC0YLQhSP+JREFRyhcwub/yZHNHNJoixFv/"
++       "yZIqQEyIsRYx//y6XTIvF5Eul1L//8vF5Eul0"
++       "GgqCrP/lgqGi3///9VqqoAAAkgihD+f/9AzpTKC28MD/"
++       "80jEERmYdiY33kAAPAUMCUGQwgQFjCCDNMW4705dDBj9lP8MrsuIx1ha"
++       "zE0JHMAMP0wcgIzAOABTuVih6AQsoa23Mzm79i/1v/7yd1ev/"
++       "eXv5Nbuz7m7f2XEPuqP7u79PVX//9SpQUwkGMgGzNEczduNCqzA"
++       "ZQRwwLwItMHTGVDKdP641kshKMGEB4TA1QH/"
++       "80jELSPjugQA38RwwMKMDRzBDwTcwO8BIMBQAFTAHwAAMADUzm8kkppt/rXVoZoX"
++       "D49Be/9c9Am9TUerVHq19N9Pj1erVyZMUnRt/VoXJtjeurV+D12qSg0Ho9ngsm6e9G2r/"
++       "rtj+uvw06jFb3b1gAAR+//krWELpjwA"
++       "KKAC5gBgCIYB2A/mA5Abhga4Nib/80jEICEDvg3o/"
++       "0SoDtCZRktd40afEM2GE+hGpqysJwdhRmmfRlKF5hcAwQDaAxXbEH8jeF//"
++       "euurUyZKiv/5aH2xt9seuuu39Xq9dc2uN6f65M++farV1euT59qa6YLPn2+9Gq3/p6/"
++       "XX4OWtTp2FaAAAKOpJRfr/+65bDxQAYMA"
++       "vMAAAowHARgUE6YRoab/"
++       "80jEHxnQdio3XhgAYr5p5wMh1nuIb8ZBQhxghB5GIkQYCA6DB2AmAQCid6l7/"
++       "5KLP7V2pv3fsRenRe3p"
++       "65NevTp+9H0L9/qe1U0i71Wq/"
++       "ur9iPp6lQSSSSBSAAMrBgwBgVCNEJIL1hzCMBzCkPwACIAA0woFw4eKEsIkZ1jyiYkeCU0Q"
++       "DLgH"
++       "BAAElgGDgBj/"
++       "80jEOivaQmxVnaAALAOKgVAO1gMYKCASAoXBuWK8I+"
++       "E8kN3w4oLTA9ATaHLjhHUZE8Rv4pMZYR4M4QEXGYl0pKNj"
++       "v8fZFhmCUJ0cZRWiqkv/zYnDI1J8xPlwyRVSXR//zxPl0+XC8aF81Ny4bf/"
++       "0A6DgEDwWAiP//l0nAGk4A0nBqg3XElzJDIrKDOs3"
++       "UtT/"
++       "80jEDRmI3cgN2EgAgoLczAc0FSRVWLJF2nzYCu5rz9R1YVQV1XSVMBJYEgSJnqkIpkqQkqG"
++       "NIkUaRImpXFDolBU6DTgaDpUN"
++       "rBVwiz3K+Hbf9v/w1W5Qdp/y3//y3/"
++       "8NSx4RPgrVTEFNRTQuMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU="},
++      {"audio/mp4",
++       "AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAAhmcmVlAAAE7G1kYXTcAExhdmM2My4"
++       "xLjEwMgACPKtaqgiNRYVVze/fPrqt"
++       "SXVSbiROeuUQ9wH/"
++       "5juruHursnY3FvG3FuktG6S4tnqeaap3W24ebuNcWzTxl1jHW2fsUQPJ5OByXH//"
++       "foKlaq2Ls7LuJaDZrjPb"
++       "blWU47E3LE46w2Ksz1xnqzPVmOsNysNysNajY59jn1spVKVSlUpVKVSlUpVKVSlUSUSUSUS"
++       "USUSUSUSUSUSUSUSUSUSUSUSUSUSU"
++       "SUSUSUSUSUSUSUSUSUSUSVLLLLL9z+"
++       "TfJvzW9b1LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLKQWcmxBBZybFEFI"
++       "JrQQWgms5BiSa0kFIJrSQUgmxZBKSaUEFIJqQQUgmtRBKSakkFJJqUQSomhJBKSaUkEqJmM"
++       "QUkmlPAD0ntrKMuddqGXIq3HSElbr"
++       "pG//r//f/ecacXkefG8//i/n8QtxpUfX/9b/2daTWuM5qvj//R/"
++       "666uNcarmqduigjBt37Af7dNJHG3RgfiFLd92McxeeeeeS88x"
++       "55557RNdD39KI+MZ+"
++       "IbaLjJScbJ7suCwhsYLPBvYbGVDAlCilO98p3uad6dSnkznOp76fL5T7B9Po98ubYgHbed+"
++       "XNzHRQF0bhsV"
++       "IVFHGTo4FN+"
++       "84LSkpQreBKbgCMvckaOBJVNwSqYEjb2rLBIzPO8ZkQJEycTDSJCZSJKHpHTSdjSyqN1Rya"
++       "WVU3VHJpZWTKRotUmW"
++       "mWWmqLVGlDRpBSao0mWrnK2NGkyVVUWmfzfT/"
++       "z6et+uGMS1harrlqWkzdSbKiVhZqiXQpFy2iYE/pIWlE44DckpX/6l2/o8GspAV"
++       "eQYGGEbrqQtrwkFFII3cUSxfADSYDkXC0dtM9nM9iZ6RbNWUi2aums8xNRrZ5xUCyeSjI0I"
++       "m3PU3w4KH2E1eLlQlx4jwAPSfttQ0"
++       "orSKtVWpHVZitiOp//f/+fv0y5qR5Sd//5//n8e1qmuK5lb//zf+X+/"
++       "xCa4rnWIbdNC4Rt0YH4NJfA6R+GzF6yDADWCx2weaV6RM"
++       "5maVOJaZmtTmQkG0SEgwScNhJVZvNpwmmbZCQn+Wx5z1dJrT03ZcoLUFwSV10MAWpr7J/"
++       "XcXfZdm/LA4wcANvPSs+J5qU+qn5bVV"
++       "1Zfq0+0r81VPyl9VKTSokkqRpnkZ5nZnYXmFHmdpu3r7nZ0rpkmeb7/"
++       "nr7uvcOODVtXe5udNeNbE7uxIqE8VHPr+kwRD2FRItuy8"
++       "F151++"
++       "a8fRRdDf51b0a6ui1s7RJqmmqkomdhqmFGFnkmwm41U6mft8Pt4eTwmlAmTVTXNUzIM18VU"
++       "/NwAQKfphpB2oTfhu7XTEPy"
++       "//uf7/q40vpnDo3//m1/5fyBLyr8//3vP/"
++       "cEkqqTbp6IxAK4ia9+0doXZztbfNePHN1XU7NNLNNLNNLNsIgj0hXZ64l6v5cJ2AGz"
++       "LO7PeTRsUCHCRV8FkzE8HcB8nMmk4rDg5NSyZxlFkxCwMIB/"
++       "T+zgHrfNYAAcb6PzHi4AAW3Tc9xcAAACe4vB4PB3WAAABGcHg7rd"
++       "7rD/9f/+v//X//rwdP6f0/p/"
++       "TwdP5+MJQpRF01SnrHQxI5NnffsW++"
++       "yrq2K2qexU9ip7FT09PYqenp6enp6enp6enmzZs2bNmzZs"
++       "2bGmxpsaNGsccccccccceAEYgbRwAAADDm1vb3YAAABsbXZoZAAAAAAAAAAAAAAAAAAAPoA"
++       "AAAyAAAEAAAEAAAAAAAAAAAAAAAAB"
++       "AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
++       "AAAAAAAAAAAIAAAI5dHJhawAAAFx0"
++       "a2hkAAAAAwAAAAAAAAAAAAAAAQAAAAAAAAyAAAAAAAAAAAAAAAABAQAAAAABAAAAAAAAAAA"
++       "AAAAAAAAAAQAAAAAAAAAAAAAAAAAA"
++       "QAAAAAAAAAAAAAAAAAAAJGVkdHMAAAAcZWxzdAAAAAAAAAABAAAMgAAABAAAAQAAAAABsW1"
++       "kaWEAAAAgbWRoZAAAAAAAAAAAAAAA"
++       "AAAAPoAAABCAVcQAAAAAAC1oZGxyAAAAAAAAAABzb3VuAAAAAAAAAAAAAAAAU291bmRIYW5"
++       "kbGVyAAAAAVxtaW5mAAAAEHNtaGQA"
++       "AAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAASBzdGJsAAA"
++       "AanN0c2QAAAAAAAAAAQAAAFptcDRh"
++       "AAAAAAAAAAEAAAAAAAAAAAABABAAAAAAPoAAAAAAADZlc2RzAAAAAAOAgIAlAAEABICAgBd"
++       "AFQAAAAAAlDMAAJQzBYCAgAUUCFbl"
++       "AAaAgIABAgAAACBzdHRzAAAAAAAAAAIAAAAEAAAEAAAAAAEAAACAAAAAHHN0c2MAAAAAAAA"
++       "AAQAAAAEAAAAFAAAAAQAAAChzdHN6"
++       "AAAAAAAAAAAAAAAFAAABOgAAAYIAAAEjAAABAAAAAAUAAAAUc3RjbwAAAAAAAAABAAAALAA"
++       "AABpzZ3BkAQAAAHJvbGwAAAACAAAA"
++       "Af//"
++       "AAAAHHNiZ3AAAAAAcm9sbAAAAAEAAAAFAAAAAQAAAGF1ZHRhAAAAWW1ldGEAAAAAAAAAIWh"
++       "kbHIAAAAAAAAAAG1kaXJhcHBs"
++       "AAAAAAAAAAAAAAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZmNjMuMS4xMDI"
++       "="},
++      {"audio/ogg",
++       "T2dnUwACAAAAAAAAAAD51gC9AAAAAPcteUIBE09wdXNIZWFkAQE4AYA+"
++       "AAAAAABPZ2dTAAAAAAAAAAAAAPnWAL0BAAAAE1EcOwE8"
++       "T3B1c1RhZ3MMAAAATGF2ZjYzLjEuMTAyAQAAABwAAABlbmNvZGVyPUxhdmM2My4xLjEwMiB"
++       "saWJvcHVzT2dnUwAEuCYAAAAAAAD5"
++       "1gC9AgAAAOaUz9ILWTkzLzYxODIzMxxIgaby87FxvQAAAmKd2ZCV44WINJetOpTEhxiDlcY"
++       "3i1ViiGqiJuay+GyspBU7xPrBrv46"
++       "Dve1DCNMXkHhTBzBDa2B9RqFsuB8skL52uoXbM5jUbq5qrK3KEic1kHn/JVNTo8X/"
++       "4fAarhGWYNwj7qrmZ32ERcfZ/AZKyLTi8B0"
++       "doOiuxQ3r6j5/"
++       "sbI83iGilcjQEiZwl9zLdIzVGDHPh8G8rqNW856YJgGqCyfwxpK5lzwXPblgD29zUgq9tmM"
++       "+SlrWF1swEiZwl9z"
++       "LdIxSRA/VYtJdEJXIvX2rB9J8dnXjwTQ5RISpnqr/"
++       "ishikPehW5auZ+ASJnCX3Mt0jEzsmPRyiPo8PXudtzd7MBron9h6+I3wxZM"
++       "T4SKoI6XVh+"
++       "WY1NrksVA7AZ5LvLFSJmdcrCTuovBNlIDnxYgPma2vpoqubIYYot1ZKAjY5FJS42bQxINUr"
++       "RlqM0mSHMegEiZSh9z"
++       "LdIxSi8+QWpW3PmL/inVSFXny0pdBSaQDPKU8/"
++       "i7Yyr4QkPpfV6lFM2X7EKzxBSb6FBwSJlKH3Mt0jM6RVO/GTAm3fYp3a9uKCa0"
++       "ermdAVF4iMUPSmiGdZUKgbfEY3XZAk3Aq1lImUofcy3SLe3XvWID3aDx/"
++       "E8N+9peOND0GnH+u3zzCM9/WnSWY7VMJs4140ny0Z1W"
++       "7FxImUofdZz8RdDFV7Sjrl/"
++       "bAvVkLEhruXKxUzAdJsjwRpLvjzzNMr3pvycq7eskpPiqdUBIBYyF8BHm4vWHEvmqI5do4B"
++       "aBHFXp"
++       "Z4u8YjKA"},
++  };
++  for (const auto& [type, encoded] : sources) {
++    auto decoded = base::Base64Decode(encoded);
++    ASSERT_TRUE(decoded.has_value());
++    const auto original = *decoded;
++    auto result = InspectAudio(*decoded, std::string(type));
++    ASSERT_TRUE(result.failure.empty()) << type << ": " << result.failure;
++    ASSERT_TRUE(result.outputs.empty());
++    const auto* audio = result.report.FindDict("audio");
++    ASSERT_TRUE(audio);
++    EXPECT_GT(audio->FindDouble("decodedFrames").value_or(0), 0);
++    EXPECT_GT(audio->FindDouble("durationSeconds").value_or(0), 0.1);
++    EXPECT_LT(audio->FindDouble("durationSeconds").value_or(1), 0.5);
++    EXPECT_EQ(audio->FindInt("channels"), 1);
++    EXPECT_TRUE(audio->FindBool("complete").value_or(false));
++    EXPECT_EQ(*decoded, original);
++    EXPECT_FALSE(InspectAudio(*decoded, "audio/wav").failure.empty());
++    decoded->resize(decoded->size() - 3);
++    EXPECT_FALSE(InspectAudio(*decoded, std::string(type)).failure.empty())
++        << type;
++  }
++}
++}  // namespace
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/document_extractor.cc b/chrome/services/aux_document/document_extractor.cc
+index 0998ad373a4b5ce45c38094af913d10a9af6cab1..310d5f2b6c2932e258d17fc67b7ed7eecc82015c 100644
+--- a/chrome/services/aux_document/document_extractor.cc
++++ b/chrome/services/aux_document/document_extractor.cc
+@@ -3,17 +3,98 @@
+ // found in the LICENSE file.
+ #include "chrome/services/aux_document/document_extractor.h"
+ 
++#include <array>
++
+ #include "base/check.h"
+ #include "base/command_line.h"
+ #include "base/functional/bind.h"
++#include "base/json/json_writer.h"
+ #include "base/memory/shared_memory_mapping.h"
+ #include "base/process/process.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/string_view_util.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/services/aux_document/document_segments.h"
++#include "chrome/services/aux_document/media_jobs.h"
+ #include "content/public/common/content_switches.h"
++#include "crypto/hash.h"
+ namespace aux::document {
++namespace {
++base::DictValue LocatedSegment(const mojom::Segment& segment) {
++  base::DictValue locator;
++  if (segment.locator->is_text()) {
++    const auto& value = *segment.locator->get_text();
++    locator.Set("kind", "text");
++    locator.Set("line", static_cast<double>(value.line));
++    locator.Set("offset", static_cast<double>(value.offset));
++  } else if (segment.locator->is_pdf()) {
++    const auto& value = *segment.locator->get_pdf();
++    locator.Set("kind", "pdf");
++    locator.Set("page", static_cast<double>(value.page));
++    locator.Set("block", static_cast<double>(value.block));
++    locator.Set("offset", static_cast<double>(value.offset));
++  } else {
++    const auto& value = *segment.locator->get_docx();
++    locator.Set("kind", "docx");
++    locator.Set("part", value.part);
++    locator.Set("paragraph", static_cast<double>(value.paragraph));
++    locator.Set("offset", static_cast<double>(value.offset));
++    if (value.heading_level) {
++      locator.Set("headingLevel", value.heading_level);
++    }
++    if (value.table) {
++      locator.Set("table", static_cast<double>(value.table));
++      locator.Set("row", static_cast<double>(value.row));
++      locator.Set("column", static_cast<double>(value.column));
++    }
++    if (value.note_id) {
++      locator.Set("noteId", *value.note_id);
++    }
++  }
++  return base::DictValue()
++      .Set("locator", std::move(locator))
++      .Set("text", segment.text);
++}
++base::DictValue LocatedMetadata(const mojom::Metadata& metadata) {
++  constexpr std::array<std::string_view, 3> formats = {"text", "pdf", "docx"};
++  constexpr std::array<std::string_view, 5> codes = {
++      "no_selectable_text", "unmapped_text", "external_relationships_ignored",
++      "embedded_content_ignored", "unsupported_markup_ignored"};
++  constexpr std::array<std::string_view, 7> stories = {
++      "", "body", "header", "footer", "footnote", "endnote", "comment"};
++  base::DictValue result;
++  result.Set("format", formats[static_cast<size_t>(metadata.format)]);
++  if (metadata.page_count) {
++    result.Set("pageCount", static_cast<double>(metadata.page_count));
++  }
++  base::ListValue warnings;
++  for (const auto& warning : metadata.warnings) {
++    base::DictValue value;
++    value.Set("code", codes[static_cast<size_t>(warning->code)]);
++    value.Set("count", static_cast<double>(warning->count));
++    if (warning->story != mojom::Story::kNone) {
++      value.Set("story", stories[static_cast<size_t>(warning->story)]);
++    }
++    if (warning->first_page) {
++      value.Set("firstPage", static_cast<double>(warning->first_page));
++    }
++    if (!warning->first_part.empty()) {
++      value.Set("firstPart", warning->first_part);
++    }
++    warnings.Append(std::move(value));
++  }
++  result.Set("warnings", std::move(warnings));
++  result.Set(
++      "completed",
++      base::DictValue()
++          .Set("textSha256", metadata.completed->text_sha256)
++          .Set("textBytes", static_cast<double>(metadata.completed->text_bytes))
++          .Set("segmentCount",
++               static_cast<double>(metadata.completed->segment_count)));
++  return result;
++}
++}  // namespace
+ class DocumentExtractor::Parser {
+  public:
+   mojom::StartResultPtr Start(base::ReadOnlySharedMemoryRegion source,
+@@ -71,6 +152,125 @@ class DocumentExtractor::Parser {
+     return mojom::StartResult::NewMetadata(output_.Finish());
+   }
+   mojom::ChunkPtr ReadChunk(uint32_t index) { return output_.Chunk(index); }
++  mojom::JobResultPtr Execute(std::vector<mojom::JobSourcePtr> sources,
++                              base::DictValue request) {
++    auto result = mojom::JobResult::New();
++    auto fail = [&](const std::string& reason) {
++      result->failure = reason;
++      return std::move(result);
++    };
++    if (sources.empty() || sources.size() > 8) {
++      return fail("Invalid document source count");
++    }
++    size_t total = 0;
++    std::vector<base::ReadOnlySharedMemoryMapping> mappings;
++    std::vector<base::span<const uint8_t>> bytes;
++    for (const auto& source : sources) {
++      total += source->size;
++      if (!source->size || total > kMaxSourceBytes ||
++          !source->source.IsValid()) {
++        return fail("Document source limit exceeded");
++      }
++      auto mapping = source->source.Map();
++      if (!mapping.IsValid() || mapping.size() != source->size) {
++        return fail("Document shared-memory identity is invalid");
++      }
++      auto data = mapping.GetMemoryAsSpan<const uint8_t>();
++      if (base::HexEncodeLower(crypto::hash::Sha256(data)) != source->sha256) {
++        return fail("Document source hash does not match");
++      }
++      bytes.push_back(data);
++      mappings.push_back(std::move(mapping));
++    }
++    const auto* kind = request.FindString("kind");
++    if (!kind) {
++      return fail("Missing document job kind");
++    }
++    JobResult computed;
++    if (*kind == "audioInspect" && bytes.size() == 1 && request.size() == 1) {
++      computed = InspectAudio(bytes[0], sources[0]->media_type);
++    } else if (*kind == "pdf" && request.size() == 2 &&
++               request.FindDict("options")) {
++      for (const auto& source : sources) {
++        if (source->media_type != "application/pdf") {
++          return fail("PDF bytes require a PDF source declaration");
++        }
++      }
++      computed = ExecutePdf(bytes, *request.FindDict("options"));
++    } else if (*kind == "extract" && bytes.size() == 1 && request.size() == 1) {
++      auto extracted = Start(std::move(sources[0]->source), sources[0]->size);
++      if (!extracted->is_metadata()) {
++        return fail("Document text extraction failed");
++      }
++      const auto& metadata = extracted->get_metadata();
++      const auto& media_type = sources[0]->media_type;
++      if ((metadata->format == mojom::Format::kPdf &&
++           media_type != "application/pdf") ||
++          (metadata->format == mojom::Format::kDocx &&
++           media_type != "application/zip" &&
++           media_type !=
++               "application/"
++               "vnd.openxmlformats-officedocument.wordprocessingml.document") ||
++          (metadata->format == mojom::Format::kText &&
++           media_type != "text/plain")) {
++        return fail(
++            "Document MIME declaration does not match its parsed format");
++      }
++      base::ListValue chunks;
++      for (uint32_t i = 0; i < metadata->chunk_count; ++i) {
++        base::ListValue segments;
++        for (const auto& segment : output_.Chunk(i)->segments) {
++          segments.Append(LocatedSegment(*segment));
++        }
++        chunks.Append(base::DictValue()
++                          .Set("index", static_cast<double>(i))
++                          .Set("segments", std::move(segments)));
++      }
++      auto serialized = base::WriteJson(chunks);
++      if (!serialized || serialized->size() > 32 * 1024 * 1024) {
++        return fail(
++            "Located document output exceeds its bounded transport budget");
++      }
++      computed.outputs.push_back(
++          {std::vector<uint8_t>(serialized->begin(), serialized->end()),
++           "application/json", "document-segments.json"});
++      computed.report.Set("kind", "extract");
++      computed.report.Set("sourceSha256",
++                          base::ListValue().Append(sources[0]->sha256));
++      computed.report.Set("extraction", LocatedMetadata(*metadata));
++    } else {
++      return fail("Unsupported document job");
++    }
++    if (!computed.failure.empty()) {
++      return fail(computed.failure);
++    }
++    size_t output_bytes = 0;
++    if (computed.outputs.size() > 40) {
++      return fail("Too many document outputs");
++    }
++    for (auto& output : computed.outputs) {
++      output_bytes += output.bytes.size();
++      if (output.bytes.empty() || output_bytes > 32 * 1024 * 1024) {
++        return fail("Document output limit exceeded");
++      }
++      auto memory =
++          base::ReadOnlySharedMemoryRegion::Create(output.bytes.size());
++      if (!memory.IsValid()) {
++        return fail("Document output allocation failed");
++      }
++      memory.mapping.GetMemoryAsSpan<uint8_t>().copy_from(output.bytes);
++      auto admitted = mojom::JobOutput::New();
++      admitted->source = std::move(memory.region);
++      admitted->size = output.bytes.size();
++      admitted->sha256 =
++          base::HexEncodeLower(crypto::hash::Sha256(output.bytes));
++      admitted->media_type = std::move(output.media_type);
++      admitted->label = std::move(output.label);
++      result->outputs.push_back(std::move(admitted));
++    }
++    result->report = std::move(computed.report);
++    return result;
++  }
+ 
+  private:
+   DocumentSegments output_;
+@@ -104,6 +304,18 @@ void DocumentExtractor::Start(base::ReadOnlySharedMemoryRegion source,
+       .Then(base::BindOnce(&DocumentExtractor::Started,
+                            weak_factory_.GetWeakPtr(), std::move(callback)));
+ }
++void DocumentExtractor::Execute(std::vector<mojom::JobSourcePtr> sources,
++                                base::DictValue request,
++                                ExecuteCallback callback) {
++  if (started_) {
++    receiver_.ReportBadMessage("Document utility accepts one immutable job");
++    return;
++  }
++  started_ = true;
++  parser_.AsyncCall(&Parser::Execute)
++      .WithArgs(std::move(sources), std::move(request))
++      .Then(std::move(callback));
++}
+ void DocumentExtractor::Started(StartCallback callback,
+                                 mojom::StartResultPtr result) {
+   if (result->is_metadata()) {
+diff --git a/chrome/services/aux_document/document_extractor.h b/chrome/services/aux_document/document_extractor.h
+index ac95efaa6b4724dd2cfcf067fbc02d5d7fb5b7dc..68a0d6633cf3a39b1a32bdaaf8282a3512aec3e7 100644
+--- a/chrome/services/aux_document/document_extractor.h
++++ b/chrome/services/aux_document/document_extractor.h
+@@ -21,6 +21,10 @@ class DocumentExtractor final : public mojom::DocumentExtractor {
+              StartCallback callback) override;
+   void ReadChunk(uint32_t index, ReadChunkCallback callback) override;
+ 
++  void Execute(std::vector<mojom::JobSourcePtr> sources,
++               base::DictValue request,
++               ExecuteCallback callback) override;
++
+  private:
+   class Parser;
+   void Started(StartCallback callback, mojom::StartResultPtr result);
+diff --git a/chrome/services/aux_document/media_jobs.h b/chrome/services/aux_document/media_jobs.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..84108a96859476db19cc3a453fa27bb7a966a119
+--- /dev/null
++++ b/chrome/services/aux_document/media_jobs.h
+@@ -0,0 +1,27 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_MEDIA_JOBS_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_MEDIA_JOBS_H_
++#include <string>
++#include <vector>
++
++#include "base/containers/span.h"
++#include "base/values.h"
++namespace aux::document {
++struct JobOutput {
++  std::vector<uint8_t> bytes;
++  std::string media_type;
++  std::string label;
++};
++struct JobResult {
++  base::DictValue report;
++  std::vector<JobOutput> outputs;
++  std::string failure;
++};
++JobResult InspectAudio(base::span<const uint8_t> bytes,
++                       const std::string& media_type);
++JobResult ExecutePdf(const std::vector<base::span<const uint8_t>>& sources,
++                     const base::DictValue& options);
++}  // namespace aux::document
++#endif
+diff --git a/chrome/services/aux_document/pdf_jobs.cc b/chrome/services/aux_document/pdf_jobs.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..75eac78ee61839494d2588d0178308d8b157d60c
+--- /dev/null
++++ b/chrome/services/aux_document/pdf_jobs.cc
+@@ -0,0 +1,920 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <algorithm>
++#include <cmath>
++#include <cstddef>
++#include <cstdint>
++#include <initializer_list>
++#include <memory>
++#include <numeric>
++#include <optional>
++#include <ranges>
++#include <set>
++#include <string>
++#include <string_view>
++#include <utility>
++#include <vector>
++
++#include "base/compiler_specific.h"
++#include "base/containers/span.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversion_utils.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/services/aux_document/media_jobs.h"
++#include "chrome/services/aux_document/pdf_safety.h"
++#include "crypto/hash.h"
++#include "third_party/pdfium/public/cpp/fpdf_scopers.h"
++#include "third_party/pdfium/public/fpdf_annot.h"
++#include "third_party/pdfium/public/fpdf_edit.h"
++#include "third_party/pdfium/public/fpdf_formfill.h"
++#include "third_party/pdfium/public/fpdf_ppo.h"
++#include "third_party/pdfium/public/fpdf_save.h"
++#include "third_party/pdfium/public/fpdf_text.h"
++#include "third_party/pdfium/public/fpdfview.h"
++#include "ui/gfx/codec/png_codec.h"
++#include "ui/gfx/geometry/size.h"
++
++namespace aux::document {
++namespace {
++constexpr size_t kSourceBytes = 64 * 1024 * 1024;
++constexpr size_t kOutputBytes = 32 * 1024 * 1024;
++constexpr size_t kTextBytes = 2 * 1024 * 1024;
++constexpr int kPages = 1000;
++constexpr int kFields = 500;
++constexpr int kSide = 16384;
++constexpr int kPixels = 16 * 1024 * 1024;
++
++JobResult Failed(std::string failure) {
++  JobResult result;
++  result.failure = std::move(failure);
++  return result;
++}
++std::string Hash(base::span<const uint8_t> bytes) {
++  return base::HexEncodeLower(crypto::hash::Sha256(bytes));
++}
++class PdfLibrary {
++ public:
++  PdfLibrary() {
++    FPDF_LIBRARY_CONFIG config = {};
++    config.version = 1;
++    FPDF_InitLibraryWithConfig(&config);
++  }
++  ~PdfLibrary() { FPDF_DestroyLibrary(); }
++};
++
++struct Field {
++  std::string name;
++  int page = 0;
++  int annotation = 0;
++  int type = FPDF_FORMFIELD_UNKNOWN;
++  int flags = 0;
++  FS_RECTF rectangle = {};
++  base::Value value;
++};
++
++class PdfDocument final : public FPDF_FORMFILLINFO {
++ public:
++  PdfDocument() : FPDF_FORMFILLINFO{} {
++    version = 2;
++    m_pJsPlatform = nullptr;
++    xfa_disabled = true;
++    FFI_Invalidate = [](FPDF_FORMFILLINFO*, FPDF_PAGE, double, double, double,
++                        double) {};
++    FFI_GetPage = [](FPDF_FORMFILLINFO* info, FPDF_DOCUMENT,
++                     int index) -> FPDF_PAGE {
++      const auto* self = static_cast<PdfDocument*>(info);
++      return index >= 0 && index < static_cast<int>(self->pages.size())
++                 ? self->pages[index].get()
++                 : nullptr;
++    };
++    FFI_GetCurrentPage = [](FPDF_FORMFILLINFO* info,
++                            FPDF_DOCUMENT) -> FPDF_PAGE {
++      auto* self = static_cast<PdfDocument*>(info);
++      return self->pages.empty() ? nullptr
++                                 : self->pages[self->current_page].get();
++    };
++    FFI_GetRotation = [](FPDF_FORMFILLINFO*, FPDF_PAGE page) {
++      return FPDFPage_GetRotation(page);
++    };
++  }
++  ~PdfDocument() {
++    if (form) {
++      for (const auto& page : pages) {
++        FORM_OnBeforeClosePage(page.get(), form.get());
++      }
++      form.reset();
++    }
++  }
++  bool Load(base::span<const uint8_t> bytes, std::string& failure) {
++    document.reset(FPDF_LoadMemDocument64(bytes.data(), bytes.size(), nullptr));
++    if (!document) {
++      failure = FPDF_GetLastError() == FPDF_ERR_PASSWORD
++                    ? "Encrypted PDFs are unsupported."
++                    : "Invalid PDF input.";
++      return false;
++    }
++    if (FPDF_GetSecurityHandlerRevision(document.get()) != -1) {
++      failure = "Encrypted PDFs are unsupported.";
++      return false;
++    }
++    const int count = FPDF_GetPageCount(document.get());
++    const int form_type = FPDF_GetFormType(document.get());
++    if (count < 1 || count > kPages ||
++        (form_type != FORMTYPE_NONE && form_type != FORMTYPE_ACRO_FORM)) {
++      failure = "Unsupported PDF page count or XFA form.";
++      return false;
++    }
++    if (!IsInertPdf(document.get())) {
++      failure =
++          "PDF scripts, automatic/additional actions, signatures or "
++          "excessive object graphs are unsupported.";
++      return false;
++    }
++    for (int index = 0; index < count; ++index) {
++      ScopedFPDFPage page(FPDF_LoadPage(document.get(), index));
++      if (!page) {
++        failure = "A PDF page could not be loaded.";
++        return false;
++      }
++      pages.push_back(std::move(page));
++    }
++    form.reset(FPDFDOC_InitFormFillEnvironment(document.get(), this));
++    if (!form) {
++      failure = "PDF form environment is unavailable.";
++      return false;
++    }
++    FPDF_SetFormFieldHighlightAlpha(form.get(), 0);
++    for (const auto& page : pages) {
++      FORM_OnAfterLoadPage(page.get(), form.get());
++    }
++    return ReadFields(failure);
++  }
++  bool ReadFields(std::string& failure) {
++    fields.clear();
++    std::set<std::string> names;
++    for (size_t page_index = 0; page_index < pages.size(); ++page_index) {
++      FPDF_PAGE page = pages[page_index].get();
++      const int count = FPDFPage_GetAnnotCount(page);
++      if (count < 0 || count > 10000) {
++        failure = "Invalid or excessive PDF annotations.";
++        return false;
++      }
++      for (int index = 0; index < count; ++index) {
++        ScopedFPDFAnnotation annotation(FPDFPage_GetAnnot(page, index));
++        if (!annotation) {
++          failure = "A PDF annotation could not be read.";
++          return false;
++        }
++        if (FPDFAnnot_GetSubtype(annotation.get()) != FPDF_ANNOT_WIDGET) {
++          continue;
++        }
++        if (fields.size() >= kFields) {
++          failure = "PDF field limit exceeded.";
++          return false;
++        }
++        Field field;
++        field.page = static_cast<int>(page_index);
++        field.annotation = index;
++        field.type = FPDFAnnot_GetFormFieldType(form.get(), annotation.get());
++        field.flags = FPDFAnnot_GetFormFieldFlags(form.get(), annotation.get());
++        if ((field.flags & FPDF_FORMFLAG_TEXT_PASSWORD) ||
++            field.type == FPDF_FORMFIELD_SIGNATURE) {
++          failure = "Password and signature fields are unsupported.";
++          return false;
++        }
++        auto name = ReadString(annotation.get(), true);
++        auto value = ReadString(annotation.get(), false);
++        if (!name || !value || name->empty() || name->size() > 512 ||
++            !names.insert(*name).second ||
++            !FPDFAnnot_GetRect(annotation.get(), &field.rectangle)) {
++          failure =
++              "PDF fields have invalid, excessive or ambiguous names/values.";
++          return false;
++        }
++        field.name = std::move(*name);
++        field.value = field.type == FPDF_FORMFIELD_CHECKBOX
++                          ? base::Value(!!FPDFAnnot_IsChecked(form.get(),
++                                                              annotation.get()))
++                          : base::Value(std::move(*value));
++        fields.push_back(std::move(field));
++      }
++    }
++    return true;
++  }
++  std::optional<std::string> ReadString(FPDF_ANNOTATION annotation, bool name) {
++    auto read = name ? FPDFAnnot_GetFormFieldName : FPDFAnnot_GetFormFieldValue;
++    const unsigned long bytes = read(form.get(), annotation, nullptr, 0);
++    const size_t limit = name ? 512 : 4096;
++    if (bytes < 2 || bytes % 2 || bytes > (limit + 1) * 2) {
++      return std::nullopt;
++    }
++    std::vector<FPDF_WCHAR> buffer(bytes / 2);
++    if (read(form.get(), annotation, buffer.data(), bytes) != bytes ||
++        buffer.back() != 0) {
++      return std::nullopt;
++    }
++    std::u16string text;
++    for (size_t index = 0; index + 1 < buffer.size(); ++index) {
++      if (buffer[index] == 0) {
++        return std::nullopt;
++      }
++      text.push_back(static_cast<char16_t>(buffer[index]));
++    }
++    std::string utf8;
++    if (!base::UTF16ToUTF8(text.data(), text.size(), &utf8) ||
++        utf8.size() > limit) {
++      return std::nullopt;
++    }
++    return utf8;
++  }
++  ScopedFPDFDocument document;
++  std::vector<ScopedFPDFPage> pages;
++  ScopedFPDFFormHandle form;
++  std::vector<Field> fields;
++  size_t current_page = 0;
++};
++
++struct PdfWriter final : FPDF_FILEWRITE {
++  PdfWriter() : FPDF_FILEWRITE{} {
++    version = 1;
++    WriteBlock = [](FPDF_FILEWRITE* writer, const void* data,
++                    unsigned long size) {
++      auto* self = static_cast<PdfWriter*>(writer);
++      if (size > kOutputBytes - self->bytes.size()) {
++        return 0;
++      }
++      // PDFium owns this read-only block for the duration of the callback.
++      const auto block =
++          UNSAFE_BUFFERS(base::span(static_cast<const uint8_t*>(data), size));
++      self->bytes.insert(self->bytes.end(), block.begin(), block.end());
++      return 1;
++    };
++  }
++  std::vector<uint8_t> bytes;
++};
++std::optional<std::vector<uint8_t>> Save(FPDF_DOCUMENT document) {
++  PdfWriter writer;
++  if (!FPDF_SaveAsCopy(document, &writer, FPDF_NO_INCREMENTAL) ||
++      writer.bytes.empty()) {
++    return std::nullopt;
++  }
++  return std::move(writer.bytes);
++}
++
++bool Keys(const base::DictValue& value,
++          std::initializer_list<std::string_view> allowed) {
++  return std::ranges::all_of(value, [&](const auto& entry) {
++    return std::ranges::find(allowed, entry.first) != allowed.end();
++  });
++}
++std::optional<std::vector<int>> Pages(const base::Value* value,
++                                      int count,
++                                      bool all = false) {
++  std::vector<int> result;
++  if (!value && all) {
++    result.resize(count);
++    std::iota(result.begin(), result.end(), 0);
++    return result;
++  }
++  const auto* list = value ? value->GetIfList() : nullptr;
++  if (!list || list->empty() || list->size() > kPages) {
++    return std::nullopt;
++  }
++  for (const auto& item : *list) {
++    auto page = item.GetIfInt();
++    if (!page || *page < 1 || *page > count) {
++      return std::nullopt;
++    }
++    result.push_back(*page - 1);
++  }
++  return result;
++}
++
++struct Raster {
++  ScopedFPDFBitmap bitmap;
++  int width = 0;
++  int height = 0;
++  base::span<const uint8_t> Bytes() const {
++    const int stride = FPDFBitmap_GetStride(bitmap.get());
++    return UNSAFE_BUFFERS(base::span(
++        static_cast<const uint8_t*>(FPDFBitmap_GetBuffer(bitmap.get())),
++        static_cast<size_t>(stride) * height));
++  }
++};
++std::optional<Raster> Render(PdfDocument& document,
++                             int index,
++                             double scale,
++                             const Field* field = nullptr,
++                             bool widgets = true) {
++  FPDF_PAGE page = document.pages[index].get();
++  const double page_width = std::ceil(FPDF_GetPageWidthF(page) * scale);
++  const double page_height = std::ceil(FPDF_GetPageHeightF(page) * scale);
++  if (!std::isfinite(page_width) || !std::isfinite(page_height) ||
++      page_width < 1 || page_height < 1 || page_width > kSide ||
++      page_height > kSide) {
++    return std::nullopt;
++  }
++  const int full_width = static_cast<int>(page_width);
++  const int full_height = static_cast<int>(page_height);
++  int left = 0, top = 0, right = full_width, bottom = full_height;
++  if (field) {
++    const auto& rect = field->rectangle;
++    if (!std::isfinite(rect.left) || !std::isfinite(rect.right) ||
++        !std::isfinite(rect.top) || !std::isfinite(rect.bottom) ||
++        rect.right <= rect.left || rect.top <= rect.bottom) {
++      return std::nullopt;
++    }
++    int x1, y1, x2, y2;
++    if (!FPDF_PageToDevice(page, 0, 0, full_width, full_height, 0, rect.left,
++                           rect.top, &x1, &y1) ||
++        !FPDF_PageToDevice(page, 0, 0, full_width, full_height, 0, rect.right,
++                           rect.bottom, &x2, &y2)) {
++      return std::nullopt;
++    }
++    left = std::min(x1, x2);
++    right = std::max(x1, x2);
++    top = std::min(y1, y2);
++    bottom = std::max(y1, y2);
++    if (left < 0 || top < 0 || right > full_width || bottom > full_height) {
++      return std::nullopt;
++    }
++  }
++  const int width = right - left;
++  const int height = bottom - top;
++  if (width < 1 || height < 1 ||
++      static_cast<int64_t>(width) * height > kPixels) {
++    return std::nullopt;
++  }
++  Raster raster{ScopedFPDFBitmap(FPDFBitmap_Create(width, height, 1)), width,
++                height};
++  if (!raster.bitmap || !FPDFBitmap_FillRect(raster.bitmap.get(), 0, 0, width,
++                                             height, 0xffffffff)) {
++    return std::nullopt;
++  }
++  FPDF_RenderPageBitmap(raster.bitmap.get(), page, -left, -top, full_width,
++                        full_height, 0, field ? 0 : FPDF_ANNOT);
++  if (widgets) {
++    FPDF_FFLDraw(document.form.get(), raster.bitmap.get(), page, -left, -top,
++                 full_width, full_height, 0, 0);
++  }
++  return raster;
++}
++struct Appearance {
++  std::string hash;
++  bool ink = false;
++};
++std::optional<Appearance> WidgetAppearance(PdfDocument& document,
++                                           const Field& field) {
++  auto raster = Render(document, field.page, 1, &field);
++  auto background = Render(document, field.page, 1, &field, false);
++  if (!raster || !background ||
++      raster->Bytes().size() != background->Bytes().size()) {
++    return std::nullopt;
++  }
++  return Appearance{Hash(raster->Bytes()),
++                    !std::ranges::equal(raster->Bytes(), background->Bytes())};
++}
++bool Overlapping(const Field& field, const std::vector<Field>& fields) {
++  return std::ranges::any_of(fields, [&](const Field& other) {
++    return field.name != other.name && field.page == other.page &&
++           std::max(field.rectangle.left, other.rectangle.left) <
++               std::min(field.rectangle.right, other.rectangle.right) &&
++           std::max(field.rectangle.bottom, other.rectangle.bottom) <
++               std::min(field.rectangle.top, other.rectangle.top);
++  });
++}
++base::DictValue FieldReport(const Field& field) {
++  return base::DictValue()
++      .Set("name", field.name)
++      .Set("page", field.page + 1)
++      .Set("type", field.type == FPDF_FORMFIELD_TEXTFIELD  ? "text"
++                   : field.type == FPDF_FORMFIELD_CHECKBOX ? "checkbox"
++                                                           : "unsupported")
++      .Set("readOnly", !!(field.flags & FPDF_FORMFLAG_READONLY))
++      .Set("value", field.value.Clone());
++}
++void Mapping(base::ListValue& mappings,
++             int output,
++             int page,
++             int source,
++             int source_page,
++             int rotation) {
++  mappings.Append(base::DictValue()
++                      .Set("outputIndex", output)
++                      .Set("page", page + 1)
++                      .Set("sourceIndex", source)
++                      .Set("sourcePage", source_page + 1)
++                      .Set("rotation", rotation * 90));
++}
++bool AddOutput(JobResult& result,
++               std::vector<uint8_t> bytes,
++               std::string media_type,
++               std::string label) {
++  size_t total = 0;
++  for (const auto& output : result.outputs) {
++    total += output.bytes.size();
++  }
++  if (result.outputs.size() >= 40 || bytes.empty() ||
++      bytes.size() > kOutputBytes - total) {
++    return false;
++  }
++  result.outputs.push_back(
++      {std::move(bytes), std::move(media_type), std::move(label)});
++  return true;
++}
++
++bool Meaningful(const base::Value& value) {
++  if (value.is_bool()) {
++    return value.GetBool();
++  }
++  return std::ranges::any_of(value.GetString(), [](char ch) {
++    return ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t';
++  });
++}
++bool SetFieldValue(PdfDocument& document,
++                   const Field& field,
++                   const base::Value& value) {
++  document.current_page = field.page;
++  FPDF_PAGE page = document.pages[field.page].get();
++  ScopedFPDFAnnotation annotation(FPDFPage_GetAnnot(page, field.annotation));
++  if (!annotation ||
++      FPDFAnnot_GetFormControlCount(document.form.get(), annotation.get()) !=
++          1 ||
++      !FORM_SetFocusedAnnot(document.form.get(), annotation.get())) {
++    return false;
++  }
++  if (field.type == FPDF_FORMFIELD_TEXTFIELD) {
++    if (!FORM_SelectAllText(document.form.get(), page)) {
++      return false;
++    }
++    std::vector<FPDF_WCHAR> utf16;
++    for (unsigned char ch : value.GetString()) {
++      utf16.push_back(ch);
++    }
++    utf16.push_back(0);
++    FORM_ReplaceSelection(document.form.get(), page, utf16.data());
++  } else if (!!FPDFAnnot_IsChecked(document.form.get(), annotation.get()) !=
++                 value.GetBool() &&
++             !FORM_OnChar(document.form.get(), page, ' ', 0)) {
++    return false;
++  }
++  return FORM_ForceToKillFocus(document.form.get());
++}
++JobResult Fill(PdfDocument& document,
++               const base::DictValue& options,
++               JobResult result) {
++  const auto* values = options.FindList("values");
++  if (!values || values->empty() || values->size() > 100) {
++    return Failed("Fill requires between one and 100 unique field values.");
++  }
++  struct Change {
++    Field original;
++    base::Value value;
++    Appearance before;
++    Appearance blank;
++    Appearance filled;
++  };
++  std::vector<Change> changes;
++  std::set<std::string> names;
++  for (const auto& item : *values) {
++    const auto* value = item.GetIfDict();
++    const auto* name = value ? value->FindString("name") : nullptr;
++    const auto* desired = value ? value->Find("value") : nullptr;
++    if (!value || !Keys(*value, {"name", "value"}) || !name || name->empty() ||
++        name->size() > 512 || name->find('\0') != std::string::npos ||
++        !names.insert(*name).second || !desired) {
++      return Failed("Fill contains an invalid or duplicate field name.");
++    }
++    const auto found = std::ranges::find(document.fields, *name, &Field::name);
++    if (found == document.fields.end()) {
++      return Failed("A requested PDF field does not exist.");
++    }
++    const Field& field = *found;
++    if ((field.flags & FPDF_FORMFLAG_READONLY) ||
++        Overlapping(field, document.fields)) {
++      return Failed("Read-only or overlapping PDF widgets cannot be filled.");
++    }
++    if (field.type == FPDF_FORMFIELD_TEXTFIELD) {
++      const auto* text = desired->GetIfString();
++      if (!text || text->size() > 4096 ||
++          std::ranges::any_of(*text,
++                              [](unsigned char ch) {
++                                return (ch < 32 && ch != '\n' && ch != '\r' &&
++                                        ch != '\t') ||
++                                       ch > 126;
++                              }) ||
++          (!(field.flags & FPDF_FORMFLAG_TEXT_MULTILINE) &&
++           text->find_first_of("\r\n") != std::string::npos)) {
++        return Failed(
++            "This PDF fill supports printable ASCII text and "
++            "multiline field line breaks; unsupported "
++            "fonts/characters require a different document.");
++      }
++    } else if (field.type != FPDF_FORMFIELD_CHECKBOX || !desired->is_bool()) {
++      return Failed(
++          "Only text and checkbox fields with matching value types "
++          "can be filled.");
++    }
++    auto before = WidgetAppearance(document, field);
++    if (!before) {
++      return Failed(
++          "A PDF widget appearance exceeds rendering limits or "
++          "cannot be verified.");
++    }
++    changes.push_back(
++        {Field{field.name, field.page, field.annotation, field.type,
++               field.flags, field.rectangle, field.value.Clone()},
++         desired->Clone(),
++         std::move(*before),
++         {},
++         {}});
++  }
++  std::vector<base::Value> original_values;
++  for (const Field& field : document.fields) {
++    original_values.push_back(field.value.Clone());
++  }
++  for (auto& change : changes) {
++    const base::Value blank =
++        change.value.is_bool() ? base::Value(false) : base::Value("");
++    if (!SetFieldValue(document, change.original, blank)) {
++      return Failed(
++          "The PDF field could not be cleared for appearance verification.");
++    }
++    auto appearance = WidgetAppearance(document, change.original);
++    if (!appearance) {
++      return Failed("The blank PDF widget appearance could not be verified.");
++    }
++    change.blank = std::move(*appearance);
++    if (!SetFieldValue(document, change.original, change.value)) {
++      return Failed("The PDF field edit could not be committed.");
++    }
++  }
++  std::string failure;
++  if (!document.ReadFields(failure)) {
++    return Failed(failure);
++  }
++  for (auto& change : changes) {
++    const auto found =
++        std::ranges::find(document.fields, change.original.name, &Field::name);
++    if (found == document.fields.end() || found->value != change.value) {
++      return Failed("PDFium did not retain the exact requested field value.");
++    }
++    auto filled = WidgetAppearance(document, *found);
++    if (!filled ||
++        (Meaningful(change.value) &&
++         (!filled->ink || filled->hash == change.blank.hash)) ||
++        (change.original.value != change.value &&
++         (Meaningful(change.original.value) || Meaningful(change.value)) &&
++         filled->hash == change.before.hash)) {
++      return Failed(
++          "The filled PDF widget is blank or its expected appearance "
++          "change could not be proven.");
++    }
++    change.filled = std::move(*filled);
++  }
++  auto bytes = Save(document.document.get());
++  if (!bytes) {
++    return Failed("The filled PDF could not be saved within the output limit.");
++  }
++  PdfDocument reopened;
++  if (!reopened.Load(*bytes, failure) ||
++      reopened.pages.size() != document.pages.size() ||
++      reopened.fields.size() != document.fields.size()) {
++    return Failed(
++        "The saved filled PDF could not be reopened with its "
++        "original pages and fields.");
++  }
++  base::ListValue fields;
++  for (size_t index = 0; index < reopened.fields.size(); ++index) {
++    const Field& field = reopened.fields[index];
++    const Field& expected = document.fields[index];
++    if (field.name != expected.name || field.type != expected.type ||
++        field.page != expected.page || field.flags != expected.flags ||
++        field.value != expected.value ||
++        (!names.contains(field.name) &&
++         field.value != original_values[index])) {
++      return Failed(
++          "Saved PDF field verification failed or an unrelated field changed.");
++    }
++    base::DictValue report = FieldReport(field);
++    for (const auto& change : changes) {
++      if (change.original.name != field.name) {
++        continue;
++      }
++      auto appearance = WidgetAppearance(reopened, field);
++      if (!appearance || appearance->hash != change.filled.hash ||
++          (Meaningful(change.value) && !appearance->ink)) {
++        return Failed(
++            "Saved PDF widget appearance does not match the verified "
++            "filled rendering.");
++      }
++      report.Set("appearanceSha256", appearance->hash);
++    }
++    fields.Append(std::move(report));
++  }
++  base::ListValue mappings;
++  for (size_t index = 0; index < reopened.pages.size(); ++index) {
++    const int rotation = FPDFPage_GetRotation(document.pages[index].get());
++    if (rotation < 0 ||
++        FPDFPage_GetRotation(reopened.pages[index].get()) != rotation) {
++      return Failed("Saved PDF page rotation verification failed.");
++    }
++    Mapping(mappings, 0, index, 0, index, rotation);
++  }
++  if (!AddOutput(result, std::move(*bytes), "application/pdf", "filled.pdf")) {
++    return Failed("Filled PDF output limit exceeded.");
++  }
++  result.report.Set("pageMappings", std::move(mappings));
++  result.report.Set("fields", std::move(fields));
++  result.report.Set("appearancesVerified", true);
++  return result;
++}
++
++bool VerifyPages(FPDF_DOCUMENT document,
++                 const std::vector<std::pair<PdfDocument*, int>>& sources) {
++  if (FPDF_GetPageCount(document) != static_cast<int>(sources.size())) {
++    return false;
++  }
++  for (size_t index = 0; index < sources.size(); ++index) {
++    ScopedFPDFPage page(FPDF_LoadPage(document, index));
++    FPDF_PAGE source = sources[index].first->pages[sources[index].second].get();
++    if (!page ||
++        FPDFPage_GetRotation(page.get()) != FPDFPage_GetRotation(source) ||
++        FPDF_GetPageWidthF(page.get()) != FPDF_GetPageWidthF(source) ||
++        FPDF_GetPageHeightF(page.get()) != FPDF_GetPageHeightF(source)) {
++      return false;
++    }
++  }
++  return true;
++}
++}  // namespace
++
++JobResult ExecutePdf(const std::vector<base::span<const uint8_t>>& sources,
++                     const base::DictValue& options) {
++  const auto* operation = options.FindString("operation");
++  if (!operation || sources.empty() || sources.size() > 8) {
++    return Failed("Invalid PDF operation or source count.");
++  }
++  const bool merge = *operation == "merge";
++  if ((!merge && sources.size() != 1) ||
++      (*operation != "render" && *operation != "text" &&
++       *operation != "fields" && *operation != "fill" && !merge &&
++       *operation != "split" && *operation != "rotate")) {
++    return Failed("Unsupported PDF operation or source count.");
++  }
++  if ((*operation == "render" &&
++       !Keys(options, {"operation", "pages", "scale"})) ||
++      (*operation == "text" && !Keys(options, {"operation", "pages"})) ||
++      (*operation == "fields" && !Keys(options, {"operation"})) ||
++      (*operation == "fill" && !Keys(options, {"operation", "values"})) ||
++      (merge && !Keys(options, {"operation", "inputs"})) ||
++      (*operation == "split" && !Keys(options, {"operation", "groups"})) ||
++      (*operation == "rotate" &&
++       !Keys(options, {"operation", "pages", "degrees"}))) {
++    return Failed("Unknown PDF operation options.");
++  }
++  size_t total_bytes = 0;
++  for (const auto& source : sources) {
++    if (source.empty() || source.size() > kSourceBytes - total_bytes) {
++      return Failed("PDF source byte limit exceeded.");
++    }
++    total_bytes += source.size();
++  }
++  PdfLibrary library;
++  std::vector<std::unique_ptr<PdfDocument>> documents;
++  base::ListValue source_hashes;
++  int total_pages = 0;
++  size_t total_fields = 0;
++  std::string failure;
++  for (const auto& source : sources) {
++    auto document = std::make_unique<PdfDocument>();
++    if (!document->Load(source, failure)) {
++      return Failed(failure);
++    }
++    total_pages += document->pages.size();
++    total_fields += document->fields.size();
++    if (total_pages > kPages || total_fields > kFields) {
++      return Failed(
++          "The combined PDF source page or field limit was exceeded.");
++    }
++    source_hashes.Append(Hash(source));
++    documents.push_back(std::move(document));
++  }
++  JobResult result;
++  result.report.Set("kind", "pdf");
++  result.report.Set("sourceSha256", std::move(source_hashes));
++  result.report.Set("pageCount", total_pages);
++  PdfDocument& first = *documents[0];
++  base::ListValue mappings;
++  if (*operation == "fields") {
++    base::ListValue fields;
++    for (const auto& field : first.fields) {
++      fields.Append(FieldReport(field));
++    }
++    result.report.Set("fields", std::move(fields));
++    return result;
++  }
++  if (*operation == "fill") {
++    return Fill(first, options, std::move(result));
++  }
++  if (*operation == "render" || *operation == "text") {
++    auto selected =
++        Pages(options.Find("pages"), first.pages.size(), *operation == "text");
++    if (!selected || (*operation == "render" && selected->size() > 20)) {
++      return Failed("Invalid PDF page selection.");
++    }
++    if (*operation == "render") {
++      const auto scale = options.FindDouble("scale");
++      if ((options.Find("scale") && !scale) ||
++          (scale && (!std::isfinite(*scale) || *scale < 0.25 || *scale > 4))) {
++        return Failed("Invalid PDF render scale.");
++      }
++      for (int index : *selected) {
++        auto raster = Render(first, index, scale.value_or(1));
++        if (!raster) {
++          return Failed(
++              "PDF rendering exceeded the 16MP/16384px bounds or failed.");
++        }
++        auto png = gfx::PNGCodec::Encode(
++            raster->Bytes().data(), gfx::PNGCodec::FORMAT_BGRA,
++            gfx::Size(raster->width, raster->height),
++            FPDFBitmap_GetStride(raster->bitmap.get()), true, {});
++        if (!png ||
++            !AddOutput(result, std::move(*png), "image/png",
++                       "page-" + base::NumberToString(index + 1) + ".png")) {
++          return Failed(
++              "Rendered PDF output limit exceeded or PNG encoding failed.");
++        }
++        const int rotation = FPDFPage_GetRotation(first.pages[index].get());
++        if (rotation < 0) {
++          return Failed("Invalid PDF page rotation.");
++        }
++        Mapping(mappings, result.outputs.size() - 1, 0, 0, index, rotation);
++      }
++    } else {
++      std::string text;
++      for (int index : *selected) {
++        ScopedFPDFTextPage text_page(
++            FPDFText_LoadPage(first.pages[index].get()));
++        const int count = text_page ? FPDFText_CountChars(text_page.get()) : -1;
++        if (count < 0 || count > static_cast<int>(kTextBytes)) {
++          return Failed("PDF text extraction failed or exceeded its limit.");
++        }
++        for (int character = 0; character < count; ++character) {
++          unsigned int code = FPDFText_GetUnicode(text_page.get(), character);
++          if (code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) {
++            return Failed("PDF contains invalid text encoding.");
++          }
++          base::WriteUnicodeCharacter(code ? code : 0xfffd, &text);
++          if (text.size() >= kTextBytes) {
++            return Failed("PDF text exceeds the 2MB limit.");
++          }
++        }
++        if (text.size() >= kTextBytes) {
++          return Failed("PDF text exceeds the 2MB limit.");
++        }
++        text.push_back('\n');
++        const int rotation = FPDFPage_GetRotation(first.pages[index].get());
++        if (rotation < 0) {
++          return Failed("Invalid PDF page rotation.");
++        }
++        Mapping(mappings, 0, mappings.size(), 0, index, rotation);
++      }
++      result.report.Set("text", text);
++      std::vector<uint8_t> bytes(text.begin(), text.end());
++      if (!AddOutput(result, std::move(bytes), "text/plain", "extracted.txt")) {
++        return Failed("PDF text output limit exceeded.");
++      }
++    }
++    result.report.Set("pageMappings", std::move(mappings));
++    return result;
++  }
++  if (*operation == "rotate") {
++    auto selected = Pages(options.Find("pages"), first.pages.size());
++    const auto degrees = options.FindInt("degrees");
++    if (!selected || !degrees ||
++        (*degrees != 90 && *degrees != 180 && *degrees != 270) ||
++        std::set<int>(selected->begin(), selected->end()).size() !=
++            selected->size()) {
++      return Failed("Invalid or duplicate PDF rotation pages/degrees.");
++    }
++    for (int index : *selected) {
++      const int rotation = FPDFPage_GetRotation(first.pages[index].get());
++      if (rotation < 0) {
++        return Failed("Invalid PDF page rotation.");
++      }
++      FPDFPage_SetRotation(first.pages[index].get(),
++                           (rotation + *degrees / 90) % 4);
++    }
++    auto bytes = Save(first.document.get());
++    if (!bytes) {
++      return Failed("Rotated PDF save failed or exceeded its output limit.");
++    }
++    PdfDocument reopened;
++    std::vector<std::pair<PdfDocument*, int>> expected;
++    for (size_t index = 0; index < first.pages.size(); ++index) {
++      expected.emplace_back(&first, index);
++      Mapping(mappings, 0, index, 0, index,
++              FPDFPage_GetRotation(first.pages[index].get()));
++    }
++    if (!reopened.Load(*bytes, failure) ||
++        !VerifyPages(reopened.document.get(), expected) ||
++        !AddOutput(result, std::move(*bytes), "application/pdf",
++                   "rotated.pdf")) {
++      return Failed("Rotated PDF reopening/page verification failed.");
++    }
++    result.report.Set("pageMappings", std::move(mappings));
++    return result;
++  }
++
++  const auto* groups = options.FindList(merge ? "inputs" : "groups");
++  if (!groups || groups->empty() || groups->size() > (merge ? 8u : 20u) ||
++      (merge && groups->size() < 2)) {
++    return Failed("Invalid PDF merge inputs or split groups.");
++  }
++  // PDFium page import does not copy an AcroForm's document-level field tree.
++  // Refuse rather than silently discarding interactive field identity/values.
++  for (const auto& document : documents) {
++    if (!document->fields.empty()) {
++      return Failed(
++          "Merging or splitting interactive forms is unsupported; "
++          "original fields were preserved.");
++    }
++  }
++  ScopedFPDFDocument merged(merge ? FPDF_CreateNewDocument() : nullptr);
++  int output_pages = 0;
++  int destination_page = 0;
++  for (size_t group_index = 0; group_index < groups->size(); ++group_index) {
++    const auto& group = (*groups)[group_index];
++    int source_index = 0;
++    const base::Value* selection = &group;
++    if (merge) {
++      const auto* input = group.GetIfDict();
++      const auto index = input ? input->FindInt("sourceIndex") : std::nullopt;
++      if (!input || !Keys(*input, {"sourceIndex", "pages"}) || !index ||
++          *index < 0 || *index >= static_cast<int>(documents.size())) {
++        return Failed("Invalid PDF merge source identity.");
++      }
++      source_index = *index;
++      selection = input->Find("pages");
++    }
++    PdfDocument& source = *documents[source_index];
++    auto selected = Pages(selection, source.pages.size(), merge);
++    if (!selected ||
++        selected->size() > static_cast<size_t>(kPages - output_pages)) {
++      return Failed("PDF output page selection exceeds its limit.");
++    }
++    output_pages += selected->size();
++    ScopedFPDFDocument split(merge ? nullptr : FPDF_CreateNewDocument());
++    FPDF_DOCUMENT destination = merge ? merged.get() : split.get();
++    if (!destination ||
++        !FPDF_ImportPagesByIndex(destination, source.document.get(),
++                                 selected->data(), selected->size(),
++                                 merge ? destination_page : 0)) {
++      return Failed("PDF page import failed.");
++    }
++    std::vector<std::pair<PdfDocument*, int>> expected;
++    for (int page : *selected) {
++      const int rotation = FPDFPage_GetRotation(source.pages[page].get());
++      if (rotation < 0) {
++        return Failed("Invalid source PDF rotation.");
++      }
++      Mapping(mappings, merge ? 0 : group_index,
++              merge ? destination_page++ : expected.size(), source_index, page,
++              rotation);
++      expected.emplace_back(&source, page);
++    }
++    if (!merge) {
++      auto bytes = Save(destination);
++      PdfDocument reopened;
++      if (!bytes || !reopened.Load(*bytes, failure) ||
++          !VerifyPages(reopened.document.get(), expected) ||
++          !AddOutput(
++              result, std::move(*bytes), "application/pdf",
++              "split-" + base::NumberToString(group_index + 1) + ".pdf")) {
++        return Failed("Split PDF save/reopening/page verification failed.");
++      }
++    }
++  }
++  if (merge) {
++    auto bytes = Save(merged.get());
++    PdfDocument reopened;
++    std::vector<std::pair<PdfDocument*, int>> expected;
++    for (const auto& mapping : mappings) {
++      const auto& entry = mapping.GetDict();
++      expected.emplace_back(documents[*entry.FindInt("sourceIndex")].get(),
++                            *entry.FindInt("sourcePage") - 1);
++    }
++    if (!bytes || !reopened.Load(*bytes, failure) ||
++        !VerifyPages(reopened.document.get(), expected) ||
++        !AddOutput(result, std::move(*bytes), "application/pdf",
++                   "merged.pdf")) {
++      return Failed("Merged PDF save/reopening/page verification failed.");
++    }
++  }
++  result.report.Set("pageCount", output_pages);
++  result.report.Set("pageMappings", std::move(mappings));
++  return result;
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/pdf_jobs_unittest.cc b/chrome/services/aux_document/pdf_jobs_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..ddf64a7c52db257255c2e2cfbae6367755a4b60d
+--- /dev/null
++++ b/chrome/services/aux_document/pdf_jobs_unittest.cc
+@@ -0,0 +1,320 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <cstdint>
++#include <initializer_list>
++#include <string>
++#include <string_view>
++#include <vector>
++
++#include "base/containers/span.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/stringprintf.h"
++#include "chrome/services/aux_document/media_jobs.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux::document {
++namespace {
++std::string Stream(std::string_view data, std::string_view dictionary = "") {
++  return "<< /Length " + base::NumberToString(data.size()) + " " +
++         std::string(dictionary) + " >>\nstream\n" + std::string(data) +
++         "\nendstream";
++}
++std::vector<uint8_t> Pdf(const std::vector<std::string>& objects) {
++  std::string pdf = "%PDF-1.7\n";
++  std::vector<size_t> offsets;
++  for (size_t index = 0; index < objects.size(); ++index) {
++    offsets.push_back(pdf.size());
++    pdf += base::NumberToString(index + 1) + " 0 obj\n" + objects[index] +
++           "\nendobj\n";
++  }
++  const size_t xref = pdf.size();
++  pdf += "xref\n0 " + base::NumberToString(objects.size() + 1) +
++         "\n0000000000 65535 f \n";
++  for (size_t offset : offsets) {
++    pdf += base::StringPrintf("%010zu 00000 n \n", offset);
++  }
++  pdf += "trailer\n<< /Size " + base::NumberToString(objects.size() + 1) +
++         " /Root 1 0 R >>\nstartxref\n" + base::NumberToString(xref) +
++         "\n%%EOF\n";
++  return {pdf.begin(), pdf.end()};
++}
++std::vector<uint8_t> PagesPdf() {
++  return Pdf({"<< /Type /Catalog /Pages 2 0 R >>",
++              "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
++              "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] "
++              "/Resources << /Font << /F1 7 0 R >> >> /Contents 5 0 R >>",
++              "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] "
++              "/Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
++              Stream("BT /F1 12 Tf 10 50 Td (Page one) Tj ET"),
++              Stream("BT /F1 12 Tf 10 50 Td (Page two) Tj ET"),
++              "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"});
++}
++std::vector<uint8_t> FormPdf(std::string_view extra = "") {
++  return Pdf(
++      {"<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [5 0 R 6 0 R] "
++       "/DR << /Font << /Helv 7 0 R >> >> /DA (/Helv 12 Tf 0 g) >> >>",
++       "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
++       "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 100] "
++       "/Resources << >> /Contents 4 0 R /Annots [5 0 R 6 0 R] >>",
++       Stream(""),
++       "<< /Type /Annot /Subtype /Widget /FT /Tx /T (Owner) /V (Old) "
++       "/Rect [10 50 110 70] /P 3 0 R /F 4 /DA (/Helv 12 Tf 0 g) "
++       "/AP << /N 8 0 R >> " +
++           std::string(extra) + " >>",
++       "<< /Type /Annot /Subtype /Widget /FT /Btn /T (Checked) /V /Off "
++       "/AS /Off /Rect [10 10 30 30] /P 3 0 R /F 4 "
++       "/AP << /N << /Off 9 0 R /Yes 10 0 R >> >> >>",
++       "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
++       Stream("BT /Helv 12 Tf 0 g 2 5 Td (Old) Tj ET",
++              "/Type /XObject /Subtype /Form /BBox [0 0 100 20] "
++              "/Resources << /Font << /Helv 7 0 R >> >>"),
++       Stream("0 G 1 w 1 1 18 18 re S",
++              "/Type /XObject /Subtype /Form /BBox [0 0 20 20]"),
++       Stream("0 G 1 w 1 1 18 18 re S 2 w 4 4 m 16 16 l 4 16 m 16 4 l S",
++              "/Type /XObject /Subtype /Form /BBox [0 0 20 20]")});
++}
++// Object 6 is compressed into an unfiltered object stream. It is reachable
++// outside /Names/JavaScript, so the public JavaScript-count API cannot find it.
++std::vector<uint8_t> ObjectStreamScriptPdf() {
++  const std::vector<std::string> objects = {
++      "<< /Type /Catalog /Pages 2 0 R /AuxMetadata 6 0 R >>",
++      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
++      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>",
++      Stream(""),
++      Stream("6 0 << /S /JavaScript /J#53 (app.alert\\(1\\)) >>",
++             "/Type /ObjStm /N 1 /First 4")};
++  std::string pdf = "%PDF-1.7\n";
++  std::vector<size_t> offsets;
++  for (size_t index = 0; index < objects.size(); ++index) {
++    offsets.push_back(pdf.size());
++    pdf += base::NumberToString(index + 1) + " 0 obj\n" + objects[index] +
++           "\nendobj\n";
++  }
++  const size_t xref_offset = pdf.size();
++  std::string xref;
++  auto entry = [&](int type, uint32_t offset, uint16_t generation) {
++    xref.push_back(type);
++    for (int shift : {24, 16, 8, 0}) {
++      xref.push_back((offset >> shift) & 0xff);
++    }
++    xref.push_back(generation >> 8);
++    xref.push_back(generation & 0xff);
++  };
++  entry(0, 0, 65535);
++  for (size_t offset : offsets) {
++    entry(1, offset, 0);
++  }
++  entry(2, 5, 0);
++  entry(1, xref_offset, 0);
++  pdf +=
++      "7 0 obj\n" + Stream(xref, "/Type /XRef /Size 8 /Root 1 0 R /W [1 4 2]") +
++      "\nendobj\nstartxref\n" + base::NumberToString(xref_offset) + "\n%%EOF\n";
++  return {pdf.begin(), pdf.end()};
++}
++base::ListValue PageList(std::initializer_list<int> pages) {
++  base::ListValue list;
++  for (int page : pages) {
++    list.Append(page);
++  }
++  return list;
++}
++JobResult RunPdf(const std::vector<uint8_t>& bytes, base::DictValue options) {
++  return ExecutePdf({base::span(bytes)}, options);
++}
++std::string Text(const std::vector<uint8_t>& bytes) {
++  JobResult result = RunPdf(bytes, base::DictValue().Set("operation", "text"));
++  EXPECT_TRUE(result.failure.empty()) << result.failure;
++  const auto* text = result.report.FindString("text");
++  return text ? *text : "";
++}
++TEST(AuxPdfJobsTest, TextRenderAndEmptyFieldsPreserveInput) {
++  auto source = PagesPdf();
++  const auto original = source;
++  EXPECT_NE(Text(source).find("Page one"), std::string::npos);
++  EXPECT_NE(Text(source).find("Page two"), std::string::npos);
++  JobResult rendered = RunPdf(
++      source,
++      base::DictValue().Set("operation", "render").Set("pages", PageList({2})));
++  ASSERT_TRUE(rendered.failure.empty()) << rendered.failure;
++  ASSERT_EQ(rendered.outputs.size(), 1u);
++  EXPECT_EQ(rendered.outputs[0].media_type, "image/png");
++  ASSERT_GE(rendered.outputs[0].bytes.size(), 8u);
++  EXPECT_EQ(rendered.outputs[0].bytes[0], 0x89);
++  EXPECT_EQ(rendered.outputs[0].bytes[1], 'P');
++  EXPECT_EQ(*rendered.report.FindList("pageMappings")
++                 ->front()
++                 .GetDict()
++                 .FindInt("sourcePage"),
++            2);
++  JobResult fields =
++      RunPdf(source, base::DictValue().Set("operation", "fields"));
++  ASSERT_TRUE(fields.failure.empty()) << fields.failure;
++  EXPECT_TRUE(fields.report.FindList("fields")->empty());
++  EXPECT_EQ(source, original);
++}
++TEST(AuxPdfJobsTest, MergeSplitAndRotateReopenInRequestedOrder) {
++  const auto source = PagesPdf();
++  base::ListValue inputs;
++  inputs.Append(
++      base::DictValue().Set("sourceIndex", 1).Set("pages", PageList({2})));
++  inputs.Append(
++      base::DictValue().Set("sourceIndex", 0).Set("pages", PageList({1})));
++  JobResult merged = ExecutePdf({base::span(source), base::span(source)},
++                                base::DictValue()
++                                    .Set("operation", "merge")
++                                    .Set("inputs", std::move(inputs)));
++  ASSERT_TRUE(merged.failure.empty()) << merged.failure;
++  ASSERT_EQ(merged.outputs.size(), 1u);
++  const auto merged_text = Text(merged.outputs[0].bytes);
++  EXPECT_LT(merged_text.find("Page two"), merged_text.find("Page one"));
++  EXPECT_EQ(*merged.report.FindList("pageMappings")
++                 ->front()
++                 .GetDict()
++                 .FindInt("sourceIndex"),
++            1);
++  base::ListValue groups;
++  groups.Append(PageList({2}));
++  groups.Append(PageList({1}));
++  JobResult split = RunPdf(source, base::DictValue()
++                                       .Set("operation", "split")
++                                       .Set("groups", std::move(groups)));
++  ASSERT_TRUE(split.failure.empty()) << split.failure;
++  ASSERT_EQ(split.outputs.size(), 2u);
++  EXPECT_NE(Text(split.outputs[0].bytes).find("Page two"), std::string::npos);
++  EXPECT_EQ(Text(split.outputs[0].bytes).find("Page one"), std::string::npos);
++  EXPECT_NE(Text(split.outputs[1].bytes).find("Page one"), std::string::npos);
++  JobResult rotated = RunPdf(source, base::DictValue()
++                                         .Set("operation", "rotate")
++                                         .Set("pages", PageList({2}))
++                                         .Set("degrees", 90));
++  ASSERT_TRUE(rotated.failure.empty()) << rotated.failure;
++  ASSERT_EQ(rotated.outputs.size(), 1u);
++  EXPECT_EQ(*rotated.report.FindList("pageMappings")
++                 ->back()
++                 .GetDict()
++                 .FindInt("rotation"),
++            90);
++  JobResult reopened = RunPdf(rotated.outputs[0].bytes,
++                              base::DictValue().Set("operation", "text"));
++  ASSERT_TRUE(reopened.failure.empty()) << reopened.failure;
++  EXPECT_EQ(*reopened.report.FindList("pageMappings")
++                 ->back()
++                 .GetDict()
++                 .FindInt("rotation"),
++            90);
++}
++TEST(AuxPdfJobsTest, FillsTextAndCheckboxAndVerifiesSavedAppearance) {
++  auto source = FormPdf();
++  const auto original = source;
++  base::ListValue values;
++  values.Append(base::DictValue().Set("name", "Owner").Set("value", "Aux"));
++  values.Append(base::DictValue().Set("name", "Checked").Set("value", true));
++  JobResult filled = RunPdf(source, base::DictValue()
++                                        .Set("operation", "fill")
++                                        .Set("values", std::move(values)));
++  ASSERT_TRUE(filled.failure.empty()) << filled.failure;
++  EXPECT_EQ(filled.report.FindBool("appearancesVerified"), true);
++  ASSERT_EQ(filled.outputs.size(), 1u);
++  JobResult reopened = RunPdf(filled.outputs[0].bytes,
++                              base::DictValue().Set("operation", "fields"));
++  ASSERT_TRUE(reopened.failure.empty()) << reopened.failure;
++  const auto* fields = reopened.report.FindList("fields");
++  ASSERT_EQ(fields->size(), 2u);
++  EXPECT_EQ(*fields->front().GetDict().FindString("value"), "Aux");
++  EXPECT_EQ(fields->back().GetDict().FindBool("value"), true);
++  EXPECT_EQ(source, original);
++  // Refilling the existing value must still prove ink against a cleared widget.
++  base::ListValue unchanged;
++  unchanged.Append(base::DictValue().Set("name", "Checked").Set("value", true));
++  JobResult same =
++      RunPdf(filled.outputs[0].bytes, base::DictValue()
++                                          .Set("operation", "fill")
++                                          .Set("values", std::move(unchanged)));
++  EXPECT_TRUE(same.failure.empty()) << same.failure;
++}
++TEST(AuxPdfJobsTest, ClearsFieldsAndRefusesReadOnlyEdits) {
++  base::ListValue checked;
++  checked.Append(base::DictValue().Set("name", "Checked").Set("value", true));
++  JobResult initial = RunPdf(FormPdf(), base::DictValue()
++                                            .Set("operation", "fill")
++                                            .Set("values", std::move(checked)));
++  ASSERT_TRUE(initial.failure.empty()) << initial.failure;
++  base::ListValue cleared;
++  cleared.Append(base::DictValue().Set("name", "Owner").Set("value", ""));
++  cleared.Append(base::DictValue().Set("name", "Checked").Set("value", false));
++  JobResult result =
++      RunPdf(initial.outputs[0].bytes, base::DictValue()
++                                           .Set("operation", "fill")
++                                           .Set("values", std::move(cleared)));
++  ASSERT_TRUE(result.failure.empty()) << result.failure;
++  EXPECT_EQ(result.report.FindBool("appearancesVerified"), true);
++  const auto* fields = result.report.FindList("fields");
++  ASSERT_EQ(fields->size(), 2u);
++  EXPECT_TRUE(fields->front().GetDict().FindString("value")->empty());
++  EXPECT_EQ(fields->back().GetDict().FindBool("value"), false);
++  base::ListValue read_only;
++  read_only.Append(base::DictValue().Set("name", "Owner").Set("value", "Aux"));
++  JobResult refused =
++      RunPdf(FormPdf("/Ff 1"), base::DictValue()
++                                   .Set("operation", "fill")
++                                   .Set("values", std::move(read_only)));
++  EXPECT_NE(refused.failure.find("Read-only"), std::string::npos);
++  EXPECT_TRUE(refused.outputs.empty());
++}
++TEST(AuxPdfJobsTest, RejectsScriptObjectStreamsAndWidgetActions) {
++  JobResult compressed = RunPdf(ObjectStreamScriptPdf(),
++                                base::DictValue().Set("operation", "fields"));
++  EXPECT_NE(compressed.failure.find("scripts"), std::string::npos)
++      << compressed.failure;
++  EXPECT_TRUE(compressed.outputs.empty());
++  for (const auto extra : {"/AA << /K << /S /JavaScript /JS (1) >> >>",
++                           "/A << /S /URI /URI (https://example.invalid) >>",
++                           "/FT /Sig", "/Ff 8192"}) {
++    JobResult active =
++        RunPdf(FormPdf(extra), base::DictValue().Set("operation", "fields"));
++    EXPECT_FALSE(active.failure.empty()) << extra;
++    EXPECT_TRUE(active.outputs.empty());
++  }
++}
++TEST(AuxPdfJobsTest, RejectsInvalidOptionsAndDoesNotPublishPartialOutputs) {
++  const auto source = PagesPdf();
++  EXPECT_FALSE(
++      RunPdf(source,
++             base::DictValue().Set("operation", "fields").Set("extra", 1))
++          .failure.empty());
++  EXPECT_FALSE(RunPdf(source, base::DictValue()
++                                  .Set("operation", "render")
++                                  .Set("pages", PageList({3})))
++                   .failure.empty());
++  EXPECT_FALSE(RunPdf(source, base::DictValue()
++                                  .Set("operation", "render")
++                                  .Set("pages", PageList({1}))
++                                  .Set("scale", 5))
++                   .failure.empty());
++  EXPECT_FALSE(RunPdf(source, base::DictValue()
++                                  .Set("operation", "rotate")
++                                  .Set("pages", PageList({1, 1}))
++                                  .Set("degrees", 90))
++                   .failure.empty());
++  base::ListValue values;
++  values.Append(base::DictValue().Set("name", "Owner").Set("value", "Aux"));
++  values.Append(
++      base::DictValue().Set("name", "Owner").Set("value", "duplicate"));
++  JobResult duplicate =
++      RunPdf(FormPdf(), base::DictValue()
++                            .Set("operation", "fill")
++                            .Set("values", std::move(values)));
++  EXPECT_FALSE(duplicate.failure.empty());
++  EXPECT_TRUE(duplicate.outputs.empty());
++  base::ListValue groups;
++  groups.Append(PageList({1}));
++  groups.Append(PageList({3}));
++  JobResult split = RunPdf(source, base::DictValue()
++                                       .Set("operation", "split")
++                                       .Set("groups", std::move(groups)));
++  EXPECT_FALSE(split.failure.empty());
++  EXPECT_TRUE(split.outputs.empty());
++}
++}  // namespace
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/pdf_safety.cc b/chrome/services/aux_document/pdf_safety.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..f19e98f93e34c5f9119bdc73494c91a458c8772a
+--- /dev/null
++++ b/chrome/services/aux_document/pdf_safety.cc
+@@ -0,0 +1,88 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/services/aux_document/pdf_safety.h"
++
++#include <set>
++#include <utility>
++#include <vector>
++
++// PDFium's private fxcrt types intentionally stay in their own translation
++// unit: the pinned fork shares several include guards with Chromium base.
++#include "third_party/pdfium/core/fpdfapi/parser/cpdf_array.h"
++#include "third_party/pdfium/core/fpdfapi/parser/cpdf_dictionary.h"
++#include "third_party/pdfium/core/fpdfapi/parser/cpdf_document.h"
++#include "third_party/pdfium/core/fpdfapi/parser/cpdf_object.h"
++#include "third_party/pdfium/fpdfsdk/cpdfsdk_helpers.h"
++#include "third_party/pdfium/public/fpdf_javascript.h"
++#include "third_party/pdfium/public/fpdf_signature.h"
++
++namespace aux::document {
++// Traverse parsed objects, including indirect/object-stream dictionaries. Do
++// not inspect byte substrings or assume scripts only live in the name tree.
++bool IsInertPdf(FPDF_DOCUMENT document) {
++  auto *parsed = CPDFDocumentFromFPDFDocument(document);
++  if (!parsed || !parsed->GetRoot() ||
++      FPDFDoc_GetJavaScriptActionCount(document) != 0 ||
++      FPDF_GetSignatureCount(document) != 0) {
++    return false;
++  }
++  std::vector<RetainPtr<const CPDF_Object>> pending;
++  pending.emplace_back(parsed->GetRoot());
++  std::vector<RetainPtr<const CPDF_Object>> retained;
++  std::set<const CPDF_Object *> visited;
++  size_t edges = 0;
++  while (!pending.empty()) {
++    auto object = std::move(pending.back());
++    pending.pop_back();
++    if (!object || !visited.insert(object.Get()).second) {
++      continue;
++    }
++    if (visited.size() > 100000) {
++      return false;
++    }
++    retained.push_back(object);
++    if (object->IsReference()) {
++      auto direct = object->GetDirect();
++      if (!direct) {
++        return false;
++      }
++      pending.push_back(std::move(direct));
++      continue;
++    }
++    if (const auto *array = object->AsArray()) {
++      if (array->size() > 100000 - edges) {
++        return false;
++      }
++      edges += array->size();
++      for (size_t index = 0; index < array->size(); ++index) {
++        pending.push_back(array->GetObjectAt(index));
++      }
++      continue;
++    }
++    auto dictionary = object->GetDict();
++    if (!dictionary) {
++      continue;
++    }
++    if (dictionary->KeyExist("JS") || dictionary->KeyExist("JavaScript") ||
++        dictionary->KeyExist("OpenAction") || dictionary->KeyExist("AA") ||
++        dictionary->KeyExist("XFA") ||
++        dictionary->GetNameFor("Type") == "Sig" ||
++        dictionary->GetNameFor("FT") == "Sig" ||
++        (dictionary->GetNameFor("Subtype") == "Widget" &&
++         dictionary->KeyExist("A")) ||
++        dictionary->GetNameFor("S") == "JavaScript") {
++      return false;
++    }
++    if (dictionary->size() > 100000 - edges) {
++      return false;
++    }
++    edges += dictionary->size();
++    for (const auto &[key, value] : CPDF_DictionaryLocker(dictionary)) {
++      pending.emplace_back(value);
++    }
++  }
++  return true;
++}
++
++} // namespace aux::document
+diff --git a/chrome/services/aux_document/pdf_safety.h b/chrome/services/aux_document/pdf_safety.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..0bdc6c1b66cbe71945c2515905017220e8855ea9
+--- /dev/null
++++ b/chrome/services/aux_document/pdf_safety.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_PDF_SAFETY_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_PDF_SAFETY_H_
++
++#include "third_party/pdfium/public/fpdfview.h"
++
++namespace aux::document {
++bool IsInertPdf(FPDF_DOCUMENT document);
++} // namespace aux::document
++
++#endif // CHROME_SERVICES_AUX_DOCUMENT_PDF_SAFETY_H_
+diff --git a/chrome/services/aux_document/public/mojom/document_extractor.mojom b/chrome/services/aux_document/public/mojom/document_extractor.mojom
+index 0fa85c399f348b52056f088730e5278545bf81eb..54778b3b1af96ce8493a726eb55124b10c886952 100644
+--- a/chrome/services/aux_document/public/mojom/document_extractor.mojom
++++ b/chrome/services/aux_document/public/mojom/document_extractor.mojom
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ module aux.document.mojom;
+ import "mojo/public/mojom/base/shared_memory.mojom";
++import "mojo/public/mojom/base/values.mojom";
+ import "sandbox/policy/mojom/sandbox.mojom";
+ 
+ enum Format { kText, kPdf, kDocx };
+@@ -35,6 +36,25 @@ struct Metadata {
+ struct Chunk { uint32 index; array<Segment> segments; bool final_chunk; };
+ union StartResult { Metadata metadata; Failure failure; };
+ 
++struct JobSource {
++  mojo_base.mojom.ReadOnlySharedMemoryRegion source;
++  uint32 size;
++  string sha256;
++  string media_type;
++};
++struct JobOutput {
++  mojo_base.mojom.ReadOnlySharedMemoryRegion source;
++  uint32 size;
++  string sha256;
++  string media_type;
++  string label;
++};
++struct JobResult {
++  mojo_base.mojom.DictionaryValue report;
++  array<JobOutput> outputs;
++  string failure;
++};
++
+ // One dedicated computation-only process per immutable selected file. No paths,
+ // Profile handles, credentials, file/network capability or executable actions.
+ [ServiceSandbox=sandbox.mojom.Sandbox.kService]
+@@ -42,4 +62,6 @@ interface DocumentExtractor {
+   Start(mojo_base.mojom.ReadOnlySharedMemoryRegion? source, uint32 source_bytes)
+       => (StartResult result);
+   ReadChunk(uint32 index) => (Chunk chunk);
++  Execute(array<JobSource> sources, mojo_base.mojom.DictionaryValue request)
++      => (JobResult result);
+ };
+diff --git a/content/browser/service_host/utility_process_client.cc b/content/browser/service_host/utility_process_client.cc
+index 6bb0ad536c4b8ddd32461e54b93471e8a055c5ea..88a5f900c169d0eb9cc0e57057dc2a61c97586b0 100644
+--- a/content/browser/service_host/utility_process_client.cc
++++ b/content/browser/service_host/utility_process_client.cc
+@@ -38,6 +38,13 @@ void UtilityProcessClient::OnProcessLaunched(const base::Process& process) {
+   }
+ }
+ 
++void UtilityProcessClient::OnProcessLaunchFailed(int error_code) {
++  CHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (observer_) {
++    observer_->OnServiceProcessLaunchFailed(error_code);
++  }
++}
++
+ void UtilityProcessClient::OnProcessTerminatedNormally() {
+   GetServiceProcessTracker().NotifyTerminated(*service_process_id_);
+ }
+diff --git a/content/browser/service_host/utility_process_client.h b/content/browser/service_host/utility_process_client.h
+index 97a0f76571caf19e39d861bf188da9173fc2f8f6..75805f0d8bc74276d60188a2ede9862137c68656 100644
+--- a/content/browser/service_host/utility_process_client.h
++++ b/content/browser/service_host/utility_process_client.h
+@@ -36,6 +36,7 @@ class UtilityProcessClient : public UtilityProcessHost::Client {
+ 
+   // UtilityProcessHost::Client:
+   void OnProcessLaunched(const base::Process& process) override;
++  void OnProcessLaunchFailed(int error_code) override;
+ 
+   void OnProcessTerminatedNormally() override;
+ 
+diff --git a/content/browser/service_host/utility_process_host.cc b/content/browser/service_host/utility_process_host.cc
+index 1be5471d947897570094d752c14b33a9cb755c74..e9a269e2e0bee771a766db05630ad0fc3a7fb374 100644
+--- a/content/browser/service_host/utility_process_host.cc
++++ b/content/browser/service_host/utility_process_host.cc
+@@ -616,6 +616,9 @@ void UtilityProcessHost::OnProcessLaunched() {
+ 
+ void UtilityProcessHost::OnProcessLaunchFailed(int error_code) {
+   launch_state_ = LaunchState::kLaunchFailed;
++  if (client_) {
++    client_->OnProcessLaunchFailed(error_code);
++  }
+ }
+ 
+ void UtilityProcessHost::OnProcessCrashed(int exit_code) {
+diff --git a/content/browser/service_host/utility_process_host.h b/content/browser/service_host/utility_process_host.h
+index 18a070048449b2fb56996241c9cebc565f59dee9..b6dee50006479600508e86f5242aee26cf2aec79 100644
+--- a/content/browser/service_host/utility_process_host.h
++++ b/content/browser/service_host/utility_process_host.h
+@@ -84,6 +84,7 @@ class CONTENT_EXPORT UtilityProcessHost final
+     // Called when the OS has reported that the process has successfully
+     // launched.
+     virtual void OnProcessLaunched(const base::Process& process) {}
++    virtual void OnProcessLaunchFailed(int error_code) {}
+     // Called when the process has terminated normally.
+     virtual void OnProcessTerminatedNormally() {}
+     // Called when the process has terminated due to a crash. The `type` field
+diff --git a/content/public/browser/service_process_host.h b/content/public/browser/service_process_host.h
+index 421e7f2baa1ca05ac3db1a2499273de740a98724..1b251b2f6356461ce90747d16056e07facca721a 100644
+--- a/content/public/browser/service_process_host.h
++++ b/content/public/browser/service_process_host.h
+@@ -170,6 +170,9 @@ class CONTENT_EXPORT ServiceProcessHost {
+     ~Observer() override {}
+ 
+     virtual void OnServiceProcessLaunched(const ServiceProcessInfo& info) {}
++    // No process exists to join after an OS launch refusal. Instance observers
++    // still need a terminal notification to retire their original work.
++    virtual void OnServiceProcessLaunchFailed(int error_code) {}
+     virtual void OnServiceProcessTerminatedNormally(
+         const ServiceProcessInfo& info) {}
+     virtual void OnServiceProcessCrashed(const ServiceProcessInfo& info) {}

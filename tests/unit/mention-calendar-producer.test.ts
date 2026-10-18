@@ -164,7 +164,21 @@ function taskFixture(f: ReturnType<typeof fixture>) {
     createdAt: 1,
     config: { taskId: task.taskId, taskRevision: 1, contextWorkspaceId: workspace.workspaceId },
   });
-  return { workspace, task, mentions, operations };
+  return {
+    workspace,
+    task,
+    mentions,
+    operations,
+    ref: (connectionId: string) => ({
+      kind: "connector" as const,
+      connectorId: `calendar:${connectionId}`,
+      authorityDigest: catalog.list({
+        workspaceId: workspace.workspaceId,
+        taskId: task.taskId,
+        expectedRevision: task.revision,
+      }).bindings[`calendar:${connectionId}`]!,
+    }),
+  };
 }
 it("actual Calendar operation retains approved no-mention task reads and narrows only a trusted connector turn", async () => {
   const f = fixture();
@@ -185,7 +199,7 @@ it("actual Calendar operation retains approved no-mention task reads and narrows
     expect((await t.operations.invokeCalendarTaskEvents(query, { runId: "run" })).result.events).toHaveLength(
       1,
     );
-    const ref = { kind: "connector" as const, connectorId: `calendar:${alice!.connectionId}` };
+    const ref = t.ref(alice!.connectionId);
     f.repo.saveRun({
       ...f.repo.getRun("run")!,
       config: { ...f.repo.getRun("run")!.config, mentions: [ref] },
@@ -218,7 +232,7 @@ it("a Calendar mention cannot create its missing provider/task grant", async () 
     await connect(f.service, "alice");
     const t = taskFixture(f),
       account = f.service.list().connections[0]!;
-    const ref = { kind: "connector" as const, connectorId: `calendar:${account.connectionId}` };
+    const ref = t.ref(account.connectionId);
     await t.mentions.begin("run", [ref], [], {
       workspaceId: t.workspace.workspaceId,
       taskId: t.task.taskId,

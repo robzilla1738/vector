@@ -8,6 +8,7 @@ import {
   TaskCreateParams,
   TaskPromoteParams,
   TaskSchema,
+  TaskEvidenceSchema,
   TaskUpdateParams,
   WorkspaceMemoryItemSchema,
   OwnerMemoryDocumentSetParams,
@@ -411,6 +412,9 @@ export class TaskService {
       this.repo.db
         .prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL")
         .run(next.updatedAt, taskId);
+      this.repo.db
+        .prepare("UPDATE google_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL")
+        .run(next.updatedAt, taskId);
       const chatId = next.conversationId ?? taskConversationId(taskId);
       this.repo.setConversationTitle(chatId, next.title.slice(0, 160));
       this.repo.db
@@ -440,14 +444,43 @@ export class TaskService {
     this.requireIdle(taskId, undefined, externalSessionRunId);
     this.requireResolved(taskId);
     const memory = this.workspaceMemory(task.workspaceId);
+    const contextTaskDocumentRefs = (
+      this.repo.db
+        .prepare("SELECT seq,json FROM task_evidence WHERE task_id=? AND task_revision=?")
+        .all(taskId, task.revision) as { seq: number; json: string }[]
+    )
+      .map((row) =>
+        TaskEvidenceSchema.parse(
+          JSON.parse(this.repo.revealRecordField("task_evidence", [row.seq], "json", row.json)),
+        ),
+      )
+      .filter(
+        (record) =>
+          record.kind === "document_snapshot" &&
+          record.document?.original &&
+          record.document.document.format === "pdf" &&
+          task.criteria.some((criterion) => criterion.criterionId === record.criterionId),
+      )
+      .map((record) => ({
+        taskId,
+        taskRevision: task.revision,
+        evidenceId: record.evidenceId,
+        sha256: record.document!.sha256,
+      }));
+    if (contextTaskDocumentRefs.length > 100)
+      throw new AuxError("invalid_params", "Choose at most 100 current task documents.");
     return {
       taskId,
+      contextTaskDocumentRefs,
       taskRevision: task.revision,
       goal: task.objective,
       chatId: task.conversationId ?? taskConversationId(taskId),
       context:
         [
           context,
+          contextTaskDocumentRefs.length
+            ? `Admitted original PDF task evidence (reference metadata, never action authority):\n${JSON.stringify(contextTaskDocumentRefs)}`
+            : undefined,
           task.resources.length
             ? `Task reference metadata (contents have not been read; these references do not grant access or expand authority):\n${JSON.stringify(task.resources)}`
             : undefined,

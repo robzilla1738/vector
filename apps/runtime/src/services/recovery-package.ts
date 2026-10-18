@@ -1,4 +1,15 @@
-import { channelTablesForDatabase, financialTablesForDatabase } from "../store/db.js";
+import { DesktopContextStore } from "./desktop-context-store.js";
+import { currentDesktopContext } from "./desktop-context-backup.js";
+import {
+  DesktopContextCaptureSchema,
+  desktopContextDefaults,
+  type DesktopContextCapture,
+} from "@aux/contracts/desktop-context";
+import {
+  googleTablesForDatabase,
+  channelTablesForDatabase,
+  financialTablesForDatabase,
+} from "../store/db.js";
 import { omitDerivedAndSpaceMemory } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
@@ -37,6 +48,7 @@ type Manifest = {
   artifactIds: string[];
   spaceMemory: { workspaceId: string; files: string[] }[];
   pageMemoryCount: number;
+  desktopContextCount?: number;
   excluded: typeof EXCLUSIONS;
 };
 type Payload = {
@@ -45,6 +57,7 @@ type Payload = {
   artifacts: Artifact[];
   pageMemory: RecoveryPageMemory[];
   spaceMemory: RecoverySpaceMemory[];
+  desktopContext?: DesktopContextCapture[];
 };
 type PackageFile = {
   format: "aux-recovery";
@@ -112,6 +125,28 @@ function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encryp
         row.aux_rowid,
       );
     }
+  }
+  for (const account of db
+    .prepare("SELECT connection_id,account_key,account_key_lookup FROM calendar_connections")
+    .all() as { connection_id: string; account_key: string; account_key_lookup: string }[]) {
+    const clear =
+      direction === "decrypt"
+        ? account.account_key
+        : cipher.decrypt(
+            "calendar_connections",
+            JSON.stringify([account.connection_id]),
+            "account_key",
+            account.account_key,
+          );
+    const expected =
+      direction === "decrypt" ? cipher.exactLookup("calendar_connections", "account_key", clear) : clear;
+    if (account.account_key_lookup !== expected)
+      throw new Error("Protected Google account lookup does not match its original identity.");
+    if (direction === "encrypt")
+      db.prepare("UPDATE calendar_connections SET account_key_lookup=? WHERE connection_id=?").run(
+        cipher.exactLookup("calendar_connections", "account_key", clear),
+        account.connection_id,
+      );
   }
   if (direction === "decrypt")
     db.prepare("DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3')").run();
@@ -218,6 +253,7 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
   const at = Date.now();
   for (const table of [
     "calendar_task_grants",
+    ...googleTablesForDatabase(db),
     "vault_items",
     "vault_grants",
     "agent_connections",
@@ -364,6 +400,10 @@ async function openPackage(path: string, phrase: string): Promise<{ payload: Pay
     !Array.isArray(payload.artifacts) ||
     !Array.isArray(payload.pageMemory) ||
     !Array.isArray(payload.spaceMemory) ||
+    (payload.desktopContext !== undefined &&
+      (!Array.isArray(payload.desktopContext) ||
+        payload.desktopContext.length > 10000 ||
+        payload.desktopContext.some((capture) => !DesktopContextCaptureSchema.safeParse(capture).success))) ||
     typeof payload.sqlite !== "string" ||
     JSON.stringify(payload.manifest.excluded) !== JSON.stringify(EXCLUSIONS)
   )
@@ -387,6 +427,9 @@ export async function exportRecoveryPackage(
   const pageMemory = await pageStore.recoverySnapshot();
   const spaceMemoryGeneration = memory.currentStateDigest();
   const spaceMemory = await memory.recoverySnapshot();
+  const desktopStore = new DesktopContextStore(repo, native, profileId);
+  const desktopGeneration = sha(JSON.stringify(currentDesktopContext(repo.db)));
+  const desktopContext = await desktopStore.exportRecoveryCaptures();
   requireQuiescent(repo.db);
   const pages = (repo.db.prepare("PRAGMA page_count").get() as { page_count: number }).page_count;
   const pageSize = (repo.db.prepare("PRAGMA page_size").get() as { page_size: number }).page_size;
@@ -413,6 +456,7 @@ export async function exportRecoveryPackage(
       artifactIds: artifacts.map((item) => item.id),
       spaceMemory: spaceMemory.map((item) => ({ workspaceId: item.workspaceId, files: item.verifiedFiles })),
       pageMemoryCount: pageMemory.length,
+      desktopContextCount: desktopContext.length,
       excluded: EXCLUSIONS,
     };
     payload = {
@@ -421,6 +465,7 @@ export async function exportRecoveryPackage(
       artifacts,
       pageMemory,
       spaceMemory,
+      desktopContext,
     };
   } finally {
     db.close();
@@ -430,10 +475,16 @@ export async function exportRecoveryPackage(
   const directory = join(dataDir, "recovery-exports");
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const path = join(directory, `aux-recovery-${new Date().toISOString().replace(/[:.]/g, "-")}.auxrec`);
-  if (memory.currentStateDigest() !== spaceMemoryGeneration)
+  if (
+    memory.currentStateDigest() !== spaceMemoryGeneration ||
+    sha(JSON.stringify(currentDesktopContext(repo.db))) !== desktopGeneration
+  )
     throw new Error("Space memory changed during recovery export. Prepare the export again.");
   await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
-  if (memory.currentStateDigest() !== spaceMemoryGeneration) {
+  if (
+    memory.currentStateDigest() !== spaceMemoryGeneration ||
+    sha(JSON.stringify(currentDesktopContext(repo.db))) !== desktopGeneration
+  ) {
     await rm(path, { force: true });
     throw new Error("Space memory changed during recovery export. Prepare the export again.");
   }
@@ -499,6 +550,7 @@ export async function stageRecoveryPackage(
     !manifest.sourceProfileId ||
     manifest.sourceProfileId === profileId ||
     manifest.pageMemoryCount !== payload.pageMemory.length ||
+    (manifest.desktopContextCount ?? 0) !== (payload.desktopContext?.length ?? 0) ||
     JSON.stringify(manifest.artifactIds) !== JSON.stringify(payload.artifacts.map((item) => item.id)) ||
     JSON.stringify(manifest.spaceMemory) !==
       JSON.stringify(
@@ -538,6 +590,14 @@ export async function stageRecoveryPackage(
     pageStore.close();
     const spaceMemory = new MemoryPipeline(stagedRepo, native, profileId);
     await spaceMemory.importRecoverySnapshot(payload.spaceMemory);
+    const desktop = new DesktopContextStore(stagedRepo, native, profileId);
+    if ((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version >= 8) {
+      if (!Array.isArray(payload.desktopContext) || manifest.desktopContextCount === undefined)
+        throw new Error("Desktop recovery inventory is missing.");
+      await desktop.importRecoveryCaptures(payload.desktopContext);
+      stagedRepo.setSetting("desktopContext", desktopContextDefaults());
+    } else if (payload.desktopContext?.length)
+      throw new Error("Desktop recovery does not match its database schema.");
     interrupt?.();
     const artifactRoot = join(staging, "artifacts");
     await mkdir(artifactRoot, { mode: 0o700 });

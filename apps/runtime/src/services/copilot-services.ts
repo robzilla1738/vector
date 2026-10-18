@@ -1,5 +1,5 @@
 import type { CopilotSession } from "@github/copilot-sdk";
-import type { ModelCallSource } from "../agent/model-client.js";
+import type { RunModelCallSource } from "../agent/model-client.js";
 import { AuxError } from "@aux/contracts";
 import { isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -289,7 +289,7 @@ export class CopilotServices {
 
   inference<T>(
     accountId: string,
-    source: ModelCallSource,
+    source: RunModelCallSource,
     modelId: string,
     signal: AbortSignal,
     use: (session: CopilotSession, current: () => Promise<void>, signal: AbortSignal) => Promise<T>,

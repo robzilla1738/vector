@@ -412,14 +412,15 @@ export class RunFundingService {
 
   reserveEstimated(
     runId: string,
-    request: { modelId: string; estimatedCostUsd: number },
+    request: { modelId: string; estimatedCostUsd: number; tokenUsageUnknown?: boolean },
   ): Promise<string | undefined> {
-    if (!Number.isFinite(request.estimatedCostUsd) || request.estimatedCostUsd <= 0)
-      throw new AuxError("invalid_params", "Image funding requires a positive bounded cost.");
+    if (!Number.isFinite(request.estimatedCostUsd) || request.estimatedCostUsd < 0)
+      throw new AuxError("invalid_params", "Media funding requires a finite nonnegative cost estimate.");
     return this.reserveRequest(
       runId,
       { modelId: request.modelId, promptBytes: 0, toolsBytes: 0, maxOutputTokens: 1 },
       request.estimatedCostUsd,
+      request.tokenUsageUnknown,
     );
   }
 
@@ -427,6 +428,7 @@ export class RunFundingService {
     runId: string,
     request: FundingRequest,
     imageCost?: number,
+    tokenUsageUnknown = false,
   ): Promise<string | undefined> {
     const original = this.owners(runId).filter((owner) => Object.keys(owner.limits).length);
     const models = await this.models();
@@ -456,6 +458,11 @@ export class RunFundingService {
       )
         throw new AuxError("permission_denied", "The original funding changed before provider dispatch.");
       const id = randomUUID();
+      if (tokenUsageUnknown && owners.some((owner) => owner.limits.maxTokens !== undefined))
+        throw new AuxError(
+          "permission_denied",
+          "Audio transcription has no verified token usage and cannot run under a token-limited funding owner.",
+        );
       const ledgers = owners.map((owner) => ({ owner, ledger: this.ledger(owner) }));
       if (
         ledgers.some(({ ledger }) =>

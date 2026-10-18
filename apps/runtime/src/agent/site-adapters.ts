@@ -1,9 +1,17 @@
-import { AuxError, SiteReadResultSchema, type MethodParams } from "@aux/contracts";
+import { AuxError, SiteReadResultSchema, type MethodParams, type MethodResult } from "@aux/contracts";
 import type { PageRegistry } from "../services/pages/registry.js";
+import { readImageResultsInPage } from "./image-search-adapter.js";
 
 type SiteRead = MethodParams<"sites.read">;
 type InPageResult =
-  { ok: true; text: string; mediaType: "text/plain" | "text/csv" } | { ok: false; reason: string };
+  | {
+      ok: true;
+      text: string;
+      mediaType: "text/plain" | "text/csv";
+      transcript?: MethodResult<"sites.read">["transcript"];
+      imageSearch?: MethodResult<"sites.read">["imageSearch"];
+    }
+  | { ok: false; reason: string };
 const MAX_TEXT_BYTES = 2_000_000;
 
 /** Only URLs for the currently open document can be used as export sources. */
@@ -11,11 +19,27 @@ export function siteExportUrl(input: SiteRead): URL {
   const page = new URL(input.expectedUrl);
   if (input.kind !== "google-sheets" && input.sheetGid !== undefined)
     throw new AuxError("invalid_params", "A sheet ID is accepted only for a Google Sheets export.");
+  if (input.kind !== "youtube" && input.language !== undefined)
+    throw new AuxError("invalid_params", "A transcript language is accepted only for YouTube.");
   if (page.protocol !== "https:" || page.username || page.password)
     throw new AuxError(
       "permission_denied",
       "Site export requires a secure page without embedded credentials.",
     );
+  if (input.kind === "image-search") {
+    const google =
+      ["www.google.com", "google.com"].includes(page.hostname) &&
+      page.pathname === "/search" &&
+      (page.searchParams.get("tbm") === "isch" || page.searchParams.get("udm") === "2");
+    const bing = ["www.bing.com", "bing.com"].includes(page.hostname) && page.pathname === "/images/search";
+    const query = page.searchParams.get("q");
+    if (!(google || bing) || !query?.trim() || query.length > 500)
+      throw new AuxError(
+        "capability_unsupported",
+        "Open Google Images or Bing Images results before extracting images.",
+      );
+    return page;
+  }
   if (input.kind === "youtube") {
     if (
       page.hostname !== "www.youtube.com" ||
@@ -53,14 +77,18 @@ export async function readSiteTextInPage(input: {
   kind: SiteRead["kind"];
   expectedUrl: string;
   exportUrl: string;
+  language?: string;
 }): Promise<InPageResult> {
   const maxBytes = 2_000_000;
   if (location.href !== input.expectedUrl) return { ok: false, reason: "document_changed" };
   let target = new URL(input.exportUrl);
+  let transcriptTrack: { languageCode: string; kind?: string } | undefined;
+  let videoId: string | undefined;
   if (input.kind === "youtube") {
     const state = (
       globalThis as typeof globalThis & {
         ytInitialPlayerResponse?: {
+          videoDetails?: { videoId?: string };
           captions?: {
             playerCaptionsTracklistRenderer?: {
               captionTracks?: { baseUrl?: string; languageCode?: string; kind?: string }[];
@@ -69,15 +97,28 @@ export async function readSiteTextInPage(input: {
         };
       }
     ).ytInitialPlayerResponse;
+    videoId = new URL(input.expectedUrl).searchParams.get("v") ?? undefined;
+    if (!videoId || state?.videoDetails?.videoId !== videoId)
+      return { ok: false, reason: "transcript_document_changed" };
     const tracks = state?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-    const track =
-      tracks.find((item) => item.languageCode?.startsWith("en") && item.kind !== "asr") ??
-      tracks.find((item) => item.languageCode?.startsWith("en")) ??
-      tracks[0];
-    if (!track?.baseUrl) return { ok: false, reason: "transcript_unavailable" };
+    const language = input.language?.toLowerCase();
+    const eligible = language
+      ? tracks.filter((item) => item.languageCode?.toLowerCase() === language)
+      : tracks.filter((item) => item.languageCode?.toLowerCase().startsWith("en"));
+    const candidates = eligible.length || language ? eligible : tracks;
+    const track = candidates.find((item) => item.kind !== "asr") ?? candidates[0];
+    if (!track?.baseUrl || !track.languageCode || track.languageCode.length > 64)
+      return { ok: false, reason: "transcript_unavailable" };
+    transcriptTrack = { languageCode: track.languageCode, kind: track.kind };
     target = new URL(track.baseUrl);
     if (target.origin !== location.origin || target.pathname !== "/api/timedtext")
       return { ok: false, reason: "transcript_origin" };
+    if (
+      target.username ||
+      target.password ||
+      (target.searchParams.has("v") && target.searchParams.get("v") !== videoId)
+    )
+      return { ok: false, reason: "transcript_document_changed" };
     target.searchParams.set("fmt", "json3");
   }
   if (target.origin !== location.origin || target.protocol !== "https:")
@@ -128,20 +169,58 @@ export async function readSiteTextInPage(input: {
   const body = new TextDecoder().decode(data);
   if (input.kind !== "youtube")
     return { ok: true, text: body, mediaType: input.kind === "google-sheets" ? "text/csv" : "text/plain" };
-  let parsed: { events?: { segs?: { utf8?: string }[] }[] };
+  let parsed: { events?: { tStartMs?: number; dDurationMs?: number; segs?: { utf8?: string }[] }[] };
   try {
     parsed = JSON.parse(body) as typeof parsed;
   } catch {
     return { ok: false, reason: "transcript_invalid" };
   }
-  const text = (parsed.events ?? [])
-    .map((event) => (event.segs ?? []).map((segment) => segment.utf8 ?? "").join(""))
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (!parsed || !Array.isArray(parsed.events) || parsed.events.length > 10_000)
+    return { ok: false, reason: "transcript_invalid" };
+  const cues: NonNullable<MethodResult<"sites.read">["transcript"]>["cues"] = [];
+  for (const event of parsed.events) {
+    if (!event || typeof event !== "object" || (event.segs !== undefined && !Array.isArray(event.segs)))
+      return { ok: false, reason: "transcript_invalid" };
+    if (!event.segs?.length) continue;
+    if (event.segs.some((segment) => !segment || typeof segment.utf8 !== "string"))
+      return { ok: false, reason: "transcript_invalid" };
+    const text = event.segs
+      .map((segment) => segment.utf8)
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) continue;
+    if (
+      typeof event.tStartMs !== "number" ||
+      !Number.isFinite(event.tStartMs) ||
+      event.tStartMs < 0 ||
+      event.tStartMs > 86_400_000 ||
+      (event.dDurationMs !== undefined &&
+        (!Number.isFinite(event.dDurationMs) || event.dDurationMs < 0 || event.dDurationMs > 86_400_000))
+    )
+      return { ok: false, reason: "transcript_invalid" };
+    cues.push({
+      startMs: event.tStartMs,
+      ...(event.dDurationMs !== undefined ? { durationMs: event.dDurationMs } : {}),
+      text,
+    });
+  }
+  const text = cues.map((cue) => cue.text).join(" ");
   if (!text || new TextEncoder().encode(text).length > maxBytes)
     return { ok: false, reason: "transcript_unavailable" };
-  return { ok: true, text, mediaType: "text/plain" };
+  if (!transcriptTrack || !videoId || location.href !== input.expectedUrl)
+    return { ok: false, reason: "transcript_document_changed" };
+  return {
+    ok: true,
+    text,
+    mediaType: "text/plain",
+    transcript: {
+      videoId,
+      language: transcriptTrack.languageCode,
+      generated: transcriptTrack.kind === "asr",
+      cues,
+    },
+  };
 }
 
 export class SiteAdapters {
@@ -160,7 +239,7 @@ export class SiteAdapters {
     let result: InPageResult;
     try {
       result = (await driver.evaluate(
-        `(${readSiteTextInPage.toString()})(${JSON.stringify({ kind: input.kind, expectedUrl: input.expectedUrl, exportUrl: exportUrl.href })})`,
+        `(${(input.kind === "image-search" ? readImageResultsInPage : readSiteTextInPage).toString()})(${JSON.stringify({ kind: input.kind, expectedUrl: input.expectedUrl, exportUrl: exportUrl.href, language: input.language })})`,
       )) as InPageResult;
     } catch {
       throw new AuxError("backend_unavailable", "The site export could not be read from the current page.");
@@ -188,6 +267,8 @@ export class SiteAdapters {
       sourceUrl: exportUrl.href,
       mediaType: result.mediaType,
       text: result.text,
+      ...(result.transcript ? { transcript: result.transcript } : {}),
+      ...(result.imageSearch ? { imageSearch: result.imageSearch } : {}),
     });
   }
 }

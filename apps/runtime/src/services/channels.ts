@@ -474,6 +474,9 @@ export class ChannelService {
         this.store.retirePeerWork(connectionId, peerKey);
         if (peer.authorityId) this.revoke(peer.authorityId);
       });
+      await this.deps.intake?.documents.retireChannelSource(connectionId, peerKey);
+      await this.original(owner);
+      this.requireConnection(connectionId, revision);
       if (peer.authorityId) {
         await this.deps.sessions.end(peer.authorityId, "cancelled", "Channel pairing changed");
         await this.original(owner);
@@ -782,6 +785,7 @@ export class ChannelService {
     for (const peer of peers) if (peer.authorityId) this.revoke(peer.authorityId);
     this.store.retireWork(id);
     const work = Promise.allSettled([
+      this.deps.intake?.documents.retireChannelSource(connection.connectionId),
       admission,
       entry?.worker,
       entry?.sender,

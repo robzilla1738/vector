@@ -94,7 +94,7 @@ export interface Workspace {
   railOpen: boolean;
   railView: RailView;
   sidebar: SidebarMode;
-  /** sidebar peeked open while collapsed to the thin rail */
+  /** Hidden sidebar temporarily revealed above the page without reserving width. */
   sidebarPeek: boolean;
   tabPreviewOpen: boolean;
   findText: string;

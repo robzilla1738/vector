@@ -38,6 +38,10 @@ export const OutboundMcpServerSchema = z.object({
   disabledTools: z.array(z.string().min(1).max(200)),
   toolNames: z.array(z.string().min(1).max(200)),
   sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  catalogDigest: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -66,6 +70,15 @@ export const OutboundMcpToolSchema = z.object({
   enabled: z.boolean(),
   description: z.string().optional(),
   inputSchema: z.record(z.string(), z.unknown()),
+  annotations: z
+    .object({
+      readOnlyHint: z.boolean().optional(),
+      destructiveHint: z.boolean().optional(),
+      idempotentHint: z.boolean().optional(),
+      openWorldHint: z.boolean().optional(),
+    })
+    .optional(),
+  effect: z.enum(["read", "write", "unknown"]).optional(),
 });
 export const OutboundMcpCallResultSchema = z.object({
   callId: z.string().uuid(),
@@ -113,6 +126,20 @@ export type McpOAuthToken = z.infer<typeof McpOAuthTokenSchema>;
 /** Public endpoints owned by the provider; client credentials belong in the Profile Keychain. */
 export const OFFICIAL_MCP_CONNECTORS = [
   {
+    id: "notion",
+    name: "Notion",
+    url: "https://mcp.notion.com/mcp",
+    registrationUrl: "https://developers.notion.com/guides/mcp/build-mcp-client",
+    help: "Notion supports automatic native client registration. Tools and filters depend on workspace permissions and plan; Aux preserves returned restrictions and notices.",
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    url: "https://mcp.slack.com/mcp",
+    registrationUrl: "https://docs.slack.dev/ai/slack-mcp-server/",
+    help: "Requires your real eligible internal or Marketplace app registration, client ID and secret, exact callback and approved user scopes. Unlisted apps and automatic registration are unsupported. This connection is separate from Slack bot channels.",
+  },
+  {
     id: "github",
     name: "GitHub",
     url: "https://api.githubcopilot.com/mcp/",
@@ -134,12 +161,38 @@ export const OFFICIAL_MCP_CONNECTORS = [
     help: "Sentry supports automatic registration during sign-in.",
   },
 ] as const;
+const McpScopesSchema = z
+  .array(
+    z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[^\s,]+$/),
+  )
+  .max(128);
+export const McpOAuthAccountSchema = z
+  .object({
+    provider: z.enum(["notion", "slack"]),
+    userId: z.string().min(1).max(200).optional(),
+    workspaceId: z.string().min(1).max(200).optional(),
+    workspaceName: z.string().min(1).max(200).optional(),
+  })
+  .strict();
+export const McpOAuthStatusSchema = z
+  .object({
+    connected: z.boolean(),
+    expiresAt: z.number().int().optional(),
+    grantedScopes: McpScopesSchema.optional(),
+    account: McpOAuthAccountSchema.optional(),
+  })
+  .strict();
 export const McpOAuthClientSetupSchema = z
   .object({
     serverId: z.string().uuid(),
     issuer: z.string().url().max(2048),
     clientId: z.string().trim().min(1).max(2048),
     clientSecret: z.string().min(1).max(8192).optional(),
+    requestedScopes: McpScopesSchema.optional(),
     redirectUrl: z
       .string()
       .url()
@@ -165,6 +218,11 @@ export const McpOAuthRequirementsSchema = z
     authorizationUrl: z.string().url(),
     automaticRegistration: z.boolean(),
     configured: z.boolean(),
+    supportedScopes: McpScopesSchema.optional(),
+    requestedScopes: McpScopesSchema.optional(),
+    clientSecretRequired: z.boolean().optional(),
+    tokenAuthMethods: z.array(z.string().max(100)).max(32).optional(),
+    officialProvider: z.enum(["notion", "slack"]).optional(),
     redirectUrl: z.string().url().optional(),
   })
   .strict();

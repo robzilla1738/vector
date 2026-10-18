@@ -1,3 +1,5 @@
+import type { ModelClient } from "../../apps/runtime/dist/agent/model-client.js";
+import { memoryTestJob, memoryTestSource } from "../fixtures/memory-model-job.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { openDb, Repo, BudgetsService, MockModelClient } from "@aux/runtime";
 import { PrivateBudgetOwner } from "../../apps/runtime/dist/services/private-budget.js";
@@ -28,6 +30,7 @@ function fixture() {
     () => budget.close(),
   );
   const deps = {
+    source: memoryTestSource,
     repo,
     budget,
     model,
@@ -36,7 +39,12 @@ function fixture() {
       { id: "fixture-memory-model", source: "configured" as const, inputUsdPerMTok: 1, outputUsdPerMTok: 2 },
     ],
   };
-  const input = { report: quote, signal: controller.signal, checkCurrent: vi.fn() };
+  const input = {
+    job: memoryTestJob("extraction"),
+    report: quote,
+    signal: controller.signal,
+    checkCurrent: vi.fn(),
+  };
   return { deps, input, db, budgets, limits, controller };
 }
 it("records actual extraction usage and settles the same financial reservation", async () => {
@@ -103,3 +111,22 @@ it("keeps uncertain failed model spend and returns a safe failure code", async (
     { error: "memory_extraction_failed" },
   ]);
 });
+
+it.each([0, 27, undefined])(
+  "preserves %s cache usage in extraction invoices without inventing zero",
+  async (cachedInputTokens) => {
+    const f = fixture();
+    const generateStructured: ModelClient["generateStructured"] = async (options) => ({
+      ...(await f.deps.model.generateStructured(options)),
+      cachedInputTokens,
+    });
+    const result = await extractMemoryNotes({ ...f.deps, model: { generateStructured } }, f.input);
+    expect(result.cachedInputTokens).toBe(cachedInputTokens);
+    const rows = f.db.prepare("SELECT provider_metadata AS metadata FROM model_calls").all() as {
+      metadata: string;
+    }[];
+    const metadata = JSON.parse(rows[0]!.metadata);
+    expect(metadata.usage?.cachedInputTokens).toBe(cachedInputTokens);
+    expect("usage" in metadata).toBe(cachedInputTokens !== undefined);
+  },
+);

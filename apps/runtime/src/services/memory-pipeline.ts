@@ -301,6 +301,7 @@ export class MemoryPipeline {
       run.config?.contextMemoryIds?.length ||
       run.config?.contextAttachmentIds?.length ||
       run.config?.contextAttachmentRefs?.length ||
+      run.config?.contextTaskDocumentRefs?.length ||
       run.config?.contextImageArtifactIds?.length ||
       run.config?.contextRunIds?.length ||
       run.config?.contextArtifactIds?.length ||
@@ -1015,12 +1016,17 @@ export class MemoryPipeline {
           "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
         );
       const modelGeneration = this.extractor?.generation();
+      const operationId = randomUUID();
+      const ownerRevision = readWorkspaceMemory(this.repo, workspaceId).revision;
+      const policyDigest = sha(JSON.stringify(this.policy(workspaceId)));
       const checkCurrent = () => {
         controller.signal.throwIfAborted();
         checkLease();
         const current = this.repo.getRun(runId);
         if (
           !this.policy(workspaceId).enabled ||
+          readWorkspaceMemory(this.repo, workspaceId).revision !== ownerRevision ||
+          sha(JSON.stringify(this.policy(workspaceId))) !== policyDigest ||
           !current ||
           current.status !== "completed" ||
           current.config?.contextWorkspaceId !== workspaceId ||
@@ -1033,7 +1039,21 @@ export class MemoryPipeline {
       this.extractions.set(workspaceId, controller);
       try {
         const selection: MemoryExtractionResult = this.extractor
-          ? await this.extractor.extract({ report, signal: controller.signal, checkCurrent })
+          ? await this.extractor.extract({
+              report,
+              signal: controller.signal,
+              checkCurrent,
+              job: {
+                workspaceId,
+                operationId,
+                operation: "extraction",
+                modelGeneration: modelGeneration!,
+                memoryGeneration: prior?.generation ?? null,
+                ownerRevision,
+                policyDigest,
+                sourceDigest: sha(JSON.stringify([runId, sourceReport])),
+              },
+            })
           : { quotes: [], status: "failed" as const, errorCode: "model_unavailable" as const };
         checkCurrent();
         const at = Date.now();
@@ -1058,7 +1078,7 @@ export class MemoryPipeline {
             "The review inbox is full. Review pending notes before extracting more; no notes were dropped.",
           );
         const operation = MemoryExtractionSchema.parse({
-          activityId: randomUUID(),
+          activityId: operationId,
           sourceRunId: runId,
           capturedAt: at,
           durationMs: Math.max(0, performance.now() - started),
@@ -1904,15 +1924,34 @@ export class MemoryPipeline {
           content: prepared.state.documents.find((document) => document.path === path)?.content ?? "",
         })),
       ];
+      const modelInputGeneration = expectedGeneration;
+      const checkModelCurrent = () => {
+        checkCurrent();
+        if (
+          this.dreamWork.get(workspaceId)?.controller !== controller ||
+          (this.storage.generation(workspaceId)?.generation ?? null) !== modelInputGeneration
+        )
+          throw new AuxError("cancelled", "The original Dream model job retired.");
+      };
       selection = this.dreamer
         ? await this.dreamer.consolidate({
+            job: {
+              workspaceId,
+              operationId: operation!.operationId,
+              operation: "dream",
+              modelGeneration: modelGeneration!,
+              memoryGeneration: expectedGeneration,
+              ownerRevision: owner.revision,
+              sourceDigest: operation!.sourceDigest,
+              policyDigest: sha(policy),
+            },
             documents,
             claims: prepared.claims.map((claim) => ({
               claimId: claim.claimId,
               text: `${claim.ownerEdit ? "[Owner-edited context; unverified] " : claim.source?.kind === "owner-paste" ? "[Owner-pasted context; unverified] " : ""}${memoryClaimText(claim)}`,
             })),
             signal: controller.signal,
-            checkCurrent,
+            checkCurrent: checkModelCurrent,
           })
         : { changes: [], status: "failed", errorCode: "model_unavailable" };
       operation = {

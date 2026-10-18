@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { nativeSource } from "../chromium/dev-config.mjs";
 /** Advisory inventory of shell calls the current Chromium host cannot answer. */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -15,6 +16,11 @@ const bootstrap = join(nativeRoot, "chrome/browser/resources/aux_host/aux_host_b
 if (!existsSync(registry)) throw new Error(`Native method registry unavailable: ${registry}`);
 if (!existsSync(dispatcher)) throw new Error(`Native shell dispatcher unavailable: ${dispatcher}`);
 if (!existsSync(bootstrap)) throw new Error(`Native host bootstrap unavailable: ${bootstrap}`);
+execFileSync(
+  process.execPath,
+  [join(root, "scripts/check-window-context-routing.mjs"), "--source", dispatcher],
+  { stdio: "inherit" },
+);
 
 // The renderer bridge surface is the generated host client: every HostMethods
 // entry plus every HostEvents subscription, composed members aside.
@@ -95,8 +101,7 @@ const hostEventsMatch = bootstrapText.match(/hostEvents = new Set\(\[([\s\S]*?)\
 if (!hostEventsMatch) throw new Error("Native host event inventory unavailable");
 for (const match of hostEventsMatch[1].matchAll(/'([^']+)'/g)) produced.add(match[1]);
 const unforwarded = Object.keys(HostEvents).filter((event) => !produced.has(event));
-if (unforwarded.length)
-  throw new Error(`Native host drops declared events: ${unforwarded.join(", ")}`);
+if (unforwarded.length) throw new Error(`Native host drops declared events: ${unforwarded.join(", ")}`);
 
 const missing = called.filter(
   (method) => !local.has(method) && !handled.has(method) && !produced.has(method),

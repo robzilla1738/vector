@@ -81,7 +81,13 @@ async function sandboxedStdio(
       }
     }),
   );
-  const parents = [...new Set([...pathParents(resolvedCwd), ...pathParents(resolvedCommand), ...bootstrapFiles.flatMap(pathParents)])];
+  const parents = [
+    ...new Set([
+      ...pathParents(resolvedCwd),
+      ...pathParents(resolvedCommand),
+      ...bootstrapFiles.flatMap(pathParents),
+    ]),
+  ];
   if (parents.length > 64)
     throw new AuxError("permission_denied", "MCP path nesting exceeds the sandbox limit.");
   // The SDK merges getDefaultEnvironment() under this object. Undefined replaces
@@ -122,8 +128,12 @@ async function sandboxedStdio(
 /** Real MCP transports behind reviewed source identity. */
 export function createMcpTransportProvider(
   oauth?: {
+    authorizationGeneration(
+      server: OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } },
+    ): number;
     token(
       server: OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } },
+      expectedGeneration?: number,
     ): Promise<string>;
   },
   networkFetch: typeof fetch = fetch,
@@ -137,7 +147,20 @@ export function createMcpTransportProvider(
       if (url.protocol !== "https:" || url.username || url.password || forbiddenHost(url.hostname))
         throw new AuxError("permission_denied", "MCP endpoint must be a reviewed public HTTPS host.");
       const reviewedOrigin = url.origin;
+      const oauthServer = server as OutboundMcpServer & {
+        source: { kind: "remote"; url: string; auth: "oauth" };
+      };
+      const authorizationGeneration =
+        server.source.auth === "oauth" ? oauth?.authorizationGeneration(oauthServer) : undefined;
+      const checkAuthorization = () => {
+        if (
+          authorizationGeneration !== undefined &&
+          oauth?.authorizationGeneration(oauthServer) !== authorizationGeneration
+        )
+          throw new AuxError("permission_denied", "MCP authorization changed during this operation.");
+      };
       const exactOriginFetch: typeof fetch = (input, init) => {
+        checkAuthorization();
         const requestUrl = new URL(input instanceof Request ? input.url : String(input));
         if (
           requestUrl.protocol !== "https:" ||
@@ -161,9 +184,8 @@ export function createMcpTransportProvider(
                 if (!oauth)
                   throw new AuxError("backend_unavailable", "MCP OAuth is unavailable in this host.");
                 if (signal.aborted) throw new AuxError("cancelled", "MCP connection was cancelled.");
-                return oauth.token(
-                  server as OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } },
-                );
+                checkAuthorization();
+                return oauth.token(oauthServer, authorizationGeneration);
               },
             }
           : undefined;
@@ -194,7 +216,11 @@ export function createMcpTransportProvider(
     try {
       const nodeBootstrap = packagedNodeBootstrap();
       const transport = await sandboxedStdio(
-        { command: process.execPath, args: [...nodeBootstrap.args, ...extracted.args], cwd: extracted.directory },
+        {
+          command: process.execPath,
+          args: [...nodeBootstrap.args, ...extracted.args],
+          cwd: extracted.directory,
+        },
         signal,
         nodeBootstrap.files,
       );

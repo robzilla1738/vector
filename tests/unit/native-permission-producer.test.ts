@@ -135,7 +135,7 @@ async function fixture(
     page: (id) => (id === page.pageId ? page : undefined),
     organization: async () => ({ revision: 1, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   if (!external)
     await mentions.begin(

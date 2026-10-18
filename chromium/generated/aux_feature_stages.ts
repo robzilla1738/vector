@@ -231,6 +231,7 @@ const requirements = {
       "readEvidenceDocument",
       "releaseEvidenceDocuments",
       "native.evidenceDocumentRead",
+      "native.evidenceDocumentBytes",
       "native.evidenceDocumentsRelease"
     ]
   },
@@ -402,6 +403,12 @@ const requirements = {
   },
   "connectors": {
     "requires": [
+      "google.accounts.list",
+      "google.auth.start",
+      "google.accounts.revoke",
+      "google.grants.list",
+      "google.grants.create",
+      "google.grants.revoke",
       "calendar.connections.list",
       "calendar.auth.start",
       "calendar.connections.revoke",
@@ -485,6 +492,20 @@ const requirements = {
       "memory.pipeline.overview",
       "memory.pipeline.search",
       "memory.pipeline.forget"
+    ]
+  },
+  "desktopContext": {
+    "requires": [
+      "native.desktopContext",
+      "desktopContext.settings",
+      "desktopContext.apps",
+      "desktopContext.configure",
+      "desktopContext.permission",
+      "desktopContext.pause",
+      "desktopContext.sources",
+      "desktopContext.search",
+      "desktopContext.read",
+      "desktopContext.forget"
     ]
   },
   "unifiedRecall": {
@@ -597,7 +618,7 @@ const requirements = {
     "requires": []
   }
 } as const;
-const runtimeMethods = ["liveFolders.items","liveFolders.refresh","liveFolders.markRead","downloads.completedNative","downloads.renameReceipts","downloads.undoRename","recorder.get","recorder.start","recorder.pause","recorder.resume","recorder.stop","recorder.discard","nightShift.propose","nightShift.queue","nightShift.summary","nightShift.list","nightShift.review","agent.tabs.list","agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","workspaces.contentMemory.semanticSearch","workspaces.contentMemory.embeddingModels","workspaces.memory.setDocument","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.scan","routines.suggest","routines.get","routines.create","routines.fromResult","routines.draftFromCandidate","routines.replay.repair.propose","routines.replay.repair.apply","routines.replay.compileDemonstration","routines.replay.compile","routines.replay.test","routines.replay.result","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.skills.preview","routines.skills.import","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.paste.preview","memory.paste.commit","memory.paste.status","memory.pipeline.documentList","memory.pipeline.documentSet","memory.pipeline.dream","memory.pipeline.dreamCancel","memory.pipeline.dreamStatus","memory.pipeline.dreamActivity","memory.pipeline.dreamReview","memory.pipeline.dreamRevert","memory.pipeline.recall","memory.pipeline.readSource","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.setRetention","memory.pipeline.expire","memory.pipeline.extractRun","memory.pipeline.sources","memory.pipeline.inbox","memory.pipeline.claims","memory.pipeline.history","memory.pipeline.activity","memory.pipeline.reindex","memory.pipeline.documents","memory.pipeline.edit","memory.pipeline.previewRevision","memory.pipeline.revert","memory.pipeline.review","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.propose","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results"] as const;
+const runtimeMethods = ["liveFolders.items","liveFolders.refresh","liveFolders.markRead","downloads.completedNative","downloads.renameReceipts","downloads.undoRename","recorder.get","recorder.start","recorder.pause","recorder.resume","recorder.stop","recorder.discard","nightShift.propose","nightShift.queue","nightShift.summary","nightShift.list","nightShift.review","agent.tabs.list","agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","workspaces.contentMemory.semanticSearch","workspaces.contentMemory.embeddingModels","workspaces.memory.setDocument","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.scan","routines.suggest","routines.get","routines.create","routines.fromResult","routines.draftFromCandidate","routines.replay.repair.propose","routines.replay.repair.apply","routines.replay.compileDemonstration","routines.replay.compile","routines.replay.test","routines.replay.result","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.skills.preview","routines.skills.import","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.paste.preview","memory.paste.commit","memory.paste.status","desktopContext.settings","desktopContext.apps","desktopContext.configure","desktopContext.permission","desktopContext.pause","desktopContext.sources","desktopContext.search","desktopContext.read","desktopContext.forget","memory.pipeline.documentList","memory.pipeline.documentSet","memory.pipeline.dream","memory.pipeline.dreamCancel","memory.pipeline.dreamStatus","memory.pipeline.dreamActivity","memory.pipeline.dreamReview","memory.pipeline.dreamRevert","memory.pipeline.recall","memory.pipeline.readSource","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.setRetention","memory.pipeline.expire","memory.pipeline.extractRun","memory.pipeline.sources","memory.pipeline.inbox","memory.pipeline.claims","memory.pipeline.history","memory.pipeline.activity","memory.pipeline.reindex","memory.pipeline.documents","memory.pipeline.edit","memory.pipeline.previewRevision","memory.pipeline.revert","memory.pipeline.review","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","google.accounts.list","google.auth.start","google.accounts.revoke","google.grants.list","google.grants.create","google.grants.revoke","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.propose","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results"] as const;
 export type FeatureStage = 'off' | 'on';
 export function featureStagesFor(methods: readonly string[]): Record<keyof typeof requirements, FeatureStage> {
   const implemented = new Set<string>([...methods, ...runtimeMethods]);

@@ -83,6 +83,7 @@ export const AUX_FEATURES = {
   activeHtml: "B10",
   zapAndUserCss: "B10",
   memory: "B9",
+  desktopContext: "B9",
   unifiedRecall: "B3",
   extensions: "B8",
   passwordManager: "B8",

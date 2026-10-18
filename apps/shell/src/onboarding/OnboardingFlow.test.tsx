@@ -135,7 +135,7 @@ beforeEach(() => {
     }
     if (method === "settings.get") return workspace.settings;
     if (method === "models.list") return { models: [] };
-    if (method === "connectors.catalog") return { entries: [], access: [] };
+    if (method === "connectors.catalog") return { entries: [], access: [], bindings: {} };
     if (method === "installation.restoreStatus") return { pending: false };
     throw new Error(`Unexpected ${method}`);
   });

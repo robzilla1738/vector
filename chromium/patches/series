@@ -58,3 +58,7 @@ aux/0057-native-window-handback-lifecycle.patch
 aux/0058-native-http-redirects.patch
 aux/0059-compact-quick-ask.patch
 aux/0060-runtime-async-media-admission.patch
+aux/0061-runtime-window-proof-routing.patch
+aux/0062-isolated-document-audio-jobs.patch
+aux/0063-selected-app-desktop-context.patch
+aux/0064-immutable-selected-pdf-originals.patch

@@ -1,0 +1,2538 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index b392d0d6cfd924a03ab32178201194d41fe20330..038a05b67ec78c853fec6eb949c146f767093c4e 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1771,6 +1771,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+   registry->RegisterBooleanPref(aux::kAppearanceGlassPref, true);
+   registry->RegisterStringPref(aux::kAppearanceMaterialPref, "liquid-glass");
+   registry->RegisterDictionaryPref(aux::kOrganizationPref);
++  registry->RegisterDictionaryPref("aux.desktop_context.consent");
++  registry->RegisterBooleanPref("aux.desktop_context.labs", true);
+   registry->RegisterBooleanPref(aux::kHttpsUpgradesEnabled, true);
+   registry->RegisterBooleanPref(aux::kKeepRuntimeInBackgroundPref, false);
+   registry->RegisterIntegerPref(aux::kMemorySaverMinutesPref, 30);
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index aa0dbce4413fe73a96f54b141b069707e273e8db..96b498dc554b999bf6774e804c3457b06cedcf6d 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -38,6 +38,9 @@ source_set("runtime") {
+     "browser_profile_readers.cc",
+     "browser_profile_snapshot.h",
+     "browser_profile_snapshot.cc",
++    "desktop_context_mac.h",
++    "desktop_context_mac.mm",
++    "runtime_desktop_context_mac.cc",
+     "document_jobs.cc",
+     "document_jobs.h",
+     "image_normalize.cc",
+@@ -290,6 +293,8 @@ source_set("runtime") {
+     weak_frameworks = [ "FoundationModels.framework" ]
+   }
+   frameworks = [
++    "ScreenCaptureKit.framework",
++    "Vision.framework",
+     "PDFKit.framework",
+     "AVFoundation.framework",
+     "Cocoa.framework",
+diff --git a/chrome/browser/ui/aux/desktop_context_mac.h b/chrome/browser/ui/aux/desktop_context_mac.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..a2f0f045f222d46aa1064a42180c523c910da0cb
+--- /dev/null
++++ b/chrome/browser/ui/aux/desktop_context_mac.h
+@@ -0,0 +1,60 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_DESKTOP_CONTEXT_MAC_H_
++#define CHROME_BROWSER_UI_AUX_DESKTOP_CONTEXT_MAC_H_
++
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++
++namespace aux {
++// Profile runtime_host owns persisted consent, normal-window proofs and the
++// process-global Profile gate. This object only performs explicitly leased OS
++// work.
++class DesktopContextMac {
++ public:
++  using CurrentLease = base::RepeatingCallback<bool(const std::string&, int)>;
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  DesktopContextMac(CurrentLease current_lease);
++  ~DesktopContextMac();
++  DesktopContextMac(const DesktopContextMac&) = delete;
++  DesktopContextMac& operator=(const DesktopContextMac&) = delete;
++
++  base::DictValue Status() const;
++  static base::ListValue Apps();
++  static bool AppSupported(const std::string& bundle_id);
++  // Never prompts; caller must have already verified native persisted consent.
++  void Configure(const base::DictValue& settings, const std::string& lease_id);
++  void RequestAccessibility();
++  void PresentOcrPicker();
++  base::DictValue Take(const std::string& lease_id);
++  void Validate(const base::DictValue& source,
++                base::OnceCallback<void(bool)> reply);
++  bool Acknowledge(const std::string& lease_id, const std::string& capture_id);
++  // Invalidates synchronously; completion joins all original worker and OCR
++  // work.
++  void Stop(base::OnceClosure completion);
++
++  // Objective-C system picker observer callbacks, main sequence only.
++  void PickerSelected(void* filter);
++  void PickerStopped();
++  void Suspend(bool suspended);
++
++ private:
++  struct Impl;
++  bool Current() const;
++  void Tick();
++  void Accept(base::DictValue capture, int generation);
++  void CaptureOcr(int pid, int generation);
++  void ReadOcr(int pid,
++               int generation,
++               base::OnceCallback<void(std::string)> reply);
++  void FinishOcr();
++  void FinishStop();
++  std::unique_ptr<Impl> impl_;
++  base::WeakPtrFactory<DesktopContextMac> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/desktop_context_mac.mm b/chrome/browser/ui/aux/desktop_context_mac.mm
+new file mode 100644
+index 0000000000000000000000000000000000000000..cd18112ea95a45d9a1bd0bc05de2d4cb5ffb0919
+--- /dev/null
++++ b/chrome/browser/ui/aux/desktop_context_mac.mm
+@@ -0,0 +1,1064 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/desktop_context_mac.h"
++
++#import <ApplicationServices/ApplicationServices.h>
++#import <Cocoa/Cocoa.h>
++#import <ScreenCaptureKit/ScreenCaptureKit.h>
++#import <Vision/Vision.h>
++
++#include <algorithm>
++#include <atomic>
++#include <climits>
++#include <cmath>
++#include <set>
++#include <vector>
++
++#include "base/apple/scoped_cftyperef.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/uuid.h"
++#include "crypto/sha2.h"
++#include "ui/base/idle/idle.h"
++
++namespace {
++using CF = base::apple::ScopedCFTypeRef<CFTypeRef>;
++CF Attribute(AXUIElementRef element, CFStringRef name) {
++  CFTypeRef value = nullptr;
++  AXUIElementSetMessagingTimeout(element, 0.04);
++  if (AXUIElementCopyAttributeValue(element, name, &value) != kAXErrorSuccess) {
++    return CF();
++  }
++  return CF(value);
++}
++std::string String(CFTypeRef value) {
++  return value && CFGetTypeID(value) == CFStringGetTypeID() &&
++                 CFStringGetLength(static_cast<CFStringRef>(value)) <= 32768
++             ? base::SysCFStringRefToUTF8(static_cast<CFStringRef>(value))
++             : "";
++}
++std::string Text(AXUIElementRef element, CFStringRef name) {
++  return String(Attribute(element, name).get());
++}
++CF VisibleChildren(AXUIElementRef element, size_t maximum) {
++  CFArrayRef values = nullptr;
++  AXUIElementSetMessagingTimeout(element, 0.04);
++  if (AXUIElementCopyAttributeValues(element, kAXVisibleChildrenAttribute, 0,
++                                     maximum, &values) != kAXErrorSuccess) {
++    return CF();
++  }
++  return CF(values);
++}
++bool ExcludedApp(const std::string& bundle) {
++  static const base::NoDestructor<std::set<std::string>> excluded(
++      {"com.1password.1password", "com.agilebits.onepassword7",
++       "com.apple.keychainaccess", "com.apple.Passwords",
++       "com.bitwarden.desktop", "com.lastpass.LastPass",
++       "com.dashlane.Dashlane"});
++  static const base::NoDestructor<std::set<std::string>> browsers(
++      {"com.apple.Safari", "com.google.Chrome", "com.google.Chrome.canary",
++       "org.chromium.Chromium", "com.microsoft.edgemac", "com.brave.Browser",
++       "org.mozilla.firefox", "company.thebrowser.Browser",
++       "company.thebrowser.dia", "com.aside.browser"});
++  if (excluded->contains(bundle) || browsers->contains(bundle) ||
++      bundle == base::SysNSStringToUTF8(
++                    NSRunningApplication.currentApplication.bundleIdentifier)) {
++    return true;
++  }
++  NSURL* location = [NSWorkspace.sharedWorkspace
++      URLForApplicationWithBundleIdentifier:base::SysUTF8ToNSString(bundle)];
++  NSBundle* application = location ? [NSBundle bundleWithURL:location] : nil;
++  id types = application.infoDictionary[@"CFBundleURLTypes"];
++  if (types && ![types isKindOfClass:NSArray.class]) {
++    return true;
++  }
++  for (id type in types) {
++    if (![type isKindOfClass:NSDictionary.class]) {
++      return true;
++    }
++    id schemes = type[@"CFBundleURLSchemes"];
++    if (schemes && ![schemes isKindOfClass:NSArray.class]) {
++      return true;
++    }
++    for (id scheme in schemes) {
++      if (![scheme isKindOfClass:NSString.class]) {
++        return true;
++      }
++      if ([[scheme lowercaseString] isEqualToString:@"http"] ||
++          [[scheme lowercaseString] isEqualToString:@"https"]) {
++        return true;
++      }
++    }
++  }
++  return false;
++}
++bool IsElement(CFTypeRef value) {
++  return value && CFGetTypeID(value) == AXUIElementGetTypeID();
++}
++bool Sensitive(AXUIElementRef element) {
++  auto role = Text(element, kAXRoleAttribute);
++  auto subrole = Text(element, kAXSubroleAttribute);
++  if (role.empty() ||
++      subrole == base::SysCFStringRefToUTF8(kAXSecureTextFieldSubrole)) {
++    return true;
++  }
++  // An editable field without a known subrole is not permission to OCR around
++  // it.
++  return role == "AXTextField" && subrole.empty();
++}
++bool Bounds(AXUIElementRef element, CGRect* result) {
++  auto position = Attribute(element, kAXPositionAttribute);
++  auto size = Attribute(element, kAXSizeAttribute);
++  CGPoint point;
++  CGSize extent;
++  if (!position || !size || CFGetTypeID(position.get()) != AXValueGetTypeID() ||
++      CFGetTypeID(size.get()) != AXValueGetTypeID() ||
++      !AXValueGetValue(static_cast<AXValueRef>(position.get()),
++                       static_cast<AXValueType>(kAXValueCGPointType), &point) ||
++      !AXValueGetValue(static_cast<AXValueRef>(size.get()),
++                       static_cast<AXValueType>(kAXValueCGSizeType), &extent)) {
++    return false;
++  }
++  *result = CGRectMake(point.x, point.y, extent.width, extent.height);
++  return extent.width > 0 && extent.height > 0;
++}
++struct Sample {
++  base::DictValue value;
++  base::apple::ScopedCFTypeRef<AXUIElementRef> window{nullptr};
++  bool safe = false;
++  CGRect bounds = CGRectZero;
++};
++// Runs only on the dedicated sequenced MayBlock runner. Every AX IPC is
++// bounded; neither whole-document editable values nor unknown visibility are
++// admitted.
++Sample ReadVisible(int pid,
++                   const std::shared_ptr<std::atomic_bool>& cancelled) {
++  Sample result;
++  const auto deadline = base::TimeTicks::Now() + base::Milliseconds(400);
++  base::apple::ScopedCFTypeRef<AXUIElementRef> app(
++      AXUIElementCreateApplication(pid));
++  auto focused = Attribute(app.get(), kAXFocusedUIElementAttribute);
++  auto window = Attribute(app.get(), kAXFocusedWindowAttribute);
++  if (cancelled->load() || !IsElement(focused.get()) ||
++      !IsElement(window.get()) ||
++      Sensitive(static_cast<AXUIElementRef>(focused.get()))) {
++    return result;
++  }
++  result.window.reset(static_cast<AXUIElementRef>(CFRetain(window.get())));
++  CGRect window_bounds;
++  if (!Bounds(result.window.get(), &window_bounds)) {
++    return result;
++  }
++  result.bounds = window_bounds;
++  std::string selection = Text(static_cast<AXUIElementRef>(focused.get()),
++                               kAXSelectedTextAttribute);
++  if (selection.size() > 4096) {
++    selection.clear();
++  }
++  std::string text;
++  std::string document_url = Text(result.window.get(), kAXDocumentAttribute);
++  if (!document_url.starts_with("https://") &&
++      !document_url.starts_with("http://")) {
++    document_url.clear();
++  }
++  std::vector<base::apple::ScopedCFTypeRef<AXUIElementRef>> pending;
++  pending.emplace_back(static_cast<AXUIElementRef>(CFRetain(window.get())));
++  size_t visited = 0;
++  while (!pending.empty() && visited++ < 256 && text.size() < 32768 &&
++         !cancelled->load() && base::TimeTicks::Now() < deadline) {
++    auto element = std::move(pending.back());
++    pending.pop_back();
++    CGRect bounds;
++    if (!Bounds(element.get(), &bounds) ||
++        !CGRectContainsRect(window_bounds, bounds)) {
++      continue;
++    }
++    auto hidden = Attribute(element.get(), kAXHiddenAttribute);
++    if (hidden && CFGetTypeID(hidden.get()) == CFBooleanGetTypeID() &&
++        CFBooleanGetValue(static_cast<CFBooleanRef>(hidden.get()))) {
++      continue;
++    }
++    const auto role = Text(element.get(), kAXRoleAttribute);
++    if (role == "AXWebArea" && document_url.empty()) {
++      auto url = Attribute(element.get(), kAXURLAttribute);
++      if (url && CFGetTypeID(url.get()) == CFURLGetTypeID()) {
++        document_url = String(CFURLGetString(static_cast<CFURLRef>(url.get())));
++      } else {
++        document_url = String(url.get());
++      }
++      if (!document_url.starts_with("https://") &&
++          !document_url.starts_with("http://")) {
++        document_url.clear();
++      }
++    }
++    if (role == "AXTextArea" || role == "AXTextField") {
++      if (Sensitive(element.get())) {
++        return {};
++      }
++      auto range = Attribute(element.get(), kAXVisibleCharacterRangeAttribute);
++      CFRange visible;
++      if (range && CFGetTypeID(range.get()) == AXValueGetTypeID() &&
++          AXValueGetValue(static_cast<AXValueRef>(range.get()),
++                          static_cast<AXValueType>(kAXValueCFRangeType),
++                          &visible) &&
++          visible.location >= 0 && visible.length > 0 &&
++          visible.length <= 32768) {
++        CFTypeRef substring = nullptr;
++        if (AXUIElementCopyParameterizedAttributeValue(
++                element.get(), kAXStringForRangeParameterizedAttribute,
++                range.get(), &substring) == kAXErrorSuccess) {
++          CF owned(substring);
++          auto value = String(owned.get());
++          if (text.size() + value.size() + 1 <= 32768) {
++            text += value + "\n";
++          }
++        }
++      }
++    } else if (role == "AXStaticText") {
++      auto value = Text(element.get(), kAXValueAttribute);
++      if (!value.empty() && text.size() + value.size() + 1 <= 32768) {
++        text += value + "\n";
++      }
++    }
++    auto children = VisibleChildren(
++        element.get(),
++        256 - std::min(visited + pending.size(), static_cast<size_t>(256)));
++    if (children && CFGetTypeID(children.get()) == CFArrayGetTypeID()) {
++      auto array = static_cast<CFArrayRef>(children.get());
++      for (CFIndex index = CFArrayGetCount(array) - 1;
++           index >= 0 && pending.size() + visited < 256; --index) {
++        auto* child = CFArrayGetValueAtIndex(array, index);
++        if (IsElement(child)) {
++          pending.emplace_back(static_cast<AXUIElementRef>(CFRetain(child)));
++        }
++      }
++    }
++  }
++  // A timeout or node overflow is partial visible text, never a full-document
++  // fallback.
++  if (cancelled->load()) {
++    return {};
++  }
++  result.safe = true;
++  if (text.empty() && !selection.empty()) {
++    text = selection;
++  }
++  result.value.Set("text", text);
++  result.value.Set("selection", selection);
++  if (!document_url.empty() && document_url.size() <= 8192) {
++    result.value.Set("documentUrl", document_url);
++  }
++  auto title = Text(result.window.get(), kAXTitleAttribute);
++  result.value.Set("windowTitle", title.size() <= 500 ? title : "");
++  return result;
++}
++bool SelectedWindowIsForeground(int pid, CGWindowID selected, CGRect bounds) {
++  CF windows(CGWindowListCopyWindowInfo(
++      kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
++      kCGNullWindowID));
++  if (!windows) {
++    return false;
++  }
++  auto array = static_cast<CFArrayRef>(windows.get());
++  for (CFIndex index = 0; index < CFArrayGetCount(array); ++index) {
++    auto dictionary =
++        static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(array, index));
++    auto owner = static_cast<CFNumberRef>(
++        CFDictionaryGetValue(dictionary, kCGWindowOwnerPID));
++    auto number = static_cast<CFNumberRef>(
++        CFDictionaryGetValue(dictionary, kCGWindowNumber));
++    auto layer = static_cast<CFNumberRef>(
++        CFDictionaryGetValue(dictionary, kCGWindowLayer));
++    int owner_pid = 0, window_number = 0, window_layer = -1;
++    if (!owner || !number || !layer ||
++        !CFNumberGetValue(owner, kCFNumberIntType, &owner_pid) ||
++        !CFNumberGetValue(number, kCFNumberIntType, &window_number) ||
++        !CFNumberGetValue(layer, kCFNumberIntType, &window_layer)) {
++      continue;
++    }
++    if (owner_pid != pid || window_layer != 0) {
++      continue;
++    }
++    CGRect actual;
++    auto rectangle = static_cast<CFDictionaryRef>(
++        CFDictionaryGetValue(dictionary, kCGWindowBounds));
++    return static_cast<CGWindowID>(window_number) == selected && rectangle &&
++           CGRectMakeWithDictionaryRepresentation(rectangle, &actual) &&
++           CGRectEqualToRect(actual, bounds);
++  }
++  return false;
++}
++}  // namespace
++
++API_AVAILABLE(macos(14.0))
++@interface AuxDesktopPickerObserver : NSObject <SCContentSharingPickerObserver>
++@property(nonatomic, assign) base::WeakPtr<aux::DesktopContextMac> owner;
++@end
++@implementation AuxDesktopPickerObserver
++@synthesize owner = _owner;
++- (void)contentSharingPicker:(SCContentSharingPicker*)picker
++         didUpdateWithFilter:(SCContentFilter*)filter
++                   forStream:(SCStream*)stream {
++  auto owner = _owner;
++  dispatch_async(dispatch_get_main_queue(), ^{
++    if (owner) {
++      owner->PickerSelected((__bridge void*)filter);
++    }
++  });
++}
++- (void)contentSharingPicker:(SCContentSharingPicker*)picker
++          didCancelForStream:(SCStream*)stream {
++  auto owner = _owner;
++  dispatch_async(dispatch_get_main_queue(), ^{
++    if (owner) {
++      owner->PickerStopped();
++    }
++  });
++}
++- (void)contentSharingPickerStartDidFailWithError:(NSError*)error {
++  auto owner = _owner;
++  dispatch_async(dispatch_get_main_queue(), ^{
++    if (owner) {
++      owner->PickerStopped();
++    }
++  });
++}
++@end
++
++namespace aux {
++struct DesktopContextMac::Impl {
++  explicit Impl(CurrentLease current)
++      : current_lease(std::move(current)),
++        worker(base::ThreadPool::CreateSequencedTaskRunner(
++            {base::MayBlock(), base::TaskPriority::BEST_EFFORT})) {}
++  CurrentLease current_lease;
++  scoped_refptr<base::SequencedTaskRunner> worker;
++  base::RepeatingTimer timer;
++  base::CallbackListSubscription lock_subscription;
++  std::shared_ptr<std::atomic_bool> cancelled =
++      std::make_shared<std::atomic_bool>(false);
++  base::DictValue settings;
++  base::DictValue pending;
++  base::apple::ScopedCFTypeRef<AXUIElementRef> pending_window;
++  id __strong picker_observer = nil;
++  SCContentFilter* __strong filter = nil;
++  VNRecognizeTextRequest* __strong active_ocr = nil;
++  std::string lease;
++  std::string epoch;
++  std::string last_text;
++  int revision = 0;
++  int generation = 0;
++  int pid = 0;
++  int filter_pid = 0;
++  CGWindowID filter_window = kCGNullWindowID;
++  CGRect focused_bounds = CGRectZero;
++  std::string document_url;
++  bool enabled = false;
++  bool paused = false;
++  bool ocr = false;
++  bool busy = false;
++  bool locked = false;
++  bool suspended = false;
++  int ocr_work = 0;
++  int stop_barriers = 0;
++  NSMutableArray* __strong notifications = [[NSMutableArray alloc] init];
++  size_t dropped = 0;
++  base::TimeTicks last_capture;
++  std::set<std::string> apps;
++  std::vector<base::OnceClosure> stopped;
++};
++DesktopContextMac::DesktopContextMac(CurrentLease current)
++    : impl_(std::make_unique<Impl>(std::move(current))) {
++  ui::InitIdleMonitor();
++  impl_->locked = ui::CheckIdleStateIsLocked();
++  auto weak = weak_factory_.GetWeakPtr();
++  NSNotificationCenter* center = NSWorkspace.sharedWorkspace.notificationCenter;
++  for (NSNotificationName name in @[
++         NSWorkspaceWillSleepNotification,
++         NSWorkspaceScreensDidSleepNotification,
++         NSWorkspaceSessionDidResignActiveNotification
++       ]) {
++    [impl_->notifications
++        addObject:[center addObserverForName:name
++                                      object:nil
++                                       queue:NSOperationQueue.mainQueue
++                                  usingBlock:^(NSNotification* note) {
++                                    if (weak) {
++                                      weak->Suspend(true);
++                                    }
++                                  }]];
++  }
++  for (NSNotificationName name in @[
++         NSWorkspaceDidWakeNotification, NSWorkspaceScreensDidWakeNotification,
++         NSWorkspaceSessionDidBecomeActiveNotification
++       ]) {
++    [impl_->notifications
++        addObject:[center addObserverForName:name
++                                      object:nil
++                                       queue:NSOperationQueue.mainQueue
++                                  usingBlock:^(NSNotification* note) {
++                                    if (weak) {
++                                      weak->Suspend(false);
++                                    }
++                                  }]];
++  }
++  impl_->lock_subscription = ui::AddScreenLockCallback(base::BindRepeating(
++      [](base::WeakPtr<DesktopContextMac> owner, bool locked) {
++        if (!owner) {
++          return;
++        }
++        owner->impl_->locked = locked;
++        if (locked) {
++          owner->impl_->cancelled->store(true);
++          [owner->impl_->active_ocr cancel];
++          owner->impl_->pending.clear();
++          owner->impl_->pending_window.reset();
++          owner->impl_->filter = nil;
++        } else {
++          owner->impl_->cancelled = std::make_shared<std::atomic_bool>(false);
++        }
++      },
++      weak_factory_.GetWeakPtr()));
++}
++DesktopContextMac::~DesktopContextMac() {
++  impl_->cancelled->store(true);
++  [impl_->active_ocr cancel];
++  impl_->timer.Stop();
++  for (id observer in impl_->notifications) {
++    [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:observer];
++  }
++  if (@available(macOS 14.0, *)) {
++    if (impl_->picker_observer) {
++      [[SCContentSharingPicker sharedPicker]
++          removeObserver:impl_->picker_observer];
++    }
++  }
++}
++bool DesktopContextMac::Current() const {
++  return impl_->enabled && !impl_->apps.empty() && !impl_->paused &&
++         !impl_->locked && !impl_->suspended && !ui::CheckIdleStateIsLocked() &&
++         AXIsProcessTrusted() && !impl_->lease.empty() &&
++         impl_->current_lease.Run(impl_->lease, impl_->revision);
++}
++base::DictValue DesktopContextMac::Status() const {
++  const bool trusted = AXIsProcessTrusted();
++  const bool locked =
++      impl_->locked || impl_->suspended || ui::CheckIdleStateIsLocked();
++  const char* phase = !impl_->enabled || impl_->lease.empty() ? "off"
++                      : impl_->paused                         ? "paused"
++                      : locked                                ? "locked"
++                      : !trusted ? "permission-required"
++                                 : "running";
++  const char* reason = impl_->enabled && impl_->lease.empty() ? "retired"
++                       : !trusted                             ? "permission"
++                       : locked                               ? "locked"
++                                                              : "none";
++  base::DictValue value;
++  value.Set("supported", true);
++  value.Set("phase", phase);
++  value.Set("accessibilityTrusted", trusted);
++  if (@available(macOS 15.2, *)) {
++    value.Set("ocrSupported", true);
++  } else {
++    value.Set("ocrSupported", false);
++  }
++  value.Set("pickerGrantActive", impl_->filter != nil);
++  value.Set("configurationRevision", impl_->revision);
++  value.Set("dropped", static_cast<int>(std::min(
++                           impl_->dropped, static_cast<size_t>(INT_MAX))));
++  value.Set("reason", reason);
++  if (Current()) {
++    value.Set("leaseId", impl_->lease);
++  } else {
++    value.Set("leaseId", base::Value());
++  }
++  return value;
++}
++bool DesktopContextMac::AppSupported(const std::string& bundle) {
++  return !ExcludedApp(bundle) &&
++         [NSWorkspace.sharedWorkspace
++             URLForApplicationWithBundleIdentifier:base::SysUTF8ToNSString(
++                                                       bundle)] != nil;
++}
++base::ListValue DesktopContextMac::Apps() {
++  base::ListValue apps;
++  std::set<std::string> seen;
++  for (NSRunningApplication* application in NSWorkspace.sharedWorkspace
++           .runningApplications) {
++    if (application.activationPolicy != NSApplicationActivationPolicyRegular ||
++        application.processIdentifier ==
++            NSProcessInfo.processInfo.processIdentifier) {
++      continue;
++    }
++    const auto bundle = base::SysNSStringToUTF8(application.bundleIdentifier);
++    if (bundle.empty() || !AppSupported(bundle) ||
++        !seen.insert(bundle).second) {
++      continue;
++    }
++    base::DictValue app;
++    app.Set("bundleId", bundle);
++    app.Set("displayName", base::SysNSStringToUTF8(application.localizedName));
++    apps.Append(std::move(app));
++    if (seen.size() == 200) {
++      break;
++    }
++  }
++  return apps;
++}
++void DesktopContextMac::Configure(const base::DictValue& settings,
++                                  const std::string& lease) {
++  impl_->cancelled->store(true);
++  [impl_->active_ocr cancel];
++  ++impl_->generation;
++  impl_->timer.Stop();
++  impl_->pending.clear();
++  impl_->pending_window.reset();
++  impl_->filter = nil;
++  impl_->cancelled = std::make_shared<std::atomic_bool>(false);
++  impl_->last_text.clear();
++  impl_->last_capture = base::TimeTicks();
++  impl_->settings = settings.Clone();
++  impl_->lease = lease;
++  impl_->revision = settings.FindInt("revision").value_or(0);
++  impl_->enabled = settings.FindBool("enabled").value_or(false);
++  impl_->paused = settings.FindBool("paused").value_or(false);
++  impl_->ocr = settings.FindBool("ocrEnabled").value_or(false);
++  impl_->apps.clear();
++  if (const auto* apps = settings.FindList("selectedApps")) {
++    for (const auto& app : *apps) {
++      if (app.is_dict()) {
++        if (const auto* id = app.GetDict().FindString("bundleId")) {
++          if (!ExcludedApp(*id)) {
++            impl_->apps.insert(*id);
++          }
++        }
++      }
++    }
++  }
++  if (impl_->enabled && !impl_->paused) {
++    impl_->timer.Start(FROM_HERE, base::Milliseconds(750),
++                       base::BindRepeating(&DesktopContextMac::Tick,
++                                           weak_factory_.GetWeakPtr()));
++  }
++}
++void DesktopContextMac::RequestAccessibility() {
++  NSDictionary* options =
++      @{(__bridge NSString*)kAXTrustedCheckOptionPrompt : @YES};
++  AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
++}
++void DesktopContextMac::PresentOcrPicker() {
++  if (!Current() || !impl_->ocr) {
++    return;
++  }
++  if (@available(macOS 15.2, *)) {
++    if (impl_->picker_observer) {
++      [[SCContentSharingPicker sharedPicker]
++          removeObserver:impl_->picker_observer];
++    }
++    impl_->picker_observer = [[AuxDesktopPickerObserver alloc] init];
++    [(AuxDesktopPickerObserver*)impl_->picker_observer
++        setOwner:weak_factory_.GetWeakPtr()];
++    SCContentSharingPicker* picker = [SCContentSharingPicker sharedPicker];
++    [picker addObserver:impl_->picker_observer];
++    SCContentSharingPickerConfiguration* configuration =
++        [[SCContentSharingPickerConfiguration alloc] init];
++    configuration.allowedPickerModes = SCContentSharingPickerModeSingleWindow;
++    NSMutableArray<NSString*>* excluded = [[NSMutableArray alloc] init];
++    for (NSRunningApplication* app in NSWorkspace.sharedWorkspace
++             .runningApplications) {
++      const auto bundle = base::SysNSStringToUTF8(app.bundleIdentifier);
++      if (app.bundleIdentifier &&
++          (!impl_->apps.contains(bundle) || ExcludedApp(bundle))) {
++        [excluded addObject:app.bundleIdentifier];
++      }
++    }
++    configuration.excludedBundleIDs = excluded;
++    configuration.allowsChangingSelectedContent = YES;
++    picker.defaultConfiguration = configuration;
++    picker.active = YES;
++    [picker presentPickerUsingContentStyle:SCShareableContentStyleWindow];
++  }
++}
++void DesktopContextMac::PickerSelected(void* opaque) {
++  if (@available(macOS 15.2, *)) {
++    SCContentFilter* filter = (__bridge SCContentFilter*)opaque;
++    if (!Current() || !impl_->ocr || filter.includedWindows.count != 1) {
++      PickerStopped();
++      return;
++    }
++    SCWindow* window = filter.includedWindows.firstObject;
++    const auto bundle =
++        base::SysNSStringToUTF8(window.owningApplication.bundleIdentifier);
++    if (!window.owningApplication || !impl_->apps.contains(bundle)) {
++      PickerStopped();
++      return;
++    }
++    impl_->filter = filter;
++    impl_->filter_pid = window.owningApplication.processID;
++    impl_->filter_window = window.windowID;
++  }
++}
++void DesktopContextMac::PickerStopped() {
++  impl_->filter = nil;
++  impl_->filter_pid = 0;
++  impl_->cancelled->store(true);
++  [impl_->active_ocr cancel];
++  ++impl_->generation;
++  impl_->pending.clear();
++  impl_->pending_window.reset();
++  impl_->cancelled = std::make_shared<std::atomic_bool>(false);
++}
++void DesktopContextMac::Suspend(bool suspended) {
++  impl_->suspended = suspended;
++  impl_->cancelled->store(true);
++  [impl_->active_ocr cancel];
++  ++impl_->generation;
++  impl_->pending.clear();
++  impl_->pending_window.reset();
++  impl_->filter = nil;
++  if (!suspended) {
++    impl_->cancelled = std::make_shared<std::atomic_bool>(false);
++  }
++}
++void DesktopContextMac::Tick() {
++  if (!Current() || impl_->busy) {
++    return;
++  }
++  NSRunningApplication* foreground =
++      NSWorkspace.sharedWorkspace.frontmostApplication;
++  const auto bundle = base::SysNSStringToUTF8(foreground.bundleIdentifier);
++  if (!foreground || ExcludedApp(bundle) || !impl_->apps.contains(bundle)) {
++    impl_->pending.clear();
++    return;
++  }
++  if (!impl_->pending.empty()) {
++    ++impl_->dropped;
++    return;
++  }
++  if (!impl_->last_capture.is_null() &&
++      base::TimeTicks::Now() - impl_->last_capture < base::Seconds(15)) {
++    return;
++  }
++  impl_->busy = true;
++  impl_->pid = foreground.processIdentifier;
++  impl_->epoch = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  const int generation = impl_->generation;
++  const int pid = impl_->pid;
++  const auto cancelled = impl_->cancelled;
++  impl_->worker->PostTaskAndReplyWithResult(
++      FROM_HERE, base::BindOnce(&ReadVisible, pid, cancelled),
++      base::BindOnce(
++          [](base::WeakPtr<DesktopContextMac> owner, int generation,
++             std::string bundle, std::string name, Sample sample) {
++            if (!owner) {
++              return;
++            }
++            auto& state = *owner->impl_;
++            if (generation != state.generation || !owner->Current() ||
++                !sample.safe ||
++                NSWorkspace.sharedWorkspace.frontmostApplication
++                        .processIdentifier != state.pid) {
++              state.busy = false;
++              return;
++            }
++            state.pending_window = std::move(sample.window);
++            state.focused_bounds = sample.bounds;
++            state.document_url = sample.value.FindString("documentUrl")
++                                     ? *sample.value.FindString("documentUrl")
++                                     : "";
++            const auto* text = sample.value.FindString("text");
++            if ((!text || text->empty()) && state.ocr && state.filter &&
++                state.filter_pid == state.pid &&
++                SelectedWindowIsForeground(state.pid, state.filter_window,
++                                           sample.bounds)) {
++              owner->CaptureOcr(state.pid, generation);
++              return;
++            }
++            sample.value.Set("app", base::DictValue()
++                                        .Set("bundleId", bundle)
++                                        .Set("displayName", name));
++            owner->Accept(std::move(sample.value), generation);
++          },
++          weak_factory_.GetWeakPtr(), generation, bundle,
++          base::SysNSStringToUTF8(foreground.localizedName)));
++}
++void DesktopContextMac::Accept(base::DictValue capture, int generation) {
++  impl_->busy = false;
++  if (generation != impl_->generation || !Current() ||
++      NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier !=
++          impl_->pid) {
++    return;
++  }
++  const auto* text = capture.FindString("text");
++  const auto* selection = capture.FindString("selection");
++  if (!text || text->empty() || !selection || text->size() > 32768 ||
++      selection->size() > 4096) {
++    return;
++  }
++  const auto combined = *text + std::string(1, '\0') + *selection;
++  if (combined == impl_->last_text) {
++    return;
++  }
++  impl_->last_text = combined;
++  impl_->last_capture = base::TimeTicks::Now();
++  const double now =
++      static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch());
++  const auto* workspace = impl_->settings.FindString("workspaceId");
++  if (!workspace) {
++    return;
++  }
++  capture.Set("captureId", base::Uuid::GenerateRandomV4().AsLowercaseString());
++  capture.Set("workspaceId", *workspace);
++  capture.Set("leaseId", impl_->lease);
++  capture.Set("configurationRevision", impl_->revision);
++  capture.Set("sourceEpoch", impl_->epoch);
++  capture.Set("processId", impl_->pid);
++  capture.Set("windowId", impl_->epoch);
++  capture.Set("capturedAt", now);
++  capture.Set("expiresAt", now + 14.0 * 86400000);
++  if (!capture.FindString("kind")) {
++    capture.Set("kind", "accessibility");
++  }
++  capture.Set("sha256",
++              base::HexEncodeLower(crypto::SHA256HashString(combined)));
++  impl_->pending = std::move(capture);
++}
++base::DictValue DesktopContextMac::Take(const std::string& lease) {
++  const double captured_at =
++      impl_->pending.FindDouble("capturedAt").value_or(0);
++  if (!Current() || lease != impl_->lease ||
++      NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier !=
++          impl_->pid ||
++      (!impl_->pending.empty() &&
++       base::Time::Now().InMillisecondsSinceUnixEpoch() - captured_at >
++           60000)) {
++    if (!impl_->pending.empty()) {
++      ++impl_->dropped;
++    }
++    impl_->pending.clear();
++    impl_->pending_window.reset();
++    return {};
++  }
++  return impl_->pending.Clone();
++}
++void DesktopContextMac::Validate(const base::DictValue& source,
++                                 base::OnceCallback<void(bool)> reply) {
++  const auto* id = source.FindString("captureId");
++  const auto* expected = impl_->pending.FindString("captureId");
++  auto expected_source = impl_->pending.Clone();
++  expected_source.Remove("text");
++  expected_source.Remove("selection");
++  if (expected_source != source || !Current() || !id || !expected ||
++      *id != *expected ||
++      NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier !=
++          impl_->pid ||
++      !impl_->pending_window) {
++    std::move(reply).Run(false);
++    return;
++  }
++  const int generation = impl_->generation;
++  auto previous = impl_->pending_window;
++  const std::string expected_hash = *impl_->pending.FindString("sha256");
++  const std::string expected_url =
++      impl_->pending.FindString("documentUrl")
++          ? *impl_->pending.FindString("documentUrl")
++          : "";
++  const bool ocr = *impl_->pending.FindString("kind") == "ocr";
++  auto callback =
++      std::make_shared<base::OnceCallback<void(bool)>>(std::move(reply));
++  impl_->worker->PostTaskAndReplyWithResult(
++      FROM_HERE, base::BindOnce(&ReadVisible, impl_->pid, impl_->cancelled),
++      base::BindOnce(
++          [](base::WeakPtr<DesktopContextMac> owner, int generation,
++             base::apple::ScopedCFTypeRef<AXUIElementRef> previous,
++             std::string expected_hash, std::string expected_url, bool ocr,
++             std::shared_ptr<base::OnceCallback<void(bool)>> callback,
++             Sample sample) {
++            const auto* url = sample.value.FindString("documentUrl");
++            bool valid = owner && generation == owner->impl_->generation &&
++                         owner->Current() && sample.safe && sample.window &&
++                         CFEqual(previous.get(), sample.window.get()) &&
++                         (url ? *url : "") == expected_url &&
++                         NSWorkspace.sharedWorkspace.frontmostApplication
++                                 .processIdentifier == owner->impl_->pid;
++            if (!valid) {
++              std::move(*callback).Run(false);
++              return;
++            }
++            if (!ocr) {
++              const std::string text = sample.value.FindString("text")
++                                           ? *sample.value.FindString("text")
++                                           : "";
++              const std::string selection =
++                  sample.value.FindString("selection")
++                      ? *sample.value.FindString("selection")
++                      : "";
++              std::move(*callback).Run(
++                  base::HexEncodeLower(crypto::SHA256HashString(
++                      text + std::string(1, '\0') + selection)) ==
++                  expected_hash);
++              return;
++            }
++            if (!owner->impl_->filter ||
++                !SelectedWindowIsForeground(owner->impl_->pid,
++                                            owner->impl_->filter_window,
++                                            sample.bounds)) {
++              std::move(*callback).Run(false);
++              return;
++            }
++            owner->ReadOcr(
++                owner->impl_->pid, generation,
++                base::BindOnce(
++                    [](base::WeakPtr<DesktopContextMac> owner, int generation,
++                       base::apple::ScopedCFTypeRef<AXUIElementRef> previous,
++                       std::string expected_hash, std::string expected_url,
++                       std::shared_ptr<base::OnceCallback<void(bool)>> callback,
++                       std::string text) {
++                      if (!owner || text.empty() ||
++                          generation != owner->impl_->generation ||
++                          !owner->Current() ||
++                          base::HexEncodeLower(crypto::SHA256HashString(
++                              text + std::string(1, '\0'))) != expected_hash) {
++                        std::move(*callback).Run(false);
++                        return;
++                      }
++                      // OCR can take time: verify sensitive focus and the exact
++                      // window again.
++                      owner->impl_->worker->PostTaskAndReplyWithResult(
++                          FROM_HERE,
++                          base::BindOnce(&ReadVisible, owner->impl_->pid,
++                                         owner->impl_->cancelled),
++                          base::BindOnce(
++                              [](base::WeakPtr<DesktopContextMac> owner,
++                                 int generation,
++                                 base::apple::ScopedCFTypeRef<AXUIElementRef>
++                                     previous,
++                                 std::string expected_url,
++                                 std::shared_ptr<base::OnceCallback<void(bool)>>
++                                     callback,
++                                 Sample final) {
++                                const auto* url =
++                                    final.value.FindString("documentUrl");
++                                std::move(*callback).Run(
++                                    owner &&
++                                    generation == owner->impl_->generation &&
++                                    owner->Current() && final.safe &&
++                                    final.window &&
++                                    CFEqual(previous.get(),
++                                            final.window.get()) &&
++                                    (url ? *url : "") == expected_url &&
++                                    owner->impl_->filter &&
++                                    SelectedWindowIsForeground(
++                                        owner->impl_->pid,
++                                        owner->impl_->filter_window,
++                                        final.bounds) &&
++                                    NSWorkspace.sharedWorkspace
++                                            .frontmostApplication
++                                            .processIdentifier ==
++                                        owner->impl_->pid);
++                              },
++                              owner, generation, std::move(previous),
++                              expected_url, callback));
++                    },
++                    owner, generation, std::move(previous), expected_hash,
++                    expected_url, callback));
++          },
++          weak_factory_.GetWeakPtr(), generation, std::move(previous),
++          expected_hash, expected_url, ocr, callback));
++}
++bool DesktopContextMac::Acknowledge(const std::string& lease,
++                                    const std::string& capture) {
++  const auto* pending = impl_->pending.FindString("captureId");
++  if (lease != impl_->lease || !pending || capture != *pending) {
++    return false;
++  }
++  impl_->pending.clear();
++  impl_->pending_window.reset();
++  return true;
++}
++void DesktopContextMac::Stop(base::OnceClosure completion) {
++  impl_->cancelled->store(true);
++  [impl_->active_ocr cancel];
++  ++impl_->generation;
++  impl_->timer.Stop();
++  impl_->lease.clear();
++  impl_->pending.clear();
++  impl_->pending_window.reset();
++  impl_->filter = nil;
++  impl_->stopped.push_back(std::move(completion));
++  ++impl_->stop_barriers;
++  impl_->worker->PostTaskAndReply(
++      FROM_HERE, base::DoNothing(),
++      base::BindOnce(
++          [](base::WeakPtr<DesktopContextMac> owner) {
++            if (!owner) {
++              return;
++            }
++            --owner->impl_->stop_barriers;
++            owner->FinishStop();
++          },
++          weak_factory_.GetWeakPtr()));
++}
++void DesktopContextMac::FinishStop() {
++  if (impl_->stop_barriers || impl_->ocr_work) {
++    return;
++  }
++  impl_->busy = false;
++  auto completions = std::move(impl_->stopped);
++  for (auto& completion : completions) {
++    std::move(completion).Run();
++  }
++}
++void DesktopContextMac::FinishOcr() {
++  --impl_->ocr_work;
++  impl_->busy = false;
++  FinishStop();
++}
++void DesktopContextMac::CaptureOcr(int pid, int generation) {
++  ReadOcr(
++      pid, generation,
++      base::BindOnce(
++          [](base::WeakPtr<DesktopContextMac> owner, int generation,
++             std::string text) {
++            if (!owner || text.empty() ||
++                generation != owner->impl_->generation || !owner->Current()) {
++              return;
++            }
++            base::DictValue capture;
++            capture.Set("kind", "ocr");
++            capture.Set("text", text);
++            capture.Set("selection", "");
++            capture.Set("windowTitle", "");
++            if (!owner->impl_->document_url.empty()) {
++              capture.Set("documentUrl", owner->impl_->document_url);
++            }
++            NSRunningApplication* app =
++                NSWorkspace.sharedWorkspace.frontmostApplication;
++            capture.Set("app",
++                        base::DictValue()
++                            .Set("bundleId",
++                                 base::SysNSStringToUTF8(app.bundleIdentifier))
++                            .Set("displayName",
++                                 base::SysNSStringToUTF8(app.localizedName)));
++            owner->Accept(std::move(capture), generation);
++          },
++          weak_factory_.GetWeakPtr(), generation));
++}
++void DesktopContextMac::ReadOcr(int pid,
++                                int generation,
++                                base::OnceCallback<void(std::string)> reply) {
++  if (@available(macOS 15.2, *)) {
++    if (!Current() || !impl_->filter || impl_->filter_pid != pid ||
++        !SelectedWindowIsForeground(pid, impl_->filter_window,
++                                    impl_->focused_bounds)) {
++      impl_->busy = false;
++      std::move(reply).Run("");
++      return;
++    }
++    SCStreamConfiguration* configuration = [[SCStreamConfiguration alloc] init];
++    const auto bounds = impl_->filter.contentRect;
++    const double scale =
++        std::min({2.0, 2048.0 / std::max(1.0, bounds.size.width),
++                  1536.0 / std::max(1.0, bounds.size.height)});
++    configuration.width =
++        std::max(1, static_cast<int>(std::floor(bounds.size.width * scale)));
++    configuration.height =
++        std::max(1, static_cast<int>(std::floor(bounds.size.height * scale)));
++    configuration.capturesAudio = NO;
++    configuration.showsCursor = NO;
++    ++impl_->ocr_work;
++    auto callback = std::make_shared<base::OnceCallback<void(std::string)>>(
++        std::move(reply));
++    SCContentFilter* filter = impl_->filter;
++    auto weak = weak_factory_.GetWeakPtr();
++    auto cancelled = impl_->cancelled;
++    [SCScreenshotManager
++        captureImageWithFilter:filter
++                 configuration:configuration
++             completionHandler:^(CGImageRef image, NSError* error) {
++               if (!image || error || cancelled->load()) {
++                 dispatch_async(dispatch_get_main_queue(), ^{
++                   if (weak) {
++                     if (generation == weak->impl_->generation) {
++                       weak->PickerStopped();
++                     }
++                     std::move(*callback).Run("");
++                     weak->FinishOcr();
++                   }
++                 });
++                 return;
++               }
++               CGImageRetain(image);
++               dispatch_async(dispatch_get_main_queue(), ^{
++                 if (!weak) {
++                   CGImageRelease(image);
++                   std::move(*callback).Run("");
++                   return;
++                 }
++                 if (cancelled->load() ||
++                     generation != weak->impl_->generation ||
++                     !weak->Current()) {
++                   CGImageRelease(image);
++                   std::move(*callback).Run("");
++                   weak->FinishOcr();
++                   return;
++                 }
++                 VNRecognizeTextRequest* request =
++                     [[VNRecognizeTextRequest alloc] init];
++                 request.recognitionLevel =
++                     VNRequestTextRecognitionLevelAccurate;
++                 request.automaticallyDetectsLanguage = YES;
++                 weak->impl_->active_ocr = request;
++                 dispatch_async(
++                     dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
++                       VNImageRequestHandler* handler =
++                           [[VNImageRequestHandler alloc] initWithCGImage:image
++                                                                  options:@{}];
++                       NSError* failure = nil;
++                       [handler performRequests:@[ request ] error:&failure];
++                       std::string text;
++                       if (!failure && !cancelled->load()) {
++                         for (VNRecognizedTextObservation* observation in
++                                  request.results) {
++                           auto line = base::SysNSStringToUTF8(
++                               [observation topCandidates:1]
++                                   .firstObject.string);
++                           if (text.size() + line.size() + 1 > 32768) {
++                             break;
++                           }
++                           text += line + "\n";
++                         }
++                       }
++                       CGImageRelease(image);
++                       dispatch_async(dispatch_get_main_queue(), ^{
++                         if (!weak) {
++                           std::move(*callback).Run("");
++                           return;
++                         }
++                         if (weak->impl_->active_ocr == request) {
++                           weak->impl_->active_ocr = nil;
++                         }
++                         const bool valid =
++                             !cancelled->load() &&
++                             generation == weak->impl_->generation &&
++                             weak->Current() && weak->impl_->filter == filter &&
++                             NSWorkspace.sharedWorkspace.frontmostApplication
++                                     .processIdentifier == pid;
++                         std::move(*callback).Run(valid ? text : "");
++                         weak->FinishOcr();
++                       });
++                     });
++               });
++             }];
++  } else {
++    impl_->busy = false;
++    std::move(reply).Run("");
++  }
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 613285ef6180b8e513ba9abe3b46f69bcc095042..1e937c2d61aeac741637597dc6be56e9bb179797 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -141,6 +141,9 @@ AuxMethodRegistry::AuxMethodRegistry() {
+   register_runtime(AuxRuntimeMethodGroup::kPageControls,
+                    {"native.stopFind", "native.setZoom", "native.memorySaverGet", "native.memorySaverSet"});
+ #if BUILDFLAG(IS_MAC)
++#if BUILDFLAG(IS_MAC)
++  register_runtime(AuxRuntimeMethodGroup::kAsync, {"native.desktopContext"});
++#endif
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+       {"native.evidenceDocumentRead", "native.evidenceDocumentsRelease", "native.imageNormalize", "native.documentJob"});
+diff --git a/chrome/browser/ui/aux/runtime_desktop_context_mac.cc b/chrome/browser/ui/aux/runtime_desktop_context_mac.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..140d009b2875b8c3b28519b7d3046363cf5ecd6f
+--- /dev/null
++++ b/chrome/browser/ui/aux/runtime_desktop_context_mac.cc
+@@ -0,0 +1,389 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <climits>
++#include <memory>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/no_destructor.h"
++#include "base/unguessable_token.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/desktop_context_mac.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/prefs/pref_service.h"
++namespace {
++constexpr char kConsent[] = "aux.desktop_context.consent";
++constexpr char kLabs[] = "aux.desktop_context.labs";
++// Ownership remains occupied until the original AX/Vision work has joined.
++std::string& ProcessLease() {
++  static base::NoDestructor<std::string> lease;
++  return *lease;
++}
++base::DictValue Fault(std::string code, std::string message) {
++  return base::DictValue().Set("error",
++                               base::DictValue()
++                                   .Set("code", std::move(code))
++                                   .Set("message", std::move(message)));
++}
++base::DictValue Result(base::DictValue value) {
++  return base::DictValue().Set("result", std::move(value));
++}
++const base::DictValue& ConsentSettings(Profile* profile) {
++  const auto* settings =
++      profile->GetPrefs()->GetDict(kConsent).FindDict("settings");
++  static const base::NoDestructor<base::DictValue> empty;
++  return settings ? *settings : *empty;
++}
++int ConsentRevision(Profile* profile) {
++  return profile->GetPrefs()
++      ->GetDict(kConsent)
++      .FindInt("consentRevision")
++      .value_or(0);
++}
++bool LiveWorkspace(Profile* profile, const base::DictValue& settings) {
++  const auto* workspace = settings.FindString("workspaceId");
++  const auto* catalog = aux::TabCatalog::GetForProfile(profile);
++  return workspace && catalog && catalog->HasRuntimeWorkspace(*workspace);
++}
++}  // namespace
++bool AuxRuntimeHost::DesktopContextLeaseCurrent(const std::string& lease,
++                                                int revision) const {
++  if (shutting_down_ || profile_->IsOffTheRecord() || lease.empty() ||
++      lease != desktop_context_lease_ || lease != ProcessLease() ||
++      !desktop_context_generation_ ||
++      admitted_native_generation_ != desktop_context_generation_ ||
++      admitted_native_generation_ <= retired_native_generation_ ||
++      !profile_->GetPrefs()->GetBoolean(kLabs)) {
++    return false;
++  }
++  const auto& consent = ConsentSettings(profile_);
++  return consent.FindInt("revision") == revision &&
++         consent.FindBool("enabled").value_or(false) &&
++         !consent.FindBool("paused").value_or(false) &&
++         LiveWorkspace(profile_, consent);
++}
++base::DictValue AuxRuntimeHost::DesktopContextStatus() const {
++  auto status = desktop_context_->Status();
++  status.Set("consentRevision", ConsentRevision(profile_));
++  return status;
++}
++struct AuxRuntimeHost::DesktopContextDrain {
++  int pending = 0;
++  std::vector<base::OnceClosure> completions;
++  void Finish() {
++    if (pending) {
++      return;
++    }
++    auto ready = std::move(completions);
++    for (auto& completion : ready) {
++      std::move(completion).Run();
++    }
++  }
++};
++void AuxRuntimeHost::RetireDesktopContext(base::OnceClosure completion) {
++  auto original = std::move(desktop_context_);
++  auto lease = std::exchange(desktop_context_lease_, {});
++  desktop_context_generation_ = 0;
++  if (!desktop_context_drain_) {
++    desktop_context_drain_ = std::make_shared<DesktopContextDrain>();
++  }
++  auto drain = desktop_context_drain_;
++  drain->completions.push_back(std::move(completion));
++  if (!original) {
++    drain->Finish();
++    return;
++  }
++  ++drain->pending;
++  original->Stop(base::BindOnce(
++      [](std::shared_ptr<aux::DesktopContextMac> original,
++         std::shared_ptr<DesktopContextDrain> drain, std::string lease) {
++        if (!lease.empty() && ProcessLease() == lease) {
++          ProcessLease().clear();
++        }
++        --drain->pending;
++        drain->Finish();
++      },
++      original, drain, std::move(lease)));
++}
++void AuxRuntimeHost::SetDesktopContextLabs(bool enabled) {
++  profile_->GetPrefs()->SetBoolean(kLabs, enabled);
++  if (!enabled) {
++    RetireDesktopContext(base::DoNothing());
++  }
++}
++void AuxRuntimeHost::HandleNativeDesktopContext(
++    const base::DictValue& params,
++    uint64_t generation,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  const auto* op = params.FindString("op");
++  if (!op || shutting_down_ || profile_->IsOffTheRecord() || !generation ||
++      generation != admitted_native_generation_ ||
++      generation <= retired_native_generation_) {
++    std::move(callback).Run(
++        Fault("permission_denied",
++              "Desktop context requires its original normal Profile"));
++    return;
++  }
++  const auto window_current = [&](const std::string* token) {
++    const auto found =
++        token ? turn_contexts_.find(*token) : turn_contexts_.end();
++    return found != turn_contexts_.end() &&
++           found->second.generation == generation &&
++           TurnContextCurrent(found->second);
++  };
++  const auto create = [&] {
++    if (!desktop_context_) {
++      desktop_context_ =
++          std::make_shared<aux::DesktopContextMac>(base::BindRepeating(
++              [](base::WeakPtr<AuxRuntimeHost> host, const std::string& lease,
++                 int revision) {
++                return host &&
++                       host->DesktopContextLeaseCurrent(lease, revision);
++              },
++              weak_factory_.GetWeakPtr()));
++    }
++  };
++  if (*op == "status") {
++    create();
++    auto status = DesktopContextStatus();
++    const auto& consent = ConsentSettings(profile_);
++    if (desktop_context_lease_.empty()) {
++      status.Set("configurationRevision",
++                 consent.FindInt("revision").value_or(0));
++      status.Set("phase", consent.FindBool("enabled").value_or(false)
++                              ? "unavailable"
++                              : "off");
++      status.Set("reason", consent.FindBool("enabled").value_or(false)
++                               ? "retired"
++                               : "none");
++    }
++    std::move(callback).Run(Result(
++        base::DictValue().Set("op", *op).Set("status", std::move(status))));
++    return;
++  }
++  if (*op == "apps") {
++    if (!window_current(params.FindString("token"))) {
++      std::move(callback).Run(
++          Fault("ref_stale", "Original Settings window retired"));
++      return;
++    }
++    std::move(callback).Run(Result(base::DictValue().Set("op", *op).Set(
++        "apps", aux::DesktopContextMac::Apps())));
++    return;
++  }
++  if (*op == "stop") {
++    RetireDesktopContext(base::BindOnce(
++        [](base::OnceCallback<void(base::DictValue)> callback) {
++          std::move(callback).Run(
++              Result(base::DictValue().Set("op", "stop").Set("ok", true)));
++        },
++        std::move(callback)));
++    return;
++  }
++  if (*op == "configure" || *op == "attach") {
++    const auto* settings = params.FindDict("settings");
++    const auto& persisted = ConsentSettings(profile_);
++    const auto revision =
++        settings ? settings->FindInt("revision") : std::nullopt;
++    const bool explicit_change = *op == "configure";
++    const auto expected_consent = params.FindInt("expectedConsentRevision");
++    if (!settings || !revision || *revision < 0 ||
++        (explicit_change ? (!window_current(params.FindString("token")) ||
++                            !expected_consent ||
++                            *expected_consent != ConsentRevision(profile_) ||
++                            *expected_consent == INT_MAX)
++                         : *settings != persisted)) {
++      std::move(callback).Run(Fault(
++          "ref_stale",
++          "Desktop capture consent or its original Settings window changed"));
++      return;
++    }
++    const bool enabled = settings->FindBool("enabled").value_or(false);
++    const bool paused = settings->FindBool("paused").value_or(false);
++    if (enabled && (!profile_->GetPrefs()->GetBoolean(kLabs) ||
++                    !LiveWorkspace(profile_, *settings))) {
++      std::move(callback).Run(
++          Fault("permission_denied",
++                "Choose an available normal Space and enable this feature"));
++      return;
++    }
++    const auto* apps = settings->FindList("selectedApps");
++    if (!apps || (enabled && apps->empty())) {
++      std::move(callback).Run(
++          Fault("invalid_params", "Choose eligible apps explicitly"));
++      return;
++    }
++    for (const auto& app : *apps) {
++      const auto* bundle = app.GetDict().FindString("bundleId");
++      if (!bundle || !aux::DesktopContextMac::AppSupported(*bundle)) {
++        std::move(callback).Run(Fault("permission_denied",
++                                      "Browser apps, credential stores and "
++                                      "unavailable apps cannot be captured"));
++        return;
++      }
++    }
++    if (enabled && !paused && !ProcessLease().empty() &&
++        ProcessLease() != desktop_context_lease_) {
++      std::move(callback).Run(Fault(
++          "conflict", "Another Profile is finishing its desktop capture work"));
++      return;
++    }
++    const auto settings_copy = settings->Clone();
++    const int original_consent = ConsentRevision(profile_);
++    const std::string operation = *op;
++    const std::string token =
++        params.FindString("token") ? *params.FindString("token") : "";
++    RetireDesktopContext(base::BindOnce(
++        [](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
++           bool explicit_change, int original_consent, std::string token,
++           std::string operation, base::DictValue settings,
++           base::OnceCallback<void(base::DictValue)> callback) {
++          if (!host || host->shutting_down_ ||
++              host->admitted_native_generation_ != generation ||
++              generation <= host->retired_native_generation_) {
++            std::move(callback).Run(
++                Fault("ref_stale", "Original desktop capture owner retired"));
++            return;
++          }
++          if (explicit_change) {
++            if (ConsentRevision(host->profile_) != original_consent) {
++              std::move(callback).Run(Fault(
++                  "conflict",
++                  "Desktop consent changed while its original work retired"));
++              return;
++            }
++            const auto owner = host->turn_contexts_.find(token);
++            if (owner == host->turn_contexts_.end() ||
++                owner->second.generation != generation ||
++                !host->TurnContextCurrent(owner->second)) {
++              std::move(callback).Run(Fault(
++                  "ref_stale", "Original desktop Settings window retired"));
++              return;
++            }
++          } else if (settings != ConsentSettings(host->profile_)) {
++            std::move(callback).Run(Fault(
++                "ref_stale", "Original persisted desktop consent changed"));
++            return;
++          }
++          const bool active = settings.FindBool("enabled").value_or(false) &&
++                              !settings.FindBool("paused").value_or(false);
++          if (active && (!ProcessLease().empty() ||
++                         !host->profile_->GetPrefs()->GetBoolean(kLabs) ||
++                         !LiveWorkspace(host->profile_, settings))) {
++            std::move(callback).Run(Fault(
++                "conflict", "Desktop capture owner or destination changed"));
++            return;
++          }
++          if (explicit_change) {
++            host->profile_->GetPrefs()->SetDict(
++                kConsent, base::DictValue()
++                              .Set("consentRevision", original_consent + 1)
++                              .Set("settings", settings.Clone()));
++          }
++          host->desktop_context_ =
++              std::make_shared<aux::DesktopContextMac>(base::BindRepeating(
++                  [](base::WeakPtr<AuxRuntimeHost> host,
++                     const std::string& lease, int revision) {
++                    return host &&
++                           host->DesktopContextLeaseCurrent(lease, revision);
++                  },
++                  host));
++          if (active) {
++            host->desktop_context_lease_ =
++                base::UnguessableToken::Create().ToString();
++            ProcessLease() = host->desktop_context_lease_;
++            host->desktop_context_generation_ = generation;
++          }
++          host->desktop_context_->Configure(settings,
++                                            host->desktop_context_lease_);
++          std::move(callback).Run(
++              Result(base::DictValue()
++                         .Set("op", operation)
++                         .Set("status", host->DesktopContextStatus())));
++        },
++        weak_factory_.GetWeakPtr(), generation, explicit_change,
++        original_consent, token, operation, settings_copy.Clone(),
++        std::move(callback)));
++    return;
++  }
++  if (*op == "permission") {
++    const auto* kind = params.FindString("kind");
++    const auto revision = params.FindInt("revision");
++    if (!window_current(params.FindString("token")) || !desktop_context_ ||
++        !revision ||
++        ConsentSettings(profile_).FindInt("revision") != *revision || !kind ||
++        !ConsentSettings(profile_).FindBool("enabled").value_or(false) ||
++        !profile_->GetPrefs()->GetBoolean(kLabs)) {
++      std::move(callback).Run(
++          Fault("ref_stale", "Original desktop permission control changed"));
++      return;
++    }
++    if (*kind == "accessibility") {
++      desktop_context_->RequestAccessibility();
++    } else if (*kind == "ocr-picker") {
++      desktop_context_->PresentOcrPicker();
++    } else {
++      std::move(callback).Run(
++          Fault("invalid_params", "Unknown desktop permission kind"));
++      return;
++    }
++    std::move(callback).Run(Result(base::DictValue().Set("op", *op).Set(
++        "status", DesktopContextStatus())));
++    return;
++  }
++  if (!desktop_context_ || desktop_context_generation_ != generation) {
++    std::move(callback).Run(
++        Fault("ref_stale", "Original desktop capture lease retired"));
++    return;
++  }
++  if (*op == "take") {
++    const auto* lease = params.FindString("leaseId");
++    if (!lease || *lease != desktop_context_lease_) {
++      std::move(callback).Run(
++          Fault("ref_stale", "Original desktop lease changed"));
++      return;
++    }
++    auto capture = desktop_context_->Take(*lease);
++    std::move(callback).Run(Result(base::DictValue().Set("op", *op).Set(
++        "capture",
++        capture.empty() ? base::Value() : base::Value(std::move(capture)))));
++    return;
++  }
++  if (*op == "validate") {
++    const auto* source = params.FindDict("source");
++    if (!source) {
++      std::move(callback).Run(
++          Fault("invalid_params", "Desktop source identity is required"));
++      return;
++    }
++    auto original = desktop_context_;
++    original->Validate(
++        *source,
++        base::BindOnce(
++            [](std::shared_ptr<aux::DesktopContextMac> original,
++               base::OnceCallback<void(base::DictValue)> callback, bool valid) {
++              std::move(callback).Run(Result(
++                  base::DictValue().Set("op", "validate").Set("valid", valid)));
++            },
++            original, std::move(callback)));
++    return;
++  }
++  if (*op == "acknowledge") {
++    const auto* lease = params.FindString("leaseId");
++    const auto* capture = params.FindString("captureId");
++    if (!lease || !capture ||
++        !desktop_context_->Acknowledge(*lease, *capture)) {
++      std::move(callback).Run(Fault(
++          "ref_stale", "Original desktop capture acknowledgement changed"));
++      return;
++    }
++    std::move(callback).Run(
++        Result(base::DictValue().Set("op", *op).Set("ok", true)));
++    return;
++  }
++  std::move(callback).Run(
++      Fault("invalid_params", "Unknown desktop capture operation"));
++}
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index a02ef2ded3a026674c6a4a1286337f5308da0d57..7743b7192fa499d273cb299723853b53e386fa07 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -506,6 +506,19 @@ void AuxRuntimeHost::CallApiFromWindow(
+     std::move(callback).Run(std::move(token.error()));
+     return;
+   }
++#if BUILDFLAG(IS_MAC)
++  if (method == "settings.set") {
++    auto patch = base::JSONReader::ReadDict(params_json, base::JSON_PARSE_RFC);
++    const auto* overrides =
++        patch ? patch->FindDict("featureOverrides") : nullptr;
++    if (overrides) {
++      auto enabled = overrides->FindBool("desktopContext");
++      if (enabled) {
++        SetDesktopContextLabs(*enabled);
++      }
++    }
++  }
++#endif
+   if (method == "tasks.exportReceipt") {
+     const auto& original = turn_contexts_.at(*token);
+     auto* frame = original.document.AsRenderFrameHostIfValid();
+@@ -2300,6 +2313,9 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   }
+ #endif
+   native_document_jobs_.reset();
++#if BUILDFLAG(IS_MAC)
++  RetireDesktopContext(base::DoNothing());
++#endif
+   credential_admissions_.clear();
+   if (native_content_blocker_) {
+     native_content_blocker_->RetireConnection(generation);
+@@ -3633,12 +3649,19 @@ void AuxRuntimeHost::Worker::DispatchNative(
+               return;
+             }
+             if (method == "native.documentJob") {
+-              if (!owner->native_document_jobs_)
+-                owner->native_document_jobs_ = std::make_unique<aux::NativeDocumentJobs>();
+-              owner->native_document_jobs_->Dispatch(params, state->cancelled,
+-                  base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+-                    state->reply = std::move(reply); state->Complete();
+-                  }, state));
++              if (!owner->native_document_jobs_) {
++                owner->native_document_jobs_ =
++                    std::make_unique<aux::NativeDocumentJobs>();
++              }
++              owner->native_document_jobs_->Dispatch(
++                  params, state->cancelled,
++                  base::BindOnce(
++                      [](std::shared_ptr<NativeReplyState> state,
++                         base::DictValue reply) {
++                        state->reply = std::move(reply);
++                        state->Complete();
++                      },
++                      state));
+               return;
+             }
+             if (method == "native.imageNormalize") {
+@@ -3654,6 +3677,18 @@ void AuxRuntimeHost::Worker::DispatchNative(
+               return;
+             }
+ #if BUILDFLAG(IS_MAC)
++            if (method == "native.desktopContext") {
++              owner->HandleNativeDesktopContext(
++                  params, connection_generation,
++                  base::BindOnce(
++                      [](std::shared_ptr<NativeReplyState> state,
++                         base::DictValue reply) {
++                        state->reply = std::move(reply);
++                        state->Complete();
++                      },
++                      state));
++              return;
++            }
+             if (owner && method.starts_with("native.foundationModels")) {
+               owner->HandleNativeFoundationCall(
+                   method, params, connection_generation, foundation_admission,
+@@ -4046,7 +4081,7 @@ void AuxRuntimeHost::Worker::DispatchNativeRequest(int id,
+   request->deadline.Start(
+       FROM_HERE,
+       base::Seconds(method == "native.recoveryOwnerAuth"      ? 120
+-                    : method == "native.documentJob" ? 70
++                    : method == "native.documentJob"          ? 70
+                     : method == "native.evidenceDocumentRead" ? 65
+                     : method == "native.fillSavedPassword"    ? 60
+                                                               : 30),
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 23c4dd88916a5a3cf952501729e76c240b00edf3..726ff192a216817349485f839ce0d20b4655e3b1 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -52,6 +52,7 @@ namespace aux {
+ class EgressController;
+ class ContentBlockingController;
+ class NativeDocumentJobs;
++class DesktopContextMac;
+ class PowerActivityMac;
+ class CdpBroker;
+ class ProfileLibrary;
+@@ -458,6 +459,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+       uint64_t generation,
+       std::shared_ptr<std::atomic<aux::FoundationAdmission>> admission,
+       base::OnceCallback<void(base::DictValue)> callback);
++  void HandleNativeDesktopContext(
++      const base::DictValue& params,
++      uint64_t generation,
++      base::OnceCallback<void(base::DictValue)> callback);
++  void RetireDesktopContext(base::OnceClosure completion);
++  void SetDesktopContextLabs(bool enabled);
++  base::DictValue DesktopContextStatus() const;
++  bool DesktopContextLeaseCurrent(const std::string& lease, int revision) const;
++  struct DesktopContextDrain;
++  std::shared_ptr<DesktopContextDrain> desktop_context_drain_;
++  std::shared_ptr<aux::DesktopContextMac> desktop_context_;
++  std::string desktop_context_lease_;
++  uint64_t desktop_context_generation_ = 0;
+   std::map<std::string, scoped_refptr<aux::NativeFoundationRequest>>
+       native_foundation_;
+ #endif
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+index 6da9a9a47557901d8b66b7c8936a56a05bf3bdd8..551648ebd362f7fdbf376a04bdbf3ea6ae7d9475 100644
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -20,45 +20,45 @@
+ #include "base/uuid.h"
+ #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+ #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
+-#include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
+ #include "chrome/browser/performance_manager/policies/discard_eligibility_policy.h"
++#include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
+ #include "chrome/browser/profiles/profile.h"
+-#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
+-#include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
+ #include "chrome/browser/profiles/profile_keyed_service_factory.h"
+ #include "chrome/browser/profiles/profile_selections.h"
++#include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
++#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
+-#include "chrome/browser/ui/aux/little_window_controller.h"
+-#include "chrome/browser/ui/aux/organization_store.h"
+-#include "chrome/browser/ui/aux/egress_controller.h"
+-#include "chrome/browser/ui/browser_tabstrip.h"
+-#include "chrome/browser/ui/browser_commands.h"
+-#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+-#include "ui/base/base_window.h"
+ #include "chrome/browser/ui/aux/readable_capture.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_manager_service_factory.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/split_tab_metrics.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
++#include "components/performance_manager/public/decorators/page_live_state_decorator.h"
++#include "components/performance_manager/public/performance_manager.h"
++#include "components/prefs/pref_service.h"
+ #include "components/sessions/core/session_id.h"
+ #include "components/split_tabs/split_tab_visual_data.h"
+ #include "components/tabs/public/split_tab_data.h"
+ #include "components/tabs/public/tab_interface.h"
+-#include "chrome/browser/ui/tabs/split_tab_metrics.h"
+-#include "components/performance_manager/public/performance_manager.h"
+-#include "components/performance_manager/public/decorators/page_live_state_decorator.h"
+-#include "components/prefs/pref_service.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_entry.h"
+-#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/reload_type.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "third_party/skia/include/core/SkColor.h"
++#include "ui/base/base_window.h"
+ #include "url/gurl.h"
+ 
+ namespace aux {
+@@ -66,7 +66,9 @@ namespace {
+ 
+ void LoadPersonRestoredTab(Profile* profile, content::WebContents* contents) {
+   const auto* identity = PageIdentity::FromWebContents(contents);
+-  if (identity && identity->runtime_owned()) return;
++  if (identity && identity->runtime_owned()) {
++    return;
++  }
+   auto& controller = contents->GetController();
+   const auto* entry = controller.GetLastCommittedEntry();
+   auto* frame = contents->GetPrimaryMainFrame();
+@@ -79,8 +81,9 @@ void LoadPersonRestoredTab(Profile* profile, content::WebContents* contents) {
+     EgressRequestContext context;
+     context.document = frame->GetWeakDocumentPtr();
+     context.page_id = PageIdentity::GetOrCreate(profile, contents);
+-    if (!EgressController::ForProfile(profile)->IsProtected(context))
++    if (!EgressController::ForProfile(profile)->IsProtected(context)) {
+       controller.SetNeedsReload();
++    }
+   }
+   controller.LoadIfNecessary();
+ }
+@@ -120,13 +123,15 @@ class TabCatalogFactory final : public ProfileKeyedServiceFactory {
+ bool HasActiveSpace(const base::DictValue& shared,
+                     const std::string& space_id) {
+   const auto* spaces = shared.FindList("spaces");
+-  if (!spaces)
++  if (!spaces) {
+     return false;
++  }
+   for (const auto& value : *spaces) {
+     const auto& space = value.GetDict();
+     const auto* id = space.FindString("id");
+-    if (id && *id == space_id && !space.FindBool("archived").value_or(false))
++    if (id && *id == space_id && !space.FindBool("archived").value_or(false)) {
+       return true;
++    }
+   }
+   return false;
+ }
+@@ -151,9 +156,10 @@ TabCatalog::TabCatalog(Profile* profile)
+     : profile_(profile),
+       browsers_(ProfileBrowserCollection::GetForProfile(profile)) {
+   StartShellEvents(profile_);
+-  if (performance_manager::user_tuning::BatterySaverModeManager::HasInstance()) {
+-    battery_observation_.Observe(
+-        performance_manager::user_tuning::BatterySaverModeManager::GetInstance());
++  if (performance_manager::user_tuning::BatterySaverModeManager::
++          HasInstance()) {
++    battery_observation_.Observe(performance_manager::user_tuning::
++                                     BatterySaverModeManager::GetInstance());
+   }
+   if (browsers_) {
+     browser_observation_.Observe(browsers_);
+@@ -211,8 +217,9 @@ void TabCatalog::ObserveBrowser(BrowserWindowInterface* browser) {
+   TabStripModel* model = browser->GetTabStripModel();
+   if (model && observed_.insert(model).second) {
+     model->AddObserver(this);
+-    if (auto* active = model->GetActiveWebContents())
++    if (auto* active = model->GetActiveWebContents()) {
+       LoadPersonRestoredTab(profile_, active);
++    }
+   }
+ }
+ 
+@@ -264,9 +271,11 @@ void TabCatalog::Changed() {
+   patch.Set("version", version_);
+   patch.Set("baseVersion", previous_version);
+   patch.Set("batterySaverActive",
+-            performance_manager::user_tuning::BatterySaverModeManager::HasInstance() &&
+-                performance_manager::user_tuning::BatterySaverModeManager::GetInstance()
+-                    ->IsBatterySaverActive());
++            performance_manager::user_tuning::BatterySaverModeManager::
++                    HasInstance() &&
++                performance_manager::user_tuning::BatterySaverModeManager::
++                    GetInstance()
++                        ->IsBatterySaverActive());
+   patch.Set("ops", std::move(ops));
+   patch.Set("ts", static_cast<double>(NowMs()));
+   if (auto json = base::WriteJson(patch)) {
+@@ -338,8 +347,8 @@ void TabCatalog::OnTabStripModelChanged(
+   // Discard/replacement may change contents without selecting a different tab.
+   if (change.type() != TabStripModelChange::kReplaced &&
+       selection.active_tab_changed() && selection.new_contents) {
+-    last_active_at_[PageIdentity::GetOrCreate(profile_, selection.new_contents)] =
+-        NowMs();
++    last_active_at_[PageIdentity::GetOrCreate(
++        profile_, selection.new_contents)] = NowMs();
+   }
+   Changed();
+ }
+@@ -363,7 +372,7 @@ std::string TabCatalog::WindowId(const BrowserWindowInterface* browser) const {
+ }
+ 
+ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+-                                        content::WebContents* contents) {
++                                      content::WebContents* contents) {
+   if (!ReadableCapture::FromWebContents(contents)) {
+     ReadableCapture::CreateForWebContents(contents);
+   }
+@@ -375,7 +384,10 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+   tab.Set("pageId", id);
+   tab.Set("windowId", WindowId(browser));
+   tab.Set("anchor", contents->GetUserData(kAnchorKey) != nullptr);
+-  tab.Set("windowKind", profile_->IsOffTheRecord() ? "private" : IsQuickAskWindow(browser) ? "quick-ask" : IsLittleWindow(browser) ? "little" : "normal");
++  tab.Set("windowKind", profile_->IsOffTheRecord()  ? "private"
++                        : IsQuickAskWindow(browser) ? "quick-ask"
++                        : IsLittleWindow(browser)   ? "little"
++                                                    : "normal");
+   tab.Set("url", contents->GetLastCommittedURL().spec());
+   if (const base::DictValue* error = PageNavigationError(contents)) {
+     tab.Set("navigationError", error->Clone());
+@@ -385,9 +397,10 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+   }
+   tab.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
+   if (std::optional<SkColor> theme_color = contents->GetThemeColor()) {
+-    tab.Set("themeColor", base::StringPrintf("#%02x%02x%02x",
+-        SkColorGetR(*theme_color), SkColorGetG(*theme_color),
+-        SkColorGetB(*theme_color)));
++    tab.Set("themeColor",
++            base::StringPrintf("#%02x%02x%02x", SkColorGetR(*theme_color),
++                               SkColorGetG(*theme_color),
++                               SkColorGetB(*theme_color)));
+   }
+   if (auto* model = browser->GetTabStripModel()) {
+     const int index = model->GetIndexOfWebContents(contents);
+@@ -395,7 +408,8 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+       const auto* data = model->GetSplitData(*split);
+       base::DictValue metadata;
+       metadata.Set("id", split->ToString());
+-      metadata.Set("index", index - static_cast<int>(data->GetIndexRange().start()));
++      metadata.Set("index",
++                   index - static_cast<int>(data->GetIndexRange().start()));
+       tab.Set("split", std::move(metadata));
+     }
+   }
+@@ -411,8 +425,9 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+   const auto* identity = PageIdentity::FromWebContents(contents);
+   if (!identity->space_id().empty()) {
+     tab.Set("spaceId", identity->space_id());
+-    if (!identity->workspace_id().empty())
++    if (!identity->workspace_id().empty()) {
+       tab.Set("workspaceId", identity->workspace_id());
++    }
+   }
+   const auto* lifecycle =
+       resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
+@@ -441,8 +456,8 @@ void TabCatalog::BindSpace(const std::string& page_id,
+                            const std::string& workspace_id) {
+   if (auto* contents = FindPage(page_id)) {
+     PageIdentity::GetOrCreate(profile_, contents);
+-    PageIdentity::FromWebContents(contents)->BindSpace(
+-        profile_, contents, space_id, workspace_id);
++    PageIdentity::FromWebContents(contents)->BindSpace(profile_, contents,
++                                                       space_id, workspace_id);
+     PublishTabPlacement(profile_, contents, space_id, workspace_id);
+     Changed();
+   }
+@@ -473,9 +488,11 @@ std::optional<base::DictValue> TabCatalog::BindOrganizationSpace(
+   }
+   auto* placements = shared->FindDict("tabSpace");
+   placements->Set(page_id, space_id);
+-  if (!OrganizationStore::Commit(
+-          profile_, window_id, *snapshot->FindInt("revision"), *layout, error))
++  if (!OrganizationStore::Commit(profile_, window_id,
++                                 *snapshot->FindInt("revision"), *layout,
++                                 error)) {
+     return std::nullopt;
++  }
+   ReconcileSpaceBindings();
+   contents = FindPage(page_id, &owner);
+   identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
+@@ -486,8 +503,9 @@ std::optional<base::DictValue> TabCatalog::BindOrganizationSpace(
+   }
+   base::DictValue binding;
+   binding.Set("spaceId", space_id);
+-  if (!identity->workspace_id().empty())
++  if (!identity->workspace_id().empty()) {
+     binding.Set("workspaceId", identity->workspace_id());
++  }
+   return binding;
+ }
+ 
+@@ -498,9 +516,36 @@ void TabCatalog::SetRuntimeSpaceBindings(
+   ReconcileSpaceBindings();
+ }
+ 
++bool TabCatalog::HasRuntimeWorkspace(const std::string& workspace_id) const {
++  if (!profile_ || profile_->IsOffTheRecord() ||
++      !received_runtime_space_bindings_) {
++    return false;
++  }
++  std::string error;
++  const auto organization =
++      OrganizationStore::ProfileSnapshot(profile_, &error);
++  const auto* shared =
++      organization ? organization->FindDict("shared") : nullptr;
++  const auto* spaces = shared ? shared->FindList("spaces") : nullptr;
++  if (!spaces) {
++    return false;
++  }
++  for (const auto& value : *spaces) {
++    const auto* id = value.GetDict().FindString("id");
++    const auto binding =
++        id ? runtime_space_bindings_.find(*id) : runtime_space_bindings_.end();
++    if (binding != runtime_space_bindings_.end() &&
++        binding->second == workspace_id) {
++      return true;
++    }
++  }
++  return false;
++}
++
+ void TabCatalog::ReconcileSpaceBindings() {
+-  if (!profile_ || profile_->IsOffTheRecord() || !browsers_)
++  if (!profile_ || profile_->IsOffTheRecord() || !browsers_) {
+     return;
++  }
+   std::string error;
+   const auto organization =
+       OrganizationStore::ProfileSnapshot(profile_, &error);
+@@ -513,14 +558,16 @@ void TabCatalog::ReconcileSpaceBindings() {
+   const auto* placements = shared->FindDict("tabSpace");
+   bool changed = false;
+   browsers_->ForEach([&](BrowserWindowInterface* browser) {
+-    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL)
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+       return true;
++    }
+     auto* model = browser->GetTabStripModel();
+     for (int index = 0; index < model->count(); ++index) {
+       auto* contents = model->GetWebContentsAt(index);
+       auto* identity = PageIdentity::FromWebContents(contents);
+-      if (!identity || identity->runtime_owned())
++      if (!identity || identity->runtime_owned()) {
+         continue;
++      }
+       const auto* selected = placements->FindString(identity->id());
+       const std::string space_id = selected ? *selected : identity->space_id();
+       if (!HasActiveSpace(*shared, space_id)) {
+@@ -540,18 +587,20 @@ void TabCatalog::ReconcileSpaceBindings() {
+         workspace_id = identity->workspace_id();
+       }
+       if (identity->space_id() == space_id &&
+-          identity->workspace_id() == workspace_id)
++          identity->workspace_id() == workspace_id) {
+         continue;
++      }
+       identity->BindSpace(profile_, contents, space_id, workspace_id);
+       PublishTabPlacement(profile_, contents, space_id, workspace_id);
+       changed = true;
+     }
+     return true;
+   });
+-  if (changed)
++  if (changed) {
+     Changed();
+-  else
++  } else {
+     ScheduleMemorySaver();
++  }
+ }
+ 
+ base::DictValue TabCatalog::Snapshot() {
+@@ -587,7 +636,10 @@ base::DictValue TabCatalog::Snapshot() {
+       }
+       base::DictValue window;
+       window.Set("windowId", WindowId(browser));
+-      window.Set("windowKind", profile_->IsOffTheRecord() ? "private" : IsQuickAskWindow(browser) ? "quick-ask" : IsLittleWindow(browser) ? "little" : "normal");
++      window.Set("windowKind", profile_->IsOffTheRecord()  ? "private"
++                               : IsQuickAskWindow(browser) ? "quick-ask"
++                               : IsLittleWindow(browser)   ? "little"
++                                                           : "normal");
+       window.Set("order", std::move(order));
+       window.Set("activePageId", std::move(active));
+       windows.Append(std::move(window));
+@@ -597,9 +649,11 @@ base::DictValue TabCatalog::Snapshot() {
+   base::DictValue snapshot;
+   snapshot.Set("version", version_);
+   snapshot.Set("batterySaverActive",
+-               performance_manager::user_tuning::BatterySaverModeManager::HasInstance() &&
+-                   performance_manager::user_tuning::BatterySaverModeManager::GetInstance()
+-                       ->IsBatterySaverActive());
++               performance_manager::user_tuning::BatterySaverModeManager::
++                       HasInstance() &&
++                   performance_manager::user_tuning::BatterySaverModeManager::
++                       GetInstance()
++                           ->IsBatterySaverActive());
+   snapshot.Set("tabs", std::move(tabs));
+   snapshot.Set("windows", std::move(windows));
+   return snapshot;
+@@ -640,8 +694,8 @@ content::WebContents* TabCatalog::FindPage(const std::string& page_id,
+ }
+ 
+ base::DictValue TabCatalog::Reject(const std::string& command_id,
+-                                     std::string code,
+-                                     std::string message) const {
++                                   std::string code,
++                                   std::string message) const {
+   base::DictValue error;
+   error.Set("code", std::move(code));
+   error.Set("message", std::move(message));
+@@ -820,22 +874,24 @@ void TabCatalog::RunMemorySaver() {
+ }
+ 
+ base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
+-                                      const std::string& page_id,
+-                                      const std::string& expected_url) {
++                                     const std::string& page_id,
++                                     const std::string& expected_url) {
+   auto refused = [](std::string reason) {
+     base::DictValue result;
+     result.Set("slept", false);
+     result.Set("reason", std::move(reason));
+     return result;
+   };
+-  if (!issuer || !profile_ || profile_->IsOffTheRecord())
++  if (!issuer || !profile_ || profile_->IsOffTheRecord()) {
+     return refused("Sleeping tabs is unavailable in this window.");
++  }
+   BrowserWindowInterface* owner = nullptr;
+   content::WebContents* contents = FindPage(page_id, &owner);
+   if (!contents || owner != issuer ||
+       contents->GetLastCommittedURL().spec() != expected_url ||
+-      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
+     return refused("The tab changed or moved. Review it again.");
++  }
+   TabStripModel* model = issuer->GetTabStripModel();
+   const int index = model->GetIndexOfWebContents(contents);
+   if (index < 0 || contents->GetVisibility() != content::Visibility::HIDDEN ||
+@@ -844,19 +900,29 @@ base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
+     return refused("Only a loaded background tab can sleep.");
+   }
+   const PageIdentity* identity = PageIdentity::FromWebContents(contents);
+-  if (!identity) return refused("This tab has no stable identity.");
++  if (!identity) {
++    return refused("This tab has no stable identity.");
++  }
+   if (!EgressController::ForProfile(profile_)->CanDiscardPage(contents)) {
+     return refused("This tab still has active or resumable work.");
+   }
+-  if (contents->IsCurrentlyAudible()) return refused("Playing audio keeps this tab awake.");
+-  auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
+-  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
+-      capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) ||
+-      capture->IsCapturingDisplay(contents))
++  if (contents->IsCurrentlyAudible()) {
++    return refused("Playing audio keeps this tab awake.");
++  }
++  auto capture = MediaCaptureDevicesDispatcher::GetInstance()
++                     ->GetMediaStreamCaptureIndicator();
++  if (capture->IsCapturingUserMedia(contents) ||
++      capture->IsBeingMirrored(contents) || capture->IsCapturingTab(contents) ||
++      capture->IsCapturingWindow(contents) ||
++      capture->IsCapturingDisplay(contents)) {
+     return refused("Captured tabs stay awake.");
+-  if (contents->NeedToFireBeforeUnloadOrUnloadEvents())
++  }
++  if (contents->NeedToFireBeforeUnloadOrUnloadEvents()) {
+     return refused("This tab has unload handlers and stays awake.");
+-  if (model->IsTabPinned(index)) return refused("Pinned tabs stay awake.");
++  }
++  if (model->IsTabPinned(index)) {
++    return refused("Pinned tabs stay awake.");
++  }
+   if (model->GetSplitForTab(index)) {
+     return refused("Split tabs stay awake.");
+   }
+@@ -910,19 +976,24 @@ base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
+       performance_manager::user_tuning::GetDiscardedMemoryEstimateForPage(
+           page.get())
+           .InKiB();
+-  auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  auto* lifecycle =
++      resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
+   auto weak = weak_factory_.GetWeakPtr();
+   if (!lifecycle || !lifecycle->IsAutoDiscardable() ||
+       lifecycle->GetTabState() != mojom::LifecycleUnitState::ACTIVE ||
+-      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE, estimate_kib))
++      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE,
++                             estimate_kib)) {
+     return refused("Chromium kept this tab active.");
++  }
+   if (weak) {
+     Changed();
+   }
+   base::DictValue result;
+   result.Set("slept", true);
+-  if (estimate_kib > 0)
+-    result.Set("estimatedSavedBytes", static_cast<double>(estimate_kib) * 1024.0);
++  if (estimate_kib > 0) {
++    result.Set("estimatedSavedBytes",
++               static_cast<double>(estimate_kib) * 1024.0);
++  }
+   return result;
+ }
+ 
+@@ -995,55 +1066,84 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+     const auto* ids = command.FindList("pageIds");
+     const auto* layout = command.FindString("layout");
+     const auto ratio = command.FindDouble("ratio");
+-    if (!ids || ids->size() != 2 || !(*ids)[0].is_string() || !(*ids)[1].is_string() ||
++    if (!ids || ids->size() != 2 || !(*ids)[0].is_string() ||
++        !(*ids)[1].is_string() ||
+         (*ids)[0].GetString() == (*ids)[1].GetString() || !layout ||
+-        (*layout != "row" && *layout != "column") || !ratio || !std::isfinite(*ratio) ||
+-        *ratio < .1 || *ratio > .9) return Reject(command_id, "invalid_params", "Invalid split pair");
++        (*layout != "row" && *layout != "column") || !ratio ||
++        !std::isfinite(*ratio) || *ratio < .1 || *ratio > .9) {
++      return Reject(command_id, "invalid_params", "Invalid split pair");
++    }
+     std::vector<int> indices;
+     for (const auto& value : *ids) {
+       BrowserWindowInterface* owner = nullptr;
+       auto* contents = FindPage(value.GetString(), &owner);
+-      const auto* identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
+-      if (!contents || owner != issuer || !identity || identity->runtime_owned())
+-        return Reject(command_id, "forbidden", "Split panes must belong to this window");
++      const auto* identity =
++          contents ? PageIdentity::FromWebContents(contents) : nullptr;
++      if (!contents || owner != issuer || !identity ||
++          identity->runtime_owned()) {
++        return Reject(command_id, "forbidden",
++                      "Split panes must belong to this window");
++      }
+       EgressRequestContext context;
+       context.page_id = value.GetString();
+       context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+-      if (EgressController::ForProfile(profile_)->IsProtected(context))
++      if (EgressController::ForProfile(profile_)->IsProtected(context)) {
+         return Reject(command_id, "forbidden", "Aux is working in this tab");
++      }
+       indices.push_back(model->GetIndexOfWebContents(contents));
+     }
+     auto first = model->GetSplitForTab(indices[0]);
+     auto second = model->GetSplitForTab(indices[1]);
+-    const auto shape = *layout == "row" ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked;
++    const auto shape = *layout == "row"
++                           ? split_tabs::SplitTabLayout::kSideBySide
++                           : split_tabs::SplitTabLayout::kStacked;
+     if (first && first == second) {
+       const auto* data = model->GetSplitData(*first);
+-      if (static_cast<int>(data->GetIndexRange().start()) != indices[0]) model->ReverseTabsInSplit(*first);
+-      model->UpdateSplitLayout(*first, shape); model->UpdateSplitRatio(*first, *ratio);
++      if (static_cast<int>(data->GetIndexRange().start()) != indices[0]) {
++        model->ReverseTabsInSplit(*first);
++      }
++      model->UpdateSplitLayout(*first, shape);
++      model->UpdateSplitRatio(*first, *ratio);
+     } else {
+-      if (first || second) return Reject(command_id, "conflict", "Separate existing split tabs first");
+-      model->AddToNewSplit(indices, split_tabs::SplitTabVisualData(shape, *ratio), split_tabs::SplitTabCreatedSource::kKeyboardShortcut);
++      if (first || second) {
++        return Reject(command_id, "conflict",
++                      "Separate existing split tabs first");
++      }
++      model->AddToNewSplit(
++          indices, split_tabs::SplitTabVisualData(shape, *ratio),
++          split_tabs::SplitTabCreatedSource::kKeyboardShortcut);
+     }
+     result_page_id = (*ids)[0].GetString();
+   } else if (*kind == "claim" || *kind == "move") {
+     const std::string* page_id = command.FindString("pageId");
+     BrowserWindowInterface* source = nullptr;
+-    content::WebContents* contents = page_id ? FindPage(*page_id, &source) : nullptr;
++    content::WebContents* contents =
++        page_id ? FindPage(*page_id, &source) : nullptr;
+     if (!contents || !source || source->GetProfile() != profile_ ||
+         source->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+-        profile_->IsOffTheRecord() || IsQuickAskWindow(source) || IsQuickAskWindow(issuer) || IsLittleWindow(source) || IsLittleWindow(issuer)) {
+-      return Reject(command_id, "forbidden", "Only normal tabs in this Profile can move");
++        profile_->IsOffTheRecord() || IsQuickAskWindow(source) ||
++        IsQuickAskWindow(issuer) || IsLittleWindow(source) ||
++        IsLittleWindow(issuer)) {
++      return Reject(command_id, "forbidden",
++                    "Only normal tabs in this Profile can move");
+     }
+     BrowserWindowInterface* destination = issuer;
+     if (*kind == "move") {
+-      if (source != issuer) return Reject(command_id, "forbidden", "Move must originate in the owning window");
++      if (source != issuer) {
++        return Reject(command_id, "forbidden",
++                      "Move must originate in the owning window");
++      }
+       if (const std::string* window_id = command.FindString("windowId")) {
+         int parsed = 0;
+         destination = base::StringToInt(*window_id, &parsed) && parsed > 0
+-            ? browsers_->FindBrowserWithID(SessionID::FromSerializedValue(parsed)) : nullptr;
++                          ? browsers_->FindBrowserWithID(
++                                SessionID::FromSerializedValue(parsed))
++                          : nullptr;
+         if (!destination || destination->GetProfile() != profile_ ||
+-            destination->GetType() != BrowserWindowInterface::TYPE_NORMAL || IsQuickAskWindow(destination) || IsLittleWindow(destination)) {
+-          return Reject(command_id, "forbidden", "Destination must be a normal window in this Profile");
++            destination->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++            IsQuickAskWindow(destination) || IsLittleWindow(destination)) {
++          return Reject(command_id, "forbidden",
++                        "Destination must be a normal window in this Profile");
+         }
+       } else {
+         destination = nullptr;
+@@ -1051,31 +1151,52 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+     }
+     TabStripModel* source_model = source->GetTabStripModel();
+     const int source_index = source_model->GetIndexOfWebContents(contents);
+-    if (source_index < 0 || contents->GetUserData(kAnchorKey))
++    if (source_index < 0 || contents->GetUserData(kAnchorKey)) {
+       return Reject(command_id, "not_found", "This tab cannot move");
++    }
+     std::set<std::string> shared_members;
+     std::string organization_error;
+-    auto organization = OrganizationStore::Snapshot(profile_, WindowId(source), &organization_error);
++    auto organization = OrganizationStore::Snapshot(profile_, WindowId(source),
++                                                    &organization_error);
+     if (!organization) {
+-      return Reject(command_id, "backend_unavailable", organization_error.empty()
+-          ? "The Profile organization is unavailable; no tabs were moved"
+-          : organization_error);
++      return Reject(
++          command_id, "backend_unavailable",
++          organization_error.empty()
++              ? "The Profile organization is unavailable; no tabs were moved"
++              : organization_error);
+     }
+     {
+       const auto* layout = organization->FindDict("layout");
+       const auto* shared = layout ? layout->FindDict("shared") : nullptr;
+       const auto* groups = shared ? shared->FindList("splitGroups") : nullptr;
+-      if (groups) for (const auto& group : *groups) {
+-        const auto* panes = group.is_dict() ? group.GetDict().FindList("panes") : nullptr;
+-        if (!panes) continue;
+-        bool member = false;
+-        for (const auto& pane : *panes) if (pane.is_string() && pane.GetString() == *page_id) member = true;
+-        if (member) for (const auto& pane : *panes) {
+-          if (!pane.is_string()) return Reject(command_id, "invalid_params", "Invalid split group");
+-          BrowserWindowInterface* owner = nullptr;
+-          if (!FindPage(pane.GetString(), &owner) || owner != source)
+-            return Reject(command_id, "conflict", "The split group no longer belongs to one window");
+-          shared_members.insert(pane.GetString());
++      if (groups) {
++        for (const auto& group : *groups) {
++          const auto* panes =
++              group.is_dict() ? group.GetDict().FindList("panes") : nullptr;
++          if (!panes) {
++            continue;
++          }
++          bool member = false;
++          for (const auto& pane : *panes) {
++            if (pane.is_string() && pane.GetString() == *page_id) {
++              member = true;
++            }
++          }
++          if (member) {
++            for (const auto& pane : *panes) {
++              if (!pane.is_string()) {
++                return Reject(command_id, "invalid_params",
++                              "Invalid split group");
++              }
++              BrowserWindowInterface* owner = nullptr;
++              if (!FindPage(pane.GetString(), &owner) || owner != source) {
++                return Reject(
++                    command_id, "conflict",
++                    "The split group no longer belongs to one window");
++              }
++              shared_members.insert(pane.GetString());
++            }
++          }
+         }
+       }
+     }
+@@ -1084,61 +1205,87 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+     const auto split = source_model->GetSplitForTab(source_index);
+     for (int index = 0; index < source_model->count(); ++index) {
+       auto* member = source_model->GetWebContentsAt(index);
+-      if (index != source_index && (!split || source_model->GetSplitForTab(index) != split) && !shared_members.contains(PageIdentity::GetOrCreate(profile_, member))) continue;
++      if (index != source_index &&
++          (!split || source_model->GetSplitForTab(index) != split) &&
++          !shared_members.contains(
++              PageIdentity::GetOrCreate(profile_, member))) {
++        continue;
++      }
+       const auto* identity = PageIdentity::FromWebContents(member);
+       EgressRequestContext context;
+       context.document = member->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+       context.page_id = PageIdentity::GetOrCreate(profile_, member);
+-      if ((identity && identity->runtime_owned()) || EgressController::ForProfile(profile_)->IsProtected(context))
+-        return Reject(command_id, "forbidden", "Aux is working in this tab. Show its window instead");
++      if ((identity && identity->runtime_owned()) ||
++          EgressController::ForProfile(profile_)->IsProtected(context)) {
++        return Reject(command_id, "forbidden",
++                      "Aux is working in this tab. Show its window instead");
++      }
+       indices.push_back(index);
+       moved_ids.push_back(context.page_id);
+     }
+     if (!destination) {
+-      BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL, profile_, true);
++      BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL,
++                                       profile_, true);
+       destination = CreateBrowserWindow(std::move(params));
+-      if (!destination) return Reject(command_id, "backend_unavailable", "Aux could not create a window");
++      if (!destination) {
++        return Reject(command_id, "backend_unavailable",
++                      "Aux could not create a window");
++      }
+     }
+     if (source != destination) {
+       if (indices.size() == static_cast<size_t>(source_model->count())) {
+         const int previous_count = source_model->count();
+         chrome::AddTabAt(source, GURL("about:blank"), -1, false);
+-        if (source_model->count() != previous_count + 1)
+-          return Reject(command_id, "backend_unavailable", "Aux could not preserve the source window");
++        if (source_model->count() != previous_count + 1) {
++          return Reject(command_id, "backend_unavailable",
++                        "Aux could not preserve the source window");
++        }
+         auto* anchor = source_model->GetWebContentsAt(previous_count);
+-        if (!anchor || std::ranges::find(moved_ids, PageIdentity::GetOrCreate(profile_, anchor)) != moved_ids.end())
+-          return Reject(command_id, "backend_unavailable", "Aux could not preserve the source window");
+-        anchor->SetUserData(kAnchorKey, std::make_unique<base::SupportsUserData::Data>());
++        if (!anchor || std::ranges::find(moved_ids, PageIdentity::GetOrCreate(
++                                                        profile_, anchor)) !=
++                           moved_ids.end()) {
++          return Reject(command_id, "backend_unavailable",
++                        "Aux could not preserve the source window");
++        }
++        anchor->SetUserData(kAnchorKey,
++                            std::make_unique<base::SupportsUserData::Data>());
+         PageIdentity::MarkEphemeralTask(profile_, anchor);
+       }
+       chrome::MoveTabsToExistingWindow(source, destination, indices);
+     }
+     BrowserWindowInterface* actual = nullptr;
+-    if (FindPage(*page_id, &actual) != contents || actual != destination)
+-      return Reject(command_id, "backend_unavailable", "Chromium did not preserve the moved tab");
++    if (FindPage(*page_id, &actual) != contents || actual != destination) {
++      return Reject(command_id, "backend_unavailable",
++                    "Chromium did not preserve the moved tab");
++    }
+     if (command.FindBool("activate").value_or(true)) {
+-      destination->GetTabStripModel()->ActivateTabAt(destination->GetTabStripModel()->GetIndexOfWebContents(contents));
++      destination->GetTabStripModel()->ActivateTabAt(
++          destination->GetTabStripModel()->GetIndexOfWebContents(contents));
+       destination->GetWindow()->Show();
+       destination->GetWindow()->Activate();
+     }
+     for (const auto& moved_id : moved_ids) {
+       if (auto* moved = FindPage(moved_id)) {
+         const auto* identity = PageIdentity::FromWebContents(moved);
+-        if (!identity->space_id().empty()) BindSpace(moved_id, identity->space_id(), identity->workspace_id());
++        if (!identity->space_id().empty()) {
++          BindSpace(moved_id, identity->space_id(), identity->workspace_id());
++        }
+       }
+     }
+     auto* destination_model = destination->GetTabStripModel();
+     for (int index = destination_model->count() - 1; index >= 0; --index) {
+-      if (destination_model->GetWebContentsAt(index)->GetUserData(kAnchorKey))
++      if (destination_model->GetWebContentsAt(index)->GetUserData(kAnchorKey)) {
+         destination_model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
++      }
+     }
+     result_page_id = *page_id;
+   } else if (*kind == "reorder") {
+     const base::ListValue* order = command.FindList("order");
+     size_t visible_count = 0;
+     for (int index = 0; index < model->count(); ++index) {
+-      if (!model->GetWebContentsAt(index)->GetUserData(kAnchorKey))
++      if (!model->GetWebContentsAt(index)->GetUserData(kAnchorKey)) {
+         ++visible_count;
++      }
+     }
+     if (!order || order->size() != visible_count) {
+       return Reject(command_id, "invalid_params",
+@@ -1181,12 +1328,15 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+       LoadPersonRestoredTab(profile_, contents);
+     } else if (*kind == "unsplit") {
+       const auto* identity = PageIdentity::FromWebContents(contents);
+-      if (!identity || identity->runtime_owned()) return Reject(command_id, "forbidden", "A runtime tab cannot be split");
++      if (!identity || identity->runtime_owned()) {
++        return Reject(command_id, "forbidden", "A runtime tab cannot be split");
++      }
+       EgressRequestContext context;
+       context.page_id = *page_id;
+       context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+-      if (EgressController::ForProfile(profile_)->IsProtected(context))
++      if (EgressController::ForProfile(profile_)->IsProtected(context)) {
+         return Reject(command_id, "forbidden", "Aux is working in this tab");
++      }
+       if (const auto split = model->GetSplitForTab(index)) {
+         model->RemoveSplit(*split);
+       }
+@@ -1243,7 +1393,9 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+   ack.Set("catalogVersion", version_);
+   ack.Set("pageId", result_page_id);
+   BrowserWindowInterface* result_owner = nullptr;
+-  if (FindPage(result_page_id, &result_owner) && result_owner) ack.Set("windowId", WindowId(result_owner));
++  if (FindPage(result_page_id, &result_owner) && result_owner) {
++    ack.Set("windowId", WindowId(result_owner));
++  }
+   command_acks_[command_id] = ack.Clone();
+   ack_order_.push_back(command_id);
+   if (ack_order_.size() > 1024) {
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+index 94df8e7a9ad398679611eed201cf39bb81c88202..a11bf04fb8b7cbab8cf3264eef95028dbb3d838f 100644
+--- a/chrome/browser/ui/aux/tab_catalog.h
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -19,8 +19,8 @@
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "base/values.h"
+-#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/keyed_service/core/keyed_service.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -40,7 +40,8 @@ namespace aux {
+ class TabCatalog final : public KeyedService,
+                          public BrowserCollectionObserver,
+                          public TabStripModelObserver,
+-                         public performance_manager::user_tuning::BatterySaverModeManager::Observer {
++                         public performance_manager::user_tuning::
++                             BatterySaverModeManager::Observer {
+  public:
+   static void EnsureFactoryBuilt();
+   static TabCatalog* GetForProfile(Profile* profile);
+@@ -65,12 +66,16 @@ class TabCatalog final : public KeyedService,
+                           CommandSource command_source);
+   content::WebContents* FindPage(const std::string& page_id,
+                                  BrowserWindowInterface** owner = nullptr);
+-  void BindSpace(const std::string& page_id, const std::string& space_id,
++  void BindSpace(const std::string& page_id,
++                 const std::string& space_id,
+                  const std::string& workspace_id);
+   std::optional<base::DictValue> BindOrganizationSpace(
+-      BrowserWindowInterface* issuer, const std::string& page_id,
+-      const std::string& space_id, std::string* error);
++      BrowserWindowInterface* issuer,
++      const std::string& page_id,
++      const std::string& space_id,
++      std::string* error);
+   void SetRuntimeSpaceBindings(std::map<std::string, std::string> bindings);
++  bool HasRuntimeWorkspace(const std::string& workspace_id) const;
+   void MarkRuntimeOwned(const std::string& page_id);
+   void RefreshPage();
+   base::CallbackListSubscription ObserveChanges(
+@@ -103,17 +108,18 @@ class TabCatalog final : public KeyedService,
+                                                      base::TimeTicks now);
+   std::string WindowId(const BrowserWindowInterface* browser) const;
+   base::DictValue TabRecord(BrowserWindowInterface* browser,
+-                              content::WebContents* contents);
++                            content::WebContents* contents);
+   base::DictValue Reject(const std::string& command_id,
+-                           std::string code,
+-                           std::string message) const;
++                         std::string code,
++                         std::string message) const;
+ 
+   raw_ptr<Profile> profile_;
+   raw_ptr<ProfileBrowserCollection> browsers_ = nullptr;
+   base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
+       browser_observation_{this};
+-  base::ScopedObservation<performance_manager::user_tuning::BatterySaverModeManager,
+-                          performance_manager::user_tuning::BatterySaverModeManager::Observer>
++  base::ScopedObservation<
++      performance_manager::user_tuning::BatterySaverModeManager,
++      performance_manager::user_tuning::BatterySaverModeManager::Observer>
+       battery_observation_{this};
+   std::set<TabStripModel*> observed_;
+   std::map<std::string, int64_t> created_at_;

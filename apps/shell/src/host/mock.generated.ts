@@ -505,10 +505,33 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
+  "native.desktopContext": {
+    "op": "status",
+    "status": {
+      "supported": false,
+      "phase": "off",
+      "accessibilityTrusted": false,
+      "ocrSupported": false,
+      "pickerGrantActive": false,
+      "leaseId": null,
+      "configurationRevision": 0,
+      "consentRevision": 0,
+      "dropped": 0,
+      "reason": "none"
+    }
+  },
   "native.evidenceDocumentRead": {
     "kind": "unreadable",
     "filename": "/tmp/aux-mock",
     "reason": "unsupported_format"
+  },
+  "native.evidenceDocumentBytes": {
+    "snapshotId": "00000000-0000-4000-8000-000000000000",
+    "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourceBytes": 0,
+    "offset": 0,
+    "bytesBase64": "a",
+    "nextOffset": 0
   },
   "native.evidenceDocumentsRelease": {
     "ok": true
@@ -553,6 +576,10 @@ const RESULTS: Record<string, unknown> = {
   },
   "native.powerActivity": {
     "active": false
+  },
+  "native.documentJob": {
+    "action": "begin",
+    "jobId": "a"
   },
   "native.imageNormalize": {
     "pngBase64": "aaaa",

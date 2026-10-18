@@ -199,7 +199,7 @@ function harness(
     page: (id) => targets.get(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const egressScopes: { runId: string; mode: "session" | "private" }[] = [];
   const browserEgress = {

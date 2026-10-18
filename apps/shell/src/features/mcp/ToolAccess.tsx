@@ -80,6 +80,13 @@ export function McpToolAccess({
               <span>
                 <strong>{tool.name}</strong>
                 {tool.description && <span>{tool.description}</span>}
+                <span>
+                  {tool.effect === "read"
+                    ? "Documented read"
+                    : tool.effect === "write"
+                      ? "Writes external data"
+                      : "Effect unverified; treated as an external action"}
+                </span>
               </span>
             </label>
             {onCall && (

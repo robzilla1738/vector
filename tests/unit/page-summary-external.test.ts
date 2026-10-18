@@ -122,7 +122,7 @@ it("funds scoped external summaries on the original session and joins a held dis
     page: (id) => repo.getPage(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const settings = new SettingsService(
     repo,

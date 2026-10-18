@@ -102,6 +102,7 @@ it("fetches an OAuth token only for the approved remote server", async () => {
   }[] = [];
   let current: "valid" | "wrong" = "valid";
   const oauth = {
+    authorizationGeneration: () => 0,
     token: async (server: OutboundMcpServer) => {
       if (current === "wrong" || server.source.kind !== "remote")
         throw new Error("credential does not match");
@@ -438,7 +439,12 @@ it("lets a scoped agent call only a connected tool in its current Space and task
       .prepare("SELECT run_id,turn_id,kind,approval_id FROM safety_suspensions WHERE state='pending'")
       .all();
     expect(pending).toEqual([
-      expect.objectContaining({ run_id: run.runId, turn_id: run.runId, kind: "approval", approval_id: expect.any(String) }),
+      expect.objectContaining({
+        run_id: run.runId,
+        turn_id: run.runId,
+        kind: "approval",
+        approval_id: expect.any(String),
+      }),
     ]);
     const decision = repo.db
       .prepare("SELECT request_json FROM safety_decisions ORDER BY rowid DESC LIMIT 1")

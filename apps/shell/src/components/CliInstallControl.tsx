@@ -63,13 +63,15 @@ export function CliInstallControl() {
       description="Install the bundled aux launcher in ~/.local/bin. Existing commands owned by you stay unchanged."
       searchTerms={["Developers", "CLI", "terminal", "aux open"]}
       details={
-        <div className="developer-cli-preview" aria-hidden="true">
-          <div>
-            <span>Aux CLI</span>
-            <code>aux open example.com</code>
-            <span>Open a page in Aux</span>
-          </div>
-        </div>
+        <img
+          className="setting-illustration"
+          src="/settings/developer.webp"
+          width={288}
+          height={160}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
       }
     >
       <button className="btn sm" disabled={busy} onClick={() => void install()}>

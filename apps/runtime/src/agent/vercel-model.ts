@@ -121,6 +121,7 @@ export function vercelModelClient(
       },
     ) => call(options, (client) => client.streamStructured<T>(options)),
     generateText: (options) => call(options, (client) => client.generateText(options)),
+    searchWeb: (options) => call(options, (client) => client.searchWeb(options)),
     toolCallStep: (options) => call(options, (client) => client.toolCallStep(options)),
     listModels: async () => models().map(({ id, name }) => ({ id, name })),
   };

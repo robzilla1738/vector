@@ -324,7 +324,7 @@ it("preserves a genuinely parked run across graceful restart, history limits and
     page: (id) => h.pages.get(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
     turnSourceContext: nativeSource,
   });
   const run = await h.coordinator.start({
@@ -512,7 +512,7 @@ it("starts and answers a page-free coding run without implicitly reading the nat
     prepareReadPage,
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
     turnSourceContext: async () => ({
       revision: 0,
       layout: null,
@@ -617,7 +617,7 @@ it("answers an unchanged guarded browser selection using fresh source proof with
     prepareReadPage,
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
     turnSourceContext: async () => ({ revision: 0, layout: null, windowId, activePageId: "p1" }),
   });
   h.coordinator.deps.turnMentions = turns;

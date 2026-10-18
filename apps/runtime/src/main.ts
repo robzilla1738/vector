@@ -1,3 +1,16 @@
+import { GoogleAccountService } from "./services/google-accounts.js";
+import { GoogleGrantService } from "./services/google-grants.js";
+import { GoogleOperationService } from "./services/google-operations.js";
+import { googleAuthorizer } from "./services/google-governance.js";
+import { htmlSearchFallback } from "./agent/gateway-search.js";
+import { SpaceService } from "./services/spaces.js";
+import { DesktopContextService } from "./services/desktop-context.js";
+import { DesktopContextStore } from "./services/desktop-context-store.js";
+import { DesktopContextNativeAdapter } from "./services/desktop-context-native.js";
+import { nativeDocumentIntake } from "./services/native-document-intake.js";
+import { desktopContextDefaults, DesktopContextSettingsSchema } from "@aux/contracts/desktop-context";
+import { memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
+import { advanceManagedRecoveryGeneration } from "./services/managed-recovery-generation.js";
 import { PrivateRuntimeSession } from "./services/private-session.js";
 import type { HostCapabilities } from "@aux/contracts/host-methods";
 import { modelCapabilities } from "@aux/contracts/model-registry";
@@ -31,6 +44,7 @@ import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore, contentMemoryExcerpt } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
 import { extractMemoryNotes } from "./services/memory-extractor.js";
+import { withMemoryModelJob } from "./services/memory-model-source.js";
 import { dreamMemory } from "./services/memory-dream.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 import { McpOAuthService } from "./services/mcp-oauth.js";
@@ -148,6 +162,9 @@ import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
 import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { ChannelService } from "./services/channels.js";
+import { processPdfArtifacts } from "./services/pdf-jobs.js";
+import { listPdfSources } from "./services/pdf-sources.js";
+import { nativeAudioInspection } from "./services/native-audio-inspection.js";
 import { nativeImageIntake } from "./services/native-image-intake.js";
 import { pollCalendarRoutines } from "./services/calendar-routine-poll.js";
 import { ZapService } from "./services/zap.js";
@@ -297,6 +314,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const cliInstallWork = new Set<Promise<unknown>>();
   const agentInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
+  let audioInspectionReady = false;
   let stopNativeProjectPreview: (() => void) | undefined;
   let stopPrivateProviderBroker: (() => void) | undefined;
   let privateBudgetOwner: PrivateBudgetOwner | undefined;
@@ -333,6 +351,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     outboundMcp: OutboundMcpService;
     hooks: HookService;
     calendar: CalendarConnectionService;
+    googleAccounts: GoogleAccountService;
+    googleGrants: GoogleGrantService;
+    google: GoogleOperationService;
     channels: ChannelService;
     operations: OperationService;
     state: StateService;
@@ -398,7 +419,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           return { read, write: folderRootsForRun(runId, "write") };
         },
       }),
-    settings: () => new SettingsService(repo, config.settingsPath, env),
+    settings: () => {
+      const settings = new SettingsService(repo, config.settingsPath, env);
+      settings.setAudioInspectionReady(audioInspectionReady);
+      return settings;
+    },
     copilot: async () => {
       if (closed) throw new AuxError("cancelled", "Copilot construction retired.");
       const { CopilotServices } = await import("./services/copilot-services.js");
@@ -446,6 +471,41 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events)
         : undefined,
+    desktopContext: () =>
+      !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
+        ? new DesktopContextService({
+            store: new DesktopContextStore(repo, native, env.AUX_BROWSER_PROFILE_ID),
+            native: new DesktopContextNativeAdapter(native, async () =>
+              Boolean(
+                (await nativeIdentity?.catch(() => undefined))?.methods.includes("native.desktopContext"),
+              ),
+            ),
+            settings: () => {
+              const parsed = DesktopContextSettingsSchema.safeParse(repo.getSetting("desktopContext"));
+              return parsed.success ? parsed.data : desktopContextDefaults();
+            },
+            saveSettings: (value) => repo.setSetting("desktopContext", value),
+            workspaceEligible: (workspaceId) =>
+              repo.getSetting<{ desktopContext?: boolean }>("featureOverrides")?.desktopContext !== false &&
+              new SpaceService(repo, events)
+                .list()
+                .some((space) => space.workspaceId === workspaceId && !space.archived),
+            sourceEligible: (capture) => {
+              if (memoryContentSensitivityReason(capture.text + "\n" + capture.selection)) return false;
+              if (!capture.documentUrl) return true;
+              if (memorySensitivityReason(capture.documentUrl, capture.windowTitle)) return false;
+              const excluded =
+                repo.getSetting<{ excludedOrigins?: string[] }>(`workspaceMemory:${capture.workspaceId}`)
+                  ?.excludedOrigins ?? [];
+              return !excluded.includes(new URL(capture.documentUrl).origin);
+            },
+            beforeRemoval: async () => {
+              advanceManagedRecoveryGeneration(config.dataDir);
+              await runtimeServices.contentMemory?.invalidateDerivatives();
+            },
+            changed: () => events.emit("settings.changed", {}),
+          })
+        : undefined,
     memoryPipeline: () =>
       !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new MemoryPipeline(
@@ -456,15 +516,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               generation: () => runtimeServices.settings.modelCacheGeneration(),
               extract: (input) => {
                 const settings = runtimeServices.settings;
-                return extractMemoryNotes(
+                if (settings.memoryBackgroundUnavailable())
+                  return Promise.resolve({
+                    status: "failed" as const,
+                    errorCode: "account_requires_window" as const,
+                    quotes: [],
+                  });
+                return withMemoryModelJob(
+                  input.job,
                   {
-                    repo,
-                    budget: accountBudget,
-                    model: settings.model(),
-                    modelId: settings.agentRoute("fast").modelId,
-                    models: settings.registryModels(),
+                    profileId: env.AUX_BROWSER_PROFILE_ID!,
+                    signal: input.signal,
+                    subscribeConnectionChanges: (changed) => settings.subscribeConnectionChanges(changed),
+                    modelGeneration: () => settings.modelCacheGeneration(),
+                    checkCurrent: () => {
+                      if (closed || !native.available())
+                        throw new AuxError("cancelled", "The background Memory owner retired.");
+                      input.checkCurrent();
+                    },
+                    safetyGate: runtimeServices.safetyGate,
                   },
-                  input,
+                  (source, signal) =>
+                    extractMemoryNotes(
+                      {
+                        repo,
+                        budget: accountBudget,
+                        model: settings.model(source),
+                        source: () => source,
+                        modelId: settings.agentRoute("fast").modelId,
+                        models: settings.registryModels(),
+                      },
+                      { ...input, signal },
+                    ),
                 );
               },
             },
@@ -472,15 +555,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               generation: () => runtimeServices.settings.modelCacheGeneration(),
               consolidate: (input) => {
                 const settings = runtimeServices.settings;
-                return dreamMemory(
+                if (settings.memoryBackgroundUnavailable())
+                  return Promise.resolve({
+                    status: "failed" as const,
+                    errorCode: "account_requires_window" as const,
+                    changes: [],
+                  });
+                return withMemoryModelJob(
+                  input.job,
                   {
-                    repo,
-                    budget: accountBudget,
-                    model: settings.model(),
-                    modelId: settings.agentRoute("fast").modelId,
-                    models: settings.registryModels(),
+                    profileId: env.AUX_BROWSER_PROFILE_ID!,
+                    signal: input.signal,
+                    subscribeConnectionChanges: (changed) => settings.subscribeConnectionChanges(changed),
+                    modelGeneration: () => settings.modelCacheGeneration(),
+                    checkCurrent: () => {
+                      if (closed || !native.available())
+                        throw new AuxError("cancelled", "The background Memory owner retired.");
+                      input.checkCurrent();
+                    },
+                    safetyGate: runtimeServices.safetyGate,
                   },
-                  input,
+                  (source, signal) =>
+                    dreamMemory(
+                      {
+                        repo,
+                        budget: accountBudget,
+                        model: settings.model(source),
+                        source: () => source,
+                        modelId: settings.agentRoute("fast").modelId,
+                        models: settings.registryModels(),
+                      },
+                      { ...input, signal },
+                    ),
                 );
               },
             },
@@ -644,11 +750,113 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         intake: {
           documents: runtimeServices.runs.documents,
           images: runtimeServices.runs.images,
-          ...(channel ? { normalizeImage: nativeImageIntake(native) } : {}),
+          ...(channel
+            ? {
+                normalizeImage: nativeImageIntake(native),
+                extractDocument: nativeDocumentIntake(native),
+                transcribe: (input) =>
+                  runtimeServices.runs.externalUtilitySession(input.runId, input.checkCurrent, (signal) =>
+                    runtimeServices.runs.transcribeChannelAudio({
+                      ...input,
+                      signal: AbortSignal.any([signal, input.signal]),
+                      inspectAudio: nativeAudioInspection(native),
+                      authorize: async (admitted) => {
+                        input.checkCurrent();
+                        const run = repo.getRun(input.runId);
+                        if (!run || run.status !== "running" || !audioInspectionReady)
+                          throw new AuxError("cancelled", "The original channel voice session retired.");
+                        const destination = "https://ai-gateway.vercel.sh/";
+                        const threadId = run.config?.chatId ?? input.runId;
+                        const request = EffectRequestSchema.parse({
+                          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+                          scope: run.config?.taskId
+                            ? { kind: "task", id: run.config.taskId }
+                            : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+                          actor: "builtin_agent",
+                          effect: "egress",
+                          category: "external_tool",
+                          action: "agent.model.account",
+                          origin: destination,
+                          destination,
+                          dataClasses: ["file"],
+                          provenance: "template",
+                          invocationDigest: createHash("sha256")
+                            .update(JSON.stringify(["channel-transcription", admitted]))
+                            .digest("hex"),
+                          turnId: input.runId,
+                          threadId,
+                          runId: input.runId,
+                          requestedAt: Date.now(),
+                        });
+                        await runtimeServices.safetyGate.checkTrustedEffect(request, {
+                          profileId: request.profileId,
+                          scope: request.scope,
+                          actor: request.actor,
+                          turnId: input.runId,
+                          threadId,
+                          runId: input.runId,
+                          configuredModelDestination: destination,
+                          checkOwner: input.checkCurrent,
+                        });
+                        input.checkCurrent();
+                      },
+                    }),
+                  ),
+              }
+            : {}),
         },
+      }),
+    googleAccounts: () =>
+      new GoogleAccountService({
+        repo,
+        native,
+        clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+        generalClientId: privateSession ? undefined : env.AUX_GOOGLE_CLIENT_ID,
+        ...(loopbackServicesUrl
+          ? {
+              endpoints: {
+                auth: `${loopbackServicesUrl}calendar/auth`,
+                token: `${loopbackServicesUrl}calendar/token`,
+                revoke: `${loopbackServicesUrl}calendar/revoke`,
+                calendar: `${loopbackServicesUrl}calendar/v3`,
+              },
+            }
+          : {}),
+        profileId: env.AUX_BROWSER_PROFILE_ID,
+        onChange: () => events.emit("settings.changed", { category: "google" }),
+      }),
+    googleGrants: () => new GoogleGrantService(repo, runtimeServices.googleAccounts),
+    google: () =>
+      new GoogleOperationService({
+        repo,
+        accounts: runtimeServices.googleAccounts,
+        grants: runtimeServices.googleGrants,
+        writes: runtimeServices.durableWrites,
+        saveAttachment: ({ runId, bytes, sha256, checkCurrent }) => {
+          checkCurrent();
+          const artifact = runtimeServices.artifacts.save({
+            runId,
+            label: `google-attachment-${sha256.slice(0, 8)}.bin`,
+            buffer: bytes,
+            mediaType: "application/octet-stream",
+          });
+          checkCurrent();
+          return { artifactId: artifact.artifactId, mediaType: artifact.mediaType, size: artifact.size };
+        },
+        authorize: googleAuthorizer({
+          repo,
+          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+          privateProfile: !!privateSession,
+          closed: () => closed,
+          grants: runtimeServices.googleGrants,
+          gate: runtimeServices.safetyGate,
+          decide: (request, options) =>
+            decide(request, decideDeps, { phase: "dispatch", runId: request.runId, ...options }),
+        }),
       }),
     calendar: () =>
       new CalendarConnectionService({
+        accounts: runtimeServices.googleAccounts,
         repo,
         native,
         clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
@@ -697,6 +905,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         tasks: runtimeServices.tasks,
         settings: runtimeServices.settings,
         calendar: runtimeServices.calendar,
+        googleAccounts: runtimeServices.googleAccounts,
+        googleGrants: runtimeServices.googleGrants,
         mcp: runtimeServices.outboundMcp,
       }),
     turnMentions: () =>
@@ -779,6 +989,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         tracer: runtimeServices.tracer,
         vault: runtimeServices.vault,
         calendar: runtimeServices.calendar,
+        google: runtimeServices.google,
+        googleGrants: runtimeServices.googleGrants,
+        googleAccounts: runtimeServices.googleAccounts,
         contentMemory: runtimeServices.contentMemory,
         memoryPipeline: runtimeServices.memoryPipeline,
         operations: runtimeServices.operations,
@@ -1291,6 +1504,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       ? Promise.resolve(bootstrapIdentity)
       : native.capabilities!()
     : undefined;
+  if (!privateSession && nativeIdentity) {
+    void nativeIdentity
+      .then((identity) => {
+        if (closed) return;
+        audioInspectionReady = identity.methods.includes("native.documentJob") && !!native.documentJob;
+        serviceContainer.peek("settings")?.setAudioInspectionReady(audioInspectionReady);
+      })
+      .catch(() => {
+        audioInspectionReady = false;
+      });
+  }
   const featureStages = nativeIdentity
     ? nativeIdentity
         .then((capabilities) => featureAvailabilityFor(capabilities.methods))
@@ -1719,6 +1943,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     url: string,
     ctx: import("./agent/loop/types.js").WebToolContext,
     action: string,
+    operation?: (context: {
+      checkOwner(): Promise<void>;
+      authorize(): Promise<void>;
+    }) => Promise<{ output: unknown }>,
   ): Promise<import("./agent/loop/types.js").PreparedRead> => {
     const original = repo.getRun(ctx.runId);
     if (!original || original.status !== "running")
@@ -1754,6 +1982,25 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return {
       execute: async () => {
         await checkWindow();
+        if (operation) {
+          let admitted = false;
+          const authorize = async () => {
+            await checkWindow();
+            if (!admitted) {
+              const decision = await decideLoopEgress(ctx, gated, action, true);
+              await checkWindow();
+              if (decision.status !== "allow")
+                throw new AuxError(
+                  "permission_denied",
+                  "The original search destination requires a new review.",
+                );
+              admitted = true;
+            }
+          };
+          const result = await operation({ checkOwner: checkWindow, authorize });
+          await checkWindow();
+          return result;
+        }
         const web = new AgentWebTools(async (hop) => {
           await checkWindow();
           const decision = await decideLoopEgress(
@@ -1923,6 +2170,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     );
   };
   const agentLoop: AgentLoopHostDeps = {
+    modelGeneration: () => runtimeServices.settings.modelCacheGeneration(),
     modelLimits: (modelId) => {
       const candidates = runtimeServices.settings.candidatesForModel(modelId);
       const ids = candidates.length ? candidates.map((route) => route.modelId) : [modelId];
@@ -2053,6 +2301,34 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           input.checkOwner();
         },
       }),
+    pdfReady: () => native.available() && audioInspectionReady,
+    pdfSources: (input) =>
+      runtimeServices.runs.pdfOperation(input, (run, signal, checkCurrent) =>
+        listPdfSources(
+          { repo, documents: runtimeServices.documentSnapshots, attachments: runtimeServices.runs.documents },
+          input,
+          { run, signal, checkCurrent },
+        ),
+      ),
+    processPdf: (input) =>
+      runtimeServices.runs.pdfOperation(input, (run, signal, checkCurrent) =>
+        processPdfArtifacts(
+          {
+            repo,
+            artifacts: runtimeServices.artifacts,
+            events,
+            native,
+            documents: runtimeServices.documentSnapshots,
+            attachments: runtimeServices.runs.documents,
+          },
+          input,
+          {
+            run,
+            signal,
+            checkCurrent,
+          },
+        ),
+      ),
     generateImage: (input) =>
       runtimeServices.runs.generateImage({
         ...input,
@@ -2172,19 +2448,62 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
     workspaceContext: (workspaceId) => runtimeServices.workspaceFolders.context(workspaceId),
     prepareWebFetch: (url, ctx) => prepareWebRead(url, ctx, "agent.web.fetch"),
-    prepareWebSearch: async (query, ctx) => {
+    prepareWebSearch: async (request, ctx) => {
+      if (ctx.modelGeneration !== runtimeServices.settings.modelCacheGeneration())
+        throw new AuxError("cancelled", "The original search model or account changed.");
+      const structured =
+        request.backend !== "html" &&
+        runtimeServices.settings.modelProvider() === "gateway" &&
+        ctx.searchModel?.searchWeb;
+      if (structured) {
+        const digest = createHash("sha256").update(JSON.stringify(request)).digest("hex");
+        return prepareWebRead(
+          "https://ai-gateway.vercel.sh/",
+          ctx,
+          `agent.web.search.gateway.${digest}`,
+          async ({ checkOwner, authorize }) => ({
+            output: await runtimeServices.runs.searchWeb({
+              runId: ctx.runId,
+              request,
+              model: ctx.searchModel!,
+              modelGeneration: ctx.modelGeneration!,
+              signal: ctx.signal ?? new AbortController().signal,
+              checkOwner,
+              authorize,
+            }),
+          }),
+        );
+      }
+      const fallback = htmlSearchFallback(
+        request,
+        request.backend === "html"
+          ? "Explicit configured-engine HTML search"
+          : "The selected connection does not support structured Gateway search",
+      );
       const engine = native.available()
         ? await native.searchEngineGet?.()
         : runtimeServices.settings.searchEngine();
       if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
-      return prepareWebRead(engine.replaceAll("%s", encodeURIComponent(query)), ctx, "agent.web.search");
+      const prepared = await prepareWebRead(
+        engine.replaceAll("%s", encodeURIComponent(request.query)),
+        ctx,
+        "agent.web.search.html",
+      );
+      return "park" in prepared
+        ? prepared
+        : {
+            execute: async () => {
+              const result = await prepared.execute();
+              return "output" in result ? { output: { ...fallback, content: result.output } } : result;
+            },
+          };
     },
     webFetch: async (url, ctx) => {
       const prepared = await agentLoop.prepareWebFetch!(url, ctx);
       return "park" in prepared ? prepared : prepared.execute();
     },
-    webSearch: async (query, ctx) => {
-      const prepared = await agentLoop.prepareWebSearch!(query, ctx);
+    webSearch: async (request, ctx) => {
+      const prepared = await agentLoop.prepareWebSearch!(request, ctx);
       return "park" in prepared ? prepared : prepared.execute();
     },
     recall: async (_query, ctx) => {
@@ -3364,9 +3683,30 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   let filterTimer: NodeJS.Timeout | undefined;
   let memoryExpiry: NodeJS.Timeout | undefined;
+  let desktopPoll: NodeJS.Timeout | undefined;
+  let desktopExpiry: NodeJS.Timeout | undefined;
   let contentExpiry: NodeJS.Timeout | undefined;
   let contentPruning: Promise<void> | undefined;
   let episodicPruning: Promise<void> | undefined;
+  void nativeIdentity
+    ?.then(async (identity) => {
+      if (closed || privateSession || !identity.methods.includes("native.desktopContext")) return;
+      const desktop = runtimeServices.desktopContext;
+      await desktop?.start();
+      if (closed) return;
+      desktopPoll = setInterval(() => {
+        const saved = DesktopContextSettingsSchema.safeParse(repo.getSetting("desktopContext"));
+        if (!closed && saved.success && saved.data.enabled && !saved.data.paused)
+          void desktop?.poll().catch(() => {});
+      }, 1500);
+      desktopPoll.unref();
+      desktopExpiry = setInterval(() => {
+        if (!closed)
+          void desktop?.expire().catch(() => console.error("Desktop context retention could not settle"));
+      }, 60_000);
+      desktopExpiry.unref();
+    })
+    .catch(() => console.error("Desktop context host unavailable"));
   const pruneEpisodic = () => {
     if (closed || episodicPruning) return episodicPruning;
     episodicPruning = (async () => {
@@ -3487,12 +3827,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
+      audioInspectionReady = false;
+      serviceContainer.peek("settings")?.setAudioInspectionReady(false);
       stopNativeDeviceConfirmation?.();
       stopNativeProjectPreview?.();
       stopPrivateProviderBroker?.();
       stopDeferred();
       clearInterval(filterTimer);
       clearInterval(memoryExpiry);
+      clearInterval(desktopPoll);
+      clearInterval(desktopExpiry);
       clearInterval(contentExpiry);
       clearInterval(dueTimer);
       calendarScanAbort.abort();
@@ -3511,6 +3855,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           nativeSpaceBindings?.then((stop) => stop?.()),
           Promise.allSettled(cliInstallWork),
           Promise.allSettled(agentInstallWork),
+          serviceContainer.peek("desktopContext")?.shutdown(),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("terminals")?.dispose(),
           serviceContainer.peek("codingProcesses")?.close(),
@@ -3620,7 +3965,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           await nativeCdp?.close();
         },
       },
+      { stage: "google-operations", run: () => serviceContainer.peek("google")?.close() },
       { stage: "calendar", run: () => serviceContainer.peek("calendar")?.close() },
+      { stage: "google-accounts", run: () => serviceContainer.peek("googleAccounts")?.close() },
       {
         stage: "mcp-oauth",
         run: () => {

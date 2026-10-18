@@ -1,0 +1,321 @@
+diff --git a/chrome/browser/ui/aux/evidence_documents.cc b/chrome/browser/ui/aux/evidence_documents.cc
+index 93fc28bc8b8425accc840e5dcaf631550e482199..50d787c02103a8e243355af8d89680ee11d49aa9 100644
+--- a/chrome/browser/ui/aux/evidence_documents.cc
++++ b/chrome/browser/ui/aux/evidence_documents.cc
+@@ -8,6 +8,7 @@
+ #include <set>
+ #include <utility>
+ 
++#include "base/base64.h"
+ #include "base/files/file.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_writer.h"
+@@ -255,6 +256,43 @@ void EvidenceDocumentSnapshot::Read(
+       base::BindOnce(&EvidenceDocumentSnapshot::Captured,
+                      weak_factory_.GetWeakPtr()));
+ }
++void EvidenceDocumentSnapshot::ReadOriginal(
++    const std::string& snapshot_id,
++    const std::string& source_sha256,
++    uint32_t offset,
++    Callback callback,
++    std::shared_ptr<std::atomic_bool> runtime_owner) {
++  if (retired_ || (runtime_owner && runtime_owner->load()) || !owner_current_.Run()) {
++    std::move(callback).Run(false, "", "ref_stale", "Original document selection retired");
++    return;
++  }
++  if (pending_) {
++    std::move(callback).Run(false, "", "conflict", "A document read is already in progress");
++    return;
++  }
++  constexpr uint32_t kChunkBytes = 128 * 1024;
++  const auto* hash = metadata_.FindString("sourceSha256");
++  const auto* format = metadata_.FindString("format");
++  if (snapshot_id != snapshot_id_ || !hash || *hash != source_sha256 ||
++      !format || (*format != "pdf" && *format != "docx") ||
++      !source_mapping_.IsValid() || offset >= source_mapping_.size() ||
++      offset % kChunkBytes) {
++    std::move(callback).Run(false, "", "ref_stale", "Original immutable document bytes are unavailable");
++    return;
++  }
++  pending_ = std::move(callback);
++  runtime_read_owner_ = std::move(runtime_owner);
++  if (!Current()) return;
++  const auto bytes = source_mapping_.GetMemoryAsSpan<const uint8_t>();
++  const size_t count = std::min(static_cast<size_t>(kChunkBytes), bytes.size() - offset);
++  Reply(base::DictValue()
++    .Set("snapshotId", snapshot_id_)
++    .Set("sourceSha256", source_sha256)
++    .Set("sourceBytes", static_cast<double>(bytes.size()))
++    .Set("offset", static_cast<double>(offset))
++    .Set("nextOffset", static_cast<double>(offset + count))
++    .Set("bytesBase64", base::Base64Encode(bytes.subspan(offset, count))));
++}
+ void EvidenceDocumentSnapshot::Captured(Capture capture) {
+   if (!Current()) {
+     return;
+@@ -263,6 +301,14 @@ void EvidenceDocumentSnapshot::Captured(Capture capture) {
+     Unreadable(std::move(capture.failure));
+     return;
+   }
++  if (capture.size) {
++    source_bytes_ = capture.bytes.Duplicate();
++    source_mapping_ = source_bytes_.Map();
++    if (!source_mapping_.IsValid() || source_mapping_.size() != capture.size) {
++      Unreadable("io_error");
++      return;
++    }
++  }
+   metadata_.Set("snapshotId", snapshot_id_);
+   metadata_.Set("filename", filename_);
+   metadata_.Set("sourceSha256", capture.sha256);
+@@ -315,7 +361,7 @@ void EvidenceDocumentSnapshot::Started(document::mojom::StartResultPtr result) {
+           !warning->first_part.empty())) ||
+         (!pdf && (value.format != Format::kDocx || warning->first_page)) ||
+         (warning->code == WarningCode::kNoSelectableText &&
+-         warning->count >= value.page_count) ||
++         warning->count > value.page_count) ||
+         (!warning->first_part.empty() &&
+          (!document::IsStoryPart(warning->first_part) ||
+           document::PartStory(warning->first_part) != warning->story))) {
+@@ -389,7 +435,7 @@ void EvidenceDocumentSnapshot::Received(document::mojom::ChunkPtr chunk) {
+                         .Set("text", segment->text));
+   }
+   if (segments.empty() &&
+-      (format != "text" || chunk->index || !chunk->final_chunk ||
++      ((format != "text" && (format != "pdf" || !metadata_.FindList("warnings") || metadata_.FindList("warnings")->empty())) || chunk->index || !chunk->final_chunk ||
+        completed_.FindDouble("textBytes").value_or(-1) != 0 ||
+        completed_.FindDouble("segmentCount").value_or(-1) != 0)) {
+     Unreadable("invalid_document");
+@@ -418,6 +464,8 @@ void EvidenceDocumentSnapshot::Unreadable(std::string reason) {
+   cursors_.clear();
+   metadata_.clear();
+   completed_.clear();
++  source_mapping_ = base::ReadOnlySharedMemoryMapping();
++  source_bytes_ = base::ReadOnlySharedMemoryRegion();
+   if (pending_) {
+     Reply(base::DictValue()
+               .Set("kind", "unreadable")
+@@ -435,6 +483,8 @@ void EvidenceDocumentSnapshot::Fault(const std::string& code,
+   metadata_.clear();
+   completed_.clear();
+   runtime_read_owner_.reset();
++  source_mapping_ = base::ReadOnlySharedMemoryMapping();
++  source_bytes_ = base::ReadOnlySharedMemoryRegion();
+   if (pending_) {
+     std::move(pending_).Run(false, "", code, message);
+   }
+diff --git a/chrome/browser/ui/aux/evidence_documents.h b/chrome/browser/ui/aux/evidence_documents.h
+index 05f417a677bf570e53dfc350c25d8c8744d2ff4a..163d7e3b4878e84f76e71cc667c0141cd3d8a02e 100644
+--- a/chrome/browser/ui/aux/evidence_documents.h
++++ b/chrome/browser/ui/aux/evidence_documents.h
+@@ -31,6 +31,11 @@ class EvidenceDocumentSnapshot : public content::WebContentsObserver {
+   void Read(const std::optional<std::string>& cursor,
+             Callback callback,
+             std::shared_ptr<std::atomic_bool> runtime_owner);
++  void ReadOriginal(const std::string& snapshot_id,
++                    const std::string& source_sha256,
++                    uint32_t offset,
++                    Callback callback,
++                    std::shared_ptr<std::atomic_bool> runtime_owner);
+   bool OwnsRead(const std::shared_ptr<std::atomic_bool>& runtime_owner) const;
+ 
+  private:
+@@ -58,6 +63,8 @@ class EvidenceDocumentSnapshot : public content::WebContentsObserver {
+   const std::string filename_;
+   const std::string snapshot_id_;
+   const base::RepeatingCallback<bool()> owner_current_;
++  base::ReadOnlySharedMemoryRegion source_bytes_;
++  base::ReadOnlySharedMemoryMapping source_mapping_;
+   bool started_ = false;
+   bool retired_ = false;
+   uint32_t pending_chunk_ = 0;
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 1e937c2d61aeac741637597dc6be56e9bb179797..a365f3f863d314ce7f27da45e3d80efd914a82a1 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -146,7 +146,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+ #endif
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+-      {"native.evidenceDocumentRead", "native.evidenceDocumentsRelease", "native.imageNormalize", "native.documentJob"});
++      {"native.evidenceDocumentRead", "native.evidenceDocumentBytes", "native.evidenceDocumentsRelease", "native.imageNormalize", "native.documentJob"});
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+       {"native.foundationModelsStatus", "native.foundationModelsStart",
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 7743b7192fa499d273cb299723853b53e386fa07..e1c205ec865fcce4210a33e32d7438a9a5ed6a60 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1732,21 +1732,24 @@ void AuxRuntimeHost::HandleNativeEvidenceDocumentCall(
+         NativeResult(base::Value(base::DictValue().Set("ok", true))));
+     return;
+   }
++  const bool bytes = method == "native.evidenceDocumentBytes";
+   const auto* index = params.Find("index");
+   const auto* cursor = params.FindString("cursor");
+-  if (method != "native.evidenceDocumentRead" || !index ||
+-      (!index->is_int() && !index->is_double()) ||
+-      params.size() != (cursor ? 4u : 3u) ||
+-      (cursor && (cursor->empty() || cursor->size() > 200))) {
+-    std::move(callback).Run(NativeFault(
+-        "invalid_params", "Original document selection is required"));
++  const auto* snapshot = params.FindString("snapshotId");
++  const auto* hash = params.FindString("sourceSha256");
++  const auto* offset = params.Find("offset");
++  if (!index || (!index->is_int() && !index->is_double()) ||
++      (!bytes && (method != "native.evidenceDocumentRead" || params.size() != (cursor ? 4u : 3u) ||
++        (cursor && (cursor->empty() || cursor->size() > 200)))) ||
++      (bytes && (params.size() != 6 || !snapshot || !hash || !offset ||
++        (!offset->is_int() && !offset->is_double()) ||
++        !std::isfinite(offset->GetDouble()) || offset->GetDouble() < 0 ||
++        offset->GetDouble() > 64 * 1024 * 1024 || std::floor(offset->GetDouble()) != offset->GetDouble()))) {
++    std::move(callback).Run(NativeFault("invalid_params", "Original document selection and byte identity are required"));
+     return;
+   }
+   evidence_read_owners_.push_back({owner->second, *selection, cancelled});
+-  ui->ReadAuxEvidenceDocument(
+-      *selection, index->GetDouble(),
+-      cursor ? std::make_optional(*cursor) : std::nullopt,
+-      base::BindOnce(
++  auto reply = base::BindOnce(
+           [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
+              std::shared_ptr<std::atomic_bool> cancelled,
+              base::OnceCallback<void(base::DictValue)> callback, bool ok,
+@@ -1775,8 +1778,14 @@ void AuxRuntimeHost::HandleNativeEvidenceDocumentCall(
+                                      "Document result could not be encoded"));
+           },
+           weak_factory_.GetWeakPtr(), owner->second, cancelled,
+-          std::move(callback)),
+-      cancelled);
++          std::move(callback));
++  if (bytes) {
++    ui->ReadAuxEvidenceDocumentBytes(*selection, index->GetDouble(), *snapshot, *hash,
++        static_cast<uint32_t>(offset->GetDouble()), std::move(reply), cancelled);
++  } else {
++    ui->ReadAuxEvidenceDocument(*selection, index->GetDouble(),
++        cursor ? std::make_optional(*cursor) : std::nullopt, std::move(reply), cancelled);
++  }
+ }
+ 
+ void AuxRuntimeHost::HandleNativeCloudPreviewCall(
+@@ -4093,6 +4102,7 @@ void AuxRuntimeHost::Worker::DispatchNativeRequest(int id,
+       base::BindOnce(&Worker::ReplyNativeRequest, weak_factory_.GetWeakPtr(),
+                      id, generation, cancelled));
+   if (method != "native.evidenceDocumentRead" &&
++      method != "native.evidenceDocumentBytes" &&
+       method != "native.evidenceDocumentsRelease") {
+     DispatchNative(method, std::move(params), cancelled, std::move(callback),
+                    foundation, copilot);
+@@ -4189,6 +4199,7 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(const base::DictValue& data) {
+             .Set("message", "This native service requires a regular Profile"));
+   } else if (native_method && native_params &&
+              (*native_method == "native.evidenceDocumentRead" ||
++              *native_method == "native.evidenceDocumentBytes" ||
+               *native_method == "native.evidenceDocumentsRelease")) {
+     if (!nested_id || *nested_id <= 0 ||
+         native_requests_.contains(*nested_id)) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 2633195afe7faeca0a280dce0e2583da133958b8..f9b98be89ac0b3da41964adbb4315ebbd8a967f0 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1323,6 +1323,22 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(
+   evidence_document_selection_->snapshot->Read(cursor, std::move(callback),
+                                                std::move(runtime_owner));
+ }
++void WebUIBrowserUI::ReadAuxEvidenceDocumentBytes(
++    const std::string& selection_id, double index,
++    const std::string& snapshot_id, const std::string& source_sha256,
++    uint32_t offset, RequestCallback callback,
++    std::shared_ptr<std::atomic_bool> runtime_owner) {
++  if (!EvidenceDocumentsCurrent(selection_id) || !std::isfinite(index) || index < 0 ||
++      std::floor(index) != index || index > 9007199254740991.0 ||
++      !evidence_document_selection_->current_index ||
++      static_cast<double>(*evidence_document_selection_->current_index) != index ||
++      !evidence_document_selection_->snapshot) {
++    std::move(callback).Run(false, "", "ref_stale", "Original document selection is unavailable");
++    return;
++  }
++  evidence_document_selection_->snapshot->ReadOriginal(
++      snapshot_id, source_sha256, offset, std::move(callback), std::move(runtime_owner));
++}
+ void WebUIBrowserUI::ReleaseAuxEvidenceDocuments(
+     const std::string& selection_id,
+     const std::shared_ptr<std::atomic_bool>& runtime_owner) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index b40bd67adbf2c5572a71c1d0907dd3574c28115b..b2a22ea6ea5db03830fae7d41d75b2f2f882e77a 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -248,6 +248,11 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+       std::optional<std::string> cursor,
+       RequestCallback callback,
+       std::shared_ptr<std::atomic_bool> runtime_owner = {});
++  void ReadAuxEvidenceDocumentBytes(
++      const std::string& selection_id, double index,
++      const std::string& snapshot_id, const std::string& source_sha256,
++      uint32_t offset, RequestCallback callback,
++      std::shared_ptr<std::atomic_bool> runtime_owner);
+   void ReleaseAuxEvidenceDocuments(
+       const std::string& selection_id,
+       const std::shared_ptr<std::atomic_bool>& runtime_owner = {});
+diff --git a/chrome/services/aux_document/pdf_document.cc b/chrome/services/aux_document/pdf_document.cc
+index 9330655223197008a45b50bfa734e03203a37a82..17dae8d0ad9fba29848a4aff4f3cb960836c18cc 100644
+--- a/chrome/services/aux_document/pdf_document.cc
++++ b/chrome/services/aux_document/pdf_document.cc
+@@ -104,6 +104,7 @@ mojom::Failure ExtractPdf(base::span<const uint8_t> bytes,
+       start = end;
+     }
+   }
+-  return output.text_bytes() ? mojom::Failure::kNone : mojom::Failure::kNoText;
++  // Valid image-only PDFs retain their exact original bytes and counted warnings.
++  return mojom::Failure::kNone;
+ }
+ }  // namespace aux::document
+diff --git a/chrome/services/aux_document/pdf_jobs_unittest.cc b/chrome/services/aux_document/pdf_jobs_unittest.cc
+index ddf64a7c52db257255c2e2cfbae6367755a4b60d..64190cb95e7116015dcada334efe2bb367a493be 100644
+--- a/chrome/services/aux_document/pdf_jobs_unittest.cc
++++ b/chrome/services/aux_document/pdf_jobs_unittest.cc
+@@ -11,6 +11,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/stringprintf.h"
+ #include "chrome/services/aux_document/media_jobs.h"
++#include "chrome/services/aux_document/document_segments.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+ namespace aux::document {
+@@ -317,4 +318,35 @@ TEST(AuxPdfJobsTest, RejectsInvalidOptionsAndDoesNotPublishPartialOutputs) {
+   EXPECT_TRUE(split.outputs.empty());
+ }
+ }  // namespace
++TEST(AuxPdfImportTest, ImageOnlyPdfRetainsEmptyLocatedTextAndCountedWarnings) {
++  const auto source = Pdf({
++      "<< /Type /Catalog /Pages 2 0 R >>",
++      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
++      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] "
++      "/Resources << >> /Contents 4 0 R >>",
++      Stream("0.5 g 0 0 100 100 re f")});
++  const auto original = source;
++  DocumentSegments output;
++  ASSERT_EQ(ExtractPdf(source, output), mojom::Failure::kNone);
++  auto metadata = output.Finish();
++  ASSERT_TRUE(metadata);
++  EXPECT_EQ(metadata->format, mojom::Format::kPdf);
++  EXPECT_EQ(metadata->page_count, 1u);
++  EXPECT_EQ(metadata->chunk_count, 1u);
++  ASSERT_TRUE(metadata->completed);
++  EXPECT_EQ(metadata->completed->text_bytes, 0u);
++  EXPECT_EQ(metadata->completed->segment_count, 0u);
++  EXPECT_EQ(metadata->completed->text_sha256,
++            "ef6830b74d2f59421d0d60de29a156f5e9afa28f15906e1eb9ef74534081dbfa");
++  ASSERT_EQ(metadata->warnings.size(), 1u);
++  EXPECT_EQ(metadata->warnings[0]->code, mojom::WarningCode::kNoSelectableText);
++  EXPECT_EQ(metadata->warnings[0]->count, 1u);
++  EXPECT_EQ(metadata->warnings[0]->first_page, 1u);
++  auto chunk = output.Chunk(0);
++  ASSERT_TRUE(chunk);
++  EXPECT_TRUE(chunk->final_chunk);
++  EXPECT_TRUE(chunk->segments.empty());
++  EXPECT_EQ(source, original);
++}
++
+ }  // namespace aux::document

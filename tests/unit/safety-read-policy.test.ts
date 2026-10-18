@@ -63,7 +63,7 @@ function fixture() {
     authorizeRead,
     organization: async () => ({ revision: 1, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const ref = {
     kind: "tab" as const,

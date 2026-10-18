@@ -35,18 +35,15 @@ export function ChannelsSettings({ active }: { active: boolean }) {
         hint="Control Aux from Slack, Discord or Telegram to work remotely or build a chatbot for your team."
         searchTerms={["Channels", "Slack", "Discord", "Telegram", "pairing", "messengers"]}
         details={
-          <div className="channels-preview" aria-hidden="true">
-            <div className="channels-preview-chat">
-              <strong>
-                You <span>9:41 AM</span>
-              </strong>
-              <p>@Aux Can you summarize the sources for my project?</p>
-              <strong>
-                <img src="/aux-mark-white.svg" alt="" /> Aux <span>9:41 AM</span>
-              </strong>
-              <p>Reviewing your sources…</p>
-            </div>
-          </div>
+          <img
+            className="setting-illustration"
+            src="/settings/channels.webp"
+            width={288}
+            height={160}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         }
       />
       {active && (inNativeHost || inMock) && !bridge.privateMode && bridge.windowKind === "normal" ? (

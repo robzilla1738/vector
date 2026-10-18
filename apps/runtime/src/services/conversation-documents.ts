@@ -387,6 +387,14 @@ export class ConversationDocuments {
     return true;
   }
 
+  retireChannelSource(connectionId: string, peerKey?: string): Promise<void> {
+    return this.snapshots.retireChannel(connectionId, peerKey);
+  }
+
+  retireAndJoin(chatId: string): Promise<void> {
+    return this.snapshots.retireOwner("conversation", chatId);
+  }
+
   retire(chatId: string) {
     this.snapshots.cancelOwner("conversation", chatId);
   }

@@ -14,6 +14,7 @@ export function SettingsNav({
   onOpenMemoryView,
   searching,
   memoryAvailable,
+  desktopContextAvailable = false,
   downloadNamingAvailable,
   profilesAvailable,
   linkRoutingAvailable,
@@ -38,6 +39,7 @@ export function SettingsNav({
   onOpenMemoryView?: (view: MemoryView) => void;
   searching: boolean;
   memoryAvailable: boolean;
+  desktopContextAvailable?: boolean;
   downloadNamingAvailable: boolean;
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
@@ -134,6 +136,7 @@ export function SettingsNav({
         onOpenMemoryView={onOpenMemoryView}
         searching={false}
         memoryAvailable={memoryAvailable}
+        desktopContextAvailable={desktopContextAvailable}
         downloadNamingAvailable={downloadNamingAvailable}
         profilesAvailable={profilesAvailable}
         linkRoutingAvailable={linkRoutingAvailable}

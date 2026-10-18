@@ -271,7 +271,7 @@ it("updates a selected source row when its tab changes without replacing the sou
       ),
     })),
   );
-  expect(host.textContent).toContain("Changed");
+  expect(host.textContent).toContain("Page changed");
 });
 
 it("keeps home context controls behind plus and preserves the draft while toggling them", async () => {

@@ -7,15 +7,7 @@ import { smallButtonProps } from "../ui/button-props";
 import "./RunContext.css";
 
 /** Each subscription and pending response belongs to one original run. */
-export function RunContext({
-  runId,
-  active,
-  disabled,
-}: {
-  runId: string;
-  active: boolean;
-  disabled: boolean;
-}) {
+export function RunContext({ runId, disabled }: { runId: string; active: boolean; disabled: boolean }) {
   const connected = useStore((state) => state.connected);
   const [snapshot, setStats] = useState<RunContextStats | null>(null);
   const owner = useMemo(() => ({ runId, connected }), [runId, connected]);
@@ -117,7 +109,7 @@ export function RunContext({
               {busy && (
                 <output>
                   {stats.compaction.status === "queued"
-                    ? "Waiting for a safe model boundary."
+                    ? "Preparing context compaction…"
                     : "Preparing a smaller conversation context…"}
                   {stats.compaction.totalChunks !== undefined &&
                     ` ${stats.compaction.completedChunks ?? 0}/${stats.compaction.totalChunks} parts.`}
@@ -126,7 +118,7 @@ export function RunContext({
               {stats.compaction.message && <output>{stats.compaction.message}</output>}
               <button
                 {...smallButtonProps}
-                disabled={disabled || !connected || saving || (!active && !busy)}
+                disabled={disabled || !connected || saving}
                 onClick={() => void update()}
               >
                 {busy ? "Cancel compaction" : "Compact context"}

@@ -6,6 +6,12 @@ async function h_models_list(ctx: MethodCtx): Promise<unknown> {
   const { s } = ctx;
   return s.settings.listModels();
 }
+async function h_models_transcription_list(ctx: MethodCtx): Promise<unknown> {
+  return {
+    models: await ctx.s.settings.listTranscriptionModels(),
+    available: ctx.s.settings.transcriptionAvailable(),
+  };
+}
 async function h_models_probe(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   return s.settings.probe((params as { modelId?: string }).modelId);
@@ -70,5 +76,6 @@ export const modelsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "models.copilot.disconnect": h_models_copilot_disconnect,
   "models.copilot.catalog": h_models_copilot_catalog,
   "models.list": h_models_list,
+  "models.transcription.list": h_models_transcription_list,
   "models.probe": h_models_probe,
 };

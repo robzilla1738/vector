@@ -1,3 +1,5 @@
+import { normalWindowOwner } from "./normal-window-owner.js";
+import { runningCompactionOwner } from "./run-compaction-owner.js";
 import { presentRun } from "../../services/run-presentation.js";
 import { createHash } from "node:crypto";
 import type { MethodCtx, MethodHandler } from "./context.js";
@@ -183,10 +185,66 @@ async function h_runs_context_stats(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.runs.contextStats(ctx.params.runId);
 }
 async function h_runs_context_compact(ctx: MethodCtx): Promise<unknown> {
-  return ctx.s.runs.compactContext(ctx.params.runId, ctx.params.expectedRevision);
+  const source = ctx.s.repo.getRun(ctx.params.runId);
+  if (source?.status === "running") {
+    const owner = await runningCompactionOwner(ctx);
+    await owner.current();
+    return ctx.s.runs.compactContext(ctx.params.runId, ctx.params.expectedRevision);
+  }
+  const owner = await normalWindowOwner(ctx);
+  await owner.current();
+  const token = ctx.client.nativeTurnContext!;
+  const sourceRevision = JSON.stringify(source);
+  const modelGeneration = ctx.s.settings.modelCacheGeneration();
+  const route = await ctx.s.settings.utilityModel(token, owner.current);
+  if (
+    modelGeneration !== ctx.s.settings.modelCacheGeneration() ||
+    sourceRevision !== JSON.stringify(ctx.s.repo.getRun(ctx.params.runId))
+  )
+    throw new AuxError("conflict", "The selected conversation or model changed during compaction admission.");
+  if (!route)
+    throw new AuxError("backend_unavailable", "Connect a text model before compacting this conversation.");
+  return ctx.s.runs.compactIdleContext(ctx.params.runId, ctx.params.expectedRevision, {
+    nativeTurnContext: token,
+    route,
+    checkOwner: owner.current,
+    authorize: async (operationId) => {
+      await owner.current();
+      if (route.kind === "network")
+        await ctx.decideEgress({
+          url: new URL(route.destination),
+          action: "runs.context.compact",
+          connectionId: ctx.client.connectionId,
+          actor: "user",
+          runId: operationId,
+          threadId: source?.config?.chatId ?? ctx.params.runId,
+          invocationDigest: createHash("sha256")
+            .update(
+              JSON.stringify([
+                operationId,
+                ctx.params.runId,
+                ctx.params.expectedRevision,
+                route.modelId,
+                ctx.s.settings.modelCacheGeneration(),
+              ]),
+            )
+            .digest("hex"),
+        });
+      await owner.current();
+    },
+  });
 }
 async function h_runs_context_cancelCompaction(ctx: MethodCtx): Promise<unknown> {
-  return ctx.s.runs.cancelContextCompaction(ctx.params.runId, ctx.params.compactionId);
+  const control = ctx.s.runs.coordinator.controls.get(ctx.params.runId)?.contextCompaction;
+  const request = control?.active ?? control?.pending;
+  if (request?.id === ctx.params.compactionId) {
+    const owner = await runningCompactionOwner(ctx, ctx.params.compactionId);
+    await owner.current();
+    return ctx.s.runs.cancelContextCompaction(ctx.params.runId, ctx.params.compactionId);
+  }
+  const owner = await normalWindowOwner(ctx);
+  await owner.current();
+  return ctx.s.runs.cancelIdleContextCompaction(ctx.params.runId, ctx.params.compactionId);
 }
 async function h_runs_context_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;

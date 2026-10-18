@@ -31,6 +31,7 @@ const copilotSetup = CopilotSetupSchema.parse({
   catalogOnly: true,
 });
 function modelRead(method: string) {
+  if (method === "models.transcription.list") return { models: [], available: false, configuredModel: null };
   if (method === "models.copilot.setup") return copilotSetup;
   if (method === "models.copilot.accounts") return [];
   if (method === "settings.cloud.status") return { configured: false, revision: 0 };
@@ -123,6 +124,7 @@ it("inactive roundtrip retires original probe without clearing a fresh pending c
     if (method === "models.copilot.setup" || method === "models.copilot.accounts")
       return Promise.resolve(modelRead(method));
     if (method === "models.list") return Promise.resolve({ models: [] });
+    if (method === "models.transcription.list") return Promise.resolve(modelRead(method));
     if (method === "settings.cloud.status") return Promise.resolve({ configured: false, revision: 0 });
     if (method !== "models.probe") throw new Error(`Unexpected model producer ${method}`);
     return new Promise((resolve, reject) => completions.push({ resolve, reject }));

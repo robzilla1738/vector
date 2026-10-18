@@ -38,8 +38,11 @@ import { DatabaseSync, backup } from "node:sqlite";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   SCHEMA_VERSION,
+  openDb,
   financialTablesForDatabase,
   documentTablesForDatabase,
+  desktopTablesForDatabase,
+  googleTablesForDatabase,
   channelTablesForDatabase,
   discardIncompleteDocumentSnapshots,
 } from "../store/db.js";
@@ -183,7 +186,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (![2, 3, 4, 5, SCHEMA_VERSION].includes(version))
+    if (![2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION].includes(version))
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||
@@ -208,6 +211,8 @@ function validateDatabase(path: string) {
     financialTablesForDatabase(db);
     documentTablesForDatabase(db);
     channelTablesForDatabase(db);
+    desktopTablesForDatabase(db);
+    googleTablesForDatabase(db);
     return version;
   } finally {
     db.close();
@@ -691,7 +696,11 @@ async function stageRuntimeRestoreSource(
   if (!memory && existsSync(join(dataDir, "state.sqlite"))) {
     const current = new DatabaseSync(join(dataDir, "state.sqlite"), { readOnly: true });
     try {
-      if (current.prepare("SELECT 1 FROM memory_files UNION SELECT 1 FROM memory_history LIMIT 1").get())
+      if (
+        current.prepare("SELECT 1 FROM memory_files UNION SELECT 1 FROM memory_history LIMIT 1").get() ||
+        (desktopTablesForDatabase(current).length &&
+          current.prepare("SELECT 1 FROM desktop_context_captures LIMIT 1").get())
+      )
         throw new Error("Authenticate current Space memory before staging this restore.");
     } finally {
       current.close();
@@ -711,7 +720,7 @@ async function stageRuntimeRestoreSource(
   if (managed && manifest.database.sha256 !== managed.expectedSha256)
     throw new Error("The reviewed backup changed before staging. Refresh the list.");
   await managed?.current();
-  const schemaVersion = validateDatabase(sourceDatabase);
+  let schemaVersion = validateDatabase(sourceDatabase);
   if (schemaVersion !== manifest.schemaVersion)
     throw new Error("The backup schema does not match its manifest.");
 
@@ -728,7 +737,13 @@ async function stageRuntimeRestoreSource(
       throw new Error("The reviewed database changed while copying.");
     await managed?.current();
     await chmod(temporaryDatabase, 0o600);
-    const staged = new DatabaseSync(temporaryDatabase);
+    const needsDesktopMigration = Boolean(
+      preservedMemory &&
+      (preservedMemory.desktop.generations.length ||
+        preservedMemory.desktop.captures.length ||
+        preservedMemory.desktop.retired.length),
+    );
+    const staged = needsDesktopMigration ? openDb(temporaryDatabase) : new DatabaseSync(temporaryDatabase);
     let omittedArtifacts: Set<string>;
     let artifactRows: Map<string, { pageId: string | null; mediaType: string; path: string }>;
     try {
@@ -748,6 +763,7 @@ async function stageRuntimeRestoreSource(
       staged.close();
     }
 
+    schemaVersion = validateDatabase(temporaryDatabase);
     const portableArtifacts = manifest.artifacts.filter((item) => !omittedArtifacts.has(item.artifactId));
     const stagedArtifacts: ManifestArtifact[] = [];
     const stagedPaths = new Set<string>();

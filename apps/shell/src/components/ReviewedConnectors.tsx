@@ -245,7 +245,12 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                 >
                   <span className="reviewed-connectors-name">{item.label}</span>
                   <span className="reviewed-connectors-sub">
-                    {item.kind === "mcp" ? "MCP server" : "Calendar account"} · {stateLabel(item)}
+                    {item.kind === "mcp"
+                      ? "MCP server"
+                      : item.kind === "google"
+                        ? "Google account"
+                        : "Calendar account"}{" "}
+                    · {stateLabel(item)}
                   </span>
                 </button>
               ))}
@@ -310,6 +315,35 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                         ))}
                       <button {...smallGhostButtonProps} onClick={() => onManage("calendar")}>
                         Manage Calendar accounts
+                      </button>
+                    </>
+                  )}
+                  {entry.kind === "google" && (
+                    <>
+                      <p {...staticHintProps}>
+                        {entry.accountKey} · {entry.operations.length} available operations
+                      </p>
+                      <p {...staticHintProps}>
+                        Google permissions and saved-task operation grants are separate. Account or task
+                        revisions retire prior access.
+                      </p>
+                      <details>
+                        <summary>Google permissions</summary>
+                        <ul>
+                          {entry.scopes.map((scope) => (
+                            <li key={scope}>{scope.replace("https://www.googleapis.com/auth/", "")}</li>
+                          ))}
+                        </ul>
+                      </details>
+                      {access
+                        .filter((item) => item.kind === "google")
+                        .map((item) => (
+                          <p key={item.grantId}>
+                            {item.operations.join(", ")} · task revision {item.taskRevision}
+                          </p>
+                        ))}
+                      <button {...smallGhostButtonProps} onClick={() => onManage("google")}>
+                        Manage Google permissions and task access
                       </button>
                     </>
                   )}

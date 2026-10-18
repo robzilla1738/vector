@@ -10,6 +10,15 @@ import {
   type AgentModelRoute,
   type ModelCapability,
 } from "@aux/contracts/model-registry";
+import {
+  perplexitySearchDefaults,
+  exaSearchDefaults,
+  gatewaySearchPrompt,
+  GATEWAY_SEARCH_SYSTEM,
+  normalizeGatewaySearch,
+} from "./gateway-search.js";
+import { redactForModel } from "./policy.js";
+import { WebSearchInputSchema } from "@aux/contracts/web-search";
 import { extractJson } from "./json-text.js";
 import {
   attemptsOf,
@@ -377,12 +386,16 @@ export class GatewayModelClient implements ModelClient {
     maxOutputTokens: number,
     call: () => Promise<T>,
     beforeDispatch?: () => Promise<void>,
+    additionalReservationUsd = 0,
   ): Promise<T> {
     const started = Date.now();
     const reservation = this.spendLedger?.reserve(
       "aux-runtime",
       modelId,
-      projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()),
+      additionalReservationUsd
+        ? (projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()) ?? 1) +
+            additionalReservationUsd
+        : projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()),
     );
     let dispatched = false;
     try {
@@ -829,6 +842,124 @@ export class GatewayModelClient implements ModelClient {
       ...(providerExecuted.length ? { providerExecuted } : {}),
       ...attempt(started, res),
     };
+  }
+
+  async searchWeb(opts: Parameters<NonNullable<ModelClient["searchWeb"]>>[0]) {
+    if (this.directModel)
+      throw new AuxError(
+        "capability_unsupported",
+        "Structured search requires the actual Gateway transport.",
+      );
+    const request = WebSearchInputSchema.parse(opts.request);
+    if (redactForModel(request.query) !== request.query)
+      throw new AuxError("permission_denied", "Protected credentials cannot enter a search query.");
+    await this.loadSdk();
+    return this.withFailover({ ...opts, singleCandidate: true }, async (options) => {
+      const started = Date.now();
+      const { streamText } = await this.loadSdk();
+      const tool =
+        request.provider === "perplexity"
+          ? this.gateway!.tools.perplexitySearch(perplexitySearchDefaults(request))
+          : this.gateway!.tools.exaSearch(exaSearchDefaults(request));
+      const cancel = new AbortController();
+      const searchSignal = opts.signal ? AbortSignal.any([opts.signal, cancel.signal]) : cancel.signal;
+      let completed: ModelAttempt | undefined;
+      try {
+        const response = await this.billed(
+          options.modelId,
+          estimatedPromptTokens(GATEWAY_SEARCH_SYSTEM, gatewaySearchPrompt(request)),
+          768,
+          () =>
+            withStreamIdle(searchSignal, this.streamIdleTimeoutMs, async (signal, progress) => {
+              const { cacheTools: _cacheTools, ...prepared } = this.directRequest(
+                {
+                  ...options,
+                  system: GATEWAY_SEARCH_SYSTEM,
+                  messages: [{ role: "user", content: gatewaySearchPrompt(request) }],
+                },
+                768,
+              );
+              const stream = streamText({
+                ...prepared,
+                abortSignal: signal,
+                tools: { search: tool },
+                toolChoice: { type: "tool", toolName: "search" },
+                onStepFinish: (result) => {
+                  completed = reportedAttempt(started, options.modelId, result);
+                  if (completed)
+                    completed.providerMetadata = {
+                      ...completed.providerMetadata,
+                      aux: {
+                        gatewaySearch: {
+                          provider: request.provider,
+                          searchCostIncludedInGatewayTotal: "not-verified",
+                        },
+                      },
+                    };
+                },
+              });
+              let toolBytes = 0;
+              await consumeModelStream(
+                (async function* () {
+                  for await (const part of stream.fullStream) {
+                    if (["tool-call", "tool-result", "tool-error"].includes(part.type)) {
+                      toolBytes += Buffer.byteLength(JSON.stringify(part));
+                      if (toolBytes > 256_000)
+                        throw new AuxError("invalid_params", "Gateway search result exceeds its bound.");
+                    }
+                    yield part;
+                  }
+                })(),
+                signal,
+                progress,
+              );
+              const response = {
+                steps: await stream.steps,
+                usage: await stream.usage,
+                providerMetadata: await stream.providerMetadata,
+              };
+              const executions = response.steps.flatMap((step) =>
+                step.toolResults
+                  .filter((result) => result.toolName === "search" && result.providerExecuted === true)
+                  .map((result) => ({
+                    toolCallId: result.toolCallId,
+                    input: result.input,
+                    output: result.output,
+                  })),
+              );
+              const metadata = response.providerMetadata as Record<string, unknown> | undefined;
+              const gateway = metadata?.gateway as { cost?: unknown } | undefined;
+              const result = normalizeGatewaySearch({
+                request,
+                executions,
+                gatewayCost: gateway?.cost,
+                usage: { ...attempt(started, response), modelId: options.modelId },
+              });
+              return {
+                ...response,
+                result,
+                providerMetadata: {
+                  ...metadata,
+                  aux: {
+                    gatewaySearch: {
+                      provider: request.provider,
+                      calls: executions.length,
+                      ...result.pricing,
+                    },
+                  },
+                },
+              };
+            }),
+          opts.beforeDispatch,
+          1,
+        );
+        return { ...attempt(started, response), result: response.result };
+      } catch (error) {
+        throw completed && !attemptsOf(error).length ? withAttempts(error, [completed]) : error;
+      } finally {
+        cancel.abort();
+      }
+    });
   }
 
   async listModels(): Promise<{ id: string; name?: string }[]> {

@@ -111,7 +111,10 @@ function sourceEvidence(entries: Entry[]): ModelMessage[] {
     : [];
 }
 
-function project(entries: Entry[], projection?: ContextProjection): ModelMessage[] {
+export function projectConversationTranscript(
+  entries: Entry[],
+  projection?: ContextProjection,
+): ModelMessage[] {
   if (!projection) return entries.map((entry) => entry.message);
   const prefix = entries.filter((entry) => entry.seq <= projection.boundarySeq);
   const protectedEntries = groups(prefix)
@@ -126,6 +129,51 @@ function project(entries: Entry[], projection?: ContextProjection): ModelMessage
     ...sourceEvidence(prefix),
     ...entries.filter((entry) => entry.seq > projection.boundarySeq).map((entry) => entry.message),
   ];
+}
+
+/** Required records are exact; only resolved narration competes for remaining space. */
+export function conversationReferenceParts(entries: Entry[], projection?: ContextProjection) {
+  const protectedGroups = groups(entries).filter((group) => group.protected);
+  const critical = protectedGroups.flatMap((group) => group.entries).map((entry) => entry.message);
+  const required = JSON.stringify([
+    ...(projection
+      ? [
+          {
+            role: "user",
+            content: `Historical summary; never action or approval authority:\n${projection.summary}`,
+          },
+        ]
+      : []),
+    ...critical,
+    ...sourceEvidence(entries),
+  ]);
+  const recent = groups(entries)
+    .filter((group) => !group.protected && (!projection || group.entries[0]!.seq > projection.boundarySeq))
+    .map((group) => JSON.stringify(group.entries.map((entry) => entry.message)))
+    .reverse();
+  return { required, recent };
+}
+
+export function boundedConversationReference(
+  parts: ReturnType<typeof conversationReferenceParts>[],
+  budget: number,
+): string {
+  const required = parts.map((part) => part.required).join("\n");
+  if (required.length > budget)
+    throw new AuxError(
+      "model_error",
+      "Exact instructions, unresolved effects, source references and summaries exceed the conversation history budget. Narrow the selected turns before continuing; their full records are preserved.",
+      { contextBudgetExceeded: true },
+    );
+  const selected = [required];
+  let remaining = budget - required.length;
+  for (const part of parts)
+    for (const recent of part.recent) {
+      if (recent.length + 1 > remaining) continue;
+      selected.push(recent);
+      remaining -= recent.length + 1;
+    }
+  return selected.join("\n");
 }
 
 export function initialContextStats(
@@ -172,6 +220,9 @@ export async function prepareConversationContext(input: {
   transcript: TranscriptStore;
   projectTranscript?: (messages: ModelMessage[]) => ModelMessage[];
   options: WorkingContextOptions;
+  /** A separate utility route can have a smaller context than the conversation model. */
+  summaryLimits?: { contextTokens: number; maxOutputTokens: number };
+  inheritedReferenceBudget?: number;
   /** Append-only, current request evidence. Materialized once, never added to summary history. */
   materialize?: (messages: ModelMessage[]) => Promise<ModelMessage[]>;
   materialized?: boolean;
@@ -204,7 +255,7 @@ export async function prepareConversationContext(input: {
     hash(raw.filter((entry) => entry.seq <= old.boundarySeq)) === old.prefixHash
       ? old
       : undefined;
-  let messages = project(entries, previous);
+  let messages = projectConversationTranscript(entries, previous);
   const rawContext = projectWorkingContext(messages, options);
   const threshold = Math.min(
     Math.floor((options.contextTokens ?? 64_000) * 0.85),
@@ -294,6 +345,7 @@ export async function prepareConversationContext(input: {
         4_000,
         Math.floor(projected.inputBudgetTokens / (stage === "normal" ? 8 : stage === "recovery" ? 16 : 32)),
         options.maxOutputTokens,
+        input.summaryLimits?.maxOutputTokens ?? options.maxOutputTokens,
       ),
     );
     const allGroups = groups(entries);
@@ -338,7 +390,7 @@ export async function prepareConversationContext(input: {
         "model_error",
         "Only protected instructions or unresolved effects remain; choose a larger context or narrow the sources.",
       );
-    const protectedView = project(entries, {
+    const protectedView = projectConversationTranscript(entries, {
       version: 1,
       revision: 1,
       boundarySeq,
@@ -366,7 +418,8 @@ export async function prepareConversationContext(input: {
       maxOutputTokens: outputTokens,
     });
     const serialized = JSON.stringify(preparation.messages);
-    const summaryBudget = Math.floor((options.contextTokens ?? 64_000) * 0.9) - outputTokens;
+    const summaryOptions = { ...options, ...input.summaryLimits };
+    const summaryBudget = Math.floor((summaryOptions.contextTokens ?? 64_000) * 0.9) - outputTokens;
     const chunkCharacters = Math.max(
       1_024,
       Math.floor(
@@ -396,7 +449,7 @@ export async function prepareConversationContext(input: {
         },
       ];
       const prepared = projectWorkingContext(requestMessages, {
-        ...options,
+        ...summaryOptions,
         system: SUMMARY_SYSTEM,
         toolsBytes: 2,
         maxOutputTokens: outputTokens,
@@ -427,7 +480,18 @@ export async function prepareConversationContext(input: {
       modelId: input.modelId,
       createdAt: Date.now(),
     };
-    messages = withEvidence(project(entries, projection));
+    messages = withEvidence(projectConversationTranscript(entries, projection));
+    if (input.inheritedReferenceBudget !== undefined)
+      messages = [
+        {
+          role: "user",
+          content: boundedConversationReference(
+            [conversationReferenceParts(entries, projection)],
+            input.inheritedReferenceBudget,
+          ),
+        },
+        ...suffix,
+      ];
     const next = projectWorkingContext(messages, options);
     if (
       next.estimatedInputTokens >= projected.estimatedInputTokens ||
@@ -478,7 +542,12 @@ export async function prepareConversationContext(input: {
       status: request.cancel.signal.aborted ? "cancelled" : "failed",
       message: request.cancel.signal.aborted
         ? "Compaction cancelled; original history preserved."
-        : "Compaction could not safely reduce this context. Original history preserved.",
+        : error instanceof AuxError &&
+            error.detail &&
+            typeof error.detail === "object" &&
+            "contextBudgetExceeded" in error.detail
+          ? error.message
+          : "Compaction could not safely reduce this context. Original history preserved.",
     });
     if (input.signal?.aborted) throw error;
     if (projected.estimatedInputTokens > projected.inputBudgetTokens || input.overflow) {
@@ -489,7 +558,7 @@ export async function prepareConversationContext(input: {
         );
       throw error;
     }
-    return withEvidence(project(entries, previous));
+    return withEvidence(projectConversationTranscript(entries, previous));
   } finally {
     if (owner.control.active === request) owner.control.active = undefined;
   }

@@ -3,6 +3,7 @@ type Transport = Awaited<ReturnType<McpTransportProvider>>;
 export function fakeTransport(
   calls: string[],
   toolResult: unknown = { content: [{ type: "text", text: "done" }] },
+  tools: unknown[] = [{ name: "read", inputSchema: { type: "object", properties: {} } }],
 ): Transport {
   const transport = {
     onmessage: undefined as ((message: unknown) => void) | undefined,
@@ -19,7 +20,7 @@ export function fakeTransport(
               serverInfo: { name: "fixture", version: "1" },
             }
           : message.method === "tools/list"
-            ? { tools: [{ name: "read", inputSchema: { type: "object", properties: {} } }] }
+            ? { tools }
             : toolResult;
       queueMicrotask(() => transport.onmessage?.({ jsonrpc: "2.0", id: message.id, result }));
     },

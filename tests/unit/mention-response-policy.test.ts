@@ -49,7 +49,7 @@ function fixture() {
     page: (id) => repo.getPage(id),
     organization: async () => ({ revision: 0, shared: null }),
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   const pages = new PageService({
     repo,

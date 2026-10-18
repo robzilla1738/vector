@@ -10,7 +10,7 @@ export const DOCUMENT_TEXT_DIGEST_PREFIX = "aux-document-text-v1\n";
 
 const whole = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const sha256 = z.string().regex(/^[0-9a-f]{64}$/);
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const cursor = z.string().min(1).max(200);
 const filename = z.string().min(1).max(1024);
 const utf8 = new TextEncoder();
@@ -151,7 +151,7 @@ export const DocumentMetadataSchema = z
           warning.firstPart === undefined &&
           warning.firstPage !== undefined &&
           warning.firstPage <= (pageCount ?? 0) &&
-          (warning.code === "unmapped_text" || warning.count < (pageCount ?? 0))
+          (warning.code === "unmapped_text" || warning.count <= (pageCount ?? 0))
         );
       }
       return format === "docx" && warning.firstPage === undefined;
@@ -224,7 +224,11 @@ export const DocumentReadResultSchema = z
     }
     if (result.chunk.segments.length) return true;
     return (
-      result.document.format === "text" &&
+      (result.document.format === "text" ||
+        (result.document.format === "pdf" &&
+          result.document.warnings.some(
+            (warning) => warning.code === "no_selectable_text" || warning.code === "unmapped_text",
+          ))) &&
       result.chunk.index === 0 &&
       result.completed?.textBytes === 0 &&
       result.completed.segmentCount === 0

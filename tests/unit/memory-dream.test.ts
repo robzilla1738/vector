@@ -1,3 +1,4 @@
+import { memoryTestJob, memoryTestSource } from "../fixtures/memory-model-job.js";
 import type { ModelClient } from "../../apps/runtime/dist/agent/model-client.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
@@ -34,6 +35,7 @@ function fixture() {
     cachedInputTokens: 0,
   });
   const deps = {
+    source: memoryTestSource,
     repo,
     budget,
     model: { generateStructured },
@@ -43,6 +45,7 @@ function fixture() {
     ],
   };
   const input = {
+    job: memoryTestJob("dream"),
     documents: [{ path: "MEMORY.md", content: "Owner text" }],
     claims: [{ claimId, text: "Workshop Tuesday" }],
     signal: controller.signal,

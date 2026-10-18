@@ -1,3 +1,4 @@
+import { DocumentOriginalSchema } from "./document-original.js";
 import { z } from "zod";
 import { DocumentChunkSchema, DocumentCompletedSchema, DocumentMetadataSchema } from "./document-intake.js";
 
@@ -5,6 +6,7 @@ export const DocumentSnapshotSchema = z
   .object({
     document: DocumentMetadataSchema,
     completed: DocumentCompletedSchema,
+    original: DocumentOriginalSchema.optional(),
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();
@@ -20,7 +22,7 @@ export type SavedDocumentPage = z.infer<typeof SavedDocumentPageSchema>;
 export function documentSnapshotDigestInput(snapshot: Omit<DocumentSnapshot, "sha256">): string {
   const { document: d, completed: c } = snapshot;
   return JSON.stringify([
-    "aux-document-manifest-v1",
+    snapshot.original ? "aux-document-manifest-v2" : "aux-document-manifest-v1",
     [
       d.snapshotId,
       d.filename,
@@ -38,5 +40,6 @@ export function documentSnapshotDigestInput(snapshot: Omit<DocumentSnapshot, "sh
       ]),
     ],
     [c.textSha256, c.textBytes, c.segmentCount],
+    ...(snapshot.original ? [snapshot.original] : []),
   ]);
 }

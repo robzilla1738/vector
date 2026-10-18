@@ -29,6 +29,7 @@ interface RailItem {
   gate?:
     | "smartDownloadNames"
     | "memory"
+    | "desktopContext"
     | "permissions"
     | "extensions"
     | "plugins"
@@ -86,6 +87,7 @@ const items: readonly RailItem[] = [
     tab: "Services",
     gate: "services",
   },
+  { label: "Desktop context", category: "Desktop context", group: "Agent", icon: shellIconResult, gate: "desktopContext" },
   { label: "Memory", category: "Memory", group: "Agent", icon: shellIconModel, gate: "memory" },
   { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Features", icon: shellIconLock },
   {
@@ -131,6 +133,7 @@ export function SectionRail({
   onOpenMemoryView,
   searching,
   memoryAvailable,
+  desktopContextAvailable = false,
   downloadNamingAvailable,
   profilesAvailable,
   linkRoutingAvailable,
@@ -150,6 +153,7 @@ export function SectionRail({
   onOpenMemoryView?: (view: MemoryView) => void;
   searching: boolean;
   memoryAvailable: boolean;
+  desktopContextAvailable?: boolean;
   downloadNamingAvailable: boolean;
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
@@ -168,6 +172,7 @@ export function SectionRail({
     (item) =>
       !item.gate ||
       (item.gate === "memory" && memoryAvailable) ||
+      (item.gate === "desktopContext" && desktopContextAvailable) ||
       (item.gate === "smartDownloadNames" && downloadNamingAvailable) ||
       (item.gate === "profiles" && profilesAvailable) ||
       (item.gate === "linkRouting" && linkRoutingAvailable) ||

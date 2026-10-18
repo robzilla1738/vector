@@ -42,6 +42,7 @@ const entries = [
     connectionId,
     label: "Team Calendar",
     accountKey: "team@example.test",
+    revision: "a".repeat(64),
     state: "active",
     authority: "calendar_account",
   },
@@ -49,6 +50,8 @@ const entries = [
     kind: "mcp",
     connectorId: `mcp:${serverId}`,
     serverId,
+    sourceDigest: "b".repeat(64),
+    toolsRevision: 3,
     label: "Research tools",
     state: "active",
     authority: "connected_server",
@@ -95,6 +98,7 @@ it("reviews Calendar grants and revocation against the runtime catalog", async (
     if (method === "connectors.catalog")
       return {
         entries,
+        bindings: {},
         access: granted
           ? [
               {
@@ -151,6 +155,7 @@ it("shows MCP authority and opens its management surface", async () => {
     if (method === "connectors.catalog")
       return {
         entries,
+        bindings: {},
         access: [
           {
             kind: "mcp",
@@ -179,7 +184,7 @@ it("does not show a grant when the runtime rejects a stale task revision", async
   rpc.mockImplementation(async (method: string) => {
     if (method === "workspaces.list") return [{ workspaceId, name: "Product" }];
     if (method === "tasks.list") return [task];
-    if (method === "connectors.catalog") return { entries, access: [] };
+    if (method === "connectors.catalog") return { entries, access: [], bindings: {} };
     if (method === "calendar.taskGrants.create")
       throw new Error("Task revision changed. Review access again.");
     throw new Error(`Unexpected RPC ${method}`);

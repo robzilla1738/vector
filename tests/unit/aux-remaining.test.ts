@@ -131,7 +131,6 @@ it("keeps compact shell recovery layout and a responsive full-page conversation"
   expect(compact).toMatch(/\.conversation-scroll\s*\{[^}]*padding:\s*16px 20px/);
   expect(compact).toContain(".empty-state");
   expect(compact).toContain(".stage-card.loading");
-  expect(compact).toContain(".sidebar.collapsed");
   expect(css).toContain(".empty-state {");
   expect(css).toContain(".navigation-error {");
 });

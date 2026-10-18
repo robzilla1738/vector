@@ -11,8 +11,9 @@ const feature6 = "vault";
 const feature7 = "automations";
 const feature8 = "zapAndUserCss";
 const feature9 = "skills";
-const feature10 = "connectors";
-const feature11 = "subagents";
+const feature10 = "desktopContext";
+const feature11 = "connectors";
+const feature12 = "subagents";
 export const RuntimeMethodFeatures = {
   "liveFolders.items": feature0,
   "liveFolders.refresh": feature0,
@@ -107,6 +108,15 @@ export const RuntimeMethodFeatures = {
   "memory.paste.preview": feature5,
   "memory.paste.commit": feature5,
   "memory.paste.status": feature5,
+  "desktopContext.settings": feature10,
+  "desktopContext.apps": feature10,
+  "desktopContext.configure": feature10,
+  "desktopContext.permission": feature10,
+  "desktopContext.pause": feature10,
+  "desktopContext.sources": feature10,
+  "desktopContext.search": feature10,
+  "desktopContext.read": feature10,
+  "desktopContext.forget": feature10,
   "memory.pipeline.documentList": feature5,
   "memory.pipeline.documentSet": feature5,
   "memory.pipeline.dream": feature5,
@@ -136,15 +146,21 @@ export const RuntimeMethodFeatures = {
   "memory.pipeline.overview": feature5,
   "memory.pipeline.search": feature5,
   "memory.pipeline.forget": feature5,
-  "calendar.connections.list": feature10,
-  "calendar.auth.start": feature10,
-  "calendar.connections.revoke": feature10,
-  "calendar.events.list": feature10,
-  "calendar.taskGrants.list": feature10,
-  "calendar.taskGrants.create": feature10,
-  "calendar.taskGrants.revoke": feature10,
-  "calendar.taskEvents.list": feature10,
-  "connectors.catalog": feature10,
+  "google.accounts.list": feature11,
+  "google.auth.start": feature11,
+  "google.accounts.revoke": feature11,
+  "google.grants.list": feature11,
+  "google.grants.create": feature11,
+  "google.grants.revoke": feature11,
+  "calendar.connections.list": feature11,
+  "calendar.auth.start": feature11,
+  "calendar.connections.revoke": feature11,
+  "calendar.events.list": feature11,
+  "calendar.taskGrants.list": feature11,
+  "calendar.taskGrants.create": feature11,
+  "calendar.taskGrants.revoke": feature11,
+  "calendar.taskEvents.list": feature11,
+  "connectors.catalog": feature11,
   "customization.zap.pick": feature8,
   "customization.zap.list": feature8,
   "customization.zap.add": feature8,
@@ -154,9 +170,9 @@ export const RuntimeMethodFeatures = {
   "customization.css.set": feature8,
   "customization.css.effective": feature8,
   "customization.css.apply": feature8,
-  "sets.create": feature11,
-  "sets.get": feature11,
-  "sets.list": feature11,
-  "sets.map": feature11,
-  "sets.results": feature11,
+  "sets.create": feature12,
+  "sets.get": feature12,
+  "sets.list": feature12,
+  "sets.map": feature12,
+  "sets.results": feature12,
 } as const satisfies Partial<Record<MethodName, AuxFeature>>;

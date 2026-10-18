@@ -12,6 +12,8 @@ import {
   modelCallCost,
   modelUndispatched,
   type ModelClient,
+  type MemoryModelJob,
+  type MemoryModelCallSource,
   type ModelAttempt,
   type StructuredCallResult,
 } from "../agent/model-client.js";
@@ -22,6 +24,7 @@ import type { PrivateBudgetClient } from "./private-budget.js";
 import type { MemoryDreamOperation } from "@aux/contracts/memory-documents";
 
 export type MemoryDreamInput = {
+  job: MemoryModelJob;
   documents: { path: string; content: string }[];
   claims: { claimId: string; text: string }[];
   signal: AbortSignal;
@@ -65,6 +68,7 @@ export async function dreamMemory(
     models: readonly ModelCapability[];
     repo: Repo;
     budget: PrivateBudgetClient;
+    source(job: MemoryModelJob, checkCurrent: () => void): MemoryModelCallSource;
   },
   input: MemoryDreamInput,
 ): Promise<MemoryDreamResult> {
@@ -110,6 +114,7 @@ export async function dreamMemory(
       maxOutputTokens,
       maxAttempts: 1,
       signal: input.signal,
+      source: deps.source(input.job, input.checkCurrent),
       beforeDispatch: async () => {
         input.signal.throwIfAborted();
         input.checkCurrent();

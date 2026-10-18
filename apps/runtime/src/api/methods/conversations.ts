@@ -75,6 +75,8 @@ async function h_conversations_archive(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_conversations_delete(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
+  await s.runs.retireConversationCompactions(params.chatId);
+  await s.runs.documents.retireAndJoin(params.chatId);
   const deleted = s.runs.deleteConversation(params.chatId);
   s.checkpointDeletedData?.();
   return deleted;
@@ -85,7 +87,7 @@ async function h_conversations_attachments_read(ctx: MethodCtx): Promise<unknown
   return s.runs.readAttachment(params);
 }
 async function h_conversations_attachments_import(ctx: MethodCtx): Promise<unknown> {
-  const { source, context } = nativeDocumentSource(ctx, ctx.params);
+  const { source, context } = await nativeDocumentSource(ctx, ctx.params);
   return ctx.s.runs.importAttachment(ctx.params, source, context);
 }
 async function h_conversations_attachments_get(ctx: MethodCtx): Promise<unknown> {

@@ -27,7 +27,11 @@ import {
   TaskEvidenceService,
 } from "@aux/runtime";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
-import { channelTablesForDatabase } from "../../apps/runtime/src/store/db.js";
+import {
+  googleTablesForDatabase,
+  channelTablesForDatabase,
+  desktopTablesForDatabase,
+} from "../../apps/runtime/src/store/db.js";
 import {
   advanceManagedRecoveryGeneration,
   currentManagedRecoveryGeneration,
@@ -59,6 +63,11 @@ async function stagedFixture(version = 3) {
     createdAt: Date.now(),
   });
   if (version === 2) {
+    original.db.exec("DROP TABLE document_source_chunks");
+    for (const table of googleTablesForDatabase(original.db).reverse())
+      original.db.exec(`DROP TABLE ${table}`);
+    for (const table of desktopTablesForDatabase(original.db).reverse())
+      original.db.exec(`DROP TABLE ${table}`);
     for (const table of channelTablesForDatabase(original.db).reverse())
       original.db.exec(`DROP TABLE ${table}`);
     original.db.exec(`

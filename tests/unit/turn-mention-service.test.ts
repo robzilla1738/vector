@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import {
   AuxError,
+  connectorAuthorityInput,
   RoutineSchema,
   type ConnectorCatalog,
   type PageTarget,
@@ -69,12 +71,15 @@ function fixture(privateBrowserProfile = false) {
         kind: "mcp",
         connectorId: "connector",
         serverId: "11111111-1111-4111-8111-111111111111",
+        sourceDigest: "a".repeat(64),
+        toolsRevision: 1,
         label: "Fixture",
         state: "active",
         authority: "connected_server",
       },
     ],
     access: [],
+    bindings: {},
   };
   let sourceContext = TurnSourceContextSchema.parse({
     windowId: "main",
@@ -85,6 +90,25 @@ function fixture(privateBrowserProfile = false) {
       window: { activeSpaceId: "space", activeTabs: { space: "a" }, splitRatio: 0.5 },
     },
   });
+  const boundCatalog = (
+    context: { workspaceId?: string; taskId?: string; taskRevision?: number } = { workspaceId: "workspace" },
+  ) => ({
+    ...catalog,
+    bindings: Object.fromEntries(
+      catalog.entries.map((entry) => [
+        entry.connectorId,
+        createHash("sha256")
+          .update(
+            connectorAuthorityInput(entry, catalog.access, {
+              workspaceId: context.workspaceId ?? "",
+              taskId: context.taskId,
+              expectedRevision: context.taskRevision,
+            }),
+          )
+          .digest("hex"),
+      ]),
+    ),
+  });
   const prepareReadPage = vi.fn(async (_pageId: string) => {});
   const service = new TurnMentionService({
     privateBrowserProfile,
@@ -93,7 +117,7 @@ function fixture(privateBrowserProfile = false) {
     turnSourceContext: async () => sourceContext,
     organization: async () => organization,
     routine: (id) => (id === "skill" ? routine : undefined),
-    connectors: () => catalog,
+    connectors: boundCatalog,
   });
   return {
     service,
@@ -114,6 +138,11 @@ function fixture(privateBrowserProfile = false) {
       catalog = value;
     },
     catalog: () => catalog,
+    connectorRef: (context?: { workspaceId?: string; taskId?: string; taskRevision?: number }) => ({
+      kind: "connector" as const,
+      connectorId: "connector",
+      authorityDigest: boundCatalog(context).bindings.connector!,
+    }),
   };
 }
 describe("Profile-owned turn mention service", () => {
@@ -149,7 +178,7 @@ describe("Profile-owned turn mention service", () => {
       "run",
       [
         { kind: "skill", routineId: "skill", revision: 1 },
-        { kind: "connector", connectorId: "connector" },
+        f.connectorRef({ workspaceId: "workspace", taskId: "task", taskRevision: 1 }),
       ],
       [],
       { workspaceId: "workspace", taskId: "task", taskRevision: 1 },
@@ -170,6 +199,17 @@ describe("Profile-owned turn mention service", () => {
         },
       ],
     });
+    // A later grant cannot expand the original captured selection.
+    expect(f.service.requireConnector("run", "connector", "search")).toMatchObject({ status: "unavailable" });
+    await f.service.begin(
+      "run",
+      [
+        { kind: "skill", routineId: "skill", revision: 1 },
+        f.connectorRef({ workspaceId: "workspace", taskId: "task", taskRevision: 1 }),
+      ],
+      [],
+      { workspaceId: "workspace", taskId: "task", taskRevision: 1 },
+    );
     expect(f.service.requireConnector("run", "connector", "search")).toEqual({ status: "available" });
     expect(f.service.requireConnector("run", "connector", "send")).toMatchObject({ status: "unavailable" });
     expect(f.service.skills("run")[0]?.objective).toBe("Read fixture");
@@ -201,7 +241,7 @@ describe("Profile-owned turn mention service", () => {
       page: (id) => f.pages.get(id),
       organization: () => snapshot,
       routine: () => undefined,
-      connectors: () => ({ entries: [], access: [] }),
+      connectors: () => ({ entries: [], access: [], bindings: {} }),
     });
     await service.begin("run", [tab], []);
     const pending = service.begin(
@@ -226,7 +266,7 @@ describe("Profile-owned turn mention service", () => {
       page: (id) => f.pages.get(id),
       organization: () => snapshot,
       routine: () => undefined,
-      connectors: () => ({ entries: [], access: [] }),
+      connectors: () => ({ entries: [], access: [], bindings: {} }),
     });
     const older = service.begin(
       "run",
@@ -396,20 +436,66 @@ describe("Profile-owned turn mention service", () => {
       authority: "enabled_mcp_tool" as const,
     };
     f.setCatalog({ ...f.catalog(), access: [grant] });
-    await f.service.begin("run", [{ kind: "connector", connectorId: "connector" }], [], {
+    await f.service.begin("run", [f.connectorRef()], [], {
       workspaceId: "workspace",
     });
-    expect(
-      await f.service.useConnector("run", "connector", "search", async () => {
+    await expect(
+      f.service.useConnector("run", "connector", "search", async () => {
         f.setCatalog({ ...f.catalog(), access: [] });
-        return "consumed once";
+        return "withheld after revocation";
       }),
-    ).toBe("consumed once");
+    ).rejects.toThrow(/connector changed/);
     f.setCatalog({ ...f.catalog(), access: [grant] });
     await expect(
       f.service.useConnector("run", "connector", "search", async () => {
-        f.setCatalog({ entries: [], access: [] });
+        f.setCatalog({ entries: [], access: [], bindings: {} });
         return "revoked result";
+      }),
+    ).rejects.toThrow(/connector changed/);
+  });
+  it("requires reselection for historical connector refs and rejects the same ID after reauthorization across resume", async () => {
+    const f = fixture();
+    await expect(
+      f.service.begin("old", [{ kind: "connector", connectorId: "connector" }], [], {
+        workspaceId: "workspace",
+      }),
+    ).rejects.toThrow();
+    const captured = f.connectorRef();
+    await f.service.begin("run", [captured], [], { workspaceId: "workspace" });
+    const original = f.catalog().entries[0]!;
+    if (original.kind !== "mcp") throw Error("Expected MCP fixture");
+    f.setCatalog({ ...f.catalog(), entries: [{ ...original, toolsRevision: 2 }] });
+    expect(f.service.requireConnector("run", "connector", "search").status).toBe("unavailable");
+    f.service.end("run");
+    await expect(f.service.begin("run", [captured], [], { workspaceId: "workspace" })).rejects.toThrow();
+    f.setCatalog({ ...f.catalog(), entries: [{ ...original, sourceDigest: "b".repeat(64) }] });
+    await expect(f.service.begin("run", [captured], [], { workspaceId: "workspace" })).rejects.toThrow();
+    f.setCatalog({ ...f.catalog(), entries: [original] });
+    await expect(f.service.begin("run", [captured], [], { workspaceId: "another-space" })).rejects.toThrow();
+  });
+  it("withholds a pending result after account authority replacement even when tool names are identical", async () => {
+    const f = fixture();
+    f.setCatalog({
+      ...f.catalog(),
+      access: [
+        {
+          kind: "mcp",
+          connectorId: "connector",
+          taskId: "11111111-1111-4111-8111-111111111111",
+          taskRevision: 1,
+          toolsRevision: 1,
+          toolName: "search",
+          authority: "enabled_mcp_tool",
+        },
+      ],
+    });
+    await f.service.begin("run", [f.connectorRef()], [], { workspaceId: "workspace" });
+    await expect(
+      f.service.useConnector("run", "connector", "search", async () => {
+        const entry = f.catalog().entries[0]!;
+        if (entry.kind !== "mcp") throw Error("Expected MCP fixture");
+        f.setCatalog({ ...f.catalog(), entries: [{ ...entry, toolsRevision: entry.toolsRevision + 1 }] });
+        return "old account data";
       }),
     ).rejects.toThrow(/connector changed/);
   });

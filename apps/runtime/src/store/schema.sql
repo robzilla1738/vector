@@ -570,6 +570,33 @@ CREATE TABLE channel_attachments(
   PRIMARY KEY(connection_id,message_key,attachment_key),
   FOREIGN KEY(connection_id,message_key) REFERENCES channel_messages(connection_id,message_key) ON DELETE CASCADE);
 
+-- @schema desktop_context
+CREATE TABLE desktop_context_generations(workspace_id TEXT NOT NULL,app_key TEXT NOT NULL,generation TEXT NOT NULL,key_name TEXT NOT NULL,PRIMARY KEY(workspace_id,app_key));
+CREATE TABLE desktop_context_captures(workspace_id TEXT NOT NULL,capture_id TEXT NOT NULL,app_key TEXT NOT NULL,generation TEXT NOT NULL,captured_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,content TEXT NOT NULL,PRIMARY KEY(workspace_id,capture_id));
+CREATE INDEX desktop_context_expiry ON desktop_context_captures(expires_at);
+CREATE TABLE desktop_context_retired_keys(key_name TEXT PRIMARY KEY);
+
+-- @schema google
+CREATE TABLE google_task_grants(
+  grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  task_revision INTEGER NOT NULL, connection_id TEXT NOT NULL REFERENCES calendar_connections(connection_id) ON DELETE CASCADE,
+  body TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
+CREATE INDEX idx_google_task_grants_task ON google_task_grants(task_id,task_revision,revoked_at);
+CREATE INDEX idx_google_task_grants_connection ON google_task_grants(connection_id,revoked_at);
+
+-- @schema document_sources
+CREATE TABLE document_source_chunks(
+  owner_kind TEXT NOT NULL CHECK(owner_kind IN ('conversation','task')),
+  owner_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  snapshot_id TEXT NOT NULL,
+  ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+  json TEXT NOT NULL,
+  PRIMARY KEY(owner_kind,owner_id,document_id,snapshot_id,ordinal),
+  FOREIGN KEY(owner_kind,owner_id,document_id,snapshot_id)
+    REFERENCES document_snapshots(owner_kind,owner_id,document_id,snapshot_id) ON DELETE CASCADE
+);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

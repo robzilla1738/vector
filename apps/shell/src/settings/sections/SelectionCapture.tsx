@@ -519,19 +519,15 @@ export function SelectionCaptureSettings({
         target="Selection & Capture overview"
         hint="Select text or capture a region, then ask Aux to explain, translate, or turn it into a draft. You review it before sending."
         details={
-          <div className="selection-capture-preview" aria-hidden="true">
-            <div className="selection-preview-document">
-              <span />
-              <span />
-              <mark>Make sense of any page.</mark>
-              <span />
-            </div>
-            <div className="selection-preview-menu">
-              <strong>Ask Aux</strong>
-              <span>Explain</span>
-              <span>Translate</span>
-            </div>
-          </div>
+          <img
+            className="setting-illustration"
+            src="/settings/selection.webp"
+            width={288}
+            height={160}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         }
       >
         <span className="hint">Available outside Private windows.</span>

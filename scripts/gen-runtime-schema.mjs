@@ -9,15 +9,15 @@ export function generateRuntimeSchema({ check = false } = {}) {
   const sections = {};
   const markers = [
     ...source.matchAll(
-      /^-- @schema (profile|run_starts|process_logs|private_spend|documents|channels|channel_attachments|spend)\s*$/gm,
+      /^-- @schema (profile|run_starts|process_logs|private_spend|documents|channels|channel_attachments|desktop_context|google|document_sources|spend)\s*$/gm,
     ),
   ];
   if (
     markers.map((marker) => marker[1]).join(",") !==
-    "profile,run_starts,process_logs,private_spend,documents,channels,channel_attachments,spend"
+    "profile,run_starts,process_logs,private_spend,documents,channels,channel_attachments,desktop_context,google,document_sources,spend"
   )
     throw new Error(
-      "Runtime schema must contain profile, run_starts, process_logs, private_spend, documents, channels, channel_attachments and spend sections in order.",
+      "Runtime schema must contain profile, run_starts, process_logs, private_spend, documents, channels, channel_attachments, desktop_context, google, document_sources and spend sections in order.",
     );
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];

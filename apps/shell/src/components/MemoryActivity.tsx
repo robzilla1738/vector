@@ -3,6 +3,8 @@ import type { MemoryExtractionView } from "@aux/contracts";
 import "./MemoryHistory.css";
 
 const failureMessages = {
+  account_requires_window:
+    "Background Memory supports API keys, local models, Vercel and ChatGPT connections. Copilot and private connections are unavailable for background Memory. Choose another connection to continue.",
   model_unavailable: "Choose an available model connection, then try extraction again.",
   budget_exceeded: "The model budget needs your review before extraction can run.",
   invalid_output: "The model returned quotes that could not be verified. No notes were added.",

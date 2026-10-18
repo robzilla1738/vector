@@ -38,30 +38,28 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 | A3      | active                         | Home, single-scroll Settings, narrow model submenus, shared chat cards, Memory tree, chrome, libraries and every captured surface/state. Current native comparison is required.                                              |
 | A4      | active                         | Durable revision-bound compaction/context UI, queue reorder and bounded streams/native asynchronous dispatch. Preserve unresolved effects, cancellation and exact owners.                                                    |
 | A5      | active                         | Authoritative site/routine documents, heading-aware multi-query retrieval, Dream/diffs/revert, retention/Forget/recovery. Owner documents receive proposals rather than automatic rewrites.                                  |
-| A6      | waiting on A5                  | Separate off-by-default macOS selected-app visible-text/selection capture; local OCR separately enabled; no raw-key recording; explicit permissions, pause, 14-day retention and Forget.                                     |
+| A6      | active                         | Separate off-by-default macOS selected-app visible-text/selection capture; local OCR separately enabled; no raw-key recording; explicit permissions, pause, 14-day retention and Forget.                                     |
 | A7      | active                         | Channel commands/attachments/voice, semantic routine suggestions, seven isolated PDF jobs, reference-image generation and masked capture fallback. Real artifacts/receipts and partial failures required.                    |
-| A8      | ready                          | Shared account primitives, Google REST, Notion/eligible Slack MCP, X REST, governed LinkedIn/browser paths and structured Gateway/image search. Registrations and actual granted capabilities remain explicit prerequisites. |
+| A8      | active                         | Shared account primitives, Google REST, Notion/eligible Slack MCP, X REST, governed LinkedIn/browser paths and structured Gateway/image search. Registrations and actual granted capabilities remain explicit prerequisites. |
 | A9      | waiting on integrated outcomes | Current 155 crash/browser acceptance, all reference surfaces in matched themes/widths/states, matching-stock perf and default-route 20-task smoke at least18/20. No source-only completion.                                  |
 
 ### Current reservations and integration
 
-One integrator owns docs, coordinated contracts/main wiring, migrations, native
-source/patches, builder/launcher and local commits. Initial source workers own:
+One integrator owns coordinated main/contracts/migrations, the single native
+source/patch/builder/launcher, current evidence and local commits. Current isolated
+lanes complete X public-PKCE accounts/scoped governed operations, original-source
+desktop model admission/Forget retirement, and DOM-only LinkedIn research plus
+sealed workflows delegated to existing governed actions. Google/MCP/Gateway search,
+voice, idle compaction/background Memory, PDF original admission and UI artwork
+are merged in working source and undergoing the integrated check/native build.
 
-- A1: budget scripts/tests, cache accounting and narrow run-start/download schema extraction.
-- A2: tokens and shared primitive styles/behavior, popup class ownership.
-- A3: Settings/Home/cards, Memory tree and nested model menus.
-- Integrator: utility glyphs, execution record and native ownership inspection.
-
-Current follow-on ownership covers conversation compaction/queue/context UI;
-Memory documents/Dream/recall/workbench; and channel commands/attachments/routine
-discovery/image references. Shared contracts, authority wiring, schema7 attachment
-storage, recovery, native async dispatch/image normalization and screenshot
-fallback remain integrator-owned. Source and focused tests are integrating;
-voice/PDFs, desktop context and supported app adapters remain separate unfinished
-outcomes. Foundation7806e41fc has limited native Home/Settings observations;
-all-surface/current155 acceptance remains open. See STATUS for the current build
-owner and exact evidence.
+Foundation7806e41fc and capability07199225f have limited155 native observations.
+The original-window routing omission now has generated ownership and source
+checks; its changed native controls still need observation. Source presence,
+compiled native objects and observed current app behavior remain separate.
+Matching155stock performance requires a newly built stock app; the historical154
+comparison cannot close it. Current all-state UI/browser acceptance, provider
+smoke and the earlier155SIGTRAP remain open. See STATUS for exact evidence.
 
 Workers must not edit another reserved surface or start native builds. Focused
 checks precede handoff; one integrated `npm run check` runs per coherent slice.

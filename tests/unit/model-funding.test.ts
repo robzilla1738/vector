@@ -321,3 +321,26 @@ it("releases a resource hold only with its original provably unsent row", async 
   expect(resourceFundingAccounting(f.repo).usage([runId], [])).toEqual({ costUsd: 0, opaque: false });
   expect(resources.reserve(runId).reservationId).toBeTypeOf("string");
 });
+
+it("preserves an explicit zero media estimate under cost funding", async () => {
+  const f = fixture({ maxCostUsd: 1 }),
+    started = await f.goals.start(f.goal.goalId, ["page"]);
+  const hold = await f.funding.reserveEstimated(started.runId!, {
+    modelId: request.modelId,
+    estimatedCostUsd: 0,
+    tokenUsageUnknown: true,
+  });
+  expect(hold).toBeTruthy();
+  f.funding.cancelUnsent(started.runId!, hold);
+});
+it("refuses unmeasured audio token usage before reserving a token-limited owner", async () => {
+  const f = fixture({ maxTokens: 5000 }),
+    started = await f.goals.start(f.goal.goalId, ["page"]);
+  await expect(
+    f.funding.reserveEstimated(started.runId!, {
+      modelId: request.modelId,
+      estimatedCostUsd: 0.01,
+      tokenUsageUnknown: true,
+    }),
+  ).rejects.toThrow(/no verified token usage/);
+});

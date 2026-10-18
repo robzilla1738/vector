@@ -143,36 +143,43 @@ it("never reconnects or clears the old key after a credential-store failure", as
   expect(f.settings.gatewayKey()).toBeUndefined();
 });
 
-it.each(["disconnect", "account-generation"])("does not continue a stale probe or record success after %s", async (change) => {
-  const f = fixture();
-  let finish!: () => void;
-  const vision = vi.fn();
-  f.settings.modelOverride = {
-    generateStructured: async () => {
-      await new Promise<void>((resolve) => {
-        finish = resolve;
-      });
-      return { object: { ok: true }, durationMs: 1 };
-    },
-    generateText: vision,
-    listModels: async () => [],
-  } as never;
-  const pending = f.settings.probe("fixture-model");
-  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
-  if (change === "disconnect")
-    await f.settings.set({ modelConnection: { provider: "gateway", enabled: false } });
-  else f.repo.setSetting("modelCacheGeneration", "replacement-account-generation");
-  finish();
-  expect(await pending).toMatchObject({ ok: false, error: expect.stringMatching(/Connection changed/) });
-  expect(vision).not.toHaveBeenCalled();
-  expect(f.repo.getSetting("modelProbe")).toBeUndefined();
-});
+it.each(["disconnect", "account-generation"])(
+  "does not continue a stale probe or record success after %s",
+  async (change) => {
+    const f = fixture();
+    let finish!: () => void;
+    const vision = vi.fn();
+    f.settings.modelOverride = {
+      generateStructured: async () => {
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return { object: { ok: true }, durationMs: 1 };
+      },
+      generateText: vision,
+      listModels: async () => [],
+    } as never;
+    const pending = f.settings.probe("fixture-model");
+    await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
+    if (change === "disconnect")
+      await f.settings.set({ modelConnection: { provider: "gateway", enabled: false } });
+    else f.repo.setSetting("modelCacheGeneration", "replacement-account-generation");
+    finish();
+    expect(await pending).toMatchObject({ ok: false, error: expect.stringMatching(/Connection changed/) });
+    expect(vision).not.toHaveBeenCalled();
+    expect(f.repo.getSetting("modelProbe")).toBeUndefined();
+  },
+);
 
 it("exposes the existing nonsecret connection revision across masked-key A to B to A changes", async () => {
   const f = fixture();
   const revisions = [];
   for (const key of ["synthetic-A", "synthetic-B", "synthetic-A"]) {
-    await f.settings.set({ modelProvider: "openai", plannerModel: "same-model", modelCredential: { provider: "openai", key } });
+    await f.settings.set({
+      modelProvider: "openai",
+      plannerModel: "same-model",
+      modelCredential: { provider: "openai", key },
+    });
     const current = f.settings.all();
     expect(current.modelApiKey).toBe("••••••••");
     expect(current.modelConnectionRevision).toBe(f.settings.modelCacheGeneration());
@@ -264,17 +271,27 @@ it("refuses catalog results when the account changes while local discovery is st
 
 it("does not automatically use a catalog-confirmed embedding model for text utilities", async () => {
   const f = fixture({ GOOGLE_GENERATIVE_AI_API_KEY: "synthetic-google-key" });
-  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (url) =>
-    String(url).startsWith("https://generativelanguage.googleapis.com/")
-      ? new Response(JSON.stringify({ models: [
-          { name: "models/vector-route", supportedGenerationMethods: ["embedContent"] },
-        ] }))
-      : new Response("", { status: 404 }),
-  ));
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (url) =>
+        String(url).startsWith("https://generativelanguage.googleapis.com/")
+          ? new Response(
+              JSON.stringify({
+                models: [{ name: "models/vector-route", supportedGenerationMethods: ["embedContent"] }],
+              }),
+            )
+          : new Response("", { status: 404 }),
+      ),
+  );
   await f.settings.set({ modelProvider: "google", plannerModel: "vector-route" });
-  expect((await f.settings.listModels()).models).toContainEqual(expect.objectContaining({
-    id: "vector-route", textGeneration: false,
-  }));
+  expect((await f.settings.listModels()).models).toContainEqual(
+    expect.objectContaining({
+      id: "vector-route",
+      textGeneration: false,
+    }),
+  );
   expect(await f.settings.utilityModel()).toBeNull();
   await f.settings.set({ plannerModel: "new-unknown-route" });
   expect((await f.settings.utilityModel())?.modelId).toBe("new-unknown-route");
@@ -373,3 +390,54 @@ it("shares Settings probe admission with private spending and records each actua
     owner.close();
   }
 });
+
+it.each(["openai", "openai-compatible"] as const)(
+  "binds %s background calls to their own job instead of a cached window client",
+  async (provider) => {
+    const { memoryModelSource } = await import("../../apps/runtime/dist/services/memory-model-source.js");
+    const { modelUndispatched } = await import("../../apps/runtime/dist/agent/model-client.js");
+    const { memoryTestJob } = await import("../fixtures/memory-model-job.js");
+    const f = fixture(provider === "openai" ? { OPENAI_API_KEY: "synthetic-key" } : {});
+    const network = vi.fn<typeof fetch>(async () =>
+      Response.json({ error: { message: "Synthetic admission endpoint" } }, { status: 401 }),
+    );
+    vi.stubGlobal("fetch", network);
+    await f.settings.set({
+      modelProvider: provider,
+      plannerModel: "fixture-model",
+      ...(provider === "openai-compatible" ? { compatibleEndpoint: "http://127.0.0.1:11434/v1" } : {}),
+    });
+    const cached = f.settings.model();
+    let current = true;
+    const job = { ...memoryTestJob("extraction"), modelGeneration: f.settings.modelCacheGeneration() };
+    const gate = vi.fn(async () => undefined);
+    const source = memoryModelSource(job, {
+      profileId: "fixture-profile",
+      modelGeneration: () => f.settings.modelCacheGeneration(),
+      checkCurrent: () => {
+        if (!current) throw new Error("Original Memory job retired");
+      },
+      safetyGate: { checkTrustedEffect: gate },
+    });
+    const owned = f.settings.model(source)!;
+    expect(owned).not.toBe(cached);
+    current = false;
+    const request = { modelId: "fixture-model", prompt: "Synthetic Memory report", source, maxAttempts: 1 };
+    const retired = await owned.generateText(request).catch((error) => error);
+    expect(modelUndispatched(retired)).toBe(true);
+    expect(network).not.toHaveBeenCalled();
+    expect(gate).not.toHaveBeenCalled();
+    current = true;
+    await expect(owned.generateText(request)).rejects.toThrow();
+    expect(network).toHaveBeenCalledOnce();
+    expect(gate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provenance: "memory",
+        turnId: job.operationId,
+        scope: { kind: "workspace", id: job.workspaceId },
+        destination: provider === "openai" ? "https://api.openai.com" : "http://127.0.0.1:11434",
+      }),
+      expect.objectContaining({ checkOwner: expect.any(Function) }),
+    );
+  },
+);

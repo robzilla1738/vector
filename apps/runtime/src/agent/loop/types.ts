@@ -70,6 +70,8 @@ export interface RecallProjection {
 export type PreparedRecall = (signal: AbortSignal) => Promise<RecallProjection>;
 
 export interface WebToolContext {
+  searchModel?: import("../model-client.js").ModelClient;
+  modelGeneration?: string;
   runId: string;
   threadId: string;
   turnId: string;
@@ -78,9 +80,15 @@ export interface WebToolContext {
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
+  googleOperation?: (
+    input: import("@aux/contracts/google").GoogleToolInput,
+    ctx: LoopToolContext,
+  ) => Promise<LoopToolResult>;
   calendarEvents?: (
     input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">,
   ) => Promise<LoopToolResult>;
+  pdfSources?: (input: { offset?: number; limit?: number }) => Promise<LoopToolResult>;
+  processPdf?: (input: import("@aux/contracts/document-jobs").PdfToolInput) => Promise<LoopToolResult>;
   generateImage?: (input: {
     prompt: string;
     referenceImageArtifactIds?: string[];
@@ -114,9 +122,15 @@ export interface LoopToolDeps {
    * an `ask` parks the loop on the suspension it creates.
    */
   webFetch?: (url: string, ctx: WebToolContext) => Promise<LoopToolResult>;
-  webSearch?: (query: string, ctx: WebToolContext) => Promise<LoopToolResult>;
+  webSearch?: (
+    request: import("@aux/contracts/web-search").WebSearchInput,
+    ctx: WebToolContext,
+  ) => Promise<LoopToolResult>;
   prepareWebFetch?: (url: string, ctx: WebToolContext) => Promise<PreparedRead>;
-  prepareWebSearch?: (query: string, ctx: WebToolContext) => Promise<PreparedRead>;
+  prepareWebSearch?: (
+    request: import("@aux/contracts/web-search").WebSearchInput,
+    ctx: WebToolContext,
+  ) => Promise<PreparedRead>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
   repl?: (
     input: { code: string; deadlineMs?: number; yieldTimeMs?: number },

@@ -22,6 +22,11 @@ export const ModelCapabilitySchema = z
     modalities: z.array(z.enum(["text", "image", "audio"])).optional(),
     /** Explicit catalog support for the provider's text-generation route; absent means unknown. */
     textGeneration: z.boolean().optional(),
+    /** Verified HTTP batch transcription and its catalog USD/second price. */
+    transcription: z
+      .object({ batch: z.literal(true), usdPerSecond: z.number().finite().nonnegative() })
+      .strict()
+      .optional(),
     structuredOutput: z.boolean().optional(),
     streaming: z.boolean().optional(),
     reasoning: z.enum(["none", "supported", "required"]).optional(),

@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { withSecureDelete, openDb, PrivacyCheckpoint, Repo, SCHEMA_VERSION } from "@aux/runtime";
-import { channelTablesForDatabase } from "../../apps/runtime/src/store/db.js";
+import {
+  googleTablesForDatabase,
+  channelTablesForDatabase,
+  desktopTablesForDatabase,
+} from "../../apps/runtime/src/store/db.js";
 
 const directories: string[] = [];
 const connections: DatabaseSync[] = [];
@@ -150,6 +154,7 @@ describe("fresh schema", () => {
       "routine_revisions",
       "calendar_connections",
       "calendar_task_grants",
+      "google_task_grants",
       "routine_runs",
       "coordinator_leases",
       "criterion_verifications",
@@ -207,6 +212,9 @@ describe("fresh schema", () => {
       config: { chatId: "saved-chat" },
     });
     repo.setSetting("owner-choice", "preserved");
+    previous.exec("DROP TABLE document_source_chunks");
+    for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+    for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
     for (const table of channelTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
     previous.exec(
       "DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=2",
@@ -321,6 +329,9 @@ describe("fresh schema", () => {
 it("adds opaque account receipts to an existing development schema4 Profile", () => {
   const { path } = fixture();
   const db = track(openDb(path));
+  db.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   db.exec(
     "DROP TABLE private_spend; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=4",
@@ -336,6 +347,9 @@ it("adds protected channel storage to schema5 without changing existing records"
   const { path } = fixture();
   const db = track(openDb(path));
   db.prepare("INSERT INTO kv VALUES('retained','schema5 value')").run();
+  db.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   db.exec("PRAGMA user_version=5");
   db.close();
@@ -350,6 +364,9 @@ it("adds protected channel storage to schema5 without changing existing records"
 it("preserves a historical database with unexpected partial channel tables", () => {
   const { path } = fixture();
   const db = track(openDb(path));
+  db.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   for (const table of channelTablesForDatabase(db).reverse()) db.exec(`DROP TABLE ${table}`);
   db.exec(
     "CREATE TABLE channel_connections(kept TEXT); INSERT INTO channel_connections VALUES('preserve me'); PRAGMA user_version=5",
@@ -364,13 +381,16 @@ it("preserves a historical database with unexpected partial channel tables", () 
 it("adds protected attachment storage to a valid schema6 without replacing existing data", () => {
   const { path } = fixture();
   const previous = track(openDb(path));
+  previous.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   previous.exec(
     "DROP TABLE channel_attachments; INSERT INTO kv VALUES('migration-sentinel','kept'); PRAGMA user_version=6",
   );
   expect(channelTablesForDatabase(previous)).toHaveLength(6);
   previous.close();
   const upgraded = track(openDb(path));
-  expect(version(upgraded)).toBe(7);
+  expect(version(upgraded)).toBe(SCHEMA_VERSION);
   expect(channelTablesForDatabase(upgraded)).toHaveLength(7);
   expect(upgraded.prepare("SELECT value FROM kv WHERE key='migration-sentinel'").get()).toEqual({
     value: "kept",
@@ -380,6 +400,9 @@ it("adds protected attachment storage to a valid schema6 without replacing exist
 it("preserves malformed schema6 without applying the attachment migration", () => {
   const { path } = fixture();
   const previous = track(openDb(path));
+  previous.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   previous.exec(
     "DROP TABLE channel_attachments; ALTER TABLE channel_messages ADD COLUMN unexpected TEXT; PRAGMA user_version=6",
   );
@@ -395,6 +418,9 @@ it("preserves malformed schema6 without applying the attachment migration", () =
 it("validates the protected document schema before applying an unrelated attachment migration", () => {
   const { path } = fixture();
   const previous = track(openDb(path));
+  previous.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
   previous.exec(
     "DROP TABLE channel_attachments; ALTER TABLE document_segments ADD COLUMN unexpected TEXT; PRAGMA user_version=6",
   );
@@ -405,4 +431,37 @@ it("validates the protected document schema before applying an unrelated attachm
   expect(
     preserved.prepare("SELECT name FROM sqlite_schema WHERE name='channel_attachments'").get(),
   ).toBeUndefined();
+});
+
+it("adds separate encrypted desktop context tables to valid schema7 without changing owner data", () => {
+  const { path } = fixture();
+  const previous = track(openDb(path));
+  previous.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  previous.exec("INSERT INTO kv VALUES('desktop-migration-sentinel','kept'); PRAGMA user_version=7");
+  previous.close();
+  const upgraded = track(openDb(path));
+  expect(version(upgraded)).toBe(SCHEMA_VERSION);
+  expect(desktopTablesForDatabase(upgraded)).toHaveLength(3);
+  expect(upgraded.prepare("SELECT value FROM kv WHERE key='desktop-migration-sentinel'").get()).toEqual({
+    value: "kept",
+  });
+});
+it("refuses partial desktop schema before mutating a historical database", () => {
+  const { path } = fixture();
+  const previous = track(openDb(path));
+  previous.exec("DROP TABLE document_source_chunks");
+  for (const table of googleTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  for (const table of desktopTablesForDatabase(previous).reverse()) previous.exec(`DROP TABLE ${table}`);
+  previous.exec(
+    "CREATE TABLE desktop_context_captures(sentinel TEXT); INSERT INTO desktop_context_captures VALUES('kept'); PRAGMA user_version=7",
+  );
+  previous.close();
+  expect(() => openDb(path)).toThrow(/Desktop context/);
+  const preserved = track(new DatabaseSync(path));
+  expect(version(preserved)).toBe(7);
+  expect(preserved.prepare("SELECT sentinel FROM desktop_context_captures").get()).toEqual({
+    sentinel: "kept",
+  });
 });

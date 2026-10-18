@@ -192,11 +192,16 @@ export class TurnMentionService {
             const routine = this.deps.routine(ref.routineId);
             return !!routine && !routine.archivedAt && routine.revision === ref.revision;
           },
-          connector: (ref) =>
-            !!active.context.workspaceId &&
-            this.deps
-              .connectors(active.context)
-              .entries.some((entry) => entry.connectorId === ref.connectorId && entry.state === "active"),
+          connector: (ref) => {
+            if (!active.context.workspaceId || !ref.authorityDigest) return false;
+            const catalog = this.deps.connectors(active.context);
+            return (
+              catalog.bindings[ref.connectorId] === ref.authorityDigest &&
+              catalog.entries.some(
+                (entry) => entry.connectorId === ref.connectorId && entry.state === "active",
+              )
+            );
+          },
         }),
         refs,
         context,
@@ -473,7 +478,7 @@ export class TurnMentionService {
       throw new MentionUnavailable("The approved source document changed while using it.");
     return result;
   }
-  /** Transport retains reviewed tool-grant semantics, including legitimate single-use consumption. */
+  /** Publication requires the same captured account, source and reviewed tool authority. */
   async useConnector<T>(
     runId: string,
     connectorId: string,
@@ -487,7 +492,10 @@ export class TurnMentionService {
         permission.status === "unavailable" ? permission.reason : "This turn ended.",
       );
     const result = await dispatch();
-    if (this.turns.get(runId) !== active || !active.authority.grants(runId).connectors.includes(connectorId))
+    if (
+      this.turns.get(runId) !== active ||
+      this.requireConnector(runId, connectorId, toolName).status !== "available"
+    )
       throw new MentionUnavailable("This turn or its connector changed during the tool call.");
     return result;
   }
@@ -594,11 +602,18 @@ export class TurnMentionService {
   requireConnector(runId: string, connectorId: string, toolName?: string): MentionAvailability {
     const active = this.turns.get(runId);
     if (!active || !active.authority.grants(runId).connectors.includes(connectorId))
-      return { status: "unavailable", reason: "Mention this connector before using it." };
+      return {
+        status: "unavailable",
+        reason: "This connector changed or has no captured account authority. Select it again.",
+      };
     const catalog = this.deps.connectors(active.context);
     const authorized = catalog.access.some(
       (grant) =>
-        grant.connectorId === connectorId && (grant.kind === "calendar" || grant.toolName === toolName),
+        grant.connectorId === connectorId &&
+        (grant.kind === "calendar" ||
+          (grant.kind === "google"
+            ? grant.operations.some((operation) => operation === toolName)
+            : grant.toolName === toolName)),
     );
     return authorized
       ? { status: "available" }

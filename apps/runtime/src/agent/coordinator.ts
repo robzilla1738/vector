@@ -150,6 +150,11 @@ export interface CoordinatorDeps {
   suspensions?: SuspensionStore;
   approvals?: ApprovalStore;
   vault?: import("../services/vault.js").VaultService;
+  googleAccounts?: import("../services/google-accounts.js").GoogleAccountService;
+  googleOperation?: (
+    input: import("../services/google-operations.js").GoogleInvoke,
+  ) => ReturnType<import("../services/google-operations.js").GoogleOperationService["invoke"]>;
+  googleGrants?: import("../services/google-grants.js").GoogleGrantService;
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
   pageOwnership?: PageOwnership;
@@ -234,6 +239,7 @@ export class RunCoordinator {
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextAttachmentRefs?: import("@aux/contracts").AttachmentReference[];
+    contextTaskDocumentRefs?: import("@aux/contracts").TaskDocumentReference[];
     contextDocumentEvidence?: string;
     contextArtifactEvidence?: string;
     contextArtifactIds?: string[];
@@ -254,6 +260,7 @@ export class RunCoordinator {
     auxPackages?: import("@aux/contracts").AuxPackageSnapshot[];
     projectRoot?: string;
     coderWorktree?: import("@aux/contracts").CoderWorktree;
+    googleGrantIds?: string[];
     calendarGrantIds?: string[];
   }): Promise<Run> {
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
@@ -261,6 +268,14 @@ export class RunCoordinator {
       const existing = this.deps.repo.getRun(opts.runId);
       if (existing) return existing;
     }
+    const googleGrantIds =
+      opts.googleGrantIds ??
+      (opts.taskId && opts.taskRevision
+        ? this.deps.googleGrants
+            ?.list(opts.taskId)
+            .filter((grant) => grant.taskRevision === opts.taskRevision)
+            .map((grant) => grant.grantId)
+        : undefined);
     const calendarGrantIds =
       opts.calendarGrantIds ??
       (opts.taskId && opts.taskRevision && this.deps.calendar
@@ -302,6 +317,7 @@ export class RunCoordinator {
         contextRunIds: opts.contextRunIds,
         contextAttachmentIds: opts.contextAttachmentIds,
         contextAttachmentRefs: opts.contextAttachmentRefs,
+        contextTaskDocumentRefs: opts.contextTaskDocumentRefs,
         contextDocumentEvidence: opts.contextDocumentEvidence,
         contextArtifactEvidence: opts.contextArtifactEvidence,
         contextArtifactIds: opts.contextArtifactIds,
@@ -326,6 +342,7 @@ export class RunCoordinator {
         projectRoot: opts.projectRoot,
         coderWorktree: opts.coderWorktree,
         calendarGrantIds,
+        googleGrantIds,
         retryOfRunId: opts.retryOfRunId,
         branchSourceRunIds: opts.branchSourceRunIds,
         implementation: "agent-loop",

@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 10;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (![2, 3, 4, 5, 6, SCHEMA_VERSION].includes(version)) throw incompatible();
+      if (![2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION].includes(version)) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -46,8 +46,11 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
+      documentSourceTablesForDatabase(db);
       if (version >= 5) documentTablesForDatabase(db);
       if (version >= 6) channelTablesForDatabase(db);
+      desktopTablesForDatabase(db);
+      googleTablesForDatabase(db);
       if (version < 7 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name='channel_attachments'").get())
         throw incompatible();
       if (version < 6 && db.prepare("SELECT 1 FROM sqlite_schema WHERE name LIKE 'channel_%'").get())
@@ -80,6 +83,9 @@ export function openDb(path: string): DatabaseSync {
       }
       if (version < 6) applySchema(db, [schema.channels, "PRAGMA user_version=6"]);
       if (version < 7) applySchema(db, [schema.channel_attachments, "PRAGMA user_version=7"]);
+      if (version < 8) applySchema(db, [schema.desktop_context, "PRAGMA user_version=8"]);
+      if (version < 9) applySchema(db, [schema.google, "PRAGMA user_version=9"]);
+      if (version < 10) applySchema(db, [schema.document_sources, "PRAGMA user_version=10"]);
     } else {
       applySchema(db, [
         schema.profile,
@@ -88,9 +94,14 @@ export function openDb(path: string): DatabaseSync {
         schema.documents,
         schema.channels,
         schema.channel_attachments,
+        schema.desktop_context,
+        schema.google,
+        schema.document_sources,
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
+    desktopTablesForDatabase(db);
+    googleTablesForDatabase(db);
     channelTablesForDatabase(db);
     if (!financialTablesForDatabase(db).length) applySchema(db, [schema.private_spend]);
     if (path !== ":memory:") chmodSync(path, 0o600);
@@ -163,6 +174,7 @@ export function financialTablesForDatabase(db: DatabaseSync): string[] {
 
 export function documentTablesForDatabase(db: DatabaseSync): string[] {
   const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const sourceTables = documentSourceTablesForDatabase(db);
   const tables = ["document_snapshots", "document_segments"];
   const found = tables.filter((table) =>
     db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table),
@@ -171,7 +183,7 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     if (found.length) throw new Error("Document tables do not match the historical database schema.");
     return [];
   }
-  if (![5, 6, 7].includes(version) || found.length !== tables.length)
+  if (![5, 6, 7, 8, 9, 10].includes(version) || found.length !== tables.length)
     throw new Error("The protected document schema is incomplete.");
   const expected = [
     "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,state:0,manifest:0",
@@ -182,7 +194,7 @@ export function documentTablesForDatabase(db: DatabaseSync): string[] {
     if (columns.map((column) => `${column.name}:${column.pk}`).join(",") !== expected[index])
       throw new Error("The protected document row identity is invalid.");
   }
-  return tables;
+  return [...tables, ...sourceTables];
 }
 
 export function channelTablesForDatabase(db: DatabaseSync): string[] {
@@ -215,7 +227,7 @@ export function channelTablesForDatabase(db: DatabaseSync): string[] {
     return [];
   }
   if (
-    ![6, 7].includes(version) ||
+    ![6, 7, 8, 9, 10].includes(version) ||
     found.length !== tables.length ||
     found.some((table) => !tables.includes(table))
   )
@@ -231,7 +243,122 @@ export function channelTablesForDatabase(db: DatabaseSync): string[] {
 /** Snapshot copies may have foreign keys disabled; explicitly retire children before their staging manifest. */
 export function discardIncompleteDocumentSnapshots(db: DatabaseSync) {
   if (!documentTablesForDatabase(db).length) return;
+  if (documentSourceTablesForDatabase(db).length)
+    db.exec(`DELETE FROM document_source_chunks WHERE (owner_kind,owner_id,document_id,snapshot_id) IN
+      (SELECT owner_kind,owner_id,document_id,snapshot_id FROM document_snapshots WHERE state='staging')`);
   db.exec(`DELETE FROM document_segments WHERE (owner_kind,owner_id,document_id,snapshot_id) IN
     (SELECT owner_kind,owner_id,document_id,snapshot_id FROM document_snapshots WHERE state='staging');
     DELETE FROM document_snapshots WHERE state='staging'`);
+}
+
+/** Validate before migration so partial or unknown desktop tables never mutate an old DB. */
+export function desktopTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const expected = {
+    desktop_context_generations: "workspace_id:1,app_key:2,generation:0,key_name:0",
+    desktop_context_captures:
+      "workspace_id:1,capture_id:2,app_key:0,generation:0,captured_at:0,expires_at:0,content:0",
+    desktop_context_retired_keys: "key_name:1",
+  };
+  const found = (
+    db
+      .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name LIKE 'desktop_context_%'")
+      .all() as { name: string }[]
+  ).map((row) => row.name);
+  if (version < 8) {
+    if (found.length) throw new Error("Desktop context tables do not match the historical database schema.");
+    return [];
+  }
+  if (
+    ![8, 9, 10].includes(version) ||
+    found.length !== Object.keys(expected).length ||
+    found.some((table) => !Object.hasOwn(expected, table))
+  )
+    throw new Error("Protected desktop context inventory is incomplete.");
+  for (const [table, columns] of Object.entries(expected)) {
+    const actual = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
+    if (actual.map((column) => `${column.name}:${column.pk}`).join(",") !== columns)
+      throw new Error("Protected desktop context row identity differs.");
+  }
+  return Object.keys(expected);
+}
+
+/** A complete protected grant inventory is required before migrating or restoring. */
+export function googleTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const found = (
+    db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name LIKE 'google_%'").all() as {
+      name: string;
+    }[]
+  ).map((row) => row.name);
+  if (version < 9) {
+    if (found.length) throw new Error("Google grant tables do not match the historical database schema.");
+    return [];
+  }
+  if (![9, 10].includes(version) || found.length !== 1 || found[0] !== "google_task_grants")
+    throw new Error("Protected Google grant inventory is incomplete.");
+  const columns = db.prepare("PRAGMA table_info(google_task_grants)").all() as { name: string; pk: number }[];
+  if (
+    columns.map((column) => `${column.name}:${column.pk}`).join(",") !==
+    "grant_id:1,task_id:0,task_revision:0,connection_id:0,body:0,created_at:0,revoked_at:0"
+  )
+    throw new Error("Protected Google grant row identity differs.");
+  const foreignKeys = db.prepare("PRAGMA foreign_key_list(google_task_grants)").all() as {
+    table: string;
+    from: string;
+    to: string;
+    on_delete: string;
+  }[];
+  if (
+    foreignKeys
+      .map((key) => `${key.from}:${key.table}:${key.to}:${key.on_delete}`)
+      .sort()
+      .join(",") !== "connection_id:calendar_connections:connection_id:CASCADE,task_id:tasks:task_id:CASCADE"
+  )
+    throw new Error("Protected Google grant retirement differs.");
+  for (const [index, columns] of [
+    ["idx_google_task_grants_task", "task_id,task_revision,revoked_at"],
+    ["idx_google_task_grants_connection", "connection_id,revoked_at"],
+  ]) {
+    const actual = db.prepare(`PRAGMA index_info(${index})`).all() as { name: string }[];
+    if (actual.map((column) => column.name).join(",") !== columns)
+      throw new Error("Protected Google grant indexes differ.");
+  }
+  return found;
+}
+
+export function documentSourceTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const found = db
+    .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name LIKE 'document_source_%'")
+    .all() as { name: string }[];
+  if (version < 10) {
+    if (found.length) throw new Error("Original document tables do not match the historical schema.");
+    return [];
+  }
+  if (version !== 10 || found.length !== 1 || found[0]?.name !== "document_source_chunks")
+    throw new Error("The protected original document schema is incomplete.");
+  const columns = db.prepare("PRAGMA table_info(document_source_chunks)").all() as {
+    name: string;
+    pk: number;
+  }[];
+  if (
+    columns.map((column) => `${column.name}:${column.pk}`).join(",") !==
+    "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,ordinal:5,json:0"
+  )
+    throw new Error("The protected original document fields are invalid.");
+  const links = db.prepare("PRAGMA foreign_key_list(document_source_chunks)").all() as {
+    table: string;
+    from: string;
+    to: string;
+    on_delete: string;
+  }[];
+  if (
+    links.length !== 4 ||
+    links.some(
+      (link) => link.table !== "document_snapshots" || link.from !== link.to || link.on_delete !== "CASCADE",
+    )
+  )
+    throw new Error("The protected original document ownership is invalid.");
+  return ["document_source_chunks"];
 }

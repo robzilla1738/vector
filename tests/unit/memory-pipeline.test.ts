@@ -1420,3 +1420,35 @@ it("previews actual note changes and refuses stale or paused restoration publica
     f.close();
   }
 });
+
+it("passes the saved extraction operation identity and exact eligible report boundary", async () => {
+  const extract = vi.fn(fixtureMemoryExtractor.extract);
+  const f = fixture({ ...fixtureMemoryExtractor, extract });
+  try {
+    const report = "The synthetic workshop happens every Tuesday and should be remembered.";
+    f.save("original-completed", report);
+    await f.pipeline.extractRun(f.workspace.workspaceId, "original-completed", "manual");
+    const input = extract.mock.calls[0]![0];
+    expect(input.job).toMatchObject({
+      workspaceId: f.workspace.workspaceId,
+      operation: "extraction",
+      modelGeneration: fixtureMemoryExtractor.generation(),
+      memoryGeneration: null,
+    });
+    expect(input.job.operationId).toMatch(/^[a-f0-9-]{36}$/);
+    expect(input.job.sourceDigest).toBe(
+      createHash("sha256")
+        .update(JSON.stringify(["original-completed", report]))
+        .digest("hex"),
+    );
+    expect(input.job.policyDigest).toBe(
+      createHash("sha256")
+        .update(JSON.stringify(f.pipeline.policy(f.workspace.workspaceId)))
+        .digest("hex"),
+    );
+    const activity = await f.pipeline.activity(f.workspace.workspaceId);
+    expect(activity[0]!.activityId).toBe(input.job.operationId);
+  } finally {
+    f.close();
+  }
+});

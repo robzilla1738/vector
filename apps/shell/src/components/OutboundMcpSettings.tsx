@@ -146,11 +146,9 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
   const [taskId, setTaskId] = useState("");
   const [testArguments, setTestArguments] = useState("{}");
   const [testResult, setTestResult] = useState("");
-  const [oauthStatusRecord, setOauthStatusRecord] = useState<{
-    serverId: string;
-    connected: boolean;
-    expiresAt?: number;
-  } | null>(null);
+  const [oauthStatusRecord, setOauthStatusRecord] = useState<
+    (import("@aux/contracts").MethodResult<"mcp.oauth.status"> & { serverId: string }) | null
+  >(null);
   const [pendingOAuth, setPendingOAuth] = useState<{ serverId: string; expiresAt: number } | null>(null);
   const [authorizationReview, setAuthorizationReview] = useState<{
     serverId: string;
@@ -578,7 +576,16 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                 selectedServer.source.auth === "oauth" && (
                   <div {...staticFieldProps}>
                     <strong>OAuth authorization</strong>
-                    <McpOAuthSetup key={selectedServer.serverId} serverId={selectedServer.serverId} />
+                    <McpOAuthSetup
+                      key={selectedServer.serverId}
+                      serverId={selectedServer.serverId}
+                      onConfigured={() => {
+                        setOauthStatusRecord({ serverId: selectedServer.serverId, connected: false });
+                        setTools(null);
+                        setToolName("");
+                        setTestResult("");
+                      }}
+                    />
                     <p {...staticHintProps}>
                       {oauthStatus?.connected
                         ? `Connected in this Profile${oauthExpiry}.`
@@ -587,6 +594,19 @@ export function OutboundMcpSettings({ active = true }: { active?: boolean } = {}
                           : "Connect this reviewed server before loading tools. " +
                             "Aux stores credentials in the Profile Keychain."}
                     </p>
+                    {oauthStatus?.connected && (
+                      <>
+                        <p {...staticHintProps}>
+                          {oauthStatus.account
+                            ? `Account: ${oauthStatus.account.workspaceName ?? oauthStatus.account.workspaceId ?? "workspace not reported"} · ${oauthStatus.account.userId ?? "user not reported"}`
+                            : "The provider did not report account identity."}
+                        </p>
+                        <p {...staticHintProps}>
+                          Granted scopes:{" "}
+                          {oauthStatus.grantedScopes?.join(", ") ?? "not reported by provider"}.
+                        </p>
+                      </>
+                    )}
                     <div {...staticRowProps}>
                       {!oauthStatus?.connected && (
                         <button

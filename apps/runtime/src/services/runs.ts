@@ -1,5 +1,25 @@
+import { statSync } from "node:fs";
+import {
+  gatewayAudioGenerator,
+  inspectChannelAudio,
+  transcribeAdmittedAudio,
+  type ChannelAudioInput,
+  type InspectAudio,
+  type AudioInspection,
+  type AudioOutcome,
+} from "./audio-transcription.js";
+import type { AudioTranscriptionReceipt } from "@aux/contracts/model-connections";
 import { queuedSourceHash } from "./queue-context.js";
-import { initialContextStats } from "../agent/loop/compaction.js";
+import {
+  initialContextStats,
+  boundedConversationReference,
+  conversationReferenceParts,
+  contextAuthorityHash,
+} from "../agent/loop/compaction.js";
+import { conversationContextAuthority } from "../agent/loop/context-authority.js";
+import { projectLegacyRecall } from "../agent/loop/legacy-recall.js";
+import { IdleConversationCompactions } from "./idle-conversation-compaction.js";
+import { modelCapabilities } from "@aux/contracts/model-registry";
 import { modelTools } from "../agent/loop/loop.js";
 import { buildToolManifest } from "../agent/loop/tools.js";
 import { buildSystemPrompt } from "../agent/loop/prompt.js";
@@ -224,6 +244,7 @@ export class RunService {
   private closed = false;
   private readonly startReceipts: RunStartReceipts;
   private ownedOperations = new Set<Promise<unknown>>();
+  private readonly idleCompactions: IdleConversationCompactions;
 
   private ownOperation<T>(operation: () => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new AuxError("cancelled", "Run execution is closed."));
@@ -406,8 +427,24 @@ export class RunService {
     for (const run of runs) {
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId })) {
         const generatedMeta = this.deps.repo.getSetting<unknown>(`generatedResult:${artifact.artifactId}`);
-        if (!isTextResult(artifact) && !generatedMeta) continue;
+        if (!isTextResult(artifact) && !generatedMeta && artifact.mediaType !== "application/pdf") continue;
         try {
+          if (artifact.mediaType === "application/pdf") {
+            const file = statSync(artifact.path);
+            if (!file.isFile() || file.size !== artifact.size || artifact.status !== "complete") continue;
+            artifacts.push({
+              artifactId: artifact.artifactId,
+              runId: artifact.runId!,
+              filename: resultFilename(artifact.artifactId, artifact.path),
+              mediaType: artifact.mediaType,
+              excerpt: "PDF document · use the isolated PDF tools to inspect or create a copy.",
+              byteLength: artifact.size,
+              createdAt: artifact.createdAt,
+              turnGoal: byRun.get(artifact.runId!)?.goal.slice(0, 400) ?? "Earlier turn",
+              included: included.has(artifact.artifactId),
+            });
+            continue;
+          }
           if (generatedMeta) {
             const generated = new GeneratedResults(this.deps.repo, this.deps.artifacts).get(
               artifact.artifactId,
@@ -717,12 +754,49 @@ export class RunService {
     return { chatId, historyEnabled: preference.historyEnabled, entries };
   }
 
+  private contextAuthority(run: Run): string {
+    const modelId = run.config?.modelId ?? this.deps.settings.agentRoute("standard").modelId;
+    return conversationContextAuthority(
+      run.config,
+      modelId,
+      [this.deps.settings.modelCacheGeneration(), this.deps.settings.agentPolicy().agentPolicyRevision],
+      this.deps.repo.getSetting(`conversationWorkspace:${run.config?.chatId ?? run.runId}`),
+      this.deps.agentLoop?.modelLimits?.(modelId),
+    );
+  }
+
   contextStats(runId: string): RunContextStats {
-    const run = this.coordinator.get(runId);
+    const run = this.deps.repo.getRun(runId) ?? this.coordinator.get(runId);
     if (run.config?.contextMemoryRevoked)
       throw new AuxError("permission_denied", "This context was retired by Forget.");
     this.checkSetSource(runId);
-    if (run.config?.contextCompaction) return run.config.contextCompaction.stats;
+    const saved = run.config?.contextCompaction;
+    if (saved) {
+      const active = this.coordinator.controls.get(runId)?.contextCompaction;
+      if (
+        TERMINAL_RUN_STATUSES.has(run.status) &&
+        ["queued", "preparing", "summarizing"].includes(saved.stats.compaction.status) &&
+        !this.idleCompactions.owns(runId) &&
+        !active?.active &&
+        !active?.pending
+      ) {
+        const stats: RunContextStats = {
+          ...saved.stats,
+          revision: saved.stats.revision + 1,
+          updatedAt: Date.now(),
+          compaction: {
+            ...saved.stats.compaction,
+            status: "cancelled",
+            message: "The previous compaction was interrupted; original history preserved.",
+          },
+        };
+        run.config = { ...run.config, contextCompaction: { ...saved, stats } };
+        this.deps.repo.saveRun(run);
+        this.deps.events.emit(EventTypes.RunContextChanged, { ...stats }, runId);
+        return stats;
+      }
+      return saved.stats;
+    }
     const modelId = run.config?.modelId ?? this.deps.settings.agentRoute("standard").modelId;
     const limits = this.deps.agentLoop?.modelLimits?.(modelId);
     return initialContextStats(
@@ -778,6 +852,119 @@ export class RunService {
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunContextChanged, { ...next }, runId);
     return next;
+  }
+
+  async compactIdleContext(
+    runId: string,
+    expectedRevision: number,
+    admission: {
+      nativeTurnContext: string;
+      checkOwner: () => Promise<void>;
+      route: UtilityRoute;
+      authorize: (operationId: string) => Promise<void>;
+    },
+  ): Promise<RunContextStats> {
+    await admission.checkOwner();
+    const run = this.deps.repo.getRun(runId);
+    if (!run || run.config?.implementation !== "agent-loop" || !TERMINAL_RUN_STATUSES.has(run.status))
+      throw new AuxError(
+        "conflict",
+        "Wait for this conversation turn to finish before compacting saved history.",
+      );
+    const chatId = run.config.chatId ?? runId;
+    if (
+      this.deps.repo.getConversation(chatId)?.archived ||
+      this.deps.repo.conversationRuns(chatId).some((turn) => !TERMINAL_RUN_STATUSES.has(turn.status))
+    )
+      throw new AuxError("conflict", "Restore this chat and wait for its active work before compacting.");
+    const stats = this.contextStats(runId);
+    if (stats.revision !== expectedRevision)
+      throw new AuxError("conflict", "The context changed. Review its current usage before compacting.");
+    const route = admission.route;
+    if (run.config.privateTask && route.kind === "network")
+      throw new AuxError("permission_denied", "Compact this private task using a local text model.");
+    const limits = this.deps.agentLoop?.modelLimits?.(stats.modelId);
+    const summaryCapability = modelCapabilities(route.modelId, this.deps.settings.registryModels());
+    const workspaceId =
+      run.config.contextWorkspaceId ?? this.conversationWorkspace(chatId).workspace?.workspaceId;
+    return this.idleCompactions.start(
+      run,
+      stats,
+      {
+        contextTokens: limits?.contextTokens,
+        maxOutputTokens: limits?.maxOutputTokens ?? 4_000,
+        system: buildSystemPrompt({
+          hasPage: !!run.pageIds.length,
+          webEnabled: true,
+          hasProject: !!run.config.projectRoot,
+        }),
+        toolsBytes: modelTools(buildToolManifest()).bytes,
+      },
+      {
+        contextTokens: summaryCapability?.contextTokens ?? (route.kind === "on-device" ? 4_096 : 16_000),
+        maxOutputTokens: Math.min(768, summaryCapability?.maxOutputTokens ?? 768),
+      },
+      async (cancelSignal, check, prepare) => {
+        const checkOwner = async () => {
+          cancelSignal.throwIfAborted();
+          check();
+          await admission.checkOwner();
+          if (run.config?.contextMemoryRefs?.length && workspaceId)
+            await this.requireCapturedSources(workspaceId, run.config.contextMemoryRefs);
+          for (const reference of run.config?.contextAttachmentRefs ?? [])
+            this.documents.referenceMetadata(reference);
+          check();
+        };
+        await this.generationOperation(
+          {
+            kind: "utility",
+            prompt: "Compact the selected saved conversation; preserve its original history.",
+            nativeTurnContext: admission.nativeTurnContext,
+            checkOwner,
+            contextRunIds: [runId],
+            contextWorkspaceId: workspaceId,
+            signal: cancelSignal,
+          },
+          async (operationId, signal) => {
+            const operationSignal = AbortSignal.any([signal, cancelSignal]);
+            const model = this.utilityClient({
+              runId: operationId,
+              route,
+              signal: operationSignal,
+              checkOwner,
+              authorize: () => admission.authorize(operationId),
+            });
+            await prepare(async (request) => {
+              await checkOwner();
+              const result = await model.generateText({
+                modelId: route.modelId,
+                system: request.system,
+                prompt: JSON.stringify(request.messages),
+                maxOutputTokens: request.maxOutputTokens,
+                signal: AbortSignal.any([operationSignal, request.signal]),
+                maxAttempts: 1,
+                source: {
+                  runId: operationId,
+                  nativeTurnContext: admission.nativeTurnContext,
+                  checkOriginal: check,
+                  authorizeDestination: () => admission.authorize(operationId),
+                },
+              });
+              await checkOwner();
+              request.check();
+              return result.text;
+            });
+            await checkOwner();
+            return { compactedRunId: runId };
+          },
+        );
+      },
+    );
+  }
+
+  async cancelIdleContextCompaction(runId: string, compactionId: string): Promise<RunContextStats> {
+    if (await this.idleCompactions.cancel(runId, compactionId)) return this.contextStats(runId);
+    return this.cancelContextCompaction(runId, compactionId);
   }
 
   cancelContextCompaction(runId: string, compactionId: string): RunContextStats {
@@ -878,7 +1065,17 @@ export class RunService {
     return conversation;
   }
 
+  retireConversationCompactions(chatId: string): Promise<void> {
+    return this.idleCompactions.retire(chatId);
+  }
+
+  retireWorkspaceCompactions(workspaceId: string): Promise<void> {
+    return this.idleCompactions.retireWorkspace(workspaceId);
+  }
+
   deleteConversation(chatId: string) {
+    if (this.idleCompactions.hasConversation(chatId))
+      throw new AuxError("conflict", "Cancel context compaction before deleting this conversation.");
     const runs = this.deps.repo.conversationRuns(chatId);
     if (
       !runs.length &&
@@ -931,6 +1128,7 @@ export class RunService {
 
   private inheritedContext(chatId: string): {
     turns?: string;
+    compacted: boolean;
     artifacts?: string;
     verifiedArtifacts?: string;
     browsing?: string;
@@ -944,10 +1142,46 @@ export class RunService {
     const included = this.context(chatId)
       .entries.filter((entry) => entry.included)
       .reverse();
-    const turnText = included
-      .map((entry) => `"${entry.goal.slice(0, 400)}" → ${entry.summary.slice(0, 1800)}`)
-      .join("; ")
-      .slice(0, 6000);
+    const transcript = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher);
+    const parts: ReturnType<typeof conversationReferenceParts>[] = [];
+    const ordinary: string[] = [];
+    for (const entry of [...included].reverse()) {
+      const source = this.deps.repo.getRun(entry.runId)!;
+      this.checkSetSource(entry.runId);
+      if (source.config?.contextMemoryRevoked)
+        throw new AuxError("ref_stale", "A selected conversation turn was forgotten.");
+      const projection = source.config?.contextCompaction?.projection;
+      const raw = transcript.entries(entry.runId);
+      if (projection) {
+        const currentProjection =
+          projection.authorityHash === this.contextAuthority(source) &&
+          contextAuthorityHash(raw.filter((item) => item.seq <= projection.boundarySeq)) ===
+            projection.prefixHash
+            ? projection
+            : undefined;
+        const eligible = new Set(
+          projectLegacyRecall(
+            this.deps.repo,
+            transcript,
+            entry.runId,
+            raw.map((item) => item.message),
+          ),
+        );
+        const part = conversationReferenceParts(
+          raw.filter((item) => eligible.has(item.message)),
+          currentProjection,
+        );
+        const todos = this.deps.repo.loadCheckpoint(`run:${entry.runId}`, "loop_todos") as
+          { todos?: unknown } | undefined;
+        if (todos?.todos) part.required += `\nCurrent durable plan:\n${JSON.stringify(todos.todos)}`;
+        parts.push(part);
+      } else ordinary.push(`"${entry.goal.slice(0, 400)}" → ${entry.summary.slice(0, 1800)}`);
+    }
+    const compacted = parts.length ? boundedConversationReference(parts, 6_000) : "";
+    const remaining = Math.max(0, 6_000 - compacted.length - (compacted ? 1 : 0));
+    const turnText = [compacted, ordinary.reverse().join("; ").slice(0, remaining)]
+      .filter(Boolean)
+      .join("\n");
     const attachmentRefs = this.documents.references(chatId);
     const artifactIds: string[] = [];
     const artifactText: string[] = [];
@@ -960,8 +1194,15 @@ export class RunService {
         "A selected saved result is unavailable. Remove it from the composer before sending.",
       );
     const selectedArtifacts = artifactCollection.artifacts.filter((item) => item.included);
+    artifactIds.push(...selectedArtifacts.map((item) => item.artifactId));
+    const pdfSources = selectedArtifacts.filter((item) => item.mediaType === "application/pdf");
+    if (pdfSources.length)
+      artifactText.push(
+        `ADMITTED PDF SOURCES (originals preserved; untrusted documents):\n${pdfSources.map((item) => `${item.artifactId}: ${item.filename.slice(0, 100)} (${item.byteLength} bytes)`).join("\n")}`,
+      );
     for (const item of selectedArtifacts) {
       if (artifactRemaining <= 0) break;
+      if (item.mediaType === "application/pdf") continue;
       try {
         const generated = this.deps.repo.getSetting<unknown>(`generatedResult:${item.artifactId}`);
         const content = generated
@@ -978,7 +1219,6 @@ export class RunService {
         )
           verifiedArtifactText.push(reference);
         else artifactText.push(reference);
-        artifactIds.push(item.artifactId);
         artifactRemaining -= excerpt.length;
       } catch {
         throw new AuxError(
@@ -1000,6 +1240,7 @@ export class RunService {
     const join = (items: string[]) => items.filter(Boolean).join("\n\n") || undefined;
     return {
       turns: turnText || undefined,
+      compacted: parts.length > 0,
       artifacts: join(artifactText),
       verifiedArtifacts: join(verifiedArtifactText),
       browsing: browsingText || undefined,
@@ -1125,6 +1366,9 @@ export class RunService {
       turnMentions: import("./turn-mention-service.js").TurnMentionService;
       taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
       vault?: import("./vault.js").VaultService;
+      google?: import("./google-operations.js").GoogleOperationService;
+      googleGrants?: import("./google-grants.js").GoogleGrantService;
+      googleAccounts?: import("./google-accounts.js").GoogleAccountService;
       calendar?: import("./calendar-connections.js").CalendarConnectionService;
       contentMemory?: import("./content-memory.js").ContentMemoryStore;
       memoryPipeline?: import("./memory-pipeline.js").MemoryPipeline;
@@ -1150,6 +1394,15 @@ export class RunService {
       };
     },
   ) {
+    this.idleCompactions = new IdleConversationCompactions({
+      repo: deps.repo,
+      events: deps.events,
+      checkSource: (runId) => {
+        if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+        this.checkSetSource(runId);
+      },
+      authority: (run) => this.contextAuthority(run),
+    });
     this.startReceipts = new RunStartReceipts(deps.repo);
     this.documents = new ConversationDocuments(deps.repo, deps.documentSnapshots);
     this.images = new ConversationImages(deps.repo, deps.artifacts, (chatId) =>
@@ -1280,6 +1533,9 @@ export class RunService {
       suspensions: deps.suspensions,
       vault: deps.vault,
       calendar: deps.calendar,
+      googleGrants: deps.googleGrants,
+      googleAccounts: deps.googleAccounts,
+      googleOperation: (input) => this.googleOperation(input),
       operations: deps.operations,
       pageOwnership: this.pageOwnership,
       browserEgress: deps.browserEgress,
@@ -1502,6 +1758,7 @@ export class RunService {
       ...(prepared
         ? {
             accountLabels: target.config.accountLabels ?? [],
+            googleGrantIds: target.config.googleGrantIds ?? [],
             calendarGrantIds: target.config.calendarGrantIds ?? [],
           }
         : {}),
@@ -1517,6 +1774,9 @@ export class RunService {
       expectedRevision?: number;
       nativeTurnContext: string;
       checkOwner: () => Promise<void>;
+      contextRunIds?: string[];
+      contextWorkspaceId?: string;
+      signal?: AbortSignal;
     },
     operation: (runId: string, signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
@@ -1527,7 +1787,9 @@ export class RunService {
     input: Parameters<RunService["generationOperation"]>[0],
     operation: (runId: string, signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
+    input.signal?.throwIfAborted();
     await input.checkOwner();
+    input.signal?.throwIfAborted();
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
     const task = input.taskId
       ? new TaskService(this.deps.repo, this.deps.events).get(input.taskId)
@@ -1545,6 +1807,8 @@ export class RunService {
       pageIds: [],
       config: {
         implementation: `${input.kind}-generation`,
+        contextRunIds: input.contextRunIds,
+        contextWorkspaceId: input.contextWorkspaceId,
         agentMode: this.deps.settings.agentPolicy().agentMode,
         nativeTurnContext: input.nativeTurnContext,
         taskId: task?.taskId,
@@ -1556,6 +1820,15 @@ export class RunService {
     };
     this.deps.repo.saveRun(run);
     const unregister = this.coordinator.registerBatch(run);
+    const control = this.coordinator.controls.get(run.runId)!;
+    const cancel = () => {
+      control.abort.abort(input.signal?.reason);
+      control.dispatchAbort?.abort(input.signal?.reason);
+      control.budgetWaiter?.resolve();
+      control.resourceWaiter?.resolve();
+    };
+    input.signal?.addEventListener("abort", cancel, { once: true });
+    if (input.signal?.aborted) cancel();
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
     try {
       const result = await operation(run.runId, this.coordinator.controls.get(run.runId)!.abort.signal);
@@ -1570,6 +1843,7 @@ export class RunService {
       );
       throw error;
     } finally {
+      input.signal?.removeEventListener("abort", cancel);
       unregister();
     }
   }
@@ -1727,6 +2001,98 @@ export class RunService {
       };
       pending.add(release);
       return release;
+    });
+  }
+
+  searchWeb(input: {
+    runId: string;
+    request: import("@aux/contracts/web-search").WebSearchInput;
+    model: import("../agent/model-client.js").ModelClient;
+    modelGeneration: string;
+    signal: AbortSignal;
+    checkOwner(): void | Promise<void>;
+    authorize(): Promise<void>;
+  }): Promise<import("@aux/contracts/web-search").StructuredWebSearchResult> {
+    return this.ownOperation(async () => {
+      const run = this.deps.repo.getRun(input.runId);
+      const control = this.coordinator.controls.get(input.runId);
+      if (!run || run.status !== "running" || !control || control.paused || control.abort.signal.aborted)
+        throw new AuxError("cancelled", "The original search execution retired.");
+      const config = JSON.stringify(run.config);
+      const generation = input.modelGeneration;
+      const policy = this.deps.settings.agentPolicy().agentPolicyRevision;
+      const signal = AbortSignal.any([
+        input.signal,
+        control.abort.signal,
+        ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),
+      ]);
+      const checkOwner = async () => {
+        signal.throwIfAborted();
+        await input.checkOwner();
+        const current = this.deps.repo.getRun(input.runId);
+        if (
+          this.closed ||
+          this.coordinator.controls.get(input.runId) !== control ||
+          control.paused ||
+          !current ||
+          current.status !== "running" ||
+          JSON.stringify(current.config) !== config ||
+          this.deps.settings.modelCacheGeneration() !== generation ||
+          this.deps.settings.agentPolicy().agentPolicyRevision !== policy
+        )
+          throw new AuxError("cancelled", "The original search run, model, account or policy changed.");
+        this.checkSetSource(input.runId);
+        signal.throwIfAborted();
+      };
+      await checkOwner();
+      const selected = input.model;
+      if (this.deps.settings.modelProvider() !== "gateway" || !selected.searchWeb)
+        throw new AuxError(
+          "capability_unsupported",
+          "The selected connection has no structured Gateway search.",
+        );
+      const modelId = run.config?.modelId ?? this.deps.settings.agentRoute("standard").modelId;
+      const model = this.utilityClient({
+        runId: input.runId,
+        route: {
+          kind: "network",
+          model: selected,
+          modelId,
+          provider: "gateway",
+          destination: "https://ai-gateway.vercel.sh",
+        },
+        signal,
+        checkOwner,
+        authorize: input.authorize,
+      });
+      const token = run.config?.nativeTurnContext;
+      const source = token
+        ? {
+            runId: input.runId,
+            nativeTurnContext: token,
+            checkOriginal: checkOwner,
+            authorizeDestination: async (origin: string) => {
+              if (new URL(origin).origin !== "https://ai-gateway.vercel.sh")
+                throw new AuxError(
+                  "permission_denied",
+                  "The search account changed its Gateway destination.",
+                );
+              await checkOwner();
+              await input.authorize();
+              await checkOwner();
+            },
+          }
+        : undefined;
+      const receipt = await model.searchWeb!({
+        request: input.request,
+        modelId,
+        signal,
+        source,
+        sessionId: run.config?.chatId ?? input.runId,
+        maxAttempts: 1,
+      });
+      await checkOwner();
+      return receipt.result;
     });
   }
 
@@ -2318,6 +2684,400 @@ export class RunService {
     }
   }
 
+  googleOperation(input: import("./google-operations.js").GoogleInvoke) {
+    return this.ownOperation(async () => {
+      const run = this.deps.repo.getRun(input.runId),
+        control = this.coordinator.controls.get(input.runId),
+        service = this.deps.google;
+      if (
+        !service ||
+        !run ||
+        !control ||
+        control.paused ||
+        run.status !== "running" ||
+        this.deps.privateBrowserProfile ||
+        run.config?.privateTask ||
+        !run.config?.googleGrantIds?.includes(input.grantId)
+      )
+        throw new AuxError(
+          "permission_denied",
+          "This original run has no active Google operation authority.",
+        );
+      const signal = AbortSignal.any([
+        control.abort.signal,
+        ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),
+      ]);
+      this.checkSetSource(input.runId);
+      const result = await service.invoke(input, signal);
+      signal.throwIfAborted();
+      if (
+        this.coordinator.controls.get(input.runId) !== control ||
+        control.paused ||
+        this.deps.repo.getRun(input.runId)?.status !== "running"
+      )
+        throw new AuxError("cancelled", "The original Google run retired.");
+      this.checkSetSource(input.runId);
+      return result;
+    });
+  }
+
+  pdfOperation<T>(
+    input: { runId: string; signal: AbortSignal; checkOwner(): void },
+    operation: (run: Run, signal: AbortSignal, checkCurrent: () => void) => Promise<T>,
+  ): Promise<T> {
+    return this.ownOperation(async () => {
+      const run = this.deps.repo.getRun(input.runId);
+      const control = this.coordinator.controls.get(input.runId);
+      if (!run || !control || run.status !== "running")
+        throw new AuxError("permission_denied", "A live original PDF run is required.");
+      const signal = AbortSignal.any([input.signal, control.abort.signal]);
+      const checkCurrent = () => {
+        signal.throwIfAborted();
+        input.checkOwner();
+        const current = this.deps.repo.getRun(input.runId);
+        if (
+          !current ||
+          current.status !== "running" ||
+          this.coordinator.controls.get(input.runId) !== control ||
+          control.paused ||
+          JSON.stringify(current.config?.contextArtifactIds) !==
+            JSON.stringify(run.config?.contextArtifactIds) ||
+          JSON.stringify(current.config?.contextAttachmentRefs) !==
+            JSON.stringify(run.config?.contextAttachmentRefs) ||
+          JSON.stringify(current.config?.contextTaskDocumentRefs) !==
+            JSON.stringify(run.config?.contextTaskDocumentRefs)
+        )
+          throw new AuxError("cancelled", "The original PDF run or admitted sources changed.");
+        this.checkSetSource(input.runId);
+      };
+      checkCurrent();
+      return operation(run, signal, checkCurrent);
+    });
+  }
+
+  /** Channel intake supplies authenticated source ownership, never model arguments. */
+  transcribeChannelAudio(
+    input: ChannelAudioInput & {
+      inspectAudio: InspectAudio;
+      authorize(input: {
+        runId: string;
+        modelId: string;
+        generation: string;
+        source: ChannelAudioInput["source"];
+        sha256: string;
+        inspection: AudioInspection;
+      }): Promise<void>;
+    },
+  ): Promise<AudioOutcome> {
+    return this.ownOperation(() => this.transcribeChannelAudioOwned(input));
+  }
+
+  private async transcribeChannelAudioOwned(
+    input: ChannelAudioInput & {
+      inspectAudio: InspectAudio;
+      authorize(input: {
+        runId: string;
+        modelId: string;
+        generation: string;
+        source: ChannelAudioInput["source"];
+        sha256: string;
+        inspection: AudioInspection;
+      }): Promise<void>;
+    },
+  ): Promise<AudioOutcome> {
+    const run = this.deps.repo.getRun(input.runId);
+    const control = this.coordinator.controls.get(input.runId);
+    if (
+      !run ||
+      !control ||
+      run.config?.implementation !== "external-agent" ||
+      !run.config.externalConnectionId ||
+      run.config.externalRetirementPending
+    )
+      throw new AuxError("permission_denied", "A live original external voice session is required.");
+    const modelId = this.deps.settings.transcriptionModel();
+    if (!modelId) throw new AuxError("permission_denied", "Voice transcription is off in Settings.");
+    const generation = this.deps.settings.modelCacheGeneration();
+    const policyRevision = this.deps.settings.agentPolicy().agentPolicyRevision;
+    const cancel = new AbortController();
+    let requestDeadline: ReturnType<typeof setTimeout> | undefined;
+    const signal = AbortSignal.any([input.signal, control.abort.signal, cancel.signal]);
+    const checkOwner = async () => {
+      signal.throwIfAborted();
+      input.checkCurrent();
+      signal.throwIfAborted();
+      const current = this.deps.repo.getRun(input.runId);
+      if (
+        this.coordinator.controls.get(input.runId) !== control ||
+        !current ||
+        current.status !== "running" ||
+        control.paused ||
+        this.deps.settings.transcriptionModel() !== modelId ||
+        this.deps.settings.modelCacheGeneration() !== generation ||
+        this.deps.settings.agentPolicy().agentPolicyRevision !== policyRevision
+      )
+        throw new AuxError("cancelled", "The original transcription request or account changed.");
+      if (
+        current.config?.externalRetirementPending ||
+        current.config?.externalConnectionId !== run.config?.externalConnectionId
+      )
+        throw new AuxError("cancelled", "The original external voice session retired.");
+      this.checkExternalSource({
+        externalParentRunId: input.runId,
+        externalConnectionId: run.config!.externalConnectionId!,
+      });
+      if (run.config?.taskId) {
+        const task = new TaskService(this.deps.repo, this.deps.events).get(run.config.taskId);
+        if (task.state !== "open" || task.revision !== run.config.taskRevision)
+          throw new AuxError("cancelled", "The original transcription task changed.");
+      }
+    };
+    const unsubscribe = this.deps.events.subscribe((event) => {
+      const current = this.deps.repo.getRun(input.runId);
+      if (current && !["running", "needs_input", "paused"].includes(current.status))
+        cancel.abort(new AuxError("cancelled", "The original transcription run ended."));
+      if (
+        event.type === EventTypes.SettingsChanged &&
+        (this.deps.settings.transcriptionModel() !== modelId ||
+          this.deps.settings.modelCacheGeneration() !== generation ||
+          this.deps.settings.agentPolicy().agentPolicyRevision !== policyRevision)
+      )
+        cancel.abort(new AuxError("cancelled", "The transcription account or policy changed."));
+    });
+    const capture: ChannelAudioInput = { ...input, signal };
+    let admitted: Awaited<ReturnType<typeof inspectChannelAudio>>;
+    let estimateUsd: number;
+    let ledger: SpendLedger | undefined;
+    let releaseCall: (() => void) | undefined;
+    let callId: string | undefined;
+    let receiptRecorded = false;
+    let toolkitStarted = false;
+    let fundingReservation: string | undefined;
+    let accountBudgetId: string | undefined;
+    const settle = async (receipt: AudioTranscriptionReceipt) => {
+      if (!callId || receiptRecorded)
+        throw new AuxError("conflict", "The original transcription receipt is unavailable.");
+      await withRunAuthorityMutation(this.deps.repo, async () => {
+        if (receipt.dispatched)
+          this.deps.repo.settleModelCall(callId!, input.runId, {
+            ...receipt,
+            costUsd: receipt.costEstimated ? undefined : receipt.costUsd,
+          });
+        else this.deps.repo.discardModelCallReservation(callId!, input.runId);
+        if (receipt.dispatched)
+          this.funding.settle(input.runId, fundingReservation, [], {
+            ...receipt,
+            costUsd: receipt.costUsd ?? estimateUsd,
+          });
+        else this.funding.cancelUnsent(input.runId, fundingReservation);
+      });
+      if (accountBudgetId) {
+        if (receipt.dispatched)
+          await this.deps.accountBudget?.settle(accountBudgetId, {
+            costUsd: receipt.costEstimated ? undefined : receipt.costUsd,
+            costEstimated: receipt.costEstimated,
+          });
+        else await this.deps.accountBudget?.cancel(accountBudgetId);
+        accountBudgetId = undefined;
+      }
+      receiptRecorded = true;
+      // Financial settlement outlives publication; source retirement may omit this
+      // projection but must never roll back the original invoice or recreate a file.
+      try {
+        await input.recordReceipt(receipt);
+      } catch (error) {
+        try {
+          input.checkCurrent();
+        } catch {
+          return; /* original source retired */
+        }
+        throw error;
+      }
+      this.deps.events.emit(EventTypes.ModelCall, { runId: input.runId, ...receipt }, input.runId);
+    };
+    try {
+      await checkOwner();
+      admitted = await inspectChannelAudio(capture, input.inspectAudio);
+      await checkOwner();
+      const models = await this.deps.settings.listTranscriptionModels();
+      await checkOwner();
+      const capability = models.find((model) => model.id === modelId)?.transcription;
+      if (!capability?.batch)
+        throw new AuxError(
+          "capability_unsupported",
+          "Choose a verified duration-priced batch transcription model.",
+        );
+      // Round each clip up to a second and reserve the established 2x price
+      // estimate margin. Provider cost remains observed only when returned.
+      estimateUsd = Math.ceil(admitted.inspection.durationSeconds) * capability.usdPerSecond * 2;
+      const authorize = () =>
+        input.authorize({
+          runId: input.runId,
+          modelId,
+          generation,
+          source: input.source,
+          sha256: input.sha256,
+          inspection: admitted.inspection,
+        });
+      await authorize();
+      await checkOwner();
+      ledger = new SpendLedger();
+      releaseCall = await this.reserveFamilyCall(input.runId);
+      while (true) {
+        await checkOwner();
+        try {
+          await withRunAuthorityMutation(this.deps.repo, async () => {
+            await checkOwner();
+            fundingReservation = await this.funding.reserveEstimated(input.runId, {
+              modelId,
+              estimatedCostUsd: estimateUsd,
+              tokenUsageUnknown: true,
+            });
+            await checkOwner();
+            await this.deps.accountBudget?.refresh();
+            this.deps.budgets?.assertWithin({
+              runId: input.runId,
+              requiredUsd: estimateUsd,
+              excludeRunLimit: this.funding.rootCostOwned(input.runId),
+            });
+            if (this.deps.accountBudget) {
+              accountBudgetId = newStepId();
+              await this.deps.accountBudget.reserve(accountBudgetId, "model", estimateUsd);
+            }
+            await checkOwner();
+            const invoiceId = newStepId();
+            this.deps.repo.transaction(() => {
+              const writeInvoice = () =>
+                this.deps.repo.saveModelCall({
+                  callId: invoiceId,
+                  runId: input.runId,
+                  role: "agent",
+                  modelId,
+                  providerMetadata: {
+                    aux: {
+                      kind: "audio_transcription",
+                      source: {
+                        connectionId: input.source.connectionId,
+                        peerKey: input.source.peerKey,
+                        messageKey: input.source.messageKey,
+                        attachmentKey: input.source.attachmentKey,
+                      },
+                      sourceSha256: input.sha256,
+                      audioDurationSeconds: admitted.inspection.durationSeconds,
+                      provider: "gateway",
+                      destination: "https://ai-gateway.vercel.sh",
+                    },
+                  },
+                  durationMs: 0,
+                  costUsd: estimateUsd,
+                  costEstimated: true,
+                  createdAt: Date.now(),
+                });
+              if (accountBudgetId && this.deps.accountBudget)
+                this.deps.accountBudget.record(accountBudgetId, writeInvoice);
+              else writeInvoice();
+            });
+            callId = invoiceId;
+          });
+          break;
+        } catch (error) {
+          if (accountBudgetId) {
+            await this.deps.accountBudget?.cancel(accountBudgetId);
+            accountBudgetId = undefined;
+          }
+          this.funding.cancelUnsent(input.runId, fundingReservation);
+          fundingReservation = undefined;
+          if (error instanceof FundingBudgetError) {
+            releaseCall();
+            releaseCall = undefined;
+            await this.coordinator.pauseForBudget(input.runId, error.budget);
+            await checkOwner();
+            await authorize();
+            await checkOwner();
+            releaseCall = await this.reserveFamilyCall(input.runId);
+            continue;
+          }
+          const detail = error instanceof AuxError ? error.detail : undefined;
+          if (
+            !(error instanceof AuxError) ||
+            !["permission_denied", "needs_input"].includes(error.code) ||
+            !detail ||
+            typeof detail !== "object" ||
+            !("scope" in detail) ||
+            !("limitUsd" in detail) ||
+            !("spentUsd" in detail) ||
+            typeof detail.limitUsd !== "number" ||
+            typeof detail.spentUsd !== "number"
+          )
+            throw error;
+          // Free the unbilled model-call slot while the real owner reviews the spend cap.
+          releaseCall();
+          releaseCall = undefined;
+          await this.coordinator.pauseForBudget(input.runId, {
+            reason: "spend",
+            scope: detail.scope as import("@aux/contracts").BudgetSuspension["scope"],
+            limit: detail.limitUsd,
+            used: detail.spentUsd,
+            requiredUsd: estimateUsd,
+          });
+          await checkOwner();
+          await authorize();
+          await checkOwner();
+          releaseCall = await this.reserveFamilyCall(input.runId);
+        }
+      }
+      releaseCall();
+      releaseCall = undefined;
+      requestDeadline = setTimeout(
+        () =>
+          cancel.abort(
+            new AuxError("cancelled", "The original transcription request exceeded its two-minute deadline."),
+          ),
+        120_000,
+      );
+      requestDeadline.unref();
+      toolkitStarted = true;
+      return await transcribeAdmittedAudio({
+        capture,
+        bytes: admitted.bytes,
+        inspection: admitted.inspection,
+        modelId,
+        callId: callId!,
+        estimateUsd,
+        ledger,
+        checkCurrent: checkOwner,
+        recordReceipt: settle,
+        generator: gatewayAudioGenerator(async (requestSignal) => {
+          await checkOwner();
+          const access = await this.deps.settings.gatewayTranscriptionCredential(requestSignal);
+          await checkOwner();
+          await authorize();
+          await checkOwner();
+          return access;
+        }),
+      });
+    } catch (error) {
+      // A proved refusal before the provider tool starts has no provider spend.
+      if (callId && !receiptRecorded && !toolkitStarted)
+        await settle({
+          dispatched: false,
+          costUsd: 0,
+          costEstimated: false,
+          durationMs: 0,
+          callId,
+          modelId,
+          sourceSha256: input.sha256,
+          audioDurationSeconds: admitted!.inspection.durationSeconds,
+        });
+      throw error;
+    } finally {
+      releaseCall?.();
+      unsubscribe();
+      clearTimeout(requestDeadline);
+      ledger?.close();
+    }
+  }
+
   private async recordModelCall(input: {
     accountBudgetId?: string;
     runId: string;
@@ -2483,6 +3243,7 @@ export class RunService {
       taskId: parent.config?.taskId,
       taskRevision: parent.config?.taskRevision,
       accountLabels: parent.config?.accountLabels,
+      googleGrantIds: parent.config?.googleGrantIds ?? [],
       calendarGrantIds: parent.config?.calendarGrantIds,
     });
     const cancel = () => {
@@ -2797,6 +3558,7 @@ export class RunService {
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextAttachmentRefs?: import("@aux/contracts").AttachmentReference[];
+    contextTaskDocumentRefs?: import("@aux/contracts").TaskDocumentReference[];
     contextDocumentEvidence?: string;
     contextArtifactEvidence?: string;
     contextArtifactIds?: string[];
@@ -2821,6 +3583,7 @@ export class RunService {
     packageNames?: string[];
     profile?: string;
     coderWorktree?: import("@aux/contracts").CoderWorktree;
+    googleGrantIds?: string[];
     calendarGrantIds?: string[];
   }): Promise<Run> {
     return this.ownOperation(() =>
@@ -3007,6 +3770,11 @@ export class RunService {
       ],
       CONTEXT_CHARS - (pipelineText?.length ?? 0) - (pipelineText ? 2 : 0),
     );
+    if (inherited?.compacted && contextParts[2] !== inherited.turns)
+      throw new AuxError(
+        "model_error",
+        "Selected compacted history cannot fit beside the current request. Narrow selected turns or attached context; exact instructions and effects were preserved.",
+      );
     const context = [...contextParts.filter(Boolean), pipelineText].filter(Boolean).join("\n\n") || undefined;
     const contextDocumentEvidence = opts.contextSnapshot ? opts.contextDocumentEvidence : undefined;
     const contextArtifactEvidence = opts.contextSnapshot ? opts.contextArtifactEvidence : contextParts[3];
@@ -3191,6 +3959,7 @@ export class RunService {
       contextRunIds,
       contextAttachmentIds,
       contextAttachmentRefs,
+      contextTaskDocumentRefs: opts.contextTaskDocumentRefs,
       contextDocumentEvidence,
       contextArtifactEvidence,
       contextArtifactIds,
@@ -3208,6 +3977,7 @@ export class RunService {
       auxPackages: opts.auxPackages ?? coding?.auxPackages,
       projectRoot: opts.projectRoot ?? coding?.projectRoot,
       coderWorktree: opts.coderWorktree,
+      googleGrantIds: opts.googleGrantIds,
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });
@@ -3346,6 +4116,7 @@ export class RunService {
       contextRunIds: prior.config?.contextRunIds,
       contextAttachmentIds: prior.config?.contextAttachmentIds,
       contextAttachmentRefs: prior.config?.contextAttachmentRefs,
+      contextTaskDocumentRefs: prior.config?.contextTaskDocumentRefs,
       contextDocumentEvidence: prior.config?.contextDocumentEvidence,
       contextArtifactEvidence: prior.config?.contextArtifactEvidence,
       contextArtifactIds: prior.config?.contextArtifactIds,
@@ -3359,6 +4130,7 @@ export class RunService {
       chatId,
       retryOfRunId: prior.runId,
       accountLabels: prior.config?.accountLabels,
+      googleGrantIds: prior.config?.googleGrantIds ?? [],
       calendarGrantIds: prior.config?.calendarGrantIds,
     });
   }
@@ -3504,6 +4276,7 @@ export class RunService {
 
   close(): Promise<void> {
     if (this.closing) return this.closing;
+    const idleRetirement = this.idleCompactions.retire();
     this.closed = true;
     const active = [...new Set([...this.coordinator.activeRunIds(), ...this.setRunControls.keys()])];
     const schedulers = [...this.setExecutions.values()];
@@ -3525,6 +4298,7 @@ export class RunService {
     }
     this.closing = Promise.allSettled([
       retirement,
+      idleRetirement,
       ...[...roots]
         .filter((root) => !preserved.has(root))
         .map((root) => this.cancel(root, "Runtime closed.")),

@@ -516,3 +516,104 @@ it("parks an authorization request without marking an unissued MCP effect uncert
     f.db.close();
   }
 });
+
+it("retires old authority when a provider changes a same-name tool schema or effect metadata", async () => {
+  let description = "Initial description";
+  let destructive = false;
+  const f = fixture(async () =>
+    fakeTransport([], undefined, [
+      {
+        name: "notion-fetch",
+        description,
+        inputSchema: { type: "object", properties: { id: { type: "string" } } },
+        annotations: { readOnlyHint: true, destructiveHint: destructive },
+      },
+    ]),
+  );
+  try {
+    const server = await f.service.register({
+      workspaceId: f.workspace.workspaceId,
+      name: "Notion",
+      source: { kind: "remote", url: "https://mcp.notion.com/mcp", auth: "oauth" },
+    });
+    expect(await f.service.listTools(server.serverId)).toMatchObject([{ effect: "read" }]);
+    const first = f.service.get(server.serverId);
+    await f.service.listTools(server.serverId);
+    expect(f.service.get(server.serverId).toolsRevision).toBe(first.toolsRevision);
+    description = "Changed instructions";
+    destructive = true;
+    expect(await f.service.listTools(server.serverId)).toMatchObject([
+      { effect: "unknown", annotations: { destructiveHint: true } },
+    ]);
+    const changed = f.service.get(server.serverId);
+    expect(changed.toolNames).toEqual(first.toolNames);
+    expect(changed.toolsRevision).toBe(first.toolsRevision + 1);
+    expect(changed.catalogDigest).not.toBe(first.catalogDigest);
+    expect(() =>
+      f.service.setEnabled({
+        serverId: server.serverId,
+        toolName: "notion-fetch",
+        enabled: false,
+        expectedRevision: first.toolsRevision,
+      }),
+    ).toThrow(expect.objectContaining({ code: "conflict" }));
+  } finally {
+    f.db.close();
+  }
+});
+
+it("preserves provider notices, current access restrictions and structured tool results", async () => {
+  const output = {
+    content: [{ type: "text", text: "Partial matches" }],
+    structuredContent: {
+      notices: [{ code: "filter_not_supported", filter: "created_time" }],
+      access: { sql: "unavailable_on_plan" },
+      results: [{ id: "actual-source", url: "https://notion.so/source" }],
+    },
+  };
+  const f = fixture(async () => fakeTransport([], output));
+  try {
+    const server = await f.service.register({
+      workspaceId: f.workspace.workspaceId,
+      name: "Notion",
+      source: { kind: "remote", url: "https://mcp.notion.com/mcp", auth: "oauth" },
+    });
+    await f.service.listTools(server.serverId);
+    const result = await f.service.callTool(
+      server.serverId,
+      "read",
+      {},
+      { workspaceId: f.workspace.workspaceId },
+    );
+    expect(result.status).toBe("completed");
+    expect(JSON.parse(result.output)).toMatchObject(output);
+  } finally {
+    f.db.close();
+  }
+});
+
+it("persists credential replacement retirement in the same tool authority revision across restart", async () => {
+  const f = fixture(async () => fakeTransport([]));
+  try {
+    const server = await f.service.register({
+      workspaceId: f.workspace.workspaceId,
+      name: "Notion",
+      source: { kind: "remote", url: "https://mcp.notion.com/mcp", auth: "oauth" },
+    });
+    await f.service.listTools(server.serverId);
+    const captured = f.service.get(server.serverId);
+    f.service.invalidateAuthorization(server.serverId);
+    const restarted = new OutboundMcpService(f.repo, async () => fakeTransport([]));
+    expect(restarted.get(server.serverId).toolsRevision).toBe(captured.toolsRevision + 1);
+    expect(() =>
+      restarted.setEnabled({
+        serverId: server.serverId,
+        toolName: "read",
+        enabled: false,
+        expectedRevision: captured.toolsRevision,
+      }),
+    ).toThrow(expect.objectContaining({ code: "conflict" }));
+  } finally {
+    f.db.close();
+  }
+});

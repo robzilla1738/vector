@@ -11,8 +11,6 @@ import { SettingsGroup, Switch } from "../../ui";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
-import { Plus, ArrowUp } from "../../ui/icons";
-import "./QuickAsk.css";
 
 type Status = { enabled: boolean; registered: boolean; error: string };
 export function QuickAskSettings({
@@ -84,18 +82,15 @@ export function QuickAskSettings({
         target="Quick Ask window"
         hint="Open a compact chat, then expand it into a full browser window without losing the draft."
         details={
-          <div className="quick-ask-preview" aria-hidden="true">
-            <div className="quick-ask-preview-composer">
-              <span>Ask Aux</span>
-              <div>
-                <Plus />
-                <span>Quick Ask</span>
-                <i>
-                  <ArrowUp />
-                </i>
-              </div>
-            </div>
-          </div>
+          <img
+            className="setting-illustration"
+            src="/settings/quick-ask.webp"
+            width={288}
+            height={160}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         }
       >
         <button

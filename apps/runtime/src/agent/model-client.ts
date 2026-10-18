@@ -132,6 +132,15 @@ export function modelCallCost(
   models?: readonly ModelCapability[],
 ): { costUsd?: number; costEstimated?: boolean } {
   if (c.providerMetadata && subscriptionReceipts.has(c.providerMetadata)) return {};
+  const aux = c.providerMetadata?.aux as
+    | { gatewaySearch?: { providerSearchCostUsd?: unknown; searchCostIncludedInGatewayTotal?: unknown } }
+    | undefined;
+  if (
+    aux?.gatewaySearch?.searchCostIncludedInGatewayTotal === "not-verified" &&
+    aux.gatewaySearch.providerSearchCostUsd !== 0
+  )
+    return {};
+
   const gateway = c.providerMetadata?.gateway as { cost?: unknown; marketCost?: unknown } | undefined;
   for (const raw of [gateway?.cost, gateway?.marketCost]) {
     const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
@@ -144,13 +153,30 @@ export function modelCallCost(
   return estimate === undefined ? {} : { costUsd: estimate, costEstimated: true };
 }
 
-/** Application-owned calling authority; never accepted from a provider response or settings UI. */
-export interface ModelCallSource {
-  runId: string;
-  nativeTurnContext: string;
+/** Application-owned calling authority; never accepted from provider output or settings UI. */
+interface ModelSourceChecks {
   checkOriginal: () => void | Promise<void>;
   authorizeDestination: (origin: string) => Promise<void>;
 }
+export interface RunModelCallSource extends ModelSourceChecks {
+  kind?: "run";
+  runId: string;
+  nativeTurnContext: string;
+}
+export interface MemoryModelJob {
+  workspaceId: string;
+  operationId: string;
+  operation: "extraction" | "dream";
+  modelGeneration: string;
+  memoryGeneration: string | null;
+  ownerRevision: number;
+  sourceDigest: string;
+  policyDigest: string;
+}
+export interface MemoryModelCallSource extends MemoryModelJob, ModelSourceChecks {
+  kind: "memory";
+}
+export type ModelCallSource = RunModelCallSource | MemoryModelCallSource;
 
 /** Copilot premium/quota consumption is not a known API-dollar invoice. */
 export function copilotBillingReceipt<T extends ModelAttempt & { retries?: ModelAttempt[] }>(attempt: T): T {
@@ -170,6 +196,17 @@ export function copilotBillingReceipt<T extends ModelAttempt & { retries?: Model
  * never imports the SDK.
  */
 export interface ModelClient {
+  /** One provider-executed search request, never an inner SDK agent loop. */
+  searchWeb?(opts: {
+    modelId: string;
+    request: import("@aux/contracts/web-search").WebSearchInput;
+    signal?: AbortSignal;
+    source?: ModelCallSource;
+    beforeDispatch?: () => Promise<void>;
+    maxAttempts?: 1;
+    sessionId?: string;
+  }): Promise<ModelAttempt & { result: import("@aux/contracts/web-search").StructuredWebSearchResult }>;
+
   generateStructured<T>(opts: {
     modelId: string;
     system: string;

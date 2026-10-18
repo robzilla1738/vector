@@ -43,6 +43,7 @@ const RUN_LOOKUP_KEYS = [
   "contextMemoryRevoked",
   "contextImageArtifactIds",
   "contextAttachmentRefs",
+  "contextTaskDocumentRefs",
 ] as const;
 const runLookupConfig = (config: Run["config"]): string => {
   const source = (config ?? {}) as Record<string, unknown>;
@@ -1407,6 +1408,7 @@ export class Repo {
       error?: string;
       inputTokens?: number;
       outputTokens?: number;
+      providerMetadata?: ModelCall["providerMetadata"];
     },
   ): void {
     if (
@@ -1417,8 +1419,20 @@ export class Repo {
       receipt.durationMs < 0
     )
       throw new AuxError("invalid_params", "Invalid model-call spend receipt.");
+    const original = this.q("SELECT provider_metadata FROM model_calls WHERE call_id=? AND run_id=?").get(
+      callId,
+      runId,
+    ) as { provider_metadata: string | null } | undefined;
+    if (!original) throw new AuxError("conflict", "The original model-call reservation is unavailable.");
+    const metadata = {
+      ...P<Record<string, unknown>>(
+        this.revealField("model_calls", callId, "provider_metadata", original.provider_metadata),
+        {},
+      ),
+      ...receipt.providerMetadata,
+    };
     const updated = this.q(
-      `UPDATE model_calls SET cost_usd=?,cost_estimated=?,duration_ms=?,error=?,input_tokens=COALESCE(?,input_tokens),output_tokens=COALESCE(?,output_tokens)
+      `UPDATE model_calls SET cost_usd=?,cost_estimated=?,duration_ms=?,error=?,input_tokens=COALESCE(?,input_tokens),output_tokens=COALESCE(?,output_tokens),provider_metadata=?
       WHERE call_id=? AND run_id=?`,
     ).run(
       receipt.costUsd ?? null,
@@ -1427,6 +1441,12 @@ export class Repo {
       receipt.error ?? null,
       receipt.inputTokens ?? null,
       receipt.outputTokens ?? null,
+      this.protectField(
+        "model_calls",
+        callId,
+        "provider_metadata",
+        Object.keys(metadata).length ? J(metadata) : null,
+      ),
       callId,
       runId,
     );

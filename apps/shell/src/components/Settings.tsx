@@ -33,11 +33,17 @@ import { featureAvailable } from "../feature-availability";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const LabsSettings = lazySection(async () => (await import("../settings/sections/Labs")).LabsSettings);
+const DesktopContextSettings = lazySection(
+  async () => (await import("../settings/sections/DesktopContext")).DesktopContextSettings,
+);
 const MemorySettings = lazySection(async () => (await import("./MemorySettings")).MemorySettings);
 const ExternalAgents = lazySection(async () => (await import("./ExternalAgents")).ExternalAgents);
 const PluginsPanel = lazySection(async () => (await import("./PluginsPanel")).PluginsPanel);
 const Extensions = lazySection(async () => (await import("./Extensions")).Extensions);
 const VaultSettings = lazySection(async () => (await import("./VaultSettings")).VaultSettings);
+const GoogleConnections = lazySection(
+  async () => (await import("../settings/sections/GoogleConnections")).GoogleConnections,
+);
 const CalendarConnections = lazySection(
   async () => (await import("./CalendarConnections")).CalendarConnections,
 );
@@ -95,6 +101,7 @@ export function Settings() {
   }, []);
   const settings = useStore((s) => s.settings);
   const memoryAvailable = useFeature("memory");
+  const desktopContextAvailable = useFeature("desktopContext") && inNativeHost && !bridge.privateMode;
   const downloadNamingAvailable = useFeature("smartDownloadNames") && inNativeHost && !bridge.privateMode;
   const profilesAvailable = useFeature("profiles") && inNativeHost && !bridge.privateMode;
   const linkRoutingAvailable = useFeature("linkRouting") && inNativeHost && !bridge.privateMode;
@@ -121,6 +128,7 @@ export function Settings() {
   const extensionsAvailable = useFeature("extensions");
   const routeEnabled = (route: SettingsRoute) =>
     (route.category !== "Memory" || memoryAvailable) &&
+    (route.category !== "Desktop context" || desktopContextAvailable) &&
     (route.category !== "Downloads" || downloadNamingAvailable) &&
     (route.category !== "Profiles" || profilesAvailable) &&
     (route.category !== "Link Routing" || linkRoutingAvailable) &&
@@ -138,6 +146,7 @@ export function Settings() {
   );
   const [category, setCategory] = useState(() =>
     (initialCategory === "Memory" && !memoryAvailable) ||
+    (initialCategory === "Desktop context" && !desktopContextAvailable) ||
     (initialCategory === "Downloads" && !downloadNamingAvailable) ||
     (initialCategory === "Profiles" && !profilesAvailable) ||
     (initialCategory === "Link Routing" && !linkRoutingAvailable) ||
@@ -247,6 +256,7 @@ export function Settings() {
     (result) =>
       (!result.feature || featureAvailable(result.feature as import("@aux/contracts").AuxFeature)) &&
       (memoryAvailable || result.category !== "Memory") &&
+      (desktopContextAvailable || result.category !== "Desktop context") &&
       (downloadNamingAvailable || result.category !== "Downloads") &&
       (profilesAvailable || result.category !== "Profiles") &&
       (linkRoutingAvailable || result.category !== "Link Routing") &&
@@ -278,8 +288,8 @@ export function Settings() {
   const searchInput = useRef<HTMLInputElement>(null);
   const firstSearchResult = useRef<HTMLButtonElement>(null);
   const editorViews = useRef(new Map<string, HTMLElement>());
-  const connectorSections = useRef(new Map<"calendar" | "mcp", HTMLDivElement>());
-  const manageConnector = (kind: "calendar" | "mcp") => {
+  const connectorSections = useRef(new Map<"calendar" | "mcp" | "google", HTMLDivElement>());
+  const manageConnector = (kind: "calendar" | "mcp" | "google") => {
     if (kind === "mcp") {
       openCategory("Connections", "Plugins");
       return;
@@ -392,6 +402,7 @@ export function Settings() {
           }}
           searching={searching}
           memoryAvailable={memoryAvailable}
+          desktopContextAvailable={desktopContextAvailable}
           downloadNamingAvailable={downloadNamingAvailable}
           profilesAvailable={profilesAvailable}
           linkRoutingAvailable={linkRoutingAvailable}
@@ -528,6 +539,7 @@ export function Settings() {
           />
           <WorkspacesSettings active={visible("Projects")} />
           <QuickAskSettings active={visible("Quick Ask")} settings={settings} onSave={set} />
+          {desktopContextAvailable && <DesktopContextSettings active={visible("Desktop context")} />}
           <SelectionCaptureSettings
             active={visible("Selection & Capture")}
             settings={settings}
@@ -543,6 +555,16 @@ export function Settings() {
               {connectorsAvailable && (
                 <>
                   <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
+                  <div
+                    id="connection-google"
+                    tabIndex={-1}
+                    ref={(node) => {
+                      if (node) connectorSections.current.set("google", node);
+                      else connectorSections.current.delete("google");
+                    }}
+                  >
+                    <GoogleConnections active={visible("Connections")} />
+                  </div>
                   <div
                     id="connection-calendar"
                     data-setting="Google Calendar"

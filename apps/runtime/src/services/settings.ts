@@ -1,4 +1,6 @@
+import { TranscriptionModelSchema } from "@aux/contracts/model-connections";
 import type { PrivateBudgetClient } from "./private-budget.js";
+import { assertMemoryModelSource, memoryModelClient } from "./memory-model-source.js";
 import { estimatedPromptTokens, projectedModelCostUsd } from "../store/spend-ledger.js";
 import { PrivateProviderConnection } from "./private-provider.js";
 import {
@@ -96,6 +98,7 @@ import {
   attemptsOf,
   type ModelAttempt,
   type ModelClient,
+  type MemoryModelCallSource,
 } from "../agent/model-client.js";
 import {
   DIRECT_PROVIDERS,
@@ -132,6 +135,7 @@ export interface Settings extends Pick<
   modelConnection?: { provider: ModelProvider; enabled: boolean };
   disabledModelProviders?: ModelProvider[];
   imageModel?: ImageModel | null;
+  transcriptionModel?: string | null;
   localModelsOnly?: boolean;
   modelCredential?: { provider: ModelProvider; key: string; connectionId?: string };
   customModelProvider?: CustomModelProvider;
@@ -608,6 +612,103 @@ export class SettingsService {
     return apiKey ? { apiKey } : undefined;
   }
 
+  private audioInspectionReady = false;
+  /** Main publishes this only after the native complete-decode method is available. */
+  setAudioInspectionReady(ready: boolean): void {
+    this.audioInspectionReady = ready;
+  }
+  transcriptionAvailable(): boolean {
+    return (
+      this.audioInspectionReady &&
+      this.transcriptionConnected() &&
+      this.cachedTranscriptionModels().some((model) => model.id === this.transcriptionModel())
+    );
+  }
+
+  /** Voice never inherits another Profile's provider or image credential. */
+  async gatewayTranscriptionCredential(
+    signal?: AbortSignal,
+  ): Promise<{ apiKey: string; teamId?: string } | undefined> {
+    const generation = this.modelCacheGeneration(),
+      model = this.transcriptionModel();
+    const current = () => {
+      signal?.throwIfAborted();
+      this.assertModelGeneration(generation);
+      if (this.transcriptionModel() !== model || !this.transcriptionConnected())
+        throw new AuxError("cancelled", "The original transcription account changed.");
+    };
+    if (!model || !this.transcriptionConnected()) return;
+    current();
+    await this.initializeCredentials(["gateway"]);
+    current();
+    const accountId = this.activeVercelAccount();
+    if (accountId) {
+      const accounts = await this.vercelAccounts(),
+        account = accounts.account(accountId);
+      current();
+      const apiKey = await accounts.accessToken(accountId, signal);
+      current();
+      return { apiKey, teamId: account.teamId };
+    }
+    const apiKey = this.gatewayKey();
+    return apiKey ? { apiKey } : undefined;
+  }
+
+  transcriptionConnected(): boolean {
+    if (
+      this.env.AUX_PRIVATE_SESSION ||
+      this.privateProvider ||
+      this.privateImage ||
+      this.discoveryClosed ||
+      this.localModelsOnly() ||
+      !this.connectionEnabled("gateway")
+    )
+      return false;
+    return this.connectionStatuses().some(
+      (connection) =>
+        connection.provider === "gateway" &&
+        connection.enabled &&
+        !connection.credentialUnavailable &&
+        connection.credentialSource !== "none",
+    );
+  }
+
+  transcriptionModel(): string | null {
+    if (this.env.AUX_PRIVATE_SESSION || this.localModelsOnly()) return null;
+    return TranscriptionModelSchema.nullable().parse(this.get("transcriptionModel") ?? null);
+  }
+
+  private cachedTranscriptionModels(): ModelCapability[] {
+    if (this.env.AUX_PRIVATE_SESSION || this.privateProvider || this.privateImage || this.localModelsOnly())
+      return [];
+    return (
+      this.catalog().cached({
+        provider: "gateway",
+        endpoint: "https://ai-gateway.vercel.sh/v1",
+        generation: this.modelCacheGeneration(),
+      }) ?? []
+    ).filter((model) => model.transcription?.batch);
+  }
+
+  async listTranscriptionModels(): Promise<ModelCapability[]> {
+    if (
+      this.env.AUX_PRIVATE_SESSION ||
+      this.privateProvider ||
+      this.privateImage ||
+      this.localModelsOnly() ||
+      !this.connectionEnabled("gateway")
+    )
+      return [];
+    const generation = this.modelCacheGeneration();
+    const models = await this.catalog().list({
+      provider: "gateway",
+      endpoint: "https://ai-gateway.vercel.sh/v1",
+      generation,
+    });
+    this.assertModelGeneration(generation);
+    return models.filter((model) => model.transcription?.batch);
+  }
+
   initializeCredentials(
     providers: readonly ModelProvider[] = ["gateway", ...DIRECT_PROVIDERS],
   ): Promise<void> {
@@ -680,6 +781,8 @@ export class SettingsService {
     gatewayCredentialSource: string;
     modelConfigured: boolean;
     modelConnections: ModelConnectionStatus[];
+    transcriptionModels: ModelCapability[];
+    transcriptionAvailable: boolean;
     modelApiKey?: string;
     modelCredentialSource: string;
     modelCredentialError?: string;
@@ -723,6 +826,9 @@ export class SettingsService {
               : "api-key"),
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
+      transcriptionModel: this.transcriptionModel(),
+      transcriptionModels: this.cachedTranscriptionModels(),
+      transcriptionAvailable: this.transcriptionAvailable(),
       compatibleEndpoint: this.compatibleEndpoint(),
       modelApiKey:
         this.inheritedProvider()?.descriptor.authentication === "api-key" &&
@@ -1036,6 +1142,8 @@ export class SettingsService {
       throw new Error("Save one provider credential at a time.");
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
+    if (next.transcriptionModel !== undefined)
+      next.transcriptionModel = TranscriptionModelSchema.nullable().parse(next.transcriptionModel);
     const connectionChange =
       [
         "localModelsOnly",
@@ -1045,6 +1153,7 @@ export class SettingsService {
         "customModelProviders",
         "customModelProviderId",
         "imageModel",
+        "transcriptionModel",
         "gatewayApiKey",
         "compatibleEndpoint",
         "plannerModel",
@@ -2330,7 +2439,19 @@ export class SettingsService {
     return this.get("localModelsOnly") === true;
   }
 
-  model(): ModelClient | null {
+  memoryBackgroundUnavailable(): boolean {
+    return !!this.inheritedProvider() || this.hasCopilotSelection();
+  }
+
+  model(memorySource?: MemoryModelCallSource): ModelClient | null {
+    if (memorySource) {
+      assertMemoryModelSource(memorySource);
+      if (this.inheritedProvider() || this.hasCopilotSelection())
+        throw new AuxError(
+          "capability_unsupported",
+          "Background Memory requires an API key, local model, Vercel or ChatGPT connection. Copilot and private account routes need native job ownership.",
+        );
+    }
     const inherited = this.inheritedProvider();
     if (inherited) {
       const generation = this.modelCacheGeneration();
@@ -2423,8 +2544,18 @@ export class SettingsService {
             throw new AuxError("cancelled", "The Vercel account changed.");
         },
         async (source) => {
-          // Capture the calling run's actual native document, never the sign-in window.
-          await this.checkAuthRequester(source.nativeTurnContext);
+          if (source.kind === "memory") {
+            assertMemoryModelSource(source);
+            await source.checkOriginal();
+            if (this.inheritedProvider())
+              throw new AuxError(
+                "capability_unsupported",
+                "Private connections cannot run background Memory.",
+              );
+          } else {
+            // Capture the calling run's actual native document, never the sign-in window.
+            await this.checkAuthRequester(source.nativeTurnContext);
+          }
         },
       );
     }
@@ -2437,16 +2568,18 @@ export class SettingsService {
         !this.plannerModel()
       )
         return null;
-      if (!this.gatewayClient) {
-        const generation = this.modelCacheGeneration();
-        this.gatewayClient = chatgptModelClient(
-          this.chatgptAccountService,
+      const generation = this.modelCacheGeneration();
+      const create = (network: typeof fetch) =>
+        chatgptModelClient(
+          this.chatgptAccountService!,
           chatgptId,
           () => this.chatgptCatalog,
           (signal) => this.refreshChatgptModels(chatgptId, generation, signal),
           () => this.assertModelGeneration(generation),
+          network,
         );
-      }
+      if (memorySource) return memoryModelClient(memorySource, create);
+      if (!this.gatewayClient) this.gatewayClient = create(fetch);
       return this.gatewayClient;
     }
     const endpoint = this.compatibleEndpoint();
@@ -2458,33 +2591,34 @@ export class SettingsService {
             ? "aux-local"
             : undefined));
     if (!key || !this.plannerModel() || (provider === "openai-compatible" && !endpoint)) return null;
-    if (this.gatewayClient) return this.gatewayClient;
+    if (!memorySource && this.gatewayClient) return this.gatewayClient;
     const generation = this.modelCacheGeneration();
-    const network = fetch;
-    const currentFetch: typeof fetch = (input, init) => {
-      try {
-        this.assertModelGeneration(generation);
-      } catch (error) {
-        throw markModelUndispatched(error);
-      }
-      return network(input, init);
+    const create = (network: typeof fetch): ModelClient => {
+      const currentFetch: typeof fetch = (input, init) => {
+        try {
+          this.assertModelGeneration(generation);
+        } catch (error) {
+          throw markModelUndispatched(error);
+        }
+        return network(input, init);
+      };
+      if (provider !== "gateway")
+        return directModelClient(provider, key, currentFetch, endpoint, this.customProvider());
+      const t = Number(this.env.AUX_MODEL_STREAM_IDLE_TIMEOUT_MS);
+      const only = this.env.AUX_GATEWAY_ONLY?.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return new GatewayModelClient(key, {
+        gatewayFetch: currentFetch,
+        streamIdleTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
+        only: only?.length ? only : undefined,
+        models: () => this.mergedCatalog,
+        candidatesFor: (id) => this.candidatesForModel(id),
+        allowedModelId: this.env.AUX_BENCH_MODEL_PIN || undefined,
+      });
     };
-    if (provider !== "gateway") {
-      this.gatewayClient = directModelClient(provider, key, currentFetch, endpoint, this.customProvider());
-      return this.gatewayClient;
-    }
-    const t = Number(this.env.AUX_MODEL_STREAM_IDLE_TIMEOUT_MS);
-    const only = this.env.AUX_GATEWAY_ONLY?.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.gatewayClient = new GatewayModelClient(key, {
-      gatewayFetch: currentFetch,
-      streamIdleTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
-      only: only?.length ? only : undefined,
-      models: () => this.mergedCatalog,
-      candidatesFor: (id) => this.candidatesForModel(id),
-      allowedModelId: this.env.AUX_BENCH_MODEL_PIN || undefined,
-    });
+    if (memorySource) return memoryModelClient(memorySource, create);
+    this.gatewayClient = create(fetch);
     return this.gatewayClient;
   }
 

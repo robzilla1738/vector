@@ -33,6 +33,7 @@ const routes: readonly SettingsRoute[] = [
   { slug: "routines", category: "Routines" },
   { slug: "channels", category: "Channels" },
   { slug: "quick-ask", category: "Quick Ask" },
+  { slug: "desktop-context", category: "Desktop context" },
   { slug: "selection-capture", category: "Selection & Capture" },
   { slug: "archived-chats", category: "Archived chats" },
   { slug: "skills-plugins", category: "Connections", connectionTab: "Plugins" },

@@ -1,3 +1,4 @@
+import { currentDesktopContext, omitDesktopContext, retainDesktopContext } from "./desktop-context-backup.js";
 import { withSecureDelete } from "../store/db.js";
 import type { DatabaseSync } from "node:sqlite";
 import { digest } from "@aux/contracts/util/digest";
@@ -21,6 +22,7 @@ export function assertSpaceMemorySize(db: DatabaseSync, workspaceId?: string) {
 }
 
 export function omitDerivedAndSpaceMemory(db: DatabaseSync) {
+  omitDesktopContext(db);
   withSecureDelete(db, () => {
     db.prepare("DELETE FROM ai_result_cache").run();
     db.prepare("DELETE FROM memory_files").run();
@@ -41,7 +43,10 @@ export function currentSpaceMemory(db: DatabaseSync) {
       "SELECT * FROM kv WHERE key LIKE 'setting:memoryPipelinePolicy:%' OR key LIKE 'setting:workspaceMemory:%' OR key='setting:browserSpaces' ORDER BY key",
     )
     .all();
-  const owners = new Set([...files, ...history, ...watermarks].map((row) => String(row.workspace_id)));
+  const desktop = currentDesktopContext(db);
+  const owners = new Set(
+    [...files, ...history, ...watermarks, ...desktop.generations].map((row) => String(row.workspace_id)),
+  );
   for (const row of rawSettings)
     if (String(row.key).startsWith("setting:memoryPipelinePolicy:"))
       owners.add(String(row.key).slice("setting:memoryPipelinePolicy:".length));
@@ -61,7 +66,16 @@ export function currentSpaceMemory(db: DatabaseSync) {
     .prepare("SELECT * FROM workspaces ORDER BY workspace_id")
     .all()
     .filter((row) => owners.has(String(row.workspace_id)));
-  return { files, history, watermarks, settings, workspaces, owners: [...owners].sort(), browserSpaces };
+  return {
+    files,
+    history,
+    watermarks,
+    settings,
+    workspaces,
+    owners: [...owners].sort(),
+    browserSpaces,
+    desktop,
+  };
 }
 export type SpaceMemorySnapshot = ReturnType<typeof currentSpaceMemory>;
 export function spaceMemoryDigest(snapshot: SpaceMemorySnapshot) {
@@ -69,6 +83,7 @@ export function spaceMemoryDigest(snapshot: SpaceMemorySnapshot) {
 }
 export function retainSpaceMemory(db: DatabaseSync, snapshot: SpaceMemorySnapshot) {
   omitDerivedAndSpaceMemory(db);
+  retainDesktopContext(db, snapshot.desktop);
   db.prepare("DELETE FROM memory_pipeline_watermarks").run();
   db.prepare("DELETE FROM memory_pipeline_leases").run();
   const clearSetting = db.prepare("DELETE FROM kv WHERE key=?");

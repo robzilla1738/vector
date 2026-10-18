@@ -19,6 +19,12 @@ import * as shellIcons from "../ui/icons";
 import { Mic } from "../ui/icons";
 
 describe("Central Icons", () => {
+  it("shows the idle Copy affordance rather than the success checkmark", () => {
+    const copy = renderToStaticMarkup(shellIcons.shellIconCopy);
+    expect(copy).not.toBe(renderToStaticMarkup(shellIcons.shellIconCheck));
+    expect(copy).toContain("M14 11.25");
+    expect(copy).not.toContain("M20.1934 3.40919");
+  });
   it("keeps the supplied viewbox and hides decorative icons from assistive technology", () => {
     for (const [name, icon] of Object.entries(shellIcons)) {
       if (!name.startsWith("shellIcon") || !isValidElement(icon)) continue;
@@ -47,7 +53,7 @@ describe("Central Icons", () => {
   it("uses a circle, a warning triangle, and a plug for those actions", () => {
     expect(renderToStaticMarkup(shellIconCircle)).toContain('r="9.25"');
     expect(renderToStaticMarkup(shellIconCircle)).not.toContain("16.625");
-    expect(renderToStaticMarkup(shellIconAlert)).toContain("M2.79693 16.2276");
+    expect(renderToStaticMarkup(shellIconAlert)).toContain('fill="currentColor"');
     expect(renderToStaticMarkup(shellIconAlert)).not.toContain("M2.75 20.25L6.37938");
     expect(renderToStaticMarkup(shellIconUnplug)).toContain('fill="currentColor"');
     expect(renderToStaticMarkup(shellIconUnplug)).not.toContain("M18.5 19.0615");

@@ -3,7 +3,7 @@ import { AuxError, taskConversationId, type Run } from "@aux/contracts";
 import { isTextModelCandidate, type ModelCapability } from "@aux/contracts/model-registry";
 import type { ChannelConnection, ChannelInbound, ChannelReply } from "@aux/contracts/channels";
 import type { Repo } from "../store/repo.js";
-import type { ChannelThread } from "./channel-store.js";
+import { ChannelStore, type ChannelThread } from "./channel-store.js";
 
 export type ChannelModels = {
   list(): Promise<readonly ModelCapability[]>;
@@ -60,6 +60,7 @@ export async function executeChannelCommand(input: {
   models?: ChannelModels;
   connection: ChannelConnection;
   authorityId: string;
+  peerKey: string;
   thread: ChannelThread;
   checkCurrent(): void;
 }): Promise<{ thread: ChannelThread; text: string; reply?: ChannelReply }> {
@@ -171,9 +172,18 @@ export async function executeChannelCommand(input: {
     };
     const known = calls.filter((call) => call.costUsd !== undefined);
     const cost = known.reduce((sum, call) => sum + call.costUsd!, 0);
+    const peerKey = input.peerKey;
+    const audio = new ChannelStore(repo).audioUsage(
+      connection.connectionId,
+      peerKey,
+      thread.conversationId,
+      thread.threadId,
+    );
+    const audioCost = audio.receipts.reduce((sum, receipt) => sum + (receipt.costUsd ?? 0), 0);
+    const audioUnknown = audio.receipts.filter((receipt) => receipt.costUsd === undefined).length;
     return {
       thread,
-      text: `Agent turn usage in this conversation: ${runs.length} sessions, ${calls.length} model calls.\nInput tokens: ${metric("inputTokens")}\nOutput tokens: ${metric("outputTokens")}\nCost: $${cost.toFixed(4)}${calls.some((call) => call.costEstimated) ? " (includes estimates)" : " observed"}${known.length < calls.length ? `; ${calls.length - known.length} calls have unknown cost` : ""}.${runs.length === 100 ? " Bounded to the latest 100 sessions." : ""}\nAttachment transcription is accounted separately in Aux.`,
+      text: `Agent turn usage in this conversation: ${runs.length} sessions, ${calls.length} model calls.\nInput tokens: ${metric("inputTokens")}\nOutput tokens: ${metric("outputTokens")}\nCost: $${cost.toFixed(4)}${calls.some((call) => call.costEstimated) ? " (includes estimates)" : " observed"}${known.length < calls.length ? `; ${calls.length - known.length} calls have unknown cost` : ""}.${runs.length === 100 ? " Bounded to the latest 100 sessions." : ""}\nVoice transcription: ${audio.receipts.length} files, $${audioCost.toFixed(4)}${audio.receipts.some((receipt) => receipt.costEstimated) ? " (includes estimates)" : " observed"}${audioUnknown ? `; ${audioUnknown} unknown costs` : ""}. Audio token counts are unavailable.${audio.truncated ? " Bounded to the latest 100 messages from this paired person." : ""}`,
     };
   }
   throw new AuxError("invalid_params", "Unsupported channel command.");

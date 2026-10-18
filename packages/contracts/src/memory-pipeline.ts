@@ -101,7 +101,13 @@ export const MemoryExtractionSchema = z.object({
   costUsd: z.number().nonnegative().optional(),
   costEstimated: z.boolean().optional(),
   errorCode: z
-    .enum(["model_unavailable", "inference_failed", "invalid_output", "budget_exceeded"])
+    .enum([
+      "model_unavailable",
+      "account_requires_window",
+      "inference_failed",
+      "invalid_output",
+      "budget_exceeded",
+    ])
     .optional(),
 });
 export const MemoryExtractionViewSchema = MemoryExtractionSchema.extend({

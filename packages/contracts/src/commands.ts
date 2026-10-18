@@ -637,6 +637,13 @@ export const COMMANDS = [
     ["reset", "", "Use default", ""],
     ["retry", "", "Retry", ""],
   ]),
+  S("desktop-context-refresh", "Refresh desktop context", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-configure", "Save desktop context consent", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-permission", "Request desktop context permission", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-pause", "Pause or resume desktop context", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-search", "Search desktop context", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-read", "Inspect desktop capture", { ...memoryControl, feature: "desktopContext" }),
+  S("desktop-context-forget", "Forget desktop context", { ...memoryControl, feature: "desktopContext" }),
   ...G(browserContextControl, "-memory-", [
     ["create", "local-backup", "Create fresh local Memory backup"],
     ["open", "offline-recovery", "Open encrypted Memory recovery"],

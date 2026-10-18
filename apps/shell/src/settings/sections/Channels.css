@@ -56,46 +56,6 @@
     padding: var(--space-2) var(--space-1);
     font-size: var(--fs-md);
   }
-  .channels-preview {
-    display: grid;
-    place-items: center;
-    padding: var(--space-6);
-    min-height: 164px;
-    border-radius: var(--r-lg);
-    background:
-      radial-gradient(ellipse at 80% 90%, var(--surface-menu), transparent 65%),
-      color-mix(in srgb, var(--brand-telegram-surface) 65%, var(--surface-menu));
-  }
-  .channels-preview-chat {
-    padding: var(--space-4);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-md);
-    background: var(--liquid-white);
-    color: var(--liquid-shade-light);
-    font-size: var(--fs-xs);
-  }
-  .channels-preview-chat strong {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-weight: var(--fw-medium);
-  }
-  .channels-preview-chat strong span {
-    font-weight: var(--fw-regular);
-    color: color-mix(in srgb, var(--liquid-black) 50%, transparent);
-  }
-  .channels-preview-chat strong img {
-    width: var(--space-4);
-    height: var(--space-4);
-    filter: brightness(0);
-  }
-  .channels-preview-chat p {
-    margin: var(--space-1) 0 var(--space-3);
-  }
-  .channels-preview-chat p:last-child {
-    margin-bottom: 0;
-    color: color-mix(in srgb, var(--liquid-black) 50%, transparent);
-  }
   .channels-error {
     margin-top: var(--space-3);
     color: var(--err);

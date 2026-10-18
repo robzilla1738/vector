@@ -118,6 +118,8 @@ describe("reviewed connector catalog", () => {
       taskId: f.task.taskId,
       expectedRevision: f.task.revision,
     });
+    expect(first.bindings[`calendar:${connectionId}`]).toMatch(/^[a-f0-9]{64}$/);
+    expect(first.bindings[`mcp:${server.serverId}`]).toMatch(/^[a-f0-9]{64}$/);
     expect(first.access.map((item) => item.kind).sort()).toEqual(["calendar", "mcp"]);
     expect(first.access.find((item) => item.kind === "calendar")).toMatchObject({
       grantId: calendarGrant.grantId,
@@ -135,6 +137,8 @@ describe("reviewed connector catalog", () => {
       taskId: f.task.taskId,
       expectedRevision: f.task.revision,
     });
+    expect(second.bindings[`calendar:${connectionId}`]).not.toBe(first.bindings[`calendar:${connectionId}`]);
+    expect(second.bindings[`mcp:${server.serverId}`]).not.toBe(first.bindings[`mcp:${server.serverId}`]);
     expect(second.access.map((item) => item.kind)).toEqual([]);
     const revised = f.tasks.update({
       taskId: f.task.taskId,

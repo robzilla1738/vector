@@ -90,3 +90,32 @@ it("keeps read-only context visible while the runtime is unavailable", async () 
   await act(async () => useStore.setState({ connected: false }));
   expect(host.querySelector<HTMLButtonElement>("button")?.disabled).toBe(true);
 });
+
+it("admits manual compaction of a completed chat and exposes its cancel control", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "runs.context.compact")
+      return {
+        ...stats(),
+        revision: 8,
+        compaction: {
+          id: "idle-1",
+          status: "summarizing",
+          reason: "manual",
+          totalChunks: 2,
+          completedChunks: 1,
+        },
+      };
+    return stats();
+  });
+  await act(async () => root.render(<RunContext runId="r" active={false} disabled={false} />));
+  const button = host.querySelector<HTMLButtonElement>("button")!;
+  expect(button.disabled).toBe(false);
+  await act(async () => button.click());
+  expect(invoke).toHaveBeenCalledWith("runs.context.compact", { runId: "r", expectedRevision: 7 });
+  expect(host.textContent).toContain("1/2 parts");
+  await act(async () => button.click());
+  expect(invoke).toHaveBeenCalledWith("runs.context.cancelCompaction", {
+    runId: "r",
+    compactionId: "idle-1",
+  });
+});

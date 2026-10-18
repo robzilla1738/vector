@@ -1,5 +1,6 @@
+import { conversationContextAuthority } from "./context-authority.js";
+import { GOOGLE_OPERATIONS } from "@aux/contracts/google";
 import { EventTypes } from "@aux/contracts";
-import { contextAuthorityHash } from "./compaction.js";
 import { DocumentAdmissionsSchema } from "@aux/contracts/document-citation";
 import { documentAdmissionKey, type AdmittedDocumentExcerpt } from "./document-admissions.js";
 import type { DocumentEvidence } from "./document-context.js";
@@ -58,6 +59,7 @@ import { toolResultsMessage, type LoopToolDeps, type LoopToolResult, type ModelM
  * steers into the transcript, and finishes the run.
  */
 export interface AgentLoopHostDeps {
+  modelGeneration?: () => string;
   codingFiles?: CodingFilesService;
   codingProcesses?: CodingProcesses;
   coderWorktrees?: {
@@ -87,6 +89,21 @@ export interface AgentLoopHostDeps {
     signal: AbortSignal;
     checkOwner: () => void;
   }) => Promise<void>;
+  pdfReady?: () => boolean;
+  pdfSources?: (input: {
+    offset?: number;
+    limit?: number;
+    runId: string;
+    signal: AbortSignal;
+    checkOwner(): void;
+  }) => Promise<unknown>;
+  processPdf?: (
+    input: import("@aux/contracts/document-jobs").PdfToolInput & {
+      runId: string;
+      signal: AbortSignal;
+      checkOwner(): void;
+    },
+  ) => Promise<import("@aux/contracts/document-jobs").PdfJobReceipt>;
   generateImage?: (input: {
     runId: string;
     prompt: string;
@@ -181,6 +198,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
   const run = self.get(runId);
   const c = self.controls.get(runId)!;
   const model = self.deps.model();
+  const originalModelGeneration = self.deps.agentLoop?.modelGeneration?.();
   if (!model?.toolCallStep) {
     const failure = {
       category: "configuration",
@@ -263,6 +281,43 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       },
     ]);
   }
+
+  const capturedGoogle =
+    run.config?.taskId && !run.config?.privateTask
+      ? (self.deps.googleGrants
+          ?.list(run.config.taskId)
+          .filter(
+            (grant) =>
+              run.config?.googleGrantIds?.includes(grant.grantId) &&
+              grant.taskRevision === run.config?.taskRevision,
+          )
+          .flatMap((grant) => {
+            const account = self.deps.googleAccounts
+              ?.list()
+              .connections.find(
+                (account) =>
+                  account.connectionId === grant.connectionId && account.revision === grant.accountRevision,
+              );
+            const operations = grant.operations.filter(
+              (operation) =>
+                account?.operations.includes(operation) &&
+                (!(self.deps.readOnly || isReadOnlyProfile(run.config?.subagentProfile)) ||
+                  GOOGLE_OPERATIONS[operation].effect === "read"),
+            );
+            return account && operations.length
+              ? [{ ...grant, operations, accountKey: account.accountKey }]
+              : [];
+          }) ?? [])
+      : [];
+  if (initialTranscript && capturedGoogle.length)
+    transcript.append(runId, [
+      {
+        role: "user",
+        content:
+          "Original task-granted Google accounts (metadata only; scopes and operation grants remain authoritative):\n" +
+          JSON.stringify(capturedGoogle),
+      },
+    ]);
 
   let activePageId = run.pageIds[0];
   const lastObs = new Map<string, Observation>();
@@ -387,6 +442,55 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     };
   };
   const deps: LoopToolDeps = {
+    ...(capturedGoogle.length && self.deps.googleOperation
+      ? {
+          googleOperation: async (input, ctx) => {
+            const grant = capturedGoogle.find(
+              (grant) => grant.grantId === input.grantId && grant.operations.includes(input.operation),
+            );
+            if (!grant || !ctx.toolCallId)
+              throw new AuxError(
+                "permission_denied",
+                "This original tool call has no captured Google grant.",
+              );
+            const actionId = createHash("sha256")
+              .update(JSON.stringify([runId, ctx.toolCallId]))
+              .digest("hex");
+            const check = () => {
+              signal.throwIfAborted();
+              if (self.controls.get(runId) !== c || c.paused || self.get(runId).status !== "running")
+                throw new AuxError("cancelled", "The original Google tool call retired.");
+              self.deps.checkRunSource?.(runId);
+            };
+            check();
+            try {
+              const output = await self.deps.googleOperation!({
+                runId,
+                taskId: grant.taskId,
+                taskRevision: grant.taskRevision,
+                workspaceId: grant.workspaceId,
+                grantId: grant.grantId,
+                connectionId: grant.connectionId,
+                accountRevision: grant.accountRevision,
+                operation: input.operation,
+                args: input.args,
+                actionId,
+              });
+              check();
+              return { output };
+            } catch (error) {
+              check();
+              if (
+                error instanceof AuxError &&
+                error.code === "needs_input" &&
+                (error.detail as { park?: import("./types.js").LoopPark } | undefined)?.park
+              )
+                return { park: (error.detail as { park: import("./types.js").LoopPark }).park };
+              throw error;
+            }
+          },
+        }
+      : {}),
     calendarEvents: async (input) => {
       const original = self.get(runId);
       const taskId = original.config?.taskId,
@@ -470,6 +574,32 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           ...delivered,
         },
       };
+    },
+    pdfSources: async (input) => {
+      const list = self.deps.agentLoop?.pdfSources;
+      if (!list) throw new AuxError("capability_unsupported", "PDF sources are unavailable.");
+      const checkOwner = () => {
+        if (signal.aborted || self.controls.get(runId) !== c || c.paused)
+          throw new AuxError("cancelled", "The original PDF source request lost its run authority.");
+        self.deps.checkRunSource?.(runId);
+      };
+      checkOwner();
+      const result = await list({ ...input, runId, signal, checkOwner });
+      checkOwner();
+      return { output: result };
+    },
+    processPdf: async (input) => {
+      const process = self.deps.agentLoop?.processPdf;
+      if (!process) throw new AuxError("capability_unsupported", "PDF processing is unavailable.");
+      const checkOwner = () => {
+        if (signal.aborted || self.controls.get(runId) !== c || c.paused)
+          throw new AuxError("cancelled", "The original PDF request lost its run authority.");
+        self.deps.checkRunSource?.(runId);
+      };
+      checkOwner();
+      const receipt = await process({ ...input, runId, signal, checkOwner });
+      checkOwner();
+      return { output: receipt };
     },
     generateImage: async ({ prompt, referenceImageArtifactIds }) => {
       const generate = self.deps.agentLoop?.generateImage;
@@ -1169,9 +1299,29 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
     },
     prepareWebFetch: self.deps.agentLoop?.prepareWebFetch,
-    prepareWebSearch: self.deps.agentLoop?.prepareWebSearch,
+    prepareWebSearch: self.deps.agentLoop?.prepareWebSearch
+      ? (request, ctx) => {
+          if (self.deps.agentLoop?.modelGeneration?.() !== originalModelGeneration)
+            throw new AuxError("cancelled", "The original search model or account changed.");
+          return self.deps.agentLoop!.prepareWebSearch!(request, {
+            ...ctx,
+            searchModel: model,
+            modelGeneration: originalModelGeneration,
+          });
+        }
+      : undefined,
     webFetch: self.deps.agentLoop?.webFetch,
-    webSearch: self.deps.agentLoop?.webSearch,
+    webSearch: self.deps.agentLoop?.webSearch
+      ? (request, ctx) => {
+          if (self.deps.agentLoop?.modelGeneration?.() !== originalModelGeneration)
+            throw new AuxError("cancelled", "The original search model or account changed.");
+          return self.deps.agentLoop!.webSearch!(request, {
+            ...ctx,
+            searchModel: model,
+            modelGeneration: originalModelGeneration,
+          });
+        }
+      : undefined,
     recall: self.deps.agentLoop?.recall,
     fsRoots: () => fsRoots("write"),
     pendingPark: () => {
@@ -2189,17 +2339,13 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         },
         authority: () => {
           const config = self.get(runId).config;
-          return contextAuthorityHash({
-            ...config,
-            contextCompaction: undefined,
-            documentAdmissions: undefined,
-            waitingPhrase: undefined,
-            queuedMessageContexts: undefined,
-            selectedModel: modelId(),
-            connectionAuthority: self.deps.contextAuthority?.(),
-            conversationSpace: self.deps.repo.getSetting(`conversationWorkspace:${threadId}`),
-            limits: self.deps.agentLoop?.modelLimits?.(modelId()),
-          });
+          return conversationContextAuthority(
+            config,
+            modelId(),
+            self.deps.contextAuthority?.(),
+            self.deps.repo.getSetting(`conversationWorkspace:${threadId}`),
+            self.deps.agentLoop?.modelLimits?.(modelId()),
+          );
         },
         publish: (contextCompaction) => {
           const latest = self.get(runId);
@@ -2221,6 +2367,11 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       tools: (() => {
         const manifest = buildToolManifest();
         if (!deps.goalUpdate) delete manifest.goal_update;
+        if (!deps.googleOperation) delete manifest.google_operation;
+        if (!self.deps.agentLoop?.processPdf || self.deps.agentLoop.pdfReady?.() === false)
+          for (const name of Object.keys(manifest))
+            if (name.startsWith("pdf_")) delete manifest[name];
+        else if (!self.deps.agentLoop?.pdfSources) delete manifest.pdf_sources;
         if (goalRun)
           for (const name of ["subagent", "subagent_wait", "subagent_send", "subagent_stop"])
             delete manifest[name];

@@ -191,6 +191,11 @@ export class PrivateProviderConnection {
         return this.network(input, init);
       };
       try {
+        if (options.source?.kind === "memory")
+          throw new AuxError(
+            "capability_unsupported",
+            "Private provider connections cannot run background Memory.",
+          );
         const signal = AbortSignal.any([this.controller.signal, ...(options.signal ? [options.signal] : [])]);
         const current = () =>
           preflight(async () => {

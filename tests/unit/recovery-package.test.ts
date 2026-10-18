@@ -1,10 +1,15 @@
+import { GoogleGrantService } from "../../apps/runtime/src/services/google-grants.js";
+import { GoogleAccountService } from "../../apps/runtime/src/services/google-accounts.js";
+import { captureOriginalPdf } from "../support/pdf-original.js";
+import { DesktopContextStore } from "../../apps/runtime/dist/services/desktop-context-store.js";
+import { desktopContextDefaults, type DesktopContextCapture } from "@aux/contracts/desktop-context";
 import { fixtureMemoryExtractor } from "../fixtures/memory-extraction.js";
 import { seedChannel } from "../fixtures/channels.js";
 import { AgentConnectionService } from "../../apps/runtime/src/services/agent-connections.js";
 import { ChannelStore } from "../../apps/runtime/src/services/channel-store.js";
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { DatabaseSync } from "node:sqlite";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   copyFileSync,
   cpSync,
@@ -104,6 +109,21 @@ async function fixture() {
   const sourceCipher = await initializeFieldCodec(sourceDb, sourceNative.bridge, sourceId);
   const source = new Repo(sourceDb, sourceCipher);
   const segmented = await saveDocumentSnapshot(source);
+  const originalCapture = captureOriginalPdf();
+  const originalOwner = {
+    kind: "conversation" as const,
+    ownerId: "source-pdf-chat",
+    documentId: "source-pdf",
+  };
+  const originalStore = new DocumentSnapshots(source);
+  const originalSnapshot = await originalStore.importSource(
+    originalOwner,
+    originalCapture.input,
+    originalCapture.source,
+    { signal: new AbortController().signal, checkCurrent: () => {}, publish: () => {} },
+  );
+  await originalStore.close();
+  const originalPdf = { owner: originalOwner, snapshot: originalSnapshot, bytes: originalCapture.bytes };
   const documents = new ConversationDocuments(source, new DocumentSnapshots(source));
   documents.add({
     chatId: "protected-documents",
@@ -245,10 +265,12 @@ async function fixture() {
     source,
     target,
     space,
+    task,
     goal,
     hook,
     evidence,
     segmented,
+    originalPdf,
     documentReference,
     channel,
     savedAudio,
@@ -258,11 +280,82 @@ async function fixture() {
 
 it("restores protected SQLite, page memory, Space memory and artifacts under the second Profile's own keys", async () => {
   const f = await fixture();
+  const googleConnectionId = randomUUID();
+  const protectedGoogle = (field: string, value: string) =>
+    f.source.protectRecordField("calendar_connections", [googleConnectionId], field, value);
+  f.source.db
+    .prepare(
+      "INSERT INTO calendar_connections(connection_id,provider,account_key,account_key_lookup,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?,?,'active',1,1)",
+    )
+    .run(
+      googleConnectionId,
+      protectedGoogle("account_key", "synthetic@example.test"),
+      f.source.exactRecordLookup("calendar_connections", "account_key", "synthetic@example.test"),
+      protectedGoogle("label", "Synthetic Google account"),
+      protectedGoogle("secret_name", "unavailable-synthetic-token"),
+      protectedGoogle("scopes", JSON.stringify(["https://www.googleapis.com/auth/gmail.send"])),
+    );
+  const originalGoogleLookup = f.source.exactRecordLookup(
+    "calendar_connections",
+    "account_key",
+    "synthetic@example.test",
+  );
+  const googleGrants = new GoogleGrantService(f.source, {
+    account: () => ({ state: "active", revision: "a".repeat(64), operations: ["gmail.send"] }),
+  } as unknown as GoogleAccountService);
+  const googleGrant = googleGrants.create({
+    taskId: f.task.taskId,
+    taskRevision: f.task.revision,
+    workspaceId: f.space.workspaceId,
+    connectionId: googleConnectionId,
+    accountRevision: "a".repeat(64),
+    operations: ["gmail.send"],
+  });
+  const originalGoogleBody = (
+    f.source.db.prepare("SELECT body FROM google_task_grants WHERE grant_id=?").get(googleGrant.grantId) as {
+      body: string;
+    }
+  ).body;
+  expect(originalGoogleBody).toMatch(/^auxenc:v3:/);
+  expect(originalGoogleBody).not.toContain("gmail.send");
+  expect(() =>
+    f.source.revealRecordField("google_task_grants", [randomUUID()], "body", originalGoogleBody),
+  ).toThrow();
   f.source.db
     .prepare(
       "INSERT INTO private_spend(lease_id,kind,created_at,cost_usd,cost_estimated,state) VALUES(?,?,?,?,?,?)",
     )
     .run("opaque-fixture", "model", 1, 0.75, 0, "settled");
+  const desktopText = "# Synthetic desktop\nThe workshop is on Tuesday.";
+  const capturedAt = Date.now();
+  const desktopCapture: DesktopContextCapture = {
+    captureId: randomUUID(),
+    workspaceId: f.space.workspaceId,
+    leaseId: "synthetic-lease",
+    configurationRevision: 1,
+    sourceEpoch: "synthetic-source",
+    app: { bundleId: "test.editor", displayName: "Synthetic Editor" },
+    processId: 123,
+    windowId: "synthetic-window",
+    capturedAt,
+    expiresAt: capturedAt + 14 * 86400000,
+    kind: "accessibility",
+    text: desktopText,
+    selection: "",
+    windowTitle: "Synthetic desktop",
+    sha256: createHash("sha256")
+      .update(desktopText + "\0")
+      .digest("hex"),
+  };
+  const desktopStore = new DesktopContextStore(f.source, f.sourceNative.bridge, f.sourceId);
+  await desktopStore.append(desktopCapture, () => {});
+  f.source.setSetting("desktopContext", {
+    ...desktopContextDefaults(),
+    revision: 1,
+    enabled: true,
+    workspaceId: f.space.workspaceId,
+    selectedApps: [desktopCapture.app],
+  });
   const phrase = "an original offline recovery phrase";
   const exported = await exportRecoveryPackage(
     f.source,
@@ -287,6 +380,8 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     expect(bytes.includes(secret)).toBe(false);
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
   expect(exported.manifest.spaceMemory).toHaveLength(1);
+  expect(exported.manifest.desktopContextCount).toBe(1);
+  expect(bytes.includes("The workshop is on Tuesday")).toBe(false);
   expect(exported.manifest.sqliteTables).toContain("private_spend");
   expect(exported.manifest.sqliteTables).toContain("task_evidence");
   const managedBackup = await createRuntimeBackup(f.source, f.sourceDir);
@@ -355,7 +450,50 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  const restoredGoogle = restored.db
+    .prepare("SELECT body,revoked_at FROM google_task_grants WHERE grant_id=?")
+    .get(googleGrant.grantId) as { body: string; revoked_at: number };
+  expect(restoredGoogle.revoked_at).toBeGreaterThan(0);
+  expect(restoredGoogle.body).not.toBe(originalGoogleBody);
+  expect(
+    JSON.parse(
+      restored.revealRecordField("google_task_grants", [googleGrant.grantId], "body", restoredGoogle.body),
+    ),
+  ).toMatchObject({ grantId: googleGrant.grantId, operations: ["gmail.send"] });
+  expect(new GoogleGrantService(restored, {} as GoogleAccountService).list(googleGrant.taskId)).toEqual([]);
+  expect(
+    restored.db
+      .prepare("SELECT state FROM calendar_connections WHERE connection_id=?")
+      .get(googleConnectionId),
+  ).toEqual({ state: "needs_reauth" });
+
+  const restoredGoogleAccounts = new GoogleAccountService({
+    repo: restored,
+    native: f.targetNative.bridge,
+    profileId: f.targetId,
+  });
+  expect(restoredGoogleAccounts.list().connections).toMatchObject([
+    {
+      connectionId: googleConnectionId,
+      accountKey: "synthetic@example.test",
+      state: "needs_reauth",
+      operations: [],
+    },
+  ]);
+  const reboundGoogleLookup = restored.db
+    .prepare("SELECT account_key_lookup FROM calendar_connections WHERE connection_id=?")
+    .get(googleConnectionId) as { account_key_lookup: string };
+  expect(reboundGoogleLookup.account_key_lookup).toBe(
+    restored.exactRecordLookup("calendar_connections", "account_key", "synthetic@example.test"),
+  );
+  expect(reboundGoogleLookup.account_key_lookup).not.toBe(originalGoogleLookup);
+  await restoredGoogleAccounts.close();
+
   const channels = new ChannelStore(restored);
+  expect(
+    await new DesktopContextStore(restored, f.targetNative.bridge, f.targetId).read(f.space.workspaceId),
+  ).toEqual([desktopCapture]);
+  expect(restored.getSetting("desktopContext")).toEqual(desktopContextDefaults());
   expect(
     new TaskService(restored, new EventBus(restored)).workspaceMemory(f.space.workspaceId).documents,
   ).toMatchObject([{ path: "USER.md", content: "Protected owner document for the recovered Space." }]);
@@ -398,6 +536,17 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     new DocumentSnapshots(restored).read(f.segmented.owner, f.segmented.snapshot.sha256).chunk.segments[0]
       ?.text,
   ).toBe("Protected segmented document");
+  const originalStore = new DocumentSnapshots(restored);
+  expect(
+    await originalStore.useOriginal(
+      f.originalPdf.owner,
+      f.originalPdf.snapshot.sha256,
+      new AbortController().signal,
+      () => {},
+      async (bytes) => Buffer.from(bytes),
+    ),
+  ).toEqual(f.originalPdf.bytes);
+  await originalStore.close();
   const restoredDocuments = new ConversationDocuments(restored, new DocumentSnapshots(restored));
   expect(
     restoredDocuments.read(
@@ -552,6 +701,17 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  const originalStore = new DocumentSnapshots(restored);
+  expect(
+    await originalStore.useOriginal(
+      f.originalPdf.owner,
+      f.originalPdf.snapshot.sha256,
+      new AbortController().signal,
+      () => {},
+      async (bytes) => Buffer.from(bytes),
+    ),
+  ).toEqual(f.originalPdf.bytes);
+  await originalStore.close();
   const restoredDocuments = new ConversationDocuments(restored, new DocumentSnapshots(restored));
   expect(
     restoredDocuments.read(
@@ -681,6 +841,28 @@ it("ordinary backups omit retired memory and restore preserves current authentic
     parse: (value) => String(value),
     compute: async () => "Research label",
   });
+  const capturedAt = Date.now();
+  const desktopText = "Current synthetic desktop context";
+  const desktopCapture: DesktopContextCapture = {
+    captureId: randomUUID(),
+    workspaceId: f.space.workspaceId,
+    leaseId: "synthetic-lease",
+    configurationRevision: 1,
+    sourceEpoch: "synthetic-source",
+    app: { bundleId: "test.editor", displayName: "Synthetic Editor" },
+    processId: 123,
+    windowId: "synthetic-window",
+    capturedAt,
+    expiresAt: capturedAt + 14 * 86400000,
+    kind: "accessibility",
+    text: desktopText,
+    selection: "",
+    windowTitle: "Synthetic",
+    sha256: createHash("sha256")
+      .update(desktopText + "\0")
+      .digest("hex"),
+  };
+  await new DesktopContextStore(f.source, f.sourceNative.bridge, f.sourceId).append(desktopCapture, () => {});
   const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
   f.source.db
     .prepare("UPDATE workspaces SET name='Current unrelated name' WHERE workspace_id=?")
@@ -690,6 +872,8 @@ it("ordinary backups omit retired memory and restore preserves current authentic
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_files").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_history").get()?.n).toBe(0);
+    expect(snapshot.prepare("SELECT COUNT(*) AS n FROM desktop_context_captures").get()?.n).toBe(0);
+    expect(snapshot.prepare("SELECT COUNT(*) AS n FROM desktop_context_generations").get()?.n).toBe(0);
   } finally {
     snapshot.close();
   }
@@ -701,6 +885,13 @@ it("ordinary backups omit retired memory and restore preserves current authentic
   try {
     expect(restored.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(restored.prepare("SELECT * FROM memory_files ORDER BY name").all()).toEqual(current);
+    expect(
+      await new DesktopContextStore(
+        new Repo(restored, f.source.columnCipher),
+        f.sourceNative.bridge,
+        f.sourceId,
+      ).read(f.space.workspaceId),
+    ).toEqual([desktopCapture]);
     expect(
       restored.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(unrelated.workspaceId)?.name,
     ).toBe("Unrelated backup name");

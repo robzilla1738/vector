@@ -1,3 +1,6 @@
+import { GoogleMethodSchemas, GoogleResultSchemas } from "./google.js";
+import { TranscriptionModelSchema } from "./model-connections.js";
+import { DesktopContextMethodSchemas, DesktopContextResultSchemas } from "./desktop-context.js";
 import { QueueOrderSchema, QueueOrderGetParams, QueueOrderSetParams } from "./queue-order.js";
 import { MemoryDocumentMethodSchemas, MemoryDocumentResultSchemas } from "./memory-documents.js";
 import {
@@ -261,6 +264,7 @@ import {
   OutboundMcpServerSchema,
   McpOAuthClientSetupSchema,
   McpOAuthRequirementsSchema,
+  McpOAuthStatusSchema,
   OutboundMcpToolSchema,
   OutboundMcpCallResultSchema,
   OutboundMcpBundleInspectionSchema,
@@ -946,6 +950,7 @@ export const SettingsSetParams = z.object({
   expectedModelConnectionRevision: z.string().min(1).max(160).optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
   imageModel: ImageModelSchema.nullable().optional(),
+  transcriptionModel: TranscriptionModelSchema.nullable().optional(),
   localModelsOnly: z.boolean().optional(),
   compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),
@@ -1501,6 +1506,7 @@ export const MethodSchemas = {
   "memory.paste.preview": MemoryPastePreviewParams,
   "memory.paste.commit": MemoryPasteCommitParams,
   "memory.paste.status": MemoryPasteStatusParams,
+  ...DesktopContextMethodSchemas,
   ...MemoryDocumentMethodSchemas,
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema.omit({ retentionDays: true }),
@@ -1531,6 +1537,7 @@ export const MethodSchemas = {
   "subagents.sendMessage": SubagentMessageParams,
   "subagents.getGroup": z.object({ groupId: z.string().uuid() }).strict(),
   "subagents.cancel": z.object({ agentId: z.string().uuid() }).strict(),
+  ...GoogleMethodSchemas,
   "calendar.connections.list": z.object({}),
   "calendar.auth.start": z.object({}),
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -1790,6 +1797,7 @@ export const MethodSchemas = {
   "models.copilot.disconnect": CopilotAccountParams,
   "models.copilot.catalog": CopilotAccountParams,
   "models.list": z.object({}),
+  "models.transcription.list": z.object({}).strict(),
   "models.probe": ModelsProbeParams,
   "translate.page": z
     .object({
@@ -2204,6 +2212,7 @@ const AgentResultSchemas = {
 } as const;
 
 const AutomationResultSchemas = {
+  ...DesktopContextResultSchemas,
   ...MemoryDocumentResultSchemas,
   "routines.list": z.array(RoutineSchema),
   "goals.create": GoalSchema,
@@ -2320,7 +2329,7 @@ const AutomationResultSchemas = {
   ]),
   "mcp.oauth.requirements": McpOAuthRequirementsSchema,
   "mcp.oauth.configure": z.object({ configured: z.literal(true) }).strict(),
-  "mcp.oauth.status": z.object({ connected: z.boolean(), expiresAt: z.number().int().optional() }).strict(),
+  "mcp.oauth.status": McpOAuthStatusSchema,
   "mcp.oauth.clear": z.object({ connected: z.literal(false) }).strict(),
   "mcp.tools.list": z.array(OutboundMcpToolSchema),
   "mcp.tools.setEnabled": OutboundMcpServerSchema,
@@ -2353,6 +2362,7 @@ const AutomationResultSchemas = {
   "subagents.sendMessage": RunMessageSchema,
   "subagents.getGroup": SubagentGroupViewSchema,
   "subagents.cancel": SubagentSchema,
+  ...GoogleResultSchemas,
   "calendar.connections.list": z.object({
     available: z.boolean(),
     reason: z.string().optional(),
@@ -2712,6 +2722,9 @@ const ConversationAndCodingResultSchemas = {
   "models.copilot.accounts": CopilotAccountsSchema,
   "models.copilot.disconnect": CopilotDisconnectedSchema,
   "models.copilot.catalog": CopilotCatalogSchema,
+  "models.transcription.list": z
+    .object({ models: z.array(ModelCapabilitySchema).max(500), available: z.boolean() })
+    .strict(),
   "models.list": z.object({
     models: z.array(ModelCapabilitySchema).max(500),
     localServers: z.array(LocalModelServerSchema).max(4).optional(),

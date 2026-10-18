@@ -1,4 +1,15 @@
 import {
+  DocumentOriginalChunkSchema,
+  type DocumentOriginalReadParams,
+  type DocumentOriginalChunk,
+} from "@aux/contracts/document-original";
+import {
+  NativeDocumentJobParams,
+  NativeDocumentJobResult,
+  type NativeDocumentJobInput,
+  type NativeDocumentJobOutput,
+} from "@aux/contracts/document-jobs";
+import {
   NativeImageNormalizeParams,
   NativeImageNormalizeResult,
   type NativeImageNormalizeInput,
@@ -177,6 +188,14 @@ import type {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  desktopContext?(
+    input: import("@aux/contracts/desktop-context").NativeDesktopContextRequest,
+  ): Promise<import("@aux/contracts/desktop-context").NativeDesktopContextResult>;
+
+  evidenceDocumentBytes?(
+    input: DocumentOriginalReadParams & { token: string },
+    signal?: AbortSignal,
+  ): Promise<DocumentOriginalChunk>;
   evidenceDocumentRead?(
     input: DocumentReadParams & { token: string },
     signal?: AbortSignal,
@@ -234,6 +253,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   }): Promise<NativeBrowserImportReceipt>;
   browserImportPoll?(operationId: string): Promise<NativeBrowserImportReceipt>;
   browserImportCancel?(operationId: string): Promise<NativeBrowserImportReceipt>;
+  documentJob?(input: NativeDocumentJobInput): Promise<NativeDocumentJobOutput>;
   imageNormalize?(
     input: NativeImageNormalizeInput,
     signal?: AbortSignal,
@@ -422,6 +442,29 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async evidenceDocumentBytes(
+    input: DocumentOriginalReadParams & { token: string },
+    signal?: AbortSignal,
+  ): Promise<DocumentOriginalChunk> {
+    signal?.throwIfAborted();
+    const params = HostMethods["native.evidenceDocumentBytes"].args.parse(input);
+    let retirement: Promise<{ ok: true }> | undefined;
+    const cancel = () => {
+      retirement ??= this.evidenceDocumentsRelease({ token: params.token, selectionId: params.selectionId });
+      void retirement.catch(() => {});
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    try {
+      const result = DocumentOriginalChunkSchema.parse(
+        await this.channel.call("native.evidenceDocumentBytes", params, 10_000),
+      );
+      signal?.throwIfAborted();
+      return result;
+    } finally {
+      signal?.removeEventListener("abort", cancel);
+      if (retirement) await retirement;
+    }
+  }
   async evidenceDocumentRead(
     input: DocumentReadParams & { token: string },
     signal?: AbortSignal,
@@ -570,6 +613,15 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressRevoke(input: { lease: EgressLease }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
+  }
+  async documentJob(input: NativeDocumentJobInput): Promise<NativeDocumentJobOutput> {
+    return NativeDocumentJobResult.parse(
+      await this.channel.call(
+        "native.documentJob",
+        NativeDocumentJobParams.parse(input),
+        input.action === "run" || input.action === "close" ? 70_000 : 15_000,
+      ),
+    );
   }
   async imageNormalize(
     input: NativeImageNormalizeInput,
@@ -785,6 +837,12 @@ export class ChannelNativeBridge implements NativeBridge {
       await this.channel.call("native.organizationSnapshot", {}),
     );
   }
+  desktopContext(
+    input: import("@aux/contracts/desktop-context").NativeDesktopContextRequest,
+  ): Promise<import("@aux/contracts/desktop-context").NativeDesktopContextResult> {
+    return this.channel.call("native.desktopContext", input, 15_000);
+  }
+
   foundationModelsStatus(input: {
     token: string;
   }): Promise<HostMethodResult<"native.foundationModelsStatus">> {

@@ -243,3 +243,70 @@ it("records a proved pre-dispatch transcription refusal as failed rather than an
   ).toEqual(["failed", "failed"]);
   expect(outcome.failures.join()).toContain("disabled");
 });
+
+it("persists per-file zero/unknown receipts without letting stale lifecycle holders erase or cross-scope them", async () => {
+  const f = await fixture();
+  let calls = 0;
+  await intakeChannelMessage({
+    deps: {
+      images: f.images,
+      documents: f.documents,
+      download: async () => ({ bytes: Buffer.from("OggS-original-audio-bytes"), mediaType: "audio/ogg" }),
+      transcribe: async (input) => {
+        await input.beforeDispatch();
+        calls++;
+        await input.recordReceipt({
+          callId: `audio-call-${calls}`,
+          modelId: "openai/whisper-1",
+          sourceSha256: input.sha256,
+          audioDurationSeconds: 1,
+          durationMs: 10,
+          dispatched: true,
+          costUsd: calls === 1 ? 0 : undefined,
+          costEstimated: calls !== 1,
+        });
+        if (calls === 2) throw new AuxError("backend_unavailable", "Uncertain original send.");
+        return {
+          text: "Synthetic source",
+          modelId: "openai/whisper-1",
+          durationMs: 10,
+          costUsd: 0,
+          costEstimated: false,
+        };
+      },
+    },
+    store: f.store,
+    connection: f.connection,
+    message: f.stored,
+    chatId: f.chatId,
+    parentRunId: "parent",
+    signal: new AbortController().signal,
+    checkCurrent: () => {},
+  });
+  const usage = () =>
+    f.store.audioUsage(
+      f.connection.connectionId,
+      f.stored.peerKey,
+      f.stored.message.conversationId,
+      f.stored.message.threadId,
+    );
+  expect(usage().receipts).toHaveLength(2);
+  expect(usage().receipts[0]).toMatchObject({ costUsd: 0, costEstimated: false });
+  expect(usage().receipts[1]).toMatchObject({ costEstimated: true });
+  expect(usage().receipts[1]!.costUsd).toBeUndefined();
+  f.store.saveMessage({ ...f.stored, state: "completed" });
+  expect(usage().receipts).toHaveLength(2);
+  const latest = f.store.message(f.connection.connectionId, f.stored.message.messageId)!;
+  f.store.saveMessage({ ...latest, audioReceipts: latest.audioReceipts!.slice(0, 1) });
+  expect(usage().receipts).toHaveLength(2);
+  expect(
+    f.store.audioUsage(f.connection.connectionId, f.stored.peerKey, "other-conversation").receipts,
+  ).toEqual([]);
+  expect(
+    f.store.audioUsage(f.connection.connectionId, "other-peer", f.stored.message.conversationId).receipts,
+  ).toEqual([]);
+  const record = f.store.attachments(f.connection.connectionId, f.stored.messageKey)[0]!;
+  f.store.remove(f.connection.connectionId);
+  expect(() => f.store.saveAttachment(record)).toThrow(/retired/);
+  expect(f.db.prepare("SELECT count(*) n FROM channel_attachments").get()).toMatchObject({ n: 0 });
+});

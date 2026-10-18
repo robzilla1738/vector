@@ -1,3 +1,4 @@
+import type { ChannelAudioInput } from "./audio-transcription.js";
 import { createHash } from "node:crypto";
 import { AuxError } from "@aux/contracts";
 import {
@@ -36,16 +37,7 @@ export type ChannelIntakeDependencies = {
     signal: AbortSignal;
     checkCurrent(): void;
   }): Promise<{ bytes: Uint8Array; sourceSha256: string; sha256: string; width: number; height: number }>;
-  transcribe?(input: {
-    runId: string;
-    bytes: Uint8Array;
-    mediaType: string;
-    sha256: string;
-    durationSeconds?: number;
-    beforeDispatch(): Promise<void>;
-    signal: AbortSignal;
-    checkCurrent(): void;
-  }): Promise<{
+  transcribe?(input: ChannelAudioInput): Promise<{
     text: string;
     modelId: string;
     durationMs: number;
@@ -207,6 +199,24 @@ export async function intakeChannelMessage(input: {
           mediaType: record.mediaType,
           sha256: record.sha256,
           durationSeconds: source.durationSeconds,
+          source: {
+            connectionId: connection.connectionId,
+            connectionRevision: message.revision,
+            messageKey: message.messageKey,
+            attachmentKey,
+            peerKey: message.peerKey,
+            provider: connection.provider,
+            conversationId: message.message.conversationId,
+            threadId: message.message.threadId,
+          },
+          recordReceipt: async (receipt) => {
+            // Settlement may run after Stop: the store revalidates the durable
+            // source and refuses retired/deleted records without recreating them.
+            if (receipt.sourceSha256 !== record!.sha256)
+              throw new AuxError("conflict", "Audio receipt source changed.");
+            store.saveAttachment({ ...record!, receipt, updatedAt: Date.now() });
+            record = { ...record!, receipt, updatedAt: Date.now() };
+          },
           beforeDispatch: async () => {
             check();
             if (dispatched) throw new AuxError("conflict", "A transcription cannot dispatch twice.");
@@ -285,12 +295,33 @@ export async function intakeChannelMessage(input: {
         });
         try {
           check();
-          await deps.documents.importDocument(input.chatId, captured.identity, captured.source, {
-            signal: input.signal,
-            checkCurrent: check,
-            onAdded: (attachmentId) =>
-              save({ ...record!, state: "ready", attachmentId, updatedAt: Date.now() }),
-          });
+          await deps.documents.importDocument(
+            input.chatId,
+            captured.identity,
+            {
+              ...captured.source,
+              ...(message.authorityId && record.mediaType === "application/pdf"
+                ? {
+                    original: {
+                      kind: "channel" as const,
+                      connectionId: connection.connectionId,
+                      connectionRevision: connection.revision,
+                      messageKey: message.messageKey,
+                      providerMessageId: message.message.messageId,
+                      peerKey: message.peerKey,
+                      authorityId: message.authorityId,
+                      attachmentKey,
+                    },
+                  }
+                : {}),
+            },
+            {
+              signal: input.signal,
+              checkCurrent: check,
+              onAdded: (attachmentId) =>
+                save({ ...record!, state: "ready", attachmentId, updatedAt: Date.now() }),
+            },
+          );
           imported++;
         } finally {
           await captured.release();

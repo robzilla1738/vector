@@ -36,6 +36,7 @@ const copilotSetup = CopilotSetupSchema.parse({
   catalogOnly: true,
 });
 function modelRead(method: string) {
+  if (method === "models.transcription.list") return { models: [], available: false, configuredModel: null };
   if (method === "models.copilot.setup") return copilotSetup;
   if (method === "models.copilot.accounts") return [];
   if (method === "settings.cloud.status") return { configured: false, revision: 0 };
@@ -121,7 +122,7 @@ it("shows only masked connection status and performs explicit disconnect/reconne
   await act(async () => root.render(<Fixture />));
   expect(call).toHaveBeenCalledWith("models.list");
   call.mockClear();
-  expect(call).not.toHaveBeenCalled();
+  expect(call.mock.calls.every(([method]) => method === "models.transcription.list")).toBe(true);
   expect(save).not.toHaveBeenCalled();
   expect(collectSettingsFields(host).map((field) => field.label)).toEqual(
     expect.arrayContaining(["Providers", "Image-generation model"]),
@@ -133,7 +134,7 @@ it("shows only masked connection status and performs explicit disconnect/reconne
   await menu();
   await chooseAction("Reconnect");
   expect(save).toHaveBeenLastCalledWith({ modelConnection: { provider: "gateway", enabled: true } });
-  expect(call).not.toHaveBeenCalled();
+  expect(call.mock.calls.every(([method]) => method === "models.transcription.list")).toBe(true);
 });
 
 it("selects the exact provider and focuses its empty key editor for reauthentication", async () => {
@@ -147,7 +148,7 @@ it("selects the exact provider and focuses its empty key editor for reauthentica
   expect(document.activeElement).toBe(key);
   expect(key.value).toBe("");
   // Active Anthropic selection enumerates configured IDs only; no probe/request action.
-  expect(call.mock.calls.map(([method]) => method)).toEqual(["models.list"]);
+  expect(call.mock.calls.map(([method]) => method)).toEqual(["models.transcription.list", "models.list"]);
 });
 
 it("keeps a failed credential replacement editable and does not claim success", async () => {
@@ -197,7 +198,7 @@ it("saves the exact image selection or Off without a provider request and explai
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(save).toHaveBeenLastCalledWith({ imageModel: IMAGE_MODELS[0].id });
-  expect(call).not.toHaveBeenCalled();
+  expect(call.mock.calls.every(([method]) => method === "models.transcription.list")).toBe(true);
   await act(async () => {
     select.value = "off";
     select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -280,6 +281,7 @@ it("chooses an actually discovered local server and persists local-only without 
   call.mockImplementation(async (method: string) => {
     if (method === "models.copilot.setup" || method === "models.copilot.accounts") return modelRead(method);
     if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+    if (method === "models.transcription.list") return modelRead(method);
     if (method !== "models.list") throw new Error(`Unexpected model producer ${method}`);
     return {
       models: [],
@@ -308,6 +310,7 @@ it("chooses an actually discovered local server and persists local-only without 
     call.mock.calls.every(
       ([method]) =>
         method === "models.list" ||
+        method === "models.transcription.list" ||
         method === "settings.cloud.status" ||
         method === "models.copilot.setup" ||
         method === "models.copilot.accounts",

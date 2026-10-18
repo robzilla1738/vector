@@ -1,3 +1,7 @@
+import {
+  AudioTranscriptionReceiptSchema,
+  type AudioTranscriptionReceipt,
+} from "@aux/contracts/model-connections";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { AuxError } from "@aux/contracts";
@@ -43,6 +47,10 @@ const messageBody = z
     authorityId: z.string().uuid().optional(),
     needsInputNotified: z.boolean().default(false),
     preparedText: z.string().max(40000).optional(),
+    audioReceipts: z
+      .array(z.object({ attachmentKey: z.string(), receipt: AudioTranscriptionReceiptSchema }).strict())
+      .max(10)
+      .optional(),
   })
   .strict();
 type MessageBody = z.infer<typeof messageBody>;
@@ -91,6 +99,7 @@ const attachmentBody = z
     attachmentId: z.string().optional(),
     imageId: z.string().optional(),
     transcript: z.string().max(20000).optional(),
+    receipt: AudioTranscriptionReceiptSchema.optional(),
     modelId: z.string().optional(),
     error: z.string().max(500).optional(),
   })
@@ -399,6 +408,21 @@ export class ChannelStore {
     };
   }
   saveMessage(message: StoredChannelMessage) {
+    // Other lifecycle holders may still hold a pre-transcription snapshot. A
+    // state update cannot erase a financial receipt appended in the meantime.
+    const current = this.repo.db
+      .prepare("SELECT * FROM channel_messages WHERE connection_id=? AND message_key=? AND revision=?")
+      .get(message.connectionId, message.messageKey, message.revision) as MessageRow | undefined;
+    const existingReceipts = current ? this.recordMessage(current).audioReceipts : undefined;
+    const receipts = [
+      ...new Map(
+        [...(message.audioReceipts ?? []), ...(existingReceipts ?? [])].map((entry) => [
+          entry.attachmentKey,
+          entry,
+        ]),
+      ).values(),
+    ];
+
     const result = this.repo.db
       .prepare(
         "UPDATE channel_messages SET state=?,run_id=?,body=? WHERE connection_id=? AND message_key=? AND revision=?",
@@ -416,6 +440,7 @@ export class ChannelStore {
             needsInputNotified: message.needsInputNotified,
             preparedText: message.preparedText,
             authorityId: message.authorityId,
+            audioReceipts: receipts.length ? receipts : undefined,
           }),
         ),
         message.connectionId,
@@ -454,10 +479,10 @@ export class ChannelStore {
   saveAttachment(record: StoredChannelAttachment) {
     const original = this.repo.db
       .prepare(
-        `SELECT m.state,m.revision,c.revision AS connection_revision,c.enabled FROM channel_messages m JOIN channel_connections c ON c.connection_id=m.connection_id WHERE m.connection_id=? AND m.message_key=?`,
+        `SELECT m.*,c.revision AS connection_revision,c.enabled FROM channel_messages m JOIN channel_connections c ON c.connection_id=m.connection_id WHERE m.connection_id=? AND m.message_key=?`,
       )
       .get(record.connectionId, record.messageKey) as
-      { state: string; revision: string; connection_revision: string; enabled: number } | undefined;
+      (MessageRow & { connection_revision: string; enabled: number }) | undefined;
     if (
       !original ||
       !["pending", "admitting", "running", "queued"].includes(original.state) ||
@@ -465,25 +490,68 @@ export class ChannelStore {
       original.revision !== original.connection_revision
     )
       throw new AuxError("cancelled", "The attachment's original channel message retired.");
+    if (record.receipt && record.receipt.sourceSha256 !== record.sha256)
+      throw new AuxError("conflict", "The audio receipt does not match its original capture.");
     const { connectionId, messageKey, attachmentKey, state, createdAt, updatedAt, ...body } = record;
-    this.repo.db
-      .prepare(
-        `INSERT INTO channel_attachments(connection_id,message_key,attachment_key,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
+    this.repo.transaction(() => {
+      this.repo.db
+        .prepare(
+          `INSERT INTO channel_attachments(connection_id,message_key,attachment_key,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
       ON CONFLICT(connection_id,message_key,attachment_key) DO UPDATE SET state=excluded.state,body=excluded.body,updated_at=excluded.updated_at`,
+        )
+        .run(
+          connectionId,
+          messageKey,
+          attachmentKey,
+          state,
+          this.encode(
+            "channel_attachments",
+            [connectionId, messageKey, attachmentKey],
+            attachmentBody.parse(body),
+          ),
+          createdAt,
+          updatedAt,
+        );
+      if (record.receipt) {
+        const message = this.recordMessage(original);
+        const current = message.audioReceipts ?? [];
+        const prior = current.find((entry) => entry.attachmentKey === attachmentKey)?.receipt;
+        if (prior && prior.callId !== record.receipt.callId)
+          throw new AuxError("conflict", "The original audio receipt cannot be replaced by a retry.");
+        message.audioReceipts = [
+          ...current.filter((entry) => entry.attachmentKey !== attachmentKey),
+          { attachmentKey, receipt: record.receipt },
+        ];
+        this.saveMessage(message);
+      }
+    });
+  }
+
+  /** Read small encrypted message projections, never historical raw audio blobs. */
+  audioUsage(
+    connectionId: string,
+    peerKey: string,
+    conversationId: string,
+    threadId?: string,
+  ): { receipts: AudioTranscriptionReceipt[]; truncated: boolean } {
+    const rows = this.repo.db
+      .prepare(
+        "SELECT * FROM channel_messages WHERE connection_id=? AND peer_key=? ORDER BY received_at DESC,message_key DESC LIMIT 101",
       )
-      .run(
-        connectionId,
-        messageKey,
-        attachmentKey,
-        state,
-        this.encode(
-          "channel_attachments",
-          [connectionId, messageKey, attachmentKey],
-          attachmentBody.parse(body),
-        ),
-        createdAt,
-        updatedAt,
-      );
+      .all(connectionId, peerKey) as MessageRow[];
+    const receipts = rows.slice(0, 100).flatMap((row) => {
+      const message = this.recordMessage(row);
+      if (
+        message.message.conversationId !== conversationId ||
+        message.message.threadId !== threadId ||
+        message.state === "retired"
+      )
+        return [];
+      return (message.audioReceipts ?? [])
+        .map((entry) => entry.receipt)
+        .filter((receipt) => receipt.dispatched);
+    });
+    return { receipts, truncated: rows.length > 100 };
   }
   deliveries(connectionId: string, states?: StoredChannelDelivery["state"][]): StoredChannelDelivery[] {
     if (states && !states.length) return [];

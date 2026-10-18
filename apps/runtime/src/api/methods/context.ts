@@ -109,10 +109,14 @@ export interface Services {
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
   subagents?: SubagentService;
   calendar?: CalendarConnectionService;
+  googleAccounts?: import("../../services/google-accounts.js").GoogleAccountService;
+  googleGrants?: import("../../services/google-grants.js").GoogleGrantService;
+  google?: import("../../services/google-operations.js").GoogleOperationService;
   native?: NativeBridge;
   downloadsDir?: string;
   contentMemory?: ContentMemoryStore;
   memoryPipeline?: MemoryPipeline;
+  desktopContext?: import("../../services/desktop-context.js").DesktopContextService;
   checkpointDeletedData?: () => void;
   vault?: VaultService;
   routines?: RoutineService;
@@ -373,6 +377,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   const d: MethodCollaborators = container.services;
 
   const revokeWorkspaceContext = async (workspaceId: string, browsingOnly: boolean) => {
+    await s.runs.retireWorkspaceCompactions(workspaceId);
     const rows = s.repo.db
       .prepare(
         `SELECT run_id AS runId FROM runs
@@ -395,6 +400,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     }
   };
   const revokeArticleRuns = async (workspaceId: string, memoryId?: string) => {
+    await s.runs.retireWorkspaceCompactions(workspaceId);
     const rows = s.repo.db
       .prepare(
         `SELECT run_id AS runId FROM runs

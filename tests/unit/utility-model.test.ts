@@ -1,3 +1,5 @@
+import { WebSearchInputSchema } from "@aux/contracts/web-search";
+import { normalizeGatewaySearch } from "../../apps/runtime/src/agent/gateway-search.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,6 +43,8 @@ function fixture() {
   const dispatch = vi.fn();
   let fail = false;
   let known = true;
+  let cachedInputTokens: number | undefined;
+  let searchReservationUsd: number | undefined;
   const transport: ModelClient = {
     async generateStructured<T>(opts: { schema: z.ZodType<T>; beforeDispatch?: () => Promise<void> }) {
       await opts.beforeDispatch?.();
@@ -51,6 +55,7 @@ function fixture() {
         durationMs: 2,
         inputTokens: 12,
         outputTokens: 3,
+        cachedInputTokens,
         ...(known ? { providerMetadata: { gateway: { cost: "0.003" } } } : {}),
       };
     },
@@ -58,6 +63,41 @@ function fixture() {
       await opts.beforeDispatch?.();
       dispatch();
       return { text: "Working", durationMs: 2 };
+    },
+    async searchWeb(opts) {
+      await opts.beforeDispatch?.();
+      searchReservationUsd = repo.listModelCalls("original").at(-1)?.costUsd;
+      dispatch();
+      return {
+        result: normalizeGatewaySearch({
+          request: opts.request,
+          executions: [
+            {
+              toolCallId: "actual-call",
+              input: { query: opts.request.query },
+              output: {
+                requestId: "actual-request",
+                results: [],
+                ...(known ? { costDollars: { total: 0 } } : {}),
+              },
+            },
+          ],
+          gatewayCost: known ? "0" : undefined,
+        }),
+        durationMs: 2,
+        inputTokens: 12,
+        outputTokens: 3,
+        cachedInputTokens: 0,
+        providerMetadata: {
+          ...(known ? { gateway: { cost: "0" } } : {}),
+          aux: {
+            gatewaySearch: {
+              ...(known ? { providerSearchCostUsd: 0 } : {}),
+              searchCostIncludedInGatewayTotal: "not-verified",
+            },
+          },
+        },
+      };
     },
     async listModels() {
       return [];
@@ -114,6 +154,10 @@ function fixture() {
     continueSpend,
     request,
     model,
+    searchReservation: () => searchReservationUsd,
+    cache: (value: number | undefined) => {
+      cachedInputTokens = value;
+    },
     fail: () => {
       fail = true;
     },
@@ -135,6 +179,7 @@ it("settles one original reservation with actual provider cost and tokens", asyn
       outputTokens: 3,
       providerMetadata: {
         aux: { kind: "utility_generation", provider: "gateway", destination: "https://ai-gateway.vercel.sh" },
+        gateway: { cost: "0.003" },
       },
     }),
   ]);
@@ -166,4 +211,75 @@ it("checks actual user spend before dispatch and leaves no false reservation on 
   expect(f.repo.listModelCalls("original")).toEqual([]);
   expect(f.continueSpend).toHaveBeenCalledTimes(1);
   expect(f.release).toHaveBeenCalledTimes(1);
+});
+
+it("reserves search separately but invoices actual zero usage/cost only on the original run", async () => {
+  const f = fixture();
+  const result = await f.model.searchWeb!({
+    modelId: f.request.modelId,
+    request: WebSearchInputSchema.parse({ query: "actual query", provider: "exa" }),
+  });
+  expect(result.result.backend).toBe("gateway");
+  expect(f.searchReservation()).toBeGreaterThanOrEqual(1);
+  expect(f.repo.listModelCalls("original")).toEqual([
+    expect.objectContaining({
+      runId: "original",
+      costUsd: 0,
+      costEstimated: false,
+      inputTokens: 12,
+      outputTokens: 3,
+      providerMetadata: expect.objectContaining({ usage: { cachedInputTokens: 0 } }),
+    }),
+  ]);
+  expect(f.dispatch).toHaveBeenCalledTimes(1);
+});
+
+it("retains actual search accounting while refusing output after original source retirement", async () => {
+  const f = fixture();
+  f.checkOwner.mockImplementation(async () => {
+    if (f.dispatch.mock.calls.length) throw new AuxError("cancelled", "Original source retired");
+  });
+  await expect(
+    f.model.searchWeb!({
+      modelId: f.request.modelId,
+      request: WebSearchInputSchema.parse({ query: "actual query", provider: "exa" }),
+    }),
+  ).rejects.toThrow(/source retired/);
+  expect(f.repo.listModelCalls("original")).toEqual([
+    expect.objectContaining({
+      costUsd: 0,
+      costEstimated: false,
+      inputTokens: 12,
+      outputTokens: 3,
+      providerMetadata: expect.objectContaining({ usage: { cachedInputTokens: 0 } }),
+      error: "Original source retired",
+    }),
+  ]);
+});
+
+it.each([0, 9, undefined])(
+  "retains utility provider metadata and cache usage %s without fabricating unknown counts",
+  async (cached) => {
+    const f = fixture();
+    f.cache(cached);
+    await f.model.generateStructured(f.request);
+    const metadata = f.repo.listModelCalls("original")[0]?.providerMetadata;
+    expect(metadata).toMatchObject({ gateway: { cost: "0.003" }, aux: { kind: "utility_generation" } });
+    expect((metadata?.usage as { cachedInputTokens?: number } | undefined)?.cachedInputTokens).toBe(cached);
+  },
+);
+
+it("retains unknown search charges as unknown instead of treating a model component as a free total", async () => {
+  const f = fixture();
+  f.unknown();
+  await f.model.searchWeb!({
+    modelId: f.request.modelId,
+    request: WebSearchInputSchema.parse({ query: "x", provider: "exa" }),
+  });
+  expect(f.repo.listModelCalls("original")[0]).toMatchObject({
+    costEstimated: true,
+    inputTokens: 12,
+    outputTokens: 3,
+  });
+  expect(f.repo.listModelCalls("original")[0]?.costUsd).toBeUndefined();
 });

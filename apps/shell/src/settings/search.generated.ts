@@ -523,6 +523,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Models",
+    label: "Voice-transcription model",
+    description: "",
+    target: "Voice-transcription model",
+  },
+  {
+    category: "Models",
     label: "Custom providers",
     description: "Connect named providers with their own endpoint, key and models.",
     target: "Custom providers",
@@ -1530,6 +1536,13 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description: "Show this feature in Aux.",
     target: "Memory",
     feature: "memory",
+  },
+  {
+    category: "Labs",
+    label: "Desktop Context",
+    description: "Show this feature in Aux.",
+    target: "Desktop Context",
+    feature: "desktopContext",
   },
   {
     category: "Labs",

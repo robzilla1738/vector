@@ -17,6 +17,7 @@ type RecallConfig = {
   context?: string;
   contextDocumentEvidence?: string;
   contextAttachmentRefs?: { chatId: string; attachmentId: string; sha256: string }[];
+  contextTaskDocumentRefs?: { taskId: string; taskRevision: number; evidenceId: string; sha256: string }[];
   contextArtifactEvidence?: string;
 };
 
@@ -77,6 +78,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
     revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined,
     contextAttachmentRefs: undefined,
+    contextTaskDocumentRefs: undefined,
     documentAdmissions: undefined,
     contextCompaction: undefined,
     queuedMessageContexts: undefined,
@@ -197,6 +199,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             : "owner_kind='conversation' AND owner_id=? AND document_id=?";
         const params = attachmentId === undefined ? [chatId] : [chatId, attachmentId];
         // Portable copies can have foreign_keys disabled; remove protected children explicitly.
+        if (has("document_source_chunks")) db.prepare(`DELETE FROM document_source_chunks WHERE ${clause}`).run(...params);
         db.prepare(`DELETE FROM document_segments WHERE ${clause}`).run(...params);
         db.prepare(`DELETE FROM document_snapshots WHERE ${clause}`).run(...params);
       };

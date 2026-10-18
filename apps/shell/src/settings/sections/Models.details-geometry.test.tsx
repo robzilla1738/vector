@@ -32,6 +32,7 @@ const copilotSetup = CopilotSetupSchema.parse({
   catalogOnly: true,
 });
 function modelRead(method: string) {
+  if (method === "models.transcription.list") return { models: [], available: false, configuredModel: null };
   if (method === "models.copilot.setup") return copilotSetup;
   if (method === "models.copilot.accounts") return [];
   if (method === "settings.cloud.status") return { configured: false, revision: 0 };

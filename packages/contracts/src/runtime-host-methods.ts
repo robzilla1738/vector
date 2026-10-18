@@ -1,3 +1,6 @@
+import { DocumentOriginalReadParamsSchema, DocumentOriginalChunkSchema } from "./document-original.js";
+import { NativeDocumentJobParams, NativeDocumentJobResult } from "./document-jobs.js";
+import { NativeDesktopContextRequestSchema, NativeDesktopContextResultSchema } from "./desktop-context.js";
 import { NativeImageNormalizeParams, NativeImageNormalizeResult } from "./image-normalize.js";
 import { DocumentReadParamsSchema, DocumentReadResultSchema } from "./document-intake.js";
 import { PrivateRuntimeRequestSchema, PrivateRuntimeResultSchema } from "./private-provider.js";
@@ -168,6 +171,11 @@ const nativePage = z
 
 /** Methods admitted only from the authenticated runtime connection. */
 export const RuntimeHostMethods = {
+  "native.desktopContext": runtime(
+    "desktopContext",
+    NativeDesktopContextRequestSchema,
+    NativeDesktopContextResultSchema,
+  ),
   "native.foundationModelsStatus": runtime(
     "core",
     NativeFoundationStatusParams,
@@ -228,6 +236,11 @@ export const RuntimeHostMethods = {
     "conversation",
     DocumentReadParamsSchema.extend({ token: z.string().uuid() }).strict(),
     DocumentReadResultSchema,
+  ),
+  "native.evidenceDocumentBytes": runtime(
+    "conversation",
+    DocumentOriginalReadParamsSchema.extend({ token: z.string().uuid() }).strict(),
+    DocumentOriginalChunkSchema,
   ),
   "native.evidenceDocumentsRelease": runtime(
     "conversation",
@@ -363,6 +376,7 @@ export const RuntimeHostMethods = {
     accepted,
   ),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
+  "native.documentJob": runtime("core", NativeDocumentJobParams, NativeDocumentJobResult),
   "native.imageNormalize": runtime("core", NativeImageNormalizeParams, NativeImageNormalizeResult),
   "native.personCapture": runtime("core", NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema),
   "native.personReadContext": runtime(

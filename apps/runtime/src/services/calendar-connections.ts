@@ -1,5 +1,5 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { createServer, type Server } from "node:http";
+import { randomUUID } from "node:crypto";
+import { GoogleAccountService } from "./google-accounts.js";
 import {
   AuxError,
   CalendarConnectionSchema,
@@ -16,7 +16,6 @@ import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.readonly" as const;
-const AUTH_LIFETIME_MS = 5 * 60_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
 
@@ -42,8 +41,6 @@ type GrantRow = {
   account_key_lookup: string;
   label: string;
 };
-type Secret = { accessToken: string; refreshToken: string; expiresAt: number };
-type Pending = { server: Server; timer: NodeJS.Timeout; verifier: string; redirectUri: string };
 type Endpoints = { auth: string; token: string; revoke: string; calendar: string };
 const google: Endpoints = {
   auth: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -78,32 +75,18 @@ async function jsonResponse(response: Response): Promise<Record<string, unknown>
   throw new AuxError("backend_unavailable", "Calendar returned invalid data.");
 }
 
-async function waitForToken(pending: Promise<Secret>, signal?: AbortSignal): Promise<Secret> {
-  if (!signal) return pending;
-  if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
-  let onAbort!: () => void;
-  const cancelled = new Promise<never>((_resolve, reject) => {
-    onAbort = () => reject(new AuxError("cancelled", "Calendar read was cancelled."));
-    signal.addEventListener("abort", onAbort, { once: true });
-  });
-  try {
-    return await Promise.race([pending, cancelled]);
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-  }
-}
-
 /** Outbound Google Calendar authority. No browser cookies or inbound MCP tokens enter this service. */
 export class CalendarConnectionService {
-  private pending = new Map<string, Pending>();
+  private accounts: GoogleAccountService;
+  private ownsAccounts: boolean;
   private activeReads = new Map<string, Set<AbortController>>();
   private grantReads = new Map<string, Set<AbortController>>();
-  private refreshing = new Map<string, Promise<Secret>>();
   private closed = false;
 
   constructor(
     private deps: {
       repo: Repo;
+      accounts?: GoogleAccountService;
       native: NativeBridge;
       clientId?: string;
       profileId?: string;
@@ -112,23 +95,13 @@ export class CalendarConnectionService {
       onChange?: () => void;
     },
   ) {
-    void this.cleanupRevokedSecrets().catch(() => undefined);
+    this.ownsAccounts = !deps.accounts;
+    this.accounts = deps.accounts ?? new GoogleAccountService(deps);
   }
 
   /** A crash or Keychain error after local revocation cannot reactivate the account. */
-  async cleanupRevokedSecrets(): Promise<void> {
-    const rows = this.deps.repo.db
-      .prepare("SELECT connection_id,secret_name FROM calendar_connections WHERE revoked_at IS NOT NULL")
-      .all() as { connection_id: string; secret_name: string }[];
-    for (const row of rows) {
-      const name = this.deps.repo.revealRecordField(
-        "calendar_connections",
-        [row.connection_id],
-        "secret_name",
-        row.secret_name,
-      );
-      await this.deps.native.storeSecret(name, "").catch(() => undefined);
-    }
+  cleanupRevokedSecrets(): Promise<void> {
+    return this.accounts.cleanupRevokedSecrets();
   }
 
   private get http() {
@@ -138,12 +111,16 @@ export class CalendarConnectionService {
     return this.deps.endpoints ?? google;
   }
   private requireConfigured() {
+    if (this.closed) throw new AuxError("cancelled", "Calendar connections are closed.");
     if (!this.deps.clientId || !this.deps.native.available())
       throw new AuxError(
         "backend_unavailable",
         "Google Calendar requires Aux desktop and a configured Google OAuth desktop client.",
       );
     return this.deps.clientId;
+  }
+  connectionRevision(connectionId: string): string {
+    return this.accounts.account(connectionId).revision;
   }
   list(): { available: boolean; reason?: string; connections: CalendarConnection[] } {
     const available = !!this.deps.clientId && this.deps.native.available();
@@ -159,7 +136,9 @@ export class CalendarConnectionService {
             reason: "Google Calendar needs a configured OAuth desktop client and secure Aux desktop storage.",
           }
         : {}),
-      connections: rows.map((row) => this.public(row)),
+      connections: rows
+        .filter((row) => JSON.parse(this.decode(row).scopes).includes(SCOPE))
+        .map((row) => this.public(row)),
     };
   }
   private accountKey(row: Pick<Row, "connection_id" | "account_key" | "account_key_lookup">): string {
@@ -195,18 +174,17 @@ export class CalendarConnectionService {
       provider: "google",
       accountKey: value.account_key,
       label: value.label,
-      scopes: JSON.parse(value.scopes),
+      scopes: [SCOPE],
       state: value.state,
       createdAt: value.created_at,
       updatedAt: value.updated_at,
     });
   }
   private row(connectionId: string): Row {
-    const row = this.deps.repo.db
-      .prepare("SELECT * FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL")
-      .get(connectionId) as Row | undefined;
-    if (!row) throw new AuxError("not_found", "Calendar connection is unavailable or revoked.");
-    return this.decode(row);
+    const row = this.accounts.row(connectionId);
+    if (!JSON.parse(row.scopes).includes(SCOPE))
+      throw new AuxError("permission_denied", "This Google account has no Calendar read scope.");
+    return row;
   }
   private grantRow(taskId: string, grantId: string): GrantRow {
     const grant = this.deps.repo.db
@@ -313,209 +291,9 @@ export class CalendarConnectionService {
     this.deps.onChange?.();
     return { ok: true };
   }
-  async start(): Promise<{ url: string; expiresAt: number }> {
-    if (this.closed) throw new AuxError("cancelled", "Calendar sign-in is unavailable while Aux closes.");
-    const clientId = this.requireConfigured();
-    if (this.pending.size >= 3)
-      throw new AuxError("conflict", "Finish or cancel an existing Calendar sign-in first.");
-    const state = randomBytes(32).toString("base64url");
-    const verifier = randomBytes(48).toString("base64url");
-    const challenge = createHash("sha256").update(verifier).digest("base64url");
-    const server = createServer((request, response) => {
-      const url = new URL(request.url ?? "/", "http://127.0.0.1");
-      if (
-        request.method !== "GET" ||
-        url.pathname !== "/oauth/google-calendar" ||
-        url.searchParams.get("state") !== state ||
-        !this.pending.has(state)
-      ) {
-        response.writeHead(404).end("This authorization request is unavailable.");
-        return;
-      }
-      const pending = this.pending.get(state)!;
-      this.pending.delete(state);
-      clearTimeout(pending.timer);
-      server.close();
-      const code = url.searchParams.get("code");
-      if (!code || url.searchParams.has("error")) {
-        response.writeHead(400).end("Calendar access was not granted. Return to Aux and try again.");
-        return;
-      }
-      void this.finish(code, pending)
-        .then(() => {
-          response.writeHead(200, {
-            "content-type": "text/html; charset=utf-8",
-            "cache-control": "no-store",
-          });
-          response.end(
-            "<!doctype html><title>Calendar connected</title><p>Calendar connected. Return to Aux.</p>",
-          );
-        })
-        .catch(() => {
-          response.writeHead(400, {
-            "content-type": "text/html; charset=utf-8",
-            "cache-control": "no-store",
-          });
-          response.end(
-            "<!doctype html><title>Calendar connection failed</title><p>Calendar could not be connected. Return to Aux and try again.</p>",
-          );
-        });
-    });
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => {
-        server.off("error", reject);
-        resolve();
-      });
-    });
-    const address = server.address();
-    if (!address || typeof address === "string") {
-      server.close();
-      throw new AuxError("backend_unavailable", "Cannot start the Calendar sign-in callback.");
-    }
-    const redirectUri = `http://127.0.0.1:${address.port}/oauth/google-calendar`;
-    const expiresAt = Date.now() + AUTH_LIFETIME_MS;
-    const timer = setTimeout(() => {
-      this.pending.delete(state);
-      server.close();
-    }, AUTH_LIFETIME_MS);
-    timer.unref();
-    this.pending.set(state, { server, timer, verifier, redirectUri });
-    const url = new URL(this.urls.auth);
-    for (const [key, value] of Object.entries({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: SCOPE,
-      access_type: "offline",
-      prompt: "consent",
-      state,
-      code_challenge: challenge,
-      code_challenge_method: "S256",
-    }))
-      url.searchParams.set(key, value);
-    return { url: url.href, expiresAt };
-  }
-  private async finish(code: string, pending: Pending) {
-    if (this.closed) throw new AuxError("cancelled", "Calendar sign-in was cancelled.");
-    const clientId = this.requireConfigured();
-    const response = await this.http(this.urls.token, {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        redirect_uri: pending.redirectUri,
-        code_verifier: pending.verifier,
-        grant_type: "authorization_code",
-      }),
-    });
-    if (!response.ok)
-      throw new AuxError("needs_input", "Calendar authorization failed. Try connecting again.");
-    const data = await jsonResponse(response);
-    const accessToken = typeof data.access_token === "string" ? data.access_token : "";
-    const refreshToken = typeof data.refresh_token === "string" ? data.refresh_token : "";
-    const scopes = typeof data.scope === "string" ? data.scope.split(/\s+/) : [];
-    if (!accessToken || !refreshToken || !scopes.includes(SCOPE))
-      throw new AuxError(
-        "needs_input",
-        "Calendar did not grant durable read-only access. Reconnect and approve calendar reading.",
-      );
-    const identity = await this.calendarGet("/users/me/calendarList/primary", accessToken);
-    if (this.closed) throw new AuxError("cancelled", "Calendar sign-in was cancelled.");
-    const accountKey = typeof identity.id === "string" ? identity.id : "";
-    if (!accountKey || accountKey.length > 320 || identity.primary !== true)
-      throw new AuxError("backend_unavailable", "Calendar did not identify the primary account.");
-    const label =
-      typeof identity.summary === "string" && identity.summary.trim()
-        ? identity.summary.trim().slice(0, 320)
-        : accountKey;
-    const lookup = this.deps.repo.exactRecordLookup("calendar_connections", "account_key", accountKey);
-    // Calendar account counts are small. Authenticate every active projection before
-    // an indexed lookup so a changed lookup cannot create a second active account.
-    for (const candidate of this.deps.repo.db
-      .prepare("SELECT * FROM calendar_connections WHERE provider='google' AND revoked_at IS NULL")
-      .all() as Row[])
-      this.decode(candidate);
-    const priorRow = this.deps.repo.db
-      .prepare(
-        "SELECT * FROM calendar_connections WHERE provider='google' AND account_key_lookup=? AND revoked_at IS NULL",
-      )
-      .get(lookup) as Row | undefined;
-    const previous = priorRow ? this.decode(priorRow) : undefined;
-    if (previous && previous.account_key !== accountKey)
-      throw new Error("Calendar account lookup collision or corruption.");
-    const connectionId = previous?.connection_id ?? randomUUID();
-    const secretName = `calendar-${randomUUID().replaceAll("-", "")}`;
-    const expiresAt = Date.now() + Math.max(60, Number(data.expires_in) || 3600) * 1000;
-    await this.deps.native.storeSecret(
-      secretName,
-      JSON.stringify({ accessToken, refreshToken, expiresAt } satisfies Secret),
-    );
-    try {
-      if (this.closed) throw new AuxError("cancelled", "Calendar sign-in was cancelled.");
-      const now = Date.now();
-      if (previous) {
-        const updated = this.deps.repo.db
-          .prepare(
-            "UPDATE calendar_connections SET label=?,secret_name=?,scopes=?,state='active',updated_at=? WHERE connection_id=? AND revoked_at IS NULL",
-          )
-          .run(
-            this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label),
-            this.deps.repo.protectRecordField(
-              "calendar_connections",
-              [connectionId],
-              "secret_name",
-              secretName,
-            ),
-            this.deps.repo.protectRecordField(
-              "calendar_connections",
-              [connectionId],
-              "scopes",
-              JSON.stringify([SCOPE]),
-            ),
-            now,
-            connectionId,
-          );
-        if (!updated.changes) throw new AuxError("cancelled", "Calendar connection changed during sign-in.");
-      } else
-        this.deps.repo.db
-          .prepare(
-            "INSERT INTO calendar_connections(connection_id,provider,account_key,account_key_lookup,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?,?, 'active',?,?)",
-          )
-          .run(
-            connectionId,
-            this.deps.repo.protectRecordField(
-              "calendar_connections",
-              [connectionId],
-              "account_key",
-              accountKey,
-            ),
-            lookup,
-            this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label),
-            this.deps.repo.protectRecordField(
-              "calendar_connections",
-              [connectionId],
-              "secret_name",
-              secretName,
-            ),
-            this.deps.repo.protectRecordField(
-              "calendar_connections",
-              [connectionId],
-              "scopes",
-              JSON.stringify([SCOPE]),
-            ),
-            now,
-            now,
-          );
-    } catch (error) {
-      await this.deps.native.storeSecret(secretName, "").catch(() => undefined);
-      throw error;
-    }
-    if (previous) await this.deps.native.storeSecret(previous.secret_name, "").catch(() => undefined);
-    this.deps.onChange?.();
+  start(): Promise<{ url: string; expiresAt: number }> {
+    this.requireConfigured();
+    return this.accounts.start({ scopes: [SCOPE] });
   }
   private async calendarGet(
     path: string,
@@ -541,88 +319,6 @@ export class CalendarConnectionService {
     if (!response.ok)
       throw new AuxError("backend_unavailable", `Calendar request failed (${response.status}).`);
     return jsonResponse(response);
-  }
-  private async token(row: Row): Promise<Secret> {
-    const raw = (await this.deps.native.readSecret(row.secret_name)).value;
-    let secret: Secret;
-    try {
-      secret = JSON.parse(raw ?? "") as Secret;
-    } catch {
-      throw new AuxError("needs_input", "Calendar credentials are unavailable. Reconnect this account.");
-    }
-    if (!secret.accessToken || !secret.refreshToken || !Number.isFinite(secret.expiresAt))
-      throw new AuxError("needs_input", "Calendar credentials are incomplete. Reconnect this account.");
-    if (secret.expiresAt > Date.now() + 60_000) return secret;
-    const existing = this.refreshing.get(row.connection_id);
-    if (existing) return existing;
-    const task = this.refresh(row, secret);
-    this.refreshing.set(row.connection_id, task);
-    try {
-      return await task;
-    } finally {
-      this.refreshing.delete(row.connection_id);
-    }
-  }
-  private async refresh(row: Row, prior: Secret): Promise<Secret> {
-    const response = await this.http(this.urls.token, {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: this.requireConfigured(),
-        refresh_token: prior.refreshToken,
-        grant_type: "refresh_token",
-      }),
-    });
-    if (!response.ok) {
-      if (response.status === 400 || response.status === 401) {
-        this.deps.repo.db
-          .prepare(
-            "UPDATE calendar_connections SET state='needs_reauth',updated_at=? WHERE connection_id=? AND revoked_at IS NULL",
-          )
-          .run(Date.now(), row.connection_id);
-        this.deps.onChange?.();
-        throw new AuxError("needs_input", "Calendar authorization expired. Reconnect this account.");
-      }
-      throw new AuxError("backend_unavailable", `Calendar token refresh failed (${response.status}).`);
-    }
-    const data = await jsonResponse(response);
-    if (typeof data.access_token !== "string" || !data.access_token)
-      throw new AuxError("backend_unavailable", "Calendar token refresh returned no access token.");
-    if (typeof data.scope === "string" && !data.scope.split(/\s+/).includes(SCOPE)) {
-      this.deps.repo.db
-        .prepare(
-          "UPDATE calendar_connections SET state='needs_reauth',updated_at=? WHERE connection_id=? AND revoked_at IS NULL",
-        )
-        .run(Date.now(), row.connection_id);
-      this.deps.onChange?.();
-      throw new AuxError("needs_input", "Calendar read access was removed. Reconnect this account.");
-    }
-    const secret: Secret = {
-      accessToken: data.access_token,
-      refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : prior.refreshToken,
-      expiresAt: Date.now() + Math.max(60, Number(data.expires_in) || 3600) * 1000,
-    };
-    if (this.row(row.connection_id).secret_name !== row.secret_name)
-      throw new AuxError("cancelled", "Calendar connection changed during refresh.");
-    await this.deps.native.storeSecret(row.secret_name, JSON.stringify(secret));
-    const current = this.deps.repo.db
-      .prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL")
-      .get(row.connection_id) as { secret_name: string } | undefined;
-    const currentName = current
-      ? this.deps.repo.revealRecordField(
-          "calendar_connections",
-          [row.connection_id],
-          "secret_name",
-          current.secret_name,
-        )
-      : undefined;
-    if (currentName !== row.secret_name) {
-      await this.deps.native.storeSecret(row.secret_name, "").catch(() => undefined);
-      throw new AuxError("cancelled", "Calendar connection changed during refresh.");
-    }
-    return secret;
   }
   async taskEvents(
     input: CalendarTaskEventsQuery,
@@ -672,88 +368,96 @@ export class CalendarConnectionService {
     }
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const secret = await waitForToken(this.token(row), controller.signal);
-      if (controller.signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
-      if (this.row(query.connectionId).secret_name !== row.secret_name)
-        throw new AuxError("cancelled", "Calendar connection changed before the read.");
-      checkGrant();
-      const url = new URL("https://calendar.invalid/calendars/primary/events");
-      for (const [key, value] of Object.entries({
-        timeMin: query.timeMin,
-        timeMax: query.timeMax,
-        maxResults: String(query.limit),
-        singleEvents: "true",
-        orderBy: "startTime",
-      }))
-        url.searchParams.set(key, value);
-      if (query.pageToken) url.searchParams.set("pageToken", query.pageToken);
-      const response = await this.calendarGet(
-        `${url.pathname}${url.search}`,
-        secret.accessToken,
+      return await this.accounts.withAccess(
+        query.connectionId,
+        this.accounts.account(query.connectionId).revision,
+        [SCOPE],
         controller.signal,
+        async (access) => {
+          const secret = { accessToken: access.token };
+          if (controller.signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+          if (this.row(query.connectionId).secret_name !== row.secret_name)
+            throw new AuxError("cancelled", "Calendar connection changed before the read.");
+          checkGrant();
+          const url = new URL("https://calendar.invalid/calendars/primary/events");
+          for (const [key, value] of Object.entries({
+            timeMin: query.timeMin,
+            timeMax: query.timeMax,
+            maxResults: String(query.limit),
+            singleEvents: "true",
+            orderBy: "startTime",
+          }))
+            url.searchParams.set(key, value);
+          if (query.pageToken) url.searchParams.set("pageToken", query.pageToken);
+          const response = await this.calendarGet(
+            `${url.pathname}${url.search}`,
+            secret.accessToken,
+            access.signal,
+          );
+          if (this.row(query.connectionId).secret_name !== row.secret_name)
+            throw new AuxError("cancelled", "Calendar connection changed during the read.");
+          checkGrant();
+          const fetchedAt = Date.now();
+          const items = Array.isArray(response.items) ? response.items.slice(0, query.limit) : [];
+          const events = items.flatMap((raw): CalendarEvent[] => {
+            if (!raw || typeof raw !== "object") return [];
+            const item = raw as Record<string, unknown>;
+            const start =
+              item.start && typeof item.start === "object" ? (item.start as Record<string, unknown>) : {};
+            const end = item.end && typeof item.end === "object" ? (item.end as Record<string, unknown>) : {};
+            const eventId = typeof item.id === "string" ? item.id.slice(0, 1024) : "";
+            const first =
+              typeof start.dateTime === "string"
+                ? start.dateTime
+                : typeof start.date === "string"
+                  ? start.date
+                  : "";
+            const last =
+              typeof end.dateTime === "string" ? end.dateTime : typeof end.date === "string" ? end.date : "";
+            if (!eventId || !first || !last) return [];
+            let eventUrl: string | undefined;
+            if (typeof item.htmlLink === "string")
+              try {
+                const parsed = new URL(item.htmlLink);
+                const provider = new URL(this.urls.calendar);
+                const loopback =
+                  provider.protocol === "http:" &&
+                  provider.hostname === "127.0.0.1" &&
+                  parsed.origin === provider.origin;
+                if (
+                  !parsed.username &&
+                  !parsed.password &&
+                  (loopback ||
+                    (parsed.protocol === "https:" &&
+                      (parsed.hostname === "calendar.google.com" ||
+                        (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/")))))
+                )
+                  eventUrl = parsed.href.slice(0, 8192);
+              } catch {
+                /* no link */
+              }
+            return [
+              {
+                eventId,
+                title: typeof item.summary === "string" ? item.summary.slice(0, 1000) : "Untitled event",
+                start: first.slice(0, 100),
+                end: last.slice(0, 100),
+                url: eventUrl,
+                source: {
+                  connectionId: query.connectionId,
+                  ...(this.deps.profileId ? { profileId: this.deps.profileId } : {}),
+                  accountKey: row.account_key,
+                  calendarId: row.account_key,
+                  fetchedAt,
+                },
+              },
+            ];
+          });
+          const nextPageToken =
+            typeof response.nextPageToken === "string" ? response.nextPageToken.slice(0, 2048) : undefined;
+          return { events, ...(nextPageToken ? { nextPageToken } : {}), fetchedAt };
+        },
       );
-      if (this.row(query.connectionId).secret_name !== row.secret_name)
-        throw new AuxError("cancelled", "Calendar connection changed during the read.");
-      checkGrant();
-      const fetchedAt = Date.now();
-      const items = Array.isArray(response.items) ? response.items.slice(0, query.limit) : [];
-      const events = items.flatMap((raw): CalendarEvent[] => {
-        if (!raw || typeof raw !== "object") return [];
-        const item = raw as Record<string, unknown>;
-        const start =
-          item.start && typeof item.start === "object" ? (item.start as Record<string, unknown>) : {};
-        const end = item.end && typeof item.end === "object" ? (item.end as Record<string, unknown>) : {};
-        const eventId = typeof item.id === "string" ? item.id.slice(0, 1024) : "";
-        const first =
-          typeof start.dateTime === "string"
-            ? start.dateTime
-            : typeof start.date === "string"
-              ? start.date
-              : "";
-        const last =
-          typeof end.dateTime === "string" ? end.dateTime : typeof end.date === "string" ? end.date : "";
-        if (!eventId || !first || !last) return [];
-        let eventUrl: string | undefined;
-        if (typeof item.htmlLink === "string")
-          try {
-            const parsed = new URL(item.htmlLink);
-            const provider = new URL(this.urls.calendar);
-            const loopback =
-              provider.protocol === "http:" &&
-              provider.hostname === "127.0.0.1" &&
-              parsed.origin === provider.origin;
-            if (
-              !parsed.username &&
-              !parsed.password &&
-              (loopback ||
-                (parsed.protocol === "https:" &&
-                  (parsed.hostname === "calendar.google.com" ||
-                    (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/")))))
-            )
-              eventUrl = parsed.href.slice(0, 8192);
-          } catch {
-            /* no link */
-          }
-        return [
-          {
-            eventId,
-            title: typeof item.summary === "string" ? item.summary.slice(0, 1000) : "Untitled event",
-            start: first.slice(0, 100),
-            end: last.slice(0, 100),
-            url: eventUrl,
-            source: {
-              connectionId: query.connectionId,
-              ...(this.deps.profileId ? { profileId: this.deps.profileId } : {}),
-              accountKey: row.account_key,
-              calendarId: row.account_key,
-              fetchedAt,
-            },
-          },
-        ];
-      });
-      const nextPageToken =
-        typeof response.nextPageToken === "string" ? response.nextPageToken.slice(0, 2048) : undefined;
-      return { events, ...(nextPageToken ? { nextPageToken } : {}), fetchedAt };
     } catch (error) {
       if (controller.signal.aborted)
         throw new AuxError("cancelled", "Calendar read was cancelled or timed out.");
@@ -779,52 +483,13 @@ export class CalendarConnectionService {
     }
   }
   async revoke(connectionId: string): Promise<{ ok: true; providerRevocation: "confirmed" | "pending" }> {
-    const row = this.row(connectionId);
+    this.row(connectionId);
     this.activeReads.get(connectionId)?.forEach((controller) => controller.abort());
-    this.deps.repo.db
-      .prepare(
-        "UPDATE calendar_connections SET revoked_at=?,updated_at=? WHERE connection_id=? AND revoked_at IS NULL",
-      )
-      .run(Date.now(), Date.now(), connectionId);
-    this.deps.repo.db
-      .prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL")
-      .run(Date.now(), connectionId);
-    this.deps.onChange?.();
-    const raw = await this.deps.native
-      .readSecret(row.secret_name)
-      .then((result) => result.value)
-      .catch(() => undefined);
-    const localSecretRemoved = await this.deps.native
-      .storeSecret(row.secret_name, "")
-      .then(() => true)
-      .catch(() => false);
-    let refreshToken = "";
-    try {
-      refreshToken = (JSON.parse(raw ?? "") as Secret).refreshToken;
-    } catch {
-      /* already gone */
-    }
-    if (!refreshToken) return { ok: true, providerRevocation: "pending" };
-    try {
-      const response = await this.http(this.urls.revoke, {
-        method: "POST",
-        redirect: "error",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ token: refreshToken }),
-      });
-      return { ok: true, providerRevocation: response.ok && localSecretRemoved ? "confirmed" : "pending" };
-    } catch {
-      return { ok: true, providerRevocation: "pending" };
-    }
+    return this.accounts.revoke(connectionId);
   }
   async close() {
     this.closed = true;
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.server.close();
-    }
-    this.pending.clear();
     for (const reads of this.activeReads.values()) for (const controller of reads) controller.abort();
+    if (this.ownsAccounts) await this.accounts.close();
   }
 }

@@ -12,13 +12,14 @@ import {
   type ModelClient,
   type ModelAttempt,
   type ModelCallSource,
+  type RunModelCallSource,
 } from "./model-client.js";
 
 type Endpoint = Awaited<ReturnType<CopilotSession["rpc"]["provider"]["getEndpoint"]>>;
 export interface CopilotInference {
   inference<T>(
     accountId: string,
-    source: ModelCallSource,
+    source: RunModelCallSource,
     modelId: string,
     signal: AbortSignal,
     use: (session: CopilotSession, current: () => Promise<void>, signal: AbortSignal) => Promise<T>,
@@ -69,7 +70,7 @@ export function copilotModelClient(
   service: CopilotInference,
   accountId: string,
   models: () => readonly ModelCapability[],
-  authorizeEndpoint: (source: ModelCallSource, destination: string) => Promise<void>,
+  authorizeEndpoint: (source: RunModelCallSource, destination: string) => Promise<void>,
   networkFetch: typeof fetch = fetch,
 ): ModelClient {
   async function call<T extends ModelAttempt & { retries?: ModelAttempt[] }>(
@@ -89,6 +90,11 @@ export function copilotModelClient(
         throw new AuxError(
           "needs_input",
           "Copilot inference needs the original live run and browser window.",
+        );
+      if (source.kind === "memory")
+        throw new AuxError(
+          "capability_unsupported",
+          "Background Memory is unavailable for Copilot accounts until this host supports native job ownership. Choose an API key, local model, Vercel or ChatGPT connection.",
         );
       await source.checkOriginal();
       const signal = options.signal ?? new AbortController().signal;

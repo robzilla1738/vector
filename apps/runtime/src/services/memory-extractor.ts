@@ -7,6 +7,8 @@ import {
   modelCallCost,
   modelUndispatched,
   type ModelClient,
+  type MemoryModelJob,
+  type MemoryModelCallSource,
   type ModelAttempt,
   type StructuredCallResult,
 } from "../agent/model-client.js";
@@ -15,6 +17,7 @@ import type { Repo } from "../store/repo.js";
 import type { PrivateBudgetClient } from "./private-budget.js";
 
 export type MemoryExtractionInput = {
+  job: MemoryModelJob;
   report: string;
   signal: AbortSignal;
   checkCurrent(): void;
@@ -43,6 +46,7 @@ export async function extractMemoryNotes(
     models: readonly ModelCapability[];
     repo: Repo;
     budget: PrivateBudgetClient;
+    source(job: MemoryModelJob, checkCurrent: () => void): MemoryModelCallSource;
   },
   input: MemoryExtractionInput,
 ): Promise<MemoryExtractionResult> {
@@ -71,6 +75,7 @@ export async function extractMemoryNotes(
       maxOutputTokens: 4096,
       maxAttempts: 1,
       signal: input.signal,
+      source: deps.source(input.job, input.checkCurrent),
       beforeDispatch: async () => {
         input.signal.throwIfAborted();
         input.checkCurrent();
@@ -105,7 +110,25 @@ export async function extractMemoryNotes(
           outputTokens: attempt.outputTokens,
           ...modelCallCost(actualModel(attempt), attempt, deps.models),
           error: failure ? "memory_extraction_failed" : undefined,
-          providerMetadata: { aux: { kind: "memory_extraction" } },
+          providerMetadata: {
+            ...attempt.providerMetadata,
+            aux: {
+              ...(attempt.providerMetadata?.aux && typeof attempt.providerMetadata.aux === "object"
+                ? attempt.providerMetadata.aux
+                : {}),
+              kind: "memory_extraction",
+            },
+            ...(attempt.cachedInputTokens !== undefined
+              ? {
+                  usage: {
+                    ...(attempt.providerMetadata?.usage && typeof attempt.providerMetadata.usage === "object"
+                      ? attempt.providerMetadata.usage
+                      : {}),
+                    cachedInputTokens: attempt.cachedInputTokens,
+                  },
+                }
+              : {}),
+          },
           createdAt: Date.now(),
         });
     });

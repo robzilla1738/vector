@@ -421,42 +421,82 @@
     display: flex;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: var(--space-1);
+    gap: var(--space-2);
     max-width: 100%;
   }
-  .conversation-browser-sources > span {
-    display: inline-flex;
+  .browser-source-card {
+    display: flex;
     align-items: center;
-    gap: var(--space-1);
-    max-width: min(240px, 100%);
-    padding: var(--space-0) var(--space-1);
-    border-radius: var(--r-md);
-    background: var(--bg-2);
+    gap: var(--space-2);
+    flex: 0 0 var(--composer-context-width);
+    width: var(--composer-context-width);
+    max-width: 100%;
+    height: var(--composer-context-height);
+    padding: 6px;
+    border-radius: var(--r-xl);
+    background: var(--surface-primary);
+    box-shadow:
+      0 0 0 var(--hairline) var(--line-strong),
+      var(--shadow-card);
     color: var(--ink-1);
   }
-  .conversation-browser-sources > span.stale {
-    color: var(--warn);
+  .browser-source-card:is([data-status="changed"], [data-status="missing"]) .browser-source-icon {
+    background: var(--warn-soft);
   }
-  .conversation-browser-sources > span > span {
+  .browser-source-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-md);
+    background: var(--surface-tertiary);
+  }
+  .browser-source-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .browser-source-label {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+  }
+  .browser-source-label :is(strong, small) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: var(--fs-xs);
+    line-height: 14px;
   }
-  .conversation-browser-sources svg {
-    width: 13px;
-    height: 13px;
-    flex: none;
+  .browser-source-label strong {
+    font-weight: var(--fw-medium);
   }
-  .conversation-browser-sources small {
-    font-size: var(--fs-2xs);
+  .browser-source-label small {
+    color: var(--ink-2);
   }
-  .conversation-browser-sources button {
+  .browser-source-card > button {
     display: grid;
     place-items: center;
     width: 20px;
     height: 20px;
+    margin-left: -4px;
     border-radius: var(--r-xs);
     flex: none;
+  }
+  .browser-source-card > button svg {
+    width: 12px;
+    height: 12px;
+  }
+  .browser-source-card > button:not(:disabled):hover {
+    background: var(--bg-hover);
+  }
+  .browser-source-card > button:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 1px;
+  }
+  .browser-source-card[data-disabled="true"] > button {
+    opacity: 0.5;
   }
   @container (max-width: 640px) {
     .conversation-new .conversation-empty .aux-mark,

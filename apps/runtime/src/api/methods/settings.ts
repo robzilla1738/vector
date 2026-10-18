@@ -98,6 +98,7 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
           : withRunAuthorityMutation
       )(s.repo, () => s.settings.set(patch as never))
     : { ok: true as const };
+  if (patch.featureOverrides?.desktopContext !== undefined) await s.desktopContext?.reconcilePolicy();
   // worker limits apply live — no restart needed
   s.runs.refreshPool();
   s.events.emit(EventTypes.SettingsChanged, {

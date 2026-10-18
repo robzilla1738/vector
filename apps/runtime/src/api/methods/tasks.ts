@@ -112,7 +112,7 @@ async function h_tasks_recordEvidence(ctx: MethodCtx): Promise<unknown> {
   return taskEvidence.recordNote(params, client.external ? "external_client" : "desktop_user");
 }
 async function h_tasks_importDocumentEvidence(ctx: MethodCtx): Promise<unknown> {
-  const { source, context } = nativeDocumentSource(ctx, ctx.params);
+  const { source, context } = await nativeDocumentSource(ctx, ctx.params);
   return ctx.taskEvidence.importDocument(ctx.params, source, context);
 }
 async function h_tasks_importTextEvidence(ctx: MethodCtx): Promise<unknown> {

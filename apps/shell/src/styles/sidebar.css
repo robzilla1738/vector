@@ -4,13 +4,6 @@
   .sidebar:has(.cb-pop) {
     z-index: var(--z-drawer);
   }
-  .sidebar.collapsed {
-    width: var(--sidebar-rail-w);
-    overflow: visible;
-  }
-  .app.native-host .sidebar.collapsed {
-    width: 76px;
-  }
   .sidebar button,
   .sidebar input,
   .sidebar [role="tab"],
@@ -27,15 +20,6 @@
     width: var(--hit);
     height: var(--hit);
     border-radius: var(--r-md);
-  }
-  .sidebar.collapsed .sb-head {
-    justify-content: center;
-    padding: 0;
-  }
-  .sidebar.collapsed .sb-head.native-host {
-    height: calc(var(--toolbar-h) + 28px);
-    align-items: flex-end;
-    padding-bottom: var(--space-1-5);
   }
   .space-switch {
     display: inline-flex;

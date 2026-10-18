@@ -444,7 +444,7 @@ it.each([
       return organization;
     },
     routine: () => undefined,
-    connectors: () => ({ entries: [], access: [] }),
+    connectors: () => ({ entries: [], access: [], bindings: {} }),
   });
   await service.begin(
     "run",

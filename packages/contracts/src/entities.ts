@@ -147,13 +147,27 @@ export const AttachmentReferenceSchema = z
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();
+export const TaskDocumentReferenceSchema = z
+  .object({
+    taskId: z.string().min(1),
+    taskRevision: z.number().int().positive(),
+    evidenceId: z.string().min(1),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type TaskDocumentReference = z.infer<typeof TaskDocumentReferenceSchema>;
 export type AttachmentReference = z.infer<typeof AttachmentReferenceSchema>;
 
 export const QueuedContextSchema = z.object({
-  chatId: z.string().min(1), targetRunId: z.string().min(1), targetMessageRevision: z.number().int().nonnegative(),
+  chatId: z.string().min(1),
+  targetRunId: z.string().min(1),
+  targetMessageRevision: z.number().int().nonnegative(),
   sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
-  attachmentRefs: z.array(AttachmentReferenceSchema), imageArtifactIds: z.array(z.string().min(1)),
-  memoryRefs: z.array(CapturedSourceSchema), workspaceId: z.string().optional(), workspaceRevision: z.number().int().nonnegative().optional(),
+  attachmentRefs: z.array(AttachmentReferenceSchema),
+  imageArtifactIds: z.array(z.string().min(1)),
+  memoryRefs: z.array(CapturedSourceSchema),
+  workspaceId: z.string().optional(),
+  workspaceRevision: z.number().int().nonnegative().optional(),
 });
 export type QueuedContext = z.infer<typeof QueuedContextSchema>;
 
@@ -208,6 +222,7 @@ export const RunSchema = z.object({
       contextAttachmentIds: z.array(z.string()).optional(),
       /** Selected immutable documents hydrated only within the active model request budget. */
       contextAttachmentRefs: z.array(AttachmentReferenceSchema).optional(),
+      contextTaskDocumentRefs: z.array(TaskDocumentReferenceSchema).max(100).optional(),
       /** Exact bounded document excerpt actually sent in this turn's prompt. */
       contextDocumentEvidence: z.string().max(20_000).optional(),
       /** Exact excerpt of a verified prior report included in this turn. */
@@ -266,7 +281,8 @@ export const RunSchema = z.object({
       auxPackages: z.array(AuxPackageSnapshotSchema).optional(),
       projectRoot: z.string().optional(),
       coderWorktree: CoderWorktreeSchema.optional(),
-      /** Pinned provider authority for this turn, even when empty. Only these exact Calendar grants may be used. */
+      /** Pinned provider authority for this turn, even when empty. Later grants cannot expand an existing turn. */
+      googleGrantIds: z.array(z.string().uuid()).max(100).optional(),
       calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),

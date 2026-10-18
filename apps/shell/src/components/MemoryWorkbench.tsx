@@ -380,7 +380,9 @@ function MemoryWorkbenchBody({
             </dl>
             {operation.errorCode && (
               <output>
-                Dream stopped: {operation.errorCode.replaceAll("_", " ")}. No generated change was published.
+                {operation.errorCode === "account_requires_window"
+                  ? "Background Memory supports API keys, local models, Vercel and ChatGPT connections. Copilot and private connections are unavailable for background Memory. Choose another connection to continue."
+                  : `Dream stopped: ${operation.errorCode.replaceAll("_", " ")}. No generated change was published.`}
               </output>
             )}
             {operation.changes.map((change) => (

@@ -56,6 +56,7 @@ export function accountableUtilityModel(input: {
   async function invoke<T extends ModelAttempt>(
     request: Request,
     call: (beforeDispatch: () => Promise<void>, signal: AbortSignal) => Promise<T>,
+    additionalReservationUsd = 0,
   ): Promise<T> {
     await check();
     const subscription = input.settings
@@ -72,7 +73,7 @@ export function accountableUtilityModel(input: {
       throw error;
     }
     const onDevice = input.route.kind === "on-device";
-    const projected = onDevice
+    const modelEstimate = onDevice
       ? 0
       : subscription
         ? undefined
@@ -82,13 +83,22 @@ export function accountableUtilityModel(input: {
             request.maxOutputTokens ?? 128,
             [...MODEL_REGISTRY, ...input.settings.registryModels()],
           );
+    const projected =
+      modelEstimate === undefined
+        ? additionalReservationUsd > 0
+          ? additionalReservationUsd
+          : undefined
+        : modelEstimate + additionalReservationUsd;
     if (projected === undefined && input.bestEffort)
       throw new AuxError(
         "backend_unavailable",
         "This optional utility request has no verified price estimate.",
       );
     // Unknown pricing is held conservatively, never reported as a free provider call.
-    const estimate = subscription ? undefined : (projected ?? 1);
+    const estimate =
+      subscription && additionalReservationUsd === 0
+        ? undefined
+        : (projected ?? 1 + additionalReservationUsd);
     await check();
     await input.authorize();
     await check();
@@ -200,6 +210,29 @@ export function accountableUtilityModel(input: {
             durationMs: receipt?.durationMs ?? Date.now() - started,
             inputTokens: receipt?.inputTokens,
             outputTokens: receipt?.outputTokens,
+            providerMetadata: {
+              ...receipt?.providerMetadata,
+              aux: {
+                ...(receipt?.providerMetadata?.aux && typeof receipt.providerMetadata.aux === "object"
+                  ? receipt.providerMetadata.aux
+                  : {}),
+                kind: "utility_generation",
+                ...(input.route.kind === "network"
+                  ? { provider: input.route.provider, destination: input.route.destination }
+                  : { backend: "apple-foundation-models", transport: "on-device" }),
+              },
+              ...(receipt?.cachedInputTokens !== undefined
+                ? {
+                    usage: {
+                      ...(receipt.providerMetadata?.usage &&
+                      typeof receipt.providerMetadata.usage === "object"
+                        ? receipt.providerMetadata.usage
+                        : {}),
+                      cachedInputTokens: receipt.cachedInputTokens,
+                    },
+                  }
+                : {}),
+            },
             ...(failure ? { error: failure instanceof Error ? failure.message : String(failure) } : {}),
           };
           await withRunAuthorityMutation(input.repo, async () =>
@@ -224,6 +257,17 @@ export function accountableUtilityModel(input: {
     }
   }
   return {
+    ...(input.route.model.searchWeb
+      ? {
+          searchWeb: (opts: Parameters<NonNullable<ModelClient["searchWeb"]>>[0]) =>
+            invoke(
+              { modelId: opts.modelId, prompt: JSON.stringify(opts.request), maxOutputTokens: 768 },
+              (beforeDispatch, signal) =>
+                input.route.model.searchWeb!({ ...opts, signal, maxAttempts: 1, beforeDispatch }),
+              1,
+            ),
+        }
+      : {}),
     generateStructured: (opts) =>
       invoke(opts, (beforeDispatch, signal) =>
         input.route.model.generateStructured({

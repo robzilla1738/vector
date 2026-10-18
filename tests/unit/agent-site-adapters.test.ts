@@ -90,6 +90,7 @@ it("reads a YouTube caption track only from the same-origin timedtext endpoint",
     expectedUrl: "https://www.youtube.com/watch?v=abcdefghijk",
   };
   vi.stubGlobal("ytInitialPlayerResponse", {
+    videoDetails: { videoId: "abcdefghijk" },
     captions: {
       playerCaptionsTracklistRenderer: {
         captionTracks: [
@@ -100,12 +101,29 @@ it("reads a YouTube caption track only from the same-origin timedtext endpoint",
   });
   const { adapter, fetches } = fixture(
     input,
-    JSON.stringify({ events: [{ segs: [{ utf8: "Hello" }] }, { segs: [{ utf8: " world" }] }] }),
+    JSON.stringify({
+      events: [
+        { tStartMs: 120, dDurationMs: 1000, segs: [{ utf8: "Hello" }] },
+        { tStartMs: 1120, segs: [{ utf8: " world" }] },
+      ],
+    }),
     "application/json",
   );
-  expect((await adapter.read(input)).text).toBe("Hello world");
+  expect(await adapter.read(input)).toMatchObject({
+    text: "Hello world",
+    transcript: {
+      videoId: "abcdefghijk",
+      language: "en",
+      generated: false,
+      cues: [
+        { startMs: 120, durationMs: 1000, text: "Hello" },
+        { startMs: 1120, text: "world" },
+      ],
+    },
+  });
   expect(fetches[0]?.url).toContain("/api/timedtext?");
   vi.stubGlobal("ytInitialPlayerResponse", {
+    videoDetails: { videoId: "abcdefghijk" },
     captions: {
       playerCaptionsTracklistRenderer: {
         captionTracks: [{ languageCode: "en", baseUrl: "https://other.example/api/timedtext" }],
@@ -114,6 +132,107 @@ it("reads a YouTube caption track only from the same-origin timedtext endpoint",
   });
   await expect(adapter.read(input)).rejects.toMatchObject({ code: "capability_unsupported" });
   expect(fetches).toHaveLength(1);
+});
+
+it("selects the exact requested caption language, prefers authored tracks and reports real timings", async () => {
+  const input = {
+    kind: "youtube" as const,
+    pageId: "p3",
+    taskId: "task1",
+    expectedRevision: 1,
+    expectedDocumentEpoch: 3,
+    expectedUrl: "https://www.youtube.com/watch?v=abcdefghijk",
+    language: "fr",
+  };
+  vi.stubGlobal("ytInitialPlayerResponse", {
+    videoDetails: { videoId: "abcdefghijk" },
+    captions: {
+      playerCaptionsTracklistRenderer: {
+        captionTracks: [
+          { languageCode: "en", baseUrl: "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en" },
+          {
+            languageCode: "fr",
+            kind: "asr",
+            baseUrl: "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr&kind=asr",
+          },
+          { languageCode: "fr", baseUrl: "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr" },
+        ],
+      },
+    },
+  });
+  const { adapter, fetches } = fixture(
+    input,
+    JSON.stringify({ events: [{ tStartMs: 2500, dDurationMs: 1000, segs: [{ utf8: "Bonjour" }] }] }),
+    "application/json",
+  );
+  expect(await adapter.read(input)).toMatchObject({
+    transcript: {
+      language: "fr",
+      generated: false,
+      cues: [{ startMs: 2500, durationMs: 1000, text: "Bonjour" }],
+    },
+  });
+  expect(new URL(fetches[0]!.url).searchParams.get("lang")).toBe("fr");
+  expect(new URL(fetches[0]!.url).searchParams.has("kind")).toBe(false);
+  await expect(adapter.read({ ...input, language: "de" })).rejects.toMatchObject({
+    code: "capability_unsupported",
+  });
+  expect(fetches).toHaveLength(1);
+});
+
+it("rejects stale YouTube player identity and mismatched signed caption tracks before fetching", async () => {
+  const input = {
+    kind: "youtube" as const,
+    pageId: "p3",
+    taskId: "task1",
+    expectedRevision: 1,
+    expectedDocumentEpoch: 3,
+    expectedUrl: "https://www.youtube.com/watch?v=abcdefghijk",
+  };
+  const { adapter, fetches } = fixture(
+    input,
+    JSON.stringify({ events: [{ tStartMs: 0, segs: [{ utf8: "text" }] }] }),
+    "application/json",
+  );
+  const captions = {
+    playerCaptionsTracklistRenderer: {
+      captionTracks: [{ languageCode: "en", baseUrl: "https://www.youtube.com/api/timedtext?v=other_video" }],
+    },
+  };
+  vi.stubGlobal("ytInitialPlayerResponse", { videoDetails: { videoId: "other_video" }, captions });
+  await expect(adapter.read(input)).rejects.toMatchObject({ code: "capability_unsupported" });
+  vi.stubGlobal("ytInitialPlayerResponse", { videoDetails: { videoId: "abcdefghijk" }, captions });
+  await expect(adapter.read(input)).rejects.toMatchObject({ code: "capability_unsupported" });
+  expect(fetches).toHaveLength(0);
+});
+
+it("does not manufacture transcript timing from malformed caption events", async () => {
+  const input = {
+    kind: "youtube" as const,
+    pageId: "p3",
+    taskId: "task1",
+    expectedRevision: 1,
+    expectedDocumentEpoch: 3,
+    expectedUrl: "https://www.youtube.com/watch?v=abcdefghijk",
+  };
+  vi.stubGlobal("ytInitialPlayerResponse", {
+    videoDetails: { videoId: "abcdefghijk" },
+    captions: {
+      playerCaptionsTracklistRenderer: {
+        captionTracks: [
+          { languageCode: "en", baseUrl: "https://www.youtube.com/api/timedtext?v=abcdefghijk" },
+        ],
+      },
+    },
+  });
+  for (const events of [
+    [{ segs: [{ utf8: "untimed" }] }],
+    [{ tStartMs: -1, segs: [{ utf8: "negative" }] }],
+    [{ tStartMs: 0, segs: [{ utf8: 42 }] }],
+  ]) {
+    const { adapter } = fixture(input, JSON.stringify({ events }), "application/json");
+    await expect(adapter.read(input)).rejects.toMatchObject({ code: "capability_unsupported" });
+  }
 });
 
 it("refuses unrelated origins and malformed source paths before reading page content", async () => {

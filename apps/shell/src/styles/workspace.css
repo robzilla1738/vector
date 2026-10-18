@@ -92,9 +92,6 @@
     .stage-card.loading .stage-progress {
       width: 100%;
     }
-    .sidebar.collapsed {
-      width: 64px;
-    }
   }
   .task-workspace {
     display: flex;

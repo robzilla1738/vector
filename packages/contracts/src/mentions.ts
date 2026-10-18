@@ -24,7 +24,17 @@ export const MentionRefSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
   z.object({ kind: z.literal("skill"), routineId: Id, revision: z.number().int().positive() }).strict(),
-  z.object({ kind: z.literal("connector"), connectorId: Id }).strict(),
+  z
+    .object({
+      kind: z.literal("connector"),
+      connectorId: Id,
+      // Historical refs remain readable but cannot authorize a replacement account.
+      authorityDigest: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    })
+    .strict(),
 ]);
 export const MentionRefsSchema = z.array(MentionRefSchema);
 export type MentionRef = z.infer<typeof MentionRefSchema>;
