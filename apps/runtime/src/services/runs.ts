@@ -2269,8 +2269,22 @@ export class RunService {
     ) {
       throw new AuxError("conflict", "The saved task browser context changed. Review this follow-up.");
     }
+    const taskDocumentRefs = target.config.contextTaskDocumentRefs ?? [];
+    if (
+      taskDocumentRefs.some(
+        (reference) =>
+          !prepared?.contextTaskDocumentRefs.some(
+            (current) => JSON.stringify(current) === JSON.stringify(reference),
+          ),
+      )
+    )
+      throw new AuxError(
+        "ref_stale",
+        "An original queued task document changed or is unavailable. Review this follow-up.",
+      );
     return this.start({
       ...prepared,
+      contextTaskDocumentRefs: structuredClone(taskDocumentRefs),
       deliveryRunId: message.deliveryRunId,
       queuedMessageId: message.messageId,
       goal: message.text,

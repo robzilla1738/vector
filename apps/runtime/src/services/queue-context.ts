@@ -4,7 +4,7 @@ import type { Run, QueuedContext } from "@aux/contracts";
 /** These fields bind the exact original source, separate from changing usage/progress. */
 export function queuedSourceHash(run: Run): string {
   const c = run.config ?? {};
-  const source = [
+  const source: unknown[] = [
     run.runId,
     run.goal,
     c.chatId,
@@ -32,6 +32,7 @@ export function queuedSourceHash(run: Run): string {
     c.contextBrowsingMemory,
     c.branchSourceRunIds,
   ];
+  if (c.contextTaskDocumentRefs?.length) source.push(c.contextTaskDocumentRefs);
   return createHash("sha256").update(JSON.stringify(source)).digest("hex");
 }
 
