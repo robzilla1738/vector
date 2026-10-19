@@ -1,0 +1,63 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 32f7cc0: a9bd57f6     	stp	x22, x21, [sp, #-0x30]!
+ 32f7cc4: a9014ff4     	stp	x20, x19, [sp, #0x10]
+ 32f7cc8: a9027bfd     	stp	x29, x30, [sp, #0x20]
+ 32f7ccc: 910083fd     	add	x29, sp, #0x20
+ 32f7cd0: aa0103f4     	mov	x20, x1
+ 32f7cd4: aa0003f3     	mov	x19, x0
+ 32f7cd8: f9404815     	ldr	x21, [x0, #0x90]
+ 32f7cdc: 9100a2a0     	add	x0, x21, #0x28
+ 32f7ce0: 9534c7a1     	bl	0x8029b64 <_ChromeMain+0x80248c8>
+ 32f7ce4: 35000240     	cbnz	w0, 0x32f7d2c <_ChromeMain+0x32f2a90>
+ 32f7ce8: f94036a8     	ldr	x8, [x21, #0x68]
+ 32f7cec: f9400508     	ldr	x8, [x8, #0x8]
+ 32f7cf0: b4000108     	cbz	x8, 0x32f7d10 <_ChromeMain+0x32f2a74>
+ 32f7cf4: b9402109     	ldr	w9, [x8, #0x20]
+ 32f7cf8: 7100453f     	cmp	w9, #0x11
+ 32f7cfc: 5400006c     	b.gt	0x32f7d08 <_ChromeMain+0x32f2a6c>
+ 32f7d00: 540001c0     	b.eq	0x32f7d38 <_ChromeMain+0x32f2a9c>
+ 32f7d04: 91002108     	add	x8, x8, #0x8
+ 32f7d08: f9400108     	ldr	x8, [x8]
+ 32f7d0c: b5ffff48     	cbnz	x8, 0x32f7cf4 <_ChromeMain+0x32f2a58>
+ 32f7d10: 9100a2a0     	add	x0, x21, #0x28
+ 32f7d14: 953432fc     	bl	0x8004904 <_ChromeMain+0x7fff668>
+ 32f7d18: 52800000     	mov	w0, #0x0                ; =0
+ 32f7d1c: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 32f7d20: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 32f7d24: a8c357f6     	ldp	x22, x21, [sp], #0x30
+ 32f7d28: d65f03c0     	ret
+ 32f7d2c: 9100a2a0     	add	x0, x21, #0x28
+ 32f7d30: 97435680     	bl	0x3cd730 <_ChromeMain+0x3c8494>
+ 32f7d34: 17ffffed     	b	0x32f7ce8 <_ChromeMain+0x32f2a4c>
+ 32f7d38: 9100a2a0     	add	x0, x21, #0x28
+ 32f7d3c: 953432f2     	bl	0x8004904 <_ChromeMain+0x7fff668>
+ 32f7d40: aa1303e0     	mov	x0, x19
+ 32f7d44: 9442fa5f     	bl	0x43b66c0 <_ChromeMain+0x43b1424>
+ 32f7d48: 340001a0     	cbz	w0, 0x32f7d7c <_ChromeMain+0x32f2ae0>
+ 32f7d4c: aa1303e0     	mov	x0, x19
+ 32f7d50: 94201790     	bl	0x3afdb90 <_ChromeMain+0x3af88f4>
+ 32f7d54: 37000140     	tbnz	w0, #0x0, 0x32f7d7c <_ChromeMain+0x32f2ae0>
+ 32f7d58: aa1403e0     	mov	x0, x20
+ 32f7d5c: 97dcd94c     	bl	0x2a2e28c <_ChromeMain+0x2a28ff0>
+ 32f7d60: aa0003f4     	mov	x20, x0
+ 32f7d64: aa1303e0     	mov	x0, x19
+ 32f7d68: 9442fa46     	bl	0x43b6680 <_ChromeMain+0x43b13e4>
+ 32f7d6c: aa0003e1     	mov	x1, x0
+ 32f7d70: aa1403e0     	mov	x0, x20
+ 32f7d74: 953a7b37     	bl	0x8196a50 <_ChromeMain+0x81917b4>
+ 32f7d78: b4000060     	cbz	x0, 0x32f7d84 <_ChromeMain+0x32f2ae8>
+ 32f7d7c: 52800020     	mov	w0, #0x1                ; =1
+ 32f7d80: 17ffffe7     	b	0x32f7d1c <_ChromeMain+0x32f2a80>
+ 32f7d84: aa1303e0     	mov	x0, x19
+ 32f7d88: 9442fa3e     	bl	0x43b6680 <_ChromeMain+0x43b13e4>
+ 32f7d8c: aa0003e1     	mov	x1, x0
+ 32f7d90: aa1403e0     	mov	x0, x20
+ 32f7d94: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 32f7d98: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 32f7d9c: a8c357f6     	ldp	x22, x21, [sp], #0x30
+ 32f7da0: 153a7af3     	b	0x819696c <_ChromeMain+0x81916d0>

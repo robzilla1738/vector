@@ -1,0 +1,32 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 42bb108: f9403809     	ldr	x9, [x0, #0x70]
+ 42bb10c: 9101e008     	add	x8, x0, #0x78
+ 42bb110: eb08013f     	cmp	x9, x8
+ 42bb114: 54000061     	b.ne	0x42bb120 <_ChromeMain+0x42b5e84>
+ 42bb118: 52800000     	mov	w0, #0x0                ; =0
+ 42bb11c: d65f03c0     	ret
+ 42bb120: f940152a     	ldr	x10, [x9, #0x28]
+ 42bb124: f940314a     	ldr	x10, [x10, #0x60]
+ 42bb128: f940394a     	ldr	x10, [x10, #0x70]
+ 42bb12c: f100015f     	cmp	x10, #0x0
+ 42bb130: 1a9f07e0     	cset	w0, ne
+ 42bb134: b5ffff4a     	cbnz	x10, 0x42bb11c <_ChromeMain+0x42b5e80>
+ 42bb138: f940052a     	ldr	x10, [x9, #0x8]
+ 42bb13c: b40000ea     	cbz	x10, 0x42bb158 <_ChromeMain+0x42b5ebc>
+ 42bb140: aa0a03e9     	mov	x9, x10
+ 42bb144: f940014a     	ldr	x10, [x10]
+ 42bb148: b5ffffca     	cbnz	x10, 0x42bb140 <_ChromeMain+0x42b5ea4>
+ 42bb14c: eb08013f     	cmp	x9, x8
+ 42bb150: 54fffe60     	b.eq	0x42bb11c <_ChromeMain+0x42b5e80>
+ 42bb154: 17fffff3     	b	0x42bb120 <_ChromeMain+0x42b5e84>
+ 42bb158: aa0903ea     	mov	x10, x9
+ 42bb15c: f9400929     	ldr	x9, [x9, #0x10]
+ 42bb160: f940012b     	ldr	x11, [x9]
+ 42bb164: eb0b015f     	cmp	x10, x11
+ 42bb168: 54ffff81     	b.ne	0x42bb158 <_ChromeMain+0x42b5ebc>
+ 42bb16c: 17fffff8     	b	0x42bb14c <_ChromeMain+0x42b5eb0>

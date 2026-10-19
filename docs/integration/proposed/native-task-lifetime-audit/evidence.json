@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "frozenNativeFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/background/extensions/background_mode_manager.cc",
+      "sha256": "9691d0ea0d95e29eb3cd7d136a2179d5baa457ef160197fd3f77d1ff8531de94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/background/extensions/background_application_list_model.cc",
+      "sha256": "04e6da224fa6c0998e4551adfaabefb06027a8c83a44c1cfdb64230adccca18b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/app_controller_mac.mm",
+      "sha256": "ecf13cc69e6ef78f2057963ce25be528e63e85acdcd43062e3c3f38f080f89e1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.cc",
+      "sha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/browser_features.cc",
+      "sha256": "58fa2f84be293bbd0b3a4c1ca7dfb16ec422f40932d7c4e939c967a89da50d76"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/profile_prefs.h",
+      "sha256": "84c76409271c9bddad3de9dd3b323603b9f6c2a36d2e051d1f6b0bf505ac0dc3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/common/mojom/api_permission_id.mojom",
+      "sha256": "b7ec39d912cb0b59f829ce3863690a52b42f28506aa769c46e1185e9428955c0"
+    }
+  ],
+  "directProfileKeepAliveConstructor": "0x02938614",
+  "directCallersObserved": [
+    "0x2b292a4 bl 0x2938614",
+    "0x2b90880 bl 0x2938614",
+    "0x2bf21b8 bl 0x2938614",
+    "0x2cda9d8 bl 0x2938614",
+    "0x347dc68 bl 0x2938614",
+    "0x7324aac bl 0x2938614",
+    "0x7325550 bl 0x2938614",
+    "0x7335660 bl 0x2938614",
+    "0x7335f70 bl 0x2938614",
+    "0x7339c4c bl 0x2938614",
+    "0x736369c bl 0x2938614",
+    "0x7384f14 bl 0x2938614",
+    "0x77d9880 bl 0x2938614",
+    "0x77dcb54 bl 0x2938614",
+    "0x7805494 bl 0x2938614",
+    "0x7999738 bl 0x2938614",
+    "0x7ac9504 bl 0x2938614",
+    "0x7adef30 bl 0x2938614",
+    "0x7bd68f0 bl 0x2938614",
+    "0x7c8b470 bl 0x2938614",
+    "0x7cc7a54 bl 0x2938614",
+    "0x7ce0ba0 bl 0x2938614",
+    "0x7ce12e4 bl 0x2938614",
+    "0x7e96a88 bl 0x2938614",
+    "0x8197df4 bl 0x2938614",
+    "0x819a958 bl 0x2938614",
+    "0x81a45e8 bl 0x2938614"
+  ],
+  "directCallersLimit": "Only direct BL targets of this constructor; inlining/indirect calls are not covered.",
+  "noNativePatch": true,
+  "nativeSourceWritten": false,
+  "compiled": false,
+  "runtimeAccepted": false,
+  "targetExecuted": false,
+  "globalPreferencesTouched": false
+}
