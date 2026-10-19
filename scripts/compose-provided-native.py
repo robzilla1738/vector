@@ -30,6 +30,8 @@ steps = [
     ('provided-native-auth/provided-native-auth.patch', 'provided-native-auth/source-sha256.json'),
     ('node-native-boundary/daemon-environment.patch', 'node-native-boundary/source-sha256.json'),
     ('node-native-boundary/remove-obsolete-importer-env.patch', None),
+    ('cdp-startup-contract/fixed-discovery-env.patch', None),
+    ('retired-passkey-broker/disable-independent-provider.patch', 'retired-passkey-broker/source-and-anchor.json'),
 ] + [(f'native-provided-{name}.patch', f'native-provided-{name}.json') for name in
      ['preference-results', 'dock-results', 'import-results', 'import-consent', 'omnibox-results']]
 
@@ -41,6 +43,9 @@ def safe(path):
 
 def metadata_pins(path):
     data = json.loads(path.read_text())
+    if isinstance(data, dict) and 'nativeSourceSha256' in data and 'edit' in data:
+        target = data['edit']['path']
+        return {target: data['nativeSourceSha256'][target]}
     if isinstance(data, dict) and 'files' in data:
         data = data['files']
     if isinstance(data, dict) and 'path' in data:
@@ -84,9 +89,20 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             (copy / path).write_bytes(raw)
     environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(copy.parent))
     for name, patch in patches:
-        subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=copy, env=environment, check=True)
-        subprocess.run(['git', 'apply', '-'], input=patch, cwd=copy, env=environment, check=True)
-        report['steps'].append({'patch': name, 'sha256': sha(patch)})
+        if name == 'cdp-startup-contract/fixed-discovery-env.patch':
+            # Its surrounding env lines overlap the independent boundary patch;
+            # replay the reviewed unique anchor, not stale diff context.
+            edit = json.loads((proposals / 'cdp-startup-contract/source-and-anchor.json').read_text())['edit']
+            target = copy / safe(edit['path'])
+            text = target.read_text()
+            if text.count(edit['find']) != edit['count']:
+                raise ValueError('Owned discovery environment anchor drift')
+            target.write_text(text.replace(edit['find'], edit['replace']))
+            report['steps'].append({'patch': name, 'sha256': sha(patch), 'application': 'exact-counted-anchor', 'edit': edit})
+        else:
+            subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=copy, env=environment, check=True)
+            subprocess.run(['git', 'apply', '-'], input=patch, cwd=copy, env=environment, check=True)
+            report['steps'].append({'patch': name, 'sha256': sha(patch)})
 
     # Owner-required original protocol bytes, after the historical proposals.
     wire_edits = {
