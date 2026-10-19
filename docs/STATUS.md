@@ -526,3 +526,7 @@ Separate exact2f8265bd4 follow-up exposes stored binding.profileIndex, rejects m
 ### Profile-index follow-up rebased to scoped identity guard (2026-10-19, L1)
 
 Rebased the separate stored-index delta onto exact10262432e local-profile-binding snapshots, retaining its current-ID/exact-path legacy guard and actual session/bootstrap identity classification. The follow-up still only adds authoritative index extraction/checks and stale/reorder fixtures. Dry-check passes against those snapshots; no shared native source or build touched. This supersedes the earlier2f8265 baseline for integration.
+
+### Owned contextual search backend checkpoint
+
+Recovered exact original openLensSearch registration/vtable/call path (separate from session-abandonment metrics) with a read-only pinned framework audit. Authored a staged Chromium155 owned ContextualSearchboxHandler/OmniboxController/client + real profile ContextualSearchSessionHandle port, including current owner/document checks, native policy/eligibility, file/status/action plumbing and pipe/navigation/session teardown. Supplied UI unchanged. Backend not yet bound to extension JSON/events, compiled or loaded; existing API Lens unavailable behavior remains in effect until that integration passes. No actual Lens/network/owner-data/OS tests. See docs/integration/provided-contextual-omnibox.md.

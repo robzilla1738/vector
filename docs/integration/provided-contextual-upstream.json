@@ -1,0 +1,130 @@
+[
+  {
+    "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc",
+    "sha256": "0c9f4fa191b77250b196f420d61f778233a911e6c9f92d8610f6e87262b6a44f",
+    "anchors": [
+      {
+        "find": "owned_controller_ = std::make_unique<OmniboxController>",
+        "count": 1,
+        "offset": 53327
+      },
+      {
+        "find": "kWebUISearchboxWithoutModelController",
+        "count": 15,
+        "offset": 52429
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+    "sha256": "02ca5891d7d8cd580cda1038dc4b9ec92544b94e11f6269f2fcb88a7d676ec65",
+    "anchors": [
+      {
+        "find": "contextual_session_handle->StartFileContextUploadFlow(",
+        "count": 2,
+        "offset": 39317
+      },
+      {
+        "find": "contextual_session_handle->CheckSearchContentSharingSettings",
+        "count": 1,
+        "offset": 92083
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/webui/searchbox/realbox_handler.cc",
+    "sha256": "e62cd1d267c961f705b215f6cfe28c9fa1008b6a2633a85f0f606d1d2e8df14f",
+    "anchors": [
+      {
+        "find": "SetSuggestInputsCallback(",
+        "count": 1,
+        "offset": 3883
+      },
+      {
+        "find": "autocomplete_controller_observation_.Observe",
+        "count": 1,
+        "offset": 4024
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.cc",
+    "sha256": "a79afae5382bf36b37bf7b67fb2f9b93827c5500c55e9bf55eee905f905c8b79",
+    "anchors": [
+      {
+        "find": "ntp_composebox::CreateQueryControllerConfigParams(),",
+        "count": 1,
+        "offset": 66040
+      },
+      {
+        "find": "shared_session_handle_->CheckSearchContentSharingSettings(",
+        "count": 1,
+        "offset": 66377
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/omnibox/omnibox_edit_model.cc",
+    "sha256": "abaa200791c86b6303504c38c0b6daccb2446e57e5fb3ba0f8c0b7e5d4a0171b",
+    "anchors": [
+      {
+        "find": "void OmniboxEditModel::OpenLensSearch()",
+        "count": 1,
+        "offset": 35991
+      },
+      {
+        "find": "provider->CreateLensEntrypointMatch",
+        "count": 1,
+        "offset": 36597
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc",
+    "sha256": "4acd5e8a2645f23bdd2b6205f70abbfa571d776a46f84189e1819f49b486bf00",
+    "anchors": [
+      {
+        "find": "GetLensSearchController(GetWebContents(web_contents_getter_))",
+        "count": 3,
+        "offset": 25899
+      },
+      {
+        "find": "->IsEnabled();",
+        "count": 3,
+        "offset": 22257
+      }
+    ]
+  },
+  {
+    "path": "components/contextual_search/contextual_search_service.cc",
+    "sha256": "c768953e8437d19ef5edc34bb1dece03ab8aee7d741b0c2c2d951836a26bd945",
+    "anchors": [
+      {
+        "find": "it->second.ref_count_--;",
+        "count": 1,
+        "offset": 6909
+      },
+      {
+        "find": "sessions_.erase(it);",
+        "count": 1,
+        "offset": 6978
+      }
+    ]
+  },
+  {
+    "path": "components/omnibox/browser/searchbox.mojom",
+    "sha256": "149602523c71a68b7810fe0f945dc53725e98049cad2f796358b1ce44ef6233a",
+    "anchors": [
+      {
+        "find": "OnContextualInputStatusChanged(",
+        "count": 1,
+        "offset": 26110
+      },
+      {
+        "find": "interface Page {",
+        "count": 1,
+        "offset": 23959
+      }
+    ]
+  }
+]

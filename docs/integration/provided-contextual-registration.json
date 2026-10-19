@@ -1,0 +1,33 @@
+{
+  "createSession": {
+    "table": "0xead7fc8",
+    "factory": "0x46ae7bc",
+    "vtable": "0xe26f3f8",
+    "run": "0x427fdc0"
+  },
+  "notifySessionStarted": {
+    "table": "0xead8178",
+    "factory": "0x46aed5c",
+    "vtable": "0xe26fbd8",
+    "run": "0x4286780"
+  },
+  "notifySessionAbandoned": {
+    "table": "0xead8190",
+    "factory": "0x46aedac",
+    "vtable": "0xe26fc48",
+    "run": "0x42869e0"
+  },
+  "addFileContext": {
+    "table": "0xead81a8",
+    "factory": "0x46aedfc",
+    "vtable": "0xe26fcb8",
+    "run": "0x4286c40"
+  },
+  "openLensSearch": {
+    "table": "0xead8220",
+    "factory": "0x46aef8c",
+    "vtable": "0xe26fee8",
+    "run": "0x4288500"
+  },
+  "openLensSearchBodySha256": "c0c1192c6e443d96b12e01fc8076b7a2f57cee43616439b08f5dea223ef2c0e4"
+}

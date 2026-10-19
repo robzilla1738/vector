@@ -1,0 +1,27 @@
+# Add this target to the existing aux_omnibox/BUILD.gn; do not replace its
+# existing aux_omnibox and headers targets. Integrator owns actual registration.
+source_set("owned_contextual_session") {
+  sources = [
+    "owned_contextual_session.cc",
+    "owned_contextual_session.h",
+  ]
+  public_deps = [
+    "//components/omnibox/browser:mojo_bindings",
+    "//content/public/browser",
+    "//mojo/public/cpp/bindings",
+  ]
+  deps = [
+    "//base",
+    "//chrome/browser/autocomplete",
+    "//chrome/browser/contextual_search",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/omnibox",
+    "//chrome/browser/ui/webui/cr_components/searchbox",
+    "//chrome/browser/ui/webui/cr_components/searchbox:searchbox_impl",
+    "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
+    "//components/contextual_search:public",
+    "//components/lens",
+    "//components/omnibox/browser",
+    "//components/omnibox/common:features",
+  ]
+}
