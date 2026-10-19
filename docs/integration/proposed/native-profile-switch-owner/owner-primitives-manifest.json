@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "actual applied v32; no overlap staged v33 view-only overlay",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.h",
+      "baselineSha256": null,
+      "outputSha256": "03ba431485e17b771be4628caa68fe14fa194da536a70d1c518c7cb73cc62ace"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.cc",
+      "baselineSha256": null,
+      "outputSha256": "a86a1b2f7531e5b63de6ef17c4fe05f5509c815b5ffbd437e649230f265560f2"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "4108b626ec9825770350000450e39a8d1b6e4539df39f163c1c5fc0b777f7140",
+      "outputSha256": "54b7abc89a3bfb61f19274f7e21e170e3de22526700919c56944323754c83f52"
+    },
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "baselineSha256": "6d6884ce8f1d95a9962e1c1a165cdeeb40dcd2405eb13607d4583812e7364db0",
+      "outputSha256": "10ebdb1713f9012b7ba94cd03166e06124a1f69a3c061815633404ed7378ebda"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

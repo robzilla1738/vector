@@ -1,0 +1,46 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 2b3cee0: d10203ff     	sub	sp, sp, #0x80
+ 2b3cee4: a9026ffc     	stp	x28, x27, [sp, #0x20]
+ 2b3cee8: a90367fa     	stp	x26, x25, [sp, #0x30]
+ 2b3ceec: a9045ff8     	stp	x24, x23, [sp, #0x40]
+ 2b3cef0: a90557f6     	stp	x22, x21, [sp, #0x50]
+ 2b3cef4: a9064ff4     	stp	x20, x19, [sp, #0x60]
+ 2b3cef8: a9077bfd     	stp	x29, x30, [sp, #0x70]
+ 2b3cefc: 9101c3fd     	add	x29, sp, #0x70
+ 2b3cf00: aa0003f4     	mov	x20, x0
+ 2b3cf04: aa0803f3     	mov	x19, x8
+ 2b3cf08: a9007d1f     	stp	xzr, xzr, [x8]
+ 2b3cf0c: f900091f     	str	xzr, [x8, #0x10]
+ 2b3cf10: f9400000     	ldr	x0, [x0]
+ 2b3cf14: f0051de1     	adrp	x1, 0xcefb000 <dyld_stub_binder+0xcefb000>
+ 2b3cf18: 911cfc21     	add	x1, x1, #0x73f
+ 2b3cf1c: 528002c2     	mov	w2, #0x16               ; =22
+ 2b3cf20: 97651140     	bl	0x481420 <_ChromeMain+0x47c184>
+ 2b3cf24: aa0003f5     	mov	x21, x0
+ 2b3cf28: a900ffff     	stp	xzr, xzr, [sp, #0x8]
+ 2b3cf2c: f9000fff     	str	xzr, [sp, #0x18]
+ 2b3cf30: 910023e8     	add	x8, sp, #0x8
+ 2b3cf34: aa1403e0     	mov	x0, x20
+ 2b3cf38: 94000078     	bl	0x2b3d118 <_ChromeMain+0x2b37e7c>
+ 2b3cf3c: a94022b4     	ldp	x20, x8, [x21]
+ 2b3cf40: 8b081689     	add	x9, x20, x8, lsl #5
+ 2b3cf44: eb09029f     	cmp	x20, x9
+ 2b3cf48: 54000c28     	b.hi	0x2b3d0cc <_ChromeMain+0x2b37e30>
+ 2b3cf4c: d37be918     	lsl	x24, x8, #5
+ 2b3cf50: b40006f8     	cbz	x24, 0x2b3d02c <_ChromeMain+0x2b37d90>
+ 2b3cf54: d2800019     	mov	x25, #0x0               ; =0
+ 2b3cf58: d2800015     	mov	x21, #0x0               ; =0
+ 2b3cf5c: 92fe001a     	mov	x26, #0xfffffffffffffff ; =1152921504606846975
+ 2b3cf60: 92fc001b     	mov	x27, #0x1fffffffffffffff ; =2305843009213693951
+ 2b3cf64: 39406288     	ldrb	w8, [x20, #0x18]
+ 2b3cf68: 7100111f     	cmp	w8, #0x4
+ 2b3cf6c: 54000bc1     	b.ne	0x2b3d0e4 <_ChromeMain+0x2b37e48>
+ 2b3cf70: 910023e0     	add	x0, sp, #0x8
+ 2b3cf74: aa1403e1     	mov	x1, x20
+ 2b3cf78: 94000102     	bl	0x2b3d380 <_ChromeMain+0x2b380e4>
+ 2b3cf7c: f9400016     	ldr	x22, [x0]

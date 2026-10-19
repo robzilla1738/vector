@@ -1,0 +1,53 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4658754: d2800000     	mov	x0, #0x0                ; =0
+ 4658758: 14000005     	b	0x465876c <_ChromeMain+0x46534d0>
+ 465875c: f9400555     	ldr	x21, [x10, #0x8]
+ 4658760: f940072a     	ldr	x10, [x25, #0x8]
+ 4658764: b4ffff8a     	cbz	x10, 0x4658754 <_ChromeMain+0x46534b8>
+ 4658768: f9400540     	ldr	x0, [x10, #0x8]
+ 465876c: f9000fe0     	str	x0, [sp, #0x18]
+ 4658770: b40000d5     	cbz	x21, 0x4658788 <_ChromeMain+0x46534ec>
+ 4658774: f940c6aa     	ldr	x10, [x21, #0x188]
+ 4658778: f941966b     	ldr	x11, [x19, #0x328]
+ 465877c: eb0a017f     	cmp	x11, x10
+ 4658780: fa400804     	ccmp	x0, #0x0, #0x4, eq
+ 4658784: 54000121     	b.ne	0x46587a8 <_ChromeMain+0x465350c>
+ 4658788: 9100e339     	add	x25, x25, #0x38
+ 465878c: 9b17250a     	madd	x10, x8, x23, x9
+ 4658790: eb0a033f     	cmp	x25, x10
+ 4658794: 54fff420     	b.eq	0x4658618 <_ChromeMain+0x465337c>
+ 4658798: f940032a     	ldr	x10, [x25]
+ 465879c: b5fffe0a     	cbnz	x10, 0x465875c <_ChromeMain+0x46534c0>
+ 46587a0: d2800015     	mov	x21, #0x0               ; =0
+ 46587a4: 17ffffef     	b	0x4658760 <_ChromeMain+0x46534c4>
+ 46587a8: f940cc08     	ldr	x8, [x0, #0x198]
+ 46587ac: f9400b29     	ldr	x9, [x25, #0x10]
+ 46587b0: eb09011f     	cmp	x8, x9
+ 46587b4: 9a893102     	csel	x2, x8, x9, lo
+ 46587b8: aa1503e1     	mov	x1, x21
+ 46587bc: 97048310     	bl	0x7793fc <_ChromeMain+0x774160>
+ 46587c0: 3940a321     	ldrb	w1, [x25, #0x28]
+ 46587c4: f94002a8     	ldr	x8, [x21]
+ 46587c8: f9405108     	ldr	x8, [x8, #0xa0]
+ 46587cc: aa1503e0     	mov	x0, x21
+ 46587d0: d63f0100     	blr	x8
+ 46587d4: 91006321     	add	x1, x25, #0x18
+ 46587d8: aa1503e0     	mov	x0, x21
+ 46587dc: 970930ed     	bl	0x8a4b90 <_ChromeMain+0x89f8f4>
+ 46587e0: 3940d328     	ldrb	w8, [x25, #0x34]
+ 46587e4: 34000388     	cbz	w8, 0x4658854 <_ChromeMain+0x46535b8>
+ 46587e8: f94002a8     	ldr	x8, [x21]
+ 46587ec: f9402d08     	ldr	x8, [x8, #0x58]
+ 46587f0: aa1503e0     	mov	x0, x21
+ 46587f4: d63f0100     	blr	x8
+ 46587f8: aa0003f6     	mov	x22, x0
+ 46587fc: f947ff00     	ldr	x0, [x24, #0xff8]
+ 4658800: b5000060     	cbnz	x0, 0x465880c <_ChromeMain+0x4653570>
+ 4658804: 97f64823     	bl	0x43ea890 <_ChromeMain+0x43e55f4>
+ 4658808: f907ff00     	str	x0, [x24, #0xff8]
+ 465880c: f10002df     	cmp	x22, #0x0

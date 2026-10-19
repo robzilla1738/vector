@@ -1,0 +1,66 @@
+{
+  "originalBinarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "primitives": {
+    "040fd7f4": "../native-ntp-final-guards/overlay/original-profile-order.c",
+    "4657a84": "borrow tracked live source views into preview host",
+    "4658520": "restore parent/index/bounds/visibility/optional ScrollView offset"
+  },
+  "current155Sources": [
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage.cc",
+      "sha256": "e20b25590c17365cb2fae2cb3a31a19ef29c9ec6031c3d00f498cdbcbcdbc222"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage.h",
+      "sha256": "8123fe72170c6c958ccdc3a049f556c8757f625e5b0306d0603f255ef9bb4f66"
+    },
+    {
+      "path": "base/files/file_path.cc",
+      "sha256": "3543354e60c0618b5ceca6316b9d180e0c0342f940d8e9664f9d44f852f87e12"
+    },
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/view_tracker.h",
+      "sha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692"
+    },
+    {
+      "path": "ui/views/controls/scroll_view.h",
+      "sha256": "86cc206f462e97edb486b3fcf27ddd6fcd6ba4684b015fc3e6273186474c9dca"
+    }
+  ],
+  "boundedProof": [
+    {
+      "file": "storage-base-order.txt",
+      "start": "0x2b3cee0",
+      "stop": "0x2b3cf80",
+      "sha256": "505b15a2199e85b890f2608e62597c21f9a88ad596674a2958791a23de35a3b6"
+    },
+    {
+      "file": "basename.txt",
+      "start": "0x147166c",
+      "stop": "0x1471950",
+      "sha256": "5b07fc6f610547306c8ab080d84df802c2bb6a00f0e68f490662de3da66b0893"
+    },
+    {
+      "file": "preview-class.txt",
+      "start": "0x467e220",
+      "stop": "0x467e278",
+      "sha256": "0bc668570623f1d1f9cd9b9fea517b9f3ab49992a57a0e76d337c6c29a2262f0"
+    },
+    {
+      "file": "preview-restore.txt",
+      "start": "0x4658754",
+      "stop": "0x4658810",
+      "sha256": "e426412477d7042b36f64bd6515593d8744512acdfb628148e93d30445c69c36"
+    },
+    {
+      "file": "preview-borrow.txt",
+      "start": "0x4657f18",
+      "stop": "0x4658054",
+      "sha256": "d8913f1725d59161cf9987106d5aa114d52adc2e376f9387ab3d17dc1df53dea"
+    }
+  ]
+}
