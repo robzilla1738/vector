@@ -60,6 +60,7 @@ steps.append(('native-ntp-background/native.patch', 'native-ntp-background/manif
 steps.append(('native-agent-background-target/native.patch', 'native-agent-background-target/manifest.json'))
 steps.append(('native-carrier-profile-layout/fix.patch', 'native-carrier-profile-layout/manifest.json'))
 steps.append(('native-ntp-final-guards/native.patch', 'native-ntp-final-guards/manifest.json'))
+steps.append(('native-ntp-build-fixes/fix.patch', 'native-ntp-build-fixes/manifest.json'))
 
 def safe(path):
     value = Path(path)

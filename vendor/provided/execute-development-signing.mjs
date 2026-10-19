@@ -143,7 +143,7 @@ export function executeDevelopmentSigning({ planPath, planSha256, receiptPath, m
     const match = display.stderr.match(/^TeamIdentifier=(.+)$/m); if (!match) throw Error('missing-post-sign-team');
     let leaf = null;
     if (step.signer === 'development') {
-      const prefix = path.join(workspace, `cert-${index}-${certificateSequence++}-`); command(['-d', '--extract-certificates', prefix, code]);
+      const prefix = path.join(workspace, `cert-${index}-${certificateSequence++}-`); command(['-d', '--extract-certificates=' + prefix, code]);
       const certificate = new X509Certificate(regular(prefix + '0', 1048576));
       const units = [...certificate.subject.matchAll(/^OU=(.+)$/gm)].map(m => m[1]);
       leaf = { sha1: certificate.fingerprint.replaceAll(':', '').toUpperCase(), team: units.length === 1 ? units[0] : null };

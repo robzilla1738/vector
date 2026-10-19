@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "actualCompilerFailure": "provided-v31-focused-build.log: missing ENABLE_AUX_BROWSER macro and generic WebView has no PrepareAuxNtpTransition",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.h",
+      "baselineSha256": "eac4ebd5db6c3c7a4064a1c6277eb794c4aecdef2425b5e1c1c716bc2c6440d0",
+      "outputSha256": "f7b57c4e66936ab0f0ba4a5648d1ddb8feee7a59abeda892c94ae9225d1aba32",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/views/frame/web_contents_close_handler_delegate.h\"\n",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/ui/views/frame/web_contents_close_handler_delegate.h\"\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "ff669b6d0b7215a6a0a7751124111da8403a9179c8aae9a168aab5f87a125894",
+      "outputSha256": "70544757adb74bfe826a48f491bac456b7332d0e932ba1f2077d0da132f41678",
+      "anchors": [
+        {
+          "find": "    active_contents_view->PrepareAuxNtpTransition(new_contents);",
+          "replace": "    multi_contents_view_->GetActiveContentsView()->PrepareAuxNtpTransition(\n        new_contents);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/BUILD.gn",
+      "baselineSha256": "cc646fc19689f31ca072854989c165c6ca303c4396067383c51efd976f39eb27",
+      "outputSha256": "c74cdd02f3b5aa3e834e8d42574d2f6d3a0ecd193bec8fb9585c19d34d6128f0",
+      "anchors": [
+        {
+          "find": "    \"//chrome/browser/ui:ui_features\",\n    \"//chrome/common:buildflags\",",
+          "replace": "    \"//chrome/browser:buildflags\",\n    \"//chrome/browser/ui:ui_features\",\n    \"//chrome/common:buildflags\",",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

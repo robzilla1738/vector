@@ -4,7 +4,7 @@
   "sources": [
     {
       "path": "vendor/provided/execute-development-signing.mjs",
-      "sha256": "d0a026c0074c6167866cac6d5e1a906d838c76c07f6d5fff183c44a9c157f92f"
+      "sha256": "d8e2481d1351548c3b07e5ec0ab2fb9fa8ded4fd036fa552a690bbd1751b755b"
     },
     {
       "path": "vendor/provided/execute-development-signing.test.mjs",
@@ -61,5 +61,6 @@
     "Actual current CMS/authenticated profiles",
     "Actual leaf/Team/profile/capabilities and signed-receipt observation",
     "New diagnostic preview and actual DP/runtime acceptance"
-  ]
+  ],
+  "rootActualCommandCorrection": "Use --extract-certificates=PREFIX; separate optional argument was interpreted as a code path by actual macOS codesign. Actual Xcode placeholder extraction succeeded with equals form."
 }
