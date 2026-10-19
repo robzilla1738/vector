@@ -18,6 +18,7 @@ Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-suppli
 
 ## Working rules
 
+- Current development priority: preserve Aside UI and behavior 1:1 with Aux branding. Do not run signing, provisioning or release preparation as part of this work; the owner explicitly removed them from the development path. Existing scoped signing evidence is historical.
 - Commit coherent slices to local `main`; parallel lanes use separate worktrees and deliver commits. Integrator owns root manifests, packaging, patch series, shared native registration/GN files and startup.
 - Stay local. Never push, run hosted Actions, Developer ID sign, notarize or release. Ad hoc signing for local testing/packaging is permitted. The owner explicitly authorized Xcode/Apple Development provisioning and signing for the three disposable Aux daemon, CLI and native-carrier test helpers under Robert Courson’s team on 2026-10-19. This scoped exception uses the reviewed Aux test group and actual profile/certificate authority; it does not authorize release or unrelated credentials/OS grants.
 - Preserve owner changes in the Chromium checkout. Never reset it or delete unrelated files. Serialize native builds with `scripts/native-build.py` and `/tmp/aux-build.lock`.

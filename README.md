@@ -36,4 +36,4 @@ Supplied assembly requires a rebuilt native Chromium app with `enable_aux_browse
 
 `pnpm typecheck`, `pnpm lint` and `pnpm test` check the earlier workspace packages. `pnpm check:independent` retains their historical build/check workflow. `pnpm check:cleanroom` is a historical reconstruction audit and is excluded from the active reuse gate: byte-identical supplied files are expected. A passing preservation audit alone does not prove runtime or product parity.
 
-All development stays local. Nothing is pushed, released, notarized or Developer ID signed. Local packaging may use an ad hoc signature. The owner authorized scoped Apple Development provisioning/signing for the three disposable Aux authentication helpers; see the current workspace rules and development-signing evidence.
+All development stays local, with 1:1 Aside UI and behavior as the priority. Signing, provisioning and release preparation are outside the current development work. Earlier scoped authentication-helper signing evidence remains historical; see the current workspace rules.
