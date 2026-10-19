@@ -421,6 +421,8 @@ export function createAgentRouters(
         engine.attachments.remove(input.accountId, input.sessionId, file.id);
       s.messages = [];
       s.context = [];
+      delete s.compaction;
+      store.set(input.accountId, 'sessionApprovals', input.sessionId, null);
       s.runs = [];
       s.toolCalls = [];
       s.suspensions = [];
@@ -547,6 +549,7 @@ export function createAgentRouters(
         input.sessionId,
       ))
         engine.attachments.remove(input.accountId, input.sessionId, file.id);
+      store.set(input.accountId, 'sessionApprovals', input.sessionId, null);
       store.set(input.accountId, 'sessions', input.sessionId, null);
       return { deleted: true };
     }),

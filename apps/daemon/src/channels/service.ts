@@ -498,6 +498,22 @@ export class ChannelService {
       for (const row of this.list(accountId))
         if (row.enabled) this.start(accountId, row.id);
   }
+  async closeAccount(accountId: number) {
+    for (const row of this.list(accountId)) await this.stop(accountId, row.id);
+    const sessions = new Set<string>();
+    for (const value of Object.values(
+      this.store.all(accountId, 'channelThreads'),
+    )) {
+      const thread = value as { sessionId: string } | null;
+      if (thread && this.store.get(accountId, 'sessions', thread.sessionId)) {
+        this.engine.stop(accountId, thread.sessionId, 'aborted');
+        sessions.add(thread.sessionId);
+      }
+    }
+    await Promise.allSettled(
+      [...sessions].map((id) => this.engine.wait(accountId, id)),
+    );
+  }
   async close() {
     this.closed = true;
     for (const row of this.active.values()) row.controller.abort();

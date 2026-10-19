@@ -27,8 +27,7 @@ export function createChannelRouter(
     senderId: z.string().regex(/^\d{1,20}$/),
   });
   store.registerAccountDeletionHandler(async (accountId) => {
-    for (const connection of service.list(accountId))
-      await service.stop(accountId, connection.id);
+    await service.closeAccount(accountId);
   });
   return t.router({
     connections: t.router({
