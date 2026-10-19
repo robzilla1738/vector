@@ -18,7 +18,6 @@ export function VaultManagement({
 }) {
   return (
     <section className="stack">
-      <h3>Manage Vaults</h3>
       {vaults.map((vault) => (
         <VaultRow
           key={`${vault.id}.${vault.revision}`}

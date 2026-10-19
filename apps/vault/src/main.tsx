@@ -1,5 +1,5 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: Immutable versioned records and import previews may repeat field labels; updated revisions remount the parent.
-import { Button, Dialog, Empty, ErrorNotice, Mark } from '@aux/ui';
+import { Button, Empty, ErrorNotice, Mark } from '@aux/ui';
 import { AuthGate, SavedRecoveryKey } from '@aux/ui/security';
 import {
   Copy,
@@ -21,6 +21,7 @@ import type { Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
 import { copySensitiveField } from './clipboard';
 import { CredentialExchangeImport } from './credential-exchange';
+import { VaultDialog as Dialog } from './dialog';
 import { exportSnapshot } from './export';
 import { FillReview } from './fill-review';
 import { VaultLockSettings } from './lock-settings';
@@ -29,6 +30,7 @@ import { PasskeyConsent } from './passkeys/consent';
 import { requestIdFromHash } from './passkeys/native';
 import { PasswordGenerator } from './password-generator';
 import { SaveSuggestion } from './save-suggestion';
+import { VaultChooser } from './vault-chooser';
 import { VaultManagement } from './vault-management';
 
 function App() {
@@ -194,22 +196,24 @@ function App() {
     );
   if (status.locked || authGate)
     return (
-      <AuthGate
-        key={accountId}
-        rpc={rpc}
-        accountId={accountId}
-        initialized={authGate?.initialized ?? status.initialized}
-        onUnlocked={async () => {
-          await refresh(accountId);
-          recoveryHeld.current = false;
-          setAuthGate(undefined);
-        }}
-        onRecoveryStateChange={(holding) => {
-          recoveryHeld.current = holding;
-        }}
-        error={error}
-        onStarted={() => setAuthGate({ initialized: status.initialized })}
-      />
+      <div className="vault-auth">
+        <AuthGate
+          key={accountId}
+          rpc={rpc}
+          accountId={accountId}
+          initialized={authGate?.initialized ?? status.initialized}
+          onUnlocked={async () => {
+            await refresh(accountId);
+            recoveryHeld.current = false;
+            setAuthGate(undefined);
+          }}
+          onRecoveryStateChange={(holding) => {
+            recoveryHeld.current = holding;
+          }}
+          error={error}
+          onStarted={() => setAuthGate({ initialized: status.initialized })}
+        />
+      </div>
     );
   const passkeyRequestId = requestIdFromHash();
   if (passkeyRequestId)
@@ -290,17 +294,11 @@ function App() {
             </Button>
           </div>
           <div className="row filters">
-            <select
-              aria-label="Vault"
+            <VaultChooser
+              vaults={snapshot?.vaults ?? []}
               value={vaultId}
-              onChange={(event) => setVaultId(event.target.value)}
-            >
-              {snapshot?.vaults.map((vault) => (
-                <option key={vault.id} value={vault.id}>
-                  {vault.name}
-                </option>
-              ))}
-            </select>
+              onChange={setVaultId}
+            />
             <select
               aria-label="Category"
               value={category}
@@ -346,59 +344,63 @@ function App() {
           </div>
         </section>
         <section className="vault-detail">
-          {selected ? (
-            <ItemDetail
-              key={`${selected.id}.${selected.revision}`}
-              item={selected}
-              accountId={accountId}
-              context={context}
-              pending={pending}
-              onEdit={() => setEditor(selected)}
-              onRestore={async (revision) => {
-                await mutate('vault.restoreItem', {
-                  itemId: selected.id,
-                  revision,
-                  baseRevision: selected.revision,
-                });
-                setNotice(
-                  'The earlier version is restored. Your previous version remains in history.',
-                );
-              }}
-              onDelete={() => {
-                if (confirm('Delete this item? This cannot be undone.'))
-                  void mutate('vault.deleteItem', { itemId: selected.id })
-                    .then(() => setSelectedId(''))
-                    .catch(() => {});
-              }}
-              onFill={(selectedFields) => {
-                if (!context || !selectedFields) {
-                  void pageContext();
-                  return;
-                }
-                setPending(true);
-                void backgroundRequest<{ filled: boolean }>({
-                  type: 'aux.vault.fill',
-                  accountId,
-                  itemId: selected.id,
-                  contextToken: context.contextToken,
-                  selectedFields,
-                })
-                  .then(() => {
-                    setNotice('The selected fields are filled.');
-                    setContext(undefined);
+          <div className="vault-detail-content">
+            {selected ? (
+              <ItemDetail
+                key={`${selected.id}.${selected.revision}`}
+                item={selected}
+                accountId={accountId}
+                context={context}
+                pending={pending}
+                onEdit={() => setEditor(selected)}
+                onRestore={async (revision) => {
+                  await mutate('vault.restoreItem', {
+                    itemId: selected.id,
+                    revision,
+                    baseRevision: selected.revision,
+                  });
+                  setNotice(
+                    'The earlier version is restored. Your previous version remains in history.',
+                  );
+                }}
+                onDelete={() => {
+                  if (confirm('Delete this item? This cannot be undone.'))
+                    void mutate('vault.deleteItem', { itemId: selected.id })
+                      .then(() => setSelectedId(''))
+                      .catch(() => {});
+                }}
+                onFill={(selectedFields) => {
+                  if (!context || !selectedFields) {
+                    void pageContext();
+                    return;
+                  }
+                  setPending(true);
+                  void backgroundRequest<{ filled: boolean }>({
+                    type: 'aux.vault.fill',
+                    accountId,
+                    itemId: selected.id,
+                    contextToken: context.contextToken,
+                    selectedFields,
                   })
-                  .catch((error) => setError(error.message))
-                  .finally(() => setPending(false));
-              }}
-              onError={setError}
-            />
-          ) : (
-            <Empty>
-              <LockKeyhole size={32} />
-              <p>Select an item to view it.</p>
-              <Button onClick={() => void pageContext()}>Fill this page</Button>
-            </Empty>
-          )}
+                    .then(() => {
+                      setNotice('The selected fields are filled.');
+                      setContext(undefined);
+                    })
+                    .catch((error) => setError(error.message))
+                    .finally(() => setPending(false));
+                }}
+                onError={setError}
+              />
+            ) : (
+              <Empty>
+                <LockKeyhole size={32} />
+                <p>Select an item to view it.</p>
+                <Button onClick={() => void pageContext()}>
+                  Fill this page
+                </Button>
+              </Empty>
+            )}
+          </div>
         </section>
       </div>
       {editor && snapshot && (
@@ -612,7 +614,11 @@ function ItemDetail({
         </Button>
       </div>
       {history && (
-        <Dialog title="Earlier versions" onClose={() => setHistory(undefined)}>
+        <Dialog
+          kind="history"
+          title="Earlier versions"
+          onClose={() => setHistory(undefined)}
+        >
           {historyError && <ErrorNotice error={historyError} />}
           {history.length === 0 ? (
             <Empty>No earlier versions.</Empty>
@@ -698,7 +704,11 @@ function ItemEditor({
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
   return (
-    <Dialog title={item ? 'Edit saved item' : 'New item'} onClose={onClose}>
+    <Dialog
+      kind="item"
+      title={item ? 'Edit saved item' : 'New item'}
+      onClose={onClose}
+    >
       <form
         className="stack item-editor"
         onSubmit={(event) => {
@@ -931,6 +941,7 @@ function VaultSettings({
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [name, setName] = useState('');
+  const [managingVaults, setManagingVaults] = useState(false);
   const [error, setError] = useState('');
   const [biometry, setBiometry] = useState<{
     available: boolean;
@@ -954,7 +965,7 @@ function VaultSettings({
   }, [accountId]);
   if (recoveryKey)
     return (
-      <Dialog title="New recovery key" onClose={() => {}}>
+      <Dialog kind="recovery" title="New recovery key" onClose={() => {}}>
         <SavedRecoveryKey
           accountId={accountId}
           rpc={rpc}
@@ -966,225 +977,242 @@ function VaultSettings({
       </Dialog>
     );
   return (
-    <Dialog
-      title="Vault preferences"
-      onClose={() => {
-        if (!rotating && !pending) onClose();
-      }}
-    >
-      <form
-        className="stack"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (password !== confirmation) {
-            setError('The passwords do not match.');
-            return;
-          }
-          void mutate('passwordManager.auth.changePassword', {
-            currentPassword: current,
-            newPassword: password,
-          })
-            .then(() => {
-              setCurrent('');
-              setPassword('');
-              setConfirmation('');
-              onClose();
-            })
-            .catch((error) => setError(error.message));
+    <>
+      <Dialog
+        kind="preferences"
+        title="Vault preferences"
+        onClose={() => {
+          if (!rotating && !pending) onClose();
         }}
       >
-        <h3>Change Vault password</h3>
-        <label>
-          Current Vault password
-          <input
-            className="field"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={current}
-            onChange={(event) => setCurrent(event.target.value)}
-          />
-        </label>
-        <label>
-          New password
-          <input
-            className="field"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <label>
-          Repeat the new password
-          <input
-            className="field"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            required
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-        </label>
-        <Button type="submit" disabled={pending}>
-          Save
-        </Button>
-      </form>
-      <VaultLockSettings
-        accountId={accountId}
-        pending={pending}
-        mutate={mutate}
-      />
-      <section className="stack">
-        <h3>Replace recovery key</h3>
-        <p>
-          Enter your current Vault password above. Replacing this key
-          immediately invalidates the previous key.
-        </p>
-        <Button
-          disabled={pending || rotating || !current}
-          onClick={() => {
-            setRotating(true);
-            setError('');
-            void rpc<{ recoveryKey: string }>(
-              'passwordManager.auth.replaceRecoveryKey',
-              { accountId, currentPassword: current },
-              true,
-            )
-              .then((result) => {
+        <form
+          className="stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (password !== confirmation) {
+              setError('The passwords do not match.');
+              return;
+            }
+            void mutate('passwordManager.auth.changePassword', {
+              currentPassword: current,
+              newPassword: password,
+            })
+              .then(() => {
                 setCurrent('');
-                setRecoveryKey(result.recoveryKey);
+                setPassword('');
+                setConfirmation('');
+                onClose();
               })
-              .catch((error) => setError(error.message))
-              .finally(() => setRotating(false));
+              .catch((error) => setError(error.message));
           }}
         >
-          Replace recovery key
-        </Button>
-      </section>
-      <hr />
-      <form
-        className="row"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void mutate('vault.createVault', {
-            name,
-            type: 'personal',
-            appearance: {},
-          })
-            .then(() => setName(''))
-            .catch((error) => setError(error.message));
-        }}
-      >
-        <input
-          className="field"
-          aria-label="Vault name"
-          placeholder="Vault name"
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <Button type="submit" disabled={pending}>
-          Create
-        </Button>
-      </form>
-      {snapshot && (
-        <VaultManagement
-          vaults={snapshot.vaults}
-          items={snapshot.items}
+          <h3>Change Vault password</h3>
+          <label>
+            Current Vault password
+            <input
+              className="field"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={current}
+              onChange={(event) => setCurrent(event.target.value)}
+            />
+          </label>
+          <label>
+            New password
+            <input
+              className="field"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <label>
+            Repeat the new password
+            <input
+              className="field"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+            />
+          </label>
+          <Button type="submit" disabled={pending}>
+            Save
+          </Button>
+        </form>
+        <VaultLockSettings
+          accountId={accountId}
           pending={pending}
           mutate={mutate}
         />
-      )}
-      <div className="stack">
-        <h3>Export saved items</h3>
-        <p>This file can contain readable passwords. Store it securely.</p>
-        {(['json', 'csv'] as const).map((format) => (
+        <section className="stack">
+          <h3>Replace recovery key</h3>
+          <p>
+            Enter your current Vault password above. Replacing this key
+            immediately invalidates the previous key.
+          </p>
           <Button
-            key={format}
-            disabled={!snapshot || pending || rotating}
+            disabled={pending || rotating || !current}
             onClick={() => {
-              if (
-                !snapshot ||
-                !confirm(
-                  'Export readable saved items? Store the file securely.',
-                )
+              setRotating(true);
+              setError('');
+              void rpc<{ recoveryKey: string }>(
+                'passwordManager.auth.replaceRecoveryKey',
+                { accountId, currentPassword: current },
+                true,
               )
-                return;
-              void exportSnapshot(snapshot, format).catch((error) =>
-                onError(
-                  error instanceof Error
-                    ? error.message
-                    : 'The Vault export could not be created.',
-                ),
-              );
+                .then((result) => {
+                  setCurrent('');
+                  setRecoveryKey(result.recoveryKey);
+                })
+                .catch((error) => setError(error.message))
+                .finally(() => setRotating(false));
             }}
           >
-            Export {format.toUpperCase()}
+            Replace recovery key
           </Button>
-        ))}
-        <Button
-          disabled={pending}
-          onClick={() => {
-            if (
-              confirm(
-                'Saved items will be permanently removed from this local account.',
-              )
-            )
-              void mutate('vault.clear', { confirmed: true })
-                .then(onClose)
-                .catch((error) => setError(error.message));
+        </section>
+        <hr />
+        <form
+          className="row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void mutate('vault.createVault', {
+              name,
+              type: 'personal',
+              appearance: {},
+            })
+              .then(() => setName(''))
+              .catch((error) => setError(error.message));
           }}
         >
-          Delete all items
-        </Button>
-      </div>
-      <section className="stack">
-        <h3>Touch ID</h3>
-        {biometry?.available ? (
-          <>
-            <p>
-              {biometry.enrolled
-                ? 'Touch ID is enabled for this Vault.'
-                : 'Enter your current Vault password above, then choose to enable Touch ID.'}
-            </p>
-            <Button
-              disabled={pending || (!biometry.enrolled && !current)}
-              onClick={() =>
-                void mutate(
-                  biometry.enrolled
-                    ? 'passwordManager.auth.biometricRemove'
-                    : 'passwordManager.auth.biometricEnroll',
-                  biometry.enrolled ? {} : { currentPassword: current },
-                )
-                  .then((value) => {
-                    setBiometry(
-                      value as { available: boolean; enrolled: boolean },
-                    );
-                    setCurrent('');
-                  })
-                  .catch((error) => setError(error.message))
-              }
-            >
-              {biometry.enrolled
-                ? 'Turn off Touch ID unlock'
-                : 'Enable Touch ID unlock'}
-            </Button>
-          </>
-        ) : (
-          <small>
-            Touch ID is unavailable until the native secure-credential helper
-            and device permissions are ready.
-          </small>
+          <input
+            className="field"
+            aria-label="Vault name"
+            placeholder="Vault name"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Button type="submit" disabled={pending}>
+            Create
+          </Button>
+        </form>
+        {snapshot && (
+          <Button
+            disabled={pending || rotating}
+            onClick={() => setManagingVaults(true)}
+          >
+            Manage Vaults
+          </Button>
         )}
-      </section>
+        <div className="stack">
+          <h3>Export saved items</h3>
+          <p>This file can contain readable passwords. Store it securely.</p>
+          {(['json', 'csv'] as const).map((format) => (
+            <Button
+              key={format}
+              disabled={!snapshot || pending || rotating}
+              onClick={() => {
+                if (
+                  !snapshot ||
+                  !confirm(
+                    'Export readable saved items? Store the file securely.',
+                  )
+                )
+                  return;
+                void exportSnapshot(snapshot, format).catch((error) =>
+                  onError(
+                    error instanceof Error
+                      ? error.message
+                      : 'The Vault export could not be created.',
+                  ),
+                );
+              }}
+            >
+              Export {format.toUpperCase()}
+            </Button>
+          ))}
+          <Button
+            disabled={pending}
+            onClick={() => {
+              if (
+                confirm(
+                  'Saved items will be permanently removed from this local account.',
+                )
+              )
+                void mutate('vault.clear', { confirmed: true })
+                  .then(onClose)
+                  .catch((error) => setError(error.message));
+            }}
+          >
+            Delete all items
+          </Button>
+        </div>
+        <section className="stack">
+          <h3>Touch ID</h3>
+          {biometry?.available ? (
+            <>
+              <p>
+                {biometry.enrolled
+                  ? 'Touch ID is enabled for this Vault.'
+                  : 'Enter your current Vault password above, then choose to enable Touch ID.'}
+              </p>
+              <Button
+                disabled={pending || (!biometry.enrolled && !current)}
+                onClick={() =>
+                  void mutate(
+                    biometry.enrolled
+                      ? 'passwordManager.auth.biometricRemove'
+                      : 'passwordManager.auth.biometricEnroll',
+                    biometry.enrolled ? {} : { currentPassword: current },
+                  )
+                    .then((value) => {
+                      setBiometry(
+                        value as { available: boolean; enrolled: boolean },
+                      );
+                      setCurrent('');
+                    })
+                    .catch((error) => setError(error.message))
+                }
+              >
+                {biometry.enrolled
+                  ? 'Turn off Touch ID unlock'
+                  : 'Enable Touch ID unlock'}
+              </Button>
+            </>
+          ) : (
+            <small>
+              Touch ID is unavailable until the native secure-credential helper
+              and device permissions are ready.
+            </small>
+          )}
+        </section>
 
-      {error && <ErrorNotice error={error} />}
-      <span hidden>{accountId}</span>
-    </Dialog>
+        {error && <ErrorNotice error={error} />}
+        <span hidden>{accountId}</span>
+      </Dialog>
+      {snapshot && managingVaults && (
+        <Dialog
+          kind="management"
+          title="Manage Vaults"
+          onClose={() => setManagingVaults(false)}
+        >
+          <VaultManagement
+            vaults={snapshot.vaults}
+            items={snapshot.items}
+            pending={pending}
+            mutate={mutate}
+          />
+        </Dialog>
+      )}
+    </>
   );
 }
 function ImportDialog({
@@ -1211,7 +1239,7 @@ function ImportDialog({
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   return (
-    <Dialog title="Import saved items" onClose={onClose}>
+    <Dialog kind="import" title="Import saved items" onClose={onClose}>
       <div className="stack">
         <label>
           Import source

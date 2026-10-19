@@ -77,7 +77,6 @@ body,
   border: 0;
   border-radius: 11.2px;
   background: transparent;
-  min-height: 42px;
 }
 .vault-item[aria-selected="true"] {
   background: var(--secondary);
@@ -113,10 +112,12 @@ body,
 .vault-detail {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--raised);
   border: 0.5px solid var(--border);
-  border-radius: 11.2px;
+  border-radius: 16.8px;
   padding: 12px;
 }
 .vault-detail h2 {
@@ -250,8 +251,8 @@ body,
   margin: 4px;
 }
 .dialog {
-  max-width: 568px;
-  max-height: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: min(400px, calc(100vh - 32px));
   width: 520px;
   padding: 20px;
   backdrop-filter: none;
@@ -287,4 +288,127 @@ body,
   border: 0;
   border-top: 0.5px solid var(--border);
   margin: 20px 0;
+}
+
+/* Approved visual-measurements.md M4/M6: intrinsic component geometry only. */
+.vault-detail-content {
+  min-height: 0;
+  overflow: auto;
+}
+.vault-auth {
+  height: 100%;
+  overflow: auto;
+}
+.vault-auth .aux-security-gate {
+  width: min(448px, calc(100vw - 32px));
+  min-height: 100%;
+  height: auto;
+  margin-inline: auto;
+  padding: 32px 0;
+  gap: 24px;
+}
+.vault-auth .aux-security-gate form {
+  max-width: 100%;
+}
+.vault-auth .aux-security-gate:has(input[autocomplete="current-password"]) {
+  width: 320px;
+  padding-top: 36px;
+  gap: 40px;
+}
+.vault-auth
+  .aux-security-gate:has(input[autocomplete="current-password"])
+  > .aux-mark {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border: 8px solid var(--border);
+  border-radius: 33.6px;
+  background: var(--raised);
+  mask: none;
+}
+.vault-auth
+  .aux-security-gate:has(input[autocomplete="current-password"])
+  > .aux-mark::after {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  background: currentColor;
+  mask:
+    url("../../../assets/brand/aux-mark-white.svg") center / contain no-repeat;
+}
+.vault-dialog-content {
+  min-width: 0;
+}
+.dialog:has(> .vault-dialog-history) {
+  width: auto;
+  max-width: min(448px, calc(100vw - 32px));
+  max-height: min(85vh, 640px);
+}
+.dialog:has(> .vault-dialog-management) {
+  width: auto;
+  max-width: min(384px, calc(100vw - 32px));
+  max-height: min(85vh, 512px);
+}
+.dialog:has(> .vault-dialog-generator) {
+  width: auto;
+  max-width: min(384px, calc(100vw - 32px));
+}
+.generator-length-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.generator-length-input.field {
+  width: 64px;
+  height: 28px;
+  min-height: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.generator-length-slider {
+  width: 160px;
+  flex: none;
+}
+.vault-chooser-trigger {
+  min-width: 0;
+  max-width: 50%;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  background: transparent;
+}
+.vault-chooser-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-chooser {
+  position: fixed;
+  margin: 0;
+  width: 224px;
+  max-width: calc(100vw - 16px);
+  max-height: min(75vh, 512px);
+  overflow: auto;
+  padding: 6px;
+  border: 0.5px solid var(--border);
+  border-radius: 16.8px;
+  background: var(--page);
+  color: var(--text);
+}
+.vault-chooser button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: start;
+  background: transparent;
+  border: 0;
+}
+.vault-chooser button[aria-checked="true"] {
+  background: var(--secondary);
+}
+.vault-chooser button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

@@ -1,6 +1,7 @@
-import { Button, Dialog, ErrorNotice } from '@aux/ui';
+import { Button, ErrorNotice } from '@aux/ui';
 import { useEffect, useState } from 'react';
 import { rpc } from './client';
+import { VaultDialog as Dialog } from './dialog';
 
 const labels = {
   lowercase: 'Lowercase letters',
@@ -77,7 +78,7 @@ export function PasswordGenerator({
     };
   }, [options, valid]);
   return (
-    <Dialog title="Create a password" onClose={onClose}>
+    <Dialog kind="generator" title="Create a password" onClose={onClose}>
       <form
         className="stack"
         onSubmit={(event) => {
@@ -101,17 +102,37 @@ export function PasswordGenerator({
           <>
             <label>
               Length
-              <input
-                className="field"
-                type="number"
-                min={8}
-                max={64}
-                required
-                value={options.length}
-                onChange={(event) =>
-                  setOptions({ ...options, length: Number(event.target.value) })
-                }
-              />
+              <span className="generator-length-controls">
+                <input
+                  aria-label="Password length slider"
+                  className="generator-length-slider"
+                  type="range"
+                  min={8}
+                  max={64}
+                  value={options.length}
+                  onChange={(event) =>
+                    setOptions({
+                      ...options,
+                      length: Number(event.target.value),
+                    })
+                  }
+                />
+                <input
+                  aria-label="Password length"
+                  className="field generator-length-input"
+                  type="number"
+                  min={8}
+                  max={64}
+                  required
+                  value={options.length}
+                  onChange={(event) =>
+                    setOptions({
+                      ...options,
+                      length: Number(event.target.value),
+                    })
+                  }
+                />
+              </span>
             </label>
             {Object.entries(labels).map(([name, label]) => (
               <label className="row" key={name}>

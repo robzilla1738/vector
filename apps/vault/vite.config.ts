@@ -20,7 +20,7 @@ export default defineConfig({
             {
               manifest_version: 3,
               name: 'Aux Vault',
-              version: '0.2.0',
+              version: '0.2.1',
               description: 'Encrypted credentials in your local Aux account.',
               key: identity.key,
               incognito: 'split',
