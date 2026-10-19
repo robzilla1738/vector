@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "operation": "fresh-original-ordered-replay",
+  "stagedCompositionSha256": "022bcddab5883a190acdae563f608a1b3e93a20c5bdb2fb3eaf2d16cfd4a0a8f",
+  "replayedCompositionSha256": "7e7a795d10651f5e9f22defcf987bf27ec64450451fd73126ac1b15c8ac250b7",
+  "sourceOutputsMatched": 98,
+  "artworkOutputsMatched": 23,
+  "orderedSteps": 38,
+  "compiled": false,
+  "appliedToNative": false,
+  "runtimeAcceptance": false
+}
