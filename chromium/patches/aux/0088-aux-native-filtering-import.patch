@@ -1,0 +1,4215 @@
+From: Aux clean-room build
+Subject: [PATCH 0088] Native filtering, renderer cosmetics and consented browser migration
+
+Specs: docs/spec/native/adblock-import.md F1-F4, I1-I2.
+Apply after 0089. Encrypted-category and runtime acceptance gaps documented separately.
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java b/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
+@@ -31,6 +31,7 @@
+     ChromeIsolatedWorldIds.ISOLATED_WORLD_ID_UNUSED_AUX_PAGE_CHANGE,
+     ChromeIsolatedWorldIds.ISOLATED_WORLD_ID_UNUSED_AUX_OBSERVER,
+     ChromeIsolatedWorldIds.ISOLATED_WORLD_ID_UNUSED_AUX_RECORDER,
++    ChromeIsolatedWorldIds.ISOLATED_WORLD_ID_AUX_NATIVE_FILTER,
+     ChromeIsolatedWorldIds.ISOLATED_WORLD_ID_UNUSED_EXTENSIONS
+ })
+ @Retention(RetentionPolicy.SOURCE)
+@@ -48,6 +49,7 @@
+     int ISOLATED_WORLD_ID_UNUSED_AUX_PAGE_CHANGE = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 9;
+     int ISOLATED_WORLD_ID_UNUSED_AUX_OBSERVER = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 10;
+     int ISOLATED_WORLD_ID_UNUSED_AUX_RECORDER = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 11;
+-    int ISOLATED_WORLD_ID_UNUSED_EXTENSIONS = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 5;
++    int ISOLATED_WORLD_ID_AUX_NATIVE_FILTER = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 13;
++    int ISOLATED_WORLD_ID_UNUSED_EXTENSIONS = IsolatedWorldIds.ISOLATED_WORLD_ID_CONTENT_END + 14;
+ }
+ // LINT.ThenChange(//chrome/common/chrome_isolated_world_ids.h)
+diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegate.cc
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -1120,6 +1120,13 @@
+ }
+ 
+ std::optional<int> ChromeMainDelegate::BasicStartupComplete() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER) && !defined(OFFICIAL_BUILD)
++  // Locally ad-hoc-signed standalone apps use the same destination keychain
++  // mode as the development launcher, before any OS crypt initialization.
++  // Source-browser import still requires its own real OS credential grant.
++  base::CommandLine::ForCurrentProcess()->AppendSwitch("use-mock-keychain");
++#endif
++
+ #if BUILDFLAG(IS_CHROMEOS)
+   ash::BootTimesRecorder::Get()->SaveChromeMainStats();
+ #endif
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -883,6 +883,7 @@
+   }
+ 
+   deps = [
++    "//chrome/browser/extensions/api/aux_adblock",
+     "//chrome/browser/aux:profile_gate",
+     ":active_use_util",
+     ":after_startup_task_utils",
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/chrome_content_browser_client.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_hooks.h"
+ 
+ #include <algorithm>
+ #include <iterator>
+@@ -5161,6 +5162,9 @@
+ 
+ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
+     BrowserURLHandler* handler) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  handler->AddHandlerPair([](GURL* url, content::BrowserContext*) { if (!url->SchemeIs("aux") || (url->host() != "adblock-internals" && url->host() != "import-data")) return false; GURL::Replacements rewrite; rewrite.SetSchemeStr("chrome"); rewrite.SetHostStr(url->host() == "import-data" ? "aux-import-data" : "aux-adblock-internals"); *url = url->ReplaceComponents(rewrite); return true; }, BrowserURLHandler::null_handler());
++#endif
+   // The group policy NTP URL handler must be registered before the other NTP
+   // URL handlers below. Also register it before the "parts" handlers, so the
+   // NTP policy takes precedence over extensions that override the NTP.
+@@ -5704,6 +5708,9 @@
+ 
+ void ChromeContentBrowserClient::CreateThrottlesForNavigation(
+     content::NavigationThrottleRegistry& registry) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_adblock::AddNavigationThrottle(registry);
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::MaybeAddResultPreviewNavigationThrottle(registry);
+   aux::NativeProjectPreview::AddNavigationThrottle(registry);
+@@ -6171,6 +6178,9 @@
+   DCHECK(browser_context);
+   Profile* profile = Profile::FromBrowserContext(browser_context);
+   DCHECK(profile);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  result.push_back(aux_adblock::CreateRequestThrottle(browser_context));
++#endif
+ 
+   ChromeNavigationUIData* chrome_navigation_ui_data =
+       static_cast<ChromeNavigationUIData*>(navigation_ui_data);
+diff --git a/chrome/browser/chrome_content_browser_client_receiver_bindings.cc b/chrome/browser/chrome_content_browser_client_receiver_bindings.cc
+--- a/chrome/browser/chrome_content_browser_client_receiver_bindings.cc
++++ b/chrome/browser/chrome_content_browser_client_receiver_bindings.cc
+@@ -13,6 +13,8 @@
+ #include "chrome/browser/chrome_browser_interface_binders.h"
+ #include "chrome/browser/chrome_browser_interface_binders_webui.h"
+ #include "chrome/browser/chrome_content_browser_client.h"
++#include "chrome/browser/extensions/api/aux_adblock/cosmetic_host.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/chrome_content_browser_client_parts.h"
+ #include "chrome/browser/content_settings/content_settings_manager_delegate.h"
+ #include "chrome/browser/headless/headless_mode_util.h"
+@@ -336,6 +338,9 @@
+     content::RenderFrameHost* render_frame_host,
+     mojo::BinderMapWithContext<content::RenderFrameHost*>* map) {
+   chrome::internal::PopulateChromeFrameBinders(map, render_frame_host);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  map->Add<aux_adblock::mojom::CosmeticHost>(&aux_adblock::BindCosmeticHost);
++#endif
+   chrome::internal::PopulateChromeWebUIFrameBinders(map, render_frame_host);
+ 
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+diff --git a/chrome/browser/extensions/api/BUILD.gn b/chrome/browser/extensions/api/BUILD.gn
+--- a/chrome/browser/extensions/api/BUILD.gn
++++ b/chrome/browser/extensions/api/BUILD.gn
+@@ -33,6 +33,8 @@
+     "//chrome/browser/extensions/api/aux_notification",
+     "//chrome/browser/extensions/api/aux_omnibox",
+     "//chrome/browser/extensions/api/aux_mini_popup",
++    "//chrome/browser/extensions/api/aux_adblock",
++    "//chrome/browser/extensions/api/aux_browser_import",
+     "//chrome/browser/extensions/api/activity_log_private",
+     "//chrome/browser/extensions/api/browsing_data",
+     "//chrome/browser/extensions/api/commands",
+@@ -224,6 +226,8 @@
+     "//chrome/browser/extensions/api/aux_notification:headers",
+     "//chrome/browser/extensions/api/aux_omnibox:headers",
+     "//chrome/browser/extensions/api/aux_mini_popup:headers",
++    "//chrome/browser/extensions/api/aux_adblock:headers",
++    "//chrome/browser/extensions/api/aux_browser_import:headers",
+     # This is not directly included by the target, but specified here
+     # to avoid cyclic dependency chain related to private_membership
+     # protos.
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -73,6 +73,8 @@
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(kVibrancy, true);
+   registry->RegisterBooleanPref("aux.browser.preload_new_tab", true);
++  registry->RegisterListPref("aux.browser.sidebar.expanded_bookmark_folders");
++  registry->RegisterListPref("aux.browser.sidebar.collapsed_sections");
+   registry->RegisterStringPref(kInsertion, "bottom");
+   registry->RegisterBooleanPref(kShrink, true);
+   registry->RegisterBooleanPref(kMru, true);
+diff --git a/chrome/browser/ui/webui/BUILD.gn b/chrome/browser/ui/webui/BUILD.gn
+--- a/chrome/browser/ui/webui/BUILD.gn
++++ b/chrome/browser/ui/webui/BUILD.gn
+@@ -47,6 +47,8 @@
+   }
+ 
+   deps = [
++    "//chrome/browser/extensions/api/aux_adblock",
++    "//chrome/browser/extensions/api/aux_browser_import",
+     ":gcm_internals_ui",
+     ":net_export_ui",
+     ":ntp_tiles_internals_ui",
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/webui/chrome_web_ui_configs.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_webui.h"
++#include "chrome/browser/extensions/api/aux_browser_import/import_webui.h"
+ 
+ #include "build/android_buildflags.h"
+ #include "build/branding_buildflags.h"
+@@ -267,6 +269,10 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+   auto& map = content::WebUIConfigMap::GetInstance();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  map.AddWebUIConfig(std::make_unique<aux_adblock::FilterWebUIConfig>());
++  map.AddWebUIConfig(std::make_unique<aux_import::ImportWebUIConfig>());
++#endif
+   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
+   map.AddWebUIConfig(std::make_unique<AutofillInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<BluetoothInternalsUIConfig>());
+diff --git a/chrome/common/chrome_content_client.cc b/chrome/common/chrome_content_client.cc
+--- a/chrome/common/chrome_content_client.cc
++++ b/chrome/common/chrome_content_client.cc
+@@ -201,6 +201,8 @@
+ };
+ 
+ void ChromeContentClient::AddAdditionalSchemes(Schemes* schemes) {
++  schemes->standard_schemes.push_back("aux");
++  schemes->secure_schemes.push_back("aux");
+ #if BUILDFLAG(ENABLE_AUX_RESULT_SCHEME)
+   // Every result document receives an opaque origin. Never add this scheme to
+   // WebStorage, service worker, CORS, or CSP-bypass registries.
+diff --git a/chrome/common/chrome_isolated_world_ids.h b/chrome/common/chrome_isolated_world_ids.h
+--- a/chrome/common/chrome_isolated_world_ids.h
++++ b/chrome/common/chrome_isolated_world_ids.h
+@@ -41,6 +41,8 @@
+   // Numbers for isolated worlds for extensions are set in
+   // extensions/renderer/script_injection.cc, and are are greater than or equal
+   // to this number.
++  ISOLATED_WORLD_ID_AUX_NATIVE_FILTER = content::ISOLATED_WORLD_ID_CONTENT_END + 13,
++
+   ISOLATED_WORLD_ID_EXTENSIONS
+ };
+ #if BUILDFLAG(ENABLE_AUX_ISOLATED_WORLDS)
+diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/extensions/api/_api_features.json
+--- a/chrome/common/extensions/api/_api_features.json
++++ b/chrome/common/extensions/api/_api_features.json
+@@ -11,6 +11,40 @@
+ // renderer.
+ 
+ {
++  "auxAdblock": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.adblock"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "auxBrowserImport": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.browserImport"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
+   "auxOmnibox": {
+     "dependencies": [
+       "permission:dev.aux.ext.private.omnibox"
+diff --git a/chrome/common/extensions/api/api_sources.gni b/chrome/common/extensions/api/api_sources.gni
+--- a/chrome/common/extensions/api/api_sources.gni
++++ b/chrome/common/extensions/api/api_sources.gni
+@@ -177,7 +177,7 @@
+ }
+ 
+ if (enable_aux_browser) {
+-  uncompiled_sources_ += [ "aux_account.json", "aux_browser_preferences.json", "aux_notification.json", "aux_omnibox.json", "aux_mini_popup.json" ]
++  uncompiled_sources_ += [ "aux_account.json", "aux_browser_preferences.json", "aux_notification.json", "aux_omnibox.json", "aux_mini_popup.json", "aux_adblock.json", "aux_browser_import.json" ]
+ }
+ 
+ chrome_extensions_api_schema_sources = get_path_info(schema_sources_, "abspath")
+diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
+--- a/chrome/renderer/BUILD.gn
++++ b/chrome/renderer/BUILD.gn
+@@ -136,6 +136,8 @@
+   ]
+ 
+   deps = [
++    "//components/aux_adblock:renderer",
++    "//chrome/browser:buildflags",
+     ":process_state",
+     "//base/allocator:buildflags",
+     "//build:chromeos_buildflags",
+diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
+--- a/chrome/renderer/chrome_content_renderer_client.cc
++++ b/chrome/renderer/chrome_content_renderer_client.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/renderer/chrome_content_renderer_client.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "components/aux_adblock/renderer_observer.h"
+ 
+ #include <functional>
+ #include <memory>
+@@ -650,6 +653,9 @@
+ 
+ void ChromeContentRendererClient::RenderFrameCreated(
+     content::RenderFrame* render_frame) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  new aux_adblock::RendererObserver(render_frame, ISOLATED_WORLD_ID_AUX_NATIVE_FILTER);
++#endif
+   ChromeRenderFrameObserver* render_frame_observer =
+       new ChromeRenderFrameObserver(render_frame, web_cache_impl_.get());
+   service_manager::BinderRegistry* registry = render_frame_observer->registry();
+diff --git a/extensions/browser/extension_event_histogram_value.h b/extensions/browser/extension_event_histogram_value.h
+--- a/extensions/browser/extension_event_histogram_value.h
++++ b/extensions/browser/extension_event_histogram_value.h
+@@ -604,6 +604,7 @@
+   RUNTIME_ON_ENABLED = 579,
+   ENTERPRISE_WEBRTC_ON_CAPTURE_STOPPED = 580,
+   AUXOMNIBOX_EVENT = 581,
++  AUXBROWSERIMPORT_PROGRESS = 582,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+diff --git a/extensions/browser/extension_function_histogram_value.h b/extensions/browser/extension_function_histogram_value.h
+--- a/extensions/browser/extension_function_histogram_value.h
++++ b/extensions/browser/extension_function_histogram_value.h
+@@ -2129,6 +2129,24 @@
+   AUXMINIPOPUP_SETOPTIONWINDOWSIZE = 2064,
+   AUXMINIPOPUP_PICKDIRECTORY = 2065,
+   AUXMINIPOPUP_SWITCHPROFILE = 2066,
++  AUXADBLOCK_GETSTATE = 2067,
++  AUXADBLOCK_SETENABLED = 2068,
++  AUXADBLOCK_GETSUBSCRIPTIONS = 2069,
++  AUXADBLOCK_ADDSUBSCRIPTION = 2070,
++  AUXADBLOCK_SETSUBSCRIPTIONENABLED = 2071,
++  AUXADBLOCK_REMOVESUBSCRIPTION = 2072,
++  AUXADBLOCK_STARTSUBSCRIPTIONUPDATE = 2073,
++  AUXADBLOCK_GETSUBSCRIPTIONUPDATEPROGRESS = 2074,
++  AUXADBLOCK_GETCUSTOMRULES = 2075,
++  AUXADBLOCK_SAVECUSTOMRULES = 2076,
++  AUXADBLOCK_TESTREQUEST = 2077,
++  AUXADBLOCK_GETDIAGNOSTICS = 2078,
++  AUXADBLOCK_RELOADMANUALFILTERS = 2079,
++  AUXADBLOCK_CLEARENGINECACHE = 2080,
++  AUXBROWSERIMPORT_GETIMPORTSOURCES = 2081,
++  AUXBROWSERIMPORT_STARTIMPORT = 2082,
++  AUXBROWSERIMPORT_GETIMPORTPROGRESS = 2083,
++  AUXBROWSERIMPORT_CANCELIMPORT = 2084,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+diff --git a/tools/metrics/histograms/metadata/extensions/enums.xml b/tools/metrics/histograms/metadata/extensions/enums.xml
+--- a/tools/metrics/histograms/metadata/extensions/enums.xml
++++ b/tools/metrics/histograms/metadata/extensions/enums.xml
+@@ -810,6 +810,7 @@
+   <int value="579" label="RUNTIME_ON_ENABLED"/>
+   <int value="580" label="ENTERPRISE_WEBRTC_ON_CAPTURE_STOPPED"/>
+   <int value="581" label="AUXOMNIBOX_EVENT"/>
++  <int value="582" label="AUXBROWSERIMPORT_PROGRESS"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_event_histogram_value.h:HistogramValue) -->
+@@ -3000,6 +3001,24 @@
+   <int value="2064" label="AUXMINIPOPUP_SETOPTIONWINDOWSIZE"/>
+   <int value="2065" label="AUXMINIPOPUP_PICKDIRECTORY"/>
+   <int value="2066" label="AUXMINIPOPUP_SWITCHPROFILE"/>
++  <int value="2067" label="AUXADBLOCK_GETSTATE"/>
++  <int value="2068" label="AUXADBLOCK_SETENABLED"/>
++  <int value="2069" label="AUXADBLOCK_GETSUBSCRIPTIONS"/>
++  <int value="2070" label="AUXADBLOCK_ADDSUBSCRIPTION"/>
++  <int value="2071" label="AUXADBLOCK_SETSUBSCRIPTIONENABLED"/>
++  <int value="2072" label="AUXADBLOCK_REMOVESUBSCRIPTION"/>
++  <int value="2073" label="AUXADBLOCK_STARTSUBSCRIPTIONUPDATE"/>
++  <int value="2074" label="AUXADBLOCK_GETSUBSCRIPTIONUPDATEPROGRESS"/>
++  <int value="2075" label="AUXADBLOCK_GETCUSTOMRULES"/>
++  <int value="2076" label="AUXADBLOCK_SAVECUSTOMRULES"/>
++  <int value="2077" label="AUXADBLOCK_TESTREQUEST"/>
++  <int value="2078" label="AUXADBLOCK_GETDIAGNOSTICS"/>
++  <int value="2079" label="AUXADBLOCK_RELOADMANUALFILTERS"/>
++  <int value="2080" label="AUXADBLOCK_CLEARENGINECACHE"/>
++  <int value="2081" label="AUXBROWSERIMPORT_GETIMPORTSOURCES"/>
++  <int value="2082" label="AUXBROWSERIMPORT_STARTIMPORT"/>
++  <int value="2083" label="AUXBROWSERIMPORT_GETIMPORTPROGRESS"/>
++  <int value="2084" label="AUXBROWSERIMPORT_CANCELIMPORT"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
+diff --git a/chrome/browser/extensions/api/aux_adblock/BUILD.gn b/chrome/browser/extensions/api/aux_adblock/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/BUILD.gn
+@@ -0,0 +1,6 @@
++source_set("headers") { sources = [ "aux_adblock_api.h" ] public_deps = [ "//chrome/browser/extensions/api/aux_common" ] }
++source_set("aux_adblock") {
++ sources = [ "aux_adblock_api.cc", "aux_adblock_api.h", "filter_service.cc", "filter_service.h", "filter_hooks.cc", "filter_hooks.h", "cosmetic_host.cc", "cosmetic_host.h", "filter_webui.cc", "filter_webui.h" ]
++ public_deps = [ ":headers", "//components/aux_adblock/mojom", "//components/aux_adblock:engine" ]
++ deps = [ "//base", "//chrome/browser/profiles:profile", "//content/public/browser", "//extensions/browser", "//net", "//services/network/public/cpp", "//services/network/public/mojom", "//third_party/blink/public/common", "//crypto", "//url" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.cc b/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.cc
+@@ -0,0 +1,24 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_adblock/aux_adblock_api.h"
++
++#include "base/functional/bind.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_service.h"
++namespace extensions {
++ExtensionFunction::ResponseAction AuxAdblockFunction::RunAux() {
++  aux_adblock::FilterService::Get(profile())->Invoke(
++      std::string(std::string_view(name()).substr(11)), args().Clone(),
++      base::BindOnce(
++          [](scoped_refptr<AuxAdblockFunction> self,
++             std::optional<base::Value> result, std::string error) {
++            if (!result) {
++              self->Respond(self->Error(error));
++            } else if (result->is_none()) {
++              self->Respond(self->NoArguments());
++            } else {
++              self->Respond(self->WithArguments(std::move(*result)));
++            }
++          },
++          base::WrapRefCounted(this)));
++  return did_respond() ? AlreadyResponded() : RespondLater();
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.h b/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_AUX_ADBLOCK_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_AUX_ADBLOCK_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++namespace extensions {
++class AuxAdblockFunction : public AuxFunction {
++ protected:
++  ~AuxAdblockFunction() override = default;
++  ResponseAction RunAux() override;
++};
++class AuxAdblockGetStateFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.getState",AUXADBLOCK_GETSTATE) protected:~AuxAdblockGetStateFunction()override=default;};
++class AuxAdblockSetEnabledFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.setEnabled",AUXADBLOCK_SETENABLED) protected:~AuxAdblockSetEnabledFunction()override=default;};
++class AuxAdblockGetSubscriptionsFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.getSubscriptions",AUXADBLOCK_GETSUBSCRIPTIONS) protected:~AuxAdblockGetSubscriptionsFunction()override=default;};
++class AuxAdblockAddSubscriptionFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.addSubscription",AUXADBLOCK_ADDSUBSCRIPTION) protected:~AuxAdblockAddSubscriptionFunction()override=default;};
++class AuxAdblockSetSubscriptionEnabledFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.setSubscriptionEnabled",AUXADBLOCK_SETSUBSCRIPTIONENABLED) protected:~AuxAdblockSetSubscriptionEnabledFunction()override=default;};
++class AuxAdblockRemoveSubscriptionFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.removeSubscription",AUXADBLOCK_REMOVESUBSCRIPTION) protected:~AuxAdblockRemoveSubscriptionFunction()override=default;};
++class AuxAdblockStartSubscriptionUpdateFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.startSubscriptionUpdate",AUXADBLOCK_STARTSUBSCRIPTIONUPDATE) protected:~AuxAdblockStartSubscriptionUpdateFunction()override=default;};
++class AuxAdblockGetSubscriptionUpdateProgressFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.getSubscriptionUpdateProgress",AUXADBLOCK_GETSUBSCRIPTIONUPDATEPROGRESS) protected:~AuxAdblockGetSubscriptionUpdateProgressFunction()override=default;};
++class AuxAdblockGetCustomRulesFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.getCustomRules",AUXADBLOCK_GETCUSTOMRULES) protected:~AuxAdblockGetCustomRulesFunction()override=default;};
++class AuxAdblockSaveCustomRulesFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.saveCustomRules",AUXADBLOCK_SAVECUSTOMRULES) protected:~AuxAdblockSaveCustomRulesFunction()override=default;};
++class AuxAdblockTestRequestFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.testRequest",AUXADBLOCK_TESTREQUEST) protected:~AuxAdblockTestRequestFunction()override=default;};
++class AuxAdblockGetDiagnosticsFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.getDiagnostics",AUXADBLOCK_GETDIAGNOSTICS) protected:~AuxAdblockGetDiagnosticsFunction()override=default;};
++class AuxAdblockReloadManualFiltersFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.reloadManualFilters",AUXADBLOCK_RELOADMANUALFILTERS) protected:~AuxAdblockReloadManualFiltersFunction()override=default;};
++class AuxAdblockClearEngineCacheFunction final:public AuxAdblockFunction {public:DECLARE_EXTENSION_FUNCTION("auxAdblock.clearEngineCache",AUXADBLOCK_CLEARENGINECACHE) protected:~AuxAdblockClearEngineCacheFunction()override=default;};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc
+@@ -0,0 +1,48 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_adblock/cosmetic_host.h"
++
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/document_service.h"
++#include "content/public/browser/render_frame_host.h"
++namespace aux_adblock {
++namespace {
++class Host final : public content::DocumentService<mojom::CosmeticHost> {
++ public:
++  Host(content::RenderFrameHost& frame,
++       mojo::PendingReceiver<mojom::CosmeticHost> receiver)
++      : DocumentService(frame, std::move(receiver)) {}
++  void GetResources(GetResourcesCallback callback) override {
++    const auto url = render_frame_host().GetLastCommittedURL();
++    if (!url.SchemeIsHTTPOrHTTPS()) {
++      std::move(callback).Run("{}");
++      return;
++    }
++    auto* profile =
++        Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
++    FilterService::Get(profile)->WhenReady(
++        base::BindOnce(&Host::Reply, weak_.GetWeakPtr(), std::move(callback)));
++  }
++
++ private:
++  void Reply(GetResourcesCallback callback) {
++    const auto url = render_frame_host().GetLastCommittedURL();
++    auto* profile =
++        Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
++    std::move(callback).Run(
++        base::WriteJson(FilterService::Get(profile)->Cosmetics(url))
++            .value_or("{}"));
++  }
++  base::WeakPtrFactory<Host> weak_{this};
++};
++}  // namespace
++void BindCosmeticHost(content::RenderFrameHost* frame,
++                      mojo::PendingReceiver<mojom::CosmeticHost> receiver) {
++  if (frame) {
++    new Host(*frame, std::move(receiver));
++  }
++}
++}  // namespace aux_adblock
+diff --git a/chrome/browser/extensions/api/aux_adblock/cosmetic_host.h b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_COSMETIC_HOST_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_COSMETIC_HOST_H_
++#include "components/aux_adblock/mojom/filters.mojom.h"
++#include "mojo/public/cpp/bindings/pending_receiver.h"
++namespace content {
++class RenderFrameHost;
++}
++namespace aux_adblock {
++void BindCosmeticHost(content::RenderFrameHost*,
++                      mojo::PendingReceiver<mojom::CosmeticHost>);
++}
++#endif
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc b/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc
+@@ -0,0 +1,294 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_adblock/filter_hooks.h"
++
++#include "base/functional/bind.h"
++#include "base/strings/escape.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/uuid.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/navigation_throttle.h"
++#include "content/public/browser/navigation_throttle_registry.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "net/base/net_errors.h"
++#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
++#include "net/base/url_util.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "third_party/blink/public/common/loader/url_loader_throttle.h"
++#include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom.h"
++#include "url/origin.h"
++namespace aux_adblock {
++namespace {
++std::string Type(network::mojom::RequestDestination destination) {
++  using D = network::mojom::RequestDestination;
++  switch (destination) {
++    case D::kDocument:
++      return "document";
++    case D::kIframe:
++    case D::kFrame:
++      return "subdocument";
++    case D::kScript:
++    case D::kWorker:
++    case D::kSharedWorker:
++      return "script";
++    case D::kImage:
++      return "image";
++    case D::kStyle:
++      return "stylesheet";
++    case D::kFont:
++      return "font";
++    case D::kAudio:
++    case D::kVideo:
++    case D::kTrack:
++      return "media";
++    case D::kObject:
++    case D::kEmbed:
++      return "object";
++    case D::kEmpty:
++      return "xmlhttprequest";
++    default:
++      return "other";
++  }
++}
++Request MakeRequest(const GURL& url,
++                    const GURL& initiator,
++                    std::string type,
++                    std::string method = "GET") {
++  return {url, initiator, std::move(type), std::move(method),
++          !net::registry_controlled_domains::SameDomainOrHost(
++              url, initiator,
++              net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES)};
++}
++GURL Redirect(const Decision& decision) {
++  if (!decision.rewritten_url.empty()) {
++    return GURL(decision.rewritten_url);
++  }
++  if (decision.redirect == "noopjs") {
++    return GURL("data:application/javascript,");
++  }
++  if (decision.redirect == "nooptext") {
++    return GURL("data:text/plain,");
++  }
++  if (decision.redirect == "1x1.gif") {
++    return GURL(
++        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///"
++        "yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
++  }
++  return {};
++}
++class RequestThrottle final : public blink::URLLoaderThrottle {
++ public:
++  explicit RequestThrottle(Profile* profile)
++      : profile_(profile->GetWeakPtr()) {}
++  void WillStartRequest(network::ResourceRequest* request,
++                        bool* defer) override {
++    if (!profile_ || !request->url.SchemeIsHTTPOrHTTPS()) {
++      return;
++    }
++    type_ = Type(request->destination);
++    if (type_ == "document") {
++      return;
++    }
++    initiator_ = request->request_initiator
++                     ? request->request_initiator->GetURL()
++                     : GURL();
++    method_ = request->method;
++    auto* service = FilterService::Get(profile_.get());
++    if (!service->ready()) {
++      *defer = true;
++      service->WhenReady(base::BindOnce(
++          &RequestThrottle::Ready, weak_.GetWeakPtr(),
++          MakeRequest(request->url, initiator_, type_, method_)));
++      return;
++    }
++    auto decision = service->Evaluate(
++        MakeRequest(request->url, initiator_, type_, method_));
++    if (decision.block) {
++      delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT,
++                                 "Aux native filter");
++      return;
++    }
++    auto redirected = Redirect(decision);
++    if (redirected.is_valid()) {
++      request->url = redirected;
++    }
++  }
++  void WillRedirectRequest(net::RedirectInfo* redirect,
++                           const network::mojom::URLResponseHead&,
++                           bool*,
++                           network::HttpRequestHeadersUpdateParams*) override {
++    if (!profile_ || type_ == "document") {
++      return;
++    }
++    auto decision = FilterService::Get(profile_.get())
++                        ->Evaluate(MakeRequest(redirect->new_url, initiator_,
++                                               type_, redirect->new_method));
++    if (decision.block) {
++      delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT,
++                                 "Aux native filter");
++    } else if (auto rewritten = Redirect(decision); rewritten.is_valid()) {
++      if (url::Origin::Create(rewritten) !=
++          url::Origin::Create(redirect->new_url)) {
++        delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT,
++                                   "Aux redirect target is unavailable");
++        return;
++      }
++      redirect->new_url = rewritten;
++    }
++  }
++
++ private:
++  void Ready(Request request) {
++    if (!profile_) {
++      delegate_->CancelWithError(net::ERR_ABORTED);
++      return;
++    }
++    const auto decision = FilterService::Get(profile_.get())->Evaluate(request);
++    if (decision.block || !decision.redirect.empty() ||
++        !decision.rewritten_url.empty()) {
++      delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT,
++                                 "Aux deferred native filter");
++    } else {
++      delegate_->Resume();
++    }
++  }
++  base::WeakPtr<Profile> profile_;
++  GURL initiator_;
++  std::string type_, method_;
++  base::WeakPtrFactory<RequestThrottle> weak_{this};
++};
++class Bypass final : public content::WebContentsUserData<Bypass> {
++ public:
++  std::string token;
++  GURL url;
++  bool armed = false;
++  base::TimeTicks expires;
++
++ private:
++  friend class content::WebContentsUserData<Bypass>;
++  explicit Bypass(content::WebContents* contents)
++      : content::WebContentsUserData<Bypass>(*contents) {}
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++WEB_CONTENTS_USER_DATA_KEY_IMPL(Bypass);
++class DocumentThrottle final : public content::NavigationThrottle {
++ public:
++  explicit DocumentThrottle(content::NavigationThrottleRegistry& registry)
++      : content::NavigationThrottle(registry) {}
++  const char* GetNameForLogging() override { return "AuxNativeDocumentFilter"; }
++  ThrottleCheckResult WillStartRequest() override { return Check(); }
++  ThrottleCheckResult WillRedirectRequest() override { return Check(); }
++
++ private:
++  void Ready() {
++    auto result = Check();
++    if (result.action() == PROCEED) {
++      Resume();
++    } else {
++      CancelDeferredNavigation(result);
++    }
++  }
++  base::WeakPtrFactory<DocumentThrottle> weak_{this};
++  ThrottleCheckResult Check() {
++    auto* navigation = navigation_handle();
++    auto* contents = navigation->GetWebContents();
++    const auto url = navigation->GetURL();
++    Bypass::CreateForWebContents(contents);
++    auto* state = Bypass::FromWebContents(contents);
++    if (url.SchemeIs("https") && url.host() == "aux-bypass.invalid" &&
++        url.path() == "/continue") {
++      std::string token;
++      if (net::GetValueForKeyInQuery(url, "token", &token)) {
++        if (navigation->IsInPrimaryMainFrame() && !token.empty() &&
++            token == state->token && state->expires > base::TimeTicks::Now()) {
++          state->token.clear();
++          state->armed = true;
++          auto target = state->url;
++          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++              FROM_HERE,
++              base::BindOnce(
++                  [](base::WeakPtr<content::WebContents> tab, GURL target) {
++                    if (tab) {
++                      tab->GetController().LoadURL(target, content::Referrer(),
++                                                   ui::PAGE_TRANSITION_TYPED,
++                                                   std::string());
++                    }
++                  },
++                  contents->GetWeakPtr(), target));
++        }
++      }
++      return CANCEL_AND_IGNORE;
++    }
++    if (!url.SchemeIsHTTPOrHTTPS()) {
++      return PROCEED;
++    }
++    if (state->armed && navigation->IsInPrimaryMainFrame()) {
++      state->armed = false;
++      const bool valid =
++          url == state->url && state->expires > base::TimeTicks::Now();
++      state->url = GURL();
++      if (valid) {
++        return PROCEED;
++      }
++    }
++    auto* profile = Profile::FromBrowserContext(contents->GetBrowserContext());
++    const auto initiator = navigation->GetInitiatorOrigin();
++    auto* service = FilterService::Get(profile);
++    if (!service->ready()) {
++      service->WhenReady(
++          base::BindOnce(&DocumentThrottle::Ready, weak_.GetWeakPtr()));
++      return DEFER;
++    }
++    if (navigation->IsInPrimaryMainFrame() && !state->token.empty()) {
++      state->token.clear();
++    }
++    auto decision = service->Evaluate(MakeRequest(
++        url, initiator ? initiator->GetURL() : url,
++        navigation->IsInPrimaryMainFrame() ? "document" : "subdocument",
++        navigation->IsPost() ? "POST" : "GET"));
++    if (!decision.block) {
++      return PROCEED;
++    }
++    if (!navigation->IsInPrimaryMainFrame()) {
++      return {BLOCK_REQUEST, net::ERR_BLOCKED_BY_CLIENT};
++    }
++    state->url = url;
++    state->token = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    state->expires = base::TimeTicks::Now() + base::Minutes(1);
++    state->armed = false;
++    std::string html =
++        "<!doctype html><meta charset=utf-8><meta name=referrer "
++        "content=no-referrer><meta http-equiv=Content-Security-Policy "
++        "content=\"default-src 'none'; style-src 'unsafe-inline'; script-src "
++        "'nonce-" +
++        state->token +
++        "'\"><title>Aux blocked this page</title><style>body{font:16px "
++        "system-ui;background:#f5f5f4;color:#20201f;max-width:680px;margin:"
++        "15vh auto;padding:32px}button,a{display:inline-block;margin:16px 16px "
++        "0 0;padding:12px;border:1px solid "
++        "#aaa;border-radius:8px;background:white;color:inherit}code{word-break:"
++        "break-all}</style><h1>This page was blocked</h1><p>A native content "
++        "filter matched this navigation.</p><p><code>" +
++        base::EscapeForHTML(url.spec()) + "</code></p><p>Filter: <code>" +
++        base::EscapeForHTML(decision.filter) +
++        "</code></p><button id=back>Go back</button><a "
++        "href=\"https://aux-bypass.invalid/continue?token=" +
++        state->token + "\">Continue once</a><script nonce=" + state->token +
++        ">document.getElementById('back').onclick=()=>history.back()</script>";
++    return {BLOCK_REQUEST, net::ERR_BLOCKED_BY_CLIENT, std::move(html)};
++  }
++};
++}  // namespace
++std::unique_ptr<blink::URLLoaderThrottle> CreateRequestThrottle(
++    content::BrowserContext* context) {
++  return std::make_unique<RequestThrottle>(
++      Profile::FromBrowserContext(context));
++}
++void AddNavigationThrottle(content::NavigationThrottleRegistry& registry) {
++  registry.AddThrottle(std::make_unique<DocumentThrottle>(registry));
++}
++}  // namespace aux_adblock
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_hooks.h b/chrome/browser/extensions/api/aux_adblock/filter_hooks.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_hooks.h
+@@ -0,0 +1,18 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_HOOKS_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_HOOKS_H_
++#include <memory>
++namespace blink {
++class URLLoaderThrottle;
++}
++namespace content {
++class BrowserContext;
++class NavigationThrottleRegistry;
++class RenderFrameHost;
++}  // namespace content
++namespace aux_adblock {
++std::unique_ptr<blink::URLLoaderThrottle> CreateRequestThrottle(
++    content::BrowserContext* context);
++void AddNavigationThrottle(content::NavigationThrottleRegistry& registry);
++}  // namespace aux_adblock
++#endif
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.cc b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+@@ -0,0 +1,817 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Durable generations/update jobs: native/adblock-import F1-F3.
++#include "chrome/browser/extensions/api/aux_adblock/filter_service.h"
++
++#include <algorithm>
++
++#include "base/files/file_enumerator.h"
++#include "base/files/file_util.h"
++#include "base/files/important_file_writer.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/task/thread_pool.h"
++#include "base/uuid.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/storage_partition.h"
++#include "crypto/hash.h"
++#include "net/base/net_errors.h"
++#include "net/base/network_change_notifier.h"
++#include "net/http/http_status_code.h"
++#include "net/http/http_util.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/mojom/client_security_state.mojom.h"
++#include "services/network/public/mojom/fetch_api.mojom.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++namespace aux_adblock {
++namespace {
++constexpr char kServiceKey[] = "aux.adblock.service";
++double Now() {
++  return base::Time::Now().InMillisecondsFSinceUnixEpoch();
++}
++base::DictValue Read(const base::FilePath& directory) {
++  std::string text;
++  if (base::IsLink(directory.AppendASCII("state.json")) ||
++      !base::ReadFileToStringWithMaxSize(directory.AppendASCII("state.json"),
++                                         &text, 256 * 1024 * 1024)) {
++    return {};
++  }
++  return base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC)
++      .value_or(base::DictValue());
++}
++void Write(const base::FilePath& directory, std::string text) {
++  if (base::CreateDirectory(directory) &&
++      base::SetPosixFilePermissions(directory, 0700)) {
++    auto path = directory.AppendASCII("state.json");
++    if (base::ImportantFileWriter::WriteFileAtomically(path, text)) {
++      base::SetPosixFilePermissions(path, 0600);
++    }
++  }
++}
++std::vector<Source> ReadManual(const base::FilePath& directory) {
++  std::vector<Source> sources;
++  base::FileEnumerator files(directory, false, base::FileEnumerator::FILES,
++                             FILE_PATH_LITERAL("*.txt"));
++  for (auto path = files.Next(); !path.empty() && sources.size() < 64;
++       path = files.Next()) {
++    std::string text;
++    if (!base::IsLink(path) &&
++        base::ReadFileToStringWithMaxSize(path, &text, 4 * 1024 * 1024) &&
++        base::IsStringUTF8(text) && text.find('\0') == text.npos) {
++      sources.push_back({"manual:" + path.BaseName().value(), std::move(text)});
++    }
++  }
++  return sources;
++}
++constexpr auto kFetch = net::DefineNetworkTrafficAnnotation(
++    "aux_filter_subscription",
++    R"(semantics {sender:"Aux native content filtering" description:"Fetch a user-selected HTTPS filter subscription with conditional cache headers." trigger:"Explicit subscription addition or update." data:"Subscription URL and ETag/Last-Modified; no credentials or cookies." destination:WEBSITE} policy {cookies_allowed:NO setting:"User selected filter subscriptions." policy_exception_justification:"Only explicit user configuration."})");
++}  // namespace
++FilterService* FilterService::Get(Profile* profile) {
++  auto* existing =
++      static_cast<FilterService*>(profile->GetUserData(kServiceKey));
++  if (existing) {
++    return existing;
++  }
++  auto service = std::make_unique<FilterService>(profile);
++  auto* result = service.get();
++  profile->SetUserData(kServiceKey, std::move(service));
++  return result;
++}
++FilterService::FilterService(Profile* profile)
++    : profile_(profile->GetWeakPtr()),
++      directory_(profile->GetPath().AppendASCII("AuxFiltering")),
++      files_(base::ThreadPool::CreateSequencedTaskRunner(
++          {base::MayBlock(), base::TaskPriority::USER_VISIBLE})) {
++  files_->PostTaskAndReplyWithResult(
++      FROM_HERE, base::BindOnce(&Read, directory_),
++      base::BindOnce(&FilterService::DidLoad, weak_.GetWeakPtr()));
++}
++FilterService::~FilterService() = default;
++void FilterService::WhenReady(base::OnceClosure callback) {
++  if (ready()) {
++    std::move(callback).Run();
++  } else {
++    ready_callbacks_.push_back(std::move(callback));
++  }
++}
++
++void FilterService::DidLoad(base::DictValue stored) {
++  enabled_ = stored.FindBool("enabled").value_or(true);
++  if (const auto* rules = stored.FindString("rules");
++      rules && rules->size() <= 4 * 1024 * 1024 && base::IsStringUTF8(*rules) &&
++      rules->find('\0') == rules->npos) {
++    rules_ = *rules;
++  }
++  if (auto* list = stored.FindList("subscriptions")) {
++    for (auto& item : *list) {
++      if (subscriptions_.size() >= 64 || !item.is_dict()) {
++        break;
++      }
++      auto& row = item.GetDict();
++      const auto *id = row.FindString("id"), *url = row.FindString("url");
++      if (!id || !url || !ValidSubscriptionURL(GURL(*url))) {
++        continue;
++      }
++      row.Set("status", "idle");
++      subscriptions_.Append(row.Clone());
++      if (const auto* cache = stored.FindDict("sources"); cache) {
++        if (const auto* text = cache->FindString(*id);
++            text && text->size() <= 4 * 1024 * 1024 &&
++            base::IsStringUTF8(*text) && text->find('\0') == text->npos) {
++          texts_[*id] = *text;
++        }
++      }
++    }
++  }
++  Compile();
++  files_->PostTaskAndReplyWithResult(
++      FROM_HERE, base::BindOnce(&ReadManual, directory_.AppendASCII("manual")),
++      base::BindOnce(
++          [](base::WeakPtr<FilterService> self, std::vector<Source> manual) {
++            if (self) {
++              self->manual_ = std::move(manual);
++              self->Compile();
++            }
++          },
++          weak_.GetWeakPtr()));
++}
++Decision FilterService::Evaluate(const Request& request) const {
++  return enabled_ && engine_ ? engine_->Evaluate(request) : Decision();
++}
++base::DictValue FilterService::Cosmetics(const GURL& url) const {
++  return enabled_ && engine_ ? engine_->Cosmetics(url) : base::DictValue();
++}
++base::DictValue FilterService::State() const {
++  base::DictValue state;
++  state.Set("available", true);
++  state.Set("enabled", enabled_);
++  state.Set("stateLoaded", loaded_);
++  state.Set("compiling", compiling_);
++  state.Set("networkAvailable",
++            profile_ && !net::NetworkChangeNotifier::IsOffline());
++  state.Set("manualFiltersAvailable", !manual_.empty());
++  state.Set("requestedGeneration", static_cast<double>(requested_));
++  state.Set("activeGeneration", static_cast<double>(active_));
++  state.Set("lastCompileError", compile_error_);
++  base::ListValue jobs;
++  for (const auto& [id, job] : jobs_) {
++    if (job.FindString("status") && *job.FindString("status") == "running") {
++      jobs.Append(id);
++    }
++  }
++  state.Set("activeUpdateJobIds", std::move(jobs));
++  return state;
++}
++base::DictValue FilterService::CustomRules() const {
++  base::DictValue result;
++  result.Set("rules", rules_);
++  result.Set("contentSize", static_cast<double>(rules_.size()));
++  if (pending_rules_) {
++    result.Set("pendingRules", *pending_rules_);
++  }
++  if (engine_) {
++    for (const auto& source : engine_->diagnostics()) {
++      if (source.GetDict().FindString("id") &&
++          *source.GetDict().FindString("id") == "custom") {
++        result.Merge(source.GetDict().Clone());
++      }
++    }
++  }
++  return result;
++}
++base::DictValue FilterService::Diagnostics() const {
++  auto result = State();
++  result.Set("lastCompileDurationMs", compile_ms_);
++  result.Set("lastEngineInstallTime", installed_ms_);
++  result.Set("dataDirectory", directory_.value());
++  result.Set("cacheDirectory", directory_.value());
++  result.Set("manualFilterDirectory", directory_.AppendASCII("manual").value());
++  result.Set("manualFilterError", manual_error_);
++  result.Set("subscriptions", subscriptions_.Clone());
++  result.Set("customRules", CustomRules());
++  base::ListValue engines;
++  if (engine_) {
++    base::DictValue engine;
++    engine.Set("kind", "default");
++    engine.Set("cacheHit", false);
++    engine.Set("flatbufferSize", 0);
++    engine.Set("regexesTruncated", engine_->rule_count() > 256);
++    engine.Set("compiledRegexCount", static_cast<int>(engine_->rule_count()));
++    engine.Set("sources", engine_->diagnostics().Clone());
++    engine.Set("regexes", engine_->RegexDiagnostics());
++    engines.Append(std::move(engine));
++  }
++  result.Set("engines", std::move(engines));
++  return result;
++}
++void FilterService::Compile() {
++  ++requested_;
++  compiling_ = true;
++  if (!compile_inflight_) {
++    StartCompile();
++  }
++}
++void FilterService::StartCompile() {
++  compile_inflight_ = true;
++  const auto generation = requested_;
++  std::vector<Source> sources = manual_;
++  sources.push_back({"custom", pending_rules_.value_or(rules_)});
++  for (const auto& value : subscriptions_) {
++    const auto& row = value.GetDict();
++    const auto* id = row.FindString("id");
++    if (id && row.FindBool("enabled").value_or(true) && texts_.contains(*id)) {
++      sources.push_back({*id, texts_.at(*id)});
++    }
++  }
++  auto began = base::TimeTicks::Now();
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&Engine::Compile, std::move(sources)),
++      base::BindOnce(&FilterService::DidCompile, weak_.GetWeakPtr(), generation,
++                     began));
++}
++void FilterService::DidCompile(uint64_t generation,
++                               base::TimeTicks began,
++                               std::shared_ptr<const Engine> engine) {
++  compile_inflight_ = false;
++  if (generation != requested_) {
++    StartCompile();
++    return;
++  }
++  compiling_ = false;
++  if (!engine) {
++    compile_error_ = "Filter compilation failed; prior engine retained";
++    return;
++  }
++  bool retry = false;
++  for (const auto& diagnostic : engine->diagnostics()) {
++    const auto& source = diagnostic.GetDict();
++    const auto* id = source.FindString("id");
++    if (!id || source.FindInt("parseErrorCount").value_or(0) == 0 ||
++        source.FindInt("networkRuleCount").value_or(0) +
++                source.FindInt("cosmeticRuleCount").value_or(0) >
++            0) {
++      continue;
++    }
++    if (*id == "custom") {
++      compile_error_ =
++          "Custom rules contain no usable rules; prior engine retained";
++      return;
++    }
++    if (auto previous = previous_texts_.find(*id);
++        previous != previous_texts_.end()) {
++      if (previous->second) {
++        texts_[*id] = *previous->second;
++      } else {
++        texts_.erase(*id);
++      }
++      previous_texts_.erase(previous);
++      if (auto* row = Subscription(*id)) {
++        row->Merge(source.Clone());
++      }
++      std::vector<std::string> failed;
++      for (const auto& [job_id, job] : jobs_) {
++        if (const auto* items = job.FindList("items")) {
++          for (const auto& item : *items) {
++            if (item.GetDict().FindString("subscriptionId") &&
++                *item.GetDict().FindString("subscriptionId") == *id &&
++                item.GetDict().FindString("status") &&
++                *item.GetDict().FindString("status") == "compiling") {
++              failed.push_back(job_id);
++            }
++          }
++        }
++      }
++      for (const auto& job : failed) {
++        FinishItem(job, *id, "failed",
++                   "Downloaded source contains no usable rules; prior source "
++                   "retained");
++      }
++      retry = true;
++    }
++  }
++  if (retry) {
++    Compile();
++    return;
++  }
++  previous_texts_.clear();
++  engine_ = std::move(engine);
++  active_ = generation;
++  loaded_ = true;
++  auto callbacks = std::move(ready_callbacks_);
++  for (auto& callback : callbacks) {
++    std::move(callback).Run();
++  }
++  compile_ms_ = (base::TimeTicks::Now() - began).InMillisecondsF();
++  installed_ms_ = Now();
++  compile_error_.clear();
++  if (pending_rules_) {
++    rules_ = std::move(*pending_rules_);
++    pending_rules_.reset();
++  }
++  for (const auto& source : engine_->diagnostics()) {
++    const auto* source_id = source.GetDict().FindString("id");
++    auto* row = source_id ? Subscription(*source_id) : nullptr;
++    if (!row) {
++      continue;
++    }
++    row->Merge(source.GetDict().Clone());
++    row->Set("lastEngineActivationMs", installed_ms_);
++  }
++  std::vector<std::pair<std::string, std::string>> complete;
++  for (const auto& [job_id, job] : jobs_) {
++    if (const auto* items = job.FindList("items")) {
++      for (const auto& item : *items) {
++        const auto& v = item.GetDict();
++        if (v.FindString("status") && *v.FindString("status") == "compiling" &&
++            v.FindDouble("generation").value_or(0) <= generation) {
++          complete.emplace_back(job_id, *v.FindString("subscriptionId"));
++        }
++      }
++    }
++  }
++  for (const auto& [job, id] : complete) {
++    FinishItem(job, id, "updated", "");
++  }
++  Persist();
++}
++void FilterService::Persist() {
++  base::DictValue state;
++  state.Set("version", 1);
++  state.Set("enabled", enabled_);
++  state.Set("rules", rules_);
++  state.Set("subscriptions", subscriptions_.Clone());
++  base::DictValue sources;
++  for (const auto& [id, text] : texts_) {
++    sources.Set(id, text);
++  }
++  state.Set("sources", std::move(sources));
++  files_->PostTask(FROM_HERE,
++                   base::BindOnce(&Write, directory_,
++                                  base::WriteJson(state).value_or("{}")));
++}
++base::DictValue* FilterService::Subscription(std::string_view id) {
++  for (auto& value : subscriptions_) {
++    if (value.GetDict().FindString("id") &&
++        *value.GetDict().FindString("id") == id) {
++      return &value.GetDict();
++    }
++  }
++  return nullptr;
++}
++std::string FilterService::StartUpdate(const std::vector<std::string>& ids) {
++  while (jobs_.size() >= 32) {
++    auto finished =
++        std::find_if(jobs_.begin(), jobs_.end(), [](const auto& item) {
++          const auto* status = item.second.FindString("status");
++          return status && *status != "running";
++        });
++    if (finished == jobs_.end()) {
++      return {};
++    }
++    jobs_.erase(finished);
++  }
++  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  base::DictValue job;
++  job.Set("jobId", id);
++  job.Set("status", ids.empty() ? "succeeded" : "running");
++  job.Set("createdAtMs", Now());
++  job.Set("completedAtMs", ids.empty() ? Now() : 0);
++  job.Set("total", static_cast<int>(ids.size()));
++  job.Set("completed", 0);
++  base::ListValue items;
++  for (const auto& source : ids) {
++    items.Append(base::DictValue()
++                     .Set("subscriptionId", source)
++                     .Set("status", "queued")
++                     .Set("error", ""));
++    queue_.emplace_back(id, source);
++    if (auto* row = Subscription(source)) {
++      row->Set("status", "queued");
++    }
++  }
++  job.Set("items", std::move(items));
++  jobs_.emplace(id, std::move(job));
++  DownloadNext();
++  return id;
++}
++void FilterService::DownloadNext() {
++  if (loader_ || queue_.empty() || !profile_) {
++    return;
++  }
++  const auto [job, id] = queue_.front();
++  queue_.pop_front();
++  auto* row = Subscription(id);
++  if (!row) {
++    FinishItem(job, id, "failed", "Subscription was removed");
++    return;
++  }
++  const auto* url = row->FindString("url");
++  if (!url || !ValidSubscriptionURL(GURL(*url))) {
++    FinishItem(job, id, "failed", "Subscription URL is not permitted");
++    return;
++  }
++  row->Set("status", "downloading");
++  row->Set("lastAttemptMs", Now());
++  if (auto* items = jobs_.at(job).FindList("items")) {
++    for (auto& item : *items) {
++      if (*item.GetDict().FindString("subscriptionId") == id) {
++        item.GetDict().Set("status", "downloading");
++      }
++    }
++  }
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = GURL(*url);
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->required_ip_address_space = network::mojom::IPAddressSpace::kPublic;
++  request->trusted_params = network::ResourceRequest::TrustedParams();
++  request->trusted_params->client_security_state =
++      network::mojom::ClientSecurityState::New();
++  request->trusted_params->client_security_state->ip_address_space =
++      network::mojom::IPAddressSpace::kPublic;
++  request->trusted_params->client_security_state->is_web_secure_context = true;
++  request->trusted_params->client_security_state
++      ->local_network_access_request_policy =
++      network::mojom::LocalNetworkAccessRequestPolicy::kBlock;
++  request->redirect_mode = network::mojom::RedirectMode::kFollow;
++  if (auto* etag = row->FindString("etag");
++      etag && !etag->empty() && net::HttpUtil::IsValidHeaderValue(*etag)) {
++    request->headers.SetHeader("If-None-Match", *etag);
++  }
++  if (auto* modified = row->FindString("lastModifiedHeader");
++      modified && !modified->empty() &&
++      net::HttpUtil::IsValidHeaderValue(*modified)) {
++    request->headers.SetHeader("If-Modified-Since", *modified);
++  }
++  loader_ = network::SimpleURLLoader::Create(std::move(request), kFetch);
++  loader_->SetTimeoutDuration(base::Seconds(30));
++  loader_->SetAllowHttpErrorResults(true);
++  loader_->SetOnRedirectCallback(base::BindRepeating(
++      [](base::WeakPtr<FilterService> self, std::string job, std::string id,
++         const GURL&, const net::RedirectInfo& redirect,
++         const network::mojom::URLResponseHead&, std::vector<std::string>*) {
++        if (self && !ValidSubscriptionURL(redirect.new_url)) {
++          self->loader_.reset();
++          self->FinishItem(job, id, "failed",
++                           "Subscription redirect is not permitted");
++        }
++      },
++      weak_.GetWeakPtr(), job, id));
++  loader_->DownloadToString(
++      profile_->GetDefaultStoragePartition()
++          ->GetURLLoaderFactoryForBrowserProcess()
++          .get(),
++      base::BindOnce(&FilterService::DidDownload, weak_.GetWeakPtr(), job, id),
++      4 * 1024 * 1024);
++}
++void FilterService::DidDownload(std::string job,
++                                std::string id,
++                                std::optional<std::string> body) {
++  auto* row = Subscription(id);
++  const auto* head = loader_ ? loader_->ResponseInfo() : nullptr;
++  const int status = head && head->headers ? head->headers->response_code() : 0;
++  const int error = loader_ ? loader_->NetError() : net::ERR_FAILED;
++  if (!row) {
++    loader_.reset();
++    FinishItem(job, id, "failed", "Subscription was removed");
++    return;
++  }
++  if (status == 304 && texts_.contains(id)) {
++    loader_.reset();
++    row->Set("lastSuccessfulCheckMs", Now());
++    row->Set("consecutiveFailures", 0);
++    FinishItem(job, id, "unchanged", "");
++    Persist();
++    return;
++  }
++  if (error != net::OK || status != 200 || !body ||
++      !base::IsStringUTF8(*body) || body->find('\0') != body->npos) {
++    loader_.reset();
++    FinishItem(
++        job, id, "failed",
++        "Subscription download failed or returned invalid UTF-8 filter data");
++    return;
++  }
++  row->Set("etag", head->headers->GetNormalizedHeader("etag").value_or(""));
++  row->Set("lastModifiedHeader",
++           head->headers->GetNormalizedHeader("last-modified").value_or(""));
++  if (texts_.contains(id) && texts_.at(id) == *body) {
++    loader_.reset();
++    row->Set("lastSuccessfulCheckMs", Now());
++    row->Set("consecutiveFailures", 0);
++    FinishItem(job, id, "unchanged", "");
++    return;
++  }
++  row->Set("contentSize", static_cast<double>(body->size()));
++  row->Set("digest", base::HexEncode(crypto::hash::Sha256(*body)));
++  row->Set("lastSuccessfulCheckMs", Now());
++  row->Set("lastContentChangeMs", Now());
++  row->Set("consecutiveFailures", 0);
++  if (!previous_texts_.contains(id)) {
++    previous_texts_[id] =
++        texts_.contains(id) ? std::make_optional(texts_.at(id)) : std::nullopt;
++  }
++  texts_[id] = std::move(*body);
++  loader_.reset();
++  row->Set("status", "compiling");
++  for (auto& item : *jobs_.at(job).FindList("items")) {
++    if (*item.GetDict().FindString("subscriptionId") == id) {
++      item.GetDict().Set("status", "compiling");
++      item.GetDict().Set("generation", static_cast<double>(requested_ + 1));
++    }
++  }
++  Compile();
++  DownloadNext();
++}
++void FilterService::FinishItem(std::string job,
++                               std::string id,
++                               std::string status,
++                               std::string error) {
++  if (auto* row = Subscription(id)) {
++    row->Set("status", status == "failed" ? "error" : "idle");
++    row->Set("lastError", error);
++    if (status == "failed") {
++      row->Set("consecutiveFailures",
++               row->FindInt("consecutiveFailures").value_or(0) + 1);
++    }
++    row->Set("nextUpdateMs", Now() + 24 * 60 * 60 * 1000.0);
++  }
++  auto found = jobs_.find(job);
++  if (found == jobs_.end()) {
++    return;
++  }
++  auto& state = found->second;
++  int completed = 0, failed = 0;
++  for (auto& item : *state.FindList("items")) {
++    auto& value = item.GetDict();
++    if (*value.FindString("subscriptionId") == id) {
++      value.Set("status", status);
++      value.Set("error", error);
++    }
++    const auto* value_status = value.FindString("status");
++    if (*value_status == "updated" || *value_status == "unchanged" ||
++        *value_status == "failed") {
++      ++completed;
++      if (*value_status == "failed") {
++        ++failed;
++      }
++    }
++  }
++  state.Set("completed", completed);
++  if (completed == state.FindInt("total").value_or(0)) {
++    state.Set("status", failed == completed ? "failed"
++                        : failed            ? "partiallyFailed"
++                                            : "succeeded");
++    state.Set("completedAtMs", Now());
++  }
++  Persist();
++  DownloadNext();
++}
++void FilterService::Invoke(std::string method,
++                           base::ListValue args,
++                           Reply reply) {
++  auto done = [&](base::Value value = base::Value()) {
++    std::move(reply).Run(std::move(value), "");
++  };
++  auto fail = [&](std::string error) {
++    std::move(reply).Run(std::nullopt, std::move(error));
++  };
++  if (method == "getState") {
++    done(base::Value(State()));
++    return;
++  }
++  if (!loaded_) {
++    fail("Filter state is still loading");
++    return;
++  }
++  if (method == "getSubscriptions") {
++    done(base::Value(subscriptions_.Clone()));
++    return;
++  }
++  if (method == "getDiagnostics") {
++    done(base::Value(Diagnostics()));
++    return;
++  }
++  if (method == "getCustomRules") {
++    done(base::Value(CustomRules()));
++    return;
++  }
++  if (method == "setEnabled") {
++    if (args.size() != 1 || !args[0].is_bool()) {
++      fail("Enabled flag required");
++      return;
++    }
++    enabled_ = args[0].GetBool();
++    Persist();
++    done(base::Value(State()));
++    return;
++  }
++  if (method == "saveCustomRules") {
++    const auto* text = args.size() == 1 && args[0].is_dict()
++                           ? args[0].GetDict().FindString("rules")
++                           : nullptr;
++    if (!text || text->size() > 4 * 1024 * 1024 || !base::IsStringUTF8(*text) ||
++        text->find('\0') != text->npos) {
++      fail("Rules must be valid UTF-8 without NUL and at most 4 MiB");
++      return;
++    }
++    pending_rules_ = *text;
++    Compile();
++    done(base::Value(CustomRules()));
++    return;
++  }
++  if (method == "addSubscription") {
++    const auto* options =
++        args.size() == 1 && args[0].is_dict() ? &args[0].GetDict() : nullptr;
++    const auto* url = options ? options->FindString("url") : nullptr;
++    if (!url || !ValidSubscriptionURL(GURL(*url)) ||
++        subscriptions_.size() >= 64) {
++      fail(
++          "Subscription requires a public HTTPS URL; at most 64 sources are "
++          "permitted");
++      return;
++    }
++    for (const auto& item : subscriptions_) {
++      if (item.GetDict().FindString("url") &&
++          *item.GetDict().FindString("url") == GURL(*url).spec()) {
++        fail("Subscription already exists");
++        return;
++      }
++    }
++    const auto* name = options->FindString("name");
++    if (name && name->size() > 256) {
++      fail("Subscription name is too long");
++      return;
++    }
++    const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    base::DictValue row;
++    row.Set("id", id);
++    row.Set("name", name ? *name : GURL(*url).host());
++    row.Set("url", GURL(*url).spec());
++    row.Set("enabled", true);
++    row.Set("status", "queued");
++    for (const auto* key :
++         {"etag", "lastModifiedHeader", "digest", "lastError"}) {
++      row.Set(key, "");
++    }
++    for (const auto* key : {"networkRuleCount", "cosmeticRuleCount",
++                            "parseErrorCount", "consecutiveFailures"}) {
++      row.Set(key, 0);
++    }
++    for (const auto* key :
++         {"contentSize", "lastAttemptMs", "lastSuccessfulCheckMs",
++          "lastContentChangeMs", "lastEngineActivationMs", "nextUpdateMs"}) {
++      row.Set(key, 0.0);
++    }
++    row.Set("invalidLines", base::ListValue());
++    subscriptions_.Append(std::move(row));
++    auto job = StartUpdate({id});
++    if (job.empty()) {
++      subscriptions_.EraseIf([&](const base::Value& value) {
++        return *value.GetDict().FindString("id") == id;
++      });
++      fail("Too many active update jobs");
++      return;
++    }
++    base::DictValue result;
++    result.Set("subscription", Subscription(id)->Clone());
++    result.Set("updateJobId", job);
++    Persist();
++    done(base::Value(std::move(result)));
++    return;
++  }
++  if (method == "setSubscriptionEnabled" || method == "removeSubscription") {
++    if (args.empty() || !args[0].is_string()) {
++      fail("Subscription identity required");
++      return;
++    }
++    const auto id = args[0].GetString();
++    auto* row = Subscription(id);
++    if (!row) {
++      fail("Subscription was not found");
++      return;
++    }
++    if (method == "setSubscriptionEnabled") {
++      if (args.size() != 2 || !args[1].is_bool()) {
++        fail("Enabled flag required");
++        return;
++      }
++      row->Set("enabled", args[1].GetBool());
++      Compile();
++      Persist();
++      done(base::Value(row->Clone()));
++    } else {
++      subscriptions_.EraseIf([&](const base::Value& value) {
++        return value.GetDict().FindString("id") &&
++               *value.GetDict().FindString("id") == id;
++      });
++      texts_.erase(id);
++      Compile();
++      Persist();
++      done();
++    }
++    return;
++  }
++  if (method == "startSubscriptionUpdate") {
++    if (args.size() > 1 || (!args.empty() && !args[0].is_dict())) {
++      fail("Update options are invalid");
++      return;
++    }
++    if (std::ranges::count_if(jobs_, [](const auto& item) {
++          const auto* status = item.second.FindString("status");
++          return status && *status == "running";
++        }) >= 32) {
++      fail("Too many retained update jobs; reload this profile");
++      return;
++    }
++    std::vector<std::string> ids;
++    const auto* requested =
++        args.empty() ? nullptr : args[0].GetDict().FindList("ids");
++    if (requested) {
++      for (const auto& item : *requested) {
++        if (!item.is_string() || !Subscription(item.GetString())) {
++          fail("Update includes an unknown subscription");
++          return;
++        }
++        if (std::ranges::find(ids, item.GetString()) == ids.end()) {
++          ids.push_back(item.GetString());
++        }
++      }
++    } else {
++      for (const auto& item : subscriptions_) {
++        ids.push_back(*item.GetDict().FindString("id"));
++      }
++    }
++    const auto id = StartUpdate(ids);
++    if (id.empty()) {
++      fail("Too many active update jobs");
++      return;
++    }
++    done(base::Value(jobs_.at(id).Clone()));
++    return;
++  }
++  if (method == "getSubscriptionUpdateProgress") {
++    if (args.size() != 1 || !args[0].is_string() ||
++        !jobs_.contains(args[0].GetString())) {
++      fail("Update job was not found");
++      return;
++    }
++    done(base::Value(jobs_.at(args[0].GetString()).Clone()));
++    return;
++  }
++  if (method == "reloadManualFilters") {
++    files_->PostTaskAndReplyWithResult(
++        FROM_HERE,
++        base::BindOnce(&ReadManual, directory_.AppendASCII("manual")),
++        base::BindOnce(
++            [](base::WeakPtr<FilterService> self, Reply reply,
++               std::vector<Source> manual) {
++              if (!self) {
++                std::move(reply).Run(std::nullopt, "Profile was closed");
++                return;
++              }
++              self->manual_ = std::move(manual);
++              self->Compile();
++              std::move(reply).Run(base::Value(self->Diagnostics()), "");
++            },
++            weak_.GetWeakPtr(), std::move(reply)));
++    return;
++  }
++  if (method == "clearEngineCache") {
++    Compile();
++    done();
++    return;
++  }
++  if (method == "testRequest") {
++    const auto* value =
++        args.size() == 1 && args[0].is_dict() ? &args[0].GetDict() : nullptr;
++    const auto *url = value ? value->FindString("url") : nullptr,
++               *initiator = value ? value->FindString("initiator") : nullptr,
++               *type = value ? value->FindString("requestType") : nullptr;
++    auto third = value ? value->FindBool("thirdParty") : std::nullopt;
++    if (!url || !initiator || !type || !third || !GURL(*url).is_valid() ||
++        !GURL(*initiator).is_valid()) {
++      fail("Request URL, initiator, type and third-party state are required");
++      return;
++    }
++    const auto* method_value = value->FindString("method");
++    const auto verb = method_value ? base::ToUpperASCII(*method_value) : "GET";
++    if (verb != "GET" && verb != "POST" && verb != "PUT" && verb != "PATCH" &&
++        verb != "DELETE" && verb != "OPTIONS" && verb != "HEAD" &&
++        verb != "CONNECT" && verb != "TRACE") {
++      fail("Unsupported HTTP method");
++      return;
++    }
++    done(base::Value(
++        Evaluate({GURL(*url), GURL(*initiator), *type, verb, *third})
++            .ToValue()));
++    return;
++  }
++  fail("Unknown filtering operation");
++}
++}  // namespace aux_adblock
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.h b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+@@ -0,0 +1,73 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_SERVICE_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_SERVICE_H_
++#include <deque>
++#include <map>
++
++#include "base/files/file_path.h"
++#include "base/memory/weak_ptr.h"
++#include "base/supports_user_data.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/aux_adblock/engine.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++namespace aux_adblock {
++class FilterService final : public base::SupportsUserData::Data {
++ public:
++  static FilterService* Get(Profile* profile);
++  explicit FilterService(Profile* profile);
++  ~FilterService() override;
++  bool ready() const { return loaded_ && engine_ != nullptr; }
++  void WhenReady(base::OnceClosure ready);
++  bool loaded() const { return loaded_; }
++  bool enabled() const { return enabled_; }
++  Decision Evaluate(const Request& request) const;
++  base::DictValue Cosmetics(const GURL& document) const;
++  // Callback always runs on UI. Unknown/invalid operations return an error.
++  using Reply =
++      base::OnceCallback<void(std::optional<base::Value>, std::string)>;
++  void Invoke(std::string method, base::ListValue arguments, Reply reply);
++
++ private:
++  void DidLoad(base::DictValue stored);
++  base::DictValue State() const;
++  base::DictValue Diagnostics() const;
++  base::DictValue CustomRules() const;
++  void Compile();
++  void StartCompile();
++  void DidCompile(uint64_t generation,
++                  base::TimeTicks began,
++                  std::shared_ptr<const Engine> engine);
++  void Persist();
++  base::DictValue* Subscription(std::string_view id);
++  std::string StartUpdate(const std::vector<std::string>& ids);
++  void DownloadNext();
++  void DidDownload(std::string job_id,
++                   std::string id,
++                   std::optional<std::string> body);
++  void FinishItem(std::string job_id,
++                  std::string id,
++                  std::string status,
++                  std::string error);
++  std::vector<base::OnceClosure> ready_callbacks_;
++  base::WeakPtr<Profile> profile_;
++  const base::FilePath directory_;
++  scoped_refptr<base::SequencedTaskRunner> files_;
++  bool loaded_ = false, enabled_ = true, compiling_ = false,
++       compile_inflight_ = false;
++  uint64_t requested_ = 0, active_ = 0;
++  double compile_ms_ = 0, installed_ms_ = 0;
++  std::string rules_, compile_error_, manual_error_;
++  std::optional<std::string> pending_rules_;
++  base::ListValue subscriptions_;
++  std::map<std::string, std::string> texts_;
++  std::map<std::string, std::optional<std::string>> previous_texts_;
++  std::vector<Source> manual_;
++  std::map<std::string, base::DictValue> jobs_;
++  std::deque<std::pair<std::string, std::string>> queue_;
++  std::shared_ptr<const Engine> engine_;
++  std::unique_ptr<network::SimpleURLLoader> loader_;
++  base::WeakPtrFactory<FilterService> weak_{this};
++};
++}  // namespace aux_adblock
++#endif
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_webui.cc b/chrome/browser/extensions/api/aux_adblock/filter_webui.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_webui.cc
+@@ -0,0 +1,89 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_adblock/filter_webui.h"
++
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "chrome/browser/extensions/api/aux_adblock/filter_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "content/public/browser/web_ui_message_handler.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++namespace aux_adblock {
++namespace {
++constexpr char kHTML[] =
++    R"HTML(<!doctype html><meta charset=utf-8><title>Aux content filtering</title><style>body{font:14px system-ui;max-width:1100px;margin:32px auto;padding:0 24px;color-scheme:light dark}section{padding:16px 0;border-bottom:1px solid #8885}button,input,select,textarea{font:inherit;padding:8px;margin:4px}textarea{display:block;width:95%;height:220px;font-family:monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere}#error{color:#d23c3c}label{margin-right:16px}.source{padding:12px;border:1px solid #8885;margin:8px 0}</style><h1>Content filtering</h1><p id=state>Loading native service…</p><p id=error role=alert></p><label><input type=checkbox id=enabled>Enable filtering</label><button id=refresh>Refresh state</button><section><h2>Subscriptions</h2><input id=url type=url placeholder="https://example.org/filters.txt"><input id=name placeholder="Optional name"><button id=add>Add subscription</button><button id=update>Update all</button><div id=sources></div><pre id=jobs></pre></section><section><h2>Custom rules</h2><textarea id=rules spellcheck=false></textarea><button id=save>Save rules</button><button id=manual>Reload manual filters</button><button id=cache>Clear engine cache</button></section><section><h2>Test a request</h2><input id=requestURL placeholder="Request URL"><input id=initiator placeholder="Document URL"><select id=kind></select><label><input type=checkbox id=third>Third party</label><button id=test>Test locally</button><pre id=decision></pre></section><section><h2>Diagnostics</h2><pre id=diagnostics></pre></section><script src=index.js></script>)HTML";
++constexpr char kJS[] =
++    R"JS('use strict';const $=id=>document.getElementById(id),pending=new Map;let seq=0;
++ window.cr={webUIResponse:(id,ok,value)=>{const request=pending.get(id);if(request){pending.delete(id);ok?request.resolve(value):request.reject(Error(value));}}};
++ function call(method,args=[]){return new Promise((resolve,reject)=>{const id='aux-'+(++seq);pending.set(id,{resolve,reject});chrome.send('auxFilter',[id,method,args]);});}
++ async function action(fn){$('error').textContent='';try{return await fn()}catch(error){$('error').textContent=error.message;throw error}}
++ const json=value=>JSON.stringify(value,null,2);let editing=false;
++ async function refresh(){const[state,sources,custom,diagnostics]=await Promise.all(['getState','getSubscriptions','getCustomRules','getDiagnostics'].map(x=>call(x)));$('enabled').checked=state.enabled;$('state').textContent=`Loaded: ${state.stateLoaded}; compiling: ${state.compiling}; requested generation ${state.requestedGeneration}; active ${state.activeGeneration}`;$('diagnostics').textContent=json(diagnostics);if(!editing)$('rules').value=custom.pendingRules??custom.rules;$('sources').replaceChildren();for(const source of sources){const row=document.createElement('div');row.className='source';const label=document.createElement('p');label.textContent=`${source.name} — ${source.url} — ${source.status}${source.lastError?' — '+source.lastError:''}`;row.append(label);for(const[text,method,args]of[[source.enabled?'Disable':'Enable','setSubscriptionEnabled',[source.id,!source.enabled]],['Update','startSubscriptionUpdate',[{ids:[source.id]}]],['Remove','removeSubscription',[source.id]]]){const button=document.createElement('button');button.textContent=text;button.onclick=()=>action(async()=>{const result=await call(method,args);if(result?.jobId)poll(result.jobId);await refresh()}).catch(()=>{});row.append(button)}$('sources').append(row)}}
++ async function poll(id){try{const job=await call('getSubscriptionUpdateProgress',[id]);$('jobs').textContent=json(job);if(job.status==='running')setTimeout(()=>poll(id),500);else await refresh()}catch(error){$('error').textContent=error.message}}
++ $('rules').oninput=()=>editing=true;$('enabled').onchange=()=>action(async()=>{await call('setEnabled',[$('enabled').checked]);await refresh()}).catch(()=>{});$('refresh').onclick=()=>action(refresh).catch(()=>{});
++ $('add').onclick=()=>action(async()=>{const result=await call('addSubscription',[{url:$('url').value,name:$('name').value}]);poll(result.updateJobId);await refresh()}).catch(()=>{});$('update').onclick=()=>action(async()=>{const job=await call('startSubscriptionUpdate');poll(job.jobId)}).catch(()=>{});
++ $('save').onclick=()=>action(async()=>{await call('saveCustomRules',[{rules:$('rules').value}]);editing=false;await refresh();setTimeout(()=>action(refresh).catch(()=>{}),500)}).catch(()=>{});for(const[id,method]of[['manual','reloadManualFilters'],['cache','clearEngineCache']])$(id).onclick=()=>action(async()=>{await call(method);await refresh()}).catch(()=>{});
++ for(const type of 'script image stylesheet xmlhttprequest document subdocument websocket font media object ping other'.split(' ')){const option=document.createElement('option');option.value=type;option.textContent=type;$('kind').append(option)}
++ $('test').onclick=()=>action(async()=>{$('decision').textContent=json(await call('testRequest',[{url:$('requestURL').value,initiator:$('initiator').value,requestType:$('kind').value,thirdParty:$('third').checked}]))}).catch(()=>{});action(refresh).catch(()=>{});
++)JS";
++class Handler final : public content::WebUIMessageHandler {
++ public:
++  void RegisterMessages() override {
++    web_ui()->RegisterMessageCallback(
++        "auxFilter",
++        base::BindRepeating(&Handler::Invoke, base::Unretained(this)));
++  }
++
++ private:
++  void Invoke(const base::ListValue& args) {
++    if (args.size() != 3 || !args[0].is_string() || !args[1].is_string() ||
++        !args[2].is_list()) {
++      return;
++    }
++    AllowJavascript();
++    auto id = args[0].GetString();
++    FilterService::Get(Profile::FromWebUI(web_ui()))
++        ->Invoke(args[1].GetString(), args[2].GetList().Clone(),
++                 base::BindOnce(
++                     [](base::WeakPtr<Handler> self, std::string id,
++                        std::optional<base::Value> result, std::string error) {
++                       if (!self || !self->IsJavascriptAllowed()) {
++                         return;
++                       }
++                       if (result) {
++                         self->ResolveJavascriptCallback(base::Value(id),
++                                                         *result);
++                       } else {
++                         self->RejectJavascriptCallback(base::Value(id),
++                                                        base::Value(error));
++                       }
++                     },
++                     weak_.GetWeakPtr(), std::move(id)));
++  }
++  base::WeakPtrFactory<Handler> weak_{this};
++};
++}  // namespace
++FilterWebUI::FilterWebUI(content::WebUI* web_ui)
++    : content::WebUIController(web_ui) {
++  auto* source = content::WebUIDataSource::CreateAndAdd(
++      web_ui->GetWebContents()->GetBrowserContext(), "aux-adblock-internals");
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::StyleSrc,
++      "style-src 'self' 'unsafe-inline';");
++  source->SetRequestFilter(
++      base::BindRepeating([](const std::string& path) {
++        return path.empty() || path == "index.html" || path == "index.js";
++      }),
++      base::BindRepeating(
++          [](const std::string& path,
++             content::WebUIDataSource::GotDataCallback callback) {
++            std::move(callback).Run(
++                base::MakeRefCounted<base::RefCountedString>(
++                    path == "index.js" ? kJS : kHTML));
++          }));
++  web_ui->AddMessageHandler(std::make_unique<Handler>());
++}
++FilterWebUI::~FilterWebUI() = default;
++}  // namespace aux_adblock
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_webui.h b/chrome/browser/extensions/api/aux_adblock/filter_webui.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_adblock/filter_webui.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_WEBUI_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_WEBUI_H_
++#include "content/public/browser/web_ui_controller.h"
++#include "content/public/browser/webui_config.h"
++namespace aux_adblock {
++class FilterWebUI : public content::WebUIController {
++ public:
++  explicit FilterWebUI(content::WebUI*);
++  ~FilterWebUI() override;
++};
++class FilterWebUIConfig : public content::DefaultWebUIConfig<FilterWebUI> {
++ public:
++  FilterWebUIConfig() : DefaultWebUIConfig("chrome", "aux-adblock-internals") {}
++};
++}  // namespace aux_adblock
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -0,0 +1,17 @@
++source_set("headers") { sources = [ "aux_browser_import_api.h" ] public_deps = [ "//chrome/browser/extensions/api/aux_common" ] }
++source_set("aux_browser_import") {
++ sources = [ "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "import_webui.cc", "import_webui.h" ]
++ public_deps = [ ":headers" ]
++ deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
++}
++
++source_set("migrator") {
++ sources = [ "migrator.cc", "migrator.h" ]
++ public_deps = [ "//base" ]
++ deps = [ "//third_party/sqlite" ]
++}
++executable("migrator_probe") {
++ testonly=true
++ sources=[ "migrator_probe.cc" ]
++ deps=[ ":migrator", "//base", "//third_party/sqlite" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
+@@ -0,0 +1,29 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.h"
++
++#include "base/functional/bind.h"
++#include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
++namespace extensions {
++ExtensionFunction::ResponseAction AuxBrowserImportFunction::RunAux() {
++  if (std::string_view(name()) == "auxBrowserImport.startImport" &&
++      !user_gesture()) {
++    return RespondNow(Error("Browser import requires explicit user consent"));
++  }
++  aux_import::ImportService::Get(profile())->Invoke(
++      std::string(std::string_view(name()).substr(17)), args().Clone(),
++      extension_id(),
++      base::BindOnce(
++          [](scoped_refptr<AuxBrowserImportFunction> self,
++             std::optional<base::Value> result, std::string error) {
++            if (!result) {
++              self->Respond(self->Error(error));
++            } else if (result->is_none()) {
++              self->Respond(self->NoArguments());
++            } else {
++              self->Respond(self->WithArguments(std::move(*result)));
++            }
++          },
++          base::WrapRefCounted(this)));
++  return did_respond() ? AlreadyResponded() : RespondLater();
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.h b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_AUX_BROWSER_IMPORT_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_AUX_BROWSER_IMPORT_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++namespace extensions {
++class AuxBrowserImportFunction : public AuxFunction {
++ protected:
++  ~AuxBrowserImportFunction() override = default;
++  ResponseAction RunAux() override;
++};
++class AuxBrowserImportGetImportSourcesFunction final:public AuxBrowserImportFunction {public:DECLARE_EXTENSION_FUNCTION("auxBrowserImport.getImportSources",AUXBROWSERIMPORT_GETIMPORTSOURCES) protected:~AuxBrowserImportGetImportSourcesFunction()override=default;};
++class AuxBrowserImportStartImportFunction final:public AuxBrowserImportFunction {public:DECLARE_EXTENSION_FUNCTION("auxBrowserImport.startImport",AUXBROWSERIMPORT_STARTIMPORT) protected:~AuxBrowserImportStartImportFunction()override=default;};
++class AuxBrowserImportGetImportProgressFunction final:public AuxBrowserImportFunction {public:DECLARE_EXTENSION_FUNCTION("auxBrowserImport.getImportProgress",AUXBROWSERIMPORT_GETIMPORTPROGRESS) protected:~AuxBrowserImportGetImportProgressFunction()override=default;};
++class AuxBrowserImportCancelImportFunction final:public AuxBrowserImportFunction {public:DECLARE_EXTENSION_FUNCTION("auxBrowserImport.cancelImport",AUXBROWSERIMPORT_CANCELIMPORT) protected:~AuxBrowserImportCancelImportFunction()override=default;};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.cc b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -0,0 +1,471 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
++
++#include <algorithm>
++
++#include "base/functional/bind.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/uuid.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++#include "chrome/browser/history/history_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/bookmarks/browser/bookmark_model.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "components/bookmarks/common/bookmark_pref_names.h"
++#include "components/history/core/browser/history_service.h"
++#include "components/history/core/browser/history_types.h"
++#include "components/history/core/common/pref_names.h"
++#include "components/keyed_service/core/service_access_type.h"
++#include "components/prefs/pref_service.h"
++#include "extensions/browser/event_router.h"
++#include "extensions/browser/extension_event_histogram_value.h"
++#include "ui/base/page_transition_types.h"
++namespace aux_import {
++namespace {
++constexpr char kService[] = "aux.browser.import.service";
++base::DictValue PublicJob(const base::DictValue& job) {
++  return job.Clone();
++}
++const bookmarks::BookmarkNode* Root(bookmarks::BookmarkModel* model,
++                                    std::string_view root) {
++  return root == "bookmark_bar" ? model->bookmark_bar_node()
++         : root == "synced"     ? model->mobile_node()
++                                : model->other_node();
++}
++base::Time Timestamp(const base::DictValue& row,
++                     std::string_view key,
++                     bool unix_time) {
++  int64_t number = 0;
++  if (const auto* text = row.FindString(key)) {
++    base::StringToInt64(*text, &number);
++  }
++  const auto micros = base::Microseconds(number);
++  return unix_time ? base::Time::UnixEpoch() + micros
++                   : base::Time::FromDeltaSinceWindowsEpoch(micros);
++}
++}  // namespace
++struct ImportService::Job {
++  base::DictValue state;
++  std::string extension;
++  bool firefox = false, cancelled = false;
++  base::FilePath path;
++  std::vector<std::string> categories;
++  size_t category = 0, row = 0;
++  int imported = 0;
++  base::ListValue rows;
++};
++ImportService* ImportService::Get(Profile* profile) {
++  auto* service = static_cast<ImportService*>(profile->GetUserData(kService));
++  if (service) {
++    return service;
++  }
++  auto owned = std::make_unique<ImportService>(profile);
++  auto* result = owned.get();
++  profile->SetUserData(kService, std::move(owned));
++  return result;
++}
++ImportService::ImportService(Profile* profile)
++    : profile_(profile->GetWeakPtr()) {}
++ImportService::~ImportService() = default;
++base::ListValue ImportService::PublicSources() const {
++  auto result = sources_.Clone();
++  for (auto& source : result) {
++    source.GetDict().Remove("nativeFirefox");
++    if (auto* profiles = source.GetDict().FindList("profiles")) {
++      for (auto& profile : *profiles) {
++        profile.GetDict().Remove("nativePath");
++      }
++    }
++  }
++  return result;
++}
++void ImportService::DidDiscover(Reply reply, base::ListValue sources) {
++  sources_ = std::move(sources);
++  discovered_ = true;
++  std::move(reply).Run(base::Value(PublicSources()), "");
++}
++void ImportService::Invoke(std::string method,
++                           base::ListValue args,
++                           std::string extension,
++                           Reply reply) {
++  auto error = [&](std::string reason) {
++    std::move(reply).Run(std::nullopt, std::move(reason));
++  };
++  if (!profile_ || profile_->IsOffTheRecord()) {
++    error("Import is unavailable in private browsing");
++    return;
++  }
++  if (method == "getImportSources") {
++    if (!args.empty()) {
++      error("This method takes no arguments");
++      return;
++    }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()}, base::BindOnce(&DiscoverSources),
++        base::BindOnce(&ImportService::DidDiscover, weak_.GetWeakPtr(),
++                       std::move(reply)));
++    return;
++  }
++  if (method == "getImportProgress" || method == "cancelImport") {
++    if (args.size() != 1 || !args[0].is_string() ||
++        !jobs_.contains(args[0].GetString()) ||
++        jobs_.at(args[0].GetString())->extension != extension) {
++      error("Import job was not found for this caller");
++      return;
++    }
++    auto& job = *jobs_.at(args[0].GetString());
++    if (method == "cancelImport") {
++      if (job.state.FindString("status") &&
++          (*job.state.FindString("status") == "running" ||
++           *job.state.FindString("status") == "queued")) {
++        job.cancelled = true;
++        job.state.Set("status", "cancelled");
++        job.state.Set("importedRows", job.imported);
++        Emit(job);
++      }
++      std::move(reply).Run(base::Value(), "");
++    } else {
++      std::move(reply).Run(base::Value(PublicJob(job.state)), "");
++    }
++    return;
++  }
++  if (method != "startImport" || args.size() != 1 || !args[0].is_dict() ||
++      !discovered_ || jobs_.size() >= 16) {
++    error("Choose a discovered source before starting an import");
++    return;
++  }
++  const auto& options = args[0].GetDict();
++  const auto *source_id = options.FindString("sourceId"),
++             *profile_id = options.FindString("sourceProfileId");
++  const auto* categories = options.FindList("categories");
++  if (!source_id || !categories || categories->empty() ||
++      categories->size() > 6 || options.Find("safariArchive")) {
++    error(
++        "Source profile and supported categories are required; archive import "
++        "is unavailable");
++    return;
++  }
++  const base::DictValue *source = nullptr, *selected = nullptr;
++  for (const auto& row : sources_) {
++    if (row.GetDict().FindString("id") &&
++        *row.GetDict().FindString("id") == *source_id) {
++      source = &row.GetDict();
++    }
++  }
++  if (!profile_id && source) {
++    if (const auto* profiles = source->FindList("profiles");
++        profiles && profiles->size() == 1) {
++      profile_id = (*profiles)[0].GetDict().FindString("id");
++    }
++  }
++  if (!profile_id) {
++    error("Choose a source profile before importing");
++    return;
++  }
++  if (source && source->FindBool("installed").value_or(false)) {
++    if (const auto* profiles = source->FindList("profiles")) {
++      for (const auto& row : *profiles) {
++        if (row.GetDict().FindString("id") &&
++            *row.GetDict().FindString("id") == *profile_id) {
++          selected = &row.GetDict();
++        }
++      }
++    }
++  }
++  if (!source || !selected || !selected->FindString("nativePath")) {
++    error("Selected source profile is unavailable");
++    return;
++  }
++  auto job = std::make_unique<Job>();
++  job->path = base::FilePath(*selected->FindString("nativePath"));
++  if (job->path == profile_->GetPath()) {
++    error("Source and destination profiles must differ");
++    return;
++  }
++  job->firefox = source->FindBool("nativeFirefox").value_or(false);
++  job->extension = extension;
++  for (const auto& category : *categories) {
++    if (!category.is_string() ||
++        std::ranges::find(*source->FindList("categories"), category) ==
++            source->FindList("categories")->end()) {
++      error(
++          "Selected category requires a native migrator unavailable in this "
++          "build");
++      return;
++    }
++    if (std::ranges::find(job->categories, category.GetString()) ==
++        job->categories.end()) {
++      job->categories.push_back(category.GetString());
++    }
++  }
++  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  job->state.Set("jobId", id);
++  job->state.Set("sourceId", *source_id);
++  job->state.Set("status", "queued");
++  job->state.Set("completed", 0);
++  job->state.Set("total", static_cast<int>(job->categories.size()));
++  auto result = job->state.Clone();
++  jobs_.emplace(id, std::move(job));
++  std::move(reply).Run(base::Value(std::move(result)), "");
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&ImportService::Next, weak_.GetWeakPtr(), id));
++}
++void ImportService::Emit(const Job& job) {
++  if (!profile_ || job.extension.empty() ||
++      job.extension == "native-import-webui") {
++    return;
++  }
++  base::ListValue args;
++  args.Append(job.state.Clone());
++  auto event = std::make_unique<extensions::Event>(
++      extensions::events::AUXBROWSERIMPORT_PROGRESS,
++      "auxBrowserImport.onImportProgress", std::move(args), profile_.get());
++  extensions::EventRouter::Get(profile_.get())
++      ->DispatchEventToExtension(job.extension, std::move(event));
++}
++void ImportService::Next(std::string id) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    return;
++  }
++  if (job.category == job.categories.size()) {
++    job.state.Set("status", "succeeded");
++    job.state.Set("importedRows", job.imported);
++    Emit(job);
++    return;
++  }
++  job.state.Set("status", "running");
++  job.state.Set("category", job.categories[job.category]);
++  Emit(job);
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadCategory, job.path, job.firefox,
++                     job.categories[job.category]),
++      base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));
++}
++void ImportService::DidRead(std::string id, base::DictValue data) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    return;
++  }
++  auto fail = [&](std::string error) {
++    job.state.Set("status", "failed");
++    job.state.Set("error", std::move(error));
++    job.state.Set("importedRows", job.imported);
++    Emit(job);
++  };
++  if (const auto* error = data.FindString("error")) {
++    fail(*error);
++    return;
++  }
++  if (auto* visits = data.FindList("visits")) {
++    job.rows = std::move(*visits);
++    job.row = 0;
++    ApplyHistory(id);
++    return;
++  }
++  if (auto* prefs = data.FindDict("preferences")) {
++    auto* target = profile_->GetPrefs();
++    for (auto [key, value] : *prefs) {
++      const auto* preference = target->FindPreference(key);
++      if (preference && !preference->IsManaged() &&
++          preference->GetType() == value.type()) {
++        if (key == "homepage" &&
++            (!value.is_string() ||
++             !GURL(value.GetString()).SchemeIsHTTPOrHTTPS())) {
++          continue;
++        }
++        target->Set(key, value);
++        ++job.imported;
++      }
++    }
++    CompleteCategory(id);
++    return;
++  }
++  if (profile_->GetPrefs()->FindPreference(
++          bookmarks::prefs::kEditBookmarksEnabled) &&
++      !profile_->GetPrefs()->GetBoolean(
++          bookmarks::prefs::kEditBookmarksEnabled)) {
++    fail("Bookmark editing is disabled by policy");
++    return;
++  }
++  auto* model = BookmarkModelFactory::GetForBrowserContext(profile_.get());
++  if (!model || !model->loaded()) {
++    fail(
++        "Destination bookmark model is not ready; retry after the profile has "
++        "loaded");
++    return;
++  }
++  if (const auto* entries = data.FindList("bookmarks")) {
++    for (const auto& entry : *entries) {
++      const auto& row = entry.GetDict();
++      const auto *root = row.FindString("root"),
++                 *title = row.FindString("title");
++      if (!root || !title) {
++        continue;
++      }
++      const auto* parent = Root(model, *root);
++      if (const auto* path = row.FindList("path")) {
++        for (const auto& segment : *path) {
++          const auto text = base::UTF8ToUTF16(segment.GetString());
++          const bookmarks::BookmarkNode* found = nullptr;
++          for (const auto& child : parent->children()) {
++            if (child->is_folder() && child->GetTitle() == text) {
++              found = child.get();
++              break;
++            }
++          }
++          parent =
++              found ? found
++                    : model->AddFolder(parent, parent->children().size(), text);
++        }
++      }
++      const auto time = Timestamp(row, "createdWindowsMicros", false);
++      if (row.FindBool("folder").value_or(false)) {
++        model->AddFolder(parent, parent->children().size(),
++                         base::UTF8ToUTF16(*title), nullptr, time);
++      } else if (const auto* url = row.FindString("url");
++                 url && GURL(*url).is_valid() &&
++                 !GURL(*url).SchemeIs("javascript")) {
++        model->AddURL(parent, parent->children().size(),
++                      base::UTF8ToUTF16(*title), GURL(*url), nullptr, time);
++        ++job.imported;
++      }
++    }
++    CompleteCategory(id);
++    return;
++  }
++  if (const auto* entries = data.FindList("firefoxBookmarks")) {
++    std::map<int64_t, const bookmarks::BookmarkNode*> nodes;
++    nodes[1] = model->other_node();
++    nodes[2] = model->bookmark_bar_node();
++    nodes[3] = model->other_node();
++    nodes[4] = model->mobile_node();
++    std::vector<const base::DictValue*> pending;
++    for (const auto& entry : *entries) {
++      pending.push_back(&entry.GetDict());
++    }
++    for (int pass = 0; pass < 64 && !pending.empty(); ++pass) {
++      size_t progress = 0;
++      std::erase_if(pending, [&](const base::DictValue* row) {
++        const int64_t node = row->FindDouble("id").value_or(0),
++                      parent = row->FindDouble("parent").value_or(0);
++        if (nodes.contains(node)) {
++          ++progress;
++          return true;
++        }
++        if (!nodes.contains(parent)) {
++          return false;
++        }
++        const auto *title = row->FindString("title"),
++                   *url = row->FindString("url");
++        const auto* folder = nodes.at(parent);
++        const auto time = Timestamp(*row, "createdUnixMicros", true);
++        if (row->FindInt("type") == 2) {
++          nodes[node] = model->AddFolder(
++              folder, folder->children().size(),
++              base::UTF8ToUTF16(title ? *title : "Imported folder"), nullptr,
++              time);
++        } else if (row->FindInt("type") == 1 && url && GURL(*url).is_valid() &&
++                   !GURL(*url).SchemeIs("javascript")) {
++          model->AddURL(folder, folder->children().size(),
++                        base::UTF8ToUTF16(title ? *title : *url), GURL(*url),
++                        nullptr, time);
++          ++job.imported;
++        }
++        ++progress;
++        return true;
++      });
++      if (progress == 0) {
++        break;
++      }
++    }
++    if (!pending.empty()) {
++      fail(
++          "Firefox bookmarks contain orphaned or cyclic hierarchy; imported "
++          "valid rows were retained");
++      return;
++    }
++    CompleteCategory(id);
++    return;
++  }
++  fail("Source category did not produce valid migration records");
++}
++void ImportService::ApplyHistory(std::string id) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    return;
++  }
++  if (profile_->GetPrefs()->FindPreference(
++          prefs::kSavingBrowserHistoryDisabled) &&
++      profile_->GetPrefs()->GetBoolean(prefs::kSavingBrowserHistoryDisabled)) {
++    job.state.Set("status", "failed");
++    job.state.Set("error", "History saving is disabled by policy");
++    Emit(job);
++    return;
++  }
++  auto* history = HistoryServiceFactory::GetForProfile(
++      profile_.get(), ServiceAccessType::EXPLICIT_ACCESS);
++  if (!history) {
++    job.state.Set("status", "failed");
++    job.state.Set("error", "Destination history service is unavailable");
++    Emit(job);
++    return;
++  }
++  size_t end = std::min(job.row + 200, job.rows.size());
++  for (; job.row < end; ++job.row) {
++    const auto& row = job.rows[job.row].GetDict();
++    const auto* url = row.FindString("url");
++    if (!url || !GURL(*url).SchemeIsHTTPOrHTTPS()) {
++      continue;
++    }
++    const bool unix_time = row.FindBool("unixTime").value_or(false);
++    const auto time = Timestamp(row, "timeMicros", unix_time);
++    const int transition = row.FindInt("transition").value_or(0);
++    const auto page_transition =
++        unix_time ? (transition == 2 ? ui::PAGE_TRANSITION_TYPED
++                                     : ui::PAGE_TRANSITION_LINK)
++                  : ui::PageTransitionFromInt(transition);
++    history->AddPage(GURL(*url), time, 0, 0, GURL(), {}, page_transition,
++                     job.firefox ? history::SOURCE_FIREFOX_IMPORTED
++                                 : history::SOURCE_OS_MIGRATION_IMPORTED,
++                     history::VisitResponseCodeCategory::kNot404, false);
++    if (const auto* title = row.FindString("title")) {
++      history->SetPageTitle(GURL(*url), base::UTF8ToUTF16(*title));
++    }
++    ++job.imported;
++  }
++  if (job.row < job.rows.size()) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(&ImportService::ApplyHistory, weak_.GetWeakPtr(), id));
++  } else {
++    job.rows.clear();
++    CompleteCategory(id);
++  }
++}
++void ImportService::CompleteCategory(std::string id) {
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    return;
++  }
++  ++job.category;
++  job.state.Set("completed", static_cast<int>(job.category));
++  job.state.Set("importedRows", job.imported);
++  Emit(job);
++  Next(id);
++}
++}  // namespace aux_import
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.h b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -0,0 +1,38 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_IMPORT_SERVICE_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_IMPORT_SERVICE_H_
++#include <map>
++
++#include "base/memory/weak_ptr.h"
++#include "base/supports_user_data.h"
++#include "chrome/browser/profiles/profile.h"
++namespace aux_import {
++class ImportService final : public base::SupportsUserData::Data {
++ public:
++  static ImportService* Get(Profile*);
++  explicit ImportService(Profile*);
++  ~ImportService() override;
++  using Reply =
++      base::OnceCallback<void(std::optional<base::Value>, std::string)>;
++  void Invoke(std::string method,
++              base::ListValue arguments,
++              std::string extension_id,
++              Reply reply);
++
++ private:
++  struct Job;
++  void DidDiscover(Reply reply, base::ListValue);
++  void Next(std::string id);
++  void DidRead(std::string id, base::DictValue);
++  void ApplyHistory(std::string id);
++  void CompleteCategory(std::string id);
++  void Emit(const Job&);
++  base::ListValue PublicSources() const;
++  base::WeakPtr<Profile> profile_;
++  base::ListValue sources_;
++  bool discovered_ = false;
++  std::map<std::string, std::unique_ptr<Job>> jobs_;
++  base::WeakPtrFactory<ImportService> weak_{this};
++};
++}  // namespace aux_import
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_webui.cc b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+@@ -0,0 +1,82 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_browser_import/import_webui.h"
++
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "content/public/browser/web_ui_message_handler.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++namespace aux_import {
++namespace {
++constexpr char kHTML[] =
++    R"HTML(<!doctype html><meta charset=utf-8><title>Import browser data into Aux</title><style>body{font:16px system-ui;max-width:760px;margin:10vh auto;padding:24px;color-scheme:light dark}select,button{font:inherit;padding:10px;margin:8px 0}label{display:block;margin:12px 0}pre{white-space:pre-wrap}#error{color:#d33}fieldset{border:1px solid #8885;margin:16px 0}</style><h1>Import browser data</h1><p>Select a browser profile and the data you want to bring into this Aux profile. Source data is read from a consistent snapshot and is never changed.</p><label>Browser <select id=source></select></label><label>Profile <select id=profile></select></label><fieldset><legend>Available categories</legend><div id=categories></div></fieldset><p id=notice></p><label><input id=consent type=checkbox>I authorize reading the selected source profile and adding these categories to Aux.</label><button id=start>Start import</button><button id=cancel disabled>Cancel remaining work</button><button id=refresh>Refresh sources</button><p id=error role=alert></p><pre id=progress aria-live=polite></pre><script src=index.js></script>)HTML";
++constexpr char kJS[] =
++    R"JS('use strict';const $=id=>document.getElementById(id),pending=new Map;let seq=0,sources=[],job=null;window.cr={webUIResponse:(id,ok,value)=>{const request=pending.get(id);if(request){pending.delete(id);ok?request.resolve(value):request.reject(Error(value))}}};function call(method,args=[]){return new Promise((resolve,reject)=>{const id='import-'+(++seq);pending.set(id,{resolve,reject});chrome.send('auxImport',[id,method,args])})}async function action(fn){$('error').textContent='';try{await fn()}catch(error){$('error').textContent=error.message}}
++ function choose(){const source=sources.find(x=>x.id===$('source').value);$('profile').replaceChildren();$('categories').replaceChildren();$('consent').checked=false;if(!source)return;for(const profile of source.profiles){const option=document.createElement('option');option.value=profile.id;option.textContent=profile.name;$('profile').append(option)}for(const category of source.categories??[]){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.value=category;check.checked=true;label.append(check,document.createTextNode(' '+category));$('categories').append(label)}$('notice').textContent=source.unsupportedReason??'Passwords, cookies, extensions and archive formats appear here only when their authorized native migrator is available.';$('start').disabled=!source.installed||!source.profiles.length||!(source.categories??[]).length;}
++ async function refresh(){sources=await call('getImportSources');$('source').replaceChildren();for(const source of sources){const option=document.createElement('option');option.value=source.id;option.textContent=source.name+(source.installed?'':' — not installed');option.disabled=!source.installed;$('source').append(option)}const first=sources.find(x=>x.installed&&x.profiles.length);if(first)$('source').value=first.id;choose()}
++ async function poll(){if(!job)return;const progress=await call('getImportProgress',[job]);$('progress').textContent=JSON.stringify(progress,null,2);const running=progress.status==='running'||progress.status==='queued';$('cancel').disabled=!running;$('start').disabled=running;if(running)setTimeout(()=>action(poll),300)}
++ $('source').onchange=choose;$('profile').onchange=()=>$('consent').checked=false;$('refresh').onclick=()=>action(refresh);$('start').onclick=()=>action(async()=>{if(!$('consent').checked)throw Error('Authorize the selected source before starting.');const categories=[...$('categories').querySelectorAll('input:checked')].map(x=>x.value);if(!categories.length)throw Error('Select at least one category.');const result=await call('startImport',[{sourceId:$('source').value,sourceProfileId:$('profile').value,categories}]);job=result.jobId;await poll()});$('cancel').onclick=()=>action(async()=>{if(job){await call('cancelImport',[job]);await poll()}});action(refresh);
++)JS";
++class Handler final : public content::WebUIMessageHandler {
++ public:
++  void RegisterMessages() override {
++    web_ui()->RegisterMessageCallback(
++        "auxImport",
++        base::BindRepeating(&Handler::Invoke, base::Unretained(this)));
++  }
++
++ private:
++  void Invoke(const base::ListValue& args) {
++    if (args.size() != 3 || !args[0].is_string() || !args[1].is_string() ||
++        !args[2].is_list()) {
++      return;
++    }
++    AllowJavascript();
++    ImportService::Get(Profile::FromWebUI(web_ui()))
++        ->Invoke(args[1].GetString(), args[2].GetList().Clone(),
++                 "native-import-webui",
++                 base::BindOnce(
++                     [](base::WeakPtr<Handler> self, std::string id,
++                        std::optional<base::Value> result, std::string error) {
++                       if (!self || !self->IsJavascriptAllowed()) {
++                         return;
++                       }
++                       if (result) {
++                         self->ResolveJavascriptCallback(base::Value(id),
++                                                         *result);
++                       } else {
++                         self->RejectJavascriptCallback(base::Value(id),
++                                                        base::Value(error));
++                       }
++                     },
++                     weak_.GetWeakPtr(), args[0].GetString()));
++  }
++  base::WeakPtrFactory<Handler> weak_{this};
++};
++}  // namespace
++ImportWebUI::ImportWebUI(content::WebUI* web_ui)
++    : content::WebUIController(web_ui) {
++  auto* source = content::WebUIDataSource::CreateAndAdd(
++      web_ui->GetWebContents()->GetBrowserContext(), "aux-import-data");
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::StyleSrc,
++      "style-src 'self' 'unsafe-inline';");
++  source->SetRequestFilter(
++      base::BindRepeating([](const std::string& path) {
++        return path.empty() || path == "index.html" || path == "index.js";
++      }),
++      base::BindRepeating(
++          [](const std::string& path,
++             content::WebUIDataSource::GotDataCallback callback) {
++            std::move(callback).Run(
++                base::MakeRefCounted<base::RefCountedString>(
++                    path == "index.js" ? kJS : kHTML));
++          }));
++  web_ui->AddMessageHandler(std::make_unique<Handler>());
++}
++ImportWebUI::~ImportWebUI() = default;
++}  // namespace aux_import
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_webui.h b/chrome/browser/extensions/api/aux_browser_import/import_webui.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/import_webui.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_IMPORT_WEBUI_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_IMPORT_WEBUI_H_
++#include "content/public/browser/web_ui_controller.h"
++#include "content/public/browser/webui_config.h"
++namespace aux_import {
++class ImportWebUI : public content::WebUIController {
++ public:
++  explicit ImportWebUI(content::WebUI*);
++  ~ImportWebUI() override;
++};
++class ImportWebUIConfig : public content::DefaultWebUIConfig<ImportWebUI> {
++ public:
++  ImportWebUIConfig() : DefaultWebUIConfig("chrome", "aux-import-data") {}
++};
++}  // namespace aux_import
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator.cc b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -0,0 +1,423 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Independent Chromium/Firefox snapshot migrators: adblock-import I1/I2.
++#include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++
++#include <memory>
++
++#include "base/files/file_enumerator.h"
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/path_service.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/threading/platform_thread.h"
++#include "third_party/sqlite/sqlite3.h"
++namespace aux_import {
++namespace {
++struct Family {
++  const char *id, *name, *path;
++  bool firefox;
++};
++constexpr Family kFamilies[] = {
++    {"chrome", "Chrome", "Google/Chrome", false},
++    {"brave", "Brave", "BraveSoftware/Brave-Browser", false},
++    {"arc", "Arc", "Arc/User Data", false},
++    {"dia", "Dia", "Dia/User Data", false},
++    {"atlas", "Atlas", "com.openai.atlas", false},
++    {"comet", "Comet", "Comet", false},
++    {"helium", "Helium", "net.imput.helium", false},
++    {"edge", "Edge", "Microsoft Edge", false},
++    {"firefox", "Firefox", "Firefox/Profiles", true}};
++std::optional<base::DictValue> JSON(const base::FilePath& path) {
++  std::string text;
++  if (base::IsLink(path) ||
++      !base::ReadFileToStringWithMaxSize(path, &text, 32 * 1024 * 1024)) {
++    return std::nullopt;
++  }
++  return base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++}
++struct CloseDB {
++  void operator()(sqlite3* db) const {
++    if (db) {
++      sqlite3_close(db);
++    }
++  }
++};
++using DB = std::unique_ptr<sqlite3, CloseDB>;
++struct CloseQuery {
++  void operator()(sqlite3_stmt* stmt) const {
++    if (stmt) {
++      sqlite3_finalize(stmt);
++    }
++  }
++};
++using Query = std::unique_ptr<sqlite3_stmt, CloseQuery>;
++DB Snapshot(const base::FilePath& path, std::string& failure) {
++  failure = "Source snapshot is unavailable";
++  const auto source_size = base::GetFileSize(path);
++  if (base::IsLink(path) || !source_size || *source_size > 256 * 1024 * 1024) {
++    failure =
++        "Source database is missing, linked or exceeds the snapshot size limit";
++    return {};
++  }
++  if (sqlite3_initialize() != SQLITE_OK) {
++    failure = "SQLite initialization failed";
++    return {};
++  }
++  sqlite3* source_raw = nullptr;
++  if (sqlite3_open_v2(path.value().c_str(), &source_raw,
++                      SQLITE_OPEN_READONLY | SQLITE_OPEN_NOFOLLOW,
++                      nullptr) != SQLITE_OK) {
++    if (source_raw) {
++      sqlite3_close(source_raw);
++    }
++    failure =
++        "Source database could not be opened read-only without following links";
++    return {};
++  }
++  DB source(source_raw);
++  // Chromium builds SQLite with exclusive locking by default. Source
++  // snapshots must share locks with a running source browser.
++  if (sqlite3_exec(source.get(), "PRAGMA locking_mode=NORMAL", nullptr, nullptr,
++                   nullptr) != SQLITE_OK) {
++    failure = "Source database could not enter shared read-only locking mode";
++    return {};
++  }
++  sqlite3_db_config(source.get(), SQLITE_DBCONFIG_DEFENSIVE, 1, nullptr);
++  sqlite3_exec(source.get(), "PRAGMA trusted_schema=OFF", nullptr, nullptr,
++               nullptr);
++  sqlite3_stmt* page_query = nullptr;
++  if (sqlite3_prepare_v2(source.get(), "PRAGMA page_size", -1, &page_query,
++                         nullptr) != SQLITE_OK) {
++    failure = "Source database page metadata could not be read";
++    return {};
++  }
++  Query page_statement(page_query);
++  if (sqlite3_step(page_statement.get()) != SQLITE_ROW) {
++    failure = "Source database page metadata is unavailable";
++    return {};
++  }
++  const int64_t page_size = sqlite3_column_int64(page_statement.get(), 0);
++  if (page_size < 512 || page_size > 65536) {
++    failure = "Source database has an unsupported page size";
++    return {};
++  }
++  page_statement.reset();
++  sqlite3* target_raw = nullptr;
++  if (sqlite3_open_v2(":memory:", &target_raw,
++                      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
++                      nullptr) != SQLITE_OK) {
++    if (target_raw) {
++      sqlite3_close(target_raw);
++    }
++    failure = "Temporary in-memory snapshot could not be created";
++    return {};
++  }
++  DB target(target_raw);
++  auto* backup =
++      sqlite3_backup_init(target.get(), "main", source.get(), "main");
++  if (!backup) {
++    failure = "Source database snapshot could not be started";
++    return {};
++  }
++  int result = SQLITE_OK, retries = 0, steps = 0;
++  do {
++    result = sqlite3_backup_step(backup, 256);
++    if (++steps > 4096 ||
++        static_cast<int64_t>(sqlite3_backup_pagecount(backup)) * page_size >
++            256 * 1024 * 1024) {
++      result = SQLITE_TOOBIG;
++      break;
++    }
++    if (result == SQLITE_BUSY || result == SQLITE_LOCKED) {
++      if (++retries > 100) {
++        break;
++      }
++      base::PlatformThread::Sleep(base::Milliseconds(10));
++    }
++  } while (result == SQLITE_OK || result == SQLITE_BUSY ||
++           result == SQLITE_LOCKED);
++  sqlite3_backup_finish(backup);
++  if (result != SQLITE_DONE) {
++    failure =
++        "Source database snapshot failed or exceeded its size/time budget";
++    return {};
++  }
++  return target;
++}
++Query Prepare(sqlite3* db, const char* sql) {
++  sqlite3_stmt* statement = nullptr;
++  if (sqlite3_prepare_v2(db, sql, -1, &statement, nullptr) != SQLITE_OK) {
++    return {};
++  }
++  return Query(statement);
++}
++std::string Text(sqlite3_stmt* statement, int column) {
++  const auto* value = sqlite3_column_text(statement, column);
++  int size = sqlite3_column_bytes(statement, column);
++  if (!value || size < 0 || size > 8192) {
++    return {};
++  }
++  return std::string(reinterpret_cast<const char*>(value), size);
++}
++bool BookmarkTree(const base::DictValue& node,
++                  base::ListValue& result,
++                  const base::ListValue& path,
++                  std::string root,
++                  int depth) {
++  if (depth > 64 || result.size() > 20000) {
++    return false;
++  }
++  auto next = path.Clone();
++  const auto *type = node.FindString("type"), *name = node.FindString("name");
++  if (!type || !name) {
++    return false;
++  }
++  if (*type != "folder" && *type != "url") {
++    return false;
++  }
++  const bool folder = *type == "folder";
++  base::DictValue row;
++  row.Set("root", root);
++  row.Set("path", path.Clone());
++  row.Set("title", name->substr(0, 1024));
++  row.Set("folder", folder);
++  if (const auto* date = node.FindString("date_added")) {
++    int64_t number = 0;
++    if (base::StringToInt64(*date, &number)) {
++      row.Set("createdWindowsMicros", base::NumberToString(number));
++    }
++  }
++  if (!folder) {
++    const auto* url = node.FindString("url");
++    if (!url || url->size() > 8192) {
++      return false;
++    }
++    row.Set("url", *url);
++  }
++  result.Append(std::move(row));
++  if (folder) {
++    next.Append(*name);
++    if (const auto* children = node.FindList("children")) {
++      for (const auto& child : *children) {
++        if (!child.is_dict() ||
++            !BookmarkTree(child.GetDict(), result, next, root, depth + 1)) {
++          return false;
++        }
++      }
++    }
++  }
++  return true;
++}
++}  // namespace
++base::ListValue DiscoverSources() {
++  base::FilePath home;
++  if (!base::PathService::Get(base::DIR_HOME, &home)) {
++    return {};
++  }
++  auto support = home.AppendASCII("Library/Application Support");
++  base::ListValue sources;
++  for (const auto& family : kFamilies) {
++    auto directory = support.AppendASCII(family.path);
++    base::DictValue source;
++    source.Set("id", family.id);
++    source.Set("name", family.name);
++    source.Set("installed", base::DirectoryExists(directory));
++    base::ListValue profiles;
++    if (family.firefox) {
++      base::FileEnumerator directories(directory, false,
++                                       base::FileEnumerator::DIRECTORIES);
++      for (auto path = directories.Next();
++           !path.empty() && profiles.size() < 128; path = directories.Next()) {
++        if (!base::IsLink(path) &&
++            base::PathExists(path.AppendASCII("places.sqlite"))) {
++          profiles.Append(base::DictValue()
++                              .Set("id", path.BaseName().value())
++                              .Set("name", path.BaseName().value())
++                              .Set("nativePath", path.value()));
++        }
++      }
++    } else if (auto state = JSON(directory.AppendASCII("Local State"))) {
++      if (const auto* cache =
++              state->FindDictByDottedPath("profile.info_cache")) {
++        for (auto [id, value] : *cache) {
++          if (profiles.size() >= 128 || id.empty() || id.find('/') != id.npos ||
++              id.find("..") != id.npos || id.find('\0') != id.npos ||
++              !base::IsStringUTF8(id) || !value.is_dict()) {
++            continue;
++          }
++          auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));
++          if (!base::DirectoryExists(path) || base::IsLink(path)) {
++            continue;
++          }
++          const auto* name = value.GetDict().FindString("name");
++          profiles.Append(base::DictValue()
++                              .Set("id", id)
++                              .Set("name", name ? *name : id)
++                              .Set("nativePath", path.value()));
++        }
++      }
++    }
++    source.Set("profiles", std::move(profiles));
++    base::ListValue categories;
++    for (auto category : {"bookmarks", "history"}) {
++      categories.Append(category);
++    }
++    if (!family.firefox) {
++      categories.Append("preferences");
++    }
++    source.Set("categories", std::move(categories));
++    source.Set("nativeFirefox", family.firefox);
++    sources.Append(std::move(source));
++  }
++  base::DictValue safari;
++  safari.Set("id", "safari");
++  safari.Set("name", "Safari export");
++  safari.Set("installed", true);
++  safari.Set("profiles", base::ListValue());
++  safari.Set("categories", base::ListValue());
++  safari.Set("unsupportedReason",
++             "Safari archive migration is not available in this native build");
++  sources.Append(std::move(safari));
++  return sources;
++}
++base::DictValue ReadCategory(const base::FilePath& profile,
++                             bool firefox,
++                             std::string category) {
++  base::DictValue result;
++  auto error = [&](std::string message) {
++    result.Set("error", std::move(message));
++    return std::move(result);
++  };
++  if (category == "preferences") {
++    if (firefox) {
++      return error("Firefox preference migration is not supported");
++    }
++    auto prefs = JSON(profile.AppendASCII("Preferences"));
++    if (!prefs) {
++      return error("Source preferences are missing or invalid");
++    }
++    base::DictValue allowed;
++    for (const auto* key :
++         {"intl.accept_languages", "spellcheck.use_spelling_service",
++          "spellcheck.dictionaries", "homepage", "homepage_is_newtabpage",
++          "bookmark_bar.show_on_all_tabs"}) {
++      if (const auto* value = prefs->FindByDottedPath(key)) {
++        allowed.Set(key, value->Clone());
++      }
++    }
++    result.Set("preferences", std::move(allowed));
++    return result;
++  }
++  if (category == "bookmarks" && !firefox) {
++    auto bookmarks = JSON(profile.AppendASCII("Bookmarks"));
++    const auto* roots = bookmarks ? bookmarks->FindDict("roots") : nullptr;
++    if (!roots) {
++      return error("Source bookmark roots are missing or invalid");
++    }
++    base::ListValue entries;
++    for (const auto* root : {"bookmark_bar", "other", "synced"}) {
++      if (const auto* node = roots->FindDict(root)) {
++        if (const auto* children = node->FindList("children")) {
++          for (const auto& child : *children) {
++            if (!child.is_dict() ||
++                !BookmarkTree(child.GetDict(), entries, {}, root, 0)) {
++              return error(
++                  "Bookmark hierarchy exceeds limits or contains invalid "
++                  "records");
++            }
++          }
++        }
++      }
++    }
++    result.Set("bookmarks", std::move(entries));
++    return result;
++  }
++  if (category != "history" && category != "bookmarks") {
++    return error(
++        "This category requires a separately authorized native migrator");
++  }
++  std::string snapshot_error;
++  auto db = Snapshot(profile.AppendASCII(firefox ? "places.sqlite" : "History"),
++                     snapshot_error);
++  if (!db) {
++    return error(snapshot_error);
++  }
++  if (category == "history") {
++    const char* query =
++        firefox ? "SELECT "
++                  "p.url,p.title,v.visit_date,v.visit_type,p.visit_count,p."
++                  "typed FROM moz_historyvisits v JOIN moz_places p ON "
++                  "p.id=v.place_id ORDER BY v.visit_date LIMIT 200001"
++                : "SELECT "
++                  "u.url,u.title,v.visit_time,v.transition,u.visit_count,u."
++                  "typed_count FROM visits v JOIN urls u ON u.id=v.url ORDER "
++                  "BY v.visit_time LIMIT 200001";
++    auto statement = Prepare(db.get(), query);
++    if (!statement) {
++      return error("Source history schema lacks required columns");
++    }
++    base::ListValue visits;
++    size_t data_bytes = 0;
++    int status;
++    while ((status = sqlite3_step(statement.get())) == SQLITE_ROW) {
++      if (visits.size() >= 200000) {
++        return error(
++            "History exceeds the bounded 200000-visit migration limit");
++      }
++      base::DictValue visit;
++      const auto url = Text(statement.get(), 0),
++                 title = Text(statement.get(), 1);
++      data_bytes += url.size() + title.size() + 128;
++      if (data_bytes > 64 * 1024 * 1024) {
++        return error("History snapshot exceeds the 64 MiB decoded-row limit");
++      }
++      visit.Set("url", url);
++      visit.Set("title", title);
++      visit.Set("timeMicros",
++                base::NumberToString(sqlite3_column_int64(statement.get(), 2)));
++      visit.Set("transition", sqlite3_column_int(statement.get(), 3));
++      visit.Set("visitCount", sqlite3_column_int(statement.get(), 4));
++      visit.Set("typedCount", sqlite3_column_int(statement.get(), 5));
++      visit.Set("unixTime", firefox);
++      visits.Append(std::move(visit));
++    }
++    if (status != SQLITE_DONE) {
++      return error("History snapshot failed during row reading");
++    }
++    result.Set("visits", std::move(visits));
++    return result;
++  }
++  auto statement =
++      Prepare(db.get(),
++              "SELECT b.id,b.parent,b.type,b.title,p.url,b.dateAdded FROM "
++              "moz_bookmarks b LEFT JOIN moz_places p ON p.id=b.fk ORDER BY "
++              "b.position LIMIT 20001");
++  if (!statement) {
++    return error("Firefox bookmark schema lacks required columns");
++  }
++  base::ListValue entries;
++  int status;
++  while ((status = sqlite3_step(statement.get())) == SQLITE_ROW) {
++    if (entries.size() >= 20000) {
++      return error("Firefox bookmarks exceed the bounded migration limit");
++    }
++    base::DictValue row;
++    row.Set("id",
++            static_cast<double>(sqlite3_column_int64(statement.get(), 0)));
++    row.Set("parent",
++            static_cast<double>(sqlite3_column_int64(statement.get(), 1)));
++    row.Set("type", sqlite3_column_int(statement.get(), 2));
++    row.Set("title", Text(statement.get(), 3));
++    row.Set("url", Text(statement.get(), 4));
++    row.Set("createdUnixMicros",
++            base::NumberToString(sqlite3_column_int64(statement.get(), 5)));
++    entries.Append(std::move(row));
++  }
++  if (status != SQLITE_DONE) {
++    return error("Firefox bookmark reading failed");
++  }
++  result.Set("firefoxBookmarks", std::move(entries));
++  return result;
++}
++}  // namespace aux_import
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator.h b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_MIGRATOR_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_MIGRATOR_H_
++#include "base/files/file_path.h"
++#include "base/values.h"
++namespace aux_import {
++// Worker-only bounded SQLite backup snapshots and JSON reads. Never writes to
++// the source profile. Paths come exclusively from native installed discovery.
++base::DictValue ReadCategory(const base::FilePath& profile,
++                             bool firefox,
++                             std::string category);
++base::ListValue DiscoverSources();
++}  // namespace aux_import
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+@@ -0,0 +1,85 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include <iostream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++#include "third_party/sqlite/sqlite3.h"
++namespace {
++void SQLite(const base::FilePath& path, const char* sql) {
++  sqlite3* db = nullptr;
++  CHECK_EQ(sqlite3_open(path.value().c_str(), &db), SQLITE_OK);
++  CHECK_EQ(sqlite3_exec(db, sql, nullptr, nullptr, nullptr), SQLITE_OK);
++  CHECK_EQ(sqlite3_close(db), SQLITE_OK);
++}
++}  // namespace
++int main() {
++  CHECK_EQ(sqlite3_initialize(), SQLITE_OK);
++  base::ScopedTempDir temp;
++  CHECK(temp.CreateUniqueTempDir());
++  const auto profile = base::MakeAbsoluteFilePath(temp.GetPath());
++  CHECK(!profile.empty());
++  SQLite(
++      profile.AppendASCII("History"),
++      "CREATE TABLE urls(id INTEGER PRIMARY KEY,url TEXT,title "
++      "TEXT,visit_count INTEGER,typed_count INTEGER);CREATE TABLE visits(id "
++      "INTEGER PRIMARY KEY,url INTEGER,visit_time INTEGER,transition "
++      "INTEGER);INSERT INTO urls VALUES(1,'https://fixture.test/path','Fixture "
++      "title',2,1);INSERT INTO visits "
++      "VALUES(1,1,13200000000000001,1),(2,1,13200000000000002,0);");
++  auto history = aux_import::ReadCategory(profile, false, "history");
++  CHECK(!history.FindString("error")) << history.FindString("error")->c_str();
++  auto* visits = history.FindList("visits");
++  CHECK(visits);
++  CHECK_EQ(visits->size(), 2u);
++  CHECK_EQ(*(*visits)[0].GetDict().FindString("timeMicros"),
++           "13200000000000001");
++  CHECK_EQ((*visits)[0].GetDict().FindInt("typedCount").value_or(-1), 1);
++  CHECK_EQ(*(*visits)[0].GetDict().FindString("title"), "Fixture title");
++  CHECK(base::WriteFile(
++      profile.AppendASCII("Bookmarks"),
++      R"JSON({"roots":{"bookmark_bar":{"children":[{"type":"folder","name":"Folder","children":[{"type":"url","name":"Child","url":"https://fixture.test/child","date_added":"13200000000000000"}]}]},"other":{"children":[{"type":"url","name":"Other","url":"https://fixture.test/other"}]},"synced":{"children":[{"type":"url","name":"Mobile","url":"https://fixture.test/mobile"}]}}})JSON"));
++  auto bookmarks = aux_import::ReadCategory(profile, false, "bookmarks");
++  CHECK(!bookmarks.FindString("error"));
++  CHECK_EQ(bookmarks.FindList("bookmarks")->size(), 4u);
++  CHECK_EQ(
++      (*bookmarks.FindList("bookmarks"))[1].GetDict().FindList("path")->size(),
++      1u);
++  CHECK(base::WriteFile(
++      profile.AppendASCII("Preferences"),
++      R"JSON({"intl":{"accept_languages":"en-US,fr"},"homepage":"https://fixture.test/","os_crypt":{"encrypted_key":"never-import-this"},"aux":{"profile_lock":"never-copy"}})JSON"));
++  auto preferences = aux_import::ReadCategory(profile, false, "preferences");
++  CHECK(!preferences.FindString("error"));
++  CHECK_EQ(preferences.FindDict("preferences")->size(), 2u);
++  CHECK(!preferences.FindDict("preferences")->Find("os_crypt"));
++  SQLite(profile.AppendASCII("places.sqlite"),
++         "CREATE TABLE moz_places(id INTEGER PRIMARY KEY,url TEXT,title "
++         "TEXT,visit_count INTEGER,typed INTEGER);CREATE TABLE "
++         "moz_historyvisits(id INTEGER,place_id INTEGER,visit_date "
++         "INTEGER,visit_type INTEGER);CREATE TABLE moz_bookmarks(id "
++         "INTEGER,parent INTEGER,type INTEGER,title TEXT,fk INTEGER,dateAdded "
++         "INTEGER,position INTEGER);INSERT INTO moz_places "
++         "VALUES(1,'https://firefox.fixture/','Firefox fixture',1,1);INSERT "
++         "INTO moz_historyvisits VALUES(1,1,1700000000000123,2);INSERT INTO "
++         "moz_bookmarks "
++         "VALUES(2,1,2,'toolbar',NULL,1700000000000000,0),(10,2,1,'Firefox "
++         "fixture',1,1700000000000000,0);");
++  auto firefox = aux_import::ReadCategory(profile, true, "history");
++  CHECK(!firefox.FindString("error"));
++  CHECK_EQ(*(*firefox.FindList("visits"))[0].GetDict().FindString("timeMicros"),
++           "1700000000000123");
++  CHECK((*firefox.FindList("visits"))[0]
++            .GetDict()
++            .FindBool("unixTime")
++            .value_or(false));
++  CHECK_EQ(aux_import::ReadCategory(profile, true, "bookmarks")
++               .FindList("firefoxBookmarks")
++               ->size(),
++           2u);
++  CHECK(aux_import::ReadCategory(profile, false, "passwords")
++            .FindString("error"));
++  std::cout
++      << "Read-only native Chromium/Firefox snapshot, hierarchy, timestamp, "
++         "source-count and preference allowlist probes passed\n";
++}
+diff --git a/chrome/common/extensions/api/aux_adblock.json b/chrome/common/extensions/api/aux_adblock.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_adblock.json
+@@ -0,0 +1,287 @@
++[
++  {
++    "namespace": "auxAdblock",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "getState",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "setEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "enabled",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getSubscriptions",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "array",
++              "items": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "addSubscription",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "setSubscriptionEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "id",
++            "type": "string"
++          },
++          {
++            "name": "enabled",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "removeSubscription",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "id",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "startSubscriptionUpdate",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "optional": true,
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getSubscriptionUpdateProgress",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "jobId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getCustomRules",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "saveCustomRules",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "testRequest",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getDiagnostics",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "reloadManualFilters",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "clearEngineCache",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      }
++    ]
++  }
++]
+diff --git a/chrome/common/extensions/api/aux_browser_import.json b/chrome/common/extensions/api/aux_browser_import.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_browser_import.json
+@@ -0,0 +1,101 @@
++[
++  {
++    "namespace": "auxBrowserImport",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "getImportSources",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "array",
++              "items": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "startImport",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getImportProgress",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "jobId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "cancelImport",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "jobId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      }
++    ],
++    "events": [
++      {
++        "name": "onImportProgress",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "progress",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      }
++    ]
++  }
++]
+diff --git a/components/aux_adblock/BUILD.gn b/components/aux_adblock/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/BUILD.gn
+@@ -0,0 +1,17 @@
++# Independent Aux-owned engine; third-party RE2 retains upstream licensing.
++source_set("engine") {
++ sources = [ "engine.h", "engine.cc" ]
++ public_deps = [ "//base", "//url" ]
++ deps = [ "//net", "//third_party/re2" ]
++}
++
++source_set("renderer") {
++ sources = [ "renderer_observer.cc", "renderer_observer.h" ]
++ deps = [ "//base", "//content/public/renderer", "//third_party/blink/public:blink", "//mojo/public/cpp/bindings", "//components/aux_adblock/mojom" ]
++}
++
++executable("engine_probe") {
++ testonly = true
++ sources = [ "engine_probe.cc" ]
++ deps = [ ":engine", "//base" ]
++}
+diff --git a/components/aux_adblock/LICENSE b/components/aux_adblock/LICENSE
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/LICENSE
+@@ -0,0 +1,24 @@
++Copyright (c) 2026 Aux Authors. All rights reserved.
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are met:
++1. Redistributions of source code must retain the above copyright notice,
++   this list of conditions and the following disclaimer.
++2. Redistributions in binary form must reproduce the above copyright notice,
++   this list of conditions and the following disclaimer in the documentation
++   and/or other materials provided with the distribution.
++3. Neither the name of Aux nor the names of its contributors may be used to
++   endorse or promote products derived from this software without specific
++   prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
++LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++POSSIBILITY OF SUCH DAMAGE.
+diff --git a/components/aux_adblock/engine.cc b/components/aux_adblock/engine.cc
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/engine.cc
+@@ -0,0 +1,420 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "components/aux_adblock/engine.h"
++
++#include <algorithm>
++#include <atomic>
++#include <set>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_split.h"
++#include "base/strings/string_util.h"
++#include "net/base/ip_address.h"
++#include "third_party/re2/src/re2/re2.h"
++namespace aux_adblock {
++namespace {
++bool DomainMatches(std::string_view host, std::string_view domain) {
++  return host == domain || (host.size() > domain.size() &&
++                            host[host.size() - domain.size() - 1] == '.' &&
++                            base::EndsWith(host, domain));
++}
++bool Applies(const std::vector<std::string>& domains, std::string_view host) {
++  bool positive = false, matched = false;
++  for (const auto& domain : domains) {
++    if (domain.starts_with('~')) {
++      if (DomainMatches(host, std::string_view(domain).substr(1))) {
++        return false;
++      }
++    } else {
++      positive = true;
++      matched |= DomainMatches(host, domain);
++    }
++  }
++  return !positive || matched;
++}
++bool SafeSelector(std::string_view selector) {
++  return !selector.empty() && selector.size() <= 2048 &&
++         selector.find('{') == selector.npos &&
++         selector.find('}') == selector.npos &&
++         selector.find('\0') == selector.npos;
++}
++std::optional<std::string> Pattern(std::string_view pattern) {
++  if (pattern.empty() || pattern.size() > 4096) {
++    return std::nullopt;
++  }
++  if (pattern.size() > 2 && pattern.front() == '/' && pattern.back() == '/') {
++    return std::string(pattern.substr(1, pattern.size() - 2));
++  }
++  std::string regex;
++  if (pattern.starts_with("||")) {
++    regex = "^[a-zA-Z][a-zA-Z0-9+.-]*://(?:[^/?#]*\\.)?";
++    pattern.remove_prefix(2);
++  } else if (pattern.starts_with('|')) {
++    regex = "^";
++    pattern.remove_prefix(1);
++  }
++  for (size_t i = 0; i < pattern.size(); ++i) {
++    char c = pattern[i];
++    if (c == '*') {
++      regex += ".*";
++    } else if (c == '^') {
++      regex += "(?:[^A-Za-z0-9_.%-]|$)";
++    } else if (c == '|' && i + 1 == pattern.size()) {
++      regex += "$";
++    } else {
++      if (std::string_view(".[](){}+?\\$|").find(c) != std::string_view::npos) {
++        regex += '\\';
++      }
++      regex += c;
++    }
++  }
++  return regex;
++}
++constexpr std::string_view kTypes[] = {
++    "script",   "image",       "stylesheet", "xmlhttprequest",
++    "document", "subdocument", "websocket",  "font",
++    "media",    "object",      "ping",       "other"};
++}  // namespace
++struct Engine::Rule {
++  mutable std::atomic<uint64_t> uses{0};
++  std::string text, source;
++  int line = 0;
++  bool exception = false, important = false;
++  std::optional<bool> third_party;
++  std::set<std::string> types, excluded;
++  std::vector<std::string> domains;
++  std::unique_ptr<RE2> regex;
++  std::string redirect, remove_param, method;
++};
++struct Engine::Cosmetic {
++  std::vector<std::string> domains;
++  bool exception = false;
++  std::string selector, op, value;
++};
++Engine::Engine() = default;
++Engine::~Engine() = default;
++base::DictValue Decision::ToValue() const {
++  base::DictValue result;
++  result.Set("shouldBlock", block);
++  result.Set("important", important);
++  result.Set("hasFilter", has_filter);
++  result.Set("hasException", has_exception);
++  result.Set("filter", filter);
++  result.Set("exception", exception);
++  result.Set("redirect", redirect);
++  result.Set("rewrittenUrl", rewritten_url);
++  result.Set("sourceId", source_id);
++  result.Set("sourceLine", source_line);
++  return result;
++}
++std::shared_ptr<const Engine> Engine::Compile(
++    const std::vector<Source>& sources) {
++  auto engine = std::shared_ptr<Engine>(new Engine);
++  size_t compiled_memory = 0;
++  for (const auto& source : sources) {
++    int network = 0, cosmetic = 0, line = 0, parse_errors = 0;
++    base::ListValue errors;
++    const auto invalid = [&](std::string_view text) {
++      ++parse_errors;
++      if (errors.size() < 128) {
++        errors.Append("line " + base::NumberToString(line) + ": " +
++                      std::string(text).substr(0, 256));
++      }
++    };
++    for (std::string_view raw : base::SplitStringPiece(
++             source.text, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
++      ++line;
++      if (raw.empty() || raw.front() == '!' || raw.front() == '[') {
++        continue;
++      }
++      if (raw.size() > 8192) {
++        invalid(raw);
++        continue;
++      }
++      size_t sep = raw.find("#@#");
++      bool exception = sep != raw.npos;
++      if (!exception) {
++        sep = raw.find("##");
++      }
++      if (sep != raw.npos) {
++        if (engine->cosmetics_.size() >= 50000) {
++          invalid(raw);
++          continue;
++        }
++        auto rule = std::make_unique<Cosmetic>();
++        rule->exception = exception;
++        rule->domains =
++            base::SplitString(raw.substr(0, sep), ",", base::TRIM_WHITESPACE,
++                              base::SPLIT_WANT_NONEMPTY);
++        std::string_view selector = raw.substr(sep + (exception ? 3 : 2));
++        bool valid = true;
++        for (const auto& op :
++             {":has-text(", ":matches-attr(", ":matches-css("}) {
++          const auto pos = selector.find(op);
++          if (pos == selector.npos) {
++            continue;
++          }
++          if (selector.back() != ')') {
++            valid = false;
++            break;
++          }
++          rule->op = op;
++          rule->value = std::string(selector.substr(
++              pos + std::string_view(op).size(),
++              selector.size() - pos - std::string_view(op).size() - 1));
++          selector = selector.substr(0, pos);
++          break;
++        }
++        if (!valid || !SafeSelector(selector) ||
++            selector.find(":has-text(") != selector.npos ||
++            selector.find(":matches-") != selector.npos ||
++            selector.find("+js(") != selector.npos) {
++          invalid(raw);
++          continue;
++        }
++        rule->selector = std::string(selector);
++        engine->cosmetics_.push_back(std::move(rule));
++        ++cosmetic;
++        continue;
++      }
++      auto rule = std::make_unique<Rule>();
++      rule->text = std::string(raw);
++      rule->source = source.id;
++      rule->line = line;
++      rule->exception = raw.starts_with("@@");
++      if (rule->exception) {
++        raw.remove_prefix(2);
++      }
++      auto dollar = raw.rfind('$');
++      if (raw.starts_with('/') && dollar != raw.npos &&
++          dollar < raw.rfind('/')) {
++        dollar = raw.npos;
++      }
++      auto pattern = raw.substr(0, dollar);
++      bool match_case = false, valid = true;
++      if (dollar != raw.npos) {
++        for (auto option : base::SplitStringPiece(raw.substr(dollar + 1), ",",
++                                                  base::TRIM_WHITESPACE,
++                                                  base::SPLIT_WANT_NONEMPTY)) {
++          bool negate = option.starts_with('~');
++          if (negate) {
++            option.remove_prefix(1);
++          }
++          if (std::ranges::find(kTypes, option) != std::end(kTypes)) {
++            (negate ? rule->excluded : rule->types).insert(std::string(option));
++          } else if (option == "third-party") {
++            rule->third_party = !negate;
++          } else if (option == "important" && !negate) {
++            rule->important = true;
++          } else if (option == "match-case" && !negate) {
++            match_case = true;
++          } else if (option.starts_with("domain=") && !negate) {
++            rule->domains =
++                base::SplitString(option.substr(7), "|", base::TRIM_WHITESPACE,
++                                  base::SPLIT_WANT_NONEMPTY);
++          } else if (option.starts_with("method=") && !negate) {
++            rule->method = base::ToUpperASCII(option.substr(7));
++          } else if (option.starts_with("redirect=") && !negate) {
++            auto value = option.substr(9);
++            if (value != "nooptext" && value != "1x1.gif" &&
++                value != "noopjs") {
++              valid = false;
++            } else {
++              rule->redirect = std::string(value);
++            }
++          } else if (option.starts_with("removeparam=") && !negate) {
++            rule->remove_param = std::string(option.substr(12));
++            if (rule->remove_param.empty() ||
++                rule->remove_param.find_first_not_of(
++                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345"
++                    "6789_-.%") != std::string::npos) {
++              valid = false;
++            }
++          } else {
++            valid = false;
++          }
++        }
++      }
++      auto regex = Pattern(pattern);
++      if (!valid || !regex || engine->rules_.size() >= 50000) {
++        invalid(rule->text);
++        continue;
++      }
++      RE2::Options options;
++      options.set_log_errors(false);
++      options.set_case_sensitive(match_case);
++      options.set_max_mem(64 * 1024);
++      rule->regex = std::make_unique<RE2>(*regex, options);
++      if (!rule->regex->ok()) {
++        invalid(rule->text);
++        continue;
++      }
++      const auto memory = static_cast<size_t>(rule->regex->ProgramSize()) * 64;
++      if (compiled_memory + memory > 64 * 1024 * 1024) {
++        invalid(rule->text);
++        continue;
++      }
++      compiled_memory += memory;
++      std::string host_key;
++      if (pattern.starts_with("||")) {
++        auto host = pattern.substr(2);
++        host = host.substr(
++            0, host.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN"
++                                      "OPQRSTUVWXYZ0123456789.-"));
++        if (!host.empty() && !host.starts_with('.') && !host.ends_with('.')) {
++          host_key = base::ToLowerASCII(host);
++        }
++      }
++      if (host_key.empty()) {
++        engine->global_rules_.push_back(rule.get());
++      } else {
++        engine->host_index_[host_key].push_back(rule.get());
++      }
++      engine->rules_.push_back(std::move(rule));
++      ++network;
++    }
++    base::DictValue diagnostic;
++    diagnostic.Set("id", source.id);
++    diagnostic.Set("networkRuleCount", network);
++    diagnostic.Set("cosmeticRuleCount", cosmetic);
++    diagnostic.Set("parseErrorCount", parse_errors);
++    diagnostic.Set("invalidLines", std::move(errors));
++    engine->diagnostics_.Append(std::move(diagnostic));
++  }
++  return engine;
++}
++Decision Engine::Evaluate(const Request& request) const {
++  Decision decision;
++  const Rule *filter = nullptr, *exception = nullptr;
++  std::vector<const Rule*> candidates = global_rules_;
++  std::string_view host = request.url.host();
++  while (!host.empty()) {
++    if (auto found = host_index_.find(std::string(host));
++        found != host_index_.end()) {
++      candidates.insert(candidates.end(), found->second.begin(),
++                        found->second.end());
++    }
++    auto dot = host.find('.');
++    if (dot == host.npos) {
++      break;
++    }
++    host.remove_prefix(dot + 1);
++  }
++  for (const auto* rule : candidates) {
++    if ((rule->third_party && *rule->third_party != request.third_party) ||
++        (!rule->types.empty() && !rule->types.contains(request.type)) ||
++        rule->excluded.contains(request.type) ||
++        (!rule->method.empty() && rule->method != request.method) ||
++        !Applies(rule->domains, request.initiator.host()) ||
++        !RE2::PartialMatch(request.url.spec(), *rule->regex)) {
++      continue;
++    }
++    rule->uses.fetch_add(1, std::memory_order_relaxed);
++    if (rule->exception) {
++      if (!exception || rule->important) {
++        exception = rule;
++      }
++    } else if (!filter || rule->important) {
++      filter = rule;
++    }
++  }
++  if (filter) {
++    decision.has_filter = true;
++    decision.filter = filter->text;
++    decision.important = filter->important;
++    decision.source_id = filter->source;
++    decision.source_line = filter->line;
++    decision.block = true;
++  }
++  if (exception) {
++    decision.has_exception = true;
++    decision.exception = exception->text;
++    if (!filter || !filter->important || exception->important) {
++      decision.block = false;
++    }
++  }
++  if (decision.block && filter && !filter->redirect.empty()) {
++    decision.redirect = filter->redirect;
++    decision.block = false;
++  }
++  if (decision.block && filter && !filter->remove_param.empty()) {
++    std::string query;
++    for (auto part :
++         base::SplitStringPiece(request.url.query(), "&", base::KEEP_WHITESPACE,
++                                base::SPLIT_WANT_NONEMPTY)) {
++      if (part.substr(0, part.find('=')) == filter->remove_param) {
++        continue;
++      }
++      if (!query.empty()) {
++        query += '&';
++      }
++      query += part;
++    }
++    GURL::Replacements replace;
++    replace.SetQueryStr(query);
++    decision.rewritten_url = request.url.ReplaceComponents(replace).spec();
++    decision.block = false;
++  }
++  return decision;
++}
++base::DictValue Engine::Cosmetics(const GURL& document) const {
++  base::ListValue selectors, procedural;
++  std::set<std::string> exceptions;
++  for (const auto& rule : cosmetics_) {
++    if (rule->exception && Applies(rule->domains, document.host())) {
++      exceptions.insert(rule->selector + rule->op + rule->value);
++    }
++  }
++  for (const auto& rule : cosmetics_) {
++    if (rule->exception || !Applies(rule->domains, document.host()) ||
++        exceptions.contains(rule->selector + rule->op + rule->value)) {
++      continue;
++    }
++    if (rule->op.empty()) {
++      if (selectors.size() < 10000) {
++        selectors.Append(rule->selector);
++      }
++    } else {
++      if (procedural.size() < 1000) {
++        procedural.Append(base::DictValue()
++                              .Set("selector", rule->selector)
++                              .Set("op", rule->op)
++                              .Set("value", rule->value));
++      }
++    }
++  }
++  base::DictValue result;
++  result.Set("selectors", std::move(selectors));
++  result.Set("procedural", std::move(procedural));
++  return result;
++}
++base::ListValue Engine::RegexDiagnostics() const {
++  base::ListValue result;
++  for (const auto& rule : rules_) {
++    if (result.size() >= 256) {
++      break;
++    }
++    base::DictValue row;
++    row.Set("id", static_cast<int>(result.size()));
++    row.Set("usageCount",
++            static_cast<double>(rule->uses.load(std::memory_order_relaxed)));
++    row.Set("regex", rule->regex->pattern());
++    row.Set("compiled", true);
++    result.Append(std::move(row));
++  }
++  return result;
++}
++bool ValidSubscriptionURL(const GURL& url) {
++  if (!url.SchemeIs("https") || url.has_username() || url.has_password() ||
++      url.has_ref() || !url.has_host() || url.host() == "localhost" ||
++      base::EndsWith(url.host(), ".localhost") ||
++      base::EndsWith(url.host(), ".local")) {
++    return false;
++  }
++  net::IPAddress ip;
++  if (ip.AssignFromIPLiteral(url.HostNoBrackets()) &&
++      !ip.IsPubliclyRoutable()) {
++    return false;
++  }
++  return true;
++}
++}  // namespace aux_adblock
+diff --git a/components/aux_adblock/engine.h b/components/aux_adblock/engine.h
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/engine.h
+@@ -0,0 +1,53 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Independent bounded filter engine: docs/spec/native/adblock-import F1-F4.
++#ifndef COMPONENTS_AUX_ADBLOCK_ENGINE_H_
++#define COMPONENTS_AUX_ADBLOCK_ENGINE_H_
++#include <map>
++#include <memory>
++#include <string>
++#include <vector>
++
++#include "base/values.h"
++#include "url/gurl.h"
++namespace aux_adblock {
++struct Source {
++  std::string id, text;
++};
++struct Request {
++  GURL url, initiator;
++  std::string type, method = "GET";
++  bool third_party = false;
++};
++struct Decision {
++  bool block = false, important = false, has_filter = false,
++       has_exception = false;
++  std::string filter, exception, redirect, rewritten_url, source_id;
++  int source_line = 0;
++  base::DictValue ToValue() const;
++};
++class Engine {
++ public:
++  static std::shared_ptr<const Engine> Compile(
++      const std::vector<Source>& sources);
++  ~Engine();
++  Engine(const Engine&) = delete;
++  Engine& operator=(const Engine&) = delete;
++  Decision Evaluate(const Request& request) const;
++  base::DictValue Cosmetics(const GURL& document) const;
++  base::ListValue RegexDiagnostics() const;
++  size_t rule_count() const { return rules_.size(); }
++  const base::ListValue& diagnostics() const { return diagnostics_; }
++
++ private:
++  struct Rule;
++  struct Cosmetic;
++  Engine();
++  std::vector<std::unique_ptr<Rule>> rules_;
++  std::map<std::string, std::vector<const Rule*>> host_index_;
++  std::vector<const Rule*> global_rules_;
++  std::vector<std::unique_ptr<Cosmetic>> cosmetics_;
++  base::ListValue diagnostics_;
++};
++bool ValidSubscriptionURL(const GURL& url);
++}  // namespace aux_adblock
++#endif
+diff --git a/components/aux_adblock/engine_probe.cc b/components/aux_adblock/engine_probe.cc
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/engine_probe.cc
+@@ -0,0 +1,68 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include <iostream>
++
++#include "base/check.h"
++#include "components/aux_adblock/engine.h"
++int main() {
++  auto engine = aux_adblock::Engine::Compile(
++      {{"fixture", R"RULES(||ads.test^$script,third-party
++@@||ads.test/allowed^$script
++||ads.test/allowed/critical^$script,important
++||rewrite.test^$removeparam=utm_source
++||noop.test^$script,redirect=noopjs
++example.test##.advert
++example.test##.keep
++example.test#@#.keep
++example.test##article:has-text(Sponsor)
++||unknown.test^$unimplemented-option
++/banner\.js$/
++)RULES"}});
++  auto request = [](const char* url, const char* type = "script",
++                    bool third = true) {
++    return aux_adblock::Request{GURL(url), GURL("https://example.test/"), type,
++                                "GET", third};
++  };
++  CHECK(engine->Evaluate(request("https://ads.test/a.js")).block);
++  CHECK(!engine->Evaluate(request("https://ads.test/a.js", "image")).block);
++  CHECK(!engine->Evaluate(request("https://ads.test/a.js", "script", false))
++             .block);
++  auto exception = engine->Evaluate(request("https://ads.test/allowed/a.js"));
++  CHECK(exception.has_exception);
++  CHECK(!exception.block);
++  auto important =
++      engine->Evaluate(request("https://ads.test/allowed/critical/a.js"));
++  CHECK(important.important);
++  CHECK(important.block);
++  CHECK_EQ(
++      engine
++          ->Evaluate(request("https://rewrite.test/path?a=1&utm_source=x&b=2"))
++          .rewritten_url,
++      "https://rewrite.test/path?a=1&b=2");
++  CHECK_EQ(engine->Evaluate(request("https://noop.test/a.js")).redirect,
++           "noopjs");
++  CHECK(engine->Evaluate(request("https://files.test/banner.js")).block);
++  auto cosmetics = engine->Cosmetics(GURL("https://example.test/"));
++  CHECK_EQ(cosmetics.FindList("selectors")->size(), 1u);
++  CHECK_EQ(cosmetics.FindList("procedural")->size(), 1u);
++  CHECK(engine->Cosmetics(GURL("https://other.test/"))
++            .FindList("selectors")
++            ->empty());
++  CHECK_EQ(engine->diagnostics()[0]
++               .GetDict()
++               .FindInt("parseErrorCount")
++               .value_or(-1),
++           1);
++  CHECK(aux_adblock::ValidSubscriptionURL(
++      GURL("https://filters.example.org/list.txt")));
++  for (const auto* url :
++       {"http://filters.example.org/list", "https://127.0.0.1/list",
++        "https://[::1]/list", "https://10.0.0.1/list",
++        "https://example.local/list", "https://x.localhost/list",
++        "https://user:password@example.org/list",
++        "https://example.org/list#fragment"}) {
++    CHECK(!aux_adblock::ValidSubscriptionURL(GURL(url)));
++  }
++  std::cout << "Native engine "
++               "block/exception/important/type/party/rewrite/redirect/regex/"
++               "cosmetic/procedural/URL checks passed\n";
++}
+diff --git a/components/aux_adblock/mojom/BUILD.gn b/components/aux_adblock/mojom/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/mojom/BUILD.gn
+@@ -0,0 +1,2 @@
++import("//mojo/public/tools/bindings/mojom.gni")
++mojom("mojom") { sources = [ "filters.mojom" ] }
+diff --git a/components/aux_adblock/mojom/filters.mojom b/components/aux_adblock/mojom/filters.mojom
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/mojom/filters.mojom
+@@ -0,0 +1,4 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++module aux_adblock.mojom;
++// The browser derives document identity from the bound RenderFrameHost.
++interface CosmeticHost { GetResources() => (string rules_json); };
+diff --git a/components/aux_adblock/renderer_observer.cc b/components/aux_adblock/renderer_observer.cc
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/renderer_observer.cc
+@@ -0,0 +1,64 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "components/aux_adblock/renderer_observer.h"
++
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "content/public/renderer/render_frame.h"
++#include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
++#include "third_party/blink/public/platform/web_string.h"
++#include "third_party/blink/public/web/web_document.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++#include "third_party/blink/public/web/web_script_source.h"
++namespace aux_adblock {
++RendererObserver::RendererObserver(content::RenderFrame* frame, int world)
++    : content::RenderFrameObserver(frame), world_(world) {}
++RendererObserver::~RendererObserver() = default;
++void RendererObserver::OnDestruct() {
++  delete this;
++}
++void RendererObserver::DidCreateDocumentElement() {
++  weak_.InvalidateWeakPtrs();
++  host_.reset();
++  auto url = render_frame()->GetWebFrame()->GetDocument().Url();
++  if (!url.ProtocolIs("http") && !url.ProtocolIs("https")) {
++    return;
++  }
++  render_frame()->GetBrowserInterfaceBroker().GetInterface(
++      host_.BindNewPipeAndPassReceiver());
++  host_->GetResources(
++      base::BindOnce(&RendererObserver::Apply, weak_.GetWeakPtr()));
++}
++void RendererObserver::Apply(const std::string& rules) {
++  if (rules.size() > 2 * 1024 * 1024) {
++    return;
++  }
++  auto value = base::JSONReader::ReadDict(rules, base::JSON_PARSE_RFC);
++  if (!value) {
++    return;
++  }
++  auto json = base::WriteJson(*value);
++  if (!json) {
++    return;
++  }
++  const std::string code =
++      R"JS((()=>{'use strict';const rules=)JS" + *json + R"JS(;
++ const selectors=Array.isArray(rules.selectors)?rules.selectors.slice(0,10000):[];
++ const procedural=Array.isArray(rules.procedural)?rules.procedural.slice(0,1000):[];
++ let paused=false,timer=0,ruleCursor=0,nodeCursor=0;const style=document.createElement('style');
++ const css=[];for(const selector of selectors){if(typeof selector!=='string'||selector.length>2048||/[{}\0]/.test(selector))continue;try{document.querySelector(selector);css.push(selector+'{display:none!important}')}catch{}}
++ style.textContent=css.join('\n');document.documentElement.append(style);
++ const unquote=s=>s.replace(/^(['"])(.*)\1$/,'$2');
++ function pass(){timer=0;if(paused||document.visibilityState==='hidden')return;const start=performance.now();let visited=0;while(ruleCursor<procedural.length){const rule=procedural[ruleCursor];if(!rule||typeof rule.selector!=='string'||typeof rule.value!=='string'){ruleCursor++;nodeCursor=0;continue}let nodes;try{nodes=document.querySelectorAll(rule.selector)}catch{ruleCursor++;nodeCursor=0;continue}while(nodeCursor<nodes.length){if(visited>0&&(visited>=500||performance.now()-start>6)){schedule();return}const node=nodes[nodeCursor++];visited++;let match=false;const text=unquote(rule.value);if(rule.op===':has-text(')match=(node.textContent||'').includes(text);else if(rule.op===':matches-attr('){const i=text.indexOf('=');const name=i<0?text:text.slice(0,i);if(/^[\w:-]+$/.test(name))match=i<0?node.hasAttribute(name):node.getAttribute(name)===unquote(text.slice(i+1));}else if(rule.op===':matches-css('){const i=text.indexOf(':');const name=text.slice(0,i).trim();if(i>0&&/^[a-zA-Z-]+$/.test(name))match=getComputedStyle(node).getPropertyValue(name).trim()===unquote(text.slice(i+1).trim());}if(match&&(node.style.getPropertyValue('display')!=='none'||node.style.getPropertyPriority('display')!=='important'))node.style.setProperty('display','none','important');}ruleCursor++;nodeCursor=0;}ruleCursor=0;nodeCursor=0;}
++
++ function schedule(){if(!paused&&!timer)timer=setTimeout(pass,50)}
++ const observer=new MutationObserver(()=>{if(!style.isConnected&&document.documentElement)document.documentElement.append(style);schedule()});
++ function resume(){paused=false;observer.observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','id','hidden','style','src','href']});schedule()}
++ function suspend(){paused=true;observer.disconnect();clearTimeout(timer);timer=0}
++ addEventListener('pagehide',suspend);document.addEventListener('freeze',suspend);addEventListener('pageshow',resume);document.addEventListener('resume',resume);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')schedule()});resume();
++})())JS";
++  render_frame()->GetWebFrame()->ExecuteScriptInIsolatedWorld(
++      world_, blink::WebScriptSource(blink::WebString::FromUtf8(code)),
++      blink::BackForwardCacheAware::kAllow);
++}
++}  // namespace aux_adblock
+diff --git a/components/aux_adblock/renderer_observer.h b/components/aux_adblock/renderer_observer.h
+new file mode 100644
+--- /dev/null
++++ b/components/aux_adblock/renderer_observer.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef COMPONENTS_AUX_ADBLOCK_RENDERER_OBSERVER_H_
++#define COMPONENTS_AUX_ADBLOCK_RENDERER_OBSERVER_H_
++#include "base/memory/weak_ptr.h"
++#include "components/aux_adblock/mojom/filters.mojom.h"
++#include "content/public/renderer/render_frame_observer.h"
++#include "mojo/public/cpp/bindings/remote.h"
++namespace aux_adblock {
++class RendererObserver final : public content::RenderFrameObserver {
++ public:
++  RendererObserver(content::RenderFrame* frame, int world_id);
++  ~RendererObserver() override;
++
++ private:
++  void DidCreateDocumentElement() override;
++  void OnDestruct() override;
++  void Apply(const std::string& rules);
++  const int world_;
++  mojo::Remote<mojom::CosmeticHost> host_;
++  base::WeakPtrFactory<RendererObserver> weak_{this};
++};
++}  // namespace aux_adblock
++#endif
