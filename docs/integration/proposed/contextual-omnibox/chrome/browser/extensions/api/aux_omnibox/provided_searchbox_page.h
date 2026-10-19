@@ -3,6 +3,8 @@
 #define CHROME_BROWSER_EXTENSIONS_API_AUX_OMNIBOX_PROVIDED_SEARCHBOX_PAGE_H_
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "base/values.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -48,12 +50,15 @@ class ProvidedSearchboxPage final : public Page {
  private:
   void Send(std::string event, base::DictValue payload = {}, bool has_payload = true);
   raw_ptr<Profile> profile_;
+  void SendShowAiModePref();
+  PrefChangeRegistrar pref_changes_;
   Emit emit_;
   mojo::Receiver<Page> receiver_{this};
   uint32_t sequence_id_ = 0;
   base::DictValue input_state_;
   base::DictValue result_;
   base::DictValue newer_native_state_;
+  base::WeakPtrFactory<ProvidedSearchboxPage> weak_factory_{this};
 };
 base::DictValue ProvidedTab(Profile* profile, const TabInfo& tab);
 base::DictValue ProvidedInputState(const omnibox::InputState& state);

@@ -2,6 +2,10 @@
 #include "chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.h"
 
 #include <iterator>
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
+#include "components/prefs/pref_service.h"
+#include "components/omnibox/browser/omnibox_prefs.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/tabs/public/tab_interface.h"
@@ -147,12 +151,37 @@ base::DictValue ProvidedInputState(const omnibox::InputState& state) {
 }
 
 ProvidedSearchboxPage::ProvidedSearchboxPage(Profile* profile, Emit emit)
-    : profile_(profile), emit_(std::move(emit)) {}
-ProvidedSearchboxPage::~ProvidedSearchboxPage() = default;
-mojo::PendingRemote<Page> ProvidedSearchboxPage::Bind() {
-  return receiver_.BindNewPipeAndPassRemote();
+    : profile_(profile), emit_(std::move(emit)) {
+  auto* prefs = profile_->GetPrefs();
+  if (prefs && prefs->FindPreference(omnibox::kShowAiModeOmniboxButton)) {
+    pref_changes_.Init(prefs);
+    pref_changes_.Add(omnibox::kShowAiModeOmniboxButton,
+        base::BindRepeating(&ProvidedSearchboxPage::SendShowAiModePref,
+                            base::Unretained(this)));
+  }
 }
-void ProvidedSearchboxPage::Close() { receiver_.reset(); emit_.Reset(); }
+ProvidedSearchboxPage::~ProvidedSearchboxPage() { Close(); }
+mojo::PendingRemote<Page> ProvidedSearchboxPage::Bind() {
+  auto remote = receiver_.BindNewPipeAndPassRemote();
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+      base::BindOnce(&ProvidedSearchboxPage::SendShowAiModePref,
+                     weak_factory_.GetWeakPtr()));
+  return remote;
+}
+void ProvidedSearchboxPage::Close() {
+  weak_factory_.InvalidateWeakPtrs();
+  pref_changes_.RemoveAll();
+  receiver_.reset();
+  emit_.Reset();
+}
+void ProvidedSearchboxPage::SendShowAiModePref() {
+  auto* prefs = profile_->GetPrefs();
+  if (!prefs || !prefs->FindPreference(omnibox::kShowAiModeOmniboxButton)) return;
+  // Original producer0x428bb00 reads this exact pref and emits canShow; AIM
+  // provider/profile eligibility remains a separate real native event.
+  Send("onShowAiModePrefChanged", base::DictValue().Set("canShow",
+      prefs->GetBoolean(omnibox::kShowAiModeOmniboxButton)));
+}
 void ProvidedSearchboxPage::Send(std::string event, base::DictValue payload,
                                 bool has_payload) {
   if (emit_) emit_.Run(std::move(event), std::move(payload), has_payload);

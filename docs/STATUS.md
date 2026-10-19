@@ -560,3 +560,7 @@ Eight file workers plus per-operation immutable source directory validation cach
 ## Current boundary compiler compatibility (2026-10-19)
 
 Queued older boundary build31341 failed because kSecUseUserIndependentKeychain is tvOS-only and explicitly unavailable on macOS. Its selector refusal is now compiled only for TARGET_OS_TV; macOS does not reference an unsupported symbol. Separate queued guard27971 completed exit0. Fresh complete current boundary build62014 started through shared wrapper for actual source-matching receipt; no original native commands/DP calls authorized or executed by compilation.
+
+### Contextual omnibox event/view follow-up (staged only)
+
+Recovered original thumbnail notification-only acknowledgement, context-entrypoint rejection and AI-pref event producer from pinned bounded native bodies. Staged real model keyword/selection/input events, scoped pref observation, a required nonvisual native model view and live exact-profile tab-controller checks. Preserved actual155 Lens eligibility instead of widening it for newtab. Ordered replay/count/SHA and generated Page-schema checks pass; no shared source writes, native compile, owner capture or network calls. Actual uploaded-image→Lens context handoff and original constructor/client relation remain unverified, alongside real native eligibility/controller paths. See docs/integration/provided-contextual-omnibox.md.

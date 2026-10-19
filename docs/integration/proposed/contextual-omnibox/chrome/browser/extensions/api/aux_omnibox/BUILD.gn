@@ -21,6 +21,7 @@ source_set("owned_contextual_session") {
   public_deps = [
     "//base",
     "//components/contextual_search:public",
+    "//components/prefs",
     "//components/omnibox/browser:mojo_bindings",
     "//content/public/browser",
     "//mojo/public/cpp/bindings",
@@ -31,6 +32,7 @@ source_set("owned_contextual_session") {
     "//chrome/browser/contextual_search",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/omnibox",
+    "//chrome/browser/ui/contextual_search",
     "//chrome/browser/ui/webui/cr_components/searchbox",
     "//chrome/browser/ui/webui/cr_components/searchbox:searchbox_impl",
     "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
@@ -41,5 +43,6 @@ source_set("owned_contextual_session") {
     "//third_party/omnibox_proto",
     "//components/omnibox/common:features",
     "//ui/gfx/geometry",
+    "//ui/gfx/range",
   ]
 }

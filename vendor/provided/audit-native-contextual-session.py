@@ -15,6 +15,9 @@ RUNS = {
     'getRecentTabs': (0xEAD8130, 0x46AEC6C, 0xE26FA88, 0x4285E20),
     'getTabPreview': (0xEAD8148, 0x46AECBC, 0xE26FAF8, 0x42860E8),
     'getInputState': (0xEAD8160, 0x46AED0C, 0xE26FB68, 0x42864AC),
+    'onThumbnailRemoved': (0xEAD8100, 0x46AEBCC, 0xE26F9A8, 0x4285900),
+    'setPopupSelection': (0xEAD8070, 0x46AE9EC, 0xE26F708, 0x4283680),
+    'openPopupSelection': (0xEAD8088, 0x46AEA3C, 0xE26F778, 0x4283B80),
     'createSession': (0xEAD7FC8, 0x46AE7BC, 0xE26F3F8, 0x427FDC0),
     'notifySessionStarted': (0xEAD8178, 0x46AED5C, 0xE26FBD8, 0x4286780),
     'notifySessionAbandoned': (0xEAD8190, 0x46AEDAC, 0xE26FC48, 0x42869E0),
@@ -68,6 +71,9 @@ def audit(path):
             arm[0x4288500:0x4288774]).hexdigest()
         # Bounded ADRP/ADD source anchors recover exact original object keys.
         keys = {
+            0x428BB2C: 'omnibox.show_ai_mode_omnibox_button',
+            0x428BB48: 'canShow',
+            0x428BB9C: 'asideOmnibox.onShowAiModePrefChanged',
             0x428F320: 'toolMode', 0x428F51C: 'modelMode',
             0x428FBE8: 'maxInstances', 0x428FC7C: 'imageGenUploadActive',
             0x4290278: 'key', 0x4290280: 'value',
@@ -101,6 +107,37 @@ def audit(path):
                 ('tabInfo', 0x429031C, 0x330),
                 ('placeholderReply', 0x4290E80, 0x260),
                 ('previewAndInputStateReply', 0x42914A0, 0x220)]
+        }
+        def call_target(offset):
+            instruction = u32(offset)
+            assert instruction & 0xFC000000 == 0x94000000
+            immediate = instruction & 0x3FFFFFF
+            if immediate & (1 << 25): immediate -= 1 << 26
+            return offset + immediate * 4
+        assert call_target(0x42859A0) == 0x427FBD8
+        assert call_target(0x42859EC) == 0x6C77B98
+        assert u32(0x428391C) == 0x71001B1F  # CMP w24,#6
+        assert u32(0x4283E3C) == 0x71001B3F  # CMP w25,#6
+        result['behaviorRanges'] = {
+            name: {'start': hex(start), 'end': hex(end),
+                   'sha256': hashlib.sha256(arm[start:end]).hexdigest()}
+            for name, start, end in [
+                ('thumbnailNotificationOnly', 0x4285900, 0x4285B58),
+                ('setPopupSelection', 0x4283680, 0x4283B80),
+                ('openPopupSelection', 0x4283B80, 0x42844C0),
+                ('parseSelectionState', 0x4290BE4, 0x4290E80),
+                ('showAiModePreferenceEvent', 0x428BB00, 0x428BBD4),
+                ('nativeLensEditModel', 0x7BB6630, 0x7BB67AC)]
+        }
+        result['thumbnailCalls'] = {
+            hex(offset): hex(call_target(offset))
+            for offset in range(0x4285900, 0x4285B58, 4)
+            if u32(offset) & 0xFC000000 == 0x94000000
+        }
+        result['rejectedContextSelectionInstructions'] = {
+            hex(offset): hex(u32(offset)) for offset in [
+                0x428391C, 0x4283920, 0x4283E3C, 0x4283E40,
+                0x4290DA4, 0x4290E14]
         }
         return result
 

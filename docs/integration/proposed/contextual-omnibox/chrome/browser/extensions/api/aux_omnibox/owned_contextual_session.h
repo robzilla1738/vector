@@ -31,11 +31,14 @@ class OwnedContextualHandler;
 // the supplied extension events. Closing either pipe invalidates the session.
 class OwnedContextualSession final : public content::WebContentsObserver {
  public:
+  using KeywordCallback = base::RepeatingCallback<void(
+      bool, const std::u16string&, const std::u16string&)>;
   static std::unique_ptr<OwnedContextualSession> Create(
       content::WebContents* owner,
       mojo::PendingReceiver<searchbox::mojom::PageHandler> commands,
       mojo::PendingRemote<searchbox::mojom::Page> events,
-      base::OnceClosure invalidated);
+      base::OnceClosure invalidated,
+      KeywordCallback keyword_changed);
   ~OwnedContextualSession() override;
   OwnedContextualSession(const OwnedContextualSession&) = delete;
   OwnedContextualSession& operator=(const OwnedContextualSession&) = delete;
@@ -56,6 +59,7 @@ class OwnedContextualSession final : public content::WebContentsObserver {
                       mojo_base::BigBuffer bytes, ContextCallback callback);
   void AddTabContext(int32_t native_tab_handle, bool delay_upload,
                      ContextCallback callback);
+  bool CanUseTabContext(int32_t native_tab_handle) const;
   bool DeleteContext(const base::UnguessableToken& token,
                      bool from_automatic_chip);
   bool ClearFiles(bool block_auto_suggested_tabs);
@@ -76,7 +80,8 @@ class OwnedContextualSession final : public content::WebContentsObserver {
 
  private:
   OwnedContextualSession(content::WebContents* owner,
-                         base::OnceClosure invalidated);
+                         base::OnceClosure invalidated,
+                         KeywordCallback keyword_changed);
   void Initialize(
       mojo::PendingReceiver<searchbox::mojom::PageHandler> commands,
       mojo::PendingRemote<searchbox::mojom::Page> events);
@@ -87,6 +92,7 @@ class OwnedContextualSession final : public content::WebContentsObserver {
   const raw_ptr<Profile> profile_;
   const content::GlobalRenderFrameHostId frame_id_;
   base::OnceClosure invalidated_;
+  KeywordCallback keyword_changed_;
   // Handler observes the handle. It must be destroyed first on every exit.
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle> context_;
   std::unique_ptr<OwnedContextualHandler> handler_;

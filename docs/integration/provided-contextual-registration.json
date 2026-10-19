@@ -23,6 +23,24 @@
     "vtable": "0xe26fb68",
     "run": "0x42864ac"
   },
+  "onThumbnailRemoved": {
+    "table": "0xead8100",
+    "factory": "0x46aebcc",
+    "vtable": "0xe26f9a8",
+    "run": "0x4285900"
+  },
+  "setPopupSelection": {
+    "table": "0xead8070",
+    "factory": "0x46ae9ec",
+    "vtable": "0xe26f708",
+    "run": "0x4283680"
+  },
+  "openPopupSelection": {
+    "table": "0xead8088",
+    "factory": "0x46aea3c",
+    "vtable": "0xe26f778",
+    "run": "0x4283b80"
+  },
   "createSession": {
     "table": "0xead7fc8",
     "factory": "0x46ae7bc",
@@ -55,6 +73,9 @@
   },
   "openLensSearchBodySha256": "c0c1192c6e443d96b12e01fc8076b7a2f57cee43616439b08f5dea223ef2c0e4",
   "objectKeyInstructionAnchors": {
+    "0x428bb2c": "omnibox.show_ai_mode_omnibox_button",
+    "0x428bb48": "canShow",
+    "0x428bb9c": "asideOmnibox.onShowAiModePrefChanged",
     "0x428f320": "toolMode",
     "0x428f51c": "modelMode",
     "0x428fbe8": "maxInstances",
@@ -113,5 +134,62 @@
       "size": 544,
       "sha256": "c9beefa33b602e9f66b0d104eee90d182081c8aa46a65ca1ce7f8956bbcd0280"
     }
+  },
+  "behaviorRanges": {
+    "thumbnailNotificationOnly": {
+      "start": "0x4285900",
+      "end": "0x4285b58",
+      "sha256": "eaec764907f93daf716a6ac32ddb27438eefd6f2ecbe1c34d941eba7a99b97b8"
+    },
+    "setPopupSelection": {
+      "start": "0x4283680",
+      "end": "0x4283b80",
+      "sha256": "9e7841b85e0528ca84d5a72a8286b759e5e2e0be76bc1bacbcbe4f9555c74d9e"
+    },
+    "openPopupSelection": {
+      "start": "0x4283b80",
+      "end": "0x42844c0",
+      "sha256": "4dd7709a11baba2e516581e20f7eacfc4109dc9ef3b42dbe301cec0d670ca9f8"
+    },
+    "parseSelectionState": {
+      "start": "0x4290be4",
+      "end": "0x4290e80",
+      "sha256": "cc4e3ff3c50b35f783566b73d922655d78f21d5753fe721c7553b8ce373089f5"
+    },
+    "showAiModePreferenceEvent": {
+      "start": "0x428bb00",
+      "end": "0x428bbd4",
+      "sha256": "11e2a0d9054ec3fdb0acfe2ecdbe17bd95baf6f9611ec35bf0d1ac849c2a6441"
+    },
+    "nativeLensEditModel": {
+      "start": "0x7bb6630",
+      "end": "0x7bb67ac",
+      "sha256": "c329e27479192fad611e91828efc33ff3de67392bf327a2fcfff6e077e1ac3d0"
+    }
+  },
+  "thumbnailCalls": {
+    "0x4285980": "0x2dbcd28",
+    "0x428598c": "0x52d94",
+    "0x42859a0": "0x427fbd8",
+    "0x42859b4": "0x13f7b44",
+    "0x42859dc": "0x4a8ab4",
+    "0x42859ec": "0x6c77b98",
+    "0x4285a10": "0x6c78bd8",
+    "0x4285a2c": "0x18218",
+    "0x4285a3c": "0x6c77350",
+    "0x4285a60": "0x6c78bd8",
+    "0x4285a84": "0x8eb8",
+    "0x4285a9c": "0x8eb8",
+    "0x4285af4": "0x6c77350",
+    "0x4285b18": "0x6c78bd8",
+    "0x4285b3c": "0x8eb8"
+  },
+  "rejectedContextSelectionInstructions": {
+    "0x428391c": "0x71001b1f",
+    "0x4283920": "0x54000520",
+    "0x4283e3c": "0x71001b3f",
+    "0x4283e40": "0x540001a0",
+    "0x4290da4": "0x54000380",
+    "0x4290e14": "0x91001000"
   }
 }

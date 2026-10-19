@@ -76,6 +76,16 @@
         "find": "provider->CreateLensEntrypointMatch",
         "count": 1,
         "offset": 36597
+      },
+      {
+        "find": "std::u16string OmniboxEditModel::GetText() const",
+        "count": 1,
+        "offset": 136271
+      },
+      {
+        "find": "return view_->GetText();",
+        "count": 1,
+        "offset": 136419
       }
     ]
   },
@@ -124,6 +134,81 @@
         "find": "interface Page {",
         "count": 1,
         "offset": 23959
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/omnibox/omnibox_view.h",
+    "sha256": "1f5ecf594cb453e716499932e1a1f2fc06071fa6e321ffe2669517aaf7df683d",
+    "anchors": [
+      {
+        "find": "virtual std::u16string GetText() const = 0;",
+        "count": 1,
+        "offset": 2285
+      },
+      {
+        "find": "State GetState() const;",
+        "count": 1,
+        "offset": 10535
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/omnibox/omnibox_controller.cc",
+    "sha256": "c2e3668a3db8f4182fb05416951614fabc0e6783728fa0514633dddd8e125ae6",
+    "anchors": [
+      {
+        "find": "void OmniboxController::SetView(OmniboxView* view)",
+        "count": 1,
+        "offset": 2692
+      },
+      {
+        "find": "autocomplete_controller_->AddObserver(this);",
+        "count": 1,
+        "offset": 3001
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.cc",
+    "sha256": "ae3659867a03ac89c5e1776c666a890bd7276a56f09be861024db12bcce47026",
+    "anchors": [
+      {
+        "find": "void WebuiOmniboxHandler::OnStart(",
+        "count": 1,
+        "offset": 20198
+      },
+      {
+        "find": "ContextualSearchProvider::LensEntrypointEligible(input, client)",
+        "count": 1,
+        "offset": 21071
+      }
+    ]
+  },
+  {
+    "path": "components/omnibox/browser/contextual_search_provider.cc",
+    "sha256": "e351ac7f912688e6801de019bd99e8a77bfeb6a7f58e7433e9fdd2e1f12af2f6",
+    "anchors": [
+      {
+        "find": "bool ContextualSearchProvider::LensEntrypointEligible(",
+        "count": 1,
+        "offset": 15004
+      },
+      {
+        "find": "client->IsLensEnabled() && client->AreLensEntrypointsVisible();",
+        "count": 1,
+        "offset": 15422
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/contextual_search/tab_contextualization_controller.h",
+    "sha256": "dbcaa77842e5708c7144f28e7de8c7d47502e6bb62dcc8b032749209b6a90b67",
+    "anchors": [
+      {
+        "find": "class TabContextualizationController",
+        "count": 1,
+        "offset": 1448
       }
     ]
   }

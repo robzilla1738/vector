@@ -95,7 +95,8 @@ class OmniboxSession {
               base::BindRepeating(&OmniboxSession::Emit, base::Unretained(this))) {
     backend_ = OwnedContextualSession::Create(owner,
         commands_.BindNewPipeAndPassReceiver(), page_.Bind(),
-        base::BindOnce(&OmniboxSession::Invalidated, base::Unretained(this)));
+        base::BindOnce(&OmniboxSession::Invalidated, base::Unretained(this)),
+        base::BindRepeating(&OmniboxSession::KeywordChanged, base::Unretained(this)));
   }
   ~OmniboxSession() {
     // No extension events or pending callbacks may escape document teardown.
@@ -128,9 +129,17 @@ class OmniboxSession {
         }, base::Unretained(owner_->GetBrowserContext()));
     EventRouter::Get(profile)->DispatchEventToExtension(extension_, std::move(event));
   }
+  void KeywordChanged(bool selected, const std::u16string& keyword,
+                      const std::u16string& placeholder) {
+    if (destroying_ || !backend_ || !backend_->IsCurrentDocument()) return;
+    Emit("onKeywordSelectedChanged", base::DictValue()
+        .Set("isKeywordSelected", selected).Set("keyword", base::UTF16ToUTF8(keyword))
+        .Set("keywordPlaceholder", base::UTF16ToUTF8(placeholder)));
+  }
   void Invalidated() {
     if (!destroying_)
       Emit("onSessionInvalidated", base::DictValue().Set("reason", "tabDestroyed"));
+    page_.Close();
     commands_.reset();
   }
   native::OmniboxPopupSelectionPtr Selection(const base::DictValue& request) const {
@@ -301,8 +310,17 @@ ExtensionFunction::ResponseAction AuxOmniboxFunction::RunAux() {
       method == "deleteAutocompleteMatch" || method == "onNavigationLikely" ||
       method == "activateKeyword") {
     auto selection = request ? session.Selection(*request) : nullptr;
-    if (!selection) return RespondNow(Error("Selection is stale or unavailable"));
-    const auto sequence = session.page_.sequence_id();
+    if (!selection) return RespondNow(Error("Invalid arguments"));
+    uint32_t sequence = session.page_.sequence_id();
+    if (const auto* supplied = request->Find("resultSequenceId")) {
+      if (supplied->is_int() && supplied->GetInt() >= 0)
+        sequence = supplied->GetInt();
+      else if (!supplied->is_string() ||
+               !base::StringToUint(supplied->GetString(), &sequence))
+        return RespondNow(Error("Invalid arguments"));
+    }
+    if (sequence != session.page_.sequence_id() && method != "openAutocompleteMatch" &&
+        method != "executeAction") return RespondNow(Error("Selection is stale or unavailable"));
     const GURL url = session.Url(selection->line);
     const auto modifiers = Modifiers(*request);
     const int mouse = request->FindInt("mouseButton").value_or(0);
@@ -345,6 +363,8 @@ ExtensionFunction::ResponseAction AuxOmniboxFunction::RunAux() {
     if (args().size() != 2 || !args()[1].is_int()) return RespondNow(Error("Native tab identity required"));
     const auto tab = NativeTabHandle(profile(), args()[1].GetInt());
     if (!tab) return RespondNow(Error("Invalid tabId"));
+    if (!session.backend_->CanUseTabContext(*tab))
+      return RespondNow(Error("Native tab context capture is unavailable for this tab"));
     commands->GetTabPreview(*tab, base::BindPostTaskToCurrentDefault(base::BindOnce(
         [](decltype(reply) reply, const std::optional<std::string>& preview) {
           base::DictValue result; result.Set("hasPreview", preview.has_value());
@@ -400,8 +420,11 @@ ExtensionFunction::ResponseAction AuxOmniboxFunction::RunAux() {
     if (args().size() != 2 || !args()[1].is_bool()) return RespondNow(Error("Automatic-context flag required"));
     session.backend_->ClearFiles(args()[1].GetBool()); return RespondNow(NoArguments());
   }
-  if (method == "onThumbnailRemoved")
-    return RespondNow(Error("Native thumbnail removal is unavailable; delete its context token"));
+  if (method == "onThumbnailRemoved") {
+    // Exact original Run0x4285900: owned-session notification acknowledgement,
+    // with no native model/context actuation or synthesized thumbnail event.
+    return RespondNow(NoArguments());
+  }
   if (method == "notifySessionStarted") { session.backend_->NotifySessionStarted(); return RespondNow(NoArguments()); }
   if (method == "notifySessionAbandoned") { session.backend_->NotifySessionAbandoned(); return RespondNow(NoArguments()); }
   if (method == "openLensSearch") {
