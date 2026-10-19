@@ -1,4 +1,5 @@
 import { resolveAccount, rpc } from '../daemon';
+import { requireAccount } from '../native';
 import {
   record,
   requestFrom,
@@ -47,8 +48,30 @@ export function installPageUtilityBackground() {
     }
     let current: UtilityRequestRunner | undefined,
       closed = false;
+    let bound: { accountId: number; profileId: string } | undefined;
     async function verify(request: UtilityRequest) {
       if (closed) throw new Error('The selected frame disconnected.');
+      const profile = await requireAccount().getProfileContext();
+      const mode = chrome.extension.inIncognitoContext
+        ? 'incognito'
+        : 'default';
+      if (
+        profile.isCurrent !== true ||
+        profile.isLocked !== false ||
+        profile.browserMode !== mode ||
+        !Number.isInteger(profile.accountId) ||
+        !profile.profileId ||
+        (bound &&
+          (bound.accountId !== profile.accountId ||
+            bound.profileId !== profile.profileId))
+      )
+        throw new Error(
+          'Page utilities require this current unlocked account and browser profile.',
+        );
+      bound ??= {
+        accountId: profile.accountId as number,
+        profileId: profile.profileId,
+      };
       const tab = await chrome.tabs.get(tabId as number);
       if (tab.incognito !== chrome.extension.inIncognitoContext)
         throw new Error('The browsing mode changed.');
@@ -83,12 +106,17 @@ export function installPageUtilityBackground() {
             throw new Error(
               'This task does not belong to the selected document.',
             );
-          void chrome.tabs
-            .create({
-              windowId: sender?.tab?.windowId,
-              url: chrome.runtime.getURL(
-                `index.html#/chat/${current.sessionId}`,
-              ),
+          const selected = current;
+          void verify(selected.request)
+            .then(() => {
+              if (closed || current !== selected)
+                throw new Error('The temporary task changed.');
+              return chrome.tabs.create({
+                windowId: sender?.tab?.windowId,
+                url: chrome.runtime.getURL(
+                  `index.html#/chat/${selected.sessionId}`,
+                ),
+              });
             })
             .catch((error) => {
               if (!closed)
@@ -126,10 +154,21 @@ export function installPageUtilityBackground() {
         void current?.dispose();
         current = new UtilityRequestRunner(request, {
           rpc,
-          context: async () => ({
-            ...(await resolveAccount()),
-            incognito: chrome.extension.inIncognitoContext,
-          }),
+          context: async () => {
+            const context = await resolveAccount();
+            if (
+              !bound ||
+              context.accountId !== bound.accountId ||
+              context.profile.profileId !== bound.profileId
+            )
+              throw new Error(
+                'The utility account or browser profile changed.',
+              );
+            return {
+              ...context,
+              incognito: chrome.extension.inIncognitoContext,
+            };
+          },
           verify,
           update: (message) => {
             if (!closed) port.postMessage(message);

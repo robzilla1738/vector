@@ -66,7 +66,7 @@ export default defineConfig({
               ],
               background: { service_worker: 'background.js', type: 'module' },
               chrome_url_overrides: { newtab: 'index.html' },
-              side_panel: { default_path: 'index.html#/chat' },
+              side_panel: { default_path: 'index.html?surface=sidepanel#/chat' },
               options_page: 'index.html#/settings/general',
               action: { default_title: 'Open Aux' },
               content_scripts: [
@@ -74,6 +74,7 @@ export default defineConfig({
                   matches: ['http://*/*', 'https://*/*'],
                   js: ['content.js'],
                   run_at: 'document_idle',
+                  all_frames: true,
                 },
               ],
               content_security_policy: {

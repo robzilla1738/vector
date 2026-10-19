@@ -60,6 +60,7 @@ export class AgentEngine {
   private heldPermits = new Set<string>();
   private closed = false;
   private closeHandlers = new Set<() => void | Promise<void>>();
+  private volatileSessions = new Map<string, Session>();
   constructor(
     readonly store: AgentStorage,
     readonly bridge?: Bridge,
@@ -80,7 +81,10 @@ export class AgentEngine {
   }
   get(accountId: number, id: string): Session {
     this.store.requireAccount(accountId);
-    const value = this.store.get(accountId, 'sessions', id) as Session | null;
+    const temporary = this.volatileSessions.get(this.key(accountId, id));
+    const value = temporary
+      ? structuredClone(temporary)
+      : (this.store.get(accountId, 'sessions', id) as Session | null);
     if (!value) fail('NOT_FOUND', 'Session does not exist in this account');
     if (
       (value.status === 'running' || value.status === 'suspended') &&
@@ -96,7 +100,12 @@ export class AgentEngine {
   }
   list(accountId: number) {
     this.store.requireAccount(accountId);
-    return Object.values(this.store.all(accountId, 'sessions'))
+    return [
+      ...Object.values(this.store.all(accountId, 'sessions')),
+      ...[...this.volatileSessions.values()].filter(
+        (value) => value.accountId === accountId,
+      ),
+    ]
       .filter(
         (value): value is Session =>
           value !== null &&
@@ -108,7 +117,23 @@ export class AgentEngine {
   }
   save(session: Session) {
     session.updatedAt = Date.now();
-    this.store.set(session.accountId, 'sessions', session.id, session);
+    if (session.trigger === 'page-utility') {
+      session.ephemeral = true;
+      session.incognito = true;
+      session.permissionMode = 'read-only';
+      session.permissionOverrides = { deny: ['*'], allow: [], ask: [] };
+      session.runtimeConfig = {
+        ...session.runtimeConfig,
+        memoryExtractionDisabled: true,
+      };
+      this.volatileSessions.set(
+        this.key(session.accountId, session.id),
+        structuredClone(session),
+      );
+    } else this.store.set(session.accountId, 'sessions', session.id, session);
+  }
+  forgetVolatile(accountId: number, id: string) {
+    this.volatileSessions.delete(this.key(accountId, id));
   }
   emit(session: Session, type: string, data: unknown) {
     const safeData = JSON.parse(
@@ -130,6 +155,24 @@ export class AgentEngine {
   }
   create(input: CreateInput) {
     input = createSchema.parse(input);
+    if (input.trigger === 'page-utility') {
+      if (this.volatileSessions.size >= 128)
+        fail(
+          'PRECONDITION_FAILED',
+          'Close a temporary page utility before starting another',
+        );
+      input = {
+        ...input,
+        ephemeral: true,
+        incognito: true,
+        runtimeConfig: {
+          ...input.runtimeConfig,
+          memoryExtractionDisabled: true,
+        },
+        permissionMode: 'read-only',
+        permissionOverrides: { deny: ['*'], allow: [], ask: [] },
+      };
+    }
     this.store.requireAccount(input.accountId);
     if (input.triggerIdempotencyKey) {
       const existing = this.list(input.accountId).find(
@@ -140,7 +183,10 @@ export class AgentEngine {
     if (input.projectId) this.requireProject(input.accountId, input.projectId);
     if (input.parentId) this.get(input.accountId, input.parentId);
     const id = input.id ?? randomUUID();
-    if (this.store.get(input.accountId, 'sessions', id))
+    if (
+      this.volatileSessions.has(this.key(input.accountId, id)) ||
+      this.store.get(input.accountId, 'sessions', id)
+    )
       fail('CONFLICT', 'Session ID already exists');
     const now = Date.now();
     const incognito =
@@ -174,7 +220,8 @@ export class AgentEngine {
       suspensions: [],
       idempotencyKeys: [],
     };
-    mkdirSync(this.directory(session), { recursive: true, mode: 0o700 });
+    if (session.trigger !== 'page-utility')
+      mkdirSync(this.directory(session), { recursive: true, mode: 0o700 });
     this.save(session);
     return session;
   }
@@ -427,14 +474,21 @@ export class AgentEngine {
         accountId,
         session.model ?? defaultModel,
       );
-      const tools = restrictSubagentTools(this, session, {
-        ...sessionTools(this, accountId, id, signal),
-        ...this.extensions.tools?.(session, signal),
-      });
-      const extraInstructions = [
-        await this.extensions.instructions?.(session),
-        subagentInstructions(this, session),
-      ]
+      const tools =
+        session.trigger === 'page-utility'
+          ? {}
+          : restrictSubagentTools(this, session, {
+              ...sessionTools(this, accountId, id, signal),
+              ...this.extensions.tools?.(session, signal),
+            });
+      const extraInstructions = (
+        session.trigger === 'page-utility'
+          ? []
+          : [
+              await this.extensions.instructions?.(session),
+              subagentInstructions(this, session),
+            ]
+      )
         .filter(Boolean)
         .join('\n\n');
       const agent = new ToolLoopAgent({
@@ -884,6 +938,7 @@ export class AgentEngine {
       [...this.closeHandlers].map((handler) => Promise.resolve().then(handler)),
     );
     this.closeHandlers.clear();
+    this.volatileSessions.clear();
   }
   get semaphore() {
     return { active: this.running, limit: this.concurrency };

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -31,6 +32,54 @@ function fixture() {
     },
   };
 }
+test('page utilities keep detached private sessions in memory and remove them on disposal or shutdown', async () => {
+  const f = fixture();
+  try {
+    const s = f.engine.create({
+      accountId: f.accountId,
+      trigger: 'page-utility',
+      ephemeral: false,
+      incognito: false,
+      permissionMode: 'full-access',
+      permissionOverrides: { allow: ['*'], deny: [], ask: [] },
+      runtimeConfig: { memoryExtractionDisabled: false },
+    });
+    assert.equal(s.ephemeral, true);
+    assert.equal(s.incognito, true);
+    assert.equal(s.permissionMode, 'read-only');
+    assert.equal(s.runtimeConfig?.memoryExtractionDisabled, true);
+    assert.deepEqual(s.permissionOverrides, {
+      deny: ['*'],
+      allow: [],
+      ask: [],
+    });
+    f.engine.emit(s, 'fixture', { text: 'temporary page text' });
+    assert.equal(f.store.get(f.accountId, 'sessions', s.id), null);
+    assert.equal(existsSync(f.engine.directory(s)), false);
+    const detached = f.engine.get(f.accountId, s.id);
+    detached.messages.push({
+      id: 'fixture-message',
+      turnId: 'fixture-turn',
+      role: 'user',
+      content: 'unsaved draft',
+      createdAt: Date.now(),
+    });
+    assert.equal(f.engine.get(f.accountId, s.id).messages.length, 0);
+    assert.ok(f.engine.list(f.accountId).some((row) => row.id === s.id));
+    f.engine.forgetVolatile(f.accountId, s.id);
+    assert.throws(() => f.engine.get(f.accountId, s.id), /does not exist/);
+    const next = f.engine.create({
+      accountId: f.accountId,
+      trigger: 'page-utility',
+      permissionMode: 'read-only',
+    });
+    await f.engine.close();
+    assert.throws(() => f.engine.get(f.accountId, next.id), /does not exist/);
+  } finally {
+    await f.engine.close();
+    f.close();
+  }
+});
 test('credentials are private, atomically replaced, redacted, and scoped to account', () => {
   const f = fixture();
   try {

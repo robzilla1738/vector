@@ -33,8 +33,10 @@ export function createAgentRouters(
     await Promise.all(
       sessions.map((session) => engine.wait(accountId, session.id)),
     );
-    for (const session of sessions)
+    for (const session of sessions) {
       await engine.tabs.terminate(accountId, session.id);
+      engine.forgetVolatile(accountId, session.id);
+    }
   });
   const get = (input: z.infer<typeof sessionScope>) =>
     engine.get(input.accountId, input.sessionId);
@@ -558,6 +560,7 @@ export function createAgentRouters(
         engine.attachments.remove(input.accountId, input.sessionId, file.id);
       store.set(input.accountId, 'sessionApprovals', input.sessionId, null);
       store.set(input.accountId, 'sessions', input.sessionId, null);
+      engine.forgetVolatile(input.accountId, input.sessionId);
       return { deleted: true };
     }),
     moveToProject: procedure

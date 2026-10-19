@@ -3,6 +3,7 @@ import { readContextActivity } from './context-bridge';
 import { daemonUrl, getToken, reconnect, resolveAccount } from './daemon';
 import { readHistoryVisits } from './history-bridge';
 import { activateNotificationChat } from './notification-bridge';
+import { installPageUtilityBackground } from './utilities/background';
 
 function navigationUrl(value: unknown) {
   const url = new URL(String(value));
@@ -574,3 +575,4 @@ chrome.runtime.onStartup.addListener(() => {
   void connect();
 });
 void connect();
+installPageUtilityBackground();

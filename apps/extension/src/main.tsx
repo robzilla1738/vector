@@ -101,6 +101,7 @@ function Shell() {
   return (
     <>
       {!gate &&
+        !path.startsWith('/chat') &&
         !['/', '/tab-search', '/mini-popup', '/onboarding'].includes(path) && (
           <nav className="navigation" aria-label="Aux navigation">
             <a className="wordmark" href="#/">

@@ -1,6 +1,8 @@
 import { installCaptureContent } from './capture-content';
+import { installPageUtilities } from './utilities/content';
 
 installCaptureContent();
+installPageUtilities();
 const elements = new Map<string, HTMLElement>();
 let snapshotUrl = '';
 chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
