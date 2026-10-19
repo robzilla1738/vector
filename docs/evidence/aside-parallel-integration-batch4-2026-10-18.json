@@ -1,0 +1,45 @@
+{
+  "source": "24a0eb158c6586c5281f8d0b6dea8d5c6dcf9233",
+  "fullCheck": {
+    "session": 52468,
+    "exit": 0,
+    "tests": 6183,
+    "files": 869,
+    "seconds": 101.87,
+    "nativeCompilerConcurrent": false
+  },
+  "build": {
+    "session": 41012,
+    "exit": 0,
+    "frameworkUUID": "4C4C4421-5555-3144-A19E-7CA4E255B39A",
+    "record": "/tmp/aux-keyboard-batch4-native-build-2026-10-18.json",
+    "preservedSymbols": "/tmp/aux-keyboard-batch4-native-symbols-2026-10-18/identity.json"
+  },
+  "diagnostic": {
+    "session": 42451,
+    "exit": 1,
+    "result": "/tmp/aux-keyboard-batch4-diagnostic-aux-BKVeJz/result.json",
+    "actualDistinctFixtureTabs": 10,
+    "counterDeltaEach": 1,
+    "browserExit": 0,
+    "helperExits": [
+      0,
+      0
+    ],
+    "tabTimingPairPresent": false
+  },
+  "manualDiagnostic": {
+    "session": 78772,
+    "pid": 41558,
+    "result": "/tmp/aux-keyboard-batch4-manual-diagnostic-aux-Wi4AOa/result.json",
+    "observed": "Full modifier-lifetime v4 input dismissed preview and selected first fixture tab from tenth. Later CUA chord opened preview; Escape canceled it. This is behavior evidence only.",
+    "retirement": "Native menu Quit removed original browser. Stdin gate was /dev/null and could not resume; stuck diagnostic terminated with SIGTERM, original launcher joined1. No forced lock clear.",
+    "timingQualified": false
+  },
+  "limits": [
+    "AppKit original key timestamp ingress remains under investigation.",
+    "Current native Home Cmd-L fix and full reference/accessibility acceptance remain unverified.",
+    "Earlier cd76 manual20/20 is not a new24a run.",
+    "Original155SIGTRAP unresolved; exact historical symbols unavailable."
+  ]
+}
