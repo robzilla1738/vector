@@ -39,10 +39,10 @@ That manager caches its birth profile's WaapUIMetricsService and first-window
 classification, pending presentation/10s callbacks, and window creation timing.
 This patch deliberately preserves those real initial-window metrics: a profile
 switch is not a new window creation and must not fabricate startup/first-paint
-signals or call SkipStartupForTesting. Pending callback/service lifetime and
-birth-profile retention still require the owner's actual session/window lifecycle
-review before declaring all metrics boundaries ready. No first-paint callback
-was invoked or suppressed by this proposal.
+signals or call SkipStartupForTesting. The source-profile keepalive must remain valid for this actual creation-provenance
+manager and its pending callbacks. This is a retained birth-window owner, not a
+missing current-interaction rebind: the same physical window and SessionID survive.
+No first-paint callback was invoked, reassigned or suppressed by this proposal.
 
 This is a source-grounded current155 owner adaptation. No identically named old
 supplied reload-profile helper is claimed. Manifest pins the two source inputs

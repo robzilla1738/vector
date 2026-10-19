@@ -35,7 +35,7 @@
     "input_pair": "OnButtonPressedStart -> last_input_info_; DidExecuteReloadCommand records then resets",
     "lifetime": "WaapUIMetricsRecorder destructor default; no metric flushing",
     "menu_guard": "ToolbarButton::IsMenuShowing",
-    "remaining_window_owner": "InitialWebUIWindowMetricsManager caches birth service and first-window classification"
+    "retained_birth_window_owner": "InitialWebUIWindowMetricsManager caches birth service and first-window classification"
   },
   "compiled": false,
   "runtimeAcceptance": false,
