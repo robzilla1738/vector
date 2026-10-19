@@ -1,0 +1,28 @@
+diff --git a/apps/extension/src/content.ts b/apps/extension/src/content.ts
+--- a/apps/extension/src/content.ts
++++ b/apps/extension/src/content.ts
+@@ -1,3 +1,4 @@
++import { installPageUtilities } from './utilities/content';
+ import { installCaptureContent } from './capture-content';
+ 
+ installCaptureContent();
+@@ -145,3 +146,5 @@
+   }
+   return null;
+ }
++
++installPageUtilities();
+diff --git a/apps/extension/src/background.ts b/apps/extension/src/background.ts
+--- a/apps/extension/src/background.ts
++++ b/apps/extension/src/background.ts
+@@ -1,3 +1,4 @@
++import { installPageUtilityBackground } from './utilities/background';
+ import { createCaptureBackground } from './capture-background';
+ import { readContextActivity } from './context-bridge';
+ import { daemonUrl, getToken, reconnect, resolveAccount } from './daemon';
+@@ -574,3 +575,5 @@
+   void connect();
+ });
+ void connect();
++
++installPageUtilityBackground();
