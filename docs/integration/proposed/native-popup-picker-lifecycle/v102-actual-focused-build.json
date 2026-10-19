@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v102/manifest.json",
+  "compositionSha256": "9f76890b09484e3239533fcd7917f19f466730756f7f67728c07d730304e37d7",
+  "appliedSourceOutputs": 257,
+  "artworkTargets": 23,
+  "originalReplaySteps": 112,
+  "originalReplayMatchesAllOutputs": true,
+  "originalReplayBoundary": "native-profile-switch-private-services/build-registration/native.patch",
+  "gnLog": "out/native-integration/v102-gn.log",
+  "gnSummary": "Done. Made 36072 targets from 5013 files in 7993ms",
+  "focusedBuild": {
+    "exitCode": 0,
+    "elapsedSeconds": 31.44678807258606,
+    "targets": {
+      "default_search_extension_controlled_controller": "obj/chrome/browser/ui/search_engines/search_engines/default_search_extension_controlled_controller.o",
+      "browser_window_features": "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features.o",
+      "lens_overlay_entry_point_controller": "obj/chrome/browser/ui/lens/impl/lens_overlay_entry_point_controller.o",
+      "incognito_clear_browsing_data_dialog_coordinator": "obj/chrome/browser/ui/views/incognito_clear_browsing_data_dialog/incognito_clear_browsing_data_dialog_coordinator.o",
+      "download_toolbar_ui_controller": "obj/chrome/browser/ui/views/download/download/download_toolbar_ui_controller.o",
+      "extension_browser_window_helper": "obj/chrome/browser/extensions/extensions/extension_browser_window_helper.o",
+      "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/search_engines/search_engines/default_search_extension_controlled_controller.o",
+      "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features.o",
+      "obj/chrome/browser/ui/lens/impl/lens_overlay_entry_point_controller.o",
+      "obj/chrome/browser/ui/views/incognito_clear_browsing_data_dialog/incognito_clear_browsing_data_dialog_coordinator.o",
+      "obj/chrome/browser/ui/views/download/download/download_toolbar_ui_controller.o",
+      "obj/chrome/browser/extensions/extensions/extension_browser_window_helper.o",
+      "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+      "-j",
+      "10",
+      "-k",
+      "0"
+    ]
+  },
+  "buildLog": "out/native-integration/v102-focused-build.log",
+  "fullyLinked": false,
+  "runtimeAcceptance": false,
+  "signingPerformed": false
+}
