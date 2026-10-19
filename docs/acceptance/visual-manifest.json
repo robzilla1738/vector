@@ -1,0 +1,786 @@
+{
+  "version": 1,
+  "note": "No accepted live-host reference pairs yet. Null entries are required capture gaps, never pass or skipped. Original copy/art/font substitutions require explicit reviewed masks and thresholds.",
+  "surfaces": [
+    {
+      "id": "newtab-initial",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "newtab-initialized",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "newtab-query-results",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "newtab-agent-mode",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "newtab-narrow",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "newtab-private",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "model-picker",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "effort-picker",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "permission-picker",
+      "spec": "docs/spec/ui/newtab.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-empty",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-streaming",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-tool-details",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-formatted-transcript",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-queue",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-queue-edit",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-steering",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-approval",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-question",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-todos",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-attachment-mentions",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-artifact",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-draft-preview",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-error",
+      "spec": "docs/spec/ui/chat.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "chat-list",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "inbox",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "tasks",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "project-list",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "project-detail",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "project-editor",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "routine-list",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "routine-editor",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "memory-list",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "memory-editor",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "memory-history",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "archive",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "statistics",
+      "spec": "docs/spec/ui/secondary.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-general",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-appearance",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-account",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-agents",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-model",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-mcp",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-skills",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-skill-detail",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-channels",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-communication",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-context",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-lasso",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-mini-popup",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-password",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-privacy",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-projects",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-routines",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-memories",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-archive",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-statistics",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-developers",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "settings-experimental",
+      "spec": "docs/spec/ui/settings.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-welcome",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-local-account",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-browser-import",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-import-progress",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-password-import",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-model",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-permissions",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "onboarding-complete",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "account-password-gate",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "account-recovery",
+      "spec": "docs/spec/ui/onboarding.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "mini-popup-compact",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "mini-popup-expanded",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "mini-popup-attachments",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "mini-popup-options",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "tabsearch-empty",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "tabsearch-results",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "notification",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "blocked-navigation",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "tab-preview",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "glance",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "selection-handle",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "lasso-streaming",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "lasso-complete",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "lasso-error",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "capture-anchor",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "capture-toolbar",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "capture-result",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "translation-progress",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "translation-complete",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "translation-error",
+      "spec": "docs/spec/ui/utilities.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-checking",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-disabled",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-setup",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-recovery",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-locked",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-unlocked",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-error",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-login-detail",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-card-detail",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-note-detail",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-identity-detail",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-item-editor",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-generator",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-autofill",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-save-update",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-passkey",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-import-preview",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-import-error",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "vault-security-settings",
+      "spec": "docs/spec/ui/vault.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-expanded",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-collapsed",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-hover",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-resized",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-pin-drag",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "sidebar-bookmark-rename",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-task-row",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-task-popover",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-task-tooltip",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "agent-tabs-bubble",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-tabsearch",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "switcher-held",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "switcher-cancel",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-mini-popup",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "native-mini-options",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "update-indicator",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "profile-menu",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "profile-editor",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "profile-icon-grid",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "toolbar-newtab",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "toolbar-internal-url",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "horizontal-tabs",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    },
+    {
+      "id": "reduced-transparency",
+      "spec": "docs/spec/native/surfaces.md",
+      "light": null,
+      "dark": null
+    }
+  ]
+}
