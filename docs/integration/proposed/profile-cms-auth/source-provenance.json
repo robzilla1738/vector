@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "kind": "source-only-offline-cms-proposal",
+  "sources": [
+    {
+      "path": "vendor/provided/native/profile-cms-auth.mm",
+      "sha256": "3221e625ca551f4e021f58857426206a8da1de92c89fc9b9fa604f27bbc5c393"
+    },
+    {
+      "path": "vendor/provided/build-profile-cms.mjs",
+      "sha256": "4ae3dfeeba105547a11f2907017e7a32d3152b4ba468de7ec31858b028fb24f6"
+    },
+    {
+      "path": "vendor/provided/authenticate-development-profile.mjs",
+      "sha256": "07bab089ee3ee8617ed0a69a61ea6686fb301eb9caf20a42206481a184312782"
+    },
+    {
+      "path": "vendor/provided/authenticate-development-profile.test.mjs",
+      "sha256": "3b90bf60e03126b4bbdb15384c040cf8196f52de2cd6d5f6b90aece7256e28f7"
+    }
+  ],
+  "inspectedSdk": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CMSDecoder.h",
+      "sha256": "56348bcd7c8a21835af738cd016c13eed8c0ab1a4e9c7b473f709e87c8dcec41"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecPolicy.h",
+      "sha256": "6688a804581e40a5d305016d52b8e323033cdc9bba515863b0f49ca42c713470"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecTrust.h",
+      "sha256": "2596ae0621bf36c7e5fa4468a4c5a70b29140048ed778f68d0a3d88828d14500"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Security.tbd",
+      "sha256": "d9e581991d69174d84e4a1d17afda6c8bbd40c15f4a9759f25f044bab4d5cdd4"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "url": "https://github.com/apple-oss-distributions/Security/blob/main/OSX/sec/Security/SecPolicy.list",
+      "fact": "OSXProvisioningProfileSigning registry exported identifier, Apple anchors, properties factory"
+    },
+    {
+      "url": "https://github.com/apple-oss-distributions/Security/blob/main/trust/headers/SecPolicyPriv.h",
+      "fact": "Provisioning signer/intermediate marker, digital signature, OCSP policy restrictions; no copied OID implementation"
+    }
+  ],
+  "checks": {
+    "pureJsTestsPassed": 3,
+    "syntaxChecksPassed": 2,
+    "nativeCompiled": false,
+    "profileInputsRead": false,
+    "helperExecuted": false,
+    "networkTrustEvaluation": false,
+    "signingPerformed": false,
+    "dpExecuted": false
+  },
+  "buildReceipt": null
+}
