@@ -4,8 +4,8 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   generateText,
+  isStepCount,
   type ModelMessage,
-  stepCountIs,
   ToolLoopAgent,
   type ToolSet,
 } from 'ai';
@@ -278,11 +278,71 @@ export class AgentEngine {
           ? `${instructions}\n\n${extraInstructions}`
           : instructions,
         tools,
-        stopWhen: stepCountIs(40),
+        stopWhen: isStepCount(40),
         maxRetries: 2,
+        toolCallConcurrency: 1,
+        onLanguageModelCallStart: () =>
+          this.emit(this.get(accountId, id), 'model-call-started', { runId }),
+        reasoning:
+          session.model?.thinkingLevel === 'off'
+            ? 'none'
+            : (session.model?.thinkingLevel ?? 'medium'),
+        providerOptions: session.model?.fastMode
+          ? { gateway: { sort: 'ttft' } }
+          : {},
+        onToolExecutionStart: ({ toolCall }) => {
+          const latest = this.get(accountId, id);
+          if (latest.toolCalls.some((call) => call.id === toolCall.toolCallId))
+            return;
+          latest.toolCalls.push({
+            id: toolCall.toolCallId,
+            name: toolCall.toolName,
+            input: toolCall.input,
+            status: 'running',
+            startedAt: Date.now(),
+          });
+          this.emit(latest, 'tool-started', {
+            id: toolCall.toolCallId,
+            name: toolCall.toolName,
+            input: toolCall.input,
+          });
+        },
+        onToolExecutionEnd: ({ toolCall, toolOutput }) => {
+          const latest = this.get(accountId, id);
+          const call = latest.toolCalls.find(
+            (call) => call.id === toolCall.toolCallId,
+          );
+          if (!call || call.status === 'completed' || call.status === 'errored')
+            return;
+          call.finishedAt = Date.now();
+          if (toolOutput.type === 'tool-error') {
+            call.status = 'errored';
+            call.error = this.credentials.redact(
+              accountId,
+              String(toolOutput.error),
+            );
+            this.emit(latest, 'tool-error', { id: call.id, error: call.error });
+            return;
+          }
+          call.status = 'completed';
+          call.result = JSON.parse(
+            this.credentials.redact(
+              accountId,
+              JSON.stringify(toolOutput.output ?? null),
+            ),
+          );
+          this.emit(latest, 'tool-finished', {
+            id: call.id,
+            result: call.result,
+          });
+        },
         prepareStep: () => {
           const latest = this.get(accountId, id);
           return {
+            reasoning:
+              latest.model?.thinkingLevel === 'off'
+                ? ('none' as const)
+                : (latest.model?.thinkingLevel ?? 'medium'),
             model: resolveModel(
               this.store,
               this.credentials,
@@ -291,7 +351,7 @@ export class AgentEngine {
             ),
           };
         },
-        onStepFinish: (step) => {
+        onStepEnd: (step) => {
           const latest = this.get(accountId, id);
           latest.context.push(...(step.response.messages as ModelMessage[]));
           this.emit(latest, 'step-finished', {
@@ -354,6 +414,9 @@ export class AgentEngine {
           error instanceof Error ? error.message : String(error),
         );
       }
+      this.active
+        .get(this.key(accountId, id))
+        ?.controller.abort(new Error('Run finished with an error'));
       const run = latest.runs.find((run) => run.id === runId);
       if (run) {
         run.status = latest.status;

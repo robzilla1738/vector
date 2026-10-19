@@ -15,12 +15,12 @@
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js"
   },
   "dependencies": {
-    "ai": "^6.0.0",
-    "@ai-sdk/gateway": "^3.0.0",
-    "@ai-sdk/openai": "^3.0.0",
-    "@ai-sdk/anthropic": "^3.0.0",
-    "@ai-sdk/google": "^3.0.0",
-    "@ai-sdk/openai-compatible": "^2.0.0",
+    "ai": "^7.0.143",
+    "@ai-sdk/gateway": "^4.0.116",
+    "@ai-sdk/openai": "^4.0.96",
+    "@ai-sdk/anthropic": "^4.0.82",
+    "@ai-sdk/google": "^4.0.99",
+    "@ai-sdk/openai-compatible": "^3.0.71",
     "@modelcontextprotocol/sdk": "^1.25.0",
     "@trpc/server": "^11.0.0",
     "rrule": "^2.8.1",

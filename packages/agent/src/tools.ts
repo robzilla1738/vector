@@ -5,7 +5,7 @@ import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { isIP } from 'node:net';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { tool } from 'ai';
+import { type ToolSet, tool } from 'ai';
 import { z } from 'zod';
 import type { AgentEngine } from './engine.js';
 import { fail } from './storage.js';
@@ -24,7 +24,7 @@ export function sessionTools(
   accountId: number,
   sessionId: string,
   signal: AbortSignal,
-) {
+): ToolSet {
   async function tracked<T>(
     name: string,
     input: unknown,
@@ -32,14 +32,16 @@ export function sessionTools(
     execute: () => Promise<T> | T,
   ) {
     const session = engine.get(accountId, sessionId);
-    session.toolCalls.push({
-      id,
-      name,
-      input,
-      status: 'running',
-      startedAt: Date.now(),
-    });
-    engine.emit(session, 'tool-started', { id, name, input });
+    if (!session.toolCalls.some((call) => call.id === id)) {
+      session.toolCalls.push({
+        id,
+        name,
+        input,
+        status: 'running',
+        startedAt: Date.now(),
+      });
+      engine.emit(session, 'tool-started', { id, name, input });
+    }
     try {
       const result = await execute();
       signal.throwIfAborted();
@@ -133,6 +135,11 @@ export function sessionTools(
         'PRECONDITION_FAILED',
         'Bind this session to a connected browser profile before using browser tools',
       );
+    if (
+      session.permissionMode === 'read-only' &&
+      !['tabs.query', 'page.snapshot', 'page.screenshot'].includes(method)
+    )
+      fail('FORBIDDEN', 'Read-only sessions cannot mutate browser state');
     return engine.bridge.command(
       { accountId, ...session.browserBinding },
       { method, params },

@@ -119,10 +119,11 @@ test('human decision resolves once; tool path denies credentials and read-only m
     await assert.rejects(
       () =>
         Promise.resolve(
-          tools.write_file.execute?.(
+          tools.write_file?.execute?.(
             { path: 'test.txt', content: 'x', overwrite: false },
             {
               toolCallId: 'write',
+              context: undefined,
               messages: [],
               abortSignal: controller.signal,
             },
@@ -142,10 +143,11 @@ test('human decision resolves once; tool path denies credentials and read-only m
     await assert.rejects(
       () =>
         Promise.resolve(
-          tools.read_file.execute?.(
+          tools.read_file?.execute?.(
             { path: link, startLine: 1, lineCount: 500 },
             {
               toolCallId: 'read',
+              context: undefined,
               messages: [],
               abortSignal: controller.signal,
             },

@@ -14,7 +14,7 @@ const routineFields = z.object({
   triggerKind: z.enum(['schedule', 'event']).default('schedule'),
   scheduleKind: z.enum(['once', 'recurring']).optional(),
   timezone: z.string().default('UTC'),
-  rrule: z.string().optional(),
+  rrule: z.string().max(4000).optional(),
   runAt: z.iso.datetime().optional(),
   eventFilter: z
     .object({ source: z.string().min(1) })
@@ -39,12 +39,16 @@ const routineSchema = routineFields.extend({
 });
 type Routine = z.infer<typeof routineSchema>;
 const routineScope = scope.extend({ routineId: z.string() });
-function recurrence(record: z.infer<typeof routineFields>, after: number) {
+function recurrence(
+  record: z.infer<typeof routineFields>,
+  after: number,
+  anchor = after,
+) {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: record.timezone }).format();
     const rule = rrule.rrulestr(record.rrule ?? '', {
       tzid: record.timezone,
-      dtstart: new Date(after),
+      dtstart: new Date(anchor),
     });
     return rule.after(new Date(after), false)?.getTime() ?? null;
   } catch {
@@ -92,7 +96,13 @@ function validate(
   }
   if (record.scheduleKind !== 'recurring' || !record.rrule || record.runAt)
     fail('BAD_REQUEST', 'Recurring routine requires RRULE and forbids runAt');
-  return recurrence(record, now);
+  return recurrence(
+    record,
+    now,
+    'createdAt' in record && typeof record.createdAt === 'number'
+      ? record.createdAt
+      : now,
+  );
 }
 export function createRoutineRouter(
   { t, procedure, store }: DaemonServices,
@@ -280,7 +290,9 @@ export function pollRoutines(
       try {
         runRoutine(store, engine, account.id, record, executionId);
         record.nextRunAt =
-          record.scheduleKind === 'recurring' ? recurrence(record, now) : null;
+          record.scheduleKind === 'recurring'
+            ? recurrence(record, now, record.createdAt)
+            : null;
         if (record.scheduleKind === 'once') record.state = 'completed';
         store.set(account.id, 'routines', record.id, {
           ...record,
@@ -296,4 +308,34 @@ export function pollRoutines(
       }
     }
   return results;
+}
+
+export function triggerEventRoutines(
+  store: DaemonServices['store'],
+  engine: AgentEngine,
+  accountId: number,
+  event: { id: string; source: string },
+  now = Date.now(),
+) {
+  store.requireAccount(accountId);
+  const matched: string[] = [];
+  for (const value of Object.values(store.all(accountId, 'routines'))) {
+    const record = routineSchema.parse(value);
+    if (
+      record.state !== 'active' ||
+      record.triggerKind !== 'event' ||
+      record.eventFilter?.source !== event.source ||
+      (record.expiresAt && Date.parse(record.expiresAt) <= now)
+    )
+      continue;
+    runRoutine(
+      store,
+      engine,
+      accountId,
+      record,
+      `${accountId}:${record.id}:event:${event.id}`,
+    );
+    matched.push(record.id);
+  }
+  return matched;
 }

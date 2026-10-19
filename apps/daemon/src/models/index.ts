@@ -17,16 +17,37 @@ export function createModelRouter(
       (provider === 'vercel-ai-gateway' ? [defaultModel.modelId] : [])
     );
   }
+  // Public Gateway model inventory, retrieved 2026-10-19 from /v1/models.
+  function describe(provider: string, modelId: string) {
+    const model = {
+      id: `${provider}/${modelId}`,
+      modelId,
+      provider,
+      name: modelId,
+      inputModalities: ['text'],
+      thinkingLevels: [] as string[],
+      contextWindow: null as number | null,
+      outputLimit: null as number | null,
+    };
+    if (provider === 'vercel-ai-gateway' && modelId === defaultModel.modelId)
+      return {
+        ...model,
+        name: 'Muse Spark 1.3 Contributor',
+        inputModalities: ['text', 'image', 'pdf'],
+        thinkingLevels: ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+        contextWindow: 1048576,
+        outputLimit: 1048576,
+      };
+    return model;
+  }
   function inventory(accountId: number) {
-    return engine.credentials.list(accountId).flatMap((credential) =>
-      configured(accountId, credential.providerId).map((modelId) => ({
-        id: `${credential.providerId}/${modelId}`,
-        modelId,
-        provider: credential.providerId,
-        name: modelId,
-        inputModalities: ['text'],
-      })),
-    );
+    return engine.credentials
+      .list(accountId)
+      .flatMap((credential) =>
+        configured(accountId, credential.providerId).map((modelId) =>
+          describe(credential.providerId, modelId),
+        ),
+      );
   }
   async function catalog(provider: string) {
     if (!['vercel-ai-gateway', 'openrouter'].includes(provider))
@@ -66,13 +87,7 @@ export function createModelRouter(
     listSupported: procedure.input(scope).query(({ input }) => {
       store.requireAccount(input.accountId);
       return [
-        {
-          id: `${defaultModel.provider}/${defaultModel.modelId}`,
-          provider: defaultModel.provider,
-          modelId: defaultModel.modelId,
-          name: defaultModel.modelId,
-          inputModalities: ['text'],
-        },
+        describe(defaultModel.provider, defaultModel.modelId),
         ...inventory(input.accountId).filter(
           (model) => model.modelId !== defaultModel.modelId,
         ),
