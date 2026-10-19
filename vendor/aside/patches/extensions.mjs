@@ -4,7 +4,7 @@
  * exactly as shipped, which is what keeps the copied code working unchanged.
  */
 import { execFileSync } from "node:child_process";
-import { copyFileSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { PRODUCT_WORD } from "./brand.mjs";
 
@@ -14,7 +14,15 @@ const TEXT_FILES = /\.(?:js|mjs|html|json|css|txt)$/;
 
 /** Anchored edits, per extension. `file` is relative to the extension root. */
 export const extensionPatches = {
-  "agent-manager": [],
+  "agent-manager": [
+    {
+      // Aside serves the uBlock Origin asset catalog from its cloud; Aux reads it from upstream.
+      name: "adblock filter catalog",
+      file: "assets/recommended-filters-gA0HHZVC.js",
+      find: 'await m("adblock/assets")',
+      replace: 'await fetch("https://raw.githubusercontent.com/gorhill/uBlock/master/assets/assets.json")',
+    },
+  ],
   "password-manager": [],
 };
 
@@ -51,6 +59,7 @@ export function rebrandExtension(directory, name, patches) {
   }
 
   applyAuxArtwork(directory);
+  if (name === "agent-manager") addManifestPermissions(directory, ["declarativeNetRequest", "unlimitedStorage"]);
   installPrivateApiShim(directory);
 }
 
@@ -89,9 +98,18 @@ function applyAuxArtwork(directory) {
   }
 }
 
-/** Loads the private-API shim before any extension code runs. */
+/** Adds Chromium permissions the shims need (content blocking and large filter-list storage). */
+function addManifestPermissions(directory, permissions) {
+  const path = join(directory, "manifest.json");
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  manifest.permissions = [...new Set([...manifest.permissions, ...permissions])];
+  writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+/** Loads the private-API shims before any extension code runs. */
 function installPrivateApiShim(directory) {
-  copyFileSync(join(here, "../shims/aux-private-shim.js"), join(directory, "aux-private-shim.js"));
+  const shims = ["aux-private-shim.js", "aux-adblock.js"].map((file) => readFileSync(join(here, "../shims", file), "utf8"));
+  writeFileSync(join(directory, "aux-private-shim.js"), shims.join("\n"));
   const manifest = JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8"));
   const worker = manifest.background?.service_worker;
   if (worker) {
