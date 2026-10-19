@@ -43,6 +43,25 @@ single build/launch owner. No completion percentage or unmeasured timing is impl
 | A8      | active                         | Shared account primitives, Google REST, Notion/eligible Slack MCP, X REST, governed LinkedIn/browser paths and structured Gateway/image search. Registrations and actual granted capabilities remain explicit prerequisites. |
 | A9      | waiting on integrated outcomes | Current 155 crash/browser acceptance, all reference surfaces in matched themes/widths/states, matching-stock perf and default-route 20-task smoke at least18/20. No source-only completion.                                  |
 
+### Owner-requested stopping checkpoint — October 18
+
+Batch6 is integrated through `c54330aab`; [evidence](evidence/aside-parallel-integration-batch6-2026-10-18.json)
+records its check (6,188 pass/one failure; targeted9/9 rerun passes), exact
+native/source distinction and resume gates. The full check is not green; the
+intermittent title assertion has no established cause. No new build or
+campaign starts before handback. The tables below retain earlier batch history;
+this checkpoint and STATUS supersede their old active/pending build descriptions.
+
+| Remaining gate | Owner | Evidence / next step |
+| --- | --- | --- |
+| Batch6 Forget and Project glyph | AI/UI + root | Integrated187c/843; focused79/13 cases. Native staging and changed-flow observation pending. |
+| Stock command-input timing | Tools + root | Stock3D build0; ten fixture documents and tab pair pass, then command presentation absent. Bounded source investigation preserved separately. |
+| Paired performance | Root | 0 qualified pairs. c543 shared1280×800 control needs native observation, then complete original target campaign with quiet resources. |
+| UI and real-user behavior | UI + root | Full192-reference/theme/narrow/accessibility coverage and current final-candidate20-task smoke remain open. |
+| AI lifecycle | AI + root | Long successful compaction, populated Dream/diff/revert, active Forget/recovery and queue races need native proof. |
+| Tools and connected apps | Tools + root | Earlier native PDF/audio evidence and current fixtures; fresh image/channel/account tests and explicit OAuth setup remain. |
+| Crash and browser readiness | Root | Original exact crash UUID unavailable; unresolved. Broad current-source browser acceptance remains open. |
+
 ### Current implementation owners — October 18
 
 The owner authorized three implementation agents and one integrator. Each lane

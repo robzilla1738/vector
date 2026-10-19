@@ -24,11 +24,22 @@
     "log": "/tmp/aux-stock-appkit-integration-check-2026-10-18.log",
     "nativeCompilerConcurrent": false
   },
-  "nativeCompilation": "Pending; current stock88 binary remains previous candidate. Aux873/22 successful native signal evidence unchanged.",
+  "nativeCompilation": "Succeeded: session53755 exit0,11steps555.13s; stock framework/dSYM4C4C443D-5555-3144-A1E3-801565D207A3. Aux873/22 unchanged.",
   "limits": [
     "0qualified paired performance samples",
     "No presentation/threshold relaxation",
     "No product input or event consumption change",
     "No phase or daily-use readiness completion"
-  ]
+  ],
+  "nativeDiagnostic": {
+    "record": "/tmp/aux-stock-appkit-command-diagnostic-stock-C8b4as/result.json",
+    "actualFixtures": 10,
+    "tabTimingPair": true,
+    "tabLatencyUs": 21059,
+    "frameIntervalUs": 8333,
+    "nextFailure": "Command presentation absent",
+    "browserExit": 0,
+    "helperExit": 0,
+    "qualifiedPerformance": false
+  }
 }

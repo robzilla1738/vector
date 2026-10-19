@@ -1,0 +1,104 @@
+{
+  "status": "Checkpoint requested by owner; full adoption remains incomplete",
+  "source": "c54330aab",
+  "commits": {
+    "memory": "187c74b39",
+    "ui": "843ef4e32",
+    "benchmarkControls": "c54330aab"
+  },
+  "changes": {
+    "memory": "Forget All durable retirement cutoff/hash now excludes never-extracted old completed sessions from discovery and extraction after restart; new sessions remain eligible.",
+    "ui": "Share existing reference-backed Settings Projects glyph with unselected composer Project control; selected folders retain folder glyph.",
+    "benchmark": "Common 1280x800 normal native outer-window dimensions; assert dimensions/state on existing CDP window reads. Native geometry acceptance pending."
+  },
+  "focusedEvidence": {
+    "memory": {
+      "failingBefore": 2,
+      "afterDistRebuild": 79,
+      "files": 4,
+      "finalNewCases": 2
+    },
+    "ui": {
+      "existingTests": 13,
+      "referenceProof": "/tmp/aux-ui-project-glyph-proof-2026-10-18/source-proof.json"
+    },
+    "benchmark": "node --check and diff check; no qualified run"
+  },
+  "fullCheck": {
+    "status": "completed with one failure; targeted rerun passes, cause not established",
+    "session": 91515,
+    "log": "/tmp/aux-parallel-batch6-check-2026-10-18.log",
+    "runtimeDistRebuiltFirst": true,
+    "concurrentNativeCompiler": false,
+    "exit": 1,
+    "testsPassed": 6188,
+    "testsFailed": 1,
+    "filesPassed": 868,
+    "filesFailed": 1,
+    "seconds": 111.1,
+    "typecheck": "pass",
+    "lint": "pass",
+    "failure": "CommandBar.settings-navigation.test.tsx:225 missing .cb-display .cb-title after accepted history navigation"
+  },
+  "compiledAux": {
+    "commit": "873d478bee03e79962b50023d8dd17126fc83b8b",
+    "frameworkUUID": "4C4C4422-5555-3144-A1DE-A83B684A9A1D",
+    "containsBatch6": false
+  },
+  "stockBuild": {
+    "session": 53755,
+    "exit": 0,
+    "seconds": 555.13,
+    "steps": 11,
+    "frameworkUUID": "4C4C443D-5555-3144-A1E3-801565D207A3",
+    "record": "/tmp/aux-stock-appkit-3adc9e08-root-build-2026-10-18/results/attempt1/build.json",
+    "symbols": "/tmp/aux-stock-appkit-3adc9e08-root-build-2026-10-18/results/attempt1/symbols/identity.json"
+  },
+  "stockDiagnostic": {
+    "session": 48060,
+    "exit": 1,
+    "record": "/tmp/aux-stock-appkit-command-diagnostic-stock-C8b4as/result.json",
+    "actualFixtureDocuments": 10,
+    "tabLatencyUs": 21059,
+    "frameIntervalUs": 8333,
+    "failure": "Command presentation absent",
+    "browserExit": 0,
+    "helperExit": 0,
+    "qualifiedPerformance": false,
+    "warmWindowNotReached": true
+  },
+  "remaining": [
+    "Investigate intermittent CommandBar Settings navigation title assertion if it recurs; full check remains recorded as one failure, targeted9/9 pass.",
+    "Stock command-input metric blocker; preserve exact source finding before next native change.",
+    "0 qualified paired performance samples; fixed-window control also awaits native observation.",
+    "Batch6 native staging and changed-flow acceptance; successful long-context compaction, populated Memory/Dream/Forget, queue races.",
+    "Complete reference/theme/narrow/accessibility walkthrough, current final-candidate manual20 and browser daily-use workflows.",
+    "Original155 crash unresolved; exact old UUID unavailable. Current normal retirements do not diagnose it.",
+    "Live image/channel/connected-account checks; OAuth registrations remain explicit setup dependencies."
+  ],
+  "stoppingBoundary": "No new campaign, native build or real external write; root joins full check and leaves clean local main. No pushes/releases.",
+  "focusedRerun": {
+    "session": 51871,
+    "exit": 0,
+    "tests": 9,
+    "files": 1,
+    "seconds": 1.08,
+    "log": "/tmp/aux-batch6-settings-navigation-rerun-2026-10-18.log",
+    "limit": "No source change or established root cause; full check is not green. Investigate recurrence on resume."
+  },
+  "boundedAudits": {
+    "tools": {
+      "state": "stopped; source-only; no speculative fix",
+      "finding": "Stock command input relies on RootView OnKeyEvent because shell=null; Mac text can enter via BridgedContentView/TextInputHost. Popup CommitStockQuery requests next successful frame without explicit redraw. Missing admission versus missing presentation is not distinguished; neither is proven root cause.",
+      "next": "Instrument or otherwise distinguish exact original-event admission from popup presentation before changing native code; preserve original NSEvent and clocks."
+    },
+    "ai": {
+      "state": "stopped; no new defect established",
+      "finding": "Reviewed admission/Space lease/publication fences. Source-specific Forget during active extraction may return existing lease conflict; untested API serialization observation, not a confirmed resurrection bug."
+    },
+    "ui": {
+      "state": "stopped; no new defect established",
+      "finding": "Source coverage includes selected-value alignment, original popup ownership, Back/Escape return, canceled-picker reopen and stale-save fencing. Current native theme/narrow acceptance remains open."
+    }
+  }
+}

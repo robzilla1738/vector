@@ -8,27 +8,30 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
-The [fifth integrated batch](evidence/aside-parallel-integration-batch5-2026-10-18.json)
-is product `873d478be`, with **6,187 passing tests /869files** in103.75s after
-runtime dist rebuild. Both native builds complete sequentially with matching symbols:
-Aux framework/dSYM `4C4C4422-5555-3144-A1DE-A83B684A9A1D` and stock
-`4C4C4488-5555-3144-A181-1370107449ED`. No full check overlaps native compilation.
+The [sixth integrated batch](evidence/aside-parallel-integration-batch6-2026-10-18.json)
+is committed through `c54330aab`: durable Forget All retirement for previously
+unextracted sessions after restart, the reference Project glyph, and shared
+1280×800 benchmark window controls. Runtime dist was rebuilt before its integrated
+full check: typecheck/lint pass,6,188 tests pass and one Settings navigation
+title assertion fails in111.10s. The affected file then passes9/9 in1.08s
+without a source change. The cause remains unestablished; the full check is not green. These new
+product changes have not yet been staged or observed in the native app.
 
-This batch preserves exact interrupted tool calls through context compaction,
-restores Memory-tree keyboard ownership when a row disappears, and adds the actual
-AppKit original-event timestamp ingress. Focused failing-before/passing-after
-regressions support the product fixes. The native timestamp feed receives an
-independent source review and exact69-patch/975-path replay; source proof alone
-does not establish native behavior.
+The compiled Aux product remains `873d478be`, framework/dSYM
+`4C4C4422-5555-3144-A1DE-A83B684A9A1D`. Its bounded diagnostic observes ten actual
+fixture documents, tab-switch latency/frame interval, command input and warm-window
+presentation. The stock follow-up now compiles successfully in11steps/555.13s,
+with matching framework/dSYM `4C4C443D-5555-3144-A1E3-801565D207A3` preserved.
+Its diagnostic also observes ten fixtures and the original native tab-timing pair;
+it then fails **Command presentation absent** before warm-window measurement.
+Browser and helper both retire0, and the original launcher joins. There are still
+**0 qualified paired samples**. Diagnostic values are not p95, idle memory,
+performance-target or daily-use passes.
 
-Aux's bounded diagnostic now observes all ten distinct fixture documents, one
-original tab-switch latency/frame-interval pair, command input and warm-window
-presentation. Browser and helper retire0. This uses the canonical full modifier
-lifetime helper. A preceding diagnostic using the retired flags-only helper stops
-at strict address-focus preparation and is retained as a failure. There are still
-**0qualified paired samples**; stock's bounded diagnostic fails the timing pair after ten actual fixture documents.
-A bounded source investigation of stock ingress is active; the full campaign waits.
-No latency, p95, idle-memory or daily-use target pass is claimed from one diagnostic.
+The owner requested a good stopping point. No further native build or campaign
+starts at this checkpoint. The next measurement task is the bounded stock
+command-input investigation, followed by native acceptance of the shared window
+control and a qualified paired campaign. No full check overlaps native compilation.
 
 The [previous24a native observation](evidence/aside-parallel-integration-batch4-2026-10-18.json)
 verifies Home Ask yielding Cmd-L to actual address navigation, and the complete
@@ -38,20 +41,19 @@ corruption and IME acceptance remain open. Current populated Memory/Forget and
 successful long-conversation compaction still need native acceptance.
 
 The [stock-only ingress follow-up](evidence/aside-stock-appkit-ingress-2026-10-18.json)
-is integrated at `78ac37e16`; its full check passes6,187tests in120.00s.
-It captures the actual native reserved-tab command before synchronous selection,
-using the existing exact fixture admission and original event timestamp. Exact
-stock replay and independent source review pass. Native compilation and an actual
-stock timing pair remain pending; the current stock88 binary is the earlier build.
-Aux873/22 is unchanged. A separate reference-backed Project glyph correction is
-frozen in an isolated worktree with13 focused tests; it is not yet integrated.
+is integrated at `78ac37e16`; its source full check passes6,187tests in120.00s.
+It captures the actual reserved-tab command before synchronous selection. Exact
+stock replay and independent source review pass; the current stock3D native
+observation now establishes the tab timing signal. Aux873/22 is unchanged.
+The integrated Project glyph has13 focused passing tests; native appearance
+acceptance remains open.
 
 Earlier cd76 native Routines geometry, wide/narrow model-menu states and normal
 runtime forced0/exit0 remain [pinned to that candidate](evidence/aside-native-cd76-observations-2026-10-18.json).
 Full reference/accessibility acceptance and the new-build Home Cmd-L observation
 remain open. No native builder or timed performance campaign is currently active.
 
-The [current-candidate manual smoke](evidence/aside-native-cd76-manual20-2026-10-18.json)
+The [latest completed manual smoke](evidence/aside-native-cd76-manual20-2026-10-18.json)
 passes **20/20** on the original nativecd76/EB instance, using Automatic/Auto/Ask first
 and no model override. All55 observed calls serve Sonnet5.5:2,073,332 input tokens,
 6,471 output,2,024,809 cache tokens,55positive/0zero/0unknown cache observations,
@@ -111,9 +113,9 @@ launcher retirement stay with one integrator and the existing plain lock.
   Current normal-Quit/runtime0 observations do not diagnose the old SIGTRAP.
   Current preview and diagnostic findings are preserved without approximate symbolization.
 - **Performance:** matching155 Aux and stock builds exist; the ten-document barrier
-  is observed on both. There are0qualified paired samples. The actual AppKit CtrlTab
-  timestamp ingress now passes the bounded Aux diagnostic; matching stock signals
-  and the full paired campaign remain. The physical Control-release sequence has
+  is observed on both. There are0qualified paired samples. Actual AppKit CtrlTab
+  timestamp ingress now passes bounded Aux and stock diagnostics; stock command-input
+  timing, fixed window acceptance and the full paired campaign remain. The physical Control-release sequence has
   native behavior evidence. Original cold/input/tab/memory targets
   remain unchanged. Actual boot/preload bytes and positive/zero/unknown provider usage
   are measured honestly; disk payload is not idle process memory.
