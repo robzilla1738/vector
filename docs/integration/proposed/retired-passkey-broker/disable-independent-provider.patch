@@ -1,0 +1,14 @@
+--- a/chrome/browser/webauthn/chrome_web_authentication_delegate.cc
++++ b/chrome/browser/webauthn/chrome_web_authentication_delegate.cc
+@@ -337,7 +337,10 @@
+ 
+ base::OnceClosure ChromeWebAuthenticationDelegate::ChooseAuxPasskeyProvider(
+     content::RenderFrameHost* frame, base::OnceCallback<void(bool)> callback) {
+-  return aux::passkeys::ChooseProvider(frame, std::move(callback));
++  // Supplied Vault handles passkeys in its document-start page/content bridge.
++  // Do not divert its native fallback into the retired independent broker.
++  return content::WebAuthenticationDelegate::ChooseAuxPasskeyProvider(
++      frame, std::move(callback));
+ }
+ base::OnceClosure ChromeWebAuthenticationDelegate::CreateAuxPasskey(
+     content::RenderFrameHost* frame, const url::Origin& caller,

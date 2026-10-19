@@ -1,0 +1,24 @@
+{
+  "nativeSourceSha256": {
+    "chrome/browser/webauthn/chrome_web_authentication_delegate.cc": "2219fdedfe47cb9f8481d16a285c4243c403750610071bdede1323c1b3c4d455",
+    "content/browser/webauth/authenticator_common_impl.cc": "0db94110d9a9c9b7a6cbf7fdfb2162ab2633d12c3420f08f4946a57f461eebfb",
+    "content/public/browser/web_authentication_delegate.cc": "5ba5b82d5ba6b2b8599368ca83ecb7c0fe294a44d8a68499297ef6b4cf35318c",
+    "chrome/browser/aux/passkeys/request_broker.cc": "467313ecd5280cd3224a0c6cd8de52bab5f1941c19888921a7f5f1dd727a1db5",
+    "chrome/browser/aux/passkeys/private_session_cleanup.cc": "e722cad769345850dc5b1f9ddd3b74045ae7c1c6cff216f607f0f3d097a76419",
+    "chrome/browser/extensions/api/aux_credentials/aux_credentials_api.cc": "13a59aee14c5dcf890116cac9b56f48274b2adc6def5c5db1e5ffa9e5c9fffa3"
+  },
+  "pinnedVaultSourceSha256": {
+    "manifest.json": "440e83e27c6576af3c19877ddcff224b731c09bd4069399832215e25074f804b",
+    "fido2-page-script.js": "2e05878dff652660a572ac12cbdafb0cd05e298394fc0131cf187222c781df50",
+    "content/content.js": "f0611ac53fad1785ab4f00e279548619fac873e87dbe667dd3ef2b248ae8a4da",
+    "content-runtime.js": "2f78dab77e44c4cfce723db8fdf853856a76345d78045c0cdc15c463446c1abf",
+    "background.js": "eb760bfead1afc936c7c4b12573423809a224a3859781991ae40f4e4c00139fb"
+  },
+  "edit": {
+    "path": "chrome/browser/webauthn/chrome_web_authentication_delegate.cc",
+    "find": "  return aux::passkeys::ChooseProvider(frame, std::move(callback));",
+    "replace": "  // Supplied Vault handles passkeys in its document-start page/content bridge.\n  // Do not divert its native fallback into the retired independent broker.\n  return content::WebAuthenticationDelegate::ChooseAuxPasskeyProvider(\n      frame, std::move(callback));",
+    "count": 1
+  },
+  "status": "static proposal; no shared source edited or WebAuthn executed"
+}
