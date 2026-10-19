@@ -1,0 +1,27 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "boundedExtracts": {
+    "update-preview-geometry.txt": "87f03b2369724478a7a1dc4f18f9d55bfe5c1fc75ec0407dcc75101409cbb746",
+    "preview-owner-bounds.txt": "6b91d09388ef0b1c99144b5a7fb2d06b0c12a5148d3e75d800a2fe939de828d4",
+    "hide-other-previews.txt": "8982e411f86b1d432f07f192742e62f15536744f443d55e5d918379310eac58f",
+    "update-visual.txt": "d562f941a92be99981bcc25413b6ee0a7d4949562ec98cb4e9bc3a33fc82ab8d"
+  },
+  "ownerSourcePins": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04630098.c",
+      "sha256": "505bbcbb6a9fb887bd8b75094479f0eb2e657acce4656a445615e3a1a90afa36"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/views/frame/base_tab_strip_region_view.h",
+      "sha256": "6a7f037404a92b4a5debdbf79900da6b9d50a725544a39ff6482d16824485e14"
+    }
+  ],
+  "floatConstants": {
+    "0xdf506ec": 0.0010000000474974513,
+    "0xdf518f4": -0.42000001668930054,
+    "0xdf518f8": 0.7799999713897705,
+    "0xdf518fc": 0.2199999988079071
+  }
+}
