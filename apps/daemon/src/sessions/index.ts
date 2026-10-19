@@ -31,6 +31,8 @@ export function createAgentRouters(
     await Promise.all(
       sessions.map((session) => engine.wait(accountId, session.id)),
     );
+    for (const session of sessions)
+      await engine.tabs.terminate(accountId, session.id);
   });
   const get = (input: z.infer<typeof sessionScope>) =>
     engine.get(input.accountId, input.sessionId);
@@ -530,8 +532,10 @@ export function createAgentRouters(
       updated(s);
       return { readAt: null };
     }),
-    archive: procedure.input(sessionScope).mutation(({ input }) => {
+    archive: procedure.input(sessionScope).mutation(async ({ input }) => {
       engine.stop(input.accountId, input.sessionId, 'aborted');
+      await engine.wait(input.accountId, input.sessionId);
+      await engine.tabs.terminate(input.accountId, input.sessionId);
       const s = get(input);
       s.archived = true;
       return updated(s);
@@ -544,6 +548,7 @@ export function createAgentRouters(
     delete: procedure.input(sessionScope).mutation(async ({ input }) => {
       engine.stop(input.accountId, input.sessionId, 'aborted');
       await engine.wait(input.accountId, input.sessionId);
+      await engine.tabs.terminate(input.accountId, input.sessionId);
       for (const file of engine.attachments.list(
         input.accountId,
         input.sessionId,
@@ -673,8 +678,53 @@ export function createAgentRouters(
       }),
     turns,
   });
+  const tabs = t.router({
+    list: procedure
+      .input(sessionScope)
+      .query(({ input }) => engine.tabs.list(input.accountId, input.sessionId)),
+    resolveByTarget: procedure
+      .input(
+        scope.extend({
+          targetId: z.string().min(1),
+          profileId: z.string().optional(),
+          browserMode: z.enum(['default', 'incognito']).optional(),
+        }),
+      )
+      .query(({ input }) =>
+        engine.tabs.resolve(
+          input.accountId,
+          input.targetId,
+          input.profileId,
+          input.browserMode,
+        ),
+      ),
+    remove: procedure
+      .input(sessionScope.extend({ sessionTabId: z.string().uuid() }))
+      .mutation(({ input }) =>
+        engine.tabs.close(input.accountId, input.sessionId, input.sessionTabId),
+      ),
+    cleanup: procedure
+      .input(sessionScope)
+      .mutation(({ input }) =>
+        engine.tabs.cleanup(input.accountId, input.sessionId),
+      ),
+    setPolicy: procedure
+      .input(
+        sessionScope.extend({
+          autoClosePolicy: z.enum(['keep', 'on-completion']),
+        }),
+      )
+      .mutation(({ input }) =>
+        engine.tabs.setPolicy(
+          input.accountId,
+          input.sessionId,
+          input.autoClosePolicy,
+        ),
+      ),
+  });
   return {
     sessions,
+    tabs,
     turns,
     models: createModelRouter(services, engine),
     projects: createProjectRouter(services, engine),

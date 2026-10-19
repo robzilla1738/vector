@@ -54,6 +54,8 @@ export function sessionTools(
           'edit_file',
           'bash',
           'browser_navigate',
+          'browser_open',
+          'browser_close',
           'browser_click',
           'browser_type',
           'browser_scroll',
@@ -181,6 +183,81 @@ export function sessionTools(
     );
   }
   return {
+    browser_open: tool({
+      description:
+        'Create a new agent-owned tab in this session bound profile. Cleanup ownership is tied to the exact created target and document; user navigation releases it. Default keep retains tabs after task completion.',
+      inputSchema: z.object({
+        url: z.url(),
+        active: z.boolean().default(false),
+        autoClosePolicy: z.enum(['keep', 'on-completion']).optional(),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_open', input, toolCallId, async () => {
+          await approve(
+            toolCallId,
+            'Open agent browser tab',
+            input,
+            'browser_open',
+          );
+          return engine.tabs.create(
+            accountId,
+            sessionId,
+            {
+              url: input.url,
+              active: input.active,
+              ...(input.autoClosePolicy
+                ? { autoClosePolicy: input.autoClosePolicy }
+                : {}),
+            },
+            signal,
+          );
+        }),
+    }),
+    browser_owned_tabs: tool({
+      description:
+        'List only live positively agent-owned tabs for this session. Never infer ownership from URL or reusable tab numbers.',
+      inputSchema: z.object({}),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_owned_tabs', input, toolCallId, () =>
+          engine.tabs.list(accountId, sessionId, signal),
+        ),
+    }),
+    browser_close: tool({
+      description:
+        'Close an exact positively agent-owned target from browser_owned_tabs. Ordinary user tabs and changed documents cannot be closed by this tool.',
+      inputSchema: z.object({
+        targetId: z.string().min(1),
+        tabId: z.number().int().nonnegative().optional(),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_close', input, toolCallId, async () => {
+          const tab = (
+            await engine.tabs.list(accountId, sessionId, signal)
+          ).find(
+            (row) =>
+              row.targetId === input.targetId &&
+              (input.tabId === undefined || row.tabId === input.tabId),
+          );
+          if (!tab)
+            fail(
+              'FORBIDDEN',
+              'Only an exact live tab created by this agent session may be closed',
+            );
+          await approve(
+            toolCallId,
+            'Close agent browser tab',
+            tab,
+            'browser_close',
+          );
+          return engine.tabs.close(
+            accountId,
+            sessionId,
+            tab.id,
+            { targetId: tab.targetId, tabId: tab.tabId },
+            signal,
+          );
+        }),
+    }),
     browser_tabs: tool({
       description:
         'List tabs in the session-bound browser profile without selecting one.',
@@ -213,7 +290,15 @@ export function sessionTools(
             input,
             'browser_navigate',
           );
-          return browser('page.navigate', input);
+          return engine.tabs.has(accountId, sessionId, input.targetId)
+            ? engine.tabs.navigate(
+                accountId,
+                sessionId,
+                input.targetId,
+                input.url,
+                signal,
+              )
+            : browser('page.navigate', input);
         }),
     }),
     browser_click: tool({

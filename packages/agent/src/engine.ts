@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { Attachments } from './attachments.js';
 import { continuationMessages, planCompaction } from './compaction.js';
 import { Credentials } from './credentials.js';
+import { OwnedTabs } from './owned-tabs.js';
 import { defaultModel, resolveModel } from './providers.js';
 import { type AgentStorage, fail } from './storage.js';
 import { sessionTools } from './tools.js';
@@ -32,6 +33,7 @@ export interface AgentExtensions {
 export class AgentEngine {
   readonly credentials: Credentials;
   readonly attachments: Attachments;
+  readonly tabs: OwnedTabs;
   readonly events = new EventEmitter();
   private active = new Map<
     string,
@@ -53,6 +55,12 @@ export class AgentEngine {
   ) {
     this.credentials = new Credentials(store);
     this.attachments = new Attachments(store);
+    this.tabs = new OwnedTabs(
+      store,
+      bridge,
+      (accountId, id) => this.get(accountId, id),
+      (session, type, data) => this.emit(session, type, data),
+    );
   }
   private key(accountId: number, id: string) {
     return `${accountId}:${id}`;
@@ -242,26 +250,7 @@ export class AgentEngine {
     // Register ownership before publishing or invoking provider work.
     const promise = Promise.resolve()
       .then(() => this.run(accountId, id, runId, controller.signal))
-      .finally(() => {
-        this.active.delete(key);
-        const latest = this.get(accountId, id);
-        if (
-          this.closed ||
-          latest.status === 'aborted' ||
-          latest.status === 'suspended'
-        )
-          return;
-        const queued = latest.queue.shift();
-        if (!queued) return;
-        this.save(latest);
-        this.prompt(
-          accountId,
-          id,
-          queued.prompt,
-          queued.id,
-          queued.attachmentIds,
-        );
-      });
+      .finally(() => this.afterRun(accountId, id));
     this.active.set(key, { controller, promise });
     this.emit(session, 'run-started', { runId });
     return this.public(session);
@@ -333,24 +322,28 @@ export class AgentEngine {
           }
         }
       })
-      .finally(() => {
-        this.active.delete(key);
-        const latest = this.get(accountId, id);
-        if (
-          this.closed ||
-          latest.status === 'aborted' ||
-          latest.status === 'suspended'
-        )
-          return;
-        const next = latest.queue.shift();
-        if (next) {
-          this.save(latest);
-          this.prompt(accountId, id, next.prompt, next.id, next.attachmentIds);
-        }
-      });
+      .finally(() => this.afterRun(accountId, id));
     this.active.set(key, { controller, promise });
     this.emit(session, 'run-started', { runId, external: true });
     return promise;
+  }
+  private async afterRun(accountId: number, id: string) {
+    const latest = this.get(accountId, id);
+    if (
+      !this.closed &&
+      !latest.queue.length &&
+      ['idle', 'aborted'].includes(latest.status)
+    )
+      await this.tabs.cleanup(accountId, id, true).catch(() => {});
+    this.active.delete(this.key(accountId, id));
+    const current = this.get(accountId, id);
+    if (this.closed || ['aborted', 'suspended'].includes(current.status))
+      return;
+    const next = current.queue.shift();
+    if (next) {
+      this.save(current);
+      this.prompt(accountId, id, next.prompt, next.id, next.attachmentIds);
+    }
   }
   private async acquire(signal: AbortSignal) {
     while (this.running >= this.concurrency) {
