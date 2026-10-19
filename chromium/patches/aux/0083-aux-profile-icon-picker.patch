@@ -1,0 +1,557 @@
+diff --git a/chrome/browser/ui/views/frame/aux_icon_picker.h b/chrome/browser/ui/views/frame/aux_icon_picker.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_icon_picker.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ICON_PICKER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ICON_PICKER_H_
++
++#include <string>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "ui/base/models/image_model.h"
++
++namespace views {
++class View;
++}  // namespace views
++
++// Local state dictionary: profile directory name -> icon name.
++inline constexpr char kAuxProfileIconsPref[] = "aux.profile_icons";
++
++// Shows Aside's profile editor popup anchored to `anchor`: a grid of 16 icons
++// plus a name field. Done persists the icon (see below), renames the profile
++// and runs `on_saved`. Dismissing the popup discards the edits.
++void ShowAuxIconPicker(views::View* anchor,
++                       const base::FilePath& profile_path,
++                       base::OnceClosure on_saved = base::OnceClosure());
++
++// The icon name chosen for `profile_path`, or an empty string when none was
++// chosen (or the stored value is not one of the known names).
++std::string GetAuxProfileIconName(const base::FilePath& profile_path);
++
++// A circular `size` x `size` image of the chosen icon (white-ish glyph on
++// neutral gray), or an empty ImageModel when no icon was chosen.
++ui::ImageModel AuxProfileIconImage(const base::FilePath& profile_path,
++                                   int size);
++
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ICON_PICKER_H_
+diff --git a/chrome/browser/ui/views/frame/aux_icon_picker.cc b/chrome/browser/ui/views/frame/aux_icon_picker.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_icon_picker.cc
+@@ -0,0 +1,486 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/frame/aux_icon_picker.h"
++
++#include <array>
++#include <cmath>
++#include <memory>
++#include <string>
++#include <string_view>
++#include <utility>
++#include <vector>
++
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/values.h"
++#include "cc/paint/paint_flags.h"
++#include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "components/prefs/pref_service.h"
++#include "components/prefs/scoped_user_pref_update.h"
++#include "components/vector_icons/vector_icons.h"
++#include "third_party/skia/include/core/SkColor.h"
++#include "third_party/skia/include/core/SkPathBuilder.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/mojom/dialog_button.mojom.h"
++#include "ui/color/color_id.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/gfx/geometry/point_f.h"
++#include "ui/gfx/geometry/rect_f.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/gfx/geometry/vector2d.h"
++#include "ui/gfx/image/canvas_image_source.h"
++#include "ui/gfx/paint_vector_icon.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/background.h"
++#include "ui/views/border.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/controls/highlight_path_generator.h"
++#include "ui/views/controls/image_view.h"
++#include "ui/views/controls/textfield/textfield.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/layout/fill_layout.h"
++#include "ui/views/widget/widget.h"
++
++namespace {
++
++constexpr int kTileSize = 40;
++constexpr int kTileGap = 8;
++constexpr int kTileRadius = 10;
++constexpr int kColumns = 4;
++constexpr int kPickerWidth =
++    kColumns * kTileSize + (kColumns - 1) * kTileGap + 2 * 12;
++
++constexpr SkColor kTileGray = SkColorSetRGB(0x6B, 0x6D, 0x73);
++constexpr SkColor kGlyphWhite = SkColorSetRGB(0xF4, 0xF4, 0xF6);
++
++constexpr std::array<std::string_view, 16> kIconNames = {
++    "shopping_bag", "suitcase",    "banknote",    "telescope",
++    "trophy",       "rocket",      "pencil",      "palette",
++    "half_circle",  "headphones",  "chart",       "form_circle",
++    "form_square",  "form_diamond", "form_flower", "bubble"};
++
++bool IsKnownIcon(std::string_view name) {
++  for (std::string_view known : kIconNames) {
++    if (known == name) {
++      return true;
++    }
++  }
++  return false;
++}
++
++cc::PaintFlags FillFlags(SkColor color) {
++  cc::PaintFlags flags;
++  flags.setAntiAlias(true);
++  flags.setColor(color);
++  return flags;
++}
++
++cc::PaintFlags StrokeFlags(SkColor color, float width) {
++  cc::PaintFlags flags = FillFlags(color);
++  flags.setStyle(cc::PaintFlags::kStroke_Style);
++  flags.setStrokeWidth(width);
++  flags.setStrokeCap(cc::PaintFlags::kRound_Cap);
++  flags.setStrokeJoin(cc::PaintFlags::kRound_Join);
++  return flags;
++}
++
++// Maps a 24x24 design grid onto a square of `size` at (`x0`, `y0`).
++struct Grid {
++  float x0;
++  float y0;
++  float s;
++
++  gfx::PointF P(float x, float y) const {
++    return gfx::PointF(x0 + x * s, y0 + y * s);
++  }
++  gfx::RectF R(float l, float t, float r, float b) const {
++    return gfx::RectF(x0 + l * s, y0 + t * s, (r - l) * s, (b - t) * s);
++  }
++  float L(float length) const { return length * s; }
++};
++
++void LineTo(SkPathBuilder& path, const Grid& g, float x, float y) {
++  const gfx::PointF p = g.P(x, y);
++  path.lineTo(p.x(), p.y());
++}
++
++void MoveTo(SkPathBuilder& path, const Grid& g, float x, float y) {
++  const gfx::PointF p = g.P(x, y);
++  path.moveTo(p.x(), p.y());
++}
++
++void CubicTo(SkPathBuilder& path,
++             const Grid& g,
++             float x1,
++             float y1,
++             float x2,
++             float y2,
++             float x3,
++             float y3) {
++  const gfx::PointF a = g.P(x1, y1);
++  const gfx::PointF b = g.P(x2, y2);
++  const gfx::PointF c = g.P(x3, y3);
++  path.cubicTo(a.x(), a.y(), b.x(), b.y(), c.x(), c.y());
++}
++
++void DrawStrokeLine(gfx::Canvas* canvas,
++                    const Grid& g,
++                    float x1,
++                    float y1,
++                    float x2,
++                    float y2,
++                    const cc::PaintFlags& flags) {
++  SkPathBuilder path;
++  MoveTo(path, g, x1, y1);
++  LineTo(path, g, x2, y2);
++  canvas->DrawPath(path.detach(), flags);
++}
++
++// Draws one named glyph into the `size` square at (`offset`, `offset`).
++// `cutout` is the color behind the glyph, used for holes in filled shapes.
++void PaintGlyph(gfx::Canvas* canvas,
++                std::string_view name,
++                float size,
++                float offset,
++                SkColor color,
++                SkColor cutout) {
++  const gfx::VectorIcon* vector_icon = nullptr;
++  if (name == "suitcase") {
++    vector_icon = &vector_icons::kWorkIcon;
++  } else if (name == "rocket") {
++    vector_icon = &kRocketLaunchIcon;
++  } else if (name == "pencil") {
++    vector_icon = &vector_icons::kEditIcon;
++  } else if (name == "headphones") {
++    vector_icon = &vector_icons::kHeadphonesIcon;
++  }
++  if (vector_icon) {
++    const int dip = std::lround(size);
++    const int shift = std::lround(offset);
++    canvas->Save();
++    canvas->Translate(gfx::Vector2d(shift, shift));
++    gfx::PaintVectorIcon(canvas, *vector_icon, dip, color);
++    canvas->Restore();
++    return;
++  }
++
++  const Grid g{offset, offset, size / 24.f};
++  const cc::PaintFlags fill = FillFlags(color);
++  const cc::PaintFlags cut = FillFlags(cutout);
++
++  if (name == "shopping_bag") {
++    canvas->DrawRoundRect(g.R(5, 8, 19, 20.5), g.L(2), fill);
++    SkPathBuilder handle;
++    MoveTo(handle, g, 9, 11);
++    LineTo(handle, g, 9, 7);
++    CubicTo(handle, g, 9, 2.5f, 15, 2.5f, 15, 7);
++    LineTo(handle, g, 15, 11);
++    canvas->DrawPath(handle.detach(), StrokeFlags(color, g.L(1.8f)));
++    canvas->DrawCircle(g.P(9, 11.5f), g.L(1.1f), cut);
++    canvas->DrawCircle(g.P(15, 11.5f), g.L(1.1f), cut);
++  } else if (name == "banknote") {
++    canvas->DrawRoundRect(g.R(3, 6.5f, 21, 17.5f), g.L(2),
++                          StrokeFlags(color, g.L(1.8f)));
++    canvas->DrawCircle(g.P(12, 12), g.L(2.6f), fill);
++    canvas->DrawCircle(g.P(6.5f, 12), g.L(0.9f), fill);
++    canvas->DrawCircle(g.P(17.5f, 12), g.L(0.9f), fill);
++  } else if (name == "telescope") {
++    DrawStrokeLine(canvas, g, 4.5f, 14, 14, 9.5f,
++                   [&] {
++                     cc::PaintFlags f = StrokeFlags(color, g.L(4.6f));
++                     f.setStrokeCap(cc::PaintFlags::kButt_Cap);
++                     return f;
++                   }());
++    DrawStrokeLine(canvas, g, 14.5f, 9.3f, 19, 7.1f,
++                   [&] {
++                     cc::PaintFlags f = StrokeFlags(color, g.L(6.2f));
++                     f.setStrokeCap(cc::PaintFlags::kButt_Cap);
++                     return f;
++                   }());
++    canvas->DrawCircle(g.P(4.5f, 14), g.L(2.3f), fill);
++    const cc::PaintFlags leg = StrokeFlags(color, g.L(1.8f));
++    DrawStrokeLine(canvas, g, 11, 13.5f, 8, 21, leg);
++    DrawStrokeLine(canvas, g, 11, 13.5f, 14.5f, 21, leg);
++    DrawStrokeLine(canvas, g, 11, 13.5f, 11, 21, leg);
++  } else if (name == "trophy") {
++    SkPathBuilder cup;
++    MoveTo(cup, g, 7, 3.5f);
++    LineTo(cup, g, 17, 3.5f);
++    LineTo(cup, g, 17, 9);
++    CubicTo(cup, g, 17, 12.2f, 14.8f, 14.2f, 12, 14.2f);
++    CubicTo(cup, g, 9.2f, 14.2f, 7, 12.2f, 7, 9);
++    cup.close();
++    canvas->DrawPath(cup.detach(), fill);
++    const cc::PaintFlags handle = StrokeFlags(color, g.L(1.8f));
++    SkPathBuilder left;
++    MoveTo(left, g, 7, 5.5f);
++    LineTo(left, g, 4.2f, 5.5f);
++    CubicTo(left, g, 4.2f, 9.5f, 5.5f, 11.2f, 7.6f, 11.4f);
++    canvas->DrawPath(left.detach(), handle);
++    SkPathBuilder right;
++    MoveTo(right, g, 17, 5.5f);
++    LineTo(right, g, 19.8f, 5.5f);
++    CubicTo(right, g, 19.8f, 9.5f, 18.5f, 11.2f, 16.4f, 11.4f);
++    canvas->DrawPath(right.detach(), handle);
++    canvas->DrawRect(g.R(11, 14, 13, 17.6f), fill);
++    canvas->DrawRoundRect(g.R(7.5f, 17.4f, 16.5f, 20.5f), g.L(1.2f), fill);
++  } else if (name == "palette") {
++    canvas->DrawCircle(g.P(12, 12), g.L(9.5f), fill);
++    canvas->DrawCircle(g.P(7.8f, 11), g.L(1.7f), cut);
++    canvas->DrawCircle(g.P(11, 7.2f), g.L(1.7f), cut);
++    canvas->DrawCircle(g.P(16, 8.6f), g.L(1.7f), cut);
++    canvas->DrawCircle(g.P(8.6f, 15.8f), g.L(1.7f), cut);
++    canvas->DrawCircle(g.P(15.5f, 17.8f), g.L(2.3f), cut);
++  } else if (name == "half_circle") {
++    canvas->DrawCircle(g.P(12, 12), g.L(8.2f), StrokeFlags(color, g.L(2)));
++    canvas->Save();
++    canvas->ClipRect(g.R(0, 0, 12, 24));
++    canvas->DrawCircle(g.P(12, 12), g.L(8.2f), fill);
++    canvas->Restore();
++  } else if (name == "chart") {
++    canvas->DrawRoundRect(g.R(4.5f, 12, 9, 20), g.L(1.2f), fill);
++    canvas->DrawRoundRect(g.R(9.8f, 5, 14.3f, 20), g.L(1.2f), fill);
++    canvas->DrawRoundRect(g.R(15, 9, 19.5f, 20), g.L(1.2f), fill);
++  } else if (name == "form_circle") {
++    canvas->DrawCircle(g.P(12, 12), g.L(8.5f), fill);
++  } else if (name == "form_square") {
++    canvas->DrawRoundRect(g.R(4, 4, 20, 20), g.L(2.5f), fill);
++  } else if (name == "form_diamond") {
++    SkPathBuilder diamond;
++    MoveTo(diamond, g, 12, 2.5f);
++    LineTo(diamond, g, 21.5f, 12);
++    LineTo(diamond, g, 12, 21.5f);
++    LineTo(diamond, g, 2.5f, 12);
++    diamond.close();
++    canvas->DrawPath(diamond.detach(), fill);
++  } else if (name == "form_flower") {
++    constexpr int kPetals = 5;
++    constexpr float kPi = 3.14159265f;
++    for (int i = 0; i < kPetals; ++i) {
++      const float angle = -kPi / 2 + i * 2 * kPi / kPetals;
++      canvas->DrawCircle(
++          g.P(12 + 5.4f * std::cos(angle), 12 + 5.4f * std::sin(angle)),
++          g.L(4.2f), fill);
++    }
++    canvas->DrawCircle(g.P(12, 12), g.L(3.4f), cut);
++  } else if (name == "bubble") {
++    canvas->DrawRoundRect(g.R(3, 3.5f, 21, 17), g.L(5), fill);
++    SkPathBuilder tail;
++    MoveTo(tail, g, 6.5f, 14);
++    LineTo(tail, g, 6, 21);
++    LineTo(tail, g, 13, 16);
++    tail.close();
++    canvas->DrawPath(tail.detach(), fill);
++  }
++}
++
++// Renders an icon, optionally on a gray circle.
++class IconSource : public gfx::CanvasImageSource {
++ public:
++  IconSource(std::string name, int size, bool circle_background)
++      : gfx::CanvasImageSource(gfx::Size(size, size)),
++        name_(std::move(name)),
++        circle_background_(circle_background) {}
++
++  void Draw(gfx::Canvas* canvas) override {
++    const float size = static_cast<float>(size_.width());
++    float glyph = size;
++    float offset = 0;
++    if (circle_background_) {
++      canvas->DrawCircle(gfx::PointF(size / 2, size / 2), size / 2,
++                         FillFlags(kTileGray));
++      glyph = size * 0.62f;
++      offset = (size - glyph) / 2;
++    }
++    PaintGlyph(canvas, name_, glyph, offset, kGlyphWhite, kTileGray);
++  }
++
++ private:
++  const std::string name_;
++  const bool circle_background_;
++};
++
++ui::ImageModel GlyphImage(const std::string& name, int size, bool circle) {
++  return ui::ImageModel::FromImageSkia(
++      gfx::CanvasImageSource::MakeImageSkia<IconSource>(name, size, circle));
++}
++
++std::string PrefKey(const base::FilePath& profile_path) {
++  return profile_path.BaseName().AsUTF8Unsafe();
++}
++
++PrefService* LocalState() {
++  PrefService* prefs =
++      g_browser_process ? g_browser_process->local_state() : nullptr;
++  return prefs && prefs->FindPreference(kAuxProfileIconsPref) ? prefs : nullptr;
++}
++
++void SetProfileIconName(const base::FilePath& profile_path,
++                        const std::string& name) {
++  if (PrefService* prefs = LocalState()) {
++    ScopedDictPrefUpdate update(prefs, kAuxProfileIconsPref);
++    update->Set(PrefKey(profile_path), name);
++  }
++}
++
++ProfileAttributesEntry* AttributesFor(const base::FilePath& profile_path) {
++  if (!g_browser_process || !g_browser_process->profile_manager()) {
++    return nullptr;
++  }
++  return g_browser_process->profile_manager()
++      ->GetProfileAttributesStorage()
++      .GetProfileAttributesWithPath(profile_path);
++}
++
++class AuxIconTile : public views::Button {
++  METADATA_HEADER(AuxIconTile, views::Button)
++
++ public:
++  AuxIconTile(PressedCallback callback, const std::string& name)
++      : views::Button(std::move(callback)) {
++    SetLayoutManager(std::make_unique<views::FillLayout>());
++    SetPreferredSize(gfx::Size(kTileSize, kTileSize));
++    auto glyph = std::make_unique<views::ImageView>(
++        GlyphImage(name, kTileSize, /*circle=*/false));
++    glyph->SetImageSize(gfx::Size(kTileSize, kTileSize));
++    glyph->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(glyph));
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(),
++                                                  kTileRadius);
++    GetViewAccessibility().SetName(base::UTF8ToUTF16(name));
++    SetSelected(false);
++  }
++
++  void SetSelected(bool selected) {
++    SetBackground(views::CreateRoundedRectBackground(
++        kTileGray, kTileRadius, selected ? 2 : 0));
++    SetBorder(selected ? views::CreateRoundedRectBorder(
++                             2, kTileRadius, ui::kColorSysPrimary)
++                       : nullptr);
++  }
++};
++
++BEGIN_METADATA(AuxIconTile)
++END_METADATA
++
++class AuxIconPickerBubble : public views::BubbleDialogDelegate {
++ public:
++  AuxIconPickerBubble(views::View* anchor,
++                      base::FilePath profile_path,
++                      base::OnceClosure on_saved)
++      : views::BubbleDialogDelegate(anchor, views::BubbleBorder::BOTTOM_LEFT),
++        profile_path_(std::move(profile_path)),
++        on_saved_(std::move(on_saved)),
++        selected_(GetAuxProfileIconName(profile_path_)) {
++    SetButtons(static_cast<int>(ui::mojom::DialogButton::kOk));
++    SetButtonLabel(ui::mojom::DialogButton::kOk, u"Done");
++    SetShowCloseButton(false);
++    set_margins(gfx::Insets::VH(12, 12));
++    set_fixed_width(kPickerWidth);
++    SetAcceptCallback(base::BindOnce(&AuxIconPickerBubble::Save,
++                                     base::Unretained(this)));
++
++    auto contents = std::make_unique<views::View>();
++    auto* layout = contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical, gfx::Insets(), kTileGap));
++    layout->set_cross_axis_alignment(
++        views::BoxLayout::CrossAxisAlignment::kStretch);
++
++    ProfileAttributesEntry* entry = AttributesFor(profile_path_);
++    auto name_field = std::make_unique<views::Textfield>();
++    name_field->SetText(entry ? entry->GetName() : std::u16string());
++    name_field->SetPlaceholderText(u"Profile name");
++    name_field->GetViewAccessibility().SetName(u"Profile name");
++    name_field_ = contents->AddChildView(std::move(name_field));
++
++    for (size_t i = 0; i < kIconNames.size(); i += kColumns) {
++      auto* row = contents->AddChildView(std::make_unique<views::View>());
++      row->SetLayoutManager(std::make_unique<views::BoxLayout>(
++          views::BoxLayout::Orientation::kHorizontal, gfx::Insets(),
++          kTileGap));
++      for (size_t j = i; j < i + kColumns; ++j) {
++        const std::string name(kIconNames[j]);
++        auto* tile = row->AddChildView(std::make_unique<AuxIconTile>(
++            base::BindRepeating(&AuxIconPickerBubble::Select,
++                                base::Unretained(this), name),
++            name));
++        tile->SetSelected(name == selected_);
++        tiles_.emplace_back(name, tile);
++      }
++    }
++    SetContentsView(std::move(contents));
++    SetInitiallyFocusedView(name_field_);
++  }
++
++  ~AuxIconPickerBubble() override = default;
++
++ private:
++  void Select(const std::string& name) {
++    selected_ = name;
++    for (auto& [tile_name, tile] : tiles_) {
++      tile->SetSelected(tile_name == selected_);
++    }
++  }
++
++  void Save() {
++    if (IsKnownIcon(selected_)) {
++      SetProfileIconName(profile_path_, selected_);
++    }
++    const std::u16string name(
++        base::TrimWhitespace(name_field_->GetText(), base::TRIM_ALL));
++    ProfileAttributesEntry* entry = AttributesFor(profile_path_);
++    if (entry && !name.empty() && name != entry->GetName()) {
++      entry->SetLocalProfileName(name, /*is_default_name=*/false);
++    }
++    if (on_saved_) {
++      std::move(on_saved_).Run();
++    }
++  }
++
++  const base::FilePath profile_path_;
++  base::OnceClosure on_saved_;
++  std::string selected_;
++  raw_ptr<views::Textfield> name_field_ = nullptr;
++  std::vector<std::pair<std::string, raw_ptr<AuxIconTile>>> tiles_;
++};
++
++}  // namespace
++
++std::string GetAuxProfileIconName(const base::FilePath& profile_path) {
++  PrefService* prefs = LocalState();
++  if (!prefs) {
++    return std::string();
++  }
++  const std::string* name =
++      prefs->GetDict(kAuxProfileIconsPref).FindString(PrefKey(profile_path));
++  return name && IsKnownIcon(*name) ? *name : std::string();
++}
++
++ui::ImageModel AuxProfileIconImage(const base::FilePath& profile_path,
++                                   int size) {
++  const std::string name = GetAuxProfileIconName(profile_path);
++  if (name.empty()) {
++    return ui::ImageModel();
++  }
++  return GlyphImage(name, size, /*circle=*/true);
++}
++
++void ShowAuxIconPicker(views::View* anchor,
++                       const base::FilePath& profile_path,
++                       base::OnceClosure on_saved) {
++  views::BubbleDialogDelegate::CreateBubbleDeprecated(
++      std::make_unique<AuxIconPickerBubble>(anchor, profile_path,
++                                            std::move(on_saved)),
++      views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET)
++      ->Show();
++}
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1432,6 +1432,8 @@
+   registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
+   registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
+   registry->RegisterStringPref(aux::kExternalLinkTargetPref, "little");
++  // Keep in sync with kAuxProfileIconsPref in views/frame/aux_icon_picker.h.
++  registry->RegisterDictionaryPref("aux.profile_icons");
+ #endif
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2754,6 +2754,8 @@
+       "views/frame/picture_in_picture_browser_frame_view.h",
+       "views/frame/top_container_view.cc",
+       "views/frame/top_container_view.h",
++      "views/frame/aux_icon_picker.cc",
++      "views/frame/aux_icon_picker.h",
+       "views/frame/aux_sidebar_view.cc",
+       "views/frame/aux_tab_switcher.cc",
+       "views/frame/aux_tab_switcher.h",

@@ -1,0 +1,398 @@
+diff --git a/chrome/browser/ui/aux_ntp_url.h b/chrome/browser/ui/aux_ntp_url.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux_ntp_url.h
+@@ -0,0 +1,27 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_NTP_URL_H_
++#define CHROME_BROWSER_UI_AUX_NTP_URL_H_
++
++#include <string_view>
++
++#include "extensions/common/constants.h"
++#include "url/gurl.h"
++
++// True for the Aux agent manager's new tab page. Chats and settings share
++// newtab.html but carry a route in the hash; the new tab page has none, or only
++// the account prefix (#/u/0).
++inline bool IsAuxNtpUrl(const GURL& url) {
++  if (!url.SchemeIs(extensions::kExtensionScheme) ||
++      url.host() != "fjdhphbdlfjogobdofoaagnlnkoibdge" ||
++      url.path() != "/newtab.html") {
++    return false;
++  }
++  const std::string_view ref = url.ref();
++  return ref.empty() || ref == "/" ||
++         (ref.starts_with("/u/") && ref.find('/', 3) == std::string_view::npos);
++}
++
++#endif  // CHROME_BROWSER_UI_AUX_NTP_URL_H_
+diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
++#include "chrome/browser/ui/aux_ntp_url.h"
+ 
+ #include "base/check_deref.h"
+ #include "base/metrics/histogram_macros.h"
+@@ -432,6 +433,11 @@
+   // (2) This is called with |is_user_initiated| == false, because this is a
+   //     renderer initiated focus (this method is a WebContentsDelegate
+   //     override).
++  content::WebContents* active =
++      browser_->GetTabStripModel()->GetActiveWebContents();
++  if (active && IsAuxNtpUrl(active->GetVisibleURL())) {
++    return;
++  }
+   window_->SetFocusToLocationBar(false);
+ }
+ 
+@@ -987,6 +993,11 @@
+       return false;
+     }
+ 
++    // The agent manager's new tab page focuses its own search box.
++    if (IsAuxNtpUrl(url)) {
++      return false;
++    }
++
+     if ((url.SchemeIs(content::kChromeUIScheme) &&
+          url.host() == chrome::kChromeUINewTabHost) ||
+         (virtual_url.SchemeIs(content::kChromeUIScheme) &&
+diff --git a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
+--- a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
++++ b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h"
++#include "chrome/browser/ui/aux_ntp_url.h"
+ 
+ #include "base/check.h"
+ #include "base/feature_list.h"
+@@ -122,7 +123,8 @@
+   }
+ 
+   const auto is_ntp = [](const GURL& url) {
+-    return (url.SchemeIs(content::kChromeUIScheme) &&
++    return IsAuxNtpUrl(url) ||
++           (url.SchemeIs(content::kChromeUIScheme) &&
+             url.GetHost() == chrome::kChromeUINewTabHost) ||
+            url.spec() == chrome::kChromeUISplitViewNewTabPageURL;
+   };
+@@ -194,6 +196,11 @@
+     return &vector_icons::kGoogleColorIcon;
+   }
+ 
++  if (IsAuxNtpUrl(url)) {
++    return &(features::IsRoundedIconsEnabled() ? vector_icons::kSearchIcon
++                                               : vector_icons::kSearchOldIcon);
++  }
++
+   if (url.SchemeIs(content::kChromeUIScheme)) {
+     return &(features::IsRoundedIconsEnabled()
+                  ? omnibox::kChromeProductIcon
+@@ -261,18 +268,8 @@
+ }
+ 
+ std::u16string ChromeLocationBarModelDelegate::GetDisplayTitleOverride() const {
+-  // The Aux agent manager titles its own pages (chats, settings), so the
+-  // omnibox shows that title instead of the extension URL.
+-  content::NavigationEntry* entry = GetNavigationEntry();
+-  if (!entry || entry->IsInitialEntry()) {
+-    return std::u16string();
+-  }
+-  const GURL& url = entry->GetURL();
+-  if (!url.SchemeIs(extensions::kExtensionScheme) ||
+-      url.host() != "fjdhphbdlfjogobdofoaagnlnkoibdge") {
+-    return std::u16string();
+-  }
+-  return entry->GetTitleForDisplay();
++  // Aside shows the raw extension URL for its own pages.
++  return std::u16string();
+ }
+ 
+ bool ChromeLocationBarModelDelegate::IsContextualTasksPage() const {
+diff --git a/chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.cc b/chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.cc
+--- a/chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.cc
++++ b/chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.h"
++#include "chrome/browser/ui/aux_ntp_url.h"
+ 
+ #include "base/functional/bind.h"
+ #include "base/metrics/histogram_macros.h"
+@@ -132,7 +133,8 @@
+ bool BookmarkPageActionController::ShouldShowPageAction() const {
+   const auto& url = tab().GetContents()->GetLastCommittedURL();
+   return browser_defaults::bookmarks_enabled &&
+-         edit_bookmarks_enabled_.GetValue() && url.is_valid() && !IsNTPUrl(url);
++         edit_bookmarks_enabled_.GetValue() && url.is_valid() && !IsNTPUrl(url) &&
++         !IsAuxNtpUrl(url);
+ }
+ 
+ void BookmarkPageActionController::SetStarred(bool starred) {
+diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -1387,6 +1387,12 @@
+   SkColor normal = color_provider->GetColor(kColorLocationBarBackground);
+   SkColor hovered =
+       color_provider->GetColor(kColorLocationBarBackgroundHovered);
++
++  if (!is_caret_visible && !input_in_progress &&
++      !GetLocationBarModel()->ShouldDisplayURL()) {
++    // Aside draws the new tab page omnibox flat until it is hovered.
++    normal = SK_ColorTRANSPARENT;
++  }
+ 
+   background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
+   if (is_caret_visible) {
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc b/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc
+--- a/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc
+@@ -18,6 +18,7 @@
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "components/contextual_tasks/public/features.h"
++#include "components/omnibox/browser/location_bar_model.h"
+ #include "components/omnibox/browser/omnibox_pref_names.h"
+ #include "components/search/search.h"
+ #include "components/search_engines/ai_mode_button_service.h"
+@@ -75,6 +76,11 @@
+   } else if (ShouldInstallContextualTasksPlaceholderText(location_bar)) {
+     // For Contextual Tasks page, use the page title as placeholder text.
+     out_placeholder_text = location_bar->GetWebContents()->GetTitle();
++  } else if (location_bar->GetLocationBarModel() &&
++             !location_bar->GetLocationBarModel()->ShouldDisplayURL()) {
++    // New tab page: Aside shows its own hint here.
++    out_placeholder_text =
++        l10n_util::GetStringUTF16(IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE);
+   } else if (const auto* default_provider = controller->client()
+                                                 ->GetTemplateURLService()
+                                                 ->GetDefaultSearchProvider()) {
+diff --git a/chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.cc b/chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.cc
+--- a/chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.cc
++++ b/chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.h"
+ 
+ #include "base/memory/ptr_util.h"
++#include "chrome/browser/ui/aux_ntp_url.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/location_bar/location_bar.h"
+ #include "chrome/browser/ui/location_bar/location_bar_override_data.h"
+@@ -125,6 +126,9 @@
+ bool ChromeWebContentsViewFocusHelper::RestoreFocus() {
+   views::View* view_to_focus = GetStoredFocus();
+   last_focused_view_tracker_.SetView(nullptr);
++  if (IsAuxNtpUrl(GetWebContents().GetLastCommittedURL())) {
++    return false;
++  }
+   if (view_to_focus) {
+     view_to_focus->RequestFocus();
+     return true;
+diff --git a/components/search/ntp_features.cc b/components/search/ntp_features.cc
+--- a/components/search/ntp_features.cc
++++ b/components/search/ntp_features.cc
+@@ -270,7 +270,7 @@
+ BASE_FEATURE(kNtpOneGoogleBarAsyncBarParts, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ // If enabled, a footer will show on the NTP.
+-BASE_FEATURE(kNtpFooter, base::FEATURE_ENABLED_BY_DEFAULT);
++BASE_FEATURE(kNtpFooter, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ // If enabled, tab groups module will be shown.
+ BASE_FEATURE(kNtpTabGroupsModule,
+diff --git a/components/omnibox/browser/builtin_provider.cc b/components/omnibox/browser/builtin_provider.cc
+--- a/components/omnibox/browser/builtin_provider.cc
++++ b/components/omnibox/browser/builtin_provider.cc
+@@ -7,6 +7,7 @@
+ #include <stddef.h>
+ 
+ #include <string>
++#include <string_view>
+ 
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_util.h"
+@@ -22,6 +23,22 @@
+ 
+ const int BuiltinProvider::kRelevance = 860;
+ 
++namespace {
++
++constexpr char16_t kAuxSchemePrefix[] = u"aux://";
++
++// Aux displays chrome:// pages as aux://.
++std::u16string ToAuxDisplayURL(const std::u16string& url,
++                               const std::u16string& chrome_prefix) {
++  if (!base::StartsWith(url, chrome_prefix)) {
++    return url;
++  }
++  return base::StrCat(
++      {kAuxSchemePrefix, std::u16string_view(url).substr(chrome_prefix.size())});
++}
++
++}  // namespace
++
+ BuiltinProvider::BuiltinProvider(AutocompleteProviderClient* client)
+     : AutocompleteProvider(AutocompleteProvider::TYPE_BUILTIN),
+       client_(client) {
+@@ -58,13 +75,20 @@
+ 
+   bool starting_about = base::StartsWith(embedderAbout, text,
+                                          base::CompareCase::INSENSITIVE_ASCII);
+-  if (starting_about ||
++  // Once the user has typed at least "au", offer builtins under the aux://
++  // spelling so the suggestion text extends what they typed. A lone "a" keeps
++  // the about: behavior.
++  const bool starting_aux =
++      text.length() >= 2 &&
++      base::StartsWith(kAuxSchemePrefix, text,
++                       base::CompareCase::INSENSITIVE_ASCII);
++  if (starting_about || starting_aux ||
+       base::StartsWith(kAbout, text, base::CompareCase::INSENSITIVE_ASCII)) {
+     // Highlight the input portion matching |embedderAbout|; or if the user
+     // has input "about:" (with optional slashes), highlight the whole
+     // |embedderAbout|.
+     TermMatches style_matches;
+-    if (starting_about)
++    if (starting_about || starting_aux)
+       style_matches.emplace_back(0, 0, text.length());
+     else if (text.length() > kAboutSchemeLength)
+       style_matches.emplace_back(0, 0, embedderAbout.length());
+@@ -73,11 +97,18 @@
+     // Include some common builtin URLs as the user types the scheme.
+     for (const std::u16string& url :
+          client_->GetBuiltinsToProvideAsUserTypes()) {
+-      AddBuiltinMatch(url, std::u16string(), styles);
++      AddBuiltinMatch(starting_aux ? ToAuxDisplayURL(url, embedderAbout) : url,
++                      std::u16string(), styles);
+     }
+   } else {
+     // Match input about: or |embedderAbout| URL input against builtin URLs.
++    // FixupURL() maps a typed aux: to chrome:, so only the suggestion text
++    // needs to follow the scheme spelling the user used.
+     GURL url = url_formatter::FixupURL(base::UTF16ToUTF8(text));
++    const bool typed_aux =
++        base::StartsWith(text, u"aux:", base::CompareCase::INSENSITIVE_ASCII);
++    const std::u16string scheme_prefix =
++        typed_aux ? std::u16string(kAuxSchemePrefix) : embedderAbout;
+     const bool text_ends_with_slash =
+         base::EndsWith(text, u"/", base::CompareCase::SENSITIVE);
+     // BuiltinProvider doesn't know how to suggest valid ?query or #fragment
+@@ -105,13 +136,13 @@
+       std::u16string host_and_path =
+           base::UTF8ToUTF16(url.GetHost() + url.GetPath());
+       base::TrimString(host_and_path, u"/", &host_and_path);
+-      size_t match_length = embedderAbout.length() + host_and_path.length();
++      size_t match_length = scheme_prefix.length() + host_and_path.length();
+       for (Builtins::const_iterator i(builtins_.begin());
+            (i != builtins_.end()) && (matches_.size() < provider_max_matches_);
+            ++i) {
+         if (base::StartsWith(*i, host_and_path,
+                              base::CompareCase::INSENSITIVE_ASCII)) {
+-          std::u16string match_string = embedderAbout + *i;
++          std::u16string match_string = scheme_prefix + *i;
+           TermMatches style_matches = {{0, 0, match_length}};
+           ACMatchClassifications styles = ClassifyTermMatches(
+               style_matches, match_string.length(), kMatch, kUrl);
+@@ -164,7 +195,11 @@
+   match.suggest_type = omnibox::TYPE_NAVIGATION;
+   match.fill_into_edit = match_string;
+   match.inline_autocompletion = inline_completion;
+-  match.destination_url = GURL(match_string);
++  match.destination_url =
++      base::StartsWith(match_string, kAuxSchemePrefix,
++                       base::CompareCase::INSENSITIVE_ASCII)
++          ? url_formatter::FixupURL(base::UTF16ToUTF8(match_string))
++          : GURL(match_string);
+   match.contents = match_string;
+   match.contents_class = styles;
+   matches_.push_back(match);
+diff --git a/components/omnibox/browser/location_bar_model_impl.cc b/components/omnibox/browser/location_bar_model_impl.cc
+--- a/components/omnibox/browser/location_bar_model_impl.cc
++++ b/components/omnibox/browser/location_bar_model_impl.cc
+@@ -5,11 +5,13 @@
+ #include "components/omnibox/browser/location_bar_model_impl.h"
+ 
+ #include <string>
++#include <string_view>
+ 
+ #include "base/check.h"
+ #include "base/feature_list.h"
+ #include "base/metrics/field_trial_params.h"
+ #include "base/notreached.h"
++#include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/time/time.h"
+ #include "build/build_config.h"
+@@ -143,12 +145,23 @@
+   // Note that we can't unescape spaces here, because if the user copies this
+   // and pastes it into another program, that program may think the URL ends at
+   // the space.
+-  const std::u16string formatted_text =
++  std::u16string formatted_text =
+       delegate_->FormattedStringWithEquivalentMeaning(
+           url, url_formatter::FormatUrl(url, format_types,
+                                         base::UnescapeRule::NORMAL, nullptr,
+                                         nullptr, nullptr));
+ 
++  // Aux presents chrome:// pages as aux://. url_formatter::FixupURL maps the
++  // aux: scheme back to chrome: when the user edits and navigates, so this is
++  // display-only. Applied here so the steady-state, focused and copied text
++  // all agree.
++  constexpr std::u16string_view kChromeSchemePrefix = u"chrome://";
++  if (url.SchemeIs("chrome") &&
++      base::StartsWith(formatted_text, kChromeSchemePrefix,
++                       base::CompareCase::INSENSITIVE_ASCII)) {
++    formatted_text.replace(0, kChromeSchemePrefix.size(), u"aux://");
++  }
++
+   // Truncating the URL breaks editing and then pressing enter, but hopefully
+   // people won't try to do much with such enormous URLs anyway. If this becomes
+   // a real problem, we could perhaps try to keep some sort of different "elided
+diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/url_fixer.cc
+--- a/components/url_formatter/url_fixer.cc
++++ b/components/url_formatter/url_fixer.cc
+@@ -38,6 +38,7 @@
+ 
+ // Hardcode these constants to avoid dependences on //chrome and //content.
+ const char kChromeUIScheme[] = "chrome";
++const char kAuxScheme[] = "aux";
+ const char kDevToolsScheme[] = "devtools";
+ const char kChromeUIDefaultHost[] = "version";
+ const char kViewSourceScheme[] = "view-source";
+@@ -401,6 +402,13 @@
+   // TODO(pkasting): Maybe we should try to use GURL's parser for this?
+   if (HasPort(text, *scheme_component)) {
+     return false;
++  }
++
++  // Aux displays chrome:// pages as aux://. Treat a typed aux: as chrome: while
++  // leaving |scheme_component| on the original text, so callers that index
++  // into the input (omnibox classification, URL rebuilding) stay consistent.
++  if (*canon_scheme == kAuxScheme) {
++    *canon_scheme = kChromeUIScheme;
+   }
+ 
+   // Everything checks out.
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2754,6 +2754,7 @@
+       "views/frame/picture_in_picture_browser_frame_view.h",
+       "views/frame/top_container_view.cc",
+       "views/frame/top_container_view.h",
++      "aux_ntp_url.h",
+       "views/frame/aux_icon_picker.cc",
+       "views/frame/aux_icon_picker.h",
+       "views/frame/aux_sidebar_view.cc",

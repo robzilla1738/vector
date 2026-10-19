@@ -1,0 +1,804 @@
+diff --git a/chrome/app/vector_icons/aux_sidebar_toggle.icon b/chrome/app/vector_icons/aux_sidebar_toggle.icon
+new file mode 100644
+--- /dev/null
++++ b/chrome/app/vector_icons/aux_sidebar_toggle.icon
+@@ -0,0 +1,10 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++CANVAS_DIMENSIONS, 16,
++FLIPS_IN_RTL,
++STROKE, 1.5f,
++ROUND_RECT, 1.75f, 2.25f, 12.5f, 11.5f, 3,
++MOVE_TO, 5.9f, 2.25f,
++V_LINE_TO, 13.75f
+diff --git a/chrome/app/vector_icons/BUILD.gn b/chrome/app/vector_icons/BUILD.gn
+--- a/chrome/app/vector_icons/BUILD.gn
++++ b/chrome/app/vector_icons/BUILD.gn
+@@ -47,6 +47,7 @@
+     "autofill/webauthn_dialog_header_dark_custom.icon",
+     "autorenew.icon",
+     "autorenew_old.icon",
++    "aux_sidebar_toggle.icon",
+     "back_arrow_touch_old.icon",
+     "backspace_filled.icon",
+     "battery_saver_refresh_custom.icon",
+diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+@@ -396,12 +396,6 @@
+ void VerticalTabStripStateController::UpdateCollapseActionItem() {
+   const bool is_collapsed =
+       GetCollapseState() != VerticalTabStripCollapseState::kExpanded;
+-
+-  const gfx::VectorIcon& icon = (is_collapsed == base::i18n::IsRTL())
+-                                    ? features::IsRoundedIconsEnabled()
+-                                          ? views::kMenuOpenIcon
+-                                          : views::kMenuOpenOldIcon
+-                                    : views::kMenuCloseCustomIcon;
+ 
+   const auto& text =
+       is_collapsed ? IDS_EXPAND_VERTICAL_TABS : IDS_COLLAPSE_VERTICAL_TABS;
+@@ -414,7 +408,7 @@
+                                                root_action_item_);
+   if (collapse_action) {
+     collapse_action->SetImage(
+-        ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon));
++        ui::ImageModel::FromVectorIcon(kAuxSidebarToggleIcon, ui::kColorIcon));
+     collapse_action->SetText(
+         chrome::GetCleanTitleAndTooltipText(l10n_util::GetStringUTF16(text)));
+ 
+diff --git a/chrome/browser/ui/layout_constants.cc b/chrome/browser/ui/layout_constants.cc
+--- a/chrome/browser/ui/layout_constants.cc
++++ b/chrome/browser/ui/layout_constants.cc
+@@ -145,10 +145,11 @@
+       return 20;
+     case LayoutConstant::kMainBackgroundRegionCornerRadius:
+     case LayoutConstant::kToolbarCornerRadius:
+-    case LayoutConstant::kVerticalTabCornerRadius:
+       return 8;
++    case LayoutConstant::kVerticalTabCornerRadius:
++      return 10;
+     case LayoutConstant::kVerticalTabHeight:
+-      return 30;
++      return 34;
+     case LayoutConstant::kVerticalTabPinnedHeight:
+       return 32;
+     case LayoutConstant::kVerticalTabMinWidth:
+diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
+@@ -62,7 +62,7 @@
+ BASE_FEATURE(kKeyboardLockHeldEscExitsTabFullscreen,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kTabStripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
++BASE_FEATURE(kTabStripDeclutter, base::FEATURE_ENABLED_BY_DEFAULT);
+ BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
+ BASE_FEATURE_PARAM(bool,
+                    kToolbarGlowUpReloadEnabled,
+diff --git a/ui/color/sys_color_mixer.cc b/ui/color/sys_color_mixer.cc
+--- a/ui/color/sys_color_mixer.cc
++++ b/ui/color/sys_color_mixer.cc
+@@ -111,6 +111,27 @@
+                                                 : kColorRefNeutral94};
+ }
+ 
++// Aux uses a neutral grey dark palette: a raised grey frame and sidebar, with
++// the toolbar flush with the page.
++void AddAuxNeutralDarkSurfaces(ColorMixer& mixer) {
++  constexpr SkColor kPage = SkColorSetRGB(0x1B, 0x1B, 0x1B);
++  constexpr SkColor kFrame = SkColorSetRGB(0x2D, 0x2D, 0x2D);
++  constexpr SkColor kRaised = SkColorSetRGB(0x3D, 0x3D, 0x3D);
++  mixer[kColorSysSurface] = {kPage};
++  mixer[kColorSysBase] = {kPage};
++  mixer[kColorSysBaseContainer] = {kFrame};
++  mixer[kColorSysBaseContainerElevated] = {kFrame};
++  mixer[kColorSysHeader] = {kFrame};
++  mixer[kColorSysHeaderInactive] = {kFrame};
++  mixer[kColorSysHeaderContainer] = {kRaised};
++  mixer[kColorSysHeaderContainerInactive] = {kRaised};
++  mixer[kColorSysOmniboxContainer] = {kFrame};
++  mixer[kColorSysNeutralContainer] = {kFrame};
++  mixer[kColorSysDivider] = {kRaised};
++  mixer[kColorSysOnHeaderDivider] = {kRaised};
++  mixer[kColorSysSurfaceVariant] = {kFrame};
++}
++
+ }  // namespace
+ 
+ void AddSysColorMixer(ColorProvider* provider, const ColorProviderKey& key) {
+@@ -410,6 +431,10 @@
+              key.user_color.has_value()) {
+     AddThemedSysColorOverrides(mixer, key);
+   }
++
++  if (dark_mode) {
++    AddAuxNeutralDarkSurfaces(mixer);
++  }
+ }
+ 
+ }  // namespace ui
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -49,6 +49,12 @@
+   AuxSidebarView& operator=(const AuxSidebarView&) = delete;
+   ~AuxSidebarView() override;
+ 
++  // Called with whether any chat is running, whenever that changes.
++  using RunningChangedCallback = base::RepeatingCallback<void(bool)>;
++  void SetRunningChangedCallback(RunningChangedCallback callback) {
++    running_changed_ = std::move(callback);
++  }
++
+   struct Chat {
+     std::string id;
+     std::string title;
+@@ -136,6 +142,8 @@
+   std::string active_chat_id_;
+   bool show_all_chats_ = false;
+   bool in_flight_ = false;
++  bool any_running_ = false;
++  RunningChangedCallback running_changed_;
+ 
+   base::WeakPtrFactory<AuxSidebarView> weak_factory_{this};
+ };
+@@ -167,11 +175,15 @@
+   AuxSidebarFooter& operator=(const AuxSidebarFooter&) = delete;
+   ~AuxSidebarFooter() override;
+ 
++  void SetAgentActive(bool active);
++
+  private:
+   void Build();
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
+   raw_ptr<views::View> profile_button_ = nullptr;
++  raw_ptr<views::View> agent_button_ = nullptr;
++  bool agent_active_ = false;
+   base::WeakPtrFactory<AuxSidebarFooter> weak_factory_{this};
+ };
+ 
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++#include "chrome/browser/ui/views/frame/aux_icon_picker.h"
+ 
+ #include <algorithm>
+ #include <utility>
+@@ -24,6 +25,7 @@
+ #include "base/values.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "cc/paint/paint_flags.h"
++#include "third_party/skia/include/core/SkPathBuilder.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+@@ -43,6 +45,7 @@
+ #include "ui/base/accelerators/accelerator.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/gfx/canvas.h"
++#include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+ #include "ui/views/controls/image_view.h"
+@@ -98,7 +101,11 @@
+ constexpr int kCommandArchive = 3;
+ constexpr int kCommandDelete = 4;
+ constexpr int kRowRadius = 10;
+-constexpr int kRowIconSize = 18;
++constexpr int kRowIconSize = 16;
++constexpr int kRowHeight = 34;
++constexpr int kRowInset = 12;
++constexpr int kRowTextSize = 13;
++constexpr int kCaptionTextSize = 12;
+ 
+ constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
+     net::DefineNetworkTrafficAnnotation("aux_sidebar_daemon_feed", R"(
+@@ -209,18 +216,31 @@
+                 bool selected = false)
+       : views::LabelButton(std::move(callback), text), selected_(selected) {
+     SetHorizontalAlignment(gfx::ALIGN_LEFT);
+-    SetImageLabelSpacing(12);
+-    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(9, 10)));
++    SetImageLabelSpacing(8);
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(8, kRowInset)));
+     SetImageModel(views::Button::STATE_NORMAL, icon);
+     SetEnabledTextColors(selected ? ui::kColorSysOnSurface
+                                   : ui::kColorSysOnSurfaceSubtle);
+     label()->SetElideBehavior(gfx::ELIDE_TAIL);
+-    label()->SetTextStyle(emphasized ? views::style::STYLE_BODY_3_EMPHASIS
+-                                     : views::style::STYLE_BODY_3);
++    SetLabelFont(kRowTextSize, emphasized);
+     SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+     UpdateBackground();
+   }
+ 
++  void SetCaptionStyle() {
++    caption_ = true;
++    SetLabelFont(kCaptionTextSize, /*emphasized=*/false);
++  }
++
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    gfx::Size size = views::LabelButton::CalculatePreferredSize(available_size);
++    if (!caption_) {
++      size.set_height(std::max(size.height(), kRowHeight));
++    }
++    return size;
++  }
++
+   const std::string& chat_id() const { return chat_id_; }
+   void set_chat_id(std::string id) { chat_id_ = std::move(id); }
+ 
+@@ -236,6 +256,15 @@
+   }
+ 
+  private:
++  void SetLabelFont(int size, bool emphasized) {
++    gfx::FontList font = gfx::FontList().DeriveWithSizeDelta(
++        size - gfx::FontList().GetFontSize());
++    if (emphasized) {
++      font = font.DeriveWithWeight(gfx::Font::Weight::MEDIUM);
++    }
++    label()->SetFontList(font);
++  }
++
+   void UpdateBackground() {
+     const bool hovered = GetState() == views::Button::STATE_HOVERED ||
+                          GetState() == views::Button::STATE_PRESSED;
+@@ -246,6 +275,7 @@
+   }
+ 
+   const bool selected_;
++  bool caption_ = false;
+   std::string chat_id_;
+ };
+ 
+@@ -485,6 +515,13 @@
+       .AsImageSkia();
+ }
+ 
++ui::ImageModel MenuAvatar(ProfileAttributesEntry* entry) {
++  ui::ImageModel chosen = AuxProfileIconImage(entry->GetPath(), kMenuRowIcon);
++  return chosen.IsEmpty()
++             ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon))
++             : chosen;
++}
++
+ std::vector<ProfileAttributesEntry*> AllProfiles() {
+   return g_browser_process->profile_manager()
+       ->GetProfileAttributesStorage()
+@@ -555,7 +592,7 @@
+       auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
+           base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this),
+                               path),
+-          ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon)),
++          MenuAvatar(entry),
+           entry->GetName()));
+       if (path == current) {
+         row->AddTrailingIcon(kCheckIcon);
+@@ -682,15 +719,12 @@
+   }
+ 
+   void EditProfile() {
+-    profiles::SwitchToProfile(
+-        action_profile_, /*always_create=*/false,
+-        base::BindOnce([](BrowserWindowInterface* browser) {
+-          if (browser) {
+-            browser->OpenGURL(GURL("chrome://settings/manageProfile"),
+-                              WindowOpenDisposition::NEW_FOREGROUND_TAB);
+-          }
+-        }));
++    views::View* anchor = GetAnchorView();
++    const base::FilePath path = action_profile_;
+     GetWidget()->Close();
++    if (anchor) {
++      ShowAuxIconPicker(anchor, path);
++    }
+   }
+ 
+   void DeleteProfile() {
+@@ -747,11 +781,16 @@
+         g_browser_process->profile_manager()
+             ->GetProfileAttributesStorage()
+             .GetProfileAttributesWithPath(browser->GetProfile()->GetPath());
+-    auto avatar = std::make_unique<views::ImageView>(
+-        entry ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, 20))
+-              : ui::ImageModel::FromVectorIcon(
+-                    vector_icons::kAccountCircleIcon,
+-                    ui::kColorSysOnSurfaceSubtle, 20));
++    ui::ImageModel avatar_image =
++        AuxProfileIconImage(browser->GetProfile()->GetPath(), 20);
++    if (avatar_image.IsEmpty()) {
++      avatar_image =
++          entry ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, 20))
++                : ui::ImageModel::FromVectorIcon(
++                      vector_icons::kAccountCircleIcon,
++                      ui::kColorSysOnSurfaceSubtle, 20);
++    }
++    auto avatar = std::make_unique<views::ImageView>(avatar_image);
+     avatar->SetImageSize(gfx::Size(20, 20));
+     avatar->SetCanProcessEventsWithinSubtree(false);
+     AddChildView(std::move(avatar));
+@@ -991,20 +1030,24 @@
+   AddPinnedTiles();
+ 
+   // Returns whether the section is expanded.
+-  auto add_header = [this](const std::string& key, const std::u16string& text) {
++  bool first_section = false;
++  auto add_header = [this, &first_section](const std::string& key,
++                                           const std::u16string& text) {
+     const bool collapsed = collapsed_sections_.contains(key);
++    if (first_section) {
++      auto* separator = AddChildView(std::make_unique<views::Separator>());
++      separator->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(6, 0, 0, 0));
++    }
++    first_section = true;
+     auto* header = AddChildView(std::make_unique<AuxSidebarRow>(
+         base::BindRepeating(&AuxSidebarView::ToggleSection,
+                             base::Unretained(this), key),
+         text, ui::ImageModel(), /*emphasized=*/false));
+     header->SetBorder(
+-        views::CreateEmptyBorder(gfx::Insets::TLBR(14, 10, 6, 10)));
+-    header->SetImageModel(views::Button::STATE_NORMAL,
+-                          ui::ImageModel::FromVectorIcon(
+-                              collapsed ? vector_icons::kSubmenuArrowOldIcon
+-                                        : vector_icons::kCaretDownOldIcon,
+-                              ui::kColorSysOnSurfaceSubtle, 12));
+-    header->SetImageLabelSpacing(6);
++        views::CreateEmptyBorder(
++            gfx::Insets::TLBR(12, kRowInset, 4, kRowInset)));
++    header->SetCaptionStyle();
++    header->SetImageLabelSpacing(0);
+     header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+     return !collapsed;
+   };
+@@ -1276,6 +1319,14 @@
+     return;
+   }
+   chats_ = std::move(chats);
++  const bool running = std::ranges::any_of(
++      chats_, [](const Chat& chat) { return chat.running; });
++  if (running != any_running_) {
++    any_running_ = running;
++    if (running_changed_) {
++      running_changed_.Run(running);
++    }
++  }
+   Rebuild();
+ }
+ 
+@@ -1442,7 +1493,66 @@
+ 
+ BEGIN_METADATA(AuxAgentPill)
+ END_METADATA
++
++// Aside's agent status in the footer: a bolt with a dot that turns green while
++// an agent is running. Opens the chat list.
++class AuxBoltButton : public views::Button {
++  METADATA_HEADER(AuxBoltButton, views::Button)
++
++ public:
++  explicit AuxBoltButton(BrowserWindowInterface* browser)
++      : views::Button(base::BindRepeating(
++            [](BrowserWindowInterface* browser) {
++              browser->OpenGURL(
++                  GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
++                                     "/main.html#/u/0/tasks"})),
++                  WindowOpenDisposition::NEW_FOREGROUND_TAB);
++            },
++            base::Unretained(browser))) {
++    GetViewAccessibility().SetName(u"Agent activity");
++    SetTooltipText(u"Agent activity");
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++  }
+ 
++  void SetActive(bool active) {
++    active_ = active;
++    SchedulePaint();
++  }
++
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    return gfx::Size(28, 24);
++  }
++
++ protected:
++  void PaintButtonContents(gfx::Canvas* canvas) override {
++    const SkColor color =
++        GetColorProvider()->GetColor(ui::kColorSysOnSurfaceSubtle);
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(color);
++    SkPathBuilder bolt;
++    const float x = 3.f, y = 6.f;
++    bolt.moveTo(x + 4.5f, y);
++    bolt.lineTo(x, y + 7.f);
++    bolt.lineTo(x + 3.f, y + 7.f);
++    bolt.lineTo(x + 2.5f, y + 12.f);
++    bolt.lineTo(x + 7.f, y + 5.f);
++    bolt.lineTo(x + 4.f, y + 5.f);
++    bolt.close();
++    canvas->DrawPath(bolt.detach(), flags);
++    flags.setColor(active_ ? SkColorSetRGB(0x34, 0xC7, 0x59)
++                           : SkColorSetA(color, 0x99));
++    canvas->DrawCircle(gfx::PointF(20.f, 12.f), 2.f, flags);
++  }
++
++ private:
++  bool active_ = false;
++};
++
++BEGIN_METADATA(AuxBoltButton)
++END_METADATA
++
+ AuxSidebarFooter::AuxSidebarFooter(BrowserWindowInterface* browser)
+     : browser_(browser) {
+   Build();
+@@ -1451,10 +1561,10 @@
+ void AuxSidebarFooter::Build() {
+   RemoveAllChildViews();
+   profile_button_ = nullptr;
++  agent_button_ = nullptr;
+   auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+       views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(8, 6), 0));
+-  layout->set_cross_axis_alignment(
+-      views::BoxLayout::CrossAxisAlignment::kCenter);
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kEnd);
+ 
+   profile_button_ =
+       AddChildView(std::make_unique<AuxProfileButton>(browser_));
+@@ -1472,6 +1582,10 @@
+     }
+   }
+ 
++  agent_button_ = AddChildView(std::make_unique<AuxBoltButton>(browser_));
++  agent_button_->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
++  static_cast<AuxBoltButton*>(agent_button_.get())->SetActive(agent_active_);
++
+   auto* spacer = AddChildView(std::make_unique<views::View>());
+   layout->SetFlexForView(spacer, 1);
+ 
+@@ -1493,6 +1607,13 @@
+ 
+ AuxSidebarFooter::~AuxSidebarFooter() = default;
+ 
++void AuxSidebarFooter::SetAgentActive(bool active) {
++  agent_active_ = active;
++  if (agent_button_) {
++    static_cast<AuxBoltButton*>(agent_button_.get())->SetActive(active);
++  }
++}
++
+ BEGIN_METADATA(AuxSidebarFooter)
+ END_METADATA
+ 
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -200,6 +200,7 @@
+   void HandleMouseExited();
+ 
+   void OnTabStripViewSet() override;
++  void OnAuxAgentActiveChanged(bool active);
+   void OnTabStripViewWillClear() override;
+ 
+   void OnCollapseStateChanged(
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -62,6 +62,7 @@
+ #include "ui/base/interaction/element_tracker.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/color/color_id.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/display/screen.h"
+ #include "ui/events/event.h"
+@@ -147,6 +148,10 @@
+       std::make_unique<AuxSidebarView>(browser_view->browser()));
+   aux_sidebar_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++
++  aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(
++      &VerticalTabStripRegionView::OnAuxAgentActiveChanged,
++      base::Unretained(this)));
+ 
+   bottom_button_container_ =
+       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
+@@ -198,7 +203,7 @@
+ 
+   SetBackground(std::make_unique<CustomCornersBackground>(
+       *this, *browser_view,
+-      /*primary_color=*/CustomCornersBackground::FrameTheme(),
++      /*primary_color=*/ui::kColorSysHeader,
+       /*corner_color=*/CustomCornersBackground::ToolbarTheme()));
+ 
+   shadow_frame_ = AddChildView(std::make_unique<ShadowFrameView>(
+@@ -723,6 +728,11 @@
+     region_view_->RestartExpandOnHoverTimer(
+         tabs::kVerticalTabsExpandOnHoverClickDelay.Get());
+   }
++}
++
++void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
++  top_button_container_->SetAgentActive(active);
++  aux_footer_->SetAgentActive(active);
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -732,7 +742,8 @@
+                                views::MaximumFlexSizeRule::kPreferred));
+   tab_strip_view()->SetProperty(
+       views::kMarginsKey,
+-      gfx::Insets::VH(
++      gfx::Insets::TLBR(
++          0, 0,
+           GetLayoutConstant(
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
+           0));
+@@ -784,6 +795,7 @@
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+   aux_sidebar_->SetVisible(!collapsed);
++  top_button_separator_->SetVisible(collapsed);
+   bottom_button_container_->SetVisible(collapsed);
+   aux_footer_->SetVisible(!collapsed);
+ 
+diff --git a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+--- a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+@@ -170,21 +170,16 @@
+       return false;
+     }
+ 
+-    // When uncollapsing the tabstrip, intentionally start showing the close
+-    // button on active non-hovered tabs a little bit sooner than reaching the
+-    // uncollapsed min width, because otherwise the close buttons in a grouped
+-    // split tab will visibly show up at different times due to rounding.
+-    constexpr int kUncollapsedMinWidthThreshold = 3;
+-
++    // Aux matches Aside: the close button only appears on hover or keyboard
++    // focus, including for the active tab.
+     const bool hovered_or_focused =
+         TabView().hovered_ || TabView().HasFocus() ||
+         (TabView().close_button_ && TabView().close_button_->HasFocus());
+-    if (width <
+-        TabView().UncollapsedMinWidth() - kUncollapsedMinWidthThreshold) {
++    if (width < TabView().UncollapsedMinWidth()) {
+       return TabView().active_ && hovered_or_focused;
+     }
+ 
+-    return TabView().active_ || hovered_or_focused;
++    return hovered_or_focused;
+   }
+ 
+   NOTREACHED() << "Unknown tab child view";
+diff --git a/chrome/browser/ui/views/tabs/common/tab_view.cc b/chrome/browser/ui/views/tabs/common/tab_view.cc
+--- a/chrome/browser/ui/views/tabs/common/tab_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view.cc
+@@ -77,6 +77,7 @@
+ #include "ui/compositor/layer.h"
+ #include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/events/types/event_type.h"
++#include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/insets.h"
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/gfx/geometry/rounded_corners_f.h"
+@@ -364,6 +365,11 @@
+   }
+ 
+   title_->SetProperty(views::kElementIdentifierKey, kVerticalTabTitleElementId);
++  if (orientation_ == TabStripOrientation::kVertical) {
++    const gfx::FontList base_font;
++    title_->SetFontList(
++        base_font.DeriveWithSizeDelta(13 - base_font.GetFontSize()));
++  }
+   SetProperty(views::kElementIdentifierKey, kTabElementId);
+   // Layout manager must be set after child views are created because the
+   // vertical layout stores pointers to those children.
+diff --git a/chrome/browser/ui/views/tabs/common/vertical_tab_style_views.cc b/chrome/browser/ui/views/tabs/common/vertical_tab_style_views.cc
+--- a/chrome/browser/ui/views/tabs/common/vertical_tab_style_views.cc
++++ b/chrome/browser/ui/views/tabs/common/vertical_tab_style_views.cc
+@@ -4,9 +4,11 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/vertical_tab_style_views.h"
+ 
++#include <algorithm>
+ #include <optional>
+ #include <string>
+ 
++#include "base/numerics/safe_conversions.h"
+ #include "chrome/browser/themes/theme_properties.h"
+ #include "chrome/browser/ui/layout_constants.h"
+ #include "chrome/browser/ui/views/frame/browser_frame_view.h"
+@@ -16,9 +18,12 @@
+ #include "chrome/browser/ui/views/tabs/tab.h"
+ #include "chrome/browser/ui/views/tabs/tab_slot_controller.h"
+ #include "chrome/grit/theme_resources.h"
++#include "third_party/skia/include/core/SkColor.h"
+ #include "third_party/skia/include/core/SkPath.h"
+ #include "third_party/skia/include/core/SkRRect.h"
+ #include "ui/base/theme_provider.h"
++#include "ui/color/color_id.h"
++#include "ui/color/color_provider.h"
+ #include "ui/gfx/canvas.h"
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/gfx/scoped_canvas.h"
+@@ -196,6 +201,24 @@
+ 
+ SkColor VerticalTabStyleViews::GetCurrentTabBackgroundColor(
+     TabStyle::TabSelectionState selection_state) const {
++  // Aux draws vertical tab rows with the same neutral highlight as the other
++  // sidebar rows instead of the theme's tinted tab colors.
++  if (const ui::ColorProvider* color_provider =
++          delegate_->GetView()->GetColorProvider()) {
++    const SkColor highlight =
++        color_provider->GetColor(ui::kColorSysStateHoverOnSubtle);
++    if (selection_state != TabStyle::TabSelectionState::kInactive) {
++      return highlight;
++    }
++    const float hover_value =
++        delegate_->IsHoverAnimationActive()
++            ? std::clamp(delegate_->GetHoverAnimationValue(), 0.0f, 1.0f)
++            : 0.0f;
++    return SkColorSetA(highlight,
++                       base::ClampRound<uint8_t>(SkColorGetA(highlight) *
++                                                 hover_value));
++  }
++
+   const bool frame_glass = delegate_->IsGlassFrame();
+   return tab_style()->GetCurrentTabBackgroundColor(
+       selection_state, delegate_->IsHoverAnimationActive(),
+@@ -224,10 +247,14 @@
+       (delegate_->IsSplit() ? delegate_->GetView()->GetInsets().height() : 0));
+ }
+ 
++namespace {
++constexpr int kContentsHorizontalInset = 12;
++}  // namespace
++
+ gfx::Insets VerticalTabStyleViews::GetContentsInsets() const {
+   return gfx::Insets::VH(
+       GetLayoutConstant(LayoutConstant::kTabVerticalPadding),
+-      GetLayoutConstant(LayoutConstant::kTabHorizontalPadding));
++      kContentsHorizontalInset);
+ }
+ 
+ int VerticalTabStyleViews::GetStrokeThickness() const {
+diff --git a/chrome/browser/ui/views/tabs/vertical/top_container_button.cc b/chrome/browser/ui/views/tabs/vertical/top_container_button.cc
+--- a/chrome/browser/ui/views/tabs/vertical/top_container_button.cc
++++ b/chrome/browser/ui/views/tabs/vertical/top_container_button.cc
+@@ -13,6 +13,8 @@
+ #include "ui/views/widget/widget.h"
+ 
+ namespace {
++constexpr int kIconSize = 16;
++
+ class TopContainerButtonActionViewInterface
+     : public views::LabelButtonActionViewInterface {
+  public:
+@@ -59,7 +61,7 @@
+ 
+   const ui::ImageModel image_model = ui::ImageModel::FromVectorIcon(
+       *icon_image.GetVectorIcon().vector_icon(), GetForegroundColor(),
+-      GetLayoutConstant(LayoutConstant::kVerticalTabStripButtonIconSize));
++      kIconSize);
+ 
+   SetImageModel(views::Button::STATE_NORMAL, image_model);
+   SetImageModel(views::Button::STATE_HOVERED, image_model);
+diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+@@ -81,6 +81,9 @@
+   // rectangle defined by `(caption_button_width, toolbar_height)` that is
+   // aligned to the leading, top corner.
+   void SetToolbarHeightForLayout(int toolbar_height);
++
++  // Aside shows the agent pill in the header only while an agent is running.
++  void SetAgentActive(bool active);
+   void SetCaptionButtonWidthForLayout(int caption_button_width);
+   void SetIsExitingExpandOnHoverForLayout(bool is_exiting_expand_on_hover);
+   bool WillWrapDueToOverflow(int available_width) const;
+@@ -101,6 +104,7 @@
+   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
+   raw_ptr<TabStripComboButton> combo_button_ = nullptr;
+   raw_ptr<views::View> aux_pill_ = nullptr;
++  bool aux_pill_active_ = false;
+   raw_ptr<views::LabelButton> collapse_button_ = nullptr;
+   raw_ptr<views::LabelButton> unfocus_button_ = nullptr;
+ 
+diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -71,6 +71,14 @@
+ }
+ 
+ VerticalTabStripTopContainer::~VerticalTabStripTopContainer() = default;
++
++void VerticalTabStripTopContainer::SetAgentActive(bool active) {
++  if (aux_pill_active_ == active) {
++    return;
++  }
++  aux_pill_active_ = active;
++  InvalidateLayout();
++}
+ 
+ void VerticalTabStripTopContainer::Layout(PassKey) {
+   LayoutSuperclass<views::View>(this);
+@@ -250,7 +258,7 @@
+       gfx::Rect bounds(left_alignment,
+                        std::max(0, y_baseline - pref_size.height() / 2),
+                        pref_size.width(), pref_size.height());
+-      layout.child_layouts.emplace_back(aux_pill_.get(), true, bounds);
++      layout.child_layouts.emplace_back(aux_pill_.get(), aux_pill_active_, bounds);
+     }
+ 
+     if (collapse_button_ && collapse_button_->GetVisible()) {
+diff --git a/chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.cc b/chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.cc
+--- a/chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.cc
++++ b/chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.cc
+@@ -169,6 +169,7 @@
+           GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing) -
+               GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin),
+           0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
++  toolbar_divider->SetVisible(false);
+   toolbar_divider_ = AddChildView(std::move(toolbar_divider));
+ 
+   // Initialize the pinned action buttons.
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -403,15 +403,12 @@
+   PrefService* const prefs = browser_->GetProfile()->GetPrefs();
+ 
+   std::unique_ptr<ExtensionsToolbarDesktop> extensions_container;
+-  std::unique_ptr<ToolbarDivider> toolbar_divider;
+ 
+   // Do not create the extensions or browser actions container if it is a guest
+   // profile (only regular and incognito profiles host extensions).
+   if (!browser_->GetProfile()->IsGuestSession() &&
+       !features::IsWebUIExtensionsContainerEnabled()) {
+     extensions_container = std::make_unique<ExtensionsToolbarDesktop>(browser_);
+-
+-    toolbar_divider = std::make_unique<ToolbarDivider>();
+   }
+ 
+   std::unique_ptr<MediaToolbarButtonView> media_button;
+@@ -504,16 +501,6 @@
+             0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
+   }
+ 
+-  if (extensions_container) {
+-    extensions_container_ = AddChildView(std::move(extensions_container));
+-    extensions_toolbar_coordinator_ =
+-        std::make_unique<ExtensionsToolbarCoordinator>(extensions_container_);
+-  }
+-
+-  if (toolbar_divider) {
+-    toolbar_divider_ = AddChildView(std::move(toolbar_divider));
+-  }
+-
+   if (!features::IsWebUIPinnedToolbarActionsEnabled()) {
+     pinned_toolbar_actions_container_ = AddChildView(
+         std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this));
+@@ -562,6 +549,12 @@
+     media_button_ = AddChildView(std::move(media_button));
+   }
+ 
++  if (extensions_container) {
++    extensions_container_ = AddChildView(std::move(extensions_container));
++    extensions_toolbar_coordinator_ =
++        std::make_unique<ExtensionsToolbarCoordinator>(extensions_container_);
++  }
++
+   if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
+     if (base::FeatureList::IsEnabled(features::kAiOverlayDialog) &&
+         ttc::AiOverlayDialogController::From(browser_)) {

@@ -17,13 +17,14 @@ Last updated 2026-10-19.
 ## Differences from Aside
 
 - Sidebar: native pinned tile grid (three per row), Bookmarks, Chats and Tabs sections above Chromium's vertical tab strip (`0073`, `0079`). The header is Aside's purple agent pill (opens the chat list) and the sidebar toggle. The footer has the profile avatar with chevron, profile pager dots (when there is more than one profile) and tab search. Sections collapse from their headers. Chats come live from the daemon, the open chat is highlighted, and right-click offers Pin, Mark as read, Archive and Delete (Pin only for sessions the daemon allows). Pinned tiles right-click to Reload, Duplicate, Unpin and Close. Tiles drag to reorder (verified). The sidebar is 282pt wide like Aside (`0081`). Chromium's own pinned container is kept empty, so dragging a tab into the grid to pin it is not supported.
-- Ctrl-Tab opens a most-recently-used tab switcher panel (up to nine tabs) that commits when Ctrl is released (`0082`). It compiles and links but has not been exercised by hand yet.
-- Profile menu: Aside's panel (profiles with check and Edit/Delete, New profile, Bookmarks, Downloads, Extensions, History and Developers submenus, Settings, New Tab, Incognito Window). Edit opens Chromium's profile customization page, not Aside's icon picker.
+- Ctrl-Tab opens a most-recently-used tab switcher panel (up to nine tabs) that commits when Ctrl is released (`0082`). Verified live: the panel shows while Ctrl is held and activates the highlighted tab on release. Chrome routes the chord through the browser action manager, so the action bodies call the switcher directly.
+- Look: a neutral grey dark palette (frame and sidebar `#2d2d2d`, toolbar and page `#1b1b1b`) replaces Chromium's blue-tinted one (`0084`, `ui/color/sys_color_mixer.cc`). Sidebar rows use 13pt text with 12pt captions, the close X shows only on hover, and the sidebar toggle uses Aside's panel icon. The toolbar has no dividers and ends with Downloads then Extensions. The sidebar is opaque, where Aside's is translucent.
+- Profile menu: Aside's panel (profiles with check and Edit/Delete, New profile, Bookmarks, Downloads, Extensions, History and Developers submenus, Settings, New Tab, Incognito Window). Edit opens a native icon picker (16 icons and a name field, stored in the `aux.profile_icons` local state pref, `0083`).
 - Ad blocking: whole-page blocks (`$document`, `$all`) show Aux's "Aux blocked this page" interstitial with Go back and Continue once (`vendor/aside/shims/aux-blocked.*`).
 - Window material: Chromium's glass frame (macOS vibrancy) is on by default (`0080`). The toolbar has no avatar button for regular profiles.
-- Omnibox and toolbar: Aux extension pages show their page title instead of the extension URL (`0074`). The app menu button is hidden (`0077`, the menu bar is the entry point), Google's AI Mode is off by default (`0076`) and Downloads is pinned to the toolbar (`0078`). The `aside://` display scheme is not reproduced.
+- Omnibox and toolbar: Aux extension pages show their page title instead of the extension URL (`0074`). The app menu button is hidden (`0077`, the menu bar is the entry point), Google's AI Mode is off by default (`0076`) and Downloads is pinned to the toolbar (`0078`). On the new tab page the omnibox is empty and unfocused with a magnifier and "Ask Google or type a URL" (`0085`), and there is no bookmark star. Typing or showing built-in pages uses `aux://` (for example `aux://settings`) in the omnibox and its built-in provider. History and search suggestion rows still show `chrome://`.
 - Product strings: Chromium's own UI text says Aux (`0075-aux-product-strings.patch`). Profiles created before that patch keep their stored name ("Your Chromium").
-- `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/`), not native. The mini popup window chrome is not native, and Aside's profile icon picker and update badge are not reproduced.
+- `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/`), not native. The mini popup window chrome is not native, and Aside's update badge is not reproduced.
 - The new tab override registers after the extension loads, so the first tab can start on Chromium's Google page. The launcher detects that and navigates the tab to `chrome://newtab` once the extension is up.
 - Local accounts only. There is no Aux cloud.
 - The Computer Use helper's own windows still show Aside strings (binary text).
@@ -31,4 +32,4 @@ Last updated 2026-10-19.
 
 ## Next
 
-Profile icon picker, `aside://` omnibox scheme, native `chrome.aside*` APIs, exact row sizing against Aside, a signed non-component build, and a Node-free launcher.
+`aux://` in history and suggestion rows, translucent sidebar, native `chrome.aside*` APIs, exact row sizing against Aside, a signed non-component build, and a Node-free launcher.

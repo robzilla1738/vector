@@ -80,3 +80,6 @@ aux/0079-aux-sidebar-pill-and-pinned-tiles.patch
 aux/0080-aux-no-toolbar-avatar-and-glass-frame.patch
 aux/0081-aux-sidebar-width-282.patch
 aux/0082-aux-ctrl-tab-switcher.patch
+aux/0083-aux-profile-icon-picker.patch
+aux/0084-aux-sidebar-toolbar-parity.patch
+aux/0085-aux-ntp-omnibox-parity-and-aux-scheme.patch

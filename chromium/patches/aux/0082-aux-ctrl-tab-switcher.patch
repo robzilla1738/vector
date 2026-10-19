@@ -1,9 +1,33 @@
+diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher.h b/chrome/browser/ui/views/frame/aux_tab_switcher.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher.h
+@@ -0,0 +1,20 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
++
++class BrowserWindowInterface;
++
++// Ctrl-Tab switcher: lists the window's tabs by recent use, advances the
++// selection on every call and activates it once Control is released.
++void AuxCycleTabs(BrowserWindowInterface* browser, bool forward);
++
++// Whether Control is held for the key event being handled right now.
++bool AuxIsControlKeyDown();
++
++// Whether Control is still held, as seen by the events the app receives.
++bool AuxIsControlStillDown();
++
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
 diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher.cc b/chrome/browser/ui/views/frame/aux_tab_switcher.cc
 new file mode 100644
-index 0000000000..0bbe394c81
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_tab_switcher.cc
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,272 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -16,6 +40,7 @@ index 0000000000..0bbe394c81
 +#include <vector>
 +
 +#include "base/callback_list.h"
++#include "base/logging.h"
 +#include "base/functional/bind.h"
 +#include "base/memory/raw_ptr.h"
 +#include "base/no_destructor.h"
@@ -75,7 +100,7 @@ index 0000000000..0bbe394c81
 +
 +  void SetSelected(bool selected) {
 +    SetBackground(selected ? views::CreateRoundedRectBackground(
-+                                 ui::kColorSysStateHoverOnProminent, 10)
++                                 ui::kColorSysSurface5, 10)
 +                           : nullptr);
 +  }
 +
@@ -182,7 +207,7 @@ index 0000000000..0bbe394c81
 +  }
 +
 +  void Poll() {
-+    if (!AuxIsControlKeyDown()) {
++    if (!AuxIsControlStillDown()) {
 +      Commit();
 +    }
 +  }
@@ -266,57 +291,123 @@ index 0000000000..0bbe394c81
 +    Session()->Advance(forward);
 +    return;
 +  }
++  // Seeds the Control state and installs the event monitor: the first poll
++  // must not see a stale "released" and commit before the panel is usable.
++  AuxIsControlKeyDown();
 +  Session() = std::make_unique<AuxSwitcherSession>(browser, forward);
 +  if (!Session()->shown()) {
 +    // Fewer than two tabs: nothing to switch to.
 +    Session().reset();
 +  }
 +}
-diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher.h b/chrome/browser/ui/views/frame/aux_tab_switcher.h
-new file mode 100644
-index 0000000000..e3796711da
---- /dev/null
-+++ b/chrome/browser/ui/views/frame/aux_tab_switcher.h
-@@ -0,0 +1,17 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
-+#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
-+#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
-+
-+class BrowserWindowInterface;
-+
-+// Ctrl-Tab switcher: lists the window's tabs by recent use, advances the
-+// selection on every call and activates it once Control is released.
-+void AuxCycleTabs(BrowserWindowInterface* browser, bool forward);
-+
-+// Whether the Control key is currently held.
-+bool AuxIsControlKeyDown();
-+
-+#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
 diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm b/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
 new file mode 100644
-index 0000000000..c31c75e38e
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,54 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +
 +#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
 +
++#include "base/logging.h"
++
 +#import <AppKit/AppKit.h>
++#import <CoreGraphics/CoreGraphics.h>
++
++namespace {
++
++bool g_control_down = false;
++id g_monitor = nil;
++
++void EnsureMonitor() {
++  if (g_monitor) {
++    return;
++  }
++  // Tracks Control from the events the app actually receives, so the panel
++  // closes when the release is delivered, whatever its source.
++  g_monitor = [NSEvent
++      addLocalMonitorForEventsMatchingMask:(NSEventMaskFlagsChanged |
++                                            NSEventMaskKeyDown |
++                                            NSEventMaskKeyUp)
++                                   handler:^NSEvent*(NSEvent* event) {
++                                     g_control_down =
++                                         (event.modifierFlags &
++                                          NSEventModifierFlagControl) != 0;
++                                     return event;
++                                   }];
++}
++
++}  // namespace
 +
 +bool AuxIsControlKeyDown() {
-+  return ([NSEvent modifierFlags] & NSEventModifierFlagControl) != 0;
++  EnsureMonitor();
++  NSEvent* current = [NSApp currentEvent];
++  const bool from_event =
++      current && (current.type == NSEventTypeKeyDown ||
++                  current.type == NSEventTypeFlagsChanged) &&
++      (current.modifierFlags & NSEventModifierFlagControl) != 0;
++  const bool hardware =
++      (CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) &
++       kCGEventFlagMaskControl) != 0;
++  g_control_down = from_event || hardware;
++  return g_control_down;
 +}
++
++bool AuxIsControlStillDown() {
++  EnsureMonitor();
++  return g_control_down;
++}
+diff --git a/chrome/browser/ui/browser_actions.cc b/chrome/browser/ui/browser_actions.cc
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -155,6 +155,7 @@
+ #include "chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.h"
+ #include "chrome/browser/ui/views/commerce/discounts_page_action_view_controller.h"
+ #include "chrome/browser/ui/views/file_system_access/file_system_access_bubble_controller.h"
++#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+ #include "chrome/browser/ui/views/js_optimization/js_optimizations_page_action_controller.h"
+@@ -2967,15 +2968,7 @@
+           base::BindRepeating(
+               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                  actions::ActionInvocationContext context) {
+-                if (chrome::IsCtrlTabMruEnabled(bwi)) {
+-                  base::RecordAction(
+-                      base::UserMetricsAction("Accel_CycleToNextTab"));
+-                  chrome::CycleToMruTab(bwi);
+-                } else {
+-                  base::RecordAction(
+-                      base::UserMetricsAction("Accel_SelectNextTab"));
+-                  chrome::SelectNextTab(bwi);
+-                }
++                AuxCycleTabs(bwi, /*forward=*/true);
+               },
+               bwi))
+           .SetActionId(kActionCycleToNextTab)
+@@ -2986,15 +2979,7 @@
+           base::BindRepeating(
+               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                  actions::ActionInvocationContext context) {
+-                if (chrome::IsCtrlTabMruEnabled(bwi)) {
+-                  base::RecordAction(
+-                      base::UserMetricsAction("Accel_CycleToPrevTab"));
+-                  chrome::CycleToMruTab(bwi);
+-                } else {
+-                  base::RecordAction(
+-                      base::UserMetricsAction("Accel_SelectPreviousTab"));
+-                  chrome::SelectPreviousTab(bwi);
+-                }
++                AuxCycleTabs(bwi, /*forward=*/false);
+               },
+               bwi))
+           .SetActionId(kActionCycleToPrevTab)
 diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
-index 5d970147ca..a05bc34e04 100644
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -96,6 +97,7 @@
+@@ -97,6 +97,7 @@
  #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
  #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
  #include "chrome/browser/ui/ui_features.h"
@@ -324,7 +415,31 @@ index 5d970147ca..a05bc34e04 100644
  #include "chrome/browser/ui/views/frame/browser_view.h"
  #include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
  #include "chrome/browser/ui/web_applications/app_browser_controller.h"
-@@ -789,34 +853,10 @@ void BrowserCommandController::HandleCommandWithDisposition(
+@@ -838,6 +839,11 @@
+       CloseTab(browser_);
+       break;
+     case IDC_SELECT_NEXT_TAB:
++      // Ctrl-Tab is bound to this command on Mac; Cmd-Opt-Arrow is not.
++      if (AuxIsControlKeyDown()) {
++        AuxCycleTabs(browser_, /*forward=*/true);
++        break;
++      }
+       base::RecordAction(base::UserMetricsAction("Accel_SelectNextTab"));
+       SelectNextTab(
+           browser_,
+@@ -845,6 +851,11 @@
+               TabStripUserGestureDetails::GestureType::kKeyboard, time_stamp));
+       break;
+     case IDC_SELECT_PREVIOUS_TAB:
++      // Ctrl-Tab is bound to this command on Mac; Cmd-Opt-Arrow is not.
++      if (AuxIsControlKeyDown()) {
++        AuxCycleTabs(browser_, /*forward=*/false);
++        break;
++      }
+       base::RecordAction(base::UserMetricsAction("Accel_SelectPreviousTab"));
+       SelectPreviousTab(
+           browser_,
+@@ -852,34 +863,10 @@
                TabStripUserGestureDetails::GestureType::kKeyboard, time_stamp));
        break;
      case IDC_CYCLE_TO_NEXT_TAB:
@@ -361,11 +476,46 @@ index 5d970147ca..a05bc34e04 100644
        break;
      case IDC_MOVE_TAB_NEXT:
        MoveTabNext(browser_);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -29,6 +29,7 @@
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
+ #include "content/public/browser/render_widget_host.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
+@@ -312,12 +313,23 @@
+   auto found = aux_shortcuts_.find(accelerator);
+   if (found == aux_shortcuts_.end()) return false;
+   if (found->second.first.empty()) {
++    aux_tab_preview_release_.reset();
++    return true;
++  }
++  const std::string id = found->second.first;
++  // Ctrl-Tab is bound to tab-next/tab-previous by the shell. The native MRU
++  // switcher replaces the shell's own tab preview for that chord only; other
++  // bindings of these commands keep activating the neighbouring tab.
++  if (native_down && accelerator.key_code() == ui::VKEY_TAB &&
++      (accelerator.modifiers() & ui::EF_CONTROL_DOWN) &&
++      !(accelerator.modifiers() & (ui::EF_COMMAND_DOWN | ui::EF_ALT_DOWN)) &&
++      (id == "tab-next" || id == "tab-previous")) {
+     aux_tab_preview_release_.reset();
++    AuxCycleTabs(browser_.get(), id == "tab-next");
+     return true;
+   }
+   auto* shell = GetWebUIBrowserUI();
+   if (!shell) return false;
+-  const std::string id = found->second.first;
+   const bool focus_shell = found->second.second;
+   // Only an actual held Ctrl-Tab chord opens the preview. Menu commands and
+   // alternate Next/Previous shortcuts continue to activate immediately.
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index ca65408a67..fce432aef4 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -2551,6 +2551,7 @@ static_library("ui") {
+@@ -2551,6 +2551,7 @@
      sources += [
        "views/frame/browser_frame_view_factory_mac.mm",
        "views/frame/browser_frame_view_mac.h",
@@ -373,14 +523,12 @@ index ca65408a67..fce432aef4 100644
        "views/frame/browser_frame_view_mac.mm",
        "views/frame/browser_native_widget_mac.h",
        "views/frame/browser_native_widget_mac.mm",
-@@ -2753,6 +2754,10 @@ static_library("ui") {
-       "views/frame/picture_in_picture_browser_frame_view.h",
+@@ -2754,6 +2755,8 @@
        "views/frame/top_container_view.cc",
        "views/frame/top_container_view.h",
-+      "views/frame/aux_sidebar_view.cc",
+       "views/frame/aux_sidebar_view.cc",
 +      "views/frame/aux_tab_switcher.cc",
 +      "views/frame/aux_tab_switcher.h",
-+      "views/frame/aux_sidebar_view.h",
+       "views/frame/aux_sidebar_view.h",
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
-       "views/tab_search_bubble_host.cc",
