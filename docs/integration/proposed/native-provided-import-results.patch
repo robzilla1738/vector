@@ -1,0 +1,74 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -44,7 +44,10 @@
+ namespace {
+ constexpr char kService[] = "aux.browser.import.service";
+ base::DictValue PublicJob(const base::DictValue& job) {
+-  return job.Clone();
++  auto result = job.Clone();
++  if (const auto* status = job.FindString("status")) result.Set("state", *status);
++  if (const auto* error = job.FindString("error")) result.Set("errorMessage", *error);
++  return result;
+ }
+ const bookmarks::BookmarkNode* Root(bookmarks::BookmarkModel* model,
+                                     std::string_view root) {
+@@ -142,6 +145,8 @@
+ base::ListValue ImportService::PublicSources() const {
+   auto result = sources_.Clone();
+   for (auto& source : result) {
++    const auto* id = source.GetDict().FindString("id");
++    source.GetDict().Set("requiresFileImport", id && *id == "safari");
+     source.GetDict().Remove("nativeFirefox");
+     source.GetDict().Remove("nativeFixture");
+     if (auto* profiles = source.GetDict().FindList("profiles")) {
+@@ -214,10 +219,16 @@
+   const auto& options = args[0].GetDict();
+   const auto *source_id = options.FindString("sourceId"),
+              *profile_id = options.FindString("sourceProfileId");
+-  const auto* categories = options.FindList("categories");
+-  if (!source_id || !categories || categories->empty() ||
+-      categories->size() > 6) {
+-    error("Source profile and supported categories are required");
++  // The supplied UI omits dataKinds for a full import and passes an explicit
++  // list for a partial import. Keep the internal migrator categories unchanged.
++  const bool has_kinds = options.Find("dataKinds") != nullptr;
++  const bool has_categories = options.Find("categories") != nullptr;
++  const auto* categories = has_kinds ? options.FindList("dataKinds")
++                                   : options.FindList("categories");
++  if (!source_id || (has_kinds && has_categories) ||
++      ((has_kinds || has_categories) &&
++       (!categories || categories->empty() || categories->size() > 6))) {
++    error("Choose a source and an unambiguous supported data-kind list");
+     return;
+   }
+   const base::DictValue *source = nullptr, *selected = nullptr;
+@@ -250,6 +261,11 @@
+   if (!source || !selected ||
+       (*source_id != "safari" && !selected->FindString("nativePath"))) {
+     error("Selected source profile is unavailable");
++    return;
++  }
++  if (!categories) categories = source->FindList("categories");
++  if (!categories || categories->empty() || categories->size() > 6) {
++    error("No supported data kinds are available for this source");
+     return;
+   }
+   auto job = std::make_unique<Job>();
+@@ -319,7 +335,7 @@
+   job->state.Set("status", "queued");
+   job->state.Set("completed", 0);
+   job->state.Set("total", static_cast<int>(job->categories.size()));
+-  auto result = job->state.Clone();
++  auto result = PublicJob(job->state);
+   jobs_.emplace(id, std::move(job));
+   std::move(reply).Run(base::Value(std::move(result)), "");
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+@@ -331,7 +347,7 @@
+     return;
+   }
+   base::ListValue args;
+-  args.Append(job.state.Clone());
++  args.Append(PublicJob(job.state));
+   auto event = std::make_unique<extensions::Event>(
+       extensions::events::AUXBROWSERIMPORT_PROGRESS,
+       "auxBrowserImport.onImportProgress", std::move(args), profile_.get());

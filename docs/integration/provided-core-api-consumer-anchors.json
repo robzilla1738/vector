@@ -1,0 +1,74 @@
+[
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+    "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+    "anchors": [
+      {
+        "offset": 25858,
+        "find": "g.state===\"succeeded\"",
+        "count": 1,
+        "context": "C=g=>{_||(_=!0,f(),u(g))},b=g=>{if(!(g.sourceId!==e.sourceId||h&&g.jobId!==h)){if(t.onProgress?.(g),g.state===\"succeeded\"){_r(e).finally(()=>U(\"completed\"));return}if(g.state===\"failed\"){C(new Error(g.errorMessage??\"Browser import failed.\"));return}g.state===\"cancelled\"&&U(\"cancelled\")}};p.onImportProgress.addListener(b"
+      },
+      {
+        "offset": 25957,
+        "find": "g.errorMessage",
+        "count": 1,
+        "context": ",g.state===\"succeeded\"){_r(e).finally(()=>U(\"completed\"));return}if(g.state===\"failed\"){C(new Error(g.errorMessage??\"Browser import failed.\"));return}g.state===\"cancelled\"&&U(\"cancelled\")}};p.onImportProgress.addListener(b),p.startImport(e).then(g=>{h=g.jobId,d=window.setInterval(()=>{p.getImportProgress(g.jobId)"
+      },
+      {
+        "offset": 26081,
+        "find": "p.startImport(e)",
+        "count": 1,
+        "context": " import failed.\"));return}g.state===\"cancelled\"&&U(\"cancelled\")}};p.onImportProgress.addListener(b),p.startImport(e).then(g=>{h=g.jobId,d=window.setInterval(()=>{p.getImportProgress(g.jobId).then(b).catch(C)},1e3)}).catch(C)})},fr=()=>s(()=>import(\"./import-browser-DwQpkFpc.js\"),__vite__mapDeps([206,2,11,1,3,4,5,6,"
+      }
+    ]
+  },
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/use-browser-importer-GNOc7eYC.js",
+    "sha256": "3c8688338f8c1b74ad74408dfb576f069917f3e8d4a71ef07a0352e026b58c15",
+    "anchors": [
+      {
+        "offset": 2969,
+        "find": "if(r.requiresFileImport)",
+        "count": 1,
+        "context": "Imported)??s[0],J=(s,a,l)=>Array.from(s.values()).flatMap(r=>{const d=a.get(r.id)??[],i=a.has(r.id);if(r.requiresFileImport){const n=d.map(o=>o.lastUsedAt).filter(Boolean).sort().at(-1);return[{kind:\"file\",id:r.id,label:r.name,detected:i,alreadyImported:l.has(r.id),lastUsedAt:n,source:r,requiresFileImport:!0}]}return r.pro"
+      },
+      {
+        "offset": 1884,
+        "find": "dataKinds:t.dataKinds",
+        "count": 1,
+        "context": "ent=null},x=t=>{t||(a(null),c(\"cancelled\"))},T=t=>{A({sourceId:t.source.id,sourceName:t.source.name,dataKinds:t.dataKinds,sourceProfileId:t.sourceProfileId}),c(\"completed\"),a(null),t.navigateToProgress&&d({to:\"/onboarding/import-browser/progress\",search:{browser:t.source.id},replace:!0})};return{targets:m,importTarget:("
+      },
+      {
+        "offset": 6395,
+        "find": "safariArchive:{fileName:c.name,data:await c.arrayBuffer()}",
+        "count": 1,
+        "context": "ri-file-import\")try{if(i(!0),A({sourceId:s.source.id,sourceName:s.source.name,dataKinds:s.dataKinds,safariArchive:{fileName:c.name,data:await c.arrayBuffer()}}),l(\"completed\"),s.navigateToProgress){await n({to:\"/onboarding/import-browser/progress\",search:{browser:s.source.id},replace:!0});return}i(!1),a(!1)}catch(x){console.error(x),b.error(\"Failed to read"
+      }
+    ]
+  },
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/general-3dgRbrRk.js",
+    "sha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+    "anchors": [
+      {
+        "offset": 572464,
+        "find": "Em=[\"bookmarks\"]",
+        "count": 1,
+        "context": ")(\"span\",{children:\"Sign out\"})})})]})}),e]}),(0,A.jsx)(Lc,{accountId:t,open:a,onOpenChange:o})]})},Em=[\"bookmarks\"],Tm={dialogDescription:\"Bring your browser history, cookies, bookmarks, and passwords so you don't have to set up Aside from scratch.\",dialogTitle:\"Import from another browser\",preparingDescription:\"P"
+      },
+      {
+        "offset": 589414,
+        "find": "i?.searchEngines??[]",
+        "count": 1,
+        "context": ":e}=Xi(),t=Bn(),n=!!Tn(),{data:i}=en({queryKey:oo,queryFn:()=>Wt().getSearchEngines(),enabled:n}),r=i?.searchEngines??[],s=i?.defaultEngineId??r.find(l=>l.isDefault)?.id??null,a=Fn({mutationFn:async l=>(await Wt().setDefaultSearchEngine(l),l),onSuccess:l=>{t.setQueryData(oo,c=>c&&{...c,defaultEngineId:l,searchEngines:c"
+      },
+      {
+        "offset": 586176,
+        "find": "e.displayName.toLowerCase()",
+        "count": 1,
+        "context": "const r=t.find(s=>di(s.code)===i&&In(s)===n);if(r)return r}return t.find(r=>In(r)===n)??e},In=e=>`${e.displayName.toLowerCase()}\\0${e.nativeDisplayName.toLowerCase()}`,vl=e=>{const t=di(e),[n]=t.split(\"-\");return n&&n!==t?n:null},di=e=>e.trim().toLowerCase(),Hm=(e,t,n,i)=>{if(!n)return\"Language settings are unavailable\";if(!i"
+      }
+    ]
+  }
+]

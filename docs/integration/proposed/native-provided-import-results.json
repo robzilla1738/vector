@@ -1,0 +1,41 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "sourceSha256": "c8370d0a69e5c23c6e791745c27cfa45cdd8efdf230126e7915b6f5aa98321af",
+      "outputSha256": "504b8453e66974d3c7c93e6e071aaa7ca1ce184053772275a85266b4842e7ea0",
+      "anchors": [
+        {
+          "find": "base::DictValue PublicJob(const base::DictValue& job) {\n  return job.Clone();\n}",
+          "replace": "base::DictValue PublicJob(const base::DictValue& job) {\n  auto result = job.Clone();\n  if (const auto* status = job.FindString(\"status\")) result.Set(\"state\", *status);\n  if (const auto* error = job.FindString(\"error\")) result.Set(\"errorMessage\", *error);\n  return result;\n}",
+          "count": 1
+        },
+        {
+          "find": "  for (auto& source : result) {\n    source.GetDict().Remove(\"nativeFirefox\");",
+          "replace": "  for (auto& source : result) {\n    const auto* id = source.GetDict().FindString(\"id\");\n    source.GetDict().Set(\"requiresFileImport\", id && *id == \"safari\");\n    source.GetDict().Remove(\"nativeFirefox\");",
+          "count": 1
+        },
+        {
+          "find": "  const auto* categories = options.FindList(\"categories\");\n  if (!source_id || !categories || categories->empty() ||\n      categories->size() > 6) {\n    error(\"Source profile and supported categories are required\");\n    return;\n  }",
+          "replace": "  // The supplied UI omits dataKinds for a full import and passes an explicit\n  // list for a partial import. Keep the internal migrator categories unchanged.\n  const bool has_kinds = options.Find(\"dataKinds\") != nullptr;\n  const bool has_categories = options.Find(\"categories\") != nullptr;\n  const auto* categories = has_kinds ? options.FindList(\"dataKinds\")\n                                   : options.FindList(\"categories\");\n  if (!source_id || (has_kinds && has_categories) ||\n      ((has_kinds || has_categories) &&\n       (!categories || categories->empty() || categories->size() > 6))) {\n    error(\"Choose a source and an unambiguous supported data-kind list\");\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  auto job = std::make_unique<Job>();\n  if (*source_id == \"safari\") {",
+          "replace": "  if (!categories) categories = source->FindList(\"categories\");\n  if (!categories || categories->empty() || categories->size() > 6) {\n    error(\"No supported data kinds are available for this source\");\n    return;\n  }\n  auto job = std::make_unique<Job>();\n  if (*source_id == \"safari\") {",
+          "count": 1
+        },
+        {
+          "find": "  auto result = job->state.Clone();",
+          "replace": "  auto result = PublicJob(job->state);",
+          "count": 1
+        },
+        {
+          "find": "  args.Append(job.state.Clone());",
+          "replace": "  args.Append(PublicJob(job.state));",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
