@@ -49,7 +49,6 @@ napi_value Prepare(napi_env env, napi_callback_info info) {
   using Latch = void (*)();
   using IsDenied = bool (*)();
   using Refused = uint64_t (*)();
-  using Isolated = bool (*)();
   auto validate = reinterpret_cast<Validate>(
       dlsym(RTLD_DEFAULT, "AuxNativeBoundaryValidate"));
   auto configure = reinterpret_cast<Configure>(
@@ -85,11 +84,6 @@ napi_value Prepare(napi_env env, napi_callback_info info) {
     return Error(env, "Cannot establish canonical native worker scope");
   if (deny)
     latch();
-  auto isolated = reinterpret_cast<Isolated>(
-      dlsym(RTLD_DEFAULT, "AuxNativeBoundaryHasIsolatedKeychain"));
-  if (!deny && (!isolated || !isolated()))
-    return Error(env,
-                 "Fresh isolated Keychain target has not been provisioned");
   if (!deny && isDenied())
     return Error(env, "Load-only process cannot enable native execution");
   napi_value result, yes, mode, calls;

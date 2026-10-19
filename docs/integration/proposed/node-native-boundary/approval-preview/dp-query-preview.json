@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "status": "preview-only-no-keychain-calls-authorized",
+  "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "originalBindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "rows": [
+    {
+      "itemClass": "kSecClassGenericPassword",
+      "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+      "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.meta",
+      "label": null,
+      "dataProtectionKeychain": true,
+      "authenticationUI": "kSecUseAuthenticationUIFail",
+      "accessGroup": "original Aside group omitted; actual host entitlement/default group must be observed",
+      "encryptedOrHardwareKeyBytes": "original supplied native format; never part of preview/log output"
+    },
+    {
+      "itemClass": "kSecClassGenericPassword",
+      "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+      "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.sig",
+      "label": null,
+      "dataProtectionKeychain": true,
+      "authenticationUI": "kSecUseAuthenticationUIFail",
+      "accessGroup": "original Aside group omitted; actual host entitlement/default group must be observed",
+      "encryptedOrHardwareKeyBytes": "original supplied native format; never part of preview/log output"
+    },
+    {
+      "itemClass": "kSecClassGenericPassword",
+      "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+      "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.kem",
+      "label": null,
+      "dataProtectionKeychain": true,
+      "authenticationUI": "kSecUseAuthenticationUIFail",
+      "accessGroup": "original Aside group omitted; actual host entitlement/default group must be observed",
+      "encryptedOrHardwareKeyBytes": "original supplied native format; never part of preview/log output"
+    },
+    {
+      "itemClass": "kSecClassGenericPassword",
+      "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+      "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.dk",
+      "label": null,
+      "dataProtectionKeychain": true,
+      "authenticationUI": "kSecUseAuthenticationUIFail",
+      "accessGroup": "original Aside group omitted; actual host entitlement/default group must be observed",
+      "encryptedOrHardwareKeyBytes": "original supplied native format; never part of preview/log output"
+    }
+  ],
+  "proposedCommands": [
+    {
+      "command": "install-status",
+      "operations": [
+        "read exact scoped installation rows; no mutation"
+      ]
+    },
+    {
+      "command": "install-init",
+      "operations": [
+        "read exact scoped rows",
+        "generate original selected installation scheme",
+        "delete/add exact scoped rows through original installSave; no file-Keychain substitution"
+      ]
+    },
+    {
+      "command": "get-public-keys",
+      "operations": [
+        "read scoped metadata/signing/KEM blobs",
+        "return public scheme/keys only"
+      ]
+    },
+    {
+      "command": "cdp-sign",
+      "operations": [
+        "read scoped metadata/signing blob",
+        "sign generated disposable HTTP-domain and raw-CDP challenge fixtures"
+      ]
+    }
+  ],
+  "cleanup": {
+    "status": "not-implemented-not-executed",
+    "permittedSelectorsOnly": [
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.meta",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.sig",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.kem",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.dk",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      }
+    ],
+    "prohibitions": [
+      "no wildcard/prefix enumeration",
+      "no owner original selectors",
+      "no other Aux scope",
+      "no native install-destroy until its complete deletion surface is reviewed"
+    ]
+  },
+  "forbidden": [
+    "owner Aside group/selectors",
+    "owner accounts/credentials",
+    "opaque caller item handles",
+    "sync/user-independent storage",
+    "default/search-list changes",
+    "file-Keychain downgrade",
+    "forced P256/software downgrade",
+    "interactive grant/biometric prompt"
+  ],
+  "remainingGates": [
+    "compiled guard/carrier/interposer fixtures",
+    "deny-all original module load proof",
+    "complete query coverage review",
+    "actual shared Aux entitlement-domain review",
+    "explicit human authorization before any proposed crypto/Keychain command"
+  ],
+  "executedOperations": [
+    "mkdtemp private local directory",
+    "canonical-home SHA256",
+    "write approval preview JSON"
+  ]
+}

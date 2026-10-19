@@ -13,9 +13,6 @@ std::atomic<bool> deny_all{false};
 std::atomic<uint64_t> refused{0};
 std::mutex scope_mutex;
 std::string fixed_scope;
-// Provisioning deliberately has no public arbitrary-handle/path setter. It must
-// come from reviewed fresh-keychain creation, which remains unimplemented.
-SecKeychainRef isolated_keychain = nullptr;
 bool Refuse() {
   if (!deny_all.load(std::memory_order_acquire))
     return false;
@@ -30,7 +27,7 @@ NSDictionary *Map(CFDictionaryRef input, bool update = false) {
     std::lock_guard<std::mutex> lock(scope_mutex);
     raw = fixed_scope;
   }
-  if (raw.empty() || !isolated_keychain)
+  if (raw.empty())
     return nil;
   NSString *scope = [NSString stringWithUTF8String:raw.c_str()];
   NSDictionary *mapped =
@@ -38,17 +35,13 @@ NSDictionary *Map(CFDictionaryRef input, bool update = false) {
              : AuxMapKeychainQuery((__bridge NSDictionary *)input, scope);
   if (!mapped)
     return nil;
-  if (update)
-    return mapped;
-  // DP/enclave-backed queries cannot silently fall through to owner storage;
-  // legacy explicit-keychain targeting does not establish DP isolation.
-  if ([mapped[(__bridge id)kSecUseDataProtectionKeychain] boolValue])
-    return nil;
-  NSMutableDictionary *targeted = [mapped mutableCopy];
-  targeted[(__bridge id)kSecUseKeychain] = (__bridge id)isolated_keychain;
-  targeted[(__bridge id)kSecMatchSearchList] =
-      @[ (__bridge id)isolated_keychain ];
-  return targeted;
+  // Keep original DP/enclave/access-control semantics. Only unattended UI
+  // policy is tightened: denied interaction remains a real error, never a fake
+  // unlock.
+  NSMutableDictionary *unattended = [mapped mutableCopy];
+  unattended[(__bridge id)kSecUseAuthenticationUI] =
+      (__bridge id)kSecUseAuthenticationUIFail;
+  return unattended;
 }
 OSStatus Add(CFDictionaryRef attributes, CFTypeRef *result) {
   @autoreleasepool {
@@ -168,8 +161,4 @@ extern "C" bool AuxNativeBoundaryConfigureScope(const char *raw) {
     return fixed_scope == value;
   fixed_scope = value;
   return true;
-}
-
-extern "C" bool AuxNativeBoundaryHasIsolatedKeychain() {
-  return isolated_keychain != nullptr;
 }

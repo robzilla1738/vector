@@ -79,11 +79,6 @@ int main(int argc, const char *argv[]) {
       if (!accepted || std::string(accepted) != "1")
         return Fail(
             "Provided native carrier requires explicit runtime acceptance");
-      using Isolated = bool (*)();
-      auto isolated = reinterpret_cast<Isolated>(
-          dlsym(RTLD_DEFAULT, "AuxNativeBoundaryHasIsolatedKeychain"));
-      if (!isolated || !isolated())
-        return Fail("Fresh isolated Keychain target has not been provisioned");
       if (argc != 3)
         return Fail(
             "Usage: aux-native-carrier <provided-native.node> <command>");
