@@ -13,10 +13,10 @@ index ca65408a67..cea1fcfa94 100644
        "views/tab_search_bubble_host.cc",
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000..2f3d8775f4
+index 0000000000..f6c567f3c3
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
-@@ -0,0 +1,532 @@
+@@ -0,0 +1,596 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -45,11 +45,14 @@ index 0000000000..2f3d8775f4
 +#include "chrome/browser/favicon/favicon_service_factory.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
 +#include "components/bookmarks/browser/bookmark_node.h"
 +#include "components/favicon/core/favicon_service.h"
 +#include "components/favicon_base/favicon_types.h"
++#include "components/tabs/public/tab_interface.h"
 +#include "components/vector_icons/vector_icons.h"
 +#include "content/public/browser/storage_partition.h"
++#include "content/public/browser/web_contents.h"
 +#include "crypto/keypair.h"
 +#include "crypto/sign.h"
 +#include "net/traffic_annotation/network_traffic_annotation.h"
@@ -77,8 +80,8 @@ index 0000000000..2f3d8775f4
 +constexpr char kSigningPrefix[] = "Aside Daemon Auth v1";
 +constexpr size_t kMaxChatsShown = 3;
 +constexpr base::TimeDelta kPollInterval = base::Seconds(2);
-+constexpr int kRowRadius = 8;
-+constexpr int kRowIconSize = 16;
++constexpr int kRowRadius = 10;
++constexpr int kRowIconSize = 18;
 +
 +constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
 +    net::DefineNetworkTrafficAnnotation("aux_sidebar_daemon_feed", R"(
@@ -185,17 +188,20 @@ index 0000000000..2f3d8775f4
 +  AuxSidebarRow(PressedCallback callback,
 +                const std::u16string& text,
 +                const ui::ImageModel& icon,
-+                bool emphasized = false)
-+      : views::LabelButton(std::move(callback), text) {
++                bool emphasized = false,
++                bool selected = false)
++      : views::LabelButton(std::move(callback), text), selected_(selected) {
 +    SetHorizontalAlignment(gfx::ALIGN_LEFT);
-+    SetImageLabelSpacing(10);
-+    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(6, 8)));
++    SetImageLabelSpacing(12);
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(9, 10)));
 +    SetImageModel(views::Button::STATE_NORMAL, icon);
-+    SetEnabledTextColors(ui::kColorSysOnSurface);
++    SetEnabledTextColors(selected ? ui::kColorSysOnSurface
++                                  : ui::kColorSysOnSurfaceSubtle);
 +    label()->SetElideBehavior(gfx::ELIDE_TAIL);
-+    label()->SetTextStyle(emphasized ? views::style::STYLE_BODY_4_EMPHASIS
-+                                     : views::style::STYLE_BODY_4);
++    label()->SetTextStyle(emphasized ? views::style::STYLE_BODY_3_EMPHASIS
++                                     : views::style::STYLE_BODY_3);
 +    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    UpdateBackground();
 +  }
 +
 +  void SetFavicon(const gfx::ImageSkia& image) {
@@ -206,12 +212,20 @@ index 0000000000..2f3d8775f4
 + protected:
 +  void StateChanged(views::Button::ButtonState old_state) override {
 +    views::LabelButton::StateChanged(old_state);
-+    const bool active = GetState() == views::Button::STATE_HOVERED ||
-+                        GetState() == views::Button::STATE_PRESSED;
-+    SetBackground(active ? views::CreateRoundedRectBackground(
-+                               ui::kColorSysStateHoverOnSubtle, kRowRadius)
-+                         : nullptr);
++    UpdateBackground();
 +  }
++
++ private:
++  void UpdateBackground() {
++    const bool hovered = GetState() == views::Button::STATE_HOVERED ||
++                         GetState() == views::Button::STATE_PRESSED;
++    SetBackground(hovered || selected_
++                      ? views::CreateRoundedRectBackground(
++                            ui::kColorSysStateHoverOnSubtle, kRowRadius)
++                      : nullptr);
++  }
++
++  const bool selected_;
 +};
 +
 +BEGIN_METADATA(AuxSidebarRow)
@@ -230,10 +244,53 @@ index 0000000000..2f3d8775f4
 +          BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile())) {
 +    bookmark_observation_.Observe(model);
 +  }
++  browser_->GetTabStripModel()->AddObserver(this);
++  UpdateActiveChat();
 +  Rebuild();
 +}
 +
 +AuxSidebarView::~AuxSidebarView() = default;
++
++void AuxSidebarView::OnTabStripModelChanged(
++    TabStripModel* tab_strip_model,
++    const TabStripModelChange& change,
++    const TabStripSelectionChange& selection) {
++  if (selection.active_tab_changed()) {
++    UpdateActiveChat();
++  }
++}
++
++void AuxSidebarView::OnTabChangedAt(tabs::TabInterface* tab,
++                                    TabChangeType change_type) {
++  if (tab == browser_->GetActiveTabInterface()) {
++    UpdateActiveChat();
++  }
++}
++
++void AuxSidebarView::UpdateActiveChat() {
++  std::string id;
++  if (content::WebContents* contents =
++          browser_->GetTabStripModel()->GetActiveWebContents()) {
++    const GURL url = contents->GetVisibleURL();
++    constexpr std::string_view kTasks = "/tasks/";
++    if (url.SchemeIs("chrome-extension") && url.host() == kAgentManagerId) {
++      std::string_view ref = url.ref();
++      if (size_t at = ref.find(kTasks); at != std::string_view::npos) {
++        id = std::string(ref.substr(at + kTasks.size()));
++      }
++    }
++  }
++  if (id == active_chat_id_) {
++    return;
++  }
++  active_chat_id_ = std::move(id);
++  Rebuild();
++}
++
++void AuxSidebarView::OpenNewTab() {
++  browser_->OpenGURL(GURL("chrome://newtab/"),
++                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++}
 +
 +void AuxSidebarView::AddedToWidget() {
 +  Poll();
@@ -270,10 +327,11 @@ index 0000000000..2f3d8775f4
 +
 +  auto add_header = [this](const std::u16string& text) {
 +    auto header = std::make_unique<views::Label>(
-+        text, views::style::CONTEXT_LABEL, views::style::STYLE_BODY_5);
++        text, views::style::CONTEXT_LABEL, views::style::STYLE_BODY_3);
 +    header->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
 +    header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-+    header->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(10, 8, 4, 8)));
++    header->SetBorder(
++        views::CreateEmptyBorder(gfx::Insets::TLBR(14, 10, 6, 10)));
 +    AddChildView(std::move(header));
 +  };
 +
@@ -319,7 +377,7 @@ index 0000000000..2f3d8775f4
 +  AddChildView(std::make_unique<AuxSidebarRow>(
 +      base::BindRepeating(&AuxSidebarView::OpenNewChat, base::Unretained(this)),
 +      u"New Chat",
-+      ui::ImageModel::FromVectorIcon(vector_icons::kEditIcon,
++      ui::ImageModel::FromVectorIcon(vector_icons::kEditSquareIcon,
 +                                     ui::kColorSysOnSurfaceSubtle,
 +                                     kRowIconSize)));
 +  const size_t shown =
@@ -329,11 +387,9 @@ index 0000000000..2f3d8775f4
 +    AddChildView(std::make_unique<AuxSidebarRow>(
 +        base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
 +                            chat.id),
-+        base::UTF8ToUTF16(chat.title),
-+        ui::ImageModel::FromVectorIcon(vector_icons::kChatIcon,
-+                                       ui::kColorSysOnSurfaceSubtle,
-+                                       kRowIconSize),
-+        /*emphasized=*/chat.unread));
++        base::UTF8ToUTF16(chat.title), ui::ImageModel(),
++        /*emphasized=*/chat.unread,
++        /*selected=*/chat.id == active_chat_id_));
 +  }
 +  if (chats_.size() > kMaxChatsShown) {
 +    AddChildView(std::make_unique<AuxSidebarRow>(
@@ -341,6 +397,14 @@ index 0000000000..2f3d8775f4
 +                            base::Unretained(this)),
 +        u"Show all", ui::ImageModel()));
 +  }
++
++  add_header(u"Tabs");
++  AddChildView(std::make_unique<AuxSidebarRow>(
++      base::BindRepeating(&AuxSidebarView::OpenNewTab, base::Unretained(this)),
++      u"New Tab",
++      ui::ImageModel::FromVectorIcon(vector_icons::kAdd2Icon,
++                                     ui::kColorSysOnSurfaceSubtle,
++                                     kRowIconSize)));
 +  InvalidateLayout();
 +}
 +
@@ -551,10 +615,10 @@ index 0000000000..2f3d8775f4
 +END_METADATA
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
 new file mode 100644
-index 0000000000..92991f9173
+index 0000000000..5b8cb8758d
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,113 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -573,6 +637,8 @@ index 0000000000..92991f9173
 +#include "base/task/cancelable_task_tracker.h"
 +#include "base/time/time.h"
 +#include "base/timer/timer.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 +#include "components/bookmarks/browser/base_bookmark_model_observer.h"
 +#include "components/bookmarks/browser/bookmark_model.h"
 +#include "ui/views/view.h"
@@ -587,7 +653,8 @@ index 0000000000..92991f9173
 +// Bookmarks and Chats sections that sit above the vertical tab strip. Chats
 +// come from the local daemon's authenticated sidebar feed.
 +class AuxSidebarView : public views::View,
-+                       public bookmarks::BaseBookmarkModelObserver {
++                       public bookmarks::BaseBookmarkModelObserver,
++                       public TabStripModelObserver {
 +  METADATA_HEADER(AuxSidebarView, views::View)
 +
 + public:
@@ -606,6 +673,14 @@ index 0000000000..92991f9173
 +  // views::View:
 +  void AddedToWidget() override;
 +  void RemovedFromWidget() override;
++
++  // TabStripModelObserver:
++  void OnTabStripModelChanged(
++      TabStripModel* tab_strip_model,
++      const TabStripModelChange& change,
++      const TabStripSelectionChange& selection) override;
++  void OnTabChangedAt(tabs::TabInterface* tab,
++                      TabChangeType change_type) override;
 +
 +  // bookmarks::BaseBookmarkModelObserver:
 +  void BookmarkModelChanged() override;
@@ -626,6 +701,8 @@ index 0000000000..92991f9173
 +  void OnChatsLoaded(std::optional<std::string> body);
 +  void OpenChat(const std::string& session_id);
 +  void OpenNewChat();
++  void OpenNewTab();
++  void UpdateActiveChat();
 +  void OpenAllChats();
 +  void OpenBookmark(const GURL& url);
 +  GURL AgentManagerUrl(const std::string& fragment) const;
@@ -647,6 +724,7 @@ index 0000000000..92991f9173
 +  base::TimeTicks authorization_expiry_;
 +  std::optional<int> account_id_;
 +  std::vector<Chat> chats_;
++  std::string active_chat_id_;
 +  bool show_all_chats_ = false;
 +  bool in_flight_ = false;
 +
@@ -655,7 +733,7 @@ index 0000000000..92991f9173
 +
 +#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..ece0473303 100644
+index b7cdb8f557..7386a18382 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,8 @@
@@ -692,11 +770,12 @@ index b7cdb8f557..ece0473303 100644
  
    OnCollapseStateChanged(state_controller_->GetCollapseState());
  }
-@@ -767,6 +774,7 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -767,6 +774,8 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                             resize_area_->is_resizing());
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
 +  aux_sidebar_->SetVisible(!collapsed);
++  bottom_button_container_->SetVisible(collapsed);
  
    if (tab_strip_view()) {
      tab_strip_view()->SetCollapsedState(collapsed);
