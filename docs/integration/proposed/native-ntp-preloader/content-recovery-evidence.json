@@ -1,0 +1,61 @@
+{
+  "targetSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "targetExecuted": false,
+  "originalBrowserClientVtable": "0xe154558",
+  "originalCallbackSlot": "0x8d0",
+  "originalCallback": "0x409ed78",
+  "callbackPredicate": "current profile eligibility042b14c0 has URL AND requested GURL equals it",
+  "ranges": {
+    "browserCallbackExactEligibleUrl": {
+      "start": "0x409ed78",
+      "endExclusive": "0x409ee60",
+      "sha256": "6a08c80bc71138cd8426345df469cf93bbb269d519267533ff2f1f661e0ce10a"
+    },
+    "startAttributeStamp": {
+      "start": "0x4057c60",
+      "endExclusive": "0x4057cb0",
+      "sha256": "b7ae18dc12929d1c4bac027171e12ea716740554ddde4a5854cdd02dbd5cedcf"
+    },
+    "createRevalidation": {
+      "start": "0x404249c",
+      "endExclusive": "0x4042508",
+      "sha256": "8b8140d50f61c15a208e62ebd035ba3eeca9ea0da84a9065c0b61021f5b858c0"
+    },
+    "backgroundBypass": {
+      "start": "0x40426e0",
+      "endExclusive": "0x404270c",
+      "sha256": "4f5f4e6388c70891dad224c27c361d059ad40e7feddc95854ac03f98a5f45b99"
+    },
+    "schemeAndEffectiveUrlChecks": {
+      "start": "0x404281c",
+      "endExclusive": "0x4042874",
+      "sha256": "62d54890e94e14acbe0809868af9c4081c9332e9bbd559c890f5b6b3ce1d4bcb"
+    },
+    "candidateEffectiveUrlNormalPath": {
+      "start": "0x4042d20",
+      "endExclusive": "0x4042d40",
+      "sha256": "e1264ee156d6c708a5c79c6d8abaec2cc1152d371f2f25bc8d003374b64a48e9"
+    },
+    "startHostRevalidation": {
+      "start": "0x4043040",
+      "endExclusive": "0x4043070",
+      "sha256": "cb7dacae1736329d8593df587e24d2951ae6276c5fb16ecd79c86d8fadb77951"
+    },
+    "throttleExactUrlAndRevalidation": {
+      "start": "0x4043944",
+      "endExclusive": "0x4043a68",
+      "sha256": "2689089c9981afac2bfce03d7b0d2d680ca1d1a464905d425fdc93155bc3841e"
+    },
+    "globalContentClientVtableProof": {
+      "start": "0x1e60260",
+      "endExclusive": "0x1e60288",
+      "sha256": "ba5df8e8c13b86d2e02eca7dbb33622b4134abf535592c0ac7914888348da364"
+    },
+    "browserClientConstructionVtable": {
+      "start": "0x2ed2ec0",
+      "endExclusive": "0x2ed2ee0",
+      "sha256": "ea5c2fb5600e856e783f5816d993784c18270e32563b690414251ccfe9cd2541"
+    }
+  },
+  "scope": "bounded instructions; current155 port uncompiled and unapplied"
+}

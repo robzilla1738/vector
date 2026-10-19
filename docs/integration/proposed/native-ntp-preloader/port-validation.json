@@ -1,0 +1,12 @@
+{
+  "baseManifestSha256": "d863bf3ff0ec5eda03800b352b1d2df5085d5a9b18bfbecd03df73a6c5b78ffd",
+  "servicePatchSha256": "a6c8fd855d46cdf88623f3dec311423daf47aaacd94b7540d62720d1cdbd1c96",
+  "contentPatchSha256": "3e324d940d3687686430e3dd6f008a44d1888bd802bfebc4b44a66c845f03426",
+  "verifiedFinalSources": 93,
+  "cumulativePatchSha256": "f16458f66da42de7d27fba7d0403cbd49a00bf7b41e52022642f9c65d26140ce",
+  "stagedBase": true,
+  "separateReplayVerifiedByComposer": true,
+  "sharedSourceModified": false,
+  "nativeBuildRun": false,
+  "temporaryReviewCompositionRemovedAfterVerification": true
+}

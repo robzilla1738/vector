@@ -1,15 +1,79 @@
 {
-  "version": 1,
-  "kind": "static-fidelity-audit-no-native-patch",
+  "version": 2,
+  "kind": "source-backed-native-prerender-port-proposal",
   "base": "frozen sharedv24 plus staged preference-consumers outputv25",
   "files": [
     {
       "path": "docs/integration/proposed/native-ntp-preloader/README.md",
-      "sha256": "57cfcfb013fe2f976d2c60a707f01de8bd2630a8c28bea8781f645ee5747c195"
+      "sha256": "a47c26d04d65ebb8a9f8835c3a3b38325b1e04c2bfb29b162cc70482a7e95b2d"
     },
     {
       "path": "docs/integration/proposed/native-ntp-preloader/activation-arm64.txt",
       "sha256": "90698d80789780aa584f77e9f80a9710c3453e557d81864fbc4230f50fc9dad8"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/callers-recovery.json",
+      "sha256": "741601a5321ab5228aceb6cc1a9176fddc5c69a01be563366f58a1118dc9d3c2"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-attribute-guard.txt",
+      "sha256": "0b47148a49b44ea24979c0a310edd27c918c53c9f41bb4e6fd6f9f844e2785fc"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-audit.py",
+      "sha256": "472e93ade57c71900ff69f8ea6cdd95a33ebdce09213071fd388ed51c187d326"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-browser-client.txt",
+      "sha256": "abdebf1043411ef6328c470582a3cf229da17aeea2005759627f5c45f1116c79"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-evidence.json",
+      "sha256": "1ca62ae67ca54aa99e39598d48ccbd77b27e701187db5eb7f1ac6c480f6be4bf"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-global-client.txt",
+      "sha256": "38b1abfa16aa94cc7849b124057e2da0fd8625d8ede523c499837a111aed753c"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-handle-callers.json",
+      "sha256": "37c0b13456fade202a1f2744bce9243f51bfa59429d97976364641f161c132c6"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-handle-nav-call.txt",
+      "sha256": "618857f0e3041eb01b121784c39d9076241797dcd3156376c3c573cebd72d509"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-create-tail.txt",
+      "sha256": "5b4fd15c0607ac46662fd3aac44d4fbcd83ea3d56962ab744f3ede9c62926fb4"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-create.txt",
+      "sha256": "5e67abc5b7a68bbc7a33e6bffa3903aa1e99f59edb3df1ad1e2454299b960ccf"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-start.txt",
+      "sha256": "325096d8eb258ba804b5e0fecea2400cd6265e82de90efe041904359059a0925"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-manifest.json",
+      "sha256": "15b9bc76d888f47c7554f00904f03a86deffe16c83f106dbe407cd044cfb7ec1"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-notes.md",
+      "sha256": "9d921069015f2c824b50f5fbf1fecd52af35655a14b1954e343d7d2823ef0be1"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-source-review.json",
+      "sha256": "59fa7505a77229727b37aaf8d67efd550c7c537b5d0598e30d1a415371a267fb"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-throttle.txt",
+      "sha256": "aae3f492873092706757128265c1c3754681317e3379603167d032b85f0eb6c8"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery.patch",
+      "sha256": "3e324d940d3687686430e3dd6f008a44d1888bd802bfebc4b44a66c845f03426"
     },
     {
       "path": "docs/integration/proposed/native-ntp-preloader/current-boundary.json",
@@ -20,8 +84,40 @@
       "sha256": "4bc432c2a283e195d4235ad2952cc2858b3fb3f272ee60ae865f9d6c9e344f4c"
     },
     {
+      "path": "docs/integration/proposed/native-ntp-preloader/handle-recovery-arm64.txt",
+      "sha256": "1dd38ae7e68dca6f4a4e7dd9257a8c2f88e5cd2701cc2911b9ff28d35f1f0106"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/navigator-recovery-arm64.txt",
+      "sha256": "9bab13178a4d4fac3fcc52ad950c186093d3c8656e7884f570e7392d6a41d1bc"
+    },
+    {
       "path": "docs/integration/proposed/native-ntp-preloader/newtab-url-arm64.txt",
       "sha256": "0c435516e1adab6c8b9beb5fe173b444405ab3ca6ecef3fc5b2034e3f6cc0d67"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port/chrome/browser/aux/ntp_prerender_service.cc",
+      "sha256": "5c0c96fc3be061fef5cf361b2ee74c270eb40327282aa688124d0c512ec443c8"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port/chrome/browser/aux/ntp_prerender_service.h",
+      "sha256": "7c0102fa82fff172e0684dbab90e798eeed295ba4c116ec35f2e1acb8865fbdf"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port-manifest.json",
+      "sha256": "c02465abc13b121192d82ef471a812e9772a3292e9173647cbbddbcbf8d53228"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port-native.patch",
+      "sha256": "a6c8fd855d46cdf88623f3dec311423daf47aaacd94b7540d62720d1cdbd1c96"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port-notes.md",
+      "sha256": "c8127b12157d0823c137d5431ed820c7a446e5061c3614b665f3aaf1da26113f"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/port-validation.json",
+      "sha256": "1c42c90987a4171f0cad3388ba3a76247652c2cdbfd947d74b098010ea6d1a2d"
     },
     {
       "path": "docs/integration/proposed/native-ntp-preloader/preference-callback-arm64.txt",
@@ -45,15 +141,19 @@
     },
     {
       "path": "docs/integration/proposed/native-ntp-preloader/static-audit.json",
-      "sha256": "c89e036ae4fa7172f41dc0fd50cd7d45af76fc75b8018eb8eea03bf71f1e93e8"
+      "sha256": "7b3bd7f657b09a31199211c384eb5c968bc381186002a22d020b222efe53fcd9"
     }
   ],
   "auditScript": {
     "path": "vendor/provided/audit-native-ntp-preload.py",
-    "sha256": "0fd3c02f7515de6172baedfeb1758d0fe64e3f409fce13d5eee53fd6d01cefff"
+    "sha256": "6e15967a9fb9a55138375f025d78931a317cfa417def6cea099972144c4d1aee"
   },
-  "nativeImplementationComplete": false,
   "sharedSourceModified": false,
   "nativeBuildRun": false,
-  "runtimeAcceptance": false
+  "runtimeAcceptance": false,
+  "reviewLimits": [
+    "original initial-root byte mapped to155 initial-empty-document guard",
+    "transferred-handle boolean helper public-method identity unresolved",
+    "actual authenticated browser activation unobserved"
+  ]
 }

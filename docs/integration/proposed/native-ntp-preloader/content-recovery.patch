@@ -1,0 +1,255 @@
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -2890,6 +2890,13 @@
+   virtual std::unique_ptr<PrerenderWebContentsDelegate>
+   CreatePrerenderWebContentsDelegate();
+ 
++  // Trusted browser-only prerender exception for the exact eligible Aux NTP
++  // override. Callers revalidate the profile and URL before creation/start and
++  // every prerender navigation; the default denies all non-HTTP(S) exceptions.
++  virtual bool IsAuxNewTabPagePrerenderingAllowed(
++      BrowserContext* browser_context,
++      const GURL& url);
++
+   // Returns true if find-in-page should be disabled for a given `origin`.
+   virtual bool IsFindInPageDisabledForOrigin(const url::Origin& origin);
+ 
+--- a/content/public/browser/content_browser_client.cc
++++ b/content/public/browser/content_browser_client.cc
+@@ -1728,6 +1728,12 @@
+   return std::make_unique<PrerenderWebContentsDelegate>();
+ }
+ 
++bool ContentBrowserClient::IsAuxNewTabPagePrerenderingAllowed(
++    BrowserContext* browser_context,
++    const GURL& url) {
++  return false;
++}
++
+ bool ContentBrowserClient::IsFindInPageDisabledForOrigin(
+     const url::Origin& origin) {
+   return false;
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -1041,6 +1041,10 @@
+   std::unique_ptr<content::PrerenderWebContentsDelegate>
+   CreatePrerenderWebContentsDelegate() override;
+ 
++  bool IsAuxNewTabPagePrerenderingAllowed(
++      content::BrowserContext* browser_context,
++      const GURL& url) override;
++
+   void OnWebContentsCreated(content::WebContents* web_contents) override;
+ 
+   bool IsFindInPageDisabledForOrigin(const url::Origin& origin) override;
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -219,6 +219,9 @@
+ #include "chrome/browser/webauthn/chrome_web_authentication_delegate_base.h"
+ #include "chrome/browser/webauthn/webauthn_pref_names.h"
+ #include "chrome/common/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/ntp_prerender_service.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/content_filter_source_scope.h"
+@@ -8949,6 +8952,17 @@
+   return std::make_unique<PrerenderWebContentsDelegateImpl>();
+ }
+ 
++bool ChromeContentBrowserClient::IsAuxNewTabPagePrerenderingAllowed(
++    content::BrowserContext* browser_context,
++    const GURL& url) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  return aux::IsEligibleNtpPrerenderUrl(
++      Profile::FromBrowserContext(browser_context), url);
++#else
++  return false;
++#endif
++}
++
+ void ChromeContentBrowserClient::OnWebContentsCreated(
+     content::WebContents* web_contents) {
+   // NOTE: Please don't add additional code to this method - attaching universal
+--- a/content/browser/preloading/prerender/prerender_attributes.h
++++ b/content/browser/preloading/prerender/prerender_attributes.h
+@@ -77,6 +77,11 @@
+   std::optional<SpeculationRulesTags> GetTags() const;
+ 
+   GURL prerendering_url;
++
++  // Set only by WebContentsImpl::StartPrerendering for a browser-initiated
++  // exact eligible Aux NTP URL on an initial-empty primary frame tree. The
++  // registry and navigation throttle independently revalidate this exception.
++  bool is_aux_ntp_prerender = false;
+ 
+   PreloadingTriggerType trigger_type;
+ 
+--- a/content/browser/preloading/prerender/prerender_host.h
++++ b/content/browser/preloading/prerender/prerender_host.h
+@@ -289,6 +289,8 @@
+ 
+   const GURL& GetInitialUrl() const;
+ 
++  bool is_aux_ntp_prerender() const { return attributes_.is_aux_ntp_prerender; }
++
+   void AddObserver(Observer* observer);
+   void RemoveObserver(Observer* observer);
+ 
+--- a/content/browser/web_contents/web_contents_impl.cc
++++ b/content/browser/web_contents/web_contents_impl.cc
+@@ -13182,6 +13182,12 @@
+       << "additional_headers is supported only on Android WebView.";
+ #endif  // BUILDFLAG(IS_ANDROID)
+   attributes.holdback_status_override = holdback_status_override;
++  attributes.is_aux_ntp_prerender =
++      trigger_type == PreloadingTriggerType::kEmbedder &&
++      !prerendering_url.SchemeIsHTTPOrHTTPS() &&
++      GetPrimaryFrameTree().root()->is_on_initial_empty_document() &&
++      GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(
++          GetBrowserContext(), prerendering_url);
+ 
+   PrerenderHostId prerender_host_id =
+       GetPrerenderHostRegistry()->CreateAndStartHost(attributes,
+--- a/content/browser/preloading/prerender/prerender_host_registry.cc
++++ b/content/browser/preloading/prerender/prerender_host_registry.cc
+@@ -40,12 +40,14 @@
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/browser/web_contents/web_contents_impl.h"
+ #include "content/common/frame.mojom.h"
++#include "content/public/browser/content_browser_client.h"
+ #include "content/public/browser/preloading.h"
+ #include "content/public/browser/preloading_data.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/visibility.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_delegate.h"
++#include "content/public/common/content_client.h"
+ #include "net/base/load_flags.h"
+ #include "services/network/public/cpp/simple_url_loader.h"
+ #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
+@@ -552,6 +554,16 @@
+   CHECK(attributes.initiator_web_contents);
+   auto& initiator_web_contents =
+       static_cast<WebContentsImpl&>(*attributes.initiator_web_contents);
++  const bool is_aux_ntp_prerender =
++      attributes.is_aux_ntp_prerender && attributes.IsBrowserInitiated() &&
++      attributes.trigger_type == PreloadingTriggerType::kEmbedder &&
++      &initiator_web_contents == web_contents() &&
++      initiator_web_contents.GetPrimaryFrameTree()
++          .root()
++          ->is_on_initial_empty_document() &&
++      GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(
++          initiator_web_contents.GetBrowserContext(),
++          attributes.prerendering_url);
+   auto& prerender_web_contents = static_cast<WebContentsImpl&>(*web_contents());
+ 
+   PrerenderHostId prerender_host_id;
+@@ -627,7 +639,8 @@
+     // `pending_prerenders_`. The visibility of the initiator will be considered
+     // when trying to pop from `pending_prerenders_` on `StartPrerendering()`.
+     if (attributes.trigger_type == PreloadingTriggerType::kEmbedder &&
+-        initiator_web_contents.GetVisibility() == Visibility::HIDDEN) {
++        initiator_web_contents.GetVisibility() == Visibility::HIDDEN &&
++        !is_aux_ntp_prerender) {
+       builder.RejectAsNotEligible(attributes,
+                                   PrerenderFinalStatus::kTriggerBackgrounded);
+       return PrerenderHostId();
+@@ -663,7 +676,8 @@
+ 
+     // Allow prerendering only HTTP(S) scheme URLs. For redirection, this will
+     // be checked in PrerenderNavigationThrottle::WillStartOrRedirectRequest().
+-    if (!attributes.prerendering_url.SchemeIsHTTPOrHTTPS()) {
++    if (!attributes.prerendering_url.SchemeIsHTTPOrHTTPS() &&
++        !is_aux_ntp_prerender) {
+       builder.RejectAsNotEligible(
+           attributes, PrerenderFinalStatus::kInvalidSchemeNavigation);
+       return PrerenderHostId();
+@@ -677,7 +691,8 @@
+           attributes, PrerenderFinalStatus::kTriggerUrlHasEffectiveUrl);
+       return PrerenderHostId();
+     }
+-    if (SiteInstanceImpl::HasEffectiveURL(browser_context,
++    if (!is_aux_ntp_prerender &&
++        SiteInstanceImpl::HasEffectiveURL(browser_context,
+                                           attributes.prerendering_url)) {
+       builder.RejectAsNotEligible(
+           attributes, PrerenderFinalStatus::kPrerenderingUrlHasEffectiveUrl);
+@@ -960,6 +975,15 @@
+   auto prerender_host_it = prerender_host_by_id_.find(prerender_host_id);
+   CHECK(prerender_host_it != prerender_host_by_id_.end());
+   PrerenderHost& prerender_host = *prerender_host_it->second;
++  if (prerender_host.is_aux_ntp_prerender() &&
++      (prerender_host.trigger_type() != PreloadingTriggerType::kEmbedder ||
++       !GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(
++           web_contents()->GetBrowserContext(),
++           prerender_host.GetInitialUrl()))) {
++    CancelHost(prerender_host.prerender_host_id(),
++               PrerenderFinalStatus::kInvalidSchemeNavigation);
++    return PrerenderHostId();
++  }
+   devtools_instrumentation::WillInitiatePrerender(
+       prerender_host.GetPrerenderFrameTree());
+   if (!prerender_host.StartPrerendering()) {
+--- a/content/browser/preloading/prerender/prerender_navigation_throttle.cc
++++ b/content/browser/preloading/prerender/prerender_navigation_throttle.cc
+@@ -18,7 +18,10 @@
+ #include "content/browser/renderer_host/frame_tree_node.h"
+ #include "content/browser/renderer_host/navigation_request.h"
+ #include "content/browser/renderer_host/render_frame_host_delegate.h"
++#include "content/public/browser/content_browser_client.h"
+ #include "content/public/browser/preloading_trigger_type.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/content_client.h"
+ #include "services/network/public/mojom/parsed_headers.mojom.h"
+ #include "url/origin.h"
+ #include "url/url_constants.h"
+@@ -122,13 +125,26 @@
+   url::Origin initial_prerendering_origin =
+       url::Origin::Create(prerender_host_->GetInitialUrl());
+ 
++  const bool is_aux_ntp_prerender = prerender_host_->is_aux_ntp_prerender();
++  if (is_aux_ntp_prerender &&
++      (prerender_host_->trigger_type() != PreloadingTriggerType::kEmbedder ||
++       navigation_url != prerender_host_->GetInitialUrl() ||
++       !GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(
++           navigation_handle()->GetWebContents()->GetBrowserContext(),
++           navigation_url))) {
++    // This exception cannot follow a redirect or navigate away from the exact
++    // current profile's eligible NTP, even to an otherwise allowed HTTP(S) URL.
++    CancelPrerendering(PrerenderFinalStatus::kInvalidSchemeNavigation);
++    return CANCEL;
++  }
++
+   // Reset the flags that should be calculated every time redirction happens.
+   is_same_site_cross_origin_prerender_ = false;
+   same_site_cross_origin_prerender_did_redirect_ = false;
+ 
+   // Allow only HTTP(S) schemes.
+   // https://wicg.github.io/nav-speculation/prerendering.html#no-bad-navs
+-  if (!navigation_url.SchemeIsHTTPOrHTTPS()) {
++  if (!navigation_url.SchemeIsHTTPOrHTTPS() && !is_aux_ntp_prerender) {
+     if (is_redirection) {
+       CancelPrerendering(PrerenderFinalStatus::kInvalidSchemeRedirect);
+     } else {
+@@ -143,7 +159,8 @@
+   // Disallow all pages that have an effective URL like hosted apps and NTP.
+   auto* browser_context =
+       navigation_handle()->GetStartingSiteInstance()->GetBrowserContext();
+-  if (SiteInstanceImpl::HasEffectiveURL(browser_context, navigation_url)) {
++  if (!is_aux_ntp_prerender &&
++      SiteInstanceImpl::HasEffectiveURL(browser_context, navigation_url)) {
+     CancelPrerendering(
+         is_redirection
+             ? PrerenderFinalStatus::kRedirectedPrerenderingUrlHasEffectiveUrl
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -884,6 +884,7 @@
+ 
+   deps = [
+     "//chrome/browser/extensions/api/aux_adblock",
++    "//chrome/browser/aux:ntp_prerender",
+     "//chrome/browser/aux:profile_gate",
+     ":active_use_util",
+     ":after_startup_task_utils",

@@ -57,6 +57,31 @@
       "start": "0x4057aa0",
       "endExclusive": "0x4057bf0",
       "sha256": "3da63f6b989b20279aa681473e14caf883e3d9f2608802f2a200a17e8266475b"
+    },
+    "getProfileType": {
+      "start": "0x529c24",
+      "endExclusive": "0x529de4",
+      "sha256": "7495402b116b3f5747e2b5e7107b26478f3336ec6b2bada846b2f2c83ef5e5a7"
+    },
+    "isSystemProfile": {
+      "start": "0x4ce584",
+      "endExclusive": "0x4ce734",
+      "sha256": "a2ed18a0c532609c4474f9960ff3a95286d4d1c44e6f45caeceb442571eb6476"
+    },
+    "transferredHandleDestructor": {
+      "start": "0x42b3870",
+      "endExclusive": "0x42b3910",
+      "sha256": "3c2079d6cd727c969730dca0f237c3c2d483d36b1a8c5cd6e663ec3ac6ea4209"
+    },
+    "transferredFrameChanged": {
+      "start": "0x42b39b8",
+      "endExclusive": "0x42b3a8c",
+      "sha256": "d9db155f2ee67a6c6d75d5e5d96fdc326f238992266623876aaa3d9305b9f138"
+    },
+    "resizeWebContents": {
+      "start": "0x69495b8",
+      "endExclusive": "0x6949664",
+      "sha256": "232c468b649eae7b6276d68355dc0f7f50e6fc100f44dc7a6650d02ed2e047f2"
     }
   },
   "functionCoverage": "bounded, not exhaustive",
@@ -95,9 +120,9 @@
     1
   ],
   "limitations": [
-    "Profile predicate helper semantics not fully resolved",
-    "Geometry getter and activation-lifetime callbacks need exact recovery",
-    "Original extension-scheme/effective-URL prerender exceptions not recovered",
+    "Browser-profile guest/system, container size and fallback-copy semantics recovered against155 source",
+    "Exact original content callback and scheme/effective-URL exception recovered in companion content-recovery audit",
+    "Original raw primary-root byte maps conservatively to155 initial-empty semantic API",
     "No actual prerender activation or renderer behavior observed"
   ]
 }

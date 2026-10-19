@@ -1,5 +1,7 @@
 # Supplied new-tab prerender pipeline audit
 
+**Historical first audit:** follow-up [port notes](port-notes.md) and content-recovery-notes.md supersede the resolved profile/geometry/content-exception/handle gaps below. A real staged native port now exists in port-native.patch plus content-recovery.patch; it remains unapplied/uncompiled and has no runtime acceptance.
+
 This is a static fidelity audit, **not an implemented native port or an eligibility-only parity claim**. No native.patch is supplied: the exact original content/renderer scheme exceptions and activation-lifetime semantics remain unproven, so simply calling155 StartPrerendering would fail, and weakening global restrictions would be unjustified. Existing product/source behavior is unchanged.
 
 Baseline: frozen shared nativev24 plus the unapplied preference-consumers proposal9649055af/root27c42708d, represented by root out/native-reuse-composition-v25. `current-boundary.json` pins parent composition/patch, verifies a temporary replay of all three preference-consumer outputs, and matches its profile_gate.cc output to v25. Shared native hashes are pinned in source-pins.json; there were no shared writes or native builds. Root may compose a future delta against that v25 profile_gate.cc output; do not accidentally base it on earlier lane code.

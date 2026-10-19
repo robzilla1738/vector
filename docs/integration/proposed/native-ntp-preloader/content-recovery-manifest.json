@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "base": "frozen shared nativev24; these files unchanged by stagedv25 preference consumer proposal",
+  "files": [
+    {
+      "path": "content/public/browser/content_browser_client.h",
+      "baselineSha256": "dc8835408a713d0840ec0d065e2afa199e7065108f38bca253c003282f37a81b",
+      "outputSha256": "bee67407b3b927dbabee784c2b66d9104062924b9782beb154ab9b098346090c",
+      "anchors": [
+        {
+          "find": "  virtual std::unique_ptr<PrerenderWebContentsDelegate>\n  CreatePrerenderWebContentsDelegate();",
+          "replace": "  virtual std::unique_ptr<PrerenderWebContentsDelegate>\n  CreatePrerenderWebContentsDelegate();\n\n  // Trusted browser-only prerender exception for the exact eligible Aux NTP\n  // override. Callers revalidate the profile and URL before creation/start and\n  // every prerender navigation; the default denies all non-HTTP(S) exceptions.\n  virtual bool IsAuxNewTabPagePrerenderingAllowed(\n      BrowserContext* browser_context,\n      const GURL& url);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/content_browser_client.cc",
+      "baselineSha256": "d2fb36660739291c37ac8c19eee0e40420308a5823bac72a0a61de0de7d9790a",
+      "outputSha256": "925e729492d456a6ab01ada683ebf76a207ca1092f127afda646e95a84af29ef",
+      "anchors": [
+        {
+          "find": "bool ContentBrowserClient::IsFindInPageDisabledForOrigin(",
+          "replace": "bool ContentBrowserClient::IsAuxNewTabPagePrerenderingAllowed(\n    BrowserContext* browser_context,\n    const GURL& url) {\n  return false;\n}\n\nbool ContentBrowserClient::IsFindInPageDisabledForOrigin(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.h",
+      "baselineSha256": "b5cbbdaf5a69929735fe138b41ad5726146d985a865b3652c88c9ba3d42448b0",
+      "outputSha256": "67e92e79e30a2e1a2ab5410e97b5a538810702713b81fb07ffc787dd153b799a",
+      "anchors": [
+        {
+          "find": "  std::unique_ptr<content::PrerenderWebContentsDelegate>\n  CreatePrerenderWebContentsDelegate() override;",
+          "replace": "  std::unique_ptr<content::PrerenderWebContentsDelegate>\n  CreatePrerenderWebContentsDelegate() override;\n\n  bool IsAuxNewTabPagePrerenderingAllowed(\n      content::BrowserContext* browser_context,\n      const GURL& url) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "baselineSha256": "ceadbe4aaa0f8396510ac0c1ba222f7bb05c24cb8ce26badd26693103efeb5f7",
+      "outputSha256": "c9ded0fc3e03c762867bced5d6545d0cf0b0a252d90a8f6b352b5b65a7a52ddf",
+      "anchors": [
+        {
+          "find": "#include \"chrome/common/buildflags.h\"",
+          "replace": "#include \"chrome/common/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/aux/ntp_prerender_service.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "void ChromeContentBrowserClient::OnWebContentsCreated(",
+          "replace": "bool ChromeContentBrowserClient::IsAuxNewTabPagePrerenderingAllowed(\n    content::BrowserContext* browser_context,\n    const GURL& url) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  return aux::IsEligibleNtpPrerenderUrl(\n      Profile::FromBrowserContext(browser_context), url);\n#else\n  return false;\n#endif\n}\n\nvoid ChromeContentBrowserClient::OnWebContentsCreated(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/preloading/prerender/prerender_attributes.h",
+      "baselineSha256": "665b58b1fab7099727d3a076dc150ebf8e2d052407873df20bb823abcc38751d",
+      "outputSha256": "52b78f2ca1c9fa87c26147a689ef186929ceb2be09177faceff23381bf854542",
+      "anchors": [
+        {
+          "find": "  GURL prerendering_url;",
+          "replace": "  GURL prerendering_url;\n\n  // Set only by WebContentsImpl::StartPrerendering for a browser-initiated\n  // exact eligible Aux NTP URL on an initial-empty primary frame tree. The\n  // registry and navigation throttle independently revalidate this exception.\n  bool is_aux_ntp_prerender = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/preloading/prerender/prerender_host.h",
+      "baselineSha256": "f7298c52810a2e134b812377d4ba6603ed5770ef6e935e88084a209ae2862710",
+      "outputSha256": "6b6037177e86274b068012f19e9b37dff2a182ad62203036760a15a4e640ed51",
+      "anchors": [
+        {
+          "find": "  const GURL& GetInitialUrl() const;",
+          "replace": "  const GURL& GetInitialUrl() const;\n\n  bool is_aux_ntp_prerender() const { return attributes_.is_aux_ntp_prerender; }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/web_contents/web_contents_impl.cc",
+      "baselineSha256": "6bff255932f834f53977c7b2dba3bee27be66ece9ed5a43ea97029a5f5d72ccd",
+      "outputSha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8",
+      "anchors": [
+        {
+          "find": "  attributes.holdback_status_override = holdback_status_override;",
+          "replace": "  attributes.holdback_status_override = holdback_status_override;\n  attributes.is_aux_ntp_prerender =\n      trigger_type == PreloadingTriggerType::kEmbedder &&\n      !prerendering_url.SchemeIsHTTPOrHTTPS() &&\n      GetPrimaryFrameTree().root()->is_on_initial_empty_document() &&\n      GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(\n          GetBrowserContext(), prerendering_url);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/preloading/prerender/prerender_host_registry.cc",
+      "baselineSha256": "5334fb7f9386c0f0bc179d0fe9f42da10ac5d4fbd5928c259a6bc36fd33a1ab0",
+      "outputSha256": "2f862ce925dd84f2944e8049dc200f439e2bb082300e4a2a6a3928d5142c8760",
+      "anchors": [
+        {
+          "find": "#include \"content/public/browser/preloading.h\"",
+          "replace": "#include \"content/public/browser/content_browser_client.h\"\n#include \"content/public/browser/preloading.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"content/public/browser/web_contents_delegate.h\"",
+          "replace": "#include \"content/public/browser/web_contents_delegate.h\"\n#include \"content/public/common/content_client.h\"",
+          "count": 1
+        },
+        {
+          "find": "  auto& initiator_web_contents =\n      static_cast<WebContentsImpl&>(*attributes.initiator_web_contents);",
+          "replace": "  auto& initiator_web_contents =\n      static_cast<WebContentsImpl&>(*attributes.initiator_web_contents);\n  const bool is_aux_ntp_prerender =\n      attributes.is_aux_ntp_prerender && attributes.IsBrowserInitiated() &&\n      attributes.trigger_type == PreloadingTriggerType::kEmbedder &&\n      &initiator_web_contents == web_contents() &&\n      initiator_web_contents.GetPrimaryFrameTree()\n          .root()\n          ->is_on_initial_empty_document() &&\n      GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(\n          initiator_web_contents.GetBrowserContext(),\n          attributes.prerendering_url);",
+          "count": 1
+        },
+        {
+          "find": "    if (attributes.trigger_type == PreloadingTriggerType::kEmbedder &&\n        initiator_web_contents.GetVisibility() == Visibility::HIDDEN) {",
+          "replace": "    if (attributes.trigger_type == PreloadingTriggerType::kEmbedder &&\n        initiator_web_contents.GetVisibility() == Visibility::HIDDEN &&\n        !is_aux_ntp_prerender) {",
+          "count": 1
+        },
+        {
+          "find": "    if (!attributes.prerendering_url.SchemeIsHTTPOrHTTPS()) {",
+          "replace": "    if (!attributes.prerendering_url.SchemeIsHTTPOrHTTPS() &&\n        !is_aux_ntp_prerender) {",
+          "count": 1
+        },
+        {
+          "find": "    if (SiteInstanceImpl::HasEffectiveURL(browser_context,\n                                          attributes.prerendering_url)) {",
+          "replace": "    if (!is_aux_ntp_prerender &&\n        SiteInstanceImpl::HasEffectiveURL(browser_context,\n                                          attributes.prerendering_url)) {",
+          "count": 1
+        },
+        {
+          "find": "  PrerenderHost& prerender_host = *prerender_host_it->second;",
+          "replace": "  PrerenderHost& prerender_host = *prerender_host_it->second;\n  if (prerender_host.is_aux_ntp_prerender() &&\n      (prerender_host.trigger_type() != PreloadingTriggerType::kEmbedder ||\n       !GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(\n           web_contents()->GetBrowserContext(),\n           prerender_host.GetInitialUrl()))) {\n    CancelHost(prerender_host.prerender_host_id(),\n               PrerenderFinalStatus::kInvalidSchemeNavigation);\n    return PrerenderHostId();\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/preloading/prerender/prerender_navigation_throttle.cc",
+      "baselineSha256": "ea7e5cf47453b3f86a9340188cc824a78a491709912b80ceff25ca5bd31eca60",
+      "outputSha256": "fc2d55370d6310e204f896bf2968697957ab534dff153d82ef5f413a3551ff38",
+      "anchors": [
+        {
+          "find": "#include \"content/public/browser/preloading_trigger_type.h\"",
+          "replace": "#include \"content/public/browser/content_browser_client.h\"\n#include \"content/public/browser/preloading_trigger_type.h\"\n#include \"content/public/browser/web_contents.h\"\n#include \"content/public/common/content_client.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Reset the flags that should be calculated every time redirction happens.",
+          "replace": "  const bool is_aux_ntp_prerender = prerender_host_->is_aux_ntp_prerender();\n  if (is_aux_ntp_prerender &&\n      (prerender_host_->trigger_type() != PreloadingTriggerType::kEmbedder ||\n       navigation_url != prerender_host_->GetInitialUrl() ||\n       !GetContentClient()->browser()->IsAuxNewTabPagePrerenderingAllowed(\n           navigation_handle()->GetWebContents()->GetBrowserContext(),\n           navigation_url))) {\n    // This exception cannot follow a redirect or navigate away from the exact\n    // current profile's eligible NTP, even to an otherwise allowed HTTP(S) URL.\n    CancelPrerendering(PrerenderFinalStatus::kInvalidSchemeNavigation);\n    return CANCEL;\n  }\n\n  // Reset the flags that should be calculated every time redirction happens.",
+          "count": 1
+        },
+        {
+          "find": "  if (!navigation_url.SchemeIsHTTPOrHTTPS()) {",
+          "replace": "  if (!navigation_url.SchemeIsHTTPOrHTTPS() && !is_aux_ntp_prerender) {",
+          "count": 1
+        },
+        {
+          "find": "  if (SiteInstanceImpl::HasEffectiveURL(browser_context, navigation_url)) {",
+          "replace": "  if (!is_aux_ntp_prerender &&\n      SiteInstanceImpl::HasEffectiveURL(browser_context, navigation_url)) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "baselineSha256": "a3d04059616b6298e92d9e8f0a89ff781a12ef9989fd417c0c936d90f070aa67",
+      "outputSha256": "cae3d8d514398de9284b95f8c98786faadf30265a9aaff857775cafc70baa01f",
+      "anchors": [
+        {
+          "find": "    \"//chrome/browser/extensions/api/aux_adblock\",\n    \"//chrome/browser/aux:profile_gate\",",
+          "replace": "    \"//chrome/browser/extensions/api/aux_adblock\",\n    \"//chrome/browser/aux:ntp_prerender\",\n    \"//chrome/browser/aux:profile_gate\",",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "3e324d940d3687686430e3dd6f008a44d1888bd802bfebc4b44a66c845f03426",
+  "compiled": false,
+  "nativeApplied": false,
+  "dependency": "Parent provides aux::IsEligibleNtpPrerenderUrl(Profile*,const GURL&) and //chrome/browser/aux:ntp_prerender interface",
+  "validation": {
+    "temporaryPatchReplay": "pass; all10 recorded outputs matched",
+    "binaryAudit": "pass",
+    "compiled": false,
+    "nativeApplied": false
+  },
+  "evidence": [
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-attribute-guard.txt",
+      "sha256": "0b47148a49b44ea24979c0a310edd27c918c53c9f41bb4e6fd6f9f844e2785fc"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-audit.py",
+      "sha256": "472e93ade57c71900ff69f8ea6cdd95a33ebdce09213071fd388ed51c187d326"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-browser-client.txt",
+      "sha256": "abdebf1043411ef6328c470582a3cf229da17aeea2005759627f5c45f1116c79"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-evidence.json",
+      "sha256": "1ca62ae67ca54aa99e39598d48ccbd77b27e701187db5eb7f1ac6c480f6be4bf"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-global-client.txt",
+      "sha256": "38b1abfa16aa94cc7849b124057e2da0fd8625d8ede523c499837a111aed753c"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-handle-callers.json",
+      "sha256": "37c0b13456fade202a1f2744bce9243f51bfa59429d97976364641f161c132c6"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-handle-nav-call.txt",
+      "sha256": "618857f0e3041eb01b121784c39d9076241797dcd3156376c3c573cebd72d509"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-create-tail.txt",
+      "sha256": "5b4fd15c0607ac46662fd3aac44d4fbcd83ea3d56962ab744f3ede9c62926fb4"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-create.txt",
+      "sha256": "5e67abc5b7a68bbc7a33e6bffa3903aa1e99f59edb3df1ad1e2454299b960ccf"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-host-start.txt",
+      "sha256": "325096d8eb258ba804b5e0fecea2400cd6265e82de90efe041904359059a0925"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-notes.md",
+      "sha256": "9d921069015f2c824b50f5fbf1fecd52af35655a14b1954e343d7d2823ef0be1"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-source-review.json",
+      "sha256": "59fa7505a77229727b37aaf8d67efd550c7c537b5d0598e30d1a415371a267fb"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/content-recovery-throttle.txt",
+      "sha256": "aae3f492873092706757128265c1c3754681317e3379603167d032b85f0eb6c8"
+    }
+  ]
+}

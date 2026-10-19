@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "description": "Source-backed supplied NTP service and navigator port; requires companion content-recovery patch",
+  "base": "unappliedv25 preference-consumers outputs over frozen sharedv24",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "d30eaa9a3585262c48a2cd318030229c3e4c7f6f0a6ff342692043fd338aeb25",
+      "outputSha256": "3cb78ff9c27fa432e31de69dd57fa7a3ba3371d99e9ea5563ddf90a6ee47b61b"
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": null,
+      "outputSha256": "5c0c96fc3be061fef5cf361b2ee74c270eb40327282aa688124d0c512ec443c8"
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.h",
+      "baselineSha256": null,
+      "outputSha256": "7c0102fa82fff172e0684dbab90e798eeed295ba4c116ec35f2e1acb8865fbdf"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "1876d61afd6241eead13cb20ba8013055ceb4547c66a36d6bc11bf9db9749e18",
+      "outputSha256": "80e63e75cdd7f6daaebaa0c12415e049f3b39f1a9ef5396de73375e92e81837e"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "ba99ef49716bdb442817a589027fe11c4c41735d29b3d55443d46d454f735a13",
+      "outputSha256": "d772116e81ab7751edf0eea846f6b114f9fdb60b24030b760155bb370e6dbf3b"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "3c3e2664c1757bb182bf45f9a2030bfdb15e5d3a103dd4da789b3efcfb7c2601",
+      "outputSha256": "bedee26dae4d1f28b0957a5b37cd1f2723dfe3fa919e3e6cae741dc4882ab810"
+    },
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
+      "baselineSha256": "986c5f144a215b2218086858ece81b44d539161f0cc8bf0c4040a8c0463b74f5",
+      "outputSha256": "4768e8ab721af078ad75cf166447ae25bf5b8c2953f3088ebbb33f6d6c39726b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "d588eac03579f29dcc00895fa645786fda5e1fa72cd9d6a20610a1876f963db7",
+      "outputSha256": "6d04971e3fa8ef5ce2fc85d8ce7278201186fd900e9d2a5b67178ae4f6772162"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

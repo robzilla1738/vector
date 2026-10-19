@@ -1,0 +1,12 @@
+{
+  "target": "0x42b2454",
+  "kind": "direct BL refs in exact __text only",
+  "textAddress": "0x4000",
+  "textFileOffset": "0x4000",
+  "textSize": 213586984,
+  "callers": [
+    "0x45ce16c"
+  ],
+  "elapsedSeconds": 5.8,
+  "targetExecuted": false
+}

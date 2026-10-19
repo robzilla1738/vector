@@ -1,0 +1,68 @@
+{
+  "kind": "read-only current155 source compatibility audit; no build/runtime evidence",
+  "sources": [
+    {
+      "path": "extensions/browser/extension_navigation_throttle.cc",
+      "sha256": "be7448631dc9fba0752db1b26c50543abbe16b3eefbe4f87dc833dabc8f25e40"
+    },
+    {
+      "path": "extensions/browser/extension_web_contents_observer.cc",
+      "sha256": "3b344c07c3ef54d92947ecb359afbe78085acf019eb7a5561191816965c7e7ab"
+    },
+    {
+      "path": "extensions/browser/extension_api_frame_id_map.cc",
+      "sha256": "ea10d52b429786bdda83a03ecd8b55a4d185ff794fc526993a9f86fa46625e57"
+    },
+    {
+      "path": "extensions/browser/api/messaging/extension_message_port.cc",
+      "sha256": "994a35940e12c1a4fc6a64eb0e310fd162349a1eaeef40e9ea6d6199e05a2188"
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client_binder_policies.cc",
+      "sha256": "1b61f3669acf626294975e530196cf6eb23bfa8047b07fd76802e89de7cc8319"
+    },
+    {
+      "path": "content/public/browser/web_contents.h",
+      "sha256": "27ef39d4e28bceca91069bcf7ca1c5e6694f0550e4a2583645ee086389419cbe"
+    },
+    {
+      "path": "content/public/browser/prerender_handle.h",
+      "sha256": "16ab942951923ec4b4c22155ab56afb64457e27b5b174073d4ab07277a1df02e"
+    },
+    {
+      "path": "content/public/browser/weak_document_ptr.h",
+      "sha256": "38c51bde0eaaace8d19f95336e1e610db16c3d2d7d7f753b92293ba3e93dbb61"
+    },
+    {
+      "path": "content/public/browser/render_frame_host.h",
+      "sha256": "83f5f6af1916636407cebec62ab76b61d7f68d2468e26c64311125ecef628433"
+    },
+    {
+      "path": "content/public/browser/render_widget_host_view.h",
+      "sha256": "035bf50d7dcd72ca6f3c11cd32f784f28f05631f15d6aa0ae851789c88e50c5b"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_interface.h",
+      "sha256": "97dc7e368b29bd43bb0ce24bcbc2b9795b842bbdeb68aa58a2cfc85e20024c4a"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/profile_browser_collection.h",
+      "sha256": "c1156fc3e13c66d63284b38c49bef394fa1932a9a4ded5a014fba46f18704a25"
+    },
+    {
+      "path": "chrome/browser/preloading/prerender/prerender_web_contents_delegate.h",
+      "sha256": "ff76b461a0d0093b817e42b2adb8f9281976ffc3eca02b1f53279289350010c2"
+    }
+  ],
+  "findings": [
+    "ExtensionNavigationThrottle allows no-initiator-origin browser navigation after enabled-extension and resource checks; no prerender-specific rejection.",
+    "ReadyToCommitNavigation sets up extension frame host before skipping autoplay for prerender.",
+    "LocalFrameHost SendRequestIPC, EventRouter and RendererHost associated binders explicitly grant prerender use; permission boundaries preserved.",
+    "Frame-ID lookup accepts prerender lifecycle, and message ports preserve registered frame through page activation.",
+    "Service public API references/signatures agree with pinned155 declarations; uncompiled."
+  ],
+  "unresolved": [
+    "Sole direct042b2454 shortcut call at045ce16c in helper045ce128 is not identified as activation prerequisite; record exact control flow rather than add speculative hook.",
+    "Original initial-empty-document byte mapping is explicitly155 semantic adaptation; runtime verification pending."
+  ]
+}
