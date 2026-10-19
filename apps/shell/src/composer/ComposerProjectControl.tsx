@@ -8,6 +8,7 @@ import { errorMessage } from "../error-message";
 import { moveListFocus } from "../keyboard-list";
 import { Popover } from "../ui/popover";
 import { shellIconCheck, shellIconFolder } from "../ui/icons";
+import { shellIconProject } from "../ui/icons/project";
 import { ComposerChevron } from "./ComposerChevron";
 import "./ComposerProjectControl.css";
 
@@ -34,7 +35,7 @@ export function ComposerProjectControl({
       disabled={disabled || !workspaceId || choice?.executionTarget === "cloud"}
       trigger={
         <>
-          {shellIconFolder}
+          {choice?.projectRoot ? shellIconFolder : shellIconProject}
           <span className="composer-project-label">
             {choice?.projectRoot ? folderName(choice.projectRoot) : "Project"}
           </span>
