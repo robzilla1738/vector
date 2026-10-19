@@ -8,8 +8,12 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { type ToolSet, tool } from 'ai';
 import { z } from 'zod';
 import type { AgentEngine } from './engine.js';
+import { approveOperation } from './permissions.js';
 import { fail } from './storage.js';
 
+function titleForTool(name: string) {
+  return name.replaceAll('_', ' ');
+}
 export function within(path: string, root: string) {
   const suffix = relative(root, path);
   return suffix === '' || (!suffix.startsWith('..') && !isAbsolute(suffix));
@@ -43,6 +47,29 @@ export function sessionTools(
       engine.emit(session, 'tool-started', { id, name, input });
     }
     try {
+      if (
+        ![
+          'read_file',
+          'write_file',
+          'edit_file',
+          'bash',
+          'browser_navigate',
+          'browser_click',
+          'browser_type',
+          'browser_scroll',
+        ].includes(name)
+      )
+        await approveOperation(
+          engine,
+          accountId,
+          sessionId,
+          id,
+          name,
+          titleForTool(name),
+          input,
+          signal,
+          { defaultAsk: false },
+        );
       const result = await execute();
       signal.throwIfAborted();
       const latest = engine.get(accountId, sessionId);
@@ -73,59 +100,66 @@ export function sessionTools(
       throw new Error(message);
     }
   }
-  async function approve(id: string, title: string, operation: unknown) {
-    const response = (await engine.suspend(
+  async function approve(
+    id: string,
+    title: string,
+    operation: unknown,
+    toolName: string,
+    path?: string,
+    finalAction = false,
+  ) {
+    return approveOperation(
+      engine,
       accountId,
       sessionId,
       id,
-      'approval',
-      {
-        title,
-        message: 'Review the concrete operation before allowing execution.',
-        operation,
-      },
+      toolName,
+      title,
+      operation,
       signal,
-    )) as { verdict: string };
-    if (response.verdict !== 'allow')
-      fail('FORBIDDEN', 'The user denied this operation');
+      { mutation: true, finalAction, ...(path ? { path } : {}) },
+    );
   }
   async function filePath(
     path: string,
     operation: 'read' | 'write',
     id: string,
+    toolName = operation === 'read' ? 'read_file' : 'write_file',
   ) {
     const session = engine.get(accountId, sessionId);
     const full = canonical(resolve(engine.directory(session), path));
     const forbidden = [
       join(engine.store.accountHome(accountId), 'credentials.json'),
       join(engine.store.home, 'installation'),
+      join(engine.store.home, 'installation-private.pem'),
+      join(engine.store.home, 'session-secret'),
     ];
     if (
       forbidden.some((root) => within(full, root)) ||
-      /(?:^|\/)(?:(?:channel-)?credentials\.json|private-key\.pem|token-secret)(?:$|\/)/.test(
+      /(?:^|\/)(?:(?:channel-)?credentials\.json|(?:installation-private|private-key)\.pem|(?:token|session)-secret)(?:$|\/)/.test(
         full,
       )
     )
       fail('FORBIDDEN', 'Agent tools cannot access credential material');
-    const rules = session.permissionOverrides;
-    if (rules?.deny.some((root) => within(full, canonical(root))))
-      fail('FORBIDDEN', 'Path is denied by session policy');
-    if (operation === 'write' && session.permissionMode === 'read-only')
-      fail('FORBIDDEN', 'Session filesystem is read-only');
-    const isAllowed = rules?.allow.some((root) =>
-      within(full, canonical(root)),
-    );
     const roots = [
       engine.directory(session),
       ...(session.runtimeConfig?.workingDirs ?? []),
     ].map(canonical);
-    if (
-      rules?.ask.some((root) => within(full, canonical(root))) ||
-      (session.permissionMode !== 'full-access' &&
-        !isAllowed &&
-        !roots.some((root) => within(full, root)))
-    )
-      await approve(id, `${operation} file`, { path: full, operation });
+    await approveOperation(
+      engine,
+      accountId,
+      sessionId,
+      id,
+      toolName,
+      `${operation} file`,
+      { path: full, operation },
+      signal,
+      {
+        path: full,
+        mutation: operation === 'write',
+        defaultAsk: !roots.some((root) => within(full, root)),
+      },
+    );
     return full;
   }
   async function browser(method: string, params: Record<string, unknown>) {
@@ -167,33 +201,46 @@ export function sessionTools(
     }),
     browser_navigate: tool({
       description:
-        'Navigate a bound-profile tab to an HTTP(S) URL after approval.',
+        'Navigate a bound-profile tab to an HTTP(S) URL under the session access policy.',
       inputSchema: z.object({ targetId: z.string().min(1), url: z.url() }),
       execute: (input, { toolCallId }) =>
         tracked('browser_navigate', input, toolCallId, async () => {
           if (!['http:', 'https:'].includes(new URL(input.url).protocol))
             fail('BAD_REQUEST', 'Navigation requires an HTTP(S) URL');
-          await approve(toolCallId, 'Navigate browser tab', input);
+          await approve(
+            toolCallId,
+            'Navigate browser tab',
+            input,
+            'browser_navigate',
+          );
           return browser('page.navigate', input);
         }),
     }),
     browser_click: tool({
       description:
-        'Click an element from a fresh observed snapshot after approval. Pass its ref and documentUrl; stale references fail.',
+        'Click an element from a fresh observed snapshot under the session access policy. Set finalAction=true for send, submit, purchase, delete or publish to require distinct human confirmation. Pass its ref and documentUrl; stale references fail.',
       inputSchema: z.object({
         targetId: z.string().min(1),
         ref: z.string().min(1),
         documentUrl: z.url(),
+        finalAction: z.boolean().default(false),
       }),
       execute: (input, { toolCallId }) =>
         tracked('browser_click', input, toolCallId, async () => {
-          await approve(toolCallId, 'Click browser element', input);
+          await approve(
+            toolCallId,
+            'Click browser element',
+            input,
+            'browser_click',
+            undefined,
+            input.finalAction === true,
+          );
           return browser('page.click', input);
         }),
     }),
     browser_type: tool({
       description:
-        'Type into a field from a fresh observed snapshot after approval. Pass its ref and documentUrl.',
+        'Type into a field from a fresh observed snapshot under the session access policy. Pass its ref and documentUrl.',
       inputSchema: z.object({
         targetId: z.string().min(1),
         ref: z.string().min(1),
@@ -202,7 +249,12 @@ export function sessionTools(
       }),
       execute: (input, { toolCallId }) =>
         tracked('browser_type', input, toolCallId, async () => {
-          await approve(toolCallId, 'Type in browser field', input);
+          await approve(
+            toolCallId,
+            'Type in browser field',
+            input,
+            'browser_type',
+          );
           return browser('page.type', input);
         }),
     }),
@@ -214,9 +266,20 @@ export function sessionTools(
         y: z.number(),
       }),
       execute: (input, { toolCallId }) =>
-        tracked('browser_scroll', input, toolCallId, () =>
-          browser('page.scroll', input),
-        ),
+        tracked('browser_scroll', input, toolCallId, async () => {
+          await approveOperation(
+            engine,
+            accountId,
+            sessionId,
+            toolCallId,
+            'browser_scroll',
+            'Scroll browser tab',
+            input,
+            signal,
+            { mutation: true, defaultAsk: false },
+          );
+          return browser('page.scroll', input);
+        }),
     }),
     subagent: tool({
       description:
@@ -328,7 +391,12 @@ export function sessionTools(
       }),
       execute: (input, { toolCallId }) =>
         tracked('edit_file', input, toolCallId, async () => {
-          const path = await filePath(input.path, 'write', toolCallId);
+          const path = await filePath(
+            input.path,
+            'write',
+            toolCallId,
+            'edit_file',
+          );
           const before = readFileSync(path, 'utf8');
           if (before.split(input.oldText).length !== 2)
             fail('CONFLICT', 'Original text must match exactly once');
@@ -338,9 +406,10 @@ export function sessionTools(
     }),
     bash: tool({
       description:
-        'Run a shell command after human approval of its exact command and working directory. Output is bounded. Shell execution is unavailable in read-only mode.',
+        'Run a shell command under the current access policy. Mark consequential sends, submissions, purchases, deletes or publication as finalAction for exact human confirmation. Output is bounded. Shell execution is unavailable in read-only mode.',
       inputSchema: z.object({
         command: z.string().min(1),
+        finalAction: z.boolean().default(false),
         workingDirectory: z.string().optional(),
         timeoutMs: z.number().int().min(100).max(120000).default(30000),
       }),
@@ -355,10 +424,17 @@ export function sessionTools(
           const cwd = canonical(
             input.workingDirectory ?? engine.directory(session),
           );
-          await approve(toolCallId, 'Execute shell command', {
-            command: input.command,
-            workingDirectory: cwd,
-          });
+          await approve(
+            toolCallId,
+            'Execute shell command',
+            {
+              command: input.command,
+              workingDirectory: cwd,
+            },
+            'bash',
+            cwd,
+            input.finalAction === true,
+          );
           return new Promise<{
             stdout: string;
             stderr: string;

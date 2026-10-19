@@ -5,6 +5,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -283,6 +284,134 @@ test('attachments are explicit, session scoped, durable, and type checked before
         .sha256,
       file.sha256,
     );
+  } finally {
+    await f.engine.close();
+    f.close();
+  }
+});
+
+test('full-access skips routine approvals but asks, denial and final confirmations remain enforced', async () => {
+  const f = fixture();
+  try {
+    const session = f.engine.create(
+      createSchema.parse({
+        accountId: f.accountId,
+        permissionMode: 'full-access',
+      }),
+    );
+    const execute = (id: string, finalAction = false) =>
+      f.engine.runExternal(f.accountId, session.id, async (signal) => {
+        const tools = sessionTools(f.engine, f.accountId, session.id, signal);
+        return tools.bash?.execute?.(
+          { command: 'printf fixture-output', finalAction, timeoutMs: 1000 },
+          {
+            toolCallId: id,
+            context: undefined,
+            messages: [],
+            abortSignal: signal,
+          },
+        );
+      });
+    const result = (await execute('routine')) as { stdout: string };
+    assert.equal(result.stdout, 'fixture-output');
+    const browserCalls: string[] = [];
+    const browserEngine = new AgentEngine(f.store, {
+      command: async (_route, command) => {
+        browserCalls.push(command.method);
+        return { performed: true };
+      },
+    });
+    const browserSession = browserEngine.create(
+      createSchema.parse({
+        accountId: f.accountId,
+        permissionMode: 'full-access',
+        browserBinding: { profileId: 'disposable-fixture' },
+      }),
+    );
+    await browserEngine.runExternal(
+      f.accountId,
+      browserSession.id,
+      async (signal) =>
+        sessionTools(
+          browserEngine,
+          f.accountId,
+          browserSession.id,
+          signal,
+        ).browser_navigate?.execute?.(
+          { targetId: 'fixture-target', url: 'https://example.test/' },
+          {
+            toolCallId: 'fixture-nav',
+            context: undefined,
+            messages: [],
+            abortSignal: signal,
+          },
+        ),
+    );
+    assert.deepEqual(browserCalls, ['page.navigate']);
+    assert.equal(
+      browserEngine.get(f.accountId, browserSession.id).suspensions.length,
+      0,
+    );
+    await browserEngine.close();
+
+    assert.equal(f.engine.get(f.accountId, session.id).suspensions.length, 0);
+    const latest = f.engine.get(f.accountId, session.id);
+    latest.permissionOverrides = { deny: [], allow: [], ask: ['tool:bash'] };
+    f.engine.save(latest);
+    const asked = execute('explicit-ask');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      f.engine
+        .get(f.accountId, session.id)
+        .suspensions.find((row) => !row.resolvedAt)?.kind,
+      'approval',
+    );
+    f.engine.resolve(f.accountId, session.id, 'explicit-ask', {
+      verdict: 'allow',
+      always: true,
+    });
+    await asked;
+    const clear = f.engine.get(f.accountId, session.id);
+    clear.permissionOverrides = { deny: [], allow: [], ask: [] };
+    f.engine.save(clear);
+    const final = execute('final', true);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      f.engine
+        .get(f.accountId, session.id)
+        .suspensions.find((row) => !row.resolvedAt)?.kind,
+      'action-confirmation',
+    );
+    f.engine.resolve(f.accountId, session.id, 'final', { verdict: 'confirm' });
+    await final;
+    f.store.set(f.accountId, 'permissions', 'rules', { deny: ['tool:bash'] });
+    await assert.rejects(execute('denied'), /denied by account/);
+    f.store.set(f.accountId, 'permissions', 'rules', {});
+    for (const name of ['installation-private.pem', 'session-secret']) {
+      const path = join(f.home, name);
+      writeFileSync(path, 'synthetic-auth-fixture', { mode: 0o600 });
+      const link = join(f.engine.directory(session), `alias-${name}`);
+      symlinkSync(path, link);
+      await assert.rejects(
+        f.engine.runExternal(f.accountId, session.id, async (signal) =>
+          sessionTools(
+            f.engine,
+            f.accountId,
+            session.id,
+            signal,
+          ).read_file?.execute?.(
+            { path: link, startLine: 1, lineCount: 1 },
+            {
+              toolCallId: `read-${name}`,
+              context: undefined,
+              messages: [],
+              abortSignal: signal,
+            },
+          ),
+        ),
+        /credential material/,
+      );
+    }
   } finally {
     await f.engine.close();
     f.close();

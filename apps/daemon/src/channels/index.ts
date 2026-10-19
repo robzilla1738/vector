@@ -1,4 +1,10 @@
-import { type AgentExtensions, fail, type Session, scope } from '@aux/agent';
+import {
+  type AgentExtensions,
+  approveOperation,
+  fail,
+  type Session,
+  scope,
+} from '@aux/agent';
 import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
 import { type ChannelService, channelPolicy } from './service.js';
@@ -187,21 +193,17 @@ export function channelTools(
             'FORBIDDEN',
             'Enable replies and approve this sender before sending',
           );
-        const answer = (await service.engine.suspend(
+        await approveOperation(
+          service.engine,
           session.accountId,
           session.id,
           toolCallId,
-          'action-confirmation',
-          {
-            title: 'Send channel message',
-            connectionId: input.connectionId,
-            senderId: input.senderId,
-            text: input.text,
-          },
+          'channel_send',
+          'Send channel message',
+          input,
           signal,
-        )) as { verdict?: string };
-        if (answer.verdict !== 'confirm')
-          fail('FORBIDDEN', 'Channel message was not approved');
+          { mutation: true, finalAction: true },
+        );
         return service.send(
           session.accountId,
           input.connectionId,

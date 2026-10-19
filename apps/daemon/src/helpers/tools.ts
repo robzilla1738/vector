@@ -1,6 +1,7 @@
 import {
   type AgentEngine,
   type AgentExtensions,
+  approveOperation,
   fail,
   type Session,
 } from '@aux/agent';
@@ -22,6 +23,7 @@ const actionSchema = z.discriminatedUnion('action', [
   }),
   z.object({
     action: z.literal('click'),
+    finalAction: z.boolean().default(false),
     x: z.number(),
     y: z.number(),
     button: z.enum(['left', 'right']).default('left'),
@@ -34,6 +36,7 @@ const actionSchema = z.discriminatedUnion('action', [
   }),
   z.object({
     action: z.literal('key'),
+    finalAction: z.boolean().default(false),
     key: z.string().min(1),
     modifiers: z
       .array(z.enum(['command', 'shift', 'option', 'control']))
@@ -43,6 +46,7 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('open-app'), bundleId: z.string().min(1) }),
   z.object({
     action: z.literal('applescript'),
+    finalAction: z.boolean().default(false),
     script: z.string().min(1).max(100000),
   }),
 ]);
@@ -56,27 +60,26 @@ export function computerUseTools(
     toolCallId: string,
     title: string,
     operation: unknown,
+    toolName = 'computer_use',
+    mutation = true,
+    defaultAsk = true,
   ) {
-    const answer = (await engine.suspend(
+    return approveOperation(
+      engine,
       session.accountId,
       session.id,
       toolCallId,
-      'approval',
-      {
-        title,
-        message:
-          'Review this exact native operation before allowing execution.',
-        operation,
-      },
+      toolName,
+      title,
+      operation,
       signal,
-    )) as { verdict: string };
-    if (answer.verdict !== 'allow')
-      fail('FORBIDDEN', 'The user denied the native operation');
+      { mutation, defaultAsk },
+    );
   }
   return {
     computer_use: {
       description:
-        'Operate macOS through the independent Aux helper. Native screen/input/launch/AppleScript actions require concrete human approval and real OS permission. Posted input is not proof that the target action succeeded.',
+        'Operate macOS through the independent Aux helper. Native actions follow the session access policy and real OS permissions; consequential actions require distinct human confirmation. Posted input is not proof that the target action succeeded.',
       inputSchema: actionSchema,
       execute: async (input: z.infer<typeof actionSchema>, { toolCallId }) => {
         const current = engine.get(session.accountId, session.id);
@@ -98,8 +101,21 @@ export function computerUseTools(
           'open-app': 'apps.open',
           applescript: 'automation.run',
         };
-        if (input.action !== 'list-apps')
-          await approve(toolCallId, `Native ${input.action}`, input);
+        await approveOperation(
+          engine,
+          session.accountId,
+          session.id,
+          toolCallId,
+          'computer_use',
+          `Native ${input.action}`,
+          input,
+          signal,
+          {
+            mutation: !['list-apps', 'screenshot'].includes(input.action),
+            defaultAsk: input.action !== 'list-apps',
+            finalAction: 'finalAction' in input && input.finalAction === true,
+          },
+        );
         const { action, ...params } = input;
         return client.call(
           methods[action],
@@ -119,7 +135,13 @@ export function computerUseTools(
         input: { query: string; limit: number },
         { toolCallId },
       ) => {
-        await approve(toolCallId, 'Look up a contact', input);
+        await approve(
+          toolCallId,
+          'Look up a contact',
+          input,
+          'contacts_search',
+          false,
+        );
         return client.call('contacts.search', input, { signal });
       },
     },
@@ -139,20 +161,17 @@ export function computerUseTools(
           'read-only'
         )
           fail('FORBIDDEN', 'Read-only sessions cannot send messages');
-        const answer = (await engine.suspend(
+        await approveOperation(
+          engine,
           session.accountId,
           session.id,
           toolCallId,
-          'action-confirmation',
-          {
-            title: 'Send iMessage',
-            message: `Recipient: ${input.recipient}`,
-            artifact: input.body,
-          },
+          'imessage_send',
+          'Send iMessage',
+          { recipient: input.recipient, body: input.body },
           signal,
-        )) as { verdict: string };
-        if (answer.verdict !== 'confirm')
-          fail('FORBIDDEN', 'The user did not confirm this message');
+          { mutation: true, finalAction: true },
+        );
         return client.call(
           'messages.send',
           { ...input, confirmed: true, operationId: toolCallId },

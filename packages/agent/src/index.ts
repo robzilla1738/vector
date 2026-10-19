@@ -12,6 +12,7 @@ export {
 export { Credentials } from './credentials.js';
 export type { AgentExtensions } from './engine.js';
 export { AgentEngine } from './engine.js';
+export { approveOperation } from './permissions.js';
 export type { Selection } from './providers.js';
 export { defaultModel, resolveModel, selectionSchema } from './providers.js';
 export type { AgentStorage } from './storage.js';
