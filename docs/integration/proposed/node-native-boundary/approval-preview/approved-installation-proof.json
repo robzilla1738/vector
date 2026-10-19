@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "phase": "installation",
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "previewSha256": "58a7808370579e09299a1d63eef02897931348ee81590d870e439c459d745752",
+  "approvalId": "4d1e3f31dca7970939fc11b6feb39b7ddc6d4b3d23a8e74b863adc4f193d6f5e",
+  "results": [
+    {
+      "host": "daemon",
+      "result": {
+        "ok": false,
+        "code": "original-native-error",
+        "statuses": [],
+        "hostExitCode": 1
+      }
+    }
+  ],
+  "ok": false,
+  "secretsLogged": false,
+  "defaultGroup": "actual hashes only; no original group fallback"
+}

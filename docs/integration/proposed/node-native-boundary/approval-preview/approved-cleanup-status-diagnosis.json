@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "phase": "cleanup-status-diagnosis",
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "ok": false,
+  "hostExitCode": 1,
+  "code": null,
+  "operation": "cleanup",
+  "exactSelectorStatuses": [
+    -34018,
+    -34018,
+    -34018,
+    -34018
+  ],
+  "secretsLogged": false
+}
