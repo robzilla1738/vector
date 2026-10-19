@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "path": "docs/integration/provided-native-webview.md",
+  "expectedInputSha256": "ad85b7053e338ce4336f3f9abac196e63a522019e99657ff10482ff95043cf1f",
+  "proposedSha256": "442eed7f20dc6bcc248585ec680389a43faeb5d309657ab24c999754b4f4a957",
+  "nativePatchApplied": false,
+  "scope": "Documentation correction only; oldnativeproposal remainsunapplied"
+}

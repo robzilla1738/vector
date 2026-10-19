@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "kind": "static-pinned-live-tab-webview-audit",
+  "agentVersion": "1.26.1016.1852",
+  "agentInputs": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/manifest.json",
+      "sha256": "afa06a5fc5b0ca836413f8b7b8eae20d440dff502b1871b0cdb489a04d244570",
+      "bytes": 3315,
+      "anchors": [
+        {
+          "literal": "at.studio.Aside.blink.expose-wv",
+          "count": 1,
+          "firstByteOffset": 1298
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/experimental-Xq3YsEPK.js",
+      "sha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "bytes": 11354,
+      "anchors": [
+        {
+          "literal": "a?.email?.trim().toLowerCase().endsWith(\"@at.studio\")",
+          "count": 1,
+          "firstByteOffset": 1660
+        },
+        {
+          "literal": "!!chrome.tabs?.query&&!!customElements.get(\"webview\")",
+          "count": 1,
+          "firstByteOffset": 1927
+        },
+        {
+          "literal": "!y.active&&!y.discarded",
+          "count": 1,
+          "firstByteOffset": 2313
+        },
+        {
+          "literal": "document.createElement(\"webview\")",
+          "count": 1,
+          "firstByteOffset": 5636
+        },
+        {
+          "literal": "c.attachTab(s).then",
+          "count": 1,
+          "firstByteOffset": 5838
+        },
+        {
+          "literal": "c.addEventListener(\"detached\",h)",
+          "count": 1,
+          "firstByteOffset": 5793
+        },
+        {
+          "literal": "c.removeEventListener(\"detached\",h),c.remove()",
+          "count": 1,
+          "firstByteOffset": 5938
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "bytes": 73232,
+      "anchors": [
+        {
+          "literal": "analytics.isExperimentalEligible.queryOptions({accountId:o})",
+          "count": 4,
+          "firstByteOffset": 46053
+        },
+        {
+          "literal": "/_web/(settings)/u/$userId/settings/experimental/",
+          "count": 2,
+          "firstByteOffset": 46895
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/route-TQyeTEXE.js",
+      "sha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+      "bytes": 70263,
+      "anchors": [
+        {
+          "literal": "internalOnly:!0",
+          "count": 3,
+          "firstByteOffset": 59291
+        },
+        {
+          "literal": "c.internalOnly&&!a",
+          "count": 1,
+          "firstByteOffset": 64469
+        },
+        {
+          "literal": "analytics.isExperimentalEligible.queryOptions({accountId:e})",
+          "count": 1,
+          "firstByteOffset": 64062
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/extracted/daemon-app/index.mjs",
+      "sha256": "9012caa45761482f936ef5d3994fc39444eb9a96202cdb65e931c10d5faf0439",
+      "bytes": 11790267,
+      "anchors": [
+        {
+          "literal": "function isExperimentalEligible({email:Cn,isCanary:ei=!1,featureFlag:ti=!1}={})",
+          "count": 1,
+          "firstByteOffset": 1288819
+        },
+        {
+          "literal": "isExperimentalEligible({email:ei,isCanary:!1})",
+          "count": 2,
+          "firstByteOffset": 1693137
+        },
+        {
+          "literal": "createDefaultAccountRegistry=()=>({version:1,currentAccountId:0,accounts:[{id:0,name:DEFAULT_LOCAL_ACCOUNT_NAME,provider:`anonymous`,mode:`local`,authStatus:`active`,createdAt:Date.now()}]",
+          "count": 1,
+          "firstByteOffset": 2269319
+        },
+        {
+          "literal": "get:publicProcedure.input(object({accountId:number$2().int().nonnegative()})).query(({input:Cn})=>AccountRegistry.getAccount(Cn.accountId))",
+          "count": 1,
+          "firstByteOffset": 11408002
+        }
+      ]
+    }
+  ],
+  "textScan": {
+    "files": 1074,
+    "suffixes": [
+      ".js",
+      ".json",
+      ".html"
+    ],
+    "literalMatches": {
+      "attachTab": [
+        {
+          "path": "assets/experimental-Xq3YsEPK.js",
+          "count": 1
+        }
+      ],
+      "expose-wv": [
+        {
+          "path": "manifest.json",
+          "count": 1
+        }
+      ]
+    },
+    "execution": false
+  },
+  "native": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "universalSha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64": {
+      "offset": 273940480,
+      "bytes": 249334160,
+      "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+    },
+    "literalByteScan": {
+      "at.studio.Aside.blink.expose-wv": {
+        "byteOffset": -1,
+        "count": 0
+      },
+      "expose-wv": {
+        "byteOffset": -1,
+        "count": 0
+      },
+      "attachTab": {
+        "byteOffset": -1,
+        "count": 0
+      },
+      "AttachUnownedInnerWebContents": {
+        "byteOffset": 248682068,
+        "count": 2
+      }
+    },
+    "coverage": "Exact literal byte scan of supplied older153 MachO only, not proof about compressed resources, newer canary code or arbitrary native semantics",
+    "originalImplementationRecovered": false
+  },
+  "rea": [
+    {
+      "evidenceId": "ev_54d2877c1dbae4e6ba947586b1f283b9e5ce21fd11878482700cd212758e93a6",
+      "parentEvidenceId": "ev_a1ea8bea6dc7ab6ad13807bb59f0e1ef8fe751137743cb188c1114ef0b9ea4c4",
+      "paths": [
+        "manifest.json",
+        "assets/experimental-Xq3YsEPK.js"
+      ],
+      "execution": false,
+      "coverage": "Two selectedsources, remaining1072inventoryfiles not analyzed bythisREAcall; graphpartial"
+    },
+    {
+      "evidenceId": "ev_1a4350edf46c9d0d77734902bf8b8e1ff8a4fc748d128d15bde6a923a52c7b3a",
+      "parentEvidenceId": "ev_9718e1542a73b1f4a1426e04eae0c15f3565df7da97dd257a7cee7b3dc4a5b84",
+      "paths": [
+        "assets/extension-main-Dz1-AsCT.js",
+        "assets/route-TQyeTEXE.js"
+      ],
+      "execution": false,
+      "coverage": "Two selectedroutesources, graphpartial"
+    }
+  ],
+  "nativeProviderAttempt": {
+    "provider": "kuna",
+    "result": "unsupported/unconfigured/universalMachOunsupported",
+    "deepNativeRecoveryPerformed": false,
+    "fallbackFullFrameworkAnalysis": false
+  },
+  "conclusion": {
+    "ordinaryFreshAnonymousLocalAccountRequiresWebview": false,
+    "reason": "Defaultaccount hasnoemail; additional livepane requiresinternal@at.studioevenifexperimentrouteflageligible",
+    "allPossibleAccountsUnreachable": false,
+    "internalAccountNativeFeatureComplete": false,
+    "oldSpeculativeAdapterApplied": false,
+    "fakeReplacementAdded": false
+  },
+  "operations": {
+    "builds": 0,
+    "nativeExecution": 0,
+    "ownerProfilesRead": 0,
+    "keychainCalls": 0,
+    "grants": 0,
+    "sharedNativeWrites": 0
+  },
+  "packedResources": {
+    "record": "docs/source/provided-webview-pak-scan.json",
+    "sha256": "9c2d5394b2e71f657c8504a65f9bd8cbc438b19d971175134bbcaf51ad7dcb01",
+    "uniqueResources": 6004,
+    "decodeFailures": 0,
+    "attachTabSubstringResource": 22982,
+    "classification": "Different stockcr-tab-webview.attachTabContents; notAgentwebview.attachTab",
+    "semanticAbsenceClaimed": false
+  },
+  "currentUpstreamSourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/resources/webui_browser/webview.ts",
+      "sha256": "0ada95a1b8043d24487510a8823e596db0a2392cdb1333b7ae82d471f8be1160"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/common/manifest_handlers/permissions_parser.cc",
+      "sha256": "37efc107cb87e62111b2a3b5234ba142dfe97b50068a1b3d180289926873f5d7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/resource/resource_bundle.h",
+      "sha256": "fc58cceed77d7eb47c77c0639d39549fc6d9fb7560857eadea7e71182da75a27"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/tools/grit/grit/format/data_pack.py",
+      "sha256": "323cc5492ec6037a65408f0ea0413bd9d098a06b7c0216067e8abf7b64f09d4e"
+    }
+  ],
+  "scanner": {
+    "path": "vendor/provided/inspect-provided-webview-resources.mjs",
+    "sha256": "d15c0d063959160bc4722594b59469ea0c44d61a103eb1332c8b9c9755fef51d",
+    "fixtureTestsPassed": 1,
+    "sourceOrNativePayloadEvaluated": false
+  }
+}

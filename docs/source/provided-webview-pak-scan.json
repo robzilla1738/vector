@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "kind": "bounded-static-webview-resource-scan",
+  "resources": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources",
+  "packs": [
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/aside_resources.pak",
+      "sha256": "9154366230e25e68f061fee32b5fb6cb5d3fd4074354f791b1dedd9dea59f362",
+      "bytes": 894194,
+      "version": 5,
+      "encoding": 1,
+      "uniqueResources": 12,
+      "aliases": 0,
+      "codecCounts": {
+        "plain": 5,
+        "gzip": 7,
+        "brotli": 0
+      },
+      "decodedBytes": 934164,
+      "failures": [],
+      "matches": {
+        "attachTab": [],
+        "expose-wv": [],
+        "webViewInternal": [],
+        "attachGuest": [],
+        "createGuest": []
+      },
+      "aliasScope": "Alias payloads share indexed resources and are covered once; aliases not duplicated",
+      "codeEvaluated": false
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/resources.pak",
+      "sha256": "d171d77d3c946a22e76d9a5b399a5381f9da704bee09d5f1561f93ca9ba1d728",
+      "bytes": 19749271,
+      "version": 5,
+      "encoding": 1,
+      "uniqueResources": 5276,
+      "aliases": 372,
+      "codecCounts": {
+        "plain": 1214,
+        "gzip": 3148,
+        "brotli": 914
+      },
+      "decodedBytes": 66209485,
+      "failures": [],
+      "matches": {
+        "attachTab": [
+          {
+            "id": 22982,
+            "start": 11594768,
+            "rawBytes": 1217,
+            "decodedBytes": 3465,
+            "codec": "gzip",
+            "decodedSha256": "1984b45aab43c5e5f48193a54cd547844e6f4be7e95e638ed4ad76a861007a57",
+            "utf8Offset": 2168,
+            "utf16leOffset": -1
+          }
+        ],
+        "expose-wv": [],
+        "webViewInternal": [
+          {
+            "id": 23393,
+            "start": 11741627,
+            "rawBytes": 708,
+            "decodedBytes": 1648,
+            "codec": "gzip",
+            "decodedSha256": "728cf62cc1828c64ca9678cc5d264c051fb8df184458bc23ac770422ed0f02cd",
+            "utf8Offset": 629,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 23395,
+            "start": 11742688,
+            "rawBytes": 1991,
+            "decodedBytes": 7696,
+            "codec": "gzip",
+            "decodedSha256": "7655f86ff0c67fbb88a077cb424e34fb21f2d689617fb95f3393c211e37bfde7",
+            "utf8Offset": 705,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 23404,
+            "start": 11753976,
+            "rawBytes": 2226,
+            "decodedBytes": 7066,
+            "codec": "gzip",
+            "decodedSha256": "771c6506dfd1cec8561ea469722ced5bd1b1ed79049ac948e926da4f1786d556",
+            "utf8Offset": 1304,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44770,
+            "start": 13963795,
+            "rawBytes": 5699,
+            "decodedBytes": 32354,
+            "codec": "gzip",
+            "decodedSha256": "9c5137e5c05fa9a861bb11084626f0bbfd009c81d1618e8b89d5f76d174289a5",
+            "utf8Offset": 30434,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44798,
+            "start": 13992869,
+            "rawBytes": 1836,
+            "decodedBytes": 7426,
+            "codec": "gzip",
+            "decodedSha256": "2e172e8554acb56a1261573c868334294d97af55762548334d7e869ed13502e1",
+            "utf8Offset": 651,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44819,
+            "start": 14017846,
+            "rawBytes": 701,
+            "decodedBytes": 1633,
+            "codec": "gzip",
+            "decodedSha256": "749fb8fd59abc4ca442603b59f1d816e988ee297838558d2cd40d0a01d522b6e",
+            "utf8Offset": 612,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44820,
+            "start": 14018547,
+            "rawBytes": 2993,
+            "decodedBytes": 11956,
+            "codec": "gzip",
+            "decodedSha256": "e94fcadc0735281146a2cc51552873e7e53e4f36945fa73d29ff557bfdfd50df",
+            "utf8Offset": 527,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44822,
+            "start": 14022585,
+            "rawBytes": 2143,
+            "decodedBytes": 9174,
+            "codec": "gzip",
+            "decodedSha256": "3579c2ce2790363b3a08011a3e5d20885e140a302529dcd58c713058641938e7",
+            "utf8Offset": 596,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44825,
+            "start": 14025811,
+            "rawBytes": 768,
+            "decodedBytes": 2802,
+            "codec": "gzip",
+            "decodedSha256": "1833b0d85722544ce82ff33c7dc82f1fba45923b2aa8770c3924a877243f54a8",
+            "utf8Offset": 483,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44826,
+            "start": 14026579,
+            "rawBytes": 2657,
+            "decodedBytes": 10365,
+            "codec": "gzip",
+            "decodedSha256": "eef710f6433cea8437f7068a8c69bf20775c3cc80814e067fd3d6aaa008badfb",
+            "utf8Offset": 1051,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44827,
+            "start": 14029236,
+            "rawBytes": 2819,
+            "decodedBytes": 9409,
+            "codec": "gzip",
+            "decodedSha256": "bec93639b6ea53d74bd844e07ccd461d5adc159116bb7edf48edfbfb7ff13806",
+            "utf8Offset": 891,
+            "utf16leOffset": -1
+          }
+        ],
+        "attachGuest": [
+          {
+            "id": 22982,
+            "start": 11594768,
+            "rawBytes": 1217,
+            "decodedBytes": 3465,
+            "codec": "gzip",
+            "decodedSha256": "1984b45aab43c5e5f48193a54cd547844e6f4be7e95e638ed4ad76a861007a57",
+            "utf8Offset": 1404,
+            "utf16leOffset": -1
+          }
+        ],
+        "createGuest": [
+          {
+            "id": 44806,
+            "start": 14000924,
+            "rawBytes": 555,
+            "decodedBytes": 1302,
+            "codec": "gzip",
+            "decodedSha256": "f59947ded2b38baa646edc2d0a8f79ed636134dee8271ae1c6bdda3adb6ad932",
+            "utf8Offset": 1123,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44810,
+            "start": 14002798,
+            "rawBytes": 784,
+            "decodedBytes": 2129,
+            "codec": "gzip",
+            "decodedSha256": "fbe32e9bef8b1d343ffe4cf4d882ede0d4fe5c613e84461dcc393242711e87f3",
+            "utf8Offset": 816,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44817,
+            "start": 14013316,
+            "rawBytes": 3449,
+            "decodedBytes": 13142,
+            "codec": "gzip",
+            "decodedSha256": "d08bf132c818a8141e712260628548373656f8133e0becd4ee34d93a3c37599d",
+            "utf8Offset": 8605,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44822,
+            "start": 14022585,
+            "rawBytes": 2143,
+            "decodedBytes": 9174,
+            "codec": "gzip",
+            "decodedSha256": "3579c2ce2790363b3a08011a3e5d20885e140a302529dcd58c713058641938e7",
+            "utf8Offset": 8659,
+            "utf16leOffset": -1
+          },
+          {
+            "id": 44827,
+            "start": 14029236,
+            "rawBytes": 2819,
+            "decodedBytes": 9409,
+            "codec": "gzip",
+            "decodedSha256": "bec93639b6ea53d74bd844e07ccd461d5adc159116bb7edf48edfbfb7ff13806",
+            "utf8Offset": 4930,
+            "utf16leOffset": -1
+          }
+        ]
+      },
+      "aliasScope": "Alias payloads share indexed resources and are covered once; aliases not duplicated",
+      "codeEvaluated": false
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/chrome_100_percent.pak",
+      "sha256": "dfbd0d60b9a4a74358bccc8dd3a8372a13382fec2bb65299616fb1e6948a2021",
+      "bytes": 680674,
+      "version": 5,
+      "encoding": 1,
+      "uniqueResources": 358,
+      "aliases": 68,
+      "codecCounts": {
+        "plain": 335,
+        "gzip": 23,
+        "brotli": 0
+      },
+      "decodedBytes": 864671,
+      "failures": [],
+      "matches": {
+        "attachTab": [],
+        "expose-wv": [],
+        "webViewInternal": [],
+        "attachGuest": [],
+        "createGuest": []
+      },
+      "aliasScope": "Alias payloads share indexed resources and are covered once; aliases not duplicated",
+      "codeEvaluated": false
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/chrome_200_percent.pak",
+      "sha256": "cb00b307179f26b39338b7f0de7ae484c263d0e03f6f81b84863d2cd5f902f68",
+      "bytes": 1362238,
+      "version": 5,
+      "encoding": 1,
+      "uniqueResources": 358,
+      "aliases": 68,
+      "codecCounts": {
+        "plain": 335,
+        "gzip": 23,
+        "brotli": 0
+      },
+      "decodedBytes": 1546235,
+      "failures": [],
+      "matches": {
+        "attachTab": [],
+        "expose-wv": [],
+        "webViewInternal": [],
+        "attachGuest": [],
+        "createGuest": []
+      },
+      "aliasScope": "Alias payloads share indexed resources and are covered once; aliases not duplicated",
+      "codeEvaluated": false
+    }
+  ],
+  "coverage": "All unique indexed payloads of four named original nonlocale PAKs, plain/gzip/Chromium Brotli decoded, exact UTF8/UTF16LE literals only; not arbitrary semantics or V8 snapshot decoding",
+  "nativeExecuted": false
+}
