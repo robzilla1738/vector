@@ -57,7 +57,11 @@ type NativeChrome = typeof chrome & {
       surface: string;
     }) => Promise<{ sessionId: string }>;
     destroySession: (id: string) => Promise<void>;
-    queryAutocomplete: (id: string, text: string) => Promise<void>;
+    queryAutocomplete: (
+      id: string,
+      text: string,
+      options: Record<string, never>,
+    ) => Promise<void>;
     stopAutocomplete: (id: string, clear: boolean) => Promise<void>;
     openAutocompleteMatch: (
       id: string,

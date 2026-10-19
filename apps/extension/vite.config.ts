@@ -21,7 +21,7 @@ export default defineConfig({
               manifest_version: 3,
               incognito: 'split',
               name: 'Aux',
-              version: '0.1.0',
+              version: '0.2.0',
               key: identities.agent.key,
               description: 'Local tasks and browsing in Aux.',
               permissions: [

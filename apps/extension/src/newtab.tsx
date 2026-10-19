@@ -53,7 +53,7 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
         if (active) {
           session.current = value.sessionId;
           void omnibox
-            .queryAutocomplete(value.sessionId, input.current?.value ?? '')
+            .queryAutocomplete(value.sessionId, input.current?.value ?? '', {})
             .catch((error) => setError(error.message));
         } else void omnibox.destroySession(value.sessionId);
       })
@@ -67,7 +67,7 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
   useEffect(() => {
     if (mode === 'find' && session.current)
       void native?.auxOmnibox
-        ?.queryAutocomplete(session.current, text)
+        ?.queryAutocomplete(session.current, text, {})
         .catch((e) => setError(e.message));
   }, [text, mode]);
   async function activate() {
@@ -82,7 +82,7 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
     }
     try {
       if (!result?.matches[selected]) {
-        await native.auxOmnibox.queryAutocomplete(session.current, text);
+        await native.auxOmnibox.queryAutocomplete(session.current, text, {});
         return;
       }
       await native.auxOmnibox.openAutocompleteMatch(session.current, {
