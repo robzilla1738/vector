@@ -1,0 +1,139 @@
+--- a/components/browser_apis/tab_strip/tab_strip_service_impl.h
++++ b/components/browser_apis/tab_strip/tab_strip_service_impl.h
+@@ -48,6 +48,10 @@
+   void AcceptExperimental(
+       mojo::PendingReceiver<tabs_api::mojom::TabStripExperimentService> client)
+       override;
++
++  // A window owner may change its profile only without clients retaining this
++  // service's old-profile provenance and without an invocation on the stack.
++  bool HasExternalBindingsOrActiveInvocation() const;
+ 
+   // TabStripServiceDirectReturnStub:
+   mojom::TabStripService::GetTabsResult GetTabs() override;
+@@ -102,6 +106,7 @@
+    public:
+     virtual ~SessionController() = default;
+     virtual std::unique_ptr<Session> CreateSession() = 0;
++    virtual bool IsSessionInProgress() const = 0;
+   };
+ 
+  private:
+--- a/components/browser_apis/tab_strip/tab_strip_service_impl.cc
++++ b/components/browser_apis/tab_strip/tab_strip_service_impl.cc
+@@ -61,6 +61,8 @@
+     return std::move(session);
+   }
+ 
++  bool IsSessionInProgress() const override { return session_in_progress_; }
++
+   void EndSession() {
+     recorder_->PlayRecordingsAndStartNotification();
+     session_in_progress_ = false;
+@@ -87,6 +89,21 @@
+ TabStripServiceImpl::~TabStripServiceImpl() {
+   RemoveObserver(this);
+   adapters_provider_->event_bridge().RemoveObserver(recorder_.get());
++}
++
++bool TabStripServiceImpl::HasExternalBindingsOrActiveInvocation() const {
++  if (!mojo_clients_.empty() || !mojo_experiment_clients_.empty() ||
++      !mojo_observers_.empty() || session_controller_->IsSessionInProgress()) {
++    return true;
++  }
++  // The service observes its own events for Mojo forwarding. Every other
++  // observer, including a profile-scoped TabSearch aggregator, is external.
++  for (const auto& observer : observers_) {
++    if (&observer != this) {
++      return true;
++    }
++  }
++  return false;
+ }
+ 
+ TabStripModelAdapter& TabStripServiceImpl::tab_strip_model_adapter() {
+--- a/chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h
++++ b/chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h
+@@ -15,6 +15,7 @@
+ 
+ namespace tabs_api {
+ class PlatformAdaptersProvider;
++class TabStripServiceImpl;
+ }  // namespace tabs_api
+ 
+ // Public interface for retrieving the tab strip service, either through mojo
+@@ -36,8 +37,11 @@
+       mojo::PendingReceiver<tabs_api::mojom::TabStripExperimentService> client);
+   tabs_api::TabStripService* GetTabStripService() const;
+ 
++  // No clients are disconnected, rebound or given a fabricated snapshot.
++  bool HasExternalBindingsOrActiveInvocation() const;
++
+  private:
+-  std::unique_ptr<tabs_api::TabStripService> tab_strip_service_;
++  std::unique_ptr<tabs_api::TabStripServiceImpl> tab_strip_service_;
+ 
+   ui::ScopedUnownedUserData<TabStripServiceFeature> scoped_unowned_user_data_;
+ };
+--- a/chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.cc
++++ b/chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.cc
+@@ -24,6 +24,10 @@
+       scoped_unowned_user_data_(host, *this) {}
+ TabStripServiceFeature::~TabStripServiceFeature() = default;
+ 
++bool TabStripServiceFeature::HasExternalBindingsOrActiveInvocation() const {
++  return tab_strip_service_->HasExternalBindingsOrActiveInvocation();
++}
++
+ void TabStripServiceFeature::Accept(
+     mojo::PendingReceiver<tabs_api::mojom::TabStripService> client) {
+   tab_strip_service_->Accept(std::move(client));
+--- a/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h
++++ b/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h
+@@ -35,6 +35,8 @@
+ 
+   void Bind(mojo::PendingReceiver<mojom::TabStripUIController> receiver);
+ 
++  bool HasClientsOrActiveCommand() const;
++
+   // mojom::TabStripUIControllerDirectReturnStub:
+   mojom::TabStripUIController::ShowTabContextMenuResult ShowTabContextMenu(
+       const tabs_api::NodeId& id,
+@@ -45,6 +47,7 @@
+ 
+   mojom::TabStripUIControllerBridge bridge_{this};
+   mojo::ReceiverSet<mojom::TabStripUIController> receivers_;
++  int active_command_depth_ = 0;
+ 
+   ui::ScopedUnownedUserData<TabStripUIControllerImpl> scoped_unowned_user_data_;
+ };
+--- a/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc
++++ b/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc
+@@ -7,6 +7,7 @@
+ #include <optional>
+ #include <utility>
+ 
++#include "base/auto_reset.h"
+ #include "base/types/expected.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/browser_apis/tab_strip/adapters/context_menu_adapter.h"
+@@ -30,6 +31,10 @@
+ 
+ TabStripUIControllerImpl::~TabStripUIControllerImpl() = default;
+ 
++bool TabStripUIControllerImpl::HasClientsOrActiveCommand() const {
++  return !receivers_.empty() || active_command_depth_ != 0;
++}
++
+ void TabStripUIControllerImpl::Bind(
+     mojo::PendingReceiver<mojom::TabStripUIController> receiver) {
+   receivers_.Add(&bridge_, std::move(receiver));
+@@ -38,6 +43,8 @@
+ mojom::TabStripUIController::ShowTabContextMenuResult
+ TabStripUIControllerImpl::ShowTabContextMenu(const tabs_api::NodeId& id,
+                                              const gfx::Point& location) {
++  base::AutoReset<int> command_scope(&active_command_depth_,
++                                     active_command_depth_ + 1);
+   std::optional<tabs::TabHandle> tab_handle = id.ToTabHandle();
+   if (!tab_handle.has_value()) {
+     return base::unexpected(mojo_base::mojom::Error::New(

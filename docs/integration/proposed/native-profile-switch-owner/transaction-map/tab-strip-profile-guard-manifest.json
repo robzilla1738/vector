@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 TabStrip services/injectors",
+  "files": [
+    {
+      "path": "components/browser_apis/tab_strip/tab_strip_service_impl.h",
+      "baselineSha256": "78992c429ab65416e55972c9c1ece017fc08e6e140286f254c6e2b8bb7d0206c",
+      "outputSha256": "5e1f9d70e34c4c66cdcf8d82543a2a2efe4dad43b49b20e3d787aeaabd2eabfe"
+    },
+    {
+      "path": "components/browser_apis/tab_strip/tab_strip_service_impl.cc",
+      "baselineSha256": "569336c3b4a396315f178042a661096a6f68c1ee78dfb3ab7e6d0de7f19f2fc3",
+      "outputSha256": "1d77783049d8abe9656457c635e6b7f0fa661cd0e9922dbde0bc1b361064a658"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h",
+      "baselineSha256": "99de36ec601bb6f5db539cf47c4baaeed99ad9077feb89504938e3264e2477bb",
+      "outputSha256": "4216a713b6f8a98a2f1361dc509be694f9d4c2dedbad91ea26322902ed06d7b6"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.cc",
+      "baselineSha256": "28a28bba739863a451aa458990d7f5a6a6af1e9ad232240c48133748ada72698",
+      "outputSha256": "987b640e7a9150c2e58f6ac7c0e21a612735cc658cba37e1b80e81f311b712c9"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h",
+      "baselineSha256": "d3c354d2d424488f2e883e448d593bf7915947865b8798c83c9af56fb410b8a6",
+      "outputSha256": "c178f4849699924c5a3de38c2240a8b81558861e44179d234fc27b778f578b1a"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc",
+      "baselineSha256": "5dc0520f15870d9b240244f2d52616c7f67904c7d388d2a45ef946a7e6704c2c",
+      "outputSha256": "673f63b756191092b82d9216eab55b15a6a1fc4c76f04abc54e7443f6f8a58c3"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
