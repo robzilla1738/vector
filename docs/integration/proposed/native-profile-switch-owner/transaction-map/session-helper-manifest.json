@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v32; no shared writes; Mac-only internal profile transaction API",
+  "files": [
+    {
+      "path": "chrome/browser/ui/sessions/session_service_browser_helper.h",
+      "baselineSha256": "c759539eb96c2c0fc6e2c8af6430e0b1e488b90f29b96cdb49860893024d33ca",
+      "outputSha256": "b500646fad24a33f3f4ac20cb63ef2c855c97fc7fd4ddf2d81de509a3daf6a97"
+    },
+    {
+      "path": "chrome/browser/ui/sessions/session_service_browser_helper.cc",
+      "baselineSha256": "eaf3bce0b16e8a9a8b12a9c71e1ac43637f21c7959df5519c09a005528946756",
+      "outputSha256": "3ffe583a5b3f67b3aab52232dae1a9ac6e2974c5b7b6667029c2b8e1c4f91be7"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

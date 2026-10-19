@@ -1,0 +1,166 @@
+--- a/chrome/browser/ui/sessions/session_service_browser_helper.h
++++ b/chrome/browser/ui/sessions/session_service_browser_helper.h
+@@ -5,10 +5,12 @@
+ #ifndef CHROME_BROWSER_UI_SESSIONS_SESSION_SERVICE_BROWSER_HELPER_H_
+ #define CHROME_BROWSER_UI_SESSIONS_SESSION_SERVICE_BROWSER_HELPER_H_
+ 
++#include <cstdint>
+ #include <optional>
+ 
+ #include "base/memory/raw_ref.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/sessions/core/session_id.h"
+@@ -65,6 +67,15 @@
+   }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Internal SAME-window transaction only. Pause persistence before real tab
++  // transfers; tab-window ID bookkeeping remains active. Rebind only at the
++  // empty-model identity boundary, then resume after target insertion settles.
++  uint64_t BeginAuxProfileSwitch();
++  void RebindAuxProfileSwitch(Profile* target_profile);
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
++
+   // TabStripModelObserver:
+   void OnTabStripModelChanged(
+       TabStripModel* tab_strip_model,
+@@ -106,7 +117,9 @@
+   const raw_ref<TabStripModel> tab_strip_model_;
+   const SessionID session_id_;
+   const BrowserWindowInterface::Type browser_type_;
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_SESSIONS_SESSION_SERVICE_BROWSER_HELPER_H_
+--- a/chrome/browser/ui/sessions/session_service_browser_helper.cc
++++ b/chrome/browser/ui/sessions/session_service_browser_helper.cc
+@@ -84,6 +84,41 @@
+ 
+ SessionServiceBrowserHelper::~SessionServiceBrowserHelper() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++uint64_t SessionServiceBrowserHelper::BeginAuxProfileSwitch() {
++  CHECK_EQ(browser_type_, BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(profile_->IsRegularProfile());
++  CHECK_EQ(tab_strip_model_->profile(), &*profile_);
++  aux_profile_switch_paused_ = true;
++  return ++aux_profile_switch_generation_;
++}
++
++void SessionServiceBrowserHelper::RebindAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK(tab_strip_model_->empty());
++  CHECK_EQ(tab_strip_model_->profile(), target_profile);
++  profile_ = *target_profile;
++}
++
++void SessionServiceBrowserHelper::EndAuxProfileSwitch(uint64_t generation) {
++  if (generation != aux_profile_switch_generation_) {
++    return;
++  }
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(tab_strip_model_->profile(), &*profile_);
++  for (int index = 0; index < tab_strip_model_->count(); ++index) {
++    CHECK_EQ(tab_strip_model_->GetWebContentsAt(index)->GetBrowserContext(),
++             &*profile_);
++  }
++  aux_profile_switch_paused_ = false;
++  // The original generation-bound 500ms rebuild persists both affected actual
++  // workspaces. Do not create a service or write intermediate detach events.
++}
++#endif
++
+ void SessionServiceBrowserHelper::OnTabStripModelChanged(
+     TabStripModel* tab_strip_model,
+     const TabStripModelChange& change,
+@@ -182,6 +217,9 @@
+ 
+ void SessionServiceBrowserHelper::OnTabGroupChanged(
+     const TabGroupChange& change) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   // If apps ever get tab grouping, this function needs to be updated to
+   // retrieve AppSessionService from the correct factory. Additionally,
+   // AppSessionService doesn't support SetTabGroupMetadata, so some
+@@ -219,6 +257,9 @@
+ void SessionServiceBrowserHelper::OnTabPinnedStateChanged(
+     tabs::TabInterface* tab,
+     int index) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   // See comment in `OnTabGroupChanged`.
+   DCHECK(!IsRelevantToAppSessionService(browser_type_));
+   SessionService* session_service =
+@@ -278,6 +319,9 @@
+ }
+ 
+ void SessionServiceBrowserHelper::SyncHistoryWithTabs(int index) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   SessionServiceBase* service = GetSessionService();
+ 
+   SessionService* session_service =
+@@ -318,6 +362,9 @@
+ void SessionServiceBrowserHelper::UpdateTabGroupSessionDataForTab(
+     tabs::TabInterface* tab,
+     std::optional<tab_groups::TabGroupId> group) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   // See comment in `OnTabGroupChanged`.
+   DCHECK(!IsRelevantToAppSessionService(browser_type_));
+   SessionService* const session_service =
+@@ -334,6 +381,9 @@
+ void SessionServiceBrowserHelper::UpdateSplitTabSessionData(
+     tabs::TabInterface* tab,
+     std::optional<split_tabs::SplitTabId> split_id) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   DCHECK(!IsRelevantToAppSessionService(browser_type_));
+   SessionService* const session_service =
+       SessionServiceFactory::GetForProfile(&*profile_);
+@@ -348,6 +398,9 @@
+ 
+ void SessionServiceBrowserHelper::UpdateSplitTabSessionVisualData(
+     const split_tabs::SplitTabId& split_id) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   SessionService* const session_service =
+       SessionServiceFactory::GetForProfile(&*profile_);
+   if (!session_service) {
+@@ -360,6 +413,9 @@
+ }
+ 
+ SessionServiceBase* SessionServiceBrowserHelper::GetSessionService() {
++  if (aux_profile_switch_paused_) {
++    return nullptr;
++  }
+   if (IsRelevantToAppSessionService(browser_type_)) {
+     return AppSessionServiceFactory::GetForProfile(&*profile_);
+   }
+@@ -367,6 +423,9 @@
+ }
+ 
+ SessionServiceBase* SessionServiceBrowserHelper::GetSessionServiceIfExisting() {
++  if (aux_profile_switch_paused_) {
++    return nullptr;
++  }
+   if (IsRelevantToAppSessionService(browser_type_)) {
+     return AppSessionServiceFactory::GetForProfileIfExisting(&*profile_);
+   }
