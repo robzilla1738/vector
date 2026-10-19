@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "freshComposition": "out/native-replayed-composition-v27",
+  "appliedComposition": "out/native-reuse-composition-v27",
+  "sourceFilesMatched": 93,
+  "artworkTargetsMatched": 23,
+  "freshOrderedSteps": 37,
+  "composerSha256": "16be7ef46d2085f5e57240322b7d25e0735308a4717603d54385930191c3fdfb",
+  "compiled": false
+}

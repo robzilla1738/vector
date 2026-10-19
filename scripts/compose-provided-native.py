@@ -55,6 +55,7 @@ steps.append(('native-compile-fixes/004-horizontal-boundaries/fix.patch', 'nativ
 steps.append(('native-preference-consumers/native.patch', 'native-preference-consumers/manifest.json'))
 steps.append(('native-ntp-preloader/port-native.patch', 'native-ntp-preloader/port-manifest.json'))
 steps.append(('native-ntp-preloader/content-recovery.patch', 'native-ntp-preloader/content-recovery-manifest.json'))
+steps.append(('native-ntp-compile-fixes/fix.patch', 'native-ntp-compile-fixes/manifest.json'))
 
 def safe(path):
     value = Path(path)
