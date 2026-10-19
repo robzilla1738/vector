@@ -1,0 +1,244 @@
+--- a/chrome/browser/ui/lens/lens_overlay_entry_point_controller.h
++++ b/chrome/browser/ui/lens/lens_overlay_entry_point_controller.h
+@@ -8,6 +8,8 @@
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/location_bar/location_bar.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/search_engines/template_url_service.h"
+@@ -49,6 +51,12 @@
+   explicit LensOverlayEntryPointController(
+       BrowserWindowInterface* browser_window_interface);
+   ~LensOverlayEntryPointController() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   // This class does nothing if not initialized. IsEnabled returns false.
+   void Initialize(BrowserWindowInterface* browser_window_interface,
+@@ -128,6 +136,12 @@
+ 
+   PrefChangeRegistrar pref_change_registrar_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_was_initialized_ = false;
++  raw_ptr<LocationBar> aux_location_bar_ = nullptr;
++#endif
++
+   // Optimization guide decider used for determining EDU action chip
+   // eligibility.
+   raw_ptr<optimization_guide::OptimizationGuideDecider>
+--- a/chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc
++++ b/chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
+ 
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/byte_size.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+@@ -22,6 +24,7 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+ #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+@@ -123,7 +126,8 @@
+ 
+ LensOverlayEntryPointController::LensOverlayEntryPointController(
+     BrowserWindowInterface* browser_window_interface)
+-    : scoped_unowned_user_data_(
++    : browser_window_interface_(browser_window_interface),
++      scoped_unowned_user_data_(
+           browser_window_interface->GetUnownedUserDataHost(),
+           *this) {}
+ 
+@@ -176,6 +180,64 @@
+ }
+ 
+ LensOverlayEntryPointController::~LensOverlayEntryPointController() = default;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool LensOverlayEntryPointController::CanRebindForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || !browser_window_interface_ ||
++      From(browser_window_interface_) != this ||
++      browser_window_interface_->GetType() !=
++          BrowserWindowInterface::TYPE_NORMAL ||
++      !browser_window_interface_->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  auto* model = browser_window_interface_->GetTabStripModel();
++  if (!model) {
++    return false;
++  }
++  // Tab-owned overlays/results carry real transient WebUI/capture state. Do
++  // not force-close them or pretend they were migrated by an entry-point hook.
++  for (int index = 0; index < model->count(); ++index) {
++    auto* search = LensSearchController::From(model->GetTabAtIndex(index));
++    if (search && !search->IsOff()) {
++      return false;
++    }
++  }
++  auto* region = LensRegionSearchController::From(browser_window_interface_);
++  return !region || region->CanReleaseForAuxProfileSwitch();
++}
++
++void LensOverlayEntryPointController::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_was_initialized_ = !!fullscreen_subscription_;
++  aux_location_bar_ = location_bar_observation_.GetSource();
++  aux_profile_switch_prepared_ = true;
++  location_bar_observation_.Reset();
++  fullscreen_subscription_ = {};
++  template_url_service_observation_.Reset();
++  pref_change_registrar_.Reset();
++  optimization_guide_decider_ = nullptr;
++}
++
++void LensOverlayEntryPointController::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_window_interface_->GetProfile(), target_profile);
++  CHECK_EQ(From(browser_window_interface_), this);
++  CHECK(browser_window_interface_->GetTabStripModel()->empty());
++  aux_profile_switch_prepared_ = false;
++  if (aux_was_initialized_) {
++    CHECK(command_updater_);
++    // The owner retains/rebinds the same real location bar and command updater.
++    // Existing initialization gets actual target prefs/DSE/optimization service
++    // and subscribes to the real current window fullscreen controller.
++    Initialize(browser_window_interface_, command_updater_, aux_location_bar_);
++  }
++  aux_location_bar_ = nullptr;
++  aux_was_initialized_ = false;
++}
++#endif
+ 
+ bool LensOverlayEntryPointController::IsEnabled() const {
+   // This class is initialized if and only if it is subscribed.
+@@ -209,6 +271,11 @@
+ 
+ void LensOverlayEntryPointController::UpdateEntryPointsState(
+     bool hide_toolbar_entrypoint) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   const bool enabled = IsEnabled();
+   const bool visible = AreVisible();
+ 
+--- a/chrome/browser/lens/region_search/lens_region_search_controller.h
++++ b/chrome/browser/lens/region_search/lens_region_search_controller.h
+@@ -5,8 +5,12 @@
+ #ifndef CHROME_BROWSER_LENS_REGION_SEARCH_LENS_REGION_SEARCH_CONTROLLER_H_
+ #define CHROME_BROWSER_LENS_REGION_SEARCH_LENS_REGION_SEARCH_CONTROLLER_H_
+ 
++#include <vector>
++
+ #include "base/functional/callback_forward.h"
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/image_editor/screenshot_flow.h"
+ #include "components/lens/lens_metrics.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -69,6 +73,12 @@
+   // The closed reason for this method is defaulted to the close button being
+   // clicked.
+   void Close();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // No profile pointer is cached. The window owner must nevertheless refuse
++  // migration during actual capture callbacks, overlay UI or bubble retirement.
++  bool CanReleaseForAuxProfileSwitch() const;
++#endif
+   void Escape();
+ 
+   // Closes the UI overlay and user education bubble if shown with the specified
+@@ -150,6 +160,11 @@
+ 
+   base::WeakPtr<LensRegionSearchController> weak_this_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_capture_callback_running_ = false;
++  std::vector<base::WeakPtr<views::Widget>> aux_retiring_bubbles_;
++#endif
++
+   base::WeakPtrFactory<LensRegionSearchController> weak_factory_{this};
+ };
+ }  // namespace lens
+--- a/chrome/browser/lens/region_search/lens_region_search_controller.cc
++++ b/chrome/browser/lens/region_search/lens_region_search_controller.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/lens/region_search/lens_region_search_controller.h"
++
++#include <algorithm>
++
++#include "base/auto_reset.h"
+ 
+ #include <utility>
+ 
+@@ -82,6 +86,15 @@
+   weak_this_ = weak_factory_.GetWeakPtr();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool LensRegionSearchController::CanReleaseForAuxProfileSwitch() const {
++  return !in_capture_mode_ && !screenshot_flow_ && !bubble_widget_ &&
++         !aux_capture_callback_running_ &&
++         std::ranges::none_of(aux_retiring_bubbles_,
++                              [](const auto& widget) { return !!widget; });
++}
++#endif
++
+ LensRegionSearchController::~LensRegionSearchController() {
+   CloseWithReason(views::Widget::ClosedReason::kLostFocus);
+ }
+@@ -260,6 +273,9 @@
+ 
+ void LensRegionSearchController::OnCaptureCompleted(
+     const image_editor::ScreenshotCaptureResult& result) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::AutoReset<bool> callback_running(&aux_capture_callback_running_, true);
++#endif
+   if (!is_multi_capture_) {
+     // Close all open UI overlays and bubbles.
+     CloseWithReason(views::Widget::ClosedReason::kLostFocus);
+@@ -290,6 +306,9 @@
+ 
+ void LensRegionSearchController::OnRegionSelectionCompleted(
+     const image_editor::RegionSelectionResult& result) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::AutoReset<bool> callback_running(&aux_capture_callback_running_, true);
++#endif
+   if (!is_multi_capture_) {
+     // Close all open UI overlays and bubbles.
+     CloseWithReason(views::Widget::ClosedReason::kLostFocus);
+@@ -416,6 +435,11 @@
+ 
+   in_capture_mode_ = false;
+   if (bubble_widget_) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    std::erase_if(aux_retiring_bubbles_,
++                  [](const auto& widget) { return !widget; });
++    aux_retiring_bubbles_.push_back(bubble_widget_->GetWeakPtr());
++#endif
+     std::exchange(bubble_widget_, nullptr)->CloseWithReason(reason);
+   }
+   if (screenshot_flow_) {

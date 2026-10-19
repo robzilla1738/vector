@@ -1,0 +1,47 @@
+{
+  "method": "actual current155 static constructor/subscription/capture callback source inspection only",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/lens/lens_overlay_entry_point_controller.h",
+      "sha256": "cf697bc7260df21eb34b60562960820b46c5cf2cd154119db04223fe8606b8fe"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc",
+      "sha256": "0bfe7cecbff8b198dce5d1680dc9a919fa167bab7d5c3d96868a9aeac71864d5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/lens/region_search/lens_region_search_controller.h",
+      "sha256": "9696e0b2c0831419744e458d1ae808dbfebeb48ed59e33d92ec3cd03a2e80460"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/lens/region_search/lens_region_search_controller.cc",
+      "sha256": "07c2c328b90311460cff44f19a6787fbdcf7edcc3a0fa2cb795ac589fc51b3e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/color_provider_browser_helper.h",
+      "sha256": "9ed9afd93ee901c873f0cc91298754183f4a2cfd207f630f34b85ec77ed3b9d3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/color_provider_browser_helper.cc",
+      "sha256": "3d7124965371ab0ff1d5ed4a7873041726719d634440281f6452867e71fe8162"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_change_registrar.cc",
+      "sha256": "9d4c1459f0929b063c558106713566d4c7c59d9e42288125f191a8792e104fb5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "c7f397afae4273fabfc24128562c6804049f1b18a3a27155b4ee3c156d54ffc0"
+    }
+  ],
+  "anchors": {
+    "entry_sources": "Initialize binds prefs/DSE/fullscreen/location bar and optimization guide",
+    "registrar_reset": "PrefChangeRegistrar::Reset removes all then clears service_; Init allows new service with empty observers",
+    "region_dynamic_scope": "Start/StartCaptureInternal resolve actual Browser through source WebContents and observe it; no Profile/BWI member",
+    "region_active_scope": "in_capture_mode_, ScreenshotFlow, actual bubble Widget and executing completion callbacks",
+    "color_scope": "ColorProviderBrowserHelper stores model+Widget color source only and updates actual inserted contents"
+  },
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

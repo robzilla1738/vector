@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual read-only current155 Lens entry/region four source files",
+  "files": [
+    {
+      "path": "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h",
+      "baselineSha256": "cf697bc7260df21eb34b60562960820b46c5cf2cd154119db04223fe8606b8fe",
+      "outputSha256": "f7a3de663b175dbb9361fba8a1fecb4d5214e34fbc07a76771c1c879f0e18412"
+    },
+    {
+      "path": "chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc",
+      "baselineSha256": "0bfe7cecbff8b198dce5d1680dc9a919fa167bab7d5c3d96868a9aeac71864d5",
+      "outputSha256": "978c4e7a1a5db7b6c934c930c0f7b46dd06455df0515bfb089e0e763a5c3a5b7"
+    },
+    {
+      "path": "chrome/browser/lens/region_search/lens_region_search_controller.h",
+      "baselineSha256": "9696e0b2c0831419744e458d1ae808dbfebeb48ed59e33d92ec3cd03a2e80460",
+      "outputSha256": "b2a5c1749560649f48fce2703ccbdcf34ee71b3a8a51fb7a281f2694c8885127"
+    },
+    {
+      "path": "chrome/browser/lens/region_search/lens_region_search_controller.cc",
+      "baselineSha256": "07c2c328b90311460cff44f19a6787fbdcf7edcc3a0fa2cb795ac589fc51b3e3",
+      "outputSha256": "5e2ad0d74130397279766440f6b8152da5c8031a47f4bbe06f459a8dc7b9ace2"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
