@@ -1,0 +1,812 @@
+[
+  {
+    "pc": "0x3980114",
+    "target": "0xd9b26ff",
+    "text": " 'none'"
+  },
+  {
+    "pc": "0x3980190",
+    "target": "0xd9b2707",
+    "text": "frame-ancestors"
+  },
+  {
+    "pc": "0x398033c",
+    "target": "0xcbd4404",
+    "text": "devtools"
+  },
+  {
+    "pc": "0x3980354",
+    "target": "0xcbd443c",
+    "text": "chrome"
+  },
+  {
+    "pc": "0x3980394",
+    "target": "0xcbd440d",
+    "text": "chrome-untrusted"
+  },
+  {
+    "pc": "0x3980ac8",
+    "target": "0xd8bdae6",
+    "text": "blink.mojom.DedicatedWorkerHostFactoryClient"
+  },
+  {
+    "pc": "0x3980f38",
+    "target": "0xce3c795",
+    "text": "NetworkService.ConnectionAllowlist.Type"
+  },
+  {
+    "pc": "0x3980f54",
+    "target": "0xce3c795",
+    "text": "NetworkService.ConnectionAllowlist.Type"
+  },
+  {
+    "pc": "0x3981a90",
+    "target": "0xd9b3e9b",
+    "text": "../../content/browser/child_process_task_port_provider_mac.cc"
+  },
+  {
+    "pc": "0x3981aac",
+    "target": "0xd9b3f59",
+    "text": "mach_msg"
+  },
+  {
+    "pc": "0x3981ac4",
+    "target": "0xdb6bc5b",
+    "text": "../../base/apple/scoped_mach_port.cc"
+  },
+  {
+    "pc": "0x3981ae0",
+    "target": "0xdb6bc80",
+    "text": "ScopedMachSendRight mach_port_deallocate"
+  },
+  {
+    "pc": "0x3981b04",
+    "target": "0xdb6bc5b",
+    "text": "../../base/apple/scoped_mach_port.cc"
+  },
+  {
+    "pc": "0x3981b1c",
+    "target": "0xdb6bc80",
+    "text": "ScopedMachSendRight mach_port_deallocate"
+  },
+  {
+    "pc": "0x3981ca8",
+    "target": "0xd9b416c",
+    "text": "RenderWidgetHostViewCocoa::sendWindowFrameInScreenToHost"
+  },
+  {
+    "pc": "0x3981d80",
+    "target": "0xd8de085",
+    "text": "remote_cocoa.mojom.RenderWidgetHostNSViewHost"
+  },
+  {
+    "pc": "0x3981e24",
+    "target": "0xd8de085",
+    "text": "remote_cocoa.mojom.RenderWidgetHostNSViewHost"
+  },
+  {
+    "pc": "0x398255c",
+    "target": "0xdef4713",
+    "text": "__cxa_guard_release"
+  },
+  {
+    "pc": "0x3982568",
+    "target": "0xdef4727",
+    "text": "%s failed to broadcast"
+  },
+  {
+    "pc": "0x3982578",
+    "target": "0xdef4713",
+    "text": "__cxa_guard_release"
+  },
+  {
+    "pc": "0x3982584",
+    "target": "0xdef46f8",
+    "text": "%s failed to release mutex"
+  },
+  {
+    "pc": "0x3982598",
+    "target": "0xdef4713",
+    "text": "__cxa_guard_release"
+  },
+  {
+    "pc": "0x39825a4",
+    "target": "0xdef46dd",
+    "text": "%s failed to acquire mutex"
+  },
+  {
+    "pc": "0x39828f0",
+    "target": "0xd9b5e56",
+    "text": "initialized"
+  },
+  {
+    "pc": "0x3982914",
+    "target": "0xd9b5e37",
+    "text": "MacWebContentsOcclusionChecker"
+  },
+  {
+    "pc": "0x3983304",
+    "target": "0xdb6bc5b",
+    "text": "../../base/apple/scoped_mach_port.cc"
+  },
+  {
+    "pc": "0x3983320",
+    "target": "0xdb6bc80",
+    "text": "ScopedMachSendRight mach_port_deallocate"
+  },
+  {
+    "pc": "0x39834a8",
+    "target": "0xcda58a8",
+    "text": "single-process"
+  },
+  {
+    "pc": "0x3984c84",
+    "target": "0xd9c119f",
+    "text": "IndexedDB.ContextShutdownDuration2"
+  },
+  {
+    "pc": "0x3985ee4",
+    "target": "0xd7e48b8",
+    "text": "operator()"
+  },
+  {
+    "pc": "0x3985eec",
+    "target": "0xd7e48c3",
+    "text": "../../base/task/sequenced_task_runner.h"
+  },
+  {
+    "pc": "0x398645c",
+    "target": "0xd9c6a1c",
+    "text": "../../components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc"
+  },
+  {
+    "pc": "0x3986478",
+    "target": "0xce3fe34",
+    "text": "SELECT storage_key, row_id, last_accessed, last_modified, total_size FROM maps"
+  },
+  {
+    "pc": "0x398673c",
+    "target": "0xd9c6ae1",
+    "text": "invalid total size"
+  },
+  {
+    "pc": "0x39869e8",
+    "target": "0xd9c6cb4",
+    "text": "SessionStorageEphemeral"
+  },
+  {
+    "pc": "0x39869f0",
+    "target": "0xd9c647b",
+    "text": "SessionStorage"
+  },
+  {
+    "pc": "0x3986b60",
+    "target": "0xd9c6bfe",
+    "text": "SessionStorageSqlite"
+  },
+  {
+    "pc": "0x3986b90",
+    "target": "0xd9c647b",
+    "text": "SessionStorage"
+  },
+  {
+    "pc": "0x3986c9c",
+    "target": "0xce403fd",
+    "text": "CREATE TABLE session_metadata(session_id TEXT NOT NULL,storage_key BLOB NOT NULL,map_id INTEGER NOT NULL,PRIMARY KEY(session_id, storage_key)) WITHOUT ROWID"
+  },
+  {
+    "pc": "0x3986cb0",
+    "target": "0xce400a6",
+    "text": "CREATE TABLE map_entries(map_id INTEGER NOT NULL,value_compression_type INTEGER NOT NULL,key BLOB NOT NULL,value BLOB NOT NULL,PRIMARY KEY(map_id, key)) WITHOUT"
+  },
+  {
+    "pc": "0x3986dc8",
+    "target": "0xd9c6c13",
+    "text": "../../components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc"
+  },
+  {
+    "pc": "0x3986de8",
+    "target": "0xce40365",
+    "text": "SELECT session_id, storage_key, map_id FROM session_metadata"
+  },
+  {
+    "pc": "0x3987030",
+    "target": "0xd803844",
+    "text": "operator*()"
+  },
+  {
+    "pc": "0x3987044",
+    "target": "0xd80393c",
+    "text": "operator++"
+  },
+  {
+    "pc": "0x39874a4",
+    "target": "0xd803790",
+    "text": "operator->"
+  },
+  {
+    "pc": "0x39874b4",
+    "target": "0xd803844",
+    "text": "operator*()"
+  },
+  {
+    "pc": "0x3987730",
+    "target": "0xd9c6c13",
+    "text": "../../components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc"
+  },
+  {
+    "pc": "0x398774c",
+    "target": "0xce40333",
+    "text": "DELETE FROM session_metadata WHERE session_id = ?"
+  },
+  {
+    "pc": "0x3988d64",
+    "target": "0xd98ea4a",
+    "text": "blink.mojom.EmbeddedFrameSinkProvider"
+  },
+  {
+    "pc": "0x3988f68",
+    "target": "0xd8b2ef3",
+    "text": "media.mojom.AudioDecoder"
+  },
+  {
+    "pc": "0x3989084",
+    "target": "0xd8b2ef3",
+    "text": "media.mojom.AudioDecoder"
+  },
+  {
+    "pc": "0x39894c8",
+    "target": "0xd9cc92c",
+    "text": "../../services/device/geolocation/location_provider_manager.cc"
+  },
+  {
+    "pc": "0x39894e8",
+    "target": "0xd9cc9c7",
+    "text": "LocationProviderManager::StopProvider: Resetting provider_manager_mode_ to "
+  },
+  {
+    "pc": "0x3989f54",
+    "target": "0xd8bf87a",
+    "text": "device.mojom.WakeLockContext"
+  },
+  {
+    "pc": "0x398a584",
+    "target": "0xd803a20",
+    "text": "media_session.mojom.AudioFocusObserver"
+  },
+  {
+    "pc": "0x398a66c",
+    "target": "0xd803a20",
+    "text": "media_session.mojom.AudioFocusObserver"
+  },
+  {
+    "pc": "0x398b1b0",
+    "target": "0xd9d0f51",
+    "text": "tracing.mojom.ProducerClient"
+  },
+  {
+    "pc": "0x398b2c4",
+    "target": "0xd9d0f51",
+    "text": "tracing.mojom.ProducerClient"
+  },
+  {
+    "pc": "0x398c1d8",
+    "target": "0xce4838b",
+    "text": "blacklist_state"
+  },
+  {
+    "pc": "0x398c920",
+    "target": "0xd812e39",
+    "text": "Destruct"
+  },
+  {
+    "pc": "0x398c928",
+    "target": "0xd8cc8e4",
+    "text": "../../content/public/browser/browser_thread.h"
+  },
+  {
+    "pc": "0x398ceec",
+    "target": "0xce487e3",
+    "text": "previous_version"
+  },
+  {
+    "pc": "0x398cf68",
+    "target": "0xce487ba",
+    "text": "pending_on_installed_event_dispatch_info"
+  },
+  {
+    "pc": "0x398dd24",
+    "target": "0xce48c41",
+    "text": "extensions.install_signature"
+  },
+  {
+    "pc": "0x398dd4c",
+    "target": "0xce48c41",
+    "text": "extensions.install_signature"
+  },
+  {
+    "pc": "0x398dd78",
+    "target": "0xce48c41",
+    "text": "extensions.install_signature"
+  },
+  {
+    "pc": "0x398ddc8",
+    "target": "0xce48c41",
+    "text": "extensions.install_signature"
+  },
+  {
+    "pc": "0x398dec8",
+    "target": "0xce49168",
+    "text": "Extensions"
+  },
+  {
+    "pc": "0x398def4",
+    "target": "0xcee4fba",
+    "text": "disable-extensions"
+  },
+  {
+    "pc": "0x398df08",
+    "target": "0xcee4c9f",
+    "text": "disable-extensions-except"
+  },
+  {
+    "pc": "0x398df2c",
+    "target": "0xcce325d",
+    "text": "extensions.disabled"
+  },
+  {
+    "pc": "0x398e4b8",
+    "target": "0xd453b1d",
+    "text": "show-component-extension-options"
+  },
+  {
+    "pc": "0x398ec4c",
+    "target": "0xd9eb16a",
+    "text": "ManifestV2Handler"
+  },
+  {
+    "pc": "0x398ec54",
+    "target": "0xd9eb17c",
+    "text": "../../extensions/browser/manifest_v2_handler.cc"
+  },
+  {
+    "pc": "0x398f458",
+    "target": "0xce4a0f0",
+    "text": "ViewTypeUserData"
+  },
+  {
+    "pc": "0x398f630",
+    "target": "0xd9eb6a5",
+    "text": "RendererStartupHelper"
+  },
+  {
+    "pc": "0x398fc0c",
+    "target": "0xd453b1d",
+    "text": "show-component-extension-options"
+  },
+  {
+    "pc": "0x398fcc4",
+    "target": "0xce4988c",
+    "text": "persistent_script_url_patterns"
+  },
+  {
+    "pc": "0x398febc",
+    "target": "0xce4a0f0",
+    "text": "ViewTypeUserData"
+  },
+  {
+    "pc": "0x39cc138",
+    "target": "0xcedf6da",
+    "text": "in_product_help.session_start_time"
+  },
+  {
+    "pc": "0x39cc14c",
+    "target": "0xcedf71c",
+    "text": "in_product_help.session_last_active_time"
+  },
+  {
+    "pc": "0x39cc164",
+    "target": "0xcedf6fd",
+    "text": "in_product_help.session_number"
+  },
+  {
+    "pc": "0x39cc274",
+    "target": "0xcedf6c0",
+    "text": "in_product_help.new_badge"
+  },
+  {
+    "pc": "0x39cc324",
+    "target": "0xcedf8b5",
+    "text": "show_count"
+  },
+  {
+    "pc": "0x39cc40c",
+    "target": "0xcedf8c0",
+    "text": "used_count"
+  },
+  {
+    "pc": "0x39cc4fc",
+    "target": "0xcedf8cb",
+    "text": "feature_enabled_time"
+  },
+  {
+    "pc": "0x39cc6a4",
+    "target": "0xd7e4ef8",
+    "text": "std::get: variant is valueless"
+  },
+  {
+    "pc": "0x39cc6b0",
+    "target": "0xd7e4f18",
+    "text": "std::get: wrong alternative for variant"
+  },
+  {
+    "pc": "0x39cc6f0",
+    "target": "0xcedf778",
+    "text": "in_product_help.shown_notices"
+  },
+  {
+    "pc": "0x39cc718",
+    "target": "0xcedf778",
+    "text": "in_product_help.shown_notices"
+  },
+  {
+    "pc": "0x39cc7c0",
+    "target": "0xda5b1db",
+    "text": "IsHeadlessMode"
+  },
+  {
+    "pc": "0x39cc7c8",
+    "target": "0xda5b1ea",
+    "text": "../../chrome/browser/headless/headless_mode_util.cc"
+  },
+  {
+    "pc": "0x39cc7e0",
+    "target": "0xd2262d0",
+    "text": "headless"
+  },
+  {
+    "pc": "0x39cc8c4",
+    "target": "0xda5b6b3",
+    "text": "TrackedElementCanHighlightChanged for invalid element."
+  },
+  {
+    "pc": "0x39cd374",
+    "target": "0xcedd343",
+    "text": "reading_list.desktop_first_use_experience_shown"
+  },
+  {
+    "pc": "0x39cd3dc",
+    "target": "0xda5c8ab",
+    "text": "spellcheck.mojom.SpellChecker"
+  },
+  {
+    "pc": "0x39cde24",
+    "target": "0xda5d198",
+    "text": "toolbar_ui_api.mojom.ToolbarUIService"
+  },
+  {
+    "pc": "0x39ce318",
+    "target": "0xda1d84a",
+    "text": "page_content_annotations.mojom.PageStabilityMonitor"
+  },
+  {
+    "pc": "0x39ce440",
+    "target": "0xda1d84a",
+    "text": "page_content_annotations.mojom.PageStabilityMonitor"
+  },
+  {
+    "pc": "0x39ce4d8",
+    "target": "0xd3a4a3e",
+    "text": "SafeBrowsingEnabled"
+  },
+  {
+    "pc": "0x39ce548",
+    "target": "0xd3a4a77",
+    "text": "SafeBrowsingProtectionLevel"
+  },
+  {
+    "pc": "0x39ce604",
+    "target": "0xd3a4a77",
+    "text": "SafeBrowsingProtectionLevel"
+  },
+  {
+    "pc": "0x39ce67c",
+    "target": "0xd3a4a77",
+    "text": "SafeBrowsingProtectionLevel"
+  },
+  {
+    "pc": "0x39ce6c4",
+    "target": "0xd3a4a3e",
+    "text": "SafeBrowsingEnabled"
+  },
+  {
+    "pc": "0x39ce6d8",
+    "target": "0xd3a4a77",
+    "text": "SafeBrowsingProtectionLevel"
+  },
+  {
+    "pc": "0x39ce754",
+    "target": "0xd3a4a3e",
+    "text": "SafeBrowsingEnabled"
+  },
+  {
+    "pc": "0x39ce828",
+    "target": "0xd3a4a77",
+    "text": "SafeBrowsingProtectionLevel"
+  },
+  {
+    "pc": "0x39ce88c",
+    "target": "0xd3a4a3e",
+    "text": "SafeBrowsingEnabled"
+  },
+  {
+    "pc": "0x39ce950",
+    "target": "0xce5251a",
+    "text": "safebrowsing.enabled"
+  },
+  {
+    "pc": "0x39ce964",
+    "target": "0xce487f4",
+    "text": "safebrowsing.enhanced"
+  },
+  {
+    "pc": "0x39ceb2c",
+    "target": "0xce487f4",
+    "text": "safebrowsing.enhanced"
+  },
+  {
+    "pc": "0x39ceb50",
+    "target": "0xce5251a",
+    "text": "safebrowsing.enabled"
+  },
+  {
+    "pc": "0x39ceba8",
+    "target": "0xda5fe61",
+    "text": "SBClientPhishing.TriggerModelsConvertedToForceRequestAtLoad"
+  },
+  {
+    "pc": "0x39cebfc",
+    "target": "0xce487f4",
+    "text": "safebrowsing.enhanced"
+  },
+  {
+    "pc": "0x39cec20",
+    "target": "0xce5251a",
+    "text": "safebrowsing.enabled"
+  },
+  {
+    "pc": "0x39cec78",
+    "target": "0xda5fe61",
+    "text": "SBClientPhishing.TriggerModelsConvertedToForceRequestAtLoad"
+  },
+  {
+    "pc": "0x39cee04",
+    "target": "0xda4ea49",
+    "text": "composebox.mojom.PageHandlerFactory"
+  },
+  {
+    "pc": "0x39cef68",
+    "target": "0xda199c0",
+    "text": "searchbox.mojom.PageHandlerFactory"
+  },
+  {
+    "pc": "0x39cf164",
+    "target": "0xcee0cd1",
+    "text": "favicon2"
+  },
+  {
+    "pc": "0x39cf16c",
+    "target": "0xcee0cb4",
+    "text": "chrome-untrusted://favicon2/"
+  },
+  {
+    "pc": "0x39cf200",
+    "target": "0xced709e",
+    "text": "favicon"
+  },
+  {
+    "pc": "0x39cf450",
+    "target": "0xda60fd5",
+    "text": "getPluralString"
+  },
+  {
+    "pc": "0x39cf4c0",
+    "target": "0xda60fe5",
+    "text": "getPluralStringTupleWithComma"
+  },
+  {
+    "pc": "0x39cf530",
+    "target": "0xda61003",
+    "text": "getPluralStringTupleWithPeriods"
+  },
+  {
+    "pc": "0x39cf654",
+    "target": "0xda31d96",
+    "text": "enable_tab_deselection"
+  },
+  {
+    "pc": "0x39cf738",
+    "target": "0xda34f63",
+    "text": "network_hints.mojom.NetworkHintsHandler"
+  },
+  {
+    "pc": "0x39cfc70",
+    "target": "0xda199ff",
+    "text": "searchbox.mojom.Page"
+  },
+  {
+    "pc": "0x39cfe94",
+    "target": "0xda199ff",
+    "text": "searchbox.mojom.Page"
+  },
+  {
+    "pc": "0x39d0388",
+    "target": "0xce3a773",
+    "text": "enable-low-end-device-mode"
+  },
+  {
+    "pc": "0x39d0650",
+    "target": "0xda62d8b",
+    "text": "CheckSearchEngines"
+  },
+  {
+    "pc": "0x39d0658",
+    "target": "0xda62d9e",
+    "text": "../../chrome/browser/search_integrity/search_integrity.cc"
+  },
+  {
+    "pc": "0x39d091c",
+    "target": "0xd67f9e0",
+    "text": "webkit.webprefs.fonts."
+  },
+  {
+    "pc": "0x39d0c64",
+    "target": "0xda662eb",
+    "text": "ActorKeyedService::Shutdown"
+  },
+  {
+    "pc": "0x39d143c",
+    "target": "0xda69297",
+    "text": "../../chrome/browser/actor/ui/actor_ui_tab_controller_interface.cc"
+  },
+  {
+    "pc": "0x39d1458",
+    "target": "0xda692da",
+    "text": "Tab does not exist."
+  },
+  {
+    "pc": "0x39d1860",
+    "target": "0xcee1814",
+    "text": "CriticalActions.db"
+  },
+  {
+    "pc": "0x39d1e8c",
+    "target": "0xd7e4dd8",
+    "text": "string_view::substr"
+  },
+  {
+    "pc": "0x39d1f7c",
+    "target": "0xd472da7",
+    "text": "history.saving_disabled"
+  },
+  {
+    "pc": "0x39d2018",
+    "target": "0xd471fef",
+    "text": "ntp.most_visited_blacklist"
+  },
+  {
+    "pc": "0x39d24b0",
+    "target": "0xd6d3f24",
+    "text": "bookmarks.onCreated"
+  },
+  {
+    "pc": "0x39d2534",
+    "target": "0xd6d3f38",
+    "text": "bookmarks.onRemoved"
+  },
+  {
+    "pc": "0x39d25b4",
+    "target": "0xd6d3f4c",
+    "text": "bookmarks.onChanged"
+  },
+  {
+    "pc": "0x39d2634",
+    "target": "0xd6d3f60",
+    "text": "bookmarks.onMoved"
+  },
+  {
+    "pc": "0x39d26c8",
+    "target": "0xd6d3f72",
+    "text": "bookmarks.onChildrenReordered"
+  },
+  {
+    "pc": "0x39d2770",
+    "target": "0xd6d3f90",
+    "text": "bookmarks.onImportBegan"
+  },
+  {
+    "pc": "0x39d2810",
+    "target": "0xd6d3fa8",
+    "text": "bookmarks.onImportEnded"
+  },
+  {
+    "pc": "0x39d390c",
+    "target": "0xd6d400c",
+    "text": "developerPrivate.onItemStateChanged"
+  },
+  {
+    "pc": "0x39d39c8",
+    "target": "0xd6d4057",
+    "text": "developerPrivate.onUserSiteSettingsChanged"
+  },
+  {
+    "pc": "0x39d3d44",
+    "target": "0xcee2a7c",
+    "text": "DownloadItem DownloadedByExtension"
+  },
+  {
+    "pc": "0x39d4150",
+    "target": "0xd6d444c",
+    "text": "sessions.onChanged"
+  },
+  {
+    "pc": "0x39d47a8",
+    "target": "0xce489a9",
+    "text": "mhjfbmdgcfjbbpaeojofohoefgiehjai"
+  },
+  {
+    "pc": "0x39d494c",
+    "target": "0xcbd441e",
+    "text": "chrome-extension"
+  },
+  {
+    "pc": "0x39d4e08",
+    "target": "0xcbd441e",
+    "text": "chrome-extension"
+  },
+  {
+    "pc": "0x39d4e34",
+    "target": "0xcbd441e",
+    "text": "chrome-extension"
+  },
+  {
+    "pc": "0x76f75dc",
+    "target": "0xda85c88",
+    "text": "../../chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h"
+  },
+  {
+    "pc": "0x76f75fc",
+    "target": "0xda862d6",
+    "text": "SidePanelWebUIView"
+  },
+  {
+    "pc": "0x76f764c",
+    "target": "0xda8631d",
+    "text": "TabsFromOtherDevicesSidePanelCoordinator"
+  },
+  {
+    "pc": "0x76f7654",
+    "target": "0xda86346",
+    "text": "../../chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.cc"
+  },
+  {
+    "pc": "0x76f768c",
+    "target": "0xda8631d",
+    "text": "TabsFromOtherDevicesSidePanelCoordinator"
+  },
+  {
+    "pc": "0x76f7694",
+    "target": "0xda86346",
+    "text": "../../chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.cc"
+  },
+  {
+    "pc": "0x76f78f0",
+    "target": "0xcee7114",
+    "text": "chrome://tabs-from-other-devices.top-chrome/"
+  },
+  {
+    "pc": "0x76f7be0",
+    "target": "0xda863b9",
+    "text": "TabsFromOtherDevicesSidePanel"
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "path": "chrome/browser/extensions/side_panel_helper.h",
+    "sha256": "9d82b5f54de77adb10623d7ef00dfb528d97a87b58dd25c8a88323af4d12b1a0"
+  },
+  {
+    "path": "chrome/browser/extensions/side_panel_helper.cc",
+    "sha256": "3906a60cf2b6b93f12293e09405d93bc3b72e78ee97b8130fc6dbcadc1cbbd73"
+  },
+  {
+    "path": "chrome/browser/extensions/browser_extension_window_controller.cc",
+    "sha256": "e832081fba9c4e59a8a7bdd61077065439b2760a25e8d2eb3d78de57a652fd48"
+  },
+  {
+    "path": "chrome/browser/ui/webui/webui_embedding_context.cc",
+    "sha256": "1ed545742616aa6e829a37fdf8f802a60725c7860e1105a69f96e9a4f59b33ae"
+  },
+  {
+    "path": "chrome/browser/ui/views/side_panel/side_panel_web_ui_view.cc",
+    "sha256": "c871a80a3c0b1e9bb949947a5890ee87dea5161409e9d4d83679515966a25c4d"
+  },
+  {
+    "path": "extensions/browser/extension_web_contents_observer.h",
+    "sha256": "2baa76422ed59efc51bc12c3d3dd3474c6cae94336a2b9dc0d1382a978829016"
+  },
+  {
+    "path": "extensions/browser/extension_function_dispatcher.h",
+    "sha256": "5a4ad73468ae7e3e53f529afd099320b1bb9637945972ac0bc9d77a16daf7eaa"
+  },
+  {
+    "path": "chrome/browser/extensions/BUILD.gn",
+    "sha256": "ec265d32ec22dc872f17bc6357f370452722f39518a313ffb107afb1f49aede1"
+  }
+]

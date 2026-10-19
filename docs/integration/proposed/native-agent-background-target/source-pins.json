@@ -1,0 +1,54 @@
+{
+  "targetSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "targetExecuted": false,
+  "sources": [
+    {
+      "path": "chrome/browser/extensions/side_panel_helper.h",
+      "sha256": "9d82b5f54de77adb10623d7ef00dfb528d97a87b58dd25c8a88323af4d12b1a0"
+    },
+    {
+      "path": "chrome/browser/extensions/side_panel_helper.cc",
+      "sha256": "3906a60cf2b6b93f12293e09405d93bc3b72e78ee97b8130fc6dbcadc1cbbd73"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_url_overrides.h",
+      "sha256": "90541357c0109d7d22b400c574e00d5e8a89b95fe7444acf1efe3497a7292df6"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_url_overrides.cc",
+      "sha256": "41a9732a8a72121384c4563c4054338ccd3d5bdfa7668e3f675ddc1e2f0e0dff"
+    },
+    {
+      "path": "chrome/browser/search/search.h",
+      "sha256": "0ce054f7ee7220156f578477966c3dacef68ed1aa269003d4dece9cb98d1c484"
+    },
+    {
+      "path": "chrome/browser/search/search.cc",
+      "sha256": "7ffa1aabd7c7a84ff4dc005ea40babfa97e0617ec4cc5c58cf449b945850cad6"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "sha256": "2de3096b2010dfc19aa2f1ee48da90b846305a78642f24913c7ed250916d8731"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/create_browser_window.h",
+      "sha256": "3d30aac9882004130a8ccce2c2b7e0be4d5389092123ceb540939d7b982b3fe7"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "sha256": "3b56f0ba5725ce6bf4fda4fb4e16978791efb33e49ff7d8e39db5d07344a3144"
+    },
+    {
+      "path": "ui/views/controls/webview/webview.cc",
+      "sha256": "131e3bddab3bfc62e3ac478be7a8fd913151965c75842dd67659f9b302185e0c"
+    },
+    {
+      "path": "ui/views/controls/native/native_view_host_mac.mm",
+      "sha256": "080fd886c29bfbdea7aa5f7f7a52463d4bd221c06be2da2e68db997934b49948"
+    }
+  ],
+  "originalPrepareDecompile": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045cc690.c",
+    "sha256": "4bd22bbfdab6a65ddbd6539b9c7481b0f783d1785615ed1cd5b59a65740c2554"
+  }
+}

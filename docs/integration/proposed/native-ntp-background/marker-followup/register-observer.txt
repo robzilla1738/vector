@@ -1,0 +1,84 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 32178d8: a9bd57f6     	stp	x22, x21, [sp, #-0x30]!
+ 32178dc: a9014ff4     	stp	x20, x19, [sp, #0x10]
+ 32178e0: a9027bfd     	stp	x29, x30, [sp, #0x20]
+ 32178e4: 910083fd     	add	x29, sp, #0x20
+ 32178e8: aa0103f3     	mov	x19, x1
+ 32178ec: aa0003f4     	mov	x20, x0
+ 32178f0: 925e7428     	and	x8, x1, #0xfffffffc00000000
+ 32178f4: f005ccd5     	adrp	x21, 0xebb2000 <dyld_stub_binder+0xebb2000>
+ 32178f8: f94046a9     	ldr	x9, [x21, #0x88]
+ 32178fc: eb09011f     	cmp	x8, x9
+ 3217900: 54000061     	b.ne	0x321790c <_ChromeMain+0x3212670>
+ 3217904: aa1303e0     	mov	x0, x19
+ 3217908: 9737f27d     	bl	0x142fc <_ChromeMain+0xf060>
+ 321790c: f9400680     	ldr	x0, [x20, #0x8]
+ 3217910: 925e7408     	and	x8, x0, #0xfffffffc00000000
+ 3217914: f94046a9     	ldr	x9, [x21, #0x88]
+ 3217918: eb09011f     	cmp	x8, x9
+ 321791c: 540000c0     	b.eq	0x3217934 <_ChromeMain+0x3212698>
+ 3217920: f9000693     	str	x19, [x20, #0x8]
+ 3217924: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 3217928: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 321792c: a8c357f6     	ldp	x22, x21, [sp], #0x30
+ 3217930: d65f03c0     	ret
+ 3217934: 97383c44     	bl	0x26a44 <_ChromeMain+0x217a8>
+ 3217938: 17fffffa     	b	0x3217920 <_ChromeMain+0x3212684>
+ 321793c: 00000000     	udf	#0x0
+ 3217940: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ 3217944: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 3217948: 910043fd     	add	x29, sp, #0x10
+ 321794c: f9401813     	ldr	x19, [x0, #0x30]
+ 3217950: b40000d3     	cbz	x19, 0x3217968 <_ChromeMain+0x32126cc>
+ 3217954: 52800028     	mov	w8, #0x1                ; =1
+ 3217958: b8280268     	ldadd	w8, w8, [x19]
+ 321795c: 12b00009     	mov	w9, #0x7fffffff         ; =2147483647
+ 3217960: 6b09011f     	cmp	w8, w9
+ 3217964: 540002a0     	b.eq	0x32179b8 <_ChromeMain+0x321271c>
+ 3217968: f9401c14     	ldr	x20, [x0, #0x38]
+ 321796c: 52800800     	mov	w0, #0x40               ; =64
+ 3217970: 9737de7e     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 3217974: 52800028     	mov	w8, #0x1                ; =1
+ 3217978: b9000008     	str	w8, [x0]
+ 321797c: f0006aa8     	adrp	x8, 0x3f6e000 <_ChromeMain+0x3f68d64>
+ 3217980: 91230108     	add	x8, x8, #0x8c0
+ 3217984: f00033e9     	adrp	x9, 0x3896000 <_ChromeMain+0x3890d64>
+ 3217988: 91140129     	add	x9, x9, #0x500
+ 321798c: a900a408     	stp	x8, x9, [x0, #0x8]
+ 3217990: d000dee8     	adrp	x8, 0x4df5000 <_ChromeMain+0x4defd64>
+ 3217994: 91120108     	add	x8, x8, #0x480
+ 3217998: f0049989     	adrp	x9, 0xc54a000 <_ChromeMain+0xc544d64>
+ 321799c: 912c7129     	add	x9, x9, #0xb1c
+ 32179a0: a901a408     	stp	x8, x9, [x0, #0x18]
+ 32179a4: a902cc1f     	stp	xzr, x19, [x0, #0x28]
+ 32179a8: f9001c14     	str	x20, [x0, #0x38]
+ 32179ac: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ 32179b0: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ 32179b4: d65f03c0     	ret
+ 32179b8: d4200000     	brk	#0
+ 32179bc: d4400000     	hlt	#0
+ 32179c0: d4200020     	brk	#0x1
+ 32179c4: 00000000     	udf	#0x0
+ 32179c8: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ 32179cc: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 32179d0: 910043fd     	add	x29, sp, #0x10
+ 32179d4: f9401813     	ldr	x19, [x0, #0x30]
+ 32179d8: b40000d3     	cbz	x19, 0x32179f0 <_ChromeMain+0x3212754>
+ 32179dc: 52800028     	mov	w8, #0x1                ; =1
+ 32179e0: b8280268     	ldadd	w8, w8, [x19]
+ 32179e4: 12b00009     	mov	w9, #0x7fffffff         ; =2147483647
+ 32179e8: 6b09011f     	cmp	w8, w9
+ 32179ec: 540002c0     	b.eq	0x3217a44 <_ChromeMain+0x32127a8>
+ 32179f0: f9401c14     	ldr	x20, [x0, #0x38]
+ 32179f4: 52800900     	mov	w0, #0x48               ; =72
+ 32179f8: 9737de5c     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 32179fc: 52800028     	mov	w8, #0x1                ; =1
+ 3217a00: b9000008     	str	w8, [x0]
+ 3217a04: d0ff01a9     	adrp	x9, 0x124d000 <_ChromeMain+0x1247d64>
+ 3217a08: 911c0129     	add	x9, x9, #0x700
+ 3217a0c: d0feec6a     	adrp	x10, 0xfa5000 <_ChromeMain+0xf9fd64>

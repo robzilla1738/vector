@@ -1,0 +1,348 @@
+--- a/chrome/browser/aux/ntp_prerender_service.h
++++ b/chrome/browser/aux/ntp_prerender_service.h
+@@ -13,6 +13,7 @@
+ // Re-resolves the actual enabled Agent manifest override on every call.
+ bool IsEligibleNtpPrerenderUrl(Profile* profile, const GURL& url);
+ // Actual newtab or owned transferred prerender, never another Agent surface.
++bool IsNtpPrerenderFeatureEnabled();
+ bool IsNtpPrerenderContents(content::WebContents* contents);
+ bool IsNtpPrerenderBackgroundReady(content::WebContents* contents);
+ // Existing authenticated ProfileGate remains the Aux account/Vault boundary.
+--- a/chrome/browser/aux/ntp_prerender_service.cc
++++ b/chrome/browser/aux/ntp_prerender_service.cc
+@@ -351,6 +351,9 @@
+   const auto eligible = EligibleOverride(profile);
+   return eligible && *eligible == url;
+ }
++bool IsNtpPrerenderFeatureEnabled() {
++  return base::FeatureList::IsEnabled(kAuxNtpPrerender);
++}
+ bool IsNtpPrerenderContents(content::WebContents* contents) {
+   if (!contents) return false;
+   const auto eligible = EligibleOverride(
+--- a/chrome/browser/ui/views/frame/aux_ntp_transition_state.cc
++++ b/chrome/browser/ui/views/frame/aux_ntp_transition_state.cc
+@@ -9,13 +9,24 @@
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+ #include "base/values.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/ntp_prerender_service.h"
++#include "chrome/browser/extensions/extension_url_overrides.h"
++#include "chrome/browser/extensions/side_panel_helper.h"
++#include "chrome/browser/search/search.h"
++#include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/common/chrome_isolated_world_ids.h"
++#include "chrome/common/url_constants.h"
+ #include "components/viz/common/surfaces/surface_id.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/web_contents.h"
++#include "extensions/common/constants.h"
++#include "extensions/common/extension.h"
+ #include "third_party/skia/include/core/SkColor.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/compositor/layer_surface.h"
+@@ -23,6 +34,8 @@
+ #include "ui/gfx/geometry/point_conversions.h"
+ #include "ui/views/controls/native/native_view_host.h"
+ #include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++#include "url/gurl.h"
+ 
+ namespace {
+ // Copied unchanged from original UTF16 constant0xd6e4064. Browser-owned world4
+@@ -67,6 +80,45 @@
+ })()
+ )AUXPROBE";
+ 
++// Original045cfae4 accepts these native aliases and search::IsNTPURL. The
++// alias alone never confers Agent ownership: resolve the actual current
++// override with THIS WebContents' BrowserContext, exactly as original07634970.
++bool IsNewTabAlias(const GURL& url) {
++  return (url.SchemeIs("chrome") &&
++          (url.host() == "newtab" || url.host() == "new-tab-page")) ||
++         (url.SchemeIs("chrome-search") &&
++          (url.host() == "local-ntp" || url.host() == "remote-ntp")) ||
++         search::IsNTPURL(url);
++}
++bool HasAgentHost(const GURL& url) {
++  return url.SchemeIs(extensions::kExtensionScheme) &&
++         url.host() == aux::kAgentExtensionId;
++}
++bool IsAgentOverride(const GURL& url, content::WebContents* contents) {
++  if (!IsNewTabAlias(url))
++    return false;
++  const auto* extension = ExtensionUrlOverrides::GetExtensionControllingURL(
++      url, contents->GetBrowserContext());
++  return extension && extension->id() == aux::kAgentExtensionId;
++}
++bool IsSidePanel(content::WebContents* contents) {
++  // Original address-only userdata0xcee54b8 has the SidePanelHelper
++  // constructor, dispatcher delegate, owner and WindowController callback.
++  // Reuse its API.
++  return contents && extensions::SidePanelHelper::FromWebContents(contents);
++}
++bool CurrentEntryIsAgentNewTab(content::WebContents* contents) {
++  if (!contents || IsSidePanel(contents))
++    return false;
++  // Original045cc690 first tries visible entry; if it is not an NTP alias,
++  // it tries the committed entry. Both sides must resolve a native alias to
++  // the Agent extension; a direct chrome-extension URL alone is insufficient.
++  const auto& visible = contents->GetVisibleURL();
++  const auto& url =
++      IsNewTabAlias(visible) ? visible : contents->GetLastCommittedURL();
++  return IsAgentOverride(url, contents);
++}
++
+ std::unique_ptr<ui::Layer> CloneWithSurface(ui::Layer* source,
+                                             bool& has_surface) {
+   if (!source)
+@@ -99,14 +151,32 @@
+ }
+ 
+ bool AuxNtpTransitionState::IsTarget(content::WebContents* contents) const {
+-  return aux::IsNtpPrerenderContents(contents);
++  // Original045ce218 is a visual target predicate, separate from preload
++  // eligibility. Do not impose new profile/account/URL-inference rules on it.
++  if (!contents || IsSidePanel(contents))
++    return false;
++  auto& controller = contents->GetController();
++  const auto* pending = controller.GetPendingEntry();
++  const auto* visible = controller.GetVisibleEntry();
++  const auto* committed = controller.GetLastCommittedEntry();
++  for (const auto* entry : {pending, visible, committed}) {
++    if (entry && HasAgentHost(entry->GetVirtualURL()))
++      return true;
++  }
++  const auto* primary = contents->GetPrimaryMainFrame();
++  if (primary && HasAgentHost(primary->GetLastCommittedURL()))
++    return true;
++  return (pending && IsAgentOverride(pending->GetVirtualURL(), contents)) ||
++         (visible && IsAgentOverride(visible->GetVirtualURL(), contents));
+ }
+ 
+ void AuxNtpTransitionState::Prepare(content::WebContents* replacement) {
+-  if (!web_contents() || !replacement || replacement == web_contents() ||
++  if (!aux::IsNtpPrerenderFeatureEnabled() || !web_contents() || !replacement ||
++      replacement == web_contents() ||
+       replacement->GetBrowserContext() != web_contents()->GetBrowserContext() ||
+-      !IsTarget(web_contents()) || !IsTarget(replacement) ||
+-      !owner_->GetWidget() || !owner_->layer() || !holder_->layer()) {
++      !CurrentEntryIsAgentNewTab(web_contents()) ||
++      !CurrentEntryIsAgentNewTab(replacement) || !owner_->GetWidget() ||
++      !owner_->layer() || !holder_->layer()) {
+     ClearTransition();
+     return;
+   }
+@@ -144,13 +214,14 @@
+ void AuxNtpTransitionState::Adopt(content::WebContents* contents) {
+   if (contents != web_contents()) {
+     ready_.clear();
+-    page_background_target_.reset();
+   }
+   weak_.InvalidateWeakPtrs();
+   pending_.clear();
+   RestoreOpacity();
+   Observe(contents);
+-  if (transition_ && transition_target_.get() != contents)
++  // BrowserView clears the old view to nullptr between Prepare and adoption.
++  // Original306c46c retains the prepared layer across that deliberate gap.
++  if (contents && transition_ && transition_target_.get() != contents)
+     ClearTransition();
+   // Rebind a held-layer timer after invalidating callbacks from the old
+   // document.
+@@ -171,7 +242,32 @@
+          content::WebContents::FromRenderFrameHost(frame) == web_contents() &&
+          web_contents()->GetPrimaryMainFrame() == frame;
+ }
++bool AuxNtpTransitionState::IsTransparentNativePopup() const {
++  auto has_native_role = [](views::Widget* widget) {
++    if (!widget)
++      return false;
++    auto* browser_view =
++        BrowserView::GetBrowserViewForNativeWindow(widget->GetNativeWindow());
++    if (!browser_view)
++      return false;
++    const auto* state = BrowserInitState::From(browser_view->browser());
++    if (!state)
++      return false;
++    const auto& name = state->create_params().app_name;
++    return name == "aside_account_password_popup" ||
++           name == "aside_extension_popup";
++  };
++  // Original045cf484 checks the contents' real native window and then the
++  // owning view's actual widget. Never infer native surface kind from a URL.
++  if (web_contents() &&
++      has_native_role(views::Widget::GetTopLevelWidgetForNativeView(
++          web_contents()->GetNativeView())))
++    return true;
++  return has_native_role(owner_->GetWidget());
++}
+ bool AuxNtpTransitionState::IsReady() const {
++  if (IsTransparentNativePopup())
++    return true;
+   if (!web_contents() || !IsTarget(web_contents()))
+     return false;
+   auto* frame = web_contents()->GetPrimaryMainFrame();
+@@ -181,11 +277,14 @@
+ }
+ 
+ bool AuxNtpTransitionState::UpdateAndShouldUseTransparentBackground() {
+-  if (!IsTarget(web_contents())) {
+-    if (web_contents() && page_background_target_.get() == web_contents()) {
+-      web_contents()->SetPageBaseBackgroundColor(std::nullopt);
+-      page_background_target_.reset();
+-    }
++  if (!web_contents()) {
++    RestoreOpacity();
++    return false;
++  }
++  // Original030ae900 always sets CURRENT contents' optional page-base color;
++  // it does not clear a detached old WebContents on release/destruction.
++  if (!IsTarget(web_contents()) && !IsTransparentNativePopup()) {
++    web_contents()->SetPageBaseBackgroundColor(std::nullopt);
+     ClearTransition();
+     RestoreOpacity();
+     return false;
+@@ -193,7 +292,6 @@
+   // Original030aec10..5c sets optional transparent base color for the target,
+   // leaving ordinary pages' default unset. This is distinct from the matte.
+   web_contents()->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
+-  page_background_target_ = web_contents()->GetWeakPtr();
+   const bool ready = IsReady();
+   if (transition_ && ready)
+     ClearTransition();
+@@ -315,6 +413,9 @@
+ }
+ void AuxNtpTransitionState::DidFinishNavigation(
+     content::NavigationHandle* navigation) {
++  // The supplied navigation observer separately excludes real side panels.
++  if (IsSidePanel(web_contents()))
++    return;
+   if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&
+       !navigation->IsSameDocument()) {
+     ready_.erase(navigation->GetRenderFrameHost()->GetGlobalId());
+--- a/chrome/browser/ui/views/frame/aux_ntp_transition_state.h
++++ b/chrome/browser/ui/views/frame/aux_ntp_transition_state.h
+@@ -29,9 +29,9 @@
+ class NativeViewHost;
+ }  // namespace views
+ 
+-// Only the actual enabled Agent newtab override is in this adaptation's scope.
+-// Ordinary contents and other extension/dialog surfaces retain existing
+-// behavior.
++// Supplied Agent-surface visual target predicate and native-override
++// resolution. SidePanelHelper contents are excluded; preload eligibility
++// remains separate.
+ class AuxNtpTransitionState final : public content::WebContentsObserver {
+  public:
+   AuxNtpTransitionState(views::View* owner,
+@@ -47,6 +47,7 @@
+   bool IsTarget(content::WebContents* contents) const;
+   bool IsCurrent(content::WeakDocumentPtr document) const;
+   bool IsReady() const;
++  bool IsTransparentNativePopup() const;
+   void ScheduleProbe();
+   void ProbeResult(content::WeakDocumentPtr document, base::Value result);
+   void VisualResult(content::WeakDocumentPtr document, bool success);
+@@ -68,7 +69,6 @@
+   base::RepeatingClosure update_background_;
+   std::unique_ptr<ui::LayerTreeOwner> transition_;
+   base::WeakPtr<content::WebContents> transition_target_;
+-  base::WeakPtr<content::WebContents> page_background_target_;
+   std::set<content::GlobalRenderFrameHostId> ready_;
+   std::set<content::GlobalRenderFrameHostId> pending_;
+   base::OneShotTimer transition_timeout_;
+--- a/chrome/browser/ui/views/frame/contents_web_view.h
++++ b/chrome/browser/ui/views/frame/contents_web_view.h
+@@ -64,6 +64,11 @@
+   void OnThemeChanged() override;
+   void RenderViewReady() override;
+   void OnLetterboxingChanged() override;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // BrowserView calls this while the old source is still hosted, BEFORE its
++  // intermediate SetWebContents(nullptr), as supplied045aebb0.
++  void PrepareAuxNtpTransition(content::WebContents* replacement);
++#endif
+   void SetWebContents(content::WebContents* web_contents) override;
+ 
+   // content::WebContentsObserver overrides:
+--- a/chrome/browser/ui/views/frame/contents_web_view.cc
++++ b/chrome/browser/ui/views/frame/contents_web_view.cc
+@@ -153,14 +153,16 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void ContentsWebView::PrepareAuxNtpTransition(content::WebContents* replacement) {
++  aux_ntp_transition_->Prepare(replacement);
++}
++#endif
+ void ContentsWebView::SetWebContents(content::WebContents* web_contents) {
+-#if BUILDFLAG(ENABLE_AUX_BROWSER)
+-  aux_ntp_transition_->Prepare(web_contents);
+-#endif
+   views::WebView::SetWebContents(web_contents);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   aux_ntp_transition_->Adopt(web_contents);
+-  if (GetWidget()) UpdateBackgroundColor();
++  if (web_contents && GetWidget()) UpdateBackgroundColor();
+ #endif
+   if (web_contents == nullptr) {
+     status_bubble_.reset();
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -2051,6 +2051,9 @@
+       GetWidget()->GetFocusManager()->ClearFocus();
+     }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    active_contents_view->PrepareAuxNtpTransition(new_contents);
++#endif
+     multi_contents_view_->GetInactiveContentsView()->SetWebContents(nullptr);
+     active_contents_view->SetWebContents(nullptr);
+   }
+--- a/chrome/browser/ui/views/frame/BUILD.gn
++++ b/chrome/browser/ui/views/frame/BUILD.gn
+@@ -554,7 +554,7 @@
+   public = [ "contents_web_view.h" ]
+   sources = [ "contents_web_view.cc" ]
+   if (enable_aux_browser) {
+-    sources += [ "aux_ntp_transition_state.cc", "aux_ntp_transition_state.h" ]
++    public += [ "aux_ntp_transition_state.h" ]
+   }
+   public_deps = [
+     ":web_contents_close_handler_delegate",
+@@ -583,7 +583,7 @@
+     "//ui/views",
+   ]
+   if (enable_aux_browser) {
+-    deps += [ "//chrome/browser/aux:ntp_prerender", "//chrome/common", "//components/viz/common" ]
++    deps += [ "//chrome/browser/aux:ntp_prerender" ]
+   }
+   if (use_aura) {
+     deps += [
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -834,6 +834,8 @@
+   deps = [
+     "//chrome/browser/aux:profile_gate",
+     "//chrome/browser/aux:ntp_prerender",
++    "//chrome/browser/search",
++    "//components/viz/common",
+     "//chrome/browser/preloading/prerender",
+     "//chrome/browser/aux:platform",
+     "//chrome/browser/aux:profile_state",
+@@ -2761,6 +2763,7 @@
+       "views/frame/top_container_view.h",
+       "aux_ntp_url.h",
+       "../aux/ntp_prerender_service.cc",
++      "views/frame/aux_ntp_transition_state.cc",
+       "views/frame/aux_icon_picker.cc",
+       "views/frame/aux_icon_picker.h",
+       "views/frame/aux_agent_tabs_bubble.cc",

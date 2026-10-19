@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "d13251fc9c6dae1d1dfb7b02574cf29ab6da3a37140cf67022b2a557ca1e190a"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "960988d5bd290f7c232191675d16055c83365edbfae8696a28481ed4d70e517d"
+    },
+    {
+      "path": "native.patch",
+      "sha256": "8a500db8a321e7dd262a0c286b7da1c6d638dd0c4b77b23de5e6c0dfda6b5f85"
+    },
+    {
+      "path": "original-alias-predicate.txt",
+      "sha256": "9be1fc94eeedcaff58dc7b62a169228a4ca16db0db79887ea5eaaae8f0445246"
+    },
+    {
+      "path": "original-browser-switch.txt",
+      "sha256": "9f1111b6e5be5f394c94ba06c7d59de0b93934b6ef8aab9a1521260f1ee68057"
+    },
+    {
+      "path": "original-contents-switch.txt",
+      "sha256": "9876344a9f4fde90aa69894c53db0a6f052813ab60a3fef52dbcc803cd35443b"
+    },
+    {
+      "path": "original-popup-transparency.txt",
+      "sha256": "8e4571ce15ca1dd874f292c732d7a2e08a0a13358ded60c8592b18c7ecaea509"
+    },
+    {
+      "path": "original-target-predicate.txt",
+      "sha256": "06e65e726a9e9d2021893f19a38b88f6d89917b679d36ef31db8dcd54265d92c"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "96553f072efeb9365480a8a4c280ca76766db10481d6b28d91d10fea37127367"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "cb25f055532388e75b50fb092681cbc21795629f7ba707d7f945f766611cd07f"
+    }
+  ],
+  "sidePanelProofDirectory": "../native-ntp-background/marker-followup",
+  "compiled": false,
+  "sharedSourceModified": false
+}

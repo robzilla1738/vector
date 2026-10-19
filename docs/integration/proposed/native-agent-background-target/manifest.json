@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "base": "appliedv27 + UNAPPLIED1f68ffe5a background proposal outputs",
+  "parentPatchSha256": "4a55307029370887129f417730f449296abb94357a8c295f1f9e9790cee36ef2",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.h",
+      "baselineSha256": "d1784c6e19d59349f0a1e780c51ac08fbe10599383763b7ea2973e2797e491f5",
+      "outputSha256": "6cf7b4c76f0e8aec8328b9df8c27a9d3ef8072a8d77ecba42c1f0975535c62ad",
+      "anchors": [
+        {
+          "find": "bool IsNtpPrerenderContents(content::WebContents* contents);",
+          "replace": "bool IsNtpPrerenderFeatureEnabled();\nbool IsNtpPrerenderContents(content::WebContents* contents);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": "7494de4e06fad8d9dc66c9a85a95ea34ad8cbf6f67ac8784c91e81c5797e6c51",
+      "outputSha256": "d9d476ea4becbee2d3aed2b15c365b3f54408010191de6fdcc4b9b925b208bfa",
+      "anchors": [
+        {
+          "find": "bool IsNtpPrerenderContents(content::WebContents* contents) {",
+          "replace": "bool IsNtpPrerenderFeatureEnabled() {\n  return base::FeatureList::IsEnabled(kAuxNtpPrerender);\n}\nbool IsNtpPrerenderContents(content::WebContents* contents) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.cc",
+      "baselineSha256": "86b7cab7f9e810d72bf51844d9bb316190a970ec51ee7a75bc91749394dd8ad4",
+      "outputSha256": "e0162742a77515b281c9b3aa6c194307e58654175f1267771d629e4af1609f52",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ntp_prerender_service.h\"",
+          "replace": "#include \"chrome/browser/aux/ntp_prerender_service.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/extensions/extension_url_overrides.h\"\n#include \"chrome/browser/extensions/side_panel_helper.h\"\n#include \"chrome/browser/search/search.h\"\n#include \"chrome/browser/ui/browser_init_state.h\"\n#include \"chrome/browser/ui/views/frame/browser_view.h\"\n#include \"ui/views/widget/widget.h\"\n#include \"chrome/common/url_constants.h\"\n#include \"content/public/browser/navigation_controller.h\"\n#include \"content/public/browser/navigation_entry.h\"\n#include \"extensions/common/constants.h\"\n#include \"extensions/common/extension.h\"\n#include \"url/gurl.h\"",
+          "count": 1
+        },
+        {
+          "find": "std::unique_ptr<ui::Layer> CloneWithSurface(",
+          "replace": "// Original045cfae4 accepts these native aliases and search::IsNTPURL. The\n// alias alone never confers Agent ownership: resolve the actual current override\n// with THIS WebContents' BrowserContext, exactly as original07634970.\nbool IsNewTabAlias(const GURL& url) {\n  return (url.SchemeIs(\"chrome\") &&\n          (url.host() == \"newtab\" || url.host() == \"new-tab-page\")) ||\n         (url.SchemeIs(\"chrome-search\") &&\n          (url.host() == \"local-ntp\" || url.host() == \"remote-ntp\")) ||\n         search::IsNTPURL(url);\n}\nbool HasAgentHost(const GURL& url) {\n  return url.SchemeIs(extensions::kExtensionScheme) &&\n         url.host() == aux::kAgentExtensionId;\n}\nbool IsAgentOverride(const GURL& url, content::WebContents* contents) {\n  if (!IsNewTabAlias(url)) return false;\n  const auto* extension = ExtensionUrlOverrides::GetExtensionControllingURL(\n      url, contents->GetBrowserContext());\n  return extension && extension->id() == aux::kAgentExtensionId;\n}\nbool IsSidePanel(content::WebContents* contents) {\n  // Original address-only userdata0xcee54b8 has the SidePanelHelper constructor,\n  // dispatcher delegate, owner and WindowController callback. Reuse its API.\n  return contents && extensions::SidePanelHelper::FromWebContents(contents);\n}\nbool CurrentEntryIsAgentNewTab(content::WebContents* contents) {\n  if (!contents || IsSidePanel(contents)) return false;\n  // Original045cc690 first tries visible entry; if it is not an NTP alias,\n  // it tries the committed entry. Both sides must resolve a native alias to\n  // the Agent extension; a direct chrome-extension URL alone is insufficient.\n  const auto& visible = contents->GetVisibleURL();\n  const auto& url = IsNewTabAlias(visible) ? visible : contents->GetLastCommittedURL();\n  return IsAgentOverride(url, contents);\n}\n\nstd::unique_ptr<ui::Layer> CloneWithSurface(",
+          "count": 1
+        },
+        {
+          "find": "  return aux::IsNtpPrerenderContents(contents);",
+          "replace": "  // Original045ce218 is a visual target predicate, separate from preload\n  // eligibility. Do not impose new profile/account/URL-inference rules on it.\n  if (!contents || IsSidePanel(contents)) return false;\n  auto& controller = contents->GetController();\n  const auto* pending = controller.GetPendingEntry();\n  const auto* visible = controller.GetVisibleEntry();\n  const auto* committed = controller.GetLastCommittedEntry();\n  for (const auto* entry : {pending, visible, committed}) {\n    if (entry && HasAgentHost(entry->GetVirtualURL())) return true;\n  }\n  const auto* primary = contents->GetPrimaryMainFrame();\n  if (primary && HasAgentHost(primary->GetLastCommittedURL())) return true;\n  return (pending && IsAgentOverride(pending->GetVirtualURL(), contents)) ||\n         (visible && IsAgentOverride(visible->GetVirtualURL(), contents));",
+          "count": 1
+        },
+        {
+          "find": "      !IsTarget(web_contents()) || !IsTarget(replacement) ||",
+          "replace": "      !CurrentEntryIsAgentNewTab(web_contents()) || !CurrentEntryIsAgentNewTab(replacement) ||",
+          "count": 1
+        },
+        {
+          "find": "  if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&",
+          "replace": "  // The supplied navigation observer separately excludes real side panels.\n  if (IsSidePanel(web_contents())) return;\n  if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&",
+          "count": 1
+        },
+        {
+          "find": "  if (!web_contents() || !replacement || replacement == web_contents() ||",
+          "replace": "  if (!aux::IsNtpPrerenderFeatureEnabled() || !web_contents() || !replacement ||\n      replacement == web_contents() ||",
+          "count": 1
+        },
+        {
+          "find": "bool AuxNtpTransitionState::IsReady() const {\n  if (!web_contents() || !IsTarget(web_contents()))",
+          "replace": "bool AuxNtpTransitionState::IsTransparentNativePopup() const {\n  auto has_native_role = [](views::Widget* widget) {\n    if (!widget) return false;\n    auto* browser_view = BrowserView::GetBrowserViewForNativeWindow(widget->GetNativeWindow());\n    if (!browser_view) return false;\n    const auto* state = BrowserInitState::From(browser_view->browser());\n    if (!state) return false;\n    const auto& name = state->create_params().app_name;\n    return name == \"aside_account_password_popup\" || name == \"aside_extension_popup\";\n  };\n  // Original045cf484 checks the contents' real native window and then the\n  // owning view's actual widget. Never infer native surface kind from a URL.\n  if (web_contents() && has_native_role(views::Widget::GetTopLevelWidgetForNativeView(\n                            web_contents()->GetNativeView()))) return true;\n  return has_native_role(owner_->GetWidget());\n}\nbool AuxNtpTransitionState::IsReady() const {\n  if (IsTransparentNativePopup()) return true;\n  if (!web_contents() || !IsTarget(web_contents()))",
+          "count": 1
+        },
+        {
+          "find": "    ready_.clear();\n    page_background_target_.reset();",
+          "replace": "    ready_.clear();",
+          "count": 1
+        },
+        {
+          "find": "  if (transition_ && transition_target_.get() != contents)\n    ClearTransition();",
+          "replace": "  // BrowserView clears the old view to nullptr between Prepare and adoption.\n  // Original306c46c retains the prepared layer across that deliberate gap.\n  if (contents && transition_ && transition_target_.get() != contents)\n    ClearTransition();",
+          "count": 1
+        },
+        {
+          "find": "  if (!IsTarget(web_contents())) {\n    if (web_contents() && page_background_target_.get() == web_contents()) {\n      web_contents()->SetPageBaseBackgroundColor(std::nullopt);\n      page_background_target_.reset();\n    }\n    ClearTransition();",
+          "replace": "  if (!web_contents()) {\n    RestoreOpacity();\n    return false;\n  }\n  // Original030ae900 always sets CURRENT contents' optional page-base color;\n  // it does not clear a detached old WebContents on release/destruction.\n  if (!IsTarget(web_contents())) {\n    web_contents()->SetPageBaseBackgroundColor(std::nullopt);\n    ClearTransition();",
+          "count": 1
+        },
+        {
+          "find": "  page_background_target_ = web_contents()->GetWeakPtr();\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "  if (!IsTarget(web_contents())) {\n    web_contents()->SetPageBaseBackgroundColor(std::nullopt);",
+          "replace": "  if (!IsTarget(web_contents()) && !IsTransparentNativePopup()) {\n    web_contents()->SetPageBaseBackgroundColor(std::nullopt);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.h",
+      "baselineSha256": "8992c9bb551a6d0271f3720f11f0788cfde79d6cdd7fe7f318c8f06ff13ce818",
+      "outputSha256": "0678c24f0a047909383523594a419c341f9304fe48adf0e71c070510303da736",
+      "anchors": [
+        {
+          "find": "  bool IsReady() const;",
+          "replace": "  bool IsReady() const;\n  bool IsTransparentNativePopup() const;",
+          "count": 1
+        },
+        {
+          "find": "  base::WeakPtr<content::WebContents> page_background_target_;\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "// Only the actual enabled Agent newtab override is in this adaptation's scope.\n// Ordinary contents and other extension/dialog surfaces retain existing\n// behavior.",
+          "replace": "// Supplied Agent-surface visual target predicate and native-override resolution.\n// SidePanelHelper contents are excluded; preload eligibility remains separate.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.h",
+      "baselineSha256": "9dd18bcc3c03be4b881738ad90967f999debc3da77ff173db9a0f7831ce3768e",
+      "outputSha256": "eac4ebd5db6c3c7a4064a1c6277eb794c4aecdef2425b5e1c1c716bc2c6440d0",
+      "anchors": [
+        {
+          "find": "  void SetWebContents(content::WebContents* web_contents) override;",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // BrowserView calls this while the old source is still hosted, BEFORE its\n  // intermediate SetWebContents(nullptr), as supplied045aebb0.\n  void PrepareAuxNtpTransition(content::WebContents* replacement);\n#endif\n  void SetWebContents(content::WebContents* web_contents) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.cc",
+      "baselineSha256": "900ea2134ebfabbb4445c4afb88ecd415684eb0e2d6bbfe2ba0fe853a165f955",
+      "outputSha256": "88c68febd4342132d96c31c0e1df52b320a3a4eea2ed9a3d01fee1f8c943ac1a",
+      "anchors": [
+        {
+          "find": "void ContentsWebView::SetWebContents(content::WebContents* web_contents) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux_ntp_transition_->Prepare(web_contents);\n#endif",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\nvoid ContentsWebView::PrepareAuxNtpTransition(content::WebContents* replacement) {\n  aux_ntp_transition_->Prepare(replacement);\n}\n#endif\nvoid ContentsWebView::SetWebContents(content::WebContents* web_contents) {",
+          "count": 1
+        },
+        {
+          "find": "  if (GetWidget()) UpdateBackgroundColor();",
+          "replace": "  if (web_contents && GetWidget()) UpdateBackgroundColor();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "6d04971e3fa8ef5ce2fc85d8ce7278201186fd900e9d2a5b67178ae4f6772162",
+      "outputSha256": "ff669b6d0b7215a6a0a7751124111da8403a9179c8aae9a168aab5f87a125894",
+      "anchors": [
+        {
+          "find": "    multi_contents_view_->GetInactiveContentsView()->SetWebContents(nullptr);\n    active_contents_view->SetWebContents(nullptr);",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n    active_contents_view->PrepareAuxNtpTransition(new_contents);\n#endif\n    multi_contents_view_->GetInactiveContentsView()->SetWebContents(nullptr);\n    active_contents_view->SetWebContents(nullptr);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/BUILD.gn",
+      "baselineSha256": "5c9a08dd1414dfe92c16d731d765b497d0fa6974e5b84ba4a52eabc4c38fe0da",
+      "outputSha256": "cc646fc19689f31ca072854989c165c6ca303c4396067383c51efd976f39eb27",
+      "anchors": [
+        {
+          "find": "    sources += [ \"aux_ntp_transition_state.cc\", \"aux_ntp_transition_state.h\" ]",
+          "replace": "    public += [ \"aux_ntp_transition_state.h\" ]",
+          "count": 1
+        },
+        {
+          "find": "    deps += [ \"//chrome/browser/aux:ntp_prerender\", \"//chrome/common\", \"//components/viz/common\" ]",
+          "replace": "    deps += [ \"//chrome/browser/aux:ntp_prerender\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "bedee26dae4d1f28b0957a5b37cd1f2723dfe3fa919e3e6cae741dc4882ab810",
+      "outputSha256": "4108b626ec9825770350000450e39a8d1b6e4539df39f163c1c5fc0b777f7140",
+      "anchors": [
+        {
+          "find": "      \"../aux/ntp_prerender_service.cc\",",
+          "replace": "      \"../aux/ntp_prerender_service.cc\",\n      \"views/frame/aux_ntp_transition_state.cc\",",
+          "count": 1
+        },
+        {
+          "find": "    \"//chrome/browser/aux:ntp_prerender\",",
+          "replace": "    \"//chrome/browser/aux:ntp_prerender\",\n    \"//chrome/browser/search\",\n    \"//components/viz/common\",",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "temporaryParentAndFollowupReplayVerified": true,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

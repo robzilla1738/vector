@@ -1,0 +1,11 @@
+{
+  "base": "actualappliedv27\u2192staged1f68background\u2192targetfollowup",
+  "parentPatchSha256": "4a55307029370887129f417730f449296abb94357a8c295f1f9e9790cee36ef2",
+  "followupPatchSha256": "8a500db8a321e7dd262a0c286b7da1c6d638dd0c4b77b23de5e6c0dfda6b5f85",
+  "cumulativePatchSha256": "c300414f610e9e272916c403b072c6038c4e2cd4626c0b6f60111d97f6b8e092",
+  "finalSourceCount": 98,
+  "independentCumulativeReplayVerified": true,
+  "sharedSourceModified": false,
+  "nativeBuildRun": false,
+  "temporaryCompositionRemoved": true
+}

@@ -1,0 +1,53 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "result": "SidePanelHelper extension-function delegate; source-grounded correspondence",
+  "compiled": false,
+  "runtimeObserved": false,
+  "sharedSourceModified": false,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "9d01ec14ec24e0c409f8685a68a075378b2051ea7cf0dfa5c639eb31cc67d5ef"
+    },
+    {
+      "path": "callback-effect.txt",
+      "sha256": "429f8632f458b13e0cca3f764c7c2cf65f2c2ebf600af709548191aeba957a2e"
+    },
+    {
+      "path": "callback-lookup.txt",
+      "sha256": "90b2f9cfc71254feb11aaacfab32f1a4c325a5a3768d9541afb22b9afc068cb9"
+    },
+    {
+      "path": "constructor-full.txt",
+      "sha256": "76fe45f41fc8e008c882979cfd31e6fa3bc8c6324020db17ccf935927231ac07"
+    },
+    {
+      "path": "dependency-strings.json",
+      "sha256": "8dfff38f364e1174957e49e1920f55861f9e1e101b39fcc102b105006b7c9fd3"
+    },
+    {
+      "path": "marker-constructor-full.txt",
+      "sha256": "beb3fbeae765702634d4f8046261d8b3eb75c3e7d2948e04f4f90a799261089b"
+    },
+    {
+      "path": "observed-helper.txt",
+      "sha256": "f220827291b2592565ec70897e52f559ff9fd7bb0f5b2ae49e3331c7365dd003"
+    },
+    {
+      "path": "owner-before.txt",
+      "sha256": "8b0d0e17410da8238585ffa859b22edd012c40228d021d1f224af4c17cbf78d9"
+    },
+    {
+      "path": "owner-metadata.txt",
+      "sha256": "0b6e1ae2364d10065cdbcf6f830175880e519755882440538884ede55f3311fb"
+    },
+    {
+      "path": "register-observer.txt",
+      "sha256": "d2a17036ab0b8232fe0fa57586ea6b786dd701800be0660423b1c10713187b62"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "d6155efa6084c519cbc080c5d0e6ca9e047d485353bec1798bf0dabc317a1f8d"
+    }
+  ]
+}
