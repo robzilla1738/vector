@@ -61,3 +61,13 @@ Compile the pure mapper and fixture executable with `xcrun clang++ -std=c++20 -f
 3. Make browser authentication call the same actual native install/public/sign authority and scheme. Do not override only the signature key while retaining another original KEM authority. The test PEM bridge remains test-only.
 4. Use a freshly created disposable Keychain for any later authorized runtime exercise. Do not use the owner's login Keychain or grant OS permissions. Preserve truthful failures for unsupported enclave/biometric/accessibility behavior; mock Chromium Keychain is not evidence of custom helper isolation.
 5. Prove actual interposition and untouched owner state before enabling product use. No production-ready claim is made by these compile/fixture checks.
+
+## Minimal self-contained native carrier
+
+`native-carrier.mm` uses the original globally exported C functions `AsideNativeRun` (`0x49af8`) and `AsideNativeFree` (`0x49bd4`). It contains no replacement signing/installation crypto and requires no external Node. The runtime module load remains gated by `AUX_ENABLE_PROVIDED_NATIVE_CARRIER=1`, exact original binding SHA256, safe regular-file mode, bounded validated JSON stdin and the four allowed browser-authority commands: install-status, install-init, get-public-keys and cdp-sign. It preserves the original JSON, scheme, public-key and signature formats.
+
+Before any original module is loaded, the carrier requires `AuxNativeBoundaryValidate` and compares its actual imported pointers for all five Security functions against the interceptor replacements. An environment variable alone is insufficient. It then derives scope from `realpath(AUX_HOME)` itself. `--verify-boundary` returns `{boundaryActive:true,originalBindingLoaded:false}` and stops without loading the supplied binding or invoking Keychain/Secure Enclave.
+
+Observed boundary-only probe passed with `DYLD_INSERT_LIBRARIES=<absolute libaux-native-boundary.dylib>` and an isolated existing AUX_HOME. The negative no-interposer probe refused. Runtime invocation without acceptance switch refused before dlopen. No original module was loaded. Actual `.node` dynamic loading may still encounter unresolved NAPI imports; that is untested and is not hidden by a substitute implementation.
+
+Root staging can import `buildProvidedNativeBoundary(outputDirectory)` from `vendor/provided/build-native-boundary.mjs`; every compilation in that reusable build path goes through `scripts/native-build.py`. It returns `{carrier,boundary,fixture}`. Packaging/signing and daemon/CLI/native-browser caller wiring remain integrator-owned. Production-ready remains false until reviewed isolated module/crypto execution succeeds.

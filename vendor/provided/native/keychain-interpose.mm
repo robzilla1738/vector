@@ -57,3 +57,15 @@ AUX_INTERPOSE(Delete, SecItemDelete);
 AUX_INTERPOSE(Update, SecItemUpdate);
 AUX_INTERPOSE(Create, SecKeyCreateRandomKey);
 }  // namespace
+
+// Carrier checks its actual import bindings before loading the supplied module.
+// This handshake performs no security operation and never treats an env flag as proof.
+extern "C" bool AuxNativeBoundaryValidate(const void* add, const void* copy,
+                                           const void* remove, const void* update,
+                                           const void* create) {
+  return add == (const void*)(unsigned long)&Add &&
+         copy == (const void*)(unsigned long)&Copy &&
+         remove == (const void*)(unsigned long)&Delete &&
+         update == (const void*)(unsigned long)&Update &&
+         create == (const void*)(unsigned long)&Create;
+}
