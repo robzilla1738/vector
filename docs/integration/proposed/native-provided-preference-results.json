@@ -1,0 +1,41 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sourceSha256": "7e8da6b8804bea12f7e0c3af155ac760379d67ac0428a457d1ae98d0cd1ed398",
+      "outputSha256": "be9d40abdad48ebd5abbe8ac2876ad97d2b21f23804787eeba86652fa6497dcb",
+      "anchors": [
+        {
+          "find": "#include \"components/spellcheck/browser/pref_names.h\"",
+          "replace": "#include \"components/spellcheck/browser/pref_names.h\"\n#include \"components/spellcheck/browser/spellcheck_platform.h\"",
+          "count": 1
+        },
+        {
+          "find": "result.Set(\"engines\", std::move(engines));",
+          "replace": "result.Set(\"searchEngines\", std::move(engines));",
+          "count": 1
+        },
+        {
+          "find": "    value.Set(\"spellCheckEnabled\",\n              prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));",
+          "replace": "    value.Set(\"spellCheckEnabled\",\n              prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));\n    std::vector<std::string> supported;\n    spellcheck_platform::GetAvailableLanguages(&supported);\n    const bool spellcheck_supported = spellcheck_platform::SpellCheckerAvailable() &&\n        std::ranges::any_of(codes, [&](const std::string& code) {\n          return std::ranges::any_of(supported, [&](const std::string& language) {\n            return base::EqualsCaseInsensitiveASCII(code, language);\n          });\n        });\n    value.Set(\"spellCheckSupported\", spellcheck_supported);",
+          "count": 1
+        },
+        {
+          "find": "      value.Set(\"name\",\n                base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(\n                    code, g_browser_process->GetApplicationLocale(), true)));",
+          "replace": "      value.Set(\"displayName\",\n                base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(\n                    code, g_browser_process->GetApplicationLocale(), true)));\n      value.Set(\"nativeDisplayName\",\n                base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(\n                    code, code, true)));",
+          "count": 1
+        },
+        {
+          "find": "  value.Set(\"known\", state != shell_integration::UNKNOWN_DEFAULT);",
+          "replace": "  value.Set(\"known\", state != shell_integration::UNKNOWN_DEFAULT);\n  const auto* policy = g_browser_process->local_state()->FindPreference(\n      prefs::kDefaultBrowserSettingEnabled);\n  const bool policy_disabled = policy && policy->IsManaged() &&\n      !policy->GetValue()->GetBool();\n  value.Set(\"policyDisabled\", policy_disabled);\n  value.Set(\"canSet\", !policy_disabled && shell_integration::CanSetAsDefaultBrowser());",
+          "count": 1
+        },
+        {
+          "find": "    if (setter) {\n      worker->StartSetAsDefault(",
+          "replace": "    if (setter) {\n      const auto* policy = g_browser_process->local_state()->FindPreference(\n          prefs::kDefaultBrowserSettingEnabled);\n      if ((policy && policy->IsManaged() && !policy->GetValue()->GetBool()) ||\n          !shell_integration::CanSetAsDefaultBrowser()) {\n        return RespondNow(Error(\"Setting the default browser is unavailable or managed\"));\n      }\n      worker->StartSetAsDefault(",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

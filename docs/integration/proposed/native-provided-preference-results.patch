@@ -1,0 +1,75 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -29,6 +29,7 @@
+ #include "components/search_engines/template_url.h"
+ #include "components/search_engines/template_url_service.h"
+ #include "components/spellcheck/browser/pref_names.h"
++#include "components/spellcheck/browser/spellcheck_platform.h"
+ #include "components/version_info/version_info.h"
+ #include "third_party/blink/public/common/page/page_zoom.h"
+ #include "ui/base/l10n/l10n_util.h"
+@@ -63,7 +64,7 @@
+     engines.Append(std::move(row));
+   }
+   base::DictValue result;
+-  result.Set("engines", std::move(engines));
++  result.Set("searchEngines", std::move(engines));
+   if (current) {
+     result.Set("defaultEngineId", base::NumberToString(current->id()));
+   }
+@@ -250,6 +251,12 @@
+     auto worker =
+         base::MakeRefCounted<shell_integration::DefaultBrowserWorker>();
+     if (setter) {
++      const auto* policy = g_browser_process->local_state()->FindPreference(
++          prefs::kDefaultBrowserSettingEnabled);
++      if ((policy && policy->IsManaged() && !policy->GetValue()->GetBool()) ||
++          !shell_integration::CanSetAsDefaultBrowser()) {
++        return RespondNow(Error("Setting the default browser is unavailable or managed"));
++      }
+       worker->StartSetAsDefault(
+           base::BindOnce(&AuxBrowserPreferencesFunction::DidDefaultBrowser,
+                          base::RetainedRef(this)));
+@@ -281,6 +288,15 @@
+     value.Set("preferredLanguages", std::move(list));
+     value.Set("spellCheckEnabled",
+               prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));
++    std::vector<std::string> supported;
++    spellcheck_platform::GetAvailableLanguages(&supported);
++    const bool spellcheck_supported = spellcheck_platform::SpellCheckerAvailable() &&
++        std::ranges::any_of(codes, [&](const std::string& code) {
++          return std::ranges::any_of(supported, [&](const std::string& language) {
++            return base::EqualsCaseInsensitiveASCII(code, language);
++          });
++        });
++    value.Set("spellCheckSupported", spellcheck_supported);
+     return RespondNow(WithArguments(std::move(value)));
+   }
+   if (method == "getSupportedLanguages") {
+@@ -289,9 +305,12 @@
+              g_browser_process->GetApplicationLocale())) {
+       base::DictValue value;
+       value.Set("code", code);
+-      value.Set("name",
++      value.Set("displayName",
+                 base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(
+                     code, g_browser_process->GetApplicationLocale(), true)));
++      value.Set("nativeDisplayName",
++                base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(
++                    code, code, true)));
+       list.Append(std::move(value));
+     }
+     base::DictValue result;
+@@ -359,6 +378,12 @@
+   base::DictValue value;
+   value.Set("isDefault", state == shell_integration::IS_DEFAULT);
+   value.Set("known", state != shell_integration::UNKNOWN_DEFAULT);
++  const auto* policy = g_browser_process->local_state()->FindPreference(
++      prefs::kDefaultBrowserSettingEnabled);
++  const bool policy_disabled = policy && policy->IsManaged() &&
++      !policy->GetValue()->GetBool();
++  value.Set("policyDisabled", policy_disabled);
++  value.Set("canSet", !policy_disabled && shell_integration::CanSetAsDefaultBrowser());
+   Respond(WithArguments(std::move(value)));
+ }
+ void AuxBrowserPreferencesFunction::DidDock(base::DictValue state) {

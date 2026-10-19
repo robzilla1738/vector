@@ -1,0 +1,2873 @@
+{
+  "note": "Matching method inventory and arity does not establish object field or runtime behavior compatibility. Source/result mismatches documented separately.",
+  "namespaces": [
+    {
+      "suppliedNamespace": "asideAccount",
+      "auxNamespace": "auxAccount",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideAccount.json",
+      "suppliedIdlSha256": "8d5559baeefe2c68823dd6dfd17aea186e2dcc6c2a499230add8d6871079a32e",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_account.json",
+      "nativeSchemaSha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870",
+      "methods": [
+        {
+          "name": "openProfileRoute",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "properties": {
+                "profilePath": {
+                  "type": "string"
+                },
+                "profileId": {
+                  "type": "string"
+                },
+                "sourceUrl": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "opened",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getProfileContext",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAccount.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getProfiles",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "profiles",
+                "type": "array",
+                "items": {
+                  "$ref": "asideAccount.ProfileInfo"
+                }
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signDaemonAuthChallenge",
+          "suppliedParameters": [
+            {
+              "name": "challenge",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "challenge",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAccount.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideAdblock",
+      "auxNamespace": "auxAdblock",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideAdblock.json",
+      "suppliedIdlSha256": "994c80db2e7d82d5876dea8b8eed5d9405db15f1a60bd3916011a2f43280cce7",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_adblock.json",
+      "nativeSchemaSha256": "61ad0eb377c6f7b11b49fe8d68e5f1ffe96faaf3173900f5733d70e2d5343ca2",
+      "methods": [
+        {
+          "name": "getState",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.AdblockState"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "setEnabled",
+          "suppliedParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.AdblockState"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getSubscriptions",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "array",
+                "items": {
+                  "$ref": "asideAdblock.Subscription"
+                }
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "array",
+                "items": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addSubscription",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideAdblock.AddSubscriptionOptions"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.AddSubscriptionResult"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "setSubscriptionEnabled",
+          "suppliedParameters": [
+            {
+              "name": "id",
+              "type": "string"
+            },
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "id",
+              "type": "string"
+            },
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.Subscription"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "removeSubscription",
+          "suppliedParameters": [
+            {
+              "name": "id",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "id",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "startSubscriptionUpdate",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideAdblock.SubscriptionUpdateOptions",
+              "optional": true
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "optional": true,
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.UpdateJob"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getSubscriptionUpdateProgress",
+          "suppliedParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.UpdateJob"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getCustomRules",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.CustomRulesState"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "saveCustomRules",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideAdblock.SaveCustomRulesOptions"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.CustomRulesState"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "testRequest",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideAdblock.TestRequestOptions"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.RequestTestResult"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getDiagnostics",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.AdblockDiagnostics"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reloadManualFilters",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideAdblock.AdblockDiagnostics"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clearEngineCache",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideBrowserImport",
+      "auxNamespace": "auxBrowserImport",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideBrowserImport.json",
+      "suppliedIdlSha256": "6749876d48f66adf56d406b8a2344fb26f917106f0c883227d6593e9b0bf281c",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_browser_import.json",
+      "nativeSchemaSha256": "41648de35f1224565616e04ff97594711fcffab5d7e495ca014e2e87bb0bb6cf",
+      "methods": [
+        {
+          "name": "getImportSources",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "sources",
+                "type": "array",
+                "items": {
+                  "$ref": "asideBrowserImport.JsonObject"
+                }
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "array",
+                "items": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "startImport",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideBrowserImport.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserImport.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getImportProgress",
+          "suppliedParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "progress",
+                "$ref": "asideBrowserImport.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "cancelImport",
+          "suppliedParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "jobId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideBrowserPreferences",
+      "auxNamespace": "auxBrowserPreferences",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideBrowserPreferences.json",
+      "suppliedIdlSha256": "f11130d19cfae062457e31c0474b4da2109b45ec22fc0bb13854c8b4f7b699e3",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "nativeSchemaSha256": "42b5d90cfcb115da723e6effa4e86f0a5a8e5b6330f9bf4dd250a65c545a4ba3",
+      "methods": [
+        {
+          "name": "getWindowBackgroundVibrancyEnabled",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isEnabled",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setWindowBackgroundVibrancyEnabled",
+          "suppliedParameters": [
+            {
+              "name": "isEnabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getBrowserColorScheme",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "colorScheme",
+                "type": "string"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setBrowserColorScheme",
+          "suppliedParameters": [
+            {
+              "name": "colorScheme",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getTabStyle",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "tabStyle",
+                "type": "string"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setTabStyle",
+          "suppliedParameters": [
+            {
+              "name": "tabStyle",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getVerticalTabInsertionPosition",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "position",
+                "$ref": "asideBrowserPreferences.VerticalTabInsertionPosition"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setVerticalTabInsertionPosition",
+          "suppliedParameters": [
+            {
+              "name": "position",
+              "$ref": "asideBrowserPreferences.VerticalTabInsertionPosition"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getHorizontalTabShrinkEnabled",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isEnabled",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setHorizontalTabShrinkEnabled",
+          "suppliedParameters": [
+            {
+              "name": "isEnabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getTabSwitcherSortByRecentlyUsed",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "sortByRecentlyUsed",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setTabSwitcherSortByRecentlyUsed",
+          "suppliedParameters": [
+            {
+              "name": "sortByRecentlyUsed",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getDefaultZoom",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "zoom",
+                "type": "number"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setDefaultZoom",
+          "suppliedParameters": [
+            {
+              "name": "zoom",
+              "type": "number"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "number"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getDefaultBrowserState",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setAsDefaultBrowser",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getDockState",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "addToDock",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getKeepTasksRunningState",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setKeepTasksRunningEnabled",
+          "suppliedParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getAutoPipEnabled",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isEnabled",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setAutoPipEnabled",
+          "suppliedParameters": [
+            {
+              "name": "isEnabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getVerticalTabsBookmarksSectionEnabled",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isEnabled",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setVerticalTabsBookmarksSectionEnabled",
+          "suppliedParameters": [
+            {
+              "name": "isEnabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "value",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getBrowserVersion",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "version",
+                "type": "string"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getSyncStatus",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "checkForUpdates",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getLanguageSettings",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "getSupportedLanguages",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setPreferredLanguages",
+          "suppliedParameters": [
+            {
+              "name": "languageCodes",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "languageCodes",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setSpellCheckEnabled",
+          "suppliedParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getSearchEngines",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideBrowserPreferences.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "any"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setDefaultSearchEngine",
+          "suppliedParameters": [
+            {
+              "name": "engineId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "engineId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideMiniPopup",
+      "auxNamespace": "auxMiniPopup",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "suppliedIdlSha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_mini_popup.json",
+      "nativeSchemaSha256": "578dd5a5bb429ba672ed7734135ff2d474e83c5f14c599d17167beaf76e92828",
+      "methods": [
+        {
+          "name": "hide",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getEnabled",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "enabled",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setEnabled",
+          "suppliedParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "enabled",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getShortcut",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "shortcut",
+                "type": "string"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "setShortcut",
+          "suppliedParameters": [
+            {
+              "name": "shortcut",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "shortcut",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setState",
+          "suppliedParameters": [
+            {
+              "name": "state",
+              "$ref": "asideMiniPopup.State"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "state",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setSize",
+          "suppliedParameters": [
+            {
+              "name": "width",
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "name": "height",
+              "type": "integer",
+              "minimum": 1
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "width",
+              "type": "integer"
+            },
+            {
+              "name": "height",
+              "type": "integer"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setOptionWindowSize",
+          "suppliedParameters": [
+            {
+              "name": "width",
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "name": "height",
+              "type": "integer",
+              "minimum": 1
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "width",
+              "type": "integer"
+            },
+            {
+              "name": "height",
+              "type": "integer"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "pickDirectory",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "path",
+                "type": "string",
+                "optional": true
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "switchProfile",
+          "suppliedParameters": [
+            {
+              "name": "profileIndex",
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "profileIndex",
+              "type": "integer"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideNotification",
+      "auxNamespace": "auxNotification",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideNotification.json",
+      "suppliedIdlSha256": "9318102d38be59b25fdcb6f5022594e8f6ce8e47f2a19421e92a971acc70c305",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_notification.json",
+      "nativeSchemaSha256": "84656322f74f635bc7b0e05abc47d2d1fe9f5c0473952474bc7cb77cd30be011",
+      "methods": [
+        {
+          "name": "requestPermission",
+          "suppliedParameters": [
+            {
+              "name": "tabId",
+              "type": "integer"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "tabId",
+              "type": "integer"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isGranted",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "name": "revokePermission",
+          "suppliedParameters": [
+            {
+              "name": "origin",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "origin",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "isRevoked",
+                "type": "boolean"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "suppliedNamespace": "asideOmnibox",
+      "auxNamespace": "auxOmnibox",
+      "suppliedIdlPath": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideOmnibox.json",
+      "suppliedIdlSha256": "c425ea67416b530a7455d03cc48374fd77ac798843948968992784eb1791030e",
+      "nativeSchemaPath": "chrome/common/extensions/api/aux_omnibox.json",
+      "nativeSchemaSha256": "888a1150b597b87c6681d9bfafd3259c3c1d0ef5e7903a26a6af199ccdcd1a0d",
+      "methods": [
+        {
+          "name": "createSession",
+          "suppliedParameters": [
+            {
+              "name": "options",
+              "$ref": "asideOmnibox.JsonObject",
+              "optional": true
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "options",
+              "type": "object",
+              "optional": true,
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "session",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "destroySession",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getSearchEngines",
+          "suppliedParameters": [],
+          "auxParameters": [],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "onFocusChanged",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "focused",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "focused",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "queryAutocomplete",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "input",
+              "type": "string"
+            },
+            {
+              "name": "options",
+              "$ref": "asideOmnibox.JsonObject",
+              "optional": true
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "input",
+              "type": "string"
+            },
+            {
+              "name": "options",
+              "type": "object",
+              "optional": true,
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "stopAutocomplete",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "clearResult",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "clearResult",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "openAutocompleteMatch",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setPopupSelection",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "selection",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "openPopupSelection",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "onNavigationLikely",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "deleteAutocompleteMatch",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "activateKeyword",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "executeAction",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "onThumbnailRemoved",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "getPlaceholderConfig",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getRecentTabs",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getTabPreview",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "tabId",
+              "type": "integer"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "tabId",
+              "type": "integer"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "getInputState",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "notifySessionStarted",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "notifySessionAbandoned",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "addFileContext",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addTabContext",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "tabId",
+              "type": "integer"
+            },
+            {
+              "name": "delayUpload",
+              "type": "boolean",
+              "optional": true
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "tabId",
+              "type": "integer"
+            },
+            {
+              "name": "delayUpload",
+              "type": "boolean",
+              "optional": true
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "asideOmnibox.JsonObject"
+              }
+            ]
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "result",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "any"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deleteContext",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "contextToken",
+              "type": "string"
+            },
+            {
+              "name": "fromAutomaticChip",
+              "type": "boolean",
+              "optional": true
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "contextToken",
+              "type": "string"
+            },
+            {
+              "name": "fromAutomaticChip",
+              "type": "boolean",
+              "optional": true
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "clearFiles",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "shouldBlockAutoSuggestedTabs",
+              "type": "boolean"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "shouldBlockAutoSuggestedTabs",
+              "type": "boolean"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "submitQuery",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "$ref": "asideOmnibox.JsonObject"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "request",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "openLensSearch",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setActiveToolMode",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "toolMode",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "toolMode",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "setActiveModelMode",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "modelMode",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "modelMode",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        },
+        {
+          "name": "activateMetricsFunnel",
+          "suppliedParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "funnelName",
+              "type": "string"
+            }
+          ],
+          "auxParameters": [
+            {
+              "name": "sessionId",
+              "type": "string"
+            },
+            {
+              "name": "funnelName",
+              "type": "string"
+            }
+          ],
+          "suppliedReturns": {
+            "name": "callback",
+            "optional": true,
+            "parameters": []
+          },
+          "auxReturns": {
+            "name": "callback",
+            "parameters": []
+          }
+        }
+      ]
+    }
+  ]
+}
