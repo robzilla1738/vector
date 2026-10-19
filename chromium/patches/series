@@ -89,3 +89,4 @@ aux/0089-aux-profile-bootstrap-newtab-preload.patch
 aux/0090-aux-native-task-surfaces.patch
 aux/0091-aux-native-switcher-preferences.patch
 aux/0092-aux-native-tab-search-host.patch
+aux/0093-aux-native-owned-tabs.patch
