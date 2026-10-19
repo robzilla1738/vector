@@ -264,9 +264,10 @@ export async function planProvidedSigning({
         throw new Error('Bundle executable does not match Info.plist');
     }
     const options = signingOptions(join(snapshot.root, code));
-    const suppliedBoundaryHost = target.kind === 'bundle' && options.includes('runtime') && (
-      (target.path.endsWith('apps/daemon/Aux Daemon.app') && target.executable === 'Contents/MacOS/aux-daemon') ||
-      (target.path.endsWith('apps/cli/Aux CLI.app') && target.executable === 'Contents/MacOS/aux-cli')
+    const suppliedBoundaryHost = options.includes('runtime') && (
+      (target.kind === 'bundle' && /(?:^|\/)apps\/daemon\/Aux Daemon\.app$/.test(target.path) && target.executable === 'Contents/MacOS/aux-daemon') ||
+      (target.kind === 'bundle' && /(?:^|\/)apps\/cli\/Aux CLI\.app$/.test(target.path) && target.executable === 'Contents/MacOS/aux-cli') ||
+      (target.kind === 'macho' && /(?:^|\/)apps\/cli\/Aux CLI\.app\/Contents\/MacOS\/aux-cli-sea$/.test(target.path))
     );
     steps.push({
       ...target,

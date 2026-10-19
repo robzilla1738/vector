@@ -15,6 +15,7 @@
     "check": "pnpm test:provided && pnpm check:provided",
     "stage:provided": "node scripts/stage-provided.mjs",
     "assemble:provided": "node scripts/assemble-provided.mjs",
+    "package:provided": "node scripts/package-provided.mjs",
     "check:provided": "node scripts/check-provided.mjs",
     "test:provided": "node --test vendor/provided/*.test.mjs scripts/lib/provided-*.test.mjs scripts/lib/aux-mark.test.mjs",
     "check:independent": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",

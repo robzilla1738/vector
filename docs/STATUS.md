@@ -545,3 +545,9 @@ Added absent-only verified bundled runtime provisioning into canonical private A
 ## Direct supplied CLI boundary proposal and build receipts (2026-10-19)
 
 Added an uncompiled fixed-layout native exec launcher for the supplied CLI SEA: canonical private Aux home/scope, fixed bundle interposer, inherited loader overrides removed, no acceptance flag synthesis or alternate executable. Build helper now emits source/header/compiler/output provenance receipt only after successful locked compilation and pure mapper fixture. Existing queued handles31341/27971 remain live/silent and cannot produce the newly added receipt automatically. JS helper syntax/inventory checks pass; native compilation/load/DP acceptance remain pending. No original native binding or Keychain operation executed.
+
+### Receipt-backed supplied app packaging
+
+Added the actual supplied native app assembler and explicit signing CLI. The assembler requires matching successful native/build-probe and boundary/pure-map receipts, complete native app inventory, current source/artwork/flags, and fixed compiled guard/carrier/CLI-launcher artifacts. It preserves copied native resources, assembles supplied resources into a new app, and installs the fixed CLI pre-exec seam while retaining its supplied SEA separately. Static syntax checks and a focused full-leaf resource/hash/mode/link inventory fixture pass. Actual assembly/signing is not yet possible from current uncompiled proposals; no readiness, installation, native execution or Keychain claim is made.
+
+Integrated the original lazy runtime-cache hook and deterministic runtime source-pin generation into app staging/auditing. Three mutable-cache filesystem fixtures pass. Native supervisor composition now directs tools to the owned home cache while the app's runtime remains a read-only seed. A fresh full stage is running; the prior successful stage remains preserved until atomic replacement.
