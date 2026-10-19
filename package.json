@@ -11,6 +11,7 @@
   "scripts": {
     "vendor:aside": "node scripts/vendor-aside.mjs",
     "aux": "node scripts/aux.mjs",
+    "package": "node scripts/package-aux.mjs",
     "smoke": "node scripts/aside-smoke.mjs",
     "check": "node scripts/vendor-aside.mjs && node scripts/aside-smoke.mjs"
   },
