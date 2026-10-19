@@ -12,7 +12,7 @@
     },
     {
       "path": "vendor/provided/authenticate-development-profile.mjs",
-      "sha256": "07bab089ee3ee8617ed0a69a61ea6686fb301eb9caf20a42206481a184312782"
+      "sha256": "5abda7f25fd319d267a6f36023ab924046cfd75a220ea7d646f63483684782da"
     },
     {
       "path": "vendor/provided/authenticate-development-profile.test.mjs",

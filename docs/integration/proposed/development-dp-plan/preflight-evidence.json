@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "kind": "source-only-development-plan-preflight",
+  "sources": [
+    {
+      "path": "vendor/provided/plan-development-dp.mjs",
+      "sha256": "34f767b67f2a459ede81e48cb669ca6da65fbde4026d0d0a37903af49d34d3a3"
+    },
+    {
+      "path": "vendor/provided/plan-development-dp.test.mjs",
+      "sha256": "045c04a23895ff36ba6c63e2a78c0b993544c012d86186e098e1eff3d4e809ac"
+    },
+    {
+      "path": "vendor/provided/authenticate-development-profile.mjs",
+      "sha256": "5abda7f25fd319d267a6f36023ab924046cfd75a220ea7d646f63483684782da"
+    },
+    {
+      "path": "scripts/lib/provided-signing-policy.mjs",
+      "sha256": "b561b8a7af314d32ef91179d6905561bd6176efa4590814a769e4b2897072937"
+    }
+  ],
+  "actualPreflight": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-review-preflight-2/development-review-plan.json",
+    "sha256": "44d1d7b9db22a1efa45bbf60a031621bac4ee83491e25dbb971f10611706b64f",
+    "preparationSha256": "6036389fa2e625f660c8601657d7b7b1016b2a1661117c2e55348209896cd372",
+    "boundaryReceiptSha256": "27d1b37434d2ca0bdb3d1bf19cf3f1330a817fe143d8d6dc54d297c1d16cc6a6",
+    "preparedLeafCountRehashed": 160,
+    "actualTargetObservations": 0,
+    "futureTargetTopologyCount": 11,
+    "profileInputsRead": false,
+    "actualTestMacClaimed": false,
+    "blocked": [
+      "Full disposable package with reviewed three-host overlay is absent; outer browser/computer-use cannot be fabricated",
+      "Root must bind this final exact plan and new diagnostic preview to scoped human authorization before execution; generator grants no permission",
+      "Development carrier source/layout hook must be reviewed, compiled and pinned before diagnostic execution",
+      "Post-sign signatures/entitlements/preserved-byte receipt and newly approved diagnostic preview required"
+    ],
+    "historical": true,
+    "generatorSha256AtRun": "73ef6d5e9aab980f2d3e9177c01229ac3853b3ccdfdbeb33d63d4362ccbdf2a2",
+    "subsequentRootMutation": "Root saved v2 provisioning pbxproj in Xcode after preflight. Do not reuse as current pinned prep; source-only generator will refuse modified leaf.",
+    "currentGeneratorFilesystemRun": false,
+    "laterChanges": "XML entitlement artifact format and exact post-sign leaf/Team/group gate added after historical preflight; current pure tests/syntax pass, no rerun against mutated v2."
+  },
+  "checks": {
+    "pureTestsPassed": 4,
+    "nativeBuilt": false,
+    "nativeExecuted": false,
+    "signingPerformed": false,
+    "profileDiscoveryPerformed": false,
+    "provisioningPerformed": false,
+    "dpExecuted": false,
+    "approvedHomeReadOrModified": false,
+    "defaultAdhocChanged": false
+  },
+  "fullPackagePlanGenerated": false
+}
