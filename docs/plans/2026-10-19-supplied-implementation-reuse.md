@@ -13,6 +13,7 @@ Work locally on main, use parallel agents for substantial disjoint implementatio
 - Preserve component/rendering implementation, styles, typography, geometry, menus, states, shortcuts, transitions and workflows.
 - Replace branding, Aux artwork and app/extension/bundle identifiers consistently. Keep contracts consistent across every affected caller and callee.
 - Preserve the owner's explicit wire-contract exceptions: `AsideDaemonSessionToken`, `AsideSessionToken`, `aside.daemon.auth.`, `Aside Daemon Auth v1\0`, health `service:"aside-daemon"` and `Aside.*` commands. Apply Aux names to product identity and visible branding while keeping these supplied protocol bytes.
+- Preserve original cryptographic formats and derivation labels, including `aside.dk.*` HKDF domains. Home/query isolation must not become a new cryptographic backend or an incompatible key format.
 - Use the updated owner-supplied `arch-mark.svg` everywhere Aux branding appears. Keep its full two-path geometry/viewBox; the canonical repository copy is `assets/brand/arch-mark.svg`. Generate app/extension/menu icons and inline UI variants from it, and include source/derived asset hashes in staged provenance.
 - Isolate local paths, ports, authentication identity and data from installed Aside. Local-only cloud boundaries remain explicit; never invent successful service responses to make a screen appear functional.
 - Keep necessary platform adaptations small and separately reviewable. Do not redesign a surface or rebuild a supplied capability to avoid adapting it.
