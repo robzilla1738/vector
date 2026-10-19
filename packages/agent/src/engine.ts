@@ -32,7 +32,7 @@ export class AgentEngine {
   readonly events = new EventEmitter();
   private active = new Map<
     string,
-    { controller: AbortController; promise: Promise<void> }
+    { controller: AbortController; promise: Promise<unknown> }
   >();
   private pending = new Map<
     string,
@@ -231,6 +231,92 @@ export class AgentEngine {
     this.active.set(key, { controller, promise });
     this.emit(session, 'run-started', { runId });
     return this.public(session);
+  }
+  runExternal<T>(
+    accountId: number,
+    id: string,
+    operation: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    if (this.closed)
+      fail('PRECONDITION_FAILED', 'Agent engine is shutting down');
+    const session = this.get(accountId, id),
+      key = this.key(accountId, id);
+    if (this.active.has(key))
+      fail('CONFLICT', 'Session already has active work');
+    if (session.archived)
+      fail('CONFLICT', 'Unarchive the session before continuing');
+    const controller = new AbortController(),
+      runId = randomUUID();
+    session.status = 'running';
+    delete session.error;
+    session.runs.push({ id: runId, status: 'running', createdAt: Date.now() });
+    const promise = Promise.resolve()
+      .then(async () => {
+        let acquired = false;
+        try {
+          await this.acquire(controller.signal);
+          acquired = true;
+          const result = await operation(controller.signal);
+          controller.signal.throwIfAborted();
+          const latest = this.get(accountId, id);
+          latest.status = 'idle';
+          const run = latest.runs.find((run) => run.id === runId);
+          if (run) {
+            run.status = 'idle';
+            run.finishedAt = Date.now();
+          }
+          this.emit(latest, 'run-finished', { runId, external: true });
+          return result;
+        } catch (error) {
+          const latest = this.get(accountId, id);
+          latest.status = controller.signal.aborted
+            ? latest.status === 'aborted'
+              ? 'aborted'
+              : 'interrupted'
+            : 'errored';
+          latest.error = this.credentials.redact(
+            accountId,
+            error instanceof Error ? error.message : String(error),
+          );
+          const run = latest.runs.find((run) => run.id === runId);
+          if (run) {
+            run.status = latest.status;
+            run.error = latest.error;
+            run.finishedAt = Date.now();
+          }
+          this.emit(latest, 'run-finished', {
+            runId,
+            external: true,
+            status: latest.status,
+            error: latest.error,
+          });
+          controller.abort(new Error(latest.error));
+          throw new Error(latest.error);
+        } finally {
+          if (acquired) {
+            this.running--;
+            this.waiting.shift()?.();
+          }
+        }
+      })
+      .finally(() => {
+        this.active.delete(key);
+        const latest = this.get(accountId, id);
+        if (
+          this.closed ||
+          latest.status === 'aborted' ||
+          latest.status === 'suspended'
+        )
+          return;
+        const next = latest.queue.shift();
+        if (next) {
+          this.save(latest);
+          this.prompt(accountId, id, next.prompt, next.id);
+        }
+      });
+    this.active.set(key, { controller, promise });
+    this.emit(session, 'run-started', { runId, external: true });
+    return promise;
   }
   private async acquire(signal: AbortSignal) {
     while (this.running >= this.concurrency) {
