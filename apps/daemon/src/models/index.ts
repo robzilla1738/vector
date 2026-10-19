@@ -1,11 +1,7 @@
 /** Implements docs/spec/daemon/agent.md Model/provider contract. */
+
+import { type AgentEngine, defaultModel, fail, scope } from '@aux/agent';
 import { z } from 'zod';
-import {
-  type AgentEngine,
-  defaultModel,
-  fail,
-  scope,
-} from '../../../../packages/agent/src/index.js';
 import type { DaemonServices } from '../http/server.js';
 
 const providerScope = scope.extend({

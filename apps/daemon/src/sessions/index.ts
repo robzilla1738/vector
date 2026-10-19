@@ -1,5 +1,5 @@
 /** Implements docs/spec/daemon/agent.md session lifecycle, API and streaming. */
-import { z } from 'zod';
+
 import {
   AgentEngine,
   bindingSchema,
@@ -10,7 +10,8 @@ import {
   scope,
   selectionSchema,
   sessionScope,
-} from '../../../../packages/agent/src/index.js';
+} from '@aux/agent';
+import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
 import { createMcpRouter } from '../mcp/index.js';
 import { createModelRouter } from '../models/index.js';

@@ -165,3 +165,22 @@ test('human decision resolves once; tool path denies credentials and read-only m
     f.close();
   }
 });
+
+test('shutdown never starts queued work and duplicate queue keys are retained once', async () => {
+  const f = fixture();
+  try {
+    const s = f.engine.create(createSchema.parse({ accountId: f.accountId }));
+    f.engine.prompt(f.accountId, s.id, 'First request', 'first');
+    f.engine.queue(f.accountId, s.id, 'Second request', 'prompt', 'second');
+    f.engine.queue(f.accountId, s.id, 'Second request', 'prompt', 'second');
+    assert.equal(f.engine.get(f.accountId, s.id).queue.length, 1);
+    await f.engine.close();
+    assert.equal(f.engine.get(f.accountId, s.id).messages.length, 1);
+    assert.throws(
+      () => f.engine.prompt(f.accountId, s.id, 'After shutdown'),
+      /shutting down/,
+    );
+  } finally {
+    f.close();
+  }
+});

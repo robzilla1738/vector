@@ -10,12 +10,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
+import { type AgentEngine, fail, scope } from '@aux/agent';
 import { z } from 'zod';
-import {
-  type AgentEngine,
-  fail,
-  scope,
-} from '../../../../packages/agent/src/index.js';
 import type { DaemonServices } from '../http/server.js';
 
 const projectScope = scope.extend({

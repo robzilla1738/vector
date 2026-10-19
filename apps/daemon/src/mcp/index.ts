@@ -1,10 +1,10 @@
 /** Implements docs/spec/daemon/services.md MCP client and local channels (MCP client). */
 
+import { fail, scope } from '@aux/agent';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { z } from 'zod';
-import { fail, scope } from '../../../../packages/agent/src/index.js';
 import type { DaemonServices } from '../http/server.js';
 
 const serverSchema = z.discriminatedUnion('type', [

@@ -110,6 +110,9 @@ export function sessionTools(
       fail('FORBIDDEN', 'Path is denied by session policy');
     if (operation === 'write' && session.permissionMode === 'read-only')
       fail('FORBIDDEN', 'Session filesystem is read-only');
+    const isAllowed = rules?.allow.some((root) =>
+      within(full, canonical(root)),
+    );
     const roots = [
       engine.directory(session),
       ...(session.runtimeConfig?.workingDirs ?? []),
@@ -117,12 +120,157 @@ export function sessionTools(
     if (
       rules?.ask.some((root) => within(full, canonical(root))) ||
       (session.permissionMode !== 'full-access' &&
+        !isAllowed &&
         !roots.some((root) => within(full, root)))
     )
       await approve(id, `${operation} file`, { path: full, operation });
     return full;
   }
+  async function browser(method: string, params: Record<string, unknown>) {
+    const session = engine.get(accountId, sessionId);
+    if (!engine.bridge || !session.browserBinding)
+      fail(
+        'PRECONDITION_FAILED',
+        'Bind this session to a connected browser profile before using browser tools',
+      );
+    return engine.bridge.command(
+      { accountId, ...session.browserBinding },
+      { method, params },
+      { signal },
+    );
+  }
   return {
+    browser_tabs: tool({
+      description:
+        'List tabs in the session-bound browser profile without selecting one.',
+      inputSchema: z.object({}),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_tabs', input, toolCallId, () =>
+          browser('tabs.query', {}),
+        ),
+    }),
+    page_view: tool({
+      description:
+        'Read a fresh semantic snapshot of a tab by targetId. Use returned element refs and document URL for subsequent actions.',
+      inputSchema: z.object({ targetId: z.string().min(1) }),
+      execute: (input, { toolCallId }) =>
+        tracked('page_view', input, toolCallId, () =>
+          browser('page.snapshot', input),
+        ),
+    }),
+    browser_navigate: tool({
+      description:
+        'Navigate a bound-profile tab to an HTTP(S) URL after approval.',
+      inputSchema: z.object({ targetId: z.string().min(1), url: z.url() }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_navigate', input, toolCallId, async () => {
+          if (!['http:', 'https:'].includes(new URL(input.url).protocol))
+            fail('BAD_REQUEST', 'Navigation requires an HTTP(S) URL');
+          await approve(toolCallId, 'Navigate browser tab', input);
+          return browser('page.navigate', input);
+        }),
+    }),
+    browser_click: tool({
+      description:
+        'Click an element from a fresh observed snapshot after approval. Pass its ref and documentUrl; stale references fail.',
+      inputSchema: z.object({
+        targetId: z.string().min(1),
+        ref: z.string().min(1),
+        documentUrl: z.url(),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_click', input, toolCallId, async () => {
+          await approve(toolCallId, 'Click browser element', input);
+          return browser('page.click', input);
+        }),
+    }),
+    browser_type: tool({
+      description:
+        'Type into a field from a fresh observed snapshot after approval. Pass its ref and documentUrl.',
+      inputSchema: z.object({
+        targetId: z.string().min(1),
+        ref: z.string().min(1),
+        documentUrl: z.url(),
+        text: z.string(),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_type', input, toolCallId, async () => {
+          await approve(toolCallId, 'Type in browser field', input);
+          return browser('page.type', input);
+        }),
+    }),
+    browser_scroll: tool({
+      description: 'Scroll a tab in the bound browser profile.',
+      inputSchema: z.object({
+        targetId: z.string().min(1),
+        x: z.number().default(0),
+        y: z.number(),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('browser_scroll', input, toolCallId, () =>
+          browser('page.scroll', input),
+        ),
+    }),
+    subagent: tool({
+      description:
+        'Start one fresh-context child task. Children cannot delegate recursively; explorer tasks have read-only filesystem policy.',
+      inputSchema: z.object({
+        task: z.string().trim().min(1),
+        profile: z
+          .enum(['fresh', 'context-explorer', 'code-explorer'])
+          .default('fresh'),
+      }),
+      execute: (input, { toolCallId }) =>
+        tracked('subagent', input, toolCallId, () => {
+          const parent = engine.get(accountId, sessionId);
+          if (parent.parentId)
+            fail('FORBIDDEN', 'Child sessions cannot delegate recursively');
+          const children = engine
+            .list(accountId)
+            .filter((s) => s.parentId === sessionId);
+          if (
+            children.filter(
+              (s) => s.status === 'running' || s.status === 'suspended',
+            ).length >= 3
+          )
+            fail(
+              'PRECONDITION_FAILED',
+              'At most three child tasks may run concurrently',
+            );
+          const { id: parentId, triggerIdempotencyKey, ...creation } = parent;
+          const child = engine.create({
+            ...creation,
+            parentId,
+            title: input.task.slice(0, 100),
+            trigger: 'subagent',
+            ephemeral: true,
+            permissionMode:
+              input.profile === 'fresh' ? parent.permissionMode : 'read-only',
+          });
+          return engine.prompt(accountId, child.id, input.task);
+        }),
+    }),
+    subagent_wait: tool({
+      description:
+        'Wait for owned child sessions and return their current status and transcript.',
+      inputSchema: z.object({ sessionIds: z.array(z.string()).min(1).max(3) }),
+      execute: (input, { toolCallId }) =>
+        tracked('subagent_wait', input, toolCallId, async () => {
+          for (const id of input.sessionIds)
+            if (engine.get(accountId, id).parentId !== sessionId)
+              fail('FORBIDDEN', 'Only this parent owns these child sessions');
+          return Promise.all(
+            input.sessionIds.map(async (id) => {
+              const child = await engine.wait(accountId, id);
+              return {
+                sessionId: id,
+                status: child.status,
+                messages: child.messages,
+              };
+            }),
+          );
+        }),
+    }),
     read_file: tool({
       description:
         'Read a permitted UTF-8 text file, with optional line slice. Credential files are unavailable.',

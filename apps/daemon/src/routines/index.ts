@@ -1,13 +1,8 @@
 /** Implements docs/spec/daemon/services.md Routines. */
 import { randomUUID } from 'node:crypto';
+import { type AgentEngine, createSchema, fail, scope } from '@aux/agent';
 import rrule from 'rrule';
 import { z } from 'zod';
-import {
-  type AgentEngine,
-  createSchema,
-  fail,
-  scope,
-} from '../../../../packages/agent/src/index.js';
 import type { DaemonServices } from '../http/server.js';
 
 const routineFields = z.object({
@@ -224,13 +219,9 @@ function runRoutine(
     db.exec(
       'CREATE TABLE IF NOT EXISTS routine_executions (id TEXT PRIMARY KEY,routineId TEXT,startedAt INTEGER,sessionId TEXT)',
     );
-    const claimed = db
-      .prepare(
-        'INSERT OR IGNORE INTO routine_executions (id,routineId,startedAt) VALUES (?,?,?)',
-      )
-      .run(executionId, record.id, Date.now());
-    if (!claimed.changes)
-      fail('CONFLICT', 'Routine execution was already claimed');
+    db.prepare(
+      'INSERT OR IGNORE INTO routine_executions (id,routineId,startedAt) VALUES (?,?,?)',
+    ).run(executionId, record.id, Date.now());
   } finally {
     db.close();
   }
@@ -251,7 +242,13 @@ function runRoutine(
             browserBinding: record.browserBinding,
           }),
         );
-  const session = engine.queue(accountId, target.id, record.prompt);
+  const session = engine.queue(
+    accountId,
+    target.id,
+    record.prompt,
+    'prompt',
+    executionId,
+  );
   const completedDb = store.accountDb(accountId);
   try {
     completedDb
