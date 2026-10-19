@@ -118,7 +118,29 @@
       "napiVersion": 8,
       "napiVersionInstructions": "mov w0,#8; ret",
       "directNodeV8UndefinedSymbols": [],
-      "securityImportsMatchOtherRole": true
+      "securityImportsMatchOtherRole": true,
+      "secureStorageQuery": {
+        "start": "0x2ec84",
+        "endExclusive": "0x2ee14",
+        "textBytesSha256": "f8c05e131fa571a3a49e4e2bb50baaaba0140e0c6c9ad94fe0adb097e0f9f833",
+        "gotKeyOffsets": {
+          "0x724070": "kSecAttrAccessGroup",
+          "0x724090": "kSecAttrAccount",
+          "0x724098": "kSecAttrService",
+          "0x7240a0": "kSecClass",
+          "0x7240a8": "kSecClassGenericPassword",
+          "0x7240e0": "kSecUseDataProtectionKeychain"
+        },
+        "logicalKeyFlow": "input String saved x23/x19, both service/account dictionary values use same pair",
+        "serviceAccountStores": [
+          "0x2ed2c",
+          "0x2ed48"
+        ],
+        "group": "8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
+        "dpFlag": true,
+        "baseKeyCount": 5,
+        "inputKeyNamespaceExpansionNeeded": false
+      }
     },
     "cli": {
       "path": "/Users/rcourson/Documents/Vibe/web/out/provided-resources/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
@@ -237,7 +259,29 @@
       "napiVersion": 8,
       "napiVersionInstructions": "mov w0,#8; ret",
       "directNodeV8UndefinedSymbols": [],
-      "securityImportsMatchOtherRole": true
+      "securityImportsMatchOtherRole": true,
+      "secureStorageQuery": {
+        "start": "0x2ddfc",
+        "endExclusive": "0x2df8c",
+        "textBytesSha256": "feb08e00d44805c81152b5d016087a20ef383311c0463f7048f96e009a173f30",
+        "gotKeyOffsets": {
+          "0x720070": "kSecAttrAccessGroup",
+          "0x720090": "kSecAttrAccount",
+          "0x720098": "kSecAttrService",
+          "0x7200a0": "kSecClass",
+          "0x7200a8": "kSecClassGenericPassword",
+          "0x7200e0": "kSecUseDataProtectionKeychain"
+        },
+        "logicalKeyFlow": "input String saved x23/x19, both service/account dictionary values use same pair",
+        "serviceAccountStores": [
+          "0x2dea4",
+          "0x2dec0"
+        ],
+        "group": "8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
+        "dpFlag": true,
+        "baseKeyCount": 5,
+        "inputKeyNamespaceExpansionNeeded": false
+      }
     }
   },
   "nativeExecution": false,
