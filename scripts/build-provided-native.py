@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import plistlib
 import subprocess
@@ -97,13 +98,29 @@ for path in artifacts:
     if build not in path.resolve().parents or not path.is_file():
         raise ValueError('Native build artifact is missing or escapes output')
     files.append({'path': str(path.relative_to(build)), 'sha256': digest(path)})
+app_files = []
+for directory, directories, names in os.walk(app, followlinks=False):
+    for name in sorted(directories + names):
+        path = Path(directory) / name
+        relative = str(path.relative_to(app))
+        mode = path.lstat().st_mode & 0o777
+        if path.is_symlink():
+            link = os.readlink(path)
+            if os.path.isabs(link) or app not in path.resolve(strict=True).parents:
+                raise ValueError('Native app contains an escaping dependency link')
+            app_files.append({'path': relative, 'type': 'symlink', 'linkTarget': link, 'mode': mode})
+        elif path.is_file():
+            app_files.append({'path': relative, 'type': 'file', 'sha256': digest(path), 'mode': mode})
+        elif not path.is_dir():
+            raise ValueError('Native app contains an unsupported object')
+app_files.sort(key=lambda item: item['path'])
 record = {
     'version': 1, 'implementation': 'supplied', 'productionReady': False,
     'nativeRoot': str(native), 'buildRoot': str(build), 'app': 'Aux.app',
     'compositionSha256': hashlib.sha256(composition_bytes).hexdigest(),
     'argsSha256': hashlib.sha256(args_bytes).hexdigest(),
     'command': command, 'buildExitCode': 0, 'generatedKeyProbePassed': True,
-    'files': files, 'recordedAt': datetime.now(timezone.utc).isoformat(),
+    'files': files, 'appFiles': app_files, 'recordedAt': datetime.now(timezone.utc).isoformat(),
     'remaining': ['Guarded original-native loading and common Aux authority', 'Explicit local signing', 'Disposable packaged UI/runtime and functional acceptance'],
 }
 receipt.parent.mkdir(parents=True, exist_ok=True)

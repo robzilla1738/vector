@@ -25,6 +25,10 @@ if output.exists() or output == native or native in output.parents or output in 
 steps = [
     ('native-provided-entrypoints.patch', 'native-provided-entrypoints.json'),
     ('native-provided-profile-security.patch', 'native-provided-profile-security.json'),
+    ('local-vault-bootstrap/local-vault-bootstrap.patch', 'local-vault-bootstrap/manifest.json'),
+    ('local-profile-binding/local-profile-binding.patch', 'local-profile-binding/manifest.json'),
+    ('browser-profile-window/binding-index-followup.patch', 'browser-profile-window/binding-index-source.json'),
+    ('browser-profile-window/browser-profile-window.patch', 'browser-profile-window/source-sha256.json'),
     ('native-provided-supervisor.patch', 'native-provided-supervisor.json'),
     ('native-provided-capture-launch.patch', 'native-provided-capture-launch.json'),
     ('provided-native-auth/provided-native-auth.patch', 'provided-native-auth/source-sha256.json'),
@@ -34,6 +38,8 @@ steps = [
     ('retired-passkey-broker/disable-independent-provider.patch', 'retired-passkey-broker/source-and-anchor.json'),
 ] + [(f'native-provided-{name}.patch', f'native-provided-{name}.json') for name in
      ['preference-results', 'dock-results', 'import-results', 'import-consent', 'omnibox-results']]
+steps.append(('native-about-results/native-about-results.patch', 'native-about-results/manifest.json'))
+steps.extend((f'native-provided-{name}.patch', f'native-provided-{name}.json') for name in ['contextual-model', 'contextual-binding'])
 
 def safe(path):
     value = Path(path)
@@ -51,24 +57,34 @@ def metadata_pins(path):
     if isinstance(data, dict) and 'path' in data:
         data = [data]
     if isinstance(data, dict):
-        return data
-    return {item['path']: item.get('originalNativeSha256', item.get('sourceSha256')) for item in data}
+        return {key: value for key, value in data.items() if isinstance(value, str)}
+    return {item['path']: item.get('originalNativeSha256', item.get('sourceSha256')) for item in data if 'originalNativeSha256' in item or 'sourceSha256' in item}
 
 baseline = {}
 patches = []
 for patch_path, metadata in steps:
     patch = (proposals / patch_path).read_bytes()
     paths = {safe(path) for path in re.findall(r'^\+\+\+ b/(.+)$', patch.decode(), re.M)}
+    prior_paths = set(baseline)
     for path in paths:
         if path not in baseline:
             source = native / path
             baseline[path] = source.read_bytes() if source.exists() else None
     if metadata:
         for path, expected in metadata_pins(proposals / metadata).items():
+            if safe(path) in prior_paths:
+                continue  # Ordered input hashes below validate dependent edits.
             actual = baseline[safe(path)]
             if (sha(actual) if actual is not None else None) != expected:
                 raise ValueError(f'Pinned native baseline drift: {path}')
-    patches.append((patch_path, patch))
+    patches.append((patch_path, patch, metadata))
+    if metadata:
+        data = json.loads((proposals / metadata).read_text())
+        for item in data.get('newFiles', []) if isinstance(data, dict) else []:
+            path = safe(item['path'])
+            if path in baseline or (native / path).exists():
+                raise ValueError(f'New proposal source already exists: {path}')
+            baseline[path] = None
 
 brand_manifest = json.loads((proposals / 'native-branding-assets/manifest.json').read_text())
 if sha((repository / 'assets/brand/arch-mark.svg').read_bytes()) != brand_manifest['canonicalSvgSha256']:
@@ -88,7 +104,18 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             (copy / path).parent.mkdir(parents=True, exist_ok=True)
             (copy / path).write_bytes(raw)
     environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(copy.parent))
-    for name, patch in patches:
+    for name, patch, metadata in patches:
+        data = json.loads((proposals / metadata).read_text()) if metadata else None
+        items = data.get('files', data) if isinstance(data, dict) else data if isinstance(data, list) else []
+        if isinstance(items, dict):
+            items = [dict(value, path=path) for path, value in items.items() if isinstance(value, dict) and 'beforeSha256' in value]
+        for item in items:
+            expected_key = next((key for key in ['baselineSha256', 'expectedInputSha256', 'sourceSha256', 'beforeSha256'] if key in item), None)
+            if expected_key:
+                target = copy / safe(item['path'])
+                actual = sha(target.read_bytes()) if target.exists() else None
+                if actual != item[expected_key]:
+                    raise ValueError(f'Ordered proposal input drift: {name}: {item["path"]}')
         if name == 'cdp-startup-contract/fixed-discovery-env.patch':
             # Its surrounding env lines overlap the independent boundary patch;
             # replay the reviewed unique anchor, not stale diff context.
@@ -103,6 +130,17 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=copy, env=environment, check=True)
             subprocess.run(['git', 'apply', '-'], input=patch, cwd=copy, env=environment, check=True)
             report['steps'].append({'patch': name, 'sha256': sha(patch)})
+        for item in items:
+            expected = item.get('outputSha256', item.get('proposedSha256', item.get('afterSha256')))
+            if expected and sha((copy / safe(item['path'])).read_bytes()) != expected:
+                raise ValueError(f'Ordered proposal output drift: {name}: {item["path"]}')
+        for item in data.get('newFiles', []) if isinstance(data, dict) else []:
+            path = safe(item['path'])
+            raw = (proposals / 'contextual-omnibox' / path).read_bytes()
+            if sha(raw) != item['sha256'] or (copy / path).exists():
+                raise ValueError(f'New proposal source drift: {path}')
+            (copy / path).parent.mkdir(parents=True, exist_ok=True)
+            (copy / path).write_bytes(raw)
 
     # Owner-required original protocol bytes, after the historical proposals.
     wire_edits = {
