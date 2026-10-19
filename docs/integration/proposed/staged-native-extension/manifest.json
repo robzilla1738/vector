@@ -1,0 +1,13 @@
+{
+  "description": "Pinned root-tool delta; staged native composition without shared checkout mutation",
+  "patchSha256": "4ff93b27d7d1d765df116f04d6cc71558595e57e992c93215c23c50bcbcc9b29",
+  "files": [
+    {
+      "path": "scripts/extend-provided-native.py",
+      "baselineSha256": "62f2327506d56420c4d4699459b4513f859a025aec3a133a9224669e27e9739b",
+      "outputSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba"
+    }
+  ],
+  "nativeCheckoutModified": false,
+  "nativeBuildRun": false
+}
