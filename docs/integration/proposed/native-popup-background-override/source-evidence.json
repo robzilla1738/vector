@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/renderer_host/render_widget_host_view_mac.mm",
+      "sha256": "fb03e047925a05ab18f97fca3495fd65e25b6a1672c10fc870cef14db2bbdd5e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/renderer_host/render_frame_host_manager.cc",
+      "sha256": "e883e975157617410f95c2415af1f6971d3ce043d809523bd791992195efd403"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/web_contents_set_background_color.cc",
+      "sha256": "270769f09bd7b93c4b135f9845474013285d23b0f36c006c957c9052feae4a57"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/webview.cc",
+      "sha256": "131e3bddab3bfc62e3ac478be7a8fd913151965c75842dd67659f9b302185e0c"
+    }
+  ],
+  "functions": [
+    {
+      "name": "OverrideSetter",
+      "rva": "0x404c900",
+      "rawSliceSha256": "de70da52a235b1e666463c35de8450be3ac5294097d20bb2dc1f40a02ee8eca2",
+      "rawSliceBytes": 308,
+      "evidenceId": "ev_371d38ba7a608e4cb524416790d2a4ea06331ecfd869285261c72bab6be1c5c8",
+      "snapshotPath": "/tmp/aux-popup-view-optional-color-snapshot.json"
+    },
+    {
+      "name": "ContentSetter",
+      "rva": "0x404c8d0",
+      "rawSliceSha256": "de70da52a235b1e666463c35de8450be3ac5294097d20bb2dc1f40a02ee8eca2",
+      "rawSliceBytes": 308,
+      "evidenceId": "ev_e31bd8d8561ddeecc1e9b9c7c321bcb2d8e170ad89e965f36fd56e3802313456",
+      "snapshotPath": "/tmp/aux-popup-view-optional-color-snapshot.json"
+    },
+    {
+      "name": "BaseGetter",
+      "rva": "0x404ca04",
+      "rawSliceSha256": "c7ccdba0ef8a1f0cca1b8333a2f7d51884a13558635245574baaba8afc6b684b",
+      "rawSliceBytes": 160,
+      "evidenceId": "ev_0efe8df0430d32e8eb0254928d8dffcf9be76ce1ad736df6ce92710abe1ba60f",
+      "snapshotPath": "/tmp/aux-popup-base-effective-snapshot.json"
+    },
+    {
+      "name": "MacGetter",
+      "rva": "0x69e535c",
+      "rawSliceSha256": "2ab9abb307309e73f4abc824a30ddad147d0242cdb8e75032055ab7d7b2b2af7",
+      "rawSliceBytes": 192,
+      "evidenceId": "ev_4daf821862d801bb2b4fa46d1d229c1b84fb8af0d5224ac57820a213c2cd434b",
+      "snapshotPath": "/tmp/aux-popup-mac-effective-snapshot.json"
+    },
+    {
+      "name": "CopyAllColors",
+      "rva": "0x34ec6b8",
+      "rawSliceSha256": "77a4f0b591c6080c533f674d2888e0dcb5f831cc8deecffd5fe0920daf9db494",
+      "rawSliceBytes": 512,
+      "evidenceId": "ev_962ad126f920638afa052340342f0995d1931e790fc7819e835a7aec5cdc65fb",
+      "snapshotPath": "/tmp/aux-popup-copy-or-lock-snapshot.json"
+    },
+    {
+      "name": "PersistentFrameObserver",
+      "rva": "0x32a82c4",
+      "rawSliceSha256": "26dc7174750fcc7924eb44c9bfcd6886977c794f2f9071b75c7f79a61527afbf",
+      "rawSliceBytes": 252,
+      "evidenceId": "ev_b40cb98d440c13bf5d13e7a85daf8d25112718ea44ef6cb0f6aa68bca1e6f2ee",
+      "snapshotPath": "/tmp/aux-popup-frame-background-snapshot.json"
+    }
+  ],
+  "vtableNeighbors": [
+    {
+      "offset": "0xe0ea258",
+      "neighbors": [
+        [
+          -4,
+          "0xcb33e90"
+        ],
+        [
+          -3,
+          "0xcb33e90"
+        ],
+        [
+          -2,
+          "0x68667bc"
+        ],
+        [
+          -1,
+          "0x7bc180"
+        ],
+        [
+          0,
+          "0x32a83c0"
+        ],
+        [
+          1,
+          "0x404c900"
+        ],
+        [
+          2,
+          "0x404c8d0"
+        ],
+        [
+          3,
+          "0x404ca04"
+        ],
+        [
+          4,
+          "0x34ec6b8"
+        ],
+        [
+          5,
+          "0xcb33e90"
+        ],
+        [
+          6,
+          "0xcb33e90"
+        ],
+        [
+          7,
+          "0xcb33e90"
+        ]
+      ]
+    },
+    {
+      "offset": "0xe0ea900",
+      "neighbors": [
+        [
+          -4,
+          "0x6867ea4"
+        ],
+        [
+          -3,
+          "0x404cb90"
+        ],
+        [
+          -2,
+          "0x68667bc"
+        ],
+        [
+          -1,
+          "0x6869058"
+        ],
+        [
+          0,
+          "0x32a83c0"
+        ],
+        [
+          1,
+          "0x404c900"
+        ],
+        [
+          2,
+          "0x404c8d0"
+        ],
+        [
+          3,
+          "0x404ca04"
+        ],
+        [
+          4,
+          "0x34ec6b8"
+        ],
+        [
+          5,
+          "0x68688f0"
+        ],
+        [
+          6,
+          "0x686890c"
+        ],
+        [
+          7,
+          "0x6868928"
+        ]
+      ]
+    },
+    {
+      "offset": "0xe0f69e0",
+      "neighbors": [
+        [
+          -4,
+          "0x69e2e64"
+        ],
+        [
+          -3,
+          "0x3982dfc"
+        ],
+        [
+          -2,
+          "0x68667bc"
+        ],
+        [
+          -1,
+          "0x7bc180"
+        ],
+        [
+          0,
+          "0x32a83c0"
+        ],
+        [
+          1,
+          "0x404c900"
+        ],
+        [
+          2,
+          "0x404c8d0"
+        ],
+        [
+          3,
+          "0x69e535c"
+        ],
+        [
+          4,
+          "0x34ec6b8"
+        ],
+        [
+          5,
+          "0x69e48f8"
+        ],
+        [
+          6,
+          "0x69e49c8"
+        ],
+        [
+          7,
+          "0x69e49f0"
+        ]
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "source": "04598fcc finalvirtual+0xa0 / RenderWidgetHostView tables",
+      "behavior": "Existing032a83c0 default-color slot is followed by404c900 optional override setter,404c8d0 content-color setter, then404ca04/base or69e535c/Mac effective getter."
+    },
+    {
+      "source": "404c900",
+      "behavior": "Reject present alpha1..254; if optional unchanged return; compare virtual effective opacity before/after replacement ofoptional+158, call platform update, notify owner background opacity only if changed."
+    },
+    {
+      "source": "404ca04",
+      "behavior": "If override+158 present use it; else content+150 ifpresent; else default+160."
+    },
+    {
+      "source": "69e535c",
+      "behavior": "Same precedence, then converts transparent-present0x100000000 to white-present0x1ffffffff for native query. This matches unchanged155Mac fallback after BaseGetBackgroundColor."
+    },
+    {
+      "source": "034ec6b8",
+      "behavior": "If all3sourcecolors absent return without changingdestination. Otherwisecompareall3 then copyall3 optionals including absent override; update platform andeffectiveopacity onlyifneeded."
+    },
+    {
+      "source": "observer vtablee4e66f0+10->032a82c4, rawtail032a8300..318",
+      "behavior": "For outermost frame, GetView, loadstoredcolorobserver+30, tailbranchONLY032a83c0 default setter. No override call; current155 observer staysdefault-only."
+    },
+    {
+      "source": "04598fcc",
+      "behavior": "Separate initialhelper applies overrideonlywhen current view exists. Copies retain override acrossreplacement. No popup retry/new observer mode added without actual lifecycle evidence."
+    }
+  ],
+  "limitations": [
+    "Originalstrippedmethodnames are analyst labels; public SetBackgroundColorOverride spelling is a local port name, not recoveredABI/API string.",
+    "Boundedrawdecompilation has incompletebranch/tailwarnings; actual instructions and vtable neighbors corroborate the relevant effects, but do not establish runtime behavior.",
+    "No custompopup mode is added to generic frame observer. Original initial conditional override and three-color copy lifecycle are retained; initial/no-view runtime result remains acceptance work.",
+    "No Macmaterial, nativeviewselector, NTP/backgroundtransition, profilecontroller or existingwirecontract changes."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-mini-popup-transparency CC1af1ab...; actual content headers/base from applied root tree at proposal creation (v55/62 unchanged content paths)",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "1af1ab19d632beed41ee0d35524a0604167d60a8cfd14d926ccc06493d938f25",
+      "outputSha256": "03b6bc180c17ab9a34b6711eba83265ebe93921312b826493bfb7001c74e09d3"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_base.cc",
+      "baselineSha256": "81d2beec60333375f0072bac3b6c4131e39c9bfbc6d7b80dfeceef8e0d1712c3",
+      "outputSha256": "1c6b2cb015505c155f313121af3c80fc104388b117d55ee6c4c5a424bb599af0"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_base.h",
+      "baselineSha256": "4011ef86fea1aea24dcbdca2e059716f9e47902f8124160b5537a448aa5b6455",
+      "outputSha256": "80ab40412fa0e50fe82eb77e07be13f5c4f59e91cfc599e76f61a9ff90b45a94"
+    },
+    {
+      "path": "content/public/browser/render_widget_host_view.h",
+      "baselineSha256": "035bf50d7dcd72ca6f3c11cd32f784f28f05631f15d6aa0ae851789c88e50c5b",
+      "outputSha256": "b776ed8e5d0af2eaea56a7f0f45748da3ceb7a3c1fa6cd4c2e229de50e5cca7c"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -70,6 +70,7 @@
+   contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
+   if (auto* view = contents->GetRenderWidgetHostView()) {
+     view->SetBackgroundColor(SK_ColorTRANSPARENT);
++    view->SetBackgroundColorOverride(SK_ColorTRANSPARENT);
+   }
+ }
+ base::ListValue ProfileIdentity(Profile* profile) {
+--- a/content/browser/renderer_host/render_widget_host_view_base.cc
++++ b/content/browser/renderer_host/render_widget_host_view_base.cc
+@@ -439,7 +439,25 @@
+   }
+ }
+
++void RenderWidgetHostViewBase::SetBackgroundColorOverride(
++    std::optional<SkColor> color) {
++  CHECK(!color || SkColorGetA(*color) == SK_AlphaOPAQUE ||
++        SkColorGetA(*color) == SK_AlphaTRANSPARENT);
++  if (background_color_override_ == color)
++    return;
++
++  bool was_opaque = IsBackgroundColorOpaque();
++  background_color_override_ = color;
++  UpdateBackgroundColor();
++  bool opaque = IsBackgroundColorOpaque();
++  if (was_opaque != opaque && host()->owner_delegate()) {
++    host()->owner_delegate()->SetBackgroundOpaque(opaque);
++  }
++}
++
+ std::optional<SkColor> RenderWidgetHostViewBase::GetBackgroundColor() {
++  if (background_color_override_)
++    return background_color_override_;
+   if (content_background_color_)
+     return content_background_color_;
+   return default_background_color_;
+@@ -455,15 +473,18 @@
+   const RenderWidgetHostViewBase& other_base =
+       static_cast<const RenderWidgetHostViewBase&>(other);
+   if (!other_base.content_background_color_ &&
++      !other_base.background_color_override_ &&
+       !other_base.default_background_color_) {
+     return;
+   }
+   if (content_background_color_ == other_base.content_background_color_ &&
++      background_color_override_ == other_base.background_color_override_ &&
+       default_background_color_ == other_base.default_background_color_) {
+     return;
+   }
+   bool was_opaque = IsBackgroundColorOpaque();
+   content_background_color_ = other_base.content_background_color_;
++  background_color_override_ = other_base.background_color_override_;
+   default_background_color_ = other_base.default_background_color_;
+   UpdateBackgroundColor();
+   bool opaque = IsBackgroundColorOpaque();
+--- a/content/browser/renderer_host/render_widget_host_view_base.h
++++ b/content/browser/renderer_host/render_widget_host_view_base.h
+@@ -132,6 +132,7 @@
+   bool AccessibilityHasFocus() override;
+   bool LockKeyboard(std::optional<base::flat_set<ui::DomCode>> codes) override;
+   void SetBackgroundColor(SkColor color) override;
++  void SetBackgroundColorOverride(std::optional<SkColor> color) override;
+   std::optional<SkColor> GetBackgroundColor() override;
+   void CopyBackgroundColorIfPresentFrom(
+       const RenderWidgetHostView& other) override;
+@@ -751,6 +752,9 @@
+   // The background color used in the current renderer.
+   std::optional<SkColor> content_background_color_;
+
++  // Explicit embedder override takes precedence over content/default colors.
++  std::optional<SkColor> background_color_override_;
++
+   // The default background color used before getting the
+   // |content_background_color|.
+   std::optional<SkColor> default_background_color_;
+--- a/content/public/browser/render_widget_host_view.h
++++ b/content/public/browser/render_widget_host_view.h
+@@ -190,6 +190,9 @@
+   // SetBackgroundColor is called to set the default color of the view,
+   // which is shown if the background color of the renderer is not available.
+   virtual void SetBackgroundColor(SkColor color) = 0;
++  // Overrides both renderer-content and default backgrounds. Nullopt restores
++  // their normal precedence. A present color must be transparent or opaque.
++  virtual void SetBackgroundColorOverride(std::optional<SkColor> color) = 0;
+   // GetBackgroundColor returns the current background color of the view.
+   virtual std::optional<SkColor> GetBackgroundColor() = 0;
+   // Copy background color from another view if other view has background color.
