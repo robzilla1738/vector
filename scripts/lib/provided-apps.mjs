@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { adaptDaemonBinary } from '../../vendor/provided/daemon-adapter.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
+import { runtimeSourcePinsBytes } from '../../vendor/provided/runtime-pins.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -16,9 +17,18 @@ export const providedAppRoots = {
   cli: join(homedir(), '.aside/cli/Aside CLI.app'),
 };
 export const providedIntegrationFiles = Object.freeze({
-  daemon: ['aux-native.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json'],
+  daemon: ['aux-native.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json'],
   cli: ['aux-native.cjs'],
 });
+export async function providedIntegrationInput(name) {
+  if (name === 'runtime-source-pins.json') {
+    const generatedFrom = 'docs/source/provided-runtime-inputs.json';
+    const inventory = JSON.parse(await readFile(join(repository, generatedFrom), 'utf8'));
+    return { bytes: runtimeSourcePinsBytes(inventory.components.runtime), repositorySource: 'vendor/provided/runtime-pins.mjs', generatedFrom };
+  }
+  const repositorySource = `vendor/provided/${name}`;
+  return { bytes: await readFile(join(repository, repositorySource)), repositorySource };
+}
 const targets = {
   daemon: { app: 'Aux Daemon.app', sourceExecutable: 'aside-daemon', executable: 'aux-daemon', adapt: adaptDaemonBinary },
   cli: { app: 'Aux CLI.app', sourceExecutable: 'aside', executable: 'aux-cli', adapt: adaptCliBinary },
@@ -124,11 +134,11 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         files.push({ path, outputSha256: hash(bytes), changeKinds: ['branding'], added: true });
       }
       for (const name of providedIntegrationFiles[component]) {
-        const path = `Contents/Resources/native/${name}`, repositorySource = `vendor/provided/${name}`;
-        const bytes = await readFile(join(repository, repositorySource));
+        const path = `Contents/Resources/native/${name}`;
+        const { bytes, repositorySource, generatedFrom } = await providedIntegrationInput(name);
         await mkdir(dirname(join(app, path)), { recursive: true });
         await writeFile(join(app, path), bytes, { mode: 0o644 });
-        files.push({ path, repositorySource, outputSha256: hash(bytes), changeKinds: ['integration'], added: true });
+        files.push({ path, repositorySource, ...(generatedFrom ? { generatedFrom } : {}), outputSha256: hash(bytes), changeKinds: ['integration'], added: true });
       }
       for (const file of files.filter((entry) => entry.path.endsWith('/Info.plist'))) {
         const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', join(app, file.path)], { encoding: 'utf8' }));
