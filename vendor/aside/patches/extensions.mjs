@@ -108,7 +108,7 @@ function addManifestPermissions(directory, permissions) {
 
 /** Loads the private-API shims before any extension code runs. */
 function installPrivateApiShim(directory) {
-  const shims = ["aux-private-shim.js", "aux-adblock.js"].map((file) => readFileSync(join(here, "../shims", file), "utf8"));
+  const shims = ["aux-private-shim.js", "aux-adblock.js", "aux-omnibox.js"].map((file) => readFileSync(join(here, "../shims", file), "utf8"));
   writeFileSync(join(directory, "aux-private-shim.js"), shims.join("\n"));
   const manifest = JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8"));
   const worker = manifest.background?.service_worker;
