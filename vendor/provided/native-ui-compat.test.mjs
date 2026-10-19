@@ -13,7 +13,7 @@ test('every native and isolation edit is replayable; HTML/CSS geometry and third
   const result = transformProvidedNativeUi({ component: 'agent', path: 'fixture.html', text: input });
   assert.equal(result.text, replay(input, result.anchors));
   assert.match(result.text, /chrome\.auxAccount/);
-  assert.match(result.text, /"Aux.listTabs"/);
+  assert.match(result.text, /"Aside.listTabs"/);
   assert.match(result.text, /21520/);
   assert.match(result.text, /"21420"/);
   assert.match(result.text, /<aside style="width:600px;font-size:11.2px">Aside\. Following<\/aside>/);

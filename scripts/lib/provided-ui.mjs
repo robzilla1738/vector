@@ -1,4 +1,5 @@
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
+import { restoreProvidedWireNames } from './provided-wire.mjs';
 import { createHash } from 'node:crypto';
 import {
   lstat,
@@ -219,6 +220,9 @@ export async function stageProvidedUi({
             text = apply(text, anchor);
             anchors.push(anchor);
           }
+          const wire = restoreProvidedWireNames(source.toString('utf8'), text);
+          text = wire.text;
+          anchors.push(...wire.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

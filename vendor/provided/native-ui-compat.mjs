@@ -26,8 +26,6 @@ const identities = [
   ['at.studio.Aside.ext.private.pref-get-set', 'dev.aux.ext.private.browserPreferences'],
   ['at.studio.Aside.ext.private.browser-import', 'dev.aux.ext.private.browserImport'],
   ['at.studio.Aside.ext.private.', 'dev.aux.ext.private.'],
-  ['AsideDaemonSessionToken', 'AuxDaemonSessionToken'],
-  ['AsideSessionToken', 'AuxSessionToken'],
   ['VITE_ASIDE_DAEMON_BASE_URL', 'VITE_AUX_DAEMON_BASE_URL'],
   ['VITE_ASIDE_DAEMON_AUTH_TOKEN', 'VITE_AUX_DAEMON_AUTH_TOKEN'],
   ['@browser-aside/', '@browser-aux/'],
@@ -64,10 +62,7 @@ export function transformProvidedNativeUi({ component, path, text }) {
     // Current native MiniPopup has a distinct permission; the supplied actor uses it.
     replace('"dev.aux.ext.private.browserPreferences"', '"dev.aux.ext.private.browserPreferences",\n    "dev.aux.ext.private.miniPopup"', 'integration');
   }
-  // Rewrite literal extension-command names only. Product prose and numeric tables are untouched.
-  for (const method of new Set(text.match(/(?<=["'`])Aside\.[a-z][A-Za-z0-9_]*/g) ?? [])) {
-    replace(method, `Aux.${method.slice('Aside.'.length)}`);
-  }
+  // Supplied Aside.* commands and authentication wire names remain unchanged.
   for (const scheme of ['http', 'https', 'ws', 'wss']) {
     for (const host of ['127.0.0.1', 'localhost']) {
       replace(`${scheme}://${host}:21420`, `${scheme}://${host}:21520`, 'integration');
