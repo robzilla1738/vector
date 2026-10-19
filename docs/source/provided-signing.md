@@ -12,13 +12,13 @@ const plan = await planProvidedSigning({
   sourceRoots: [/* all original static input roots, not the copied outputs */],
   targets: [
     {
-      path: 'Aux.app/Contents/Resources/aux/libaux-native-boundary.dylib',
+      path: 'Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib',
       kind: 'macho',
       sha256: '...explicit newly built artifact hash...',
       entitlements: {preserveKeys: [], removeKeys: []},
     },
     {
-      path: 'Aux.app/Contents/Resources/aux/Aux Computer Use.app',
+      path: 'Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app',
       kind: 'bundle',
       executable: 'Contents/MacOS/aux-computer-use',
       sha256: '...staged executable hash...',
@@ -61,7 +61,7 @@ This is an exclusive assembly operation, not a hostile concurrent filesystem def
 
 For each target, `preserveKeys` and `removeKeys` must partition **all** embedded entitlement keys, exactly once. Missing/unknown/duplicate decisions fail. Preservation accepts only explicit `com.apple.security.*` boolean capabilities; application groups, strings, arrays, original application/team IDs, Keychain groups and `com.apple.developer.*` claims cannot be retained by this ad hoc path. A fully removed entitlement dictionary is still explicitly written as an empty dictionary, rather than relying on implicit codesign metadata behavior.
 
-One explicit platform adaptation is supported: `addDyldEnvironmentForBoundary:true` adds only `com.apple.security.cs.allow-dyld-environment-variables=true`, and only to the changed supplied daemon/CLI bundles at their fixed package paths with their original hardened-runtime flag. Other targets cannot receive this addition. [Apple documents this exception for hardened apps that use DYLD environment variables](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.cs.allow-dyld-environment-variables). The reviewed fixed boundary library is inserted before Node/native loading; retaining hardened runtime without this exception would leave that mechanism unverified and likely unavailable. Existing JIT/library-validation capability decisions remain explicit, original identity/Keychain claims remain removed, and no acceptance flag or OS permission is granted. Actual signed-host import-pointer/load proof remains required. There is no general entitlement-addition or team-rebinding API.
+One explicit platform adaptation is supported: `addDyldEnvironmentForBoundary:true` adds only `com.apple.security.cs.allow-dyld-environment-variables=true`, and only to the changed supplied daemon host or the CLI SEA at their fixed package paths with their original hardened-runtime flag. Packaging moves the CLI SEA to `apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea`; its new native wrapper receives the CLI bundle signature. The unchanged staged CLI path is also recognized by the planner for isolated host proofs. Other targets cannot receive this addition. [Apple documents this exception for hardened apps that use DYLD environment variables](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.cs.allow-dyld-environment-variables). The reviewed fixed boundary library is inserted before Node/native loading; retaining hardened runtime without this exception would leave that mechanism unverified and likely unavailable. Existing JIT/library-validation capability decisions remain explicit, original identity/Keychain claims remain removed, and no acceptance flag or OS permission is granted. Actual signed-host import-pointer/load proof remains required. There is no general entitlement-addition or team-rebinding API.
 
 The following is the observed actual staged input inventory at `web/out/provided-reuse` on 2026-10-19. These are **static distribution entitlements**, not a read of any owner's Keychain or grant database:
 
@@ -84,7 +84,7 @@ A full static scan of `web/out/provided-reuse` found 10,785 files/links, ten rel
 2. `apps/daemon/Aux Daemon.app`
 3. daemon's `Contents/Applications/Aux Password Importer.app`
 4. importer's `Contents/PlugIns/AsidePasswordImporterProvider.appex`
-5. `computer-use/Aux Computer Use.app`
+5. `apps/computer-use/Aux Computer Use.app`
 
 The numerous native runtime executables/dylibs/Python modules and memory executable are preserved, alongside the two original provided-native.node binaries and both architectures of node-pty. They are not signing targets. Full canonical runtime/memory preservation remains checked by root's distribution manifests; signing additionally proves those copied bytes stay unchanged.
 
