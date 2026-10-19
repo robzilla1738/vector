@@ -9,7 +9,7 @@
  * Only the product name, logos and icons change; internals keep Aside's names so the
  * copied code behaves exactly as shipped. Re-running produces identical output.
  *
- *   node scripts/vendor-aside.mjs [--support <Aside support dir>] [--only daemon|extensions|runtime]
+ *   node scripts/vendor-aside.mjs [--support <Aside support dir>] [--only daemon|cli|extensions|runtime|memory|computer-use]
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -182,9 +182,40 @@ function stageRuntime() {
   console.log(`agent runtime · ${readFileSync(join(from, "version.txt"), "utf8").trim()}`);
 }
 
+// Memory search runs offline from a signed catalog, its runtime and the embedding models Aside already installed.
+function stageMemory() {
+  const home = join(homedir(), ".aside");
+  for (const name of ["memory-catalog.json", "memory-runtimes", "models"]) {
+    if (existsSync(join(home, name))) clone(join(home, name), join(out, "memory", name));
+  }
+  console.log("memory assets");
+}
+
+// The daemon looks for this helper next to its own app bundle.
+function stageComputerUse() {
+  const source = join(homedir(), ".aside/runtime-computer-use/Aside Computer Use.app");
+  if (!existsSync(source)) return console.warn("Aside Computer Use helper not installed; skipped");
+  const app = join(out, "Aux Computer Use.app");
+  clone(source, app);
+  rmSync(join(app, "Contents/_CodeSignature"), { recursive: true, force: true });
+  const plist = join(app, "Contents/Info.plist");
+  setPlist(plist, "CFBundleName", "Aux Computer Use");
+  setPlist(plist, "CFBundleDisplayName", "Aux Computer Use");
+  setPlist(plist, "CFBundleIdentifier", `${AUX_BUNDLE_ID}.computer-use`);
+  for (const key of ["NSAccessibilityUsageDescription", "NSAppleEventsUsageDescription", "NSContactsUsageDescription", "NSInputMonitoringUsageDescription"]) {
+    const text = execFileSync("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, plist], { encoding: "utf8" }).trim();
+    setPlist(plist, key, text.replace(PRODUCT_WORD, "Aux"));
+  }
+  copyFileSync(join(root, "assets/brand/Aux.icns"), join(app, "Contents/Resources/AppIcon.icns"));
+  run("codesign", ["--force", "--sign", "-", "--options", "runtime", "--entitlements", join(root, "vendor/aside/entitlements/computer-use.plist"), app]);
+  console.log("computer use helper");
+}
+
 mkdirSync(out, { recursive: true });
 if (!only || only === "daemon") stageDaemon();
 if (!only || only === "cli") stageCli();
 if (!only || only === "extensions") stageExtensions();
 if (!only || only === "runtime") stageRuntime();
+if (!only || only === "memory") stageMemory();
+if (!only || only === "computer-use") stageComputerUse();
 console.log(`staged at ${out}`);

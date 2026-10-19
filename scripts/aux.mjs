@@ -8,7 +8,7 @@
  * The daemon and extensions come from `out/aside-staged` (build them with `npm run vendor:aside`).
  */
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { startCdpGate } from "../vendor/aside/shims/aux-cdp-gate.mjs";
@@ -52,6 +52,14 @@ function seedRuntime() {
   execFileSync("cp", ["-cR", from, to]);
 }
 
+function seedMemory() {
+  const from = join(staged, "memory");
+  if (!existsSync(from)) return;
+  for (const name of readdirSync(from)) {
+    if (!existsSync(join(home, name))) execFileSync("cp", ["-cR", join(from, name), join(home, name)]);
+  }
+}
+
 for (const required of ["Aux Daemon.app", "extensions/agent-manager", "extensions/password-manager", "agent-runtime"]) {
   if (!existsSync(join(staged, required))) {
     console.error(`Missing ${required} in out/aside-staged. Run: node scripts/vendor-aside.mjs`);
@@ -64,11 +72,17 @@ if (!flag("--no-browser") && !existsSync(chromium)) {
 }
 
 seedRuntime();
+seedMemory();
 const children = [];
 const stop = () => {
   for (const child of children) child.kill("SIGTERM");
   if (tempProfile) rmSync(profile, { recursive: true, force: true });
 };
+process.on("exit", () => children.forEach((child) => child.kill("SIGTERM")));
+process.on("uncaughtException", (error) => {
+  console.error(error.code === "EADDRINUSE" ? `Port ${error.port} is in use. Is another Aux running?` : error);
+  process.exit(1);
+});
 process.on("SIGINT", () => (stop(), process.exit(130)));
 process.on("SIGTERM", () => (stop(), process.exit(143)));
 
