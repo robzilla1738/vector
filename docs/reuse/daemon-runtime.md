@@ -46,3 +46,13 @@ The supplied daemon really defaults to numeric account 0, provider anonymous, mo
 ## Evidence
 
 Focused Node tests use generated disposable P256 keys and verify raw public-key equality, signing/domain refusal, test secure-value ciphertext/tamper refusal, owner-only key rejection, production test-adapter refusal, unsupported native-command refusal, input pinning, exact auth parsing offsets and preserved real plan checks. The actual SEA binary rewrite succeeded in ignored lane output, preserving both WASM assets. This is static/staging and fixture evidence only: no daemon launch, model call, owner profile/credential/Keychain access or fidelity acceptance is claimed.
+
+## Bundled runtime and automatic writes follow-up
+
+The adapter now has 29 counted edits. `AUX_AGENT_RUNTIME_DIR` explicitly selects the supplied bundled agent runtime without redirecting it through the independent runtime. The original updater still runs and reports real metadata failure; no fake release/version response is added. Original `getAgentRuntimeStatusUnlocked` already reports a verified cached installation with `latestVersion:null` on metadata failure. `acquireAgentRuntimeUse` already permits that cache after installer failure when version.txt, required executable files and quarantine checks pass.
+
+macOS required cached executable files are `bin/{node,npm,npx,python,python3,python3.13,pip,pip3,rg,pdfinfo,pdftoppm,pdftotext}`, `node/bin/node`, `python/venv/bin/python`, and `native/bin/{rg,pdfinfo,pdftoppm,pdftotext}`. The code checks actual regular executable files and parses version.txt; it does not accept a fabricated installed flag.
+
+`AUX_COMPUTER_USE_SOURCE_APP` selects an explicit bundled Computer Use source app; executable name becomes `aux-computer-use`. The existing runtime-copy/update lifecycle remains unchanged. Startup external skill synchronization is opt-in with `AUX_ALLOW_EXTERNAL_SKILL_SYNC=1`, preventing unsolicited writes to owner agent directories. Explicit skill APIs remain the supplied implementation. This is an intentional local platform boundary, not a claimed unchanged behavior.
+
+The compiled daemon ignores its development model-path environment variable. Its actual memory catalog/model/runtime caches remain `$AUX_HOME/memory-catalog.json`, `$AUX_HOME/models` and `$AUX_HOME/memory-runtimes`. Supplying those verified resources is integrator-owned.

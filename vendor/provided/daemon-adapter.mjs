@@ -31,6 +31,10 @@ export const identityEdits = [
   edit('data key derivation namespace', 'aside.dk.', 'aux.dk.', 4),
 ];
 export const platformEdits = [
+  edit('computer-use executable', 'aside-computer-use', 'aux-computer-use', 3),
+  edit('bundled computer-use source', 'COMPUTER_USE_HELPER_SOURCE_APP_PATH=process.platform', 'COMPUTER_USE_HELPER_SOURCE_APP_PATH=process.env.AUX_COMPUTER_USE_SOURCE_APP?path.resolve(process.env.AUX_COMPUTER_USE_SOURCE_APP):process.platform', 1),
+  edit('bundled runtime path', 'AUX_RUNTIME_DIR=path.join(AUX_HOME_PATH,`runtime`)', 'AUX_RUNTIME_DIR=process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR):path.join(AUX_HOME_PATH,`runtime`)', 1),
+  edit('explicit external skill synchronization', 'syncInstalledAsideBrowserSkills().catch(()=>{})', 'process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAsideBrowserSkills().catch(()=>{})', 1),
   // Original code hardcodes the original wire-prefix lengths.
   edit('HTTP token offset', 'ei.slice(24).trim()', 'ei.slice(22).trim()', 2),
   edit('WS token offset', 'let ei=ti.slice(18)', 'let ei=ti.slice(16)', 1),
