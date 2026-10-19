@@ -1,0 +1,91 @@
+{
+  "version": "1.26.1016.1852",
+  "binarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "codeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "anchors": [
+    {
+      "name": "cloudBinding",
+      "byteOffset": 11703472,
+      "find": "bindProfile:publicProcedure.meta({method:`POST`,path:`/accounts/profile-binding`}).input(object({profileId:string$3().min(1).meta({param:{in:`body`}}),userId:string$3().min(1).meta({param:{in:`body`}})",
+      "count": 1
+    },
+    {
+      "name": "health",
+      "byteOffset": 12128621,
+      "find": "return{service:`aside-daemon`,version:DAEMON_VERSION,pid:process.pid,host:HOST,port:PORT,ready:Cn.isReady?.()??!0,status:ei>0?`running`:`idle`,startedAt:daemonStartedAt.toISOString(),runningSessionCount:ei,semaphore:ti}",
+      "count": 1
+    },
+    {
+      "name": "healthRoute",
+      "byteOffset": 12128879,
+      "find": "ei.get(`/health`,Cn=>Cn.json(ti()))",
+      "count": 1
+    },
+    {
+      "name": "shutdown",
+      "byteOffset": 12128915,
+      "find": "ei.post(`/shutdown`,ei=>(Cn.requestShutdown?.(),ei.json({status:`shutting_down`})))",
+      "count": 1
+    },
+    {
+      "name": "clientKinds",
+      "byteOffset": 2912991,
+      "find": "clientKindSchema=_enum([`chromium`,`agent-manager-extension`,`password-manager-extension`,`password-importer`,`internal-web`,`cli`])",
+      "count": 1
+    },
+    {
+      "name": "challenge",
+      "byteOffset": 2911002,
+      "find": "Cn.get(`/auth/daemon/challenge`,Cn=>Cn.json(createDaemonAuthChallenge(clientKindSchema.parse(Cn.req.query(`clientKind`)))))",
+      "count": 1
+    },
+    {
+      "name": "session",
+      "byteOffset": 2911126,
+      "find": "Cn.post(`/auth/daemon/session`,async Cn=>{let ei=await consumeVerifiedDaemonAuthChallenge(sessionRequestSchema.parse(await Cn.req.json()));return ei?Cn.json({access_token:await issueDaemonToken(ei.clientKind),expiresInSeconds:TOKEN_TTL_SECONDS,token_type:DAEMON_AUTH_TOKEN_TYPE})",
+      "count": 1
+    },
+    {
+      "name": "sessionInput",
+      "byteOffset": 2913176,
+      "find": "sessionRequestSchema=object({challengeId:string$3(),signedChallenge:string$3()})",
+      "count": 1
+    },
+    {
+      "name": "tokenLifetime",
+      "byteOffset": 2912239,
+      "find": "TOKEN_TTL_SECONDS=86400,CHALLENGE_TTL_MS=3e4",
+      "count": 1
+    },
+    {
+      "name": "rawChallenge",
+      "byteOffset": 2910256,
+      "find": "let ei=randomUUID(),ti=randomBytes(32);return challenges.set(ei,{challenge:ti,clientKind:Cn,expiresAt:Date.now()+CHALLENGE_TTL_MS}),{challenge:ti.toString(`base64`),challengeId:ei}",
+      "count": 1
+    },
+    {
+      "name": "oneUse",
+      "byteOffset": 2910526,
+      "find": "let ei=challenges.get(Cn.challengeId);if(challenges.delete(Cn.challengeId),!ei)return null;",
+      "count": 1
+    },
+    {
+      "name": "signature",
+      "byteOffset": 2910653,
+      "find": "verifyInstallationSignature(ti.scheme,Buffer$1.concat([DAEMON_AUTH_SIGNATURE_PREFIX,ei.challenge]),Buffer$1.from(Cn.signedChallenge,`base64`),ti.sig)",
+      "count": 1
+    },
+    {
+      "name": "memoryModel",
+      "byteOffset": 39045,
+      "find": "LOCAL_MEMORY_MODEL_DIR=IS_COMPILED?void 0:process.env.ASIDE_MEMORY_MODEL_DIR",
+      "count": 1
+    },
+    {
+      "name": "memoryCache",
+      "byteOffset": 39194,
+      "find": "LOCAL_MEMORY_CATALOG_CACHE=path.join(ASIDE_HOME_PATH,`memory-catalog.json`),LOCAL_MEMORY_MODEL_CACHE=path.join(ASIDE_HOME_PATH,`models`),LOCAL_MEMORY_RUNTIME_CACHE=path.join(ASIDE_HOME_PATH,`memory-runtimes`)",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -71,8 +71,11 @@
+               "apps/computer-use/Aux Computer "
+               "Use.app/Contents/MacOS/aux-computer-use")
+           .value();
+-  options.environment["AUX_EMBEDDING_MODEL_DIR"] =
+-      paths.root.AppendASCII("apps/memory/models/minilm").value();
++  // Supplied agent runtime supports this explicit immutable bundle root.
++  options.environment["AUX_AGENT_RUNTIME_DIR"] =
++      paths.root.AppendASCII("agent-runtime").value();
++  options.environment["AUX_COMPUTER_USE_SOURCE_APP"] =
++      paths.root.AppendASCII("apps/computer-use/Aux Computer Use.app").value();
+   const base::FilePath runtime = paths.root.AppendASCII("runtime");
+   std::string path =
+       runtime.value() + ":" + runtime.AppendASCII("python/bin").value();
+@@ -215,7 +218,7 @@
+   const bool healthy = health && health->FindString("service") &&
+                        *health->FindString("service") == "aux-daemon" &&
+                        health->FindString("version") &&
+-                       *health->FindString("version") == "0.2.0" &&
++                       *health->FindString("version") == "1.26.1016.1852" &&
+                        health->FindBool("ready").value_or(false) &&
+                        health->FindInt("pid") == process_.Pid();
+   if (healthy) {

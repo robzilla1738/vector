@@ -1,0 +1,39 @@
+# Independent native implementation: docs/spec/native/platform.md P1/P2/P4.
+source_set("platform") {
+  sources = [
+    "installation_auth.cc",
+    "installation_auth.h",
+    "daemon_supervisor.cc",
+    "daemon_supervisor.h",
+    "component_bootstrap.cc",
+    "component_bootstrap.h",
+    "browser_platform.cc",
+    "browser_platform.h",
+    "../devtools/aux_cdp_authority.cc",
+    "../devtools/aux_cdp_authority.h",
+  ]
+  deps = [ "//base", "//crypto", "//net", "//services/network/public/cpp", "//components/crx_file" ]
+}
+
+executable("auth_probe") {
+  testonly = true
+  sources = [ "auth_probe.cc" ]
+  deps = [ ":platform", "//base", "//crypto", "//net" ]
+}
+
+source_set("profile_state") {
+ sources = [ "profile_state.cc", "profile_state.h", "profile_security_client.cc", "profile_security_client.h" ]
+ public_deps = [ "//base", "//services/network/public/cpp" ]
+ deps = [ "//crypto", "//net", "//url" ]
+}
+
+source_set("profile_gate") {
+  sources = [ "profile_gate.cc", "profile_gate.h" ]
+  deps = [ ":platform", ":profile_state", "//base", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/lifetime", "//chrome/browser/net", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//content/public/browser", "//extensions/browser", "//extensions/common", "//net", "//services/network/public/cpp", "//ui/base", "//ui/display", "//ui/views", "//ui/views/controls/webview" ]
+}
+
+executable("profile_state_probe") {
+ testonly = true
+ sources = [ "profile_state_probe.cc" ]
+ deps = [ ":profile_state", "//base" ]
+}

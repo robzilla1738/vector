@@ -1,0 +1,20 @@
+{
+  "path": "chrome/browser/aux/daemon_supervisor.cc",
+  "sourceSha256": "153d97de022cd00cdd9202b1df1084b734398618f773c9cc9a8005dec2f3c968",
+  "edits": [
+    {
+      "find": "options.environment[\"AUX_EMBEDDING_MODEL_DIR\"] =\n      paths.root.AppendASCII(\"apps/memory/models/minilm\").value();",
+      "replace": "// Supplied agent runtime supports this explicit immutable bundle root.\n  options.environment[\"AUX_AGENT_RUNTIME_DIR\"] =\n      paths.root.AppendASCII(\"agent-runtime\").value();\n  options.environment[\"AUX_COMPUTER_USE_SOURCE_APP\"] =\n      paths.root.AppendASCII(\"apps/computer-use/Aux Computer Use.app\").value();",
+      "count": 1
+    },
+    {
+      "find": "*health->FindString(\"version\") == \"0.2.0\"",
+      "replace": "*health->FindString(\"version\") == \"1.26.1016.1852\"",
+      "count": 1
+    }
+  ],
+  "blocked": [
+    "PEM signing is NOT accepted as replacement for supplied native installation identity. Root must implement original-native carrier before runtime acceptance.",
+    "Memory caches stay under AUX_HOME; root seeds pinned catalog/models/memory-runtimes from bundled immutable files without clobbering valid existing caches."
+  ]
+}

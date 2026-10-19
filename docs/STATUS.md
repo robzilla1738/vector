@@ -399,3 +399,9 @@ Static REA/Ghidra and import inspection of the pinned original native binding co
 ### Supplied daemon skill identifier alignment (2026-10-19, L1)
 
 Aligned embedded skill directory/front matter and MCP labels to `aux-browser`, guide/update/presence commands to `aux`, and dynamic secure-storage key prefix to `aux`. Lowercase task/file/routine wire links and provider fields remain unchanged. The pinned daemon now applies 34 counted edit groups; three focused pinning/auth tests pass. Native query interceptor remains staged and unexecuted against the original binding; production readiness is still false.
+
+### Supplied native supervisor/profile migration proposal
+
+- Statically extracted the exact installed1.26.1016.1852 daemon SEA; pinned binary/code hashes and unique route/body/clientKind/token/health/shutdown anchors in `docs/integration/provided-supervisor-contract-anchors.json`. Existing native structure matches actual supplied health/auth contracts beyond the legitimate version change; chromium is an accepted clientKind.
+- Staged supervisor runtime/helper env corrections plus real `profileAccountBindings` metadata, actual tRPC binding and asynchronous authenticated PWM lock-state integration for gate/account API/mini-popup consumers. Original native signing carrier remains mandatory and unresolved; no PEM/native hybrid was introduced. Local native eligibility is limited to genuine anonymous/local account plus actual Vault verification and never stamps hosted onboarding success.
+- All entrypoint/profile/supervisor patches apply in order to disposable source copies and match proposed output hashes. Native source/build remains untouched; staged C++ and metadata probe are uncompiled/unrun. Real original-native crypto, bundled memory provisioning, native/runtime/visual observation and missing capability acceptance remain outstanding. Detailed contract/limitations: `docs/integration/provided-native-runtime.md`.
