@@ -19,6 +19,12 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 const defaultAllowed = new Set([
+  'history.visits',
+  'tabs.owned.create',
+  'tabs.owned.list',
+  'tabs.owned.close',
+  'tabs.owned.navigate',
+  'tabs.owned.release',
   'tabs.query',
   'tabs.create',
   'tabs.update',

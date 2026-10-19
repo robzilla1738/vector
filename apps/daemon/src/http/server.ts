@@ -37,6 +37,12 @@ export interface DaemonOptions {
   extendRouter?: (services: DaemonServices) => Record<string, AnyTRPCRouter>;
   extendHttp?: (app: Hono, services: DaemonServices) => void;
   runningSessionCount?: () => number;
+  onSettingChange?: (
+    accountId: number,
+    key: string,
+    previous: unknown,
+    value: unknown,
+  ) => void;
   shutdown?: () => Promise<void>;
 }
 export async function createDaemon(options: DaemonOptions) {
@@ -50,11 +56,15 @@ export async function createDaemon(options: DaemonOptions) {
     port = options.port ?? 21520;
   const origins = new Set([...extensionOrigins, ...(options.origins ?? [])]);
   const invalidations = new Set<import('ws').WebSocket>();
-  const core = createCoreRouter(store, (event) => {
-    for (const socket of invalidations)
-      if (socket.readyState === 1)
-        socket.send(JSON.stringify({ type: 'invalidation', data: event }));
-  });
+  const core = createCoreRouter(
+    store,
+    (event) => {
+      for (const socket of invalidations)
+        if (socket.readyState === 1)
+          socket.send(JSON.stringify({ type: 'invalidation', data: event }));
+    },
+    options.onSettingChange,
+  );
   const extra = options.extendRouter?.({ store, bridge, t, procedure }) ?? {};
   const router = t.mergeRouters(core, t.router(extra));
   const error = (code: string, message: string) => ({

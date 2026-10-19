@@ -1,6 +1,7 @@
 import { Button, ErrorNotice } from '@aux/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { rpc } from './client';
+import { copySensitiveField } from './clipboard';
 
 export function OneTimeCode({
   accountId,
@@ -13,6 +14,10 @@ export function OneTimeCode({
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -62,9 +67,15 @@ export function OneTimeCode({
           <Button
             onClick={() => {
               if (Date.now() >= value.expiresAt) return;
-              void navigator.clipboard
-                .writeText(value.code)
-                .then(() => setCopied(true))
+              void copySensitiveField(value.code)
+                .then(() => {
+                  setCopied(true);
+                  clearTimeout(copiedTimer.current);
+                  copiedTimer.current = setTimeout(
+                    () => setCopied(false),
+                    2000,
+                  );
+                })
                 .catch(() => setError('This code could not be copied.'));
             }}
           >

@@ -19,6 +19,7 @@ import './styles.css';
 import type { FieldKey, PageFillContext } from './autofill-protocol';
 import type { Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
+import { copySensitiveField } from './clipboard';
 import { exportSnapshot } from './export';
 import { FillReview } from './fill-review';
 import { VaultLockSettings } from './lock-settings';
@@ -65,6 +66,7 @@ function App() {
     setSettings(false);
     setImporting(false);
     setNotice('');
+    void backgroundRequest({ type: 'aux.vault.clearPending' }).catch(() => {});
   }, []);
   const refresh = useCallback(
     async (id: number) => {
@@ -454,6 +456,10 @@ function Secret({
 }) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   return (
     <div className="secret">
       <small>{label}</small>
@@ -476,10 +482,16 @@ function Secret({
           aria-label={`Copy ${label}`}
           title={copied ? 'Copied' : 'Copy'}
           onClick={() =>
-            void navigator.clipboard
-              .writeText(value)
-              .then(() => setCopied(true))
-              .catch(() => onError('This value could not be copied.'))
+            void copySensitiveField(value)
+              .then(() => {
+                setCopied(true);
+                clearTimeout(copiedTimer.current);
+                copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+              })
+              .catch(() => {
+                setCopied(false);
+                onError('This value could not be copied.');
+              })
           }
         >
           <Copy size={14} />

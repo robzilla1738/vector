@@ -71,6 +71,7 @@ export const settingTypes: Record<string, z.ZodType> = {
   'onboarding.modelDeferred': z.boolean(),
   theme: z.enum(['light', 'dark', 'system']),
   contextAwarenessEnabled: z.boolean(),
+  browsingHistoryEnabled: z.boolean(),
   sidebarRecentLimit: z.number().int().min(1).max(200),
   completionSoundEnabled: z.boolean(),
   defaultModel: z
@@ -90,6 +91,7 @@ export const settingDefaults = {
   },
   theme: 'system',
   contextAwarenessEnabled: false,
+  browsingHistoryEnabled: false,
   sidebarRecentLimit: 20,
   completionSoundEnabled: true,
   permissionMode: 'guard',
@@ -98,6 +100,12 @@ export const settingDefaults = {
 export function createCoreRouter(
   store: Store,
   onInvalidation: (event: unknown) => void = () => {},
+  onSettingChange: (
+    accountId: number,
+    key: string,
+    previous: unknown,
+    value: unknown,
+  ) => void = () => {},
 ) {
   const scope = accountScopeSchema;
   const ensure = (id: number) => store.requireAccount(id);
@@ -235,7 +243,12 @@ export function createCoreRouter(
               message: 'Unknown setting',
             });
           const value = schema.parse(input.value);
+          const previous =
+            store.get(input.accountId, 'settings', input.key) ??
+            settingDefaults[input.key as keyof typeof settingDefaults];
           store.set(input.accountId, 'settings', input.key, value);
+          if (previous !== value)
+            onSettingChange(input.accountId, input.key, previous, value);
           onInvalidation({
             accountId: input.accountId,
             domain: 'settings',

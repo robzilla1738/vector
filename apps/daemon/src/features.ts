@@ -3,6 +3,7 @@ import { AgentEngine } from '@aux/agent';
 import {
   BrowsingHistory,
   ContextService,
+  historyTools,
   MemoryService,
   memoryTools,
 } from '@aux/memory';
@@ -26,7 +27,10 @@ import {
   createNativeImportRouter,
   createPasswordImporterAdapter,
 } from './helpers/index.js';
-import { createHistoryRouter } from './history/index.js';
+import {
+  createHistoryCollector,
+  createHistoryRouter,
+} from './history/index.js';
 import type { DaemonServices } from './http/server.js';
 import { installSessionHttp } from './http/sessions.js';
 import { createInboxRouter, InboxService } from './inbox/index.js';
@@ -41,6 +45,9 @@ import { createVaultRouters, VaultService } from './vault/index.js';
 export function createFeatures() {
   let engine: AgentEngine | undefined;
   let memory: MemoryService | undefined;
+  let history: BrowsingHistory | undefined;
+  let context: ContextService | undefined;
+  let historyCollector: ReturnType<typeof createHistoryCollector> | undefined;
   let channels: ChannelService | undefined;
   let helper: HelperClient | undefined;
   let importer: HelperClient | undefined;
@@ -73,7 +80,17 @@ export function createFeatures() {
           ...(engine && helper
             ? computerUseTools(engine, helper, session, signal)
             : {}),
-          ...(memory ? memoryTools(memory, session) : {}),
+          ...(memory ? memoryTools(memory, session, signal) : {}),
+          ...(engine && history && context
+            ? historyTools(
+                services.store,
+                engine,
+                history,
+                context,
+                session,
+                signal,
+              )
+            : {}),
           skill_load: {
             description:
               'Load an available independently authored workflow guide by its exact skill name.',
@@ -100,7 +117,8 @@ export function createFeatures() {
       channels = new ChannelService(services.store, activeEngine);
       channels.resume(services.store.accounts().map((account) => account.id));
       memory = new MemoryService(services.store, activeEngine);
-      const history = new BrowsingHistory(memory);
+      history = new BrowsingHistory(memory);
+      historyCollector = createHistoryCollector(services, history);
       const inbox = new InboxService(services.store, activeEngine);
       if (process.env.AUX_HELPER_PATH) {
         helper = new HelperClient(
@@ -108,7 +126,7 @@ export function createFeatures() {
           join(services.store.home, 'helper-artifacts'),
         );
       }
-      const context = new ContextService(
+      context = new ContextService(
         memory,
         helper ? createHelperCaptureAdapter(helper) : undefined,
       );
@@ -136,6 +154,7 @@ export function createFeatures() {
         }
       }, 1000);
       routineTimer.unref();
+      historyCollector.start();
       const skills = createSkillRouters(services);
       repl = createReplService(services, activeEngine);
       const agentRouters = createAgentRouters(services, activeEngine);
@@ -163,7 +182,11 @@ export function createFeatures() {
         memory: createMemoryRouter(services, memory),
         contextAwareness: createContextRouter(services, context),
         inbox: createInboxRouter(services, inbox),
-        browsingHistory: createHistoryRouter(services, history),
+        browsingHistory: createHistoryRouter(
+          services,
+          history,
+          historyCollector,
+        ),
         cli: services.t.mergeRouters(skills.cliSkills, repl.router),
         developers: skills.developers,
       };
@@ -174,8 +197,18 @@ export function createFeatures() {
       installOwnedTabsHttp(app, services, engine, vault);
       installSessionHttp(app, services, engine);
     },
+    onSettingChange(
+      accountId: number,
+      key: string,
+      previous: unknown,
+      value: unknown,
+    ) {
+      if (key === 'browsingHistoryEnabled' && previous !== value)
+        historyCollector?.settingsChanged(accountId);
+    },
     runningSessionCount: () => engine?.semaphore.active ?? 0,
     async shutdown() {
+      historyCollector?.close();
       if (routineTimer) clearInterval(routineTimer);
       await repl?.close();
       await channels?.close();

@@ -173,7 +173,7 @@ test('HTTP auth and host denial; WS registration, command correlation, cancellat
     );
     const received = once(ws, 'message');
     const command = daemon.bridge.command(route, {
-      method: 'tabs.query',
+      method: 'tabs.owned.list',
       params: {},
     });
     const message = JSON.parse(String((await received)[0]));

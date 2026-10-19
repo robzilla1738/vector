@@ -1,4 +1,5 @@
 import { daemonUrl, getToken, resolveAccount } from './daemon';
+import { readHistoryVisits } from './history-bridge';
 
 function navigationUrl(value: unknown) {
   const url = new URL(String(value));
@@ -184,6 +185,7 @@ const commands: Record<
   string,
   (params: Record<string, unknown>) => Promise<unknown>
 > = {
+  'history.visits': readHistoryVisits,
   'tabs.owned.create': (params) =>
     ownedCommand(async () => {
       const owner = await ownershipInput(params),

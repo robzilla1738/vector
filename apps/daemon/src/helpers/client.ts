@@ -29,6 +29,8 @@ export type HelperMethod =
   | 'apps.list'
   | 'apps.frontmost'
   | 'accessibility.snapshot'
+  | 'semantic.prepare'
+  | 'semantic.capture'
   | 'apps.open'
   | 'automation.run'
   | 'contacts.search'
