@@ -1,9 +1,0 @@
-{
-  "status": "actual clean roots/99 packets/324 mirrors/195 existing original baselines independent full replay/all committed renderer bytes PASS",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-04b-independent-_n86kxr_",
-  "root": "/tmp/aux-browser-runtime-root-full-memory",
-  "builder": "/tmp/aux-browser-runtime-builder-04b740ba",
-  "head": "04b740ba6a0b64738d6a22bc4b88b76eafbc928d",
-  "nativeStageAuthorized": false,
-  "nativeCompile": false
-}

@@ -1,29 +1,25 @@
+<coding_guidelines>
 # Aux workspace
 
-## Test + build gotcha
+Aux is Aside's daemon, extensions, CLI, skills and helpers, rebranded to Aux (name, logo, icon only) and running on a Chromium build. It is local-only for now. Where Aux and Aside differ, Aside wins.
 
-Unit tests import `@aux/runtime` through package exports into `apps/runtime/dist`, not source. After editing runtime source, rebuild before testing:
+Read `README.md` and `docs/design/aside-contract.md` first. The earlier Aux runtime/shell implementation is retired. It is preserved in git tag `aux-v3-final` and under `docs/archive/`.
 
-```bash
-npx tsc -b
-npm test
-npm run typecheck
-```
+## Layout
 
-Renderer tests resolve `@aux/contracts` to source via the Vitest alias.
-
-## Product direction
-
-Read `docs/ROADMAP.md` and `docs/STATUS.md`. The Aux v3 owner decisions supersede the previous frozen inspection scope. Chromium is the only engine. Vertical layout and Ask first are defaults. The composer remembers Skip confirmation; Auto remains available in Settings. Built features are on, with Labs opt-outs; method capabilities still determine what the host implements. Honour site policy, protect secrets, and keep Stop, Take over, durable effects and undo. Browser UI must remain usable while the runtime is unavailable.
+- `vendor/aside/`: patches (`patches/*.mjs`), shims (`shims/*`), SEA tooling (`lib/sea.mjs`), entitlements. Source of truth for every deviation from Aside.
+- `scripts/vendor-aside.mjs`: copies the installed Aside into `out/aside-staged/` and applies the patches. Every patch is anchored and count-checked, so it fails loudly when Aside updates.
+- `scripts/aux.mjs`: launcher (daemon, CDP gate, Chromium).
+- `scripts/aside-smoke.mjs`: daemon smoke test. `npm run check` runs vendor + smoke.
+- `chromium/`: patches and gn flags for the Chromium checkout.
+- `assets/brand/`: Aux logo, icon and iconset.
 
 ## Working rules
 
-- Commit coherent slices to local main. Never push, run hosted Actions, enable Dependabot, sign, notarize or release as part of development.
-- Delete replaced implementations; no compatibility shims or placeholder methods.
-- Use disposable development Profiles. Ask before touching the owner’s real Profile.
-- Use one native builder and one plain lock. Preserve existing live preview cleanup ownership until normal retirement when replacing the old launcher. Never force-clear an active lock or reset the stable Chromium checkout.
-- After runtime edits rebuild dist before tests. Run `npm run check` per integrated slice; avoid repeating unchanged tests. Builds fail on compile errors; style, byte reports and coverage reports are advisory.
-- For native changes, build incrementally, launch with `node scripts/dev.mjs --temp-profile` and inspect the changed behavior. After patch consolidation, add native changes as area patches in `chromium/patches/series`.
-- At phase ends run `pnpm perf`; once Phase 4 starts, run the manual 20-task smoke. Do not claim phase completion without its specified evidence.
-- Real providers with the owner’s configured keys are permitted. Never print credentials or commit Profiles, caches or personal-data logs.
-- Docs describe current state in ROADMAP, STATUS and architecture; older handoffs are historical records.
+- Commit coherent slices to local main. Never push, run hosted Actions, sign, notarize or release as part of development.
+- Keep the wire contracts Aside defines (`AsideDaemonSessionToken`, `aside.daemon.auth.` prefix, `Aside Daemon Auth v1\0`, health `service:"aside-daemon"`, `Aside.*` CDP methods). Rebrand only user-visible text.
+- Never print or commit credentials. `.env` holds `AI_GATEWAY_API_KEY`.
+- For AI testing use only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`. The daemon reads the key from `$ASIDE_HOME/u/<account>/credentials.json`, not from the environment.
+- Use disposable profiles (`node scripts/aux.mjs --temp-profile`). Ask before touching the owner's real profile.
+- Unsigned builds need `--use-mock-keychain`, or extension network requests stall behind the Keychain prompt. The launcher does this by default.
+</coding_guidelines>

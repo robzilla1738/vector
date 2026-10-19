@@ -1,8 +1,0 @@
-{
-  "sourceOnly": true,
-  "status": "actual clean383 HEADs +101 packet/324 mirror bytes/committed renderer assets match audited native65 and root383 harness bytes",
-  "head": "383ae75dd74bb3f2ef00e4d3fcdf36cb23b577b9",
-  "productCommit": "65b89a6e49304eb2299bccdaba02e789cca1fd07",
-  "unchangedReplayReference": "/tmp/aux-browser-runtime-root-memory-journey/docs/lane-requests/root-observer/AUTHORITY-NATIVE-REPLAY.json",
-  "nativeStageAuthorized": false
-}

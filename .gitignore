@@ -1,25 +1,8 @@
 node_modules/
-/dist/
-dist/
-release/
-/benchmarks/
-tests/benchmarks/reports/
 *.log
 .DS_Store
 .env
 .env.local
-*.tsbuildinfo
-/index.js
-# tsc emit next to sources. Vite used to load these instead of the TypeScript.
-packages/contracts/src/**/*.js
-packages/contracts/src/**/*.js.map
-fixtures/dist-types/
-*.local-before-main-*.md
 .playwright-mcp/
-.native/
-.native-base/
-
-# Renderer resources are staged from the current build.
-chromium/shell-assets/
 /out/
 /vendor/aside/blobs/
