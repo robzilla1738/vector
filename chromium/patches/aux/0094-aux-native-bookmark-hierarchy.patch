@@ -1,0 +1,585 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
+ 
++#include <cstdint>
+ #include <memory>
+ #include <optional>
+ #include <set>
+@@ -18,8 +19,8 @@
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "chrome/browser/ui/views/frame/aux_native_task_feed.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/bookmarks/browser/base_bookmark_model_observer.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -96,6 +97,14 @@
+   void Rebuild();
+   void ScheduleRebuild();
+   void AddPinnedTiles();
++  void ReadSidebarState();
++  void SaveSectionState();
++  void ToggleBookmarkFolder(int64_t id);
++  void AddBookmarkRows(views::View* container,
++                       const bookmarks::BookmarkNode* node,
++                       int depth,
++                       int* count);
++  void ExecuteBookmarkCommand(int command);
+   void ActivateTab(int index);
+   void MovePinnedTab(int from, int to);
+   void OnTaskSnapshot(const AuxNativeTaskFeed::Snapshot& snapshot);
+@@ -131,6 +140,9 @@
+ 
+   std::vector<Chat> chats_;
+   std::set<std::string> collapsed_sections_;
++  std::set<std::string> expanded_bookmark_folders_;
++  int64_t menu_bookmark_id_ = -1;
++  std::string menu_bookmark_uuid_;
+   std::string active_chat_id_;
+   bool show_all_chats_ = false;
+   bool any_running_ = false;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -3,9 +3,6 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
+-#include "chrome/browser/ui/views/frame/aux_icon_picker.h"
+-#include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
+-#include "components/prefs/pref_service.h"
+ 
+ #include <algorithm>
+ #include <utility>
+@@ -16,10 +13,9 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
+ #include "base/values.h"
+-#include "base/task/single_thread_task_runner.h"
+ #include "cc/paint/paint_flags.h"
+-#include "third_party/skia/include/core/SkPathBuilder.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+@@ -31,53 +27,71 @@
+ #include "chrome/browser/profiles/profile_avatar_icon_util.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/profiles/profile_window.h"
++#include "chrome/browser/ui/bookmarks/bookmark_editor.h"
++#include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/simple_message_box.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_icon_picker.h"
++#include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
+ #include "chrome/browser/ui/webui/profile_helper.h"
++#include "components/bookmarks/browser/bookmark_client.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "components/bookmarks/browser/bookmark_utils.h"
++#include "components/bookmarks/common/bookmark_pref_names.h"
+ #include "components/favicon/content/content_favicon_driver.h"
++#include "components/favicon/core/favicon_service.h"
++#include "components/favicon_base/favicon_types.h"
++#include "components/prefs/pref_service.h"
+ #include "components/tabs/public/tab_context_menu_command.h"
++#include "components/tabs/public/tab_interface.h"
++#include "components/vector_icons/vector_icons.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/skia/include/core/SkPathBuilder.h"
+ #include "ui/base/accelerators/accelerator.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/base/mojom/menu_source_type.mojom.h"
++#include "ui/color/color_id.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/gfx/canvas.h"
+ #include "ui/gfx/font_list.h"
++#include "ui/gfx/geometry/insets.h"
+ #include "ui/gfx/geometry/size.h"
+-#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+-#include "ui/views/controls/image_view.h"
+-#include "ui/views/controls/separator.h"
+-#include "ui/views/layout/layout_provider.h"
+-#include "ui/views/view_class_properties.h"
+-#include "ui/views/widget/widget.h"
+-#include "ui/base/mojom/menu_source_type.mojom.h"
+-#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model.h"
+-#include "components/bookmarks/browser/bookmark_node.h"
+-#include "components/favicon/core/favicon_service.h"
+-#include "components/favicon_base/favicon_types.h"
+-#include "components/tabs/public/tab_interface.h"
+-#include "components/vector_icons/vector_icons.h"
+-#include "content/public/browser/web_contents.h"
+-#include "ui/base/metadata/metadata_impl_macros.h"
+-#include "ui/base/models/image_model.h"
+-#include "ui/color/color_id.h"
+-#include "ui/gfx/geometry/insets.h"
+ #include "ui/menus/simple_menu_model.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/background.h"
+ #include "ui/views/border.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+ #include "ui/views/controls/button/image_button.h"
+ #include "ui/views/controls/button/image_button_factory.h"
+ #include "ui/views/controls/button/label_button.h"
+ #include "ui/views/controls/highlight_path_generator.h"
++#include "ui/views/controls/image_view.h"
+ #include "ui/views/controls/label.h"
+ #include "ui/views/controls/menu/menu_runner.h"
++#include "ui/views/controls/scroll_view.h"
++#include "ui/views/controls/separator.h"
+ #include "ui/views/layout/box_layout.h"
++#include "ui/views/layout/layout_provider.h"
+ #include "ui/views/style/typography.h"
++#include "ui/views/view_class_properties.h"
+ #include "ui/views/view_tracker.h"
++#include "ui/views/widget/widget.h"
+ 
+ namespace {
+ 
+ constexpr char kAgentManagerId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
+ constexpr size_t kMaxChatsShown = 3;
++constexpr char kFolderStatePref[] =
++    "aux.browser.sidebar.expanded_bookmark_folders";
++constexpr char kSectionStatePref[] = "aux.browser.sidebar.collapsed_sections";
++constexpr int kBookmarkCurrent = 200;
++constexpr int kBookmarkNewTab = 201;
++constexpr int kBookmarkNewWindow = 202;
++constexpr int kBookmarkEdit = 203;
++constexpr int kBookmarkDelete = 204;
+ constexpr int kCommandPin = 1;
+ constexpr int kCommandMarkRead = 2;
+ constexpr int kCommandArchive = 3;
+@@ -127,6 +141,8 @@
+ 
+   const std::string& chat_id() const { return chat_id_; }
+   void set_chat_id(std::string id) { chat_id_ = std::move(id); }
++  int64_t bookmark_id() const { return bookmark_id_; }
++  void set_bookmark_id(int64_t id) { bookmark_id_ = id; }
+ 
+   void SetFavicon(const gfx::ImageSkia& image) {
+     SetImageModel(views::Button::STATE_NORMAL,
+@@ -161,6 +177,7 @@
+   const bool selected_;
+   bool caption_ = false;
+   std::string chat_id_;
++  int64_t bookmark_id_ = -1;
+ };
+ 
+ BEGIN_METADATA(AuxSidebarRow)
+@@ -798,6 +815,12 @@
+   }
+   browser_->GetTabStripModel()->AddObserver(this);
+   pref_changes_.Init(browser_->GetProfile()->GetPrefs());
++  pref_changes_.Add(kFolderStatePref,
++                    base::BindRepeating(&AuxSidebarView::ScheduleRebuild,
++                                        weak_factory_.GetWeakPtr()));
++  pref_changes_.Add(kSectionStatePref,
++                    base::BindRepeating(&AuxSidebarView::ScheduleRebuild,
++                                        weak_factory_.GetWeakPtr()));
+   pref_changes_.Add("aux.browser.sidebar_bookmarks",
+       base::BindRepeating(&AuxSidebarView::ScheduleRebuild,
+                           weak_factory_.GetWeakPtr()));
+@@ -918,11 +941,134 @@
+   Rebuild();
+ }
+ 
++void AuxSidebarView::ReadSidebarState() {
++  auto* prefs = browser_->GetProfile()->GetPrefs();
++  for (auto [key, target] :
++       {std::pair{kFolderStatePref, &expanded_bookmark_folders_},
++        std::pair{kSectionStatePref, &collapsed_sections_}}) {
++    if (!prefs->FindPreference(key)) {
++      action_error_ = u"Sidebar state cannot be restored by this native build.";
++      continue;
++    }
++    target->clear();
++    for (const auto& value : prefs->GetList(key)) {
++      if (const auto* text = value.GetIfString()) {
++        target->insert(*text);
++      }
++    }
++  }
++}
++
++void AuxSidebarView::SaveSectionState() {
++  auto* prefs = browser_->GetProfile()->GetPrefs();
++  if (!prefs->FindPreference(kSectionStatePref)) {
++    return;
++  }
++  base::ListValue values;
++  for (const auto& section : collapsed_sections_) {
++    values.Append(section);
++  }
++  prefs->SetList(kSectionStatePref, std::move(values));
++}
++
+ void AuxSidebarView::ToggleSection(const std::string& key) {
+   if (!collapsed_sections_.erase(key)) {
+     collapsed_sections_.insert(key);
+   }
+-  Rebuild();
++  SaveSectionState();
++  ScheduleRebuild();
++}
++
++void AuxSidebarView::ToggleBookmarkFolder(int64_t id) {
++  auto* model =
++      BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
++  const auto* node =
++      model ? bookmarks::GetBookmarkNodeByID(model, id) : nullptr;
++  if (!node || !node->is_folder()) {
++    return;
++  }
++  const auto uuid = node->uuid().AsLowercaseString();
++  if (!expanded_bookmark_folders_.erase(uuid)) {
++    expanded_bookmark_folders_.insert(uuid);
++  }
++  auto* prefs = browser_->GetProfile()->GetPrefs();
++  if (prefs->FindPreference(kFolderStatePref)) {
++    base::ListValue values;
++    for (const auto& folder : expanded_bookmark_folders_) {
++      values.Append(folder);
++    }
++    prefs->SetList(kFolderStatePref, std::move(values));
++  }
++  ScheduleRebuild();
++}
++
++void AuxSidebarView::AddBookmarkRows(views::View* container,
++                                     const bookmarks::BookmarkNode* node,
++                                     int depth,
++                                     int* count) {
++  if (!node || *count >= 1000) {
++    return;
++  }
++  if (depth > 16) {
++    *count = 1000;
++    return;
++  }
++  ++*count;
++  const bool expanded =
++      expanded_bookmark_folders_.contains(node->uuid().AsLowercaseString());
++  const auto title =
++      node->GetTitle().empty()
++          ? (node->is_folder() ? u"Untitled folder"
++                               : base::UTF8ToUTF16(node->url().host()))
++          : node->GetTitle();
++  auto* row = container->AddChildView(std::make_unique<AuxSidebarRow>(
++      node->is_folder()
++          ? base::BindRepeating(&AuxSidebarView::ToggleBookmarkFolder,
++                                weak_factory_.GetWeakPtr(), node->id())
++          : base::BindRepeating(&AuxSidebarView::OpenBookmark,
++                                weak_factory_.GetWeakPtr(), node->url()),
++      title,
++      ui::ImageModel::FromVectorIcon(
++          node->is_folder() ? (expanded ? vector_icons::kFolderOpenIcon
++                                        : vector_icons::kFolderFlippableIcon)
++                            : vector_icons::kStarFilledIcon,
++          ui::kColorSysOnSurfaceSubtle, kRowIconSize)));
++  row->set_bookmark_id(node->id());
++  row->set_context_menu_controller(this);
++  row->SetTooltipText(title);
++  row->SetBorder(views::CreateEmptyBorder(
++      gfx::Insets::TLBR(8, kRowInset + 12 * depth, 8, kRowInset)));
++  if (node->is_folder()) {
++    if (expanded) {
++      row->GetViewAccessibility().SetIsExpanded();
++    } else {
++      row->GetViewAccessibility().SetIsCollapsed();
++    }
++    if (expanded) {
++      for (const auto& child : node->children()) {
++        AddBookmarkRows(container, child.get(), depth + 1, count);
++      }
++    }
++    return;
++  }
++  auto* favicons = FaviconServiceFactory::GetForProfile(
++      browser_->GetProfile(), ServiceAccessType::EXPLICIT_ACCESS);
++  if (!favicons) {
++    return;
++  }
++  auto tracker = std::make_unique<views::ViewTracker>(row);
++  favicons->GetFaviconImageForPageURL(
++      node->url(),
++      base::BindOnce(
++          [](std::unique_ptr<views::ViewTracker> tracker,
++             const favicon_base::FaviconImageResult& result) {
++            auto* view = static_cast<AuxSidebarRow*>(tracker->view());
++            if (view && !result.image.IsEmpty()) {
++              view->SetFavicon(result.image.AsImageSkia());
++            }
++          },
++          std::move(tracker)),
++      &favicon_tracker_);
+ }
+ 
+ void AuxSidebarView::OpenNewTab() {
+@@ -941,7 +1087,7 @@
+ }
+ 
+ void AuxSidebarView::BookmarkModelChanged() {
+-  Rebuild();
++  ScheduleRebuild();
+ }
+ 
+ void AuxSidebarView::BookmarkModelLoaded(bool ids_reassigned) {
+@@ -958,6 +1104,10 @@
+ }
+ 
+ void AuxSidebarView::Rebuild() {
++  if (menu_runner_ && menu_runner_->IsRunning()) {
++    return;
++  }
++  ReadSidebarState();
+   if (review_widget_ && !review_widget_->IsClosed())
+     return;
+   favicon_tracker_.TryCancelAll();
+@@ -981,51 +1131,55 @@
+     header->SetBorder(
+         views::CreateEmptyBorder(
+             gfx::Insets::TLBR(12, kRowInset, 4, kRowInset)));
++    if (collapsed) {
++      header->GetViewAccessibility().SetIsCollapsed();
++    } else {
++      header->GetViewAccessibility().SetIsExpanded();
++    }
+     header->SetCaptionStyle();
+     header->SetImageLabelSpacing(0);
+     header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+     return !collapsed;
+   };
+ 
+-  // Bookmarks.
+-  bookmarks::BookmarkModel* model =
++  // Real model hierarchy in a bounded scrolling section.
++  auto* model =
+       BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
+   if (model && model->loaded() &&
+-      browser_->GetProfile()->GetPrefs()->GetBoolean("aux.browser.sidebar_bookmarks") &&
+-      !model->bookmark_bar_node()->children().empty()) {
+-    const bool bookmarks_open = add_header("bookmarks", u"Bookmarks");
+-    favicon::FaviconService* favicons = FaviconServiceFactory::GetForProfile(
+-        browser_->GetProfile(), ServiceAccessType::EXPLICIT_ACCESS);
++      browser_->GetProfile()->GetPrefs()->GetBoolean(
++          "aux.browser.sidebar_bookmarks") &&
++      add_header("bookmarks", u"Bookmarks")) {
++    auto scroll = std::make_unique<views::ScrollView>();
++    scroll->ClipHeightTo(0, 240);
++    auto contents = std::make_unique<views::View>();
++    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical));
++    auto* rows = scroll->SetContents(std::move(contents));
++    int count = 0;
+     for (const auto& node : model->bookmark_bar_node()->children()) {
+-      if (!bookmarks_open) {
+-        break;
++      AddBookmarkRows(rows, node.get(), 0, &count);
++    }
++    for (const auto* node : {model->other_node(), model->mobile_node()}) {
++      if (node && !node->children().empty()) {
++        AddBookmarkRows(rows, node, 0, &count);
+       }
+-      const GURL url = node->url();
+-      auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
+-          node->is_folder() ? views::Button::PressedCallback()
+-                            : base::BindRepeating(&AuxSidebarView::OpenBookmark,
+-                                                  base::Unretained(this), url),
+-          node->GetTitle().empty() ? base::UTF8ToUTF16(url.host())
+-                                   : node->GetTitle(),
+-          ui::ImageModel::FromVectorIcon(vector_icons::kStarFilledIcon,
+-                                         ui::kColorSysOnSurfaceSubtle,
+-                                         kRowIconSize)));
+-      if (favicons && !node->is_folder()) {
+-        auto tracker = std::make_unique<views::ViewTracker>(row);
+-        favicons->GetFaviconImageForPageURL(
+-            url,
+-            base::BindOnce(
+-                [](std::unique_ptr<views::ViewTracker> tracker,
+-                   const favicon_base::FaviconImageResult& result) {
+-                  if (auto* view = static_cast<AuxSidebarRow*>(tracker->view());
+-                      view && !result.image.IsEmpty()) {
+-                    view->SetFavicon(result.image.AsImageSkia());
+-                  }
+-                },
+-                std::move(tracker)),
+-            &favicon_tracker_);
+-      }
+-    }
++    }
++    auto* manager = rows->AddChildView(std::make_unique<views::LabelButton>(
++        base::BindRepeating(
++            [](base::WeakPtr<AuxSidebarView> self) {
++              if (self) {
++                chrome::ExecuteCommand(self->browser_,
++                                       IDC_SHOW_BOOKMARK_MANAGER);
++              }
++            },
++            weak_factory_.GetWeakPtr()),
++        count >= 1000 ? u"Browse additional saved pages" : u"Open bookmarks"));
++    manager->SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
++    if (count == 0) {
++      rows->AddChildView(
++          std::make_unique<views::Label>(u"No saved pages yet."));
++    }
++    AddChildView(std::move(scroll));
+   }
+ 
+   if (!feed_error_.empty() || !action_error_.empty()) {
+@@ -1108,8 +1262,9 @@
+                           .pinned = task.pinned, .can_pin = task.can_pin});
+     attention |= task.pending_action.has_value();
+   }
+-  if (attention)
+-    collapsed_sections_.erase("chats");
++  if (attention && collapsed_sections_.erase("chats")) {
++    SaveSectionState();
++  }
+   if (attention)
+     show_all_chats_ = true;
+   const bool running = std::ranges::any_of(chats_, [](const Chat& chat) {
+@@ -1191,9 +1346,47 @@
+     menu_runner_->RunMenuAt(GetWidget(), nullptr,
+                             gfx::Rect(point, gfx::Size()),
+                             views::MenuAnchorPosition::kTopLeft, source_type);
+-    return;
+-  }
+-  const auto* row = static_cast<AuxSidebarRow*>(source);
++    ScheduleRebuild();
++    return;
++  }
++  const auto* row = views::AsViewClass<AuxSidebarRow>(source);
++  if (!row) {
++    return;
++  }
++  if (row->bookmark_id() >= 0) {
++    auto* model =
++        BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
++    const auto* node =
++        model ? bookmarks::GetBookmarkNodeByID(model, row->bookmark_id())
++              : nullptr;
++    if (!node || !GetWidget()) {
++      return;
++    }
++    menu_bookmark_id_ = node->id();
++    menu_bookmark_uuid_ = node->uuid().AsLowercaseString();
++    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    if (!node->is_folder()) {
++      menu_model_->AddItem(kBookmarkCurrent, u"Open");
++    }
++    menu_model_->AddItem(kBookmarkNewTab, node->is_folder()
++                                              ? u"Open all in new tabs"
++                                              : u"Open in new tab");
++    menu_model_->AddItem(kBookmarkNewWindow, node->is_folder()
++                                                 ? u"Open all in new window"
++                                                 : u"Open in new window");
++    if (!node->is_permanent_node() && !model->client()->IsNodeManaged(node) &&
++        browser_->GetProfile()->GetPrefs()->GetBoolean(
++            bookmarks::prefs::kEditBookmarksEnabled)) {
++      menu_model_->AddItem(kBookmarkEdit, u"Edit");
++      menu_model_->AddItem(kBookmarkDelete, u"Delete");
++    }
++    menu_runner_ = std::make_unique<views::MenuRunner>(
++        menu_model_.get(), views::MenuRunner::HAS_MNEMONICS);
++    menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
++                            views::MenuAnchorPosition::kTopLeft, source_type);
++    ScheduleRebuild();
++    return;
++  }
+   const auto chat = std::ranges::find(chats_, row->chat_id(), &Chat::id);
+   if (chat == chats_.end() || !GetWidget()) {
+     return;
+@@ -1213,9 +1406,14 @@
+       menu_model_.get(), views::MenuRunner::HAS_MNEMONICS);
+   menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+                           views::MenuAnchorPosition::kTopLeft, source_type);
++  ScheduleRebuild();
+ }
+ 
+ void AuxSidebarView::ExecuteCommand(int command_id, int event_flags) {
++  if (command_id >= kBookmarkCurrent && command_id <= kBookmarkDelete) {
++    ExecuteBookmarkCommand(command_id);
++    return;
++  }
+   const char* action = nullptr;
+   switch (command_id) {
+     case kCommandTabReload:
+@@ -1250,6 +1448,69 @@
+       return;
+   }
+   PostChatAction(menu_chat_id_, action);
++}
++
++void AuxSidebarView::ExecuteBookmarkCommand(int command) {
++  auto* model =
++      BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
++  const auto* node =
++      model ? bookmarks::GetBookmarkNodeByID(model, menu_bookmark_id_)
++            : nullptr;
++  if (!node || node->uuid().AsLowercaseString() != menu_bookmark_uuid_) {
++    return;
++  }
++  if (command <= kBookmarkNewWindow) {
++    if (command == kBookmarkCurrent && !node->is_folder()) {
++      OpenBookmark(node->url());
++    } else {
++      bookmarks::OpenAllIfAllowed(
++          browser_, {node},
++          command == kBookmarkNewWindow
++              ? WindowOpenDisposition::NEW_WINDOW
++              : WindowOpenDisposition::NEW_BACKGROUND_TAB);
++    }
++    return;
++  }
++  if (!GetWidget() || node->is_permanent_node() ||
++      model->client()->IsNodeManaged(node) ||
++      !browser_->GetProfile()->GetPrefs()->GetBoolean(
++          bookmarks::prefs::kEditBookmarksEnabled)) {
++    return;
++  }
++  if (command == kBookmarkEdit) {
++    BookmarkEditor::Show(GetWidget()->GetNativeWindow(), browser_->GetProfile(),
++                         BookmarkEditor::EditDetails::EditNode(node),
++                         BookmarkEditor::NO_TREE);
++    return;
++  }
++  chrome::ShowQuestionMessageBoxAsync(
++      GetWidget()->GetNativeWindow(),
++      node->is_folder() ? u"Delete this saved folder?"
++                        : u"Delete this saved page?",
++      node->is_folder()
++          ? u"The folder and its saved pages will be removed from this profile."
++          : u"This saved page will be removed from this profile.",
++      base::BindOnce(
++          [](base::WeakPtr<AuxSidebarView> self, int64_t id, std::string uuid,
++             chrome::MessageBoxResult result) {
++            if (!self || result != chrome::MESSAGE_BOX_RESULT_YES) {
++              return;
++            }
++            auto* model = BookmarkModelFactory::GetForBrowserContext(
++                self->browser_->GetProfile());
++            const auto* node =
++                model ? bookmarks::GetBookmarkNodeByID(model, id) : nullptr;
++            if (node && node->uuid().AsLowercaseString() == uuid &&
++                !node->is_permanent_node() &&
++                !model->client()->IsNodeManaged(node) &&
++                self->browser_->GetProfile()->GetPrefs()->GetBoolean(
++                    bookmarks::prefs::kEditBookmarksEnabled)) {
++              model->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser,
++                            FROM_HERE);
++            }
++          },
++          weak_factory_.GetWeakPtr(), node->id(),
++          node->uuid().AsLowercaseString()));
+ }
+ 
+ void AuxSidebarView::PostChatAction(const std::string& session_id,
