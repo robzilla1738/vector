@@ -1,25 +1,19 @@
 # Aux
 
-Aux is a browser built on Aside's agent stack: its daemon, extensions, CLI and skills, with Aux naming, logo and icon. Everything runs locally.
+Aux is a local browser under active clean-room reconstruction. Its TypeScript daemon, React extensions, agent engine, CLI, macOS helpers and Chromium integration are being implemented independently from behavior specifications.
 
-## Run it
+Read [workspace rules](AGENTS.md), [specifications](docs/spec/README.md), [naming policy](docs/design/names.md) and [current progress](docs/STATUS.md). The former runtime is archived in git history; retained legacy build files are being retired as independent replacements become ready.
 
-```bash
+## Development
+
+```sh
 pnpm install
-npm run vendor:aside          # stage daemon, CLI, extensions, runtime into out/aside-staged
+pnpm build
 node scripts/aux.mjs --temp-profile
 ```
 
-Install the `aux` command and a self-contained `~/Applications/Aux.app` (browser, daemon, extensions, agent runtime and launcher inside the bundle, APFS clones so no extra disk) with `npm run package`. The launcher scripts need `node` 22 or newer on PATH. `npm run package -- --dev` builds a thin launcher that points at this checkout instead. The bundle is at most ad-hoc signed.
+The launcher requires independently built daemon and extension outputs; these commands do not yet establish feature parity. `--no-browser` starts only the daemon. Always use disposable profiles for verification. Native builds are serialized with `python3 scripts/native-build.py <build command> [args...]`.
 
-Options: `--chromium <path>`, `--home <dir>`, `--profile <dir>` (default `~/.aux/profile`), `--temp-profile`, `--env-file`, `--no-browser`, `--real-keychain`, and `-- <extra chromium args>`. The default Chromium is `~/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app`.
+`pnpm typecheck`, `pnpm lint` and `pnpm test` check implemented workspace packages. `pnpm check:cleanroom` compares shipped source candidates and native patches against the local reference hash index; it currently reports legacy names still awaiting retirement. A green artifact scan alone never proves provenance or product parity.
 
-The CLI is staged at `out/aside-staged/cli/Aux CLI.app`. Run `aux --help`.
-
-## How it fits together
-
-See `docs/design/aside-contract.md`.
-
-## History
-
-The earlier Aux runtime/shell is in git tag `aux-v3-final` and `docs/archive/aux-v3/`.
+All development stays local. Nothing is pushed, released, notarized or developer-signed. Final local packaging may use an ad hoc signature.

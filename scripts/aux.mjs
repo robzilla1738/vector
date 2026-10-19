@@ -39,7 +39,7 @@ let stopping = false;
 function start(command, arguments_, env) {
   const child = spawn(command, arguments_, { cwd: root, env, stdio: 'inherit' });
   children.add(child);
-  child.once('error', (error) => { console.error(error.message); void stop(1); });
+  child.once('error', (error) => { children.delete(child); console.error(error.message); void stop(1); });
   child.once('exit', (code, signal) => {
     children.delete(child);
     if (!stopping) void stop(signal ? 1 : code ?? 1);
