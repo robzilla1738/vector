@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "Exact applied v62 unchanged Omnibox core source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_controller.h",
+      "baselineSha256": "9e42a62f253af80c580374979ce56f5d1a5d780bfd480674b785729217de5c0e",
+      "outputSha256": "977bbb7ca5b14c99e1128859f0182a475faaa1271ed355198c8a5516c3c6d05c"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_controller.cc",
+      "baselineSha256": "c2e3668a3db8f4182fb05416951614fabc0e6783728fa0514633dddd8e125ae6",
+      "outputSha256": "84111ddd8198ff625ff6a7eaa83f6f7e74318fa3a5396379832e2d68a7039633"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.h",
+      "baselineSha256": "33b6b91d573b772fd4a0005a1e0bce6e64337d8b1595778c8e133128e95bf062",
+      "outputSha256": "a7cc4fe981d5efce2b995f21409a58ed737f434184e70992e93f02a2f10f8284"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.cc",
+      "baselineSha256": "abaa200791c86b6303504c38c0b6daccb2446e57e5fb3ba0f8c0b7e5d4a0171b",
+      "outputSha256": "ce464367b5dd2690c09bca13653a406375004f801b9b72272697df3c99aa2eae"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

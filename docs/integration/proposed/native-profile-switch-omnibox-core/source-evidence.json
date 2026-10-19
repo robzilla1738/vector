@@ -1,0 +1,33 @@
+{
+  "kind": "Current actual constructor/destructor/observation graph; platform adaptation supporting supplied same-window algorithm",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_controller.cc",
+      "sha256": "c2e3668a3db8f4182fb05416951614fabc0e6783728fa0514633dddd8e125ae6"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.cc",
+      "sha256": "abaa200791c86b6303504c38c0b6daccb2446e57e5fb3ba0f8c0b7e5d4a0171b"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/chrome_omnibox_client.h",
+      "sha256": "49c17dc4c731339e650cf8a3e3b26f6c9b5ece64c7a3f6dbf0f1c668a5db3940"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/chrome_omnibox_client.cc",
+      "sha256": "138762a7a9992496f7cdf1a2cac81910e0d1db12ccddf9c713faa6474bdd5f3d"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc",
+      "sha256": "ca5f9348d710b88d2fd5e4a345f921ffbe732b5aed88d434c533565bc07ab354"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "sha256": "836033c511c5a4cb2457e356b3ca250507d5a37a14f0374ae49f2ddf0dfafb84"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "d377cab3093b5de02720f25f5b69bad3a86dc4bc2f71ea60c7ef7228a611e4a8"
+    }
+  ]
+}

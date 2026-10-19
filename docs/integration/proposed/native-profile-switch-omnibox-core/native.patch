@@ -1,0 +1,136 @@
+--- a/chrome/browser/ui/omnibox/omnibox_controller.h
++++ b/chrome/browser/ui/omnibox/omnibox_controller.h
+@@ -9,6 +9,7 @@
+ #include <optional>
+ 
+ #include "base/compiler_specific.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/advanced_memory_safety_checks.h"
+ #include "base/time/time.h"
+@@ -19,6 +20,7 @@
+ #include "components/search_engines/template_url_starter_pack_data.h"
+ 
+ class OmniboxClient;
++class LocationBarView;
+ class OmniboxView;
+ 
+ // This class controls the various services that can modify the content of the
+@@ -104,6 +106,15 @@
+   }
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  friend class LocationBarView;
++  // Retain controller/edit-model/popup identities. Only its actual owning
++  // location bar may replace profile-bound provider/client sources.
++  void RebindClientForAuxProfileSwitch(std::unique_ptr<OmniboxClient> client);
++#endif
++  void CreateAutocompleteController(
++      std::optional<base::TimeDelta> autocomplete_stop_timer_duration);
++
+   // Stores the bitmap, using `icon_url` as the key in
+   // `edit_model_->icon_bitmaps_` if provided, or `result_index` in
+   // `edit_model_->rich_suggestion_bitmaps_` otherwise.
+@@ -111,7 +122,8 @@
+                                const GURL& icon_url,
+                                SkBitmap bitmap);
+ 
+-  const std::unique_ptr<OmniboxClient> client_;
++  std::unique_ptr<OmniboxClient> client_;
++  const std::optional<base::TimeDelta> autocomplete_stop_timer_duration_;
+ 
+   std::unique_ptr<AutocompleteController> autocomplete_controller_;
+ 
+--- a/chrome/browser/ui/omnibox/omnibox_controller.cc
++++ b/chrome/browser/ui/omnibox/omnibox_controller.cc
+@@ -36,9 +36,15 @@
+     std::unique_ptr<OmniboxClient> client,
+     std::optional<base::TimeDelta> autocomplete_stop_timer_duration)
+     : client_(std::move(client)),
++      autocomplete_stop_timer_duration_(autocomplete_stop_timer_duration),
+       edit_model_(std::make_unique<OmniboxEditModel>(
+           /*omnibox_controller=*/this)),
+       popup_state_manager_(std::make_unique<OmniboxPopupStateManager>()) {
++  CreateAutocompleteController(autocomplete_stop_timer_duration);
++}
++
++void OmniboxController::CreateAutocompleteController(
++    std::optional<base::TimeDelta> autocomplete_stop_timer_duration) {
+   AutocompleteControllerConfig autocomplete_controller_config{
+       .provider_types = AutocompleteClassifier::DefaultOmniboxProviders()};
+   if (omnibox::IsWebUIOmniboxPopupEnabled()) {
+@@ -57,6 +63,26 @@
+     autocomplete_controller_->AddObserver(emitter);
+   }
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void OmniboxController::RebindClientForAuxProfileSwitch(
++    std::unique_ptr<OmniboxClient> client) {
++  CHECK(client);
++  CHECK(edit_model_->view());
++  CHECK(!IsPopupOpen());
++  CHECK(!edit_model_->user_input_in_progress());
++  // The actual view/popup observe this same controller and edit model. Retire
++  // old async results before destroying provider-backed matches or services.
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  StopAutocomplete(/*clear_result=*/true);
++  edit_model_->ResetForAuxProfileSwitch();
++  autocomplete_controller_->RemoveObserver(this);
++  autocomplete_controller_.reset();
++  client_ = std::move(client);
++  CreateAutocompleteController(autocomplete_stop_timer_duration_);
++  autocomplete_controller_->AddObserver(this);
++}
++#endif
+ 
+ void OmniboxController::SetView(OmniboxView* view) {
+   edit_model_->set_view(view);
+--- a/chrome/browser/ui/omnibox/omnibox_edit_model.h
++++ b/chrome/browser/ui/omnibox/omnibox_edit_model.h
+@@ -10,6 +10,8 @@
+ #include <map>
+ #include <memory>
+ #include <string>
++
++#include "chrome/browser/buildflags.h"
+ #include <string_view>
+ 
+ #include "base/compiler_specific.h"
+@@ -601,6 +603,10 @@
+   virtual const PrefService* GetPrefService() const;
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  friend class OmniboxController;
++  void ResetForAuxProfileSwitch();
++#endif
+   friend class OmniboxControllerTest;
+   friend class TestOmniboxEditModel;
+   FRIEND_TEST_ALL_PREFIXES(OmniboxEditModelTest, ConsumeCtrlKey);
+--- a/chrome/browser/ui/omnibox/omnibox_edit_model.cc
++++ b/chrome/browser/ui/omnibox/omnibox_edit_model.cc
+@@ -661,6 +661,22 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void OmniboxEditModel::ResetForAuxProfileSwitch() {
++  CHECK(!user_input_in_progress_);
++  weak_factory_.InvalidateWeakPtrs();
++  // Retire actual old-profile upload/session ownership; never preserve a
++  // contextual search handle or provider match in the new profile.
++  query_contextualizer_.reset();
++  query_contextualizer_delegate_.reset();
++  session_handle_.reset();
++  query_contextualizer_initialized_ = false;
++  Revert();
++  rich_suggestion_bitmaps_.clear();
++  icon_bitmaps_.clear();
++}
++#endif
++
+ void OmniboxEditModel::Revert() {
+   TRACE_EVENT("omnibox", "OmniboxEditModel::Revert");
+   SetInputInProgress(false);
