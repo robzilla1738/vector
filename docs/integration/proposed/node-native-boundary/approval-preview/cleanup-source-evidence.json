@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "originalDaemonCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "anchors": [
+    {
+      "text": "ACCOUNTS_JSON_PATH=path.join(ASIDE_HOME_PATH,`accounts.json`)",
+      "count": 1
+    },
+    {
+      "text": "accountSchema=object({id:number$2().int().nonnegative()",
+      "count": 1
+    },
+    {
+      "text": "createDefaultAccountRegistry=()=>({version:1,currentAccountId:0,accounts:[{id:0",
+      "count": 1
+    },
+    {
+      "text": "PWM_REGISTRY_PATH=path.join(ASIDE_HOME_PATH,`password-manager`,`accounts.json`)",
+      "count": 1
+    },
+    {
+      "text": "pwmRegistryFileSchema=object({version:literal(1),accounts:array(unknown$1())",
+      "count": 1
+    },
+    {
+      "text": "storage:object({dataRoot:string$3().min(1),nativeSlot:number$2().int()",
+      "count": 1
+    },
+    {
+      "text": "SESSION_ACCOUNT_PREFIX=`aside.pwm.session`,nativeAccount=Cn=>PwmAccountRegistry.get(Cn).storage.nativeSlot",
+      "count": 1
+    },
+    {
+      "text": "function sessionAccount(Cn){return`${SESSION_ACCOUNT_PREFIX}_${Cn}`}",
+      "count": 1
+    },
+    {
+      "text": "nativeSlot:Math.min(0,...ai.map(Cn=>Cn.storage.nativeSlot))-1",
+      "count": 1
+    }
+  ],
+  "result": "Account0 is valid; actual PWM UUID registry maps nativeSlot -1 to aside.pwm.session_-1. Pure filesystem fixture invokes no native code or DP."
+}

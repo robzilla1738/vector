@@ -16,11 +16,11 @@ function continuationKeys(home) {
   }
   const registry=optional('accounts.json'), accounts=registry?.accounts??[];
   if(!Array.isArray(accounts)||accounts.length>64)throw new ProbeError('invalid-test-account-registry');
-  const ids=new Set();for(const account of accounts){if(!Number.isSafeInteger(account.id)||account.id<=0||account.id>1000000)throw new ProbeError('invalid-test-account-id');ids.add(account.id);keys.add(`aux.csk_${account.id}`);}
+  const ids=new Set();for(const account of accounts){if(!Number.isSafeInteger(account.id)||account.id<0||account.id>1000000)throw new ProbeError('invalid-test-account-id');ids.add(account.id);keys.add(`aux.csk_${account.id}`);}
   const pwm=optional('password-manager/accounts.json');
   if(pwm){if(pwm.version!==1||!Array.isArray(pwm.accounts)||pwm.accounts.length>64)throw new ProbeError('invalid-test-vault-registry');for(const account of pwm.accounts){if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(account.id)||!Number.isSafeInteger(account.storage?.nativeSlot)||Math.abs(account.storage.nativeSlot)>1000000)throw new ProbeError('invalid-test-vault-id');keys.add(`aux.pwm.auth_${account.id}`);keys.add(`aside.pwm.session_${account.storage.nativeSlot}`);}}
   const fixtures=optional('.aux-dp-test-keys.json');
-  if(fixtures){if(!Array.isArray(fixtures.mcpServers)||fixtures.mcpServers.length>64)throw new ProbeError('invalid-test-key-ledger');for(const server of fixtures.mcpServers){if(!ids.has(server.accountId)||!/^[A-Za-z0-9_-]{1,32}$/.test(server.serverId))throw new ProbeError('invalid-test-server-id');keys.add(`mcp:index:${server.accountId}`);keys.add(`mcp:${server.accountId}:${server.serverId}`);}}
+  if(fixtures){if(!Array.isArray(fixtures.mcpServers)||fixtures.mcpServers.length>64)throw new ProbeError('invalid-test-key-ledger');for(const server of fixtures.mcpServers){if(!ids.has(server.accountId)||typeof server.serverId!=='string'||!/^[A-Za-z0-9_-]{1,32}$/.test(server.serverId))throw new ProbeError('invalid-test-server-id');keys.add(`mcp:index:${server.accountId}`);keys.add(`mcp:${server.accountId}:${server.serverId}`);}}
   return [...keys];
 }
 module.exports=async function approvedDpDiagnostic() {
@@ -66,3 +66,6 @@ module.exports=async function approvedDpDiagnostic() {
   await new Promise((resolve,reject)=>process.stdout.write(`${JSON.stringify(result)}\n`,e=>e?reject(e):resolve()));
   process.exit(result.ok?0:1);
 };
+
+// Pure filesystem selector derivation; importing this module invokes no native code.
+module.exports.continuationKeys=continuationKeys;
