@@ -11,7 +11,7 @@
     {
       "path": "chrome/browser/aux/profile_state.cc",
       "baselineSha256": "37ddb99f27faaa9930a70d585f76ba4f16ef4b7354ee5b4af5e55b2022d005f0",
-      "outputSha256": "b724e06349df2a216b89bd4a94708e5d331dded3718e286489f570cfa34d798a"
+      "outputSha256": "3f8d7acd5c8c9490f6945bb8929b22f61b1e3a164894a611fc142ce0fa47d946"
     },
     {
       "path": "chrome/browser/aux/profile_security_client.cc",
@@ -31,7 +31,7 @@
     {
       "path": "chrome/browser/aux/profile_state_probe.cc",
       "baselineSha256": "932259221fb0ea60571f9d2aad579ab1367e59903252dcdd6a5ad78943918ef1",
-      "outputSha256": "0965582ff5b4d6d6593c05e7b37f60b6e8ea4333fe69acecb56bab5ea55d0e32"
+      "outputSha256": "e6899f6de79093f2cf9873efa4708a86fcdce63b0b45174fcc812d1ce415c49b"
     }
   ]
 }
