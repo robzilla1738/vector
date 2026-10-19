@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "base": "Staged v45 profile/collection/bookmark source ports; v32 shared checkout remains untouched",
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "54b7abc89a3bfb61f19274f7e21e170e3de22526700919c56944323754c83f52",
+      "outputSha256": "f56b94e1ac6b7994fee7b582657f546ead30ba35f22a0dd6ce85f8bb9cefb77d"
+    },
+    {
+      "path": "chrome/browser/ui/views/bookmarks/BUILD.gn",
+      "baselineSha256": "afc371c68c30102782318058d010dc36600bf5482f4e3eae54193963b263814b",
+      "outputSha256": "6abd8b63617651942f236245daf9e8c2cac93c7c720ada6f5c2d590c9466b2ce"
+    },
+    {
+      "path": "chrome/browser/ui/views/bookmarks/saved_tab_groups/BUILD.gn",
+      "baselineSha256": "36fedfc571961ab5fb0b67290702b2589d3e5027791dfaef2eae8e2172afb8fb",
+      "outputSha256": "ab51d4ba582d7877ab028e351e6cf98fd9f746420c6673ce848f850921b18bbf"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

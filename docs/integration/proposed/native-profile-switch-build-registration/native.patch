@@ -1,0 +1,43 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2766,6 +2766,12 @@
+       "views/frame/aux_ntp_transition_state.cc",
+       "views/frame/aux_profile_switch_owner.cc",
+       "views/frame/aux_profile_switch_owner.h",
++      "views/frame/aux_profile_switch_workspaces.cc",
++      "views/frame/aux_profile_switch_workspaces.h",
++      "views/frame/aux_profile_switch_tabs.cc",
++      "views/frame/aux_profile_switch_tabs.h",
++      "aux_profile_switch_session_rebuild.cc",
++      "aux_profile_switch_session_rebuild.h",
+       "views/frame/aux_icon_picker.cc",
+       "views/frame/aux_icon_picker.h",
+       "views/frame/aux_agent_tabs_bubble.cc",
+--- a/chrome/browser/ui/views/bookmarks/BUILD.gn
++++ b/chrome/browser/ui/views/bookmarks/BUILD.gn
+@@ -33,6 +33,7 @@
+   }
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     ":bookmark_bar_view_observer",
+     "//base",
+     "//chrome/browser/bookmarks",
+@@ -104,6 +105,7 @@
+     "//chrome/browser/ui:browser_element_identifiers",
+     "//chrome/browser/ui:chrome_pages",
+     "//chrome/browser/ui:layout_constants",
++    "//chrome/browser/ui:ui_controller_factory",
+     "//chrome/browser/ui:ui_features",
+     "//chrome/browser/ui:view_ids",
+     "//chrome/browser/ui/browser_window",
+--- a/chrome/browser/ui/views/bookmarks/saved_tab_groups/BUILD.gn
++++ b/chrome/browser/ui/views/bookmarks/saved_tab_groups/BUILD.gn
+@@ -17,6 +17,7 @@
+   ]
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/ui/tabs/saved_tab_groups",
+     "//chrome/browser/ui/toolbar",

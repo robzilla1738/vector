@@ -76,6 +76,7 @@ steps.extend([
     ('native-profile-switch-identity/native.patch', 'native-profile-switch-identity/manifest.json'),
     ('native-profile-switch-collections/native.patch', 'native-profile-switch-collections/manifest.json'),
     ('native-profile-switch-owner/transaction-map/bookmark-views.patch', 'native-profile-switch-owner/transaction-map/bookmark-views-manifest.json'),
+    ('native-profile-switch-build-registration/native.patch', 'native-profile-switch-build-registration/manifest.json'),
 ])
 
 def safe(path):
