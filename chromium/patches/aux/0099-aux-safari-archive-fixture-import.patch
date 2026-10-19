@@ -1,0 +1,991 @@
+diff --git a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+index 314819b..09db0bc 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -2,7 +2,7 @@ source_set("headers") { sources = [ "aux_browser_import_api.h" ] public_deps = [
+ source_set("aux_browser_import") {
+  sources = [ "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "import_webui.cc", "import_webui.h" ]
+  public_deps = [ ":headers" ]
+- deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
++ deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//components/user_data_importer/mojom", "//components/user_data_importer/utility:bookmarks", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", ":safari_archive", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
+ }
+ 
+ source_set("migrator") {
+@@ -21,3 +21,14 @@ executable("encrypted_probe") {
+  sources=[ "encrypted_probe.mm" ]
+  deps=[ ":migrator", "//base", "//crypto", "//third_party/sqlite" ]
+ }
++
++source_set("safari_archive") {
++ sources=[ "safari_archive.h", "safari_archive.cc" ]
++ deps=[ "//base", "//url", "//third_party/zlib/google:zip", "//components/password_manager/core/browser/import:csv" ]
++ public_deps=[ "//base" ]
++}
++executable("safari_archive_probe") {
++ testonly=true
++ sources=[ "safari_archive_probe.cc" ]
++ deps=[ ":safari_archive", "//base", "//third_party/zlib/google:zip" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.cc b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+index aa365d0..d39cdbb 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -5,12 +5,14 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++#include "chrome/browser/extensions/api/aux_browser_import/safari_archive.h"
+ #include "chrome/browser/history/history_service_factory.h"
+ #include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -26,9 +28,13 @@
+ #include "components/password_manager/core/browser/password_store/stored_credential.h"
+ #include "components/password_manager/core/common/password_manager_pref_names.h"
+ #include "components/prefs/pref_service.h"
++#include "components/prefs/scoped_user_pref_update.h"
++#include "components/user_data_importer/mojom/bookmark_html_parser.mojom.h"
++#include "content/public/browser/service_process_host.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "extensions/browser/event_router.h"
+ #include "extensions/browser/extension_event_histogram_value.h"
++#include "mojo/public/cpp/bindings/remote.h"
+ #include "net/cookies/canonical_cookie.h"
+ #include "net/cookies/cookie_access_result.h"
+ #include "net/cookies/cookie_options.h"
+@@ -109,7 +115,9 @@ class SecretLookup final : public password_manager::PasswordStoreConsumer {
+ };
+ struct ImportService::Job {
+   base::DictValue state;
+-  std::string extension, source;
++  std::string extension, source, archive;
++  std::string source_profile;
++  mojo::Remote<user_data_importer::mojom::BookmarkHtmlParser> parser;
+   bool firefox = false, cancelled = false;
+   base::FilePath path;
+   std::vector<std::string> categories;
+@@ -135,6 +143,7 @@ base::ListValue ImportService::PublicSources() const {
+   auto result = sources_.Clone();
+   for (auto& source : result) {
+     source.GetDict().Remove("nativeFirefox");
++    source.GetDict().Remove("nativeFixture");
+     if (auto* profiles = source.GetDict().FindList("profiles")) {
+       for (auto& profile : *profiles) {
+         profile.GetDict().Remove("nativePath");
+@@ -185,6 +194,8 @@ void ImportService::Invoke(std::string method,
+         job.cancelled = true;
+         job.rows.clear();
+         job.secret_lookup.reset();
++        job.parser.reset();
++        job.archive.clear();
+         job.state.Set("status", "cancelled");
+         job.state.Set("importedRows", job.imported);
+         Emit(job);
+@@ -205,10 +216,8 @@ void ImportService::Invoke(std::string method,
+              *profile_id = options.FindString("sourceProfileId");
+   const auto* categories = options.FindList("categories");
+   if (!source_id || !categories || categories->empty() ||
+-      categories->size() > 6 || options.Find("safariArchive")) {
+-    error(
+-        "Source profile and supported categories are required; archive import "
+-        "is unavailable");
++      categories->size() > 6) {
++    error("Source profile and supported categories are required");
+     return;
+   }
+   const base::DictValue *source = nullptr, *selected = nullptr;
+@@ -238,12 +247,49 @@ void ImportService::Invoke(std::string method,
+       }
+     }
+   }
+-  if (!source || !selected || !selected->FindString("nativePath")) {
++  if (!source || !selected ||
++      (*source_id != "safari" && !selected->FindString("nativePath"))) {
+     error("Selected source profile is unavailable");
+     return;
+   }
+   auto job = std::make_unique<Job>();
+-  job->path = base::FilePath(*selected->FindString("nativePath"));
++  if (*source_id == "safari") {
++    const auto* archive = options.FindDict("safariArchive");
++    const auto* name = archive ? archive->FindString("fileName") : nullptr;
++    const auto* data = archive ? archive->Find("data") : nullptr;
++    if (!name || name->size() > 255 || name->find('/') != name->npos ||
++        name->find('\\') != name->npos || name->find('\0') != name->npos ||
++        !base::EndsWith(*name, ".zip", base::CompareCase::INSENSITIVE_ASCII) ||
++        !data) {
++      error("Choose a Safari ZIP file before importing");
++      return;
++    }
++    constexpr size_t limit = 16 * 1024 * 1024;
++    if (data->is_blob() && !data->GetBlob().empty() &&
++        data->GetBlob().size() <= limit) {
++      job->archive.assign(reinterpret_cast<const char*>(data->GetBlob().data()),
++                          data->GetBlob().size());
++    } else if (data->is_list() && !data->GetList().empty() &&
++               data->GetList().size() <= limit) {
++      job->archive.reserve(data->GetList().size());
++      for (const auto& byte : data->GetList()) {
++        if (!byte.is_int() || byte.GetInt() < 0 || byte.GetInt() > 255) {
++          error("Safari ZIP contains invalid binary data");
++          return;
++        }
++        job->archive.push_back(static_cast<char>(byte.GetInt()));
++      }
++    } else {
++      error("Safari ZIP data must be nonempty binary data up to16MiB");
++      return;
++    }
++  } else {
++    if (options.Find("safariArchive")) {
++      error("Archive data is only valid for Safari import");
++      return;
++    }
++    job->path = base::FilePath(*selected->FindString("nativePath"));
++  }
+   if (job->path == profile_->GetPath()) {
+     error("Source and destination profiles must differ");
+     return;
+@@ -251,6 +297,7 @@ void ImportService::Invoke(std::string method,
+   job->firefox = source->FindBool("nativeFirefox").value_or(false);
+   job->extension = extension;
+   job->source = *source_id;
++  job->source_profile = *profile_id;
+   for (const auto& category : *categories) {
+     if (!category.is_string() ||
+         std::ranges::find(*source->FindList("categories"), category) ==
+@@ -268,6 +315,7 @@ void ImportService::Invoke(std::string method,
+   const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   job->state.Set("jobId", id);
+   job->state.Set("sourceId", *source_id);
++  job->state.Set("sourceProfileId", *profile_id);
+   job->state.Set("status", "queued");
+   job->state.Set("completed", 0);
+   job->state.Set("total", static_cast<int>(job->categories.size()));
+@@ -299,6 +347,26 @@ void ImportService::Next(std::string id) {
+     return;
+   }
+   if (job.category == job.categories.size()) {
++    job.archive.clear();
++    if (profile_->GetPrefs()->FindPreference(
++            "aux.browser.import.source_profiles")) {
++      ScopedListPrefUpdate update(profile_->GetPrefs(),
++                                  "aux.browser.import.source_profiles");
++      bool present = false;
++      for (const auto& previous : *update) {
++        if (previous.is_dict() && previous.GetDict().FindString("sourceId") &&
++            previous.GetDict().FindString("profileId") &&
++            *previous.GetDict().FindString("sourceId") == job.source &&
++            *previous.GetDict().FindString("profileId") == job.source_profile) {
++          present = true;
++        }
++      }
++      if (!present && update->size() < 128) {
++        update->Append(base::DictValue()
++                           .Set("sourceId", job.source)
++                           .Set("profileId", job.source_profile));
++      }
++    }
+     job.state.Set("status", "succeeded");
+     job.state.Set("importedRows", job.imported);
+     Emit(job);
+@@ -307,6 +375,14 @@ void ImportService::Next(std::string id) {
+   job.state.Set("status", "running");
+   job.state.Set("category", job.categories[job.category]);
+   Emit(job);
++  if (job.source == "safari") {
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadSafariArchive, job.archive,
++                       job.categories[job.category]),
++        base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));
++    return;
++  }
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+       base::BindOnce(&ReadAuthorizedCategory, job.path, job.firefox, job.source,
+@@ -321,16 +397,24 @@ void ImportService::DidRead(std::string id, base::DictValue data) {
+   if (job.cancelled) {
+     return;
+   }
+-  auto fail = [&](std::string error) {
+-    job.state.Set("status", "failed");
+-    job.state.Set("error", std::move(error));
+-    job.state.Set("importedRows", job.imported);
+-    Emit(job);
+-  };
++  auto fail = [&](std::string error) { FailJob(id, std::move(error)); };
+   if (const auto* error = data.FindString("error")) {
+     fail(*error);
+     return;
+   }
++  if (const auto* html = data.FindString("bookmarkHTML")) {
++    job.parser = content::ServiceProcessHost::Launch<
++        user_data_importer::mojom::BookmarkHtmlParser>(
++        content::ServiceProcessHost::Options()
++            .WithDisplayName(u"Aux bookmark import")
++            .Pass());
++    job.parser.set_disconnect_handler(
++        base::BindOnce(&ImportService::FailJob, weak_.GetWeakPtr(), id,
++                       "Bookmark parser process disconnected"));
++    job.parser->Parse(*html, base::BindOnce(&ImportService::DidParseBookmarks,
++                                            weak_.GetWeakPtr(), id));
++    return;
++  }
+   if (auto* secrets = data.FindList(job.categories[job.category])) {
+     if (job.categories[job.category] == "passwords" ||
+         job.categories[job.category] == "cookies") {
+@@ -474,6 +558,89 @@ void ImportService::DidRead(std::string id, base::DictValue data) {
+   fail("Source category did not produce valid migration records");
+ }
+ 
++void ImportService::FailJob(std::string id, std::string error) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    return;
++  }
++  job.archive.clear();
++  job.rows.clear();
++  job.parser.reset();
++  job.state.Set("status", "failed");
++  job.state.Set("error", std::move(error));
++  job.state.Set("importedRows", job.imported);
++  Emit(job);
++}
++void ImportService::DidParseBookmarks(
++    std::string id,
++    user_data_importer::BookmarkParser::ParsedBookmarks parsed) {
++  if (!profile_ || !jobs_.contains(id) || jobs_.at(id)->cancelled) {
++    return;
++  }
++  jobs_.at(id)->parser.reset();
++  if (parsed.bookmarks.size() + parsed.reading_list.size() > 20000) {
++    FailJob(id, "Safari bookmark row limit exceeded");
++    return;
++  }
++  base::ListValue rows;
++  bool invalid = false;
++  size_t decoded = 0;
++  auto convert = [&](const user_data_importer::ImportedBookmarkEntry& bookmark,
++                     bool reading_list) {
++    if (bookmark.path.size() > 64 || bookmark.title.size() > 1024 ||
++        bookmark.url.spec().size() > 8192) {
++      invalid = true;
++      return;
++    }
++    decoded += bookmark.title.size() * 3 + bookmark.url.spec().size() + 256;
++    for (const auto& segment : bookmark.path) {
++      if (segment.size() > 1024) {
++        invalid = true;
++        return;
++      }
++      decoded += segment.size() * 3;
++    }
++    if (decoded > 64 * 1024 * 1024) {
++      invalid = true;
++      return;
++    }
++    base::ListValue path;
++    if (reading_list) {
++      path.Append("Imported reading list");
++    }
++    for (const auto& segment : bookmark.path) {
++      path.Append(base::UTF16ToUTF8(segment));
++    }
++    base::DictValue row;
++    row.Set("root",
++            bookmark.in_toolbar && !reading_list ? "bookmark_bar" : "other");
++    row.Set("path", std::move(path));
++    row.Set("folder", bookmark.is_folder);
++    row.Set("title", base::UTF16ToUTF8(bookmark.title));
++    row.Set("url", bookmark.url.spec());
++    row.Set(
++        "createdWindowsMicros",
++        base::NumberToString(bookmark.creation_time.ToDeltaSinceWindowsEpoch()
++                                 .InMicroseconds()));
++    rows.Append(std::move(row));
++  };
++  for (const auto& row : parsed.bookmarks) {
++    convert(row, false);
++  }
++  for (const auto& row : parsed.reading_list) {
++    convert(row, true);
++  }
++  if (invalid) {
++    FailJob(
++        id,
++        "Safari bookmark hierarchy or decoded size exceeds supported limits");
++    return;
++  }
++  DidRead(id, base::DictValue().Set("bookmarks", std::move(rows)));
++}
+ void ImportService::ApplySecret(std::string id) {
+   if (!profile_ || !jobs_.contains(id)) {
+     return;
+@@ -531,6 +698,9 @@ void ImportService::ApplySecret(std::string id) {
+     form.date_last_used = Timestamp(row, "used", false);
+     form.date_password_modified = Timestamp(row, "modified", false);
+     form.times_used_in_html_form = row.FindInt("timesUsed").value_or(0);
++    if (const auto* note = row.FindString("note"); note && !note->empty()) {
++      form.SetPasswordNote(base::UTF8ToUTF16(*note));
++    }
+     row.Remove("secret");
+     job.secret_lookup = std::make_unique<SecretLookup>(
+         std::move(store), std::move(form),
+@@ -623,15 +793,12 @@ void ImportService::DidWriteSecret(std::string id,
+     return;
+   }
+   if (!accepted) {
+-    job.rows.clear();
+-    job.state.Set("status", "failed");
+-    job.state.Set("error",
+-                  "Destination rejected a credential or cookie; previously "
+-                  "accepted rows were retained");
+-    job.state.Set("importedRows", job.imported);
+-    Emit(job);
++    FailJob(id,
++            "Destination rejected a credential or cookie; previously accepted "
++            "rows were retained");
+     return;
+   }
++
+   ++job.row;
+   if (!skipped) {
+     ++job.imported;
+@@ -676,6 +843,16 @@ void ImportService::ApplyHistory(std::string id) {
+     }
+     const bool unix_time = row.FindBool("unixTime").value_or(false);
+     const auto time = Timestamp(row, "timeMicros", unix_time);
++    if (row.FindBool("summaryOnly").value_or(false)) {
++      const auto* title = row.FindString("title");
++      history->AddPageWithDetails(
++          GURL(*url), base::UTF8ToUTF16(title ? *title : std::string()),
++          row.FindInt("visitCount").value_or(1),
++          row.FindInt("typedCount").value_or(0), time, false,
++          history::SOURCE_SAFARI_IMPORTED);
++      ++job.imported;
++      continue;
++    }
+     const int transition = row.FindInt("transition").value_or(0);
+     const auto page_transition =
+         unix_time ? (transition == 2 ? ui::PAGE_TRANSITION_TYPED
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.h b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+index f5dad6f..15fdaec 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.h
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -6,6 +6,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/supports_user_data.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "components/user_data_importer/utility/bookmark_parser.h"
+ namespace aux_import {
+ class ImportService final : public base::SupportsUserData::Data {
+  public:
+@@ -24,6 +25,9 @@ class ImportService final : public base::SupportsUserData::Data {
+   void DidDiscover(Reply reply, base::ListValue);
+   void Next(std::string id);
+   void DidRead(std::string id, base::DictValue);
++  void DidParseBookmarks(std::string id,
++                         user_data_importer::BookmarkParser::ParsedBookmarks);
++  void FailJob(std::string id, std::string error);
+   void ApplySecret(std::string id);
+   void DidWriteSecret(std::string id, bool accepted, bool skipped = false);
+   void ApplyHistory(std::string id);
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_webui.cc b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+index a411347..c585d89 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+@@ -13,13 +13,13 @@
+ namespace aux_import {
+ namespace {
+ constexpr char kHTML[] =
+-    R"HTML(<!doctype html><meta charset=utf-8><title>Import browser data into Aux</title><style>body{font:16px system-ui;max-width:760px;margin:10vh auto;padding:24px;color-scheme:light dark}select,button{font:inherit;padding:10px;margin:8px 0}label{display:block;margin:12px 0}pre{white-space:pre-wrap}#error{color:#d33}fieldset{border:1px solid #8885;margin:16px 0}</style><h1>Import browser data</h1><p>Select a browser profile and the data you want to bring into this Aux profile. Source data is read from a consistent snapshot and is never changed.</p><label>Browser <select id=source></select></label><label>Profile <select id=profile></select></label><fieldset><legend>Available categories</legend><div id=categories></div></fieldset><p id=notice></p><label><input id=consent type=checkbox>I authorize reading the selected source profile and adding these categories to Aux.</label><button id=start>Start import</button><button id=cancel disabled>Cancel remaining work</button><button id=refresh>Refresh sources</button><p id=error role=alert></p><pre id=progress aria-live=polite></pre><script src=index.js></script>)HTML";
++    R"HTML(<!doctype html><meta charset=utf-8><title>Import browser data into Aux</title><style>body{font:16px system-ui;max-width:760px;margin:10vh auto;padding:24px;color-scheme:light dark}select,button{font:inherit;padding:10px;margin:8px 0}label{display:block;margin:12px 0}pre{white-space:pre-wrap}#error{color:#d33}fieldset{border:1px solid #8885;margin:16px 0}</style><h1>Import browser data</h1><p>Select a browser profile and the data you want to bring into this Aux profile. Source data is read from a consistent snapshot and is never changed.</p><label>Browser <select id=source></select></label><label>Profile <select id=profile></select></label><fieldset><legend>Available categories</legend><div id=categories></div></fieldset><label id=archiveLabel hidden>Safari ZIP <input id=archive type=file accept=".zip,application/zip"></label><p id=notice></p><label><input id=consent type=checkbox>I authorize reading the selected source profile and adding these categories to Aux.</label><button id=start>Start import</button><button id=cancel disabled>Cancel remaining work</button><button id=refresh>Refresh sources</button><p id=error role=alert></p><pre id=progress aria-live=polite></pre><script src=index.js></script>)HTML";
+ constexpr char kJS[] =
+     R"JS('use strict';const $=id=>document.getElementById(id),pending=new Map;let seq=0,sources=[],job=null;window.cr={webUIResponse:(id,ok,value)=>{const request=pending.get(id);if(request){pending.delete(id);ok?request.resolve(value):request.reject(Error(value))}}};function call(method,args=[]){return new Promise((resolve,reject)=>{const id='import-'+(++seq);pending.set(id,{resolve,reject});chrome.send('auxImport',[id,method,args])})}async function action(fn){$('error').textContent='';try{await fn()}catch(error){$('error').textContent=error.message}}
+- function choose(){const source=sources.find(x=>x.id===$('source').value);$('profile').replaceChildren();$('categories').replaceChildren();$('consent').checked=false;if(!source)return;for(const profile of source.profiles){const option=document.createElement('option');option.value=profile.id;option.textContent=profile.name;$('profile').append(option)}for(const category of source.categories??[]){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.value=category;check.checked=true;label.append(check,document.createTextNode(' '+category));$('categories').append(label)}$('notice').textContent=source.unsupportedReason??'Passwords, cookies, extensions and archive formats appear here only when their authorized native migrator is available.';$('start').disabled=!source.installed||!source.profiles.length||!(source.categories??[]).length;}
++ function choose(){const source=sources.find(x=>x.id===$('source').value);$('profile').replaceChildren();$('categories').replaceChildren();$('consent').checked=false;if(!source)return;$('archiveLabel').hidden=source.id!=='safari';for(const profile of source.profiles){const option=document.createElement('option');option.value=profile.id;option.textContent=profile.name;$('profile').append(option)}for(const category of source.categories??[]){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.value=category;check.checked=true;label.append(check,document.createTextNode(' '+category));$('categories').append(label)}$('notice').textContent=source.unsupportedReason??'Passwords, cookies, extensions and archive formats appear here only when their authorized native migrator is available.';$('start').disabled=!source.installed||!source.profiles.length||!(source.categories??[]).length;}
+  async function refresh(){sources=await call('getImportSources');$('source').replaceChildren();for(const source of sources){const option=document.createElement('option');option.value=source.id;option.textContent=source.name+(source.installed?'':' — not installed');option.disabled=!source.installed;$('source').append(option)}const first=sources.find(x=>x.installed&&x.profiles.length);if(first)$('source').value=first.id;choose()}
+  async function poll(){if(!job)return;const progress=await call('getImportProgress',[job]);$('progress').textContent=JSON.stringify(progress,null,2);const running=progress.status==='running'||progress.status==='queued';$('cancel').disabled=!running;$('start').disabled=running;if(running)setTimeout(()=>action(poll),300)}
+- $('source').onchange=choose;$('profile').onchange=()=>$('consent').checked=false;$('refresh').onclick=()=>action(refresh);$('start').onclick=()=>action(async()=>{if(!$('consent').checked)throw Error('Authorize the selected source before starting.');const categories=[...$('categories').querySelectorAll('input:checked')].map(x=>x.value);if(!categories.length)throw Error('Select at least one category.');const result=await call('startImport',[{sourceId:$('source').value,sourceProfileId:$('profile').value,categories}]);job=result.jobId;await poll()});$('cancel').onclick=()=>action(async()=>{if(job){await call('cancelImport',[job]);await poll()}});action(refresh);
++ $('archive').onchange=()=>$('consent').checked=false;$('source').onchange=choose;$('profile').onchange=()=>$('consent').checked=false;$('refresh').onclick=()=>action(refresh);$('start').onclick=()=>action(async()=>{if(!$('consent').checked)throw Error('Authorize the selected source before starting.');const categories=[...$('categories').querySelectorAll('input:checked')].map(x=>x.value);if(!categories.length)throw Error('Select at least one category.');const options={sourceId:$('source').value,sourceProfileId:$('profile').value,categories};if(options.sourceId==='safari'){const file=$('archive').files[0];if(!file||!file.size||file.size>16*1024*1024)throw Error('Choose a Safari ZIP up to16MiB.');options.safariArchive={fileName:file.name,data:Array.from(new Uint8Array(await file.arrayBuffer()))};}const result=await call('startImport',[options]);job=result.jobId;await poll()});$('cancel').onclick=()=>action(async()=>{if(job){await call('cancelImport',[job]);await poll()}});action(refresh);
+ )JS";
+ class Handler final : public content::WebUIMessageHandler {
+  public:
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator.cc b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+index 34e01b4..9b0f1b6 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -2,10 +2,14 @@
+ // Independent Chromium/Firefox snapshot migrators: adblock-import I1/I2.
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
+ 
++#include <sys/stat.h>
++#include <unistd.h>
++
+ #include <algorithm>
+ #include <cstring>
+ #include <memory>
+ 
++#include "base/environment.h"
+ #include "base/files/file_enumerator.h"
+ #include "base/files/file_util.h"
+ #include "base/json/json_reader.h"
+@@ -17,6 +21,38 @@
+ #include "third_party/sqlite/sqlite3.h"
+ namespace aux_import {
+ namespace {
++std::optional<base::FilePath> SourceHome(bool& fixture) {
++  fixture = false;
++#if !defined(OFFICIAL_BUILD)
++  if (const auto override =
++          base::Environment::Create()->GetVar("AUX_IMPORT_FIXTURE_HOME")) {
++    const base::FilePath requested(*override);
++    if (!requested.IsAbsolute() || base::IsLink(requested)) {
++      return {};
++    }
++    const auto root = base::MakeAbsoluteFilePath(requested);
++    base::FilePath temporary;
++    if (base::GetTempDir(&temporary)) {
++      temporary = base::MakeAbsoluteFilePath(temporary);
++    }
++    const bool inside_temp = (!temporary.empty() && temporary.IsParent(root)) ||
++                             base::FilePath("/private/tmp").IsParent(root);
++    struct stat status;
++    if (root.empty() || !inside_temp ||
++        stat(root.value().c_str(), &status) != 0 || !S_ISDIR(status.st_mode) ||
++        status.st_uid != geteuid() || (status.st_mode & 0077)) {
++      return {};
++    }
++    fixture = true;
++    return root;
++  }
++#endif
++  base::FilePath home;
++  if (!base::PathService::Get(base::DIR_HOME, &home)) {
++    return {};
++  }
++  return home;
++}
+ struct Family {
+   const char *id, *name, *path;
+   bool firefox;
+@@ -214,19 +250,37 @@ bool BookmarkTree(const base::DictValue& node,
+ }
+ }  // namespace
+ base::ListValue DiscoverSources() {
+-  base::FilePath home;
+-  if (!base::PathService::Get(base::DIR_HOME, &home)) {
++  bool fixture = false;
++  const auto home = SourceHome(fixture);
++  if (!home) {
+     return {};
+   }
+-  auto support = home.AppendASCII("Library/Application Support");
++  auto support = home->AppendASCII("Library/Application Support");
+   base::ListValue sources;
+   for (const auto& family : kFamilies) {
+     auto directory = support.AppendASCII(family.path);
+     base::DictValue source;
+     source.Set("id", family.id);
+     source.Set("name", family.name);
+-    source.Set("installed", base::DirectoryExists(directory) &&
+-                                InstalledSourceApplication(family.id));
++    const auto canonical = base::MakeAbsoluteFilePath(directory);
++    const bool available =
++        base::DirectoryExists(directory) &&
++        (!fixture || (!canonical.empty() && home->IsParent(canonical)));
++    source.Set("installed",
++               available && (fixture || InstalledSourceApplication(family.id)));
++    source.Set("nativeFixture", fixture);
++    if (!available) {
++      source.Set("profiles", base::ListValue());
++      source.Set("categories", base::ListValue());
++      sources.Append(std::move(source));
++      continue;
++    }
++    if (fixture) {
++      directory = canonical;
++      source.Set("unsupportedReason",
++                 "Fixture inventory does not access real "
++                 "source Safe Storage credentials.");
++    }
+     base::ListValue profiles;
+     if (family.firefox) {
+       base::FileEnumerator directories(directory, false,
+@@ -272,7 +326,7 @@ base::ListValue DiscoverSources() {
+     }
+     if (!family.firefox) {
+       categories.Append("preferences");
+-      if (SupportsSourceKey(family.id)) {
++      if (!fixture && SupportsSourceKey(family.id)) {
+         categories.Append("passwords");
+         categories.Append("cookies");
+       }
+@@ -285,10 +339,15 @@ base::ListValue DiscoverSources() {
+   safari.Set("id", "safari");
+   safari.Set("name", "Safari export");
+   safari.Set("installed", true);
+-  safari.Set("profiles", base::ListValue());
+-  safari.Set("categories", base::ListValue());
+-  safari.Set("unsupportedReason",
+-             "Safari archive migration is not available in this native build");
++  safari.Set("profiles",
++             base::ListValue().Append(
++                 base::DictValue()
++                     .Set("id", "archive")
++                     .Set("name", "All profiles in selected export")));
++  safari.Set("categories", base::ListValue()
++                               .Append("bookmarks")
++                               .Append("history")
++                               .Append("passwords"));
+   sources.Append(std::move(safari));
+   return sources;
+ }
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+index b3efe8c..7186a70 100644
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+@@ -2,6 +2,7 @@
+ #include <iostream>
+ 
+ #include "base/check.h"
++#include "base/environment.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
+@@ -96,6 +97,68 @@ int main() {
+   CHECK(aux_import::ReadCategory(profile, true, "cookies").FindString("error"));
+   CHECK(aux_import::ReadCategory(profile, false, "passwords")
+             .FindString("error"));
++#if !defined(OFFICIAL_BUILD)
++  base::ScopedTempDir fixture_home;
++  CHECK(fixture_home.CreateUniqueTempDir());
++  const auto home = base::MakeAbsoluteFilePath(fixture_home.GetPath());
++  CHECK(base::SetPosixFilePermissions(home, 0700));
++  const auto support = home.AppendASCII("Library/Application Support");
++  for (const auto* directory :
++       {"Google/Chrome", "BraveSoftware/Brave-Browser", "Arc/User Data",
++        "Dia/User Data", "com.openai.atlas", "Comet", "net.imput.helium",
++        "Microsoft Edge"}) {
++    const auto root = support.AppendASCII(directory);
++    CHECK(base::CreateDirectory(root.AppendASCII("Default")));
++    CHECK(base::WriteFile(
++        root.AppendASCII("Local State"),
++        R"JSON({"profile":{"info_cache":{"Default":{"name":"Fixture profile"}}}})JSON"));
++  }
++  const auto firefox_root =
++      support.AppendASCII("Firefox/Profiles/fixture-profile");
++  CHECK(base::CreateDirectory(firefox_root));
++  CHECK(base::WriteFile(firefox_root.AppendASCII("places.sqlite"), ""));
++  auto environment = base::Environment::Create();
++  CHECK(environment->SetVar("AUX_IMPORT_FIXTURE_HOME", home.value()));
++  auto sources = aux_import::DiscoverSources();
++  CHECK_EQ(sources.size(), 10u);
++  for (const auto& entry : sources) {
++    const auto& source = entry.GetDict();
++    const auto* id = source.FindString("id");
++    CHECK(id);
++    CHECK(source.FindBool("installed").value_or(false));
++    CHECK_EQ(source.FindList("profiles")->size(), 1u);
++    if (*id == "safari") {
++      continue;
++    }
++    CHECK(source.FindBool("nativeFixture").value_or(false));
++    for (const auto& category : *source.FindList("categories")) {
++      CHECK_NE(category.GetString(), "passwords");
++    }
++    if (*id != "firefox") {
++      for (const auto& category : *source.FindList("categories")) {
++        CHECK_NE(category.GetString(), "cookies");
++      }
++    }
++    const auto* native_path =
++        (*source.FindList("profiles"))[0].GetDict().FindString("nativePath");
++    CHECK(native_path);
++    CHECK(home.IsParent(base::FilePath(*native_path)));
++  }
++  base::ScopedTempDir outside;
++  CHECK(outside.CreateUniqueTempDir());
++  const auto chrome = support.AppendASCII("Google/Chrome"),
++             moved = outside.GetPath().AppendASCII("fixture-chrome");
++  CHECK(base::Move(chrome, moved));
++  CHECK(base::CreateSymbolicLink(moved, chrome));
++  sources = aux_import::DiscoverSources();
++  for (const auto& entry : sources) {
++    if (*entry.GetDict().FindString("id") == "chrome") {
++      CHECK(entry.GetDict().FindList("profiles")->empty());
++    }
++  }
++  CHECK(environment->SetVar("AUX_IMPORT_FIXTURE_HOME", "/"));
++  CHECK(aux_import::DiscoverSources().empty());
++#endif
+   std::cout
+       << "Read-only native Chromium/Firefox snapshot, hierarchy, timestamp, "
+          "source-count and preference allowlist probes passed\n";
+diff --git a/b/chrome/browser/extensions/api/aux_browser_import/safari_archive.cc b/chrome/browser/extensions/api/aux_browser_import/safari_archive.cc
+new file mode 100644
+index 0000000..1c8dee8
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/safari_archive.cc
+@@ -0,0 +1,232 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Approved native/adblock-import I1/I2; Chromium public parser APIs and the
++// Safari portability schema documented by Apple, not reference source code.
++#include "chrome/browser/extensions/api/aux_browser_import/safari_archive.h"
++
++#include <algorithm>
++#include <cmath>
++#include <limits>
++#include <set>
++#include <vector>
++
++#include "base/files/file_path.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "components/password_manager/core/browser/import/csv_password_sequence.h"
++#include "third_party/zlib/google/zip_reader.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++namespace aux_import {
++namespace {
++constexpr size_t kArchiveLimit = 16 * 1024 * 1024;
++constexpr size_t kOutputLimit = 32 * 1024 * 1024;
++bool SafePath(std::string_view raw) {
++  if (raw.empty() || raw.size() > 1024 || !base::IsStringUTF8(raw) ||
++      raw.find('\0') != raw.npos || raw.find('\\') != raw.npos ||
++      raw.find(':') != raw.npos) {
++    return false;
++  }
++  const auto path = base::FilePath::FromUTF8Unsafe(raw);
++  if (path.IsAbsolute() || path.ReferencesParent()) {
++    return false;
++  }
++  for (const auto& segment : path.GetComponents()) {
++    if (segment == "." || segment == "..") {
++      return false;
++    }
++  }
++  return true;
++}
++std::optional<int64_t> Integer(const base::DictValue& row,
++                               std::string_view key) {
++  const auto* value = row.Find(key);
++  if (!value) {
++    return {};
++  }
++  if (value->is_int()) {
++    return value->GetInt();
++  }
++  if (!value->is_double()) {
++    return {};
++  }
++  const double number = value->GetDouble();
++  if (!std::isfinite(number) || number < 0 || number > 9007199254740991.0 ||
++      std::floor(number) != number) {
++    return {};
++  }
++  return static_cast<int64_t>(number);
++}
++base::DictValue Failure(std::string reason) {
++  return base::DictValue().Set("error", std::move(reason));
++}
++}  // namespace
++base::DictValue ReadSafariArchive(std::string bytes, std::string category) {
++  if (bytes.empty() || bytes.size() > kArchiveLimit) {
++    return Failure("Safari ZIP must be between 1 byte and 16 MiB");
++  }
++  if (category != "bookmarks" && category != "passwords" &&
++      category != "history") {
++    return Failure("This Safari export category is not supported");
++  }
++  zip::ZipReader archive;
++  if (!archive.OpenFromString(bytes)) {
++    return Failure("Selected file is not a readable ZIP archive");
++  }
++  struct File {
++    std::string name, text;
++  };
++  std::vector<File> files;
++  std::set<base::FilePath> seen;
++  size_t entries = 0, output = 0;
++  int64_t declared = 0;
++  while (const auto* entry = archive.Next()) {
++    if (++entries > 1024 || entry->is_unsafe || entry->is_symbolic_link ||
++        !SafePath(entry->path_in_original_encoding) ||
++        entry->path.IsAbsolute() || entry->path.ReferencesParent()) {
++      return Failure(
++          "Safari ZIP contains an unsafe path, link or too many entries");
++    }
++    if (entry->is_encrypted) {
++      return Failure(
++          "Encrypted ZIP archives are not supported; choose an unencrypted "
++          "Safari export");
++    }
++    if (entry->original_size < 0 || entry->original_size > 128 * 1024 * 1024 ||
++        declared > 128 * 1024 * 1024 - entry->original_size) {
++      return Failure("Safari ZIP exceeds the declared content size limit");
++    }
++    declared += entry->original_size;
++    if (entry->is_directory) {
++      continue;
++    }
++    if (!seen.insert(entry->path).second) {
++      return Failure("Safari ZIP contains duplicate file paths");
++    }
++    const auto name = base::ToLowerASCII(entry->path.BaseName().value());
++    const bool chosen =
++        category == "bookmarks" ? name == "bookmarks.html"
++        : category == "passwords"
++            ? name == "passwords.csv"
++            : name == "history.json" ||
++                  (name.starts_with("history - ") && name.ends_with(".json"));
++    if (!chosen) {
++      continue;
++    }
++    if (files.size() >= 128 || (category != "history" && !files.empty())) {
++      return Failure(
++          "Safari ZIP contains duplicate or excessive selected category files");
++    }
++    std::string text;
++    if (!archive.ExtractCurrentEntryToString(
++            std::min<size_t>(8 * 1024 * 1024, kOutputLimit - output), &text)) {
++      return Failure(
++          "Safari ZIP content is corrupt or exceeds the decompressed size "
++          "limit");
++    }
++    output += text.size();
++    if (!base::IsStringUTF8(text) || text.find('\0') != text.npos) {
++      return Failure("Safari category file contains invalid text");
++    }
++    files.push_back({entry->path.value(), std::move(text)});
++  }
++  if (!archive.ok()) {
++    return Failure("Safari ZIP directory or checksum is invalid");
++  }
++  if (files.empty()) {
++    return Failure("Selected Safari export does not contain this category");
++  }
++  if (category == "bookmarks") {
++    const auto lower = base::ToLowerASCII(files.front().text);
++    if (lower.find("netscape-bookmark-file") == lower.npos ||
++        lower.find("<dl") == lower.npos) {
++      return Failure(
++          "Safari bookmark file does not have a supported export envelope");
++    }
++    return base::DictValue().Set("bookmarkHTML", std::move(files.front().text));
++  }
++  base::ListValue rows;
++  if (category == "passwords") {
++    password_manager::CSVPasswordSequence csv(std::move(files.front().text));
++    if (csv.result() != password_manager::CSVPassword::Status::kOK) {
++      return Failure("Safari password CSV has an invalid header");
++    }
++    size_t decoded = 0;
++    for (const auto& item : csv) {
++      if (rows.size() >= 50000 ||
++          item.GetParseStatus() != password_manager::CSVPassword::Status::kOK ||
++          !item.GetURL().has_value() ||
++          !item.GetURL().value().SchemeIsHTTPOrHTTPS() ||
++          item.GetPassword().empty() || item.GetPassword().size() > 4096 ||
++          item.GetUsername().size() > 1024 || item.GetNote().size() > 16384) {
++        return Failure(
++            "Safari password CSV contains an invalid record or exceeds row "
++            "limits");
++      }
++      const auto& url = item.GetURL().value();
++      decoded += url.spec().size() + item.GetUsername().size() +
++                 item.GetPassword().size() + item.GetNote().size() + 256;
++      if (decoded > kOutputLimit) {
++        return Failure("Safari password CSV exceeds the decoded size limit");
++      }
++      base::DictValue row;
++      row.Set("url", url.spec());
++      row.Set("action", "");
++      row.Set("realm", url::Origin::Create(url).GetURL().spec());
++      row.Set("usernameElement", "");
++      row.Set("passwordElement", "");
++      row.Set("username", item.GetUsername());
++      row.Set("secret", item.GetPassword());
++      row.Set("note", item.GetNote());
++      row.Set("scheme", 0);
++      row.Set("timesUsed", 0);
++      row.Set("created", "0");
++      row.Set("used", "0");
++      row.Set("modified", "0");
++      rows.Append(std::move(row));
++    }
++    return base::DictValue().Set("passwords", std::move(rows));
++  }
++  size_t decoded = 0;
++  for (const auto& file : files) {
++    auto root = base::JSONReader::ReadDict(file.text, base::JSON_PARSE_RFC);
++    const auto* metadata = root ? root->FindDict("metadata") : nullptr;
++    const auto* type = metadata ? metadata->FindString("data_type") : nullptr;
++    const auto* history = root ? root->FindList("history") : nullptr;
++    if (!type || *type != "history" || !history) {
++      return Failure("Safari history export has invalid metadata or records");
++    }
++    for (const auto& item : *history) {
++      if (!item.is_dict() || rows.size() >= 200000) {
++        return Failure("Safari history record or row limit is invalid");
++      }
++      const auto& entry = item.GetDict();
++      const auto* url = entry.FindString("url");
++      const auto* title = entry.FindString("title");
++      const auto time = Integer(entry, "time_usec"),
++                 count = Integer(entry, "visit_count");
++      if (!url || url->size() > 8192 || (title && title->size() > 8192) ||
++          !GURL(*url).SchemeIsHTTPOrHTTPS() || !time || *time <= 0 || !count ||
++          *count <= 0 || *count > std::numeric_limits<int>::max()) {
++        return Failure("Safari history has an invalid URL, timestamp or count");
++      }
++      decoded += url->size() + (title ? title->size() : 0) + 256;
++      if (decoded > 64 * 1024 * 1024) {
++        return Failure("Safari history exceeds the decoded row size limit");
++      }
++      base::DictValue row;
++      row.Set("url", *url);
++      row.Set("title", title ? *title : "");
++      row.Set("timeMicros", base::NumberToString(*time));
++      row.Set("unixTime", true);
++      row.Set("summaryOnly", true);
++      row.Set("visitCount", static_cast<int>(*count));
++      row.Set("typedCount", 0);
++      row.Set("transition", 0);
++      row.Set("sourceProfile", file.name);
++      rows.Append(std::move(row));
++    }
++  }
++  return base::DictValue().Set("visits", std::move(rows));
++}
++}  // namespace aux_import
+diff --git a/b/chrome/browser/extensions/api/aux_browser_import/safari_archive.h b/chrome/browser/extensions/api/aux_browser_import/safari_archive.h
+new file mode 100644
+index 0000000..3b30dd1
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/safari_archive.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SAFARI_ARCHIVE_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SAFARI_ARCHIVE_H_
++#include <string>
++
++#include "base/values.h"
++namespace aux_import {
++// Worker only. No filesystem extraction: validate all entries, then decompress
++// only the explicitly selected category with bounded output. Bookmark HTML
++// must subsequently be parsed by Chromium's sandboxed utility service.
++base::DictValue ReadSafariArchive(std::string bytes, std::string category);
++}  // namespace aux_import
++#endif
+diff --git a/b/chrome/browser/extensions/api/aux_browser_import/safari_archive_probe.cc b/chrome/browser/extensions/api/aux_browser_import/safari_archive_probe.cc
+new file mode 100644
+index 0000000..886a521
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/safari_archive_probe.cc
+@@ -0,0 +1,82 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include <iostream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "chrome/browser/extensions/api/aux_browser_import/safari_archive.h"
++#include "third_party/zlib/google/zip.h"
++namespace {
++std::string Archive(const std::string& name, const std::string& text) {
++  base::ScopedTempDir temp;
++  CHECK(temp.CreateUniqueTempDir());
++  auto input = temp.GetPath().AppendASCII("input");
++  CHECK(base::CreateDirectory(input));
++  CHECK(base::WriteFile(input.AppendASCII(name), text));
++  auto output = temp.GetPath().AppendASCII("fixture.zip");
++  CHECK(zip::Zip(input, output, true));
++  std::string bytes;
++  CHECK(base::ReadFileToString(output, &bytes));
++  return bytes;
++}
++}  // namespace
++int main() {
++  auto history = aux_import::ReadSafariArchive(
++      Archive(
++          "History - Work.json",
++          R"JSON({"metadata":{"data_type":"history","schema_version":1},"history":[{"url":"https://fixture.test/visit","title":"Safari fixture","time_usec":1700000000000123,"visit_count":7}]})JSON"),
++      "history");
++  CHECK(!history.FindString("error"));
++  const auto& row = (*history.FindList("visits"))[0].GetDict();
++  CHECK_EQ(*row.FindString("timeMicros"), "1700000000000123");
++  CHECK_EQ(row.FindInt("visitCount").value_or(0), 7);
++  CHECK(row.FindBool("summaryOnly").value_or(false));
++  auto passwords = aux_import::ReadSafariArchive(
++      Archive("Passwords.csv",
++              "Title,URL,Username,Password,Notes\nFixture,https://fixture.test/"
++              ",fixture-user,fixture-password,fixture-note\n"),
++      "passwords");
++  CHECK(!passwords.FindString("error"));
++  const auto& password = (*passwords.FindList("passwords"))[0].GetDict();
++  CHECK_EQ(*password.FindString("secret"), "fixture-password");
++  CHECK_EQ(*password.FindString("username"), "fixture-user");
++  auto html = aux_import::ReadSafariArchive(
++      Archive("Bookmarks.html",
++              "<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><DT><A "
++              "HREF=\"https://fixture.test/\">Fixture</A></DL>"),
++      "bookmarks");
++  CHECK(html.FindString("bookmarkHTML"));
++  CHECK(aux_import::ReadSafariArchive("not a ZIP", "history")
++            .FindString("error"));
++  CHECK(aux_import::ReadSafariArchive(Archive("Bookmarks.html", "invalid file"),
++                                      "bookmarks")
++            .FindString("error"));
++  CHECK(aux_import::ReadSafariArchive(
++            Archive("History.json",
++                    "{\"metadata\":{\"data_type\":\"wrong\"},\"history\":[]}"),
++            "history")
++            .FindString("error"));
++  CHECK(aux_import::ReadSafariArchive(
++            Archive("Passwords.csv", "not,a,password,header\n1,2,3,4"),
++            "passwords")
++            .FindString("error"));
++  CHECK(aux_import::ReadSafariArchive(
++            Archive("Bookmarks.html",
++                    "<!DOCTYPE NETSCAPE-Bookmark-file-1><DL></DL>"),
++            "passwords")
++            .FindString("error"));
++  auto traversal = Archive("SAFE.txt", "fixture");
++  for (size_t offset = 0;
++       (offset = traversal.find("SAFE.txt", offset)) != std::string::npos;
++       offset += 8) {
++    traversal.replace(offset, 8, "../x.txt");
++  }
++  CHECK(
++      aux_import::ReadSafariArchive(traversal, "history").FindString("error"));
++  CHECK(aux_import::ReadSafariArchive(
++            Archive("Passwords.csv", std::string(8 * 1024 * 1024 + 1, 'x')),
++            "passwords")
++            .FindString("error"));
++  std::cout << "Disposable Safari ZIP history timestamps/counts, password CSV, "
++               "bookmark envelope, malformed/missing category probes passed\n";
++}
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+index 3bdc8df..2abcac3 100644
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -75,6 +75,7 @@ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref("aux.browser.preload_new_tab", true);
+   registry->RegisterListPref("aux.browser.sidebar.expanded_bookmark_folders");
+   registry->RegisterListPref("aux.browser.sidebar.collapsed_sections");
++  registry->RegisterListPref("aux.browser.import.source_profiles");
+   registry->RegisterStringPref(kInsertion, "bottom");
+   registry->RegisterBooleanPref(kShrink, true);
+   registry->RegisterBooleanPref(kMru, true);
