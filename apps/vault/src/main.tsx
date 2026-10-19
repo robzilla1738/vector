@@ -1,5 +1,6 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: Immutable versioned records and import previews may repeat field labels; updated revisions remount the parent.
 import { Button, Dialog, Empty, ErrorNotice, Mark } from '@aux/ui';
+import { AuthGate } from '@aux/ui/security';
 import {
   Copy,
   Eye,
@@ -21,6 +22,7 @@ import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
 function App() {
   const [accountId, setAccountId] = useState<number>();
   const [status, setStatus] = useState<VaultStatus>();
+  const [authGate, setAuthGate] = useState<{ initialized: boolean }>();
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -161,14 +163,19 @@ function App() {
         )}
       </main>
     );
-  if (status.locked)
+  if (status.locked || authGate)
     return (
       <AuthGate
-        key={`${accountId}.${status.initialized}`}
+        key={accountId}
+        rpc={rpc}
         accountId={accountId}
-        initialized={status.initialized}
-        onUnlocked={() => refresh(accountId)}
+        initialized={authGate?.initialized ?? status.initialized}
+        onUnlocked={async () => {
+          await refresh(accountId);
+          setAuthGate(undefined);
+        }}
         error={error}
+        onStarted={() => setAuthGate({ initialized: status.initialized })}
       />
     );
   const rows = (snapshot?.items ?? []).filter(
@@ -375,269 +382,6 @@ function App() {
         />
       )}
     </div>
-  );
-}
-
-function AuthGate({
-  accountId,
-  initialized,
-  onUnlocked,
-  error: parentError,
-}: {
-  accountId: number;
-  initialized: boolean;
-  onUnlocked: () => Promise<void>;
-  error: string;
-}) {
-  const [mode, setMode] = useState(initialized ? 'unlock' : 'setup');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [recovery, setRecovery] = useState('');
-  const [issuedKey, setIssuedKey] = useState('');
-  const [verification, setVerification] = useState('');
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-  const [pending, setPending] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [biometry, setBiometry] = useState<{
-    available: boolean;
-    enrolled: boolean;
-  }>();
-  useEffect(() => {
-    let active = true;
-    void rpc<{ available: boolean; enrolled: boolean }>(
-      'passwordManager.auth.biometricStatus',
-      { accountId },
-    )
-      .then((value) => {
-        if (active) setBiometry(value);
-      })
-      .catch((error) => {
-        if (active) setError(error.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [accountId]);
-  async function submit() {
-    if (mode !== 'unlock' && password !== confirmPassword) {
-      setError('The passwords do not match.');
-      return;
-    }
-    setPending(true);
-    setError('');
-    try {
-      const procedure =
-        mode === 'setup'
-          ? 'passwordManager.auth.setup'
-          : mode === 'recover'
-            ? 'passwordManager.auth.recoverPassword'
-            : 'passwordManager.auth.unlock';
-      const result = await rpc<{ recoveryKey?: string }>(
-        procedure,
-        {
-          accountId,
-          ...(mode === 'recover'
-            ? { recoveryKey: recovery, newPassword: password }
-            : { password }),
-        },
-        true,
-      );
-      setPassword('');
-      setConfirmPassword('');
-      setRecovery('');
-      if (result.recoveryKey) {
-        setIssuedKey(result.recoveryKey);
-        return;
-      }
-      await onUnlocked();
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'The Vault could not be unlocked.',
-      );
-    } finally {
-      setPending(false);
-    }
-  }
-  if (issuedKey)
-    return (
-      <main className="vault-gate recovery">
-        <h2>Save your recovery key</h2>
-        <p>
-          Keep this key somewhere safe. It is required if you lose your Vault
-          password. A replacement key invalidates your previous key.
-        </p>
-        <code className="recovery-key">{issuedKey}</code>
-        <div className="row">
-          <Button
-            onClick={() =>
-              void navigator.clipboard
-                .writeText(issuedKey)
-                .then(() => setCopied(true))
-                .catch(() => setError('The recovery key could not be copied.'))
-            }
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
-          <Button
-            onClick={() => {
-              const blob = new Blob([`${issuedKey}\n`], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const anchor = document.createElement('a');
-              anchor.href = url;
-              anchor.download = 'aux-vault-recovery.txt';
-              anchor.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-            }}
-          >
-            Save file
-          </Button>
-        </div>
-        <label className="row">
-          <input
-            type="checkbox"
-            checked={saved}
-            onChange={(event) => setSaved(event.target.checked)}
-          />
-          I saved this key somewhere safe.
-        </label>
-        <label>
-          Enter the last six characters to verify your saved key
-          <input
-            className="field"
-            autoComplete="off"
-            value={verification}
-            onChange={(event) => setVerification(event.target.value)}
-          />
-        </label>
-        {error && <ErrorNotice error={error} />}
-        <Button
-          className="primary"
-          disabled={!saved || verification !== issuedKey.slice(-6) || pending}
-          onClick={() => {
-            setPending(true);
-            void rpc(
-              'passwordManager.auth.verifyRecovery',
-              { accountId, recoveryKey: issuedKey },
-              true,
-            )
-              .then(() => {
-                setIssuedKey('');
-                return onUnlocked();
-              })
-              .catch((error) => setError(error.message))
-              .finally(() => setPending(false));
-          }}
-        >
-          Finish
-        </Button>
-      </main>
-    );
-  return (
-    <main className="vault-gate">
-      <Mark />
-      <h2>
-        {mode === 'setup'
-          ? 'Set up your local Vault'
-          : mode === 'recover'
-            ? 'Recover vault access'
-            : 'Unlock your vault'}
-      </h2>
-      <form
-        className="stack"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        {mode === 'recover' && (
-          <label>
-            Recovery key
-            <input
-              className="field"
-              type="password"
-              required
-              autoComplete="off"
-              value={recovery}
-              onChange={(event) => setRecovery(event.target.value.trim())}
-            />
-          </label>
-        )}
-        <label>
-          {mode === 'unlock' ? 'Vault password' : 'New Vault password'}
-          <input
-            className="field"
-            type="password"
-            autoComplete={
-              mode === 'unlock' ? 'current-password' : 'new-password'
-            }
-            minLength={mode === 'unlock' ? 1 : 8}
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        {mode !== 'unlock' && (
-          <label>
-            Repeat the new password
-            <input
-              className="field"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-          </label>
-        )}
-        {(error || parentError) && <ErrorNotice error={error || parentError} />}
-        <Button type="submit" className="primary" disabled={pending}>
-          {pending
-            ? 'Opening…'
-            : mode === 'unlock'
-              ? 'Unlock'
-              : mode === 'setup'
-                ? 'Create Vault'
-                : 'Recover access'}
-        </Button>
-        {mode === 'unlock' && biometry?.available && biometry.enrolled && (
-          <Button
-            disabled={pending}
-            onClick={() => {
-              setPending(true);
-              setError('');
-              void rpc(
-                'passwordManager.auth.biometricUnlock',
-                { accountId },
-                true,
-              )
-                .then(onUnlocked)
-                .catch((error) => setError(error.message))
-                .finally(() => setPending(false));
-            }}
-          >
-            Use Touch ID
-          </Button>
-        )}
-        {initialized && (
-          <Button
-            className="ghost"
-            onClick={() => {
-              setMode(mode === 'unlock' ? 'recover' : 'unlock');
-              setError('');
-              setPassword('');
-              setConfirmPassword('');
-            }}
-          >
-            {mode === 'unlock' ? 'Use a recovery key' : 'Back to unlock'}
-          </Button>
-        )}
-      </form>
-      <small>Your encrypted Vault stays in your local Aux account.</small>
-    </main>
   );
 }
 

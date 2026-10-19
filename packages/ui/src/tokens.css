@@ -196,3 +196,59 @@ pre {
     transition: none;
   }
 }
+
+.aux-security-gate {
+  height: 432px;
+  overflow: auto;
+  padding: 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.aux-security-gate > svg {
+  width: 40px;
+  height: 40px;
+}
+.aux-security-gate h1,
+.aux-security-gate h2 {
+  font-size: 22px;
+  line-height: 28px;
+  margin: 0;
+  text-align: center;
+}
+.aux-security-gate form {
+  width: 100%;
+  max-width: 320px;
+}
+.aux-security-gate label,
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.aux-security-gate > small {
+  text-align: center;
+  font-size: 11px;
+}
+.aux-security-gate .field {
+  width: 100%;
+}
+.aux-security-gate.recovery {
+  align-items: stretch;
+  padding: 24px 32px;
+}
+.recovery p {
+  font-size: 12px;
+}
+.recovery-key {
+  padding: 12px;
+  background: var(--secondary);
+  border-radius: 11.2px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.recovery label.row {
+  flex-direction: row;
+}

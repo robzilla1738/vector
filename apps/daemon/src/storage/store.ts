@@ -153,17 +153,37 @@ export class Store {
     ).map((r) => JSON.parse(r.data));
   }
   bind(context: ProfileContext & { localUserId?: string | undefined }) {
-    const previous = this.bindings().find(
-      (b) =>
-        b.profileId === context.profileId ||
-        (context.profilePath && b.profilePath === context.profilePath),
+    const path = context.profilePath ? resolve(context.profilePath) : undefined;
+    const bindings = this.bindings();
+    const sameId = bindings.find(
+      (binding) => binding.profileId === context.profileId,
     );
+    if (sameId?.profilePath && path && resolve(sameId.profilePath) !== path)
+      throw new TRPCError({
+        code: 'CONFLICT',
+        message: 'Profile identity is already bound to another directory.',
+      });
+    const previous = path
+      ? bindings.find(
+          (binding) =>
+            binding.profilePath && resolve(binding.profilePath) === path,
+        )
+      : sameId;
     const accountId =
       context.accountId ??
       previous?.accountId ??
       this.add('Local account', 'local').id;
     this.requireAccount(accountId);
-    const binding = { ...previous, ...context, accountId };
+    const binding = {
+      ...previous,
+      ...context,
+      ...(path ? { profilePath: path } : {}),
+      accountId,
+    };
+    if (previous && previous.profileId !== context.profileId)
+      this.db
+        .prepare('DELETE FROM bindings WHERE profileId=?')
+        .run(previous.profileId);
     this.db
       .prepare('INSERT OR REPLACE INTO bindings VALUES (?,?)')
       .run(context.profileId, JSON.stringify(binding));

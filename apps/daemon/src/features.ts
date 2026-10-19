@@ -14,6 +14,13 @@ import { createReplService } from './cli/repl.js';
 import { accountSkills, createSkillRouters } from './cli/skills.js';
 import { createContextRouter } from './context/index.js';
 import { createVaultBiometryAdapter, HelperClient } from './helpers/client.js';
+import {
+  computerUseTools,
+  createHelperCaptureAdapter,
+  createHelperRouter,
+  createNativeImportRouter,
+  createPasswordImporterAdapter,
+} from './helpers/index.js';
 import { createHistoryRouter } from './history/index.js';
 import type { DaemonServices } from './http/server.js';
 import { installSessionHttp } from './http/sessions.js';
@@ -27,6 +34,7 @@ export function createFeatures() {
   let engine: AgentEngine | undefined;
   let memory: MemoryService | undefined;
   let helper: HelperClient | undefined;
+  let importer: HelperClient | undefined;
   let vault: VaultService | undefined;
   let repl: ReturnType<typeof createReplService> | undefined;
   let routineTimer: NodeJS.Timeout | undefined;
@@ -49,7 +57,10 @@ export function createFeatures() {
             .map((item) => `${item.name}: ${item.description}`)
             .join('\n')}\n${active.map((item) => item.body).join('\n\n')}`;
         },
-        tools: (session) => ({
+        tools: (session, signal) => ({
+          ...(engine && helper
+            ? computerUseTools(engine, helper, session, signal)
+            : {}),
           ...(memory ? memoryTools(memory, session) : {}),
           skill_load: {
             description:
@@ -76,7 +87,6 @@ export function createFeatures() {
       const activeEngine = engine;
       memory = new MemoryService(services.store, activeEngine);
       const history = new BrowsingHistory(memory);
-      const context = new ContextService(memory);
       const inbox = new InboxService(services.store, activeEngine);
       if (process.env.AUX_HELPER_PATH) {
         helper = new HelperClient(
@@ -84,6 +94,15 @@ export function createFeatures() {
           join(services.store.home, 'helper-artifacts'),
         );
       }
+      const context = new ContextService(
+        memory,
+        helper ? createHelperCaptureAdapter(helper) : undefined,
+      );
+      if (process.env.AUX_IMPORTER_PATH)
+        importer = new HelperClient(
+          process.env.AUX_IMPORTER_PATH,
+          join(services.store.home, 'importer-artifacts'),
+        );
       vault = new VaultService(
         services.store,
         helper ? createVaultBiometryAdapter(helper) : undefined,
@@ -104,6 +123,18 @@ export function createFeatures() {
       return {
         ...createAgentRouters(services, activeEngine),
         ...createVaultRouters(services, vault),
+        ...(importer
+          ? {
+              nativeImport: createNativeImportRouter(
+                services,
+                vault,
+                createPasswordImporterAdapter(importer),
+              ),
+            }
+          : {}),
+        ...(helper
+          ? { computerUse: createHelperRouter(services, helper) }
+          : {}),
         memory: createMemoryRouter(services, memory),
         contextAwareness: createContextRouter(services, context),
         inbox: createInboxRouter(services, inbox),
@@ -123,6 +154,7 @@ export function createFeatures() {
       await repl?.close();
       vault?.close();
       await helper?.close();
+      await importer?.close();
       await engine?.close();
     },
   };

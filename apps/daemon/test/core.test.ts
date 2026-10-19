@@ -69,6 +69,22 @@ test('accounts, profile identity, deleted identity and settings survive restart'
       store.bind({ profileId: 'profile-a', profilePath: '/disposable/A' }).id,
       a,
     );
+    assert.throws(
+      () =>
+        store.bind({ profileId: 'profile-a', profilePath: '/disposable/B' }),
+      /already bound to another directory/,
+    );
+    assert.equal(
+      store.bind({ profileId: 'profile-renamed', profilePath: '/disposable/A' })
+        .id,
+      a,
+    );
+    assert.equal(
+      store
+        .bindings()
+        .filter((binding) => binding.profilePath === '/disposable/A').length,
+      1,
+    );
     await store.deleteAccount(b);
     assert.ok(store.add('New', 'local').id > b);
     assert.throws(() => store.safeFile(a, '../outside'));

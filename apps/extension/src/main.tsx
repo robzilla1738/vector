@@ -1,4 +1,5 @@
 import { Button, ErrorNotice, Mark } from '@aux/ui';
+import { AuthGate } from '@aux/ui/security';
 import {
   createHashHistory,
   createRootRoute,
@@ -22,14 +23,52 @@ type Account = Awaited<ReturnType<typeof resolveAccount>>;
 function Shell() {
   const [account, setAccount] = useState<Account>();
   const [error, setError] = useState('');
+  const [gate, setGate] = useState<{ initialized: boolean }>();
   const path = useLocation().pathname;
   function connect() {
     setError('');
     void resolveAccount()
-      .then(setAccount)
+      .then(async (value) => {
+        setAccount(value);
+        const identity = await rpc<{ onboardingCompletedAt?: number }>(
+          'accounts.get',
+          { accountId: value.accountId },
+        );
+        if (
+          !identity.onboardingCompletedAt &&
+          !['/onboarding', '/settings'].some((route) =>
+            location.hash.slice(1).startsWith(route),
+          )
+        )
+          location.hash = '/onboarding';
+      })
       .catch((e) => setError(e.message));
   }
   useEffect(connect, []);
+  useEffect(() => {
+    if (!account) return;
+    let active = true;
+    const check = () =>
+      void rpc<{ locked: boolean; initialized: boolean }>(
+        'passwordManager.auth.status',
+        { accountId: account.accountId },
+      )
+        .then((status) => {
+          if (active && status.locked)
+            setGate(
+              (current) => current ?? { initialized: status.initialized },
+            );
+        })
+        .catch((error) => {
+          if (active) setError(error.message);
+        });
+    check();
+    const timer = setInterval(check, 1000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [account]);
   useEffect(() => {
     const query = matchMedia('(prefers-color-scheme: dark)');
     const listener = () => {
@@ -43,7 +82,7 @@ function Shell() {
   }, []);
   return (
     <>
-      {!['/tab-search', '/mini-popup'].includes(path) && (
+      {!gate && !['/tab-search', '/mini-popup'].includes(path) && (
         <nav className="navigation" aria-label="Aux navigation">
           <a className="wordmark" href="#/">
             Aux
@@ -78,7 +117,26 @@ function Shell() {
           />
         </div>
       )}
-      <Outlet />
+      {gate && account ? (
+        <AuthGate
+          key={account.accountId}
+          rpc={rpc}
+          accountId={account.accountId}
+          initialized={gate.initialized}
+          error={error}
+          onUnlocked={async () => {
+            const status = await rpc<{ locked: boolean }>(
+              'passwordManager.auth.status',
+              { accountId: account.accountId },
+            );
+            if (status.locked) throw new Error('This account is still locked.');
+            setGate(undefined);
+            if (location.hash === '#/unlock') location.hash = '/';
+          }}
+        />
+      ) : (
+        <Outlet />
+      )}
       {account && (
         <span hidden id="account-id">
           {account.accountId}
@@ -223,6 +281,15 @@ const settingsRoute = createRoute({
     );
   },
 });
+const unlockRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/unlock',
+  component: () => (
+    <main className="secondary" role="status">
+      Checking local account security…
+    </main>
+  ),
+});
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/onboarding',
@@ -291,6 +358,7 @@ const router = createRouter({
     ...collectionRoutes,
     settingsRoute,
     onboardingRoute,
+    unlockRoute,
   ]),
 });
 const element = document.getElementById('root');

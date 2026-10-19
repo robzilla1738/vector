@@ -193,9 +193,21 @@ export function installSessionHttp(
             code: 'CONFLICT',
             message: 'This action is no longer pending.',
           });
+        if (suspension.kind === 'ask-user-question')
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Answer this question in the full conversation.',
+          });
         const action = z.enum(['approve', 'deny']).parse(body.action);
         engine.resolve(accountId, id, toolCallId, {
-          verdict: action === 'approve' ? 'allow' : 'deny',
+          verdict:
+            suspension.kind === 'action-confirmation'
+              ? action === 'approve'
+                ? 'confirm'
+                : 'cancel'
+              : action === 'approve'
+                ? 'allow'
+                : 'deny',
           always: false,
         });
         return c.json({ success: true });
