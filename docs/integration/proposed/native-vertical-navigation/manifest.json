@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "base": "after corrected vertical preference proposal; these two native inputs are unchanged by horizontal proposal",
+  "reason": "Preserve supplied implicit vertical new-tab/navigation placement including Agent pages, opener ordering and collapsed group boundaries.",
+  "files": [
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
+      "baselineSha256": "5b59adfcbffc34252ce1cb8eede4cae849f348c0259782659c5a7af6ff69d700",
+      "outputSha256": "986c5f144a215b2218086858ece81b44d539161f0cc8bf0c4040a8c0463b74f5",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/profile_gate.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_gate.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/browser_process.h\"\n#include \"chrome/browser/ui/tabs/tab_group_model.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"\n#include \"chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h\"\n#include \"components/tabs/public/tab_group.h\"",
+          "count": 1
+        },
+        {
+          "find": "  NormalizeDisposition(params);",
+          "replace": "  NormalizeDisposition(params);\n\n  // Preserve the supplied vertical placement for browser-initiated implicit\n  // new tabs. Explicit indexes and renderer-initiated requests retain their\n  // caller's ordering.\n  bool aux_force_ungrouped_tab = false;\n  auto* aux_local_state = g_browser_process->local_state();\n  auto* aux_vertical_tabs =\n      tabs::VerticalTabStripStateController::From(params->browser);\n  if (source_browser && source_browser == params->browser &&\n      (params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||\n       params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB) &&\n      !params->is_renderer_initiated && params->tabstrip_index == -1 &&\n      !(params->tabstrip_add_types & AddTabTypes::ADD_FORCE_INDEX) &&\n      aux_vertical_tabs && aux_vertical_tabs->ShouldDisplayVerticalTabs() &&\n      aux_local_state &&\n      aux_local_state->FindPreference(tabs::kAuxVerticalTabInsertionPosition)) {\n    auto* model = params->browser->GetTabStripModel();\n    const bool insert_at_top = aux_local_state->GetString(\n        tabs::kAuxVerticalTabInsertionPosition) != \"bottom\";\n    if (params->url.SchemeIs(\"chrome-extension\") &&\n        params->url.host() == aux::kAgentExtensionId) {\n      params->group.reset();\n      aux_force_ungrouped_tab = true;\n      params->tabstrip_index = insert_at_top ? model->IndexOfFirstNonPinnedTab()\n                                            : model->count();\n      params->tabstrip_add_types |=\n          AddTabTypes::ADD_FORCE_INDEX | AddTabTypes::ADD_INHERIT_OPENER;\n    } else if (insert_at_top) {\n      params->tabstrip_add_types |= AddTabTypes::ADD_INHERIT_OPENER;\n      const int source_index = params->source_contents\n          ? model->GetIndexOfWebContents(params->source_contents)\n          : TabStripModel::kNoTab;\n      if (source_index != TabStripModel::kNoTab) {\n        const auto source_group = model->GetTabGroupForTab(source_index);\n        const TabGroup* group =\n            source_group && model->group_model() &&\n                    model->group_model()->ContainsTabGroup(*source_group)\n                ? model->group_model()->GetTabGroup(*source_group)\n                : nullptr;\n        const bool collapsed = group && group->visual_data()->is_collapsed();\n        if (collapsed && params->group != source_group) {\n          // Keep a new outside tab before the entire collapsed group rather\n          // than expanding it or silently adding the tab into that group.\n          params->group.reset();\n          aux_force_ungrouped_tab = true;\n          params->tabstrip_index = group->ListTabs().start();\n          params->tabstrip_add_types |= AddTabTypes::ADD_FORCE_INDEX;\n        } else if (!collapsed) {\n          params->tabstrip_index = source_index;\n          params->tabstrip_add_types |= AddTabTypes::ADD_FORCE_INDEX;\n          if (!params->group) {\n            params->group = source_group;\n          }\n        }\n      }\n    }\n  }",
+          "count": 1
+        },
+        {
+          "find": "    if (!(params->tabstrip_add_types & AddTabTypes::ADD_PINNED)) {\n      if (!group.has_value()) {",
+          "replace": "    if (!(params->tabstrip_add_types & AddTabTypes::ADD_PINNED)) {\n      if (!group.has_value() && !aux_force_ungrouped_tab) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/navigator/BUILD.gn",
+      "baselineSha256": "cc670ddb129bd6eacb5022b529a77ead421d107914aac79fcb36716af45eb9f9",
+      "outputSha256": "e0893d9f9dd1e50f4577db06ece596902cc79785f5d6c35f5f3a9f929894e512",
+      "anchors": [
+        {
+          "find": "    deps += [\n      \"//chrome/browser/apps/app_service\",",
+          "replace": "    deps += [\n      \"//chrome/browser:browser_process\",\n      \"//chrome/browser/aux:platform\",\n      \"//chrome/browser/apps/app_service\",",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scope": "Disposable corrected preference + horizontal + vertical navigation composition",
+  "stages": [
+    {
+      "name": "native-preference-effects",
+      "manifestSha256": "8997ec5dbe46975b222307dc66be45119afce2981e476f96b1f46b3c6bfc6f9e",
+      "patchSha256": "1e5a221829bc0b8cde36fb373e33f70e85e4edc40aa80d876f8d170aee66244e",
+      "pinnedFiles": 7
+    },
+    {
+      "name": "native-horizontal-shrink",
+      "manifestSha256": "e05737502a9f281da60a73de0db13d79a36835951c93d886e4fc4b735c5bbcbd",
+      "patchSha256": "6bad136e0251f3dc569f92727009c82e6a4085a5bda1492c4d9576bba9e58518",
+      "pinnedFiles": 11
+    },
+    {
+      "name": "native-vertical-navigation",
+      "manifestSha256": "1f677fa7af534f68a25b949800acd2332fec2c26c59776cac148ae2490c3ba41",
+      "patchSha256": "b30041e1a67c27ba0157e87de635ba6045c60fb84fccf44680b99ee694df4d87",
+      "pinnedFiles": 2
+    }
+  ],
+  "uniqueNativeFiles": 17,
+  "checkAndApplyPassed": true,
+  "allOutputsMatched": true,
+  "sharedNativeSourceUnchanged": true,
+  "compiled": false,
+  "targetExecuted": false,
+  "globalPreferencesTouched": false
+}

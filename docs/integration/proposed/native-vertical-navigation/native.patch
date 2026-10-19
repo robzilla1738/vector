@@ -1,0 +1,99 @@
+--- a/chrome/browser/ui/navigator/browser_navigator.cc
++++ b/chrome/browser/ui/navigator/browser_navigator.cc
+@@ -4,6 +4,12 @@
+ 
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ #include "chrome/browser/aux/profile_gate.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
++#include "components/tabs/public/tab_group.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -926,6 +932,63 @@
+   // Some dispositions need coercion to base types.
+   NormalizeDisposition(params);
+ 
++  // Preserve the supplied vertical placement for browser-initiated implicit
++  // new tabs. Explicit indexes and renderer-initiated requests retain their
++  // caller's ordering.
++  bool aux_force_ungrouped_tab = false;
++  auto* aux_local_state = g_browser_process->local_state();
++  auto* aux_vertical_tabs =
++      tabs::VerticalTabStripStateController::From(params->browser);
++  if (source_browser && source_browser == params->browser &&
++      (params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
++       params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB) &&
++      !params->is_renderer_initiated && params->tabstrip_index == -1 &&
++      !(params->tabstrip_add_types & AddTabTypes::ADD_FORCE_INDEX) &&
++      aux_vertical_tabs && aux_vertical_tabs->ShouldDisplayVerticalTabs() &&
++      aux_local_state &&
++      aux_local_state->FindPreference(tabs::kAuxVerticalTabInsertionPosition)) {
++    auto* model = params->browser->GetTabStripModel();
++    const bool insert_at_top = aux_local_state->GetString(
++        tabs::kAuxVerticalTabInsertionPosition) != "bottom";
++    if (params->url.SchemeIs("chrome-extension") &&
++        params->url.host() == aux::kAgentExtensionId) {
++      params->group.reset();
++      aux_force_ungrouped_tab = true;
++      params->tabstrip_index = insert_at_top ? model->IndexOfFirstNonPinnedTab()
++                                            : model->count();
++      params->tabstrip_add_types |=
++          AddTabTypes::ADD_FORCE_INDEX | AddTabTypes::ADD_INHERIT_OPENER;
++    } else if (insert_at_top) {
++      params->tabstrip_add_types |= AddTabTypes::ADD_INHERIT_OPENER;
++      const int source_index = params->source_contents
++          ? model->GetIndexOfWebContents(params->source_contents)
++          : TabStripModel::kNoTab;
++      if (source_index != TabStripModel::kNoTab) {
++        const auto source_group = model->GetTabGroupForTab(source_index);
++        const TabGroup* group =
++            source_group && model->group_model() &&
++                    model->group_model()->ContainsTabGroup(*source_group)
++                ? model->group_model()->GetTabGroup(*source_group)
++                : nullptr;
++        const bool collapsed = group && group->visual_data()->is_collapsed();
++        if (collapsed && params->group != source_group) {
++          // Keep a new outside tab before the entire collapsed group rather
++          // than expanding it or silently adding the tab into that group.
++          params->group.reset();
++          aux_force_ungrouped_tab = true;
++          params->tabstrip_index = group->ListTabs().start();
++          params->tabstrip_add_types |= AddTabTypes::ADD_FORCE_INDEX;
++        } else if (!collapsed) {
++          params->tabstrip_index = source_index;
++          params->tabstrip_add_types |= AddTabTypes::ADD_FORCE_INDEX;
++          if (!params->group) {
++            params->group = source_group;
++          }
++        }
++      }
++    }
++  }
++
+   // If a new window has been created, it needs to be shown.
+   if (params->window_action == NavigateParams::WindowAction::kNoAction &&
+       source_browser != params->browser &&
+@@ -1069,7 +1132,7 @@
+     DCHECK(tab_to_insert);
+     std::optional<tab_groups::TabGroupId> group = params->group;
+     if (!(params->tabstrip_add_types & AddTabTypes::ADD_PINNED)) {
+-      if (!group.has_value()) {
++      if (!group.has_value() && !aux_force_ungrouped_tab) {
+         group = params->browser->GetTabStripModel()->GetFocusedGroup();
+       }
+     }
+--- a/chrome/browser/ui/navigator/BUILD.gn
++++ b/chrome/browser/ui/navigator/BUILD.gn
+@@ -83,6 +83,8 @@
+     ]
+ 
+     deps += [
++      "//chrome/browser:browser_process",
++      "//chrome/browser/aux:platform",
+       "//chrome/browser/apps/app_service",
+       "//chrome/browser/apps/link_capturing",
+       "//chrome/browser/ui:browser_init_state",

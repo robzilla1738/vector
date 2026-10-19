@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "artifact": {
+    "path": "out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "suppliedDecompilations": [
+    {
+      "file": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/036c4d40.c",
+      "sha256": "8946b5cdb348c05b001b915092950c6c7358f19f22f19cec406442bdfb97bd28"
+    },
+    {
+      "file": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/041e7df0.c",
+      "sha256": "a0d3fdc86d9d4e37656136f061b54c84e3f09bd00ec1b1da852ca002af8f7462"
+    },
+    {
+      "file": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042956fc.c",
+      "sha256": "8a6254d299ab64040adda5fceeaa6bdc0b46727b1fc35672f795171413362e69"
+    }
+  ],
+  "behavior": {
+    "navigationConsumer": "036c4d40.c lines 1688-1838, raw callsite 0x036c70b0",
+    "topPredicate": "0x041e7ef8: supplied vertical state enabled and preference is not bottom",
+    "firstNonPinnedIndex": "0x040782c0: pinned collection count",
+    "collapsedGroupRange": "0x06dfc834: TabGroup ListTabs range start",
+    "originalAgentHost": "fjdhphbdlfjogobdofoaagnlnkoibdge",
+    "auxAgentHost": "aux::kAgentExtensionId (centralized existing bootstrap identity)",
+    "adaptation": "Keep explicitly ungrouped source branches out of Chromium155 focused-group fallback."
+  },
+  "execution": {
+    "targetExecuted": false,
+    "ownerProfileRead": false,
+    "globalPreferencesTouched": false
+  }
+}
