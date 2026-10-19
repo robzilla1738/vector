@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual read-only current155 menu/deletion/data-sharing six source files",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_tab_menu_model_delegate.h",
+      "baselineSha256": "fa658d131260be059db9a724525aa11b898eb160026490163631d05ea99dfabe",
+      "outputSha256": "026d3e0d1038e7d2eb8eee1d8cc1ca2250ba695c44c384fb9c8d41b89f8957ef"
+    },
+    {
+      "path": "chrome/browser/ui/browser_tab_menu_model_delegate.cc",
+      "baselineSha256": "b895b8feaf00c8d01bd31c848be6ee16b120c25bb9db08ba0a9dd93d7eeb3a9b",
+      "outputSha256": "140f628881e6e43cab0adf7461889c4e6dc44854a50e577818e86f9c1cfd9740"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h",
+      "baselineSha256": "a901cac4897c77d081f6b940ae1ab14fb853fa8b430d724f538320611b7d3712",
+      "outputSha256": "c5ed4bd50b03b926ff2ae4b9c4942abf0b69d6af2c801b173792fad1cb677cea"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.cc",
+      "baselineSha256": "46be65b4e61afae7ff71f05d462d7a175a5a7ecc6250a8f9c0d87761e441b465",
+      "outputSha256": "24008bcaba837c1e4b024e2b6e9eb6739fe9f124ddc9838b2332e0703a4239a5"
+    },
+    {
+      "path": "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h",
+      "baselineSha256": "02aa9405e7e9c7192dc6c117a8e55e80d923e71640f354a877ada8da0e3c126c",
+      "outputSha256": "aec8a9cb5af01152bdcdf36517acb5ba2edd16e59e761dccd4c0b09dbc1c522d"
+    },
+    {
+      "path": "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.cc",
+      "baselineSha256": "fe0f42cfea0c1b05f21d7fea70f1fc5118ef0b3c6cee51a61b0c5b7836daf978",
+      "outputSha256": "7e1b9ebb8d61445bc398b659c396da7f711c7c093cbac8514b85ea79aedcd4db"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

@@ -1,0 +1,56 @@
+{
+  "method": "actual current155 static source inspection and temporary filesystem patch replay only",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_tab_menu_model_delegate.h",
+      "sha256": "fa658d131260be059db9a724525aa11b898eb160026490163631d05ea99dfabe"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_tab_menu_model_delegate.cc",
+      "sha256": "b895b8feaf00c8d01bd31c848be6ee16b120c25bb9db08ba0a9dd93d7eeb3a9b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h",
+      "sha256": "a901cac4897c77d081f6b940ae1ab14fb853fa8b430d724f538320611b7d3712"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.cc",
+      "sha256": "46be65b4e61afae7ff71f05d462d7a175a5a7ecc6250a8f9c0d87761e441b465"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h",
+      "sha256": "02aa9405e7e9c7192dc6c117a8e55e80d923e71640f354a877ada8da0e3c126c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.cc",
+      "sha256": "fe0f42cfea0c1b05f21d7fea70f1fc5118ef0b3c6cee51a61b0c5b7836daf978"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/menu/menu_controller.h",
+      "sha256": "27bd9ffe72f31af13d1868644876eefb3c3adc05858c2ddc4a824863cfcae282"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_menu_model.h",
+      "sha256": "391a96e7d72aa5c7e611bda82262c5cd0c792d9c7ff7b647ab0519d07dc745c4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/data_sharing/collaboration_controller_delegate_desktop.cc",
+      "sha256": "c301a44d31562d8d8304ee0a9194044e4dfbe294dfddd04a18bc4c92f22325f1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/widget/widget.h",
+      "sha256": "90eb6440ef6f2de40a2a7740898fc552ba0ffca2c8b3df20acab0403cc3e1bf2"
+    }
+  ],
+  "anchors": {
+    "menu_scope": "MenuController::GetForOwnerWidget actual owner-scoped active menu contract",
+    "cached_models": "TabMenuModel documented created each time menu shown",
+    "deletion_scope": "DialogState+widget+ShowBrowserModal nested run loop",
+    "deletion_callback": "production show_dialog_model_fn_ captures controller WeakPtr permanently",
+    "data_retirement": "Close disconnects delegate and DeleteSoon releases actual Widget",
+    "error_residue": "Close does not consume on_error_callback_; new SetShowErrorDialogCallback represents pending new work"
+  },
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

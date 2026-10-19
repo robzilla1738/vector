@@ -1,0 +1,329 @@
+--- a/chrome/browser/ui/browser_tab_menu_model_delegate.h
++++ b/chrome/browser/ui/browser_tab_menu_model_delegate.h
+@@ -8,6 +8,8 @@
+ #include <vector>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/tabs/tab_menu_model_delegate.h"
+ #include "components/sessions/core/session_id.h"
+ 
+@@ -32,6 +34,12 @@
+       ui::UnownedUserDataHost& host);
+   ~BrowserTabMenuModelDelegate() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch(BrowserWindowInterface* browser) const;
++  void RebindForAuxProfileSwitch(BrowserWindowInterface* browser,
++                                Profile* target_profile);
++#endif
++
+   BrowserTabMenuModelDelegate(const BrowserTabMenuModelDelegate&) = delete;
+   BrowserTabMenuModelDelegate& operator=(const BrowserTabMenuModelDelegate&) =
+       delete;
+@@ -43,7 +51,7 @@
+   tab_groups::TabGroupSyncService* GetTabGroupSyncService() override;
+ 
+   const SessionID session_id_;
+-  const raw_ptr<const Profile> profile_;
++  raw_ptr<const Profile> profile_;
+   const raw_ptr<const web_app::AppBrowserController> app_controller_;
+   raw_ptr<tab_groups::TabGroupSyncService> tab_group_sync_service_ = nullptr;
+ };
+--- a/chrome/browser/ui/browser_tab_menu_model_delegate.cc
++++ b/chrome/browser/ui/browser_tab_menu_model_delegate.cc
+@@ -7,6 +7,15 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "base/check.h"
++#include "base/check_op.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "ui/views/controls/menu/menu_controller.h"
++#endif
+ #include "components/sessions/core/session_id.h"
+ 
+ namespace chrome {
+@@ -24,6 +33,37 @@
+       tab_group_sync_service_(tgss) {}
+ 
+ BrowserTabMenuModelDelegate::~BrowserTabMenuModelDelegate() = default;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool BrowserTabMenuModelDelegate::CanRebindForAuxProfileSwitch(
++    BrowserWindowInterface* browser) const {
++  if (!browser || TabMenuModelDelegate::From(browser) != this ||
++      browser->GetSessionID() != session_id_ || app_controller_ ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !profile_ || !profile_->IsRegularProfile() ||
++      !browser->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  auto* view = BrowserView::GetBrowserViewForBrowser(browser);
++  // Query only this actual window's showing Views menu, not unrelated windows.
++  return view && view->GetWidget() &&
++         !views::MenuController::GetForOwnerWidget(view->GetWidget());
++}
++
++void BrowserTabMenuModelDelegate::RebindForAuxProfileSwitch(
++    BrowserWindowInterface* browser,
++    Profile* target_profile) {
++  CHECK(CanRebindForAuxProfileSwitch(browser));
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser->GetProfile(), target_profile);
++  CHECK(browser->GetTabStripModel());
++  CHECK(browser->GetTabStripModel()->empty());
++  profile_ = target_profile;
++  tab_group_sync_service_ =
++      tab_groups::TabGroupSyncServiceFactory::GetForProfile(target_profile);
++}
++#endif
+ 
+ std::vector<BrowserWindowInterface*>
+ BrowserTabMenuModelDelegate::GetOtherBrowserWindows(bool is_app) {
+--- a/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h
++++ b/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h
+@@ -12,6 +12,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ #include "ui/views/widget/widget_observer.h"
+@@ -113,6 +115,12 @@
+   DeletionDialogController& operator=(const DeletionDialogController&) = delete;
+   ~DeletionDialogController() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(BrowserWindowInterface* browser,
++                                Profile* target_profile);
++#endif
++
+   // If the BrowserWindow is currently in state where the dialog can be shown.
+   bool CanShowDialog() const;
+ 
+@@ -161,7 +169,7 @@
+ 
+   // The profile this controller is created for. Provides prefs and sync
+   // settings.
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
+ 
+   // The state needed for showing the dialog. Only exists if the dialog is
+   // currently showing.
+@@ -174,6 +182,10 @@
+   raw_ptr<views::Widget> widget_;
+   const raw_ref<TabStripModel> tab_strip_model_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_showing_dialog_model_ = false;
++#endif
++
+   base::WeakPtrFactory<DeletionDialogController> weak_ptr_factory_{this};
+ };
+ 
+--- a/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.cc
++++ b/chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.cc
+@@ -6,6 +6,9 @@
+ 
+ #include <string>
+ 
++#include "base/auto_reset.h"
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/check_deref.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
+@@ -380,6 +383,29 @@
+ 
+ DeletionDialogController::~DeletionDialogController() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool DeletionDialogController::CanRebindForAuxProfileSwitch() const {
++  return !state_ && !widget_ && !aux_showing_dialog_model_;
++}
++
++void DeletionDialogController::RebindForAuxProfileSwitch(
++    BrowserWindowInterface* browser,
++    Profile* target_profile) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(browser);
++  CHECK_EQ(From(browser), this);
++  CHECK_EQ(browser->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser->GetProfile(), target_profile);
++  CHECK_EQ(browser->GetTabStripModel(), &tab_strip_model_.get());
++  CHECK(tab_strip_model_->empty());
++  // Keep the same model observation, injected callback and weak factory. The
++  // permanent production show callback itself captures one of those WeakPtrs.
++  profile_ = raw_ref<Profile>(*target_profile);
++}
++#endif
++
+ bool DeletionDialogController::CanShowDialog() const {
+   return !IsShowingDialog();
+ }
+@@ -391,6 +417,10 @@
+ void DeletionDialogController::CreateDialogFromBrowser(
+     BrowserWindowInterface* browser,
+     std::unique_ptr<ui::DialogModel> dialog_model) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // ShowBrowserModal can enter a nested run loop before widget_ is assigned.
++  base::AutoReset<bool> showing(&aux_showing_dialog_model_, true);
++#endif
+   // Showing a modal dialog can spin a nested run loop on macOS, during which
+   // the owning browser and controller may be torn down. Guard the post-show
+   // write with a weak pointer to avoid a use-after-free write if `this` is
+--- a/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h
++++ b/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h
+@@ -8,9 +8,12 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <vector>
+ 
+ #include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
+ #include "chrome/browser/ui/views/data_sharing/data_sharing_utils.h"
+ #include "chrome/browser/ui/webui/data_sharing/data_sharing_ui.h"
+@@ -42,6 +45,11 @@
+   DataSharingBubbleController& operator=(const DataSharingBubbleController&) =
+       delete;
+   virtual ~DataSharingBubbleController();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   static DataSharingBubbleController* From(
+       BrowserWindowInterface* browser_window_interface);
+@@ -100,7 +108,7 @@
+   Profile* GetProfile();
+ 
+   const raw_ref<BrowserWindowInterface> browser_;
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
+   const raw_ref<TabStripModel> tab_strip_model_;
+ 
+   // Callback to invoke when the widget closes.
+@@ -136,6 +144,12 @@
+   std::unique_ptr<views::Widget> bubble_widget_;
+ 
+   raw_ptr<DataSharingUI> data_sharing_ui_ = nullptr;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Existing Close schedules actual widget destruction. A profile cannot be
++  // rebound until every retired old-profile widget has really been destroyed.
++  std::vector<base::WeakPtr<views::Widget>> aux_retiring_widgets_;
++  bool aux_error_callback_belongs_to_closed_flow_ = false;
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_DATA_SHARING_DATA_SHARING_BUBBLE_CONTROLLER_H_
+--- a/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.cc
++++ b/chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h"
+ 
++#include <algorithm>
++
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/check_deref.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/ptr_util.h"
+@@ -11,6 +15,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -111,6 +116,36 @@
+     data_sharing_ui_->SetDelegate(nullptr);
+   }
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool DataSharingBubbleController::CanRebindForAuxProfileSwitch() const {
++  return !bubble_widget_ && !bubble_view_ && !data_sharing_ui_ &&
++         !on_close_callback_ && !on_share_link_requested_callback_ &&
++         !share_link_callback_ && !join_callback_ &&
++         (!on_error_callback_ || aux_error_callback_belongs_to_closed_flow_) &&
++         !group_action_ && !group_action_progress_ &&
++         std::ranges::none_of(aux_retiring_widgets_,
++                              [](const auto& widget) { return !!widget; });
++}
++
++void DataSharingBubbleController::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK_EQ(From(&browser_.get()), this);
++  CHECK_EQ(browser_->GetTabStripModel(), &tab_strip_model_.get());
++  CHECK(tab_strip_model_->empty());
++  // Only an unused error handler of an already-closed real flow may remain.
++  // Retire it without inventing an error, success or cancellation callback.
++  on_error_callback_.Reset();
++  aux_error_callback_belongs_to_closed_flow_ = false;
++  aux_retiring_widgets_.clear();
++  profile_ = raw_ref<Profile>(*target_profile);
++}
++#endif
+ 
+ void DataSharingBubbleController::Show(data_sharing::RequestInfo request_info) {
+   // Guard on the widget rather than the bubble view: the modal flows no longer
+@@ -183,6 +218,11 @@
+   if (!bubble_widget_) {
+     return;
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Set before terminal callbacks: a callback that installs a new error
++  // handler clears this flag, so it cannot be mistaken for completed work.
++  aux_error_callback_belongs_to_closed_flow_ = true;
++#endif
+ 
+   if (on_share_link_requested_callback_) {
+     std::move(on_share_link_requested_callback_)
+@@ -207,6 +247,13 @@
+     data_sharing_ui_ = nullptr;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (bubble_widget_) {
++    std::erase_if(aux_retiring_widgets_,
++                  [](const auto& widget) { return !widget; });
++    aux_retiring_widgets_.push_back(bubble_widget_->GetWeakPtr());
++  }
++#endif
+   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
+       FROM_HERE, bubble_widget_.release());
+ }
+@@ -217,6 +264,9 @@
+ 
+ void DataSharingBubbleController::SetShowErrorDialogCallback(
+     base::OnceCallback<void()> callback) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux_error_callback_belongs_to_closed_flow_ = false;
++#endif
+   on_error_callback_ = std::move(callback);
+ }
+ 
