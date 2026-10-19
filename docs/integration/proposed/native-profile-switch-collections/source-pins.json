@@ -1,0 +1,25 @@
+{
+  "staticOnly": true,
+  "sourcePins": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04559f80.c",
+      "sha256": "aa281c5f7b93a7947ab805354cb9e0b293f7465656340b015f589ec2b08e9637"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "e44665e77d10a6ea8597555ab88fff30574c6d7cf75a7f3babbe4be0fb4992cd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "bce52729484749c1eadc5fa1cec1b21f343cec9851447e6e1592f25b3a3a4c30"
+    }
+  ],
+  "currentOperations": [
+    "DetachTabsAndCollectionsForInsertion",
+    "InsertDetachedTabAt",
+    "InsertDetachedTabGroupAt",
+    "InsertDetachedSplitTabAt",
+    "SetSelectionFromModel"
+  ],
+  "originalInsertionProof": "04559f80.c lines1557-1654 real standalone/group/split variants; original collection layout is not cast into155"
+}

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "two new sources; requires private Browser friend/guard identity proposal121841c85",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_tabs.cc",
+      "baselineSha256": null,
+      "outputSha256": "46a41aa9e602c58473ff4384de06b86e0a4139a006056e8eced5fd73c40557fb"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_tabs.h",
+      "baselineSha256": null,
+      "outputSha256": "226f7d7b7b91b6602d0481a69255a7fb281c61ae9ff5432038455d9f20339e5b"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
