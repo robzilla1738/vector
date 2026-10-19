@@ -1199,7 +1199,7 @@
  }
 --- a/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
 +++ b/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
-@@ -1,10 +1,44 @@
+@@ -1,10 +1,45 @@
  source_set("aux_omnibox") {
    sources = [ "aux_omnibox_api.cc", "aux_omnibox_api.h" ]
    public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
@@ -1230,6 +1230,7 @@
 +  ]
 +  deps = [
 +    "//chrome/browser/autocomplete",
++    "//chrome/browser/extensions",
 +    "//chrome/browser/contextual_search",
 +    "//chrome/browser/profiles:profile",
 +    "//chrome/browser/ui/omnibox",

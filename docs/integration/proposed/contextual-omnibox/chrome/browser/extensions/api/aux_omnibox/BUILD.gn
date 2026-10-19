@@ -27,6 +27,7 @@ source_set("owned_contextual_session") {
   ]
   deps = [
     "//chrome/browser/autocomplete",
+    "//chrome/browser/extensions",
     "//chrome/browser/contextual_search",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/omnibox",
