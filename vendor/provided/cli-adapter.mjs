@@ -1,5 +1,6 @@
 /** Rebrand the pinned supplied CLI without replacing its commands or RPC implementation. */
 import { createHash } from 'node:crypto';
+import { brandProductPreservingWires } from './wire-brand.mjs';
 import { CLI_COMMAND } from '../aside/patches/brand.mjs';
 import { findMachOSeaSection, readSeaBlob, writeSeaBlob, injectMachOSeaBlob } from '../aside/lib/sea.mjs';
 
@@ -22,7 +23,6 @@ export function adaptCliCode(original) {
   edit('stable daemon port', 'identity', '21420', '21520', 2);
   edit('development daemon port', 'identity', '21421', '21521', 2);
   edit('CLI state directory', 'identity', 'path.join(os.homedir(), ".aside", "cli")', 'path.join(os.homedir(), ".aux", "cli")', 1);
-  edit('websocket authentication prefix', 'identity', 'aside.daemon.auth.', 'aux.daemon.auth.', 2);
   edit('skill identity', 'identity', 'aside-browser', 'aux-browser', 7);
   edit('program command', 'identity', '.name("aside")', '.name("aux")', 1);
   edit('usage command', 'branding', '       aside [options]', '       aux [options]', 1);
@@ -33,8 +33,11 @@ export function adaptCliCode(original) {
   if (!binding) throw new Error('Supplied CLI native loader anchor missing');
   edit('isolated native binding', 'integration', binding,
     'function candidateBindingPaths() {\n\treturn [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")];\n}', 1);
-  // Includes matching RPC/internal names and auth-domain labels used by the supplied daemon.
-  edit('product names and matching internal identifiers', 'branding', 'Aside', 'Aux', 101);
+  const branded = brandProductPreservingWires(code, { productCount: 101, wireCounts: {
+    'AsideDaemonSessionToken ': 2, 'AsideSessionToken': 0,
+    'Aside Daemon Auth v1': 1, 'Aside Daemon Dev Auth v1': 0, 'Aside.': 0,
+  } });
+  code = branded.code; applied.push(...branded.edits);
   const commands = [...code.matchAll(CLI_COMMAND)];
   if (commands.length !== 82) throw new Error(`CLI command branding drift: ${commands.length}`);
   for (const find of new Set(commands.map((match) => match[0])))

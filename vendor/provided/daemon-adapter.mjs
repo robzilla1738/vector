@@ -1,5 +1,6 @@
 /** Pinned supplied daemon adaptation. No substitute RPC handlers or plan bypasses. */
 import { createHash } from 'node:crypto';
+import { brandProductPreservingWires } from './wire-brand.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { findMachOSeaSection, readSeaBlob, writeSeaBlob, injectMachOSeaBlob } from '../aside/lib/sea.mjs';
@@ -26,13 +27,6 @@ export const identityEdits = [
   edit('daemon port', '||21420', '||21520', 1),
   edit('daemon URL', 'localhost:21420', 'localhost:21520', 1),
   edit('CDP URL', 'localhost:45103', 'localhost:45203', 1),
-  edit('signing domain', 'Aside Daemon Auth v1', 'Aux Daemon Auth v1', 2),
-  edit('development signing domain', 'Aside Daemon Dev Auth v1', 'Aux Daemon Dev Auth v1', 1),
-  edit('session scheme', 'AsideDaemonSessionToken ', 'AuxDaemonSessionToken ', 3),
-  edit('JWT audience', 'aside-daemon-localhost', 'aux-daemon-localhost', 4),
-  edit('JWT issuer', '`aside-daemon`', '`aux-daemon`', 5),
-  edit('WS auth prefix', 'aside.daemon.auth.', 'aux.daemon.auth.', 2),
-  edit('CDP auth scheme', 'AsideSessionToken', 'AuxSessionToken', 1),
   edit('data key derivation namespace', 'aside.dk.', 'aux.dk.', 4),
 ];
 export const platformEdits = [
@@ -41,9 +35,6 @@ export const platformEdits = [
   edit('secure storage namespace', 'AUX_KEYCHAIN_ID_PREFIX=`aside`', 'AUX_KEYCHAIN_ID_PREFIX=`aux`', 1),
   edit('bundled runtime path', 'AUX_RUNTIME_DIR=path.join(AUX_HOME_PATH,`runtime`)', 'AUX_RUNTIME_DIR=process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR):path.join(AUX_HOME_PATH,`runtime`)', 1),
   edit('explicit external skill synchronization', 'syncInstalledAsideBrowserSkills().catch(()=>{})', 'process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAsideBrowserSkills().catch(()=>{})', 1),
-  // Original code hardcodes the original wire-prefix lengths.
-  edit('HTTP token offset', 'ei.slice(24).trim()', 'ei.slice(22).trim()', 2),
-  edit('WS token offset', 'let ei=ti.slice(18)', 'let ei=ti.slice(16)', 1),
   // Never fall through to the original binding (custom Keychain and OS grants).
   edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
   edit('telemetry disabled', 'new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{'.replace('ASIDE_', 'AUX_'), 'new PostHog(AUX_POSTHOG_PROJECT_API_KEY,{disabled:!0,', 1),
@@ -65,12 +56,12 @@ export function adaptDaemonCode(original) {
     code = code.split(e.from).join(e.to);
     applied.push({ name: e.name, count });
   }
-  // Internal identifiers and displayed product names travel together in this
-  // self-contained bundle. Original lower-case provider/schema enums stay intact.
-  const remaining = code.split('Aside').length - 1;
-  if (remaining !== 647) throw new Error(`Remaining product identifiers: ${remaining}`);
-  code = code.replaceAll('Aside', 'Aux');
-  applied.push({ name: 'product names/internal identifiers', count: remaining });
+  const branded = brandProductPreservingWires(code, { productCount: 654, wireCounts: {
+    'AsideDaemonSessionToken ': 3, 'AsideSessionToken': 1,
+    'Aside Daemon Auth v1': 2, 'Aside Daemon Dev Auth v1': 1, 'Aside.': 78,
+  } });
+  code = branded.code;
+  applied.push(...branded.edits);
   return { code, applied, sha256: sha(code) };
 }
 

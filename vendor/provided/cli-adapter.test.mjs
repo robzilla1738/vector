@@ -24,9 +24,11 @@ test('actual supplied CLI remains syntactically valid and its native loader cann
   assert.deepEqual(after.assets, before.assets);
   assert.deepEqual(after.tail, before.tail);
   assert.equal(after.entryPath, before.entryPath);
-  assert.ok(after.code.includes('AuxDaemonSessionToken '));
-  assert.ok(after.code.includes('Aux Daemon Auth v1\\0'));
-  assert.ok(after.code.includes('aux.daemon.auth.'));
+  for (const wire of ['AsideDaemonSessionToken ', 'Aside Daemon Auth v1', 'aside.daemon.auth.']) assert.equal(after.code.split(wire).length, before.code.split(wire).length, wire);
+  assert.ok(after.code.includes('AsideDaemonSessionToken '));
+  assert.equal(after.code.includes('AuxDaemonSessionToken '), false);
+  assert.ok(after.code.includes('Aside Daemon Auth v1\\0'));
+  assert.ok(after.code.includes('aside.daemon.auth.'));
   assert.ok(after.code.includes('return [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")]'));
   const loader = after.code.match(/function candidateBindingPaths\(\) \{[\s\S]*?\n\}/)[0];
   assert.equal(loader.includes('aside-native.node'), false);
