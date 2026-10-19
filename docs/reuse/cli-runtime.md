@@ -1,0 +1,11 @@
+# Supplied CLI reuse
+
+`vendor/provided/cli-adapter.mjs` adapts the actual supplied CLI, version `1.26.1015` (bundle build `1.26.1015.732`). It does not substitute the independently implemented CLI.
+
+Static input: `~/.aside/cli/Aside CLI.app/Contents/MacOS/aside`. The complete executable SHA-256 is `17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a`; its SEA JavaScript SHA-256 is `013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62`. Both must match before adaptation. The input is implementation code, not the adjacent CLI authentication/settings files; those are never read.
+
+`adaptCliBinary(buffer)` returns `{binary,codeSha256,applied,assets}`. Every text edit has a replayable literal anchor and exact count. The output preserves the original executable host, SEA entry path, asset table and tail; no replacement Node host or command implementation is introduced. Changes are Aux names/commands/skills, the matching daemon's auth identifiers and ports, environment names, the CLI data directory, and an isolated native loader. Hosted API/releases/installers use the same explicitly unavailable local boundary as the supplied daemon adapter. Original command errors and service restrictions remain real; no cloud success response or subscription bypass is supplied.
+
+The native loader uses only `AUX_NATIVE_HELPER_BINDING`, or the packaged `../Resources/native/aux-native.cjs`. It cannot fall through to the owner's native binding or embedded Windows helper. **Production native integration is still required.** The disposable daemon test adapter is not a production CLI dependency and must not be presented as preserving the original crypto, secure storage or PDF behavior. Package resources, plist/executable renaming, local ad hoc signing and actual CLI/native authentication acceptance remain to be integrated.
+
+The focused actual-source test adapts the pinned binary, syntax-checks its ESM without executing it, replays all edits, verifies unchanged SEA metadata/assets and confirms removal of owner-binding fallback. It also rejects unknown code/binaries. No CLI command, original binding, profile, Keychain operation, external agent skill write or network request runs in this check.

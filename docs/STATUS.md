@@ -9,6 +9,7 @@ Updated 2026-10-19. The owner explicitly replaced the clean-room goal: reuse the
 - Agent/Vault source target is1.26.1016.1852. Reuse the corresponding implementation and runtime contracts; preserve layouts, styles, typography and behavior, changing only Aux identities/assets and necessary platform integration.
 - Existing vendoring/staging code and supplied components are under review. No new reused build has been declared ready. The running disposable component app is the prior independent implementation and does not meet the corrected goal.
 - The active native compilation is preserved while integration requirements are evaluated; no shared native source reset/deletion is authorized.
+- Supplied Agent/Vault staging and the pinned supplied daemon adapter are integrated on local main. The supplied CLI adapter now preserves its own executable host, commands and SEA metadata with replayable Aux identity/cloud-boundary edits. Actual-source CLI syntax, replay and owner-binding-fallback checks pass. Native crypto/storage remains an explicit production integration gap; the disposable adapter is not fidelity evidence. See `docs/source/provided-ui.md`, `docs/reuse/daemon-runtime.md` and `docs/reuse/cli-runtime.md`.
 
 ## Historical independent-build snapshot
 
