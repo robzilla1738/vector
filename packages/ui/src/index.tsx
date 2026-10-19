@@ -45,7 +45,15 @@ export function Dialog({
     };
   }, []);
   return (
-    <dialog ref={ref} className="dialog" onCancel={onClose} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className="dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+    >
       <div className="row spread">
         <h2>{title}</h2>
         <Button aria-label="Close" onClick={onClose}>

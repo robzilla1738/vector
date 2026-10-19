@@ -103,6 +103,7 @@ export const envelopeSchema = z
     vaults: z.record(recordId, encryptedRecordSchema),
     items: z.record(recordId, encryptedRecordSchema),
     history: z.record(recordId, z.array(encryptedRecordSchema).max(1000)),
+    passkeys: z.record(recordId, encryptedRecordSchema).default({}),
   })
   .strict();
 export type Envelope = z.infer<typeof envelopeSchema>;
@@ -110,6 +111,7 @@ export function validateRecordKeys(envelope: Envelope) {
   for (const [id, record] of [
     ...Object.entries(envelope.vaults),
     ...Object.entries(envelope.items),
+    ...Object.entries(envelope.passkeys),
   ])
     if (id !== record.id) throw new Error('Vault record index does not match.');
   for (const [id, records] of Object.entries(envelope.history))

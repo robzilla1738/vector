@@ -1,5 +1,8 @@
 import type { FillContext, VaultItem } from './client';
 import { resolveAccount, rpc } from './client';
+import { installPasskeyLifecycle } from './passkeys/lifecycle';
+
+installPasskeyLifecycle(rpc, resolveAccount);
 
 type Target = {
   tabId: number;

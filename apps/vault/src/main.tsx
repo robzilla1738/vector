@@ -12,16 +12,22 @@ import {
   Star,
   Upload,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@aux/ui/tokens.css';
 import './styles.css';
 import type { FillContext, Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
+import { PasskeyConsent } from './passkeys/consent';
+import { requestIdFromHash } from './passkeys/native';
+import { VaultManagement } from './vault-management';
 
 function App() {
   const [accountId, setAccountId] = useState<number>();
   const [status, setStatus] = useState<VaultStatus>();
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const recoveryHeld = useRef(false);
   const [authGate, setAuthGate] = useState<{ initialized: boolean }>();
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState('');
@@ -81,10 +87,14 @@ function App() {
       void rpc<VaultStatus>('passwordManager.auth.status', { accountId })
         .then((current) => {
           if (!active) return;
-          setStatus((previous) =>
-            current.locked || !previous?.locked ? current : previous,
-          );
+          const wasLocked = statusRef.current?.locked;
+          if (current.locked || !recoveryHeld.current) setStatus(current);
           if (current.locked) clearSecrets();
+          else if (!recoveryHeld.current) {
+            setAuthGate(undefined);
+            if (wasLocked)
+              void refresh(accountId).catch((error) => setError(error.message));
+          }
         })
         .catch((error) => {
           if (active) {
@@ -97,7 +107,7 @@ function App() {
       active = false;
       clearInterval(interval);
     };
-  }, [accountId, clearSecrets]);
+  }, [accountId, clearSecrets, refresh]);
   useEffect(() => {
     const theme = localStorage.getItem('aux.theme') ?? 'system';
     document.documentElement.dataset.theme =
@@ -172,10 +182,23 @@ function App() {
         initialized={authGate?.initialized ?? status.initialized}
         onUnlocked={async () => {
           await refresh(accountId);
+          recoveryHeld.current = false;
           setAuthGate(undefined);
+        }}
+        onRecoveryStateChange={(holding) => {
+          recoveryHeld.current = holding;
         }}
         error={error}
         onStarted={() => setAuthGate({ initialized: status.initialized })}
+      />
+    );
+  const passkeyRequestId = requestIdFromHash();
+  if (passkeyRequestId)
+    return (
+      <PasskeyConsent
+        requestId={passkeyRequestId}
+        rpc={rpc}
+        resolveAccount={resolveAccount}
       />
     );
   const rows = (snapshot?.items ?? []).filter(
@@ -304,6 +327,16 @@ function App() {
               context={context}
               pending={pending}
               onEdit={() => setEditor(selected)}
+              onRestore={async (revision) => {
+                await mutate('vault.restoreItem', {
+                  itemId: selected.id,
+                  revision,
+                  baseRevision: selected.revision,
+                });
+                setNotice(
+                  'The earlier version is restored. Your previous version remains in history.',
+                );
+              }}
               onDelete={() => {
                 if (confirm('Delete this item? This cannot be undone.'))
                   void mutate('vault.deleteItem', { itemId: selected.id })
@@ -436,6 +469,7 @@ function ItemDetail({
   context,
   pending,
   onEdit,
+  onRestore,
   onDelete,
   onFill,
   onError,
@@ -445,11 +479,13 @@ function ItemDetail({
   context?: FillContext;
   pending: boolean;
   onEdit: () => void;
+  onRestore: (revision: number) => Promise<void>;
   onDelete: () => void;
   onFill: () => void;
   onError: (error: string) => void;
 }) {
   const [history, setHistory] = useState<VaultItem[]>();
+  const [historyError, setHistoryError] = useState('');
   return (
     <>
       <div className="row spread">
@@ -532,6 +568,7 @@ function ItemDetail({
       </div>
       {history && (
         <Dialog title="Earlier versions" onClose={() => setHistory(undefined)}>
+          {historyError && <ErrorNotice error={historyError} />}
           {history.length === 0 ? (
             <Empty>No earlier versions.</Empty>
           ) : (
@@ -549,6 +586,17 @@ function ItemDetail({
                   />
                 )}
                 <p>{version.title}</p>
+                <Button
+                  disabled={pending}
+                  onClick={() => {
+                    setHistoryError('');
+                    void onRestore(version.revision).catch((error) =>
+                      setHistoryError(error.message),
+                    );
+                  }}
+                >
+                  Restore this version
+                </Button>
               </section>
             ))
           )}
@@ -949,6 +997,14 @@ function VaultSettings({
           Create
         </Button>
       </form>
+      {snapshot && (
+        <VaultManagement
+          vaults={snapshot.vaults}
+          items={snapshot.items}
+          pending={pending}
+          mutate={mutate}
+        />
+      )}
       <div className="stack">
         <h3>Export saved items</h3>
         <p>This file can contain readable passwords. Store it securely.</p>

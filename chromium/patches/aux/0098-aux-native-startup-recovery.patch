@@ -1,0 +1,122 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -1,6 +1,12 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ // Native lifecycle: docs/spec/native/platform.md P1/P2, daemon/core.md.
+ #include "chrome/browser/aux/daemon_supervisor.h"
++
++#include "build/build_config.h"
++#if BUILDFLAG(IS_POSIX)
++#include <cerrno>
++#include <signal.h>
++#endif
+ 
+ #include "base/command_line.h"
+ #include "base/environment.h"
+@@ -8,6 +14,7 @@
+ #include "base/functional/bind.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
++#include "base/logging.h"
+ #include "base/path_service.h"
+ #include "base/process/launch.h"
+ #include "base/process/process_handle.h"
+@@ -133,6 +140,11 @@
+       allow_node_fallback_(allow_node_fallback) {}
+ DaemonSupervisor::~DaemonSupervisor() = default;
+ void DaemonSupervisor::SetState(State state, std::string error) {
++  if (state_ != state) {
++    LOG(INFO) << "Aux daemon state " << static_cast<int>(state)
++              << " pid=" << (process_.IsValid() ? process_.Pid() : 0)
++              << " " << error;
++  }
+   state_ = state;
+   changed_.Run(state, std::move(error));
+ }
+@@ -142,7 +154,7 @@
+     return;
+   }
+   SetState(State::kStarting);
+-  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(20);
++  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
+   launch_pending_ = true;
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+@@ -164,6 +176,9 @@
+   }
+   process_ = std::move(process);
+   process_created_ = process_.CreationTime();
++  // Begin the cold-start allowance when the launched child is available, not
++  // while its blocking launch task is still waiting for a worker.
++  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
+   Poll();
+ }
+ void DaemonSupervisor::Request(
+@@ -210,13 +225,13 @@
+       return;
+     }
+     SetState(State::kReady);
+-    timer_.Start(FROM_HERE, base::Seconds(1), this, &DaemonSupervisor::Poll);
++    timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
+     return;
+   }
+   if (state_ == State::kReady) {
+     authorization_.clear();
+     SetState(State::kStarting);
+-    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(20);
++    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
+   }
+   if (base::TimeTicks::Now() >= activation_deadline_) {
+     SetState(State::kFailed, "Bundled daemon did not become ready");
+@@ -224,7 +239,18 @@
+   }
+   // Only restart a child after its freshly observed exit. Never adopt a health
+   // PID.
+-  if (process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr)) {
++  bool exited = process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr);
++#if BUILDFLAG(IS_POSIX)
++  // Another child reaper can consume waitpid's exit status. ESRCH still proves
++  // the original PID is absent; signal zero never sends a process signal.
++  if (!exited && kill(process_.Pid(), 0) != 0 && errno == ESRCH) exited = true;
++#endif
++  if (!exited && !process_created_.is_null()) {
++    const auto current = process_.CreationTime();
++    // A reused PID is not our original child. Never signal or adopt it.
++    exited = !current.is_null() && current != process_created_;
++  }
++  if (exited) {
+     process_.Close();
+     SetState(State::kStopped);
+     timer_.Start(FROM_HERE, base::Milliseconds(500), this,
+@@ -287,7 +313,7 @@
+   authorization_ = "AuxDaemonSessionToken " + *token;
+   token_expires_ = base::TimeTicks::Now() + base::Seconds(*seconds);
+   SetState(State::kReady);
+-  timer_.Start(FROM_HERE, base::Seconds(1), this, &DaemonSupervisor::Poll);
++  timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
+ }
+ void DaemonSupervisor::Shutdown(base::OnceClosure done) {
+   timer_.Stop();
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -1912,9 +1912,6 @@
+   }
+ #endif
+ 
+-  // Desktop construction occurs here, (required before profile creation).
+-  PreProfileInit();
+-
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   // Complete local readiness/auth and cache component manifests before profiles
+   // can initialize their extension services or create a normal browsing tab.
+@@ -1925,6 +1922,10 @@
+     return CHROME_RESULT_CODE_MISSING_DATA;
+   }
+ #endif
++
++  // Create desktop/profile observers only after local startup can succeed.
++  // Early daemon failure must not leave PreProfileInit observers registered.
++  PreProfileInit();
+ 
+   // Register WebUI configs before profile creation, so that profile-level
+   // prewarming has access to registered WebUI data sources. Also login manager

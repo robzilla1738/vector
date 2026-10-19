@@ -86,7 +86,10 @@ aux/0085-aux-ntp-omnibox-parity-and-aux-scheme.patch
 aux/0086-aux-native-platform-auth.patch
 aux/0087-aux-native-private-apis.patch
 aux/0089-aux-profile-bootstrap-newtab-preload.patch
+aux/0088-aux-native-filtering-import.patch
 aux/0090-aux-native-task-surfaces.patch
 aux/0091-aux-native-switcher-preferences.patch
 aux/0092-aux-native-tab-search-host.patch
 aux/0093-aux-native-owned-tabs.patch
+aux/0094-aux-native-bookmark-hierarchy.patch
+aux/0095-aux-native-pinned-tab-drag.patch

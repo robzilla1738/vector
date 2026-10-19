@@ -30,7 +30,9 @@ import { createHistoryRouter } from './history/index.js';
 import type { DaemonServices } from './http/server.js';
 import { installSessionHttp } from './http/sessions.js';
 import { createInboxRouter, InboxService } from './inbox/index.js';
+import { mcpTools } from './mcp/index.js';
 import { createMemoryRouter } from './memory/index.js';
+import { createPasskeyRouter } from './passkeys/index.js';
 import { pollRoutines } from './routines/index.js';
 import { createAgentRouters } from './sessions/index.js';
 import { installOwnedTabsHttp } from './sessions/owned-tabs-http.js';
@@ -45,6 +47,7 @@ export function createFeatures() {
   let vault: VaultService | undefined;
   let repl: ReturnType<typeof createReplService> | undefined;
   let routineTimer: NodeJS.Timeout | undefined;
+  let unregisterPasskeySecurity: (() => void) | undefined;
   return {
     extendRouter(services: DaemonServices) {
       engine = new AgentEngine(services.store, services.bridge, 4, {
@@ -65,6 +68,7 @@ export function createFeatures() {
             .join('\n')}\n${active.map((item) => item.body).join('\n\n')}`;
         },
         tools: (session, signal) => ({
+          ...(engine ? mcpTools(engine, session, signal) : {}),
           ...(channels ? channelTools(channels, session, signal) : {}),
           ...(engine && helper
             ? computerUseTools(engine, helper, session, signal)
@@ -117,6 +121,10 @@ export function createFeatures() {
         services.store,
         helper ? createVaultBiometryAdapter(helper) : undefined,
       );
+      const passkeys = createPasskeyRouter(services, vault);
+      unregisterPasskeySecurity = vault.registerSecurityChangeHandler(
+        (accountId) => passkeys.service.clearEphemeral(accountId),
+      );
       routineTimer = setInterval(() => {
         for (const account of services.store.accounts())
           inbox.dispatch(account.id);
@@ -130,10 +138,16 @@ export function createFeatures() {
       routineTimer.unref();
       const skills = createSkillRouters(services);
       repl = createReplService(services, activeEngine);
+      const agentRouters = createAgentRouters(services, activeEngine);
       return {
-        ...createAgentRouters(services, activeEngine),
+        ...agentRouters,
+        projects: services.t.mergeRouters(
+          agentRouters.projects,
+          skills.projectSkills,
+        ),
         channel: createChannelRouter(services, channels),
         ...createVaultRouters(services, vault),
+        passkeys: passkeys.router,
         ...(importer
           ? {
               nativeImport: createNativeImportRouter(
@@ -166,6 +180,7 @@ export function createFeatures() {
       await repl?.close();
       await channels?.close();
       vault?.close();
+      unregisterPasskeySecurity?.();
       await helper?.close();
       await importer?.close();
       await engine?.close();

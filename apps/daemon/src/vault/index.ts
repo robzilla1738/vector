@@ -167,6 +167,21 @@ export function createVaultRouters(
       getItemHistory: procedure
         .input(itemScope)
         .query(({ input }) => vault.itemHistory(input.accountId, input.itemId)),
+      restoreItem: procedure
+        .input(
+          itemScope.extend({
+            revision: z.number().int().positive(),
+            baseRevision: z.number().int().positive(),
+          }),
+        )
+        .mutation(({ input }) =>
+          vault.restoreItem(
+            input.accountId,
+            input.itemId,
+            input.revision,
+            input.baseRevision,
+          ),
+        ),
       createItem: procedure
         .input(scope.extend({ item: itemFields }))
         .mutation(

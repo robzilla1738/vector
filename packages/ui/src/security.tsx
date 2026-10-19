@@ -7,6 +7,7 @@ export function AuthGate({
   initialized,
   onUnlocked,
   onStarted,
+  onRecoveryStateChange,
   error: parentError,
 }: {
   rpc: <T>(
@@ -18,6 +19,7 @@ export function AuthGate({
   initialized: boolean;
   onUnlocked: () => Promise<void>;
   onStarted?: () => void;
+  onRecoveryStateChange?: (holding: boolean) => void;
   error: string;
 }) {
   const [mode, setMode] = useState(initialized ? 'unlock' : 'setup');
@@ -56,6 +58,7 @@ export function AuthGate({
       return;
     }
     onStarted?.();
+    if (mode !== 'unlock') onRecoveryStateChange?.(true);
     setPending(true);
     setError('');
     try {
@@ -84,6 +87,7 @@ export function AuthGate({
       }
       await onUnlocked();
     } catch (error) {
+      onRecoveryStateChange?.(false);
       setError(
         error instanceof Error
           ? error.message
@@ -155,9 +159,10 @@ export function AuthGate({
               { accountId, recoveryKey: issuedKey },
               true,
             )
-              .then(() => {
+              .then(async () => {
+                await onUnlocked();
                 setIssuedKey('');
-                return onUnlocked();
+                onRecoveryStateChange?.(false);
               })
               .catch((error) => setError(error.message))
               .finally(() => setPending(false));

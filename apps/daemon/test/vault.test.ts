@@ -113,6 +113,42 @@ test('wrong password stays locked and all item data/history remain encrypted', a
     assert.deepEqual(vault.getItem(1, item.id).urls, [
       'https://example.com/secret',
     ]);
+    const restored = vault.restoreItem(1, item.id, 1, 3);
+    assert.equal(restored.revision, 4);
+    assert.equal(restored.loginFields?.password, 'private secret password');
+    assert.equal(vault.itemHistory(1, item.id).at(-1)?.revision, 3);
+    assert.throws(() => vault.restoreItem(1, item.id, 1, 3), /changed/);
+    assert.throws(
+      () => vault.restoreItem(1, item.id, 999, 4),
+      /no longer available/,
+    );
+    vault.restoreItem(1, item.id, 3, 4);
+    await assert.rejects(
+      vault.verifyFresh(1, { password: 'wrong fresh password' }),
+      /did not unlock/,
+    );
+    const generation = await vault.verifyFresh(1, {
+      password: 'first strong password',
+    });
+    vault.commitPasskeys(1, generation, () => [
+      {
+        id: 'test-passkey',
+        revision: 1,
+        privatePKCS8: 'disposable private signing key',
+      },
+    ]);
+    assert.equal(
+      (vault.readPasskeys(1)[0] as { privatePKCS8: string }).privatePKCS8,
+      'disposable private signing key',
+    );
+    assert.equal(
+      JSON.stringify(vault.snapshot(1)).includes('privatePKCS8'),
+      false,
+    );
+    assert.equal(
+      JSON.stringify(vault.cipherSnapshot(1)).includes('privatePKCS8'),
+      false,
+    );
     const persisted = readFileSync(file, 'utf8');
     for (const secret of [
       'private item title',
@@ -121,6 +157,7 @@ test('wrong password stays locked and all item data/history remain encrypted', a
       'private username',
       'https://example.com/secret',
       'private note',
+      'disposable private signing key',
     ])
       assert.equal(persisted.includes(secret), false);
     vault.lock(1);
@@ -130,8 +167,14 @@ test('wrong password stays locked and all item data/history remain encrypted', a
     );
     assert.equal(vault.status(1).locked, true);
     assert.throws(() => vault.snapshot(1), /Unlock/);
+    assert.throws(() => vault.restoreItem(1, item.id, 1, 5), /Unlock/);
+    assert.throws(() => vault.readPasskeys(1), /Unlock/);
     assert.equal(vault.cipherSnapshot(1).items.length, 1);
     await vault.unlock(1, 'first strong password');
+    assert.throws(
+      () => vault.commitPasskeys(1, generation, (records) => records),
+      /security state changed/,
+    );
     assert.equal(
       vault.getItem(1, item.id).loginFields?.password,
       'replacement secret',
@@ -212,6 +255,13 @@ test('recovery preserves items and invalidates old recovery key and old password
       }),
     ]).items[0];
     assert.ok(item);
+    vault.commitPasskeys(1, vault.generation(1), () => [
+      {
+        id: 'recovery-passkey',
+        revision: 1,
+        privatePKCS8: 'recover this private key',
+      },
+    ]);
     vault.lock(1);
     assert.deepEqual(await vault.verifyRecovery(1, initial.recoveryKey), {
       valid: true,
@@ -223,6 +273,10 @@ test('recovery preserves items and invalidates old recovery key and old password
     );
     assert.notEqual(recovered.recoveryKey, initial.recoveryKey);
     assert.equal(vault.getItem(1, item.id).notes, 'keep me');
+    assert.equal(
+      (vault.readPasskeys(1)[0] as { privatePKCS8: string }).privatePKCS8,
+      'recover this private key',
+    );
     vault.lock(1);
     await assert.rejects(
       vault.unlock(1, 'old password value'),

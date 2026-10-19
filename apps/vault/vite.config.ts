@@ -29,6 +29,7 @@ export default defineConfig({
                 'activeTab',
                 'storage',
                 'dev.aux.ext.private.account',
+                'dev.aux.ext.private.credentials',
               ],
               host_permissions: [
                 'http://127.0.0.1:21520/*',

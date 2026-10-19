@@ -9,7 +9,7 @@ import {
   RouterProvider,
   useLocation,
 } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@aux/ui/tokens.css';
 import './styles.css';
@@ -25,6 +25,7 @@ function Shell() {
   const [account, setAccount] = useState<Account>();
   const [error, setError] = useState('');
   const [gate, setGate] = useState<{ initialized: boolean }>();
+  const recoveryHeld = useRef(false);
   const path = useLocation().pathname;
   function connect() {
     setError('');
@@ -54,11 +55,27 @@ function Shell() {
         'passwordManager.auth.status',
         { accountId: account.accountId },
       )
-        .then((status) => {
-          if (active && status.locked)
+        .then(async (status) => {
+          if (!active) return;
+          if (status.locked)
             setGate(
               (current) => current ?? { initialized: status.initialized },
             );
+          else if (!recoveryHeld.current) {
+            setGate(undefined);
+            if (['#/unlock', '#/onboarding'].includes(location.hash)) {
+              const identity = await rpc<{ onboardingCompletedAt?: number }>(
+                'accounts.get',
+                { accountId: account.accountId },
+              );
+              if (
+                active &&
+                !recoveryHeld.current &&
+                identity.onboardingCompletedAt
+              )
+                location.hash = '/';
+            }
+          }
         })
         .catch((error) => {
           if (active) setError(error.message);
@@ -126,12 +143,16 @@ function Shell() {
           accountId={account.accountId}
           initialized={gate.initialized}
           error={error}
+          onRecoveryStateChange={(holding) => {
+            recoveryHeld.current = holding;
+          }}
           onUnlocked={async () => {
             const status = await rpc<{ locked: boolean }>(
               'passwordManager.auth.status',
               { accountId: account.accountId },
             );
             if (status.locked) throw new Error('This account is still locked.');
+            recoveryHeld.current = false;
             setGate(undefined);
             if (location.hash === '#/unlock') location.hash = '/';
           }}

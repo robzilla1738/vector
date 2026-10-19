@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
 import {
   createKdf,
   cryptoReady,
@@ -34,6 +35,7 @@ import type {
 import {
   envelopeSchema,
   itemSchema,
+  recordId,
   validateRecordKeys,
   vaultSchema,
 } from './schema.js';
@@ -42,6 +44,9 @@ type VaultStore = Pick<
   Store,
   'requireAccount' | 'safeFile' | 'registerAccountDeletionHandler' | 'accounts'
 >;
+const passkeyRecord = z
+  .object({ id: recordId, revision: z.number().int().positive() })
+  .passthrough();
 function failure(
   code:
     | 'BAD_REQUEST'
@@ -49,7 +54,8 @@ function failure(
     | 'PRECONDITION_FAILED'
     | 'CONFLICT'
     | 'NOT_FOUND'
-    | 'FORBIDDEN',
+    | 'FORBIDDEN'
+    | 'TOO_MANY_REQUESTS',
   message: string,
 ): never {
   throw new TRPCError({ code, message });
@@ -87,6 +93,11 @@ export interface VaultBiometryAdapter {
 export class VaultService {
   private keys = new Map<number, Uint8Array>();
   private generations = new Map<number, number>();
+  private securityHandlers = new Set<(accountId: number) => void>();
+  private freshChecks = new Map<
+    number,
+    { failures: number; blockedUntil: number; pending: boolean }
+  >();
   private unregister: () => void;
   constructor(
     private store: VaultStore,
@@ -134,6 +145,135 @@ export class VaultService {
     if (!key) failure('PRECONDITION_FAILED', 'Unlock your Vault to continue.');
     return key;
   }
+  generation(accountId: number) {
+    this.store.requireAccount(accountId);
+    return this.generations.get(accountId) ?? 0;
+  }
+  registerSecurityChangeHandler(handler: (accountId: number) => void) {
+    this.securityHandlers.add(handler);
+    return () => {
+      this.securityHandlers.delete(handler);
+    };
+  }
+  private invalidateSecurity(accountId: number) {
+    this.generations.set(accountId, (this.generations.get(accountId) ?? 0) + 1);
+    for (const handler of this.securityHandlers) {
+      try {
+        handler(accountId);
+      } catch {
+        console.error('A Vault security-state cleanup failed.');
+      }
+    }
+  }
+  readPasskeys(accountId: number): unknown[] {
+    this.key(accountId);
+    return Object.values(this.read(accountId).passkeys).map((record) =>
+      this.decrypt(accountId, 'passkey', record),
+    );
+  }
+  commitPasskeys(
+    accountId: number,
+    expectedGeneration: number,
+    mutate: (records: unknown[]) => unknown[],
+  ) {
+    const key = this.key(accountId);
+    if (this.generation(accountId) !== expectedGeneration)
+      failure(
+        'CONFLICT',
+        'The Vault security state changed. Verify this request again.',
+      );
+    const envelope = this.read(accountId);
+    const result = mutate(
+      Object.values(envelope.passkeys).map((record) =>
+        this.decrypt(accountId, 'passkey', record),
+      ),
+    );
+    const records = z.array(passkeyRecord).max(10000).parse(result);
+    if (this.generation(accountId) !== expectedGeneration)
+      failure('CONFLICT', 'The Vault security state changed while saving.');
+    if (Buffer.byteLength(JSON.stringify(records)) > 16 * 1024 * 1024)
+      failure('BAD_REQUEST', 'The encrypted passkey collection is too large.');
+    const collection: Record<string, EncryptedRecord> = {};
+    for (const record of records) {
+      if (collection[record.id])
+        failure('CONFLICT', 'Duplicate passkey record identity.');
+      collection[record.id] = this.encrypt(accountId, 'passkey', record, key);
+    }
+    envelope.passkeys = collection;
+    envelope.revision++;
+    this.write(envelope);
+  }
+  async verifyFresh(
+    accountId: number,
+    input: { password?: string; biometric?: true },
+  ) {
+    await cryptoReady;
+    const generation = this.generation(accountId);
+    this.key(accountId);
+    const check = this.freshChecks.get(accountId) ?? {
+      failures: 0,
+      blockedUntil: 0,
+      pending: false,
+    };
+    if (check.pending)
+      failure('CONFLICT', 'Another Vault verification is in progress.');
+    if (Date.now() < check.blockedUntil)
+      failure(
+        'TOO_MANY_REQUESTS',
+        'Wait a minute before verifying this Vault again.',
+      );
+    if ((typeof input.password === 'string') === (input.biometric === true))
+      failure('BAD_REQUEST', 'Choose password or biometric verification.');
+    this.freshChecks.set(accountId, check);
+    check.pending = true;
+    let master: Uint8Array | undefined;
+    try {
+      if (input.biometric) {
+        if (!this.biometry)
+          failure(
+            'PRECONDITION_FAILED',
+            'Biometric verification is unavailable.',
+          );
+        const response = await this.biometry.unlock(accountId);
+        if (!/^[A-Za-z0-9+/]{43}=$/.test(response.key))
+          failure(
+            'UNAUTHORIZED',
+            'Biometric verification returned an invalid key.',
+          );
+        master = new Uint8Array(Buffer.from(response.key, 'base64'));
+        response.key = '';
+      } else {
+        master = this.passwordMaster(
+          this.read(accountId),
+          input.password ?? '',
+        );
+      }
+      if (this.generation(accountId) !== generation)
+        failure(
+          'CONFLICT',
+          'This Vault was locked or changed during verification.',
+        );
+      const current = this.key(accountId);
+      if (master.length !== current.length || !timingSafeEqual(master, current))
+        failure(
+          'UNAUTHORIZED',
+          'Verification did not authenticate this Vault.',
+        );
+      check.failures = 0;
+      check.blockedUntil = 0;
+      return generation;
+    } catch (error) {
+      check.failures++;
+      if (check.failures >= 5) {
+        check.blockedUntil = Date.now() + 60_000;
+        check.failures = 0;
+      }
+      throw error;
+    } finally {
+      if (master) wipe(master);
+      check.pending = false;
+    }
+  }
   status(accountId: number) {
     this.store.requireAccount(accountId);
     return {
@@ -177,6 +317,7 @@ export class VaultService {
         vaults: {},
         items: {},
         history: {},
+        passkeys: {},
       };
       envelope.vaults[vault.id] = this.encrypt(accountId, 'vault', vault, key);
       this.write(envelope);
@@ -205,12 +346,12 @@ export class VaultService {
     return this.status(accountId);
   }
   lock(accountId: number) {
-    this.generations.set(accountId, (this.generations.get(accountId) ?? 0) + 1);
     const key = this.keys.get(accountId);
     if (key) {
       wipe(key);
       this.keys.delete(accountId);
     }
+    this.invalidateSecurity(accountId);
     this.publishSecurity(accountId);
     return { locked: true };
   }
@@ -302,6 +443,7 @@ export class VaultService {
       );
       envelope.revision++;
       this.write(envelope);
+      this.invalidateSecurity(accountId);
       this.publishSecurity(accountId);
       return { changed: true };
     } finally {
@@ -449,12 +591,13 @@ export class VaultService {
     const result = await this.biometry.remove(accountId);
     if (result.enrolled)
       failure('PRECONDITION_FAILED', 'The biometric key could not be removed.');
+    this.invalidateSecurity(accountId);
     return result;
   }
   private encrypt(
     accountId: number,
-    kind: 'vault' | 'item',
-    record: VaultItem | VaultRecord,
+    kind: 'vault' | 'item' | 'passkey',
+    record: { id: string; revision: number },
     key: Uint8Array,
   ): EncryptedRecord {
     const plaintext = new TextEncoder().encode(JSON.stringify(record));
@@ -474,7 +617,7 @@ export class VaultService {
   }
   private decrypt(
     accountId: number,
-    kind: 'vault' | 'item',
+    kind: 'vault' | 'item' | 'passkey',
     record: EncryptedRecord,
   ) {
     const key = this.key(accountId);
@@ -494,7 +637,11 @@ export class VaultService {
     try {
       const value = JSON.parse(new TextDecoder().decode(plaintext));
       const parsed =
-        kind === 'vault' ? vaultSchema.parse(value) : itemSchema.parse(value);
+        kind === 'vault'
+          ? vaultSchema.parse(value)
+          : kind === 'item'
+            ? itemSchema.parse(value)
+            : passkeyRecord.parse(value);
       if (parsed.id !== record.id || parsed.revision !== record.revision)
         failure('PRECONDITION_FAILED', 'Vault record identity does not match.');
       return parsed;
@@ -629,6 +776,42 @@ export class VaultService {
     return (envelope.history[itemId] ?? []).map((record) =>
       itemSchema.parse(this.decrypt(accountId, 'item', record)),
     );
+  }
+  restoreItem(
+    accountId: number,
+    itemId: string,
+    revision: number,
+    baseRevision: number,
+  ) {
+    const key = this.key(accountId);
+    const envelope = this.read(accountId);
+    const current = envelope.items[itemId];
+    if (!current) failure('NOT_FOUND', 'This Vault item no longer exists.');
+    if (current.revision !== baseRevision)
+      failure('CONFLICT', 'This item changed. Reload it before restoring.');
+    const historical = (envelope.history[itemId] ?? []).find(
+      (record) => record.revision === revision,
+    );
+    if (!historical)
+      failure('NOT_FOUND', 'This earlier version is no longer available.');
+    const restored = itemSchema.parse({
+      ...itemSchema.parse(this.decrypt(accountId, 'item', historical)),
+      revision: current.revision + 1,
+      updatedAt: Date.now(),
+    });
+    if (!envelope.vaults[restored.vaultId])
+      failure(
+        'CONFLICT',
+        'The earlier destination Vault no longer exists. Choose another destination by editing the item.',
+      );
+    envelope.history[itemId] = [
+      ...(envelope.history[itemId] ?? []),
+      current,
+    ].slice(-1000);
+    envelope.items[itemId] = this.encrypt(accountId, 'item', restored, key);
+    envelope.revision++;
+    this.write(envelope);
+    return restored;
   }
   createVault(
     accountId: number,
