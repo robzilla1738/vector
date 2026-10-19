@@ -17,7 +17,7 @@ Status: **ready** for command/flag behavior and skill purposes; site-specific he
 | `--effort` | off/minimal/low/medium/high/xhigh/max/ultrabrowse; hidden alias `-t/--thinking` |
 | `--permission` | ask, guard, full-access; ask and guard both select guard; omission defaults to guard |
 | `--update` | alias of update; local-only behavior below |
-| `--log-dump` | diagnostic capture flag; exact supported value syntax draft pending independent CLI implementation |
+| `--log-dump` | path to write raw agent events; hidden diagnostic option; redact secrets before serialization |
 
 Command-local options override inherited root options, then stored account/profile defaults. Explicit model/provider selection enables strictModelSelection. Ultrabrowse enables proactiveMode and chooses the highest visible reasoning level. It is not sent as an unsupported provider reasoning string. Ordinary effort leaves proactive mode false. Preserve remaining prompt content literally; never execute shell interpolation inside the CLI parser.
 
@@ -74,7 +74,7 @@ Ready behavioral API: list tabs (`getTabs`), openTab(url), attach/select by stab
 
 Skill file is SKILL.md with name/description and optional autoInject keyword/url patterns and siteSpecific marker. Built-ins and account/project user skills are discoverable; owner customization overrides a built-in without modifying shipped files. Disabled skills do not auto-activate. Keywords match relevant user input and URL patterns match actual bound tab URLs. Loading a skill supplies original instructions and only the helper capabilities actually implemented; a skill name must not imply a nonexistent integration. Do not copy reference skill text or scripts.
 
-The plan's count of 35 is older than the installed inventory: SP1-E4 observes 35 top-level directories plus a site-specific subtree. Preserve capabilities instead of deleting entries to meet an arbitrary count. Required independent playbooks and purposes:
+The plan's count of 35 is older than the installed inventory: SP1-E4 observes 35 top-level skill definitions and 51 total SKILL.md files including a site-specific subtree. Preserve capabilities instead of deleting entries to meet an arbitrary count. Required independent playbooks and purposes:
 
 | Name | Purpose |
 | --- | --- |
