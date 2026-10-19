@@ -12,6 +12,9 @@ export const bindingSchema = z.object({
   anchorTargetId: z.string().optional(),
 });
 export const runtimeSchema = z.object({
+  autoCompaction: z.boolean().optional(),
+  contextWindowTokens: z.number().int().min(4096).max(2097152).optional(),
+  compactionThreshold: z.number().min(0.4).max(0.9).optional(),
   memoryExtractionDisabled: z.boolean().optional(),
   proactiveMode: z.boolean().optional(),
   strictModelSelection: z.boolean().optional(),

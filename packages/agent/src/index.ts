@@ -4,6 +4,11 @@ export {
   attachmentInput,
   type StoredAttachment,
 } from './attachments.js';
+export {
+  contextBudget,
+  estimateContextTokens,
+  planCompaction,
+} from './compaction.js';
 export { Credentials } from './credentials.js';
 export type { AgentExtensions } from './engine.js';
 export { AgentEngine } from './engine.js';
