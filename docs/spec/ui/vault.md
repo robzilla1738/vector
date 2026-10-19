@@ -28,6 +28,8 @@ On supported pages, an inline accessible control opens matching login suggestion
 
 Support authorized1Password, Bitwarden, LastPass, Dashlane, Proton, Apple Passwords and generic CSV flows per daemon importer spec. Preview source/count/errors and selected destination vault; incomplete/invalid rows produce useful errors. Prevent silent duplicate multiplication on retry. JSON/CSV exports are explicit user actions, warn about sensitive plaintext and use chosen destination; no automatic export. Settings manage password change, recovery-key replacement, biometric enrollment/removal, vault create/rename/delete and destructive data clear. Cloud sharing/sync/org controls are hidden locally.
 
+See [security and generator details](vault-security.md) for the evidence-backed timeout and generator controls, secret-copy clearing and explicit reprompt/native-exchange gaps.
+
 ## Acceptance and unknowns
 
-Use a disposable test site/account for save/update/autofill/generate/card/identity/passkey/import, lock and recovery. Verify masked secrets never enter logs/general settings cache, origin/frame targeting and stale-page behavior. Current evidence does not establish exact auto-lock defaults, word count/KDF settings or every imported custom category field constraint; consume daemon spec, never guess security contracts.
+Use a disposable test site/account for save/update/autofill/generate/card/identity/passkey/import, lock and recovery. Verify masked secrets never enter logs/general settings cache, origin/frame targeting and stale-page behavior. The static follow-up in `vault-security.md` establishes timeout defaults/choices and generator options, while distinguishing the extension-local cache from daemon idle renewal. Per-item reprompt authorization, live native exchange, KDF interoperability and every imported custom category field constraint remain unresolved; never guess security contracts.
