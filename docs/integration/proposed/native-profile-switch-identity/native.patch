@@ -1,0 +1,205 @@
+--- a/chrome/browser/ui/browser.h
++++ b/chrome/browser/ui/browser.h
+@@ -24,6 +24,7 @@
+ #include "base/timer/elapsed_timer.h"
+ #include "base/types/expected.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/tab_contents/web_contents_collection.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+@@ -81,6 +82,11 @@
+ 
+ namespace web_app {
+ class AppBrowserController;
++}
++
++namespace aux {
++class ProfileSwitchTransaction;
++class ProfileSwitchTabCollection;
+ }
+ 
+ namespace web_modal {
+@@ -171,6 +177,20 @@
+   const DesktopBrowserWindowCapabilities* capabilities() const override;
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  friend class aux::ProfileSwitchTransaction;
++  friend class aux::ProfileSwitchTabCollection;
++
++  // Original same-window transaction only. No public profile setter: the
++  // owner must have paused persistent sinks and detached every collection.
++  void CommitAuxProfileSwitchIdentity(
++      Profile* target,
++      std::unique_ptr<ScopedProfileKeepAlive> prepared_keep_alive);
++  uint32_t SuppressEmptyForAuxProfileSwitch();
++  void PostClearAuxProfileSwitchEmptySuppression(uint32_t generation);
++  void ClearAuxProfileSwitchEmptySuppression(uint32_t generation);
++#endif
++
+   friend BrowserWindowInterface* CreateBrowserWindow(
+       BrowserWindowCreateParams create_params);
+   friend std::unique_ptr<BrowserWindowInterface>
+@@ -267,7 +287,11 @@
+   const Type type_;
+ 
+   // This Browser's profile.
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_;
++#else
+   const raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_;
++#endif
+ 
+   // Prevent Profile deletion until this browser window is closed.
+   std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
+@@ -307,6 +331,14 @@
+   // Tracks whether the browser object is fully initialized.
+   bool is_initialized_ = false;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Original Browser+104/+105/+108: whole transaction, transient empty-tab
++  // suppression and generation, not a global/profile-wide saving toggle.
++  bool aux_profile_switch_in_progress_ = false;
++  bool aux_profile_switch_suppress_empty_ = false;
++  uint32_t aux_profile_switch_generation_ = 0;
++#endif
++
+   // The following factory is used to close the frame at a later time.
+   base::WeakPtrFactory<Browser> weak_factory_{this};
+ };
+--- a/chrome/browser/ui/browser.cc
++++ b/chrome/browser/ui/browser.cc
+@@ -13,6 +13,7 @@
+ #include <utility>
+ 
+ #include "base/base_paths.h"
++#include "base/check_op.h"
+ #include "base/check_deref.h"
+ #include "base/command_line.h"
+ #include "base/feature_list.h"
+@@ -609,7 +610,55 @@
+   OnActiveTabChanged(change, selection);
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void Browser::CommitAuxProfileSwitchIdentity(
++    Profile* target,
++    std::unique_ptr<ScopedProfileKeepAlive> prepared_keep_alive) {
++  CHECK(aux_profile_switch_in_progress_);
++  CHECK(aux_profile_switch_suppress_empty_);
++  CHECK_EQ(type_, TYPE_NORMAL);
++  CHECK(profile_->IsRegularProfile());
++  CHECK(target);
++  CHECK(target->IsRegularProfile());
++  CHECK_NE(profile_.get(), target);
++  CHECK(prepared_keep_alive);
++  CHECK_EQ(prepared_keep_alive->profile(), target);
++  CHECK(tab_strip_model_->empty());
++  CHECK(!IsDeleteScheduled());
++  // Called inside the manager's synchronous ownership-transfer closure. No
++  // view/controller callbacks are emitted until all authoritative identities
++  // agree. The window, SessionID, model and its delegate remain unchanged.
++  profile_keep_alive_ = std::move(prepared_keep_alive);
++  profile_ = target;
++  tab_strip_model_->RebindProfileForAuxProfileSwitch(
++      target, base::PassKey<Browser>());
++}
++
++uint32_t Browser::SuppressEmptyForAuxProfileSwitch() {
++  aux_profile_switch_suppress_empty_ = true;
++  return ++aux_profile_switch_generation_;
++}
++
++void Browser::PostClearAuxProfileSwitchEmptySuppression(uint32_t generation) {
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE,
++      base::BindOnce(&Browser::ClearAuxProfileSwitchEmptySuppression,
++                     weak_factory_.GetWeakPtr(), generation));
++}
++
++void Browser::ClearAuxProfileSwitchEmptySuppression(uint32_t generation) {
++  if (generation == aux_profile_switch_generation_) {
++    aux_profile_switch_suppress_empty_ = false;
++  }
++}
++#endif
++
+ void Browser::TabStripEmpty() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_suppress_empty_) {
++    return;
++  }
++#endif
+   // Note: even though the tab strip is empty, the call to Close() may not
+   // result in closing this Browser. This can happen in the case of closing
+   // the last Browser with ongoing downloads.
+@@ -623,6 +672,11 @@
+       tab_strip_model_->closing_all() || IsDeleteScheduled()) {
+     return;
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_suppress_empty_) {
++    return;
++  }
++#endif
+   SessionService* service = SessionServiceFactory::GetForProfile(profile_);
+   if (service) {
+     service->AddWindowExtraData(
+--- a/chrome/browser/ui/tabs/tab_strip_model.h
++++ b/chrome/browser/ui/tabs/tab_strip_model.h
+@@ -25,6 +25,7 @@
+ #include "base/scoped_multi_source_observation.h"
+ #include "base/scoped_observation.h"
+ #include "base/time/time.h"
++#include "base/types/pass_key.h"
+ #include "base/unguessable_token.h"
+ #include "chrome/browser/buildflags.h"
+ #include "build/build_config.h"
+@@ -51,6 +52,7 @@
+ #endif
+ 
+ class DraggingTabsSession;
++class Browser;
+ class Profile;
+ class TabGroupModel;
+ class TabStripModelDelegate;
+@@ -242,6 +244,12 @@
+   // Retrieve the Profile associated with this TabStripModel.
+   Profile* profile() const { return profile_; }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Only the prepared Browser identity commit can rebind an emptied model.
++  void RebindProfileForAuxProfileSwitch(Profile* profile,
++                                        base::PassKey<Browser>);
++#endif
++
+   // Retrieve the index of the currently active WebContents. The only time this
+   // is kNoTab is if the tab strip is being initialized or destroyed. Note that
+   // tab strip destruction is an asynchronous process.
+--- a/chrome/browser/ui/tabs/tab_strip_model.cc
++++ b/chrome/browser/ui/tabs/tab_strip_model.cc
+@@ -262,6 +262,23 @@
+   scrubbing_metrics_.Init();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void TabStripModel::RebindProfileForAuxProfileSwitch(
++    Profile* profile,
++    base::PassKey<Browser>) {
++  CHECK(profile);
++  CHECK(profile->IsRegularProfile());
++  CHECK(profile_->IsRegularProfile());
++  CHECK(!reentrancy_guard_);
++  CHECK(empty());
++  CHECK(selection_model_.empty());
++  CHECK(!group_model_ || group_model_->ListTabGroups().empty());
++  // The detached collections retain their actual tabs and BrowserContexts;
++  // this changes only the stable, currently empty model's service identity.
++  profile_ = profile;
++}
++#endif
++
+ void TabStripModel::SetFocusedGroup(
+     std::optional<tab_groups::TabGroupId> group) {
+   CHECK(base::FeatureList::IsEnabled(features::kTabGroupsFocusing));

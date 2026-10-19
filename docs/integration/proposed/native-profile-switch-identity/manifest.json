@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "actual applied v32; four identity/model sources, no shared edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.h",
+      "baselineSha256": "3edd13e0b535790efb3254f1e2be505450c26fb8dae4c4dfab57c15d25ceb8e4",
+      "outputSha256": "7417185e7c50a3e67b538751f7aa893655b84b2ade8c849b1bb5e812923429d3"
+    },
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "baselineSha256": "185e71f8910d634dde2cf32218a8820ee42599a6210ae33dd116a20d3ca4123f",
+      "outputSha256": "4bea8714b533db5e4371be8575d45512c5c4aa5fed5dad28ed6ee380432e957f"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.h",
+      "baselineSha256": "bce52729484749c1eadc5fa1cec1b21f343cec9851447e6e1592f25b3a3a4c30",
+      "outputSha256": "071343ae0bebbf6315a5f2a76f657a01c37997cf586a3938c1d3218793651a23"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "baselineSha256": "e44665e77d10a6ea8597555ab88fff30574c6d7cf75a7f3babbe4be0fb4992cd",
+      "outputSha256": "9706772003c9423024dec54088221083806d382dbb0f76875aeb137e1173531d"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,11 @@
+{
+  "source": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04559f80.c",
+  "sha256": "aa281c5f7b93a7947ab805354cb9e0b293f7465656340b015f589ec2b08e9637",
+  "recoveredEffects": {
+    "guards": "lines143,175-179,275-277,1915-1930",
+    "identity": "lines1066-1146",
+    "originalOwner": "same Browser/window/model/delegate and independent SessionID",
+    "newCurrentGuard": "TabStripModel::empty, regular profile, actual prepared target keepalive, Browser-only PassKey"
+  },
+  "staticOnly": true
+}
