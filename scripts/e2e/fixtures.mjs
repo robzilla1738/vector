@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export async function fixtures() {
   const nonce = randomUUID();
@@ -51,4 +51,11 @@ export async function fixtures() {
   await new Promise((done, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', done); });
   const origin = `http://127.0.0.1:${server.address().port}/suite/${nonce}`;
   return { marker, url: id => `${origin}/${id}`, events: id => events.get(id) ?? [], close: () => new Promise(done => server.close(done)) };
+}
+
+// Deterministic synthetic context, bounded below the supplied256000-character
+// command cap. Several real turns may be needed to reach its64000-token floor.
+export function compactionBackground(runId, round) {
+  return Array.from({ length: 1800 }, (_, index) =>
+    `${round}:${index} ${createHash('sha256').update(`${runId}:${round}:${index}`).digest('hex')}`).join('\n');
 }

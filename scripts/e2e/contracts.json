@@ -1,0 +1,86 @@
+{
+  "daemonSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "cliSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+  "anchors": [
+    {
+      "find": "fileAttachmentSchema=object({id:string$3().min(1),type:literal(`file`)",
+      "count": 1,
+      "offset": 12021647
+    },
+    {
+      "find": "files:router({list:localSessionByIdProcedure",
+      "count": 1,
+      "offset": 12028976
+    },
+    {
+      "find": "uploadAttachment:localSessionByIdProcedure.input(object({attachment:fileAttachmentSchema}))",
+      "count": 1,
+      "offset": 12029565
+    },
+    {
+      "find": "memoryRouter=router({getDirectory:accountProcedure",
+      "count": 1,
+      "offset": 11819307
+    },
+    {
+      "find": "readFile:accountProcedure.input(object({filePath:string$3()}))",
+      "count": 1,
+      "offset": 11820706
+    },
+    {
+      "find": "resolveBrowserBinding:accountProcedure.input(object({profileId:string$3().min(1)}))",
+      "count": 1,
+      "offset": 11765756
+    },
+    {
+      "find": "setAiGatewayModelIds:accountProcedure.input(object({providerId:aiGatewayProviderIdSchema,modelIds:array(string$3().min(1)).min(1)}))",
+      "count": 1,
+      "offset": 11848092
+    },
+    {
+      "find": "MIN_COMPACTION_THRESHOLD_TOKENS=64e3",
+      "count": 1,
+      "offset": 1376233
+    },
+    {
+      "find": "modelThresholdTokens:record(string$3(),compactionThresholdTokensSchema)",
+      "count": 1,
+      "offset": 1710203
+    },
+    {
+      "find": "runtimeConfig:sessionRuntimeConfigPatchSchema.optional()",
+      "count": 2,
+      "offset": 6310107
+    },
+    {
+      "find": "ei.role===`user-message-metadata`?{...ei,attachments:",
+      "count": 1,
+      "offset": 6667681
+    },
+    {
+      "find": "createReplTool=Cn=>({name:`repl`",
+      "count": 1,
+      "offset": 11012686
+    },
+    {
+      "find": "createMemoryReadTool=Cn=>",
+      "count": 1,
+      "offset": 11008299
+    },
+    {
+      "find": "name:`memory_search`",
+      "count": 1,
+      "offset": 11008408
+    },
+    {
+      "find": "name:`subagent_wait`",
+      "count": 1,
+      "offset": 6821623
+    },
+    {
+      "find": "name:`write_todos`",
+      "count": 1,
+      "offset": 11019577
+    }
+  ]
+}
