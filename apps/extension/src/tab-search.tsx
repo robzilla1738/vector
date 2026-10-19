@@ -16,12 +16,31 @@ export function TabSearch({ accountId }: { accountId: number }) {
   const [selected, setSelected] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [tabsRevision, setTabsRevision] = useState(0);
+  const selectedId = useRef<string | undefined>(undefined);
   const revision = useRef(0);
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    selectedId.current = rows[selected]?.id;
+  }, [rows, selected]);
+  useEffect(() => {
+    const changed = () => setTabsRevision((value) => value + 1);
+    chrome.tabs.onCreated.addListener(changed);
+    chrome.tabs.onRemoved.addListener(changed);
+    chrome.tabs.onUpdated.addListener(changed);
+    chrome.sessions.onChanged.addListener(changed);
+    return () => {
+      chrome.tabs.onCreated.removeListener(changed);
+      chrome.tabs.onRemoved.removeListener(changed);
+      chrome.tabs.onUpdated.removeListener(changed);
+      chrome.sessions.onChanged.removeListener(changed);
+    };
+  }, []);
   useEffect(() => {
     input.current?.focus();
     input.current?.select();
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Tab events invalidate the result snapshot without changing the query.
   useEffect(() => {
     const current = ++revision.current;
     setLoading(true);
@@ -47,7 +66,7 @@ export function TabSearch({ accountId }: { accountId: number }) {
           query && !chrome.extension.inIncognitoContext
             ? chrome.bookmarks.search(query)
             : Promise.resolve([]),
-          query
+          query && !chrome.extension.inIncognitoContext
             ? chrome.history.search({
                 text: query,
                 maxResults: 50,
@@ -132,7 +151,12 @@ export function TabSearch({ accountId }: { accountId: number }) {
         }
         if (current === revision.current) {
           setRows(results);
-          setSelected(0);
+          setSelected(
+            Math.max(
+              0,
+              results.findIndex((row) => row.id === selectedId.current),
+            ),
+          );
           setLoading(false);
           setError('');
         }
@@ -142,10 +166,12 @@ export function TabSearch({ accountId }: { accountId: number }) {
       clearTimeout(timer);
       revision.current++;
     };
-  }, [accountId, query]);
+  }, [accountId, query, tabsRevision]);
   async function activate(index: number) {
     try {
-      await rows[index]?.activate();
+      const row = rows[index];
+      if (!row) return;
+      await row.activate();
       window.close();
     } catch (error) {
       setError(
@@ -159,9 +185,12 @@ export function TabSearch({ accountId }: { accountId: number }) {
         <input
           ref={input}
           value={query}
-          placeholder="Find tabs, tasks, saved pages and extensions"
-          aria-label="Find tabs, tasks, saved pages and extensions"
-          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Find tabs, tasks and saved pages"
+          aria-label="Find tabs, tasks and saved pages"
+          onChange={(event) => {
+            selectedId.current = undefined;
+            setQuery(event.target.value);
+          }}
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing) return;
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
