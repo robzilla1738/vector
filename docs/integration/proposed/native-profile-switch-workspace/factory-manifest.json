@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "after native-profile-switch-workspace/native.patch d3d42bb34; remaining actualv32 outputs disjoint",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "baselineSha256": "fa85c2ea657796985da7a54f9565dd34678968e5a8b4209b0a6befe394db9f91",
+      "outputSha256": "8294ec6a371de3e9614eaccde9eaf670db29c2a85995e4996b2f84d46d525907"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.cc",
+      "baselineSha256": "6a13b37894ea6bb6c20c4cc89f6ea0fe69c5414b97118d838a6b94b66034a6ed",
+      "outputSha256": "286b98ea8372bcc53b1159d74938ca11ad3e812983101ae56f11745d362ca63b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "baselineSha256": null,
+      "outputSha256": "4d479646ef6c7490b564e87b6aed3a5f85e4beaa7e50ab99ee437eeb6a33dc9e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h",
+      "baselineSha256": null,
+      "outputSha256": "a7df6b201e40d9c1ded2c5d020c0559715b58e16b66193f5db082bc079552d8a"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

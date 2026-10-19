@@ -1,0 +1,238 @@
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -6,9 +6,12 @@
+ #define CHROME_BROWSER_UI_BROWSER_INIT_STATE_H_
+ 
+ #include <cstdint>
++#include <map>
++#include <memory>
+ #include <optional>
+ #include <string>
+ 
++#include "base/files/file_path.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "components/tab_groups/tab_group_id.h"
+ #include "ui/base/mojom/window_show_state.mojom.h"
+@@ -16,6 +19,8 @@
+ #include "ui/gfx/geometry/rect.h"
+ 
+ class BrowserWindowInterface;
++class Profile;
++class ScopedProfileKeepAlive;
+ 
+ namespace ui {
+ class UnownedUserDataHost;
+@@ -100,6 +105,10 @@
+     return aux_profile_switch_workspace_id_;
+   }
+ 
++  // Original per-window cache-profile map; separate from the active Browser
++  // profile keepalive, retained until this window's state is destroyed.
++  void KeepAuxProfileSwitchProfileAlive(Profile* profile);
++
+   bool omit_from_session_restore() const { return omit_from_session_restore_; }
+   bool should_trigger_session_restore() const {
+     return should_trigger_session_restore_;
+@@ -111,6 +120,8 @@
+ 
+   // Original Browser+0xf8, separate from the real browser SessionID.
+   const uint64_t aux_profile_switch_workspace_id_;
++  std::map<base::FilePath, std::unique_ptr<ScopedProfileKeepAlive>>
++      aux_profile_switch_keep_alives_;
+ 
+   // Whether this Browser should be omitted from being saved/restored by session
+   // restore.
+--- a/chrome/browser/ui/browser_init_state.cc
++++ b/chrome/browser/ui/browser_init_state.cc
+@@ -7,6 +7,9 @@
+ #include "base/atomic_sequence_num.h"
+ #include "base/no_destructor.h"
+ #include "build/build_config.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "ui/base/unowned_user_data/unowned_user_data_host.h"
+@@ -61,3 +64,20 @@
+       scoped_unowned_user_data_(host, *this) {}
+ 
+ BrowserInitState::~BrowserInitState() = default;
++
++void BrowserInitState::KeepAuxProfileSwitchProfileAlive(Profile* profile) {
++  if (!profile) {
++    return;
++  }
++  profile = profile->GetOriginalProfile();
++  if (!profile || profile->IsOffTheRecord() || profile->GetPath().empty() ||
++      aux_profile_switch_keep_alives_.contains(profile->GetPath())) {
++    return;
++  }
++  auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
++      profile, ProfileKeepAliveOrigin::kBrowserWindow);
++  if (keep_alive) {
++    aux_profile_switch_keep_alives_.emplace(profile->GetPath(),
++                                          std::move(keep_alive));
++  }
++}
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -0,0 +1,131 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
++
++#include <optional>
++#include <utility>
++
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profiles_state.h"
++#include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/browser_manager_service.h"
++#include "chrome/browser/ui/browser_manager_service_factory.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
++#include "chrome/browser/ui/unload_controller.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++bool IsClosing(BrowserWindowInterface* browser) {
++  const auto* unload = UnloadController::From(browser);
++  return !unload || unload->is_attempting_to_close_browser() ||
++         unload->is_delete_scheduled();
++}
++void KeepTargetAlive(BrowserWindowInterface* owner,
++                     BrowserWindowInterface* cache,
++                     Profile* target) {
++  BrowserInitState::From(owner)->KeepAuxProfileSwitchProfileAlive(target);
++  BrowserInitState::From(cache)->KeepAuxProfileSwitchProfileAlive(target);
++}
++}  // namespace
++
++BrowserWindowInterface* FindProfileSwitchWorkspace(
++    BrowserWindowInterface* owner,
++    const base::FilePath& profile_path) {
++  if (!owner || profile_path.empty() || !g_browser_process ||
++      !g_browser_process->profile_manager()) {
++    return nullptr;
++  }
++  auto* loaded =
++      g_browser_process->profile_manager()->GetProfileByPath(profile_path);
++  if (!loaded || loaded->IsOffTheRecord()) {
++    return nullptr;
++  }
++  auto* manager = BrowserManagerServiceFactory::GetForProfile(
++      loaded->GetOriginalProfile());
++  const auto* owner_state = BrowserInitState::From(owner);
++  if (!manager || !owner_state) {
++    return nullptr;
++  }
++  BrowserWindowInterface* found = nullptr;
++  manager->ForEach([&](BrowserWindowInterface* candidate) {
++    if (candidate == owner || IsClosing(candidate) ||
++        candidate->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        !candidate->GetProfile() ||
++        candidate->GetProfile()->GetOriginalProfile()->GetPath() != profile_path) {
++      return true;
++    }
++    const auto* state = BrowserInitState::From(candidate);
++    if (!state || !state->is_aux_profile_switch_cache() ||
++        state->aux_profile_switch_workspace_id() !=
++            owner_state->aux_profile_switch_workspace_id()) {
++      return true;
++    }
++    found = candidate;
++    return false;
++  });
++  return found;
++}
++
++BrowserWindowInterface* GetOrCreateProfileSwitchWorkspace(
++    BrowserWindowInterface* owner,
++    Profile* target,
++    bool ensure_tab) {
++  if (!owner || !target || !g_browser_process ||
++      !g_browser_process->profile_manager() ||
++      owner->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      owner->GetProfile()->IsOffTheRecord() || IsClosing(owner) ||
++      browser_shutdown::HasShutdownStarted() ||
++      browser_shutdown::IsTryingToQuit() || g_browser_process->IsShuttingDown()) {
++    return nullptr;
++  }
++  const auto* source = BrowserInitState::From(owner);
++  if (!source || source->is_aux_profile_switch_cache()) {
++    return nullptr;
++  }
++  target = target->GetOriginalProfile();
++  if (!target || target->IsOffTheRecord() || target->GetPath().empty() ||
++      profiles::IsProfileLocked(target->GetPath()) ||
++      g_browser_process->profile_manager()->GetProfileByPath(target->GetPath()) !=
++          target) {
++    return nullptr;
++  }
++  if (auto* cache = FindProfileSwitchWorkspace(owner, target->GetPath())) {
++    KeepTargetAlive(owner, cache, target);
++    return cache;
++  }
++  BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL, target,
++                                   /*from_user_gesture=*/false);
++  params.omit_from_session_restore = true;
++  params.should_trigger_session_restore = false;
++  params.aux_profile_switch_cache = true;
++  params.aux_profile_switch_workspace_id =
++      source->aux_profile_switch_workspace_id();
++  params.vertical_tab_strip_collapsed = false;
++  if (const auto* strip =
++          tabs::VerticalTabStripStateController::From(owner)) {
++    params.vertical_tab_strip_uncollapsed_width = strip->GetUncollapsedWidth();
++  } else {
++    params.vertical_tab_strip_uncollapsed_width =
++        source->get_vertical_tabs_initial_uncollapsed_width();
++  }
++  auto* cache = CreateBrowserWindow(std::move(params));
++  if (!cache) {
++    return nullptr;
++  }
++  if (ensure_tab && cache->GetTabStripModel() &&
++      cache->GetTabStripModel()->empty()) {
++    chrome::AddAndReturnTabAt(
++        cache, GURL(), -1, /*foreground=*/true, std::nullopt,
++        /*pinned=*/false);
++  }
++  KeepTargetAlive(owner, cache, target);
++  return cache;
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_SWITCH_WORKSPACES_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_SWITCH_WORKSPACES_H_
++
++#include "base/files/file_path.h"
++
++class BrowserWindowInterface;
++class Profile;
++
++namespace aux {
++// Searches only a loaded profile's registered, hidden cache owned by this
++// window's independent workspace identity. Never selects another user window.
++BrowserWindowInterface* FindProfileSwitchWorkspace(
++    BrowserWindowInterface* owner,
++    const base::FilePath& profile_path);
++
++// Original455cfec: creates a real hidden normal browser, or returns its exact
++// existing cache. This is not the visible-window profile migration transaction.
++BrowserWindowInterface* GetOrCreateProfileSwitchWorkspace(
++    BrowserWindowInterface* owner,
++    Profile* target,
++    bool ensure_tab);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_SWITCH_WORKSPACES_H_

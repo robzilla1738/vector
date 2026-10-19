@@ -20,6 +20,12 @@
       "endExclusive": "0x455e824",
       "file": "original-cache-predicate.txt",
       "sha256": "719c5f0d8821208c0b650580d381c40b4a8f47856051994e03014c9fffc731bc"
+    },
+    {
+      "start": "0x455c674",
+      "endExclusive": "0x455c8fc",
+      "file": "original-keepalive.txt",
+      "sha256": "a6e676ac9f70a67ffacde435c9f673b1e535a06ebc2863644592e8a2debe580f"
     }
   ]
 }
