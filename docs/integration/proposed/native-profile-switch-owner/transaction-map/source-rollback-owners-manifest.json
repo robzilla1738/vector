@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual applied Toolbar/Download/ExtensionSidePanelManager profile-owner hooks",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "baselineSha256": "e53803590d9a3ec1f5174caa630442dfe2e67c9957d66d1f47a87f2531996838",
+      "outputSha256": "e5d2cdfdca8a2c41176ae9de704aa433374573e386fc6170ea530048c8ed0307"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "baselineSha256": "1d496f8bc2900427c1e37882304709b032c536815af8f2bd2f6aec8f00d0d83e",
+      "outputSha256": "07dde6dbeae5d75cb781e419191db253c45973d70bd84533febb96945c885acb"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineSha256": "bf2c9833a64b3b609457d961f0c1ed7d7351f1d6cf4dd2d04398aed877ee069b",
+      "outputSha256": "97341b579860e6cc746ac6e93e6469f23e94ba769d5ad377179f282502a8fab0"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "101e9eced376c7d95a73f7657148f7b00e2756b6e232a90c28d36f34754296a5",
+      "outputSha256": "545ae4daef2f590efed3f46f528f1cb0cacb8cc9040b871650101c84d2236a54"
+    },
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h",
+      "baselineSha256": "ad61fcbb566005c7c34a504f69a2739acadc703b9da052985635f6d6d11c31a0",
+      "outputSha256": "6b9c388afaff5583c3c1ea39fbeea7492c2993be786cd61a81e58eb768961a33"
+    },
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc",
+      "baselineSha256": "12d49c059d3f176a1fe3edec7622e276e20b2ecd38f0658ec3eb6df3a0877e66",
+      "outputSha256": "b1e291e3beac740a03009ef116007593b27f13d6df6eb4981c185880ded4ab21"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

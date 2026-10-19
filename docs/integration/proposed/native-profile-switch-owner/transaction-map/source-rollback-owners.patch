@@ -1,0 +1,266 @@
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.h
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.h
+@@ -74,6 +74,8 @@
+   // Requires the committed target profile and an empty tab model. Registers
+   // real target-profile entries without opening or navigating their views.
+   void RebindForAuxProfileSwitch(Profile* target_profile);
++  // Only before identity commits, after the real source tabs are restored.
++  void AbortForAuxProfileSwitch(Profile* source_profile);
+ #endif
+ 
+   // ExtensionRegistryObserver implementation.
+@@ -84,6 +86,10 @@
+                            UnloadedExtensionReason reason) override;
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void RebuildForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   // Creates an ExtensionSidePanelCoordinator for `extension` and adds it to
+   // `coordinators_` if the extension is capable of hosting side panel content.
+   void MaybeCreateExtensionSidePanelCoordinator(const Extension* extension);
+@@ -104,6 +110,7 @@
+       coordinators_;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
+   bool aux_profile_switch_prepared_ = false;
+ #endif
+ 
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.cc
+@@ -13,6 +13,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/extensions/extension_side_panel_coordinator.h"
+ #include "content/public/browser/browser_context.h"
++#include "content/public/browser/web_contents.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/side_panel/side_panel_registry.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -75,6 +76,7 @@
+   CHECK_EQ(browser_->GetProfile(), profile_);
+   CHECK_EQ(SidePanelRegistry::From(browser_), registry_);
+   CHECK(!aux_profile_switch_prepared_);
++  aux_switch_source_profile_ = browser_->GetProfile();
+   aux_profile_switch_prepared_ = true;
+   extension_registry_observation_.Reset();
+ 
+@@ -93,8 +95,28 @@
+   }
+ }
+ 
+-void ExtensionSidePanelManager::RebindForAuxProfileSwitch(
+-    Profile* target_profile) {
++void ExtensionSidePanelManager::RebindForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(browser_->GetTabStripModel());
++  CHECK(browser_->GetTabStripModel()->empty());
++  RebuildForAuxProfileSwitch(target_profile);
++}
++
++void ExtensionSidePanelManager::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(browser_->GetProfile(), source_profile);
++  auto* model = browser_->GetTabStripModel();
++  CHECK(model);
++  // Validate restored source collections, without pretending the model is empty
++  // or allowing target-profile reconstruction on the rollback path.
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
++  }
++  RebuildForAuxProfileSwitch(source_profile);
++}
++
++void ExtensionSidePanelManager::RebuildForAuxProfileSwitch(Profile* target_profile) {
+   CHECK(!for_tab_);
+   CHECK(aux_profile_switch_prepared_);
+   CHECK(!extension_registry_observation_.IsObserving());
+@@ -104,9 +126,9 @@
+   CHECK_EQ(browser_->GetProfile(), target_profile);
+   CHECK_EQ(SidePanelRegistry::From(browser_), registry_);
+   CHECK(browser_->GetTabStripModel());
+-  CHECK(browser_->GetTabStripModel()->empty());
+   profile_ = target_profile;
+   RegisterExtensionEntries();
++  aux_switch_source_profile_ = nullptr;
+   aux_profile_switch_prepared_ = false;
+ }
+ #endif
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -128,6 +128,8 @@
+   bool CanRebindOwnedActionsForAuxProfileSwitch() const;
+   void PrepareOwnedActionsForAuxProfileSwitch();
+   void RebindOwnedActionsForAuxProfileSwitch(Profile* target_profile);
++  // Only before identity commits, after the real source tabs are restored.
++  void AbortOwnedActionsForAuxProfileSwitch(Profile* source_profile);
+ #endif
+ 
+   // Forces the toolbar (and transitively the location bar) to update its
+@@ -291,6 +293,10 @@
+   void SetToolbarVisibility(bool visible);
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void RebuildOwnedActionsForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
+                            CircularButtonRetainsInteriorMarginsAndPosition);
+   FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
+@@ -490,6 +496,7 @@
+       std::make_unique<BooleanPrefMember>();
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
+   bool aux_owned_actions_prepared_ = false;
+   bool aux_overflow_button_was_enabled_ = false;
+   std::optional<size_t> aux_extensions_child_index_;
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -334,6 +334,7 @@
+ 
+ void ToolbarView::PrepareOwnedActionsForAuxProfileSwitch() {
+   CHECK(CanRebindOwnedActionsForAuxProfileSwitch());
++  aux_switch_source_profile_ = browser_->GetProfile();
+   aux_owned_actions_prepared_ = true;
+   aux_extensions_child_index_ = GetIndexOf(extensions_container_);
+   aux_pinned_actions_child_index_ = GetIndexOf(pinned_toolbar_actions_container_);
+@@ -364,12 +365,32 @@
+ }
+ 
+ void ToolbarView::RebindOwnedActionsForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(browser_->GetTabStripModel());
++  CHECK(browser_->GetTabStripModel()->empty());
++  RebuildOwnedActionsForAuxProfileSwitch(target_profile);
++}
++
++void ToolbarView::AbortOwnedActionsForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_owned_actions_prepared_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(browser_->GetProfile(), source_profile);
++  auto* model = browser_->GetTabStripModel();
++  CHECK(model);
++  // Validate restored source collections, without pretending the model is empty
++  // or allowing target-profile reconstruction on the rollback path.
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
++  }
++  RebuildOwnedActionsForAuxProfileSwitch(source_profile);
++}
++
++void ToolbarView::RebuildOwnedActionsForAuxProfileSwitch(Profile* target_profile) {
+   CHECK(aux_owned_actions_prepared_);
+   CHECK(target_profile);
+   CHECK(target_profile->IsRegularProfile());
+   CHECK_EQ(browser_->GetProfile(), target_profile);
+   CHECK(browser_->GetTabStripModel());
+-  CHECK(browser_->GetTabStripModel()->empty());
+   CHECK(!extensions_container_);
+   CHECK(!pinned_toolbar_actions_container_);
+   CHECK(!pinned_toolbar_actions_);
+@@ -428,6 +449,7 @@
+   InitLayout();
+   aux_extensions_child_index_.reset();
+   aux_pinned_actions_child_index_.reset();
++  aux_switch_source_profile_ = nullptr;
+   aux_owned_actions_prepared_ = false;
+   overflow_button_->SetEnabled(aux_overflow_button_was_enabled_);
+ }
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
+@@ -78,6 +78,8 @@
+   void PrepareForAuxProfileSwitch();
+   // Requires committed target identity and its actual actions/pinned toolbar.
+   void RebindForAuxProfileSwitch(Profile* target_profile);
++  // Only before identity commits, after the real source tabs are restored.
++  void AbortForAuxProfileSwitch(Profile* source_profile);
+ #endif
+ 
+   // DownloadDisplay:
+@@ -150,6 +152,10 @@
+   views::ImageView* GetImageBadgeForTesting();
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void RebuildForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   // Closes the bubble when it detects an event such as a mouse click, escape
+   // key press, etc., which indicates the user's intent to close the bubble.
+   //
+@@ -321,6 +327,7 @@
+       scoped_unowned_user_data_;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
+   bool aux_profile_switch_prepared_ = false;
+   bool aux_profile_switch_rebinding_ = false;
+   int aux_callback_depth_ = 0;
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+@@ -56,6 +56,7 @@
+ #include "components/tabs/public/tab_interface.h"
+ #include "content/public/browser/browser_accessibility_state.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/web_contents.h"
+ #include "ui/accessibility/ax_mode.h"
+ #include "ui/base/interaction/element_tracker.h"
+ #include "ui/base/l10n/l10n_util.h"
+@@ -501,6 +502,7 @@
+ 
+ void DownloadToolbarUIController::PrepareForAuxProfileSwitch() {
+   CHECK(CanRebindForAuxProfileSwitch());
++  aux_switch_source_profile_ = browser_view_->browser()->GetProfile();
+   aux_profile_switch_prepared_ = true;
+   weak_factory_.InvalidateWeakPtrs();
+   auto_close_bubble_timer_.Stop();
+@@ -515,15 +517,34 @@
+   button_click_time_ = base::TimeTicks();
+ }
+ 
+-void DownloadToolbarUIController::RebindForAuxProfileSwitch(
+-    Profile* target_profile) {
++void DownloadToolbarUIController::RebindForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(browser_view_->browser()->GetTabStripModel());
++  CHECK(browser_view_->browser()->GetTabStripModel()->empty());
++  RebuildForAuxProfileSwitch(target_profile);
++}
++
++void DownloadToolbarUIController::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(browser_view_->browser()->GetProfile(), source_profile);
++  auto* model = browser_view_->browser()->GetTabStripModel();
++  CHECK(model);
++  // Validate restored source collections, without pretending the model is empty
++  // or allowing target-profile reconstruction on the rollback path.
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
++  }
++  RebuildForAuxProfileSwitch(source_profile);
++}
++
++void DownloadToolbarUIController::RebuildForAuxProfileSwitch(Profile* target_profile) {
+   CHECK(aux_profile_switch_prepared_);
+   CHECK(target_profile);
+   CHECK(target_profile->IsRegularProfile());
+   auto* browser = browser_view_->browser();
+   CHECK_EQ(browser->GetProfile(), target_profile);
+   CHECK_EQ(From(browser), this);
+-  CHECK(browser->GetTabStripModel()->empty());
+   CHECK(!controller_);
+   CHECK(!bubble_controller_);
+   base::AutoReset<bool> rebinding(&aux_profile_switch_rebinding_, true);
+@@ -552,6 +573,7 @@
+       ProfileBrowserCollection::GetForProfile(target_profile));
+   UpdateIconDormant();
+   UpdateIcon();
++  aux_switch_source_profile_ = nullptr;
+   aux_profile_switch_prepared_ = false;
+ }
+ #endif
