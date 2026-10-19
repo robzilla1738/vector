@@ -24,15 +24,21 @@ function proof({ directory, otherHome }) {
 if (!isMainThread) {
   try { parentPort.postMessage({ proof: proof(workerData) }); } catch { parentPort.postMessage({ failed: true }); }
 } else {
-  (async () => {
-    const directory = path.resolve(process.argv[2]), otherHome = path.resolve(process.argv[3]);
+  module.exports = async function runProof(directory, otherHome) {
     const main = proof({ directory, otherHome });
     const worker = await new Promise((resolve, reject) => {
+      let message;
       const instance = new Worker(__filename, { workerData: { directory, otherHome } });
-      instance.once('message', (value) => value.failed ? reject(new Error('Worker load-only proof failed')) : resolve(value.proof));
+      instance.once('message', (value) => { message = value; });
       instance.once('error', () => reject(new Error('Worker load-only proof failed')));
-      instance.once('exit', (code) => { if (code) reject(new Error('Worker load-only proof failed')); });
+      instance.once('exit', (code) => {
+        if (code || !message?.proof || message.failed) reject(new Error('Worker load-only proof failed'));
+        else resolve(message.proof);
+      });
     });
-    process.stdout.write(`${JSON.stringify({ version: 1, host: 'unchanged-bundled-node', main, worker })}\n`);
-  })().catch(() => { process.stderr.write('Load-only native proof refused\n'); process.exitCode = 1; });
+    return { version: 1, host: 'unchanged-bundled-node', main, worker };
+  };
+  if (require.main === module) module.exports(path.resolve(process.argv[2]), path.resolve(process.argv[3]))
+    .then((result) => process.stdout.write(`${JSON.stringify(result)}\n`))
+    .catch(() => { process.stderr.write('Load-only native proof refused\n'); process.exitCode = 1; });
 }

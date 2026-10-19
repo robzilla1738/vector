@@ -75,6 +75,8 @@ test('pinned actual daemon keeps real plan checks and count-checked Aux branding
   const startup = 'async function main(){await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/memory-bootstrap.cjs`))();(0,import_undici.setGlobalDispatcher)';
   assert.equal(result.code.split(startup).length - 1, 1);
   assert.ok(result.applied.some((e) => e.name === 'bundled memory startup provisioning' && e.count === 1));
+  assert.ok(result.applied.some((e) => e.name === 'load-only native SEA diagnostic' && e.count === 1));
+  assert.equal(result.code.split('(process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY===`1`?').length - 1, 1);
   assert.ok(result.applied.some((e) => e.name === 'bundled runtime lazy cache provisioning' && e.count === 1));
   assert.ok(result.code.includes('runtime-bootstrap.cjs`))(ei);setAgentRuntimeProgress('));
   assert.ok(result.applied.some((e) => e.name === 'restore supplied wire spelling'));

@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "beforeSha256": "79bbd44fbce20ae160c4a402ba4160e7b12817707fd727203e983d34cf7f8856",
+      "afterSha256": "50bc2f9777b16ce86b08afd236cf55738dcc324267397c4c9e626f5919a54cd5"
+    },
+    {
+      "path": "vendor/provided/cli-adapter.mjs",
+      "beforeSha256": "6c83dfdb3880b5fd3e1f22a92240819c82cd05a9653e8504fa80dbb2133d29e9",
+      "afterSha256": "fde0b2fd3e870212836bf4a6c96160c28cd869d54246585e0bf78b63a75f8a17"
+    },
+    {
+      "path": "vendor/provided/native-load-only-probe.cjs",
+      "beforeSha256": "ceec3bf886f32fd9f884f2984528ecca092dfd4697599e5991fb38e3899d02e5",
+      "afterSha256": "43177b6d286a069d7605776d215bc32b94155e80d7f361d830565dc7493a8293"
+    },
+    {
+      "path": "vendor/provided/native-load-diagnostic.cjs",
+      "beforeSha256": null,
+      "afterSha256": "a33755fec647b9fdb5a8d4af52eb00a5dc4b9bf4b1e66dff5238a973e99690ff"
+    },
+    {
+      "path": "vendor/provided/native-diagnostic-hook.mjs",
+      "beforeSha256": null,
+      "afterSha256": "badc611aba7d3ac5815189bb9b1805a724c1f761daaf21fa604a00d8bfb74a16"
+    },
+    {
+      "path": "vendor/provided/prove-sea-load-only.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e51f70fb6e0ab011cf1bfd3866902b7456e6e62f7ea53afc51786e059594184b"
+    },
+    {
+      "path": "vendor/provided/native/sea-pointer-diagnostic.mm",
+      "beforeSha256": null,
+      "afterSha256": "0bdb50c3339799b1f6886b79a79f24c26a7931f6ccf84a58a0ae2ae9042c463f"
+    }
+  ],
+  "actualObserved": {
+    "mainImageFound": true,
+    "mainImageIndex": 1,
+    "mainImageIsZero": false,
+    "zeroSlideMatchesMain": false,
+    "legacySectionFound": true,
+    "actualSectionFound": true,
+    "sectionSizesMatch": true,
+    "postjectPointerMatchesActual": false,
+    "legacyRawPointerMatchesActual": false,
+    "actualMagicMatches": true
+  },
+  "actualSignedCliWithDyld": {
+    "exitCode": null,
+    "signal": "SIGABRT",
+    "failure": "Node SeaDeserializer magic assertion before JavaScript"
+  },
+  "actualSignedCliWithoutDyld": {
+    "exitCode": 1,
+    "reachedDiagnosticJavaScript": true,
+    "originalAddonLoaded": false,
+    "failure": "Actual native query interposition is required"
+  },
+  "diagnosticLibrarySha256": "38a96a15c002b5dd8e37ea525f6da46f05fce0445e809dde300965043b7bdfa2",
+  "compile": {
+    "exitCode": 0,
+    "wrapper": "scripts/native-build.py",
+    "args": [
+      "xcrun",
+      "clang++",
+      "-std=c++20",
+      "-fobjc-arc",
+      "-framework",
+      "Foundation",
+      "-framework",
+      "Security",
+      "-dynamiclib",
+      "vendor/provided/native/keychain-query-map.mm",
+      "vendor/provided/native/keychain-interpose.mm",
+      "vendor/provided/native/sea-pointer-diagnostic.mm",
+      "-o",
+      "out/provided-native-current/libaux-sea-pointer-diagnostic.dylib"
+    ]
+  },
+  "nativeProductionBinariesChanged": false,
+  "originalCommandsInvoked": false,
+  "originalPdfInvoked": false,
+  "dpRuntimeAccepted": false
+}

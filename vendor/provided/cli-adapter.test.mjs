@@ -25,6 +25,9 @@ test('actual supplied CLI remains syntactically valid and its native loader cann
   assert.deepEqual(after.tail, before.tail);
   assert.equal(after.entryPath, before.entryPath);
   for (const wire of ['AsideDaemonSessionToken ', 'Aside Daemon Auth v1', 'aside.daemon.auth.']) assert.equal(after.code.split(wire).length, before.code.split(wire).length, wire);
+  assert.ok(result.applied.some((e) => e.name === 'load-only native SEA diagnostic' && e.count === 1));
+  assert.equal(after.code.split('if(process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY===`1`){await ').length - 1, 1);
+  assert.ok(after.code.includes(';}else buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch'));
   assert.ok(after.code.includes('AsideDaemonSessionToken '));
   assert.equal(after.code.includes('AuxDaemonSessionToken '), false);
   assert.ok(after.code.includes('Aside Daemon Auth v1\\0'));
