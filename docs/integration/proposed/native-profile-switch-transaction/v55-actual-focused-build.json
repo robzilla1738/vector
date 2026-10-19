@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v55",
+  "appliedSources": 146,
+  "artworkTargets": 23,
+  "originalSourceReplayMatched": true,
+  "orderedPatches": 65,
+  "gnGenerationPassed": true,
+  "focusedChangedObjectCount": 10,
+  "focusedBuildExitCode": 0,
+  "elapsedSeconds": 35.166563987731934,
+  "targets": {
+    "browser": "obj/chrome/browser/ui/ui/browser.o",
+    "aux_profile_switch_transaction": "obj/chrome/browser/ui/ui/aux_profile_switch_transaction.o",
+    "browser_init_state": "obj/chrome/browser/ui/browser_init_state/browser_init_state.o",
+    "most_recent_shared_tab_update_store": "obj/chrome/browser/ui/tabs/saved_tab_groups/impl/most_recent_shared_tab_update_store.o",
+    "session_service_tab_group_sync_observer": "obj/chrome/browser/ui/tabs/saved_tab_groups/impl/session_service_tab_group_sync_observer.o",
+    "cookie_controls_page_action_controller": "obj/chrome/browser/ui/views/location_bar/cookie_controls/impl/cookie_controls_page_action_controller.o",
+    "extension_browser_window_helper": "obj/chrome/browser/extensions/extensions/extension_browser_window_helper.o",
+    "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+    "aux_mini_popup_api_mac": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api_mac.o",
+    "session_service_base": "obj/chrome/browser/sessions/impl/session_service_base.o"
+  },
+  "fullBrowserLinked": false,
+  "packagedUiObserved": false,
+  "profileSwitchActivated": false,
+  "runtimeParity": false
+}

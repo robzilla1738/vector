@@ -1,0 +1,48 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1075,22 +1075,26 @@
+   CHECK(!bookmark_observation_.IsObserving());
+   // Destroy the old feed before its replacement. This closes only its actual
+   // observer/transport; it neither cancels nor fabricates daemon tasks.
++  const bool changing_profile =
++      bound_profile_.get() != browser_->GetProfile();
+   task_feed_.reset();
+-  projected_tasks_.clear();
+-  chats_.clear();
+-  feed_state_ = AuxNativeTaskFeed::State::kConnecting;
+-  feed_error_.clear();
+-  action_error_.clear();
+-  active_chat_id_.clear();
+-  collapsed_sections_.clear();
+-  expanded_bookmark_folders_.clear();
++  if (changing_profile) {
++    projected_tasks_.clear();
++    chats_.clear();
++    feed_state_ = AuxNativeTaskFeed::State::kConnecting;
++    feed_error_.clear();
++    action_error_.clear();
++    active_chat_id_.clear();
++    collapsed_sections_.clear();
++    expanded_bookmark_folders_.clear();
++    show_all_chats_ = false;
++    any_running_ = false;
++  }
+   menu_chat_id_.clear();
+   menu_tab_contents_.reset();
+   menu_bookmark_id_ = -1;
+   menu_bookmark_uuid_.clear();
+   menu_pinned_ = false;
+-  show_all_chats_ = false;
+-  any_running_ = false;
+   BindProfileSources();
+ }
+ 
+@@ -1101,7 +1105,7 @@
+   CHECK_EQ(bound_profile_.get(), browser_->GetProfile());
+   profile_switch_paused_ = false;
+   if (running_changed_) {
+-    running_changed_.Run(false);
++    running_changed_.Run(any_running_);
+   }
+   // Target tab insertion has now settled; derive its actual active chat.
+   UpdateActiveChat();

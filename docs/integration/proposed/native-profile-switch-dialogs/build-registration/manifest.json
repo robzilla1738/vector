@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "Appliedv55 unchanged existing header targets; stagedv60 dialog rebind methods",
+  "files": [
+    {
+      "path": "chrome/browser/ui/signin/BUILD.gn",
+      "baselineSha256": "14fafd1de519045fbe7f968440a2c7e9a3dd84c9fae066a504259c9dbecf4acf",
+      "outputSha256": "14684aada940816ce1814b5b152e18b7b1001324fffa5a2d2b605a598d8d7a8d"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/BUILD.gn",
+      "baselineSha256": "102ec71031131c6d46ecea4dfbddc0cb722718f6c151e196f6731228c6d24a55",
+      "outputSha256": "f0a57697f13336016359d5a9b0e38c0eadfc03b7dfff8dd39ebf54bd777588c6"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

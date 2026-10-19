@@ -86,6 +86,13 @@ steps.extend([
     ('native-profile-switch-transaction/native.patch', 'native-profile-switch-transaction/manifest.json'),
     ('native-profile-switch-transaction/build-registration/native.patch', 'native-profile-switch-transaction/build-registration/manifest.json'),
     ('native-mini-popup-position-focus/native-mini-popup-position-focus.patch', 'native-mini-popup-position-focus/manifest.json'),
+    ('native-profile-switch-close/native.patch', 'native-profile-switch-close/manifest.json'),
+    ('native-mini-popup-transparency/native-mini-popup-transparency.patch', 'native-mini-popup-transparency/manifest.json'),
+    ('native-sidebar-profile-rebind/native.patch', 'native-sidebar-profile-rebind/manifest.json'),
+    ('native-profile-switch-dialogs/native.patch', 'native-profile-switch-dialogs/manifest.json'),
+    ('native-profile-switch-sidebar-owner/native.patch', 'native-profile-switch-sidebar-owner/manifest.json'),
+    ('native-profile-switch-dialogs/build-registration/native.patch', 'native-profile-switch-dialogs/build-registration/manifest.json'),
+    ('native-sidebar-profile-rebind/abort-state.patch', 'native-sidebar-profile-rebind/abort-state-manifest.json'),
 ])
 
 def safe(path):

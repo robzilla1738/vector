@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "After native-sidebar-profile-rebind first source port; source-preserving abort retains same-profile actual snapshot and running state while transport/callbacks rebind",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "bf00dd4bc9d0aed140a4572a9662164e8f6e9a7ecfb2e1988826a7f4c6e09fb2",
+      "outputSha256": "aed972176d28ecfa24cd5ad37de40dd97686045fba2c1b990b50c45d1aaae446"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
