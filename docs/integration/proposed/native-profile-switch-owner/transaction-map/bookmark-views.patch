@@ -1,0 +1,382 @@
+--- a/chrome/browser/ui/views/bookmarks/bookmark_bar_view.h
++++ b/chrome/browser/ui/views/bookmarks/bookmark_bar_view.h
+@@ -15,6 +15,8 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/observer_list.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/bookmarks/bookmark_merged_surface_service.h"
+ #include "chrome/browser/bookmarks/bookmark_merged_surface_service_observer.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
+@@ -94,6 +96,14 @@
+   BookmarkBarView& operator=(const BookmarkBarView&) = delete;
+   ~BookmarkBarView() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Owner transaction only: prepare while the old profile is still bound;
++  // rebind after the real target Browser/model/profile sources are coherent.
++  // Keep this View, static controls, observer list and BrowserView delegate.
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch();
++#endif
++
+   static bool GetAnimationsEnabled();
+ 
+   static void DisableAnimationsForTesting(bool disabled);
+@@ -492,6 +502,9 @@
+   // True if the owning browser is showing an infobar.
+   bool infobar_visible_ = false;
+ 
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_profile_switch_previous_enabled_ = true;
++
+   // Animation controlling showing and hiding of the bar.
+   gfx::SlideAnimation size_animation_{this};
+ 
+--- a/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
++++ b/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
+@@ -54,6 +54,7 @@
+ #include "chrome/browser/ui/layout_constants.h"
+ #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/ui_controller_factory.h"
+ #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/ui/view_ids.h"
+ #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view_observer.h"
+@@ -426,6 +427,111 @@
+   StopShowFolderDropMenuTimer();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void BookmarkBarView::PrepareForAuxProfileSwitch() {
++  CHECK(!aux_profile_switch_prepared_);
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  aux_profile_switch_prepared_ = true;
++  aux_profile_switch_previous_enabled_ = GetEnabled();
++  SetEnabled(false);
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  drop_weak_ptr_factory_.InvalidateWeakPtrs();
++  StopShowFolderDropMenuTimer();
++  drop_info_.reset();
++  // Menus can outlive cancellation. Detach their raw View/observer pointers
++  // BEFORE cancelling, while their actual old profile is still retained.
++  if (bookmark_menu_) {
++    BookmarkMenuController* menu = bookmark_menu_;
++    bookmark_menu_ = nullptr;
++    menu->set_observer(nullptr);
++    menu->clear_bookmark_bar();
++    menu->Cancel();
++  }
++  if (bookmark_drop_menu_) {
++    BookmarkMenuController* menu = bookmark_drop_menu_;
++    bookmark_drop_menu_ = nullptr;
++    menu->set_observer(nullptr);
++    menu->clear_bookmark_bar();
++    menu->Cancel();
++  }
++  // This private controller owns old pref/model adapters, async clipboard
++  // checks and its context menu. Destroy those sources before identity moves.
++  controller_.reset();
++  context_menu_highlight_.reset();
++  if (bookmark_service_) {
++    bookmark_service_->RemoveObserver(this);
++    bookmark_service_ = nullptr;
++  }
++  managed_ = nullptr;
++  RemoveAllBookmarkButtons();
++  if (saved_tab_group_bar_) {
++    saved_tab_group_bar_->PrepareForAuxProfileSwitch();
++    saved_tab_group_bar_->SetVisible(false);
++    saved_tab_groups_separator_view_->SetVisible(false);
++  }
++  bookmark_service_loaded_signal_processed_ = false;
++  extensive_bookmarks_changes_ongoing_ = false;
++  needs_layout_update_after_extensive_changes_ = false;
++  managed_bookmarks_pref_visible_ = false;
++  managed_bookmarks_button_->SetText(std::u16string());
++  managed_bookmarks_button_->GetViewAccessibility().SetName(std::u16string());
++  managed_bookmarks_button_->SetVisible(false);
++  managed_bookmarks_button_->SetEnabled(false);
++  all_bookmarks_button_->SetVisible(false);
++  all_bookmarks_button_->SetEnabled(false);
++  overflow_button_->SetVisible(false);
++  UpdateBookmarksSeparatorVisibility();
++  LayoutAndPaint();
++}
++
++void BookmarkBarView::RebindForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK_EQ(browser_->GetTabStripModel()->profile(), browser_->GetProfile());
++  auto* factory = UIControllerFactory::From(browser_);
++  CHECK(factory);
++  // The existing factory retains only Browser identity; it constructs REAL
++  // target-pref/model/action adapters from the now-authoritative profile.
++  auto controller = factory->CreateBookmarkBarController();
++  CHECK(controller);
++  bookmark_service_ = BookmarkMergedSurfaceServiceFactory::GetForProfile(
++      browser_->GetProfile());
++  managed_ =
++      ManagedBookmarkServiceFactory::GetForProfile(browser_->GetProfile());
++  CHECK(bookmark_service_);
++  CHECK(managed_);
++  if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
++          browser_->GetProfile())) {
++    if (saved_tab_group_bar_) {
++      saved_tab_group_bar_->RebindForAuxProfileSwitch();
++    } else {
++      size_t index = GetIndexOf(managed_bookmarks_button_).value() + 1;
++      saved_tab_group_bar_ = AddChildViewAt(
++          std::make_unique<tab_groups::SavedTabGroupBar>(browser_,
++                                                        animations_enabled),
++          index++);
++      saved_tab_groups_separator_view_ =
++          AddChildViewAt(std::make_unique<ButtonSeparatorView>(), index);
++    }
++    saved_tab_group_bar_->SetVisible(
++        chrome::ShouldShowTabGroupsInBookmarkBar(browser_->GetProfile()));
++    saved_tab_groups_separator_view_->SetVisible(true);
++  }
++  // Keep the original static controls and child order. Never call Init again.
++  bookmark_service_->AddObserver(this);
++  if (bookmark_service_->loaded()) {
++    BookmarkMergedSurfaceServiceLoaded();
++  }
++  controller_ = std::move(controller);
++  controller_->Bind(this);
++  aux_profile_switch_prepared_ = false;
++  SetEnabled(aux_profile_switch_previous_enabled_);
++  UpdateAppearanceForTheme();
++  LayoutAndPaint();
++}
++#endif
++
+ // static
+ bool BookmarkBarView::GetAnimationsEnabled() {
+   return animations_enabled;
+@@ -1054,6 +1160,9 @@
+ }
+ 
+ void BookmarkBarView::OnDragExited() {
++  if (!drop_info_) {
++    return;
++  }
+   StopShowFolderDropMenuTimer();
+ 
+   // NOTE: we don't hide the menu on exit as it's possible the user moved the
+@@ -1394,12 +1503,18 @@
+ }
+ 
+ void BookmarkBarView::AppsPageShortcutPressed(const ui::Event& event) {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   CHECK(controller_);
+   controller_->OpenAppsPage(ui::DispositionFromEventFlags(event.flags()));
+ }
+ 
+ void BookmarkBarView::OnButtonPressed(const bookmarks::BookmarkNode* node,
+                                       const ui::Event& event) {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   // Only URL nodes have regular buttons on the bookmarks bar; folder clicks
+   // are directed to ::OnMenuButtonPressed().
+   DCHECK(node->is_url());
+@@ -1410,6 +1525,9 @@
+ 
+ void BookmarkBarView::OnMenuButtonPressed(const BookmarkParentFolder& folder,
+                                           const ui::Event& event) {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   CHECK(controller_);
+   controller_->OpenFolder(chrome::ToNodeId(folder),
+                           ui::DispositionFromEventFlags(event.flags()));
+@@ -1418,6 +1536,9 @@
+ bool BookmarkBarView::OnMenuButtonAccessibleAction(
+     const BookmarkParentFolder& folder,
+     const ui::AXActionData& action_data) {
++  if (aux_profile_switch_prepared_) {
++    return false;
++  }
+   if (action_data.action == ax::mojom::Action::kExpand) {
+     CHECK(controller_);
+     controller_->OpenFolder(chrome::ToNodeId(folder),
+@@ -1435,7 +1556,8 @@
+     views::View* source,
+     const gfx::Point& point,
+     ui::mojom::MenuSourceType source_type) {
+-  if (!bookmark_service_->loaded()) {
++  if (aux_profile_switch_prepared_ || !bookmark_service_ ||
++      !bookmark_service_->loaded()) {
+     // Don't do anything if the model isn't loaded.
+     return;
+   }
+--- a/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.h
++++ b/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.h
+@@ -9,6 +9,8 @@
+ #include <vector>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_button.h"
+ #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
+@@ -55,6 +57,13 @@
+   SavedTabGroupBar(const SavedTabGroupBar&) = delete;
+   SavedTabGroupBar& operator=(const SavedTabGroupBar&) = delete;
+   ~SavedTabGroupBar() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Preserve this parent-owned View while exchanging its profile service and
++  // real group buttons. Leave prepared/hidden when the target feature is off.
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch();
++#endif
+ 
+   views::View* everything_menu_button() { return everything_menu_button_; }
+ 
+@@ -221,6 +230,9 @@
+   // The service used to manage and query SavedTabGroups.
+   raw_ptr<TabGroupSyncService> tab_group_service_ = nullptr;
+ 
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_profile_switch_previous_enabled_ = true;
++
+   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
+ 
+   // During a drag and drop session, `drag_data_` owns the state for the drag.
+--- a/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.cc
++++ b/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.cc
+@@ -9,9 +9,12 @@
+ #include <optional>
+ #include <unordered_map>
+ 
++#include "base/check_op.h"
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/metrics/user_metrics.h"
+ #include "base/uuid.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
+@@ -97,11 +100,53 @@
+                        animations_enabled) {}
+ 
+ SavedTabGroupBar::~SavedTabGroupBar() {
+-  tab_group_service_->RemoveObserver(this);
++  if (tab_group_service_) {
++    tab_group_service_->RemoveObserver(this);
++  }
+   // Clear the pointer to the everything menu button to avoid dangling pointer
+   // warnings during test teardowns if the view was destroyed early.
+   everything_menu_button_ = nullptr;
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SavedTabGroupBar::PrepareForAuxProfileSwitch() {
++  if (aux_profile_switch_prepared_) {
++    return;  // A feature-disabled target can leave this SAME View prepared.
++  }
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  aux_profile_switch_prepared_ = true;
++  aux_profile_switch_previous_enabled_ = GetEnabled();
++  SetEnabled(false);
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  everything_menu_.reset();
++  drag_data_.reset();
++  if (tab_group_service_) {
++    tab_group_service_->RemoveObserver(this);
++    tab_group_service_ = nullptr;
++  }
++  // Child menu runners are destroyed with their real old-profile buttons;
++  // keeping this parent View preserves its identity and outside observers.
++  everything_menu_button_ = nullptr;
++  RemoveAllButtons();
++  InvalidateLayout();
++}
++
++void SavedTabGroupBar::RebindForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  tab_group_service_ =
++      TabGroupSyncServiceFactory::GetForProfile(browser_->GetProfile());
++  CHECK(tab_group_service_);
++  everything_menu_button_ = AddChildView(CreateOverflowButton());
++  aux_profile_switch_prepared_ = false;
++  // As in the real constructor, an initialized service synchronously calls
++  // OnInitialized, which loads ACTUAL target groups in their real order.
++  tab_group_service_->AddObserver(this);
++  SetEnabled(aux_profile_switch_previous_enabled_);
++  InvalidateLayout();
++}
++#endif
+ 
+ std::optional<size_t> SavedTabGroupBar::GetIndexOfGroup(
+     const base::Uuid& guid) const {
+@@ -199,6 +244,9 @@
+ }
+ 
+ bool SavedTabGroupBar::CanDrop(const OSExchangeData& data) {
++  if (aux_profile_switch_prepared_ || !tab_group_service_) {
++    return false;
++  }
+   std::optional<SavedTabGroupDragData> drag_data =
+       SavedTabGroupDragData::ReadFromOSExchangeData(&data);
+   if (!drag_data.has_value()) {
+@@ -209,6 +257,9 @@
+ }
+ 
+ void SavedTabGroupBar::OnDragEntered(const ui::DropTargetEvent& event) {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   std::optional<SavedTabGroupDragData> drag_data =
+       SavedTabGroupDragData::ReadFromOSExchangeData(&(event.data()));
+   CHECK(drag_data.has_value());
+@@ -221,6 +272,9 @@
+ }
+ 
+ int SavedTabGroupBar::OnDragUpdated(const ui::DropTargetEvent& event) {
++  if (aux_profile_switch_prepared_ || !drag_data_) {
++    return ui::DragDropTypes::DRAG_NONE;
++  }
+   // Event locations are in unmirrored coordinates (i.e. origin in the top left,
+   // even in RTL). Mirror the location so the rest of the calculations can take
+   // place in the standard mirrored coordinate space (i.e. origin in the top
+@@ -239,6 +293,9 @@
+ 
+ views::View::DropCallback SavedTabGroupBar::GetDropCallback(
+     const ui::DropTargetEvent& event) {
++  if (aux_profile_switch_prepared_ || !drag_data_) {
++    return base::NullCallback();
++  }
+   return base::BindOnce(
+       [](base::WeakPtr<SavedTabGroupBar> bar, const ui::DropTargetEvent& event,
+          ui::mojom::DragOperation& drag,
+@@ -394,6 +451,9 @@
+ }
+ 
+ void SavedTabGroupBar::ShowEverythingMenu() {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   chrome::UpdateBookmarkBarVisibilityPrefOnUserAction(browser_->GetProfile());
+   base::RecordAction(base::UserMetricsAction(
+       "TabGroups_SavedTabGroups_EverythingButtonPressed"));
+@@ -518,6 +578,9 @@
+ 
+ void SavedTabGroupBar::OnTabGroupButtonPressed(const base::Uuid& id,
+                                                const ui::Event& event) {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   DCHECK(tab_group_service_ && tab_group_service_->GetGroup(id).has_value());
+   chrome::UpdateBookmarkBarVisibilityPrefOnUserAction(browser_->GetProfile());
+   const std::optional<SavedTabGroup> group = tab_group_service_->GetGroup(id);

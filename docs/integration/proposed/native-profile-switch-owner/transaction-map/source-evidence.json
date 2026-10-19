@@ -169,6 +169,78 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-switch-workspace/README.md",
       "sha256": "f221fc258e1e067730b86cdf4b49423b7747b26aca6cfc5e7e7271055d3d8694"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/ui_controller_factory.h",
+      "sha256": "ed520e1d763820a9b4d16c03e178a45865b450e6cdb3111f8b87076762e1147a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/ui_controller_factory.cc",
+      "sha256": "d8bb8ef84f711f294d3f2ac4a2c8a153c76d1242565567bea814bd35e21df992"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/bookmark_bar_ui_controller_impl.h",
+      "sha256": "ca86d1db9d6b092de0c244f01805625ecdf6f5e82cf3062afeaa663984f04bd6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/bookmark_bar_ui_controller_impl.cc",
+      "sha256": "19ebd4353893dd19aa5a0741e52a7c84db9e43359ef706ba43ab329d88f26515"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/desktop_bookmark_bar_ui_controller_injector.cc",
+      "sha256": "b8962f204992e863539fa8f75d805259c098db3feea3439c6b2952b6f4050d33"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/adapters/desktop_bookmark_bar_model_adapter.cc",
+      "sha256": "d4aa841571ff4241d6b1a46f01cb150c2cf5c95d145ceaf733dc670cde92e17f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/adapters/desktop_bookmark_bar_prefs_adapter.cc",
+      "sha256": "d86c522b6294f277dbf28f481e63c0d781da6a302ab52b5288b2608c5a616bc9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/adapters/desktop_bookmark_bar_action_adapter.cc",
+      "sha256": "e6ea53ca6cbe18ee65744384b322a53f9cd51c720007897e61e45ea60cc79ab3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.h",
+      "sha256": "ad6f7fcebb4f8f5b9e3edf5f09ac621cde92b087c4f0335e31e309bd56a63ca0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.cc",
+      "sha256": "181a6e816a37c22b261369200b398e888542f4ea5587739584097e408ada1b7a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_button.cc",
+      "sha256": "80718573311a9e5ff3fa975826bde279acf1297034b1f88306b8954a8d351a32"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.cc",
+      "sha256": "cdc8c2c74cca9a72110543cc7857099741848ea9478ea48681bdd9e73d42bc9b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/bookmark_menu_controller_views.cc",
+      "sha256": "5673329443613949bba784285998e77a2e8fd7cd07d5a3c5493433a792fba30a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/BUILD.gn",
+      "sha256": "afc371c68c30102782318058d010dc36600bf5482f4e3eae54193963b263814b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/saved_tab_groups/BUILD.gn",
+      "sha256": "36fedfc571961ab5fb0b67290702b2589d3e5027791dfaef2eae8e2172afb8fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/BUILD.gn",
+      "sha256": "b2d8ea02ee5576873424068653a9b2cfca3379e3d26f357f841fbed14783d7b0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/adapters/BUILD.gn",
+      "sha256": "f33b8a5901d56daec365b414be0f52de56aa7e5188f3ca5c18549cd5bab8097d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/BUILD.gn",
+      "sha256": "4108b626ec9825770350000450e39a8d1b6e4539df39f163c1c5fc0b777f7140"
     }
   ],
   "originalRoutines": {

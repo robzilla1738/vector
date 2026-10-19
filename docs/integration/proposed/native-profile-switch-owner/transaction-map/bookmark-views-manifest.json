@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual applied v32; disjoint parent Browser/model/workspace transaction and other controller patches",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h",
+      "baselineSha256": "4f3c1ae3477f7134f7bd8e33a4165b64a71cb28fde23a67027751a041e9dcd4a",
+      "outputSha256": "923a5f62065553fd8e07b58849d46ada4a944fe5094e5f25cd95f4c3c5a623fa"
+    },
+    {
+      "path": "chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc",
+      "baselineSha256": "5bb6901bafb68e488018be89db7cfb26c850deb3a5bc72fb8b8e1bb777f49e64",
+      "outputSha256": "354b312c2f1a7796418d24b62685247daf31ec31b13377c41d362096bd9bed50"
+    },
+    {
+      "path": "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.h",
+      "baselineSha256": "ad6f7fcebb4f8f5b9e3edf5f09ac621cde92b087c4f0335e31e309bd56a63ca0",
+      "outputSha256": "7ed44ce79ff4059e2d662bb0338b79a8e5978e5bc9b58c8fc969e7344a0e46ff"
+    },
+    {
+      "path": "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_bar.cc",
+      "baselineSha256": "181a6e816a37c22b261369200b398e888542f4ea5587739584097e408ada1b7a",
+      "outputSha256": "a071b0e8b88399b0044c68ab4798a6692e19887256f206ebfb2c473a1fe26532"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
