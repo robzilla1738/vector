@@ -1,0 +1,67 @@
+--- a/chrome/browser/ui/lens/lens_overlay_entry_point_controller.h
++++ b/chrome/browser/ui/lens/lens_overlay_entry_point_controller.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
+@@ -56,6 +57,7 @@
+   bool CanRebindForAuxProfileSwitch() const;
+   void PrepareForAuxProfileSwitch();
+   void RebindForAuxProfileSwitch(Profile* target_profile);
++  void AbortAuxProfileSwitch();
+ #endif
+ 
+   // This class does nothing if not initialized. IsEnabled returns false.
+@@ -137,6 +139,8 @@
+   PrefChangeRegistrar pref_change_registrar_;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void RestoreBindingsForAuxProfileSwitch();
++  base::WeakPtr<Profile> aux_source_profile_;
+   bool aux_profile_switch_prepared_ = false;
+   bool aux_was_initialized_ = false;
+   raw_ptr<LocationBar> aux_location_bar_ = nullptr;
+--- a/chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc
++++ b/chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc
+@@ -208,6 +208,7 @@
+ 
+ void LensOverlayEntryPointController::PrepareForAuxProfileSwitch() {
+   CHECK(CanRebindForAuxProfileSwitch());
++  aux_source_profile_ = browser_window_interface_->GetProfile()->GetWeakPtr();
+   aux_was_initialized_ = !!fullscreen_subscription_;
+   aux_location_bar_ = location_bar_observation_.GetSource();
+   aux_profile_switch_prepared_ = true;
+@@ -226,6 +227,21 @@
+   CHECK_EQ(browser_window_interface_->GetProfile(), target_profile);
+   CHECK_EQ(From(browser_window_interface_), this);
+   CHECK(browser_window_interface_->GetTabStripModel()->empty());
++  RestoreBindingsForAuxProfileSwitch();
++}
++
++void LensOverlayEntryPointController::AbortAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_source_profile_);
++  CHECK_EQ(browser_window_interface_->GetProfile(), aux_source_profile_.get());
++  CHECK_EQ(From(browser_window_interface_), this);
++  // Core abort is pre-identity only. Genuine source tabs are already restored;
++  // reattach the original entry-point observations without pretending empty.
++  RestoreBindingsForAuxProfileSwitch();
++}
++
++void LensOverlayEntryPointController::RestoreBindingsForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
+   aux_profile_switch_prepared_ = false;
+   if (aux_was_initialized_) {
+     CHECK(command_updater_);
+@@ -236,6 +252,7 @@
+   }
+   aux_location_bar_ = nullptr;
+   aux_was_initialized_ = false;
++  aux_source_profile_.reset();
+ }
+ #endif
+ 

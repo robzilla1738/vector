@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Applied v95 real Lens bindings",
+  "files": [
+    {
+      "path": "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h",
+      "baselineSha256": "f7a3de663b175dbb9361fba8a1fecb4d5214e34fbc07a76771c1c879f0e18412",
+      "outputSha256": "61b6002f5310d07825e1e8b1314ee934718c54a636f7d611f84d1849adbcba53"
+    },
+    {
+      "path": "chrome/browser/ui/lens/lens_overlay_entry_point_controller.cc",
+      "baselineSha256": "978c4e7a1a5db7b6c934c930c0f7b46dd06455df0515bfb089e0e763a5c3a5b7",
+      "outputSha256": "5f90fd6e99c4c2e5d785faa40541416d6d8bc7f550d957a291d93dafc4d0a20f"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
