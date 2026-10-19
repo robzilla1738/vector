@@ -1,0 +1,244 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_switcher.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher.cc
+@@ -20,6 +20,10 @@
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/prefs/pref_service.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/views/controls/scroll_view.h"
+ #include "components/favicon/content/content_favicon_driver.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -94,12 +98,19 @@
+         tabs_.push_back(contents);
+       }
+     }
+-    std::stable_sort(tabs_.begin(), tabs_.end(),
++    const bool mru = browser->GetProfile()->GetPrefs()->GetBoolean(
++        "aux.browser.tab_switcher_mru");
++    if (mru)
++      std::stable_sort(tabs_.begin(), tabs_.end(),
+                      [](content::WebContents* a, content::WebContents* b) {
+                        return a->GetLastActiveTime() > b->GetLastActiveTime();
+                      });
+-    if (tabs_.size() > kMaxEntries) {
+-      tabs_.resize(kMaxEntries);
++    const auto current = std::ranges::find(tabs_, model->GetActiveWebContents());
++    if (current != tabs_.end()) {
++      // In strip mode preserve cyclic strip order around the current tab;
++      // MRU mode only moves the current target ahead of the recent entries.
++      std::rotate(tabs_.begin(), current,
++                  mru ? std::next(current) : tabs_.end());
+     }
+     for (content::WebContents* contents : tabs_) {
+       watchers_.push_back(std::make_unique<Watcher>(this, contents));
+@@ -111,14 +122,17 @@
+         },
+         base::Unretained(this)));
+     if (tabs_.size() > 1) {
+-      Show();
++      active_ = true;
++      show_timer_.Start(FROM_HERE, base::Milliseconds(250),
++                        base::BindOnce(&AuxSwitcherSession::Show,
++                                       base::Unretained(this)));
+       timer_.Start(FROM_HERE, kPollInterval,
+                    base::BindRepeating(&AuxSwitcherSession::Poll,
+                                        base::Unretained(this)));
+     }
+   }
+ 
+-  bool shown() const { return widget_ != nullptr; }
++  bool active() const { return active_; }
+ 
+   void Advance(bool forward) {
+     if (tabs_.size() <= 1) {
+@@ -148,6 +162,8 @@
+   }
+ 
+   void Dismiss() {
++    active_ = false;
++    show_timer_.Stop();
+     timer_.Stop();
+     rows_.clear();
+     if (widget_) {
+@@ -183,6 +199,12 @@
+   }
+ 
+   void Show() {
++    if (!active_)
++      return;
++    if (!AuxIsControlStillDown()) {
++      Commit();
++      return;
++    }
+     auto panel = std::make_unique<views::View>();
+     panel->SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kVertical,
+@@ -190,6 +212,13 @@
+     panel->SetBackground(
+         views::CreateRoundedRectBackground(ui::kColorSysSurface, 16));
+     panel->SetBorder(views::CreateRoundedRectBorder(1, 16, ui::kColorSysDivider));
++    auto scroll = std::make_unique<views::ScrollView>();
++    scroll->ClipHeightTo(0, kMaxEntries * kRowHeight);
++    auto rows = std::make_unique<views::View>();
++    rows->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical));
++    auto* row_container = scroll->SetContents(std::move(rows));
++    panel->AddChildView(std::move(scroll));
+     for (content::WebContents* contents : tabs_) {
+       ui::ImageModel icon = ui::ImageModel::FromVectorIcon(
+           kGlobeIcon, ui::kColorSysOnSurfaceSubtle, 16);
+@@ -204,13 +233,13 @@
+       if (title.empty()) {
+         title = base::UTF8ToUTF16(contents->GetVisibleURL().host());
+       }
+-      rows_.push_back(panel->AddChildView(
++      rows_.push_back(row_container->AddChildView(
+           std::make_unique<AuxSwitcherRow>(icon, title)));
+     }
+     UpdateSelection();
+ 
+     const int height =
+-        static_cast<int>(tabs_.size()) * kRowHeight + 2 * kPanelPadding;
++        std::min(static_cast<int>(tabs_.size()), kMaxEntries) * kRowHeight + 2 * kPanelPadding;
+     const gfx::Rect window = browser_->GetWindow()->GetBounds();
+     gfx::Rect bounds(0, 0, kPanelWidth, height);
+     bounds.set_origin(gfx::Point(window.x() + (window.width() - kPanelWidth) / 2,
+@@ -220,8 +249,9 @@
+         views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+         views::Widget::InitParams::TYPE_POPUP);
+     params.bounds = bounds;
+-    if (views::Widget* parent = views::Widget::GetWidgetForNativeWindow(
+-            browser_->GetWindow()->GetNativeWindow())) {
++    views::Widget* parent = views::Widget::GetWidgetForNativeWindow(
++            browser_->GetWindow()->GetNativeWindow());
++    if (parent) {
+       params.parent = parent->GetNativeView();
+     }
+     params.activatable = views::Widget::InitParams::Activatable::kNo;
+@@ -229,13 +259,19 @@
+     params.shadow_type = views::Widget::InitParams::ShadowType::kDrop;
+     widget_ = std::make_unique<views::Widget>();
+     widget_->Init(std::move(params));
++    if (parent)
++      widget_->SetColorModeOverride(parent->GetColorMode());
+     widget_->SetContentsView(std::move(panel));
+     widget_->ShowInactive();
++    widget_->LayoutRootViewIfNecessary();
++    UpdateSelection();
+   }
+ 
+   void UpdateSelection() {
+     for (size_t i = 0; i < rows_.size(); ++i) {
+       rows_[i]->SetSelected(static_cast<int>(i) == selected_);
++      if (static_cast<int>(i) == selected_)
++        rows_[i]->ScrollRectToVisible(rows_[i]->GetLocalBounds());
+     }
+   }
+ 
+@@ -246,6 +282,8 @@
+   int selected_ = 0;
+   std::unique_ptr<views::Widget> widget_;
+   base::RepeatingTimer timer_;
++  base::OneShotTimer show_timer_;
++  bool active_ = false;
+   base::CallbackListSubscription close_subscription_;
+ };
+ 
+@@ -257,7 +295,7 @@
+ }  // namespace
+ 
+ void AuxCycleTabs(BrowserWindowInterface* browser, bool forward) {
+-  if (Session() && Session()->shown()) {
++  if (Session() && Session()->active()) {
+     Session()->Advance(forward);
+     return;
+   }
+@@ -265,8 +303,15 @@
+   // must not see a stale "released" and commit before the panel is usable.
+   AuxIsControlKeyDown();
+   Session() = std::make_unique<AuxSwitcherSession>(browser, forward);
+-  if (!Session()->shown()) {
++  if (!Session()->active()) {
+     // Fewer than two tabs: nothing to switch to.
+     Session().reset();
+   }
+ }
++
++bool AuxCancelTabSwitch() {
++  if (!Session() || !Session()->active())
++    return false;
++  Session()->Dismiss();
++  return true;
++}
+--- a/chrome/browser/ui/views/frame/aux_tab_switcher.h
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher.h
+@@ -11,6 +11,10 @@
+ // selection on every call and activates it once Control is released.
+ void AuxCycleTabs(BrowserWindowInterface* browser, bool forward);
+ 
++// Cancels a pending/visible gesture without changing the original active tab.
++// Returns true only if Escape belongs to an active switcher.
++bool AuxCancelTabSwitch();
++
+ // Whether Control is held for the key event being handled right now.
+ bool AuxIsControlKeyDown();
+ 
+--- a/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
+@@ -28,6 +28,9 @@
+                                      g_control_down =
+                                          (event.modifierFlags &
+                                           NSEventModifierFlagControl) != 0;
++                                     if (event.type == NSEventTypeKeyDown &&
++                                         event.keyCode == 53 && AuxCancelTabSwitch())
++                                       return nil;
+                                      return event;
+                                    }];
+ }
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -156,7 +156,7 @@
+ };
+ 
+ // Profile button, profile pager dots and tab search pinned to the bottom of
+-// the sidebar. The profile button opens Aside's profile menu.
++// the sidebar. The profile button opens Aux profile menu.
+ class AuxSidebarFooter : public views::View {
+   METADATA_HEADER(AuxSidebarFooter, views::View)
+ 
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1306,7 +1306,7 @@
+ BEGIN_METADATA(AuxAgentPill)
+ END_METADATA
+ 
+-// Aside's agent status in the footer: a bolt with a dot that turns green while
++// Aux agent status in the footer: a bolt with a dot that turns green while
+ // an agent is running. Opens the chat list.
+ class AuxBoltButton : public views::Button {
+   METADATA_HEADER(AuxBoltButton, views::Button)
+--- a/chrome/browser/ui/views/frame/aux_icon_picker.h
++++ b/chrome/browser/ui/views/frame/aux_icon_picker.h
+@@ -18,7 +18,7 @@
+ // Local state dictionary: profile directory name -> icon name.
+ inline constexpr char kAuxProfileIconsPref[] = "aux.profile_icons";
+ 
+-// Shows Aside's profile editor popup anchored to `anchor`: a grid of 16 icons
++// Shows Aux profile editor popup anchored to `anchor`: a grid of 16 icons
+ // plus a name field. Done persists the icon (see below), renames the profile
+ // and runs `on_saved`. Dismissing the popup discards the edits.
+ void ShowAuxIconPicker(views::View* anchor,
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
+@@ -274,7 +274,7 @@
+ // Enables preview images in tab-hover cards.
+ // https://crbug.com/41439486
+ BASE_FEATURE(kTabHoverCardImages,
+-#if BUILDFLAG(IS_MAC) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#if BUILDFLAG(IS_MAC) && !BUILDFLAG(ENABLE_AUX_BROWSER)
+              base::FEATURE_DISABLED_BY_DEFAULT
+ #else
+              base::FEATURE_ENABLED_BY_DEFAULT
