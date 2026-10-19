@@ -20,6 +20,20 @@ export function requireApprovedPreview(previewPath,humanApprovedSha256) {
   for(const artifact of preview.artifacts){const relative=path.relative(staging,artifact.path),stat=fs.lstatSync(artifact.path);if(relative==='..'||relative.startsWith(`..${path.sep}`)||path.isAbsolute(relative)||!stat.isFile()||stat.isSymbolicLink()||(stat.mode&0o022)||fs.realpathSync(artifact.path)!==artifact.path||sha(artifact.path)!==artifact.sha256)throw Error('Approved staged artifact changed');}
   return preview;
 }
+// Preserve only public bounded OSStatus metadata, never raw native errors or output.
+export function sanitizeDpHostFailure(result, hostExitCode) {
+  const statusArray = value => Array.isArray(value) && value.length <= 4 && value.every(n => Number.isInteger(n) && n >= -2147483648 && n <= 2147483647);
+  const knownCodes = new Set(['original-native-error', 'invalid-native-json', 'invalid-native-result', 'invalid-install-status', 'unexpected-existing-installation', 'installation-not-shared', 'invalid-original-public-keys', 'invalid-original-public-key-size', 'original-authority-mismatch', 'invalid-public-challenge', 'invalid-original-signature', 'original-signature-verification-failed', 'human-approval-required', 'fixed-home-scope-required', 'unapproved-probe-operation', 'scope-already-attempted-use-verify-or-cleanup', 'baseline-not-confirmed-empty', 'unowned-scope-marker', 'previous-creation-incomplete-cleanup-first', 'original-group-domain-unacceptable', 'probe-failed']);
+  const failure = {ok:false, code:knownCodes.has(result?.code)?result.code:'approved-host-refused', statuses:statusArray(result?.statuses)?result.statuses:[], hostExitCode};
+  if (['initialize','verify','cleanup'].includes(result?.operation)) failure.operation=result.operation;
+  const rows=result?.exactRows;
+  if (statusArray(rows?.statuses) && rows.statuses.length===4) {
+    failure.exactRows={statuses:rows.statuses};
+    if(Array.isArray(rows.accessGroupHashes)&&rows.accessGroupHashes.length===4&&rows.accessGroupHashes.every(h=>h===null||typeof h==='string'&&/^[a-f0-9]{64}$/.test(h)))failure.exactRows.accessGroupHashes=rows.accessGroupHashes;
+    if(!failure.statuses.length)failure.statuses=rows.statuses;
+  }
+  return failure;
+}
 export function runApprovedDpProbe({previewPath,humanApprovedSha256,phase='installation',reportPath}) {
   const p=requireApprovedPreview(previewPath,humanApprovedSha256),core=p.core;
   if(!['installation','cleanup','environment'].includes(phase))throw Error('Unsupported approved phase');
@@ -29,7 +43,7 @@ export function runApprovedDpProbe({previewPath,humanApprovedSha256,phase='insta
   function child(executable,args,input,extra={}) {
     const r=spawnSync(executable,args,{cwd:core.home,env:{...env,...extra},input,encoding:'utf8',timeout:30000,maxBuffer:32768});
     let result;try{result=JSON.parse(r.stdout);}catch{throw Error('Approved DP host refused without a structured result; no raw native output logged');}
-    if(r.status!==0||result.ok===false)return{ok:false,code:result.code??'approved-host-refused',statuses:result.statuses??[],hostExitCode:r.status};
+    if(r.status!==0||result.ok===false)return sanitizeDpHostFailure(result,r.status);
     return result;
   }
   const daemon=p.hosts.find(h=>h.host==='daemon'),cli=p.hosts.find(h=>h.host==='cli');
