@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "actual shared native v32 baseline; disjoint from staged profile-switch owner followups",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "baselineSha256": "476909e25a03fc481101998a6cb91d7ddfeef2e76644a08d39f32e2f3786a7c0",
+      "outputSha256": "2a230caf8cdce1eb71c06f7ff18b0776d3f323e1c28aa45c78fc47c62414e36b"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "2b33b26a1716c7551d7a76696d528089f4b3e342778719d83e6644c23d861d58",
+      "outputSha256": "940de3c895cc0e987c0c9e6540e826f3fa4df0c8a69bb085f75fca441453efdf"
+    }
+  ]
+}

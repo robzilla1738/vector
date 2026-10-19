@@ -1,0 +1,257 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_mini_popup") {
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+-  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
++  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
+   frameworks = [ "AppKit.framework", "QuartzCore.framework" ]
+ }
+
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -6,6 +6,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/no_destructor.h"
+ #include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/task/thread_pool.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+@@ -24,10 +25,13 @@
+ #include "components/prefs/pref_registry_simple.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_delegate.h"
++#include "net/base/url_util.h"
+ #include "ui/base/accelerators/accelerator.h"
+ #include "ui/base/accelerators/accelerator_manager.h"
+ #include "ui/base/accelerators/command.h"
+ #include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
++#include "ui/base/window_open_disposition.h"
+ #include "ui/display/display.h"
+ #include "ui/display/screen.h"
+ #include "ui/gfx/geometry/rounded_corners_f.h"
+@@ -60,7 +64,8 @@
+ class PopupManager : public ui::GlobalAcceleratorListener::Observer,
+                      public ui::AcceleratorTarget,
+                      public views::WidgetObserver,
+-                     public ProfileObserver {
++                     public ProfileObserver,
++                     public content::WebContentsDelegate {
+  public:
+   static PopupManager& Get() {
+     static base::NoDestructor<PopupManager> manager;
+@@ -113,7 +118,8 @@
+   void ShowFor(Profile* profile) {
+     BindProfile(profile);
+     const uint64_t generation = ++generation_;
+-    FetchAuxProfileSecurity(aux::StateHome(), ProfileIdentity(profile),
++    FetchAuxProfileSecurity(
++        aux::StateHome(), ProfileIdentity(profile),
+         base::BindOnce(
+             [](uint64_t generation, base::WeakPtr<Profile> profile,
+                base::ListValue rows) {
+@@ -153,6 +159,7 @@
+       ApplyAuxPopupMaterial(widget_->GetNativeWindow());
+     }
+     webview_->LoadInitialURL(url);
++    webview_->GetWebContents()->SetDelegate(this);
+     Resize(size_);
+     widget_->Show();
+     webview_->RequestFocus();
+@@ -168,6 +175,7 @@
+     }
+   }
+   void DestroyWindows() {
++    options_webview_ = nullptr;
+     if (options_) {
+       options_->RemoveObserver(this);
+       options_.reset();
+@@ -199,43 +207,102 @@
+         area.y() + std::max(20, (area.height() - size.height()) / 4)));
+     widget_->SetBoundsConstrained(bounds);
+   }
+-  std::optional<std::string> ResizeOptions(Profile* profile, gfx::Size size) {
+-    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() ||
+-        profile_.get() != profile) {
+-      return "Popup is not open in this profile";
+-    }
+-    if (!options_ || options_->IsClosed()) {
+-      if (options_) {
+-        options_->RemoveObserver(this);
+-      }
++  bool IsMainContents(content::WebContents* source) const {
++    return widget_ && !widget_->IsClosed() && widget_->IsVisible() &&
++           webview_ && source == webview_->web_contents();
++  }
++  bool IsOptionContents(content::WebContents* source) const {
++    return options_ && !options_->IsClosed() && options_webview_ &&
++           source == options_webview_->web_contents();
++  }
++  content::WebContents* AddNewContents(
++      content::WebContents* source,
++      std::unique_ptr<content::WebContents> new_contents,
++      const GURL& target_url,
++      WindowOpenDisposition disposition,
++      const blink::mojom::WindowFeatures&,
++      bool,
++      bool* was_blocked) override {
++    int left, top, width, height;
++    std::string value;
++    const auto read = [&](const char* key, int& result) {
++      return net::GetValueForKeyInQuery(target_url, key, &value) &&
++             base::StringToInt(value, &result);
++    };
++    if (!IsMainContents(source) ||
++        disposition != WindowOpenDisposition::NEW_POPUP ||
++        !target_url.SchemeIs("chrome-extension") ||
++        target_url.host() != aux::kAgentExtensionId || !read("left", left) ||
++        !read("top", top) || !read("width", width) || !read("height", height) ||
++        width <= 0 || height <= 0) {
++      if (was_blocked) {
++        *was_blocked = true;
++      }
++      return nullptr;
++    }
++    options_webview_ = nullptr;
++    if (options_) {
++      options_->RemoveObserver(this);
+       options_.reset();
+-      options_delegate_ = std::make_unique<views::WidgetDelegate>();
+-      auto contents = std::make_unique<views::WebView>(profile);
+-      auto* webview = contents.get();
+-      options_delegate_->SetContentsView(std::move(contents));
+-      options_ = std::make_unique<views::Widget>();
+-      views::Widget::InitParams params(
+-          views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+-          views::Widget::InitParams::TYPE_WINDOW);
+-      params.delegate = options_delegate_.get();
+-      params.rounded_corners = gfx::RoundedCornersF(16);
+-      options_->Init(std::move(params));
+-      options_->AddObserver(this);
+-      webview->LoadInitialURL(GURL("chrome-extension://" +
+-                                   std::string(aux::kAgentExtensionId) +
+-                                   "/minipopup-options.html"));
+-    }
+-    options_->SetSize(size);
+-    options_->Show();
++    }
++    options_delegate_ = std::make_unique<views::WidgetDelegate>();
++    auto contents = std::make_unique<views::WebView>(profile_.get());
++    options_webview_ = contents.get();
++    options_webview_->SetOwnedWebContents(std::move(new_contents));
++    auto* child = options_webview_->GetWebContents();
++    child->SetDelegate(this);
++    options_delegate_->SetContentsView(std::move(contents));
++    options_ = std::make_unique<views::Widget>();
++    views::Widget::InitParams params(
++        views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++        views::Widget::InitParams::TYPE_POPUP);
++    params.delegate = options_delegate_.get();
++    params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
++    options_->Init(std::move(params));
++    options_->AddObserver(this);
++    gfx::Rect bounds(left, top, width, height);
++    bounds.AdjustToFit(display::Screen::Get()
++                           ->GetDisplayNearestPoint(bounds.CenterPoint())
++                           .work_area());
++    options_->SetBoundsConstrained(bounds);
++    if (net::GetValueForKeyInQuery(target_url, "focus", &value) &&
++        value == "false") {
++      options_->ShowInactive();
++    } else {
++      options_->Show();
++      options_webview_->RequestFocus();
++    }
++    return child;
++  }
++  void CloseContents(content::WebContents* source) override {
++    if (IsOptionContents(source)) {
++      options_->Close();
++    } else if (IsMainContents(source)) {
++      Hide();
++    }
++  }
++  std::optional<std::string> ResizeOptions(content::WebContents* source,
++                                           gfx::Size size) {
++    if (!IsOptionContents(source)) {
++      return "Option window is unavailable for this calling page";
++    }
++    auto bounds = options_->GetWindowBoundsInScreen();
++    bounds.set_y(bounds.bottom() - size.height());
++    bounds.set_size(size);
++    bounds.AdjustToFit(
++        display::Screen::Get()
++            ->GetDisplayNearestWindow(options_->GetNativeWindow())
++            .work_area());
++    options_->SetBoundsConstrained(bounds);
+     return std::nullopt;
+   }
+   void SetState(std::string state) {
+     if (state == "compact") {
+-      Resize(gfx::Size(560, 240));
++      Resize(gfx::Size(440, 92));
+     } else if (state == "compact-with-attachments") {
+-      Resize(gfx::Size(560, 340));
++      Resize(gfx::Size(440, 148));
+     } else {
+-      Resize(gfx::Size(720, 640));
++      Resize(gfx::Size(440, 534));
+     }
+   }
+   void OnKeyPressed(const ui::Accelerator&) override {
+@@ -294,10 +361,11 @@
+   ui::Accelerator accelerator_;
+   bool registered_ = false, picker_pending_ = false;
+   uint64_t generation_ = 0;
+-  gfx::Size size_{560, 240};
++  gfx::Size size_{440, 92};
+   std::unique_ptr<views::WidgetDelegate> delegate_, options_delegate_;
+   std::unique_ptr<views::Widget> widget_, options_;
+   raw_ptr<views::WebView> webview_ = nullptr;
++  raw_ptr<views::WebView> options_webview_ = nullptr;
+   base::OneShotTimer dismiss_;
+ };
+ }  // namespace
+@@ -322,6 +390,9 @@
+     return RespondNow(WithArguments(prefs->GetString(kShortcut)));
+   }
+   if (method == "hide") {
++    if (!manager.IsMainContents(GetSenderWebContents())) {
++      return RespondNow(Error("Popup is unavailable for this calling page"));
++    }
+     manager.Hide();
+     return RespondNow(NoArguments());
+   }
+@@ -361,6 +432,9 @@
+          args()[0].GetString() != "expanded")) {
+       return RespondNow(Error("Invalid popup state"));
+     }
++    if (!manager.IsMainContents(GetSenderWebContents())) {
++      return RespondNow(Error("Popup is unavailable for this calling page"));
++    }
+     manager.SetState(args()[0].GetString());
+     return RespondNow(NoArguments());
+   }
+@@ -369,13 +443,16 @@
+       return RespondNow(Error("Integer popup dimensions required"));
+     }
+     const int width = args()[0].GetInt(), height = args()[1].GetInt();
+-    if (width < 240 || width > 4096 || height < 120 || height > 4096) {
++    if (width <= 0 || height <= 0) {
+       return RespondNow(Error("Popup dimensions are outside supported bounds"));
+     }
+     if (method == "setSize") {
++      if (!manager.IsMainContents(GetSenderWebContents())) {
++        return RespondNow(Error("Popup is unavailable for this calling page"));
++      }
+       manager.Resize(gfx::Size(width, height));
+-    } else if (auto error =
+-                   manager.ResizeOptions(profile(), gfx::Size(width, height))) {
++    } else if (auto error = manager.ResizeOptions(GetSenderWebContents(),
++                                                  gfx::Size(width, height))) {
+       return RespondNow(Error(*error));
+     }
+     return RespondNow(NoArguments());

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "bytes": 343178
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/browser-binding-CzDmxQNA.js",
+      "sha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b",
+      "bytes": 3662
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b",
+      "bytes": 1872
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427d864.c",
+      "sha256": "b76042dcc46732b47ca16c911ae00476d862778dc7698bba8a03560a3ebde02b",
+      "bytes": 3952
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427da70.c",
+      "sha256": "80c00f5b178b98f6aaee57b9a370a275dfac0bf5e236fe4cea28f04559e1bb98",
+      "bytes": 4088
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2",
+      "bytes": 24460
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045965a0.c",
+      "sha256": "477f95aef51d2db8efeaabb5ac35a5e23d52f281b5c53e988b31c3b066894193",
+      "bytes": 3381
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04596b80.c",
+      "sha256": "980ddb325b64712e7770a19b0a375e8258421fa975926741cb8a40bf6dcf564b",
+      "bytes": 2727
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597014.c",
+      "sha256": "4e7e43803454f967f1a06f26f6dff13a188644378b4ceecbe7297ea9577a0a1d",
+      "bytes": 2854
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045971d4.c",
+      "sha256": "caaf00c90974b38eb695f25166aa736e8185f5cd6d1ce170d500e40bf2f7d75d",
+      "bytes": 6288
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459a938.c",
+      "sha256": "06b974ce562626943da1dfb992b1e3fdde28be17f57e3befa20ce60e71585a90",
+      "bytes": 6513
+    }
+  ],
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Offset": 273940480,
+    "arm64Bytes": 249334160,
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "functions": [
+      {
+        "rva": "0x459a938",
+        "bytes": 960,
+        "sha256": "b7003e75e56405aeb3fbc0471a61ce9683d29e13f20968e1aac5696cac9f9271"
+      },
+      {
+        "rva": "0x45971d4",
+        "bytes": 972,
+        "sha256": "0a8c6d919233a33f9fe9edd1aa72c9a51d3a42abb4f205ed1e34fe7a76226d70"
+      },
+      {
+        "rva": "0x4596b80",
+        "bytes": 404,
+        "sha256": "f0c6cf48b51321b42d260c3a7ecfe84c37d37e7b12c9bcf8a422c5828eec6eb4"
+      },
+      {
+        "rva": "0x4597014",
+        "bytes": 440,
+        "sha256": "08ba6bd11a5e513b87cf955d06e490dfda2cc56c40f1e16ed18e2462439f3ed0"
+      },
+      {
+        "rva": "0x459577c",
+        "bytes": 3556,
+        "sha256": "5a66096c933f19e3452c366862760822de676cff3bb42258f358d6317ba1c870"
+      }
+    ]
+  },
+  "rea": {
+    "evidenceId": "ev_45de3418bd4722f2979b86afe6c25c500d574ea711302be8682cd50d4f32f0cc",
+    "rawTargetSha256": "b7003e75e56405aeb3fbc0471a61ce9683d29e13f20968e1aac5696cac9f9271",
+    "snapshotPath": "/tmp/aux-mini-popup-options-add-snapshot.json",
+    "limitations": [
+      "Bounded raw ARM64 function only; no external callees/globals loaded. Pseudocode and raw instruction metadata do not establish runtime behavior.",
+      "Original native framework153 predates Agent1852. Its NEW_POPUP source/host/query/focus checks agree with the exact1852 caller.",
+      "Existing main popup positioning/material/focus-animation behavior is not claimed equivalent. No supplied UI file is changed."
+    ]
+  },
+  "observations": [
+    {
+      "source": "Agent session-composer Bp/Dp/Fp",
+      "behavior": "window.open same-extension minipopup-options.html preserving current query plus left/top/width/height/focus. React portals into returned child root; child invokes setOptionWindowSize; cleanup closes that actual child."
+    },
+    {
+      "source": "native0459a938",
+      "behavior": "requires main popup WebContents, NEW_POPUP=5, valid four query bounds and Agent extension host. Takes ownership of provided new WebContents; focus=false remains inactive; rejects other windows."
+    },
+    {
+      "source": "native045971d4",
+      "behavior": "requires exact existing option WebContents; resizes its existing widget with constant x/bottom and display-fit. Source180ms animation is not ported in this slice."
+    },
+    {
+      "source": "native04597014/0427d864/0427da70 + IDL",
+      "behavior": "size requests require positive integer dimensions and exact corresponding main/child WebContents, not a profile-only check or invented240/120 minimum."
+    },
+    {
+      "source": "native0459577c/04596b80 + supplied State enum",
+      "behavior": "initial440x92; native states compact440x92/attachments440x148/expanded440x534. The names-to-enum association is derived from supplied ordered enum and recovered0/1/2 state expression."
+    }
+  ]
+}
