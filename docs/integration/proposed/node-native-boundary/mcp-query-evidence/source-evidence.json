@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "daemonCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "daemonExactAnchor": "function credentialKey(Cn,ei){return`mcp:${Cn}:${ei}`}function credentialIndexKey(Cn){return`mcp:index:${Cn}`}",
+  "anchorCount": 1,
+  "nativeBinarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "nativeSymbol": "_$s16AsideNativeSwift22secureStorageBaseQuery3keySDySSypGSS_tF",
+  "nativeVirtualRange": [
+    "0x2ec84",
+    "0x2ee14"
+  ],
+  "nativeRangeSha256": "f8c05e131fa571a3a49e4e2bb50baaaba0140e0c6c9ad94fe0adb097e0f9f833",
+  "GOT": {
+    "0x724070": "kSecAttrAccessGroup",
+    "0x724090": "kSecAttrAccount",
+    "0x724098": "kSecAttrService",
+    "0x7240a0": "kSecClass",
+    "0x7240a8": "kSecClassGenericPassword",
+    "0x7240e0": "kSecUseDataProtectionKeychain"
+  },
+  "originalGroup": "8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
+  "selectors": "Both service/account receive input key (x23/x19 preserved at0x2eca0/4 and stored at0x2ed2c/0x2ed48); class generic-password, original group and DP=true included.",
+  "currentMapperSha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab",
+  "conclusion": "Existing exact-group branch scopes MCP identities and removes original group; no production expansion needed. No-group unknown MCP remains refused.",
+  "fixtureStatus": "staged only, not compiled or executed; production receipt sources unchanged",
+  "DPCalls": 0
+}

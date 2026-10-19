@@ -1,0 +1,35 @@
+--- a/vendor/provided/native/keychain-query-map-test.mm
++++ b/vendor/provided/native/keychain-query-map-test.mm
+@@ -93,6 +93,32 @@
+                                     startingAtIndex:0];
+     assert(![AuxMapKeychainQuery(original, other)[(__bridge id)kSecAttrService]
+         isEqual:q[(__bridge id)kSecAttrService]]);
++    // Supplied secureStorageBaseQuery always carries this exact group and
++    // uses the complete logical key as both generic-password selectors.
++    for (NSString *key in @[@"mcp:index:7", @"mcp:7:fixture-server"]) {
++      NSDictionary *source = @{
++        (__bridge id)kSecClass : (__bridge id)kSecClassGenericPassword,
++        (__bridge id)kSecAttrAccessGroup : @"8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
++        (__bridge id)kSecAttrService : key,
++        (__bridge id)kSecAttrAccount : key,
++        (__bridge id)kSecUseDataProtectionKeychain : @YES,
++      };
++      NSDictionary *mapped = AuxMapKeychainQuery(source, scope);
++      assert(mapped && !mapped[(__bridge id)kSecAttrAccessGroup]);
++      NSString *expected = [NSString stringWithFormat:@"aux.%@.%@", scope, key];
++      assert([mapped[(__bridge id)kSecAttrService] isEqual:expected]);
++      assert([mapped[(__bridge id)kSecAttrAccount] isEqual:expected]);
++      assert([mapped[(__bridge id)kSecUseDataProtectionKeychain] boolValue]);
++      assert([AuxMapKeychainQuery(mapped, scope) isEqual:mapped]);
++      NSMutableDictionary *wrongGroup = [source mutableCopy];
++      wrongGroup[(__bridge id)kSecAttrAccessGroup] = @"unrecognized-group";
++      assert(!AuxMapKeychainQuery(wrongGroup, scope));
++      [wrongGroup removeObjectForKey:(__bridge id)kSecAttrAccessGroup];
++      assert(!AuxMapKeychainQuery(wrongGroup, scope));
++      NSMutableDictionary *opaque = [source mutableCopy];
++      opaque[(__bridge id)kSecValuePersistentRef] = secret;
++      assert(!AuxMapKeychainQuery(opaque, scope));
++    }
+     puts("pure query mapping fixtures passed; zero Keychain calls");
+   }
+ }
