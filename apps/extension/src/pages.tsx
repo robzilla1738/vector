@@ -5,6 +5,7 @@ import { rpc } from './daemon';
 import { DeveloperSettings } from './developer-settings';
 import { McpSettings } from './mcp-settings';
 import { preference } from './native';
+import { OpenAIOAuthSettings } from './oauth-settings';
 import { PopupSettings } from './popup-settings';
 import { SkillsSettings } from './skill-settings';
 import type { Session } from './types';
@@ -374,71 +375,74 @@ export function Settings({
             </>
           )}
           {section === 'model' && (
-            <form
-              className="stack"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setPending(true);
-                setError('');
-                void rpc(
-                  'models.setCredential',
-                  {
-                    accountId,
-                    providerId: provider,
-                    credential: { type: 'api_key', key },
-                  },
-                  true,
-                )
-                  .then(() => {
-                    setKey('');
-                    setNotice(
-                      'Connection saved. Choose an available model in your task.',
-                    );
-                  })
-                  .catch((e) => setError(e.message))
-                  .finally(() => setPending(false));
-              }}
-            >
-              <label>
-                Provider
-                <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                >
-                  {[
-                    'vercel-ai-gateway',
-                    'openrouter',
-                    'openai',
-                    'anthropic',
-                    'google',
-                  ].map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                API key
-                <input
-                  className="field"
-                  type="password"
-                  autoComplete="off"
-                  required
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                />
-              </label>
-              <Button
-                type="submit"
-                className="primary"
-                disabled={pending || !key}
+            <div className="stack">
+              <OpenAIOAuthSettings accountId={accountId} />
+              <form
+                className="stack"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setPending(true);
+                  setError('');
+                  void rpc(
+                    'models.setCredential',
+                    {
+                      accountId,
+                      providerId: provider,
+                      credential: { type: 'api_key', key },
+                    },
+                    true,
+                  )
+                    .then(() => {
+                      setKey('');
+                      setNotice(
+                        'Connection saved. Choose an available model in your task.',
+                      );
+                    })
+                    .catch((e) => setError(e.message))
+                    .finally(() => setPending(false));
+                }}
               >
-                Save connection
-              </Button>
-              <p className="muted">
-                Credentials stay in your local account. Saving a connection does
-                not run a paid request.
-              </p>
-            </form>
+                <label>
+                  Provider
+                  <select
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                  >
+                    {[
+                      'vercel-ai-gateway',
+                      'openrouter',
+                      'openai',
+                      'anthropic',
+                      'google',
+                    ].map((value) => (
+                      <option key={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  API key
+                  <input
+                    className="field"
+                    type="password"
+                    autoComplete="off"
+                    required
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  className="primary"
+                  disabled={pending || !key}
+                >
+                  Save connection
+                </Button>
+                <p className="muted">
+                  Credentials stay in your local account. Saving a connection
+                  does not run a paid request.
+                </p>
+              </form>
+            </div>
           )}
           {section === 'context-awareness' && (
             <Setting

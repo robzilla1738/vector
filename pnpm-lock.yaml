@@ -206,6 +206,9 @@ importers:
       ai:
         specifier: ^7.0.143
         version: 7.0.143(zod@4.6.7)
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       rrule:
         specifier: ^2.8.1
         version: 2.8.1

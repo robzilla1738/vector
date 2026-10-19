@@ -24,7 +24,9 @@ export function createAgentRouters(
   engine = new AgentEngine(services.store, services.bridge),
 ) {
   const { t, procedure, store } = services;
+  engine.registerCloseHandler(() => engine.credentials.oauth.close());
   store.registerAccountDeletionHandler(async (accountId) => {
+    engine.credentials.oauth.cancelAccount(accountId);
     const sessions = engine.list(accountId);
     for (const session of sessions)
       engine.stop(accountId, session.id, 'aborted');
