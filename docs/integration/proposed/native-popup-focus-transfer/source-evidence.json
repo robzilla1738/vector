@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045975a8.c",
+      "sha256": "57cf8ad5994d391ec718724c3125155ad36cac70781fbb8d5bbf0313446aaa6f"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597798.c",
+      "sha256": "ecfa1c4ea99c698c12c70840ad12839497a51c5152dd583954060e1dcf9f9e8a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459936c.c",
+      "sha256": "358bbbf63a92d5d1f0de9d9c35eaa3af8360f9205501c8594204b4d9c958d1bf"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045983e0.c",
+      "sha256": "4bcb0845b5b1fce13ad68464d43a873835f6bcf55fdd0deb5116d368c8f30c89"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597c38.c",
+      "sha256": "03c1753db4ef5d7d9e93f7a9689f8ec090a46d265c05e9ee67e2b15ce1a51e09"
+    }
+  ],
+  "functions": [
+    {
+      "name": "ActivationChanged",
+      "rva": "0x45975a8",
+      "bytes": 464,
+      "sha256": "0387c2483f886f2ffb5df27fcd7faa1f88a51a36bc9b0c967e6ad29ccbd16209"
+    },
+    {
+      "name": "InactiveCallback",
+      "rva": "0x4597a94",
+      "bytes": 132,
+      "sha256": "48745ac8ee6ddd111ce947b6c29bbcd9656ff8100735d57b2271197254839f59"
+    },
+    {
+      "name": "FinishFocusTransfer",
+      "rva": "0x4597798",
+      "bytes": 724,
+      "sha256": "abfa86978f1e4b1fb72f12aa72569e224ceb68a3b805be0bf5b0ea9d151e56a6"
+    },
+    {
+      "name": "OptionsVisibilityChanged",
+      "rva": "0x4597b18",
+      "bytes": 288,
+      "sha256": "c61efc3688f158c43897861cbdbe7e2af40f2f7d624afb8afffd0e5c74616aa7"
+    },
+    {
+      "name": "CloseOptions",
+      "rva": "0x4597c38",
+      "bytes": 440,
+      "sha256": "1f0282c4d8fe20e7aa831b8dce8e27deb23fa35b22af4f3d9cc3168230959330"
+    },
+    {
+      "name": "CloseOptionsRestoreFocus",
+      "rva": "0x459936c",
+      "bytes": 608,
+      "sha256": "dea2f1a7342be470e45a2e5c19f71bd2c73fa74d298bd8f3b01b68004628cc59"
+    },
+    {
+      "name": "ActivateMain",
+      "rva": "0x45983e0",
+      "bytes": 396,
+      "sha256": "3b724364a0ba7985c0b19ebe0fef004d0051298bca83188dc15977bc1cbf140e"
+    },
+    {
+      "name": "FallbackMainActivation",
+      "rva": "0x45995fc",
+      "bytes": 16,
+      "sha256": "c1565cc3ee6399ee828f353fcc533c8158baade48c85627e3edb388577285318"
+    },
+    {
+      "name": "MainWidgetConstructor",
+      "rva": "0x298bf20",
+      "bytes": 776,
+      "sha256": "db0ed1dfa625d19eb3cd3c5239339687249029f0877cc08d84178c7a9e2ded19"
+    },
+    {
+      "name": "MainDelegateCanActivate",
+      "rva": "0xa6e6af0",
+      "bytes": 8,
+      "sha256": "c11ff9515e53c931935cee0d25dff525b62067b1c41cf6ba57cdb081c189a7f5"
+    },
+    {
+      "name": "WidgetIsActive",
+      "rva": "0x43f1100",
+      "bytes": 84,
+      "sha256": "d09ded2a9293903ca9728bc550bda40b8c273445442e6f531c267bb2ed33e0c4"
+    },
+    {
+      "name": "NativeVisibilityState",
+      "rva": "0x2b425fc",
+      "bytes": 116,
+      "sha256": "5329bd10949b4048c45330ef3f74eff01edd5e956b33a07d419292a836b89cba"
+    },
+    {
+      "name": "DelegateVtableCanActivate",
+      "rva": "0xe5047d0",
+      "bytes": 8,
+      "sha256": "22e5ce96f233bbd570b18fb0859f52042319c902125e29fbf2e00ab3524e75be"
+    },
+    {
+      "name": "WidgetVtableIsActive",
+      "rva": "0xe3553a0",
+      "bytes": 8,
+      "sha256": "5754d256f62adcdd61997acd6a754ec9bd946441351f2285831cdd137f6b23d6"
+    }
+  ]
+}

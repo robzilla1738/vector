@@ -1,0 +1,241 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -6,11 +6,12 @@
+ #include "base/functional/bind.h"
+ #include "base/logging.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/no_destructor.h"
+ #include "base/scoped_observation.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
+-#include "base/timer/timer.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
+@@ -201,7 +202,6 @@
+     accelerator_ = ui::Accelerator();
+     Hide();
+     DestroyWindows();
+-    dismiss_.Stop();
+     profile_observer_.Reset();
+     profile_.reset();
+     keep_alive_.reset();
+@@ -241,7 +241,6 @@
+       accelerator_ = ui::Accelerator();
+       Hide();
+       DestroyWindows();
+-      dismiss_.Stop();
+       size_ = gfx::Size(440, 92);
+       keep_alive_.reset();
+     }
+@@ -254,8 +253,6 @@
+     Hide();
+     profile_observer_.Reset();
+     DestroyWindows();
+-    // Hiding the old native windows can enqueue an activation dismissal.
+-    dismiss_.Stop();
+     size_ = gfx::Size(440, 92);
+     profile_ = profile->GetWeakPtr();
+     profile_observer_.Observe(profile);
+@@ -314,6 +311,7 @@
+     if (!IsPopupMostlyVisible(widget_->GetWindowBoundsInScreen())) {
+       widget_->SetBoundsConstrained(InitialPopupBounds(size_));
+     }
++    delegate_->SetCanActivate(true);
+     CaptureAuxPopupActivation();
+     widget_->Show();
+     webview_->RequestFocus();
+@@ -325,7 +323,6 @@
+   void Hide() {
+     ClearAuxPopupActivation();
+     ++generation_;
+-    dismiss_.Stop();
+     bounds_animation_.reset();
+     options_bounds_animation_.reset();
+     if (options_) {
+@@ -336,6 +333,8 @@
+     }
+   }
+   void DestroyWindows() {
++    weak_factory_.InvalidateWeakPtrs();
++    options_focus_state_ = OptionsFocusState::kIdle;
+     ClearAuxPopupActivation();
+     picker_pending_ = false;
+     loaded_entry_url_ = GURL();
+@@ -410,6 +409,7 @@
+       options_->RemoveObserver(this);
+       options_.reset();
+     }
++    options_focus_state_ = OptionsFocusState::kIdle;
+     options_delegate_ = std::make_unique<views::WidgetDelegate>();
+     auto contents = std::make_unique<views::WebView>(profile_.get());
+     options_webview_ = contents.get();
+@@ -444,8 +444,7 @@
+   }
+   void CloseContents(content::WebContents* source) override {
+     if (IsOptionContents(source)) {
+-      options_bounds_animation_.reset();
+-      options_->Close();
++      CloseOptionsAndRestoreFocus();
+     } else if (IsMainContents(source)) {
+       RequestHide();
+     }
+@@ -492,19 +491,32 @@
+   bool CanHandleAccelerators() const override {
+     return widget_ && widget_->IsVisible();
+   }
+-  void OnWidgetActivationChanged(views::Widget*, bool active) override {
++  void OnWidgetActivationChanged(views::Widget* widget, bool active) override {
+     if (active) {
+-      dismiss_.Stop();
+-      return;
+-    }
+-    dismiss_.Start(FROM_HERE, base::Milliseconds(100), base::BindOnce([] {
+-                     auto& manager = Get();
+-                     if (!manager.picker_pending_ &&
+-                         (!manager.widget_ || !manager.widget_->IsActive()) &&
+-                         (!manager.options_ || !manager.options_->IsActive())) {
+-                       manager.Hide();
+-                     }
+-                   }));
++      if (widget == widget_.get() &&
++          options_focus_state_ == OptionsFocusState::kWaitingForMainActivation) {
++        PostFinishOptionsFocusTransfer();
++      }
++      return;
++    }
++    if (widget == options_.get()) {
++      if (options_focus_state_ != OptionsFocusState::kIdle) {
++        return;
++      }
++    } else if (widget != widget_.get()) {
++      return;
++    }
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PopupManager::FinishDeactivation,
++                                  weak_factory_.GetWeakPtr()));
++  }
++  void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override {
++    if (widget != options_.get() || visible ||
++        options_focus_state_ != OptionsFocusState::kWaitingForOptionsHidden) {
++      return;
++    }
++    options_focus_state_ = OptionsFocusState::kIdle;
++    PostCloseOptions();
+   }
+   void OnProfileWillBeDestroyed(Profile*) override {
+     Hide();
+@@ -539,6 +551,101 @@
+   }
+ 
+  private:
++  enum class OptionsFocusState {
++    kIdle,
++    kWaitingForMainActivation,
++    kWaitingForOptionsHidden,
++  };
++  void FinishDeactivation() {
++    if (picker_pending_ || (widget_ && widget_->IsActive()) ||
++        (options_ && options_->IsActive())) {
++      return;
++    }
++    if (delegate_) {
++      delegate_->SetCanActivate(false);
++    }
++    ClearAuxPopupActivation();
++    CloseOptions();
++  }
++  void CloseOptions() {
++    if (!options_) {
++      return;
++    }
++    options_bounds_animation_.reset();
++    picker_pending_ = false;
++    options_focus_state_ = OptionsFocusState::kIdle;
++    if (options_webview_ && options_webview_->web_contents()) {
++      options_webview_->web_contents()->WasHidden();
++    }
++    options_webview_ = nullptr;
++    options_->RemoveObserver(this);
++    options_.reset();
++    options_delegate_.reset();
++  }
++  void PostCloseOptions() {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PopupManager::CloseOptions,
++                                  weak_factory_.GetWeakPtr()));
++  }
++  void ActivateMain() {
++    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() || !webview_) {
++      return;
++    }
++    delegate_->SetCanActivate(true);
++    CaptureAuxPopupActivation();
++    widget_->Activate();
++    webview_->RequestFocus();
++  }
++  void ActivateMainWithoutOptions() {
++    if (!options_) {
++      ActivateMain();
++    }
++  }
++  void CloseOptionsAndRestoreFocus() {
++    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible()) {
++      CloseOptions();
++      return;
++    }
++    if (options_ && !options_->IsClosed() && options_->IsVisible()) {
++      options_focus_state_ = OptionsFocusState::kWaitingForMainActivation;
++      ActivateMain();
++      if (widget_->IsActive()) {
++        PostFinishOptionsFocusTransfer();
++      }
++      return;
++    }
++    CloseOptions();
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PopupManager::ActivateMainWithoutOptions,
++                                  weak_factory_.GetWeakPtr()));
++  }
++  void PostFinishOptionsFocusTransfer() {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PopupManager::FinishOptionsFocusTransfer,
++                                  weak_factory_.GetWeakPtr()));
++  }
++  void FinishOptionsFocusTransfer() {
++    if (options_focus_state_ != OptionsFocusState::kWaitingForMainActivation) {
++      return;
++    }
++    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() || !webview_ ||
++        !options_) {
++      options_focus_state_ = OptionsFocusState::kIdle;
++      CloseOptions();
++      return;
++    }
++    if (!widget_->IsActive()) {
++      return;
++    }
++    webview_->RequestFocus();
++    options_focus_state_ = OptionsFocusState::kWaitingForOptionsHidden;
++    if (!options_->IsClosed() && options_->IsVisible()) {
++      options_->Hide();
++      return;
++    }
++    options_focus_state_ = OptionsFocusState::kIdle;
++    PostCloseOptions();
++  }
+   bool OwnsPopupContents(content::WebContents* source) const {
+     return source &&
+            ((webview_ && source == webview_->web_contents()) ||
+@@ -613,7 +720,8 @@
+   raw_ptr<views::WebView> options_webview_ = nullptr;
+   std::unique_ptr<PopupBoundsAnimation> bounds_animation_;
+   std::unique_ptr<PopupBoundsAnimation> options_bounds_animation_;
+-  base::OneShotTimer dismiss_;
++  OptionsFocusState options_focus_state_ = OptionsFocusState::kIdle;
++  base::WeakPtrFactory<PopupManager> weak_factory_{this};
+ };
+ }  // namespace
+ void InitializeAuxMiniPopup(Profile* profile) {

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-keepalive af2456f90",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "1f81a9af0db339350ae8b242672400dc304020eb5a8e5c142315eab1d29d39c5",
+      "outputSha256": "5f8af9189ca1fea516217c7f1f95b9b8d6e944e9e4b4b07d6d6721c3e2438353"
+    }
+  ]
+}
