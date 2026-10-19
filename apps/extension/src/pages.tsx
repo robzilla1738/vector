@@ -2,7 +2,11 @@ import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ChannelsSettings } from './channels';
 import { rpc } from './daemon';
+import { DeveloperSettings } from './developer-settings';
+import { McpSettings } from './mcp-settings';
 import { preference } from './native';
+import { PopupSettings } from './popup-settings';
+import { SkillsSettings } from './skill-settings';
 import type { Session } from './types';
 
 type Item = Record<string, unknown>;
@@ -174,11 +178,27 @@ export function Settings({
   const [key, setKey] = useState('');
   const [provider, setProvider] = useState('vercel-ai-gateway');
   const [notice, setNotice] = useState('');
+  const isPluginSection =
+    section.startsWith('plugins/') ||
+    ['developers', 'mini-popup'].includes(section);
   useEffect(() => {
     void rpc<Item>('settings.getAll', { accountId })
       .then(setSettings)
       .catch((e) => setError(e.message));
   }, [accountId]);
+  useEffect(() => {
+    if (!isPluginSection) return;
+    const navigation = document.querySelector('.plugin-preferences > nav');
+    if (!navigation) return;
+    const revealSelection = () =>
+      navigation
+        .querySelector('[aria-current="page"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const observer = new ResizeObserver(revealSelection);
+    observer.observe(navigation);
+    revealSelection();
+    return () => observer.disconnect();
+  }, [isPluginSection]);
   async function save(name: string, value: unknown) {
     setPending(true);
     setError('');
@@ -221,11 +241,17 @@ export function Settings({
     }
   }
   return (
-    <div className="settings">
+    <div
+      className={isPluginSection ? 'settings plugin-preferences' : 'settings'}
+    >
       <nav aria-label="Preferences sections">
         {settingsSections.map(([path, label]) => (
           <a
-            aria-current={section === path ? 'page' : undefined}
+            aria-current={
+              section === path || section.startsWith(`${path}/`)
+                ? 'page'
+                : undefined
+            }
             href={`#/settings/${path}`}
             key={path}
           >
@@ -235,8 +261,9 @@ export function Settings({
       </nav>
       <main className="secondary">
         <h2>
-          {settingsSections.find(([path]) => path === section)?.[1] ??
-            'Preferences'}
+          {settingsSections.find(
+            ([path]) => path === section || section.startsWith(`${path}/`),
+          )?.[1] ?? 'Preferences'}
         </h2>
         {error && <ErrorNotice error={error} />}
         <div className="stack">
@@ -428,19 +455,15 @@ export function Settings({
               />
             </Setting>
           )}
+          {section === 'mini-popup' && <PopupSettings key={accountId} />}
           {section === 'developers' && (
-            <Button
-              disabled={pending}
-              onClick={() => {
-                setPending(true);
-                void rpc('developers.checkCliInstallation', { accountId })
-                  .then((result) => setNotice(JSON.stringify(result)))
-                  .catch((e) => setError(e.message))
-                  .finally(() => setPending(false));
-              }}
-            >
-              Command line tools
-            </Button>
+            <DeveloperSettings key={accountId} accountId={accountId} />
+          )}
+          {section === 'plugins/mcps' && (
+            <McpSettings key={accountId} accountId={accountId} />
+          )}
+          {section.startsWith('plugins/skills') && (
+            <SkillsSettings key={accountId} accountId={accountId} />
           )}
           {![
             'general',
@@ -450,17 +473,16 @@ export function Settings({
             'context-awareness',
             'developers',
             'channels',
-          ].includes(section) && (
+            'mini-popup',
+            'plugins/mcps',
+            'plugins/skills',
+          ].some(
+            (route) => section === route || section.startsWith(`${route}/`),
+          ) && (
             <BackendPanel
               accountId={accountId}
               procedure={
-                section === 'plugins/mcps'
-                  ? 'mcp.connectionStatus'
-                  : section === 'plugins/skills'
-                    ? 'projects.listSkillsForSettings'
-                    : section === 'privacy'
-                      ? 'adblock.getState'
-                      : 'settings.getAll'
+                section === 'privacy' ? 'adblock.getState' : 'settings.getAll'
               }
             />
           )}{' '}
