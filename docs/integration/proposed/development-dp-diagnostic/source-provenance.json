@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "path": "vendor/provided/native/development-dp-scope-helper.mm",
+      "sha256": "21fcf19fc86f522ebeadfda99b58e76a8144d39e5d2ea42f1116eb7ce3f04570"
+    },
+    {
+      "path": "vendor/provided/build-development-dp-helper.mjs",
+      "sha256": "d3b591af9a32d00d064fc3328899c59b5e9ad85e6bd1bf7ebd735a2a19d656f1"
+    },
+    {
+      "path": "vendor/provided/development-dp-review.mjs",
+      "sha256": "276760eb65e2d871997a9b114ae4cb79ff3c8a6791214b7de20119f7c451614f"
+    },
+    {
+      "path": "vendor/provided/development-dp-diagnostic.cjs",
+      "sha256": "6ce34fb4c76fde2927b19e8a0ddbc74445526d56b8893c5971fee62e091a0a99"
+    },
+    {
+      "path": "vendor/provided/prepare-development-dp-diagnostic.mjs",
+      "sha256": "4605e3899b199f4d6d10994e8745075342348f6af2369d3f934e293549b8bafa"
+    },
+    {
+      "path": "vendor/provided/run-development-dp-probe.mjs",
+      "sha256": "6a79e0a10d158faafa477d78e24245692901012f544dd79fac65b9a9894b61a1"
+    }
+  ],
+  "inspectedPublicSdkHeaders": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecCode.h",
+      "sha256": "293ccef2de6c872a4f5a4862a74bf96a9ade0f897f898813cd33e8e1d00459c4"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecRequirement.h",
+      "sha256": "22a9a97d3cedd92d8fe15fc9bec73c201632a3b0f1e19b2cf12e5b2051cbba08"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecStaticCode.h",
+      "sha256": "4647531b672952064d7d014057c5147722babb29aa0ab6d11b8fbd45b3fde532"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CSCommon.h",
+      "sha256": "342063183c1091d94a174b5c8e9fe9623e7bd423ed74d02dbf508dc5ec12b56a"
+    }
+  ],
+  "originalScopeApprovalPreviewSha256": "58a7808370579e09299a1d63eef02897931348ee81590d870e439c459d745752",
+  "compiled": false,
+  "nativeExecuted": false,
+  "signed": false,
+  "profilesRead": false,
+  "approvedHomeRead": false,
+  "dpExecuted": false
+}
