@@ -25,3 +25,25 @@ Supported formats:
 Files are bounded to 32 MiB, decoded 1PUX JSON to 16 MiB, and parsed items to 10,000. Reviews and secret batches are paged to keep private transport replies bounded. No command strings or code are executed from export fields. CSV/JSON content is always data. Tests use only synthetic temporary CSV/1PUX/SQLite sources, verify redacted review before accepted secret access, preserve original dates, reject encrypted categories and prove unrelated ZIP members are not extracted.
 
 Primary public format documentation: [1Password 1PUX](https://support.1password.com/1pux-format/), [Bitwarden exports](https://bitwarden.com/help/export-your-data/). Parsers are independently authored; no source-manager application code or profiles were inspected.
+
+## Daemon encrypted acceptance adapter
+
+`createNativeImportRouter(services, vault, importer)` (daemon helpers export) mounts an
+account-scoped review lifecycle. `importer` comes from
+`createPasswordImporterAdapter(new HelperClient(importerExecutable, privateArtifactDirectory))`.
+`vault` is structurally compatible with the independent `VaultService`; its unlocked
+`snapshot` validates the destination and `createItems` encrypts each accepted batch.
+The router exposes `pickFile({accountId})`,
+`prepare({accountId,vaultId,path,format,authorized:true})`,
+`review({accountId,jobId,cursor?})`, `cancel({accountId,jobId})` and
+`commit({accountId,jobId,accepted:true})`. Prepare/review return only native redacted
+previews; commit returns `{created,skipped,revision}`. No regular RPC exposes native
+plaintext commit batches. Jobs expire after nine minutes, bind account and destination,
+are consumed once, serialize commit, and cancel on account deletion. Interrupted imports
+report encrypted-write counts; a new review safely deduplicates previously committed
+content using encrypted SHA256 provenance. Notes map to `secure-note`; imported items
+start active with `while-unlocked` agent policy and no password reprompt.
+
+Private plaintext batches live transiently in process memory, then only encrypted Vault
+records persist. JavaScript immutable strings cannot guarantee explicit memory wiping;
+the adapter never logs them, sends them to models, or returns them through commit RPC.

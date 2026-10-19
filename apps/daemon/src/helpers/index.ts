@@ -48,6 +48,8 @@ export function createHelperRouter(
       }),
   });
 }
+export { createHelperCaptureAdapter } from './capture.js';
+export { createNativeImportRouter, type ImportVault } from './native-import.js';
 export type {
   ImportedPasswordItem,
   PasswordExportFormat,

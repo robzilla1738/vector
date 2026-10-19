@@ -19,5 +19,8 @@ identities = json.loads((root.parents[1] / "docs/design/extension-identities.jso
 plist["AuxNativeMessagingOrigins"] = [f"chrome-extension://{identity['id']}/" for identity in identities.values()]
 with (app / "Contents" / "Info.plist").open("wb") as handle:
     plistlib.dump(plist, handle)
+resources = app / "Contents/Resources"
+resources.mkdir(parents=True, exist_ok=True)
+(resources / "NOTICE.md").write_text("# Aux Computer Use 0.1.0\n\nOriginal Aux clean-room module. Copyright 2026 Aux contributors.\nSource and local-build license terms are supplied with the Aux workspace.\nPrivate protocol: apps/computer-use/PROTOCOL.md.\nThis locally ad hoc signed app contains independently authored resources.\n")
 subprocess.run(["codesign", "--force", "--sign", "-", str(app)], check=True)
 print(app)

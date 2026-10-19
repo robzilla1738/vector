@@ -49,3 +49,10 @@ Semantic window capture, Messages reading, Full Disk Access detection through pr
 `messages.send` additionally requires a stable `operationId`. A private owner-only journal stores only the operation/request hashes and started/completed state. Repeating the same completed operation returns its recorded result; a started operation with uncertain outcome is never sent again automatically. The journal never stores recipient or message body.
 
 Daemon `computerUseTools` wraps all desktop mutation/screenshot/Contacts operations in an exact-operation approval. iMessage has a separate action-confirmation containing the complete recipient and body. Read-only sessions cannot actuate or send. Posted input is reported as posted, not as evidence that the intended app workflow completed. The helper's native methods are never exposed as an unrestricted model-callable transport.
+
+`createHelperCaptureAdapter(client)` implements the memory context permission interface:
+AX semantic capture is granted only when the helper reports the implemented AX snapshot
+capability available, and otherwise denied/unavailable. Screen capture status remains
+separate. Requesting context permission initiates Accessibility authorization and rechecks
+actual status. This adapter does not start an observer or collect any screen content.
+The integrator must apply opt-in and app/domain exclusions before each native snapshot.
