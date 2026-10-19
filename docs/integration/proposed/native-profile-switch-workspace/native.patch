@@ -1,0 +1,147 @@
+--- a/chrome/browser/ui/browser_window/public/create_browser_window.h
++++ b/chrome/browser/ui/browser_window/public/create_browser_window.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_BROWSER_WINDOW_PUBLIC_CREATE_BROWSER_WINDOW_H_
+ #define CHROME_BROWSER_UI_BROWSER_WINDOW_PUBLIC_CREATE_BROWSER_WINDOW_H_
+ 
++#include <cstdint>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -142,6 +143,12 @@
+   // Whether this browser was created specifically for dragged tab(s).
+   bool in_tab_dragging = false;
+ 
++  // Supplied horizontal-switch cached workspace role. The independent owner
++  // identity is shared by the visible window and its hidden profile caches;
++  // it is deliberately not a SessionID. Zero allocates a new identity.
++  bool aux_profile_switch_cache = false;
++  uint64_t aux_profile_switch_workspace_id = 0;
++
+   // Supply a custom BrowserWindow implementation, to be used instead of the
+   // default. Intended for testing.
+   raw_ptr<BrowserWindow, DanglingUntriaged> window = nullptr;
+--- a/chrome/browser/ui/browser_window/internal/create_browser_window_non_android.cc
++++ b/chrome/browser/ui/browser_window/internal/create_browser_window_non_android.cc
+@@ -33,6 +33,8 @@
+       initial_visible_on_all_workspaces_state;
+   clone.creation_source = creation_source;
+   clone.in_tab_dragging = in_tab_dragging;
++  clone.aux_profile_switch_cache = aux_profile_switch_cache;
++  clone.aux_profile_switch_workspace_id = aux_profile_switch_workspace_id;
+   clone.window = window;
+   clone.user_title = user_title;
+   clone.can_resize = can_resize;
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_BROWSER_INIT_STATE_H_
+ #define CHROME_BROWSER_UI_BROWSER_INIT_STATE_H_
+ 
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ 
+@@ -92,6 +93,13 @@
+     return initial_focused_tab_group_id_;
+   }
+ 
++  bool is_aux_profile_switch_cache() const {
++    return browser_window_create_params_.aux_profile_switch_cache;
++  }
++  uint64_t aux_profile_switch_workspace_id() const {
++    return aux_profile_switch_workspace_id_;
++  }
++
+   bool omit_from_session_restore() const { return omit_from_session_restore_; }
+   bool should_trigger_session_restore() const {
+     return should_trigger_session_restore_;
+@@ -100,6 +108,9 @@
+  private:
+   // This Browser's create params.
+   const BrowserWindowCreateParams browser_window_create_params_;
++
++  // Original Browser+0xf8, separate from the real browser SessionID.
++  const uint64_t aux_profile_switch_workspace_id_;
+ 
+   // Whether this Browser should be omitted from being saved/restored by session
+   // restore.
+--- a/chrome/browser/ui/browser_init_state.cc
++++ b/chrome/browser/ui/browser_init_state.cc
+@@ -4,10 +4,24 @@
+ 
+ #include "chrome/browser/ui/browser_init_state.h"
+ 
++#include "base/atomic_sequence_num.h"
++#include "base/no_destructor.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "ui/base/unowned_user_data/unowned_user_data_host.h"
++
++namespace {
++uint64_t ProfileSwitchWorkspaceId(uint64_t supplied_id) {
++  if (supplied_id) {
++    return supplied_id;
++  }
++  // Match the supplied independent process-local owner sequence. Browser
++  // SessionIDs are generated separately and must never identify these caches.
++  static base::NoDestructor<base::AtomicSequenceNumber> next_id;
++  return static_cast<uint64_t>(next_id->GetNext()) + 1;
++}
++}  // namespace
+ 
+ DEFINE_USER_DATA(BrowserInitState);
+ 
+@@ -25,6 +39,8 @@
+ BrowserInitState::BrowserInitState(BrowserWindowCreateParams params,
+                                    ui::UnownedUserDataHost& host)
+     : browser_window_create_params_(std::move(params)),
++      aux_profile_switch_workspace_id_(ProfileSwitchWorkspaceId(
++          browser_window_create_params_.aux_profile_switch_workspace_id)),
+       omit_from_session_restore_(
+           browser_window_create_params_.omit_from_session_restore),
+       should_trigger_session_restore_(
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -1628,6 +1628,9 @@
+ 
+ void BrowserView::Show() {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // A cached workspace owns real tabs/Views but never becomes an OS window.
++  // Its role is fixed before registration, so setup polling cannot show it.
++  if (BrowserInitState::From(browser())->is_aux_profile_switch_cache()) return;
+   if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
+   aux::ScheduleNtpPrerender(browser());
+ #endif
+@@ -1697,6 +1700,9 @@
+ 
+ void BrowserView::ShowInactive() {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // A cached workspace owns real tabs/Views but never becomes an OS window.
++  // Its role is fixed before registration, so setup polling cannot show it.
++  if (BrowserInitState::From(browser())->is_aux_profile_switch_cache()) return;
+   if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
+   aux::ScheduleNtpPrerender(browser());
+ #endif
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -29,6 +29,7 @@
+ #include "chrome/browser/profiles/profile_attributes_storage.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/common/pref_names.h"
+@@ -236,7 +237,9 @@
+       WarmNewTab();
+       if (!was_allowed) {
+         for (auto* browser : GetAllBrowserWindowInterfaces()) {
+-          if (browser->GetProfile() == profile_.get()) {
++          const auto* init = BrowserInitState::From(browser);
++          if (browser->GetProfile() == profile_.get() &&
++              (!init || !init->is_aux_profile_switch_cache())) {
+             browser->GetWindow()->Show();
+           }
+         }

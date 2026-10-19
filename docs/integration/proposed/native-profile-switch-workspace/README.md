@@ -1,0 +1,13 @@
+# Real cached-workspace creation role
+
+Six pinned source outputs port the original constructor's cache role and independent workspace-owner identity into155 `BrowserInitState` and `BrowserWindowCreateParams`. Clone retains both fields. The existing Aux BrowserView Show/ShowInactive guard and ProfileGate's unlock/ready restore-show loop now exclude positively marked cache windows. This exclusion happens before checking the native gate or scheduling new-tab preload, so a cache cannot accidentally show a setup window. Ordinary windows keep the existing gate and behavior. No shared checkout edits, compilation, browser execution or runtime acceptance occurred; temporary patch replay passed all six hashes.
+
+The original constructor31cd628 reads CreateParams+71 and writes Browser+f0. At31cd630 it reads CreateParams+78; nonzero supplies the owner identity, otherwise a dedicated atomic sequence generates one. Browser+f8 receives that identity. The separate actual SessionID is generated at31cd668..31cd6b0 into Browser+110. Earlier inference that+f8 was SessionID was wrong. Sharing a SessionID or using profileIndex here would break the supplied ownership predicate.
+
+Original455cf34 resolves an already-loaded target profile by exact path, obtains its actual per-profile browser manager and searches through455e6b4. The predicate excludes the source browser, closing browsers, nonnormal browsers and wrong original-profile paths. It accepts only a marked cache with the matching independent owner identity. It does not borrow an arbitrary same-profile user window.
+
+Original455cfec rejects null/OTR/locked targets, cached sources, closing/shutdown state and nonnormal sources; it reuses an existing matching cache or creates a real normal Browser. It sets omit_from_session_restore=true, should_trigger_session_restore=false, cache=true, owner identity=source identity and actual vertical-strip state. Its optional ensure-tab branch creates a real new tab only if requested and empty. The owner transaction must still port those guarded creation effects and tab/session state migration coherently; this proposal does not expose an incomplete switch trigger or claim completed profile parity.
+
+The Show exclusions are a necessary155/Aux integration guard: independent ProfileGate otherwise shows every matching browser on ready/unlock, including a cache created without an explicit Show call. They do not make another profile eligible, bypass its actual security state or fabricate a gate result.
+
+`source-pins.json` pins the original thin artifact and each bounded instruction extract. These are static observations; external callees remain named only where the separate transaction/source evidence establishes their meaning.

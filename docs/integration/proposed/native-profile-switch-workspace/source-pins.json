@@ -1,0 +1,25 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "kind": "authorized supplied static arm64; no execution",
+  "ranges": [
+    {
+      "start": "0x31cd5f4",
+      "endExclusive": "0x31cd6b4",
+      "file": "original-constructor.txt",
+      "sha256": "5de5d13e717fd9e8e701bf5f925061a593eec4ededda2f205c9a3435cdcd4dd7"
+    },
+    {
+      "start": "0x455cf34",
+      "endExclusive": "0x455d3c8",
+      "file": "original-cache-create.txt",
+      "sha256": "24a5f427fa4750348d10ad57aa5fc28fe523f18416808dfcd2a965a1e1f286e6"
+    },
+    {
+      "start": "0x455e6b4",
+      "endExclusive": "0x455e824",
+      "file": "original-cache-predicate.txt",
+      "sha256": "719c5f0d8821208c0b650580d381c40b4a8f47856051994e03014c9fffc731bc"
+    }
+  ]
+}

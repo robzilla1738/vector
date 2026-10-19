@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "base": "actual applied v32; six disjoint creation-role and Show/gate outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/public/create_browser_window.h",
+      "baselineSha256": "3d30aac9882004130a8ccce2c2b7e0be4d5389092123ceb540939d7b982b3fe7",
+      "outputSha256": "6f95cfde8415b066a08a382bc4a6f5ddae5d1c1b568c1b0391870c18df85e664"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/create_browser_window_non_android.cc",
+      "baselineSha256": "1250b3780382548d83a39a9d135074983d84bb88771b85ec8ab9416b509e6cf0",
+      "outputSha256": "d2d5be759ff0fbb28d44c2d2600dab386ffd60118755e5de3b53f217affdffe5"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "baselineSha256": "2de3096b2010dfc19aa2f1ee48da90b846305a78642f24913c7ed250916d8731",
+      "outputSha256": "fa85c2ea657796985da7a54f9565dd34678968e5a8b4209b0a6befe394db9f91"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.cc",
+      "baselineSha256": "358ac572c3becd09019a6f5db1f1266b7f310505bc7a3bd39bff271ad1fd8092",
+      "outputSha256": "6a13b37894ea6bb6c20c4cc89f6ea0fe69c5414b97118d838a6b94b66034a6ed"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "70544757adb74bfe826a48f491bac456b7332d0e932ba1f2077d0da132f41678",
+      "outputSha256": "2eca7fbec8268d8aeea60b6d5e61cfbe98d8b7a59b958dd9f137f7192730df9a"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "bdfb92b1531db53778fb2d1d60a8728a88ecdc28469ad0a8e1dbf09031be5b42",
+      "outputSha256": "cd120d90e51770f0a8ede793c6606e27ef4a868812ca8157b82550a7a2d31b08"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

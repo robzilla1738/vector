@@ -1,0 +1,54 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 31cd5f4: aa1303e8     	mov	x8, x19
+ 31cd5f8: f80e0d1f     	str	xzr, [x8, #0xe0]!
+ 31cd5fc: aa0803e9     	mov	x9, x8
+ 31cd600: f81b8d3f     	str	xzr, [x9, #-0x48]!
+ 31cd604: a93aa500     	stp	x0, x9, [x8, #-0x58]
+ 31cd608: aa0803e9     	mov	x9, x8
+ 31cd60c: f81d0d3f     	str	xzr, [x9, #-0x30]!
+ 31cd610: a93c251f     	stp	xzr, x9, [x8, #-0x40]
+ 31cd614: aa0803e9     	mov	x9, x8
+ 31cd618: f81e8d3f     	str	xzr, [x9, #-0x18]!
+ 31cd61c: a93da51f     	stp	xzr, x9, [x8, #-0x28]
+ 31cd620: f900051f     	str	xzr, [x8, #0x8]
+ 31cd624: a93f211f     	stp	xzr, x8, [x8, #-0x10]
+ 31cd628: 3941c6c9     	ldrb	w9, [x22, #0x71]
+ 31cd62c: 39004109     	strb	w9, [x8, #0x10]
+ 31cd630: f9403ec8     	ldr	x8, [x22, #0x78]
+ 31cd634: b50000e8     	cbnz	x8, 0x31cd650 <_ChromeMain+0x31c83b4>
+ 31cd638: d005e868     	adrp	x8, 0xeedb000 <dyld_stub_binder+0xeedb000>
+ 31cd63c: 910fa108     	add	x8, x8, #0x3e8
+ 31cd640: 52800029     	mov	w9, #0x1                ; =1
+ 31cd644: b8290108     	ldadd	w9, w8, [x8]
+ 31cd648: 93407d08     	sxtw	x8, w8
+ 31cd64c: 91000508     	add	x8, x8, #0x1
+ 31cd650: f9007e68     	str	x8, [x19, #0xf8]
+ 31cd654: b901027f     	str	wzr, [x19, #0x100]
+ 31cd658: 79020a7f     	strh	wzr, [x19, #0x104]
+ 31cd65c: 91042268     	add	x8, x19, #0x108
+ 31cd660: b9010a7f     	str	wzr, [x19, #0x108]
+ 31cd664: b800311f     	stur	wzr, [x8, #0x3]
+ 31cd668: 97c65696     	bl	0x23630c0 <_ChromeMain+0x235de24>
+ 31cd66c: aa0003f8     	mov	x24, x0
+ 31cd670: b9400808     	ldr	w8, [x0, #0x8]
+ 31cd674: 12b00009     	mov	w9, #0x7fffffff         ; =2147483647
+ 31cd678: 6b09011f     	cmp	w8, w9
+ 31cd67c: 54002740     	b.eq	0x31cdb64 <_ChromeMain+0x31c88c8>
+ 31cd680: 11000508     	add	w8, w8, #0x1
+ 31cd684: b9000b08     	str	w8, [x24, #0x8]
+ 31cd688: f9400300     	ldr	x0, [x24]
+ 31cd68c: b40000e0     	cbz	x0, 0x31cd6a8 <_ChromeMain+0x31c840c>
+ 31cd690: 93407d03     	sxtw	x3, w8
+ 31cd694: b0051521     	adrp	x1, 0xd472000 <dyld_stub_binder+0xd472000>
+ 31cd698: 910dc821     	add	x1, x1, #0x372
+ 31cd69c: 528003e2     	mov	w2, #0x1f               ; =31
+ 31cd6a0: 97c65630     	bl	0x2362f60 <_ChromeMain+0x235dcc4>
+ 31cd6a4: b9400b08     	ldr	w8, [x24, #0x8]
+ 31cd6a8: 7100011f     	cmp	w8, #0x0
+ 31cd6ac: 5a9fc108     	csinv	w8, w8, wzr, gt
+ 31cd6b0: b9011268     	str	w8, [x19, #0x110]
