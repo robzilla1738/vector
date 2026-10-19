@@ -1,0 +1,11 @@
+# Combined supplied native integration proposal
+
+`python3 scripts/compose-provided-native.py <chromium-src> --output <new-directory>` checks the recorded native source baselines and composes the entrypoint, profile/Vault state, runtime supervisor, capture/launch, original native auth carrier, Node boundary and core settings/import/omnibox proposals in a disposable copy. It never writes to the Chromium checkout. The disabled experimental webview proposal is excluded and remains an explicit separate gap.
+
+The final composition corrects historical proposal wire names to the owner's required original contract: health service `aside-daemon`, HTTP `AsideDaemonSessionToken`, CDP `AsideSessionToken`, and HTTP signing domain `Aside Daemon Auth v1\0`. Its explicit C++ string length is **21 bytes including NUL**. CDP still verifies raw32 bytes and does not use that HTTP prefix. Endpoint ports, app/extension identity and artwork remain Aux.
+
+It also adds the generated P256/ML-DSA65 `//chrome/browser/aux:auth_scheme_probe` target. That probe uses fresh generated keys and does not load the original native addon or access Keychain. It has not yet compiled/run; the independent old PEM probe cannot establish acceptance for the new authority.
+
+The generated `combined.patch` is independently replayed against another copy and every output SHA must match. `manifest.json` pins all individual input patches, all native before/after hashes, the exact protocol correction anchors, and the 23 separately pinned artwork replacements. Canonical SVG and native artwork baseline/replacement hashes must match before composition succeeds. Those binary assets are not embedded in the text patch.
+
+Actual composition in `out/native-reuse-composition-v2` succeeded for 12 proposals, 34 text source files and 23 artwork replacements. This establishes patch coherence only. Shared source remains untouched while native build session86411 runs. Applying the combined patch/assets, compiling affected code/probe, actual guarded-addon/carrier proof, common Aux authority and packaged behavior acceptance remain required. Do not apply obsolete individual wire-auth results over the final combined correction.
