@@ -5,6 +5,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { z } from 'zod';
 import type { AgentEngine } from './engine.js';
 import { fail } from './storage.js';
+import { synchronizeChildPolicy } from './subagents.js';
 
 const rulesSchema = z.object({
   deny: z.array(z.string()).default([]),
@@ -49,6 +50,7 @@ export async function approveOperation(
     .digest('hex');
   const evaluate = () => {
     const session = engine.get(accountId, sessionId);
+    synchronizeChildPolicy(engine, session);
     const account = rulesSchema.parse(
       engine.store.get(accountId, 'permissions', 'rules') ?? {},
     );

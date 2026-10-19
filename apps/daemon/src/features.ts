@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { AgentEngine } from '@aux/agent';
+import { AgentEngine, configureAgentTools } from '@aux/agent';
 import {
   BrowsingHistory,
   ContextService,
@@ -43,6 +43,7 @@ import { mcpTools } from './mcp/index.js';
 import { createMemoryRouter } from './memory/index.js';
 import { createPasskeyRouter } from './passkeys/index.js';
 import { pollRoutines } from './routines/index.js';
+import { createRoutineToolAdapter } from './routines/tool-adapter.js';
 import { createAgentRouters } from './sessions/index.js';
 import { installOwnedTabsHttp } from './sessions/owned-tabs-http.js';
 import { createVaultRouters, VaultService } from './vault/index.js';
@@ -123,6 +124,9 @@ export function createFeatures() {
         }),
       });
       const activeEngine = engine;
+      configureAgentTools(activeEngine, {
+        prepareRoutineUpdate: createRoutineToolAdapter(services, activeEngine),
+      });
       channels = new ChannelService(services.store, activeEngine);
       channels.resume(services.store.accounts().map((account) => account.id));
       memory = new MemoryService(services.store, activeEngine);

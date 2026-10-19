@@ -11,9 +11,7 @@ export async function activateNotificationChat(
     !Number.isSafeInteger(params.accountId) ||
     typeof params.profileId !== 'string' ||
     typeof params.sessionId !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      params.sessionId,
-    )
+    !/^[\w-]{1,128}$/.test(params.sessionId)
   )
     throw new Error('Notification activation requires an ordinary bound task.');
   const check = async () => {

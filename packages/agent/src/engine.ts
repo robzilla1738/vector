@@ -16,6 +16,13 @@ import { Credentials } from './credentials.js';
 import { OwnedTabs } from './owned-tabs.js';
 import { defaultModel, resolveModel } from './providers.js';
 import { type AgentStorage, fail } from './storage.js';
+import {
+  hasLiveChildDecision,
+  restrictSubagentTools,
+  routeChildSuspension,
+  stopSubagents,
+  subagentInstructions,
+} from './subagents.js';
 import { sessionTools } from './tools.js';
 import {
   type Bridge,
@@ -71,7 +78,8 @@ export class AgentEngine {
     if (!value) fail('NOT_FOUND', 'Session does not exist in this account');
     if (
       (value.status === 'running' || value.status === 'suspended') &&
-      !this.active.has(this.key(accountId, id))
+      !this.active.has(this.key(accountId, id)) &&
+      !hasLiveChildDecision(this, accountId, id)
     ) {
       value.status = 'interrupted';
       value.error =
@@ -221,6 +229,11 @@ export class AgentEngine {
   ) {
     if (this.closed)
       fail('PRECONDITION_FAILED', 'Agent engine is shutting down');
+    if (hasLiveChildDecision(this, accountId, id))
+      fail(
+        'CONFLICT',
+        'Resolve the pending child decision before prompting this parent',
+      );
     prompt = z.string().trim().min(1).parse(prompt);
     const session = this.get(accountId, id);
     if (idempotencyKey && session.idempotencyKeys.includes(idempotencyKey))
@@ -381,11 +394,16 @@ export class AgentEngine {
         accountId,
         session.model ?? defaultModel,
       );
-      const tools = {
+      const tools = restrictSubagentTools(this, session, {
         ...sessionTools(this, accountId, id, signal),
         ...this.extensions.tools?.(session, signal),
-      };
-      const extraInstructions = await this.extensions.instructions?.(session);
+      });
+      const extraInstructions = [
+        await this.extensions.instructions?.(session),
+        subagentInstructions(this, session),
+      ]
+        .filter(Boolean)
+        .join('\n\n');
       const agent = new ToolLoopAgent({
         model,
         instructions: extraInstructions
@@ -513,7 +531,9 @@ export class AgentEngine {
       }
       signal.throwIfAborted();
       const latest = this.get(accountId, id);
-      latest.status = 'idle';
+      latest.status = hasLiveChildDecision(this, accountId, id)
+        ? 'suspended'
+        : 'idle';
       latest.readAt = null;
       const run = latest.runs.find((run) => run.id === runId);
       if (run) {
@@ -595,6 +615,7 @@ export class AgentEngine {
         suspension.response = { cancelled: true, reason: status };
       }
     this.emit(session, status, {});
+    stopSubagents(this, accountId, id, status);
     this.active
       .get(this.key(accountId, id))
       ?.controller.abort(new Error(status));
@@ -608,6 +629,16 @@ export class AgentEngine {
     request: unknown,
     signal: AbortSignal,
   ) {
+    const routed = routeChildSuspension(
+      this,
+      accountId,
+      id,
+      toolCallId,
+      kind,
+      request,
+      signal,
+    );
+    if (routed) return routed;
     const session = this.get(accountId, id);
     if (session.suspensions.some((s) => !s.resolvedAt))
       fail('CONFLICT', 'A human decision is already pending');
