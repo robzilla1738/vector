@@ -4,10 +4,13 @@ import { createReadStream, constants } from 'node:fs';
 import { chmod, copyFile, cp, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { assembleProvidedResources } from './provided-assembly.mjs';
 import { nativePackagingManifest } from '../../vendor/provided/native-packaging-manifest.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
+const execute = promisify(execFile);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const digest = async path => {
   const value = createHash('sha256');
@@ -103,6 +106,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   for (const name of ['aux-native-carrier', 'libaux-native-boundary.dylib', 'aux-native-guard.node', 'aux-cli-launcher']) if (!artifacts.has(name)) throw new Error(`Missing boundary build artifact: ${name}`);
   const sources = [stageRoot, seed, compositionRoot, ...[...artifacts.values()].map(item => dirname(item.path))];
   if (sources.some(source => inside(source, outputRoot) || inside(outputRoot, source))) throw new Error('Package sources and output overlap');
+  const audit = await execute(process.execPath, [join(repository, 'scripts/check-provided.mjs'), stageRoot], { cwd: repository, maxBuffer: 1024 * 1024 });
   const temporary = await mkdtemp(join(dirname(outputRoot), '.provided-package-'));
   try {
     const app = join(temporary, 'Aux.app');
@@ -136,6 +140,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       version: 1, implementation: 'supplied', productionReady: false, signed: false,
       app: 'Aux.app', finalApp: assembled.finalApp,
       nativeReceiptSha256: hash(nativeRaw), compositionSha256: hash(compositionRaw), boundaryReceiptSha256: hash(boundaryRaw),
+      preservationAudit: audit.stdout.trim(),
       nativeFiles: native.appFiles.length, suppliedResources: assembled.files.length, additions,
       sourceRoots: sources,
       cliSea: `${cliExecutable}-sea`,

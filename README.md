@@ -18,6 +18,10 @@ Staging replaces only a verified generated stage and keeps its previous output a
 
 `assemble:provided` verifies staged file hashes, modes, complete leaf coverage and contained dependency links while copying the supplied components into a new `out/provided-resources` directory in the final `Contents/Resources/aux` layout. It refuses an existing output. This is resource assembly, not a signed browser or installation. See [assembly and signing](docs/source/provided-assembly.md).
 
+`pnpm package` now selects the supplied native app assembler. It requires explicit successful native and boundary build receipts, the matching composition and a new output directory; see the assembly documentation for the complete command. `scripts/sign-provided.mjs` verifies an explicit inside-out ad hoc signing policy and signs only with `--apply`. Neither command installs or launches the candidate.
+
+The development launcher selects the supplied installed app by default, or a candidate through `node scripts/aux.mjs --temp-profile --app /absolute/path/Aux.app`. It refuses an app without the supplied resource marker, uses mock Keychain for Chromium, and does not create the native runtime acceptance flag. `--no-browser` selects the packaged supplied daemon and its fixed pre-exec boundary; health readiness alone does not establish native authentication or behavior acceptance.
+
 The build/packaging pipeline is transitioning to the supplied implementation. The commands below currently build the earlier independent components; they are recovery/development tools and do not yet produce the requested faithful reused build. Existing staging machinery under `vendor/aside/` and `scripts/vendor-aside.mjs` is being reviewed against the pinned supplied version before reuse.
 
 ```sh
@@ -26,10 +30,9 @@ pnpm build
 node scripts/build-runtime.mjs
 node scripts/build-sea.mjs
 node scripts/package-aux.mjs --development
-node scripts/aux.mjs --temp-profile
 ```
 
-Assembly also requires a rebuilt native Chromium app with `enable_aux_browser=true` and `enable_aux_shell=false`. Development assembly uses the intermediate component build; final installation requires `is_component_build=false`. The native browser owns daemon startup. These commands do not yet establish feature parity. `--no-browser` starts only the daemon. Always use disposable profiles for verification. Native builds are serialized with `python3 scripts/native-build.py <build command> [args...]`.
+Supplied assembly requires a rebuilt native Chromium app with `enable_aux_browser=true`, `enable_aux_shell=false`, `is_component_build=false` and `aux_test_hooks=false`. The native browser owns daemon startup. The historical commands above do not establish feature parity and do not produce an app accepted by the current launcher. Always use disposable profiles for verification. Native builds are serialized with `python3 scripts/native-build.py <build command> [args...]`.
 
 `pnpm typecheck`, `pnpm lint` and `pnpm test` check the earlier workspace packages. `pnpm check:independent` retains their historical build/check workflow. `pnpm check:cleanroom` is a historical reconstruction audit and is excluded from the active reuse gate: byte-identical supplied files are expected. A passing preservation audit alone does not prove runtime or product parity.
 

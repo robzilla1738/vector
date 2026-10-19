@@ -10,7 +10,8 @@
   },
   "scripts": {
     "aux": "node scripts/aux.mjs",
-    "package": "node scripts/package-aux.mjs",
+    "package": "node scripts/package-provided.mjs",
+    "package:independent": "node scripts/package-aux.mjs",
     "smoke": "node scripts/daemon-smoke.mjs",
     "check": "pnpm test:provided && pnpm check:provided",
     "stage:provided": "node scripts/stage-provided.mjs",
