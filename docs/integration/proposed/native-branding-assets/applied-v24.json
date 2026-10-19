@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v24",
+  "compositionSha256": "575a3fe25f496999d9e4831eb71802f2674651ccb354e656a6e302fe9868b965",
+  "canonicalSvgSha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+  "appliedNativeArtwork": [
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_128.png",
+      "sha256": "242bc650cebadac69345d1c894a711af0b7a106ed3c4cf5628ab8bb33b705695"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_24.png",
+      "sha256": "4c45a8fd6a4f1b6325e7f7d492b1614d35624e97844654cc834683d110101af5"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_256.png",
+      "sha256": "d229d1f32ba53f7b0aed59c1f3445bfebd195289de330bb74b53228e8c35d46a"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_48.png",
+      "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_64.png",
+      "sha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_128.png",
+      "sha256": "242bc650cebadac69345d1c894a711af0b7a106ed3c4cf5628ab8bb33b705695"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_16.png",
+      "sha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_22_mono.png",
+      "sha256": "8cf9de2139fb3e4bfd72c0f15f6dfb6912b5aa79b7d4fa166a39d938fdfd1ac0"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_24.png",
+      "sha256": "4c45a8fd6a4f1b6325e7f7d492b1614d35624e97844654cc834683d110101af5"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_256.png",
+      "sha256": "d229d1f32ba53f7b0aed59c1f3445bfebd195289de330bb74b53228e8c35d46a"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_48.png",
+      "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_64.png",
+      "sha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/linux/product_logo_16.png",
+      "sha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/linux/product_logo_32.png",
+      "sha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_16.png",
+      "sha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_32.png",
+      "sha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22.png",
+      "sha256": "137e6b7ecd6401037e67ec6c5a218590c0408d3a070e6069711c5887982ff7cb"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22_white.png",
+      "sha256": "d74ed4f0ba75b5d558cebdf5c1cee75842b4b00bc73cb3c7f988135e33188ee8"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_16.png",
+      "sha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_32.png",
+      "sha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22.png",
+      "sha256": "0b116dc932ac913dcb12dad9aed7b3c9f6a2c5c4065db7fb2072136edf50abc3"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22_white.png",
+      "sha256": "c20c1009f044a460f2410a6e99c1dee61d672401e7df9490eb124cd6f152f5f9"
+    },
+    {
+      "target": "chrome/app/theme/chromium/mac/app.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    }
+  ],
+  "installedAppUpdated": false,
+  "compiledAppAcceptance": false
+}
