@@ -1,0 +1,5 @@
+# Initial-empty guard resolved
+
+The original preregistration guard loads WebContents+0x8f8, FrameTree root+0x140 and boolean root+0x138. The bounded independent trace in initial-root-proof.txt resolves that byte exactly: original067bbdbc checks initial_popup_url_.is_empty() (source line981), then reads this+0x138 and emits the literal `is_on_initial_empty_document()` check at line982. Original067bbe78 checks the same byte at line988 before assigning popup creator origin. Current155 FrameTreeNode::SetInitialPopupURL and SetPopupCreatorOrigin contain precisely these checks at981/982/988. This is direct field/diagnostic/source-line correspondence, not a guessed equivalence.
+
+The existing port public getter is therefore the original boolean. Its current semantics default true for a newly constructed frame and change one-way to false on cross-document commit or document.open(). No source change is necessary. The service creates a fresh hidden WebContents and never primary-navigates it before StartPrerendering. This resolves the static mapping limit, while runtime activation remains unobserved.

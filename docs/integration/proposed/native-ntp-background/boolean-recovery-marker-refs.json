@@ -1,0 +1,22 @@
+{
+  "target": "0xcee54b8",
+  "boundedTextSize": 213586984,
+  "refs": [
+    {
+      "adrp": "0x45cd9bc",
+      "add": "0x45cd9c0"
+    },
+    {
+      "adrp": "0x45ce234",
+      "add": "0x45ce238"
+    },
+    {
+      "adrp": "0x76f6fa4",
+      "add": "0x76f6fa8"
+    },
+    {
+      "adrp": "0x76f6fd8",
+      "add": "0x76f6fdc"
+    }
+  ]
+}

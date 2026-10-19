@@ -1,0 +1,22 @@
+[
+  {
+    "address": "0xcee9f53",
+    "utf8": "chrome://newtab/",
+    "sha256": "4b15aabcdec3a91ba32ccdcb2b93bc470681fdb20ac620691f44cdab41fffb44"
+  },
+  {
+    "address": "0xcf0d954",
+    "utf8": "aside-ntp-prerender-handle",
+    "sha256": "a79ca9a0341ea05edfe7549e88afab173e477ee3a0821dd7ef679b895b20e876"
+  },
+  {
+    "address": "0xdeca727",
+    "utf8": "ScheduleTargetExtensionBodyBackgroundProbe",
+    "sha256": "a46f661df7e5570dc33a3d5000dcc904482638e6f239f5ab68cea0062547c0ff"
+  },
+  {
+    "address": "0xdeca6ee",
+    "utf8": "../../chrome/browser/ui/views/frame/contents_web_view.cc",
+    "sha256": "a5ea21cff2f698bbed7a207ad3811a919e34e89b4cee8246c5ed78dd80e9d5c4"
+  }
+]

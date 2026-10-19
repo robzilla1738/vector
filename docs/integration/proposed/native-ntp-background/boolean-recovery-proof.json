@@ -1,0 +1,104 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "method": "bounded llvm-objdump disassembly; exact ADRP+ADD static text scan",
+  "files": [
+    {
+      "name": "boolean-recovery-backgroundcaller.txt",
+      "sha256": "f0fbd1aa621724e39193f2a9337a2d389ded1968d31f06c3667c2173ddd5673f"
+    },
+    {
+      "name": "boolean-recovery-boolean.txt",
+      "sha256": "cfc0c50dc243b0b70e00097e83ac1a2abfe6f6c3476a6df08452005034fe36fa"
+    },
+    {
+      "name": "boolean-recovery-callback-tail.txt",
+      "sha256": "ebf9df02a9272e10a8306aa2c83f30b1d764fefef9ee4d5a30b7ec1506fb3cdd"
+    },
+    {
+      "name": "boolean-recovery-callback.txt",
+      "sha256": "50a7b001f2b27e07c723e30c9cb80dc4a6048260c99d83513c43370967b89188"
+    },
+    {
+      "name": "boolean-recovery-controller-url.txt",
+      "sha256": "2947e17c739bac31fe943322cff96c984b62b301ef8d3b36669d8e956c870cf0"
+    },
+    {
+      "name": "boolean-recovery-decision-real.txt",
+      "sha256": "5fa750aea1588e4c30a5d70acd83620ea7ee4c7adc3b4e771c2740a2bb47e3d8"
+    },
+    {
+      "name": "boolean-recovery-decision-write.txt",
+      "sha256": "b262bd080e0171112cdb562e46e3a5972e573f7073ecb3a90b12ccc4367e1385"
+    },
+    {
+      "name": "boolean-recovery-handlecheck.txt",
+      "sha256": "16998c8ded68311bcc03fa5bc4d7a0573f02beb5b90df2e7d1da6b0ce51e061e"
+    },
+    {
+      "name": "boolean-recovery-marker-constructor-prefix.txt",
+      "sha256": "fab65a85e41350734fe714ba258eee6f41c217495c012e4522f5f9c9bdb3c4ca"
+    },
+    {
+      "name": "boolean-recovery-marker-constructor.txt",
+      "sha256": "21d1d2abad84cbf737f71f6dfc60503ab2ffda6d3201c1bd0f0323d73f502890"
+    },
+    {
+      "name": "boolean-recovery-marker-owner.txt",
+      "sha256": "312ae0813dcc650729c2c194d524542fcce908d6beed7e3f39a6ea77703a18b8"
+    },
+    {
+      "name": "boolean-recovery-marker-refs.json",
+      "sha256": "806946ebec76691f81fe5f93d9767918aa12eb689c2335b573bb1e4276408eac"
+    },
+    {
+      "name": "boolean-recovery-marker-view.txt",
+      "sha256": "f4caa9a41377d30b7ba324d2a0c0e0f53a4eedcc2463845ed60cdacbf4897282"
+    },
+    {
+      "name": "boolean-recovery-postcallback-tail.txt",
+      "sha256": "e472c9a81a43fa10974558e3c926290857181231752ea6a184adacb59368d0ad"
+    },
+    {
+      "name": "boolean-recovery-postcallback.txt",
+      "sha256": "be7773d082ea6fd4d33d501fe6480e2a7888339a8dfa1587c30f17e9d7f70555"
+    },
+    {
+      "name": "boolean-recovery-probe-submit.txt",
+      "sha256": "5483339d91eaee0ef81aaa3c1e5cf7224ca2c6a47d666072aca7fd182c616222"
+    },
+    {
+      "name": "boolean-recovery-refresh.txt",
+      "sha256": "3558fbbe4ecc92279cc3dad2a124b6c9c203afebd4f1db5c481ec091096a1176"
+    },
+    {
+      "name": "boolean-recovery-request.txt",
+      "sha256": "6ff8767ab1af1854a9a34108cb51c664af2fca7ece691d25a455364bfcd5f1fe"
+    },
+    {
+      "name": "boolean-recovery-retry-target.txt",
+      "sha256": "4304ec0ceaff9cd8f38ed3f70333c7fa32771a59fee15cdc5feb2cd1e0d2e17c"
+    },
+    {
+      "name": "boolean-recovery-retry.txt",
+      "sha256": "a86cddb494c3197fb56b4124942c6eb6dacdd2632a06e55df6c5581e28eb5324"
+    },
+    {
+      "name": "boolean-recovery-strings.json",
+      "sha256": "9c83a0c979778086efd4448ed64378cce0aed60832479165d734699fbf519923"
+    },
+    {
+      "name": "boolean-recovery-target-check.txt",
+      "sha256": "265cd58b64c5476bdd2a6c3b333d2f5307aafd4823e1f8e396aea0ce8b454d0f"
+    },
+    {
+      "name": "boolean-recovery-thunk.txt",
+      "sha256": "e37730462d9fab1a2b79c9b2ff4df777ddd417e23b9994d68a5e30fc64ab62f3"
+    },
+    {
+      "name": "boolean-recovery.md",
+      "sha256": "a44651fa9b7c9d1fe61dae3c79e619f77e9471776e30f68dd1e0fb227d8c6e11"
+    }
+  ],
+  "runtimeObserved": false,
+  "compiled": false
+}

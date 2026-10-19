@@ -1,0 +1,587 @@
+--- a/chrome/browser/aux/ntp_prerender_service.cc
++++ b/chrome/browser/aux/ntp_prerender_service.cc
+@@ -102,6 +102,18 @@
+         source_(source ? source->GetWeakDocumentPtr()
+                        : content::WeakDocumentPtr()) {}
+   ~ActivationHandle() override = default;
++  bool Matches(const GURL& url) const {
++    return handle_ && handle_->GetInitialPrerenderingUrl() == url;
++  }
++  bool BackgroundReady(content::WebContents* contents) const {
++    auto* candidate = candidate_.AsRenderFrameHostIfValid();
++    if (!candidate || !contents || !handle_) return false;
++    auto* primary = contents->GetPrimaryMainFrame();
++    // Original042b2454: current candidate, or loading/ready real handle while
++    // the adopted WebContents primary document still has an empty URL.
++    return candidate == primary ||
++           (handle_->IsValid() && contents->GetLastCommittedURL().is_empty());
++  }
+   void RenderFrameHostChanged(content::RenderFrameHost*,
+                               content::RenderFrameHost* new_host) override {
+     if (new_host != candidate_.AsRenderFrameHostIfValid())
+@@ -339,6 +351,24 @@
+   const auto eligible = EligibleOverride(profile);
+   return eligible && *eligible == url;
+ }
++bool IsNtpPrerenderContents(content::WebContents* contents) {
++  if (!contents) return false;
++  const auto eligible = EligibleOverride(
++      Profile::FromBrowserContext(contents->GetBrowserContext()));
++  if (!eligible) return false;
++  auto* transferred = static_cast<ActivationHandle*>(contents->GetUserData(kHandleKey));
++  return contents->GetVisibleURL() == GURL("chrome://newtab/") ||
++         contents->GetVisibleURL() == *eligible ||
++         (transferred && transferred->Matches(*eligible) &&
++          contents->GetVisibleURL().is_empty() &&
++          contents->GetLastCommittedURL().is_empty() &&
++          transferred->BackgroundReady(contents));
++}
++bool IsNtpPrerenderBackgroundReady(content::WebContents* contents) {
++  if (!IsNtpPrerenderContents(contents)) return false;
++  auto* transferred = static_cast<ActivationHandle*>(contents->GetUserData(kHandleKey));
++  return transferred && transferred->BackgroundReady(contents);
++}
+ void SetNtpPrerenderEnabled(Profile* profile, bool enabled) {
+   if (auto* service = GetService(profile))
+     service->SetEnabled(enabled);
+--- a/chrome/browser/aux/ntp_prerender_service.h
++++ b/chrome/browser/aux/ntp_prerender_service.h
+@@ -12,6 +12,9 @@
+ namespace aux {
+ // Re-resolves the actual enabled Agent manifest override on every call.
+ bool IsEligibleNtpPrerenderUrl(Profile* profile, const GURL& url);
++// Actual newtab or owned transferred prerender, never another Agent surface.
++bool IsNtpPrerenderContents(content::WebContents* contents);
++bool IsNtpPrerenderBackgroundReady(content::WebContents* contents);
+ // Existing authenticated ProfileGate remains the Aux account/Vault boundary.
+ void SetNtpPrerenderEnabled(Profile* profile, bool enabled);
+ void ScheduleNtpPrerender(BrowserWindowInterface* browser);
+--- a/chrome/browser/ui/views/frame/BUILD.gn
++++ b/chrome/browser/ui/views/frame/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/ui.gni")
++import("//chrome/browser/buildflags.gni")
+ 
+ assert(!is_android)
+ 
+@@ -552,6 +553,9 @@
+ source_set("contents_web_view") {
+   public = [ "contents_web_view.h" ]
+   sources = [ "contents_web_view.cc" ]
++  if (enable_aux_browser) {
++    sources += [ "aux_ntp_transition_state.cc", "aux_ntp_transition_state.h" ]
++  }
+   public_deps = [
+     ":web_contents_close_handler_delegate",
+     "//base",
+@@ -578,6 +582,9 @@
+     "//ui/compositor",
+     "//ui/views",
+   ]
++  if (enable_aux_browser) {
++    deps += [ "//chrome/browser/aux:ntp_prerender", "//chrome/common", "//components/viz/common" ]
++  }
+   if (use_aura) {
+     deps += [
+       "//ui/aura",
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_ntp_transition_state.cc
+@@ -0,0 +1,331 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Original045cc578/6690,045cd440,045ce128/9f8 and030ae900.
++#include "chrome/browser/ui/views/frame/aux_ntp_transition_state.h"
++
++#include <optional>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
++#include "base/values.h"
++#include "chrome/browser/aux/ntp_prerender_service.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "components/viz/common/surfaces/surface_id.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/skia/include/core/SkColor.h"
++#include "ui/compositor/layer.h"
++#include "ui/compositor/layer_surface.h"
++#include "ui/compositor/layer_tree_owner.h"
++#include "ui/gfx/geometry/point_conversions.h"
++#include "ui/views/controls/native/native_view_host.h"
++#include "ui/views/view.h"
++
++namespace {
++// Copied unchanged from original UTF16 constant0xd6e4064. Browser-owned world4
++// corresponds to155 ISOLATED_WORLD_ID_CHROME_INTERNAL, never a renderer hook.
++constexpr char16_t kBodyBackgroundProbe[] =
++    uR"AUXPROBE(
++
++(() => {
++  const body = document.body;
++  if (!body) {
++    return false;
++  }
++  const color = getComputedStyle(body).backgroundColor;
++  if (typeof color !== 'string' || color.trim().length === 0) {
++    return false;
++  }
++
++  const normalized = color.trim().toLowerCase();
++  if (normalized === 'transparent' || normalized === 'rgba(0, 0, 0, 0)') {
++    return false;
++  }
++
++  const parseAlpha = (value) => {
++    if (!value) {
++      return 1;
++    }
++    const trimmed = value.trim();
++    const parsed = Number.parseFloat(trimmed);
++    if (!Number.isFinite(parsed)) {
++      return 1;
++    }
++    return trimmed.endsWith('%') ? parsed / 100 : parsed;
++  };
++  const rgbaMatch =
++      normalized.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([^)]+)\)$/);
++  const slashAlphaMatch =
++      normalized.match(/^(?:rgb|rgba|color)\([^/]+\/\s*([^)]+)\)$/);
++  const alpha = parseAlpha(
++      (rgbaMatch && rgbaMatch[1]) ||
++      (slashAlphaMatch && slashAlphaMatch[1]));
++  return alpha >= 0.5;
++})()
++)AUXPROBE";
++
++std::unique_ptr<ui::Layer> CloneWithSurface(ui::Layer* source,
++                                            bool& has_surface) {
++  if (!source)
++    return nullptr;
++  auto clone = source->Clone();
++  if (auto* surface = source->AsSurface()) {
++    const auto* primary = surface->GetSurfaceId();
++    const auto* fallback = surface->GetOldestAcceptableFallback();
++    has_surface |=
++        (primary && primary->is_valid()) || (fallback && fallback->is_valid());
++  }
++  for (ui::Layer* child : source->children()) {
++    auto child_clone = CloneWithSurface(child, has_surface);
++    if (child_clone)
++      clone->Add(child_clone.release());
++  }
++  return clone;
++}
++}  // namespace
++
++AuxNtpTransitionState::AuxNtpTransitionState(
++    views::View* owner,
++    views::NativeViewHost* holder,
++    base::RepeatingClosure update_background)
++    : owner_(owner),
++      holder_(holder),
++      update_background_(std::move(update_background)) {}
++AuxNtpTransitionState::~AuxNtpTransitionState() {
++  RestoreOpacity();
++}
++
++bool AuxNtpTransitionState::IsTarget(content::WebContents* contents) const {
++  return aux::IsNtpPrerenderContents(contents);
++}
++
++void AuxNtpTransitionState::Prepare(content::WebContents* replacement) {
++  if (!web_contents() || !replacement || replacement == web_contents() ||
++      replacement->GetBrowserContext() != web_contents()->GetBrowserContext() ||
++      !IsTarget(web_contents()) || !IsTarget(replacement) ||
++      !owner_->GetWidget() || !owner_->layer() || !holder_->layer()) {
++    ClearTransition();
++    return;
++  }
++  if (transition_ && transition_target_.get() == web_contents()) {
++    transition_target_ = replacement->GetWeakPtr();
++    return;
++  }
++  ClearTransition();
++  auto* old_view = web_contents()->GetRenderWidgetHostView();
++  if (!old_view || !old_view->IsSurfaceAvailableForCopy())
++    return;
++  bool has_surface = false;
++  auto root = CloneWithSurface(holder_->layer(), has_surface);
++  if (!root || !has_surface)
++    return;
++  gfx::PointF origin;
++  ui::Layer::ConvertPointToLayer(holder_->layer(), owner_->layer(), true,
++                                 &origin);
++  root->SetBounds(
++      gfx::Rect(gfx::ToFlooredPoint(origin), root->bounds().size()));
++  if (!root->AsSolidColor())
++    root->SetFillsBoundsOpaquely(true);
++  root->SetOpacity(1.0f);
++  root->SetName("AuxNtpTransition");
++  transition_ = std::make_unique<ui::LayerTreeOwner>(std::move(root));
++  owner_->layer()->Add(transition_->root());
++  transition_target_ = replacement->GetWeakPtr();
++  // Original PrepareAsideNtpTransition uses literal2000000us.
++  transition_timeout_.Start(
++      FROM_HERE, base::Seconds(2),
++      base::BindOnce(&AuxNtpTransitionState::TransitionExpired,
++                     weak_.GetWeakPtr()));
++}
++
++void AuxNtpTransitionState::Adopt(content::WebContents* contents) {
++  if (contents != web_contents()) {
++    ready_.clear();
++    page_background_target_.reset();
++  }
++  weak_.InvalidateWeakPtrs();
++  pending_.clear();
++  RestoreOpacity();
++  Observe(contents);
++  if (transition_ && transition_target_.get() != contents)
++    ClearTransition();
++  // Rebind a held-layer timer after invalidating callbacks from the old
++  // document.
++  if (transition_) {
++    const auto remaining =
++        transition_timeout_.desired_run_time() - base::TimeTicks::Now();
++    transition_timeout_.Start(
++        FROM_HERE, remaining.is_negative() ? base::TimeDelta() : remaining,
++        base::BindOnce(&AuxNtpTransitionState::TransitionExpired,
++                       weak_.GetWeakPtr()));
++  }
++  ScheduleProbe();
++}
++
++bool AuxNtpTransitionState::IsCurrent(content::WeakDocumentPtr document) const {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  return frame && web_contents() && IsTarget(web_contents()) &&
++         content::WebContents::FromRenderFrameHost(frame) == web_contents() &&
++         web_contents()->GetPrimaryMainFrame() == frame;
++}
++bool AuxNtpTransitionState::IsReady() const {
++  if (!web_contents() || !IsTarget(web_contents()))
++    return false;
++  auto* frame = web_contents()->GetPrimaryMainFrame();
++  return frame && ((!transition_ &&
++                    aux::IsNtpPrerenderBackgroundReady(web_contents())) ||
++                   ready_.contains(frame->GetGlobalId()));
++}
++
++bool AuxNtpTransitionState::UpdateAndShouldUseTransparentBackground() {
++  if (!IsTarget(web_contents())) {
++    if (web_contents() && page_background_target_.get() == web_contents()) {
++      web_contents()->SetPageBaseBackgroundColor(std::nullopt);
++      page_background_target_.reset();
++    }
++    ClearTransition();
++    RestoreOpacity();
++    return false;
++  }
++  // Original030aec10..5c sets optional transparent base color for the target,
++  // leaving ordinary pages' default unset. This is distinct from the matte.
++  web_contents()->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
++  page_background_target_ = web_contents()->GetWeakPtr();
++  const bool ready = IsReady();
++  if (transition_ && ready)
++    ClearTransition();
++  const bool hide = transition_ || !ready;
++  if (auto* layer = holder_->layer()) {
++    if (hide && !opacity_hidden_) {
++      saved_opacity_ = layer->opacity();
++      opacity_hidden_ = true;
++    }
++    if (opacity_hidden_)
++      layer->SetOpacity(hide ? 0.0f : saved_opacity_);
++    if (!hide)
++      opacity_hidden_ = false;
++  }
++  ScheduleProbe();
++  return ready && !transition_;
++}
++
++void AuxNtpTransitionState::ScheduleProbe() {
++  if (!web_contents() || !IsTarget(web_contents()) || IsReady())
++    return;
++  auto* frame = web_contents()->GetPrimaryMainFrame();
++  if (!frame || !frame->IsRenderFrameLive() || !frame->IsDOMContentLoaded() ||
++      !frame->IsInLifecycleState(
++          content::RenderFrameHost::LifecycleState::kActive) ||
++      !pending_.insert(frame->GetGlobalId()).second)
++    return;
++  frame->ExecuteJavaScriptInIsolatedWorld(
++      kBodyBackgroundProbe,
++      base::BindOnce(&AuxNtpTransitionState::ProbeResult, weak_.GetWeakPtr(),
++                     frame->GetWeakDocumentPtr()),
++      ISOLATED_WORLD_ID_CHROME_INTERNAL);
++}
++void AuxNtpTransitionState::ProbeResult(content::WeakDocumentPtr document,
++                                        base::Value result) {
++  if (!IsCurrent(document))
++    return;
++  auto* frame = document.AsRenderFrameHostIfValid();
++  pending_.erase(frame->GetGlobalId());
++  if (!result.is_bool() || !result.GetBool()) {
++    Retry(document);
++    return;
++  }
++  if (!transition_) {
++    MarkReady(document);
++    return;
++  }
++  pending_.insert(frame->GetGlobalId());
++  frame->InsertVisualStateCallback(base::BindOnce(
++      &AuxNtpTransitionState::VisualResult, weak_.GetWeakPtr(), document));
++}
++void AuxNtpTransitionState::VisualResult(content::WeakDocumentPtr document,
++                                         bool success) {
++  if (!IsCurrent(document))
++    return;
++  pending_.erase(document.AsRenderFrameHostIfValid()->GetGlobalId());
++  if (success)
++    MarkReady(document);
++  else
++    Retry(document);
++}
++void AuxNtpTransitionState::Retry(content::WeakDocumentPtr document) {
++  if (!IsCurrent(document))
++    return;
++  const auto id = document.AsRenderFrameHostIfValid()->GetGlobalId();
++  if (!pending_.insert(id).second)
++    return;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(
++          [](base::WeakPtr<AuxNtpTransitionState> state,
++             content::WeakDocumentPtr document,
++             content::GlobalRenderFrameHostId id) {
++            if (!state || !state->IsCurrent(document))
++              return;
++            if (state->pending_.erase(id))
++              state->ScheduleProbe();
++          },
++          weak_.GetWeakPtr(), document, id),
++      base::Milliseconds(50));
++}
++void AuxNtpTransitionState::MarkReady(content::WeakDocumentPtr document) {
++  if (!IsCurrent(document))
++    return;
++  ready_.insert(document.AsRenderFrameHostIfValid()->GetGlobalId());
++  ClearTransition();
++  RefreshBackground();
++}
++void AuxNtpTransitionState::ClearTransition() {
++  transition_timeout_.Stop();
++  transition_.reset();
++  transition_target_.reset();
++}
++void AuxNtpTransitionState::TransitionExpired() {
++  ClearTransition();
++  RefreshBackground();
++}
++void AuxNtpTransitionState::RefreshBackground() {
++  // Original045cd1dc/3b8 guards GetWidget before UpdateBackgroundColor.
++  if (owner_->GetWidget())
++    update_background_.Run();
++}
++void AuxNtpTransitionState::RestoreOpacity() {
++  if (opacity_hidden_ && holder_->layer())
++    holder_->layer()->SetOpacity(saved_opacity_);
++  opacity_hidden_ = false;
++}
++void AuxNtpTransitionState::DOMContentLoaded(content::RenderFrameHost*) {
++  ScheduleProbe();
++}
++void AuxNtpTransitionState::RenderFrameHostChanged(content::RenderFrameHost*,
++                                                   content::RenderFrameHost*) {
++  RefreshBackground();
++}
++void AuxNtpTransitionState::RenderFrameDeleted(
++    content::RenderFrameHost* frame) {
++  ready_.erase(frame->GetGlobalId());
++  pending_.erase(frame->GetGlobalId());
++}
++void AuxNtpTransitionState::DidFinishNavigation(
++    content::NavigationHandle* navigation) {
++  if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&
++      !navigation->IsSameDocument()) {
++    ready_.erase(navigation->GetRenderFrameHost()->GetGlobalId());
++    pending_.clear();
++    RefreshBackground();
++  }
++}
++void AuxNtpTransitionState::WebContentsDestroyed() {
++  weak_.InvalidateWeakPtrs();
++  pending_.clear();
++  ClearTransition();
++  RestoreOpacity();
++  Observe(nullptr);
++}
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_ntp_transition_state.h
+@@ -0,0 +1,79 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Supplied ContentsWebView transition/probe adapted to Chromium155.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NTP_TRANSITION_STATE_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NTP_TRANSITION_STATE_H_
++
++#include <memory>
++#include <set>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "content/public/browser/global_routing_id.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents_observer.h"
++
++namespace base {
++class Value;
++}
++namespace content {
++class WebContents;
++class NavigationHandle;
++}  // namespace content
++namespace ui {
++class LayerTreeOwner;
++}
++namespace views {
++class View;
++class NativeViewHost;
++}  // namespace views
++
++// Only the actual enabled Agent newtab override is in this adaptation's scope.
++// Ordinary contents and other extension/dialog surfaces retain existing
++// behavior.
++class AuxNtpTransitionState final : public content::WebContentsObserver {
++ public:
++  AuxNtpTransitionState(views::View* owner,
++                        views::NativeViewHost* holder,
++                        base::RepeatingClosure update_background);
++  ~AuxNtpTransitionState() override;
++  void Prepare(content::WebContents* replacement);
++  void Adopt(content::WebContents* contents);
++  // Called during the owning ContentsWebView's ordinary background update.
++  bool UpdateAndShouldUseTransparentBackground();
++
++ private:
++  bool IsTarget(content::WebContents* contents) const;
++  bool IsCurrent(content::WeakDocumentPtr document) const;
++  bool IsReady() const;
++  void ScheduleProbe();
++  void ProbeResult(content::WeakDocumentPtr document, base::Value result);
++  void VisualResult(content::WeakDocumentPtr document, bool success);
++  void Retry(content::WeakDocumentPtr document);
++  void MarkReady(content::WeakDocumentPtr document);
++  void ClearTransition();
++  void TransitionExpired();
++  void RestoreOpacity();
++  void RefreshBackground();
++  void DOMContentLoaded(content::RenderFrameHost* frame) override;
++  void RenderFrameHostChanged(content::RenderFrameHost*,
++                              content::RenderFrameHost*) override;
++  void RenderFrameDeleted(content::RenderFrameHost* frame) override;
++  void DidFinishNavigation(content::NavigationHandle* navigation) override;
++  void WebContentsDestroyed() override;
++
++  raw_ptr<views::View> owner_;
++  raw_ptr<views::NativeViewHost> holder_;
++  base::RepeatingClosure update_background_;
++  std::unique_ptr<ui::LayerTreeOwner> transition_;
++  base::WeakPtr<content::WebContents> transition_target_;
++  base::WeakPtr<content::WebContents> page_background_target_;
++  std::set<content::GlobalRenderFrameHostId> ready_;
++  std::set<content::GlobalRenderFrameHostId> pending_;
++  base::OneShotTimer transition_timeout_;
++  bool opacity_hidden_ = false;
++  float saved_opacity_ = 1.0f;
++  base::WeakPtrFactory<AuxNtpTransitionState> weak_{this};
++};
++#endif
+--- a/chrome/browser/ui/views/frame/contents_web_view.cc
++++ b/chrome/browser/ui/views/frame/contents_web_view.cc
+@@ -5,6 +5,10 @@
+ #include "chrome/browser/ui/views/frame/contents_web_view.h"
+ 
+ #include "base/debug/dump_without_crashing.h"
++#include "base/functional/bind.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/views/frame/aux_ntp_transition_state.h"
++#endif
+ #include "build/build_config.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
+@@ -39,6 +43,11 @@
+   status_bubble_ = std::make_unique<StatusBubbleViews>(this);
+   status_bubble_->Reposition();
+   web_contents_close_handler_ = std::make_unique<WebContentsCloseHandler>(this);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_ntp_transition_ = std::make_unique<AuxNtpTransitionState>(
++      this, holder(), base::BindRepeating(&ContentsWebView::UpdateBackgroundColor,
++                                        base::Unretained(this)));
++#endif
+ }
+ 
+ ContentsWebView::~ContentsWebView() = default;
+@@ -145,7 +154,14 @@
+ }
+ 
+ void ContentsWebView::SetWebContents(content::WebContents* web_contents) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_ntp_transition_->Prepare(web_contents);
++#endif
+   views::WebView::SetWebContents(web_contents);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_ntp_transition_->Adopt(web_contents);
++  if (GetWidget()) UpdateBackgroundColor();
++#endif
+   if (web_contents == nullptr) {
+     status_bubble_.reset();
+     holder()->SetProperty(views::kIsBlockedByModalKey, false);
+@@ -186,7 +202,7 @@
+ #endif
+ 
+ void ContentsWebView::UpdateBackgroundColor() {
+-  const SkColor color = GetColorProvider()->GetColor(
++  SkColor color = GetColorProvider()->GetColor(
+       is_letterboxing() ? kColorWebContentsBackgroundLetterboxing
+                         : kColorWebContentsBackground);
+   // `color` must be opaque, see RenderWidgetHostView::SetBackgroundColor() for
+@@ -199,6 +215,11 @@
+     }
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_ntp_transition_->UpdateAndShouldUseTransparentBackground()) {
++    color = SK_ColorTRANSPARENT;
++  }
++#endif
+   auto* background_layer = layer()->AsSolidColor();
+   background_layer->SetColor(
+       SkColor4f::FromColor(background_visible_ ? color : SK_ColorTRANSPARENT));
+--- a/chrome/browser/ui/views/frame/contents_web_view.h
++++ b/chrome/browser/ui/views/frame/contents_web_view.h
+@@ -16,6 +16,9 @@
+ #include "ui/gfx/geometry/rounded_corners_f.h"
+ #include "ui/views/controls/webview/webview.h"
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++class AuxNtpTransitionState;
++#endif
+ class StatusBubbleViews;
+ class WebContentsCloseHandler;
+ 
+@@ -84,6 +87,9 @@
+   std::unique_ptr<StatusBubbleViews> status_bubble_;
+   std::unique_ptr<WebContentsCloseHandler> web_contents_close_handler_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  std::unique_ptr<AuxNtpTransitionState> aux_ntp_transition_;
++#endif
+   bool background_visible_ = true;
+   bool is_animating_bounds_ = false;
+   bool use_default_deadline_when_animating_ = false;

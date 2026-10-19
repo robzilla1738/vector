@@ -1,0 +1,82 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 67bbdbc: d10143ff     	sub	sp, sp, #0x50
+ 67bbdc0: a9034ff4     	stp	x20, x19, [sp, #0x30]
+ 67bbdc4: a9047bfd     	stp	x29, x30, [sp, #0x40]
+ 67bbdc8: 910103fd     	add	x29, sp, #0x40
+ 67bbdcc: aa0103f3     	mov	x19, x1
+ 67bbdd0: aa0003f4     	mov	x20, x0
+ 67bbdd4: 3981bc08     	ldrsb	x8, [x0, #0x6f]
+ 67bbdd8: b6f80048     	tbz	x8, #0x3f, 0x67bbde0 <_ChromeMain+0x67b6b44>
+ 67bbddc: f9403288     	ldr	x8, [x20, #0x60]
+ 67bbde0: b5000308     	cbnz	x8, 0x67bbe40 <_ChromeMain+0x67b6ba4>
+ 67bbde4: 3944e288     	ldrb	w8, [x20, #0x138]
+ 67bbde8: 36000108     	tbz	w8, #0x0, 0x67bbe08 <_ChromeMain+0x67b6b6c>
+ 67bbdec: 91016280     	add	x0, x20, #0x58
+ 67bbdf0: aa1303e1     	mov	x1, x19
+ 67bbdf4: 96743ec6     	bl	0x4cb90c <_ChromeMain+0x4c6670>
+ 67bbdf8: a9447bfd     	ldp	x29, x30, [sp, #0x40]
+ 67bbdfc: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+ 67bbe00: 910143ff     	add	sp, sp, #0x50
+ 67bbe04: d65f03c0     	ret
+ 67bbe08: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbe0c: 91014000     	add	x0, x0, #0x50
+ 67bbe10: 910043e8     	add	x8, sp, #0x10
+ 67bbe14: 52807ac1     	mov	w1, #0x3d6              ; =982
+ 67bbe18: 94805d9f     	bl	0x87d3494 <_ChromeMain+0x87ce1f8>
+ 67bbe1c: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbe20: 910d8000     	add	x0, x0, #0x360
+ 67bbe24: 910003e8     	mov	x8, sp
+ 67bbe28: 910043e2     	add	x2, sp, #0x10
+ 67bbe2c: 52801301     	mov	w1, #0x98               ; =152
+ 67bbe30: 94804c7f     	bl	0x87cf02c <_ChromeMain+0x87c9d90>
+ 67bbe34: 910003e0     	mov	x0, sp
+ 67bbe38: 94804d4b     	bl	0x87cf364 <_ChromeMain+0x87ca0c8>
+ 67bbe3c: 17ffffec     	b	0x67bbdec <_ChromeMain+0x67b6b50>
+ 67bbe40: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbe44: 91014000     	add	x0, x0, #0x50
+ 67bbe48: 910043e8     	add	x8, sp, #0x10
+ 67bbe4c: 52807aa1     	mov	w1, #0x3d5              ; =981
+ 67bbe50: 94805d91     	bl	0x87d3494 <_ChromeMain+0x87ce1f8>
+ 67bbe54: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbe58: 910d0800     	add	x0, x0, #0x342
+ 67bbe5c: 910023e8     	add	x8, sp, #0x8
+ 67bbe60: 910043e2     	add	x2, sp, #0x10
+ 67bbe64: 52801301     	mov	w1, #0x98               ; =152
+ 67bbe68: 94804c71     	bl	0x87cf02c <_ChromeMain+0x87c9d90>
+ 67bbe6c: 910023e0     	add	x0, sp, #0x8
+ 67bbe70: 94804d3d     	bl	0x87cf364 <_ChromeMain+0x87ca0c8>
+ 67bbe74: 17ffffdc     	b	0x67bbde4 <_ChromeMain+0x67b6b48>
+ 67bbe78: d10143ff     	sub	sp, sp, #0x50
+ 67bbe7c: a9034ff4     	stp	x20, x19, [sp, #0x30]
+ 67bbe80: a9047bfd     	stp	x29, x30, [sp, #0x40]
+ 67bbe84: 910103fd     	add	x29, sp, #0x40
+ 67bbe88: aa0103f3     	mov	x19, x1
+ 67bbe8c: aa0003f4     	mov	x20, x0
+ 67bbe90: 3944e008     	ldrb	w8, [x0, #0x138]
+ 67bbe94: 36000108     	tbz	w8, #0x0, 0x67bbeb4 <_ChromeMain+0x67b6c18>
+ 67bbe98: 91034280     	add	x0, x20, #0xd0
+ 67bbe9c: aa1303e1     	mov	x1, x19
+ 67bbea0: 9681ee65     	bl	0x837834 <_ChromeMain+0x832598>
+ 67bbea4: a9447bfd     	ldp	x29, x30, [sp, #0x40]
+ 67bbea8: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+ 67bbeac: 910143ff     	add	sp, sp, #0x50
+ 67bbeb0: d65f03c0     	ret
+ 67bbeb4: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbeb8: 91014000     	add	x0, x0, #0x50
+ 67bbebc: 910043e8     	add	x8, sp, #0x10
+ 67bbec0: 52807b81     	mov	w1, #0x3dc              ; =988
+ 67bbec4: 94805d74     	bl	0x87d3494 <_ChromeMain+0x87ce1f8>
+ 67bbec8: 90038ea0     	adrp	x0, 0xd98f000 <dyld_stub_binder+0xd98f000>
+ 67bbecc: 910d8000     	add	x0, x0, #0x360
+ 67bbed0: 910023e8     	add	x8, sp, #0x8
+ 67bbed4: 910043e2     	add	x2, sp, #0x10
+ 67bbed8: 52801301     	mov	w1, #0x98               ; =152
+ 67bbedc: 94804c54     	bl	0x87cf02c <_ChromeMain+0x87c9d90>
+ 67bbee0: 910023e0     	add	x0, sp, #0x8
+ 67bbee4: 94804d20     	bl	0x87cf364 <_ChromeMain+0x87ca0c8>
+ 67bbee8: 17ffffec     	b	0x67bbe98 <_ChromeMain+0x67b6bfc>

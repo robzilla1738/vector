@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "base": "applied v26; v27 only fixes profile_gate/navigator and does not overlap",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": "5c0c96fc3be061fef5cf361b2ee74c270eb40327282aa688124d0c512ec443c8",
+      "outputSha256": "7494de4e06fad8d9dc66c9a85a95ea34ad8cbf6f67ac8784c91e81c5797e6c51",
+      "anchors": [
+        {
+          "find": "  ~ActivationHandle() override = default;",
+          "replace": "  ~ActivationHandle() override = default;\n  bool Matches(const GURL& url) const {\n    return handle_ && handle_->GetInitialPrerenderingUrl() == url;\n  }\n  bool BackgroundReady(content::WebContents* contents) const {\n    auto* candidate = candidate_.AsRenderFrameHostIfValid();\n    if (!candidate || !contents || !handle_) return false;\n    auto* primary = contents->GetPrimaryMainFrame();\n    // Original042b2454: current candidate, or loading/ready real handle while\n    // the adopted WebContents primary document still has an empty URL.\n    return candidate == primary ||\n           (handle_->IsValid() && contents->GetLastCommittedURL().is_empty());\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SetNtpPrerenderEnabled(Profile* profile, bool enabled) {",
+          "replace": "bool IsNtpPrerenderContents(content::WebContents* contents) {\n  if (!contents) return false;\n  const auto eligible = EligibleOverride(\n      Profile::FromBrowserContext(contents->GetBrowserContext()));\n  if (!eligible) return false;\n  auto* transferred = static_cast<ActivationHandle*>(contents->GetUserData(kHandleKey));\n  return contents->GetVisibleURL() == GURL(\"chrome://newtab/\") ||\n         contents->GetVisibleURL() == *eligible ||\n         (transferred && transferred->Matches(*eligible) &&\n          contents->GetVisibleURL().is_empty() &&\n          contents->GetLastCommittedURL().is_empty() &&\n          transferred->BackgroundReady(contents));\n}\nbool IsNtpPrerenderBackgroundReady(content::WebContents* contents) {\n  if (!IsNtpPrerenderContents(contents)) return false;\n  auto* transferred = static_cast<ActivationHandle*>(contents->GetUserData(kHandleKey));\n  return transferred && transferred->BackgroundReady(contents);\n}\nvoid SetNtpPrerenderEnabled(Profile* profile, bool enabled) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.h",
+      "baselineSha256": "7c0102fa82fff172e0684dbab90e798eeed295ba4c116ec35f2e1acb8865fbdf",
+      "outputSha256": "d1784c6e19d59349f0a1e780c51ac08fbe10599383763b7ea2973e2797e491f5",
+      "anchors": [
+        {
+          "find": "bool IsEligibleNtpPrerenderUrl(Profile* profile, const GURL& url);",
+          "replace": "bool IsEligibleNtpPrerenderUrl(Profile* profile, const GURL& url);\n// Actual newtab or owned transferred prerender, never another Agent surface.\nbool IsNtpPrerenderContents(content::WebContents* contents);\nbool IsNtpPrerenderBackgroundReady(content::WebContents* contents);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/BUILD.gn",
+      "baselineSha256": "07f377eedb21c9c947705b72aafc464c757dc8a0890dedc8cb6bd4d27d8f0b00",
+      "outputSha256": "5c9a08dd1414dfe92c16d731d765b497d0fa6974e5b84ba4a52eabc4c38fe0da",
+      "anchors": [
+        {
+          "find": "import(\"//build/config/ui.gni\")",
+          "replace": "import(\"//build/config/ui.gni\")\nimport(\"//chrome/browser/buildflags.gni\")",
+          "count": 1
+        },
+        {
+          "find": "  sources = [ \"contents_web_view.cc\" ]",
+          "replace": "  sources = [ \"contents_web_view.cc\" ]\n  if (enable_aux_browser) {\n    sources += [ \"aux_ntp_transition_state.cc\", \"aux_ntp_transition_state.h\" ]\n  }",
+          "count": 1
+        },
+        {
+          "find": "    \":web_contents_close_handler\",\n    \"//chrome/browser/ui/color:color_headers\",",
+          "replace": "    \":web_contents_close_handler\",\n    \"//chrome/browser/ui/color:color_headers\",",
+          "count": 1
+        },
+        {
+          "find": "    \"//ui/compositor\",\n    \"//ui/views\",\n  ]\n  if (use_aura) {",
+          "replace": "    \"//ui/compositor\",\n    \"//ui/views\",\n  ]\n  if (enable_aux_browser) {\n    deps += [ \"//chrome/browser/aux:ntp_prerender\", \"//chrome/common\", \"//components/viz/common\" ]\n  }\n  if (use_aura) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.cc",
+      "baselineSha256": null,
+      "outputSha256": "86b7cab7f9e810d72bf51844d9bb316190a970ec51ee7a75bc91749394dd8ad4",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.h",
+      "baselineSha256": null,
+      "outputSha256": "8992c9bb551a6d0271f3720f11f0788cfde79d6cdd7fe7f318c8f06ff13ce818",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.cc",
+      "baselineSha256": "767e6a723d2bac798f82a45c27e1b6fdc1bdd47dcbd5f1c8e4b41ef73e5533ed",
+      "outputSha256": "900ea2134ebfabbb4445c4afb88ecd415684eb0e2d6bbfe2ba0fe853a165f955",
+      "anchors": [
+        {
+          "find": "#include \"base/debug/dump_without_crashing.h\"",
+          "replace": "#include \"base/debug/dump_without_crashing.h\"\n#include \"base/functional/bind.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/views/frame/aux_ntp_transition_state.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  web_contents_close_handler_ = std::make_unique<WebContentsCloseHandler>(this);",
+          "replace": "  web_contents_close_handler_ = std::make_unique<WebContentsCloseHandler>(this);\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux_ntp_transition_ = std::make_unique<AuxNtpTransitionState>(\n      this, holder(), base::BindRepeating(&ContentsWebView::UpdateBackgroundColor,\n                                        base::Unretained(this)));\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  views::WebView::SetWebContents(web_contents);",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux_ntp_transition_->Prepare(web_contents);\n#endif\n  views::WebView::SetWebContents(web_contents);\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux_ntp_transition_->Adopt(web_contents);\n  if (GetWidget()) UpdateBackgroundColor();\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  const SkColor color = GetColorProvider()->GetColor(",
+          "replace": "  SkColor color = GetColorProvider()->GetColor(",
+          "count": 1
+        },
+        {
+          "find": "  auto* background_layer = layer()->AsSolidColor();",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  if (aux_ntp_transition_->UpdateAndShouldUseTransparentBackground()) {\n    color = SK_ColorTRANSPARENT;\n  }\n#endif\n  auto* background_layer = layer()->AsSolidColor();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.h",
+      "baselineSha256": "7e11c02765c071cd382f1ae1b972bd5f1be999d445e719e2425e096c8efa00ce",
+      "outputSha256": "9dd18bcc3c03be4b881738ad90967f999debc3da77ff173db9a0f7831ce3768e",
+      "anchors": [
+        {
+          "find": "class StatusBubbleViews;",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\nclass AuxNtpTransitionState;\n#endif\nclass StatusBubbleViews;",
+          "count": 1
+        },
+        {
+          "find": "  bool background_visible_ = true;",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  std::unique_ptr<AuxNtpTransitionState> aux_ntp_transition_;\n#endif\n  bool background_visible_ = true;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "temporaryReplayVerified": true,
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

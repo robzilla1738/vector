@@ -1,0 +1,41 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 1d42324: d100c3ff     	sub	sp, sp, #0x30
+ 1d42328: a9014ff4     	stp	x20, x19, [sp, #0x10]
+ 1d4232c: a9027bfd     	stp	x29, x30, [sp, #0x20]
+ 1d42330: 910083fd     	add	x29, sp, #0x20
+ 1d42334: 900693a8     	adrp	x8, 0xefb6000 <dyld_stub_binder+0xefb6000>
+ 1d42338: 913ae108     	add	x8, x8, #0xeb8
+ 1d4233c: 38bfc108     	ldaprb	w8, [x8]
+ 1d42340: 360000e8     	tbz	w8, #0x0, 0x1d4235c <_ChromeMain+0x1d3d0c0>
+ 1d42344: 900693a0     	adrp	x0, 0xefb6000 <dyld_stub_binder+0xefb6000>
+ 1d42348: 91390000     	add	x0, x0, #0xe40
+ 1d4234c: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 1d42350: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 1d42354: 9100c3ff     	add	sp, sp, #0x30
+ 1d42358: d65f03c0     	ret
+ 1d4235c: 900693b3     	adrp	x19, 0xefb6000 <dyld_stub_binder+0xefb6000>
+ 1d42360: 913ae273     	add	x19, x19, #0xeb8
+ 1d42364: aa1303e0     	mov	x0, x19
+ 1d42368: 958b0956     	bl	0x80048c0 <_ChromeMain+0x7fff624>
+ 1d4236c: 34fffec0     	cbz	w0, 0x1d42344 <_ChromeMain+0x1d3d0a8>
+ 1d42370: 900693a0     	adrp	x0, 0xefb6000 <dyld_stub_binder+0xefb6000>
+ 1d42374: 91390000     	add	x0, x0, #0xe40
+ 1d42378: f0058d21     	adrp	x1, 0xcee9000 <dyld_stub_binder+0xcee9000>
+ 1d4237c: 913d4c21     	add	x1, x1, #0xf53
+ 1d42380: 52800202     	mov	w2, #0x10               ; =16
+ 1d42384: 9798b794     	bl	0x3701d4 <_ChromeMain+0x36af38>
+ 1d42388: 52800034     	mov	w20, #0x1               ; =1
+ 1d4238c: 089ffe74     	stlrb	w20, [x19]
+ 1d42390: b0067d40     	adrp	x0, 0xeceb000 <dyld_stub_binder+0xeceb000>
+ 1d42394: 9127c000     	add	x0, x0, #0x9f0
+ 1d42398: 958b094d     	bl	0x80048cc <_ChromeMain+0x7fff630>
+ 1d4239c: 35000360     	cbnz	w0, 0x1d42408 <_ChromeMain+0x1d3d16c>
+ 1d423a0: 900693a8     	adrp	x8, 0xefb6000 <dyld_stub_binder+0xefb6000>
+ 1d423a4: 397ae513     	ldrb	w19, [x8, #0xeb9]
+ 1d423a8: 393ae514     	strb	w20, [x8, #0xeb9]
+ 1d423ac: b0067d40     	adrp	x0, 0xeceb000 <dyld_stub_binder+0xeceb000>
