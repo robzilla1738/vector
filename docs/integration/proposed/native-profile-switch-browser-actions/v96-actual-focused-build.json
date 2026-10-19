@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v96/manifest.json",
+  "compositionSha256": "28bf22309258d44b3b4a96ccbfedffab8258f1444c326a1ab3aacdfc2b26a207",
+  "appliedSourceOutputs": 245,
+  "artworkTargets": 23,
+  "originalReplaySteps": 106,
+  "originalReplayMatchesAllOutputs": true,
+  "gnLog": "out/native-integration/v95-gn.log",
+  "attempts": [
+    {
+      "version": "v90",
+      "exitCode": 1,
+      "elapsedSeconds": 33.655086040496826,
+      "targets": {
+        "browser_live_tab_context": "obj/chrome/browser/ui/ui/browser_live_tab_context.o",
+        "browser_action_prefs_listener": "obj/chrome/browser/ui/browser_action_prefs_listener/browser_action_prefs_listener.o",
+        "browser_actions": "obj/chrome/browser/ui/browser_actions_impl/browser_actions.o",
+        "browser_tab_menu_model_delegate": "obj/chrome/browser/ui/browser_tab_menu_model_delegate/browser_tab_menu_model_delegate.o",
+        "tab_group_deletion_dialog_controller": "obj/chrome/browser/ui/tabs/tab_group_impl/tab_group_deletion_dialog_controller.o",
+        "data_sharing_bubble_controller": "obj/chrome/browser/ui/views/data_sharing/impl/data_sharing_bubble_controller.o",
+        "chrome_tab_restore_service_client": "obj/chrome/browser/sessions/impl/chrome_tab_restore_service_client.o",
+        "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/browser_live_tab_context.o",
+        "obj/chrome/browser/ui/browser_action_prefs_listener/browser_action_prefs_listener.o",
+        "obj/chrome/browser/ui/browser_actions_impl/browser_actions.o",
+        "obj/chrome/browser/ui/browser_tab_menu_model_delegate/browser_tab_menu_model_delegate.o",
+        "obj/chrome/browser/ui/tabs/tab_group_impl/tab_group_deletion_dialog_controller.o",
+        "obj/chrome/browser/ui/views/data_sharing/impl/data_sharing_bubble_controller.o",
+        "obj/chrome/browser/sessions/impl/chrome_tab_restore_service_client.o",
+        "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+        "-j",
+        "10",
+        "-k",
+        "0"
+      ],
+      "log": "out/native-integration/v90-focused-build.log"
+    },
+    {
+      "version": "v95",
+      "exitCode": 1,
+      "elapsedSeconds": 16.394686937332153,
+      "targets": {
+        "browser_focus_controller_views": "obj/chrome/browser/ui/focus/impl/browser_focus_controller_views.o",
+        "extension_installed_watcher": "obj/chrome/browser/ui/extensions/impl/extension_installed_watcher.o",
+        "lens_overlay_entry_point_controller": "obj/chrome/browser/ui/lens/impl/lens_overlay_entry_point_controller.o",
+        "chrome_tab_restore_service_client": "obj/chrome/browser/sessions/impl/chrome_tab_restore_service_client.o",
+        "lens_region_search_controller": "obj/chrome/browser/lens/region_search/region_search/lens_region_search_controller.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/focus/impl/browser_focus_controller_views.o",
+        "obj/chrome/browser/ui/extensions/impl/extension_installed_watcher.o",
+        "obj/chrome/browser/ui/lens/impl/lens_overlay_entry_point_controller.o",
+        "obj/chrome/browser/sessions/impl/chrome_tab_restore_service_client.o",
+        "obj/chrome/browser/lens/region_search/region_search/lens_region_search_controller.o",
+        "-j",
+        "10",
+        "-k",
+        "0"
+      ],
+      "log": "out/native-integration/v95-focused-build.log"
+    },
+    {
+      "version": "v96",
+      "exitCode": 0,
+      "elapsedSeconds": 10.542232036590576,
+      "targets": {
+        "browser_focus_controller_views": "obj/chrome/browser/ui/focus/impl/browser_focus_controller_views.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/focus/impl/browser_focus_controller_views.o",
+        "-j",
+        "10",
+        "-k",
+        "0"
+      ],
+      "log": "out/native-integration/v96-focused-build.log"
+    }
+  ],
+  "verifiedObjects": {
+    "browser_live_tab_context": {
+      "target": "obj/chrome/browser/ui/ui/browser_live_tab_context.o",
+      "passedIn": "v90"
+    },
+    "browser_action_prefs_listener": {
+      "target": "obj/chrome/browser/ui/browser_action_prefs_listener/browser_action_prefs_listener.o",
+      "passedIn": "v90"
+    },
+    "browser_actions": {
+      "target": "obj/chrome/browser/ui/browser_actions_impl/browser_actions.o",
+      "passedIn": "v90"
+    },
+    "browser_tab_menu_model_delegate": {
+      "target": "obj/chrome/browser/ui/browser_tab_menu_model_delegate/browser_tab_menu_model_delegate.o",
+      "passedIn": "v90"
+    },
+    "tab_group_deletion_dialog_controller": {
+      "target": "obj/chrome/browser/ui/tabs/tab_group_impl/tab_group_deletion_dialog_controller.o",
+      "passedIn": "v90"
+    },
+    "data_sharing_bubble_controller": {
+      "target": "obj/chrome/browser/ui/views/data_sharing/impl/data_sharing_bubble_controller.o",
+      "passedIn": "v90"
+    },
+    "aux_mini_popup_api": {
+      "target": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+      "passedIn": "v90"
+    },
+    "extension_installed_watcher": {
+      "target": "obj/chrome/browser/ui/extensions/impl/extension_installed_watcher.o",
+      "passedIn": "v95"
+    },
+    "lens_overlay_entry_point_controller": {
+      "target": "obj/chrome/browser/ui/lens/impl/lens_overlay_entry_point_controller.o",
+      "passedIn": "v95"
+    },
+    "chrome_tab_restore_service_client": {
+      "target": "obj/chrome/browser/sessions/impl/chrome_tab_restore_service_client.o",
+      "passedIn": "v95"
+    },
+    "lens_region_search_controller": {
+      "target": "obj/chrome/browser/lens/region_search/region_search/lens_region_search_controller.o",
+      "passedIn": "v95"
+    },
+    "browser_focus_controller_views": {
+      "target": "obj/chrome/browser/ui/focus/impl/browser_focus_controller_views.o",
+      "passedIn": "v96"
+    }
+  },
+  "corrections": [
+    "v90: actual const LiveTab API versus non-const GetBrowserContext query; v91 preserves actual context equality via read-only query",
+    "v95: explicit build/build_config.h required by Focus public header platform guard; v96 fixes declaration and compiles"
+  ],
+  "fullyLinked": false,
+  "runtimeAcceptance": false,
+  "signingPerformed": false,
+  "originalReplayCommand": [
+    "python3",
+    "scripts/compose-provided-native.py",
+    "out/native-original-replay-v96",
+    "--through",
+    "native-profile-switch-focus/platform-header-fix/native.patch",
+    "--output",
+    "out/native-replayed-composition-v96"
+  ]
+}

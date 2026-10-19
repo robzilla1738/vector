@@ -16,6 +16,7 @@ sha = lambda raw: hashlib.sha256(raw).hexdigest()
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('native_root', type=Path)
 parser.add_argument('--output', type=Path, default=repository / 'out/native-reuse-composition')
+parser.add_argument('--through', help='Replay through this exact proposal, inclusive')
 options = parser.parse_args()
 native = options.native_root.resolve()
 output = options.output.resolve()
@@ -126,7 +127,16 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/lens-entry-profile.patch', 'native-profile-switch-owner/transaction-map/lens-entry-profile-manifest.json'),
     ('native-profile-switch-install-watcher/native.patch', 'native-profile-switch-install-watcher/manifest.json'),
     ('native-profile-switch-owner/transaction-map/lens-build-registration/native.patch', 'native-profile-switch-owner/transaction-map/lens-build-registration/manifest.json'),
+    ('native-profile-switch-focus/platform-header-fix/native.patch', 'native-profile-switch-focus/platform-header-fix/manifest.json'),
+    ('native-profile-switch-private-services/native.patch', 'native-profile-switch-private-services/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/download-profile-owners.patch', 'native-profile-switch-owner/transaction-map/download-profile-owners-manifest.json'),
 ])
+
+if options.through:
+    matches = [index for index, (path, _) in enumerate(steps) if path == options.through]
+    if len(matches) != 1:
+        raise ValueError('Replay boundary must name one exact proposal')
+    steps = steps[:matches[0] + 1]
 
 def safe(path):
     value = Path(path)

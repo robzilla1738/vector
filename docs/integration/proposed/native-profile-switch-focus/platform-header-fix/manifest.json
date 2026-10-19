@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/focus/browser_focus_controller_views.h",
+      "baselineSha256": "cb8b5b15957e4990f67a772f77fb58948cd6dd0823631b2e64ea97a7e59ff06d",
+      "outputSha256": "f7991f37befb11a0fc27dae3cf9f3222c87285b70b11405df0cdff2b0a9532d5"
+    }
+  ],
+  "compiled": false,
+  "reason": "v95 actual compile requires explicit IS_MAC platform macro header"
+}
