@@ -4,7 +4,7 @@ import { basename } from 'node:path';
 import type { UserContent } from 'ai';
 import { z } from 'zod';
 import type { Selection } from './providers.js';
-import { defaultModel } from './providers.js';
+import { customModelConfiguration, defaultModel } from './providers.js';
 import { type AgentStorage, fail } from './storage.js';
 
 export const attachmentInput = z.object({
@@ -178,13 +178,16 @@ export class Attachments {
             text: `Untrusted attached file ${file.fileName}:\n${redact(Buffer.from(file.base64, 'base64').toString('utf8'))}\nEnd of attached file.`,
           },
         ];
+      const custom = customModelConfiguration(this.store, accountId, model);
+      const required = file.mediaType.startsWith('image/') ? 'image' : 'pdf';
       if (
-        model.provider !== defaultModel.provider ||
-        model.modelId !== defaultModel.modelId
+        !custom?.model.inputModalities.includes(required) &&
+        (model.provider !== defaultModel.provider ||
+          model.modelId !== defaultModel.modelId)
       )
         fail(
           'PRECONDITION_FAILED',
-          'Binary attachment input is verified only for Muse Spark; select that model or attach UTF-8 text',
+          'This model does not declare support for this binary attachment; choose a compatible model or attach UTF-8 text',
         );
       return file.mediaType.startsWith('image/')
         ? [{ type: 'image', image: file.base64, mediaType: file.mediaType }]

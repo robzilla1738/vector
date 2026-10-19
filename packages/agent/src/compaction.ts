@@ -20,22 +20,24 @@ export function estimateContextTokens(value: unknown): number {
     4,
   );
 }
-export function contextBudget(session: Session) {
+export function contextBudget(session: Session, configuredLimit?: number) {
   const selection = session.model ?? defaultModel;
   const verifiedMuse =
     selection.provider === defaultModel.provider &&
     selection.modelId === defaultModel.modelId;
-  const limit =
+  const requested =
     session.runtimeConfig?.contextWindowTokens ??
+    configuredLimit ??
     (verifiedMuse ? 1048576 : 64000);
+  const limit = Math.min(requested, configuredLimit ?? requested);
   const threshold = Math.floor(
     limit * (session.runtimeConfig?.compactionThreshold ?? 0.75),
   );
   return { limit, threshold };
 }
-export function planCompaction(session: Session) {
+export function planCompaction(session: Session, configuredLimit?: number) {
   if (session.runtimeConfig?.autoCompaction === false) return undefined;
-  const { limit, threshold } = contextBudget(session);
+  const { limit, threshold } = contextBudget(session, configuredLimit);
   const estimatedTokens = estimateContextTokens(session.context);
   if (estimatedTokens < threshold) return undefined;
   const lastUser = session.context.findLastIndex(

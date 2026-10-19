@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { CustomProviders } from './custom-providers.js';
 import { OpenAIOAuth } from './oauth/client.js';
 import type { AgentStorage } from './storage.js';
 import { fail } from './storage.js';
@@ -120,7 +121,10 @@ export class Credentials {
     ])
       result = result.replaceAll(key, '[redacted]');
     if (this.filename === 'credentials.json')
-      result = this.oauth.redact(accountId, result);
+      result = new CustomProviders(this.store).redact(
+        accountId,
+        this.oauth.redact(accountId, result),
+      );
     return result.replace(/Bearer\s+\S+/gi, 'Bearer [redacted]');
   }
 }

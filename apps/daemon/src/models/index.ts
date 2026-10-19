@@ -1,18 +1,25 @@
 /** Implements docs/spec/daemon/agent.md Model/provider contract. */
 
-import { type AgentEngine, defaultModel, fail, scope } from '@aux/agent';
+import {
+  type AgentEngine,
+  CustomProviders,
+  defaultModel,
+  fail,
+  scope,
+} from '@aux/agent';
 import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
+import { createCustomModelProcedures } from './custom.js';
 import { createOAuthModelProcedures } from './oauth.js';
 
 const providerScope = scope.extend({
   providerId: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
 });
-export function createModelRouter(
-  services: DaemonServices,
+export function createModelInventory(
+  store: DaemonServices['store'],
   engine: AgentEngine,
 ) {
-  const { t, procedure, store } = services;
+  const custom = new CustomProviders(store);
   function configured(accountId: number, provider: string) {
     return (
       (store.get(accountId, 'modelIds', provider) as string[] | null) ??
@@ -26,6 +33,7 @@ export function createModelRouter(
       modelId,
       provider,
       name: modelId,
+      fastMode: provider === 'vercel-ai-gateway',
       inputModalities: ['text'],
       thinkingLevels: [] as string[],
       contextWindow: null as number | null,
@@ -43,17 +51,50 @@ export function createModelRouter(
     return model;
   }
   function inventory(accountId: number) {
-    return engine.credentials.list(accountId).flatMap((credential) =>
-      credential.providerId === 'openai-codex'
-        ? engine.credentials.oauth.cachedCatalog(accountId).map((model) => ({
-            ...describe('openai-codex', model.slug),
-            name: model.displayName,
-          }))
-        : configured(accountId, credential.providerId).map((modelId) =>
-            describe(credential.providerId, modelId),
-          ),
-    );
+    const builtin = engine.credentials
+      .list(accountId)
+      .filter((credential) => !credential.providerId.startsWith('custom-'))
+      .flatMap((credential) =>
+        credential.providerId === 'openai-codex'
+          ? engine.credentials.oauth.cachedCatalog(accountId).map((model) => ({
+              ...describe('openai-codex', model.slug),
+              name: model.displayName,
+            }))
+          : configured(accountId, credential.providerId).map((modelId) =>
+              describe(credential.providerId, modelId),
+            ),
+      );
+    return [
+      ...builtin,
+      ...custom.list(accountId).flatMap((provider) =>
+        provider.models.map((model) => ({
+          id: `${provider.providerId}/${model.id}`,
+          modelId: model.id,
+          provider: provider.providerId,
+          name: model.name ?? model.id,
+          inputModalities: model.inputModalities,
+          thinkingLevels: model.thinkingLevels,
+          reasoning: model.reasoning,
+          contextWindow: model.contextWindow ?? null,
+          outputLimit: model.outputLimit ?? null,
+          ...(model.costs ? { costs: model.costs } : {}),
+          manuallyConfigured: true,
+        })),
+      ),
+    ];
   }
+  return { configured, describe, inventory };
+}
+export function createModelRouter(
+  services: DaemonServices,
+  engine: AgentEngine,
+) {
+  const { t, procedure, store } = services;
+  const custom = new CustomProviders(store);
+  const { configured, describe, inventory } = createModelInventory(
+    store,
+    engine,
+  );
   async function catalog(provider: string) {
     if (!['vercel-ai-gateway', 'openrouter'].includes(provider))
       fail(
@@ -90,6 +131,7 @@ export function createModelRouter(
   });
   return t.router({
     ...createOAuthModelProcedures(services, engine),
+    ...createCustomModelProcedures(services, engine),
     listSupported: procedure.input(scope).query(({ input }) => {
       store.requireAccount(input.accountId);
       return [
@@ -112,11 +154,17 @@ export function createModelRouter(
       models: inventory(input.accountId),
       credentials: engine.credentials.list(input.accountId),
     })),
-    getCredentialStatus: procedure
-      .input(providerScope)
-      .query(({ input }) =>
-        engine.credentials.status(input.accountId, input.providerId),
-      ),
+    getCredentialStatus: procedure.input(providerScope).query(({ input }) => {
+      if (input.providerId.startsWith('custom-')) {
+        const config = custom.get(input.accountId, input.providerId);
+        return {
+          exists:
+            !!config && (config.hasApiKey || config.headerNames.length > 0),
+          type: config ? 'custom' : null,
+        };
+      }
+      return engine.credentials.status(input.accountId, input.providerId);
+    }),
     listCredentials: procedure
       .input(scope)
       .query(({ input }) => engine.credentials.list(input.accountId)),
@@ -129,16 +177,26 @@ export function createModelRouter(
           }),
         }),
       )
-      .mutation(({ input }) =>
-        engine.credentials.set(
+      .mutation(({ input }) => {
+        if (input.providerId.startsWith('custom-'))
+          fail(
+            'BAD_REQUEST',
+            'Change custom provider credentials in its configuration.',
+          );
+        return engine.credentials.set(
           input.accountId,
           input.providerId,
           input.credential,
-        ),
-      ),
+        );
+      }),
     removeCredential: procedure
       .input(providerScope)
       .mutation(async ({ input }) => {
+        if (input.providerId.startsWith('custom-'))
+          fail(
+            'BAD_REQUEST',
+            'Change custom provider credentials in its configuration.',
+          );
         if (input.providerId === 'openai-codex') {
           const current = engine.credentials.oauth.status(
             input.accountId,
@@ -208,59 +266,6 @@ export function createModelRouter(
           : null;
         store.set(input.accountId, 'settings', 'models.default', selection);
         return { selection, available: !!selection };
-      }),
-    getCustomProviderConfig: procedure
-      .input(providerScope)
-      .query(({ input }) =>
-        store.get(input.accountId, 'customProviders', input.providerId),
-      ),
-    setCustomProvidersConfig: procedure
-      .input(
-        scope.extend({
-          providers: z.record(
-            z.string(),
-            z.object({
-              name: z.string().min(1),
-              baseUrl: z.url(),
-              apiKey: z.string().optional(),
-              headers: z.record(z.string(), z.string()).optional(),
-              modelIds: z.array(z.string()).default([]),
-            }),
-          ),
-        }),
-      )
-      .mutation(({ input }) => {
-        for (const [providerId, config] of Object.entries(input.providers)) {
-          if (config.apiKey && config.apiKey !== '[redacted]')
-            engine.credentials.set(input.accountId, providerId, {
-              type: 'api_key',
-              key: config.apiKey,
-            });
-          const { apiKey, headers, ...publicConfig } = config;
-          if (
-            headers &&
-            Object.keys(headers).some((name) =>
-              /authorization|key|token|secret/i.test(name),
-            )
-          )
-            fail(
-              'BAD_REQUEST',
-              'Use the private API key field for authentication',
-            );
-          store.set(input.accountId, 'customProviders', providerId, {
-            ...publicConfig,
-            ...(headers ? { headers } : {}),
-          });
-          store.set(input.accountId, 'modelIds', providerId, config.modelIds);
-        }
-        return { providers: store.all(input.accountId, 'customProviders') };
-      }),
-    removeCustomProviderConfig: procedure
-      .input(providerScope)
-      .mutation(({ input }) => {
-        store.set(input.accountId, 'customProviders', input.providerId, null);
-        engine.credentials.remove(input.accountId, input.providerId);
-        return { removed: true };
       }),
     listOAuthProviders: procedure.input(scope).query(({ input }) => {
       store.requireAccount(input.accountId);

@@ -417,3 +417,30 @@ test('full-access skips routine approvals but asks, denial and final confirmatio
     f.close();
   }
 });
+
+test('event redaction preserves numbers, booleans and structural field names', () => {
+  const f = fixture();
+  try {
+    f.engine.credentials.set(f.accountId, 'example', {
+      type: 'api_key',
+      key: '1',
+    });
+    const session = f.engine.create(
+      createSchema.parse({ accountId: f.accountId, title: 'Fixture' }),
+    );
+    f.engine.emit(session, 'fixture', {
+      count: 1,
+      enabled: true,
+      text: 'value 1',
+      field1: false,
+    });
+    assert.deepEqual(session.events.at(-1)?.data, {
+      count: 1,
+      enabled: true,
+      text: 'value [redacted]',
+      field1: false,
+    });
+  } finally {
+    f.close();
+  }
+});
