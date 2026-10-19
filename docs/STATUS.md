@@ -633,3 +633,8 @@ Final staged compositionv23 verifies78 source files and23 artwork targets, inclu
 ### Supplied candidate endpoint isolation audit
 
 Static source audit pins launcher019227d96, supplied production Agent/Vault URL discovery and actual native supervisor/CDP/profile routes. Custom browser --port is incomplete: UI still targets21520 and native CDP45203. Staged launcher fix rejects that option before bundle/state access, retains daemon-only HTTP override, and mirrors native explicit loopback/self URL/CDP environment to prevent inherited endpoint redirection. Four parser fixtures plus authored daemon-only controller/health environment fixture and pinned patch replay/syntax pass; no actual process inspection, service request, native/app launch, grant or build. Full candidate beside previous Aux requires positively owned disposable-test retirement and21520/45203 availability; owner Aside remains untouched. Exact prepared command, source hashes and retirement prerequisites: docs/integration/proposed/launcher-fixed-browser-ports/README.md. Actual side-by-side runtime acceptance remains pending.
+
+
+### Fixed approved acceptance scope correction
+
+Corrected prepared candidate/daemon-only commands to use explicit parent HOME, AUX_HOME and launcher --home/--profile in the identical approved disposable core.home. --temp-profile creates another Keychain scope and cannot continue the fixed-home human approval. Native carrier flag remains conditional on that actual approval; no launcher approval fabrication or code change. Documentation only; no launch or state access.
