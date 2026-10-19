@@ -1,0 +1,53 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "mapping": "WebContents::CompletedFirstVisuallyNonEmptyPaint",
+  "compiled": false,
+  "runtimeObserved": false,
+  "sharedSourceModified": false,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "7c886936e75acb0ec82cb3c9f5af54fba1310deac4f3be8463e7623c6a1d1089"
+    },
+    {
+      "path": "byte110-writers.json",
+      "sha256": "31495775f084dea41abdec273b24802600771928ff1b6e236acfa64c890b8d57"
+    },
+    {
+      "path": "callback-opposite-guard.txt",
+      "sha256": "e5320f0f2f4bde63e8f292c1fa21b4194c7c1416708843650b958c357f2aff2b"
+    },
+    {
+      "path": "first-paint-setter.txt",
+      "sha256": "f491537144583edd28c38c00bbb4c0064d53065517fb46ed35f9cc553310910b"
+    },
+    {
+      "path": "get-page.txt",
+      "sha256": "2137d38131f7ea7f91c80ce4cf16bd519af6d44801c17c5dfb344a64da216cd7"
+    },
+    {
+      "path": "page-return-4047af4.txt",
+      "sha256": "49d00482949547d669efc324b0852eb661a15706082247758fc6ae0d1c8517b2"
+    },
+    {
+      "path": "page-return-candidates.json",
+      "sha256": "a1de62b3d7e0f96c4773865940a6f3f39eb5318dabec3963291603d204d893a9"
+    },
+    {
+      "path": "paint-writer-b.txt",
+      "sha256": "0b1e221c25d165da944fd1047ed2ae007f0f0e6914c99a9fd33e95f083174f8d"
+    },
+    {
+      "path": "paint-writer-c.txt",
+      "sha256": "3da3cdea213154c2feb3255cfb3e2d005430f91df3b35615dbcf684bb3747c56"
+    },
+    {
+      "path": "prepare-guard.txt",
+      "sha256": "ecef4388a5e5c5fb490991e5ba939af27182b35bfcb587856d3f751d911f9714"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "ab30ec1d43e8400ac99f3ca3c088234255e552524eb06334a5972db040e21c5e"
+    }
+  ]
+}

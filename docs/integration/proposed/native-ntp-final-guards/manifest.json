@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "actual applied v30; state matches v29 output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.cc",
+      "baselineSha256": "e0162742a77515b281c9b3aa6c194307e58654175f1267771d629e4af1609f52",
+      "outputSha256": "7e0c01fb27de39aba9bd4dbbade71942f1c7766bdf5f8eaac5bc798052017d15"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,26 @@
+--- a/chrome/browser/ui/views/frame/aux_ntp_transition_state.cc
++++ b/chrome/browser/ui/views/frame/aux_ntp_transition_state.cc
+@@ -174,6 +174,7 @@
+   if (!aux::IsNtpPrerenderFeatureEnabled() || !web_contents() || !replacement ||
+       replacement == web_contents() ||
+       replacement->GetBrowserContext() != web_contents()->GetBrowserContext() ||
++      replacement->CompletedFirstVisuallyNonEmptyPaint() ||
+       !CurrentEntryIsAgentNewTab(web_contents()) ||
+       !CurrentEntryIsAgentNewTab(replacement) || !owner_->GetWidget() ||
+       !owner_->layer() || !holder_->layer()) {
+@@ -331,7 +332,14 @@
+     return;
+   auto* frame = document.AsRenderFrameHostIfValid();
+   pending_.erase(frame->GetGlobalId());
+-  if (!result.is_bool() || !result.GetBool()) {
++  if ((!result.is_bool() || !result.GetBool()) &&
++      !IsTransparentNativePopup()) {
++    Retry(document);
++    return;
++  }
++  // Original045ceb7c..bc0 requires the current primary Page to have painted,
++  // separately from the body probe, before readiness or its visual fence.
++  if (!web_contents()->CompletedFirstVisuallyNonEmptyPaint()) {
+     Retry(document);
+     return;
+   }

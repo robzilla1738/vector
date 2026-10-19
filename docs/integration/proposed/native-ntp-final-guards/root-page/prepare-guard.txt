@@ -1,0 +1,58 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 45cc6e0: eb08013f     	cmp	x9, x8
+ 45cc6e4: 54000320     	b.eq	0x45cc748 <_ChromeMain+0x45c74ac>
+ 45cc6e8: 91144260     	add	x0, x19, #0x510
+ 45cc6ec: 9705880b     	bl	0x72e718 <_ChromeMain+0x72947c>
+ 45cc6f0: f9427e60     	ldr	x0, [x19, #0x4f8]
+ 45cc6f4: f9027e7f     	str	xzr, [x19, #0x4f8]
+ 45cc6f8: b5000200     	cbnz	x0, 0x45cc738 <_ChromeMain+0x45c749c>
+ 45cc6fc: f9428260     	ldr	x0, [x19, #0x500]
+ 45cc700: f902827f     	str	xzr, [x19, #0x500]
+ 45cc704: b40000a0     	cbz	x0, 0x45cc718 <_ChromeMain+0x45c747c>
+ 45cc708: 12800008     	mov	w8, #-0x1               ; =-1
+ 45cc70c: b8e80008     	ldaddal	w8, w8, [x0]
+ 45cc710: 7100051f     	cmp	w8, #0x1
+ 45cc714: 540018e0     	b.eq	0x45cca30 <_ChromeMain+0x45c7794>
+ 45cc718: f902867f     	str	xzr, [x19, #0x508]
+ 45cc71c: a9477bfd     	ldp	x29, x30, [sp, #0x70]
+ 45cc720: a9464ff4     	ldp	x20, x19, [sp, #0x60]
+ 45cc724: a94557f6     	ldp	x22, x21, [sp, #0x50]
+ 45cc728: a9445ff8     	ldp	x24, x23, [sp, #0x40]
+ 45cc72c: a94367fa     	ldp	x26, x25, [sp, #0x30]
+ 45cc730: 910203ff     	add	sp, sp, #0x80
+ 45cc734: d65f03c0     	ret
+ 45cc738: 9571f0cc     	bl	0xa248a68 <_ChromeMain+0xa2437cc>
+ 45cc73c: 52800101     	mov	w1, #0x8                ; =8
+ 45cc740: 96e8f1de     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 45cc744: 17ffffee     	b	0x45cc6fc <_ChromeMain+0x45c7460>
+ 45cc748: f9447e88     	ldr	x8, [x20, #0x8f8]
+ 45cc74c: b4003c28     	cbz	x8, 0x45cced0 <_ChromeMain+0x45c7c34>
+ 45cc750: f9400109     	ldr	x9, [x8]
+ 45cc754: f9406929     	ldr	x9, [x9, #0xd0]
+ 45cc758: b0ffd3ea     	adrp	x10, 0x4049000 <_ChromeMain+0x4043d64>
+ 45cc75c: 9105614a     	add	x10, x10, #0x158
+ 45cc760: eb0a013f     	cmp	x9, x10
+ 45cc764: 54000a41     	b.ne	0x45cc8ac <_ChromeMain+0x45c7610>
+ 45cc768: aa0803e9     	mov	x9, x8
+ 45cc76c: f940bd08     	ldr	x8, [x8, #0x178]
+ 45cc770: b5ffffc8     	cbnz	x8, 0x45cc768 <_ChromeMain+0x45c74cc>
+ 45cc774: 52821b08     	mov	w8, #0x10d8             ; =4312
+ 45cc778: 38686928     	ldrb	w8, [x9, x8]
+ 45cc77c: 36003a28     	tbz	w8, #0x0, 0x45ccec0 <_ChromeMain+0x45c7c24>
+ 45cc780: f9478528     	ldr	x8, [x9, #0xf08]
+ 45cc784: 39444108     	ldrb	w8, [x8, #0x110]
+ 45cc788: 3707fb08     	tbnz	w8, #0x0, 0x45cc6e8 <_ChromeMain+0x45c744c>
+ 45cc78c: f9414a88     	ldr	x8, [x20, #0x290]
+ 45cc790: b5000608     	cbnz	x8, 0x45cc850 <_ChromeMain+0x45c75b4>
+ 45cc794: f9413288     	ldr	x8, [x20, #0x260]
+ 45cc798: f9401d09     	ldr	x9, [x8, #0x38]
+ 45cc79c: b0ffd3ca     	adrp	x10, 0x4045000 <_ChromeMain+0x403fd64>
+ 45cc7a0: 913c814a     	add	x10, x10, #0xf20
+ 45cc7a4: b982b688     	ldrsw	x8, [x20, #0x2b4]
+ 45cc7a8: eb0a013f     	cmp	x9, x10
+ 45cc7ac: 54001481     	b.ne	0x45cca3c <_ChromeMain+0x45c77a0>

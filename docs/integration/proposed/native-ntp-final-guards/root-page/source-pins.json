@@ -1,0 +1,30 @@
+[
+  {
+    "path": "content/public/browser/web_contents.h",
+    "sha256": "27ef39d4e28bceca91069bcf7ca1c5e6694f0550e4a2583645ee086389419cbe"
+  },
+  {
+    "path": "content/browser/web_contents/web_contents_impl.cc",
+    "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+  },
+  {
+    "path": "content/browser/renderer_host/render_frame_host_impl.cc",
+    "sha256": "3cbf82892a1a7573dd35a3c04b8ab7366b0f88ee268d7b4ef7c95faa1c7f04e2"
+  },
+  {
+    "path": "content/browser/renderer_host/render_frame_host_impl.h",
+    "sha256": "250a05273c856d1fc93ea8cc890fdb121651afee022924c0f2cf99f1d9018419"
+  },
+  {
+    "path": "content/browser/renderer_host/document_associated_data.h",
+    "sha256": "84d4fa7eda6f42018dab584a6848ee7c01fbdb9804bf2a2f19a175c28e7061b3"
+  },
+  {
+    "path": "content/browser/renderer_host/page_impl.h",
+    "sha256": "6991520e15ec5938b0d2dbe29cedd4f544676146afa0e74672312a33db2cdbf1"
+  },
+  {
+    "path": "content/browser/renderer_host/page_impl.cc",
+    "sha256": "adf7fb46e15ec48e43f54fa08e105a356f88d3cc0c3614f8d0f5c76f579020b8"
+  }
+]
