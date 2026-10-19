@@ -35,7 +35,7 @@ def checked(path, root):
     return target
 
 text_paths = set(re.findall(r'^\+\+\+ b/(.+)$', patch.decode(), re.M))
-if text_paths != {item['path'] for item in report['files']}:
+if text_paths != {item['path'] for item in report['files'] if item['sourceSha256'] != item['outputSha256']}:
     raise ValueError('Combined patch coverage differs from pinned targets')
 if not set(re.findall(r'^--- a/(.+)$', patch.decode(), re.M)).issubset(text_paths):
     raise ValueError('Combined patch attempts an unreported removal')
@@ -80,8 +80,8 @@ with open('/tmp/aux-build.lock', 'a') as lock:
     receipt = backup / 'apply-receipt.json'
     receipt.write_text(json.dumps(journal, indent=2) + '\n')
     subprocess.run(['git', 'apply', '-'], input=patch, cwd=native, check=True)
-    for path, _, _, replacement in changes:
-        if replacement:
+    for path, before, after, replacement in changes:
+        if replacement and before != after:
             shutil.copyfile(repository / replacement, native / path)
     for path, _, after, _ in changes:
         if sha((native / path).read_bytes()) != after:

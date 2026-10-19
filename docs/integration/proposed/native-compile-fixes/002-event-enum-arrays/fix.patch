@@ -1,0 +1,28 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.h"
+ 
++#include <array>
+ #include <iterator>
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -92,7 +93,7 @@
+ 
+ std::string ProvidedUploadError(contextual_search::ContextUploadErrorType error) {
+   // Exact supplied converter strings recovered from native function0x428e780.
+-  static constexpr const char* names[] = {
++  static constexpr std::array names = {
+       "unknown", "browserProcessingError", "networkError", "serverError",
+       "serverSizeLimitExceeded", "aborted", "imageProcessingError",
+       "browserProcessingFileTooLargeError", "browserProcessingFileEmptyError",
+@@ -281,7 +282,7 @@
+ void ProvidedSearchboxPage::OnContextualInputStatusChanged(
+     const base::UnguessableToken& token, contextual_search::ContextUploadStatus status,
+     std::optional<contextual_search::ContextUploadErrorType> error) {
+-  static constexpr const char* names[] = {"notUploaded", "processing", "validationFailed",
++  static constexpr std::array names = {"notUploaded", "processing", "validationFailed",
+       "uploadStarted", "uploadSuccessful", "uploadFailed", "uploadExpired",
+       "processingSuggestSignalsReady", "uploadReplaced"};
+   const size_t index = static_cast<size_t>(status);

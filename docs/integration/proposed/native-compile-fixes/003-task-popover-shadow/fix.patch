@@ -1,0 +1,42 @@
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.cc
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.cc
+@@ -102,22 +102,22 @@
+   if (const auto* pending = row->FindDict("popover")) {
+     const auto* pending_id = pending->FindString("id");
+     const auto* kind = pending->FindString("kind");
+-    const auto* title = pending->FindString("title");
++    const auto* popover_title = pending->FindString("title");
+     const auto* detail = pending->FindString("body");
+     const auto* actions = pending->FindList("actions");
+-    if (!pending_id || !ValidIdentity(*pending_id) || !kind || !title ||
+-        !detail || title->size() > 8192 || detail->size() > 32768 || !actions ||
++    if (!pending_id || !ValidIdentity(*pending_id) || !kind || !popover_title ||
++        !detail || popover_title->size() > 8192 || detail->size() > 32768 || !actions ||
+         actions->empty() || actions->size() > 2 ||
+         (*kind != "permission-approval" && *kind != "draft-approval" &&
+          *kind != "ask-user-question"))
+       return std::nullopt;
+     std::vector<std::string> action_ids;
+-    for (const auto& value : *actions) {
+-      const auto* row = value.GetIfDict();
+-      const auto* id = row ? row->FindString("id") : nullptr;
+-      if (!id || std::ranges::contains(action_ids, *id))
++    for (const auto& action_value : *actions) {
++      const auto* action_row = action_value.GetIfDict();
++      const auto* action_id = action_row ? action_row->FindString("id") : nullptr;
++      if (!action_id || std::ranges::contains(action_ids, *action_id))
+         return std::nullopt;
+-      action_ids.push_back(*id);
++      action_ids.push_back(*action_id);
+     }
+     if ((*kind == "permission-approval" &&
+          (action_ids.size() != 2 ||
+@@ -131,7 +131,7 @@
+     AuxNativeTask::PendingAction action;
+     action.id = *pending_id;
+     action.kind = *kind;
+-    action.title = base::UTF8ToUTF16(*title);
++    action.title = base::UTF8ToUTF16(*popover_title);
+     action.detail = base::UTF8ToUTF16(*detail);
+     task.pending_action = std::move(action);
+   }

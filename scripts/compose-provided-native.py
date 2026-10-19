@@ -40,6 +40,13 @@ steps = [
      ['preference-results', 'dock-results', 'import-results', 'import-consent', 'omnibox-results']]
 steps.append(('native-about-results/native-about-results.patch', 'native-about-results/manifest.json'))
 steps.extend((f'native-provided-{name}.patch', f'native-provided-{name}.json') for name in ['contextual-model', 'contextual-binding'])
+steps.append(('native-surface-routes/native-surface-routes.patch', 'native-surface-routes/manifest.json'))
+steps.append(('native-task-feed/native-task-feed.patch', 'native-task-feed/manifest.json'))
+steps.append(('native-agent-tabs/native-agent-tabs.patch', 'native-agent-tabs/manifest.json'))
+steps.extend((f'native-compile-fixes/{name}/fix.patch', f'native-compile-fixes/{name}/manifest.json') for name in [
+    '001-omnibox-callback', '002-event-enum-arrays',
+    '003-task-popover-shadow', '003-platform-boundaries',
+])
 
 def safe(path):
     value = Path(path)

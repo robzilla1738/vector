@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "reason": "Actual Chromium155 compile rejects stateful BindOnce lambdas; explicit expected state avoids cascading callback diagnostics",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc",
+      "baselineSha256": "de66041562e1292ffc05afdced506e91c7d7bdc9684a046ad31d95c3455f218c",
+      "outputSha256": "31ef092b5e3d3654da441511e31c8e99ca7a564a3506a9b601cd995f07a798c7",
+      "anchors": [
+        {
+          "find": "  auto reply = base::BindOnce(\n      [self = base::WrapRefCounted(this), weak = owner->GetWeakPtr(),\n       id = session.id_, extension = extension_id()]\n      (std::optional<base::DictValue> value, std::optional<std::string> error) {\n        if (!Owns(weak, id, extension)) self->Respond(self->Error(kExpired));\n        else if (error) self->Respond(self->Error(*error));\n        else if (value) self->Respond(self->WithArguments(std::move(*value)));\n        else self->Respond(self->NoArguments());\n      });\n",
+          "replace": "  auto reply = base::BindOnce(\n      [](scoped_refptr<AuxOmniboxFunction> self,\n         base::WeakPtr<content::WebContents> weak, std::string id,\n         std::string extension, std::optional<base::DictValue> value,\n         std::optional<std::string> error) {\n        if (!Owns(weak, id, extension)) self->Respond(self->Error(kExpired));\n        else if (error) self->Respond(self->Error(*error));\n        else if (value) self->Respond(self->WithArguments(std::move(*value)));\n        else self->Respond(self->NoArguments());\n      }, base::WrapRefCounted(this), owner->GetWeakPtr(), session.id_,\n      extension_id());\n",
+          "count": 1
+        },
+        {
+          "find": "      if (result) std::move(reply).Run(base::DictValue().Set(\"ok\", true)",
+          "replace": "      if (result.has_value()) std::move(reply).Run(base::DictValue().Set(\"ok\", true)",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -261,14 +261,16 @@
+   const auto* request = args().size() > 1 ? args()[1].GetIfDict() : nullptr;
+   if (method == "destroySession") { state->sessions.erase(found); return RespondNow(NoArguments()); }
+   auto reply = base::BindOnce(
+-      [self = base::WrapRefCounted(this), weak = owner->GetWeakPtr(),
+-       id = session.id_, extension = extension_id()]
+-      (std::optional<base::DictValue> value, std::optional<std::string> error) {
++      [](scoped_refptr<AuxOmniboxFunction> self,
++         base::WeakPtr<content::WebContents> weak, std::string id,
++         std::string extension, std::optional<base::DictValue> value,
++         std::optional<std::string> error) {
+         if (!Owns(weak, id, extension)) self->Respond(self->Error(kExpired));
+         else if (error) self->Respond(self->Error(*error));
+         else if (value) self->Respond(self->WithArguments(std::move(*value)));
+         else self->Respond(self->NoArguments());
+-      });
++      }, base::WrapRefCounted(this), owner->GetWeakPtr(), session.id_,
++      extension_id());
+   auto guarded = [](decltype(reply) callback) {
+     return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+         base::BindPostTaskToCurrentDefault(std::move(callback)), std::nullopt,
+@@ -376,7 +378,7 @@
+   if (method == "addFileContext" || method == "addTabContext") {
+     auto callback = base::BindPostTaskToCurrentDefault(base::BindOnce([](decltype(reply) reply,
+         OwnedContextualSession::ContextResult result) {
+-      if (result) std::move(reply).Run(base::DictValue().Set("ok", true)
++      if (result.has_value()) std::move(reply).Run(base::DictValue().Set("ok", true)
+           .Set("contextToken", result->ToString()), std::nullopt);
+       else std::move(reply).Run(base::DictValue().Set("ok", false)
+           .Set("errorType", native::ProvidedUploadError(result.error())), std::nullopt);

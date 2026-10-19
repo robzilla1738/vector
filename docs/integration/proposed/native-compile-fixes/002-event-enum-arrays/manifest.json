@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "reason": "Actual Chromium unsafe-buffer enforcement requires bounded container access; preserve all native enum mapping strings and range checks",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.cc",
+      "baselineSha256": "8d9748e94069fce04afe0cd1ce442bda6f0911aa214d78077cba80f3bdc31fd6",
+      "outputSha256": "44311bf8e93004b52e32ca38c51591a6e66ab4196afe36a45965816dd1d7b4b2",
+      "anchors": [
+        {
+          "find": "#include <iterator>",
+          "replace": "#include <array>\n#include <iterator>",
+          "count": 1
+        },
+        {
+          "find": "static constexpr const char* names[] =",
+          "replace": "static constexpr std::array names =",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

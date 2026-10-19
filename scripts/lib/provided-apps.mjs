@@ -17,8 +17,8 @@ export const providedAppRoots = {
   cli: join(homedir(), '.aside/cli/Aside CLI.app'),
 };
 export const providedIntegrationFiles = Object.freeze({
-  daemon: ['aux-native.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json'],
-  cli: ['aux-native.cjs'],
+  daemon: ['aux-native.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
+  cli: ['aux-native.cjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
 });
 export async function providedIntegrationInput(name) {
   if (name === 'runtime-source-pins.json') {
