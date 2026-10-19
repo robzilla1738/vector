@@ -1,0 +1,132 @@
+--- a/chrome/browser/aux/passkeys/README.md
++++ b/chrome/browser/aux/passkeys/README.md
+@@ -39,7 +39,7 @@
+ older signed epochs provide additional cleanup without adopting a reused Profile
+ pointer or numeric frame ID.
+ 
+-Compilation target is enabled `out/AuxAside`, with `enable_aux_browser=true` and
++Compile in the enabled intermediate component output, with `enable_aux_browser=true` and
+ `enable_aux_shell=false`, under `/tmp/aux-build.lock`. Six focused native objects
+ cover broker, cleanup, private API, Chrome delegate, public delegate and content
+ request continuation. No owner Profile, Keychain or RP credentials are used.
+--- a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
++++ b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
+@@ -268,7 +268,7 @@
+ }
+ 
+ std::u16string ChromeLocationBarModelDelegate::GetDisplayTitleOverride() const {
+-  // Aside shows the raw extension URL for its own pages.
++  // Keep the extension URL visible for internal pages.
+   return std::u16string();
+ }
+ 
+--- a/chrome/browser/ui/toolbar/toolbar_pref_names.cc
++++ b/chrome/browser/ui/toolbar/toolbar_pref_names.cc
+@@ -33,7 +33,7 @@
+     }
+   }
+ 
+-  // Aside keeps Downloads in the toolbar at all times.
++  // Keep Downloads available in the toolbar.
+   const std::optional<std::string>& downloads_action =
+       actions::ActionIdMap::ActionIdToString(kActionShowDownloads);
+   if (downloads_action.has_value()) {
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -4260,7 +4260,7 @@
+ }
+ 
+ void BrowserView::CreateTabSearchBubble() {
+-  // Aux shows the Aside tab search page (tabs, chats, history, bookmarks) in
++  // Aux shows its tab-search page with browsing and task results in
+   // place of the stock Chromium tab search.
+   constexpr char kAuxExtensionId[] = "fjdhphbdlfjogobdofoaagnlnkoibdge";
+   if (const extensions::Extension* extension =
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -1390,7 +1390,7 @@
+ 
+   if (!is_caret_visible && !input_in_progress &&
+       !GetLocationBarModel()->ShouldDisplayURL()) {
+-    // Aside draws the new tab page omnibox flat until it is hovered.
++    // Keep the new-tab location field flat until pointer hover.
+     normal = SK_ColorTRANSPARENT;
+   }
+ 
+--- a/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_placeholder_util.cc
+@@ -78,7 +78,7 @@
+     out_placeholder_text = location_bar->GetWebContents()->GetTitle();
+   } else if (location_bar->GetLocationBarModel() &&
+              !location_bar->GetLocationBarModel()->ShouldDisplayURL()) {
+-    // New tab page: Aside shows its own hint here.
++    // The new-tab page supplies its own placeholder.
+     out_placeholder_text =
+         l10n_util::GetStringUTF16(IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE);
+   } else if (const auto* default_provider = controller->client()
+--- a/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.cc
++++ b/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.cc
+@@ -28,7 +28,7 @@
+ 
+ namespace {
+ constexpr int kTabPadding = 4;
+-// Aside lays pinned tabs out as a three-column tile grid.
++// Pinned tabs occupy a three-column tile grid.
+ constexpr int kAuxPinnedTilesPerRow = 3;
+ }  // namespace
+ 
+@@ -86,8 +86,8 @@
+       collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+     return CalculateHorizontalLayout(size_bounds);
+   }
+-  // Pinned tabs are drawn as tiles by the Aux sidebar, like Aside's pinned
+-  // tile grid, so the vertical strip keeps this container empty.
++  // The sidebar draws pinned tabs as tiles, so the vertical strip keeps
++  // this container empty.
+   views::ProposedLayout hidden;
+   for (auto* child : collection_node_ ? collection_node_->GetDirectChildren()
+                                       : TabCollectionNode::ChildViews()) {
+--- a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+@@ -170,7 +170,7 @@
+       return false;
+     }
+ 
+-    // Aux matches Aside: the close button only appears on hover or keyboard
++    // Show the close button only during pointer hover or keyboard
+     // focus, including for the active tab.
+     const bool hovered_or_focused =
+         TabView().hovered_ || TabView().HasFocus() ||
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+@@ -82,7 +82,7 @@
+   // aligned to the leading, top corner.
+   void SetToolbarHeightForLayout(int toolbar_height);
+ 
+-  // Aside shows the agent pill in the header only while an agent is running.
++  // Show the agent pill in the header only while an agent is running.
+   void SetAgentActive(bool active);
+   void SetCaptionButtonWidthForLayout(int caption_button_width);
+   void SetIsExitingExpandOnHoverForLayout(bool is_exiting_expand_on_hover);
+--- a/chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.cc
++++ b/chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.cc
+@@ -21,7 +21,7 @@
+           profile->GetOTRProfileID().IsCaptivePortal());
+ #else
+   // DevTools profiles are OffTheRecord, so hide it there.
+-  // Aside has no toolbar avatar for regular profiles; profiles are reached
++  // Regular profiles have no toolbar avatar; they are reached
+   // from the sidebar footer.
+   return profile->IsIncognitoProfile() || profile->IsGuestSession() ||
+          profile->IsEnterpriseIsolatedModeProfile();
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -639,7 +639,7 @@
+   // the widget (widget found by way of app_menu_button_->GetWidget()).
+   app_menu_icon_controller_.UpdateDelegate();
+ 
+-  // Aux, like Aside, reaches the browser menu through the macOS menu bar.
++  // The macOS menu bar provides access to the browser menu.
+   if (app_menu_button_) {
+     app_menu_button_->SetVisible(false);
+   }
