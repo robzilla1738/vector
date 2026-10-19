@@ -7,28 +7,99 @@ body {
 }
 html[data-theme="dark"],
 html[data-theme="dark"] body {
-  background: #252525;
+  background: #171717;
   color: #fafafa;
 }
 #first-frame {
+  box-sizing: border-box;
   max-width: 800px;
   margin: 160px auto 0;
   padding: 0 32px;
 }
+html[data-surface="app"] #first-frame {
+  display: none;
+}
 .first-mark {
-  font-size: 40px;
-  text-align: center;
-  margin-bottom: 48px;
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 48px;
+  background: #e8e8e8;
+  mask:
+    url("../../../assets/brand/aux-mark-white.svg") center / contain no-repeat;
+}
+html[data-theme="dark"] .first-mark {
+  background: #414141;
+}
+.first-card {
+  box-sizing: border-box;
+  height: 52px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  gap: 10px;
+  border-radius: 22.4px;
+  outline: 0.5px solid #8884;
+  outline-offset: -0.5px;
+  box-shadow:
+    0 4px 6px -1px #0000000d,
+    0 2px 4px -2px #0000000d;
 }
 #first-input {
   box-sizing: border-box;
   width: 100%;
-  border-radius: 22.4px;
-  border: 1px solid #8884;
-  padding: 20px;
+  height: 32px;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 4px 8px;
   background: transparent;
   color: inherit;
   font: 500 16px / 24px sans-serif;
+}
+.first-hint {
+  position: absolute;
+  right: 154px;
+  font: 12px / 18px sans-serif;
+  color: #777;
+  white-space: nowrap;
+}
+.first-hint kbd {
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: #8881;
+  color: inherit;
+  font: 500 11px / 18px sans-serif;
+}
+.first-card:has(.first-hint:not([hidden])) #first-input {
+  padding-right: 104px;
+}
+.first-modes {
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 3px;
+  border-radius: 11.2px;
+  background: #8882;
+}
+.first-modes button {
+  width: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 8.4px;
+  color: inherit;
+  background: transparent;
+  font: 500 14px / 20px sans-serif;
+}
+.first-modes button[aria-selected="true"] {
+  background: #fff;
+  box-shadow: 0 1px 3px #0002;
+}
+html[data-theme="dark"] .first-modes button[aria-selected="true"] {
+  background: #404040;
 }
 body:has(#root:not(:empty)) #first-frame {
   display: none;
@@ -36,6 +107,15 @@ body:has(#root:not(:empty)) #first-frame {
 @media (max-width: 640px) {
   #first-frame {
     margin-top: 64px;
-    padding: 0 16px;
+    padding: 0 48px;
+  }
+  .first-mark {
+    margin-bottom: 32px;
+  }
+  .first-hint {
+    display: none;
+  }
+  .first-card:has(.first-hint:not([hidden])) #first-input {
+    padding-right: 8px;
   }
 }

@@ -5,7 +5,9 @@ import { native } from './native';
 export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
   const first = document.querySelector<HTMLInputElement>('#first-input');
   const [text, setText] = useState(first?.value ?? '');
-  const [mode, setMode] = useState('find');
+  const [mode, setMode] = useState(
+    first?.dataset.mode === 'do' ? 'do' : 'find',
+  );
   const [error, setError] = useState('');
   const [result, setResult] = useState<AutocompleteResult>();
   const [selected, setSelected] = useState(0);
@@ -21,6 +23,13 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
       );
     }
   }, []);
+  useLayoutEffect(() => {
+    const element = input.current;
+    if (!element) return;
+    element.style.height = '32px';
+    if (mode === 'do' && text.length > 0)
+      element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
+  }, [text, mode]);
   useEffect(() => {
     input.current?.focus();
     let active = true;
@@ -91,19 +100,19 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
     <main className="newtab">
       <Mark />
       <div className="search-region">
-        <div className="search-card">
+        <div className={`search-card ${mode === 'do' ? 'task-mode' : ''}`}>
           <textarea
             ref={input}
             value={text}
             rows={1}
             aria-label={
               mode === 'find'
-                ? 'Find a page or enter an address'
+                ? 'Search or type a URL'
                 : 'What should Aux work on?'
             }
             placeholder={
               mode === 'find'
-                ? 'Find a page or enter an address'
+                ? 'Search or type a URL'
                 : 'What should Aux work on? Use @ to add context.'
             }
             onChange={(e) => setText(e.target.value)}
@@ -135,9 +144,9 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
               }
             }}
           />
-          <div className="row spread">
-            <span className="hint muted">
-              <kbd className="keycap">Tab</kbd> change mode
+          <div className="search-controls">
+            <span className="hint muted" hidden={!!text}>
+              <kbd className="keycap">Tab</kbd> to switch
             </span>
             <div className="mode-tabs" role="tablist" aria-label="Input mode">
               <Button
@@ -145,14 +154,14 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
                 aria-selected={mode === 'find'}
                 onClick={() => setMode('find')}
               >
-                Find
+                Search
               </Button>
               <Button
                 role="tab"
                 aria-selected={mode === 'do'}
                 onClick={() => setMode('do')}
               >
-                Do
+                Ask
               </Button>
             </div>
           </div>

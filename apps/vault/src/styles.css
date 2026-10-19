@@ -189,7 +189,7 @@ body,
   align-items: center;
   gap: 12px;
 }
-.vault-gate > svg {
+.vault-gate > .aux-mark {
   width: 40px;
   height: 40px;
 }

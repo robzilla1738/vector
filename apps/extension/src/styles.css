@@ -38,7 +38,7 @@ body {
   padding: 8px;
 }
 .newtab {
-  height: calc(100% - 44px);
+  height: 100%;
   max-width: 1152px;
   margin: auto;
   padding: 160px 32px 80px;
@@ -54,17 +54,25 @@ body {
   padding: 0 16px;
   position: relative;
 }
+.newtab > .aux-mark {
+  color: var(--border);
+}
 .search-card {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
   margin: 0 16px;
   padding: 10px;
-  border: 0.5px solid var(--border);
+  border: 0;
+  outline: 0.5px solid var(--border);
+  outline-offset: -0.5px;
   border-radius: 22.4px;
   background: var(--raised);
   box-shadow: var(--shadow);
   transition: box-shadow 150ms;
 }
 .search-card:focus-within {
-  border-width: 1px;
+  outline-width: 1px;
   box-shadow:
     0 20px 25px -5px #0000000d,
     0 8px 10px -6px #0000000d;
@@ -73,6 +81,8 @@ body {
   display: block;
   resize: none;
   width: 100%;
+  flex: 1;
+  min-width: 0;
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
@@ -82,6 +92,26 @@ body {
   background: transparent;
   border: 0;
   outline: 0;
+}
+.search-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.hint {
+  font-size: 12px;
+  margin-left: 8px;
+}
+.search-controls .hint {
+  position: absolute;
+  right: 144px;
+  margin: 0;
+  white-space: nowrap;
+}
+.search-card:has(.hint:not([hidden])) textarea {
+  padding-right: 104px;
 }
 .mode-tabs {
   height: 32px;
@@ -101,10 +131,6 @@ body {
   background: var(--raised);
   border: 0.5px solid var(--border);
 }
-.hint {
-  font-size: 12px;
-  margin-left: 8px;
-}
 .control-slot {
   min-height: 48px;
   padding: 12px 16px;
@@ -114,6 +140,7 @@ body {
   z-index: 2;
   left: 32px;
   right: 32px;
+  top: 54px;
   background: var(--raised);
   border: 0.5px solid var(--border);
   border-radius: 16.8px;
@@ -389,14 +416,11 @@ body {
     padding: 64px 16px 80px;
     gap: 32px;
   }
-  .search-region {
-    padding: 0;
-  }
-  .search-card {
-    margin: 0;
-  }
   .hint {
-    visibility: hidden;
+    display: none;
+  }
+  .search-card:has(.hint:not([hidden])) textarea {
+    padding-right: 8px;
   }
   .navigation {
     gap: 16px;

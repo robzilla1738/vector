@@ -17,6 +17,7 @@ This approach measures the actual target package's unhosted rendering. It cannot
 Gitignored evidence lives under `out/reference/visual/`:
 
 - `capture-unhosted.mjs`: original reference-only capture program, outside all product source/build paths.
+- `source-hashes.json`: SHA-256, size and reference-only source location for the package manifests and captured HTML entrypoints.
 - `unhosted-captures.json`: capture timestamp, target version, viewport/theme, image hashes, page errors, blocked request destinations, measured geometry and evidence class per capture.
 - Fourteen PNGs: seven surface attempts in both appearances. The four newtab images show useful desktop/narrow initial layout. Other images show host absence, initial shells or an explicit connection error.
 

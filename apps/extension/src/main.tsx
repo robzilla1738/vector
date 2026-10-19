@@ -333,4 +333,9 @@ const router = createRouter({
 });
 const element = document.getElementById('root');
 if (!element) throw new Error('Aux root is missing.');
+const first = document.querySelector<HTMLInputElement>('#first-input');
+if (first?.dataset.composing === 'true')
+  await new Promise<void>((done) =>
+    first.addEventListener('compositionend', () => done(), { once: true }),
+  );
 createRoot(element).render(<RouterProvider router={router} />);

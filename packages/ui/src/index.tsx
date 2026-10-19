@@ -57,12 +57,5 @@ export function Dialog({
   );
 }
 export function Mark() {
-  return (
-    <svg aria-label="Aux" role="img" viewBox="0 0 64 64" width="64" height="64">
-      <path
-        fill="currentColor"
-        d="M8 52 27 12h10l19 40H43l-4-10H25l-4 10zm21-20h6l-3-8z"
-      />
-    </svg>
-  );
+  return <span className="aux-mark" role="img" aria-label="Aux" />;
 }

@@ -197,6 +197,16 @@ pre {
   }
 }
 
+.aux-mark {
+  display: inline-block;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask:
+    url("../../../assets/brand/aux-mark-white.svg") center / contain no-repeat;
+}
+
 .aux-security-gate {
   height: 432px;
   overflow: auto;
@@ -206,7 +216,7 @@ pre {
   align-items: center;
   gap: 12px;
 }
-.aux-security-gate > svg {
+.aux-security-gate > .aux-mark {
   width: 40px;
   height: 40px;
 }

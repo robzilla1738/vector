@@ -87,3 +87,5 @@ aux/0086-aux-native-platform-auth.patch
 aux/0087-aux-native-private-apis.patch
 aux/0089-aux-profile-bootstrap-newtab-preload.patch
 aux/0090-aux-native-task-surfaces.patch
+aux/0091-aux-native-switcher-preferences.patch
+aux/0092-aux-native-tab-search-host.patch
