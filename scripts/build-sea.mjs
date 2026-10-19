@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -28,6 +28,9 @@ for (const target of targets) {
       // mode. Restore the developer install state so later scripts never prune it.
       await run('pnpm', ['install', '--prod=false', '--frozen-lockfile']);
     }
+    // pnpm's deploy self-alias points back into the source workspace. It is not
+    // a runtime dependency and becomes dangling when the deployment is moved.
+    await rm(join(directory, 'node_modules/.pnpm/node_modules/@aux/daemon'), { force: true });
     const memoryPackage = await realpath(join(directory, 'node_modules/@aux/memory'));
     if (!memoryPackage.startsWith(await realpath(directory) + sep)) throw new Error('Deployed dependency escapes its self-contained runtime.');
     await cp(join(root, 'apps/memory/models/minilm'), join(memoryPackage, 'models/minilm'), { recursive: true });

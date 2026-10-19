@@ -2,9 +2,9 @@
 // Assemble only independent Aux builds and pinned upstream runtimes.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { constants, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { constants, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
@@ -76,8 +76,16 @@ for (const [directory, name] of [['computer-use', 'Aux Computer Use'], ['passwor
 
 const manifest = { version: '0.2.0', development: !!options.development, daemon: 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', cli: 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli', executables: executableProvenance, assemblyRevision: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), assembledAt: new Date().toISOString() };
 writeFileSync(join(bundle, 'bundle.json'), JSON.stringify(manifest, null, 2) + '\n');
+const bundleRoot = realpathSync(bundle);
+for (const entry of readdirSync(bundle, { recursive: true, withFileTypes: true })) {
+  if (!entry.isSymbolicLink()) continue;
+  const path = join(entry.parentPath, entry.name);
+  const target = realpathSync(path);
+  if (target !== bundleRoot && !target.startsWith(bundleRoot + sep)) throw new Error(`Packaged dependency escapes the Aux runtime: ${path}`);
+}
 console.log('Applying local ad hoc signature…');
 execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', temporary], { stdio: 'inherit' });
+execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', temporary], { stdio: 'inherit' });
 if (options.development) {
   // Intermediate component builds resolve their own libraries beside Aux.app.
   for (const entry of readdirSync(dirname(native))) {

@@ -248,3 +248,8 @@ A pre-run source audit found the helper adapter used the same `master-v1` Keycha
 
 - Integrated the bounded context observer, semantic helper policy and authenticated ordinary-profile browser metadata adapter. Root now creates a separate capture helper process/artifact directory, starts the observer after Vault initialization, invalidates pending capture on actual consent/security/account-deletion changes, and awaits observer shutdown before helper/storage retirement. Browser bridge dispatch and its daemon allowlist include context.activity.
 - Caller-supplied activity/report JSON cannot establish observed evidence. Observation rechecks current account, unlocked state, opt-in, permission, exclusions and capture generations before persistence; browser evidence is metadata only. Five focused observer fixtures and pure Swift policy/full helper compilation passed in the lane; integrated daemon/extension typechecking passed. No owner app capture, new OS grants or live context acceptance is claimed.
+
+### Self-contained dependency boundary
+
+- Strict signature verification exposed one dangling pnpm deployment self-alias under the daemon's private node_modules. It pointed back toward the source workspace, and no runtime source imports that package alias. SEA deployment now removes this unused output alias; packaging rejects every dangling or escaping runtime symlink and verifies the deep ad hoc signature before replacing an existing app.
+- The stopped disposable app was repaired using this same bounded alias removal, and its deep strict signature passed after the extension refresh. No owner installation was replaced. Script syntax checks passed; a full fresh package remains required after the pending runtime/native slices.
