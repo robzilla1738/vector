@@ -1,0 +1,722 @@
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index ca65408a67..cea1fcfa94 100644
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2753,6 +2753,8 @@ static_library("ui") {
+       "views/frame/picture_in_picture_browser_frame_view.h",
+       "views/frame/top_container_view.cc",
+       "views/frame/top_container_view.h",
++      "views/frame/aux_sidebar_view.cc",
++      "views/frame/aux_sidebar_view.h",
+       "views/frame/vertical_tab_strip_region_view.cc",
+       "views/frame/vertical_tab_strip_region_view.h",
+       "views/tab_search_bubble_host.cc",
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+new file mode 100644
+index 0000000000..2f3d8775f4
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -0,0 +1,532 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++
++#include <algorithm>
++#include <utility>
++
++#include "base/base64.h"
++#include "base/containers/span.h"
++#include "base/environment.h"
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/strings/strcat.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_split.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "base/values.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/favicon/favicon_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "components/favicon/core/favicon_service.h"
++#include "components/favicon_base/favicon_types.h"
++#include "components/vector_icons/vector_icons.h"
++#include "content/public/browser/storage_partition.h"
++#include "crypto/keypair.h"
++#include "crypto/sign.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/color/color_id.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/views/background.h"
++#include "ui/views/border.h"
++#include "ui/views/controls/button/label_button.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/style/typography.h"
++#include "ui/views/view_tracker.h"
++
++namespace {
++
++constexpr char kDaemonOrigin[] = "http://127.0.0.1:";
++constexpr int kDefaultDaemonPort = 21520;
++constexpr char kAgentManagerId[] = "fjdhphbdlfjogobdofoaagnlnkoibdge";
++constexpr char kSigningPrefix[] = "Aside Daemon Auth v1";
++constexpr size_t kMaxChatsShown = 3;
++constexpr base::TimeDelta kPollInterval = base::Seconds(2);
++constexpr int kRowRadius = 8;
++constexpr int kRowIconSize = 16;
++
++constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
++    net::DefineNetworkTrafficAnnotation("aux_sidebar_daemon_feed", R"(
++      semantics {
++        sender: "Aux sidebar"
++        description:
++          "Reads the recent chats list from the Aux daemon running on this "
++          "computer."
++        trigger: "Every two seconds while a browser window shows the sidebar."
++        data: "A local authentication challenge. No user data leaves the device."
++        destination: LOCAL
++      }
++      policy {
++        cookies_allowed: NO
++        setting: "Not configurable."
++        policy_exception_justification: "Local loopback request only."
++      })");
++
++base::FilePath AuxHome() {
++  std::unique_ptr<base::Environment> env = base::Environment::Create();
++  std::string home = env->GetVar("ASIDE_HOME").value_or("");
++  if (!home.empty()) {
++    return base::FilePath::FromUTF8Unsafe(home);
++  }
++  base::FilePath user_home;
++  base::PathService::Get(base::DIR_HOME, &user_home);
++  return user_home.Append(".aux");
++}
++
++int DaemonPort() {
++  std::unique_ptr<base::Environment> env = base::Environment::Create();
++  int port = 0;
++  if (std::optional<std::string> value = env->GetVar("ASIDE_PORT");
++      value && base::StringToInt(*value, &port) && port > 0) {
++    return port;
++  }
++  return kDefaultDaemonPort;
++}
++
++GURL DaemonUrl(const std::string& path) {
++  return GURL(
++      base::StrCat({kDaemonOrigin, base::NumberToString(DaemonPort()), path}));
++}
++
++// Reads the account bound to this profile from the daemon's account file.
++std::optional<int> ReadAccountId(const base::FilePath& file,
++                                 const std::string& profile_directory) {
++  std::string contents;
++  if (!base::ReadFileToString(file, &contents)) {
++    return std::nullopt;
++  }
++  std::optional<base::DictValue> root =
++      base::JSONReader::ReadDict(contents, base::JSON_PARSE_RFC);
++  if (!root) {
++    return std::nullopt;
++  }
++  if (const base::DictValue* bindings =
++          root->FindDict("profileAccountBindings")) {
++    if (const base::DictValue* binding =
++            bindings->FindDict(profile_directory)) {
++      if (std::optional<int> id = binding->FindInt("accountId")) {
++        return id;
++      }
++    }
++  }
++  return root->FindInt("currentAccountId");
++}
++
++// Signs the daemon's challenge with this installation's key.
++std::optional<std::string> SignChallenge(const base::FilePath& key_file,
++                                         const std::string& challenge) {
++  std::string pem;
++  if (!base::ReadFileToString(key_file, &pem)) {
++    return std::nullopt;
++  }
++  std::string base64;
++  for (std::string_view line : base::SplitStringPiece(
++           pem, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
++    if (!line.starts_with("-----")) {
++      base64.append(line);
++    }
++  }
++  std::optional<std::vector<uint8_t>> der = base::Base64Decode(base64);
++  if (!der) {
++    return std::nullopt;
++  }
++  std::optional<crypto::keypair::PrivateKey> key =
++      crypto::keypair::PrivateKey::FromPrivateKeyInfo(*der);
++  std::optional<std::vector<uint8_t>> decoded = base::Base64Decode(challenge);
++  if (!key || !decoded) {
++    return std::nullopt;
++  }
++  std::vector<uint8_t> input(std::begin(kSigningPrefix),
++                             std::end(kSigningPrefix));  // Includes the NUL.
++  input.insert(input.end(), decoded->begin(), decoded->end());
++  return base::Base64Encode(
++      crypto::sign::Sign(crypto::sign::ECDSA_SHA256, *key, input));
++}
++
++class AuxSidebarRow : public views::LabelButton {
++  METADATA_HEADER(AuxSidebarRow, views::LabelButton)
++
++ public:
++  AuxSidebarRow(PressedCallback callback,
++                const std::u16string& text,
++                const ui::ImageModel& icon,
++                bool emphasized = false)
++      : views::LabelButton(std::move(callback), text) {
++    SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    SetImageLabelSpacing(10);
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(6, 8)));
++    SetImageModel(views::Button::STATE_NORMAL, icon);
++    SetEnabledTextColors(ui::kColorSysOnSurface);
++    label()->SetElideBehavior(gfx::ELIDE_TAIL);
++    label()->SetTextStyle(emphasized ? views::style::STYLE_BODY_4_EMPHASIS
++                                     : views::style::STYLE_BODY_4);
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++  }
++
++  void SetFavicon(const gfx::ImageSkia& image) {
++    SetImageModel(views::Button::STATE_NORMAL,
++                  ui::ImageModel::FromImageSkia(image));
++  }
++
++ protected:
++  void StateChanged(views::Button::ButtonState old_state) override {
++    views::LabelButton::StateChanged(old_state);
++    const bool active = GetState() == views::Button::STATE_HOVERED ||
++                        GetState() == views::Button::STATE_PRESSED;
++    SetBackground(active ? views::CreateRoundedRectBackground(
++                               ui::kColorSysStateHoverOnSubtle, kRowRadius)
++                         : nullptr);
++  }
++};
++
++BEGIN_METADATA(AuxSidebarRow)
++END_METADATA
++
++}  // namespace
++
++AuxSidebarView::AuxSidebarView(BrowserWindowInterface* browser)
++    : browser_(browser) {
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical, gfx::Insets::VH(4, 0), 0));
++  layout->set_cross_axis_alignment(
++      views::BoxLayout::CrossAxisAlignment::kStretch);
++
++  if (bookmarks::BookmarkModel* model =
++          BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile())) {
++    bookmark_observation_.Observe(model);
++  }
++  Rebuild();
++}
++
++AuxSidebarView::~AuxSidebarView() = default;
++
++void AuxSidebarView::AddedToWidget() {
++  Poll();
++  poll_timer_.Start(
++      FROM_HERE, kPollInterval,
++      base::BindRepeating(&AuxSidebarView::Poll, base::Unretained(this)));
++}
++
++void AuxSidebarView::RemovedFromWidget() {
++  poll_timer_.Stop();
++}
++
++void AuxSidebarView::BookmarkModelChanged() {
++  Rebuild();
++}
++
++void AuxSidebarView::BookmarkModelLoaded(bool ids_reassigned) {
++  Rebuild();
++}
++
++void AuxSidebarView::BookmarkModelBeingDeleted() {
++  bookmark_observation_.Reset();
++}
++
++GURL AuxSidebarView::AgentManagerUrl(const std::string& fragment) const {
++  std::string account = account_id_ ? base::NumberToString(*account_id_) : "0";
++  return GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
++                            "/newtab.html#/u/", account, fragment}));
++}
++
++void AuxSidebarView::Rebuild() {
++  favicon_tracker_.TryCancelAll();
++  RemoveAllChildViews();
++
++  auto add_header = [this](const std::u16string& text) {
++    auto header = std::make_unique<views::Label>(
++        text, views::style::CONTEXT_LABEL, views::style::STYLE_BODY_5);
++    header->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
++    header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    header->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(10, 8, 4, 8)));
++    AddChildView(std::move(header));
++  };
++
++  // Bookmarks.
++  bookmarks::BookmarkModel* model =
++      BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
++  if (model && model->loaded() &&
++      !model->bookmark_bar_node()->children().empty()) {
++    add_header(u"Bookmarks");
++    favicon::FaviconService* favicons = FaviconServiceFactory::GetForProfile(
++        browser_->GetProfile(), ServiceAccessType::EXPLICIT_ACCESS);
++    for (const auto& node : model->bookmark_bar_node()->children()) {
++      const GURL url = node->url();
++      auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
++          node->is_folder() ? views::Button::PressedCallback()
++                            : base::BindRepeating(&AuxSidebarView::OpenBookmark,
++                                                  base::Unretained(this), url),
++          node->GetTitle().empty() ? base::UTF8ToUTF16(url.host())
++                                   : node->GetTitle(),
++          ui::ImageModel::FromVectorIcon(vector_icons::kStarFilledIcon,
++                                         ui::kColorSysOnSurfaceSubtle,
++                                         kRowIconSize)));
++      if (favicons && !node->is_folder()) {
++        auto tracker = std::make_unique<views::ViewTracker>(row);
++        favicons->GetFaviconImageForPageURL(
++            url,
++            base::BindOnce(
++                [](std::unique_ptr<views::ViewTracker> tracker,
++                   const favicon_base::FaviconImageResult& result) {
++                  if (auto* view = static_cast<AuxSidebarRow*>(tracker->view());
++                      view && !result.image.IsEmpty()) {
++                    view->SetFavicon(result.image.AsImageSkia());
++                  }
++                },
++                std::move(tracker)),
++            &favicon_tracker_);
++      }
++    }
++  }
++
++  // Chats.
++  add_header(u"Chats");
++  AddChildView(std::make_unique<AuxSidebarRow>(
++      base::BindRepeating(&AuxSidebarView::OpenNewChat, base::Unretained(this)),
++      u"New Chat",
++      ui::ImageModel::FromVectorIcon(vector_icons::kEditIcon,
++                                     ui::kColorSysOnSurfaceSubtle,
++                                     kRowIconSize)));
++  const size_t shown =
++      show_all_chats_ ? chats_.size() : std::min(chats_.size(), kMaxChatsShown);
++  for (size_t i = 0; i < shown; ++i) {
++    const Chat& chat = chats_[i];
++    AddChildView(std::make_unique<AuxSidebarRow>(
++        base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
++                            chat.id),
++        base::UTF8ToUTF16(chat.title),
++        ui::ImageModel::FromVectorIcon(vector_icons::kChatIcon,
++                                       ui::kColorSysOnSurfaceSubtle,
++                                       kRowIconSize),
++        /*emphasized=*/chat.unread));
++  }
++  if (chats_.size() > kMaxChatsShown) {
++    AddChildView(std::make_unique<AuxSidebarRow>(
++        base::BindRepeating(&AuxSidebarView::OpenAllChats,
++                            base::Unretained(this)),
++        u"Show all", ui::ImageModel()));
++  }
++  InvalidateLayout();
++}
++
++void AuxSidebarView::Poll() {
++  if (in_flight_) {
++    return;
++  }
++  in_flight_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&ReadAccountId, AuxHome().AppendASCII("accounts.json"),
++                     browser_->GetProfile()->GetBaseName().AsUTF8Unsafe()),
++      base::BindOnce(
++          [](base::WeakPtr<AuxSidebarView> self, std::optional<int> id) {
++            if (!self) {
++              return;
++            }
++            self->account_id_ = id;
++            self->EnsureSession(base::BindOnce(
++                &AuxSidebarView::FetchChats, self->weak_factory_.GetWeakPtr()));
++          },
++          weak_factory_.GetWeakPtr()));
++}
++
++void AuxSidebarView::Load(const GURL& url,
++                          const std::string& post_body,
++                          LoadCallback callback) {
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = url;
++  request->method = post_body.empty() ? "GET" : "POST";
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  if (!authorization_.empty()) {
++    request->headers.SetHeader("Authorization", authorization_);
++  }
++  loader_ =
++      network::SimpleURLLoader::Create(std::move(request), kTrafficAnnotation);
++  if (!post_body.empty()) {
++    loader_->AttachStringForUpload(post_body, "application/json");
++  }
++  loader_->DownloadToString(
++      browser_->GetProfile()->GetURLLoaderFactory().get(),
++      base::BindOnce(
++          [](base::WeakPtr<AuxSidebarView> self, LoadCallback callback,
++             std::optional<std::string> body) {
++            if (!self) {
++              return;
++            }
++            const network::SimpleURLLoader* loader = self->loader_.get();
++            const bool ok =
++                body && loader->ResponseInfo() &&
++                loader->ResponseInfo()->headers &&
++                loader->ResponseInfo()->headers->response_code() == 200;
++            if (loader->ResponseInfo() && loader->ResponseInfo()->headers &&
++                loader->ResponseInfo()->headers->response_code() == 401) {
++              self->authorization_.clear();
++            }
++            std::move(callback).Run(ok ? std::optional<std::string>(*body)
++                                       : std::nullopt);
++          },
++          weak_factory_.GetWeakPtr(), std::move(callback)),
++      1024 * 1024);
++}
++
++void AuxSidebarView::EnsureSession(base::OnceClosure then) {
++  if (!authorization_.empty() &&
++      base::TimeTicks::Now() < authorization_expiry_) {
++    std::move(then).Run();
++    return;
++  }
++  authorization_.clear();
++  Load(DaemonUrl("/auth/daemon/challenge?clientKind=chromium"), std::string(),
++       base::BindOnce(&AuxSidebarView::OnChallengeLoaded,
++                      weak_factory_.GetWeakPtr(), std::move(then)));
++}
++
++void AuxSidebarView::OnChallengeLoaded(base::OnceClosure then,
++                                       std::optional<std::string> body) {
++  std::optional<base::DictValue> parsed =
++      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++           : std::nullopt;
++  const std::string* id = parsed ? parsed->FindString("challengeId") : nullptr;
++  const std::string* challenge =
++      parsed ? parsed->FindString("challenge") : nullptr;
++  if (!id || !challenge) {
++    in_flight_ = false;
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&SignChallenge,
++                     AuxHome().AppendASCII("install").AppendASCII("sig.pem"),
++                     *challenge),
++      base::BindOnce(&AuxSidebarView::OnSigned, weak_factory_.GetWeakPtr(),
++                     std::move(then), *id));
++}
++
++void AuxSidebarView::OnSigned(base::OnceClosure then,
++                              std::string challenge_id,
++                              std::optional<std::string> signed_challenge) {
++  if (!signed_challenge) {
++    in_flight_ = false;
++    return;
++  }
++  std::string payload;
++  base::JSONWriter::Write(base::DictValue()
++                              .Set("challengeId", challenge_id)
++                              .Set("signedChallenge", *signed_challenge),
++                          &payload);
++  Load(DaemonUrl("/auth/daemon/session"), payload,
++       base::BindOnce(&AuxSidebarView::OnSessionLoaded,
++                      weak_factory_.GetWeakPtr(), std::move(then)));
++}
++
++void AuxSidebarView::OnSessionLoaded(base::OnceClosure then,
++                                     std::optional<std::string> body) {
++  std::optional<base::DictValue> parsed =
++      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++           : std::nullopt;
++  const std::string* type = parsed ? parsed->FindString("token_type") : nullptr;
++  const std::string* token =
++      parsed ? parsed->FindString("access_token") : nullptr;
++  const std::optional<int> lifetime =
++      parsed ? parsed->FindInt("expiresInSeconds") : std::nullopt;
++  if (!type || !token || *type != "AsideDaemonSessionToken" || !lifetime ||
++      *lifetime <= 0) {
++    in_flight_ = false;
++    return;
++  }
++  authorization_ = base::StrCat({*type, " ", *token});
++  authorization_expiry_ =
++      base::TimeTicks::Now() + base::Seconds(std::max(*lifetime - 30, 1));
++  std::move(then).Run();
++}
++
++void AuxSidebarView::FetchChats() {
++  const std::string account =
++      account_id_ ? base::NumberToString(*account_id_) : "0";
++  Load(DaemonUrl(
++           base::StrCat({"/session/for-chrome/chats?accountId=", account})),
++       std::string(),
++       base::BindOnce(&AuxSidebarView::OnChatsLoaded,
++                      weak_factory_.GetWeakPtr()));
++}
++
++void AuxSidebarView::OnChatsLoaded(std::optional<std::string> body) {
++  in_flight_ = false;
++  std::optional<base::DictValue> parsed =
++      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++           : std::nullopt;
++  if (!parsed) {
++    return;
++  }
++  std::vector<Chat> chats;
++  for (const char* key : {"pinned", "recents"}) {
++    const base::ListValue* list = parsed->FindList(key);
++    if (!list) {
++      continue;
++    }
++    for (const base::Value& value : *list) {
++      const base::DictValue* item = value.GetIfDict();
++      const std::string* id = item ? item->FindString("id") : nullptr;
++      const std::string* title = item ? item->FindString("title") : nullptr;
++      if (!id) {
++        continue;
++      }
++      Chat chat;
++      chat.id = *id;
++      chat.title = title && !title->empty() ? *title : "New chat";
++      chat.unread = item->FindBool("unread").value_or(false);
++      const std::string* status = item->FindString("status");
++      chat.running = status && *status == "running";
++      chats.push_back(std::move(chat));
++    }
++  }
++  const auto same = [](const std::vector<Chat>& a, const std::vector<Chat>& b) {
++    return std::ranges::equal(a, b, [](const Chat& x, const Chat& y) {
++      return x.id == y.id && x.title == y.title && x.unread == y.unread &&
++             x.running == y.running;
++    });
++  };
++  if (same(chats, chats_)) {
++    return;
++  }
++  chats_ = std::move(chats);
++  Rebuild();
++}
++
++void AuxSidebarView::OpenChat(const std::string& session_id) {
++  browser_->OpenGURL(AgentManagerUrl("/tasks/" + session_id),
++                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++}
++
++void AuxSidebarView::OpenNewChat() {
++  browser_->OpenGURL(AgentManagerUrl("/tasks/new"),
++                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++}
++
++void AuxSidebarView::OpenAllChats() {
++  browser_->OpenGURL(AgentManagerUrl("/tasks"),
++                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++}
++
++void AuxSidebarView::OpenBookmark(const GURL& url) {
++  browser_->OpenGURL(url, WindowOpenDisposition::CURRENT_TAB);
++}
++
++BEGIN_METADATA(AuxSidebarView)
++END_METADATA
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+new file mode 100644
+index 0000000000..92991f9173
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -0,0 +1,99 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
++
++#include <memory>
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/task/cancelable_task_tracker.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "components/bookmarks/browser/base_bookmark_model_observer.h"
++#include "components/bookmarks/browser/bookmark_model.h"
++#include "ui/views/view.h"
++
++class BrowserWindowInterface;
++class Profile;
++
++namespace network {
++class SimpleURLLoader;
++}
++
++// Bookmarks and Chats sections that sit above the vertical tab strip. Chats
++// come from the local daemon's authenticated sidebar feed.
++class AuxSidebarView : public views::View,
++                       public bookmarks::BaseBookmarkModelObserver {
++  METADATA_HEADER(AuxSidebarView, views::View)
++
++ public:
++  explicit AuxSidebarView(BrowserWindowInterface* browser);
++  AuxSidebarView(const AuxSidebarView&) = delete;
++  AuxSidebarView& operator=(const AuxSidebarView&) = delete;
++  ~AuxSidebarView() override;
++
++  struct Chat {
++    std::string id;
++    std::string title;
++    bool unread = false;
++    bool running = false;
++  };
++
++  // views::View:
++  void AddedToWidget() override;
++  void RemovedFromWidget() override;
++
++  // bookmarks::BaseBookmarkModelObserver:
++  void BookmarkModelChanged() override;
++  void BookmarkModelLoaded(bool ids_reassigned) override;
++  void BookmarkModelBeingDeleted() override;
++
++ private:
++  void Rebuild();
++  void Poll();
++  void EnsureSession(base::OnceClosure then);
++  void OnChallengeLoaded(base::OnceClosure then,
++                         std::optional<std::string> body);
++  void OnSigned(base::OnceClosure then,
++                std::string challenge_id,
++                std::optional<std::string> signed_challenge);
++  void OnSessionLoaded(base::OnceClosure then, std::optional<std::string> body);
++  void FetchChats();
++  void OnChatsLoaded(std::optional<std::string> body);
++  void OpenChat(const std::string& session_id);
++  void OpenNewChat();
++  void OpenAllChats();
++  void OpenBookmark(const GURL& url);
++  GURL AgentManagerUrl(const std::string& fragment) const;
++
++  using LoadCallback = base::OnceCallback<void(std::optional<std::string>)>;
++  void Load(const GURL& url,
++            const std::string& post_body,
++            LoadCallback callback);
++
++  const raw_ptr<BrowserWindowInterface> browser_;
++  base::ScopedObservation<bookmarks::BookmarkModel,
++                          bookmarks::BaseBookmarkModelObserver>
++      bookmark_observation_{this};
++  base::RepeatingTimer poll_timer_;
++  base::CancelableTaskTracker favicon_tracker_;
++  std::unique_ptr<network::SimpleURLLoader> loader_;
++
++  std::string authorization_;
++  base::TimeTicks authorization_expiry_;
++  std::optional<int> account_id_;
++  std::vector<Chat> chats_;
++  bool show_all_chats_ = false;
++  bool in_flight_ = false;
++
++  base::WeakPtrFactory<AuxSidebarView> weak_factory_{this};
++};
++
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+index b7cdb8f557..ece0473303 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+ 
++#include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++
+ #include <algorithm>
+ #include <optional>
+ 
+@@ -141,6 +143,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+   top_button_separator_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
++  aux_sidebar_ = AddChildView(
++      std::make_unique<AuxSidebarView>(browser_view->browser()));
++  aux_sidebar_->SetProperty(
++      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++
+   bottom_button_container_ =
+       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
+           state_controller_, root_action_item, browser_view->browser(),
+@@ -740,9 +747,9 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+               &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
+               base::Unretained(this)));
+ 
+-  std::optional<size_t> separator_index = GetIndexOf(top_button_separator_);
+-  CHECK(separator_index.has_value());
+-  ReorderChildView(tab_strip_view(), separator_index.value() + 1);
++  std::optional<size_t> sidebar_index = GetIndexOf(aux_sidebar_);
++  CHECK(sidebar_index.has_value());
++  ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
+ 
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
+ }
+@@ -767,6 +774,7 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+                            resize_area_->is_resizing());
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
++  aux_sidebar_->SetVisible(!collapsed);
+ 
+   if (tab_strip_view()) {
+     tab_strip_view()->SetCollapsedState(collapsed);
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+index 76f8e997d6..2e69239a56 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -31,6 +31,7 @@
+ #include "ui/views/controls/resize_area_delegate.h"
+ #include "ui/views/focus/focus_manager.h"
+ 
++class AuxSidebarView;
+ class BrowserView;
+ class VerticalTabStripTopContainer;
+ class VerticalTabStripBottomContainer;
+@@ -240,6 +241,7 @@ class VerticalTabStripRegionView final
+ 
+   raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
++  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;

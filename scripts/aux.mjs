@@ -124,7 +124,7 @@ if (flag("--no-browser")) {
       ...(flag("--real-keychain") ? [] : ["--use-mock-keychain"]),
       ...extraBrowserArgs,
     ],
-    { stdio: "inherit" },
+    { stdio: "inherit", env: { ...process.env, ASIDE_HOME: home } },
   );
   children.push(browser);
   browser.on("exit", (code) => {

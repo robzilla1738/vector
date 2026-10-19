@@ -70,3 +70,4 @@ aux/0069-content-fullscreen.patch
 aux/0070-stock-build-gating.patch
 aux/0071-vertical-tabs-default.patch
 aux/0072-aux-ntp-no-override-bubble.patch
+aux/0073-aux-sidebar-sections.patch
