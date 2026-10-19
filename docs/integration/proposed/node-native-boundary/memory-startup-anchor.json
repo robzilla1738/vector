@@ -1,0 +1,8 @@
+{
+  "pinnedSourceCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "phase": "after existing count-checked adaptation; exact unchanged anchor occurs once",
+  "from": "async function main(){(0,import_undici.setGlobalDispatcher)",
+  "to": "async function main(){await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/memory-bootstrap.cjs`))();(0,import_undici.setGlobalDispatcher)",
+  "count": 1,
+  "purpose": "await pinned fixed-bundle cache seeding before listeners and original bootstrap; failures propagate to original main catch"
+}

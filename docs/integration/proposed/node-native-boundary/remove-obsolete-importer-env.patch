@@ -1,0 +1,15 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -69,12 +69,6 @@
+   options.environment["AUX_PORT"] = base::NumberToString(port);
+   options.environment["AUX_BROWSER_PID"] =
+       base::NumberToString(base::GetCurrentProcId());
+-  options.environment["AUX_IMPORTER_PATH"] =
+-      paths.root
+-          .AppendASCII(
+-              "apps/password-importer/Aux Password "
+-              "Importer.app/Contents/MacOS/aux-password-importer")
+-          .value();
+   options.environment["AUX_HELPER_PATH"] =
+       paths.root
+           .AppendASCII(
