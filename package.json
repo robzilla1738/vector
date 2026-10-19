@@ -18,7 +18,7 @@
     "assemble:provided": "node scripts/assemble-provided.mjs",
     "package:provided": "node scripts/package-provided.mjs",
     "check:provided": "node scripts/check-provided.mjs",
-    "test:provided": "node --test vendor/provided/*.test.mjs scripts/lib/provided-*.test.mjs scripts/lib/aux-mark.test.mjs",
+    "test:provided": "node --test vendor/provided/*.test.mjs scripts/lib/provided-*.test.mjs scripts/lib/aux-mark.test.mjs scripts/lib/owned-process.test.mjs",
     "check:independent": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",
     "check:cleanroom": "node scripts/check-cleanroom.mjs",
     "reference:index": "node scripts/reference-hashes.mjs",

@@ -77,7 +77,7 @@ test('launcher waits for a pending controller on SIGTERM and preserves state', {
     await mkdir(join(app, 'Contents/Resources/aux'), { recursive: true });
     await mkdir(join(app, 'Contents/MacOS'), { recursive: true });
     await writeFile(join(app, 'Contents/Resources/aux/bundle.json'), JSON.stringify({ version: 1, implementation: 'supplied' }));
-    await copyFile(new URL('../../docs/integration/proposed/launcher-owned-shutdown/aux.mjs', import.meta.url), join(scripts, 'aux.mjs'));
+    await copyFile(new URL('../aux.mjs', import.meta.url), join(scripts, 'aux.mjs'));
     await copyFile(new URL('./owned-process.mjs', import.meta.url), join(library, 'real-owned-process.mjs'));
     await copyFile(new URL('./owned-process-guardian.mjs', import.meta.url), join(library, 'owned-process-guardian.mjs'));
     await writeFile(join(library, 'owned-process.mjs'), `

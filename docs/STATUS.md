@@ -601,3 +601,7 @@ Source review confirms actual native daemon ownership/shutdown checks but no fin
 ### Launcher pending-start/shutdown race corrected
 
 Follow-up registers pending launches before awaiting controllers; shutdown waits for all pending controllers and stops late arrivals rather than taking an empty early snapshot. No further start/readiness work runs after stopping, and in-flight health fetches are aborted. Guardian rejects stop-before-launch messages. Three focused fixture tests pass, including real tiny group descendants, stop-before-launch rejection and the full staged launcher signaled during a held actual-controller await: app stops, retained state remains and status143 is preserved. Current-root launcher baseline remains pinned; no shared/native writes/build, original binary, actual health/network, DP or owner-state operation.
+
+## Applied launcher shutdown ownership (2026-10-19, integrator)
+
+Applied the pinned launcher delta after reviewing and correcting its pending-start shutdown race. The guardian bounds signals to its own live process group; launcher shutdown awaits pending controllers and cancels readiness work. Three focused disposable authored-process tests pass against the actual applied launcher, covering normal/forced cleanup, stop-before-launch refusal and SIGTERM during pending startup. Temporary state is retained and its path printed because detached descendants remain unverified. Updated daemon/CLI stage preservation audit and the20-case offline extraction/contract check pass; actual packaged behavior remains pending.
