@@ -1,0 +1,65 @@
+{
+  "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "arm64SliceOffset": 273940480,
+  "arm64SliceBytes": 249334160,
+  "anchors": [
+    {
+      "name": "launch-private-entitlement-check",
+      "arm64RvaStart": "0x407a394",
+      "arm64RvaEndExclusive": "0x407a424",
+      "sha256": "017d49c4173c5354d982bf44fada507bdbde468a35cf4893aed3a864d54c425e"
+    },
+    {
+      "name": "launch-run-delegate-call",
+      "arm64RvaStart": "0x407a594",
+      "arm64RvaEndExclusive": "0x407a644",
+      "sha256": "4fcf3a6ad73cd1d0bad0fb4e45b0fdbb22c7ed6ed868e4ba535a00564b7e132a"
+    },
+    {
+      "name": "launch-chrome-delegate",
+      "arm64RvaStart": "0x40c9570",
+      "arm64RvaEndExclusive": "0x40c97b4",
+      "sha256": "10a6e898f765de1a613be3ba90d2e0b08586f80ce90e670b69afb9bf91f246c0"
+    },
+    {
+      "name": "capture-webcontents-permission-call",
+      "arm64RvaStart": "0x760fd90",
+      "arm64RvaEndExclusive": "0x760fe5c",
+      "sha256": "5c79927d5cd7dac4070a5caa1749eed6cb954300e4dc9bc7cee5e82d8f44e692"
+    },
+    {
+      "name": "capture-page-authorization",
+      "arm64RvaStart": "0xa286780",
+      "arm64RvaEndExclusive": "0xa286ba4",
+      "sha256": "11bdb6b9b775d5b7a9bc32abf9366903fb5fef6788d9337c290d182ae784175e"
+    }
+  ],
+  "launchExtensionSchemaArm64Rva": "0xd498fc0",
+  "launchExtensionSchema": {
+    "name": "launchExtension",
+    "parameters": [
+      {
+        "name": "id",
+        "type": "string"
+      }
+    ],
+    "returns_async": {
+      "name": "callback",
+      "optional": true,
+      "parameters": []
+    }
+  },
+  "literalOccurrences": {
+    "capture-tab-without-userinteraction": [
+      "0xda1f829"
+    ],
+    "launchExtension": [
+      "0xce533d3",
+      "0xd498fc9",
+      "0xda210ab"
+    ],
+    "expose-wv": [],
+    "attachTab": []
+  },
+  "limits": "Static original Chromium153 framework. Raw literal absence does not establish missing behavior. No target execution. The newer supplied UI may target rolling/canary native features."
+}

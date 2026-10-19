@@ -1,0 +1,164 @@
+{
+  "files": [
+    {
+      "path": "extensions/common/mojom/api_permission_id.mojom",
+      "sourceSha256": "5aceb8839f7d77d112e0d8b2ee45a55dab528fadf0fd601e3b868691a41d4228",
+      "proposedSha256": "b7ec39d912cb0b59f829ce3863690a52b42f28506aa769c46e1185e9428955c0",
+      "edits": [
+        {
+          "find": "  kAuxCredentials = 282,",
+          "replace": "  kAuxCredentials = 282,\n  kAuxCaptureTabWithoutUserInteraction = 283,\n  kAuxLaunchExtension = 284,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/permissions/chrome_api_permissions.cc",
+      "sourceSha256": "6dfbca0d9628839776692072746d500332ea1b42feb82b965b6edfb555143363",
+      "proposedSha256": "b11b7478ca2b0459ca204d1f1b1aede7a9d66f9f854b13abf081c58baddc5502",
+      "edits": [
+        {
+          "find": "    {APIPermissionID::kAuxCredentials,",
+          "replace": "    {APIPermissionID::kAuxCaptureTabWithoutUserInteraction, \"dev.aux.ext.private.capture-tab-without-userinteraction\", APIPermissionInfo::kFlagCannotBeOptional},\n    {APIPermissionID::kAuxLaunchExtension, \"dev.aux.ext.private.launch-extension\", APIPermissionInfo::kFlagCannotBeOptional},\n    {APIPermissionID::kAuxCredentials,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/_permission_features.json",
+      "sourceSha256": "f4927b8e8696636d8c0ae2341acc1801d4fb0dd8db7d63a8cdd91e4d468463f6",
+      "proposedSha256": "f69cb63ff766eef89d523b0d798f1a2b167d88edc3945c9311ef7417b15d845b",
+      "edits": [
+        {
+          "find": "  \"dev.aux.ext.private.credentials\": {",
+          "replace": "  \"dev.aux.ext.private.capture-tab-without-userinteraction\": {\n    \"channel\": \"stable\",\n    \"extension_types\": [\"extension\"],\n    \"location\": \"component\",\n    \"allowlist\": [\"34DF148348EE7D0A4C537833D8E36AF936BC74E5\"],\n    \"component_extensions_auto_granted\": false\n  },\n  \"dev.aux.ext.private.launch-extension\": {\n    \"channel\": \"stable\",\n    \"extension_types\": [\"extension\"],\n    \"location\": \"component\",\n    \"allowlist\": [\"34DF148348EE7D0A4C537833D8E36AF936BC74E5\"],\n    \"component_extensions_auto_granted\": false\n  },\n  \"dev.aux.ext.private.credentials\": {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/common/api/_api_features.json",
+      "sourceSha256": "e1f692b628129657992dce018a5f9e1106757de83c7b81202f6bff0646e62183",
+      "proposedSha256": "cfd995d3ae6615ae23b07a28ba22cf81dd72401c48a5983630d64b7d856ec76d",
+      "edits": [
+        {
+          "find": "  \"management.getPermissionWarningsByManifest\": {",
+          "replace": "  \"management.launchExtension\": {\n    \"dependencies\": [\"permission:management\", \"permission:dev.aux.ext.private.launch-extension\"],\n    \"channel\": \"stable\",\n    \"contexts\": [\"privileged_extension\"],\n    \"extension_types\": [\"extension\"],\n    \"location\": \"component\",\n    \"allowlist\": [\"34DF148348EE7D0A4C537833D8E36AF936BC74E5\"],\n    \"component_extensions_auto_granted\": false\n  },\n  \"management.getPermissionWarningsByManifest\": {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/common/api/management.json",
+      "sourceSha256": "fd25144ed2050443643497099e65b3b978f415dd09d89c4e78119e59801b7c2d",
+      "proposedSha256": "5540000353080c1a9bea0d05fd0b102a93533eb69180e36dd2360a7cc6c74980",
+      "edits": [
+        {
+          "find": "        \"name\": \"createAppShortcut\",",
+          "replace": "        \"name\": \"launchExtension\",\n        \"description\": \"Runs an enabled extension's action in the caller's actual browser profile. Available only to the bundled Aux Agent.\",\n        \"parameters\": [{\"name\": \"id\", \"type\": \"string\"}],\n        \"returns_async\": {\"name\": \"callback\", \"optional\": true, \"parameters\": []}\n      },\n      {\n        \"name\": \"createAppShortcut\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_function_histogram_value.h",
+      "sourceSha256": "8345a13b174c1ac5374b004ed81423d36b956509401a2a867ba748899740eb71",
+      "proposedSha256": "91e622592c90d044dc3908c37d66376fe431e53467515ed00ea2337c82b46862",
+      "edits": [
+        {
+          "find": "  AUXCREDENTIALS_REJECT = 2087,",
+          "replace": "  AUXCREDENTIALS_REJECT = 2087,\n  MANAGEMENT_LAUNCHEXTENSION = 2088,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "sourceSha256": "eeeffbf8e125a562bc028f876fa7a92ed220b141f209e21f5908e2026d4841eb",
+      "proposedSha256": "7de2a49c8bfe32275e35f91d42d628333e796d29c6379d7a90477d327f44fcef",
+      "edits": [
+        {
+          "find": "  <int value=\"2087\" label=\"AUXCREDENTIALS_REJECT\"/>",
+          "replace": "  <int value=\"2087\" label=\"AUXCREDENTIALS_REJECT\"/>\n  <int value=\"2088\" label=\"MANAGEMENT_LAUNCHEXTENSION\"/>",
+          "count": 1
+        },
+        {
+          "find": "  <int value=\"282\" label=\"kAuxCredentials\"/>",
+          "replace": "  <int value=\"282\" label=\"kAuxCredentials\"/>\n  <int value=\"283\" label=\"kAuxCaptureTabWithoutUserInteraction\"/>\n  <int value=\"284\" label=\"kAuxLaunchExtension\"/>",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/management/management_api.h",
+      "sourceSha256": "6c953cb3a12119d890c04f3183e93d0a0656367999cadf629d63dd833e289729",
+      "proposedSha256": "3f59525c89585ed06c6bcb3c51c08d2b021811dd7f2d2197ff506c8eaa2d284d",
+      "edits": [
+        {
+          "find": "class ManagementLaunchAppFunction : public ExtensionFunction {",
+          "replace": "class ManagementLaunchExtensionFunction : public ExtensionFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"management.launchExtension\", MANAGEMENT_LAUNCHEXTENSION)\n protected:\n  ~ManagementLaunchExtensionFunction() override = default;\n  ResponseAction Run() override;\n};\n\nclass ManagementLaunchAppFunction : public ExtensionFunction {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/management/management_api.cc",
+      "sourceSha256": "99e44337cf750d5f71f6ab63bc9c56010e150e4cdcd785390b0229faac8049a5",
+      "proposedSha256": "97d99f4cfd956f1e10e30fb845d60150f0016f0acdc8a69613c7fb7e0a46781f",
+      "edits": [
+        {
+          "find": "ExtensionFunction::ResponseAction ManagementLaunchAppFunction::Run() {",
+          "replace": "ExtensionFunction::ResponseAction ManagementLaunchExtensionFunction::Run() {\n  if (!extension() || extension()->location() != mojom::ManifestLocation::kComponent ||\n      !extension()->permissions_data()->HasAPIPermission(\n          mojom::APIPermissionID::kAuxLaunchExtension)) {\n    return RespondNow(Error(\"Permission denied: missing private entitlements\"));\n  }\n  const auto params = management::LaunchExtension::Params::Create(args());\n  EXTENSION_FUNCTION_VALIDATE(params);\n  if (!browser_context()) return RespondNow(Error(\"Profile is no longer available\"));\n  const Extension* target = ExtensionRegistry::Get(browser_context())\n      ->enabled_extensions().GetByID(params->id);\n  if (!target) return RespondNow(Error(keys::kNoExtensionError, params->id));\n  const auto* delegate = ManagementAPI::GetFactoryInstance()\n      ->Get(browser_context())->GetDelegate();\n  std::string error;\n  if (!delegate || !delegate->LaunchExtensionFunctionDelegate(\n          target, GetSenderWebContents(), browser_context(), &error)) {\n    return RespondNow(Error(error.empty() ?\n        \"chrome.management.launchExtension is not supported on this platform.\" : error));\n  }\n  return RespondNow(NoArguments());\n}\n\nExtensionFunction::ResponseAction ManagementLaunchAppFunction::Run() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/management/management_api_delegate.h",
+      "sourceSha256": "3180800482c1f1e325b1f04a21f14a171c63a74e5592c230f0c7da809c1dfbe0",
+      "proposedSha256": "3e31012a369637f0322ba87bf476f6c86667d31284fefcd082b037ab306119f3",
+      "edits": [
+        {
+          "find": "#include \"base/functional/callback.h\"",
+          "replace": "#include <string>\n#include \"base/functional/callback.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Forwards the call to AppLaunchInfo::GetFullLaunchURL in chrome.",
+          "replace": "  // Runs the actual enabled extension action. Unsupported embedders fail.\n  virtual bool LaunchExtensionFunctionDelegate(\n      const Extension* extension, content::WebContents* sender,\n      content::BrowserContext* context, std::string* error) const {\n    *error = \"chrome.management.launchExtension is not supported on this platform.\";\n    return false;\n  }\n\n  // Forwards the call to AppLaunchInfo::GetFullLaunchURL in chrome.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/management/chrome_management_api_delegate.h",
+      "sourceSha256": "7d6b6f67757698d2e5788055331d2cb5c721436cd2323ca20939fd21258a2bfb",
+      "proposedSha256": "d8469dd0b5ab7e5b8cb8d12d35cd725472ffe925919a5aef91fc2c83658d7127",
+      "edits": [
+        {
+          "find": "  GURL GetFullLaunchURL(const Extension* extension) const override;",
+          "replace": "  bool LaunchExtensionFunctionDelegate(\n      const Extension* extension, content::WebContents* sender,\n      content::BrowserContext* context, std::string* error) const override;\n  GURL GetFullLaunchURL(const Extension* extension) const override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/management/chrome_management_api_delegate.cc",
+      "sourceSha256": "87d6e31aed02bfc7d44f2ab22fa7a4f535bef8715e64404b05c28c9550bbcc21",
+      "proposedSha256": "8c5aa537fd655cfe89ef94195396e4dc50872cb97fed665b7765cd111242e61a",
+      "edits": [
+        {
+          "find": "#include \"chrome/browser/extensions/chrome_extension_function_details.h\"",
+          "replace": "#include \"build/build_config.h\"\n#include \"chrome/browser/extensions/browser_window_util.h\"\n#include \"chrome/browser/extensions/chrome_extension_function_details.h\"\n#include \"chrome/browser/profiles/profile.h\"\n#include \"extensions/browser/extension_util.h\"\n#include \"extensions/common/extension.h\"\n#if !BUILDFLAG(IS_ANDROID)\n#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"\n#include \"chrome/browser/ui/extensions/extensions_container.h\"\n#include \"chrome/browser/ui/toolbar/toolbar_action_view_model.h\"\n#include \"components/tabs/public/tab_interface.h\"\n#include \"content/public/browser/web_contents.h\"\n#include \"ui/base/base_window.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "namespace extensions {\nnamespace {",
+          "replace": "namespace extensions {\nbool ChromeManagementAPIDelegate::LaunchExtensionFunctionDelegate(\n    const Extension* extension, content::WebContents* sender,\n    content::BrowserContext* context, std::string* error) const {\n#if BUILDFLAG(IS_ANDROID)\n  *error = \"chrome.management.launchExtension is not supported on this platform.\";\n  return false;\n#else\n  Profile* profile = Profile::FromBrowserContext(context);\n  if (!profile || (profile->IsOffTheRecord() &&\n      !util::IsIncognitoEnabled(extension->id(), context))) {\n    *error = \"Extension is unavailable in this browser mode\";\n    return false;\n  }\n  BrowserWindowInterface* browser = sender && sender->GetBrowserContext() == context\n      ? browser_window_util::GetBrowserForTabContents(*sender) : nullptr;\n  if (!browser) browser = browser_window_util::GetLastActiveNormalBrowserWithProfile(\n      *profile, /*include_incognito_or_parent=*/false);\n  if (!browser || browser->GetProfile() != profile || !browser->GetWindow()) {\n    *error = \"No active browser exists for this profile\";\n    return false;\n  }\n  auto* container = ExtensionsContainer::From(*browser);\n  auto* action = container ? container->GetActionForId(extension->id()) : nullptr;\n  auto* tab = browser->GetActiveTabInterface();\n  auto* contents = container ? container->GetActiveWebContents() : nullptr;\n  if (!contents && tab) contents = tab->GetContents();\n  if (!action || !contents || contents->GetBrowserContext() != context ||\n      !action->IsEnabled(contents)) {\n    *error = \"Extension has no available action in the active tab\";\n    return false;\n  }\n  browser->GetWindow()->Activate();\n  action->ExecuteUserAction(ToolbarActionViewModel::InvocationSource::kApi);\n  return true;  // The native action was invoked; no delivery/side-effect claim.\n#endif\n}\nnamespace {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "acceptance": "Staged only, not applied/compiled/run. Capture uses actual upstream capture implementation unchanged; see evidence boundary."
+}
