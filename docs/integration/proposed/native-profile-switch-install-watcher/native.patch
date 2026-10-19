@@ -1,0 +1,110 @@
+--- a/chrome/browser/ui/extensions/extension_installed_watcher.h
++++ b/chrome/browser/ui/extensions/extension_installed_watcher.h
+@@ -11,6 +11,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "extensions/browser/extension_registry_observer.h"
+ #include "extensions/common/extension_id.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -39,6 +40,12 @@
+   ExtensionInstalledWatcher& operator=(const ExtensionInstalledWatcher&) =
+       delete;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(BrowserWindowInterface& browser);
++#endif
++
+   void WaitForInstall(const extensions::ExtensionId& extension_id,
+                       base::OnceCallback<void(bool)> done_callback);
+ 
+@@ -53,6 +60,10 @@
+   void RunCallback(const extensions::ExtensionId& extension_id, bool installed);
+ 
+   raw_ptr<Profile> profile_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool aux_profile_switch_paused_ = false;
++  unsigned aux_install_callback_depth_ = 0;
++#endif
+ 
+   // Map to track multiple pending installs
+   // The bool indicates if the extension was installed or not
+--- a/chrome/browser/ui/extensions/extension_installed_watcher.cc
++++ b/chrome/browser/ui/extensions/extension_installed_watcher.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/ui/extensions/extension_installed_watcher.h"
+ 
+ #include <utility>
++
++#include "base/check_op.h"
+ 
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -33,12 +35,45 @@
+ }
+ 
+ ExtensionInstalledWatcher::~ExtensionInstalledWatcher() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_paused_) {
++    return;
++  }
++#endif
+   extensions::ExtensionRegistry::Get(profile_)->RemoveObserver(this);
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool ExtensionInstalledWatcher::CanPrepareForAuxProfileSwitch() const {
++  return !aux_profile_switch_paused_ && aux_install_callback_depth_ == 0 &&
++         pending_installs_.empty();
++}
++
++void ExtensionInstalledWatcher::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_profile_switch_paused_ = true;
++  weak_factory_.InvalidateWeakPtrs();
++  extensions::ExtensionRegistry::Get(profile_)->RemoveObserver(this);
++}
++
++void ExtensionInstalledWatcher::RebindForAuxProfileSwitch(
++    BrowserWindowInterface& browser) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(pending_installs_.empty());
++  CHECK_EQ(From(&browser), this);
++  CHECK(browser.GetProfile()->IsRegularProfile());
++  profile_ = browser.GetProfile();
++  extensions::ExtensionRegistry::Get(profile_)->AddObserver(this);
++  aux_profile_switch_paused_ = false;
++}
++#endif
+ 
+ void ExtensionInstalledWatcher::WaitForInstall(
+     const extensions::ExtensionId& extension_id,
+     base::OnceCallback<void(bool)> done_callback) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  CHECK(!aux_profile_switch_paused_);
++#endif
+   pending_installs_[extension_id] = std::move(done_callback);
+ 
+   if (extensions::ExtensionRegistry::Get(profile_)
+@@ -86,7 +121,18 @@
+   if (it->second) {
+     base::OnceCallback<void(bool)> callback = std::move(it->second);
+     pending_installs_.erase(it);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // A completion can synchronously destroy the actual owner. Do not use a
++    // member AutoReset whose destructor would write to a dead watcher.
++    auto weak = weak_factory_.GetWeakPtr();
++    ++aux_install_callback_depth_;
++#endif
+     std::move(callback).Run(installed);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    if (weak) {
++      --weak->aux_install_callback_depth_;
++    }
++#endif
+   } else {
+     pending_installs_.erase(it);
+   }

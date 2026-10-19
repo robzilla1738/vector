@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Exact unchanged current v83/84 source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_installed_watcher.h",
+      "baselineSha256": "33dd552682428faf7f0797bbe6e3a9e1a30bef686da874246af12106b59b61d2",
+      "outputSha256": "16d343c124b4fe6f6e838de7e754efea1027fa396e6e2a8f9558dc2f6a9b5273"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_installed_watcher.cc",
+      "baselineSha256": "2a71afa495d37dcadb383356d5de876e85ddbca1af9324f8b03d80870f2fb2af",
+      "outputSha256": "05f25679d2b283e755599e8b1423226d90fbe2d34e4cbb7305b359223731c837"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
