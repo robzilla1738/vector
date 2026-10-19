@@ -1,0 +1,12 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -207,6 +207,9 @@
+     }
+     Hide();
+     profile_observer_.Reset();
++    DestroyWindows();
++    // Hiding the old native windows can enqueue an activation dismissal.
++    dismiss_.Stop();
+     profile_ = profile->GetWeakPtr();
+     profile_observer_.Observe(profile);
+   }

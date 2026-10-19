@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-reopen CC661a8ccfeb339715efbb37d6e9a441cc070d2980364eafb81cac8fedc206ca44",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "661a8ccfeb339715efbb37d6e9a441cc070d2980364eafb81cac8fedc206ca44",
+      "outputSha256": "65cbf95010af412cbd81ed99198e8104226a774bd34ca2e0347080bfd9806327"
+    }
+  ]
+}

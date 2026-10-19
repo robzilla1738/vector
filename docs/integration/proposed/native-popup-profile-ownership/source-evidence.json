@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594b00.c",
+      "sha256": "6ec909b1239ae3e140614353d03945223fa68ae51d70f83a3c5863003d300ebf"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/webview.h",
+      "sha256": "60bcb9c3f585230b5e708cc3b9347f68ce8cad2b0c7d440c522e9997284e68da"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/webview.cc",
+      "sha256": "131e3bddab3bfc62e3ac478be7a8fd913151965c75842dd67659f9b302185e0c"
+    }
+  ],
+  "functions": [
+    {
+      "name": "CreateProfileCoordinator",
+      "rva": "0x4594b00",
+      "bytes": 1044,
+      "sha256": "569a67ef81c0a883ae92a69e5fc1d96eccd7e2d2331c6121019033a0a30d5f1e",
+      "evidenceId": "ev_74bd5a9da3cf453e3fba25a33f862b7aeb4c39de754cf8868af0f637217570be",
+      "snapshotPath": "/tmp/aux-popup-coordinator-create-snapshot.json"
+    },
+    {
+      "name": "DestroyProfileCoordinator",
+      "rva": "0x4595260",
+      "bytes": 620,
+      "sha256": "37b924dbb3e6ba78ea780aed747f0b1ebea97669f5676f940beb9a705c6fe165",
+      "evidenceId": "ev_40344f242e1723c583a0cf772278995c2c5e3f4e128b9b627f482fd50af2b0cf",
+      "snapshotPath": "/tmp/aux-popup-coordinator-destroy-snapshot.json"
+    }
+  ],
+  "anchors": [
+    {
+      "meaning": "Factory stores resolved weak target at coordinator+0x38 and weak holder at+0x40; main/options state belongs to that coordinator."
+    },
+    {
+      "meaning": "Original Show uses coordinator+0x38 and retains same coordinator WebContents/widget on reopen."
+    },
+    {
+      "meaning": "Destructor invalidates weak callbacks, removes observers, releases options animation/widget/delegate at+0x80/+0x78/+0x70, main animation/widget/delegate at+0x60/+0x58/+0x50, then weak profile holder/raw profile at+0x40/+0x38."
+    },
+    {
+      "meaning": "Actual155 WebView creates owned wc_owner_ from browser_context_; navigating that contents never replaces its BrowserContext."
+    }
+  ],
+  "limits": [
+    "Profile/coordinator semantic names are derived from supplied factory/Show call sites and retained source-path labels; the stripped binary does not supply original C++ type declarations.",
+    "CreateProfileCoordinator raw slice1044bytes contains original trap tails not all included in its1008-byte Ghidra function-body set; coverage is retained in the dossier.",
+    "This is a minimal adaptation of the global Aux host: it retires actual widget/WebContents ownership before target profile installation, not a replacement account/profile implementation.",
+    "No original executable/native API, OS focus/grant, Keychain or owner profile operation was executed. Native cross-profile and pending-picker behavior require disposable observation."
+  ]
+}
