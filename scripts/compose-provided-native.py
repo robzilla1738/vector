@@ -48,6 +48,7 @@ steps.extend((f'native-compile-fixes/{name}/fix.patch', f'native-compile-fixes/{
     '003-task-popover-shadow', '003-platform-boundaries',
 ])
 steps.append(('native-preference-effects/native.patch', 'native-preference-effects/manifest.json'))
+steps.append(('native-window-vibrancy/native.patch', 'native-window-vibrancy/manifest.json'))
 
 def safe(path):
     value = Path(path)
