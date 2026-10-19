@@ -1,6 +1,7 @@
 import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ChannelsSettings } from './channels';
+import { CustomModelSettings } from './custom-model-settings';
 import { rpc } from './daemon';
 import { DeveloperSettings } from './developer-settings';
 import { McpSettings } from './mcp-settings';
@@ -377,6 +378,7 @@ export function Settings({
           {section === 'model' && (
             <div className="stack">
               <OpenAIOAuthSettings accountId={accountId} />
+              <CustomModelSettings key={accountId} accountId={accountId} />
               <form
                 className="stack"
                 onSubmit={(event) => {
