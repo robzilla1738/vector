@@ -70,6 +70,65 @@ function fixture(biometry?: VaultBiometryAdapter) {
     },
   };
 }
+test('inline fill candidates return only matching-origin login metadata and remain unavailable while locked', async () => {
+  const f = fixture();
+  try {
+    await f.vault.setup(1, 'disposable candidate fixture password');
+    const vaultId = f.vault.snapshot(1).vaults[0]?.id;
+    assert.ok(vaultId);
+    f.vault.createItems(1, [
+      itemFields.parse({
+        vaultId,
+        category: 'login',
+        title: 'Fixture login',
+        urls: ['https://example.com/sign-in'],
+        loginFields: {
+          username: 'fixture-user',
+          password: 'fixture-secret-not-returned',
+          totp: 'fixture-private-totp',
+        },
+        notes: 'fixture-private-note',
+      }),
+    ]);
+    const result = f.vault.autofillCandidates(1, 'https://example.com/account');
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0]?.username, 'fixture-user');
+    const candidate = result.items[0];
+    assert.ok(candidate);
+    assert.deepEqual(Object.keys(candidate).sort(), [
+      'id',
+      'reprompt',
+      'revision',
+      'title',
+      'username',
+    ]);
+    assert.equal(JSON.stringify(result).includes('fixture-secret'), false);
+    assert.equal(JSON.stringify(result).includes('fixture-private'), false);
+    assert.equal(
+      f.vault.autofillCandidates(1, 'https://example.com.evil.test/').items
+        .length,
+      0,
+    );
+    assert.equal(
+      f.vault.autofillCandidates(1, 'http://example.com/').items.length,
+      0,
+    );
+    assert.equal(
+      f.vault.autofillCandidates(1, 'https://example.com:444/').items.length,
+      0,
+    );
+    assert.throws(() =>
+      f.vault.autofillCandidates(1, 'https://user:secret@example.com/'),
+    );
+    f.vault.lock(1);
+    assert.throws(
+      () => f.vault.autofillCandidates(1, 'https://example.com/'),
+      /Unlock/,
+    );
+  } finally {
+    f.close();
+  }
+});
 test('wrong password stays locked and all item data/history remain encrypted', async () => {
   const fixtureState = fixture();
   try {

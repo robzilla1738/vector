@@ -188,6 +188,19 @@ export function createVaultRouters(
         .mutation(({ input }) => generatePassword(input)),
     }),
     vault: t.router({
+      getAutofillCandidates: procedure
+        .input(
+          scope.extend({ documentUrl: z.string().url().max(16384) }).strict(),
+        )
+        .query(({ ctx, input }) => {
+          if (ctx.clientKind !== 'password-manager-extension')
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'Only the Vault extension can list inline fill candidates.',
+            });
+          return vault.autofillCandidates(input.accountId, input.documentUrl);
+        }),
       getSnapshot: procedure
         .input(scope)
         .query(({ input }) => vault.snapshot(input.accountId)),

@@ -742,6 +742,53 @@ export class VaultService {
     if (!item) failure('NOT_FOUND', 'This Vault item no longer exists.');
     return itemSchema.parse(this.decrypt(accountId, 'item', item));
   }
+  autofillCandidates(accountId: number, documentUrl: string) {
+    let target: URL;
+    try {
+      target = new URL(documentUrl);
+    } catch {
+      failure('BAD_REQUEST', 'A valid page address is required.');
+    }
+    if (
+      !['http:', 'https:'].includes(target.protocol) ||
+      target.username ||
+      target.password
+    )
+      failure(
+        'BAD_REQUEST',
+        'Autofill candidates require an ordinary web page address.',
+      );
+    const snapshot = this.snapshot(accountId);
+    return {
+      items: snapshot.items
+        .filter(
+          (item) =>
+            item.state === 'active' &&
+            item.category === 'login' &&
+            item.urls.some((value) => {
+              try {
+                const saved = new URL(value);
+                return (
+                  ['http:', 'https:'].includes(saved.protocol) &&
+                  !saved.username &&
+                  !saved.password &&
+                  saved.origin === target.origin
+                );
+              } catch {
+                return false;
+              }
+            }),
+        )
+        .slice(0, 100)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          username: item.loginFields?.username ?? '',
+          revision: item.revision,
+          reprompt: item.reprompt,
+        })),
+    };
+  }
   createItems(
     accountId: number,
     fields: Omit<VaultItem, 'id' | 'revision' | 'createdAt' | 'updatedAt'>[],
