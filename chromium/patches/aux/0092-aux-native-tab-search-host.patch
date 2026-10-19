@@ -1,0 +1,274 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.h
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SEARCH_BUBBLE_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SEARCH_BUBBLE_H_
++
++#include "base/functional/callback.h"
++class BrowserWindowInterface;
++namespace views {
++class View;
++class Widget;
++}
++
++// Hosts the independent extension search route in a 620x340 native bubble.
++// Data remains gated by the bound profile's current Vault/onboarding state.
++views::Widget* ShowAuxTabSearchBubble(BrowserWindowInterface* browser,
++                                     views::View* anchor,
++                                     base::OnceClosure on_closed);
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SEARCH_BUBBLE_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -0,0 +1,128 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++// Independently implements docs/spec/native/surfaces.md V3.
++#include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
++
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "content/public/browser/keyboard_event_processing_result.h"
++#include "content/public/browser/web_contents.h"
++#include "components/input/native_web_keyboard_event.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/common/extension_set.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/mojom/dialog_button.mojom.h"
++#include "ui/events/keycodes/keyboard_codes.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/controls/webview/webview.h"
++#include "ui/views/layout/fill_layout.h"
++#include "ui/views/widget/widget.h"
++
++namespace {
++constexpr gfx::Size kSearchSize(620, 340);
++
++class AuxSearchWebView : public views::WebView {
++  METADATA_HEADER(AuxSearchWebView, views::WebView)
++ public:
++  explicit AuxSearchWebView(Profile* profile) : views::WebView(profile) {}
++  void CloseContents(content::WebContents* source) override {
++    if (GetWidget())
++      GetWidget()->Close();
++  }
++  content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
++      content::WebContents* source,
++      const input::NativeWebKeyboardEvent& event) override {
++    if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown &&
++        event.windows_key_code == ui::VKEY_ESCAPE) {
++      CloseContents(source);
++      return content::KeyboardEventProcessingResult::HANDLED;
++    }
++    return content::KeyboardEventProcessingResult::NOT_HANDLED;
++  }
++};
++BEGIN_METADATA(AuxSearchWebView)
++END_METADATA
++
++class AuxSearchBubble : public views::BubbleDialogDelegate {
++ public:
++  AuxSearchBubble(Profile* profile, views::View* anchor,
++                  base::OnceClosure on_closed)
++      : views::BubbleDialogDelegate(anchor, views::BubbleBorder::TOP_LEFT),
++        profile_(profile->GetWeakPtr()) {
++    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    SetShowCloseButton(false);
++    SetAccessibleTitle(u"Search tabs");
++    set_margins(gfx::Insets());
++    set_fixed_width(kSearchSize.width());
++    set_close_on_deactivate(true);
++    RegisterWindowClosingCallback(std::move(on_closed));
++    auto contents = std::make_unique<views::View>();
++    contents->SetLayoutManager(std::make_unique<views::FillLayout>());
++    contents->SetPreferredSize(kSearchSize);
++    contents_ = SetContentsView(std::move(contents));
++    ShowMessage(u"Checking this browser profile…");
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++        base::BindOnce([](base::FilePath path) {
++          return aux::ReadProfileSecurity(aux::StateHome(), path);
++        }, profile->GetOriginalProfile()->GetPath()),
++        base::BindOnce(&AuxSearchBubble::OnSecurity,
++                       weak_factory_.GetWeakPtr()));
++  }
++ private:
++  void ShowMessage(const std::u16string& text) {
++    contents_->RemoveAllChildViews();
++    auto* message = contents_->AddChildView(std::make_unique<views::Label>(text));
++    message->SetMultiLine(true);
++    message->SetMaximumWidth(540);
++  }
++  void OnSecurity(aux::ProfileSecurityState security) {
++    if (!profile_)
++      return;
++    if (!security.allows_browsing()) {
++      ShowMessage(security.error.empty()
++          ? u"Unlock Aux and finish setup before searching this profile."
++          : base::UTF8ToUTF16(security.error));
++      return;
++    }
++    auto* registry = extensions::ExtensionRegistry::Get(profile_.get());
++    if (!registry || !registry->enabled_extensions().Contains(aux::kAgentExtensionId)) {
++      ShowMessage(u"Aux search is unavailable. Restore the bundled extension and reopen search.");
++      return;
++    }
++    contents_->RemoveAllChildViews();
++    auto* webview = contents_->AddChildView(
++        std::make_unique<AuxSearchWebView>(profile_.get()));
++    webview->SetPreferredSize(kSearchSize);
++    webview->LoadInitialURL(GURL("chrome-extension://" +
++        std::string(aux::kAgentExtensionId) + "/index.html#/tab-search"));
++    webview->RequestFocus();
++    if (GetWidget())
++      GetWidget()->LayoutRootViewIfNecessary();
++  }
++  base::WeakPtr<Profile> profile_;
++  raw_ptr<views::View> contents_ = nullptr;
++  base::WeakPtrFactory<AuxSearchBubble> weak_factory_{this};
++};
++}  // namespace
++
++views::Widget* ShowAuxTabSearchBubble(BrowserWindowInterface* browser,
++                                     views::View* anchor,
++                                     base::OnceClosure on_closed) {
++  auto bubble = std::make_unique<AuxSearchBubble>(
++      browser->GetProfile(), anchor, std::move(on_closed));
++  auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++      std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++  widget->SetSize(kSearchSize);
++  widget->Show();
++  return widget;
++}
+--- a/chrome/browser/ui/views/tab_search_bubble_host.h
++++ b/chrome/browser/ui/views/tab_search_bubble_host.h
+@@ -6,6 +6,8 @@
+ #define CHROME_BROWSER_UI_VIEWS_TAB_SEARCH_BUBBLE_HOST_H_
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/observer_list.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
+@@ -86,6 +88,9 @@
+   std::optional<base::TimeTicks> bubble_created_time_;
+ 
+   base::ObserverList<TabSearchBubbleHostObserver> observers_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  base::WeakPtr<views::Widget> aux_search_widget_;
++#endif
+ 
+   // A lock to keep its `button_` pressed while |bubble_| is showing or in the
+   // process of being shown.
+@@ -96,6 +101,7 @@
+ 
+   base::ScopedObservation<WebUIBubbleManager, WebUIBubbleManagerObserver>
+       webui_bubble_manager_observer_{this};
++  base::WeakPtrFactory<TabSearchBubbleHost> weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TAB_SEARCH_BUBBLE_HOST_H_
+--- a/chrome/browser/ui/views/tab_search_bubble_host.cc
++++ b/chrome/browser/ui/views/tab_search_bubble_host.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/tab_search_bubble_host.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
++#endif
+ 
+ #include "base/functional/bind.h"
+ #include "base/i18n/rtl.h"
+@@ -89,6 +92,10 @@
+ }
+ 
+ TabSearchBubbleHost::~TabSearchBubbleHost() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_search_widget_)
++    aux_search_widget_->Close();
++#endif
+   for (auto& observer : observers_) {
+     observer.OnHostDestroying();
+   }
+@@ -181,6 +188,24 @@
+ 
+ bool TabSearchBubbleHost::ShowTabSearchBubble(
+     bool triggered_by_keyboard_shortcut) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_search_widget_ && !aux_search_widget_->IsClosed()) {
++    aux_search_widget_->Activate();
++    return false;
++  }
++  aux_search_widget_ = ShowAuxTabSearchBubble(
++      browser_window_interface_, button_,
++      base::BindOnce([](base::WeakPtr<TabSearchBubbleHost> self) {
++        if (self) {
++          self->aux_search_widget_.reset();
++          self->pressed_lock_.reset();
++        }
++      }, weak_factory_.GetWeakPtr()))->GetWeakPtr();
++  pressed_lock_ =
++      static_cast<views::MenuButtonController*>(button_->button_controller())
++          ->TakeLock();
++  return true;
++#else
+   TRACE_EVENT0("ui", "TabSearchBubbleHost::ShowTabSearchBubble");
+   base::trace_event::EmitNamedTrigger("show-tab-search-bubble");
+ 
+@@ -229,10 +254,16 @@
+           ->TakeLock();
+   // LINT.ThenChange(:menu_button_controller)
+   return true;
++#endif
+ }
+ 
+ void TabSearchBubbleHost::CloseTabSearchBubble() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_search_widget_)
++    aux_search_widget_->Close();
++#else
+   webui_bubble_manager_->CloseBubble();
++#endif
+ }
+ 
+ BrowserWindowInterface* TabSearchBubbleHost::GetBrowser() {
+@@ -251,6 +282,7 @@
+ }
+ 
+ void TabSearchBubbleHost::ButtonPressed(const ui::Event& event) {
++#if !BUILDFLAG(ENABLE_AUX_BROWSER)
+   if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+     auto* controller =
+         OrganizerPanelController::From(browser_window_interface_);
+@@ -260,6 +292,7 @@
+     }
+   }
+ 
++#endif
+   if (ShowTabSearchBubble()) {
+     // Only log the open action if it resulted in creating a new instance of the
+     // Tab Search bubble.
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2760,6 +2760,8 @@
+       "aux_ntp_url.h",
+       "views/frame/aux_icon_picker.cc",
+       "views/frame/aux_icon_picker.h",
++      "views/frame/aux_tab_search_bubble.cc",
++      "views/frame/aux_tab_search_bubble.h",
+       "views/frame/aux_native_task_feed.cc",
+       "views/frame/aux_native_task_feed.h",
+       "views/frame/aux_task_review_bubble.cc",

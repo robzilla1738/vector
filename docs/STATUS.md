@@ -120,3 +120,8 @@ Native ordinary-window visibility now waits for exact profile binding, owner-onl
 
 - Open search now observes real tab/session changes, removes closed targets and preserves selection by stable result identity. Enter with no result keeps search open. Private searches exclude regular history alongside tasks, saved pages and recently closed tabs; placeholder describes only implemented sources.
 - Focused disposable DOM/API-fixture smoke passed closed-target removal, exact-ID activation, empty Enter behavior, private-history exclusion and zero page errors. Extension TypeScript and owned lint passed. Native620×340 search-host integration is authored separately and awaits focused compile after the integrator’s full native link; no native host runtime or visual acceptance is claimed.
+
+### N-C native extension tab-search host
+
+- Patch0092 hosts the independent extension tab-search route in a620×340 DIP native anchored bubble, shared by the retained footer command and keyboard shortcut through TabSearchBubbleHost. Aux builds use this host; non-Aux builds retain the upstream host. Central profile security and component-extension availability are checked before data navigation. Missing/locked capability shows a visible reason, native Escape/window.close dismiss the host, and the standard native bubble restores focus/deactivates normally.
+- Focused object compilation passed for the new host and staged upstream-host integration under the shared native build lock. Integrator applied the shared bridge and GN additions after freezing the linked native seed. Actual extension-in-native-WebContents API dispatch, focus restoration, outer geometry and native screenshots still require disposable runtime observation; compilation is not visual acceptance.
