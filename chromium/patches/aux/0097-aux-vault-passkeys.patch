@@ -1,0 +1,1252 @@
+--- a/chrome/browser/extensions/api/BUILD.gn
++++ b/chrome/browser/extensions/api/BUILD.gn
+@@ -28,6 +28,7 @@
+   # APIs supported on Win/Mac/Linux and desktop Android go here.
+   # TODO(https://crbug.com/356905053): Add more APIs here.
+   public_deps = [
++    "//chrome/browser/extensions/api/aux_credentials",
+     "//chrome/browser/extensions/api/aux_account",
+     "//chrome/browser/extensions/api/aux_browser_preferences",
+     "//chrome/browser/extensions/api/aux_notification",
+@@ -221,6 +222,7 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/extensions/api/aux_credentials:headers",
+     "//chrome/browser/extensions/api/aux_account:headers",
+     "//chrome/browser/extensions/api/aux_browser_preferences:headers",
+     "//chrome/browser/extensions/api/aux_notification:headers",
+--- a/chrome/browser/webauthn/BUILD.gn
++++ b/chrome/browser/webauthn/BUILD.gn
+@@ -272,6 +272,7 @@
+   if (!is_android) {
+     public += [ "chrome_web_authentication_delegate.h" ]
+     sources += [ "chrome_web_authentication_delegate.cc" ]
++    deps += [ "//chrome/browser/aux/passkeys" ]
+ 
+     deps += [
+       ":unexportable_key_utils",
+--- a/chrome/browser/webauthn/chrome_web_authentication_delegate.cc
++++ b/chrome/browser/webauthn/chrome_web_authentication_delegate.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/webauthn/chrome_web_authentication_delegate.h"
++#include "chrome/browser/aux/passkeys/request_broker.h"
+ 
+ #include <algorithm>
+ #include <cstdint>
+@@ -334,6 +335,25 @@
+ #endif
+ }
+ 
++base::OnceClosure ChromeWebAuthenticationDelegate::ChooseAuxPasskeyProvider(
++    content::RenderFrameHost* frame, base::OnceCallback<void(bool)> callback) {
++  return aux::passkeys::ChooseProvider(frame, std::move(callback));
++}
++base::OnceClosure ChromeWebAuthenticationDelegate::CreateAuxPasskey(
++    content::RenderFrameHost* frame, const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++    content::WebAuthenticationRequestProxy::CreateCallback callback) {
++  auto id = aux::passkeys::BeginCreate(frame, caller, options, std::move(callback));
++  return base::BindOnce(&aux::passkeys::Abandon, id);
++}
++base::OnceClosure ChromeWebAuthenticationDelegate::GetAuxPasskey(
++    content::RenderFrameHost* frame, const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++    content::WebAuthenticationRequestProxy::GetCallback callback) {
++  auto id = aux::passkeys::BeginGet(frame, caller, options, std::move(callback));
++  return base::BindOnce(&aux::passkeys::Abandon, id);
++}
++
+ void ChromeWebAuthenticationDelegate::PasskeyUnrecognized(
+     content::WebContents* web_contents,
+     const url::Origin& origin,
+--- a/chrome/browser/webauthn/chrome_web_authentication_delegate.h
++++ b/chrome/browser/webauthn/chrome_web_authentication_delegate.h
+@@ -57,6 +57,20 @@
+   content::WebAuthenticationRequestProxy* MaybeGetRequestProxy(
+       content::BrowserContext* browser_context,
+       const url::Origin& caller_origin) override;
++  // Aux request-scoped provider selection. Called only after content validates
++  // RP, origin, ancestors, permissions policy and TLS. Default keeps providers.
++  // Returned cancellation must silently abandon work; content owns completion.
++  base::OnceClosure ChooseAuxPasskeyProvider(
++      content::RenderFrameHost* frame, base::OnceCallback<void(bool)> callback) override;
++  base::OnceClosure CreateAuxPasskey(
++      content::RenderFrameHost* frame, const url::Origin& caller,
++      const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++      content::WebAuthenticationRequestProxy::CreateCallback callback) override;
++  base::OnceClosure GetAuxPasskey(
++      content::RenderFrameHost* frame, const url::Origin& caller,
++      const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++      content::WebAuthenticationRequestProxy::GetCallback callback) override;
++
+   void PasskeyUnrecognized(content::WebContents* web_contents,
+                            const url::Origin& origin,
+                            const std::vector<uint8_t>& passkey_credential_id,
+--- a/chrome/common/extensions/api/_api_features.json
++++ b/chrome/common/extensions/api/_api_features.json
+@@ -11,6 +11,22 @@
+ // renderer.
+ 
+ {
++  "auxCredentials": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.credentials"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
+   "auxAdblock": {
+     "dependencies": [
+       "permission:dev.aux.ext.private.adblock"
+--- a/chrome/common/extensions/api/_permission_features.json
++++ b/chrome/common/extensions/api/_permission_features.json
+@@ -11,6 +11,16 @@
+ // chrome/test/data/extensions/api_test/stubs_app/manifest.json
+ 
+ {
++  "dev.aux.ext.private.credentials": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
+   "dev.aux.ext.private.account": {
+     "channel": "stable",
+     "extension_types": [
+--- a/chrome/common/extensions/api/api_sources.gni
++++ b/chrome/common/extensions/api/api_sources.gni
+@@ -177,7 +177,7 @@
+ }
+ 
+ if (enable_aux_browser) {
+-  uncompiled_sources_ += [ "aux_account.json", "aux_browser_preferences.json", "aux_notification.json", "aux_omnibox.json", "aux_mini_popup.json", "aux_adblock.json", "aux_browser_import.json" ]
++  uncompiled_sources_ += [ "aux_credentials.json", "aux_account.json", "aux_browser_preferences.json", "aux_notification.json", "aux_omnibox.json", "aux_mini_popup.json", "aux_adblock.json", "aux_browser_import.json" ]
+ }
+ 
+ chrome_extensions_api_schema_sources = get_path_info(schema_sources_, "abspath")
+--- a/chrome/common/extensions/permissions/chrome_api_permissions.cc
++++ b/chrome/common/extensions/permissions/chrome_api_permissions.cc
+@@ -31,6 +31,7 @@
+ // add the corresponding permission message rule to
+ // ChromePermissionMessageProvider::GetPermissionMessages as well.
+ constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
++    {APIPermissionID::kAuxCredentials, "dev.aux.ext.private.credentials", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxAccount, "dev.aux.ext.private.account", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxBrowserPreferences, "dev.aux.ext.private.browserPreferences", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxOmnibox, "dev.aux.ext.private.omnibox", APIPermissionInfo::kFlagCannotBeOptional},
+--- a/content/browser/webauth/authenticator_common_impl.cc
++++ b/content/browser/webauth/authenticator_common_impl.cc
+@@ -828,6 +828,8 @@
+   // Uniquely identifies this request in the scope of its owning
+   // `AuthenticatorCommonImpl`.
+   RequestKey request_key;
++  bool aux_provider_chosen = false;
++  base::ScopedClosureRunner aux_cancel;
+ 
+   std::unique_ptr<AuthenticatorRequestClientDelegate> request_delegate;
+   std::unique_ptr<device::FidoRequestHandlerBase> request_handler;
+@@ -1226,7 +1228,8 @@
+     return;
+   }
+ 
+-  req_state_->request_delegate = MaybeCreateRequestDelegate();
++  if (!req_state_->request_delegate)
++    req_state_->request_delegate = MaybeCreateRequestDelegate();
+   if (!req_state_->request_delegate) {
+     req_state_->request_outcome = MakeCredentialOutcome::kOtherFailure;
+     CompleteMakeCredentialRequest(
+@@ -1274,6 +1277,49 @@
+     // `ValidateAppidExtension` must have set a value to use. If not, it would
+     // be a security bug, so crashing seems appropriate here.
+     CHECK(!appid_exclude->empty());
++  }
++
++  if (!req_state_->aux_provider_chosen && !disable_ui_ &&
++      !req_state_->request_delegate->IsVirtualEnvironmentEnabled() && !payment_options &&
++      !is_cross_origin_iframe && !options->remote_desktop_client_override &&
++      !options->remote_client_data_json && !options->is_conditional) {
++    req_state_->aux_provider_chosen = true;
++    auto weak = weak_factory_.GetWeakPtr();
++    auto key = GetRequestKey();
++    auto continuation_options = options.Clone();
++    auto cancel = GetWebAuthenticationDelegate()->ChooseAuxPasskeyProvider(
++        GetRenderFrameHost(), base::BindOnce(
++          [](base::WeakPtr<AuthenticatorCommonImpl> self, RequestKey key,
++             url::Origin origin,
++             blink::mojom::PublicKeyCredentialCreationOptionsPtr options,
++             bool selected) {
++            if (!self || !self->CheckRequestKey(key)) return;
++            self->req_state_->aux_cancel.Release().Reset();
++            if (!selected) {
++              self->ContinueMakeCredentialAfterRpIdCheck(key, origin,
++                  std::move(options), nullptr, false,
++                  blink::mojom::AuthenticatorStatus::SUCCESS);
++              return;
++            }
++            auto cancel = GetWebAuthenticationDelegate()->CreateAuxPasskey(
++                self->GetRenderFrameHost(), origin, options,
++                base::BindOnce(
++                  [](base::WeakPtr<AuthenticatorCommonImpl> self, RequestKey key,
++                     int32_t, blink::mojom::WebAuthnDOMExceptionDetailsPtr error,
++                     blink::mojom::MakeCredentialAuthenticatorResponsePtr response) {
++                    if (!self || !self->CheckRequestKey(key)) return;
++                    self->req_state_->aux_cancel.Release().Reset();
++                    self->CompleteMakeCredentialRequest(error
++                        ? blink::mojom::AuthenticatorStatus::ERROR_WITH_DOM_EXCEPTION_DETAILS
++                        : blink::mojom::AuthenticatorStatus::SUCCESS,
++                        std::move(response), std::move(error), Focus::kDoCheck);
++                  }, self, key));
++            if (self && self->CheckRequestKey(key))
++              self->req_state_->aux_cancel.ReplaceClosure(std::move(cancel));
++          }, weak, key, caller_origin, std::move(continuation_options)));
++    if (weak && weak->CheckRequestKey(key))
++      weak->req_state_->aux_cancel.ReplaceClosure(std::move(cancel));
++    return;
+   }
+ 
+   // If there is an active webAuthenticationProxy extension, let it handle the
+@@ -1872,7 +1918,8 @@
+     return;
+   }
+ 
+-  req_state_->request_delegate = MaybeCreateRequestDelegate();
++  if (!req_state_->request_delegate)
++    req_state_->request_delegate = MaybeCreateRequestDelegate();
+   if (!req_state_->request_delegate) {
+     req_state_->request_outcome = GetAssertionOutcome::kOtherFailure;
+     CompleteGetAssertionRequest(
+@@ -1941,6 +1988,50 @@
+     // be a security bug, so crashing seems appropriate here.
+     CHECK(!app_id.empty());
+     req_state_->app_id = app_id;
++  }
++
++  if (!req_state_->aux_provider_chosen && !disable_ui_ &&
++      !req_state_->request_delegate->IsVirtualEnvironmentEnabled() &&
++      !payment_options && options->mediation == Mediation::MODAL &&
++      !is_cross_origin_iframe &&
++      !public_key_options->extensions->remote_desktop_client_override &&
++      !public_key_options->extensions->remote_client_data_json) {
++    req_state_->aux_provider_chosen = true;
++    auto weak = weak_factory_.GetWeakPtr();
++    auto key = GetRequestKey();
++    auto continuation_options = options.Clone();
++    auto cancel = GetWebAuthenticationDelegate()->ChooseAuxPasskeyProvider(
++        GetRenderFrameHost(), base::BindOnce(
++          [](base::WeakPtr<AuthenticatorCommonImpl> self, RequestKey key,
++             url::Origin origin, blink::mojom::GetCredentialOptionsPtr options,
++             bool selected) {
++            if (!self || !self->CheckRequestKey(key)) return;
++            self->req_state_->aux_cancel.Release().Reset();
++            if (!selected) {
++              self->ContinueGetAssertionAfterRpIdCheck(key, origin,
++                  std::move(options), nullptr, false,
++                  blink::mojom::AuthenticatorStatus::SUCCESS);
++              return;
++            }
++            auto cancel = GetWebAuthenticationDelegate()->GetAuxPasskey(
++                self->GetRenderFrameHost(), origin, options->public_key,
++                base::BindOnce(
++                  [](base::WeakPtr<AuthenticatorCommonImpl> self, RequestKey key,
++                     int32_t, blink::mojom::WebAuthnDOMExceptionDetailsPtr error,
++                     blink::mojom::GetAssertionAuthenticatorResponsePtr response) {
++                    if (!self || !self->CheckRequestKey(key)) return;
++                    self->req_state_->aux_cancel.Release().Reset();
++                    self->CompleteGetAssertionRequest(error
++                        ? blink::mojom::AuthenticatorStatus::ERROR_WITH_DOM_EXCEPTION_DETAILS
++                        : blink::mojom::AuthenticatorStatus::SUCCESS,
++                        std::move(response), std::move(error));
++                  }, self, key));
++            if (self && self->CheckRequestKey(key))
++              self->req_state_->aux_cancel.ReplaceClosure(std::move(cancel));
++          }, weak, key, caller_origin, std::move(continuation_options)));
++    if (weak && weak->CheckRequestKey(key))
++      weak->req_state_->aux_cancel.ReplaceClosure(std::move(cancel));
++    return;
+   }
+ 
+   WebAuthenticationRequestProxy* proxy =
+--- a/content/public/browser/web_authentication_delegate.cc
++++ b/content/public/browser/web_authentication_delegate.cc
+@@ -95,6 +95,24 @@
+   std::move(callback).Run(std::nullopt);
+ }
+ 
++base::OnceClosure WebAuthenticationDelegate::ChooseAuxPasskeyProvider(
++    RenderFrameHost* frame, base::OnceCallback<void(bool)> callback) {
++  std::move(callback).Run(false);
++  return {};
++}
++base::OnceClosure WebAuthenticationDelegate::CreateAuxPasskey(
++    RenderFrameHost* frame, const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++    WebAuthenticationRequestProxy::CreateCallback callback) {
++  return {};
++}
++base::OnceClosure WebAuthenticationDelegate::GetAuxPasskey(
++    RenderFrameHost* frame, const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++    WebAuthenticationRequestProxy::GetCallback callback) {
++  return {};
++}
++
+ WebAuthenticationRequestProxy* WebAuthenticationDelegate::MaybeGetRequestProxy(
+     BrowserContext* browser_context,
+     const url::Origin& caller_origin) {
+--- a/content/public/browser/web_authentication_delegate.h
++++ b/content/public/browser/web_authentication_delegate.h
+@@ -111,6 +111,20 @@
+       BrowserContext* browser_context,
+       const url::Origin& caller_origin);
+ 
++  // Aux request-scoped provider selection. Called only after content validates
++  // RP, origin, ancestors, permissions policy and TLS. Default keeps providers.
++  // Returned cancellation must silently abandon work; content owns completion.
++  virtual base::OnceClosure ChooseAuxPasskeyProvider(
++      RenderFrameHost* frame, base::OnceCallback<void(bool)> callback);
++  virtual base::OnceClosure CreateAuxPasskey(
++      RenderFrameHost* frame, const url::Origin& caller,
++      const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++      WebAuthenticationRequestProxy::CreateCallback callback);
++  virtual base::OnceClosure GetAuxPasskey(
++      RenderFrameHost* frame, const url::Origin& caller,
++      const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++      WebAuthenticationRequestProxy::GetCallback callback);
++
+   // PasskeyUnrecognized is called when a relying party notifies Chrome that a
+   // passkey was not recognized. This may remove or hide a passkey from the
+   // storage provider.
+--- a/extensions/browser/extension_function_histogram_value.h
++++ b/extensions/browser/extension_function_histogram_value.h
+@@ -2147,6 +2147,9 @@
+   AUXBROWSERIMPORT_STARTIMPORT = 2082,
+   AUXBROWSERIMPORT_GETIMPORTPROGRESS = 2083,
+   AUXBROWSERIMPORT_CANCELIMPORT = 2084,
++  AUXCREDENTIALS_GETREQUEST = 2085,
++  AUXCREDENTIALS_COMPLETE = 2086,
++  AUXCREDENTIALS_REJECT = 2087,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+--- a/extensions/common/mojom/api_permission_id.mojom
++++ b/extensions/common/mojom/api_permission_id.mojom
+@@ -307,6 +307,7 @@
+   kAuxMiniPopup = 279,
+   kAuxAdblock = 280,
+   kAuxBrowserImport = 281,
++  kAuxCredentials = 282,
+ 
+   // Add new entries at the end of the enum and be sure to update the
+   // "ExtensionPermission3" enum in
+--- a/tools/metrics/histograms/metadata/extensions/enums.xml
++++ b/tools/metrics/histograms/metadata/extensions/enums.xml
+@@ -3019,6 +3019,9 @@
+   <int value="2082" label="AUXBROWSERIMPORT_STARTIMPORT"/>
+   <int value="2083" label="AUXBROWSERIMPORT_GETIMPORTPROGRESS"/>
+   <int value="2084" label="AUXBROWSERIMPORT_CANCELIMPORT"/>
++  <int value="2085" label="AUXCREDENTIALS_GETREQUEST"/>
++  <int value="2086" label="AUXCREDENTIALS_COMPLETE"/>
++  <int value="2087" label="AUXCREDENTIALS_REJECT"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
+@@ -3421,6 +3424,7 @@
+   <int value="279" label="kAuxMiniPopup"/>
+   <int value="280" label="kAuxAdblock"/>
+   <int value="281" label="kAuxBrowserImport"/>
++  <int value="282" label="kAuxCredentials"/>
+ </enum>
+ 
+ <enum name="ExtensionPinReason">
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/BUILD.gn
+@@ -0,0 +1,20 @@
++# Original Aux request-scoped WebAuthn handoff. No global proxy provider.
++source_set("passkeys") {
++  sources = [ "request_broker.cc", "request_broker.h", "private_session_cleanup.cc", "private_session_cleanup.h" ]
++  public_deps = [ "//base", "//content/public/browser", "//third_party/blink/public/mojom:mojom_platform_headers", "//url" ]
++  deps = [
++    "//chrome/browser/aux:platform",
++    "//chrome/browser/aux:profile_state",
++    "//chrome/browser/profiles:profile",
++    "//chrome/browser:browser_process",
++    "//chrome/browser:buildflags",
++    "//chrome/browser/ui:tab_modal_confirm_dialog",
++    "//chrome/browser/ui/navigator",
++    "//components/webauthn/core/browser:client_data",
++    "//components/webauthn/json",
++    "//crypto",
++    "//net",
++    "//services/network/public/cpp",
++    "//ui/base",
++  ]
++}
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/README.md
+@@ -0,0 +1,52 @@
++# Aux Vault request-scoped WebAuthn adapter
++
++Original Aux provider selected at Chromium155's validated RP continuation, after
++security context, permissions policy, ancestor, RP and TLS checks. It does not
++attach webAuthenticationProxy globally and does not replace renderer credential
++APIs. A native tab-modal chooser identifies the actual requesting origin. Other
++providers resume the existing request delegate and normal discovery flow.
++
++Only modal, same-origin, non-payment, non-remote, nonvirtual calls offer this
++provider. Conditional/ambient/immediate mediation remains with existing
++providers. Aux supports P-256/ES256, none attestation, discoverable credentials
++and credProps; unsupported extensions/attestation fail explicitly in the Vault
++service. Native completion uses Chromium's own strict response parser, verifies
++exact client data, RP hash, ID, UP/UV flags, no backup flags and credential
++allow/exclude lists. It restores the requesting WebContents' focus, rechecks
++lifetime, and preserves Chromium's final focus check.
++
++`BeginCreate/BeginGet` retain a WeakDocumentPtr, actual Profile pointer, caller
++and top origins, and a random request UUID. Content owns a ScopedClosureRunner
++which abandons this exact request on abort/teardown. Requests expire in two
++minutes and complete at most once. Private Vault API `getRequest` returns an
++installation-signed envelope only while the profile's actual disk account gate
++is configured, onboarded and unlocked. It signs `Aux Passkey Request v1\n` plus
++the exact raw JSON; this domain cannot serve as a daemon authentication response.
++The envelope includes account, profile, mode, native Profile lifetime nonce,
++frame process/routing identity, RP, origins, native clientDataJSON and options.
++`complete` rereads the profile gate, verifies the same bound account and exact
++live document, then consumes the callback. `reject` cancels it. These private
++functions have a Vault-only extension allowlist and native ID check.
++
++The consent popup uses `index.html#/passkeys/<UUID>` in the same actual Profile.
++Normal mode stores encrypted credentials through the dedicated Vault collection;
++private mode uses RAM keys bound to the signed lifetime nonce. A ProfileObserver
++abandons pending callbacks and sends authenticated Chromium-only retirement for
++the exact private nonce when the Profile is destroyed. The cleanup body contains
++only account/profile/random session identity; it uses the live local daemon
++credential and validated AUX_PORT loopback endpoint, with a five-second bound.
++Shutdown also destroys the daemon RAM state. Vault worker cleanup and pruning
++older signed epochs provide additional cleanup without adopting a reused Profile
++pointer or numeric frame ID.
++
++Compilation target is enabled `out/AuxAside`, with `enable_aux_browser=true` and
++`enable_aux_shell=false`, under `/tmp/aux-build.lock`. Six focused native objects
++cover broker, cleanup, private API, Chrome delegate, public delegate and content
++request continuation. No owner Profile, Keychain or RP credentials are used.
++Full linked disposable-profile registration/assertion observation is a separate
++integration acceptance step; compilation does not establish that evidence.
++
++Sources: approved docs/spec/daemon/services.md Vault behavior and
++native/apis-core.md A0 private capability boundary; public WebAuthn3 and upstream
++Chromium155 authenticator_common_impl, web_authentication_delegate,
++client_data_json and value_conversions interfaces. No reference artifacts used.
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/private_session_cleanup.cc
+@@ -0,0 +1,69 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/passkeys/private_session_cleanup.h"
++
++#include "base/environment.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/time/time.h"
++#include "base/values.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/browser_process.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/mojom/fetch_api.mojom.h"
++namespace aux::passkeys {
++void RetirePrivateSession(int account_id,
++                          std::string profile_id,
++                          std::string session) {
++  if (!g_browser_process) {
++    return;
++  }
++  auto factory = g_browser_process->shared_url_loader_factory();
++  const auto auth = BrowserPlatform::Get().authorization();
++  if (!factory || auth.empty()) {
++    return;
++  }
++  unsigned port = 21520;
++  if (auto text = base::Environment::Create()->GetVar("AUX_PORT");
++      text &&
++      (!base::StringToUint(*text, &port) || port == 0 || port > 65535)) {
++    return;
++  }
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = GURL("http://127.0.0.1:" + base::NumberToString(port) +
++                      "/trpc/passkeys.retirePrivateSession");
++  request->method = "POST";
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->headers.SetHeader("Authorization", auth);
++  constexpr auto annotation =
++      net::DefineNetworkTrafficAnnotation("aux_private_passkey_retirement", R"(
++        semantics {
++          sender: "Aux Vault native passkey lifecycle"
++          description: "Retires memory-only passkeys for the exact closed private Profile instance."
++          trigger: "An incognito browser Profile is destroyed."
++          data: "Local account and profile identifiers and a random private-session identifier; no credentials."
++          destination: LOCAL
++        }
++        policy { cookies_allowed: NO setting: "Local Aux Vault private-session lifecycle." policy_exception_justification: "No external network destination." }
++      )");
++  auto loader =
++      network::SimpleURLLoader::Create(std::move(request), annotation);
++  loader->SetTimeoutDuration(base::Seconds(5));
++  base::DictValue body;
++  body.Set("accountId", account_id);
++  body.Set("profileId", profile_id);
++  body.Set("browserMode", "incognito");
++  body.Set("profileSession", session);
++  loader->AttachStringForUpload(base::WriteJson(body).value(),
++                                "application/json");
++  auto* raw = loader.get();
++  raw->DownloadToString(
++      factory.get(),
++      base::BindOnce([](std::unique_ptr<network::SimpleURLLoader> owner,
++                        std::optional<std::string> response) {},
++                     std::move(loader)),
++      4096);
++}
++}  // namespace aux::passkeys
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/private_session_cleanup.h
+@@ -0,0 +1,10 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PASSKEYS_PRIVATE_SESSION_CLEANUP_H_
++#define CHROME_BROWSER_AUX_PASSKEYS_PRIVATE_SESSION_CLEANUP_H_
++#include <string>
++namespace aux::passkeys {
++void RetirePrivateSession(int account_id,
++                          std::string profile_id,
++                          std::string profile_session);
++}
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/request_broker.cc
+@@ -0,0 +1,474 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Original browser boundary adapter; upstream WebAuthn3 and Chromium155 APIs.
++#include "chrome/browser/aux/passkeys/request_broker.h"
++
++#include <algorithm>
++#include <map>
++#include <memory>
++#include <variant>
++
++#include "base/base64.h"
++#include "base/base64url.h"
++#include "base/containers/span.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/memory/raw_ptr.h"
++#include "base/no_destructor.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/passkeys/private_session_cleanup.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "chrome/browser/ui/tab_modal_confirm_dialog.h"
++#include "components/webauthn/core/browser/client_data_json.h"
++#include "components/webauthn/json/value_conversions.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_delegate.h"
++#include "crypto/sha2.h"
++#include "crypto/sign.h"
++
++namespace aux::passkeys {
++namespace {
++constexpr char kDomain[] = "Aux Passkey Request v1\n";
++struct Pending {
++  content::WeakDocumentPtr document;
++  raw_ptr<Profile> profile;
++  url::Origin origin;
++  url::Origin top_origin;
++  base::Time deadline;
++  base::DictValue request;
++  std::variant<CreateCallback, GetCallback> callback;
++  std::optional<int> account;
++};
++using Requests = std::map<std::string, std::unique_ptr<Pending>>;
++Requests& requests() {
++  static base::NoDestructor<Requests> value;
++  return *value;
++}
++class ProfileSession;
++using Sessions = std::map<Profile*, std::unique_ptr<ProfileSession>>;
++Sessions& sessions() {
++  static base::NoDestructor<Sessions> value;
++  return *value;
++}
++class ProfileSession : public ProfileObserver {
++ public:
++  explicit ProfileSession(Profile* profile)
++      : profile_id(ProfileIdForPath(profile->GetOriginalProfile()->GetPath())),
++        incognito(profile->IsOffTheRecord()) {
++    observation_.Observe(profile);
++  }
++  const std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  const std::string profile_id;
++  const bool incognito;
++  std::optional<int> account;
++
++ private:
++  void OnProfileWillBeDestroyed(Profile* profile) override {
++    if (incognito && account) {
++      RetirePrivateSession(*account, profile_id, id);
++    }
++    std::vector<std::string> ids;
++    for (const auto& [request_id, pending] : requests()) {
++      if (pending->profile == profile) {
++        ids.push_back(request_id);
++      }
++    }
++    for (const auto& request_id : ids) {
++      Abandon(request_id);
++    }
++    observation_.Reset();
++    sessions().erase(profile);
++  }
++  base::ScopedObservation<Profile, ProfileObserver> observation_{this};
++};
++std::string ProfileSessionId(Profile* profile) {
++  auto& session = sessions()[profile];
++  if (!session) {
++    session = std::make_unique<ProfileSession>(profile);
++  }
++  return session->id;
++}
++Pending* Find(Profile* profile, const std::string& id) {
++  auto it = requests().find(id);
++  if (it == requests().end()) {
++    return nullptr;
++  }
++  auto* pending = it->second.get();
++  auto* frame = pending->document.AsRenderFrameHostIfValid();
++  if (!frame || !frame->IsActive() || pending->profile != profile ||
++      frame->GetBrowserContext() != profile ||
++      frame->GetLastCommittedOrigin() != pending->origin ||
++      frame->GetMainFrame()->GetLastCommittedOrigin() != pending->top_origin ||
++      base::Time::Now() >= pending->deadline) {
++    Cancel(id);
++    return nullptr;
++  }
++  return pending;
++}
++bool MatchesRequest(const Pending& pending,
++                    const blink::mojom::CommonCredentialInfo& info) {
++  std::string expected;
++  if (!base::Base64UrlDecode(*pending.request.FindString("clientDataJSON"),
++                             base::Base64UrlDecodePolicy::DISALLOW_PADDING,
++                             &expected) ||
++      !std::ranges::equal(info.client_data_json,
++                          base::as_byte_span(expected)) ||
++      info.authenticator_data.size() < 37 || info.raw_id.empty() ||
++      info.raw_id.size() > 1024) {
++    return false;
++  }
++  const auto rp_hash = crypto::SHA256Hash(
++      base::as_byte_span(*pending.request.FindString("rpId")));
++  const bool create = *pending.request.FindString("kind") == "create";
++  if (!std::equal(rp_hash.begin(), rp_hash.end(),
++                  info.authenticator_data.begin()) ||
++      info.authenticator_data[32] != (create ? 0x45 : 0x05)) {
++    return false;
++  }
++  std::string encoded;
++  base::Base64UrlEncode(info.raw_id, base::Base64UrlEncodePolicy::OMIT_PADDING,
++                        &encoded);
++  if (encoded != info.id) {
++    return false;
++  }
++  const auto* options = pending.request.FindDict("options");
++  const auto* descriptors =
++      options->FindList(create ? "excludeCredentials" : "allowCredentials");
++  const bool listed =
++      descriptors &&
++      std::ranges::any_of(*descriptors, [&](const base::Value& descriptor) {
++        return descriptor.is_dict() && descriptor.GetDict().FindString("id") &&
++               *descriptor.GetDict().FindString("id") == encoded;
++      });
++  return create ? !listed : !descriptors || descriptors->empty() || listed;
++}
++void ActivateRequester(Pending& pending) {
++  auto* frame = pending.document.AsRenderFrameHostIfValid();
++  auto* contents =
++      frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
++  if (contents && contents->GetDelegate()) {
++    contents->GetDelegate()->ActivateContents(contents);
++  }
++}
++struct Proof {
++  ProfileSecurityState security;
++  std::optional<std::string> signature;
++};
++Proof SignRequest(base::FilePath path, std::string payload) {
++  Proof result;
++  result.security = ReadProfileSecurity(StateHome(), path);
++  if (!result.security.allows_browsing()) {
++    return result;
++  }
++  auto key = LoadInstallationPrivateKey(StateHome());
++  if (!key) {
++    return result;
++  }
++  result.signature = base::Base64Encode(
++      crypto::sign::Sign(crypto::sign::ECDSA_SHA256, *key,
++                         base::as_byte_span(std::string(kDomain) + payload)));
++  return result;
++}
++class ProviderDialog final : public TabModalConfirmDialogDelegate {
++ public:
++  ProviderDialog(content::WebContents* contents,
++                 std::u16string origin,
++                 base::OnceCallback<void(bool)> callback)
++      : TabModalConfirmDialogDelegate(contents),
++        origin_(std::move(origin)),
++        callback_(std::move(callback)) {}
++  std::u16string GetTitle() override { return u"Choose a passkey provider"; }
++  std::u16string GetDialogMessage() override {
++    return u"Passkey request from " + origin_ +
++           u". Use Aux Vault, or continue with other browser providers.";
++  }
++  std::u16string GetAcceptButtonTitle() override { return u"Aux Vault"; }
++  std::u16string GetCancelButtonTitle() override { return u"Other providers"; }
++  base::OnceClosure Cancellation() {
++    return base::BindOnce(
++        [](base::WeakPtr<ProviderDialog> self) {
++          if (self) {
++            self->Close();
++          }
++        },
++        weak_factory_.GetWeakPtr());
++  }
++
++ private:
++  void OnAccepted() override { std::move(callback_).Run(true); }
++  void OnCanceled() override { std::move(callback_).Run(false); }
++  void OnClosed() override { std::move(callback_).Run(false); }
++  const std::u16string origin_;
++  base::OnceCallback<void(bool)> callback_;
++  base::WeakPtrFactory<ProviderDialog> weak_factory_{this};
++};
++std::string Begin(content::RenderFrameHost* frame,
++                  const url::Origin& caller,
++                  std::string rp_id,
++                  std::vector<uint8_t> challenge,
++                  base::Value options,
++                  bool create,
++                  std::variant<CreateCallback, GetCallback> callback) {
++  CHECK(frame);
++  CHECK(!caller.opaque());
++  CHECK_EQ(caller, frame->GetLastCommittedOrigin());
++  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  auto top = frame->GetMainFrame()->GetLastCommittedOrigin();
++  auto* profile = Profile::FromBrowserContext(frame->GetBrowserContext());
++  const auto deadline = base::Time::Now() + base::Minutes(2);
++  std::string client_data = webauthn::BuildClientDataJson(
++      webauthn::ClientDataJsonParams(
++          create ? webauthn::ClientDataRequestType::kWebAuthnCreate
++                 : webauthn::ClientDataRequestType::kWebAuthnGet,
++          caller, top, challenge, caller != top),
++      std::nullopt);
++  std::string encoded;
++  base::Base64UrlEncode(client_data, base::Base64UrlEncodePolicy::OMIT_PADDING,
++                        &encoded);
++  base::DictValue request;
++  request.Set("version", 1);
++  request.Set("id", id);
++  request.Set("kind", create ? "create" : "get");
++  request.Set("profileId",
++              ProfileIdForPath(profile->GetOriginalProfile()->GetPath()));
++  request.Set("profileSession", ProfileSessionId(profile));
++  request.Set("browserMode",
++              profile->IsOffTheRecord() ? "incognito" : "default");
++  request.Set("origin", caller.Serialize());
++  request.Set("frameId",
++              base::NumberToString(frame->GetGlobalId().child_id.value()) +
++                  ":" +
++                  base::NumberToString(frame->GetGlobalId().frame_routing_id));
++  request.Set("topOrigin", top.Serialize());
++  request.Set("rpId", rp_id);
++  request.Set("clientDataJSON", encoded);
++  request.Set("options", std::move(options));
++  request.Set("expiresAt", deadline.InMillisecondsFSinceUnixEpoch());
++  requests().emplace(
++      id, std::make_unique<Pending>(Pending{
++              frame->GetWeakDocumentPtr(), profile, caller, top, deadline,
++              std::move(request), std::move(callback), std::nullopt}));
++  NavigateParams navigation(
++      profile,
++      GURL(std::string("chrome-extension://") + kVaultExtensionId +
++           "/index.html#/passkeys/" + id),
++      ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
++  navigation.disposition = WindowOpenDisposition::NEW_POPUP;
++  Navigate(&navigation);
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE, base::BindOnce(&Cancel, id), base::Minutes(2));
++  return id;
++}
++}  // namespace
++base::OnceClosure ChooseProvider(content::RenderFrameHost* frame,
++                                 base::OnceCallback<void(bool)> callback) {
++#if !BUILDFLAG(ENABLE_AUX_BROWSER)
++  std::move(callback).Run(false);
++  return {};
++#else
++  auto* contents = content::WebContents::FromRenderFrameHost(frame);
++  auto dialog = std::make_unique<ProviderDialog>(
++      contents, base::UTF8ToUTF16(frame->GetLastCommittedOrigin().Serialize()),
++      std::move(callback));
++  auto cancellation = dialog->Cancellation();
++  TabModalConfirmDialog::Create(std::move(dialog), contents);
++  return cancellation;
++#endif
++}
++std::string BeginCreate(
++    content::RenderFrameHost* frame,
++    const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++    CreateCallback callback) {
++  return Begin(frame, caller, options->relying_party.id, options->challenge,
++               webauthn::ToValue(options), true, std::move(callback));
++}
++std::string BeginGet(
++    content::RenderFrameHost* frame,
++    const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++    GetCallback callback) {
++  return Begin(frame, caller, options->relying_party_id, options->challenge,
++               webauthn::ToValue(options), false, std::move(callback));
++}
++void Cancel(const std::string& id) {
++  auto it = requests().find(id);
++  if (it == requests().end()) {
++    return;
++  }
++  auto pending = std::move(it->second);
++  requests().erase(it);
++  auto error = blink::mojom::WebAuthnDOMExceptionDetails::New(
++      "NotAllowedError", "Aux Vault request ended or was canceled.");
++  if (auto* create = std::get_if<CreateCallback>(&pending->callback)) {
++    std::move(*create).Run(0, std::move(error), nullptr);
++  } else {
++    std::move(std::get<GetCallback>(pending->callback))
++        .Run(0, std::move(error), nullptr);
++  }
++}
++void Abandon(const std::string& id) {
++  requests().erase(id);
++}
++void ReadRequest(
++    Profile* profile,
++    const std::string& id,
++    base::OnceCallback<void(std::optional<base::DictValue>)> callback) {
++  auto* pending = Find(profile, id);
++  if (!pending) {
++    std::move(callback).Run(std::nullopt);
++    return;
++  }
++  auto request = pending->request.Clone();
++  // Account identity comes from the native disk gate, never extension input.
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadProfileSecurity, StateHome(),
++                     profile->GetOriginalProfile()->GetPath()),
++      base::BindOnce(
++          [](Profile* profile, std::string id, base::DictValue request,
++             base::OnceCallback<void(std::optional<base::DictValue>)> callback,
++             ProfileSecurityState security) {
++            if (!security.allows_browsing() || !Find(profile, id)) {
++              std::move(callback).Run(std::nullopt);
++              return;
++            }
++            auto* pending = Find(profile, id);
++            if (pending->account && pending->account != security.account_id) {
++              Cancel(id);
++              std::move(callback).Run(std::nullopt);
++              return;
++            }
++            pending->account = security.account_id;
++            auto& session = *sessions().at(profile);
++            if (session.incognito && session.account &&
++                session.account != security.account_id) {
++              RetirePrivateSession(*session.account, session.profile_id,
++                                   session.id);
++            }
++            session.account = security.account_id;
++            request.Set("accountId", *security.account_id);
++            auto payload = base::WriteJson(request).value();
++            base::ThreadPool::PostTaskAndReplyWithResult(
++                FROM_HERE, {base::MayBlock()},
++                base::BindOnce(&SignRequest,
++                               profile->GetOriginalProfile()->GetPath(),
++                               payload),
++                base::BindOnce(
++                    [](Profile* profile, std::string id, std::string payload,
++                       int account,
++                       base::OnceCallback<void(std::optional<base::DictValue>)>
++                           callback,
++                       Proof proof) {
++                      if (!Find(profile, id) || !proof.signature ||
++                          proof.security.account_id != account) {
++                        std::move(callback).Run(std::nullopt);
++                        return;
++                      }
++                      base::DictValue result;
++                      result.Set("payload", payload);
++                      result.Set("signature", *proof.signature);
++                      std::move(callback).Run(std::move(result));
++                    },
++                    profile, id, payload, *security.account_id,
++                    std::move(callback)));
++          },
++          profile, id, std::move(request), std::move(callback)));
++}
++void Complete(Profile* profile,
++              const std::string& id,
++              base::Value response,
++              base::OnceCallback<void(std::optional<std::string>)> callback) {
++  if (!Find(profile, id)) {
++    std::move(callback).Run("Request is no longer active.");
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadProfileSecurity, StateHome(),
++                     profile->GetOriginalProfile()->GetPath()),
++      base::BindOnce(
++          [](Profile* profile, std::string id, base::Value response,
++             base::OnceCallback<void(std::optional<std::string>)> callback,
++             ProfileSecurityState security) {
++            auto* pending = Find(profile, id);
++            if (!pending || !security.allows_browsing() || !pending->account ||
++                pending->account != security.account_id) {
++              Cancel(id);
++              std::move(callback).Run(
++                  "Request was canceled or Vault is locked.");
++              return;
++            }
++            if (std::holds_alternative<CreateCallback>(pending->callback)) {
++              auto [parsed, error] =
++                  webauthn::MakeCredentialResponseFromValue(response);
++              if (!parsed) {
++                std::move(callback).Run(error);
++                return;
++              }
++              if (!MatchesRequest(*pending, *parsed->info)) {
++                std::move(callback).Run(
++                    "Passkey result does not match the active browser "
++                    "request.");
++                return;
++              }
++              ActivateRequester(*pending);
++              if (!Find(profile, id)) {
++                std::move(callback).Run(
++                    "Request ended while returning to the page.");
++                return;
++              }
++              auto holder = std::move(requests().at(id));
++              requests().erase(id);
++              std::move(std::get<CreateCallback>(holder->callback))
++                  .Run(0, nullptr, std::move(parsed));
++            } else {
++              auto [parsed, error] =
++                  webauthn::GetAssertionResponseFromValue(response);
++              if (!parsed) {
++                std::move(callback).Run(error);
++                return;
++              }
++              if (!MatchesRequest(*pending, *parsed->info)) {
++                std::move(callback).Run(
++                    "Passkey result does not match the active browser "
++                    "request.");
++                return;
++              }
++              ActivateRequester(*pending);
++              if (!Find(profile, id)) {
++                std::move(callback).Run(
++                    "Request ended while returning to the page.");
++                return;
++              }
++              auto holder = std::move(requests().at(id));
++              requests().erase(id);
++              std::move(std::get<GetCallback>(holder->callback))
++                  .Run(0, nullptr, std::move(parsed));
++            }
++            std::move(callback).Run(std::nullopt);
++          },
++          profile, id, std::move(response), std::move(callback)));
++}
++bool Reject(Profile* profile, const std::string& id) {
++  if (!Find(profile, id)) {
++    return false;
++  }
++  Cancel(id);
++  return true;
++}
++}  // namespace aux::passkeys
+--- /dev/null
++++ b/chrome/browser/aux/passkeys/request_broker.h
+@@ -0,0 +1,55 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PASSKEYS_REQUEST_BROKER_H_
++#define CHROME_BROWSER_AUX_PASSKEYS_REQUEST_BROKER_H_
++
++#include <optional>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/values.h"
++#include "content/public/browser/web_authentication_request_proxy.h"
++#include "third_party/blink/public/mojom/webauthn/authenticator.mojom.h"
++#include "url/origin.h"
++
++class Profile;
++namespace content {
++class RenderFrameHost;
++}
++namespace aux::passkeys {
++// Invoke only after content's RP, TLS, permissions-policy and ancestor checks.
++// The dialog preserves Chromium providers through the Other providers action.
++base::OnceClosure ChooseProvider(
++    content::RenderFrameHost* frame,
++    base::OnceCallback<void(bool use_aux)> callback);
++using CreateCallback = content::WebAuthenticationRequestProxy::CreateCallback;
++using GetCallback = content::WebAuthenticationRequestProxy::GetCallback;
++// Selected requests only: no global proxy is installed. Returned id belongs to
++// this exact document and Profile. The caller cancels it on WebAuthn
++// cancellation.
++std::string BeginCreate(
++    content::RenderFrameHost* frame,
++    const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialCreationOptionsPtr& options,
++    CreateCallback callback);
++std::string BeginGet(
++    content::RenderFrameHost* frame,
++    const url::Origin& caller,
++    const blink::mojom::PublicKeyCredentialRequestOptionsPtr& options,
++    GetCallback callback);
++void Cancel(const std::string& id);
++// Caller-owned cancellation: discard the callback; content completes its own
++// error.
++void Abandon(const std::string& id);
++// Private Vault component only. Every call rechecks document/profile identity;
++// signed request production additionally reads the current disk security gate.
++void ReadRequest(
++    Profile* profile,
++    const std::string& id,
++    base::OnceCallback<void(std::optional<base::DictValue>)> callback);
++void Complete(Profile* profile,
++              const std::string& id,
++              base::Value response,
++              base::OnceCallback<void(std::optional<std::string>)> callback);
++bool Reject(Profile* profile, const std::string& id);
++}  // namespace aux::passkeys
++#endif
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_credentials/BUILD.gn
+@@ -0,0 +1,9 @@
++source_set("aux_credentials") {
++  sources = [ "aux_credentials_api.cc", "aux_credentials_api.h" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++  deps = [ "//base", "//chrome/browser/aux:platform", "//chrome/browser/aux/passkeys", "//extensions/common" ]
++}
++source_set("headers") {
++  sources = [ "aux_credentials_api.h" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++}
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_credentials/aux_credentials_api.cc
+@@ -0,0 +1,56 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/extensions/api/aux_credentials/aux_credentials_api.h"
++
++#include "base/functional/bind.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/passkeys/request_broker.h"
++#include "extensions/common/extension.h"
++namespace extensions {
++ExtensionFunction::ResponseAction AuxCredentialsFunction::RunAux() {
++  const std::string method = name();
++  if (!extension() || extension()->id() != aux::kVaultExtensionId) {
++    return RespondNow(Error("Only Aux Vault may access passkey requests."));
++  }
++  if (args().empty() || !args()[0].is_string() ||
++      !base::Uuid::ParseLowercase(args()[0].GetString()).is_valid()) {
++    return RespondNow(Error("An active passkey request ID is required."));
++  }
++  const auto id = args()[0].GetString();
++  if (method == "auxCredentials.getRequest" && args().size() == 1) {
++    aux::passkeys::ReadRequest(
++        profile(), id,
++        base::BindOnce(
++            [](scoped_refptr<AuxCredentialsFunction> self,
++               std::optional<base::DictValue> request) {
++              if (request) {
++                self->Respond(self->WithArguments(std::move(*request)));
++              } else {
++                self->Respond(self->Error(
++                    "Passkey request is unavailable, canceled or locked."));
++              }
++            },
++            base::WrapRefCounted(this)));
++    return RespondLater();
++  }
++  if (method == "auxCredentials.reject" && args().size() == 1) {
++    return RespondNow(WithArguments(aux::passkeys::Reject(profile(), id)));
++  }
++  if (method == "auxCredentials.complete" && args().size() == 2 &&
++      args()[1].is_dict()) {
++    aux::passkeys::Complete(profile(), id, args()[1].Clone(),
++                            base::BindOnce(
++                                [](scoped_refptr<AuxCredentialsFunction> self,
++                                   std::optional<std::string> error) {
++                                  if (error) {
++                                    self->Respond(self->Error(*error));
++                                  } else {
++                                    self->Respond(self->WithArguments(true));
++                                  }
++                                },
++                                base::WrapRefCounted(this)));
++    return RespondLater();
++  }
++  return RespondNow(Error("Unsupported passkey request operation."));
++}
++}  // namespace extensions
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_credentials/aux_credentials_api.h
+@@ -0,0 +1,29 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_CREDENTIALS_AUX_CREDENTIALS_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_CREDENTIALS_AUX_CREDENTIALS_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++namespace extensions {
++class AuxCredentialsFunction : public AuxFunction {
++ protected:
++  ~AuxCredentialsFunction() override = default;
++  ResponseAction RunAux() override;
++};
++#define AUX_CREDENTIAL_FUNCTION(Class, Method, Histogram) \
++  class Class final : public AuxCredentialsFunction {     \
++   public:                                                \
++    DECLARE_EXTENSION_FUNCTION(Method, Histogram)         \
++   protected:                                             \
++    ~Class() override = default;                          \
++  };
++AUX_CREDENTIAL_FUNCTION(AuxCredentialsGetRequestFunction,
++                        "auxCredentials.getRequest",
++                        AUXCREDENTIALS_GETREQUEST)
++AUX_CREDENTIAL_FUNCTION(AuxCredentialsCompleteFunction,
++                        "auxCredentials.complete",
++                        AUXCREDENTIALS_COMPLETE)
++AUX_CREDENTIAL_FUNCTION(AuxCredentialsRejectFunction,
++                        "auxCredentials.reject",
++                        AUXCREDENTIALS_REJECT)
++#undef AUX_CREDENTIAL_FUNCTION
++}  // namespace extensions
++#endif
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_credentials.json
+@@ -0,0 +1,72 @@
++[
++  {
++    "namespace": "auxCredentials",
++    "description": "Aux Vault document-bound passkey handoff.",
++    "functions": [
++      {
++        "name": "getRequest",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "requestId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "complete",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "requestId",
++            "type": "string"
++          },
++          {
++            "name": "response",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "reject",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "requestId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      }
++    ]
++  }
++]
