@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "base": "actual v84 shared inputs unchanged",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_actions.h",
+      "baselineSha256": "77790f1e81e755850cf0a44d18a1d9f81c153bf1487cb3337e3cc7aacd4fc06b",
+      "outputSha256": "4188dd8860ca1947164081f2c6679b9627b98f7594c8a027f345479a33dde0c4"
+    },
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "baselineSha256": "595f15ad3821ac7c06725e7394d079f22728506956b7825979682a76999fe747",
+      "outputSha256": "51d66ba471efb6e07b8094a9e18e66099d6edc2367d88e1a63b054cb1eb562f8"
+    },
+    {
+      "path": "chrome/browser/ui/browser_action_prefs_listener.h",
+      "baselineSha256": "5e99d44e1c15c865133c9c9d4c5a64d2b24b8ed1379bb10f2e16dc4b020b23ed",
+      "outputSha256": "88f3d45bb5fc4f645b850f6ff208bc7bedb5781e826fa6f97786af54bfc98b2a"
+    },
+    {
+      "path": "chrome/browser/ui/browser_action_prefs_listener.cc",
+      "baselineSha256": "63ed69f4e3dcaac235287e38392d8fc808362c6f4b7fda7bd0355384607db03b",
+      "outputSha256": "c0d11b8d0e5fe91f112c692816d5df7656e925716c9186850d7a29bea2353771"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

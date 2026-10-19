@@ -1,0 +1,491 @@
+--- a/chrome/browser/ui/browser_actions.h
++++ b/chrome/browser/ui/browser_actions.h
+@@ -10,6 +10,9 @@
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/buildflags.h"
++#include "ui/actions/action_id.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class BrowserActionPrefsListener;
+@@ -40,6 +43,13 @@
+   // Initialization is separate from construction to allow more precise timing.
+   void InitializeBrowserActions();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch(Profile* target) const;
++  uint64_t BeginAuxProfileSwitch(Profile* target);
++  void RebindAuxProfileSwitch(uint64_t generation);
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
++
+   // Registers a window-scoped action item.
+   actions::ActionItem* RegisterAction(
+       std::unique_ptr<actions::ActionItem> action_item);
+@@ -64,7 +74,16 @@
+   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
+   std::unique_ptr<BrowserActionPrefsListener> browser_action_prefs_listener_;
+   const raw_ref<BrowserWindowInterface> bwi_;
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
++  base::WeakPtr<Profile> aux_profile_switch_source_;
++  base::WeakPtr<Profile> aux_profile_switch_target_;
++  actions::ActionItem* EnsureActionForAuxProfileSwitch(
++      std::unique_ptr<actions::ActionItem> definition);
++  void BindCurrentProfileForAuxProfileSwitch();
++#endif
+   ui::ScopedUnownedUserData<BrowserActions> scoped_unowned_user_data_;
+ };
+ 
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -1021,12 +1021,13 @@
+   root_action_item_->AddChild(
+       ChromeMenuAction(
+           base::BindRepeating(
+-              [](Profile* profile, actions::ActionItem* item,
+-                 actions::ActionInvocationContext context) {
++              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                 actions::ActionInvocationContext context) {
++                Profile* profile = bwi->GetProfile();
+                 CHECK(IncognitoModePrefs::IsIncognitoAllowed(profile));
+                 chrome::NewIncognitoWindow(profile);
+               },
+-              profile),
++              bwi),
+           kActionNewIncognitoWindow, IDS_NEW_INCOGNITO_WINDOW,
+           IDS_NEW_INCOGNITO_WINDOW,
+           features::IsRoundedIconsEnabled() ? kIncognitoIcon
+@@ -1040,13 +1041,14 @@
+   root_action_item_->AddChild(
+       ChromeMenuAction(
+           base::BindRepeating(
+-              [](Profile* profile, actions::ActionItem* item,
+-                 actions::ActionInvocationContext context) {
++              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                 actions::ActionInvocationContext context) {
++                Profile* profile = bwi->GetProfile();
+                 CHECK(enterprise_isolated_mode::IsolatedModeReplacesIncognito(
+                     profile));
+                 chrome::NewIncognitoWindow(profile);
+               },
+-              profile),
++              bwi),
+           kActionNewIsolatedWindow, IDS_NEW_ISOLATED_WINDOW,
+           IDS_NEW_ISOLATED_WINDOW,
+           features::IsRoundedIconsEnabled()
+@@ -2653,14 +2655,15 @@
+   root_action_item_->AddChild(
+       actions::ActionItem::Builder(
+           base::BindRepeating(
+-              [](Profile* profile, actions::ActionItem* item,
+-                 actions::ActionInvocationContext context) {
++              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                 actions::ActionInvocationContext context) {
++                Profile* profile = bwi->GetProfile();
+                 PrefService* prefs = profile->GetPrefs();
+                 prefs->SetBoolean(
+                     prefs::kUseCustomChromeFrame,
+                     !prefs->GetBoolean(prefs::kUseCustomChromeFrame));
+               },
+-              profile))
++              bwi))
+           .SetActionId(kUseSystemTitleBar)
+           .Build());
+ #endif  // BUILDFLAG(IS_LINUX)
+@@ -5141,6 +5144,354 @@
+           .Build());
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool BrowserActions::CanRebindForAuxProfileSwitch(Profile* target) const {
++  return !aux_profile_switch_paused_ && root_action_item_ &&
++         &profile_.get() == bwi_->GetProfile() &&
++         profile_->IsRegularProfile() && target && target->IsRegularProfile() &&
++         target != &profile_.get();
++}
++
++uint64_t BrowserActions::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanRebindForAuxProfileSwitch(target));
++  aux_profile_switch_paused_ = true;
++  aux_profile_switch_source_ = profile_->GetWeakPtr();
++  aux_profile_switch_target_ = target->GetWeakPtr();
++  browser_action_prefs_listener_.reset();
++  return ++aux_profile_switch_generation_;
++}
++
++actions::ActionItem* BrowserActions::EnsureActionForAuxProfileSwitch(
++    std::unique_ptr<actions::ActionItem> definition) {
++  CHECK(definition->GetActionId());
++  auto* existing = actions::ActionManager::Get().FindAction(
++      *definition->GetActionId(), root_action_item_);
++  if (!existing) {
++    return RegisterAction(std::move(definition));
++  }
++  // Preserve ActionItem identity and all existing observer subscriptions. These
++  // original conditional callbacks use the stable window, never a stored
++  // profile or target service. Only their actual target definitions refresh.
++  auto update = existing->BeginUpdate();
++  existing->SetEnabled(definition->GetEnabled());
++  existing->SetVisible(definition->GetVisible());
++  existing->SetText(definition->GetText());
++  existing->SetTooltipText(definition->GetTooltipText());
++  existing->SetImage(definition->GetImage());
++  existing->AcquireAllPropertiesFrom(std::move(*definition));
++  return existing;
++}
++
++void BrowserActions::BindCurrentProfileForAuxProfileSwitch() {
++  profile_ = *bwi_->GetProfile();
++  Profile* const profile = &profile_.get();
++  BrowserWindowInterface* const bwi = &bwi_.get();
++  auto find = [this](actions::ActionId id) {
++    return actions::ActionManager::Get().FindAction(id, root_action_item_);
++  };
++  // Conditional actions retain identity even while a target cannot expose them.
++  // Genuine target eligibility and unchanged builders below restore those that
++  // belong to it, including items absent from the source profile's graph.
++  for (actions::ActionId id : {
++           kActionSidePanelShowTabsFromOtherDevices,
++           kActionSidePanelShowHistoryCluster,
++           kActionSidePanelShowGeic,
++           kActionSidePanelShowGlic,
++           kActionAiMode,
++           kActionShowAiOverlayDialog,
++           kActionGlicContextualCueing,
++           kActionGlicTogglePin,
++           kActionOpenGlic,
++       }) {
++    if (auto* item = find(id)) {
++      auto update = item->BeginUpdate();
++      item->SetVisible(false);
++      item->SetEnabled(false);
++    }
++  }
++  // An anchored cue may have a service-supplied invocation callback. Retire
++  // that old-profile callback before any target service can configure this same
++  // item.
++  if (auto* cue = find(kActionGlicContextualCueing)) {
++    cue->SetInvokeActionCallback(
++        base::BindRepeating([](actions::ActionItem* item,
++                               actions::ActionInvocationContext context) {
++          DUMP_WILL_BE_NOTREACHED()
++              << "Contextual cueing action invoked without being "
++                 "configured by OnTriggerAnchoredMessage";
++        }));
++  }
++  auto* ai_mode_button_service =
++      AiModeButtonServiceFactory::GetForProfile(profile);
++  auto* glic_service = glic::GlicKeyedService::Get(profile);
++  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
++    EnsureActionForAuxProfileSwitch(
++        SidePanelAction(SidePanelEntryId::kTabsFromOtherDevices,
++                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
++                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
++                        features::IsRoundedIconsEnabled()
++                            ? kDevicesIcon
++                            : kDevicesChromeRefreshOldIcon,
++                        kActionSidePanelShowTabsFromOtherDevices, bwi, true)
++            .Build());
++  }
++
++  if (side_panel::history_clusters::
++          IsHistoryClustersSidePanelSupportedForProfile(profile) &&
++      !HistorySidePanelCoordinator::IsSupported()) {
++    EnsureActionForAuxProfileSwitch(
++        SidePanelAction(SidePanelEntryId::kHistoryClusters, IDS_HISTORY_TITLE,
++                        IDS_HISTORY_CLUSTERS_SHOW_SIDE_PANEL,
++                        features::IsRoundedIconsEnabled()
++                            ? vector_icons::kHistoryIcon
++                            : vector_icons::kHistoryChromeRefreshOldIcon,
++                        kActionSidePanelShowHistoryCluster, bwi, true)
++            .Build());
++  }
++
++  if (geic::IsGeicEnabled(profile)) {
++    EnsureActionForAuxProfileSwitch(
++        SidePanelAction(
++            SidePanelEntryId::kGeic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
++            IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC, omnibox::kSparkIcon,
++            kActionSidePanelShowGeic, bwi, false)
++            .SetVisible(true)
++            .Build());
++  } else if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
++    EnsureActionForAuxProfileSwitch(
++        SidePanelAction(
++            SidePanelEntryId::kGlic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
++            IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC, omnibox::kSparkIcon,
++            kActionSidePanelShowGlic, bwi, false)
++            .SetVisible(glic::GlicEnabling::ShouldShowGlicButton(profile))
++            .Build());
++  }
++
++  if (ai_mode_button_service) {
++    // If `ai_mode_button_service` is null, it will remain null and the button
++    // will not be needed.
++    EnsureActionForAuxProfileSwitch(
++        actions::ActionItem::Builder(
++            base::BindRepeating(
++                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                   actions::ActionInvocationContext context) {
++                  bool via_keyboard = false;
++
++                  std::underlying_type_t<page_actions::PageActionTrigger>
++                      page_action_trigger = context.GetProperty(
++                          page_actions::kPageActionTriggerKey);
++
++                  if ((page_action_trigger !=
++                       page_actions::kInvalidPageActionTrigger) &&
++                      page_action_trigger ==
++                          std::to_underlying(
++                              page_actions::PageActionTrigger::kKeyboard)) {
++                    via_keyboard = true;
++                  }
++
++                  tabs::TabInterface* active_tab = bwi->GetActiveTabInterface();
++                  CHECK(active_tab);
++
++                  content::WebContents* web_contents =
++                      active_tab->GetContents();
++                  CHECK(web_contents);
++
++                  OmniboxController* omnibox_controller =
++                      search::GetOmniboxController(web_contents);
++                  CHECK(omnibox_controller);
++
++                  omnibox::AiModePageActionController::OpenAiMode(
++                      *omnibox_controller, via_keyboard);
++                },
++                bwi))
++            .SetActionId(kActionAiMode)
++            .SetImage(ui::ImageModel::FromVectorIcon(
++                features::IsRoundedIconsEnabled()
++                    ? omnibox::kSearchSparkIcon
++                    : omnibox::kSearchSparkOldIcon))
++            .SetProperty(actions::kActionItemPinnableKey, false)
++            .Build());
++  }
++
++  if (glic::GlicEnabling::IsProfileEligible(profile) &&
++      base::FeatureList::IsEnabled(features::kAiOverlayDialog)) {
++    std::unique_ptr<actions::ActionItem> item =
++        actions::ActionItem::Builder(
++            base::BindRepeating(
++                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                   actions::ActionInvocationContext context) {
++                  if (auto* controller =
++                          ttc::AiOverlayDialogController::From(bwi)) {
++                    controller->ToggleOverlay();
++                  }
++                },
++                bwi))
++            .SetActionId(kActionShowAiOverlayDialog)
++            .SetText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP))
++            .SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP))
++            .SetImage(ui::ImageModel::FromVectorIcon(
++                features::IsRoundedIconsEnabled() ? vector_icons::kMicFilledIcon
++                                                  : vector_icons::kMicOldIcon,
++                ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
++            .SetProperty(
++                actions::kActionItemPinnableKey,
++                static_cast<
++                    std::underlying_type_t<actions::ActionPinnableState>>(
++                    actions::ActionPinnableState::kPinnable))
++            .Build();
++
++    item->SetProperty(
++        kCustomPinnedActionToolbarButtonFactoryKey,
++        std::make_unique<CreateCustomPinnedActionToolbarButtonCallback>(
++            base::BindRepeating(
++                [](BrowserWindowInterface* browser, actions::ActionId action_id,
++                   base::WeakPtr<PinnedToolbarActionsContainer> container)
++                    -> std::unique_ptr<PinnedActionToolbarButton> {
++                  return std::make_unique<AiOverlayToolbarButton>(
++                      browser, action_id, container);
++                })));
++    EnsureActionForAuxProfileSwitch(std::move(item));
++  }
++
++  if (glic_service) {
++    EnsureActionForAuxProfileSwitch(
++        actions::ActionItem::Builder(
++            base::BindRepeating([](actions::ActionItem* item,
++                                   actions::ActionInvocationContext context) {
++              DUMP_WILL_BE_NOTREACHED()
++                  << "Contextual cueing action invoked without being "
++                     "configured by OnTriggerAnchoredMessage";
++            }))
++            .SetActionId(kActionGlicContextualCueing)
++            .SetEnabled(false)
++            .SetVisible(false)
++            .SetText(l10n_util::GetStringUTF16(IDS_SETTINGS_GLIC_PAGE_TITLE))
++            .SetImage(ui::ImageModel::FromVectorIcon(
++                glic::GlicVectorIconManager::GetVectorIcon(
++                    IDR_GLIC_BUTTON_VECTOR_ICON),
++                ui::kColorIcon))
++            .Build());
++    EnsureActionForAuxProfileSwitch(
++        actions::ActionItem::Builder(
++            base::BindRepeating(
++                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                   actions::ActionInvocationContext context) {
++                  PrefService* profile_prefs = bwi->GetProfile()->GetPrefs();
++                  profile_prefs->SetBoolean(
++                      glic::prefs::kGlicPinnedToTabstrip,
++                      !profile_prefs->GetBoolean(
++                          glic::prefs::kGlicPinnedToTabstrip));
++                },
++                bwi))
++            .SetActionId(kActionGlicTogglePin)
++            .SetText(l10n_util::GetStringUTF16(IDS_GLIC_PIN))
++            .Build());
++    EnsureActionForAuxProfileSwitch(
++        ChromeMenuAction(
++            base::BindRepeating(
++                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
++                   actions::ActionInvocationContext context) {
++                  auto* service =
++                      glic::GlicKeyedService::Get(bwi->GetProfile());
++                  if (service) {
++                    service->ShowUI(
++                        bwi, glic::mojom::InvocationSource::kThreeDotsMenu);
++                  }
++                },
++                bwi),
++            kActionOpenGlic, IDS_GLIC_THREE_DOT_MENU_ITEM,
++            IDS_GLIC_THREE_DOT_MENU_ITEM,
++            glic::GlicVectorIconManager::GetVectorIcon(
++                IDR_GLIC_BUTTON_VECTOR_ICON),
++            /*is_pinnable=*/false)
++            .Build());
++  }
++  auto visible = [&find](actions::ActionId id, bool value) {
++    if (auto* item = find(id)) {
++      item->SetVisible(value);
++    }
++  };
++  auto enabled = [&find](actions::ActionId id, bool value) {
++    if (auto* item = find(id)) {
++      item->SetEnabled(value);
++    }
++  };
++  enabled(kActionNewIncognitoWindow,
++          IncognitoModePrefs::IsIncognitoAllowed(profile));
++  enabled(kActionNewIsolatedWindow,
++          enterprise_isolated_mode::IsolatedModeReplacesIncognito(profile));
++  enabled(kActionClearBrowsingData,
++          profile->IsIncognitoProfile() ||
++              (!profile->IsGuestSession() && !profile->IsSystemProfile()));
++  visible(kActionSidePanelShowContextualTasks,
++          contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
++              profile));
++  visible(kActionShowChromeLabs, ShouldShowChromeLabsUI(profile));
++  visible(kActionOpenGuestProfile,
++          !profile->IsIncognitoProfile() && !profile->IsGuestSession() &&
++              !profile->IsEnterpriseIsolatedModeProfile() &&
++              g_browser_process && g_browser_process->profile_manager() &&
++              profiles::IsGuestModeEnabled(*profile));
++  visible(kActionManageGoogleAccount,
++          HasUnconstentedProfile(profile) && !IsSyncPaused(profile) &&
++              !profile->IsPrimaryOTRProfileWithRegularParent() &&
++              !profile->IsEnterpriseIsolatedModeProfile());
++  visible(kActionCustomizeChrome,
++          !profile->IsPrimaryOTRProfileWithRegularParent() &&
++              !profile->IsGuestSession());
++  visible(kActionAddNewProfile,
++          !profile->IsIncognitoProfile() && !profile->IsGuestSession() &&
++              !profile->IsEnterpriseIsolatedModeProfile() &&
++              g_browser_process && g_browser_process->local_state() &&
++              profiles::IsProfileCreationAllowed());
++  visible(kActionManageChromeProfiles,
++          !profile->IsIncognitoProfile() && !profile->IsGuestSession() &&
++              !profile->IsEnterpriseIsolatedModeProfile());
++  if (auto* close = find(kActionCloseProfile)) {
++    const auto text = l10n_util::GetPluralStringFUTF16(
++        IDS_CLOSE_PROFILE, CountBrowsersFor(profile));
++    auto update = close->BeginUpdate();
++    close->SetText(text);
++    close->SetTooltipText(text);
++  }
++  if (auto* share = find(kActionSaveAndShareSubmenu)) {
++    const auto text = l10n_util::GetStringUTF16(
++        media_router::MediaRouterEnabled(profile) ? IDS_CAST_SAVE_AND_SHARE_MENU
++                                                  : IDS_SAVE_AND_SHARE_MENU);
++    auto update = share->BeginUpdate();
++    share->SetText(text);
++    share->SetTooltipText(text);
++  }
++  AddListeners();
++  browser_action_prefs_listener_->ApplyCurrentPoliciesForAuxProfileSwitch();
++}
++
++void BrowserActions::RebindAuxProfileSwitch(uint64_t generation) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(aux_profile_switch_target_);
++  CHECK_EQ(bwi_->GetProfile(), aux_profile_switch_target_.get());
++  CHECK(bwi_->GetTabStripModel()->empty());
++  CHECK(!browser_action_prefs_listener_);
++  BindCurrentProfileForAuxProfileSwitch();
++}
++
++void BrowserActions::EndAuxProfileSwitch(uint64_t generation) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(bwi_->GetProfile() == aux_profile_switch_source_.get() ||
++        bwi_->GetProfile() == aux_profile_switch_target_.get());
++  if (!browser_action_prefs_listener_ ||
++      &profile_.get() != bwi_->GetProfile()) {
++    browser_action_prefs_listener_.reset();
++    BindCurrentProfileForAuxProfileSwitch();
++  }
++  aux_profile_switch_paused_ = false;
++  aux_profile_switch_source_.reset();
++  aux_profile_switch_target_.reset();
++}
++#endif
++
+ void BrowserActions::AddListeners() {
+   browser_action_prefs_listener_ = std::make_unique<BrowserActionPrefsListener>(
+       base::to_address(profile_), this);
+--- a/chrome/browser/ui/browser_action_prefs_listener.h
++++ b/chrome/browser/ui/browser_action_prefs_listener.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_BROWSER_ACTION_PREFS_LISTENER_H_
+ 
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "components/prefs/pref_change_registrar.h"
+ 
+ class BrowserActions;
+@@ -18,6 +19,9 @@
+   BrowserActionPrefsListener& operator=(const BrowserActionPrefsListener&) =
+       delete;
+   ~BrowserActionPrefsListener();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void ApplyCurrentPoliciesForAuxProfileSwitch();
++#endif
+ 
+  private:
+   void UpdateActionsForSharingHubPolicy();
+--- a/chrome/browser/ui/browser_action_prefs_listener.cc
++++ b/chrome/browser/ui/browser_action_prefs_listener.cc
+@@ -44,6 +44,13 @@
+   local_pref_registrar_.RemoveAll();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void BrowserActionPrefsListener::ApplyCurrentPoliciesForAuxProfileSwitch() {
++  UpdateActionsForSharingHubPolicy();
++  UpdateQRCodeGeneratorActionEnabledState();
++}
++#endif
++
+ void BrowserActionPrefsListener::UpdateActionsForSharingHubPolicy() {
+ #if !BUILDFLAG(IS_CHROMEOS)
+   // Update the visibility of the QR code generator, send tab to self, and copy
