@@ -1,0 +1,27 @@
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -514,11 +514,13 @@
+   }
+ 
+   tweak_info_plist("chrome_app_plist") {
+-    if (enable_aux_shell || enable_aux_sparkle) {
++    if (enable_aux_browser || enable_aux_shell || enable_aux_sparkle) {
+       info_plists = [ "app/app-Info.plist" ]
+       deps = []
++      if (enable_aux_browser || enable_aux_shell) {
++        info_plists += [ "app/aux-product-Info.plist" ]
++      }
+       if (enable_aux_shell) {
+-        info_plists += [ "app/aux-product-Info.plist" ]
+         info_plists += [ "$target_gen_dir/aux-crash-Info.plist" ]
+         info_plists += [ "$target_gen_dir/aux-dictation-Info.plist" ]
+         deps += [
+@@ -535,7 +537,7 @@
+       info_plists += [ "$target_gen_dir/aux-sparkle-Info.plist" ]
+       deps += [ ":aux_sparkle_info_plist" ]
+     }
+-    if (!enable_aux_shell && !enable_aux_sparkle) {
++    if (!enable_aux_browser && !enable_aux_shell && !enable_aux_sparkle) {
+       info_plist = "app/app-Info.plist"
+     }
+     args = [

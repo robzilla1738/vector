@@ -189,3 +189,7 @@ Native Chrome/Brave/Edge source Safe Storage authorization and public v10 decodi
 ### Vault recovery-key replacement
 
 Added explicit current-password-verified replacement of the encrypted master-key recovery wrap. Old recovery keys stop working immediately; item and private passkey records retain their ciphertext/content. The shared saved-key view retains the issued key until saved-copy verification and supports real copy/file actions; setup/recovery use the same view. Wrong password and locked replacement fail, and security generation invalidates pending fresh-consent grants. The focused recovery crypto scenario passed with old/new-key validation, preserved data and locked rejection. Browser UI observation remains outstanding. Implements ready `docs/spec/ui/vault.md` Import/export/settings.
+
+### Default native profile isolation
+
+The actual intermediate app lacked `CrProductDirName`, so upstream default profile/cache/Crashpad paths fell back to Chromium despite Aux branding. Patch0100 merges the existing Aux product plist for the independent browser flag as well as the retired shell. Packaging independently sets and verifies the same Aux value; final packaging defaults to the non-component output. This fix preserves explicit disposable profile selection and does not migrate/read existing owner data. Native generation/build and updated runtime observation are tracked with the final candidate.

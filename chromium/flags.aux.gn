@@ -1,4 +1,5 @@
 is_debug = false
+is_official_build = false
 is_component_build = false
 dcheck_always_on = false
 symbol_level = 0

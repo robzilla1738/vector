@@ -15,7 +15,7 @@ for (let i = 0; i < args.length; i++) {
   if (!['--app', '--chromium', '--bin'].includes(flag) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Usage: package-aux.mjs [--development] [--app PATH] [--chromium Aux.app] [--install-cli] [--bin PATH]');
   options[flag.slice(2)] = resolve(args[++i]);
 }
-const native = options.chromium ?? join(homedir(), 'Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app');
+const native = options.chromium ?? join(homedir(), `Documents/Code/aux-chromium-security-155/chromium/src/out/${options.development ? 'AuxAside' : 'AuxFast'}/Aux.app`);
 const destination = options.app ?? (options.development ? join(root, 'out/local/Aux.app') : join(homedir(), 'Applications/Aux.app'));
 if (resolve(native) === destination) throw new Error('Package destination must differ from the native build.');
 const flags = readFileSync(join(dirname(native), 'args.gn'), 'utf8');
@@ -53,6 +53,11 @@ copy(join(root, 'packages/ui/licenses'), join(bundle, 'licenses/ui/fonts-icons')
 copy(join(root, 'vendor/runtime/sources.json'), join(bundle, 'licenses/runtime-sources.json'));
 copy(join(root, 'assets/brand/Aux.icns'), join(temporary, 'Contents/Resources/Aux.icns'));
 execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Set :CFBundleIconFile Aux.icns', join(temporary, 'Contents/Info.plist')]);
+// Upstream derives default profile/cache/Crashpad roots from this bundle key.
+const appPlist = join(temporary, 'Contents/Info.plist');
+const productDir = execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print', appPlist], { encoding: 'utf8' });
+execFileSync('/usr/libexec/PlistBuddy', ['-c', `${productDir.includes('CrProductDirName =') ? 'Set' : 'Add'} :CrProductDirName ${productDir.includes('CrProductDirName =') ? '' : 'string '}Aux`, appPlist]);
+if (execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CrProductDirName', appPlist], { encoding: 'utf8' }).trim() !== 'Aux') throw new Error('Assembled browser data directory is not isolated.');
 for (const [directory, name] of [['computer-use', 'Aux Computer Use'], ['password-importer', 'Aux Password Importer']]) {
   const app = join(bundle, 'apps', directory, `${name}.app/Contents`);
   copy(join(root, 'assets/brand/Aux.icns'), join(app, 'Resources/Aux.icns'));
