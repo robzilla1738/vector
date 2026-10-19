@@ -1,0 +1,106 @@
+{
+  "evidenceId": "ev_af19c783a44d5f40962730891ef341356a5a05c1b9445c49795ef8025d4f4a29",
+  "authority": "shipped-artifact",
+  "confidence": "observed",
+  "procedure": {
+    "address": "0x459a0f0",
+    "name": "entry",
+    "classification": {
+      "external": false,
+      "thunk": false,
+      "thunk_target": null,
+      "provenance": "ghidra-function-manager"
+    },
+    "body": {
+      "available": true,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "start": "0x459a0f0",
+          "end": "0x459a17f"
+        }
+      ],
+      "total_bytes": 144,
+      "span_bytes": 144,
+      "non_contiguous": false,
+      "contains_entry": true
+    },
+    "signature": "undefined entry()",
+    "locals": [
+      {
+        "description": "undefined8 local_10 @ Stack[-0x10]:8",
+        "provenance": "ghidra-function-database"
+      },
+      {
+        "description": "undefined8 local_20 @ Stack[-0x20]:8",
+        "provenance": "ghidra-function-database"
+      },
+      {
+        "description": "undefined8 local_30 @ Stack[-0x30]:8",
+        "provenance": "ghidra-function-database"
+      },
+      {
+        "description": "undefined8 local_40 @ Stack[-0x40]:8",
+        "provenance": "ghidra-function-database"
+      }
+    ]
+  },
+  "pseudocode": "\nvoid entry(long param_1)\n\n{\n  code *pcVar1;\n  long lVar2;\n  long lVar3;\n  undefined1 local_40 [16];\n  undefined1 local_30 [16];\n  \n  lVar3 = *(long *)(param_1 + 0x48);\n  func_0x021cff80(8);\n  local_40 = func_0x0265d304(param_1 + 0x50,param_1 + 0x60);\n  if (((*(long *)(lVar3 + 0xe0) != 0) && (*(char *)(*(long *)(lVar3 + 0xe0) + 4) == '\\0')) &&\n     (*(long *)(lVar3 + 0xe8) != 0)) {\n    if ((*(long *)(lVar3 + 0xe0) == 0) || (*(char *)(*(long *)(lVar3 + 0xe0) + 4) != '\\0')) {\n                    /* WARNING: Does not return */\n      pcVar1 = (code *)SoftwareBreakpoint(0,0x459a180);\n      (*pcVar1)();\n    }\n    lVar2 = *(long *)(*(long *)(lVar3 + 0xe8) + 0x48);\n    if (lVar2 != 0) {\n      local_30 = func_0x01b389c8(*(long *)(lVar3 + 0xe8),local_40);\n      func_0x01b38ab4(lVar2,local_30);\n    }\n  }\n  return;\n}\n\n",
+  "assembly": [
+    "0x459a0f0: sub sp, sp, #0x40",
+    "0x459a0f4: stp x20, x19, [sp, #0x20]",
+    "0x459a0f8: stp x29, x30, [sp, #0x30]",
+    "0x459a0fc: add x29, sp, #0x30",
+    "0x459a100: mov x19, x0",
+    "0x459a104: ldr x20, [x0, #0x48]",
+    "0x459a108: mov w0, #0x8",
+    "0x459a10c: bl 0x021cff80",
+    "0x459a110: add x0, x19, #0x50",
+    "0x459a114: add x1, x19, #0x60",
+    "0x459a118: bl 0x0265d304",
+    "0x459a11c: stp x0, x1, [sp]",
+    "0x459a120: ldr x8, [x20, #0xe0]",
+    "0x459a124: cbz x8, 0x0459a16c",
+    "0x459a128: ldapurb w8, [x8, #0x4]",
+    "0x459a12c: cbnz w8, 0x0459a16c",
+    "0x459a130: ldr x8, [x20, #0xe8]",
+    "0x459a134: cbz x8, 0x0459a16c",
+    "0x459a138: ldr x8, [x20, #0xe0]",
+    "0x459a13c: cbz x8, 0x0459a17c",
+    "0x459a140: ldapurb w8, [x8, #0x4]",
+    "0x459a144: cbnz w8, 0x0459a17c",
+    "0x459a148: ldr x0, [x20, #0xe8]",
+    "0x459a14c: ldr x19, [x0, #0x48]",
+    "0x459a150: cbz x19, 0x0459a16c",
+    "0x459a154: mov x1, sp",
+    "0x459a158: bl 0x01b389c8",
+    "0x459a15c: stp x0, x1, [sp, #0x10]",
+    "0x459a160: add x1, sp, #0x10",
+    "0x459a164: mov x0, x19",
+    "0x459a168: bl 0x01b38ab4",
+    "0x459a16c: ldp x29, x30, [sp, #0x30]",
+    "0x459a170: ldp x20, x19, [sp, #0x20]",
+    "0x459a174: add sp, sp, #0x40",
+    "0x459a178: ret",
+    "0x459a17c: brk 0x0"
+  ],
+  "limitations": [
+    "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+    "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+    "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+    "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+    "References cover the complete Ghidra function-body AddressSet and exact entry. Dossier incoming edges omit sources owned by that function; procedure_references also retains those internal edges.",
+    "The dossier combines Ghidra FunctionManager, Listing, ReferenceManager, BasicBlockModel, and decompiler observations; provider-specific pseudocode and assembly are not cross-provider text invariants.",
+    "Resolved reference metadata identifies computed, indirect, external, call, jump, and data edges; unresolved targetless flows remain unknown, and function classifications distinguish thunks and externals.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted.",
+    "The Java bridge serializes one function request per Program and lets each decompilation run until it completes or the caller cancels.",
+    "macOS sessions require a matching executable Ghidra native decompiler; REA checks for it but does not build native components or change Gatekeeper quarantine state.",
+    "Headerless raw-binary analysis uses the caller-supplied architecture and entry address; file offset 0 is mapped at that address. Headers are not discovered from file bytes.",
+    "Little-endian generic Ghidra languages are used for x86, x86_64, arm, arm64, and NMOS 6502; m68k uses the big-endian 68000 default language, which decodes the 68040 superset. Big-endian ARM, Thumb-only, Cortex-M, 65C02, 65816, separate 68020/68030/CPU32/ColdFire variants, and other processor variants are unsupported in this increment.",
+    "Static analysis does not emulate reset vectors, memory-mapped I/O, or firmware boot sequences.",
+    "Unresolved computed or indirect flows without target addresses are not represented as reference edges.",
+    "Thunk and external classifications are Ghidra FunctionManager observations; they do not resolve targetless calls.",
+    "Pseudocode and assembly are Ghidra-specific representations, not original source or Hopper-equivalent text.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted."
+  ]
+}

@@ -1,0 +1,133 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_mini_popup") {
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+-  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
++  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/gfx/animation", "//ui/views", "//ui/views/controls/webview" ]
+   frameworks = [ "AppKit.framework" ]
+ }
+ 
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -36,6 +36,8 @@
+ #include "ui/base/window_open_disposition.h"
+ #include "ui/display/display.h"
+ #include "ui/display/screen.h"
++#include "ui/gfx/animation/linear_animation.h"
++#include "ui/gfx/animation/tween.h"
+ #include "ui/gfx/geometry/rounded_corners_f.h"
+ #include "ui/shell_dialogs/selected_file_info.h"
+ #include "ui/views/controls/webview/web_contents_set_background_color.h"
+@@ -81,6 +83,49 @@
+   result.Append(std::move(row));
+   return result;
+ }
++class PopupBoundsAnimation : public gfx::LinearAnimation {
++ public:
++  PopupBoundsAnimation(views::Widget* widget, const gfx::Rect& target)
++      : gfx::LinearAnimation(base::Milliseconds(180), 60, nullptr),
++        widget_(widget),
++        start_(widget->GetWindowBoundsInScreen()),
++        target_(target) {}
++
++ private:
++  void AnimateToState(double state) override {
++    if (!widget_->IsClosed()) {
++      widget_->SetBounds(gfx::Tween::RectValueBetween(
++          gfx::Tween::CalculateValue(gfx::Tween::EASE_IN_OUT_EMPHASIZED, state),
++          start_, target_));
++    }
++  }
++
++  const raw_ptr<views::Widget> widget_;
++  const gfx::Rect start_;
++  const gfx::Rect target_;
++};
++
++void SetPopupBounds(views::Widget* widget,
++                    const gfx::Rect& target,
++                    std::unique_ptr<PopupBoundsAnimation>& animation) {
++  animation.reset();
++  if (widget->GetWindowBoundsInScreen() == target) {
++    return;
++  }
++  // Pre-show host setup remains immediate; supplied content resize calls are
++  // accepted only for the live visible popup.
++  if (!widget->IsVisible()) {
++    widget->SetBoundsConstrained(target);
++    return;
++  }
++  if (gfx::Animation::PrefersReducedMotion()) {
++    widget->SetBounds(target);
++    return;
++  }
++  animation = std::make_unique<PopupBoundsAnimation>(widget, target);
++  animation->Start();
++}
++
+ class PopupManager : public ui::GlobalAcceleratorListener::Observer,
+                      public ui::AcceleratorTarget,
+                      public views::WidgetObserver,
+@@ -203,6 +248,8 @@
+     ClearAuxPopupActivation();
+     ++generation_;
+     dismiss_.Stop();
++    bounds_animation_.reset();
++    options_bounds_animation_.reset();
+     if (options_) {
+       options_->Hide();
+     }
+@@ -212,6 +259,8 @@
+   }
+   void DestroyWindows() {
+     ClearAuxPopupActivation();
++    bounds_animation_.reset();
++    options_bounds_animation_.reset();
+     options_webview_ = nullptr;
+     if (options_) {
+       options_->RemoveObserver(this);
+@@ -240,7 +289,7 @@
+     bounds.AdjustToFit(display::Screen::Get()
+                            ->GetDisplayNearestPoint(bounds.CenterPoint())
+                            .work_area());
+-    widget_->SetBoundsConstrained(bounds);
++    SetPopupBounds(widget_.get(), bounds, bounds_animation_);
+   }
+   bool IsMainContents(content::WebContents* source) const {
+     return widget_ && !widget_->IsClosed() && widget_->IsVisible() &&
+@@ -275,6 +324,7 @@
+       }
+       return nullptr;
+     }
++    options_bounds_animation_.reset();
+     options_webview_ = nullptr;
+     if (options_) {
+       options_->RemoveObserver(this);
+@@ -314,6 +364,7 @@
+   }
+   void CloseContents(content::WebContents* source) override {
+     if (IsOptionContents(source)) {
++      options_bounds_animation_.reset();
+       options_->Close();
+     } else if (IsMainContents(source)) {
+       RequestHide();
+@@ -331,7 +382,7 @@
+         display::Screen::Get()
+             ->GetDisplayNearestWindow(options_->GetNativeWindow())
+             .work_area());
+-    options_->SetBoundsConstrained(bounds);
++    SetPopupBounds(options_.get(), bounds, options_bounds_animation_);
+     return std::nullopt;
+   }
+   void SetState(std::string state) {
+@@ -404,6 +455,8 @@
+   std::unique_ptr<views::Widget> widget_, options_;
+   raw_ptr<views::WebView> webview_ = nullptr;
+   raw_ptr<views::WebView> options_webview_ = nullptr;
++  std::unique_ptr<PopupBoundsAnimation> bounds_animation_;
++  std::unique_ptr<PopupBoundsAnimation> options_bounds_animation_;
+   base::OneShotTimer dismiss_;
+ };
+ }  // namespace

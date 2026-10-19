@@ -1,0 +1,35 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 21d0acc: f0065c40     	adrp	x0, 0xed5b000 <dyld_stub_binder+0xed5b000>
+ 21d0ad0: 9129e000     	add	x0, x0, #0xa78
+ 21d0ad4: 9578cf7b     	bl	0x80048c0 <_ChromeMain+0x7fff624>
+ 21d0ad8: 34ffcb00     	cbz	w0, 0x21d0438 <_ChromeMain+0x21cb19c>
+ 21d0adc: d2e7fe08     	mov	x8, #0x3ff0000000000000 ; =4607182418800017408
+ 21d0ae0: d2e7fa09     	mov	x9, #0x3fd0000000000000 ; =4598175219545276416
+ 21d0ae4: f0065c40     	adrp	x0, 0xed5b000 <dyld_stub_binder+0xed5b000>
+ 21d0ae8: 91246000     	add	x0, x0, #0x918
+ 21d0aec: a90023e9     	stp	x9, x8, [sp]
+ 21d0af0: f005ebc8     	adrp	x8, 0xdf4b000 <dyld_stub_binder+0xdf4b000>
+ 21d0af4: fd470d00     	ldr	d0, [x8, #0xe18]
+ 21d0af8: b005ebe8     	adrp	x8, 0xdf4d000 <dyld_stub_binder+0xdf4d000>
+ 21d0afc: fd479902     	ldr	d2, [x8, #0xf30]
+ 21d0b00: d503201f     	nop
+ 21d0b04: fd479d03     	ldr	d3, [x8, #0xf38]
+ 21d0b08: d503201f     	nop
+ 21d0b0c: fd47a104     	ldr	d4, [x8, #0xf40]
+ 21d0b10: 9005ebe8     	adrp	x8, 0xdf4c000 <dyld_stub_binder+0xdf4c000>
+ 21d0b14: fd406905     	ldr	d5, [x8, #0xd0]
+ 21d0b18: b005ebe8     	adrp	x8, 0xdf4d000 <dyld_stub_binder+0xdf4d000>
+ 21d0b1c: fd47a506     	ldr	d6, [x8, #0xf48]
+ 21d0b20: d503201f     	nop
+ 21d0b24: fd47a907     	ldr	d7, [x8, #0xf50]
+ 21d0b28: 6f00e401     	movi.2d	v1, #0000000000000000
+ 21d0b2c: 95b82875     	bl	0x8fdad00 <_ChromeMain+0x8fd5a64>
+ 21d0b30: f0065c40     	adrp	x0, 0xed5b000 <dyld_stub_binder+0xed5b000>
+ 21d0b34: 9129e000     	add	x0, x0, #0xa78
+ 21d0b38: 9578f49f     	bl	0x800ddb4 <_ChromeMain+0x8008b18>
+ 21d0b3c: 17fffe3f     	b	0x21d0438 <_ChromeMain+0x21cb19c>

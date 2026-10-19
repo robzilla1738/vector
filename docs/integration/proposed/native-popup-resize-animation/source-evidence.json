@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045971d4.c",
+      "sha256": "caaf00c90974b38eb695f25166aa736e8185f5cd6d1ce170d500e40bf2f7d75d"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597c38.c",
+      "sha256": "03c1753db4ef5d7d9e93f7a9689f8ec090a46d265c05e9ee67e2b15ce1a51e09"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04598574.c",
+      "sha256": "2c44869db8ad1a693269890157285230dab009c03b0968f1980b938339dca9fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597014.c",
+      "sha256": "4e7e43803454f967f1a06f26f6dff13a188644378b4ceecbe7297ea9577a0a1d"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04596b80.c",
+      "sha256": "980ddb325b64712e7770a19b0a375e8258421fa975926741cb8a40bf6dcf564b"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/linear_animation.h",
+      "sha256": "c4ae3ea749c4d9bb15068af6132781e086de7a4ca06d9ddf88b97f22129bc718"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/linear_animation.cc",
+      "sha256": "3652811cf9709e0385368829942338800d0c274081eedec4e3ce4f1b8684c35a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/animation.h",
+      "sha256": "d9a800867f461621b89ae1c2b98d472c38b20fff1c4d967bf6ada6a661c2c147"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/animation.cc",
+      "sha256": "158dff731bd19a52e5a021dc7cb0fcb858f1b8fb6521a7aa76481ba58be575c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/tween.h",
+      "sha256": "cc375d29f09935d7b09dedc5fa225b3c3f58183b680823f9a4cee17d038e5c94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/tween.cc",
+      "sha256": "eee0d2d46efffbc341415e960ea74f0008bd207f03c825e0d5e9c6a2e0bab00e"
+    }
+  ],
+  "functions": [
+    {
+      "name": "MainResize",
+      "rva": "0x4596d1c",
+      "endExclusive": "0x4597014",
+      "bytes": 760,
+      "sha256": "0bd05bd1540901808c64fceb3f7e804994b3bc75920d2e63f063fdde317a8dfd"
+    },
+    {
+      "name": "OptionsResize",
+      "rva": "0x45971d4",
+      "endExclusive": "0x45975a0",
+      "bytes": 972,
+      "sha256": "0a8c6d919233a33f9fe9edd1aa72c9a51d3a42abb4f205ed1e34fe7a76226d70"
+    },
+    {
+      "name": "AnimateToState",
+      "rva": "0x459a0f0",
+      "endExclusive": "0x459a188",
+      "bytes": 152,
+      "sha256": "ced3ecfb4214eb0071fd23e45bb381df4888108a22f494a85086d55f00912633"
+    },
+    {
+      "name": "LinearAnimationConstructor",
+      "rva": "0x4330f40",
+      "endExclusive": "0x4331040",
+      "bytes": 256,
+      "sha256": "3f49957516341134d56acea258f4ad7dd564528887ff22e9cad027fa5708380c"
+    },
+    {
+      "name": "RectValueBetween",
+      "rva": "0x265d304",
+      "endExclusive": "0x265d40c",
+      "bytes": 264,
+      "sha256": "b5f2772be872fb78bd31d90d55d1b72d02fab63939de80f374a98286242918bf"
+    },
+    {
+      "name": "EmphasizedTweenBranch",
+      "rva": "0x21d0428",
+      "endExclusive": "0x21d0458",
+      "bytes": 48,
+      "sha256": "a24701c0cc2f8e8f0f899f8ba7d56772ee2f0705155e685516a242c9fe85d03d"
+    },
+    {
+      "name": "EmphasizedTweenInitialization",
+      "rva": "0x21d0acc",
+      "endExclusive": "0x21d0b40",
+      "bytes": 116,
+      "sha256": "a7e2d97d4a430e99ac9f55103a28be54785427656a3c16f9ce88c6c624b44e99"
+    }
+  ],
+  "animationVtable": {
+    "address": "0xe504700",
+    "animateToStateSlot": 9,
+    "animateToState": "0x459a0f0"
+  },
+  "tween": {
+    "case": 8,
+    "table": "0xd2263c0",
+    "relativeBase": "0x21cffac",
+    "target": "0x21d0428",
+    "constants": [
+      {
+        "address": "0xdf4be18",
+        "value": 0.05
+      },
+      {
+        "address": "0xdf4df30",
+        "value": 0.133333
+      },
+      {
+        "address": "0xdf4df38",
+        "value": 0.06
+      },
+      {
+        "address": "0xdf4df40",
+        "value": 0.166666
+      },
+      {
+        "address": "0xdf4c0d0",
+        "value": 0.4
+      },
+      {
+        "address": "0xdf4df48",
+        "value": 0.208333
+      },
+      {
+        "address": "0xdf4df50",
+        "value": 0.82
+      }
+    ],
+    "immediateValues": [
+      0.0,
+      0.25,
+      1.0
+    ],
+    "controlPoints": [
+      0.05,
+      0,
+      0.133333,
+      0.06,
+      0.166666,
+      0.4,
+      0.208333,
+      0.82,
+      0.25,
+      1
+    ]
+  },
+  "rea": [
+    {
+      "name": "MainResize",
+      "evidenceId": "ev_c13bd9deaab7537ae7b0f8309732a64ad988655199f9b8378625221b942fdc20",
+      "snapshotPath": "/tmp/aux-mini-popup-bounds-snapshot.json"
+    },
+    {
+      "name": "AnimateToState",
+      "evidenceId": "ev_af19c783a44d5f40962730891ef341356a5a05c1b9445c49795ef8025d4f4a29",
+      "snapshotPath": "/tmp/aux-popup-animation-step-snapshot.json"
+    }
+  ],
+  "limitations": [
+    "Original RVAs do not identify positions in the rebuilt Aux binary.",
+    "Bounded raw extraction preserves function bytes, not external target metadata; disassembly, vtable target, constants and actual current source establish the native-version adaptation.",
+    "Existing host pre-Show Resize is immediate. Original content-resize entrypoints require a visible actual widget, while original Show directly applies recovered initial/offscreen bounds. This proposal preserves host setup rather than making that distinct call animate.",
+    "Actual interpolation timing, retargeting and native lifecycle need compiled disposable popup observation; no source/hash check is visual acceptance."
+  ]
+}

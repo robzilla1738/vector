@@ -1,0 +1,44 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 459a0f0: d10103ff     	sub	sp, sp, #0x40
+ 459a0f4: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 459a0f8: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 459a0fc: 9100c3fd     	add	x29, sp, #0x30
+ 459a100: aa0003f3     	mov	x19, x0
+ 459a104: f9402414     	ldr	x20, [x0, #0x48]
+ 459a108: 52800100     	mov	w0, #0x8                ; =8
+ 459a10c: 9770d79d     	bl	0x21cff80 <_ChromeMain+0x21cace4>
+ 459a110: 91014260     	add	x0, x19, #0x50
+ 459a114: 91018261     	add	x1, x19, #0x60
+ 459a118: 97830c7b     	bl	0x265d304 <_ChromeMain+0x2658068>
+ 459a11c: a90007e0     	stp	x0, x1, [sp]
+ 459a120: f9407288     	ldr	x8, [x20, #0xe0]
+ 459a124: b4000248     	cbz	x8, 0x459a16c <_ChromeMain+0x4594ed0>
+ 459a128: 19404108     	ldapurb	w8, [x8, #0x4]
+ 459a12c: 35000208     	cbnz	w8, 0x459a16c <_ChromeMain+0x4594ed0>
+ 459a130: f9407688     	ldr	x8, [x20, #0xe8]
+ 459a134: b40001c8     	cbz	x8, 0x459a16c <_ChromeMain+0x4594ed0>
+ 459a138: f9407288     	ldr	x8, [x20, #0xe0]
+ 459a13c: b4000208     	cbz	x8, 0x459a17c <_ChromeMain+0x4594ee0>
+ 459a140: 19404108     	ldapurb	w8, [x8, #0x4]
+ 459a144: 350001c8     	cbnz	w8, 0x459a17c <_ChromeMain+0x4594ee0>
+ 459a148: f9407680     	ldr	x0, [x20, #0xe8]
+ 459a14c: f9402413     	ldr	x19, [x0, #0x48]
+ 459a150: b40000f3     	cbz	x19, 0x459a16c <_ChromeMain+0x4594ed0>
+ 459a154: 910003e1     	mov	x1, sp
+ 459a158: 97567a1c     	bl	0x1b389c8 <_ChromeMain+0x1b3372c>
+ 459a15c: a90107e0     	stp	x0, x1, [sp, #0x10]
+ 459a160: 910043e1     	add	x1, sp, #0x10
+ 459a164: aa1303e0     	mov	x0, x19
+ 459a168: 97567a53     	bl	0x1b38ab4 <_ChromeMain+0x1b33818>
+ 459a16c: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 459a170: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 459a174: 910103ff     	add	sp, sp, #0x40
+ 459a178: d65f03c0     	ret
+ 459a17c: d4200000     	brk	#0
+ 459a180: d4400000     	hlt	#0
+ 459a184: d4200020     	brk	#0x1

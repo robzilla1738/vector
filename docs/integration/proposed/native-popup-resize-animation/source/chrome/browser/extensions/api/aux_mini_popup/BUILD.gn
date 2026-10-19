@@ -1,0 +1,11 @@
+source_set("aux_mini_popup") {
+  sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/gfx/animation", "//ui/views", "//ui/views/controls/webview" ]
+  frameworks = [ "AppKit.framework" ]
+}
+
+source_set("headers") {
+ sources = [ "aux_mini_popup_api.h" ]
+ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+}

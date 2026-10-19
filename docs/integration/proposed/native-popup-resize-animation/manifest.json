@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-material CC9d9ce8a4631143756047bb4a01b866e542019c024e342a0ebe79a8b9234bfc7d; BUILD4b3a5cfea55967a323a6bc02a9b306875b220d1f34e4483886f8655978ac9da1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "baselineSha256": "4b3a5cfea55967a323a6bc02a9b306875b220d1f34e4483886f8655978ac9da1",
+      "outputSha256": "666e0fabb5fe870c947fdbfd45b6d65a3f242a0b95028e10acaa27ab6d544a5e"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "9d9ce8a4631143756047bb4a01b866e542019c024e342a0ebe79a8b9234bfc7d",
+      "outputSha256": "516843883096e0d86387f33f784d271f6f586dc4a9211b5d5dccbd9a6ede1db8"
+    }
+  ]
+}

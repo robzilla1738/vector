@@ -1,0 +1,72 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 265d304: 6d400801     	ldp	d1, d2, [x0]
+ 265d308: 0f20a423     	sshll.2d	v3, v1, #0x0
+ 265d30c: 4e61d863     	scvtf.2d	v3, v3
+ 265d310: 6d401424     	ldp	d4, d5, [x1]
+ 265d314: 0f20a486     	sshll.2d	v6, v4, #0x0
+ 265d318: 4e61d8c6     	scvtf.2d	v6, v6
+ 265d31c: 4ee3d4c6     	fsub.2d	v6, v6, v3
+ 265d320: 4fc090c6     	fmul.2d	v6, v6, v0[0]
+ 265d324: 4e63d4c3     	fadd.2d	v3, v6, v3
+ 265d328: 6f03f406     	fmov.2d	v6, #0.50000000
+ 265d32c: 4e66d463     	fadd.2d	v3, v3, v6
+ 265d330: 4e619863     	frintm.2d	v3, v3
+ 265d334: d2f83c08     	mov	x8, #-0x3e20000000000000 ; =-4476578029606273024
+ 265d338: 4e080d07     	dup.2d	v7, x8
+ 265d33c: 6e67e470     	fcmge.2d	v16, v3, v7
+ 265d340: 6e205a10     	mvn.16b	v16, v16
+ 265d344: 0ea12a10     	xtn.2s	v16, v16
+ 265d348: b26a67e8     	mov	x8, #0xffffffc00000     ; =281474972516352
+ 265d34c: f2e83be8     	movk	x8, #0x41df, lsl #48
+ 265d350: 4e080d11     	dup.2d	v17, x8
+ 265d354: 6e63e632     	fcmge.2d	v18, v17, v3
+ 265d358: 6ee7e473     	fcmgt.2d	v19, v3, v7
+ 265d35c: 6ef31ce3     	bif.16b	v3, v7, v19
+ 265d360: 0ea12a53     	xtn.2s	v19, v18
+ 265d364: 2e205a10     	mvn.8b	v16, v16
+ 265d368: 2f047410     	bic.2s	v16, #0x80, lsl #24
+ 265d36c: 0e731e10     	bic.8b	v16, v16, v19
+ 265d370: 4ee1b863     	fcvtzs.2d	v3, v3
+ 265d374: 4e321c63     	and.16b	v3, v3, v18
+ 265d378: 0ea12863     	xtn.2s	v3, v3
+ 265d37c: 0eb01c63     	orr.8b	v3, v3, v16
+ 265d380: 0ea18441     	add.2s	v1, v2, v1
+ 265d384: 0ea484a2     	add.2s	v2, v5, v4
+ 265d388: 0f20a421     	sshll.2d	v1, v1, #0x0
+ 265d38c: 4e61d821     	scvtf.2d	v1, v1
+ 265d390: 0f20a442     	sshll.2d	v2, v2, #0x0
+ 265d394: 4e61d842     	scvtf.2d	v2, v2
+ 265d398: 4ee1d442     	fsub.2d	v2, v2, v1
+ 265d39c: 4fc09040     	fmul.2d	v0, v2, v0[0]
+ 265d3a0: 4e61d400     	fadd.2d	v0, v0, v1
+ 265d3a4: 4e66d400     	fadd.2d	v0, v0, v6
+ 265d3a8: 4e619800     	frintm.2d	v0, v0
+ 265d3ac: 6e67e401     	fcmge.2d	v1, v0, v7
+ 265d3b0: 6e205821     	mvn.16b	v1, v1
+ 265d3b4: 0ea12821     	xtn.2s	v1, v1
+ 265d3b8: 6e60e622     	fcmge.2d	v2, v17, v0
+ 265d3bc: 0ea12844     	xtn.2s	v4, v2
+ 265d3c0: 2e205821     	mvn.8b	v1, v1
+ 265d3c4: 2f047401     	bic.2s	v1, #0x80, lsl #24
+ 265d3c8: 6ee7e405     	fcmgt.2d	v5, v0, v7
+ 265d3cc: 6ee51ce0     	bif.16b	v0, v7, v5
+ 265d3d0: 4ee1b800     	fcvtzs.2d	v0, v0
+ 265d3d4: 0e641c21     	bic.8b	v1, v1, v4
+ 265d3d8: 4e221c00     	and.16b	v0, v0, v2
+ 265d3dc: 0ea12800     	xtn.2s	v0, v0
+ 265d3e0: 0ea11c00     	orr.8b	v0, v0, v1
+ 265d3e4: 2ea38400     	sub.2s	v0, v0, v3
+ 265d3e8: 0ea00c60     	sqadd.2s	v0, v3, v0
+ 265d3ec: 0ea32c00     	sqsub.2s	v0, v0, v3
+ 265d3f0: 0e0c3c08     	mov.s	w8, v0[1]
+ 265d3f4: 1e260009     	fmov	w9, s0
+ 265d3f8: 0aa97d29     	bic	w9, w9, w9, asr #31
+ 265d3fc: 0aa87d08     	bic	w8, w8, w8, asr #31
+ 265d400: 9e660060     	fmov	x0, d3
+ 265d404: aa088121     	orr	x1, x9, x8, lsl #32
+ 265d408: d65f03c0     	ret
