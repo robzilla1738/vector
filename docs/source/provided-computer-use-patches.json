@@ -1,0 +1,368 @@
+{
+  "version": 1,
+  "sourceSha256": "a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026",
+  "outputSha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c",
+  "status": "branded-static-candidate",
+  "productionReady": false,
+  "requiresAdHocResigning": true,
+  "browserBundleId": "dev.aux.browser",
+  "canaryBundleId": "dev.aux.browser.canary",
+  "patches": [
+    {
+      "offset": 1481136,
+      "beforeHex": "61742e73747564696f2e417369646542726f7773657200",
+      "afterHex": "6465762e6175782e62726f777365720000000000000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "at.studio.AsideBrowser → dev.aux.browser; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1607096,
+      "beforeHex": "16000000000000d0",
+      "afterHex": "0f000000000000d0",
+      "count": 1,
+      "kind": "swift-string-count",
+      "reason": "Preserve immortal ASCII flags and chained pointer; update the exact UTF-8 count in both static sets"
+    },
+    {
+      "offset": 1607384,
+      "beforeHex": "16000000000000d0",
+      "afterHex": "0f000000000000d0",
+      "count": 1,
+      "kind": "swift-string-count",
+      "reason": "Preserve immortal ASCII flags and chained pointer; update the exact UTF-8 count in both static sets"
+    },
+    {
+      "offset": 1481168,
+      "beforeHex": "61742e73747564696f2e417369646542726f7773657243616e61727900",
+      "afterHex": "6465762e6175782e62726f777365722e63616e61727900000000000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "at.studio.AsideBrowserCanary → dev.aux.browser.canary; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1607112,
+      "beforeHex": "1c000000000000d0",
+      "afterHex": "16000000000000d0",
+      "count": 1,
+      "kind": "swift-string-count",
+      "reason": "Preserve immortal ASCII flags and chained pointer; update the exact UTF-8 count in both static sets"
+    },
+    {
+      "offset": 1607400,
+      "beforeHex": "1c000000000000d0",
+      "afterHex": "16000000000000d0",
+      "count": 1,
+      "kind": "swift-string-count",
+      "reason": "Preserve immortal ASCII flags and chained pointer; update the exact UTF-8 count in both static sets"
+    },
+    {
+      "offset": 1433632,
+      "beforeHex": "41534944455f5443435f444953434c41494d454400",
+      "afterHex": "4155585f5443435f444953434c41494d4544000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "ASIDE_TCC_DISCLAIMED → AUX_TCC_DISCLAIMED; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 72780,
+      "beforeHex": "800280d2",
+      "afterHex": "400280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "MOVZ x0 count20→18 for environment-key lookup; register/opcode unchanged"
+    },
+    {
+      "offset": 73400,
+      "beforeHex": "820280d2",
+      "afterHex": "420280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "MOVZ x2 count20→18 for environment-key assignment; register/opcode unchanged"
+    },
+    {
+      "offset": 1431440,
+      "beforeHex": "4d697373696e6720636f6d6d616e642e2055736167653a2061736964652d636f6d70757465722d757365203c636f6d6d616e643e205b2d2d6a736f6e203c7061796c6f61643e5d00",
+      "afterHex": "4d697373696e6720636f6d6d616e642e2055736167653a206175782d636f6d70757465722d757365203c636f6d6d616e643e205b2d2d6a736f6e203c7061796c6f61643e5d000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Missing command. Usage: aside-computer-use <command> [--json <payload>] → Missing command. Usage: aux-computer-use <command> [--json <payload>]; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 8032,
+      "beforeHex": "08d50091",
+      "afterHex": "08cd0091",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Preserve shared 0xd000…0010 base; exact UTF-8 count for Missing command. Usage: aux-computer-use <command> [--json <payload>]"
+    },
+    {
+      "offset": 1437952,
+      "beforeHex": "4c6962726172792f4d657373616765732f2e61736964652d73656e642d73746167696e6700",
+      "afterHex": "4c6962726172792f4d657373616765732f2e6175782d73656e642d73746167696e67000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Library/Messages/.aside-send-staging → Library/Messages/.aux-send-staging; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 152176,
+      "beforeHex": "800480d2",
+      "afterHex": "400480d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Library/Messages/.aux-send-staging"
+    },
+    {
+      "offset": 1431024,
+      "beforeHex": "53656e64696e67207265717569726573204175746f6d6174696f6e207065726d697373696f6e20666f72204d657373616765732e20456e61626c6520417369646520436f6d70757465722055736520e28692204d6573736167657320696e2053797374656d2053657474696e677320e286922050726976616379202620536563757269747920e28692204175746f6d6174696f6e2e00",
+      "afterHex": "53656e64696e67207265717569726573204175746f6d6174696f6e207065726d697373696f6e20666f72204d657373616765732e20456e61626c652041757820436f6d70757465722055736520e28692204d6573736167657320696e2053797374656d2053657474696e677320e286922050726976616379202620536563757269747920e28692204175746f6d6174696f6e2e000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Sending requires Automation permission for Messages. Enable Aside Computer Use → Messages in System Settings → Privacy & Security → Automation. → Sending requires Automation permission for Messages. Enable Aux Computer Use → Messages in System Settings → Privacy & Security → Automation.; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 7824,
+      "beforeHex": "a01280d2",
+      "afterHex": "601280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Sending requires Automation permission for Messages. Enable Aux Computer Use → Messages in System Settings → Privacy & Security → Automation."
+    },
+    {
+      "offset": 11800,
+      "beforeHex": "a91280d2",
+      "afterHex": "691280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Sending requires Automation permission for Messages. Enable Aux Computer Use → Messages in System Settings → Privacy & Security → Automation."
+    },
+    {
+      "offset": 1433488,
+      "beforeHex": "456e61626c652041736964652077697468204d6573736167657300",
+      "afterHex": "456e61626c65204175782077697468204d65737361676573000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Enable Aside with Messages → Enable Aux with Messages; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 62804,
+      "beforeHex": "00290091",
+      "afterHex": "00210091",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Preserve shared 0xd000…0010 base; exact UTF-8 count for Enable Aux with Messages"
+    },
+    {
+      "offset": 1433520,
+      "beforeHex": "4173696465206e65656473206d61634f53207065726d697373696f6e7320746f2073656e64206d657373616765732c2066696e6420636f6e7461637473206279206e616d652c20616e642073656172636820796f7572206d65737361676573207768656e2061736b65642e00",
+      "afterHex": "417578206e65656473206d61634f53207065726d697373696f6e7320746f2073656e64206d657373616765732c2066696e6420636f6e7461637473206279206e616d652c20616e642073656172636820796f7572206d65737361676573207768656e2061736b65642e000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside needs macOS permissions to send messages, find contacts by name, and search your messages when asked. → Aux needs macOS permissions to send messages, find contacts by name, and search your messages when asked.; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 62812,
+      "beforeHex": "026d0191",
+      "afterHex": "02650191",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Preserve shared 0xd000…0010 base; exact UTF-8 count for Aux needs macOS permissions to send messages, find contacts by name, and search your messages when asked."
+    },
+    {
+      "offset": 1434016,
+      "beforeHex": "417369646520436f6d70757465722055736500",
+      "afterHex": "41757820436f6d707574657220557365000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside Computer Use → Aux Computer Use; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 86532,
+      "beforeHex": "570280d2",
+      "afterHex": "170280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Aux Computer Use"
+    },
+    {
+      "offset": 1224020,
+      "beforeHex": "400280d2",
+      "afterHex": "000280d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Aux Computer Use"
+    },
+    {
+      "offset": 1479648,
+      "beforeHex": "417369646520436f6e746578742041776172656e65737300",
+      "afterHex": "41757820436f6e746578742041776172656e657373000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside Context Awareness → Aux Context Awareness; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1479744,
+      "beforeHex": "5175697420417369646520436f6d70757465722055736500",
+      "afterHex": "517569742041757820436f6d707574657220557365000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Quit Aside Computer Use → Quit Aux Computer Use; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1223320,
+      "beforeHex": "001d0091",
+      "afterHex": "00150091",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Preserve shared 0xd000…0010 base; exact UTF-8 count for Quit Aux Computer Use"
+    },
+    {
+      "offset": 1480912,
+      "beforeHex": "4173696465206e65656473206d61634f53207065726d697373696f6e7320746f2072656164206f6e2d73637265656e2061707020636f6e74656e7420616e64207265636f72642073686f72742074797065642072756e732e00",
+      "afterHex": "417578206e65656473206d61634f53207065726d697373696f6e7320746f2072656164206f6e2d73637265656e2061707020636f6e74656e7420616e64207265636f72642073686f72742074797065642072756e732e000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside needs macOS permissions to read on-screen app content and record short typed runs. → Aux needs macOS permissions to read on-screen app content and record short typed runs.; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1251908,
+      "beforeHex": "42230191",
+      "afterHex": "421b0191",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Preserve shared 0xd000…0010 base; exact UTF-8 count for Aux needs macOS permissions to read on-screen app content and record short typed runs."
+    },
+    {
+      "offset": 1482048,
+      "beforeHex": "417369646520436f6d707574657220557365204158206f6273657276657200",
+      "afterHex": "41757820436f6d707574657220557365204158206f62736572766572000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside Computer Use AX observer → Aux Computer Use AX observer; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1296928,
+      "beforeHex": "c00380d2",
+      "afterHex": "800380d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Aux Computer Use AX observer"
+    },
+    {
+      "offset": 1483344,
+      "beforeHex": "417369646520436f6d70757465722055736520696e707574206576656e742074617000",
+      "afterHex": "41757820436f6d70757465722055736520696e707574206576656e7420746170000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "Aside Computer Use input event tap → Aux Computer Use input event tap; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1340620,
+      "beforeHex": "400480d2",
+      "afterHex": "000480d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for Aux Computer Use input event tap"
+    },
+    {
+      "offset": 1481088,
+      "beforeHex": "61742e73747564696f2e61736964652e636f6d70757465722d7573652e6f757470757400",
+      "afterHex": "6465762e6175782e636f6d70757465722d7573652e6f7574707574000000000000000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "at.studio.aside.computer-use.output → dev.aux.computer-use.output; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1259960,
+      "beforeHex": "600480d2",
+      "afterHex": "600380d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.output"
+    },
+    {
+      "offset": 1261500,
+      "beforeHex": "600480d2",
+      "afterHex": "600380d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.output"
+    },
+    {
+      "offset": 1483248,
+      "beforeHex": "61742e73747564696f2e61736964652e636f6d70757465722d7573652e696e7075742d737461746500",
+      "afterHex": "6465762e6175782e636f6d70757465722d7573652e696e7075742d7374617465000000000000000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "at.studio.aside.computer-use.input-state → dev.aux.computer-use.input-state; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1338224,
+      "beforeHex": "000580d2",
+      "afterHex": "000480d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.input-state"
+    },
+    {
+      "offset": 1338928,
+      "beforeHex": "000580d2",
+      "afterHex": "000480d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.input-state"
+    },
+    {
+      "offset": 1339812,
+      "beforeHex": "000580d2",
+      "afterHex": "000480d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.input-state"
+    },
+    {
+      "offset": 1483472,
+      "beforeHex": "61742e73747564696f2e61736964652e636f6d70757465722d7573652e62726f777365722d7369676e616c2d737461746500",
+      "afterHex": "6465762e6175782e636f6d70757465722d7573652e62726f777365722d7369676e616c2d7374617465000000000000000000",
+      "count": 1,
+      "kind": "identity",
+      "reason": "at.studio.aside.computer-use.browser-signal-state → dev.aux.computer-use.browser-signal-state; zero-pad only within the original NUL-terminated slot"
+    },
+    {
+      "offset": 1357732,
+      "beforeHex": "200680d2",
+      "afterHex": "200580d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.browser-signal-state"
+    },
+    {
+      "offset": 1358304,
+      "beforeHex": "200680d2",
+      "afterHex": "200580d2",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "Exact UTF-8 count for dev.aux.computer-use.browser-signal-state"
+    },
+    {
+      "offset": 1220048,
+      "beforeHex": "800b40b2",
+      "afterHex": "80170091",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "ADD x0,x28,#5 replaces ORR #7: shared flags/base16 unchanged, Context Awareness count23→21"
+    },
+    {
+      "offset": 86584,
+      "beforeHex": "e00240b2",
+      "afterHex": "e00e0091",
+      "count": 1,
+      "kind": "instruction-immediate",
+      "reason": "ADD x0,x23,#3 preserves CFBundleDisplayName count19 after shared fallback count18→16; key bytes/pointer unchanged"
+    }
+  ],
+  "remaining": [
+    "No original helper execution, TCC behavior, self-suppression or permission acceptance has been observed",
+    "Swift module/type and ABI symbols intentionally retain their internally consistent names"
+  ]
+}

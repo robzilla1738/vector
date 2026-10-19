@@ -1,59 +1,94 @@
-# Supplied Computer Use helper: offline identity candidate
+# Supplied Computer Use helper: faithful static adaptation
 
-Source is the static `~/.aside/runtime-computer-use/Aside Computer Use.app`, version `1.26.1020`, build `1.26.1020.23`. Its arm64 Mach-O executable is pinned at SHA-256 `a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026`. `provided-computer-use-inputs.json` inventories all 11 bundle files / 2,876,377 bytes with hashes and modes. No helper launch, live process attachment, TCC grant, Keychain read, user data access or external communication was performed.
+The input is the static `~/.aside/runtime-computer-use/Aside Computer Use.app`, version `1.26.1020`, build `1.26.1020.23`. Its arm64 executable is pinned at SHA-256 `a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026`. `provided-computer-use-inputs.json` pins all 11 files / 2,876,377 bytes and their modes. No helper launch, live attachment, TCC grant, Keychain read, owner Messages access or external communication was performed. This updates the earlier partial identity checkpoint; it does not establish runtime acceptance.
 
-## Evidence and method
+## API and staging
 
-REA `open_binary` returned that exact path/format/architecture/hash. Subsequent overview/search requests did not yield usable results and were stopped; no completed REA decompilation is claimed. Static fallback uses `/usr/bin/nm -nm`, `/usr/bin/otool -tvV`, Mach-O load commands and exact file-byte inspection. The binary retains named Swift symbols. Bounded source-file inventory under the supplied Downloads and Blueprint roots did not find original Swift files for this helper; this is not a claim that no such source exists elsewhere. All locations below refer to this exact binary, not the older Blueprint helper.
+`scripts/lib/provided-computer-use.mjs` exports:
 
-`__TEXT` starts at VM `0x100000000`, file offset zero. `__DATA_CONST` and `__DATA` here retain the same VM-minus-base/file mapping. Relevant string pointers use Swift immortal-string representation plus Mach-O chained fixup bits. The [Swift project's StringObject implementation](https://github.com/swiftlang/swift/blob/main/stdlib/public/core/StringObject.swift) corroborates the separate count/flags and pointer representation, but it is not proof of the exact compiler version used by this binary. [Arm's instruction reference](https://documentation-service.arm.com/static/6245c734b059dc5ff9a8bdab) documents MOVZ; the pinned instruction changes are independently decoded by `otool` without execution.
+- `verifyProvidedComputerUse(appRoot)`: verify the entire pinned file set, sizes, modes and hashes; reject symlinks, special files, added files and paths outside the root.
+- `patchProvidedComputerUseIdentity(sourceBuffer,{browserBundleId,canaryBundleId})`: return `{bytes,report}` for the exact pinned binary. Browser IDs must be distinct explicit `dev.aux.*` identities fitting the original string slots.
+- `stageProvidedComputerUse({sourceRoot,outputRoot,identities:{browserBundleId,canaryBundleId,bundleId,executableName?}})`: stage the pinned bundle into a new absolute output root. The parent must exist. Roots must be disjoint; existing outputs are refused. `bundleId` must be explicit `dev.aux.*`; `executableName` is fixed to `aux-computer-use` (also the default), matching the checked usage string.
 
-## Viable bounded core-identity patch
+Staging preserves all 11 bundle files and modes, renames only the executable path, patches the binary and Info.plist, and substitutes canonical `assets/brand/Aux.icns` plus MenuBarIcon16/32. It verifies artwork against `assets/brand/inventory.json`. Six files remain byte-identical: both original signature-resource files and the four generic illustrations. The old signature is invalidated; root must ad hoc sign after staging. The returned version1 report includes per-file source/output hashes, paths, modes, change kinds and plist/art anchors, plus every binary patch's exact offset/before/after/count/reason. The stager does not sign or execute anything and does not write an extra report into the bundle.
 
-`patchProvidedComputerUseIdentity(sourceBuffer,{browserBundleId,canaryBundleId})` in `scripts/lib/provided-computer-use.mjs` returns `{bytes,report}`. It accepts only the exact pinned source hash and distinct explicit Aux bundle IDs that fit the original slots. It does not write the source, launch, sign or install anything. It is deliberately named and reported as a **partial identity candidate**, not a finished branded helper.
+`productionReady:false` and `requiresAdHocResigning:true` are explicit. Actual TCC responsibility, permission UI, browser self-capture suppression and helper workflows remain unobserved.
 
-| Role | Original string offset | Separate count words | Candidate value |
-| --- | --- | --- | --- |
-| Browser bundle | `0x1699b0` | `0x1885b8`, `0x1886d8` | `dev.aux.browser` (15 bytes) |
-| Canary bundle | `0x1699d0` | `0x1885c8`, `0x1886e8` | `dev.aux.browser.canary` (22 bytes) |
-| TCC re-exec marker | `0x15e020` | instructions below | `AUX_TCC_DISCLAIMED` (18 bytes) |
+## Static evidence and preservation
 
-Original browser IDs are 22/28 bytes. Both occur in two static Swift sets: the named `CapturePolicy.browserSignalBundleIds` initializer uses the array at `0x188598`, while `CapturePolicy.init` has a second copy at `0x1886b8`. All four count/flag words change from the original `0xd000...0016`/`0xd000...001c` to counts 15/22 while retaining flags and pointer words. The adapter checks all four exact pointer-reference locations in the file-backed data segments; it does not relocate or modify chained-fixup pointers. `CapturePolicy.suppressionReason` uses set membership in the path producing `excluded-application`. This is static control-flow evidence, not an observed self-capture result.
+The earlier REA `open_binary` identified the exact path/format/architecture/hash; later overview/search yielded no usable decompilation. No completed REA decompilation is claimed. This work uses static `/usr/bin/otool -tvV`, `/usr/bin/nm -nm`, Mach-O layout and exact file bytes. Supplied code was never executed.
 
-The `ASIDE_TCC_DISCLAIMED` key has one pooled literal but two compiled lengths in `reexecDisclaimedIfNeeded`: lookup at file `0x11c4c` (`MOVZ x0,#20`) and assignment at `0x11eb8` (`MOVZ x2,#20`). Both become `#18`; the surrounding `MOVK #0xd000,LSL#48`, register, opcode, spawn/disclaim logic and branches stay unchanged. Updating only the pool bytes or one length would leave the read/write marker inconsistent.
+`__TEXT` starts at VM `0x100000000`, file offset zero; relevant data here retains the same VM-minus-base/file mapping. Swift immortal strings carry separate count/flag and pointer words. The [Swift StringObject implementation](https://github.com/swiftlang/swift/blob/main/stdlib/public/core/StringObject.swift) explains that representation; exact compiler version remains unknown. [Arm's instruction reference](https://documentation-service.arm.com/static/6245c734b059dc5ff9a8bdab) describes the instructions. The actual before/after words are independently decoded by `otool`.
 
-All three ASCII literals receive NUL padding **inside the original allocation** and all their associated counts change. No string slot, section, load command, branch target or binary length moves. Nine patch records contain exact offsets, before/after hex, expected count and reason. The existing signature is necessarily invalidated; root must apply its ad hoc signing step after all branding work. The adapter does not strip or forge a signature and is not a shipping-ready helper.
+`provided-computer-use-patches.json` records all **44 nonoverlapping ranges** for `dev.aux.browser` / `dev.aux.browser.canary`, yielding candidate SHA-256 `af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c`: 17 string slots, four static Swift count words and 23 instructions. ASCII/UTF-8 replacements are NUL-padded only inside their original slots. Counts use UTF-8 byte lengths, including arrows in the permission error. Section sizes, pointers, branch targets, load commands and binary length do not move. All bytes outside the listed ranges remain exact; `nm -nm` output is identical before/after.
 
-## Remaining original branding: do not blind-shorten
+Swift module/type/reflection/mangled names such as `AsideComputerUse`, compiled source paths, Objective-C metadata and internal ABI symbols remain consistent. Those are not user-facing branding. No generic binary-wide substring replacement is used.
 
-The binary still contains these visible literals, each requiring its compiled lengths/expressions to be traced before replacement:
+## Browser identity and TCC marker
 
-| Pool offset | Original literal / role |
-| --- | --- |
-| `0x15d5f0` | Permission error prefix mentioning enabling Aside Computer Use |
-| `0x15df90` | Messages permission heading |
-| `0x15dfb0` | Messages/Contacts permission explanation |
-| `0x15e1a0` | Application display label |
-| `0x1693e0` | Context Awareness menu title |
-| `0x169440` | Quit menu item |
-| `0x1698d0` | Context Awareness permission explanation |
-| `0x169d40` | AX observer label |
-| `0x16a250` | Input event-tap label |
+| Role | String offset | Count locations |
+| --- | --- | --- |
+| Browser bundle | `0x1699b0` | data `0x1885b8`, `0x1886d8` |
+| Canary bundle | `0x1699d0` | data `0x1885c8`, `0x1886e8` |
+| `AUX_TCC_DISCLAIMED` | `0x15e020` | instructions `0x11c4c`, `0x11eb8` |
 
-For example, the Context Awareness title reference is at VM `0x100129db8`; its count is formed by `ORR x0,x28,#7` at `0x100129dd0`, rather than a standalone literal-length MOV. The Quit item at `0x10012aa74` forms its count with an ADD at `0x10012aa98`. A generic search/replace of every numeric 23 would corrupt unrelated values. This candidate leaves these strings unchanged instead of claiming a complete rebrand.
+The original browser IDs (22/28 bytes) occur in two static sets: `CapturePolicy.browserSignalBundleIds` at array `0x188598` and `CapturePolicy.init` at `0x1886b8`. All four counts change (default Aux IDs15/22) while preserving `0xd000...` flags and the original chained-fixup pointers. The adapter checks the complete four-reference pointer locations. `CapturePolicy.suppressionReason` uses membership in the path producing `excluded-application`; this is static evidence, not an observed suppression result.
 
-Three additional branded strings at `0x169980`, `0x16a1f0`, `0x16a2d0` are `at.studio.aside.computer-use.output`, `.input-state`, and `.browser-signal-state`. In the observed call chains they are **DispatchQueue labels**, not external notification channels: their construction calls the Dispatch queue initializer. They have multiple initialization references (2/3/2 in the disassembly) and still require all count expressions to be changed together. No notification protocol compatibility claim follows from these names.
+The marker has both lookup and assignment counts20→18. Spawn/disclaim logic, branches, registers and flags remain intact.
 
-Swift module/type/mangled symbol names such as `AsideComputerUse` remain internally consistent. They are not fixed-width display labels; renaming them without rebuilding or correctly updating Swift/Objective-C metadata is outside this bounded candidate. Resource icon and Info.plist substitutions are separate packaging edits. The source plist includes Automation/Contacts/Input Monitoring/Accessibility usage descriptions; those and the bundle identifier/executable/display name must be changed consistently. Source entitlements statically declare Apple Events and Contacts; inspecting them did not grant either permission.
+## Prose and exact count expressions
 
-## Artwork observations
+All nine previously identified visible strings replace only `Aside` with `Aux`:
 
-- The Vault distribution's `assets/let-aside-sign-in-for-you-Cm1ENTVi.png` was visually inspected as a static asset. Its pixels show third-party service icons (for example Slack, Gmail and Notion); no Aside wordmark was visible in that illustration. Preserve its pixels. Its private filename alone is not a reason to replace or redraw the artwork.
-- Computer Use `Resources/automation.png` is a generic system-style gears illustration. Preserve it.
-- Computer Use `AppIcon.icns` and the two MenuBarIcon PNGs remain product-branding targets. Root can replace those with approved Aux art while retaining the original dimensions/template behavior. Other helper illustration pixels have not all been reviewed; no blanket replacement is authorized by this audit.
+| String offset / role | Original→Aux UTF-8 count | Instruction locations |
+| --- | --- | --- |
+| `0x15d5f0` Automation permission error | 149→147 | MOV `0x1e90`, `0x2e18` |
+| `0x15df90` Messages heading | 26→24 | ADD `0xf554` |
+| `0x15dfb0` Messages/Contacts explanation | 107→105 | ADD `0xf55c` |
+| `0x15e1a0` app display fallback/tooltip | 18→16 | MOV `0x15204`, `0x12ad54`; compensated shared expression below |
+| `0x1693e0` Context Awareness menu title | 23→21 | ORR→ADD `0x129dd0` |
+| `0x169440` Quit menu item | 23→21 | ADD `0x12aa98` |
+| `0x1698d0` Context permission explanation | 88→86 | ADD `0x131a44` |
+| `0x169d40` AX observer name | 30→28 | MOV `0x13ca20` |
+| `0x16a250` input event-tap name | 34→32 | MOV `0x1474cc` |
 
-## Validation and next action
+Shared-base subtleties are handled explicitly:
 
-The focused static test verifies the entire source bundle pin, nine exact/nonoverlapping patch ranges, full before/after replay, unchanged binary length/pointers/bytes outside the allowlist, both static-set counts, both environment-key instruction counts, rejection of a wrong binary/non-Aux or oversized IDs, and `otool` decoding of the candidate MOV instructions. It writes only a nonexecutable disposable candidate and removes it. No supplied code is executed.
+- Messages heading/detail ADDs use unchanged `0xd000…0010` base16. Immediates10/91 become8/89; the base also serves other strings and stays intact.
+- Context menu title uses unchanged base16 in `x28`. ORR `#7` originally produces23. Logical immediate5 is not encodable for A64 ORR; replacing the single instruction with ADD `#5` produces21 while preserving flags/registers and surrounding instructions.
+- Context permission explanation similarly uses unchanged base16 in `x26`; ADD72 becomes70.
+- The app-display fallback count in `x23` is shared with the unmodified 19-byte `CFBundleDisplayName` key. Its initialization18 becomes16, and **only** the key expression at `0x15238` changes ORR1→ADD3, retaining key count19. Dynamic name success paths overwrite `x23` normally. Renaming only the fallback pool or changing the initial count without compensating the key would break the fallback lookup.
+- `Aside Computer Use\0` also occurs as the suffix of the original Quit string at `0x169445`. The adapter checks both source occurrences but patches the entire Quit slot separately; ranges never overlap.
 
-The candidate is technically viable for core identity changes under the observed Swift representation. Full helper branding remains blocked on the explicitly located prose/queue length-expression work and packaging icon/plist/signing edits. Real permission behavior, TCC responsibility, self-suppression, browser signals and unchanged helper workflows still require later disposable-profile acceptance within an explicitly authorized execution/grant scope. Until then, a plist-only clone or this partial candidate must not be described as the faithful finished Aux helper.
+The final bounded string-pool audit found two additional non-ABI literals, also adapted:
+
+| String offset / role | Change | Count patch |
+| --- | --- | --- |
+| `0x15d790` missing-command usage | executable `aside-computer-use`→`aux-computer-use`, 71→69 bytes | ADD `0x1f60`, shared base18 unchanged; immediate53→51 |
+| `0x15f100` send-attachment staging directory | `Library/Messages/.aside-send-staging`→`Library/Messages/.aux-send-staging`, 36→34 bytes | MOV `0x25270` |
+
+The staging directory is constructed under `FileManager.homeDirectoryForCurrentUser`. The change prevents the Aux clone using the old product's staging name. It does **not** authorize real Messages access or prove the runtime path is confined to disposable data; later helper execution must explicitly account for that capability.
+
+## Queue labels
+
+The three `at.studio.aside.computer-use.*` strings become `dev.aux.computer-use.*`, with all observed constructor references updated:
+
+| String offset / suffix | Original→Aux count | MOV locations |
+| --- | --- | --- |
+| `0x169980` output | 35→27 | `0x1339b8`, `0x133fbc` |
+| `0x16a1f0` input-state | 40→32 | `0x146b70`, `0x146e30`, `0x1471a4` |
+| `0x16a2d0` browser-signal-state | 49→41 | `0x14b7a4`, `0x14b9e0` |
+
+The referenced call chains invoke DispatchQueue construction. These are queue labels, not evidence of a distributed notification protocol. Original queue construction/QoS/control flow stays intact.
+
+## Plist and artwork
+
+Info.plist preserves XML formatting/key order and every non-brand value. Checked replacements set explicit Aux bundle ID, `aux-computer-use`, both app names and all four permission descriptions (including both product mentions in Apple Events text). Existing version/build, minimum OS, LSUIElement/instance behavior and usage-description meanings remain unchanged. No entitlement or permission is added.
+
+The canonical supplied arch SVG drives AppIcon.icns and16/32 menu templates. All icon substitutions are recorded with hashes. Generic `automation.png`, `contacts.png`, `full-disk-access.png`, and `imessage.png` remain byte-identical. Earlier Vault illustration inspection found only third-party Slack/Gmail/Notion icons in `let-aside-sign-in-for-you-Cm1ENTVi.png`; those pixels likewise remain unchanged.
+
+## Verification and remaining acceptance
+
+Focused tests pass against the actual static source: complete input pin, exact44-range replay, unchanged binary length/pointers/bytes outside the allowlist, all23 changed instructions independently decoded by `otool`, unchanged full `nm` symbol output, invalid identity/input rejection, complete11-file staging, canonical artwork hashes, plist semantic preservation, exact file modes, disjoint-root and overwrite refusal. Test candidates live in disposable directories, are not run and are removed.
+
+No original helper workflow, TCC prompt/grant, self-suppression, capture, Messages/Contacts operation or notification delivery has been tested. No restricted OS grant has been requested. Root must sign the staged helper and perform separately authorized runtime acceptance before shipping claims. Static branding completion and faithful byte preservation do not establish `productionReady`.
