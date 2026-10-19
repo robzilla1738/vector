@@ -8,7 +8,7 @@ const root = await realpath(await mkdtemp(join(tmpdir(), 'aux-port-contract-')))
 try {
   await mkdir(join(root, 'lib'));
   await writeFile(join(root, 'lib/owned-process.mjs'), 'export function launchOwnedProcess() { throw new Error("Fixture must never launch"); }\n');
-  const proposal = new URL('../docs/integration/proposed/launcher-fixed-browser-ports/aux.mjs', import.meta.url);
+  const proposal = new URL('./aux.mjs', import.meta.url);
   await writeFile(join(root, 'aux.mjs'), await readFile(proposal));
   const run = (...args) => spawnSync(process.execPath, [join(root, 'aux.mjs'), '--app', join(root, 'Missing.app'), ...args], {
     env: { ...process.env, HOME: root, AUX_HOME: join(root, 'state') }, encoding: 'utf8', timeout: 3000,

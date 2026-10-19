@@ -638,3 +638,9 @@ Static source audit pins launcher019227d96, supplied production Agent/Vault URL 
 ### Fixed approved acceptance scope correction
 
 Corrected prepared candidate/daemon-only commands to use explicit parent HOME, AUX_HOME and launcher --home/--profile in the identical approved disposable core.home. --temp-profile creates another Keychain scope and cannot continue the fixed-home human approval. Native carrier flag remains conditional on that actual approval; no launcher approval fabrication or code change. Documentation only; no launch or state access.
+
+## Applied nativev23 and runnable scoped approval preview (2026-10-19)
+
+Deliberately interrupted superseded build23833 for the reviewed UI integration after5799 completed steps,0 compiler failures and5661 remaining; confirmed its process groups exited and retained the object cache. Appliedv23 under the native lock with complete backups/output checks for78 source files and23 artwork targets (backup native-before-apply-slheh1ob). GN generation succeeded for36071 targets. Focused compilation of10 changed objects is running before the full resumed build.
+
+The fixed-scope DP helper compiled through the shared lock and passed signature verification; genuine receipt is in approval-preview/helper-build-receipt.json. Prepared signed actual daemon/CLI hosts and a version-2 preview with SHA25658a7808370579e09299a1d63eef02897931348ee81590d870e439c459d745752. Requested human approval for only that fixed disposable scope; no Keychain or original native command has run. The preview remains unchanged while approval is pending. Applied launcher port-contract guards and explicit loopback/self/CDP environment; focused parser/environment fixtures pass against the actual launcher.

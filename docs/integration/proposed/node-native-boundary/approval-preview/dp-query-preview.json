@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "status": "preview-only-no-keychain-calls-authorized",
+  "version": 2,
+  "status": "awaiting-human-approval-no-DP-operations-executed",
   "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
   "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
   "originalBindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
@@ -77,7 +77,7 @@
     }
   ],
   "cleanup": {
-    "status": "not-implemented-not-executed",
+    "status": "compiled-exact-four-selector-helper-not-executed",
     "permittedSelectorsOnly": [
       {
         "itemClass": "kSecClassGenericPassword",
@@ -113,7 +113,8 @@
       "no owner original selectors",
       "no other Aux scope",
       "no native install-destroy until its complete deletion surface is reviewed"
-    ]
+    ],
+    "continuation": "source-known exact keys derived from this home registries and explicit local MCP fixture IDs; original secure-clear, never enumeration"
   },
   "forbidden": [
     "owner Aside group/selectors",
@@ -126,15 +127,317 @@
     "interactive grant/biometric prompt"
   ],
   "remainingGates": [
-    "compiled guard/carrier/interposer fixtures",
-    "deny-all original module load proof",
-    "complete query coverage review",
-    "actual shared Aux entitlement-domain review",
-    "explicit human authorization before any proposed crypto/Keychain command"
+    "explicit human approval before any DP/crypto command",
+    "actual ad hoc host default/shared entitlement authority is unknown until approved probe"
   ],
   "executedOperations": [
-    "mkdtemp private local directory",
-    "canonical-home SHA256",
-    "write approval preview JSON"
-  ]
+    "private empty home metadata validation",
+    "static source/binary hashing",
+    "focused helper compilation only",
+    "disposable actual SEA adaptation and ad hoc signing; no host execution/no DP calls"
+  ],
+  "core": {
+    "version": 1,
+    "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+    "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "nativeReceiptSha256": "fa82f5db283bdf7d3837f853ba6624d459205a4691e4298e230bee0ef45b600e",
+    "originalBindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+    "installationRows": [
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.meta",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.sig",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.kem",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.dk",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      }
+    ],
+    "commands": [
+      "install-status",
+      "install-init",
+      "get-public-keys",
+      "cdp-sign"
+    ],
+    "sameScopeContinuationFamilies": [
+      {
+        "name": "installation",
+        "logicalService": "aside.install",
+        "logicalAccounts": [
+          "aside.install.meta",
+          "aside.install.sig",
+          "aside.install.kem",
+          "aside.dk"
+        ]
+      },
+      {
+        "name": "Vault password session",
+        "source": "SESSION_ACCOUNT_PREFIX=aside.pwm.session; sessionAccount(id)=prefix_id",
+        "logicalKey": "aside.pwm.session_<nativeSlot from this home PWM registry>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ],
+        "biometry": false
+      },
+      {
+        "name": "Vault auth envelope",
+        "source": "storageKey(id)=AUX_KEYCHAIN_ID_PREFIX.pwm.auth_id",
+        "logicalKey": "aux.pwm.auth_<PWM account UUID from this home>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      },
+      {
+        "name": "Chrome sync fixture key",
+        "source": "getChromeSyncKeyStorageKey(id)=AUX_KEYCHAIN_ID_PREFIX.csk_id",
+        "logicalKey": "aux.csk_<test account ID from this home>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      },
+      {
+        "name": "MCP fixture credentials",
+        "source": "credentialIndexKey(account)=mcp:index:account; credentialKey(account,server)=mcp:account:server",
+        "logicalKey": "mcp:index:<test account ID> or mcp:<test account ID>:<explicit local fixture server ID>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      }
+    ],
+    "forbidden": [
+      "original Aside group fallback",
+      "owner rows/accounts/credentials",
+      "other Aux scope",
+      "biometric or interactive UI grant",
+      "file-Keychain backend",
+      "keychain/default/search-list changes",
+      "wildcard/prefix enumeration",
+      "unseen selector families",
+      "install-destroy",
+      "dk-unwrap"
+    ],
+    "actualDefaultEntitlementGroup": "UNKNOWN until observed; separate ad hoc hosts may not share DP authority, never borrow original group"
+  },
+  "approvalId": "4d1e3f31dca7970939fc11b6feb39b7ddc6d4b3d23a8e74b863adc4f193d6f5e",
+  "currentReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/native-build-receipt.json",
+    "sha256": "fa82f5db283bdf7d3837f853ba6624d459205a4691e4298e230bee0ef45b600e"
+  },
+  "helperReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-helper-current/dp-scope-helper-receipt.json",
+    "sha256": "2bbfd5159d25653cf6b8d654f19ab061174b5dc902f39bb55aa1934d5e1d275c"
+  },
+  "stagedRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux",
+  "hosts": [
+    {
+      "host": "daemon",
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "launch": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "originalBinarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+      "adaptedCodeSha256": "5f3f8d429b3cd089bfeaba847404f25ccf7f42414275db562440984b6a58e456",
+      "signedBinarySha256": "565b28a6c972b5c8b3184c830c71835e46ab5557a7f4b281433972257f8aa34d",
+      "signing": {
+        "values": {
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "originalEntitlementKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation",
+          "keychain-access-groups"
+        ],
+        "preserved": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removed": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "added": [
+          "com.apple.security.cs.allow-dyld-environment-variables"
+        ],
+        "options": [
+          "runtime"
+        ]
+      }
+    },
+    {
+      "host": "cli",
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "launch": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "originalBinarySha256": "17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a",
+      "adaptedCodeSha256": "8fef73c13376a758225100eb5b3a55c78bd6c83d37cece8583fdc59a68826a2a",
+      "signedBinarySha256": "e275552ae72c1761ecb61779d6bd2999cbdab81cc90077fa9c4496eeac71328f",
+      "signing": {
+        "values": {
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "originalEntitlementKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation",
+          "keychain-access-groups"
+        ],
+        "preserved": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removed": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "added": [
+          "com.apple.security.cs.allow-dyld-environment-variables"
+        ],
+        "options": [
+          "runtime"
+        ]
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "8662609f5da6c32b77e2124a848b1e91bda1b42ef2ac7b1bc2e300ee9c48addd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "e275552ae72c1761ecb61779d6bd2999cbdab81cc90077fa9c4496eeac71328f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-dp-scope-helper.node",
+      "sha256": "41746b2e1c5915a02174e871a5bed8afb8e3901688a08c3d9369ade83f1df75b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "sha256": "5165002d24803c2952cce574e83b970a290832385d1d387b3d48421782994475"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native.cjs",
+      "sha256": "5ec2865e0209974d859d042c617e760fac7b019025a6b1247d19e81df5a122f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/dp-probe-common.cjs",
+      "sha256": "f39a98c0cc657197448c5bb01ab50b4908a00ca30405fad4872fa5aaf3467e51"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/dp-probe-policy.json",
+      "sha256": "7c423d60c368d34bac21686f45c67ff542c8bc7cc1b63826a9f7a53b3f18e887"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/native-dp-diagnostic.cjs",
+      "sha256": "4dd4d0ad231556323d287b894f0783f6997320dc6be60dea64ecd109b8da7901"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/native-load-diagnostic.cjs",
+      "sha256": "ab0babfd0bd3dfbc6df8db848f0006dd717ac5780ffb4cf1c1fd10289ac72011"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/native-load-only-probe.cjs",
+      "sha256": "43177b6d286a069d7605776d215bc32b94155e80d7f361d830565dc7493a8293"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "565b28a6c972b5c8b3184c830c71835e46ab5557a7f4b281433972257f8aa34d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-dp-scope-helper.node",
+      "sha256": "41746b2e1c5915a02174e871a5bed8afb8e3901688a08c3d9369ade83f1df75b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "sha256": "5165002d24803c2952cce574e83b970a290832385d1d387b3d48421782994475"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs",
+      "sha256": "5ec2865e0209974d859d042c617e760fac7b019025a6b1247d19e81df5a122f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/dp-probe-common.cjs",
+      "sha256": "f39a98c0cc657197448c5bb01ab50b4908a00ca30405fad4872fa5aaf3467e51"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/dp-probe-policy.json",
+      "sha256": "7c423d60c368d34bac21686f45c67ff542c8bc7cc1b63826a9f7a53b3f18e887"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/native-dp-diagnostic.cjs",
+      "sha256": "4dd4d0ad231556323d287b894f0783f6997320dc6be60dea64ecd109b8da7901"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/native-load-diagnostic.cjs",
+      "sha256": "ab0babfd0bd3dfbc6df8db848f0006dd717ac5780ffb4cf1c1fd10289ac72011"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/native-load-only-probe.cjs",
+      "sha256": "43177b6d286a069d7605776d215bc32b94155e80d7f361d830565dc7493a8293"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/native/aux-native-carrier",
+      "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/Resources/aux/native/libaux-native-boundary.dylib",
+      "sha256": "9464d02152e995dcdeb1f4f729853658c35af8452df914f4aa3a04f9090d4c00"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/cli-entitlements.plist",
+      "sha256": "01a6e706d603d483d1b10375cfacf97637b5c3c96cf66670555cab8d1c469836"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-approval/staged-LpOy50/daemon-entitlements.plist",
+      "sha256": "01a6e706d603d483d1b10375cfacf97637b5c3c96cf66670555cab8d1c469836"
+    }
+  ],
+  "publicChallengeBase64": "LYZfC9HPDfSOH8FN0iKu1AsORQv/S3EvntlQ96HxCD0="
 }

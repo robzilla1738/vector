@@ -1,6 +1,6 @@
 # One disposable Data Protection scope: approval runbook
 
-Status: preparation only. No original installation, signing, Vault, PDF or Keychain command has run. The prior queued helper job ended without an output or successful receipt; the version-2 runnable preview will be produced only from a successful source-matching helper receipt. The existing version-1 JSON is not a runnable approval.
+Status: compiled and signed preparation is ready; awaiting explicit human approval. The exact-scope helper compiled successfully and its signature verified. The version-2 preview pins the helper receipt and both signed actual SEA hosts. No original installation, signing, Vault, PDF or Keychain command has run.
 
 This uses the original native binding and macOS Data Protection Keychain semantics. A disposable HOME isolates application metadata and supplies a hashed item namespace; it does **not** create a separate Keychain database. The actual default/shared entitlement group of the ad hoc hosts is unknown. Original Aside access-group selectors are removed, unknown selectors refuse, and there is no fallback to the original group, file Keychain, search-list change, enumeration, biometric prompt or OS grant.
 

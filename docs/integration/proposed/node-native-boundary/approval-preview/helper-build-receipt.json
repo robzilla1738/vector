@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "buildExitCode": 0,
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "approvalId": "4d1e3f31dca7970939fc11b6feb39b7ddc6d4b3d23a8e74b863adc4f193d6f5e",
+  "sources": [
+    {
+      "path": "vendor/provided/native/dp-scope-helper.mm",
+      "sha256": "803e88e7a79c1aac1377af6721de96124e9cb43bb1b9f10c8b95432f63a9c90b"
+    },
+    {
+      "path": "vendor/provided/native/dp-scope-policy.h",
+      "sha256": "639b6723b8c18cb9dd4e82ed62e5b10ca2af3c1626389661a5e8b4c8f7354699"
+    },
+    {
+      "path": "vendor/provided/dp-probe-policy.json",
+      "sha256": "7c423d60c368d34bac21686f45c67ff542c8bc7cc1b63826a9f7a53b3f18e887"
+    },
+    {
+      "path": "vendor/provided/build-dp-scope-helper.mjs",
+      "sha256": "3e3e9008b6a498776b3ca2f7c995463b34c3549b18552cd6a9b7fe7aac4a878d"
+    }
+  ],
+  "headers": [
+    {
+      "path": "/Users/rcourson/.aside/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+    },
+    {
+      "path": "/Users/rcourson/.aside/runtime/node/include/node/js_native_api.h",
+      "sha256": "8808ef8899a1691411928ef5dd7dae0537aedc93d3a34e223b2d89692e79c788"
+    },
+    {
+      "path": "/Users/rcourson/.aside/runtime/node/include/node/js_native_api_types.h",
+      "sha256": "c12406a8c0036aefdb66b98065fc88e2e7a053c1f274deef33af6c26c099b933"
+    },
+    {
+      "path": "/Users/rcourson/.aside/runtime/node/include/node/node_api_types.h",
+      "sha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00"
+    }
+  ],
+  "argv": [
+    "xcrun",
+    "clang++",
+    "-std=c++20",
+    "-fobjc-arc",
+    "-framework",
+    "Foundation",
+    "-framework",
+    "Security",
+    "-shared",
+    "-undefined",
+    "dynamic_lookup",
+    "-I",
+    "/Users/rcourson/.aside/runtime/node/include/node",
+    "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/dp-scope-helper.mm",
+    "-o",
+    "/Users/rcourson/Documents/Vibe/web/out/.dp-helper-T06WnI/aux-dp-scope-helper.node"
+  ],
+  "signatureVerified": true,
+  "nativeLoaded": false,
+  "dpCallsExecuted": false,
+  "output": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-dp-helper-current/aux-dp-scope-helper.node",
+    "sha256": "41746b2e1c5915a02174e871a5bed8afb8e3901688a08c3d9369ade83f1df75b"
+  }
+}

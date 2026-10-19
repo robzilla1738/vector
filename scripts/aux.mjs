@@ -27,6 +27,11 @@ for (let i = 0; i < args.length; i++) {
   options[key] = key === 'port' ? Number(value) : resolve(value);
 }
 if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) throw new Error('Invalid daemon port.');
+// Supplied production UI discovers 21520; native CDP remains fixed at 45203.
+// A daemon-only override does not relocate or isolate any browser/CDP endpoint.
+if (!options.noBrowser && options.port !== 21520) {
+  throw new Error('The supplied browser requires daemon port 21520 and CDP port 45203. Custom --port is supported only with --no-browser.');
+}
 if (options.app && options.chromium) throw new Error('Select either --app or --chromium.');
 const executable = resolve(options.chromium ?? (options.app ? join(options.app, 'Contents/MacOS/Aux') : process.env.AUX_BROWSER_PATH ?? join(homedir(), 'Applications/Aux.app/Contents/MacOS/Aux')));
 const app = dirname(dirname(dirname(executable))), resources = join(app, 'Contents/Resources/aux');
@@ -91,7 +96,9 @@ function stop(code) {
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));
 async function main() {
   if (stopping) return;
-const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port) };
+const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
+  AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,
+  AUX_BROWSER_CDP_HOST: '127.0.0.1:45203' };
 if (options.noBrowser) {
   const boundary = join(resources, 'native/libaux-native-boundary.dylib');
   const stat = await lstat(boundary);
