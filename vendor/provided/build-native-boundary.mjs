@@ -29,7 +29,7 @@ export function buildProvidedNativeBoundary(output, nodeInclude = process.env.AU
     const result = spawnSync('python3', [lock, ...command], { stdio: 'inherit' });
     if (result.status !== 0) throw new Error('Provided native boundary compilation failed');
   };
-  compile(['-dynamiclib', join(source, 'keychain-query-map.mm'), join(source, 'keychain-interpose.mm'), '-o', boundary]);
+  compile(['-dynamiclib', join(source, 'keychain-query-map.mm'), join(source, 'keychain-interpose.mm'), join(source, 'sea-resource-pointer.mm'), '-o', boundary]);
   compile([join(source, 'native-carrier.mm'), '-o', carrier]);
   compile([join(source, 'keychain-query-map.mm'), join(source, 'keychain-query-map-test.mm'), '-o', fixture]);
   compile(['-shared', '-undefined', 'dynamic_lookup', '-I', resolve(nodeInclude), join(source, 'node-boundary-guard.mm'), '-o', guard]);

@@ -113,14 +113,15 @@ export function proveSuppliedSeaLoadOnly({ resourceRoot, nativeOutput, evidenceP
           throw directError;
         }
       }
+      if (host.name === 'cli' && !launcherPassed) throw new Error('CLI native launcher proof failed; direct fallback is diagnostic only');
       const result = JSON.parse(execution.stdout);
       if (result.host !== 'supplied-sea' || result.productMainStarted !== false || result.dpRuntimeAccepted !== false) throw new Error('SEA diagnostic did not exit before product main');
       for (const p of [result.main, result.worker]) if (p?.importedPointersVerified !== true || p.denyAll !== true || p.canonicalScopeBound !== true || p.scopeChangeRefused !== true || p.originalCommandsInvoked !== false || p.originalPdfInvoked !== false || p.originalBindingLoaded !== true || p.runExportRegistered !== true || p.pdfExportRegistered !== true || !Number.isSafeInteger(p.refusedSecurityCalls)) throw new Error('SEA registration proof incomplete');
       results.push({ host: host.name, originalBinarySha256: hash(original), adaptedCodeSha256: adapted.codeSha256, adaptedUnsignedBinarySha256: hash(adapted.binary), signedBinarySha256: sha(executable), launcherUsed: host.name === 'cli', launcherPassed, ...(launcherFailure ? { launcherFailure, directSeaFallbackUsed: true } : {}), signingPolicy: policy, result });
     }
     const evidence = { version: 1, nativeBuildReceiptSha256: sha(receiptPath), nativeBinariesRecompiled: false,
-      diagnosticSources: ['native-diagnostic-hook.mjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs', 'daemon-adapter.mjs', 'cli-adapter.mjs'].map((name) => ({ path: `vendor/provided/${name}`, sha256: sha(path.join(repository, 'vendor/provided', name)) })), results,
-      boundarySha256: sha(boundary), guardSha256: sha(guard), bindingSha256: sha(binding), originalCommandsInvoked: false, dpRuntimeAccepted: false };
+      diagnosticSources: ['native-diagnostic-hook.mjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs', 'daemon-adapter.mjs', 'cli-adapter.mjs', 'prove-sea-load-only.mjs'].map((name) => ({ path: `vendor/provided/${name}`, sha256: sha(path.join(repository, 'vendor/provided', name)) })), results,
+      diagnosticBoundaryUsed: Boolean(diagnosticBoundary), boundarySha256: sha(boundary), guardSha256: sha(guard), bindingSha256: sha(binding), originalCommandsInvoked: false, dpRuntimeAccepted: false };
     fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`); return evidence;
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }

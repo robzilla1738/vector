@@ -8,7 +8,7 @@ const repository = fileURLToPath(new URL('../../', import.meta.url));
 const digest = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run') {
   const sources = ['aux-native.cjs', 'build-native-boundary.mjs', 'native/keychain-query-map.h',
-    'native/keychain-query-map.mm', 'native/keychain-interpose.mm', 'native/native-carrier.mm',
+    'native/keychain-query-map.mm', 'native/keychain-interpose.mm', 'native/sea-resource-pointer.mm', 'native/native-carrier.mm',
     'native/node-boundary-guard.mm', 'native/cli-launcher.mm', 'native/keychain-query-map-test.mm'].map((name) => {
     const path = resolve(repository, 'vendor/provided', name);
     return { path: relative(repository, path), sha256: digest(path) };
