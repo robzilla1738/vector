@@ -1,0 +1,105 @@
+#!/usr/bin/env node
+// Development launcher. Production startup belongs to the native browser.
+import { launchOwnedProcess } from './lib/owned-process.mjs';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, rm, readFile, realpath, lstat } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+
+const root = resolve(import.meta.dirname, '..');
+const options = { home: process.env.AUX_HOME ?? join(homedir(), '.aux'), port: 21520 };
+const args = process.argv.slice(2);
+let browserArgs = [];
+for (let i = 0; i < args.length; i++) {
+  const flag = args[i];
+  if (flag === '--') { browserArgs = args.slice(i + 1); break; }
+  if (flag === '--temp-profile') { options.temporary = true; continue; }
+  if (flag === '--no-browser') { options.noBrowser = true; continue; }
+  if (flag === '--help') {
+    console.log('aux [--temp-profile] [--no-browser] [--home DIR] [--profile DIR] [--app PATH] [--chromium PATH] [--port NUMBER] [-- browser flags]');
+    process.exit(0);
+  }
+  if (!['--home', '--profile', '--app', '--chromium', '--port'].includes(flag)) throw new Error(`Unknown option: ${flag}`);
+  const value = args[++i];
+  if (!value || value.startsWith('--')) throw new Error(`Missing value for ${flag}`);
+  const key = flag.slice(2);
+  options[key] = key === 'port' ? Number(value) : resolve(value);
+}
+if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) throw new Error('Invalid daemon port.');
+if (options.app && options.chromium) throw new Error('Select either --app or --chromium.');
+const executable = resolve(options.chromium ?? (options.app ? join(options.app, 'Contents/MacOS/Aux') : process.env.AUX_BROWSER_PATH ?? join(homedir(), 'Applications/Aux.app/Contents/MacOS/Aux')));
+const app = dirname(dirname(dirname(executable))), resources = join(app, 'Contents/Resources/aux');
+let supplied;
+try { supplied = JSON.parse(await readFile(join(resources, 'bundle.json'), 'utf8')); }
+catch { throw new Error('Assemble the supplied app first with package:provided, then select it with --app.'); }
+if (supplied.version !== 1 || supplied.implementation !== 'supplied') throw new Error('A packaged supplied Aux implementation is required.');
+if (options.temporary && (options.profile || args.includes('--home'))) throw new Error('Temporary profile cannot be combined with explicit home/profile.');
+const temporaryRoot = options.temporary ? await mkdtemp(join(tmpdir(), 'aux-provided-')) : undefined;
+const home = temporaryRoot ? join(temporaryRoot, 'home') : options.home;
+const profile = temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile');
+await mkdir(home, { recursive: true, mode: 0o700 });
+const children = new Set();
+let stopping = false;
+async function start(command, arguments_, env) {
+  const child = await launchOwnedProcess(command, arguments_, { cwd: root, env });
+  children.add(child);
+  child.done.then(outcome => {
+    children.delete(child);
+    if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);
+  });
+  if (!child.pid) {
+    await stop(1);
+    throw new Error('The packaged executable could not be started.');
+  }
+  return child;
+}
+let shutdown;
+function stop(code) {
+  if (shutdown) return shutdown;
+  stopping = true;
+  shutdown = (async () => {
+    const outcomes = await Promise.all([...children].map(child => child.stop()));
+    const failed = outcomes.some(outcome => outcome.error || outcome.forced || !outcome.groupStopped);
+    // Native shutdown has no launcher-visible success receipt, and the supplied
+    // runtime may start detached shell groups. Group absence is not proof that
+    // every descendant stopped; never delete potentially live application state.
+    if (temporaryRoot) console.error(`Temporary Aux state retained at ${temporaryRoot}; complete descendant shutdown is unverified.`);
+    process.exitCode = code || (failed ? 1 : 0);
+  })();
+  return shutdown;
+}
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));
+const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port) };
+if (options.noBrowser) {
+  const boundary = join(resources, 'native/libaux-native-boundary.dylib');
+  const stat = await lstat(boundary);
+  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o022) || await realpath(boundary) !== boundary) throw new Error('Fixed packaged native boundary required.');
+  for (const key of Object.keys(env)) if (key.startsWith('DYLD_')) delete env[key];
+  env.DYLD_INSERT_LIBRARIES = boundary;
+  const daemon = await start(join(resources, 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'), [], env);
+  let ready = false;
+  for (let attempt = 0; attempt < 120 && !stopping; attempt++) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${options.port}/health`, { signal: AbortSignal.timeout(500) });
+      if (response.ok) {
+        const health = await response.json();
+        if (health.service !== 'aside-daemon' || health.pid !== daemon.pid) throw new Error('Port is occupied by another daemon.');
+        if (health.ready) { ready = true; break; }
+      }
+    } catch (error) {
+      if (error.message === 'Port is occupied by another daemon.' || (!(error instanceof TypeError) && error.name !== 'TimeoutError')) { await stop(1); throw error; }
+    }
+    await delay(250);
+  }
+  if (!ready && !stopping) { await stop(1); throw new Error('Daemon did not become ready within 30 seconds.'); }
+} else {
+  if (!existsSync(executable)) {
+    if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
+    throw new Error('The packaged Aux browser executable is missing.');
+  }
+  await start(executable, [
+    `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain',
+    ...browserArgs,
+  ], env);
+}

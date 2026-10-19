@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "scripts/aux.mjs",
+      "baselineSha256": "866e01f899673530229b9870c6d5cfcc4e163ce19383733f944198de06d4837f",
+      "outputSha256": "2f8b4dea105ee2c9e561431ebcf62f81966181caa489d4332fdec25867be60be",
+      "anchors": [
+        {
+          "find": "import { spawn } from 'node:child_process';",
+          "replace": "import { launchOwnedProcess } from './lib/owned-process.mjs';",
+          "count": 1
+        },
+        {
+          "find": "function start(command, arguments_, env) {\n  const child = spawn(command, arguments_, { cwd: root, env, stdio: 'inherit' });\n  children.add(child);\n  child.once('error', (error) => { children.delete(child); console.error(error.message); void stop(1); });\n  child.once('exit', (code, signal) => {\n    children.delete(child);\n    if (!stopping) void stop(signal ? 1 : code ?? 1);\n  });\n  return child;\n}\nasync function stop(code) {\n  if (stopping) return;\n  stopping = true;\n  for (const child of children) child.kill('SIGTERM');\n  const timeout = setTimeout(() => {\n    for (const child of children) child.kill('SIGKILL');\n  }, 5000);\n  await Promise.all([...children].map((child) => new Promise((done) => child.once('exit', done))));\n  clearTimeout(timeout);\n  if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });\n  process.exitCode = code;\n}\nfor (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(0));\n",
+          "replace": "async function start(command, arguments_, env) {\n  const child = await launchOwnedProcess(command, arguments_, { cwd: root, env });\n  children.add(child);\n  child.done.then(outcome => {\n    children.delete(child);\n    if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);\n  });\n  if (!child.pid) {\n    await stop(1);\n    throw new Error('The packaged executable could not be started.');\n  }\n  return child;\n}\nlet shutdown;\nfunction stop(code) {\n  if (shutdown) return shutdown;\n  stopping = true;\n  shutdown = (async () => {\n    const outcomes = await Promise.all([...children].map(child => child.stop()));\n    const failed = outcomes.some(outcome => outcome.error || outcome.forced || !outcome.groupStopped);\n    // Native shutdown has no launcher-visible success receipt, and the supplied\n    // runtime may start detached shell groups. Group absence is not proof that\n    // every descendant stopped; never delete potentially live application state.\n    if (temporaryRoot) console.error(`Temporary Aux state retained at ${temporaryRoot}; complete descendant shutdown is unverified.`);\n    process.exitCode = code || (failed ? 1 : 0);\n  })();\n  return shutdown;\n}\nfor (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));\n",
+          "count": 1
+        },
+        {
+          "find": "  const daemon = start(",
+          "replace": "  const daemon = await start(",
+          "count": 1
+        },
+        {
+          "find": "  start(executable, [",
+          "replace": "  await start(executable, [",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeEvidence": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "a1d3478b74bc807c51a153a1fe178bb9cd3c0359267ae6da8bf0ac02e0a81ea9"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "sha256": "dfacc8d7e99cbc1e7fa8dbd8e8334a8f4ee1594958f8730b9aa47bdcf1de88c2"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state_probe.cc",
+      "sha256": "92c450a155d0b66e09d905decf08b44a29901dcf3f097eb42d8db80c3700b56d"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "sha256": "6cf2b90e99418dbc161b60fd12840c8b9702d265a634f5ad2cb78f230fd05bc3"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.cc",
+      "sha256": "7fd321e0f22258e0264e70cd78b5f2df00fd3bb491f2aae35c88236852fa7a8a"
+    }
+  ],
+  "applied": false,
+  "nativeBuild": false,
+  "newFiles": [
+    {
+      "path": "scripts/lib/owned-process.mjs",
+      "sha256": "56924bc57f03393723f429d2f402a31e05751fc690571c52094c2ea01dbdcdec"
+    },
+    {
+      "path": "scripts/lib/owned-process-guardian.mjs",
+      "sha256": "d651d8e248f7a2e2cf40651313b2531c1c4a55470c4b6f538c4cce9990720f98"
+    }
+  ]
+}

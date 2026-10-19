@@ -1,0 +1,80 @@
+--- a/scripts/aux.mjs
++++ b/scripts/aux.mjs
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env node
+ // Development launcher. Production startup belongs to the native browser.
+-import { spawn } from 'node:child_process';
++import { launchOwnedProcess } from './lib/owned-process.mjs';
+ import { existsSync } from 'node:fs';
+ import { mkdir, mkdtemp, rm, readFile, realpath, lstat } from 'node:fs/promises';
+ import { homedir, tmpdir } from 'node:os';
+@@ -41,29 +41,35 @@
+ await mkdir(home, { recursive: true, mode: 0o700 });
+ const children = new Set();
+ let stopping = false;
+-function start(command, arguments_, env) {
+-  const child = spawn(command, arguments_, { cwd: root, env, stdio: 'inherit' });
++async function start(command, arguments_, env) {
++  const child = await launchOwnedProcess(command, arguments_, { cwd: root, env });
+   children.add(child);
+-  child.once('error', (error) => { children.delete(child); console.error(error.message); void stop(1); });
+-  child.once('exit', (code, signal) => {
++  child.done.then(outcome => {
+     children.delete(child);
+-    if (!stopping) void stop(signal ? 1 : code ?? 1);
++    if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);
+   });
++  if (!child.pid) {
++    await stop(1);
++    throw new Error('The packaged executable could not be started.');
++  }
+   return child;
+ }
+-async function stop(code) {
+-  if (stopping) return;
++let shutdown;
++function stop(code) {
++  if (shutdown) return shutdown;
+   stopping = true;
+-  for (const child of children) child.kill('SIGTERM');
+-  const timeout = setTimeout(() => {
+-    for (const child of children) child.kill('SIGKILL');
+-  }, 5000);
+-  await Promise.all([...children].map((child) => new Promise((done) => child.once('exit', done))));
+-  clearTimeout(timeout);
+-  if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
+-  process.exitCode = code;
++  shutdown = (async () => {
++    const outcomes = await Promise.all([...children].map(child => child.stop()));
++    const failed = outcomes.some(outcome => outcome.error || outcome.forced || !outcome.groupStopped);
++    // Native shutdown has no launcher-visible success receipt, and the supplied
++    // runtime may start detached shell groups. Group absence is not proof that
++    // every descendant stopped; never delete potentially live application state.
++    if (temporaryRoot) console.error(`Temporary Aux state retained at ${temporaryRoot}; complete descendant shutdown is unverified.`);
++    process.exitCode = code || (failed ? 1 : 0);
++  })();
++  return shutdown;
+ }
+-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(0));
++for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));
+ const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port) };
+ if (options.noBrowser) {
+   const boundary = join(resources, 'native/libaux-native-boundary.dylib');
+@@ -71,7 +77,7 @@
+   if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o022) || await realpath(boundary) !== boundary) throw new Error('Fixed packaged native boundary required.');
+   for (const key of Object.keys(env)) if (key.startsWith('DYLD_')) delete env[key];
+   env.DYLD_INSERT_LIBRARIES = boundary;
+-  const daemon = start(join(resources, 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'), [], env);
++  const daemon = await start(join(resources, 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'), [], env);
+   let ready = false;
+   for (let attempt = 0; attempt < 120 && !stopping; attempt++) {
+     try {
+@@ -92,7 +98,7 @@
+     if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
+     throw new Error('The packaged Aux browser executable is missing.');
+   }
+-  start(executable, [
++  await start(executable, [
+     `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain',
+     ...browserArgs,
+   ], env);
