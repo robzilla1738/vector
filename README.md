@@ -1,10 +1,12 @@
 # Aux
 
-Aux is a local browser under active clean-room reconstruction. Its TypeScript daemon, React extensions, agent engine, CLI, macOS helpers and Chromium integration are being implemented independently from behavior specifications.
+Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. The clean-room reconstruction approach was superseded by the owner's direction on 2026-10-19.
 
-Read [workspace rules](AGENTS.md), [specifications](docs/spec/README.md), [naming policy](docs/design/names.md) and [current progress](docs/STATUS.md). The former runtime is archived in git history; retained legacy build files are being retired as independent replacements become ready.
+Read the [active reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), [workspace rules](AGENTS.md) and [current progress](docs/STATUS.md). Preserve the supplied components and matching runtime contracts. Independent replacements remain recoverable in Git and must not displace the supplied UI.
 
 ## Development
+
+The build/packaging pipeline is transitioning to the supplied implementation. The commands below currently build the earlier independent components; they are recovery/development tools and do not yet produce the requested faithful reused build. Existing staging machinery under `vendor/aside/` and `scripts/vendor-aside.mjs` is being reviewed against the pinned supplied version before reuse.
 
 ```sh
 pnpm install

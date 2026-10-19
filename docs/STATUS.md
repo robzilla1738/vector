@@ -1,8 +1,16 @@
 # Aux rebuild status
 
-Updated 2026-10-19. The accepted clean-room plan replaces the former reference-vendoring architecture. Feature parity is not yet achieved.
+Updated 2026-10-19. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
-## Current acceptance snapshot
+## Current direction
+
+- Independent UI reconstruction and clean-room retirement are stopped. Their source/evidence remain recoverable in Git as historical work.
+- Direct reuse of supplied static source/packages is authorized. The owner profile, credentials, Keychain material and OS grants remain outside scope.
+- Agent/Vault source target is1.26.1016.1852. Reuse the corresponding implementation and runtime contracts; preserve layouts, styles, typography and behavior, changing only Aux identities/assets and necessary platform integration.
+- Existing vendoring/staging code and supplied components are under review. No new reused build has been declared ready. The running disposable component app is the prior independent implementation and does not meet the corrected goal.
+- The active native compilation is preserved while integration requirements are evaluated; no shared native source reset/deletion is authorized.
+
+## Historical independent-build snapshot
 
 - Actual disposable packaged component browser: daemon startup, native account signing, seven-stage onboarding, restart/unlock and new-tab return observed. The refreshed worker connects automatically. All five mandated L2 Muse browser tasks passed; post-run credentials are empty. Evidence: `docs/acceptance/native-browser-tasks-five.md`.
 - Full non-component Chromium build is running. Native cache/refresh, identifier cleanup, retired shell removal and optional-argument corrections remain staged for subsequent integration and compilation; they are not in the running interim browser.

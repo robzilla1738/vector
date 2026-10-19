@@ -1,31 +1,26 @@
-# Aux clean-room workspace
+# Aux workspace
 
-Aux is an independently implemented local browser targeting the behavior and visual layout documented in `docs/spec/`. The accepted plan is `/Users/rcourson/.factory/specs/2026-10-19-aux-v1-clean-room-rebuild-to-full-aside-parity-multi-agent.md`. It supersedes the former vendoring architecture and wire-contract requirements. Read `docs/spec/README.md`, `docs/design/names.md` and `docs/STATUS.md` first.
+Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. Independently recreating the product is not the objective. The owner's explicit direction on 2026-10-19 supersedes the clean-room rebuild plan and its source-reading/copying restrictions.
 
-## Clean-room boundary
+Read `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
 
-- Spec agents may inspect the reference app and supplied reference artifacts. They write original behavior specs with provenance and capture screenshots only with disposable profiles. No reference code, assets, font, identifiers or UI prose may enter shipped sources.
-- Build agents read only approved `docs/spec/`, reference screenshots and public upstream documentation. They must never open reference bundles, decompiles, `vendor/aside/`, `out/aside-staged/`, `aside-rea 2`, or `AI Blueprints/06`. Start fresh build agents rather than reusing spec agents.
-- Specs describe behavior, data shapes, measurements, errors and states in original words. Mark sections `ready` only when supported by evidence; record unknowns explicitly. Build slices cite their spec sections.
-- New internal names use Aux throughout. The name mapping lives in `docs/design/names.md`. Reference provenance belongs in `docs/spec/provenance.md`.
-- Assets must be original or independently licensed upstream assets. Use Lucide (ISC), Geist/Geist Mono (OFL) and licensed upstream Chromium/npm dependencies with attribution.
+## Implementation policy
 
-## Layout and ownership
-
-- `packages/contracts`, `packages/ui`, `packages/agent`, `packages/skills`, `packages/filter-lists`: shared contracts, design system, agent engine, built-in skills and filter catalog.
-- `apps/daemon`, `apps/extension`, `apps/vault`, `apps/cli`, `apps/computer-use`, `apps/password-importer`, `apps/memory`: independent application components.
-- `chromium/patches/aux/`: existing native work and new patches starting at 0086.
-- `scripts/`: independent launcher, build, packaging, provenance and acceptance tooling.
-- `docs/spec/`: build-facing behavior specifications. `out/reference/`: gitignored reference evidence and hash index.
-- Legacy vendoring stays isolated until replacement acceptance; it must not be used as a build template or shipped in the rebuilt app.
+- Reuse the supplied source and packaged implementation directly. Preserve component structure, CSS, typography, layout, interactions and behavior. Do not approximate them with newly designed screens.
+- Change product names, Aux artwork/icons, bundle and extension identities, state locations and identifiers consistently across the stack. Make only integration changes necessary for Aux Chromium and local boundaries.
+- Keep a pinned source inventory and reviewable count-checked patches. Separate branding/identifier changes from necessary platform adaptations. Do not introduce unrelated visual or functional changes.
+- The supplied implementation wins when existing independent Aux code differs. Reuse its daemon, Agent/Vault extensions, CLI, helpers and runtimes where needed to preserve behavior. Do not force its UI onto a replacement backend merely to retain prior work.
+- Authorized static inputs include `~/Downloads/aside-rea 2`, `~/AI Blueprints/06` and installed component packages under `~/Library/Application Support/Aside/`. Agent/Vault target version is `1.26.1016.1852`; pin exact files/hashes. Static implementation copying is authorized; owner accounts, profiles and credentials are not.
+- This is implementation reuse and rebranding. Do not claim clean-room provenance or require authorized reused files to differ from their supplied originals.
 
 ## Working rules
 
-- Integrator commits coherent slices to local `main`; lanes use their own worktrees and deliver commits for integration. Never push or run hosted Actions. No developer signing, notarization, release or cloud work. Ad hoc signing for local packaging is permitted by the accepted plan.
-- Work in parallel on substantial, disjoint lanes. The integrator owns root manifests, patch series, GN roots, browser startup and prefs, API registration and GRD files. Request shared edits instead of racing them.
-- Native lanes share the existing Chromium checkout, edit disjoint paths, and serialize builds through `/tmp/aux-build.lock`. Never reset the checkout or delete owner changes.
-- Never print or commit credentials. `.env` contains `AI_GATEWAY_API_KEY`. AI tests use only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`, stored via the rebuilt model credential API under `$AUX_HOME/u/<account>/credentials.json`.
-- Use disposable profiles. Ask before touching the owner's real browser profiles. Retire a process only after verifying its live identity; historical PIDs are not authorization to kill an unrelated process.
-- Unsigned Chromium uses `--use-mock-keychain`.
-- Keep verification lean: focused tests for contracts, signing/auth, crypto, filters and scheduling; typecheck/lint, clean-room checks and daemon smoke per integrated slice; native compilation and disposable-profile observation after native changes. Final parity and task evidence must cover the full plan.
-- Record actual progress, evidence and remaining gaps in `docs/STATUS.md`. Do not call scaffolding or unverified stubs complete.
+- Commit coherent slices to local `main`; parallel lanes use separate worktrees and deliver commits. Integrator owns root manifests, packaging, patch series, shared native registration/GN files and startup.
+- Stay local. Never push, run hosted Actions, developer-sign, notarize or release. Ad hoc signing for local testing/packaging is permitted.
+- Preserve owner changes in the Chromium checkout. Never reset it or delete unrelated files. Serialize native builds with `scripts/native-build.py` and `/tmp/aux-build.lock`.
+- Use disposable profiles/state homes. Ask before touching the owner's real profiles, credentials, Keychain material or OS grants. Reusing static code does not authorize reading owner data.
+- Keep Aux home/app data, daemon/bridge/CDP ports and installation identity isolated from Aside. Do not connect to, stop or replace the owner's Aside daemon.
+- Never print or commit credentials. AI tests use only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`; configure through the actual implementation's credential API and remove test credentials afterward.
+- Use `--use-mock-keychain` for unsigned Chromium. Verify helper/auth isolation separately; the switch does not prove custom Keychain calls are confined.
+- Keep verification lean: focused checks for changed boundaries, disposable launch and real UI/behavior observation. Verify fidelity against the supplied implementation before declaring readiness.
+- Record actual evidence and gaps in `docs/STATUS.md`. Earlier evidence remains historical, not proof that a newly reused stack works.
