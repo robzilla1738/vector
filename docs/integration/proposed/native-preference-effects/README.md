@@ -1,6 +1,6 @@
 # Supplied native preference effects
 
-This pinned proposal changes seven native files. It has been composed over the applied v16 source in a disposable tree with exact input/output hashes; it has not been applied, compiled or executed.
+This pinned proposal changes seven native files. The product-specific constant lives in the existing narrow `tab_strip_prefs.h` header, with an explicit dependency from the preference API; it does not modify global `chrome/common/pref_names.h`. It has been composed over the applied v16 source in a disposable tree with exact input/output hashes; it has not been applied, compiled or executed.
 
 The vertical tab insertion preference belongs to browser Local State and defaults to `top`. Only the exact stored value `bottom` selects bottom; the retired Aux API used a disconnected per-profile preference defaulting to bottom. The proposal restores the supplied global getter/setter and binds the real155 `chrome::NewTab` path to top insertion after pinned tabs. Horizontal windows retain their existing insertion. Link ordering, explicit extension indexes, group and split constraints remain owned by Chromium. Additional supplied top-predicate call sites are listed in `source-evidence.json`; their full equivalence remains unverified.
 

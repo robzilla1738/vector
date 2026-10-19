@@ -3,16 +3,16 @@
   "reason": "Preserve supplied browser-global vertical new-tab placement and original macOS app-domain vibrancy persistence/notification. Actual rendering and packaged behavior remain acceptance gates.",
   "files": [
     {
-      "path": "chrome/common/pref_names.h",
-      "baselineSha256": "89ae6e72d45077ed8648cf3a67f1d16df3bfd50db4a2202bb3756e34227efb8f",
-      "outputSha256": "ff3a38d1b942d14d5389b1db9aad3f94fe9659b0cf39b64756c3ac8cf11b06a4",
+      "path": "chrome/browser/ui/tabs/tab_strip_prefs.h",
       "anchors": [
         {
-          "find": "namespace prefs {",
-          "replace": "namespace prefs {\n\n// Supplied browser-global vertical new-tab placement.\ninline constexpr char kAuxVerticalTabInsertionPosition[] =\n    \"aux.browser_preferences.vertical_tab_insertion_position\";",
+          "find": "namespace tabs {",
+          "replace": "namespace tabs {\n\n// Supplied browser-global vertical new-tab placement.\ninline constexpr char kAuxVerticalTabInsertionPosition[] =\n    \"aux.browser_preferences.vertical_tab_insertion_position\";",
           "count": 1
         }
-      ]
+      ],
+      "baselineSha256": "b430b8346d787b16a13e9c4dd1dbcc95e28e6735925327ca24fa90210237700e",
+      "outputSha256": "5be142bc4035d893fbe6081258b03fadc263ae2b0dcdb5ca3f17e0a22ed7db07"
     },
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
@@ -41,8 +41,13 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
       "baselineSha256": "8861fcc52080d5fa767316b0af46a1357483cdb1bdb4078e016797532f78cd94",
-      "outputSha256": "b6ccb1c58db73dddd6437a8902bb51028ef467763bb0fc0ecd833f6caaed105f",
+      "outputSha256": "0ccb24854b3e086ade4f91f28df1661666abd1670fec72cec64a720ecedb6075",
       "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/zoom/chrome_zoom_level_prefs.h\"",
+          "replace": "#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"\n#include \"chrome/browser/ui/zoom/chrome_zoom_level_prefs.h\"",
+          "count": 1
+        },
         {
           "find": "base::DictValue AddAuxToDock();",
           "replace": "base::DictValue AddAuxToDock();\nbool ReadAuxWindowVibrancyEnabled();\nbool WriteAuxWindowVibrancyEnabled(bool enabled);",
@@ -65,7 +70,7 @@
         },
         {
           "find": "ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {",
-          "replace": "void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {\n  registry->RegisterStringPref(prefs::kAuxVerticalTabInsertionPosition, \"top\");\n}\nExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {",
+          "replace": "void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {\n  registry->RegisterStringPref(tabs::kAuxVerticalTabInsertionPosition, \"top\");\n}\nExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {",
           "count": 1
         },
         {
@@ -80,12 +85,12 @@
         },
         {
           "find": "  if (method == \"getVerticalTabInsertionPosition\") {\n    return RespondNow(WithArguments(prefs->GetString(kInsertion)));\n  }",
-          "replace": "  if (method == \"getVerticalTabInsertionPosition\") {\n    auto* local_state = g_browser_process->local_state();\n    return RespondNow(WithArguments(\n        local_state && local_state->GetString(\n                           prefs::kAuxVerticalTabInsertionPosition) == \"bottom\"\n            ? \"bottom\" : \"top\"));\n  }",
+          "replace": "  if (method == \"getVerticalTabInsertionPosition\") {\n    auto* local_state = g_browser_process->local_state();\n    return RespondNow(WithArguments(\n        local_state && local_state->GetString(\n                           tabs::kAuxVerticalTabInsertionPosition) == \"bottom\"\n            ? \"bottom\" : \"top\"));\n  }",
           "count": 1
         },
         {
           "find": "    prefs->SetString(kInsertion, args()[0].GetString());",
-          "replace": "    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    if (local_state->IsManagedPreference(prefs::kAuxVerticalTabInsertionPosition)) {\n      return RespondNow(Error(\"Setting is managed\"));\n    }\n    local_state->SetString(prefs::kAuxVerticalTabInsertionPosition,\n                           args()[0].GetString());",
+          "replace": "    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    if (local_state->IsManagedPreference(tabs::kAuxVerticalTabInsertionPosition)) {\n      return RespondNow(Error(\"Setting is managed\"));\n    }\n    local_state->SetString(tabs::kAuxVerticalTabInsertionPosition,\n                           args()[0].GetString());",
           "count": 1
         }
       ]
@@ -110,11 +115,16 @@
     {
       "path": "chrome/browser/ui/browser_commands.cc",
       "baselineSha256": "057276848b97fc222d462b0d1fa3d0b9684a92ae260b1d680847e8709ea7d971",
-      "outputSha256": "4aa880764eac3a0ab16b6df62a4593a638c9fcc7b993c531c002eb8417908767",
+      "outputSha256": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be",
       "anchors": [
         {
+          "find": "#include \"chrome/browser/ui/tabs/tab_strip_model.h\"",
+          "replace": "#include \"chrome/browser/ui/tabs/tab_strip_model.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"",
+          "count": 1
+        },
+        {
           "find": "    return *AddAndReturnTabAt(browser, GURL(), -1, /*foreground=*/true,\n                              std::nullopt, /*pinned=*/false, window_action);",
-          "replace": "    int insertion_index = -1;\n    auto* local_state = g_browser_process->local_state();\n    const auto* vertical_tabs =\n        tabs::VerticalTabStripStateController::From(browser);\n    if (vertical_tabs && vertical_tabs->ShouldDisplayVerticalTabs() &&\n        local_state &&\n        local_state->FindPreference(prefs::kAuxVerticalTabInsertionPosition) &&\n        local_state->GetString(prefs::kAuxVerticalTabInsertionPosition) != \"bottom\") {\n      insertion_index = browser->GetTabStripModel()->IndexOfFirstNonPinnedTab();\n    }\n    return *AddAndReturnTabAt(browser, GURL(), insertion_index,\n                              /*foreground=*/true, std::nullopt,\n                              /*pinned=*/false, window_action);",
+          "replace": "    int insertion_index = -1;\n    auto* local_state = g_browser_process->local_state();\n    const auto* vertical_tabs =\n        tabs::VerticalTabStripStateController::From(browser);\n    if (vertical_tabs && vertical_tabs->ShouldDisplayVerticalTabs() &&\n        local_state &&\n        local_state->FindPreference(tabs::kAuxVerticalTabInsertionPosition) &&\n        local_state->GetString(tabs::kAuxVerticalTabInsertionPosition) != \"bottom\") {\n      insertion_index = browser->GetTabStripModel()->IndexOfFirstNonPinnedTab();\n    }\n    return *AddAndReturnTabAt(browser, GURL(), insertion_index,\n                              /*foreground=*/true, std::nullopt,\n                              /*pinned=*/false, window_action);",
           "count": 1
         }
       ]
@@ -122,11 +132,16 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
       "baselineSha256": "0f9f6661246a5a20ea41c079447b534d09f24500afad0cb620a462d70f9808b6",
-      "outputSha256": "ee7b46810a8ce26d4e803ad5b549bce7675030543f735c72ea7eae1687d92b7d",
+      "outputSha256": "ead52316cca44f29fc9b96116cb2ceb9a6029a040f11980807ea901b408e0c1a",
       "anchors": [
         {
           "find": "frameworks = [ \"Foundation.framework\" ]",
           "replace": "frameworks = [ \"Foundation.framework\", \"CoreFoundation.framework\" ]",
+          "count": 1
+        },
+        {
+          "find": "\"//chrome/browser/ui/zoom\",",
+          "replace": "\"//chrome/browser/ui/zoom\", \"//chrome/browser/ui/tabs:tab_strip\",",
           "count": 1
         }
       ]

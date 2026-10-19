@@ -1,16 +1,16 @@
---- a/chrome/common/pref_names.h
-+++ b/chrome/common/pref_names.h
-@@ -29,6 +29,10 @@
- #endif  // BUILDFLAG(IS_CHROMEOS)
+--- a/chrome/browser/ui/tabs/tab_strip_prefs.h
++++ b/chrome/browser/ui/tabs/tab_strip_prefs.h
+@@ -13,6 +13,10 @@
+ class BrowserWindowInterface;
  
- namespace prefs {
+ namespace tabs {
 +
 +// Supplied browser-global vertical new-tab placement.
 +inline constexpr char kAuxVerticalTabInsertionPosition[] =
 +    "aux.browser_preferences.vertical_tab_insertion_position";
  
- // Opt-in native measurement, used only in a disposable benchmark Local State.
- inline constexpr char kNativeBenchmarkEnabled[] = "performance.native_benchmark";
+ enum class TabSearchPosition {
+   kLeadingHorizontalTabstrip,
 --- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
 +++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
 @@ -9,6 +9,7 @@
@@ -33,7 +33,15 @@
    registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
 --- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
 +++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
-@@ -36,9 +36,9 @@
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/search_engines/template_url_service_factory.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
++#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
+ #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/content_settings/core/browser/host_content_settings_map.h"
+@@ -36,9 +37,9 @@
  namespace extensions {
  base::DictValue ReadAuxDockState();
  base::DictValue AddAuxToDock();
@@ -45,7 +53,7 @@
  constexpr char kShrink[] = "aux.browser.horizontal_tab_shrink";
  constexpr char kMru[] = "aux.browser.tab_switcher_mru";
  constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
-@@ -72,16 +72,17 @@
+@@ -72,16 +73,17 @@
  }
  }  // namespace
  void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
@@ -61,11 +69,11 @@
    registry->RegisterBooleanPref(kKeepTasks, false);
 +}
 +void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {
-+  registry->RegisterStringPref(prefs::kAuxVerticalTabInsertionPosition, "top");
++  registry->RegisterStringPref(tabs::kAuxVerticalTabInsertionPosition, "top");
  }
  ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
    const std::string_view method = std::string_view(name()).substr(22);
-@@ -99,8 +100,6 @@
+@@ -99,8 +101,6 @@
      const char* key;
    };
    for (const auto& item : std::initializer_list<BooleanPref>{
@@ -74,7 +82,7 @@
             {"getHorizontalTabShrinkEnabled", "setHorizontalTabShrinkEnabled",
              kShrink},
             {"getTabSwitcherSortByRecentlyUsed",
-@@ -121,6 +120,18 @@
+@@ -121,6 +121,18 @@
        return RespondNow(NoArguments());
      }
    }
@@ -93,7 +101,7 @@
    if (method == "getBrowserColorScheme") {
      const auto scheme =
          ThemeServiceFactory::GetForProfile(profile())->GetBrowserColorScheme();
-@@ -161,14 +172,26 @@
+@@ -161,14 +173,26 @@
      return RespondNow(NoArguments());
    }
    if (method == "getVerticalTabInsertionPosition") {
@@ -101,7 +109,7 @@
 +    auto* local_state = g_browser_process->local_state();
 +    return RespondNow(WithArguments(
 +        local_state && local_state->GetString(
-+                           prefs::kAuxVerticalTabInsertionPosition) == "bottom"
++                           tabs::kAuxVerticalTabInsertionPosition) == "bottom"
 +            ? "bottom" : "top"));
    }
    if (method == "setVerticalTabInsertionPosition") {
@@ -114,10 +122,10 @@
 +    if (!local_state) {
 +      return RespondNow(Error("Browser local state unavailable"));
 +    }
-+    if (local_state->IsManagedPreference(prefs::kAuxVerticalTabInsertionPosition)) {
++    if (local_state->IsManagedPreference(tabs::kAuxVerticalTabInsertionPosition)) {
 +      return RespondNow(Error("Setting is managed"));
 +    }
-+    local_state->SetString(prefs::kAuxVerticalTabInsertionPosition,
++    local_state->SetString(tabs::kAuxVerticalTabInsertionPosition,
 +                           args()[0].GetString());
      return RespondNow(NoArguments());
    }
@@ -167,7 +175,15 @@
    base::DictValue value;
 --- a/chrome/browser/ui/browser_commands.cc
 +++ b/chrome/browser/ui/browser_commands.cc
-@@ -1397,8 +1397,19 @@
+@@ -116,6 +116,7 @@
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/performance/native_performance.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_selection_state.h"
+ #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+@@ -1397,8 +1398,19 @@
  
    if (WindowFeatureController::From(browser)->SupportsWindowFeature(
            WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
@@ -179,8 +195,8 @@
 +        tabs::VerticalTabStripStateController::From(browser);
 +    if (vertical_tabs && vertical_tabs->ShouldDisplayVerticalTabs() &&
 +        local_state &&
-+        local_state->FindPreference(prefs::kAuxVerticalTabInsertionPosition) &&
-+        local_state->GetString(prefs::kAuxVerticalTabInsertionPosition) != "bottom") {
++        local_state->FindPreference(tabs::kAuxVerticalTabInsertionPosition) &&
++        local_state->GetString(tabs::kAuxVerticalTabInsertionPosition) != "bottom") {
 +      insertion_index = browser->GetTabStripModel()->IndexOfFirstNonPinnedTab();
 +    }
 +    return *AddAndReturnTabAt(browser, GURL(), insertion_index,
@@ -191,11 +207,13 @@
    ScopedTabbedBrowserDisplayer displayer(browser->GetProfile());
 --- a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
 +++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
-@@ -2,7 +2,7 @@
+@@ -1,8 +1,8 @@
+ source_set("aux_browser_preferences") {
    sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm" ]
    public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
-   deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
+-  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
 -  frameworks = [ "Foundation.framework" ]
++  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
 +  frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
  }
  
