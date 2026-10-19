@@ -541,3 +541,7 @@ Assembly of the refreshed stage completed with 10,790 recorded resources in `out
 ## Mutable supplied runtime cache seam (2026-10-19)
 
 Added absent-only verified bundled runtime provisioning into canonical private AUX_HOME/runtime, activated at the original lazy performInstall boundary. Existing mutable caches are retained; original metadata/update/error behavior remains. Nine allowlisted text relocations preserve original binary/signature bytes. Three focused disposable filesystem fixtures and pinned daemon adaptation checks pass. Root staging/native environment seams are documented in docs/integration/proposed/runtime-cache/README.md; no shared native edit or native/Keychain execution. Current guard/carrier builds remain queued, not accepted runtime evidence.
+
+## Direct supplied CLI boundary proposal and build receipts (2026-10-19)
+
+Added an uncompiled fixed-layout native exec launcher for the supplied CLI SEA: canonical private Aux home/scope, fixed bundle interposer, inherited loader overrides removed, no acceptance flag synthesis or alternate executable. Build helper now emits source/header/compiler/output provenance receipt only after successful locked compilation and pure mapper fixture. Existing queued handles31341/27971 remain live/silent and cannot produce the newly added receipt automatically. JS helper syntax/inventory checks pass; native compilation/load/DP acceptance remain pending. No original native binding or Keychain operation executed.
