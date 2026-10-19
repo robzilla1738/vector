@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "defaultAdhocChanged": false,
+  "rootSourcesEdited": false,
+  "hooks": [
+    {
+      "path": "scripts/lib/provided-package.mjs",
+      "sourceSha256": "717d4899a9c1b29a9d58c5951deb29a7db409cb67fc2c5fe4918c6f95887f72a",
+      "anchor": "await add('aux-native-carrier', 'native/aux-native-carrier');",
+      "count": 1,
+      "requiredChange": "Opt-in layout: new carrier app destination + generated Info.plist. Keep default adhoc layout unchanged.",
+      "applied": false
+    },
+    {
+      "path": "scripts/lib/provided-package.mjs",
+      "sourceSha256": "717d4899a9c1b29a9d58c5951deb29a7db409cb67fc2c5fe4918c6f95887f72a",
+      "anchor": "await add('aux-cli-launcher', cliExecutable);",
+      "count": 1,
+      "requiredChange": "Opt-in layout: update copied CLI CFBundleExecutable to aux-cli-sea; record plist before/after hashes; wrapper remains fixed sibling.",
+      "applied": false
+    },
+    {
+      "path": "scripts/sign-provided.mjs",
+      "sourceSha256": "e587b9371a853f2811d69d75f028ae9da2b1a84ddcbdc0de18c68d0e972f7eb9",
+      "anchor": "`${cli}/Contents/MacOS/aux-cli-sea`,",
+      "count": 1,
+      "requiredChange": "Separate reviewed development policy: loose wrapper target instead of loose SEA; CLI bundle signs actual SEA main. Existing adhoc target set stays unchanged.",
+      "applied": false
+    },
+    {
+      "path": "scripts/sign-provided.mjs",
+      "sourceSha256": "e587b9371a853f2811d69d75f028ae9da2b1a84ddcbdc0de18c68d0e972f7eb9",
+      "anchor": "`${prefix}/native/aux-native-carrier`,",
+      "count": 1,
+      "requiredChange": "Separate development policy: carrier bundle target, not loose executable.",
+      "applied": false
+    },
+    {
+      "path": "vendor/provided/run-approved-dp-probe.mjs",
+      "sourceSha256": "69f861bf16cd7f010e49ceb1e520fb827c23d1f4c3593e62a251e7a17f307bea",
+      "anchor": "path.join(p.stagedRoot,'native/aux-native-carrier')",
+      "count": 1,
+      "requiredChange": "A separately reviewed development-stage runner must use fixed carrier app executable. Previously approved stage remains immutable.",
+      "applied": false
+    },
+    {
+      "path": "vendor/provided/native-packaging-manifest.mjs",
+      "sourceSha256": "56e27497ccac5365f0da1e3dac65f09b6eeae0fad522eed35144af62a0f1b821",
+      "anchor": "['aux-native-carrier', 'native/aux-native-carrier']",
+      "count": 1,
+      "requiredChange": "Opt-in destination metadata must name profile-bearing carrier app executable; immutable native artifact bytes unchanged.",
+      "applied": false
+    },
+    {
+      "path": "scripts/lib/provided-signing.mjs",
+      "requiredChange": "Do not weaken existing exhaustive adhoc entitlement filter or identity=- restriction. Development execution would require a distinct reviewed opt-in mode with explicit certificate/profile/private-key authorization, actual profile validation and prehash checks; not implemented by preparation tool.",
+      "applied": false
+    },
+    {
+      "path": "vendor/provided/prepare-dp-approval.mjs",
+      "requiredChange": "Existing tool stages and adhoc-signs old layout. Do not run it as development prep. Use new no-sign preparer; any future execution/proof stage needs explicit new artifact/approval pins.",
+      "applied": false
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "requiredChange": "None: fixed aux-cli wrapper/aux-cli-sea sibling paths and root boundary remain identical. No native rebuild required for wrapper topology.",
+      "applied": false
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "requiredChange": "No source change needed for own app wrapper: it validates supplied binding argument and boundary/scope; does not select an own executable path. Fixed browser resolver is the caller that changes.",
+      "applied": false
+    }
+  ]
+}

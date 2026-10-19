@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-v26/native-before-apply-kdvmn_av/chrome/browser/aux/installation_auth.cc",
+  "sourceKind": "root v26 before-apply snapshot; integrator must check live baseline before any application",
+  "beforeSha256": "cf5483de050c1f12fd5080f13e53eca8aa93d8a79d473c6e59d313eefe993882",
+  "afterSha256": "41ac3e23889dd672ae0ee0ce2c6f829ef4464e19acfcbc219b251414fe9029d6",
+  "anchor": "bundled(\"native/aux-native-carrier\")",
+  "anchorCount": 1,
+  "sharedSourceEdited": false,
+  "nativeBuildPerformed": false
+}

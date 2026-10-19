@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "preparationReport": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/preparation.json",
+  "preparationReportSha256": "6036389fa2e625f660c8601657d7b7b1016b2a1661117c2e55348209896cd372",
+  "generatorSha256": "b8dc51e4dd531135de16547a36d3c124be2da460379e07fbee21aea050c9efb0",
+  "boundaryReceiptSha256": "27d1b37434d2ca0bdb3d1bf19cf3f1330a817fe143d8d6dc54d297c1d16cc6a6",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse",
+  "inventoryLeafCount": 160,
+  "outputHashesRechecked": true,
+  "originalAddonSha256ByRole": {
+    "daemon": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+    "cli": "66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc"
+  },
+  "hosts": [
+    {
+      "role": "daemon",
+      "bundleIdentifier": "dev.aux.browser.daemon",
+      "bundle": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "75e69c59aab6d42ab9701a4a6f615daaf4bcdef946b9c37602d1b9693eb12d09",
+      "infoPlistSha256": "da6fd514d9f922df9e8585e2aa9943984f21d50a84077a3cfa4101cc940cd4e4",
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/daemon.entitlements",
+      "prospectiveSigningOnly": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/daemon.entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/daemon/Aux Daemon.app"
+        ],
+        "authorized": false,
+        "prerequisites": [
+          "Actual matching CMS-authenticated profile embedded and pinned",
+          "Explicit owner signing permission",
+          "Final executable/entitlements/profile byte pins rechecked"
+        ]
+      },
+      "requiredProfilePath": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/daemon/Aux Daemon.app/Contents/embedded.provisionprofile",
+      "profilePresent": false,
+      "signingAuthorized": false
+    },
+    {
+      "role": "cli-sea",
+      "bundleIdentifier": "dev.aux.browser.cli",
+      "bundle": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/cli/Aux CLI.app",
+      "executable": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71",
+      "infoPlistSha256": "be03d961847ba0984d0afdde0fe7246002e5c68b7712ea7bc14720d540787640",
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/cli-sea.entitlements",
+      "prospectiveSigningOnly": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/cli-sea.entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/cli/Aux CLI.app"
+        ],
+        "authorized": false,
+        "prerequisites": [
+          "Actual matching CMS-authenticated profile embedded and pinned",
+          "Explicit owner signing permission",
+          "Final executable/entitlements/profile byte pins rechecked"
+        ]
+      },
+      "requiredProfilePath": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/cli/Aux CLI.app/Contents/embedded.provisionprofile",
+      "profilePresent": false,
+      "signingAuthorized": false
+    },
+    {
+      "role": "carrier",
+      "bundleIdentifier": "dev.aux.browser.native-carrier",
+      "bundle": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/native/Aux Native Carrier.app",
+      "executable": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier",
+      "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6",
+      "infoPlistSha256": "bab4fbf996d72b61ad276a8b574d57971c25cf70b95b98852cc1814fa90d7cbc",
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/carrier.entitlements",
+      "prospectiveSigningOnly": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/carrier.entitlements",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/native/Aux Native Carrier.app"
+        ],
+        "authorized": false,
+        "prerequisites": [
+          "Actual matching CMS-authenticated profile embedded and pinned",
+          "Explicit owner signing permission",
+          "Final executable/entitlements/profile byte pins rechecked"
+        ]
+      },
+      "requiredProfilePath": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/native/Aux Native Carrier.app/Contents/embedded.provisionprofile",
+      "profilePresent": false,
+      "signingAuthorized": false
+    }
+  ],
+  "wrapper": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+    "sha256": "8662609f5da6c32b77e2124a848b1e91bda1b42ef2ac7b1bc2e300ee9c48addd",
+    "signSeparately": true,
+    "dpClaims": []
+  },
+  "prospectiveProvisioning": [
+    {
+      "role": "daemon",
+      "authorized": false,
+      "tool": "/usr/bin/python3",
+      "argv": [
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+        "/usr/bin/xcodebuild",
+        "-project",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/AuxDpProfiles.xcodeproj",
+        "-scheme",
+        "daemon",
+        "-configuration",
+        "Development",
+        "-destination",
+        "platform=macOS,arch=arm64",
+        "-derivedDataPath",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/future-derived-data",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration",
+        "CODE_SIGNING_ALLOWED=YES",
+        "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "build"
+      ],
+      "effects": [
+        "Apple developer service AppID/profile/device provisioning",
+        "Local profile cache and isolated derived-data writes",
+        "Private-key signatures on temporary authored provisioning app only"
+      ],
+      "executed": false
+    },
+    {
+      "role": "cli-sea",
+      "authorized": false,
+      "tool": "/usr/bin/python3",
+      "argv": [
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+        "/usr/bin/xcodebuild",
+        "-project",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/AuxDpProfiles.xcodeproj",
+        "-scheme",
+        "cli-sea",
+        "-configuration",
+        "Development",
+        "-destination",
+        "platform=macOS,arch=arm64",
+        "-derivedDataPath",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/future-derived-data",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration",
+        "CODE_SIGNING_ALLOWED=YES",
+        "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "build"
+      ],
+      "effects": [
+        "Apple developer service AppID/profile/device provisioning",
+        "Local profile cache and isolated derived-data writes",
+        "Private-key signatures on temporary authored provisioning app only"
+      ],
+      "executed": false
+    },
+    {
+      "role": "carrier",
+      "authorized": false,
+      "tool": "/usr/bin/python3",
+      "argv": [
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+        "/usr/bin/xcodebuild",
+        "-project",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/provisioning/AuxDpProfiles.xcodeproj",
+        "-scheme",
+        "carrier",
+        "-configuration",
+        "Development",
+        "-destination",
+        "platform=macOS,arch=arm64",
+        "-derivedDataPath",
+        "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-unsigned-role-current-v2/future-derived-data",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration",
+        "CODE_SIGNING_ALLOWED=YES",
+        "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "build"
+      ],
+      "effects": [
+        "Apple developer service AppID/profile/device provisioning",
+        "Local profile cache and isolated derived-data writes",
+        "Private-key signatures on temporary authored provisioning app only"
+      ],
+      "executed": false
+    }
+  ],
+  "actualProfileCount": 0,
+  "signingPerformed": false,
+  "profilesCreated": false,
+  "nativeExecuted": false,
+  "dpExecuted": false,
+  "rootCandidateV24Reused": false,
+  "inputFreshness": "Refreshed provided-reuse/apps and current role-aware source-matching boundary receipt; not historical v24 packaged candidate",
+  "limits": [
+    "No usable local profiles; no profile embedded",
+    "Signing/private-key/provisioning/network/DP approval absent",
+    "Final root source hooks and signing policy require review; this is a three-host preparation, not full product"
+  ]
+}

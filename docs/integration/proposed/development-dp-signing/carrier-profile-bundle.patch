@@ -1,0 +1,11 @@
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -82,7 +82,7 @@
+       return {};
+     return path;
+   };
+-  const auto carrier = bundled("native/aux-native-carrier");
++  const auto carrier = bundled("native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier");
+   const auto boundary = bundled("native/libaux-native-boundary.dylib");
+   const auto binding =
+       bundled("apps/daemon/Aux "

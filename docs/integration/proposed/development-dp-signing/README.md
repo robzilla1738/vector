@@ -35,3 +35,42 @@ The final native build succeeding and a public signing certificate being present
 ## Concrete owner decision still required
 
 There is no usable local profile to execute this proposal today. A viable next path would require the owner to authorize local Apple Development signing and creation/retrieval of matching macOS development profiles for the three exact Aux AppIDs/shared group, using the inspected identity/team and this test Mac. Such authorization would change the current no-developer-signing/no-provisioning constraints; none is inferred here. The request must disclose Apple developer service access and profile/device registration if required, private-key use for the exact copied hosts, and a later bounded same-scope DP proof. Root must review the actual returned profile authorization and final source/artifact pins before signing, and must keep the scope/crypto/isolation unchanged. This is not permission to publish, release, notarize, read other Keychain rows or grant biometrics/TCC.
+
+## Implemented opt-in preparation (no signing execution path)
+
+`vendor/provided/prepare-development-dp.mjs` now implements the bounded preparation. It never invokes codesign, security, xcodebuild, a product/native executable, network or DP. The existing ad hoc packaging/signing code is unchanged.
+
+Project-only generation is available now:
+
+```sh
+node vendor/provided/prepare-development-dp.mjs --project-only /ABS/NEW_REVIEW_DIRECTORY
+```
+
+Actual project-only preparation succeeded in the lane's out/development-dp-project-review-v4. Its exact generated project, three shared build-only schemes, three entitlement plists and clearly labeled placeholder C source are checked in under project-inputs for review. Project/entitlement/scheme XML parses, and the pbxproj passes plutil lint. **Do not open/build this project in Xcode until provisioning use is authorized.** No Xcode command was run. preparation.json and committed project-preparation-evidence.json enumerate exact prospective locked-wrapper xcodebuild argv for each role, including the isolated future derived-data path and provisioning/device-registration switches; every action is marked unauthorized/unexecuted. CODE_SIGNING_ALLOWED=NO in every configuration, automatic base-entitlement injection is disabled, debug-dylib generation is disabled, and the selected certificate fingerprint is explicit. The placeholder targets exist solely to obtain matching profile assets later; they are never product/runtime substitutes or functional evidence.
+
+Full three-host copy preparation requires a fresh source-matching boundary receipt after the CLI role fix:
+
+```sh
+node vendor/provided/prepare-development-dp.mjs \
+  /ABS/COPIED_AUX_RESOURCES \
+  /ABS/CURRENT_BOUNDARY_RECEIPT.json \
+  /ABS/NEW_UNSIGNED_PREPARATION
+```
+
+This copies only daemon/CLI static bundles and current boundary artifacts into a new private output; removes no source inputs; rejects unexpected links/objects/hash drift; preserves the daemonbfe/CLI6638 original addons; adds the fixed current role loader/guard; sets CLI SEA as main with a separate unchanged wrapper; and creates the carrier app-like bundle. It emits complete output file hashes, initial copy provenance, exact Info.plist change hashes, three host/entitlement/profile paths and explicit **unauthorized** prospective signing argv. No profile is fabricated or embedded, and no signing is performed. Existing originals' signature bytes remain present where copied; “unsigned preparation” means no fresh signature/authority is claimed, not that immutable signatures were stripped.
+
+The new pure decoded-profile gate checks own-team/prefix/platform, exact allowed AppID/group (including a profile's legitimate trailing wildcard), certificate membership, current dates and actual development Mac membership. It explicitly returns CMS-unverified/signing-unauthorized; decoding metadata alone does not authenticate a profile. Root must authenticate and pin actual CMS/profile bytes and recheck the requested entitlement subset before any later signing action. Missing profiles therefore remain a real blocker. Two focused tests exercise metadata refusal and the actual three-target disabled-signing project structure; no native compilation/signing/DP test is smuggled into them.
+
+`integration-hooks.json` enumerates every active package/signer/runner/manifest seam with current root source hashes and exact anchor counts. `carrier-profile-bundle.patch` changes only the fixed native caller path against a pinned v26 pre-apply snapshot; root must check the actual live baseline and explicitly adopt this topology. Neither that patch nor any root/shared edit is applied. The current ad hoc target list and its entitlement rejection remain unchanged, as required.
+
+### Exact later action boundary to present for owner review
+
+Provisioning would request the three exact Aux AppIDs and one exact own-team scope group in proposal.json, for the existing certificate and this test Mac. Later authorized Xcode use may register that Mac/AppIDs, retrieve/create profiles, write the local Xcode profile cache, and use the selected signing key to sign **three temporary provisioning placeholder products**. It must not create another signing identity or touch other profiles. The three actual copied supplied process hosts would then require their own explicit development signing actions shown in preparation.json; wrapper/guard/original addons/runtime remain outside that private-key signing set. These are distinct effects that the owner must see; permission to inspect identities is insufficient.
+
+The bounded later Xcode commands would select each of daemon, cli-sea and carrier shared schemes, Development configuration and the local macOS destination, explicitly override CODE_SIGNING_ALLOWED=YES, and opt into allowProvisioningUpdates/allowProvisioningDeviceRegistration **only after approval**. All such builds must use scripts/native-build.py and the shared lock. This preparation intentionally contains no script that runs those commands. Any key-access/OS prompt must be handled by the owner, never automatically granted. Actual returned profiles, final copied hashes and signed entitlements need review before the bounded same-scope DP proof; no reinitialization of the attempted authority is automatic.
+
+## Actual fresh-input unsigned preparation completed
+
+Full preparation subsequently succeeded using refreshed root out/provided-reuse/apps and the source-matching role-aware boundary receipt SHA27d1b37434d2ca0bdb3d1bf19cf3f1330a817fe143d8d6dc54d297c1d16cc6a6. The private output is lane/out/development-dp-unsigned-role-current-v2. All160 leaf hashes were independently rechecked; original daemonbfe and CLI6638 addons remain exact. Each bundle plist matches the intended AppID/main; the CLI wrapper remains separately pinned, and carrier bundle/path topology is explicit. No historical packaged-v24 candidate was reused.
+
+unsigned-preparation-evidence.json pins the full private preparation report and generator, copied input origin, original addon hashes, concrete host/profile/entitlement paths, exact prospective provisioning/signing argv, and limits. This is a complete reviewable three-host unsigned preparation, not the full browser product. No embedded profiles exist, no Xcode/build/signing/private-key/native/DP operation was run, and root's native caller/source hooks remain unapplied. The actual root registration proofs are separate evidence owned by root; this preparation does not claim DP authority from them.

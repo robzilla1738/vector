@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "source": "prepare-development-dp.mjs --project-only out/development-dp-project-review-v4",
+  "result": {
+    "version": 1,
+    "prospectiveProvisioning": [
+      {
+        "role": "daemon",
+        "authorized": false,
+        "tool": "/usr/bin/python3",
+        "argv": [
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+          "/usr/bin/xcodebuild",
+          "-project",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/provisioning/AuxDpProfiles.xcodeproj",
+          "-scheme",
+          "daemon",
+          "-configuration",
+          "Development",
+          "-destination",
+          "platform=macOS,arch=arm64",
+          "-derivedDataPath",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/future-derived-data",
+          "-allowProvisioningUpdates",
+          "-allowProvisioningDeviceRegistration",
+          "CODE_SIGNING_ALLOWED=YES",
+          "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "build"
+        ],
+        "effects": [
+          "Apple developer service AppID/profile/device provisioning",
+          "Local profile cache and isolated derived-data writes",
+          "Private-key signatures on temporary authored provisioning app only"
+        ],
+        "executed": false
+      },
+      {
+        "role": "cli-sea",
+        "authorized": false,
+        "tool": "/usr/bin/python3",
+        "argv": [
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+          "/usr/bin/xcodebuild",
+          "-project",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/provisioning/AuxDpProfiles.xcodeproj",
+          "-scheme",
+          "cli-sea",
+          "-configuration",
+          "Development",
+          "-destination",
+          "platform=macOS,arch=arm64",
+          "-derivedDataPath",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/future-derived-data",
+          "-allowProvisioningUpdates",
+          "-allowProvisioningDeviceRegistration",
+          "CODE_SIGNING_ALLOWED=YES",
+          "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "build"
+        ],
+        "effects": [
+          "Apple developer service AppID/profile/device provisioning",
+          "Local profile cache and isolated derived-data writes",
+          "Private-key signatures on temporary authored provisioning app only"
+        ],
+        "executed": false
+      },
+      {
+        "role": "carrier",
+        "authorized": false,
+        "tool": "/usr/bin/python3",
+        "argv": [
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/scripts/native-build.py",
+          "/usr/bin/xcodebuild",
+          "-project",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/provisioning/AuxDpProfiles.xcodeproj",
+          "-scheme",
+          "carrier",
+          "-configuration",
+          "Development",
+          "-destination",
+          "platform=macOS,arch=arm64",
+          "-derivedDataPath",
+          "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/future-derived-data",
+          "-allowProvisioningUpdates",
+          "-allowProvisioningDeviceRegistration",
+          "CODE_SIGNING_ALLOWED=YES",
+          "CODE_SIGN_IDENTITY=47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "build"
+        ],
+        "effects": [
+          "Apple developer service AppID/profile/device provisioning",
+          "Local profile cache and isolated derived-data writes",
+          "Private-key signatures on temporary authored provisioning app only"
+        ],
+        "executed": false
+      }
+    ],
+    "kind": "unsigned-project-inputs-only",
+    "proposalSha256": "d8c9bbe26c490c2fee95614c49a0722383513dc4060b4910a62cc5727ba77a8a",
+    "projectDir": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/development-dp-project-review-v4/provisioning/AuxDpProfiles.xcodeproj",
+    "defaultCodeSigningAllowed": false,
+    "actualHostBundlesCopied": false,
+    "profilesEmbedded": false,
+    "signingPerformed": false,
+    "networkOrProvisioningPerformed": false,
+    "privateKeysUsed": false,
+    "dpExecuted": false,
+    "blocked": [
+      "No usable local profile",
+      "No developer-signing/provisioning permission",
+      "Actual host copy requires fresh matching boundary receipt and explicit input pins"
+    ]
+  },
+  "checkedInputs": [
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/AuxDpProfiles.xcodeproj/project.pbxproj",
+      "sha256": "e02c979022168110f6eb8f1264b84434de574e57f9c5d4b3f44dcac49c44c030"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/AuxDpProfiles.xcodeproj/xcshareddata/xcschemes/carrier.xcscheme",
+      "sha256": "c90e2990c82fb98fdee108a0d9827f936a324c41f4c0ec77e91d5321c126203b"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/AuxDpProfiles.xcodeproj/xcshareddata/xcschemes/cli-sea.xcscheme",
+      "sha256": "a0943af7c12d15e314a134e7c4f84bcd3f40b8fac0ce4ec94ad39ddbc0cf1af1"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/AuxDpProfiles.xcodeproj/xcshareddata/xcschemes/daemon.xcscheme",
+      "sha256": "faf91d60aec3a998a7026ad7993528e12f777fa9b5a66080ac40ac998231fcca"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/carrier.entitlements",
+      "sha256": "770c3b8e45f8c4956481fc892e1beb4d86d37bf3d8f06f77f32c69b05b452cab"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/cli-sea.entitlements",
+      "sha256": "52e0dfebc0e7293ed2514a6682381a1ceb783a936b32b71ce8a51483562e2fae"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/daemon.entitlements",
+      "sha256": "dc4024fcbac541d882db4bf22e562f6f3a8910657eec25caaa7380e325f4f721"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/project-inputs/provisioning-placeholder.c",
+      "sha256": "f90e6901a2e392d4389d160d683ee6617a65e182d395e2a93da19a24df5088ae"
+    }
+  ],
+  "staticPlistLintPassed": true,
+  "xcodebuildInvoked": false,
+  "nativeBuildPerformed": false,
+  "signingPerformed": false,
+  "profilesCreated": false,
+  "dpExecuted": false,
+  "sharedBuildSchemes": 3,
+  "schemeAndEntitlementXmlParsed": true
+}
