@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "actualNativeBuildExitCode": 0,
+  "nativeReceiptSha256": "2f9671b576af2effa028c847e5bad479e5b19836a710b90d9456ae32dcae726f",
+  "generatedKeyProbePassed": true,
+  "actualPackageSha256": "d327f00f6503486ff5459bce24b9c8f533e7d774602d9b9ec5462c7f52698ce9",
+  "nativeLeaves": 563,
+  "suppliedResources": 10799,
+  "developmentDpLayout": true,
+  "compiledDiagnosticHelperReceiptSha256": "2ff504981814c209bf6b13d36726683f4ec5e12011d31032aa0d8a7ac1c040ed",
+  "diagnosticOverlayLeaves": 8,
+  "profilesEmbedded": 3,
+  "originalAddonRolesPreserved": true,
+  "signingReceiptPending": true,
+  "runtimeAcceptance": false
+}
