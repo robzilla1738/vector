@@ -314,3 +314,8 @@ The backend follow-up also rejects JavaScript-reserved header names instead of s
 ## L1 child scheduler followup (2026-10-19)
 
 Prepared a separate shared engine patch tracking acquired permits by run identity. Parent subagent_wait yields only its own permit, reacquires with its existing abort signal, and finalizers release only held permits. Actual proposed-code runExternal fixtures pass for two parents/two queued children at concurrency two and cancellation during wait/reacquisition, with bounded counters and zero permits after shutdown. No providers called. Agent/daemon typechecks and touched Biome pass. Shared engine application remains root-owned; see `docs/implementation/agent-scheduler-hooks.patch` and `docs/acceptance/agent-child-scheduler.md`. Scratch central-hook idle-parent approval and parent-cancel cleanup also passed; full integrated acceptance remains outstanding.
+
+### Owned child-run scheduler integration
+
+- Root applied the scheduler permit ownership patch. Parent child-wait releases only its own permit and reacquires with the same cancellation signal before returning to the provider loop. Cancellation cannot decrement another run's permit; generic human suspensions keep their existing semantics.
+- All three focused tests passed against the actual integrated engine: two parents plus queued children at concurrency2; cancellation during child wait; cancellation during reacquisition behind an unrelated run. Counters remained bounded and returned to zero. No provider was called.

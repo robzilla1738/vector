@@ -57,6 +57,7 @@ export class AgentEngine {
   >();
   private waiting: (() => void)[] = [];
   private running = 0;
+  private heldPermits = new Set<string>();
   private closed = false;
   private closeHandlers = new Set<() => void | Promise<void>>();
   constructor(
@@ -297,10 +298,9 @@ export class AgentEngine {
     session.runs.push({ id: runId, status: 'running', createdAt: Date.now() });
     const promise = Promise.resolve()
       .then(async () => {
-        let acquired = false;
         try {
           await this.acquire(controller.signal);
-          acquired = true;
+          this.heldPermits.add(key);
           const result = await operation(controller.signal);
           controller.signal.throwIfAborted();
           const latest = this.get(accountId, id);
@@ -338,10 +338,7 @@ export class AgentEngine {
           controller.abort(new Error(latest.error));
           throw new Error(latest.error);
         } finally {
-          if (acquired) {
-            this.running--;
-            this.waiting.shift()?.();
-          }
+          this.releaseRunSlot(key);
         }
       })
       .finally(() => this.afterRun(accountId, id));
@@ -365,6 +362,34 @@ export class AgentEngine {
     if (next) {
       this.save(current);
       this.prompt(accountId, id, next.prompt, next.id, next.attachmentIds);
+    }
+  }
+  private releaseRunSlot(key: string) {
+    if (this.heldPermits.delete(key)) {
+      this.running--;
+      this.waiting.shift()?.();
+    }
+  }
+  /** Yield only this run's owned permit while waiting for its children. */
+  async yieldRunSlot<T>(
+    accountId: number,
+    id: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const key = this.key(accountId, id);
+    const owner = this.active.get(key);
+    if (!owner || !this.heldPermits.has(key))
+      fail('PRECONDITION_FAILED', 'This run does not hold a scheduler permit');
+    const signal = owner.controller.signal;
+    signal.throwIfAborted();
+    this.releaseRunSlot(key);
+    try {
+      return await operation();
+    } finally {
+      // Reacquire before returning to the provider/tool loop. A cancelled wait
+      // owns no permit; the outer finally must not decrement a second time.
+      await this.acquire(signal);
+      this.heldPermits.add(key);
     }
   }
   private async acquire(signal: AbortSignal) {
@@ -392,10 +417,9 @@ export class AgentEngine {
     runId: string,
     signal: AbortSignal,
   ) {
-    let acquired = false;
     try {
       await this.acquire(signal);
-      acquired = true;
+      this.heldPermits.add(this.key(accountId, id));
       const session = this.get(accountId, id);
       const model = resolveModel(
         this.store,
@@ -572,10 +596,7 @@ export class AgentEngine {
         error: latest.error,
       });
     } finally {
-      if (acquired) {
-        this.running--;
-        this.waiting.shift()?.();
-      }
+      this.releaseRunSlot(this.key(accountId, id));
     }
   }
   queue(
