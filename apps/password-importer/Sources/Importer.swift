@@ -129,10 +129,11 @@ private func chromiumFixture(_ file: URL) throws -> ([[String: Any]], [[String: 
     return (items, errors)
 }
 func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] {
+    if method.hasPrefix("exchange.") { return try credentialExchange.execute(method, params) }
     jobs = jobs.filter { Date().timeIntervalSince($0.value.createdAt) < 600 }
     switch method {
     case "ping": return ["service": "aux-password-importer", "version": "0.1.0", "pid": ProcessInfo.processInfo.processIdentifier]
-    case "capabilities": return ["formats": ["csv", "bitwarden-json", "1password-1pux", "1password-json", "chromium-fixture"], "reviewBeforeCommit": true, "realBrowserDecryption": false, "attachments": false, "passkeys": false]
+    case "capabilities": return ["formats": ["csv", "bitwarden-json", "1password-1pux", "1password-json", "chromium-fixture"], "reviewBeforeCommit": true, "realBrowserDecryption": false, "attachments": false, "passkeys": false, "nativeCredentialExchange": credentialExchange.capability()]
     case "import.pickFile":
         var selected: URL?
         DispatchQueue.main.sync {

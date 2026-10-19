@@ -47,3 +47,12 @@ start active with `while-unlocked` agent policy and no password reprompt.
 Private plaintext batches live transiently in process memory, then only encrypted Vault
 records persist. JavaScript immutable strings cannot guarantee explicit memory wiping;
 the adapter never logs them, sends them to models, or returns them through commit RPC.
+
+## Native credential-exchange boundary
+
+The typed macOS26 receiver and private exchange session are described in
+`apps/daemon/src/import/EXCHANGE.md`. The ordinary local ad hoc helper reports an
+actual signing-eligibility failure for native exchange and keeps file imports
+available. It never presents CSV/JSON import as an OS credential exchange. The
+nested provider advertises exchange metadata, with password/passkey AutoFill
+capabilities disabled because those OS provider operations are not implemented.
