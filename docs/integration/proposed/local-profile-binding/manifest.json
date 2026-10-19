@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "local-vault-bootstrap (17a54f903) on the combined provided profile-security/entrypoints tree",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_state.h",
+      "baselineSha256": "c9ad28bc0ca11159315eea15f8a9c0f90df1e747fdd80c32f290938af9f3aa0c",
+      "outputSha256": "d4b64eb88b3c8a790457e8ecddb22f318a01dfe83a255c1711010e8183414f70"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.cc",
+      "baselineSha256": "37ddb99f27faaa9930a70d585f76ba4f16ef4b7354ee5b4af5e55b2022d005f0",
+      "outputSha256": "b724e06349df2a216b89bd4a94708e5d331dded3718e286489f570cfa34d798a"
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.cc",
+      "baselineSha256": "34a48b6ab45f23390edb2e562e89bc638317b144e2ca9418ca0a5bf8a6672850",
+      "outputSha256": "0b0ff20c1024edf3c27ec7ceda9e1cabf1f98c6e594065c963d6c7b520417d0d"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "33e9faa79ae7f223ef77b73585e115b0acb0ed46aa190a24c019378c2add3040",
+      "outputSha256": "2ac5d07873cc2795ef3e4c34cf7822dc00921a7badbe1125b9b851ba846e1adc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "f82000d272ef834391b1b8c198ed701239437ef75b6c78e4d7c1ee1dfcec345b",
+      "outputSha256": "4313db825db7f9f0260d1d9261c37207be0d7ac466fa80c72292bcd466db28e6"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state_probe.cc",
+      "baselineSha256": "932259221fb0ea60571f9d2aad579ab1367e59903252dcdd6a5ad78943918ef1",
+      "outputSha256": "0965582ff5b4d6d6593c05e7b37f60b6e8ea4333fe69acecb56bab5ea55d0e32"
+    }
+  ]
+}

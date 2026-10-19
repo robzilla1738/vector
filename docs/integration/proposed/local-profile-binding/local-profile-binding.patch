@@ -1,0 +1,320 @@
+--- a/chrome/browser/aux/profile_state.h
++++ b/chrome/browser/aux/profile_state.h
+@@ -11,6 +11,9 @@
+ struct ProfileSecurityState {
+   std::optional<int> account_id;
+   bool bound = false;
++  // Unset means registry identity could not be classified safely.
++  std::optional<bool> local_only;
++  std::string binding_error;
+   bool local_anonymous = false;
+   std::string bound_user_id;
+   // Actual app-account:N current PWM UUID from authenticated accounts.list.
+@@ -21,7 +24,8 @@
+   bool onboarding_complete = false;
+   std::string error;
+   bool allows_browsing() const {
+-    return bound && configured && !locked && onboarding_complete;
++    return bound && local_only.has_value() && binding_error.empty() &&
++           configured && !locked && onboarding_complete;
+   }
+ };
+ // Blocking metadata only; call on a MayBlock task. Vault stays locked until
+--- a/chrome/browser/aux/profile_state.cc
++++ b/chrome/browser/aux/profile_state.cc
+@@ -46,30 +46,61 @@
+   auto registry =
+       ReadMetadata(home.AppendASCII("accounts.json"), 4 * 1024 * 1024);
+   if (!registry || registry->FindInt("version") != 1) {
+-    result.error = "Local account registry is not ready";
++    result.binding_error = "Local account registry is not ready";
++    result.error = result.binding_error;
++    return result;
++  }
++  const auto* accounts = registry->FindList("accounts");
++  if (!accounts) {
++    result.binding_error = "Local account registry has no account inventory";
++    result.error = result.binding_error;
+     return result;
+   }
+   const auto* bindings = registry->FindDict("profileAccountBindings");
+   const auto id = ProfileIdForPath(path);
+   const auto* binding = bindings ? bindings->FindDict(id) : nullptr;
+-  if (!binding) return result;
++  if (!binding) {
++    // Legacy cloud mappings are not permission to replace that identity with
++    // an anonymous account. Require explicit migration before local creation.
++    const auto* legacy = registry->FindDict("profileBindings");
++    if ((bindings && bindings->contains(id)) ||
++        (registry->contains("profileAccountBindings") && !bindings) ||
++        (registry->contains("profileBindings") && !legacy) ||
++        (legacy && !legacy->empty())) {
++      result.binding_error = "This profile requires an explicit account binding migration";
++      result.error = result.binding_error;
++      return result;
++    }
++    result.local_only = true;
++    return result;
++  }
+   const auto* bound_path = binding->FindString("profilePath");
+   const auto* bound_id = binding->FindString("profileId");
+   const auto account_id = binding->FindInt("accountId");
+   if (!bound_id || *bound_id != id || !bound_path ||
+       *bound_path != path.value() || !account_id || *account_id < 0) {
+-    result.error = "Local profile account binding does not match this profile";
++    result.binding_error = "Local profile account binding does not match this profile";
++    result.error = result.binding_error;
+     return result;
+   }
+-  const auto* accounts = registry->FindList("accounts");
+-  if (!accounts) return result;
+   for (const auto& value : *accounts) {
+     if (!value.is_dict() || value.GetDict().FindInt("id") != account_id) continue;
+     const auto& account = value.GetDict();
++    const auto* mode = account.FindString("mode");
++    const auto* provider = account.FindString("provider");
++    const auto* user = account.FindString("userId");
++    const bool has_user = user && !user->empty();
++    const bool cloud_history = account.FindBool("hasEverBoundCloudUser").value_or(false);
++    if (!mode || (*mode != "local" && *mode != "cloud") ||
++        (*mode == "cloud" && !has_user) ||
++        (*mode == "local" && (has_user || cloud_history || account.FindDict("session")))) {
++      result.binding_error = "Profile account identity requires explicit repair";
++      result.error = result.binding_error;
++      return result;
++    }
+     result.account_id = *account_id;
+     result.bound = true;
+-    const auto* mode = account.FindString("mode");
+-    const auto* provider = account.FindString("provider");
++    result.local_only = *mode == "local";
+     // This native eligibility rule does not stamp or synthesize cloud onboarding.
+     result.local_anonymous = mode && *mode == "local" && provider &&
+                              *provider == "anonymous";
+@@ -77,11 +108,13 @@
+     result.onboarding_complete = result.local_anonymous ||
+                                  (completed && !completed->empty());
+     if (mode && *mode == "cloud") {
+-      if (const auto* user = account.FindString("userId")) result.bound_user_id = *user;
++      result.bound_user_id = *user;
+     }
+     result.error = "Vault status requires authenticated daemon verification";
+     return result;
+   }
++  result.binding_error = "Bound profile account no longer exists";
++  result.error = result.binding_error;
+   return result;
+ }
+ }  // namespace aux
+--- a/chrome/browser/aux/profile_security_client.cc
++++ b/chrome/browser/aux/profile_security_client.cc
+@@ -42,7 +42,8 @@
+   ~StatusRequest() = default;
+   void DidRead(ProfileSecurityState state) {
+     state_ = std::move(state);
+-    if (!state_.bound || !state_.account_id || !factory_ || !port_ ||
++    if (!state_.bound || !state_.local_only.has_value() ||
++        !state_.binding_error.empty() || !state_.account_id || !factory_ || !port_ ||
+         !authorization_.starts_with("AuxDaemonSessionToken ")) {
+       Finish(std::move(state_));
+       return;
+@@ -109,7 +110,9 @@
+         base::BindOnce(&StatusRequest::DidRevalidate, base::WrapRefCounted(this)));
+   }
+   void DidRevalidate(ProfileSecurityState current) {
+-    if (!current.bound || current.account_id != state_.account_id ||
++    if (!current.bound || !current.binding_error.empty() ||
++        current.local_only != state_.local_only ||
++        current.account_id != state_.account_id ||
+         current.onboarding_complete != state_.onboarding_complete ||
+         current.local_anonymous != state_.local_anonymous ||
+         current.bound_user_id != state_.bound_user_id) {
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -158,6 +158,19 @@
+       Refresh();
+       return;
+     }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadProfileSecurity, StateHome(), profile_->GetPath()),
++        base::BindOnce(&ProfileGate::DidReadBinding, weak_.GetWeakPtr()));
++  }
++  void DidReadBinding(ProfileSecurityState state) {
++    if (!profile_ || state.bound || !state.local_only.value_or(false) ||
++        !state.binding_error.empty()) {
++      Refresh();
++      return;
++    }
++    // Existing local/cloud bindings are never rewritten on startup. Only a
++    // verified fresh profile requests the daemon's genuine local resolution.
+     const auto& path = profile_->GetPath();
+     base::DictValue identity;
+     identity.Set("profileId", ProfileIdForPath(path));
+@@ -287,7 +300,8 @@
+       }
+     }
+     timer_.Start(FROM_HERE, base::Milliseconds(500),
+-                 base::BindOnce(&ProfileGate::Refresh, weak_.GetWeakPtr()));
++                 base::BindOnce(state.bound ? &ProfileGate::Refresh : &ProfileGate::Bind,
++                                weak_.GetWeakPtr()));
+   }
+   GURL VaultRoute(const std::string& route) const {
+     return GURL("chrome-extension://" + std::string(kVaultExtensionId) +
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -102,7 +102,12 @@
+     row.Set("bindingVersion", 1);
+     const auto* id = row.FindString("profileId");
+     if (id) row.Set("chromiumProfileId", *id);
+-    row.Set("localOnly", state.bound_user_id.empty());
++    if (state.local_only.has_value() && state.binding_error.empty()) {
++      row.Set("localOnly", *state.local_only);
++    } else {
++      row.Set("profileBindingError", state.binding_error.empty()
++          ? "Profile identity could not be verified" : state.binding_error);
++    }
+     if (state.account_id) {
+       row.Set("accountId", *state.account_id);
+       row.Set("boundAccountId", *state.account_id);
+@@ -241,6 +246,15 @@
+   }
+   for (auto& value : profiles) {
+     if (value.GetDict().FindBool("isCurrent").value_or(false)) {
++      const auto& row = value.GetDict();
++      if (const auto* error = row.FindString("profileBindingError")) {
++        Respond(Error(*error));
++        return;
++      }
++      if (!row.FindBool("localOnly").has_value()) {
++        Respond(Error("Profile identity could not be verified"));
++        return;
++      }
+       value.GetDict().Set(
+           "browserMode", profile()->IsOffTheRecord() ? "incognito" : "default");
+       Respond(WithArguments(std::move(value)));
+--- a/chrome/browser/aux/profile_state_probe.cc
++++ b/chrome/browser/aux/profile_state_probe.cc
+@@ -1,10 +1,11 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+-// Disposable registry fixtures only. No daemon, Vault secret or owner profile.
++// Disposable registry fixtures only; never opens an owner profile or daemon.
+ #include "chrome/browser/aux/profile_state.h"
+ #include "base/check.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/json/json_writer.h"
++
+ int main() {
+   base::ScopedTempDir temp;
+   CHECK(temp.CreateUniqueTempDir());
+@@ -12,38 +13,79 @@
+   const auto profile = home.AppendASCII("fixture-profile");
+   const auto id = aux::ProfileIdForPath(profile);
+   const auto registry_path = home.AppendASCII("accounts.json");
+-  auto write = [&](const std::string& mode, const std::string& provider) {
+-    base::DictValue account;
+-    account.Set("id", 7);
+-    account.Set("mode", mode);
+-    account.Set("provider", provider);
+-    base::ListValue accounts;
+-    accounts.Append(std::move(account));
+-    base::DictValue binding;
+-    binding.Set("profileId", id);
+-    binding.Set("profilePath", profile.value());
+-    binding.Set("accountId", 7);
+-    base::DictValue bindings;
+-    bindings.Set(id, std::move(binding));
+-    base::DictValue registry;
+-    registry.Set("version", 1);
+-    registry.Set("accounts", std::move(accounts));
+-    registry.Set("profileAccountBindings", std::move(bindings));
+-    CHECK(base::WriteFile(registry_path, base::WriteJson(registry).value()));
++  base::DictValue registry;
++  registry.Set("version", 1);
++  registry.Set("accounts", base::ListValue());
++  registry.Set("profileAccountBindings", base::DictValue());
++  auto read = [&]() {
++    const auto text = base::WriteJson(registry).value();
++    CHECK(base::WriteFile(registry_path, text));
+     CHECK(base::SetPosixFilePermissions(registry_path, 0600));
++    auto state = aux::ReadProfileSecurity(home, profile);
++    std::string after;
++    CHECK(base::ReadFileToString(registry_path, &after));
++    CHECK(after == text);  // Classification never converts or deletes bindings.
++    return state;
+   };
+-  CHECK(!aux::ReadProfileSecurity(home, profile).bound);
+-  write("local", "anonymous");
+-  const auto local = aux::ReadProfileSecurity(home, profile);
+-  CHECK(local.bound && local.account_id == 7 && local.local_anonymous);
+-  CHECK(local.onboarding_complete && local.locked && !local.configured);
+-  CHECK(!local.allows_browsing());  // Actual authenticated Vault status required.
+-  write("cloud", "email");
+-  const auto cloud = aux::ReadProfileSecurity(home, profile);
+-  CHECK(cloud.bound && !cloud.onboarding_complete && !cloud.allows_browsing());
++  CHECK(!aux::ReadProfileSecurity(home, profile).local_only.has_value());
++  const auto fresh = read();
++  CHECK(!fresh.bound && fresh.local_only == true && fresh.binding_error.empty());
++  base::DictValue account;
++  account.Set("id", 0);
++  account.Set("mode", "local");
++  account.Set("provider", "anonymous");
++  registry.FindList("accounts")->Append(std::move(account));
++  base::DictValue binding;
++  binding.Set("profileId", id);
++  binding.Set("profilePath", profile.value());
++  binding.Set("accountId", 0);
++  registry.FindDict("profileAccountBindings")->Set(id, std::move(binding));
++  const auto local = read();
++  CHECK(local.bound && local.account_id == 0 && local.local_only == true);
++  CHECK(local.local_anonymous && local.onboarding_complete);
++  CHECK(local.locked && !local.configured && !local.allows_browsing());
++  auto& row = registry.FindList("accounts")->front().GetDict();
++  row.Set("mode", "cloud");
++  row.Set("provider", "email");
++  row.Set("userId", "fixture-cloud-user");
++  const auto cloud = read();
++  CHECK(cloud.bound && cloud.account_id == 0 && cloud.local_only == false);
++  CHECK(cloud.bound_user_id == "fixture-cloud-user" && !cloud.local_anonymous);
++  CHECK(!cloud.onboarding_complete && !cloud.allows_browsing());
++  row.Remove("userId");
++  const auto incomplete_cloud = read();
++  CHECK(!incomplete_cloud.bound && !incomplete_cloud.local_only.has_value());
++  CHECK(!incomplete_cloud.binding_error.empty());
++  row.Set("mode", "local");
++  row.Set("hasEverBoundCloudUser", true);
++  CHECK(!read().local_only.has_value());
++  row.Remove("hasEverBoundCloudUser");
++  row.Set("session", base::DictValue());
++  CHECK(!read().local_only.has_value());
++  row.Remove("session");
++  row.Set("mode", "unknown");
++  CHECK(!read().local_only.has_value());
++  row.Set("mode", "local");
++  auto* bound = registry.FindDict("profileAccountBindings")->FindDict(id);
++  bound->Set("profilePath", home.AppendASCII("wrong-profile").value());
++  CHECK(!read().local_only.has_value());
++  bound->Set("profilePath", profile.value());
++  bound->Set("accountId", 8);
++  CHECK(!read().local_only.has_value());
++  registry.Set("profileAccountBindings", base::DictValue());
++  base::DictValue legacy;
++  legacy.Set("unmigrated-fixture-binding", base::DictValue());
++  registry.Set("profileBindings", std::move(legacy));
++  CHECK(!read().local_only.has_value());
++  registry.Remove("profileBindings");
++  registry.Set("profileAccountBindings", "malformed");
++  CHECK(!read().local_only.has_value());
++  registry.Set("profileAccountBindings", base::DictValue());
++  registry.Remove("accounts");
++  CHECK(!read().local_only.has_value());
++  registry.Set("accounts", base::ListValue());
++  read();
+   CHECK(base::SetPosixFilePermissions(registry_path, 0644));
+-  CHECK(!aux::ReadProfileSecurity(home, profile).bound);
+-  CHECK(base::SetPosixFilePermissions(registry_path, 0600));
+-  CHECK(!aux::ReadProfileSecurity(home, home.AppendASCII("other-profile")).bound);
++  CHECK(!aux::ReadProfileSecurity(home, profile).local_only.has_value());
+   return 0;
+ }
