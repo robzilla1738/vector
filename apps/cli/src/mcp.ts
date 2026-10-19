@@ -1,5 +1,5 @@
 import { createInterface } from 'node:readline';
-import { type Client, type Json, object, text } from './client.js';
+import { type Client, type Json, object, RpcError, text } from './client.js';
 import { executeTask, type TaskOptions } from './task.js';
 
 const tools = [
@@ -125,9 +125,33 @@ export async function serveMcp(
         const evaluation = replQueue.then(async () => {
           if (!replId)
             replId = text(
-              object(await client.scoped('cli.replStart', {}, true)).id,
+              object(
+                await client.scoped(
+                  'cli.replStart',
+                  options.profile ? { profileId: options.profile } : {},
+                  true,
+                ),
+              ).id,
             );
-          return client.scoped('cli.replRun', { id: replId, code }, true);
+          try {
+            return await client.scoped(
+              'cli.replRun',
+              { id: replId, code },
+              true,
+            );
+          } catch (error) {
+            if (
+              error instanceof RpcError &&
+              (error.code === 'NOT_FOUND' ||
+                error.message.includes('bindings were lost'))
+            ) {
+              replId = undefined;
+              throw new Error(
+                'The sandbox closed or expired; bindings were lost. The next evaluation starts a fresh sandbox.',
+              );
+            }
+            throw error;
+          }
         });
         replQueue = evaluation.catch(() => {});
         result = await evaluation;

@@ -21,18 +21,20 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   if (request.type === 'aux.snapshot') {
     elements.clear();
     snapshotUrl = location.href;
+    const snapshotId = crypto.randomUUID();
     const nodes: { ref: string; role: string; name: string }[] = [];
     for (const element of document.querySelectorAll<HTMLElement>(
       'a[href],button,input:not([type=password]),textarea,select,[role=button],[contenteditable=true]',
     )) {
       if (!element.checkVisibility()) continue;
-      const ref = `element-${nodes.length + 1}`;
+      const ref = `${snapshotId}:${nodes.length + 1}`;
       elements.set(ref, element);
       nodes.push({
         ref,
-        role: element.getAttribute('role') ?? element.tagName.toLowerCase(),
+        role: element.getAttribute('role') ?? semanticRole(element),
         name: (
           element.getAttribute('aria-label') ??
+          labelledName(element) ??
           element.innerText ??
           ''
         ).slice(0, 300),
@@ -40,6 +42,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
       if (nodes.length >= 1000) break;
     }
     respond({
+      snapshotId,
       url: location.href,
       documentUrl: location.href,
       title: document.title,
@@ -102,3 +105,40 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
     });
   }
 });
+
+function semanticRole(element: HTMLElement) {
+  if (element instanceof HTMLAnchorElement) return 'link';
+  if (element instanceof HTMLButtonElement) return 'button';
+  if (element instanceof HTMLTextAreaElement || element.isContentEditable)
+    return 'textbox';
+  if (element instanceof HTMLSelectElement)
+    return element.multiple ? 'listbox' : 'combobox';
+  if (element instanceof HTMLInputElement) {
+    if (['checkbox', 'radio'].includes(element.type)) return element.type;
+    if (['button', 'submit', 'reset'].includes(element.type)) return 'button';
+    return 'textbox';
+  }
+  return element.tagName.toLowerCase();
+}
+function labelledName(element: HTMLElement) {
+  const labelledBy = element.getAttribute('aria-labelledby');
+  if (labelledBy)
+    return labelledBy
+      .split(/\s+/)
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+      .trim();
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement
+  ) {
+    const label = [...(element.labels ?? [])]
+      .map((item) => item.textContent ?? '')
+      .join(' ')
+      .trim();
+    if (label) return label;
+    return element.getAttribute('placeholder');
+  }
+  return null;
+}

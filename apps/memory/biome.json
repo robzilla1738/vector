@@ -1,1 +1,6 @@
-{"extends":"//","files":{"includes":["src/**","package.json","tsconfig.json","biome.json"]}}
+{
+  "extends": "//",
+  "files": {
+    "includes": ["src/**", "package.json", "tsconfig.json", "biome.json"]
+  }
+}

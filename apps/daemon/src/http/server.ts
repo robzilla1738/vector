@@ -88,7 +88,10 @@ export async function createDaemon(options: DaemonOptions) {
         CONFLICT: 409,
         PRECONDITION_FAILED: 412,
       } as const;
-      const status = statuses[errorValue.code as keyof typeof statuses] ?? 500;
+      const status =
+        errorValue.code in statuses
+          ? statuses[errorValue.code as keyof typeof statuses]
+          : 500;
       return c.json(
         error(
           errorValue.code,

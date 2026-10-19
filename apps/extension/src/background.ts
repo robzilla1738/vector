@@ -9,11 +9,24 @@ function navigationUrl(value: unknown) {
 let socket: WebSocket | undefined;
 let retry = 0;
 const running = new Map<number, AbortController>();
+const debuggedTabs = new Set<number>();
+chrome.debugger.onDetach.addListener((source) => {
+  if (source.tabId !== undefined) debuggedTabs.delete(source.tabId);
+});
 const commands: Record<
   string,
   (params: Record<string, unknown>) => Promise<unknown>
 > = {
-  'tabs.query': (params) => chrome.tabs.query(params),
+  'tabs.query': async (params) => {
+    const [tabs, targets] = await Promise.all([
+      chrome.tabs.query(params),
+      chrome.debugger.getTargets(),
+    ]);
+    return tabs.map((tab) => ({
+      ...tab,
+      targetId: targets.find((target) => target.tabId === tab.id)?.id,
+    }));
+  },
   'tabs.create': (params) =>
     chrome.tabs.create({
       url: navigationUrl(params.url),
@@ -33,6 +46,19 @@ const commands: Record<
     chrome.windows.update(Number(params.windowId), {
       focused: params.focused === true,
     }),
+  'page.screenshot': async (params) => {
+    const tabId = await targetTab(params);
+    if (!debuggedTabs.has(tabId)) {
+      await chrome.debugger.attach({ tabId }, '1.3');
+      debuggedTabs.add(tabId);
+    }
+    const result = (await chrome.debugger.sendCommand(
+      { tabId },
+      'Page.captureScreenshot',
+      { format: 'png' },
+    )) as { data: string };
+    return { mimeType: 'image/png', data: result.data };
+  },
   'page.snapshot': async (params) =>
     chrome.tabs.sendMessage(
       await targetTab(params),

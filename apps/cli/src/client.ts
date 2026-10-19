@@ -30,6 +30,15 @@ export function accountId(value: string): number {
   return result;
 }
 
+export class RpcError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | undefined,
+  ) {
+    super(message);
+  }
+}
+
 export class Client {
   readonly home: string;
   readonly origin: string;
@@ -110,10 +119,12 @@ export class Client {
     if (!response.ok || payload.error) {
       if (response.status === 401) this.expiresAt = 0;
       const error = payload.error ? object(payload.error) : {};
-      throw new Error(
+      const data = error.data ? object(error.data) : {};
+      throw new RpcError(
         typeof error.message === 'string'
           ? error.message
           : `Daemon request failed (${response.status}).`,
+        typeof data.code === 'string' ? data.code : undefined,
       );
     }
     return object(payload.result ?? null).data ?? null;

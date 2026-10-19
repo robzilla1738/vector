@@ -21,12 +21,12 @@ const ingestSchema = scope.extend({
     .optional(),
   metadata: z.record(z.string(), z.string()).optional(),
 });
-interface InboxMessage extends z.infer<typeof ingestSchema> {
+export interface InboxMessage extends z.infer<typeof ingestSchema> {
   id: string;
   createdAt: number;
   origin: string | null;
 }
-interface Grant {
+export interface Grant {
   origin: string;
   permission: 'granted' | 'default' | 'denied';
   source: 'api' | 'native_ui';

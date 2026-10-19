@@ -190,7 +190,13 @@ async function interactive(id?: string): Promise<void> {
   }
 }
 async function repl(code: string): Promise<void> {
-  const session = object(await client.scoped('cli.replStart', {}, true));
+  const session = object(
+    await client.scoped(
+      'cli.replStart',
+      options.profile ? { profileId: options.profile } : {},
+      true,
+    ),
+  );
   const id = text(session.id);
   try {
     if (code) {
