@@ -1,0 +1,1607 @@
+From: Aux clean-room build
+Subject: [PATCH 0086] Own bundled local lifecycle and native installation/CDP authentication
+
+Specs: docs/spec/native/platform.md P1/P2/P4/P5; docs/spec/daemon/core.md.
+Independent implementation; no reference bundles, assets or identifiers used.
+
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -92,6 +92,7 @@
+ buildflag_header("buildflags") {
+   header = "buildflags.h"
+   flags = [
++    "ENABLE_AUX_BROWSER=$enable_aux_browser",
+     "ENABLE_AUX_SHELL=$enable_aux_shell",
+     "ENABLE_AUX_SPARKLE=$enable_aux_sparkle",
+     "AUX_TEST_HOOKS=$aux_test_hooks",
+@@ -1053,6 +1054,7 @@
+     "//chrome/browser/tracing",
+     "//chrome/browser/translate",
+     "//chrome/browser/trusted_vault",
++    "//chrome/browser/aux:platform",
+     "//chrome/browser/ui",
+     "//chrome/browser/ui:ui_features",
+     "//chrome/browser/ui/actions",
+@@ -2311,6 +2313,7 @@
+     "//chrome/browser/trusted_vault:impl",
+     "//chrome/browser/ttc",
+     "//chrome/browser/ttc:impl",
++    "//chrome/browser/aux:platform",
+     "//chrome/browser/ui",
+     "//chrome/browser/ui/autofill",
+     "//chrome/browser/ui/autofill:impl",
+diff --git a/chrome/browser/buildflags.gni b/chrome/browser/buildflags.gni
+--- a/chrome/browser/buildflags.gni
++++ b/chrome/browser/buildflags.gni
+@@ -9,6 +9,9 @@
+ # docs/chrome_browser_design_principles.md.
+ 
+ declare_args() {
++  # Independent local browser integration; retired shell stays disabled.
++  enable_aux_browser = false
++
+   # Aux shell is built only for the Aux distribution.
+   enable_aux_shell = false
+ 
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -53,6 +53,7 @@
+ #include "chrome/browser/metrics/expired_histograms_array.h"
+ #include "chrome/browser/metrics/shutdown_watcher_helper.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
++#include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/performance_manager/public/chrome_browser_main_extra_parts_performance_manager.h"
+ #include "chrome/browser/performance_monitor/chrome_browser_main_extra_parts_performance_monitor.h"
+ #include "chrome/browser/policy/chrome_browser_policy_connector.h"
+@@ -1913,6 +1914,17 @@
+   // Desktop construction occurs here, (required before profile creation).
+   PreProfileInit();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Complete local readiness/auth and cache component manifests before profiles
++  // can initialize their extension services or create a normal browsing tab.
++  if (!aux::BrowserPlatform::Get().Start(
++          browser_process_->system_network_context_manager()
++              ->GetSharedURLLoaderFactory())) {
++    LOG(ERROR) << "Aux local browser startup failed";
++    return CHROME_RESULT_CODE_MISSING_DATA;
++  }
++#endif
++
+   // Register WebUI configs before profile creation, so that profile-level
+   // prewarming has access to registered WebUI data sources. Also login manager
+   // on CrOS is called inside `PostProfileInit()`.
+@@ -2234,6 +2246,10 @@
+ }
+ 
+ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Keep networking and the UI task runner alive until owned daemon shutdown.
++  aux::BrowserPlatform::Get().Shutdown();
++#endif
+   TRACE_EVENT_END("toplevel", perfetto::Track::FromPointer(this));
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PostMainMessageLoopRun");
+ #if BUILDFLAG(IS_ANDROID)
+diff --git a/chrome/browser/devtools/BUILD.gn b/chrome/browser/devtools/BUILD.gn
+--- a/chrome/browser/devtools/BUILD.gn
++++ b/chrome/browser/devtools/BUILD.gn
+@@ -120,6 +120,7 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/aux:platform",
+     "//base",
+     "//chrome/browser:file_select_helper",
+     "//chrome/browser/infobars",
+diff --git a/chrome/browser/devtools/remote_debugging_server.cc b/chrome/browser/devtools/remote_debugging_server.cc
+--- a/chrome/browser/devtools/remote_debugging_server.cc
++++ b/chrome/browser/devtools/remote_debugging_server.cc
+@@ -21,6 +21,7 @@
+ #include "base/types/expected.h"
+ #include "build/branding_buildflags.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/devtools/chrome_devtools_manager_delegate.h"
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/devtools/features.h"
+@@ -347,9 +348,15 @@
+ base::expected<std::unique_ptr<RemoteDebuggingServer>,
+                RemoteDebuggingServer::NotStartedReason>
+ RemoteDebuggingServer::GetInstance(PrefService* local_state) {
+-#if BUILDFLAG(ENABLE_AUX_SHELL)
+-  // The explicit Aux setting owns this listener, including while dormant.
+-  // Command-line switches cannot bypass the off default or managed policy.
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // The independently authenticated local listener owns browser automation.
++  // A stored user disable or managed policy still overrides its default.
++  if (local_state->FindPreference(prefs::kDevToolsRemoteDebuggingEnabled)
++          ->IsDefaultValue()) {
++    local_state->SetDefaultPrefValue(prefs::kDevToolsRemoteDebuggingEnabled,
++                                    base::Value(true));
++  }
++  // Command-line debugging switches never create an unfiltered Aux listener.
+   auto aux_server = base::WrapUnique(new RemoteDebuggingServer());
+   aux_server->ObserveAuxPreferences(local_state);
+   return aux_server;
+@@ -440,7 +447,7 @@
+   }
+ 
+   return base::unexpected(NotStartedReason::kNotRequested);
+-#endif  // BUILDFLAG(ENABLE_AUX_SHELL)
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
+ }
+ 
+ void RemoteDebuggingServer::ObserveAuxPreferences(PrefService* local_state) {
+@@ -530,10 +537,16 @@
+     return;
+   }
+   if (desired && aux_phase_ == AuxPhase::kOff) {
++    auto request_filter = aux::BrowserPlatform::Get().CreateBrowserCdpFilter(45203);
++    if (!request_filter) {
++      aux_phase_ = AuxPhase::kFailed;
++      CompleteAuxRequests();
++      return;
++    }
+     aux_phase_ = AuxPhase::kStarting;
+     const uint64_t epoch = ++aux_epoch_;
+     content::DevToolsAgentHost::StartRemoteDebuggingServer(
+-        std::make_unique<TCPServerSocketFactory>(kDefaultDevToolsPort),
++        std::make_unique<TCPServerSocketFactory>(45203),
+         base::FilePath(), base::FilePath(),
+         content::DevToolsAgentHost::RemoteDebuggingServerMode::kDefault,
+         base::BindOnce([](base::WeakPtr<RemoteDebuggingServer> server,
+@@ -556,7 +569,7 @@
+             server->aux_phase_ = AuxPhase::kListening;
+             server->CompleteAuxRequests();
+           }
+-        }, weak_factory_.GetWeakPtr(), epoch));
++        }, weak_factory_.GetWeakPtr(), epoch), std::move(request_filter));
+     return;
+   }
+   CompleteAuxRequests();
+diff --git a/chrome/browser/extensions/BUILD.gn b/chrome/browser/extensions/BUILD.gn
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -489,6 +489,7 @@
+     "//chrome/browser/ui/toolbar",
+   ]
+   deps = [
++    "//chrome/browser/aux:platform",
+     "//base",
+     "//chrome/app:command_ids",
+     "//chrome/app/theme:chrome_unscaled_resources",
+diff --git a/chrome/browser/extensions/chrome_extension_system.cc b/chrome/browser/extensions/chrome_extension_system.cc
+--- a/chrome/browser/extensions/chrome_extension_system.cc
++++ b/chrome/browser/extensions/chrome_extension_system.cc
+@@ -18,6 +18,8 @@
+ #include "build/build_config.h"
+ #include "build/chromeos_buildflags.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/extensions/blocklist_factory.h"
+ #include "chrome/browser/extensions/chrome_content_verifier_delegate.h"
+ #include "chrome/browser/extensions/chrome_extension_system_factory.h"
+@@ -285,6 +287,15 @@
+ 
+   bool skip_session_extensions = false;
+   auto* component_loader = ComponentLoader::Get(profile_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  CHECK(aux::BrowserPlatform::Get().RegisterProfileComponents(
++      base::BindRepeating(
++          [](ComponentLoader* loader, base::DictValue manifest,
++             const base::FilePath& directory) {
++            return loader->Add(std::move(manifest), directory);
++          }, base::Unretained(component_loader))))
++      << "Aux component extension registration failed";
++#endif
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Skip loading session extensions if we are not in a user session or if the
+   // profile is the sign-in or lock screen app profile, which don't correspond
+diff --git a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
+--- a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
++++ b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
+@@ -13,6 +13,7 @@
+ #include "build/build_config.h"
+ #include "build/chromeos_buildflags.h"
+ #include "chrome/common/buildflags.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/aux_content_filter_resource_constants.h"
+ #include "chrome/common/extensions/extension_constants.h"
+ #include "chrome/grit/aim_eligibility_extension_resources.h"
+@@ -37,6 +38,10 @@
+ bool IsComponentExtensionAllowlisted(const std::string& extension_id) {
+   constexpr auto kAllowed = base::MakeFixedFlatSet<std::string_view>({
+       extension_misc::kAimEligibilityExtensionId,
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++      "gokkffaiccpmoeodpmeamcjajcagjmkm",
++      "nbpghnminpifekjbgjefioajhiilbfla",
++#endif
+ #if BUILDFLAG(ENABLE_AUX_ISOLATED_WORLDS)
+       // Public pinned replacement assets only; no scripts or browser permissions.
+       aux::kContentFilterResourceExtensionId,
+diff --git a/content/browser/devtools/devtools_agent_host_impl.cc b/content/browser/devtools/devtools_agent_host_impl.cc
+--- a/content/browser/devtools/devtools_agent_host_impl.cc
++++ b/content/browser/devtools/devtools_agent_host_impl.cc
+@@ -208,13 +208,15 @@
+     const base::FilePath& active_port_output_directory,
+     const base::FilePath& debug_frontend_dir,
+     RemoteDebuggingServerMode mode,
+-    base::OnceCallback<void(std::string)> on_started) {
++    base::OnceCallback<void(std::string)> on_started,
++    HttpRequestFilter request_filter) {
+   DevToolsManagerDelegate* delegate =
+       DevToolsManager::GetInstance()->delegate();
+   CHECK(delegate);
+   SetDevToolsHttpHandler(std::make_unique<DevToolsHttpHandler>(
+       delegate, std::move(server_socket_factory), active_port_output_directory,
+-      debug_frontend_dir, mode, std::move(on_started)));
++      debug_frontend_dir, mode, std::move(on_started),
++      std::move(request_filter)));
+ }
+ 
+ // static
+diff --git a/content/browser/devtools/devtools_http_handler.cc b/content/browser/devtools/devtools_http_handler.cc
+--- a/content/browser/devtools/devtools_http_handler.cc
++++ b/content/browser/devtools/devtools_http_handler.cc
+@@ -141,7 +141,8 @@
+   ServerWrapper(base::WeakPtr<DevToolsHttpHandler> handler,
+                 std::unique_ptr<net::ServerSocket> socket,
+                 const base::FilePath& debug_frontend_dir,
+-                bool bundles_resources);
++                bool bundles_resources,
++                DevToolsAgentHost::HttpRequestFilter request_filter);
+ 
+   int GetLocalAddress(net::IPEndPoint* address);
+ 
+@@ -173,16 +174,19 @@
+   std::unique_ptr<net::HttpServer> server_;
+   base::FilePath debug_frontend_dir_;
+   bool bundles_resources_;
++  DevToolsAgentHost::HttpRequestFilter request_filter_;
+ };
+ 
+ ServerWrapper::ServerWrapper(base::WeakPtr<DevToolsHttpHandler> handler,
+                              std::unique_ptr<net::ServerSocket> socket,
+                              const base::FilePath& debug_frontend_dir,
+-                             bool bundles_resources)
++                             bool bundles_resources,
++                             DevToolsAgentHost::HttpRequestFilter request_filter)
+     : handler_(handler),
+       server_(new net::HttpServer(std::move(socket), this)),
+       debug_frontend_dir_(debug_frontend_dir),
+-      bundles_resources_(bundles_resources) {}
++      bundles_resources_(bundles_resources),
++      request_filter_(std::move(request_filter)) {}
+ 
+ int ServerWrapper::GetLocalAddress(net::IPEndPoint* address) {
+   return server_->GetLocalAddress(address);
+@@ -304,7 +308,8 @@
+     const base::FilePath& debug_frontend_dir,
+     const std::string& browser_guid,
+     bool bundles_resources,
+-    std::shared_ptr<DevToolsServerLifecycle> lifecycle) {
++    std::shared_ptr<DevToolsServerLifecycle> lifecycle,
++    DevToolsAgentHost::HttpRequestFilter request_filter) {
+   CHECK(thread->task_runner()->BelongsToCurrentThread(),
+         base::NotFatalUntil::M159);
+   std::unique_ptr<ServerWrapper> server_wrapper;
+@@ -314,7 +319,8 @@
+   if (server_socket) {
+     server_wrapper =
+         std::make_unique<ServerWrapper>(handler, std::move(server_socket),
+-                                        debug_frontend_dir, bundles_resources);
++                                        debug_frontend_dir, bundles_resources,
++                                        std::move(request_filter));
+     if (server_wrapper->GetLocalAddress(ip_address.get()) != net::OK)
+       ip_address.reset();
+   } else {
+@@ -502,6 +508,12 @@
+ 
+ void ServerWrapper::OnHttpRequest(int connection_id,
+                                   const net::HttpServerRequestInfo& info) {
++  if (request_filter_) {
++    if (auto response = request_filter_.Run(info, false)) {
++      SendResponse(connection_id, *response);
++      return;
++    }
++  }
+   if (!RequestIsSafeToServe(info)) {
+     Send500(connection_id,
+             "Host header is specified and is not an IP address or localhost.");
+@@ -557,6 +569,12 @@
+ void ServerWrapper::OnWebSocketRequest(
+     int connection_id,
+     const net::HttpServerRequestInfo& request) {
++  if (request_filter_) {
++    if (auto response = request_filter_.Run(request, true)) {
++      SendResponse(connection_id, *response);
++      return;
++    }
++  }
+   if (!RequestIsSafeToServe(request)) {
+     Send500(connection_id,
+             "Host header is specified and is not an IP address or localhost.");
+@@ -858,7 +876,7 @@
+   if (!thread_)
+     return;
+ 
+-  if (request.headers.count("origin") &&
++  if (!request_filter_authorizes_origins_ && request.headers.count("origin") &&
+       !remote_allow_origins_.count(request.headers.at("origin")) &&
+       !remote_allow_origins_.count("*")) {
+     const std::string& origin = request.headers.at("origin");
+@@ -947,9 +965,10 @@
+     const base::FilePath& output_directory,
+     const base::FilePath& debug_frontend_dir,
+     DevToolsAgentHost::RemoteDebuggingServerMode mode,
+-    base::OnceCallback<void(std::string)> on_started)
++    base::OnceCallback<void(std::string)> on_started,
++    DevToolsAgentHost::HttpRequestFilter request_filter)
+     : lifecycle_(std::make_shared<DevToolsServerLifecycle>(std::move(on_started))),
+-      mode_(mode), delegate_(delegate) {
++      mode_(mode), request_filter_authorizes_origins_(!!request_filter), delegate_(delegate) {
+   browser_guid_ =
+       delegate_->IsBrowserTargetDiscoverable()
+           ? kBrowserUrlPrefix
+@@ -967,7 +986,8 @@
+         base::BindOnce(&StartServerOnHandlerThread, weak_factory_.GetWeakPtr(),
+                        std::move(thread), std::move(socket_factory),
+                        output_directory, debug_frontend_dir, browser_guid_,
+-                       delegate_->HasBundledFrontendResources(), lifecycle_));
++                       delegate_->HasBundledFrontendResources(), lifecycle_,
++                       std::move(request_filter)));
+   } else {
+     lifecycle_->starting = false;
+     GetUIThreadTaskRunner({})->PostTask(FROM_HERE, base::BindOnce(
+diff --git a/content/browser/devtools/devtools_http_handler.h b/content/browser/devtools/devtools_http_handler.h
+--- a/content/browser/devtools/devtools_http_handler.h
++++ b/content/browser/devtools/devtools_http_handler.h
+@@ -58,7 +58,8 @@
+       const base::FilePath& debug_frontend_dir,
+       DevToolsAgentHost::RemoteDebuggingServerMode mode =
+           DevToolsAgentHost::RemoteDebuggingServerMode::kDefault,
+-      base::OnceCallback<void(std::string)> on_started = {});
++      base::OnceCallback<void(std::string)> on_started = {},
++      DevToolsAgentHost::HttpRequestFilter request_filter = {});
+ 
+   DevToolsHttpHandler(const DevToolsHttpHandler&) = delete;
+   DevToolsHttpHandler& operator=(const DevToolsHttpHandler&) = delete;
+@@ -128,6 +129,7 @@
+ 
+   DevToolsAgentHost::RemoteDebuggingServerMode mode_;
+   std::set<std::string> remote_allow_origins_;
++  bool request_filter_authorizes_origins_ = false;
+   // The thread used by the devtools handler to run server socket.
+   std::unique_ptr<base::Thread> thread_;
+   std::string browser_guid_;
+diff --git a/content/public/browser/devtools_agent_host.h b/content/public/browser/devtools_agent_host.h
+--- a/content/public/browser/devtools_agent_host.h
++++ b/content/public/browser/devtools_agent_host.h
+@@ -6,6 +6,9 @@
+ #define CONTENT_PUBLIC_BROWSER_DEVTOOLS_AGENT_HOST_H_
+ 
+ #include <memory>
++#include <optional>
++#include "net/server/http_server_request_info.h"
++#include "net/server/http_server_response_info.h"
+ #include <string>
+ #include <vector>
+ 
+@@ -141,12 +144,16 @@
+   // socket_factory was initialized with an ephemeral port (0). The
+   // port selected by the OS will be written to a well-known file in
+   // the output directory.
++  using HttpRequestFilter = base::RepeatingCallback<
++      std::optional<net::HttpServerResponseInfo>(
++          const net::HttpServerRequestInfo&, bool websocket)>;
+   static void StartRemoteDebuggingServer(
+       std::unique_ptr<DevToolsSocketFactory> server_socket_factory,
+       const base::FilePath& active_port_output_directory,
+       const base::FilePath& debug_frontend_dir,
+       RemoteDebuggingServerMode mode = RemoteDebuggingServerMode::kDefault,
+-      base::OnceCallback<void(std::string)> on_started = {});
++      base::OnceCallback<void(std::string)> on_started = {},
++      HttpRequestFilter request_filter = {});
+   // Completion runs on UI after the actual listener thread/socket is closed.
+   static void StopRemoteDebuggingServer(base::OnceClosure on_stopped = {});
+   // Returns the address of the remote debugging server, if started.
+diff --git a/chrome/browser/aux/BUILD.gn b/chrome/browser/aux/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/BUILD.gn
+@@ -0,0 +1,22 @@
++# Independent native implementation: docs/spec/native/platform.md P1/P2/P4.
++source_set("platform") {
++  sources = [
++    "installation_auth.cc",
++    "installation_auth.h",
++    "daemon_supervisor.cc",
++    "daemon_supervisor.h",
++    "component_bootstrap.cc",
++    "component_bootstrap.h",
++    "browser_platform.cc",
++    "browser_platform.h",
++    "../devtools/aux_cdp_authority.cc",
++    "../devtools/aux_cdp_authority.h",
++  ]
++  deps = [ "//base", "//crypto", "//net", "//services/network/public/cpp", "//components/crx_file" ]
++}
++
++executable("auth_probe") {
++  testonly = true
++  sources = [ "auth_probe.cc" ]
++  deps = [ ":platform", "//base", "//crypto", "//net" ]
++}
+diff --git a/chrome/browser/aux/installation_auth.h b/chrome/browser/aux/installation_auth.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/installation_auth.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independently implemented from docs/spec/native/platform.md P2.
++#ifndef CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
++#define CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
++#include <optional>
++#include <string>
++#include <string_view>
++
++#include "base/files/file_path.h"
++#include "crypto/keypair.h"
++namespace aux {
++// Blocking functions: invoke on a MayBlock worker, never the UI thread.
++base::FilePath StateHome();
++std::optional<crypto::keypair::PrivateKey> LoadInstallationPrivateKey(
++    const base::FilePath& home);
++std::optional<crypto::keypair::PublicKey> LoadInstallationPublicKey(
++    const base::FilePath& home);
++std::optional<std::string> SignDaemonChallenge(const base::FilePath& home,
++                                               std::string_view challenge);
++bool VerifyInstallationChallenge(const crypto::keypair::PublicKey& key,
++                                 std::string_view challenge,
++                                 std::string_view signature);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/installation_auth.cc b/chrome/browser/aux/installation_auth.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -0,0 +1,122 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/installation_auth.h"
++
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include <array>
++
++#include "base/base64.h"
++#include "base/environment.h"
++#include "base/files/scoped_file.h"
++#include "base/path_service.h"
++#include "base/strings/string_util.h"
++#include "crypto/sign.h"
++namespace aux {
++namespace {
++std::optional<std::vector<uint8_t>> ReadPem(const base::FilePath& path,
++                                            std::string_view type,
++                                            bool private_key) {
++  base::ScopedFD fd(
++      open(path.value().c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
++  struct stat info;
++  if (!fd.is_valid() || fstat(fd.get(), &info) != 0 || !S_ISREG(info.st_mode) ||
++      info.st_size <= 0 || info.st_size > 16384 ||
++      (private_key && (info.st_uid != geteuid() || (info.st_mode & 0077)))) {
++    return std::nullopt;
++  }
++  std::string pem;
++  std::array<char, 1024> buffer;
++  for (;;) {
++    ssize_t count = read(fd.get(), buffer.data(), buffer.size());
++    if (count == 0) {
++      break;
++    }
++    if (count < 0 || pem.size() + count > 16384) {
++      return std::nullopt;
++    }
++    pem.append(buffer.data(), count);
++  }
++  const std::string begin = "-----BEGIN " + std::string(type) + "-----";
++  const std::string end = "-----END " + std::string(type) + "-----";
++  std::string_view text = base::TrimWhitespaceASCII(pem, base::TRIM_ALL);
++  if (!base::StartsWith(text, begin) || !base::EndsWith(text, end)) {
++    return std::nullopt;
++  }
++  text.remove_prefix(begin.size());
++  text.remove_suffix(end.size());
++  std::string decoded;
++  if (!base::Base64Decode(text, &decoded,
++                          base::Base64DecodePolicy::kForgiving)) {
++    return std::nullopt;
++  }
++  return std::vector<uint8_t>(decoded.begin(), decoded.end());
++}
++std::optional<std::string> Message(std::string_view challenge) {
++  std::string bytes;
++  if (!base::Base64Decode(challenge, &bytes) || bytes.size() != 32) {
++    return std::nullopt;
++  }
++  std::string message("Aux Daemon Auth v1\0", 19);
++  message += bytes;
++  return message;
++}
++}  // namespace
++base::FilePath StateHome() {
++  auto env = base::Environment::Create();
++  if (auto value = env->GetVar("AUX_HOME"); value && !value->empty()) {
++    return base::FilePath(*value);
++  }
++  base::FilePath home;
++  if (!base::PathService::Get(base::DIR_HOME, &home)) {
++    return {};
++  }
++  return home.AppendASCII(".aux");
++}
++std::optional<crypto::keypair::PrivateKey> LoadInstallationPrivateKey(
++    const base::FilePath& home) {
++  auto bytes = ReadPem(home.AppendASCII("installation-private.pem"),
++                       "PRIVATE KEY", true);
++  if (!bytes) {
++    return std::nullopt;
++  }
++  auto key = crypto::keypair::PrivateKey::FromPrivateKeyInfo(*bytes);
++  if (!key || !key->IsEcP256()) {
++    return std::nullopt;
++  }
++  return key;
++}
++std::optional<crypto::keypair::PublicKey> LoadInstallationPublicKey(
++    const base::FilePath& home) {
++  auto bytes =
++      ReadPem(home.AppendASCII("installation-public.pem"), "PUBLIC KEY", false);
++  if (!bytes) {
++    return std::nullopt;
++  }
++  auto key = crypto::keypair::PublicKey::FromSubjectPublicKeyInfo(*bytes);
++  if (!key || !key->IsEcP256()) {
++    return std::nullopt;
++  }
++  return key;
++}
++std::optional<std::string> SignDaemonChallenge(const base::FilePath& home,
++                                               std::string_view challenge) {
++  auto key = LoadInstallationPrivateKey(home);
++  auto message = Message(challenge);
++  if (!key || !message) {
++    return std::nullopt;
++  }
++  return base::Base64Encode(crypto::sign::Sign(crypto::sign::ECDSA_SHA256, *key,
++                                               base::as_byte_span(*message)));
++}
++bool VerifyInstallationChallenge(const crypto::keypair::PublicKey& key,
++                                 std::string_view challenge,
++                                 std::string_view signature) {
++  auto message = Message(challenge);
++  auto bytes = base::Base64Decode(signature);
++  return message && bytes &&
++         crypto::sign::Verify(crypto::sign::ECDSA_SHA256, key,
++                              base::as_byte_span(*message), *bytes);
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/daemon_supervisor.h b/chrome/browser/aux/daemon_supervisor.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/daemon_supervisor.h
+@@ -0,0 +1,83 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_DAEMON_SUPERVISOR_H_
++#define CHROME_BROWSER_AUX_DAEMON_SUPERVISOR_H_
++#include <memory>
++#include <optional>
++#include <string>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/process/process.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++namespace aux {
++struct BundlePaths {
++  base::FilePath root, daemon_executable, node, daemon_script, agent_extension,
++      vault_extension;
++  static std::optional<BundlePaths> FromBrowserExecutable();
++};
++// UI-sequence owner. Must call Shutdown and retain until its completion before
++// destruction.
++class DaemonSupervisor {
++ public:
++  enum class State {
++    kStopped,
++    kStarting,
++    kAuthenticating,
++    kReady,
++    kFailed,
++    kStopping
++  };
++  using StateCallback = base::RepeatingCallback<void(State, std::string)>;
++  DaemonSupervisor(BundlePaths paths,
++                   base::FilePath home,
++                   uint16_t port,
++                   scoped_refptr<network::SharedURLLoaderFactory> factory,
++                   StateCallback changed,
++                   bool allow_node_fallback = false);
++  ~DaemonSupervisor();
++  void Start();
++  void SetStateCallback(StateCallback callback) {
++    changed_ = std::move(callback);
++  }
++  void Shutdown(base::OnceClosure done);
++  State state() const { return state_; }
++  const std::string& authorization() const { return authorization_; }
++
++ private:
++  void SetState(State state, std::string error = {});
++  void DidLaunch(base::Process process);
++  void Poll();
++  void DidReadHealth(std::optional<std::string> body);
++  void Authenticate();
++  void DidReadChallenge(std::optional<std::string> body);
++  void DidSignChallenge(std::string id, std::optional<std::string> signature);
++  void DidReadSession(std::optional<std::string> body);
++  void Request(std::string path,
++               std::optional<std::string> body,
++               base::OnceCallback<void(std::optional<std::string>)> done);
++  void FinishShutdown();
++  void DidFinishShutdown(bool stopped);
++  const BundlePaths paths_;
++  const base::FilePath home_;
++  const uint16_t port_;
++  const scoped_refptr<network::SharedURLLoaderFactory> factory_;
++  StateCallback changed_;
++  const bool allow_node_fallback_;
++  State state_ = State::kStopped;
++  bool launch_pending_ = false;
++  base::Process process_;
++  base::Time process_created_;
++  base::TimeTicks activation_deadline_, token_expires_;
++  std::string authorization_;
++  std::unique_ptr<network::SimpleURLLoader> loader_;
++  base::OneShotTimer timer_;
++  base::OnceClosure shutdown_done_;
++  base::WeakPtrFactory<DaemonSupervisor> weak_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/daemon_supervisor.cc b/chrome/browser/aux/daemon_supervisor.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -0,0 +1,301 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Native lifecycle: docs/spec/native/platform.md P1/P2, daemon/core.md.
++#include "chrome/browser/aux/daemon_supervisor.h"
++
++#include "base/command_line.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/process/launch.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++namespace aux {
++namespace {
++constexpr auto kAnnotation = net::DefineNetworkTrafficAnnotation(
++    "aux_owned_daemon",
++    R"(semantics {sender:"Aux native browser" description:"Readiness, installation authentication and shutdown of the bundled local Aux daemon." trigger:"Browser startup, local service recovery or browser exit." data:"Local health metadata, installation challenge signature and short-lived authorization token." destination:LOCAL} policy {cookies_allowed:NO setting:"Required local Aux browser infrastructure." policy_exception_justification:"No remote service is contacted."})");
++base::Process Launch(const BundlePaths& paths,
++                     const base::FilePath& home,
++                     uint16_t port,
++                     bool allow_fallback) {
++  const auto root = base::MakeAbsoluteFilePath(paths.root);
++  auto valid = [&](const base::FilePath& path) {
++    const auto absolute = base::MakeAbsoluteFilePath(path);
++    return !root.empty() && !absolute.empty() && root.IsParent(absolute) &&
++           base::PathExists(absolute);
++  };
++  if (!valid(paths.agent_extension.AppendASCII("manifest.json")) ||
++      !valid(paths.vault_extension.AppendASCII("manifest.json"))) {
++    return base::Process();
++  }
++  base::FilePath executable = paths.daemon_executable;
++  if (!valid(executable)) {
++    if (!allow_fallback || !valid(paths.node) || !valid(paths.daemon_script)) {
++      return base::Process();
++    }
++    executable = paths.node;
++  }
++  base::CommandLine command(executable);
++  if (executable == paths.node) {
++    command.AppendArgPath(paths.daemon_script);
++  }
++  base::LaunchOptions options;
++  options.environment["AUX_HOME"] = home.value();
++  options.environment["AUX_PORT"] = base::NumberToString(port);
++  options.current_directory = paths.root;
++  return base::LaunchProcess(command, options);
++}
++bool StopVerified(base::Process process,
++                  base::Time created,
++                  const base::FilePath& root) {
++  if (!process.IsValid() ||
++      process.WaitForExitWithTimeout(base::Seconds(3), nullptr)) {
++    return true;
++  }
++  const auto executable = base::GetProcessExecutablePath(process.Handle());
++  const auto canonical_root = base::MakeAbsoluteFilePath(root);
++  if (!canonical_root.empty() && !executable.empty() &&
++      canonical_root.IsParent(base::MakeAbsoluteFilePath(executable)) &&
++      base::GetParentProcessId(process.Handle()) == base::GetCurrentProcId() &&
++      !created.is_null() && process.CreationTime() == created) {
++    return process.Terminate(0, false) &&
++           process.WaitForExitWithTimeout(base::Seconds(2), nullptr);
++  }
++  return false;
++}
++}  // namespace
++std::optional<BundlePaths> BundlePaths::FromBrowserExecutable() {
++  base::FilePath executable;
++  if (!base::PathService::Get(base::FILE_EXE, &executable)) {
++    return std::nullopt;
++  }
++  const auto contents = executable.DirName().DirName();
++  if (contents.BaseName().value() != "Contents") {
++    return std::nullopt;
++  }
++  BundlePaths paths;
++  paths.root = contents.AppendASCII("Resources/aux");
++  paths.daemon_executable = paths.root.AppendASCII(
++      "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon");
++  paths.node = paths.root.AppendASCII("runtime/node");
++  paths.daemon_script = paths.root.AppendASCII("apps/daemon/dist/index.js");
++  paths.agent_extension = paths.root.AppendASCII("apps/extension/dist");
++  paths.vault_extension = paths.root.AppendASCII("apps/vault/dist");
++  return paths;
++}
++DaemonSupervisor::DaemonSupervisor(
++    BundlePaths paths,
++    base::FilePath home,
++    uint16_t port,
++    scoped_refptr<network::SharedURLLoaderFactory> factory,
++    StateCallback changed,
++    bool allow_node_fallback)
++    : paths_(std::move(paths)),
++      home_(std::move(home)),
++      port_(port),
++      factory_(std::move(factory)),
++      changed_(std::move(changed)),
++      allow_node_fallback_(allow_node_fallback) {}
++DaemonSupervisor::~DaemonSupervisor() = default;
++void DaemonSupervisor::SetState(State state, std::string error) {
++  state_ = state;
++  changed_.Run(state, std::move(error));
++}
++void DaemonSupervisor::Start() {
++  if (process_.IsValid() ||
++      (state_ != State::kStopped && state_ != State::kFailed)) {
++    return;
++  }
++  SetState(State::kStarting);
++  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(20);
++  launch_pending_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&Launch, paths_, home_, port_, allow_node_fallback_),
++      base::BindOnce(&DaemonSupervisor::DidLaunch, weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::DidLaunch(base::Process process) {
++  launch_pending_ = false;
++  if (state_ == State::kStopping) {
++    process_ = std::move(process);
++    process_created_ =
++        process_.IsValid() ? process_.CreationTime() : base::Time();
++    FinishShutdown();
++    return;
++  }
++  if (!process.IsValid()) {
++    SetState(State::kFailed, "Bundled Aux components are unavailable");
++    return;
++  }
++  process_ = std::move(process);
++  process_created_ = process_.CreationTime();
++  Poll();
++}
++void DaemonSupervisor::Request(
++    std::string path,
++    std::optional<std::string> body,
++    base::OnceCallback<void(std::optional<std::string>)> done) {
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = GURL("http://127.0.0.1:" + base::NumberToString(port_) + path);
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->redirect_mode = network::mojom::RedirectMode::kError;
++  if (!authorization_.empty()) {
++    request->headers.SetHeader("Authorization", authorization_);
++  }
++  if (body) {
++    request->method = "POST";
++  }
++  loader_ = network::SimpleURLLoader::Create(std::move(request), kAnnotation);
++  loader_->SetTimeoutDuration(base::Seconds(2));
++  if (body) {
++    loader_->AttachStringForUpload(*body, "application/json");
++  }
++  loader_->DownloadToString(factory_.get(), std::move(done), 65536);
++}
++void DaemonSupervisor::Poll() {
++  Request("/health", std::nullopt,
++          base::BindOnce(&DaemonSupervisor::DidReadHealth, weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::DidReadHealth(std::optional<std::string> body) {
++  if (state_ == State::kStopping) {
++    return;
++  }
++  auto health = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                     : std::nullopt;
++  const bool healthy = health && health->FindString("service") &&
++                       *health->FindString("service") == "aux-daemon" &&
++                       health->FindString("version") &&
++                       *health->FindString("version") == "0.2.0" &&
++                       health->FindBool("ready").value_or(false) &&
++                       health->FindInt("pid") == process_.Pid();
++  if (healthy) {
++    if (authorization_.empty() ||
++        token_expires_ <= base::TimeTicks::Now() + base::Minutes(5)) {
++      Authenticate();
++      return;
++    }
++    SetState(State::kReady);
++    timer_.Start(FROM_HERE, base::Seconds(1), this, &DaemonSupervisor::Poll);
++    return;
++  }
++  if (state_ == State::kReady) {
++    authorization_.clear();
++    SetState(State::kStarting);
++    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(20);
++  }
++  if (base::TimeTicks::Now() >= activation_deadline_) {
++    SetState(State::kFailed, "Bundled daemon did not become ready");
++    return;
++  }
++  // Only restart a child after its freshly observed exit. Never adopt a health
++  // PID.
++  if (process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr)) {
++    process_.Close();
++    SetState(State::kStopped);
++    timer_.Start(FROM_HERE, base::Milliseconds(500), this,
++                 &DaemonSupervisor::Start);
++    return;
++  }
++  timer_.Start(FROM_HERE, base::Milliseconds(250), this,
++               &DaemonSupervisor::Poll);
++}
++void DaemonSupervisor::Authenticate() {
++  SetState(State::kAuthenticating);
++  Request(
++      "/auth/daemon/challenge?clientKind=chromium", std::nullopt,
++      base::BindOnce(&DaemonSupervisor::DidReadChallenge, weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::DidReadChallenge(std::optional<std::string> body) {
++  auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                    : std::nullopt;
++  const auto* id = value ? value->FindString("challengeId") : nullptr;
++  const auto* challenge = value ? value->FindString("challenge") : nullptr;
++  if (!id || id->empty() || !challenge || challenge->empty()) {
++    SetState(State::kFailed, "Daemon authentication challenge unavailable");
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&SignDaemonChallenge, home_, *challenge),
++      base::BindOnce(&DaemonSupervisor::DidSignChallenge, weak_.GetWeakPtr(),
++                     *id));
++}
++void DaemonSupervisor::DidSignChallenge(std::string id,
++                                        std::optional<std::string> signature) {
++  if (state_ == State::kStopping) {
++    return;
++  }
++  if (!signature) {
++    SetState(State::kFailed, "Installation signing key missing or unsafe");
++    return;
++  }
++  base::DictValue input;
++  input.Set("challengeId", id);
++  input.Set("signedChallenge", *signature);
++  Request(
++      "/auth/daemon/session", base::WriteJson(input),
++      base::BindOnce(&DaemonSupervisor::DidReadSession, weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::DidReadSession(std::optional<std::string> body) {
++  auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                    : std::nullopt;
++  const auto* type = value ? value->FindString("token_type") : nullptr;
++  const auto* token = value ? value->FindString("access_token") : nullptr;
++  const auto seconds =
++      value ? value->FindInt("expiresInSeconds") : std::nullopt;
++  if (!type || *type != "AuxDaemonSessionToken" || !token || token->empty() ||
++      !seconds || *seconds <= 0) {
++    authorization_.clear();
++    SetState(State::kFailed, "Daemon installation authorization failed");
++    return;
++  }
++  authorization_ = "AuxDaemonSessionToken " + *token;
++  token_expires_ = base::TimeTicks::Now() + base::Seconds(*seconds);
++  SetState(State::kReady);
++  timer_.Start(FROM_HERE, base::Seconds(1), this, &DaemonSupervisor::Poll);
++}
++void DaemonSupervisor::Shutdown(base::OnceClosure done) {
++  timer_.Stop();
++  shutdown_done_ = std::move(done);
++  SetState(State::kStopping);
++  if (launch_pending_) {
++    return;
++  }
++  if (!process_.IsValid()) {
++    DidFinishShutdown(true);
++    return;
++  }
++  Request(
++      "/shutdown", std::string("{}"),
++      base::BindOnce(
++          [](base::WeakPtr<DaemonSupervisor> self, std::optional<std::string>) {
++            if (self) {
++              self->FinishShutdown();
++            }
++          },
++          weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::FinishShutdown() {
++  loader_.reset();
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&StopVerified, std::move(process_), process_created_,
++                     paths_.root),
++      base::BindOnce(&DaemonSupervisor::DidFinishShutdown, weak_.GetWeakPtr()));
++}
++void DaemonSupervisor::DidFinishShutdown(bool stopped) {
++  authorization_.clear();
++  SetState(
++      stopped ? State::kStopped : State::kFailed,
++      stopped ? std::string() : "Owned daemon could not be safely stopped");
++  if (shutdown_done_) {
++    std::move(shutdown_done_).Run();
++  }
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/component_bootstrap.h b/chrome/browser/aux/component_bootstrap.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/component_bootstrap.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_COMPONENT_BOOTSTRAP_H_
++#define CHROME_BROWSER_AUX_COMPONENT_BOOTSTRAP_H_
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/values.h"
++#include "chrome/browser/aux/daemon_supervisor.h"
++namespace aux {
++inline constexpr char kAgentExtensionId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
++inline constexpr char kVaultExtensionId[] = "nbpghnminpifekjbgjefioajhiilbfla";
++struct ComponentManifest {
++  std::string id;
++  base::FilePath directory;
++  base::DictValue manifest;
++};
++// Read on a worker before profile extensions initialize. Both bundles must
++// validate.
++std::optional<std::vector<ComponentManifest>> ReadBundledComponents(
++    const BundlePaths& paths);
++// Call on UI before initial normal tab navigation; bind installer to
++// ComponentLoader::Add.
++bool RegisterBundledComponents(
++    std::vector<ComponentManifest> components,
++    base::RepeatingCallback<std::string(base::DictValue, const base::FilePath&)>
++        installer);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/component_bootstrap.cc b/chrome/browser/aux/component_bootstrap.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/component_bootstrap.cc
+@@ -0,0 +1,71 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independent component identity/new-tab registration, platform.md P5.
++#include "chrome/browser/aux/component_bootstrap.h"
++
++#include "base/base64.h"
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "components/crx_file/id_util.h"
++namespace aux {
++std::optional<std::vector<ComponentManifest>> ReadBundledComponents(
++    const BundlePaths& paths) {
++  std::vector<ComponentManifest> result;
++  const auto root = base::MakeAbsoluteFilePath(paths.root);
++  if (root.empty()) {
++    return std::nullopt;
++  }
++  for (const auto& [id, directory] :
++       std::vector<std::pair<std::string, base::FilePath>>{
++           {kAgentExtensionId, paths.agent_extension},
++           {kVaultExtensionId, paths.vault_extension}}) {
++    const auto canonical = base::MakeAbsoluteFilePath(directory);
++    const auto manifest_path =
++        base::MakeAbsoluteFilePath(directory.AppendASCII("manifest.json"));
++    std::string text;
++    if (canonical.empty() || manifest_path.empty() ||
++        !root.IsParent(canonical) || !canonical.IsParent(manifest_path) ||
++        !base::ReadFileToStringWithMaxSize(manifest_path, &text, 1048576)) {
++      return std::nullopt;
++    }
++    auto manifest = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++    const std::string* key = manifest ? manifest->FindString("key") : nullptr;
++    auto decoded = key ? base::Base64Decode(*key) : std::nullopt;
++    if (!decoded || crx_file::id_util::GenerateId(*decoded) != id) {
++      return std::nullopt;
++    }
++    if (id == kAgentExtensionId) {
++      const auto* override = manifest->FindDict("chrome_url_overrides");
++      const auto* page = override ? override->FindString("newtab") : nullptr;
++      if (!page || page->empty() || page->find(":") != std::string::npos ||
++          page->find("..") != std::string::npos ||
++          base::FilePath(*page).IsAbsolute()) {
++        return std::nullopt;
++      }
++      const auto page_path =
++          base::MakeAbsoluteFilePath(canonical.AppendASCII(*page));
++      if (page_path.empty() || !canonical.IsParent(page_path) ||
++          !base::PathExists(page_path)) {
++        return std::nullopt;
++      }
++    }
++    result.push_back({id, canonical, std::move(*manifest)});
++  }
++  return result;
++}
++bool RegisterBundledComponents(
++    std::vector<ComponentManifest> components,
++    base::RepeatingCallback<std::string(base::DictValue, const base::FilePath&)>
++        installer) {
++  if (components.size() != 2 || components[0].id != kAgentExtensionId ||
++      components[1].id != kVaultExtensionId) {
++    return false;
++  }
++  for (auto& component : components) {
++    if (installer.Run(std::move(component.manifest), component.directory) !=
++        component.id) {
++      return false;
++    }
++  }
++  return true;
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/browser_platform.h b/chrome/browser/aux/browser_platform.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/browser_platform.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_BROWSER_PLATFORM_H_
++#define CHROME_BROWSER_AUX_BROWSER_PLATFORM_H_
++#include <memory>
++#include <optional>
++#include <vector>
++
++#include "base/no_destructor.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/devtools/aux_cdp_authority.h"
++namespace aux {
++// Browser UI-sequence singleton. Startup pumps tasks before profiles/windows
++// exist; shutdown pumps tasks while the system network context still exists.
++class BrowserPlatform {
++ public:
++  static BrowserPlatform& Get();
++  bool Start(scoped_refptr<network::SharedURLLoaderFactory> factory);
++  void Shutdown();
++  bool RegisterProfileComponents(
++      base::RepeatingCallback<std::string(base::DictValue,
++                                          const base::FilePath&)> installer);
++  CdpRequestFilter CreateBrowserCdpFilter(uint16_t port) const;
++  const std::string& authorization() const;
++
++ private:
++  friend class base::NoDestructor<BrowserPlatform>;
++  BrowserPlatform();
++  ~BrowserPlatform();
++  std::unique_ptr<DaemonSupervisor> supervisor_;
++  std::vector<ComponentManifest> components_;
++  std::optional<crypto::keypair::PublicKey> public_key_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/browser_platform.cc b/chrome/browser/aux/browser_platform.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -0,0 +1,149 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Browser-owned startup gate and component lifecycle: platform.md P1/P2/P5.
++#include "chrome/browser/aux/browser_platform.h"
++
++#include "base/command_line.h"
++#include "base/environment.h"
++#include "base/functional/bind.h"
++#include "base/logging.h"
++#include "base/run_loop.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/installation_auth.h"
++namespace aux {
++BrowserPlatform::BrowserPlatform() = default;
++BrowserPlatform::~BrowserPlatform() = default;
++BrowserPlatform& BrowserPlatform::Get() {
++  static base::NoDestructor<BrowserPlatform> instance;
++  return *instance;
++}
++bool BrowserPlatform::Start(
++    scoped_refptr<network::SharedURLLoaderFactory> factory) {
++  if (supervisor_) {
++    return supervisor_->state() == DaemonSupervisor::State::kReady;
++  }
++  auto paths = BundlePaths::FromBrowserExecutable();
++  if (!paths) {
++    return false;
++  }
++  auto home = StateHome();
++  if (home.empty()) {
++    return false;
++  }
++  base::RunLoop components_loop;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadBundledComponents, *paths),
++      base::BindOnce(
++          [](BrowserPlatform* self, base::OnceClosure quit,
++             std::optional<std::vector<ComponentManifest>> components) {
++            if (components) {
++              self->components_ = std::move(*components);
++            }
++            std::move(quit).Run();
++          },
++          base::Unretained(this), components_loop.QuitClosure()));
++  components_loop.Run();
++  if (components_.size() != 2) {
++    LOG(ERROR) << "Aux bundled extension resources are missing or invalid";
++    return false;
++  }
++  uint16_t port = 21520;
++  auto env = base::Environment::Create();
++  if (auto text = env->GetVar("AUX_PORT"); text) {
++    unsigned number = 0;
++    if (!base::StringToUint(*text, &number) || number == 0 || number > 65535) {
++      return false;
++    }
++    port = number;
++  }
++  base::RunLoop ready_loop;
++  bool ready = false;
++  // Detach stack-bound callback after the initial gate. Recovery keeps the
++  // process owner alive and reports errors without retaining a startup stack.
++  auto callback = base::BindRepeating(
++      [](bool* ready, base::RepeatingClosure quit,
++         DaemonSupervisor::State state, std::string error) {
++        if (state == DaemonSupervisor::State::kReady) {
++          *ready = true;
++          quit.Run();
++        } else if (state == DaemonSupervisor::State::kFailed) {
++          LOG(ERROR) << error;
++          quit.Run();
++        }
++      },
++      &ready, ready_loop.QuitClosure());
++  supervisor_ = std::make_unique<DaemonSupervisor>(
++      *paths, home, port, std::move(factory), std::move(callback),
++      base::CommandLine::ForCurrentProcess()->HasSwitch(
++          "aux-development-runtime"));
++  supervisor_->Start();
++  ready_loop.Run();
++  supervisor_->SetStateCallback(
++      base::BindRepeating([](DaemonSupervisor::State state, std::string error) {
++        if (state == DaemonSupervisor::State::kFailed) {
++          LOG(ERROR) << error;
++        }
++      }));
++  if (!ready) {
++    Shutdown();
++    return false;
++  }
++  base::RunLoop key_loop;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&LoadInstallationPublicKey, home),
++      base::BindOnce(
++          [](BrowserPlatform* self, base::OnceClosure quit,
++             std::optional<crypto::keypair::PublicKey> key) {
++            self->public_key_ = std::move(key);
++            std::move(quit).Run();
++          },
++          base::Unretained(this), key_loop.QuitClosure()));
++  key_loop.Run();
++  if (!public_key_) {
++    Shutdown();
++    return false;
++  }
++  return true;
++}
++void BrowserPlatform::Shutdown() {
++  if (!supervisor_) {
++    return;
++  }
++  base::RunLoop loop;
++  supervisor_->Shutdown(loop.QuitClosure());
++  loop.Run();
++  supervisor_.reset();
++  components_.clear();
++  public_key_.reset();
++}
++bool BrowserPlatform::RegisterProfileComponents(
++    base::RepeatingCallback<std::string(base::DictValue, const base::FilePath&)>
++        installer) {
++  if (components_.size() != 2) {
++    return false;
++  }
++  std::vector<ComponentManifest> copy;
++  for (const auto& component : components_) {
++    copy.push_back(
++        {component.id, component.directory, component.manifest.Clone()});
++  }
++  return RegisterBundledComponents(std::move(copy), std::move(installer));
++}
++CdpRequestFilter BrowserPlatform::CreateBrowserCdpFilter(uint16_t port) const {
++  if (!public_key_) {
++    return {};
++  }
++  return CreateCdpRequestFilter(std::make_shared<CdpAuthority>(
++      *public_key_, port,
++      std::set<std::string>{
++          "chrome-extension://" + std::string(kAgentExtensionId),
++          "chrome-extension://" + std::string(kVaultExtensionId),
++          "devtools://devtools"}));
++}
++const std::string& BrowserPlatform::authorization() const {
++  static const base::NoDestructor<std::string> empty;
++  return supervisor_ ? supervisor_->authorization() : *empty;
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/auth_probe.cc b/chrome/browser/aux/auth_probe.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/auth_probe.cc
+@@ -0,0 +1,110 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Disposable-home integration probe; never prints keys, signatures or tokens.
++#include "base/at_exit.h"
++#include "base/command_line.h"
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/devtools/aux_cdp_authority.h"
++#include "net/base/ip_address.h"
++int main(int argc, char** argv) {
++  base::AtExitManager at_exit;
++  base::CommandLine::Init(argc, argv);
++  const auto home =
++      base::CommandLine::ForCurrentProcess()->GetSwitchValuePath("home");
++  if (home.empty()) {
++    return 1;
++  }
++  std::string fixture;
++  if (!base::ReadFileToString(home.AppendASCII("input.json"), &fixture)) {
++    return 2;
++  }
++  auto input = base::JSONReader::ReadDict(fixture, base::JSON_PARSE_RFC);
++  if (!input) {
++    return 3;
++  }
++  const auto* challenge = input->FindString("challenge");
++  const auto* signature = input->FindString("signature");
++  if (!challenge || !signature) {
++    return 4;
++  }
++  auto key = aux::LoadInstallationPublicKey(home);
++  if (!key || !aux::VerifyInstallationChallenge(*key, *challenge, *signature)) {
++    return 5;
++  }
++  auto native_signature = aux::SignDaemonChallenge(home, *challenge);
++  if (!native_signature ||
++      !base::WriteFile(home.AppendASCII("native-signature"),
++                       *native_signature) ||
++      !base::SetPosixFilePermissions(home.AppendASCII("native-signature"),
++                                     0600)) {
++    return 6;
++  }
++  aux::CdpAuthority authority(*key, 45203, {});
++  net::HttpServerRequestInfo request;
++  request.peer = net::IPEndPoint(net::IPAddress::IPv4Localhost(), 40000);
++  request.method = "GET";
++  request.path = "/json/challenge";
++  request.headers["host"] = "127.0.0.1:45203";
++  auto response = authority.Filter(request, false);
++  if (!response || response->status != 200) {
++    return 7;
++  }
++  auto issued =
++      base::JSONReader::ReadDict(response->body, base::JSON_PARSE_RFC);
++  if (!issued) {
++    return 8;
++  }
++  auto signed_challenge =
++      aux::SignDaemonChallenge(home, *issued->FindString("challenge"));
++  if (!signed_challenge) {
++    return 9;
++  }
++  base::DictValue session;
++  session.Set("challengeId", *issued->FindString("challengeId"));
++  session.Set("signedChallenge", *signed_challenge);
++  request.method = "POST";
++  request.path = "/json/auth/session";
++  request.data = base::WriteJson(session).value_or("");
++  response = authority.Filter(request, false);
++  if (!response || response->status != 200) {
++    return 10;
++  }
++  auto token = base::JSONReader::ReadDict(response->body, base::JSON_PARSE_RFC);
++  if (!token || !token->FindString("access_token")) {
++    return 11;
++  }
++  response = authority.Filter(request, false);
++  if (!response || response->status != 401) {
++    return 12;
++  }
++  request.method = "GET";
++  request.path = "/json/version?test=1";
++  request.data.clear();
++  response = authority.Filter(request, false);
++  if (!response || response->status != 401) {
++    return 13;
++  }
++  request.headers["authorization"] =
++      "AuxSessionToken " + *token->FindString("access_token");
++  if (authority.Filter(request, false)) {
++    return 14;
++  }
++  request.path = "/devtools/browser/disposable";
++  if (authority.Filter(request, true)) {
++    return 15;
++  }
++  request.headers["host"] = "evil.example";
++  response = authority.Filter(request, true);
++  if (!response || response->status != 403) {
++    return 16;
++  }
++  request.headers["host"] = "127.0.0.1:45203";
++  request.headers["origin"] = "https://evil.example";
++  response = authority.Filter(request, false);
++  if (!response || response->status != 403) {
++    return 17;
++  }
++  return 0;
++}
+diff --git a/chrome/browser/devtools/aux_cdp_authority.h b/chrome/browser/devtools/aux_cdp_authority.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/devtools/aux_cdp_authority.h
+@@ -0,0 +1,53 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independent native CDP authorization, platform.md P4.
++#ifndef CHROME_BROWSER_DEVTOOLS_AUX_CDP_AUTHORITY_H_
++#define CHROME_BROWSER_DEVTOOLS_AUX_CDP_AUTHORITY_H_
++#include <map>
++#include <memory>
++#include <optional>
++#include <set>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/synchronization/lock.h"
++#include "base/time/time.h"
++#include "crypto/keypair.h"
++#include "net/server/http_server_request_info.h"
++#include "net/server/http_server_response_info.h"
++namespace aux {
++struct CdpResponse {
++  int status;
++  std::string body;
++  std::string mime_type = "application/json";
++};
++// Construct with a key loaded on a MayBlock worker. Safe on server or UI
++// sequence.
++class CdpAuthority {
++ public:
++  CdpAuthority(crypto::keypair::PublicKey key,
++               uint16_t port,
++               std::set<std::string> origins);
++  ~CdpAuthority();
++  // nullopt means authorized; a response must be sent before ordinary routing.
++  std::optional<CdpResponse> Filter(const net::HttpServerRequestInfo& request,
++                                    bool websocket);
++
++ private:
++  struct Challenge {
++    std::string bytes;
++    base::TimeTicks expires;
++  };
++  void Prune(base::TimeTicks now) EXCLUSIVE_LOCKS_REQUIRED(lock_);
++  const crypto::keypair::PublicKey key_;
++  const uint16_t port_;
++  const std::set<std::string> origins_;
++  base::Lock lock_;
++  std::map<std::string, Challenge> challenges_ GUARDED_BY(lock_);
++  std::map<std::string, base::TimeTicks> sessions_ GUARDED_BY(lock_);
++};
++using CdpRequestFilter = base::RepeatingCallback<std::optional<
++    net::HttpServerResponseInfo>(const net::HttpServerRequestInfo&, bool)>;
++CdpRequestFilter CreateCdpRequestFilter(
++    std::shared_ptr<CdpAuthority> authority);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/devtools/aux_cdp_authority.cc b/chrome/browser/devtools/aux_cdp_authority.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/devtools/aux_cdp_authority.cc
+@@ -0,0 +1,138 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/devtools/aux_cdp_authority.h"
++
++#include "base/base64.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "crypto/random.h"
++namespace aux {
++namespace {
++CdpResponse Error(int status, std::string_view code, std::string_view message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue body;
++  body.Set("error", std::move(error));
++  return {status, base::WriteJson(body).value_or("{}")};
++}
++bool ValidHost(std::string_view host, uint16_t port) {
++  for (std::string_view name : {"localhost", "127.0.0.1", "[::1]"}) {
++    if (host == name ||
++        host == std::string(name) + ":" + base::NumberToString(port)) {
++      return true;
++    }
++  }
++  return false;
++}
++}  // namespace
++CdpAuthority::CdpAuthority(crypto::keypair::PublicKey key,
++                           uint16_t port,
++                           std::set<std::string> origins)
++    : key_(std::move(key)), port_(port), origins_(std::move(origins)) {}
++CdpAuthority::~CdpAuthority() = default;
++void CdpAuthority::Prune(base::TimeTicks now) {
++  std::erase_if(challenges_,
++                [now](const auto& item) { return item.second.expires <= now; });
++  std::erase_if(sessions_,
++                [now](const auto& item) { return item.second <= now; });
++}
++std::optional<CdpResponse> CdpAuthority::Filter(
++    const net::HttpServerRequestInfo& request,
++    bool websocket) {
++  if (!request.peer.address().IsLoopback() ||
++      !ValidHost(request.GetHeaderValue("host"), port_)) {
++    return Error(403, "FORBIDDEN", "Loopback host required");
++  }
++  const auto origin = request.GetHeaderValue("origin");
++  if (!origin.empty() && !origins_.contains(origin)) {
++    return Error(403, "FORBIDDEN", "Origin is not allowed");
++  }
++  const auto query = request.path.find('?');
++  const std::string path = request.path.substr(0, query);
++  base::AutoLock guard(lock_);
++  const auto now = base::TimeTicks::Now();
++  Prune(now);
++  if (!websocket && path == "/json/challenge") {
++    if (request.method != "GET") {
++      return Error(400, "BAD_REQUEST", "GET required");
++    }
++    if (challenges_.size() >= 1024) {
++      auto oldest =
++          std::min_element(challenges_.begin(), challenges_.end(),
++                           [](const auto& a, const auto& b) {
++                             return a.second.expires < b.second.expires;
++                           });
++      challenges_.erase(oldest);
++    }
++    const std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    const std::string bytes = base::Base64Encode(crypto::RandBytesAsVector(32));
++    challenges_.emplace(id, Challenge{bytes, now + base::Seconds(30)});
++    base::DictValue body;
++    body.Set("challengeId", id);
++    body.Set("challenge", bytes);
++    return CdpResponse{200, base::WriteJson(body).value_or("{}")};
++  }
++  if (!websocket && path == "/json/auth/session") {
++    if (request.method != "POST" || request.data.size() > 16384) {
++      return Error(400, "BAD_REQUEST", "Invalid session request");
++    }
++    auto input = base::JSONReader::ReadDict(request.data, base::JSON_PARSE_RFC);
++    const std::string* id = input ? input->FindString("challengeId") : nullptr;
++    const std::string* signature =
++        input ? input->FindString("signedChallenge") : nullptr;
++    if (!id || !signature) {
++      return Error(400, "BAD_REQUEST", "Challenge and signature required");
++    }
++    auto found = challenges_.find(*id);
++    if (found == challenges_.end()) {
++      return Error(401, "UNAUTHORIZED", "Challenge is invalid or expired");
++    }
++    const auto challenge = std::move(found->second);
++    challenges_.erase(found);
++    if (!VerifyInstallationChallenge(key_, challenge.bytes, *signature)) {
++      return Error(401, "UNAUTHORIZED", "Signature could not be verified");
++    }
++    if (sessions_.size() >= 1024) {
++      return Error(503, "SERVICE_UNAVAILABLE", "Session capacity reached");
++    }
++    const std::string token = base::Base64Encode(crypto::RandBytesAsVector(32));
++    sessions_[token] = now + base::Hours(24);
++    base::DictValue body;
++    body.Set("token_type", "AuxSessionToken");
++    body.Set("access_token", token);
++    body.Set("expiresInSeconds", 86400);
++    return CdpResponse{200, base::WriteJson(body).value_or("{}")};
++  }
++  const std::string authorization = request.GetHeaderValue("authorization");
++  constexpr std::string_view prefix = "AuxSessionToken ";
++  if (!base::StartsWith(authorization, prefix) ||
++      !sessions_.contains(authorization.substr(prefix.size()))) {
++    return Error(401, "UNAUTHORIZED", "Browser authorization required");
++  }
++  return std::nullopt;
++}
++CdpRequestFilter CreateCdpRequestFilter(
++    std::shared_ptr<CdpAuthority> authority) {
++  return base::BindRepeating(
++      [](std::shared_ptr<CdpAuthority> authority,
++         const net::HttpServerRequestInfo& request,
++         bool websocket) -> std::optional<net::HttpServerResponseInfo> {
++        auto result = authority->Filter(request, websocket);
++        if (!result) {
++          return std::nullopt;
++        }
++        net::HttpServerResponseInfo response(
++            static_cast<net::HttpStatusCode>(result->status));
++        response.AddHeader("Cache-Control", "no-store");
++        response.AddHeader("Content-Security-Policy", "default-src 'none'");
++        response.SetBody(result->body, result->mime_type);
++        return response;
++      },
++      std::move(authority));
++}
++}  // namespace aux
