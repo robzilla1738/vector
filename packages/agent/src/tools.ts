@@ -102,7 +102,7 @@ export function sessionTools(
     ];
     if (
       forbidden.some((root) => within(full, root)) ||
-      /(?:^|\/)(?:credentials\.json|private-key\.pem|token-secret)(?:$|\/)/.test(
+      /(?:^|\/)(?:(?:channel-)?credentials\.json|private-key\.pem|token-secret)(?:$|\/)/.test(
         full,
       )
     )

@@ -22,14 +22,19 @@ const credential = z.object({
 });
 const credentialFile = z.record(z.string(), credential);
 export class Credentials {
-  constructor(private store: AgentStorage) {}
+  constructor(
+    private store: AgentStorage,
+    private filename:
+      | 'credentials.json'
+      | 'channel-credentials.json' = 'credentials.json',
+  ) {}
   private path(accountId: number) {
     this.store.requireAccount(accountId);
     const home = this.store.accountHome(accountId);
     mkdirSync(home, { recursive: true, mode: 0o700 });
     if (lstatSync(home).isSymbolicLink())
       fail('FORBIDDEN', 'Account storage cannot be a symbolic link');
-    const path = join(home, 'credentials.json');
+    const path = join(home, this.filename);
     if (existsSync(path) && lstatSync(path).isSymbolicLink())
       fail('FORBIDDEN', 'Credential storage cannot be a symbolic link');
     return path;
@@ -86,7 +91,16 @@ export class Credentials {
   }
   redact(accountId: number, value: string) {
     let result = value;
-    for (const { key } of Object.values(this.read(accountId)))
+    for (const { key } of [
+      ...Object.values(this.read(accountId)),
+      ...(this.filename === 'credentials.json'
+        ? Object.values(
+            new Credentials(this.store, 'channel-credentials.json').read(
+              accountId,
+            ),
+          )
+        : []),
+    ])
       result = result.replaceAll(key, '[redacted]');
     return result.replace(/Bearer\s+\S+/gi, 'Bearer [redacted]');
   }
