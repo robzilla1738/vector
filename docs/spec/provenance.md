@@ -75,3 +75,12 @@ Reference strings and paths are isolated here. All other native specs refer to t
 - N9: same tree, `assets/06-chrome-tokens.css`: native color roles across light/dark. Native specs translate roles to Aux names rather than preserving product identifiers.
 
 Known provenance gaps: target-version screenshots not captured; exact bootstrap state disk shape and installation signature algorithm need SP1 coordination; native viewport-domain parameter schemas and some open JSON API payloads need further evidence.
+
+
+## Owner clarification: standard HTML tokens
+
+The owner clarified that the standard HTML element named `aside` is permitted and is unrelated to the reference product. This does not permit reference product names, extension IDs, copied artifacts or proprietary names. The checker admits only narrowly recognized independently licensed HTML vocabulary sequences; other matches still fail.
+
+Verified independent upstream sources:
+- `prosemirror-model@1.25.12` (MIT), `src/from_dom.ts`, SHA256 `b4f5e77c9dd4f430002b83fae8e1d114d9653e16ef4b28fba5ea01eb52980abb`. Acquired through the independently resolved pnpm lock; contains HTML block element vocabulary.
+- `micromark-util-html-tag-name@2.0.1` (MIT), `index.js`, SHA256 `da74ea4080075b3f45a13eda9a05789e7038e1560954aff6979daafa68d0f096`. Acquired through the independently resolved pnpm lock; contains HTML block element vocabulary.

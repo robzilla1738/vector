@@ -57,6 +57,7 @@ const key = z
 export const settingTypes: Record<string, z.ZodType> = {
   'models.default': modelSelectionSchema,
   'cli.saveSessions': z.boolean(),
+  'skills.disabled': z.array(z.string().min(1)),
   theme: z.enum(['light', 'dark', 'system']),
   contextAwarenessEnabled: z.boolean(),
   sidebarRecentLimit: z.number().int().min(1).max(200),
@@ -69,6 +70,7 @@ export const settingTypes: Record<string, z.ZodType> = {
 };
 export const settingDefaults = {
   'cli.saveSessions': false,
+  'skills.disabled': [],
   'models.default': {
     provider: 'vercel-ai-gateway',
     modelId: 'meta/muse-spark-1.3-contributor',

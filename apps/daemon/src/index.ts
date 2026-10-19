@@ -1,6 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createFeatures } from './features.js';
 import { createDaemon } from './http/server.js';
 
 export { BridgeRegistry } from './bridge/registry.js';
@@ -16,6 +17,7 @@ if (
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw new Error('Invalid AUX_PORT');
   const daemon = await createDaemon({
+    ...createFeatures(),
     home: process.env.AUX_HOME ?? join(homedir(), '.aux'),
     port,
     origins: (process.env.AUX_DEV_ORIGINS ?? '').split(',').filter(Boolean),

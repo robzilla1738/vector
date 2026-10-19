@@ -6,7 +6,7 @@ import {
   VERSION,
 } from '@aux/contracts';
 import { serve } from '@hono/node-server';
-import type { AnyTRPCRouter } from '@trpc/server';
+import { type AnyTRPCRouter, TRPCError } from '@trpc/server';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { Hono } from 'hono';
 import { WebSocketServer } from 'ws';
@@ -35,6 +35,7 @@ export interface DaemonOptions {
   port?: number;
   origins?: string[];
   extendRouter?: (services: DaemonServices) => Record<string, AnyTRPCRouter>;
+  extendHttp?: (app: Hono, services: DaemonServices) => void;
   runningSessionCount?: () => number;
   shutdown?: () => Promise<void>;
 }
@@ -60,6 +61,7 @@ export async function createDaemon(options: DaemonOptions) {
     error: { code, message },
   });
   app.use('*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
     if (!validHost(c.req.header('host'), port))
       return c.json(error('FORBIDDEN', 'Host is not allowed'), 403);
     const origin = c.req.header('origin');
@@ -77,6 +79,24 @@ export async function createDaemon(options: DaemonOptions) {
     await next();
   });
   app.onError((errorValue, c) => {
+    if (errorValue instanceof TRPCError) {
+      const statuses = {
+        BAD_REQUEST: 400,
+        UNAUTHORIZED: 401,
+        FORBIDDEN: 403,
+        NOT_FOUND: 404,
+        CONFLICT: 409,
+        PRECONDITION_FAILED: 412,
+      } as const;
+      const status = statuses[errorValue.code as keyof typeof statuses] ?? 500;
+      return c.json(
+        error(
+          errorValue.code,
+          status === 500 ? 'Operation failed' : errorValue.message,
+        ),
+        status,
+      );
+    }
     if (errorValue instanceof Error && errorValue.message === 'NOT_FOUND')
       return c.json(error('NOT_FOUND', 'Account not found'), 404);
     return c.json(error('BAD_REQUEST', 'Invalid request'), 400);
@@ -130,6 +150,7 @@ export async function createDaemon(options: DaemonOptions) {
       );
     await next();
   });
+  options.extendHttp?.(app, { store, bridge, t, procedure });
   app.get('/auth/daemon/verify', (c) => c.json({ ok: true }));
   app.all('/trpc/*', (c) =>
     fetchRequestHandler({

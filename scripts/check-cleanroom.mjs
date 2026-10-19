@@ -14,6 +14,12 @@ const targets = roots.length ? roots : ['apps', 'packages', 'assets/brand', 'chr
 const failures = [];
 let files = 0;
 const forbidden = /aside(?:hq)?|AsideDisplay/i;
+// Owner-approved standard HTML vocabulary, verified against independent MIT packages.
+function withoutHtmlVocabulary(text) {
+  return text
+    .replace(/address\s*:\s*(?:true|!0),\s*article\s*:\s*(?:true|!0),\s*aside\s*:\s*(?:true|!0),\s*blockquote\s*:\s*(?:true|!0),\s*body\s*:\s*(?:true|!0)/g, (value) => value.replace('aside', '[html-tag]'))
+    .replace(/address\.article\.aside\.base\.basefont\.blockquote\.body\.caption/g, (value) => value.replace('aside', '[html-tag]'));
+}
 const bundleFingerprint = /\b(?:webpackChunk|__webpack_require__|sourceMappingURL=data:application\/json)/;
 async function inspect(path) {
   const info = await stat(path);
@@ -38,6 +44,10 @@ async function inspect(path) {
     foundBundle ||= bundleFingerprint.test(text);
     foundId ||= identifiers.extensionIds.some((id) => text.includes(id));
     carry = text.slice(-256);
+  }
+  if (foundName && /\.(?:[cm]?js|jsx|ts|tsx|css|html)$/.test(path)) {
+    if (info.size > 64 * 1024 * 1024) throw new Error(`Text artifact exceeds checker limit: ${path}`);
+    foundName = forbidden.test(withoutHtmlVocabulary(await readFile(path, 'latin1')));
   }
   if (foundId) failures.push(`${path}: reference extension identity`);
   if (foundName) failures.push(`${path}: reference product name or identifier`);

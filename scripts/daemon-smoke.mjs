@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
+import { parseEnv } from 'node:util';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import WebSocket from 'ws';
@@ -74,6 +75,29 @@ try {
   socket.send(JSON.stringify({ method: 'register', connectionId: 'core-smoke', route: { accountId: registry.currentAccountId, profileId: 'smoke', browserMode: 'default' } }));
   assert.equal((await registered).method, 'registered');
   socket.close();
+  if (process.argv.includes('--ai')) {
+    const values = parseEnv(await readFile(join(root, '.env'), 'utf8'));
+    if (!values.AI_GATEWAY_API_KEY) throw new Error('AI_GATEWAY_API_KEY is missing from the private environment file.');
+    const credentialResponse = await fetch(`${origin}/trpc/models.setCredential`, {
+      method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountId: registry.currentAccountId, providerId: 'vercel-ai-gateway', credential: { type: 'api_key', key: values.AI_GATEWAY_API_KEY } }),
+    });
+    assert.equal(credentialResponse.status, 200);
+    delete values.AI_GATEWAY_API_KEY;
+    const cli = spawn(process.execPath, [join(root, 'apps/cli/dist/index.js'), 'exec', '--json', '--model', 'vercel-ai-gateway/meta/muse-spark-1.3-contributor', '--effort', 'low', 'Reply with exactly: Aux local engine verified'], {
+      cwd: root, env: { ...process.env, AUX_HOME: home, AUX_PORT: String(port) },
+      stdio: ['ignore', 'pipe', 'pipe'], signal: AbortSignal.timeout(180_000),
+    });
+    let result = '', diagnostic = '';
+    cli.stdout.on('data', (chunk) => { result += chunk; });
+    cli.stderr.on('data', (chunk) => { diagnostic += chunk; });
+    const cliCode = await new Promise((done, reject) => { cli.once('error', reject); cli.once('exit', done); });
+    assert.equal(cliCode, 0, diagnostic.replace(/(?:Bearer|AuxDaemonSessionToken)\s+\S+/gi, '[redacted]'));
+    const task = JSON.parse(result);
+    assert.equal(task.status, 'idle');
+    assert.match(task.text, /Aux local engine verified/);
+    console.log('Muse Spark contributor completed a real task through the independent CLI and agent engine.');
+  }
   const shutdown = await fetch(`${origin}/shutdown`, { method: 'POST', headers: { Authorization: authorization } });
   assert.equal(shutdown.status, 200);
   const code = await Promise.race([ended, delay(5000).then(() => { throw new Error('Shutdown timed out.'); })]);
