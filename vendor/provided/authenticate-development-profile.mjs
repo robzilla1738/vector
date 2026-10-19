@@ -22,11 +22,13 @@ function readRegular(file, limit) {
 }
 /** Pure joining gate: authored fixtures cannot establish real CMS authentication. */
 export function validateAuthenticatedProfile(reply, bytes, host, proposal, options) {
-  if (reply?.version !== 1 || reply.authenticated !== true || reply.offline !== true || reply.positiveRevocationRequired !== true || reply.policy !== 'AppleOSXProvisioningProfileSigning' || reply.signingAuthorized !== false || reply.cmsSha256 !== hash(bytes) || !/^[a-f0-9]{64}$/.test(reply.payloadSha256 ?? '')) throw Error('Exact authenticated offline CMS result required');
+  const online = options.allowAppleTrustNetwork === true;
+  if (reply?.version !== 1 || reply.authenticated !== true || reply.offline !== !online || reply.networkAccessAllowed !== online || reply.onlinePositiveRevocationVerified !== online || reply.positiveRevocationRequired !== true || reply.policy !== 'AppleOSXProvisioningProfileSigning' || reply.signingAuthorized !== false || reply.cmsSha256 !== hash(bytes) || !/^[a-f0-9]{64}$/.test(reply.payloadSha256 ?? '')) throw Error('Exact authenticated offline CMS result required');
   validateDevelopmentProfileMetadata(reply.profile, host, proposal, options);
-  return { version: 1, cmsSignatureVerified: true, appleProvisioningPolicyVerified: true, offlinePositiveRevocationVerified: true, metadataClaimsMatch: true, cmsSha256: reply.cmsSha256, payloadSha256: reply.payloadSha256, role: host.role, evaluatedAt: options.now, reviewedDeviceSha256: hash(options.testMacIdentifier), profileCreationDate: reply.profile.CreationDate, profileExpirationDate: reply.profile.ExpirationDate, signingAuthorized: false, requiredNext: 'Explicit owner authorization and final exact-byte package/signing review; this read-only result does not authorize signing or provisioning' };
+  return { version: 1, cmsSignatureVerified: true, appleProvisioningPolicyVerified: true, offlinePositiveRevocationVerified: !online, onlinePositiveRevocationVerified: online, networkAccessAllowed: online, metadataClaimsMatch: true, cmsSha256: reply.cmsSha256, payloadSha256: reply.payloadSha256, role: host.role, evaluatedAt: options.now, reviewedDeviceSha256: hash(options.testMacIdentifier), profileCreationDate: reply.profile.CreationDate, profileExpirationDate: reply.profile.ExpirationDate, signingAuthorized: false, requiredNext: 'Explicit owner authorization and final exact-byte package/signing review; this read-only result does not authorize signing or provisioning' };
 }
-export function authenticateDevelopmentProfile({ profilePath, expectedProfileSha256, receiptPath, proposalPath, role, testMacIdentifier, now }) {
+export function authenticateDevelopmentProfile({ profilePath, expectedProfileSha256, receiptPath, proposalPath, role, testMacIdentifier, now, allowAppleTrustNetwork = false }) {
+  if (typeof allowAppleTrustNetwork !== 'boolean') throw Error('Explicit Boolean trust network mode required');
   if (!Number.isFinite(Date.parse(now)) || Math.abs(Date.now() - Date.parse(now)) > 60000) throw Error('Current review time within 60 seconds required');
   if (!/^[a-f0-9]{64}$/.test(expectedProfileSha256 ?? '')) throw Error('Explicit reviewed profile SHA256 required');
   const bytes = readRegular(profilePath, 2 * 1024 * 1024);
@@ -40,11 +42,11 @@ export function authenticateDevelopmentProfile({ profilePath, expectedProfileSha
   const host = proposal.proposedDpHosts?.find(h => h.role === role);
   if (!host || proposal.signingAuthorized !== false) throw Error('Exact proposed host required');
   // No inherited DYLD, trust overrides, original home, or executable lookup.
-  const child = spawnSync(output.path, ['--authenticated-json'], { input: bytes, encoding: 'utf8', env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' }, timeout: 20000, maxBuffer: 6 * 1024 * 1024 });
+  const child = spawnSync(output.path, [allowAppleTrustNetwork ? '--authenticated-json-with-network' : '--authenticated-json'], { input: bytes, encoding: 'utf8', env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' }, timeout: 20000, maxBuffer: 6 * 1024 * 1024 });
   if (child.error) throw Error('CMS helper unavailable or timed out');
   let reply; try { reply = JSON.parse(child.stdout); } catch { throw Error('CMS helper refused without valid report'); }
   if (child.status !== 0) throw Error('CMS authentication refused at ' + (/^[a-z-]{1,80}$/.test(reply.stage ?? '') ? reply.stage : 'unknown') + ' OSStatus=' + (Number.isInteger(reply.osStatus) ? reply.osStatus : 'unknown'));
-  return { ...validateAuthenticatedProfile(reply, bytes, host, proposal, { now, testMacIdentifier }), helperSha256: output.sha256, receiptSha256: hash(readRegular(receiptPath, 1048576)), proposalSha256: hash(readRegular(proposalPath, 1048576)) };
+  return { ...validateAuthenticatedProfile(reply, bytes, host, proposal, { now, testMacIdentifier, allowAppleTrustNetwork }), helperSha256: output.sha256, receiptSha256: hash(readRegular(receiptPath, 1048576)), proposalSha256: hash(readRegular(proposalPath, 1048576)) };
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 3) throw Error('Usage: authenticate-development-profile.mjs explicit-request.json');

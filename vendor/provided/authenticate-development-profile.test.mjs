@@ -8,7 +8,7 @@ test('pure joining gate rejects untrusted CMS, changed bytes, weaker policy and 
   const p = structuredClone(proposal), der = Buffer.from('authored-public-certificate-fixture');
   p.identityInspection.publicCertificateSha1 = createHash('sha1').update(der).digest('hex');
   const host = p.proposedDpHosts[0], team = p.identityInspection.teamId, bytes = Buffer.from('NOT A REAL CMS PROFILE');
-  const reply = { version: 1, authenticated: true, offline: true, positiveRevocationRequired: true, policy: 'AppleOSXProvisioningProfileSigning', signingAuthorized: false, cmsSha256: createHash('sha256').update(bytes).digest('hex'), payloadSha256: 'a'.repeat(64), profile: {
+  const reply = { version: 1, authenticated: true, offline: true, networkAccessAllowed: false, onlinePositiveRevocationVerified: false, positiveRevocationRequired: true, policy: 'AppleOSXProvisioningProfileSigning', signingAuthorized: false, cmsSha256: createHash('sha256').update(bytes).digest('hex'), payloadSha256: 'a'.repeat(64), profile: {
     TeamIdentifier: [team], ApplicationIdentifierPrefix: [team], Platform: ['OSX'], CreationDate: '2026-10-01T00:00:00Z', ExpirationDate: '2026-11-01T00:00:00Z', ProvisionedDevices: ['FIXTURE-MAC'], DeveloperCertificates: [der.toString('base64')], Entitlements: { 'com.apple.application-identifier': team + '.' + host.bundleIdentifier, 'com.apple.developer.team-identifier': team, 'keychain-access-groups': [p.proposedFirstAndOnlySharedGroup] }
   } };
   const options = { now: '2026-10-19T00:00:00Z', testMacIdentifier: 'FIXTURE-MAC' };
@@ -19,5 +19,9 @@ test('pure joining gate rejects untrusted CMS, changed bytes, weaker policy and 
     assert.throws(() => validateAuthenticatedProfile(bad, bytes, host, p, options));
   }
   assert.throws(() => validateAuthenticatedProfile(reply, Buffer.from('changed'), host, p, options));
+  const networkReply = { ...reply, offline: false, networkAccessAllowed: true, onlinePositiveRevocationVerified: true };
+  assert.throws(() => validateAuthenticatedProfile(networkReply, bytes, host, p, options));
+  const online = validateAuthenticatedProfile(networkReply, bytes, host, p, { ...options, allowAppleTrustNetwork: true });
+  assert.equal(online.offlinePositiveRevocationVerified, false); assert.equal(online.onlinePositiveRevocationVerified, true);
   // This is deliberately only a JS boundary fixture, never real CMS evidence.
 });

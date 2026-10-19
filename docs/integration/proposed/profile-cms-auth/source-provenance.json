@@ -4,7 +4,7 @@
   "sources": [
     {
       "path": "vendor/provided/native/profile-cms-auth.mm",
-      "sha256": "3221e625ca551f4e021f58857426206a8da1de92c89fc9b9fa604f27bbc5c393"
+      "sha256": "043ac6a8f47013a33922e69dc730fb9aaca7119f7b2896f5248d3dc0c4eb06ef"
     },
     {
       "path": "vendor/provided/build-profile-cms.mjs",
@@ -12,11 +12,11 @@
     },
     {
       "path": "vendor/provided/authenticate-development-profile.mjs",
-      "sha256": "5abda7f25fd319d267a6f36023ab924046cfd75a220ea7d646f63483684782da"
+      "sha256": "5238c749ac373b37e16844245599f592fa3620067877e64c9468ea39427315e6"
     },
     {
       "path": "vendor/provided/authenticate-development-profile.test.mjs",
-      "sha256": "3b90bf60e03126b4bbdb15384c040cf8196f52de2cd6d5f6b90aece7256e28f7"
+      "sha256": "3887a845df996750ad46df90e6b136cb646fdb61f9427c6bfad1604f48047e04"
     }
   ],
   "inspectedSdk": [
@@ -57,5 +57,12 @@
     "signingPerformed": false,
     "dpExecuted": false
   },
-  "buildReceipt": null
+  "buildReceipt": null,
+  "explicitTrustNetworkFollowup": {
+    "sourceOnly": true,
+    "offlineDefault": true,
+    "positiveRevocationStillRequired": true,
+    "actualNetworkExecutionByThisLane": false,
+    "freshHelperCompileRequired": true
+  }
 }

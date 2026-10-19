@@ -1,4 +1,5 @@
-// Read-only CMS authentication. No SecItem/SecKey, signing, provisioning or network.
+// Read-only CMS authentication. No SecItem/SecKey, signing or provisioning.
+// Networking is disabled unless the exact separate argv explicitly permits trust fetches.
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <Security/CMSDecoder.h>
@@ -49,7 +50,9 @@ static id Normalize(id value, unsigned depth) {
   return nil;
 }
 int main(int argc, const char* argv[]) { @autoreleasepool {
-  if (argc != 2 || strcmp(argv[1], "--authenticated-json") != 0) return Refuse(@"usage");
+  if (argc != 2) return Refuse(@"usage");
+  bool allowNetwork = strcmp(argv[1], "--authenticated-json-with-network") == 0;
+  if (!allowNetwork && strcmp(argv[1], "--authenticated-json") != 0) return Refuse(@"usage");
   // Do not accept injected trust/policy implementations in this standalone tool.
   for (const char* name : {"DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH"})
     if (getenv(name)) return Refuse(@"injected-environment");
@@ -70,7 +73,7 @@ int main(int argc, const char* argv[]) { @autoreleasepool {
   if (properties) CFRelease(properties);
   if (!exact) { CFRelease(apple); return Refuse(@"apple-profile-policy-mismatch"); }
   SecPolicyRef revocation = SecPolicyCreateRevocation(kSecRevocationOCSPMethod |
-    kSecRevocationRequirePositiveResponse | kSecRevocationNetworkAccessDisabled);
+    kSecRevocationRequirePositiveResponse | (allowNetwork ? 0 : kSecRevocationNetworkAccessDisabled));
   if (!revocation) { CFRelease(apple); return Refuse(@"offline-revocation-policy"); }
   const void* policies[] = {apple, revocation};
   CFArrayRef policyArray = CFArrayCreate(nullptr, policies, 2, &kCFTypeArrayCallBacks);
@@ -86,11 +89,11 @@ int main(int argc, const char* argv[]) { @autoreleasepool {
     stage = @"cms-signature";
     status = CMSDecoderCopySignerStatus(decoder, 0, policyArray, false, &signer, &trust, &unused);
     if (status || signer != kCMSSignerValid || !trust) break;
-    stage = @"offline-trust-config";
+    stage = @"trust-config";
     status = SecTrustSetPolicies(trust, policyArray); if (status) break;
-    status = SecTrustSetNetworkFetchAllowed(trust, false); if (status) break;
-    Boolean fetchAllowed = true; status = SecTrustGetNetworkFetchAllowed(trust, &fetchAllowed); if (status || fetchAllowed) break;
-    stage = @"apple-profile-offline-trust"; CFErrorRef error = nullptr;
+    status = SecTrustSetNetworkFetchAllowed(trust, allowNetwork); if (status) break;
+    Boolean fetchAllowed = true; status = SecTrustGetNetworkFetchAllowed(trust, &fetchAllowed); if (status || fetchAllowed != allowNetwork) break;
+    stage = allowNetwork ? @"apple-profile-online-trust" : @"apple-profile-offline-trust"; CFErrorRef error = nullptr;
     bool trusted = SecTrustEvaluateWithError(trust, &error);
     if (error) { status = (OSStatus)CFErrorGetCode(error); CFRelease(error); }
     if (!trusted) break;
@@ -106,7 +109,8 @@ int main(int argc, const char* argv[]) { @autoreleasepool {
   if (![profile isKindOfClass:NSDictionary.class]) return Refuse(@"profile-plist");
   id normalized = Normalize(profile, 0); if (!normalized) return Refuse(@"profile-types");
   NSDictionary* reply = @{@"version": @1, @"authenticated": @YES,
-    @"policy": @"AppleOSXProvisioningProfileSigning", @"offline": @YES,
+    @"policy": @"AppleOSXProvisioningProfileSigning", @"offline": @(!allowNetwork), @"networkAccessAllowed": @(allowNetwork),
+    @"onlinePositiveRevocationVerified": @(allowNetwork),
     @"positiveRevocationRequired": @YES, @"cmsSha256": Digest(message),
     @"payloadSha256": Digest(payload), @"profile": normalized, @"signingAuthorized": @NO};
   NSData* json = [NSJSONSerialization dataWithJSONObject:reply options:0 error:nullptr];

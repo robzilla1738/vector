@@ -29,7 +29,10 @@ test('original supplied host capabilities are checked exhaustively, replacing on
 });
 test('pure CMS receipt joining refuses stale/device/profile/group-proposal mismatches; no report can authorize execution', () => {
   const expected = { now: '2026-10-19T00:00:00Z', role: 'daemon', cmsSha256: 'b'.repeat(64), proposalSha256: 'c'.repeat(64), testMacIdentifier: 'AUTHORED-FIXTURE-MAC' };
-  const report = { version: 1, cmsSignatureVerified: true, appleProvisioningPolicyVerified: true, offlinePositiveRevocationVerified: true, metadataClaimsMatch: true, signingAuthorized: false, cmsSha256: expected.cmsSha256, proposalSha256: expected.proposalSha256, role: expected.role, evaluatedAt: expected.now, reviewedDeviceSha256: sha(expected.testMacIdentifier), profileCreationDate: '2026-10-01T00:00:00Z', profileExpirationDate: '2026-11-01T00:00:00Z' };
+  const report = { version: 1, cmsSignatureVerified: true, appleProvisioningPolicyVerified: true, offlinePositiveRevocationVerified: true, onlinePositiveRevocationVerified: false, networkAccessAllowed: false, metadataClaimsMatch: true, signingAuthorized: false, cmsSha256: expected.cmsSha256, proposalSha256: expected.proposalSha256, role: expected.role, evaluatedAt: expected.now, reviewedDeviceSha256: sha(expected.testMacIdentifier), profileCreationDate: '2026-10-01T00:00:00Z', profileExpirationDate: '2026-11-01T00:00:00Z' };
   checkProfileReport(report, expected);
+  const online = { ...report, offlinePositiveRevocationVerified: false, onlinePositiveRevocationVerified: true, networkAccessAllowed: true };
+  assert.throws(() => checkProfileReport(online, expected));
+  checkProfileReport(online, { ...expected, allowAppleTrustNetwork: true });
   for (const change of [r => r.evaluatedAt = 'invalid', r => r.evaluatedAt = '2026-10-18T00:00:00Z', r => r.profileExpirationDate = '2026-10-18T00:00:00Z', r => r.reviewedDeviceSha256 = '0'.repeat(64), r => r.cmsSha256 = '0'.repeat(64), r => r.proposalSha256 = '0'.repeat(64), r => r.signingAuthorized = true]) { const bad = structuredClone(report); change(bad); assert.throws(() => checkProfileReport(bad, expected)); }
 });
