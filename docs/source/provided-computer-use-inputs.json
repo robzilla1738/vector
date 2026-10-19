@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "sourceVersion": "1.26.1020",
+  "sourceBuild": "1.26.1020.23",
+  "inputRoot": "/Users/rcourson/.aside/runtime-computer-use/Aside Computer Use.app",
+  "binarySha256": "a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026",
+  "files": [
+    {
+      "path": "Contents/CodeResources",
+      "size": 1653,
+      "mode": 384,
+      "sha256": "89a93c8621e200f574dbab3b214b0dbc7d04772be3357c73575d42922d58c5d6"
+    },
+    {
+      "path": "Contents/Info.plist",
+      "size": 1620,
+      "mode": 384,
+      "sha256": "3e157c2de22bad83e01780de12aeb932183f8fe2604755e7a4d883b38beb7801"
+    },
+    {
+      "path": "Contents/MacOS/aside-computer-use",
+      "size": 2064608,
+      "mode": 448,
+      "sha256": "a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026"
+    },
+    {
+      "path": "Contents/Resources/AppIcon.icns",
+      "size": 747105,
+      "mode": 384,
+      "sha256": "96db686adb2029380023f8b31f2358a009309f8f373f46680ecad3bb7a428c31"
+    },
+    {
+      "path": "Contents/Resources/MenuBarIcon.png",
+      "size": 711,
+      "mode": 384,
+      "sha256": "d9fcbd85eebe99e6df0786eb905982386c1b9b7b3621745dc02a883f277ee500"
+    },
+    {
+      "path": "Contents/Resources/MenuBarIcon@2x.png",
+      "size": 1443,
+      "mode": 384,
+      "sha256": "56ed033d4171583671f238331ba65a17f2662d0190cb945834d5c749ed622bf1"
+    },
+    {
+      "path": "Contents/Resources/automation.png",
+      "size": 13992,
+      "mode": 384,
+      "sha256": "431575fe95467153ccbd0915d8a92a744a1aece3a4b6a08416c9a93694596815"
+    },
+    {
+      "path": "Contents/Resources/contacts.png",
+      "size": 14994,
+      "mode": 384,
+      "sha256": "08cea3b93b46f7e97b3e37dfc09f3d92be808ea64c9ade054e92b2a36c9a6808"
+    },
+    {
+      "path": "Contents/Resources/full-disk-access.png",
+      "size": 11059,
+      "mode": 384,
+      "sha256": "fbb157323bc2b4fc72328237263205fb264c665b709cfda1166085ab3c4528dc"
+    },
+    {
+      "path": "Contents/Resources/imessage.png",
+      "size": 15328,
+      "mode": 384,
+      "sha256": "e1c911dfa9775561a87bcd278a2fdee0d35c416e0c6fc7e7aae66ac9c9ce15c8"
+    },
+    {
+      "path": "Contents/_CodeSignature/CodeResources",
+      "size": 3864,
+      "mode": 384,
+      "sha256": "98d300688ee60740057d830ab6238cecd0e999af1b3f8ac9a6abdeb88cf7b11c"
+    }
+  ]
+}
