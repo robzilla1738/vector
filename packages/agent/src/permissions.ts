@@ -38,6 +38,7 @@ export async function approveOperation(
   signal: AbortSignal,
   options: {
     path?: string;
+    paths?: string[];
     defaultAsk?: boolean;
     mutation?: boolean;
     finalAction?: boolean;
@@ -58,7 +59,9 @@ export async function approveOperation(
       allow: [...account.allow, ...local.allow],
       approved: [...account.approved, ...local.approved],
     };
-    const match = (rule: string) => matches(rule, toolName, options.path);
+    const paths = options.paths?.length ? options.paths : [options.path];
+    const match = (rule: string) =>
+      paths.some((path) => matches(rule, toolName, path));
     if (rules.deny.some(match))
       fail('FORBIDDEN', 'Operation is denied by account or session policy');
     if (options.mutation && session.permissionMode === 'read-only')
@@ -71,8 +74,11 @@ export async function approveOperation(
     return {
       ask:
         explicitAsk ||
-        (!rules.allow.some(match) &&
-          !rules.approved.some(match) &&
+        (!paths.every(
+          (path) =>
+            rules.allow.some((rule) => matches(rule, toolName, path)) ||
+            rules.approved.some((rule) => matches(rule, toolName, path)),
+        ) &&
           !approved.includes(fingerprint) &&
           session.permissionMode !== 'full-access' &&
           (options.defaultAsk ?? true)),

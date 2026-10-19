@@ -1,8 +1,23 @@
-import { fail, type Session } from '@aux/agent';
+import { approveOperation, fail, type Session } from '@aux/agent';
 import { type ToolSet, tool } from 'ai';
 import { z } from 'zod';
 import type { MemoryService } from './memory.js';
-export function memoryTools(memory: MemoryService, session: Session): ToolSet {
+export function memoryTools(
+  memory: MemoryService,
+  session: Session,
+  signal: AbortSignal,
+): ToolSet {
+  const current = () => {
+    signal.throwIfAborted();
+    const latest = memory.engine.get(session.accountId, session.id);
+    if (latest.incognito || latest.browserBinding?.browserMode === 'incognito')
+      fail('FORBIDDEN', 'Incognito sessions cannot use durable memory');
+    if (
+      memory.store.get(latest.accountId, 'settings', 'memoryEnabled') === false
+    )
+      fail('PRECONDITION_FAILED', 'Memory is disabled');
+    return latest;
+  };
   return {
     memory_search: tool({
       description:
@@ -11,14 +26,27 @@ export function memoryTools(memory: MemoryService, session: Session): ToolSet {
         queries: z.array(z.string().trim().min(1)).min(1).max(3),
         maxResults: z.number().int().min(1).max(10).default(5),
       }),
-      execute: (input) => {
-        if (session.incognito)
-          fail('FORBIDDEN', 'Incognito sessions cannot recall durable memory');
-        return memory.search(
+      execute: async (input, { toolCallId }) => {
+        current();
+        await approveOperation(
+          memory.engine,
+          session.accountId,
+          session.id,
+          toolCallId,
+          'memory_search',
+          'Search local memory',
+          input,
+          signal,
+          { mutation: false, defaultAsk: false },
+        );
+        current();
+        const result = await memory.search(
           session.accountId,
           input.queries,
           input.maxResults,
         );
+        current();
+        return result;
       },
     }),
     memory_operators: tool({
@@ -38,18 +66,51 @@ export function memoryTools(memory: MemoryService, session: Session): ToolSet {
           historyEntryId: z.string(),
         }),
       ]),
-      execute: (input) => {
-        if (session.incognito)
-          fail('FORBIDDEN', 'Incognito sessions cannot use durable memory');
+      execute: async (input, { toolCallId }) => {
+        current();
+        // Prepare the concrete revert for review before requesting approval.
+        const paths =
+          'filePath' in input
+            ? [memory.path(session.accountId, input.filePath)]
+            : input.operation === 'revert'
+              ? memory
+                  .history(session.accountId, input.historyEntryId)
+                  .changes.map((change) =>
+                    memory.path(session.accountId, change.filePath),
+                  )
+              : [];
+        const operation =
+          input.operation === 'revert'
+            ? {
+                ...input,
+                changes: memory.history(session.accountId, input.historyEntryId)
+                  .changes,
+              }
+            : input;
+        await approveOperation(
+          memory.engine,
+          session.accountId,
+          session.id,
+          toolCallId,
+          'memory_operators',
+          input.operation === 'revert'
+            ? 'Revert local memory'
+            : input.operation === 'write'
+              ? 'Edit local memory'
+              : 'Read local memory',
+          operation,
+          signal,
+          {
+            paths,
+            mutation: ['write', 'revert'].includes(input.operation),
+            defaultAsk: ['write', 'revert'].includes(input.operation),
+          },
+        );
+        current();
         if (input.operation === 'list')
           return memory.listFiles(session.accountId);
         if (input.operation === 'read')
           return memory.readFile(session.accountId, input.filePath);
-        if (
-          session.permissionMode === 'read-only' &&
-          ['write', 'revert'].includes(input.operation)
-        )
-          fail('FORBIDDEN', 'Read-only sessions cannot mutate memory');
         if (input.operation === 'write')
           return memory.writeFile(
             session.accountId,

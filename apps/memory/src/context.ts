@@ -41,6 +41,7 @@ const unavailable: CapturePermissions = {
   screenCapture: 'unavailable',
 };
 export interface ActivityFilter {
+  profileId?: string;
   from?: number;
   to?: number;
   source?: string;
@@ -290,22 +291,32 @@ export class ContextService {
     };
   }
   private index(accountId: number, event: Activity) {
-    return this.memory.indexSource(accountId, {
-      id: `context:${event.id}`,
-      kind: 'context',
-      content: `${event.appName}\n${event.windowTitle}\n${event.url ?? ''}\n${event.content}`,
-      profileId: event.profileId ?? null,
-      metadata: {
-        evidenceId: event.id,
-        occurredAt: event.occurredAt,
-        sourceType: event.source,
-        appName: event.appName,
-        bundleId: event.bundleId,
-        windowTitle: event.windowTitle,
-        url: event.url,
-        domain: event.domain,
+    return this.memory.indexSource(
+      accountId,
+      {
+        id: `context:${event.id}`,
+        kind: 'context',
+        content: `${event.appName}\n${event.windowTitle}\n${event.url ?? ''}\n${event.content}`,
+        profileId: event.profileId ?? null,
+        metadata: {
+          evidenceId: event.id,
+          occurredAt: event.occurredAt,
+          sourceType: event.source,
+          appName: event.appName,
+          bundleId: event.bundleId,
+          windowTitle: event.windowTitle,
+          url: event.url,
+          domain: event.domain,
+        },
       },
-    });
+      () => {
+        try {
+          return this.read(accountId, [event.id]).length === 1;
+        } catch {
+          return false;
+        }
+      },
+    );
   }
   events(accountId: number, filter: ActivityFilter = {}) {
     const db = this.database(accountId);
@@ -327,6 +338,14 @@ export class ContextService {
             (!filter.bundleId || event.bundleId === filter.bundleId) &&
             (!filter.domain || event.domain === filter.domain),
         )
+        .filter(
+          (event) =>
+            !filter.profileId ||
+            event.profileId === filter.profileId ||
+            (!event.profileId &&
+              !event.targetId &&
+              !event.source.startsWith('browser')),
+        )
         .slice(
           filter.offset ?? 0,
           (filter.offset ?? 0) + (filter.limit ?? 100),
@@ -338,7 +357,12 @@ export class ContextService {
   read(
     accountId: number,
     ids: string[],
-    options: { offset?: number; match?: string; contextLines?: number } = {},
+    options: {
+      offset?: number;
+      match?: string;
+      contextLines?: number;
+      profileId?: string;
+    } = {},
   ) {
     const db = this.database(accountId);
     try {
@@ -348,6 +372,17 @@ export class ContextService {
           .get(id) as { value: string } | undefined;
         if (!row) fail('NOT_FOUND', 'Activity evidence does not exist');
         const event = JSON.parse(row.value) as Activity;
+        if (
+          options.profileId &&
+          event.profileId !== options.profileId &&
+          (event.profileId ||
+            event.targetId ||
+            event.source.startsWith('browser'))
+        )
+          fail(
+            'FORBIDDEN',
+            'Activity evidence belongs to another browser Profile',
+          );
         if (this.excluded(accountId, event))
           fail('FORBIDDEN', 'Activity source is excluded');
         let content = event.content;

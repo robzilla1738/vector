@@ -9,6 +9,7 @@ export type {
 } from './context.js';
 export { activitySchema, ContextService } from './context.js';
 export { cosine, LocalEmbeddings } from './embeddings.js';
+export { historyTools } from './history-tools.js';
 export type { MemoryChange, MemoryHistory, SemanticResult } from './memory.js';
 export { MemoryService } from './memory.js';
 export { memoryTools } from './tools.js';

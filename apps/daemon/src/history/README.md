@@ -1,0 +1,22 @@
+# Bound visited-page recall
+
+Original implementation for `docs/spec/daemon/agent.md` tool inventory (`browsing_history_search`, `history_search`, `history_read`, `memory_operators`) and `docs/spec/daemon/services.md` Memory files and recall / Context awareness. This is a local feature; it does not contact a model provider to ingest or embed history.
+
+`browsingHistoryEnabled` is an account boolean, default **false**. Automatic collection requests individual visits only from the authenticated bridge registered to that account and ordinary browser Profile. Incognito cannot collect or recall durable history. The extension independently resolves its actual native Profile and account, checks opt-in before/after Chrome history reads, and uses `chrome.history.getVisits` IDs/times. `lastVisitTime` is not evidence for every visit. Caller-supplied JSON is rejected by history ingest/import RPCs.
+
+Each complete batch carries account/profile/mode and exact requested interval. Collection rechecks consent, binding and bridge availability before/after asynchronous indexing and before cursor commit. Revocation removes newly captured rows and vectors; a changed consent generation cannot restore an old cursor. Source deletion during embedding cannot recreate its index. URL fragments and sensitive query parameters are removed/redacted, configured credentials and common secret assignments are redacted, and URLs containing userinfo are rejected.
+
+Automatic capture begins when opt-in is observed, then uses a persisted cursor. Consent changes reset the cursor to the current time, excluding disabled intervals. Explicit `history.collect({accountId,profileId,browserMode:'default',from,to})` can request an older native interval, while preserving original visit times. Batches are bounded to 500 URLs/2000 actual visits. Oversized intervals fail explicitly without cursor advancement; request a narrower interval. A disconnected bridge or unavailable semantic runtime is surfaced in status. Saved visits awaiting a local model are marked pending and reindexed on search. This collector does not extract historical page body text or follow browser history deletion automatically; local history removal retires its evidence and vectors.
+
+`historyTools` validates the live session, account binding, mode and relevant opt-in for every call. Activity tools limit browser evidence to the current Profile; unprofiled native app events remain account-scoped. Other-Profile or unknown browser events, current exclusions and deleted evidence cannot pass the final read check. All tools use central account/session deny/ask/allow decisions. `memory_operators` resolves every concrete file in a revert; partial path allow rules do not authorize a whole multi-file operation. Writes/reverts require guard approval, honor read-only/deny, and recheck current policy and cancellation after a human decision.
+
+## Integrator hooks
+
+Root owns shared registration and factory files. Apply these hooks with this slice:
+
+1. Add `browsingHistoryEnabled: false` to settings defaults and boolean inventory. After an actual setting value change, call `historyCollector.settingsChanged(accountId)` synchronously after persistence. This invalidates pending batches and resets the automatic cursor. Do not call for unrelated setting changes.
+2. Add `history` to the **agent extension** manifest permissions. In its authenticated bridge command map, import `readHistoryVisits` from `./history-bridge` and map `'history.visits': readHistoryVisits`. Add `history.visits` to the daemon bridge command allowset. Never dispatch through the Vault extension.
+3. Construct `const historyCollector = createHistoryCollector(services, history)` from daemon `history/index.js`. Pass it as the third argument to `createHistoryRouter(services, history, historyCollector)`. Call `start()` after initialization and `close()` during shutdown.
+4. Import `historyTools` from `@aux/memory` (also reexported by daemon history). Extend session tools with `historyTools(store,engine,history,context,session,signal)`. Update the existing memory call to `memoryTools(memory,session,signal)`; a live cancellation signal is required.
+
+No new direct package dependency is required. Native history collection has not been exercised against an owner Profile. Focused tests use disposable homes, fixture bridge batches and deterministic unit embeddings; existing local ONNX recall remains a separate semantic acceptance check. The browser extension module is independently typechecked against Chrome declarations.

@@ -37,12 +37,26 @@ export class BrowsingHistory {
         'BAD_REQUEST',
         'Browsing history requires an HTTP(S) URL without credentials',
       );
-    const visit: BrowserVisit = {
+    const sourceIdentity = url.href;
+    for (const key of [...url.searchParams.keys()])
+      if (/password|token|secret|key|auth|code|session|credential/i.test(key))
+        url.searchParams.set(key, '[redacted]');
+    url.hash = '';
+    const redact = (value: string) =>
+      this.memory.engine.credentials
+        .redact(accountId, value)
+        .replace(
+          /((?:password|api[_ -]?key|access[_ -]?token|secret)\s*[:=]\s*)[^\s,;]+/gi,
+          '$1[redacted]',
+        );
+    let visit: BrowserVisit = {
       ...input,
+      title: redact(input.title),
+      content: redact(input.content),
       id:
         input.id ??
         createHash('sha256')
-          .update(`${input.profileId}\0${url.href}\0${input.visitedAt}`)
+          .update(`${input.profileId}\0${sourceIdentity}\0${input.visitedAt}`)
           .digest('hex'),
       url: url.href,
     };
@@ -59,6 +73,7 @@ export class BrowsingHistory {
             'CONFLICT',
             'Browsing evidence identity cannot change its original URL or visit time',
           );
+        visit = old;
       } else {
         db.prepare('INSERT INTO browsing_visits VALUES (?,?,?,?)').run(
           visit.id,
@@ -71,20 +86,46 @@ export class BrowsingHistory {
     } finally {
       db.close();
     }
-    await this.memory.indexSource(accountId, {
-      id: `browser:${visit.profileId}:${visit.id}`,
-      kind: 'browser',
-      content: `${visit.title}\n${visit.url}\n${visit.content}`,
-      profileId: visit.profileId,
-      metadata: {
-        historyEntryId: visit.id,
-        profileId: visit.profileId,
-        url: visit.url,
-        title: visit.title,
-        visitedAt: visit.visitedAt,
-      },
-    });
-    return { id: visit.id, inserted, visitedAt: visit.visitedAt };
+    let indexError: string | undefined;
+    try {
+      await this.memory.indexSource(
+        accountId,
+        {
+          id: `browser:${visit.profileId}:${visit.id}`,
+          kind: 'browser',
+          content: `${visit.title}\n${visit.url}\n${visit.content}`,
+          profileId: visit.profileId,
+          metadata: {
+            historyEntryId: visit.id,
+            profileId: visit.profileId,
+            url: visit.url,
+            title: visit.title,
+            visitedAt: visit.visitedAt,
+          },
+        },
+        () => this.exists(accountId, visit.profileId, visit.id),
+      );
+    } catch {
+      indexError =
+        'Local semantic indexing is unavailable or the source was retired';
+    }
+    return {
+      id: visit.id,
+      inserted,
+      visitedAt: visit.visitedAt,
+      indexState: indexError ? 'pending' : 'indexed',
+      ...(indexError ? { indexError } : {}),
+    };
+  }
+  private exists(accountId: number, profileId: string, id: string) {
+    const db = this.database(accountId);
+    try {
+      return !!db
+        .prepare('SELECT 1 FROM browsing_visits WHERE profileId=? AND id=?')
+        .get(profileId, id);
+    } finally {
+      db.close();
+    }
   }
   list(
     accountId: number,
@@ -124,19 +165,23 @@ export class BrowsingHistory {
     });
     // Retry indexing persisted imports after a model/runtime outage without losing their original visit times.
     for (const visit of visits)
-      await this.memory.indexSource(accountId, {
-        id: `browser:${visit.profileId}:${visit.id}`,
-        kind: 'browser',
-        content: `${visit.title}\n${visit.url}\n${visit.content}`,
-        profileId: visit.profileId,
-        metadata: {
-          historyEntryId: visit.id,
+      await this.memory.indexSource(
+        accountId,
+        {
+          id: `browser:${visit.profileId}:${visit.id}`,
+          kind: 'browser',
+          content: `${visit.title}\n${visit.url}\n${visit.content}`,
           profileId: visit.profileId,
-          url: visit.url,
-          title: visit.title,
-          visitedAt: visit.visitedAt,
+          metadata: {
+            historyEntryId: visit.id,
+            profileId: visit.profileId,
+            url: visit.url,
+            title: visit.title,
+            visitedAt: visit.visitedAt,
+          },
         },
-      });
+        () => this.exists(accountId, visit.profileId, visit.id),
+      );
     return this.memory.searchIndex(
       accountId,
       queries,

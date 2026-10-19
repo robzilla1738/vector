@@ -346,7 +346,10 @@ export class MemoryService {
       profileId: string | null;
       metadata: Record<string, unknown>;
     },
+    isCurrent?: () => boolean,
   ) {
+    if (isCurrent && !isCurrent())
+      fail('CONFLICT', 'Evidence source changed during semantic indexing');
     const fingerprint = hash(source.content);
     const db = this.database(accountId);
     try {
@@ -378,6 +381,8 @@ export class MemoryService {
       this.current(accountId, source.metadata.filePath) !== source.content
     )
       fail('CONFLICT', 'Memory changed during semantic indexing');
+    if (isCurrent && !isCurrent())
+      fail('CONFLICT', 'Evidence source changed during semantic indexing');
     const target = this.database(accountId);
     try {
       target.exec('BEGIN IMMEDIATE');
