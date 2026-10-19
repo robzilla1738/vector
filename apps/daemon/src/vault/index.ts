@@ -103,6 +103,11 @@ export function createVaultRouters(
           input.newPassword,
         ),
       ),
+    replaceRecoveryKey: procedure
+      .input(scope.extend({ currentPassword: unlockPassword }))
+      .mutation(({ input }) =>
+        vault.replaceRecoveryKey(input.accountId, input.currentPassword),
+      ),
     changePassword: procedure
       .input(scope.extend({ currentPassword: unlockPassword, newPassword }))
       .mutation(({ input }) =>

@@ -27,11 +27,8 @@ export function AuthGate({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recovery, setRecovery] = useState('');
   const [issuedKey, setIssuedKey] = useState('');
-  const [verification, setVerification] = useState('');
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [biometry, setBiometry] = useState<{
     available: boolean;
     enrolled: boolean;
@@ -99,78 +96,16 @@ export function AuthGate({
   }
   if (issuedKey)
     return (
-      <main className="aux-security-gate recovery">
-        <h2>Save your recovery key</h2>
-        <p>
-          Keep this key somewhere safe. It is required if you lose your Vault
-          password. A replacement key invalidates your previous key.
-        </p>
-        <code className="recovery-key">{issuedKey}</code>
-        <div className="row">
-          <Button
-            onClick={() =>
-              void navigator.clipboard
-                .writeText(issuedKey)
-                .then(() => setCopied(true))
-                .catch(() => setError('The recovery key could not be copied.'))
-            }
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
-          <Button
-            onClick={() => {
-              const blob = new Blob([`${issuedKey}\n`], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const anchor = document.createElement('a');
-              anchor.href = url;
-              anchor.download = 'aux-vault-recovery.txt';
-              anchor.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-            }}
-          >
-            Save file
-          </Button>
-        </div>
-        <label className="row">
-          <input
-            type="checkbox"
-            checked={saved}
-            onChange={(event) => setSaved(event.target.checked)}
-          />
-          I saved this key somewhere safe.
-        </label>
-        <label>
-          Enter the last six characters to verify your saved key
-          <input
-            className="field"
-            autoComplete="off"
-            value={verification}
-            onChange={(event) => setVerification(event.target.value)}
-          />
-        </label>
-        {error && <ErrorNotice error={error} />}
-        <Button
-          className="primary"
-          disabled={!saved || verification !== issuedKey.slice(-6) || pending}
-          onClick={() => {
-            setPending(true);
-            void rpc(
-              'passwordManager.auth.verifyRecovery',
-              { accountId, recoveryKey: issuedKey },
-              true,
-            )
-              .then(async () => {
-                await onUnlocked();
-                setIssuedKey('');
-                onRecoveryStateChange?.(false);
-              })
-              .catch((error) => setError(error.message))
-              .finally(() => setPending(false));
-          }}
-        >
-          Finish
-        </Button>
-      </main>
+      <SavedRecoveryKey
+        recoveryKey={issuedKey}
+        accountId={accountId}
+        rpc={rpc}
+        onVerified={async () => {
+          await onUnlocked();
+          setIssuedKey('');
+          onRecoveryStateChange?.(false);
+        }}
+      />
     );
   return (
     <main className="aux-security-gate">
@@ -275,5 +210,104 @@ export function AuthGate({
       </form>
       <small>Your encrypted Vault stays in your local Aux account.</small>
     </main>
+  );
+}
+
+/** Retain an issued recovery key until the user verifies their saved copy. */
+export function SavedRecoveryKey({
+  recoveryKey,
+  accountId,
+  rpc,
+  onVerified,
+}: {
+  recoveryKey: string;
+  accountId: number;
+  rpc: <T>(
+    procedure: string,
+    input: Record<string, unknown>,
+    mutation?: boolean,
+  ) => Promise<T>;
+  onVerified: () => Promise<void>;
+}) {
+  const [verification, setVerification] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  return (
+    <section className="aux-security-gate recovery">
+      <h2>Save your recovery key</h2>
+      <p>
+        Keep this key somewhere safe. It is required if you lose your Vault
+        password. A replacement key invalidates any previous recovery key.
+      </p>
+      <code className="recovery-key">{recoveryKey}</code>
+      <div className="row">
+        <Button
+          onClick={() =>
+            void navigator.clipboard
+              .writeText(recoveryKey)
+              .then(() => setCopied(true))
+              .catch(() => setError('The recovery key could not be copied.'))
+          }
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+        <Button
+          onClick={() => {
+            try {
+              const url = URL.createObjectURL(
+                new Blob([`${recoveryKey}\n`], { type: 'text/plain' }),
+              );
+              const anchor = document.createElement('a');
+              anchor.href = url;
+              anchor.download = 'aux-vault-recovery.txt';
+              anchor.click();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch {
+              setError('The recovery key file could not be saved.');
+            }
+          }}
+        >
+          Save file
+        </Button>
+      </div>
+      <label className="row">
+        <input
+          type="checkbox"
+          checked={saved}
+          onChange={(event) => setSaved(event.target.checked)}
+        />
+        I saved this key somewhere safe.
+      </label>
+      <label>
+        Enter the last six characters to verify your saved key
+        <input
+          className="field"
+          autoComplete="off"
+          value={verification}
+          onChange={(event) => setVerification(event.target.value)}
+        />
+      </label>
+      {error && <ErrorNotice error={error} />}
+      <Button
+        className="primary"
+        disabled={!saved || verification !== recoveryKey.slice(-6) || pending}
+        onClick={() => {
+          setPending(true);
+          setError('');
+          void rpc(
+            'passwordManager.auth.verifyRecovery',
+            { accountId, recoveryKey },
+            true,
+          )
+            .then(onVerified)
+            .catch((error) => setError(error.message))
+            .finally(() => setPending(false));
+        }}
+      >
+        Finish
+      </Button>
+    </section>
   );
 }

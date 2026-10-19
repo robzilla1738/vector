@@ -421,6 +421,28 @@ export class VaultService {
       wipe(recovery);
     }
   }
+  async replaceRecoveryKey(accountId: number, currentPassword: string) {
+    const generation = this.generation(accountId);
+    await this.verifyFresh(accountId, { password: currentPassword });
+    const master = this.key(accountId);
+    if (this.generation(accountId) !== generation)
+      failure('PRECONDITION_FAILED', 'Vault security changed. Try again.');
+    const recovery = randomKey();
+    try {
+      const envelope = this.read(accountId);
+      envelope.recoveryWrap = seal(
+        master,
+        recovery,
+        domain(accountId, 'master/recovery'),
+      );
+      envelope.revision++;
+      this.write(envelope);
+      this.invalidateSecurity(accountId);
+      return { recoveryKey: recoveryText(recovery) };
+    } finally {
+      wipe(recovery);
+    }
+  }
   async changePassword(
     accountId: number,
     currentPassword: string,

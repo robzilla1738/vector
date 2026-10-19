@@ -298,6 +298,37 @@ test('recovery preserves items and invalidates old recovery key and old password
       /did not unlock/,
     );
     await vault.unlock(1, 'third password value');
+    const generation = vault.generation(1);
+    await assert.rejects(
+      vault.replaceRecoveryKey(1, 'wrong password'),
+      /did not unlock/,
+    );
+    assert.deepEqual(await vault.verifyRecovery(1, recovered.recoveryKey), {
+      valid: true,
+    });
+    const replacement = await vault.replaceRecoveryKey(
+      1,
+      'third password value',
+    );
+    assert.ok(vault.generation(1) > generation);
+    await assert.rejects(
+      vault.verifyRecovery(1, recovered.recoveryKey),
+      /could not be verified/,
+    );
+    assert.deepEqual(await vault.verifyRecovery(1, replacement.recoveryKey), {
+      valid: true,
+    });
+    assert.equal(vault.getItem(1, item.id).notes, 'keep me');
+    assert.equal(
+      (vault.readPasskeys(1)[0] as { privatePKCS8: string }).privatePKCS8,
+      'recover this private key',
+    );
+    vault.lock(1);
+    await assert.rejects(
+      vault.replaceRecoveryKey(1, 'third password value'),
+      /Unlock/,
+    );
+    await vault.unlock(1, 'third password value');
   } finally {
     fixtureState.close();
   }

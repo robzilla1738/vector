@@ -1,6 +1,6 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: Immutable versioned records and import previews may repeat field labels; updated revisions remount the parent.
 import { Button, Dialog, Empty, ErrorNotice, Mark } from '@aux/ui';
-import { AuthGate } from '@aux/ui/security';
+import { AuthGate, SavedRecoveryKey } from '@aux/ui/security';
 import {
   Copy,
   Eye,
@@ -886,6 +886,8 @@ function VaultSettings({
   onError: (error: string) => void;
 }) {
   const [current, setCurrent] = useState('');
+  const [recoveryKey, setRecoveryKey] = useState('');
+  const [rotating, setRotating] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [name, setName] = useState('');
@@ -910,8 +912,26 @@ function VaultSettings({
       active = false;
     };
   }, [accountId]);
+  if (recoveryKey)
+    return (
+      <Dialog title="New recovery key" onClose={() => {}}>
+        <SavedRecoveryKey
+          accountId={accountId}
+          rpc={rpc}
+          recoveryKey={recoveryKey}
+          onVerified={async () => {
+            setRecoveryKey('');
+          }}
+        />
+      </Dialog>
+    );
   return (
-    <Dialog title="Vault preferences" onClose={onClose}>
+    <Dialog
+      title="Vault preferences"
+      onClose={() => {
+        if (!rotating && !pending) onClose();
+      }}
+    >
       <form
         className="stack"
         onSubmit={(event) => {
@@ -973,6 +993,33 @@ function VaultSettings({
           Save
         </Button>
       </form>
+      <section className="stack">
+        <h3>Replace recovery key</h3>
+        <p>
+          Enter your current Vault password above. Replacing this key
+          immediately invalidates the previous key.
+        </p>
+        <Button
+          disabled={pending || rotating || !current}
+          onClick={() => {
+            setRotating(true);
+            setError('');
+            void rpc<{ recoveryKey: string }>(
+              'passwordManager.auth.replaceRecoveryKey',
+              { accountId, currentPassword: current },
+              true,
+            )
+              .then((result) => {
+                setCurrent('');
+                setRecoveryKey(result.recoveryKey);
+              })
+              .catch((error) => setError(error.message))
+              .finally(() => setRotating(false));
+          }}
+        >
+          Replace recovery key
+        </Button>
+      </section>
       <hr />
       <form
         className="row"
