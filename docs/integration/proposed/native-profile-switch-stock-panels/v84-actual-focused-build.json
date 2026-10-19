@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v84/manifest.json",
+  "compositionSha256": "f7a452f4a0aabf4591e4e3f67ddefe1335e46578d23030e5dad8035152963f19",
+  "appliedSourceOutputs": 221,
+  "artworkTargets": 23,
+  "originalReplaySteps": 94,
+  "originalReplayMatchesAllOutputs": true,
+  "gnGraph": "v83 graph unchanged; existing side_panel public target already exposes browser buildflags",
+  "focusedBuild": {
+    "exitCode": 0,
+    "elapsedSeconds": 12.260725021362305,
+    "targets": {
+      "bookmarks_side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/bookmarks_side_panel_coordinator.o",
+      "history_side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/history_side_panel_coordinator.o",
+      "history_clusters_side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/history_clusters_side_panel_coordinator.o",
+      "reading_list_side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/reading_list_side_panel_coordinator.o",
+      "tabs_from_other_devices_side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/tabs_from_other_devices_side_panel_coordinator.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/views/side_panel/side_panel/bookmarks_side_panel_coordinator.o",
+      "obj/chrome/browser/ui/views/side_panel/side_panel/history_side_panel_coordinator.o",
+      "obj/chrome/browser/ui/views/side_panel/side_panel/history_clusters_side_panel_coordinator.o",
+      "obj/chrome/browser/ui/views/side_panel/side_panel/reading_list_side_panel_coordinator.o",
+      "obj/chrome/browser/ui/views/side_panel/side_panel/tabs_from_other_devices_side_panel_coordinator.o",
+      "-j",
+      "10",
+      "-k",
+      "0"
+    ]
+  },
+  "buildLog": "out/native-integration/v84-focused-build.log",
+  "fullyLinked": false,
+  "runtimeAcceptance": false,
+  "signingPerformed": false
+}

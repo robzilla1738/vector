@@ -114,6 +114,7 @@ steps.extend([
     ('native-profile-switch-browser-view-prefs/native.patch', 'native-profile-switch-browser-view-prefs/manifest.json'),
     ('native-popup-resize-animation/native.patch', 'native-popup-resize-animation/manifest.json'),
     ('native-profile-switch-bookmark-ipc/native.patch', 'native-profile-switch-bookmark-ipc/manifest.json'),
+    ('native-profile-switch-stock-panels/native.patch', 'native-profile-switch-stock-panels/manifest.json'),
 ])
 
 def safe(path):
