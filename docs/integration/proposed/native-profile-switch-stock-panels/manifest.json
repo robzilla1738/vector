@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "base": "Actual current shared v71, these stock panel files untouched by other proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h",
+      "baselineSha256": "ac3942099dfc8d7f9d0cebdbb767fc2e48a3ee39c2a62112a9781d38836ea17b",
+      "outputSha256": "e5e8a29a8c8bb997395bf7b98baebbe666923f0a2a102fb9a9a8211c052f2983"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.cc",
+      "baselineSha256": "ffa9e1312b7dd7c348981e57aa705e2e232b2486571d78d7abb9cd96276664cd",
+      "outputSha256": "754ec0010b7c0912b2cfc6723e1da08fd6191df29802d9e432b99062b9e09068"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h",
+      "baselineSha256": "7661ce75b1b3b62bb4de35537d0ec1738224dabbf279830f2df718ac411324fc",
+      "outputSha256": "a7c533ddc749fabec625bf357bb6607e46b35bf773d53cdbfb710fc374600efb"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.cc",
+      "baselineSha256": "1811b84647172e49745e19f60cb1349b191ac3805301021099dbe946e47d99f6",
+      "outputSha256": "708dec3f170c6b5b7fac8322f0521022e198c37e65be16718d6e192264127175"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h",
+      "baselineSha256": "2d5a97d740517bebc2fb8f12f55aa8946d74d916956e04a3bd4f9870c74255f2",
+      "outputSha256": "94eb158a5f47b1bec4d3a0a43bb09eb3b689a5b6c7e4e4c8d87d4651a8527c54"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.cc",
+      "baselineSha256": "5143d6798afee2660b9e6d1bdf238a9a3f64a3a4254288530a9b9a90484fba1e",
+      "outputSha256": "37ee2c7f5b8a9b261e09f0f699e5da697a9190abb8e93ab91ec7183dadb6d3fc"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h",
+      "baselineSha256": "2a8d75579301745475abb03d2758af879ec2dcd705f869598b2b7981fbb076ae",
+      "outputSha256": "666722e478c2626ec27e3d520457123000465a0f89b8d0012d5ff2322af3db9e"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.cc",
+      "baselineSha256": "87631b94b6a891e3dab1409296b50ef5fce67368885963d5cc5bf2d3a122d20b",
+      "outputSha256": "9b4b28c2e7d8e5bcb4c8ec1c94661770ef5138a5317da501a73e33df939ace3c"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.h",
+      "baselineSha256": "110e4140647ba26a61731d1d01834595f919c2a3f6d9ae340df4fb08c949963c",
+      "outputSha256": "7e5a05d4380e40bf6d6cc99cd92336d06d6a9a7982451a7de8a98f60c8e39273"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.cc",
+      "baselineSha256": "690c769be8e7bcfa95f671b10afc8b545a1836b6d0c0f5fd5990386e680d8aee",
+      "outputSha256": "0c54c6400a0e15bb5268345cd4b408368d17f104c3bc84b2c5501fbe776e9c53"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

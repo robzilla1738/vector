@@ -1,0 +1,61 @@
+{
+  "kind": "Actual scoped lazy view callbacks, service observations, entry destruction and population predicates",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h",
+      "sha256": "ac3942099dfc8d7f9d0cebdbb767fc2e48a3ee39c2a62112a9781d38836ea17b"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.cc",
+      "sha256": "ffa9e1312b7dd7c348981e57aa705e2e232b2486571d78d7abb9cd96276664cd"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h",
+      "sha256": "7661ce75b1b3b62bb4de35537d0ec1738224dabbf279830f2df718ac411324fc"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.cc",
+      "sha256": "1811b84647172e49745e19f60cb1349b191ac3805301021099dbe946e47d99f6"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h",
+      "sha256": "2d5a97d740517bebc2fb8f12f55aa8946d74d916956e04a3bd4f9870c74255f2"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.cc",
+      "sha256": "5143d6798afee2660b9e6d1bdf238a9a3f64a3a4254288530a9b9a90484fba1e"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h",
+      "sha256": "2a8d75579301745475abb03d2758af879ec2dcd705f869598b2b7981fbb076ae"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.cc",
+      "sha256": "87631b94b6a891e3dab1409296b50ef5fce67368885963d5cc5bf2d3a122d20b"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.h",
+      "sha256": "110e4140647ba26a61731d1d01834595f919c2a3f6d9ae340df4fb08c949963c"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.cc",
+      "sha256": "690c769be8e7bcfa95f671b10afc8b545a1836b6d0c0f5fd5990386e680d8aee"
+    },
+    {
+      "path": "chrome/browser/ui/side_panel/side_panel_registry.cc",
+      "sha256": "058c243f4a5d5dcfba0f77ad9b9aed36b50ae451065df21dde1dd33a1baafa60"
+    },
+    {
+      "path": "chrome/browser/ui/side_panel/side_panel_entry.cc",
+      "sha256": "7d57b91271f0b021af38952ced4abb221a7c1a418cc6c52f96998ada212c704d"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_helper.cc",
+      "sha256": "4ee63d4115f27664bfd9494ae4b36468d739418df9f8aa13f3cc6e9df4aa00c3"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_metrics.cc",
+      "sha256": "78d892bbd6e999542afb23b17f8db50bcf5b00b0c805dc9cbb31bff8c64af1df"
+    }
+  ]
+}
