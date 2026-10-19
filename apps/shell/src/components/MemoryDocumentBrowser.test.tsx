@@ -159,7 +159,46 @@ it("navigates folder parents and children without changing the selected document
   await key("ArrowRight");
   expect(document.activeElement).toBe(daily);
   expect(daily.getAttribute("aria-selected")).toBe("false");
+  await key("End");
+  expect(document.activeElement).toBe(rootDocument);
+  await key("ArrowUp");
+  expect(document.activeElement).toBe(daily);
+  expect(rootDocument.getAttribute("aria-selected")).toBe("true");
 });
+it("returns focus to the folder when the focused daily document is forgotten", async () => {
+  await render();
+  const folder = host.querySelector<HTMLElement>('summary[role="treeitem"]')!;
+  const daily = host.querySelector<HTMLElement>('[role="treeitem"][aria-level="2"]')!;
+  await act(async () => daily.focus());
+  documents = { generation: "forgotten", documents: [] };
+  await act(async () =>
+    mocks.event!({ type: "workspace.memory.updated", payload: { workspaceId: "workspace" } }),
+  );
+  expect(daily.isConnected).toBe(false);
+  expect(document.activeElement).toBe(folder);
+  expect(folder.tabIndex).toBe(0);
+  expect(host.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
+});
+
+it("keeps the newer editor focus and caret when an earlier tree row is forgotten", async () => {
+  await render();
+  const daily = host.querySelector<HTMLElement>('[role="treeitem"][aria-level="2"]')!;
+  await act(async () => daily.focus());
+  await click("Edit");
+  const editor = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Edit MEMORY.md"]')!;
+  await act(async () => {
+    editor.focus();
+    editor.setSelectionRange(2, 5);
+  });
+  documents = { generation: "forgotten", documents: [] };
+  await act(async () =>
+    mocks.event!({ type: "workspace.memory.updated", payload: { workspaceId: "workspace" } }),
+  );
+  expect(document.activeElement).toBe(editor);
+  expect([editor.selectionStart, editor.selectionEnd]).toEqual([2, 5]);
+  expect(host.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
+});
+
 it("preserves conflicting drafts, includes newly added notes on rebase, and purges forgotten fragments", async () => {
   await render();
   await click("2026-10-17.md");

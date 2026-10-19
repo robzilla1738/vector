@@ -145,6 +145,27 @@ function MemoryDocumentBrowserBody({
 
   const request = useRef(0);
   const navigation = useRef<HTMLElement>(null);
+  const treeFocusOwner = useRef<{ row: HTMLElement; folder: HTMLElement | null } | null>(null);
+  useLayoutEffect(() => {
+    const previous = treeFocusOwner.current;
+    if (!active) {
+      treeFocusOwner.current = null;
+      return;
+    }
+    if (!previous || availableForFocus(previous.row)) return;
+    treeFocusOwner.current = null;
+    // A refresh can remove the focused row without dispatching blur. Return to
+    // its surviving folder, but never replace a newer editor or dialog owner.
+    if (document.activeElement !== document.body && document.activeElement !== previous.row) return;
+    const folder = previous.folder;
+    const fallback =
+      folder && navigation.current?.contains(folder) && availableForFocus(folder)
+        ? folder
+        : [...(navigation.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [])].find(
+            (row) => row.tabIndex === 0 && availableForFocus(row),
+          );
+    fallback?.focus();
+  });
   const refresh = useCallback(async () => {
     if (!current()) return;
     const sequence = ++request.current;
@@ -390,6 +411,18 @@ function MemoryDocumentBrowserBody({
       <nav
         aria-label="Memory documents"
         ref={navigation}
+        onFocusCapture={(event) => {
+          const row = event.target;
+          treeFocusOwner.current =
+            row instanceof HTMLElement && row.getAttribute("role") === "treeitem"
+              ? { row, folder: row.closest("details")?.querySelector<HTMLElement>(":scope > summary") ?? null }
+              : null;
+        }}
+        onBlurCapture={(event) => {
+          const previous = treeFocusOwner.current;
+          if (event.relatedTarget || (previous && availableForFocus(previous.row)))
+            treeFocusOwner.current = null;
+        }}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
           if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
