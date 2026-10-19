@@ -1,0 +1,646 @@
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.cc b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+index ab5830d7c..36e3551c0 100644
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.cc
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+@@ -15,6 +15,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "components/aux_adblock/engine_cache.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "crypto/hash.h"
+ #include "net/base/net_errors.h"
+@@ -69,7 +70,7 @@ std::vector<Source> ReadManual(const base::FilePath& directory) {
+ }
+ constexpr auto kFetch = net::DefineNetworkTrafficAnnotation(
+     "aux_filter_subscription",
+-    R"(semantics {sender:"Aux native content filtering" description:"Fetch a user-selected HTTPS filter subscription with conditional cache headers." trigger:"Explicit subscription addition or update." data:"Subscription URL and ETag/Last-Modified; no credentials or cookies." destination:WEBSITE} policy {cookies_allowed:NO setting:"User selected filter subscriptions." policy_exception_justification:"Only explicit user configuration."})");
++    R"(semantics {sender:"Aux native content filtering" description:"Fetch a user-selected HTTPS filter subscription with conditional cache headers." trigger:"Explicit subscription addition/update or a periodic refresh of a user-enabled subscription." data:"Subscription URL and ETag/Last-Modified; no credentials or cookies." destination:WEBSITE} policy {cookies_allowed:NO setting:"User selected filter subscriptions." policy_exception_justification:"Only explicit user configuration."})");
+ }  // namespace
+ FilterService* FilterService::Get(Profile* profile) {
+   auto* existing =
+@@ -128,6 +129,10 @@ void FilterService::DidLoad(base::DictValue stored) {
+       }
+     }
+   }
++  // One delayed tick avoids doing network work before persisted state is ready.
++  // The timer is owned by this profile service and stops when it is destroyed.
++  refresh_timer_.Start(FROM_HERE, base::Minutes(1), this,
++                       &FilterService::RefreshDueSubscriptions);
+   Compile();
+   files_->PostTaskAndReplyWithResult(
+       FROM_HERE, base::BindOnce(&ReadManual, directory_.AppendASCII("manual")),
+@@ -193,7 +198,7 @@ base::DictValue FilterService::Diagnostics() const {
+   result.Set("lastCompileDurationMs", compile_ms_);
+   result.Set("lastEngineInstallTime", installed_ms_);
+   result.Set("dataDirectory", directory_.value());
+-  result.Set("cacheDirectory", directory_.value());
++  result.Set("cacheDirectory", directory_.AppendASCII("cache").value());
+   result.Set("manualFilterDirectory", directory_.AppendASCII("manual").value());
+   result.Set("manualFilterError", manual_error_);
+   result.Set("subscriptions", subscriptions_.Clone());
+@@ -202,7 +207,9 @@ base::DictValue FilterService::Diagnostics() const {
+   if (engine_) {
+     base::DictValue engine;
+     engine.Set("kind", "default");
+-    engine.Set("cacheHit", false);
++    engine.Set("cacheHit", cache_hit_);
++    engine.Set("cacheFormat", "aux-parsed-rules-v1");
++    engine.Set("cacheSize", static_cast<double>(cache_size_));
+     engine.Set("flatbufferSize", 0);
+     engine.Set("regexesTruncated", engine_->rule_count() > 256);
+     engine.Set("compiledRegexCount", static_cast<int>(engine_->rule_count()));
+@@ -213,6 +220,49 @@ base::DictValue FilterService::Diagnostics() const {
+   result.Set("engines", std::move(engines));
+   return result;
+ }
++void FilterService::RefreshDueSubscriptions() {
++  if (!loaded_ || !enabled_ || !profile_ ||
++      net::NetworkChangeNotifier::IsOffline()) {
++    return;
++  }
++  std::vector<std::string> due;
++  const auto now = Now();
++  for (const auto& value : subscriptions_) {
++    const auto& row = value.GetDict();
++    const auto* id = row.FindString("id");
++    const auto* status = row.FindString("status");
++    if (!id || !row.FindBool("enabled").value_or(true) ||
++        (status && (*status == "queued" || *status == "downloading" ||
++                    *status == "compiling"))) {
++      continue;
++    }
++    bool busy = false;
++    for (const auto& [job_id, job] : jobs_) {
++      if (job.FindString("status") && *job.FindString("status") == "running") {
++        if (const auto* items = job.FindList("items")) {
++          for (const auto& item : *items) {
++            const auto* source = item.GetDict().FindString("subscriptionId");
++            const auto* state = item.GetDict().FindString("status");
++            busy |= source && *source == *id && state &&
++                    (*state == "queued" || *state == "downloading" ||
++                     *state == "compiling");
++          }
++        }
++      }
++    }
++    if (busy) {
++      continue;
++    }
++    const double next = row.FindDouble("nextUpdateMs").value_or(0);
++    // A damaged future timestamp cannot suppress refresh indefinitely.
++    if (next <= now || next > now + base::Days(2).InMillisecondsF()) {
++      due.push_back(*id);
++    }
++  }
++  if (!due.empty()) {
++    StartUpdate(due);
++  }
++}
+ void FilterService::Compile() {
+   ++requested_;
+   compiling_ = true;
+@@ -233,15 +283,16 @@ void FilterService::StartCompile() {
+     }
+   }
+   auto began = base::TimeTicks::Now();
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock()},
+-      base::BindOnce(&Engine::Compile, std::move(sources)),
++  files_->PostTaskAndReplyWithResult(
++      FROM_HERE,
++      base::BindOnce(&LoadOrBuildEngine, directory_, std::move(sources)),
+       base::BindOnce(&FilterService::DidCompile, weak_.GetWeakPtr(), generation,
+                      began));
+ }
+ void FilterService::DidCompile(uint64_t generation,
+                                base::TimeTicks began,
+-                               std::shared_ptr<const Engine> engine) {
++                               EngineBuild result) {
++  auto& [engine, cache_hit, cache_size] = result;
+   compile_inflight_ = false;
+   if (generation != requested_) {
+     StartCompile();
+@@ -305,6 +356,8 @@ void FilterService::DidCompile(uint64_t generation,
+   }
+   previous_texts_.clear();
+   engine_ = std::move(engine);
++  cache_hit_ = cache_hit;
++  cache_size_ = cache_size;
+   cosmetic_observers_.Notify();
+   active_ = generation;
+   loaded_ = true;
+@@ -542,9 +595,20 @@ void FilterService::FinishItem(std::string job,
+     row->Set("lastError", error);
+     if (status == "failed") {
+       row->Set("consecutiveFailures",
+-               row->FindInt("consecutiveFailures").value_or(0) + 1);
+-    }
+-    row->Set("nextUpdateMs", Now() + 24 * 60 * 60 * 1000.0);
++               std::min(10, std::clamp(
++                                row->FindInt("consecutiveFailures").value_or(0),
++                                0, 10) +
++                                1));
++    }
++    const int failures =
++        std::clamp(row->FindInt("consecutiveFailures").value_or(0), 0, 10);
++    // Failed checks back off from 15 minutes to a maximum of 24 hours;
++    // successful conditional checks keep the normal daily schedule.
++    const auto delay =
++        status == "failed"
++            ? base::Minutes(std::min(1440, 15 << std::max(0, failures - 1)))
++            : base::Days(1);
++    row->Set("nextUpdateMs", Now() + delay.InMillisecondsF());
+   }
+   auto found = jobs_.find(job);
+   if (found == jobs_.end()) {
+@@ -789,6 +853,9 @@ void FilterService::Invoke(std::string method,
+     return;
+   }
+   if (method == "clearEngineCache") {
++    files_->PostTask(FROM_HERE, base::BindOnce(&ClearCache, directory_));
++    cache_hit_ = false;
++    cache_size_ = 0;
+     Compile();
+     done();
+     return;
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.h b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+index 2778eeff1..bb6844b54 100644
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.h
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+@@ -3,12 +3,14 @@
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_SERVICE_H_
+ #include <deque>
+ #include <map>
++#include <tuple>
+ 
+ #include "base/callback_list.h"
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/supports_user_data.h"
+ #include "base/task/sequenced_task_runner.h"
++#include "base/timer/timer.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "components/aux_adblock/engine.h"
+ #include "services/network/public/cpp/simple_url_loader.h"
+@@ -36,11 +38,13 @@ class FilterService final : public base::SupportsUserData::Data {
+   base::DictValue State() const;
+   base::DictValue Diagnostics() const;
+   base::DictValue CustomRules() const;
++  void RefreshDueSubscriptions();
+   void Compile();
+   void StartCompile();
+-  void DidCompile(uint64_t generation,
+-                  base::TimeTicks began,
+-                  std::shared_ptr<const Engine> engine);
++  void DidCompile(
++      uint64_t generation,
++      base::TimeTicks began,
++      std::tuple<std::shared_ptr<const Engine>, bool, size_t> result);
+   void Persist();
+   base::DictValue* Subscription(std::string_view id);
+   std::string StartUpdate(const std::vector<std::string>& ids);
+@@ -52,6 +56,7 @@ class FilterService final : public base::SupportsUserData::Data {
+                   std::string id,
+                   std::string status,
+                   std::string error);
++  base::RepeatingTimer refresh_timer_;
+   base::RepeatingClosureList cosmetic_observers_;
+   std::vector<base::OnceClosure> ready_callbacks_;
+   base::WeakPtr<Profile> profile_;
+@@ -60,6 +65,8 @@ class FilterService final : public base::SupportsUserData::Data {
+   bool loaded_ = false, enabled_ = true, compiling_ = false,
+        compile_inflight_ = false;
+   uint64_t requested_ = 0, active_ = 0;
++  bool cache_hit_ = false;
++  size_t cache_size_ = 0;
+   double compile_ms_ = 0, installed_ms_ = 0;
+   std::string rules_, compile_error_, manual_error_;
+   std::optional<std::string> pending_rules_;
+diff --git a/components/aux_adblock/BUILD.gn b/components/aux_adblock/BUILD.gn
+index 73d201c67..47c6e27e1 100644
+--- a/components/aux_adblock/BUILD.gn
++++ b/components/aux_adblock/BUILD.gn
+@@ -1,8 +1,8 @@
+ # Independent Aux-owned engine; third-party RE2 retains upstream licensing.
+ source_set("engine") {
+- sources = [ "engine.h", "engine.cc" ]
++ sources = [ "engine.h", "engine.cc", "engine_cache.h", "engine_cache.cc" ]
+  public_deps = [ "//base", "//url" ]
+- deps = [ "//net", "//third_party/re2" ]
++ deps = [ "//crypto", "//net", "//third_party/re2" ]
+ }
+ 
+ source_set("renderer") {
+@@ -15,3 +15,9 @@ executable("engine_probe") {
+  sources = [ "engine_probe.cc" ]
+  deps = [ ":engine", "//base" ]
+ }
++
++executable("cache_probe") {
++ testonly = true
++ sources = [ "cache_probe.cc" ]
++ deps = [ ":engine", "//base" ]
++}
+diff --git a/components/aux_adblock/cache_probe.cc b/components/aux_adblock/cache_probe.cc
+new file mode 100644
+index 000000000..712228c8a
+--- /dev/null
++++ b/components/aux_adblock/cache_probe.cc
+@@ -0,0 +1,59 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include <iostream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "components/aux_adblock/engine_cache.h"
++int main() {
++  base::ScopedTempDir temporary;
++  CHECK(temporary.CreateUniqueTempDir());
++  const auto root = temporary.GetPath();
++  const auto path = root.AppendASCII("cache").AppendASCII("engine.bin");
++  const std::vector<aux_adblock::Source> sources = {
++      {"fixture", "||ads.test^$websocket\nsite.test##.advert"}};
++  auto [first, first_hit, first_size] =
++      aux_adblock::LoadOrBuildEngine(root, sources);
++  CHECK(first);
++  CHECK(!first_hit);
++  CHECK_GT(first_size, 0u);
++  CHECK(base::PathExists(path));
++  int mode;
++  CHECK(base::GetPosixFilePermissions(path, &mode));
++  CHECK_EQ(mode & 0777, 0600);
++  auto [second, second_hit, second_size] =
++      aux_adblock::LoadOrBuildEngine(root, sources);
++  CHECK(second);
++  CHECK(second_hit);
++  CHECK_EQ(first_size, second_size);
++  const aux_adblock::Request socket = {GURL("wss://ads.test/socket"),
++                                       GURL("https://site.test/"), "websocket",
++                                       "GET", true};
++  CHECK(first->Evaluate(socket).block);
++  CHECK_EQ(first->Evaluate(socket).ToValue(),
++           second->Evaluate(socket).ToValue());
++  CHECK_EQ(first->Cosmetics(GURL("https://site.test/")),
++           second->Cosmetics(GURL("https://site.test/")));
++  std::string original;
++  CHECK(base::ReadFileToString(path, &original));
++  auto corrupt = original;
++  corrupt[corrupt.size() / 2] ^= 1;
++  CHECK(base::WriteFile(path, corrupt));
++  CHECK(!std::get<1>(aux_adblock::LoadOrBuildEngine(root, sources)));
++  CHECK(base::WriteFile(path, original.substr(0, original.size() / 2)));
++  CHECK(!std::get<1>(aux_adblock::LoadOrBuildEngine(root, sources)));
++  auto changed = sources;
++  changed[0].text += "\n||other.test^";
++  CHECK(!std::get<1>(aux_adblock::LoadOrBuildEngine(root, changed)));
++  CHECK(std::get<1>(aux_adblock::LoadOrBuildEngine(root, changed)));
++  const auto state = root.AppendASCII("state.json");
++  CHECK(base::WriteFile(state, "fixture state retained"));
++  aux_adblock::ClearCache(root);
++  CHECK(!base::PathExists(path));
++  CHECK(base::PathExists(state));
++  CHECK(!std::get<1>(aux_adblock::LoadOrBuildEngine(root, changed)));
++  std::cout
++      << "Disposable native parsed-engine cache hit, source invalidation, "
++         "corruption/truncation fallback, WebSocket equivalence, permissions "
++         "and selective cache clear passed\n";
++}
+diff --git a/components/aux_adblock/engine.cc b/components/aux_adblock/engine.cc
+index 12694aa21..dc187ce30 100644
+--- a/components/aux_adblock/engine.cc
++++ b/components/aux_adblock/engine.cc
+@@ -5,6 +5,9 @@
+ #include <atomic>
+ #include <set>
+ 
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/pickle.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/string_util.h"
+@@ -76,7 +79,7 @@ constexpr std::string_view kTypes[] = {
+ }  // namespace
+ struct Engine::Rule {
+   mutable std::atomic<uint64_t> uses{0};
+-  std::string text, source;
++  std::string text, source, host_key;
+   int line = 0;
+   bool exception = false, important = false;
+   std::optional<bool> third_party;
+@@ -264,6 +267,7 @@ std::shared_ptr<const Engine> Engine::Compile(
+           host_key = base::ToLowerASCII(host);
+         }
+       }
++      rule->host_key = host_key;
+       if (host_key.empty()) {
+         engine->global_rules_.push_back(rule.get());
+       } else {
+@@ -282,6 +286,160 @@ std::shared_ptr<const Engine> Engine::Compile(
+   }
+   return engine;
+ }
++std::string Engine::SerializeCache() const {
++  base::Pickle pickle;
++  pickle.WriteString("AuxParsedFilterEngine1");
++  pickle.WriteString(base::WriteJson(diagnostics_).value_or("[]"));
++  auto strings = [&](const auto& values) {
++    pickle.WriteInt(static_cast<int>(values.size()));
++    for (const auto& value : values) {
++      pickle.WriteString(value);
++    }
++  };
++  pickle.WriteInt(static_cast<int>(rules_.size()));
++  for (const auto& rule : rules_) {
++    pickle.WriteString(rule->text);
++    pickle.WriteString(rule->source);
++    pickle.WriteString(rule->host_key);
++    pickle.WriteInt(rule->line);
++    pickle.WriteBool(rule->exception);
++    pickle.WriteBool(rule->important);
++    pickle.WriteInt(rule->third_party ? (*rule->third_party ? 1 : 0) : -1);
++    strings(rule->types);
++    strings(rule->excluded);
++    strings(rule->domains);
++    pickle.WriteString(rule->regex->pattern());
++    pickle.WriteBool(rule->regex->options().case_sensitive());
++    pickle.WriteString(rule->redirect);
++    pickle.WriteString(rule->remove_param);
++    pickle.WriteString(rule->method);
++    if (pickle.size() > 64 * 1024 * 1024) {
++      return {};
++    }
++  }
++  pickle.WriteInt(static_cast<int>(cosmetics_.size()));
++  for (const auto& cosmetic : cosmetics_) {
++    strings(cosmetic->domains);
++    pickle.WriteBool(cosmetic->exception);
++    pickle.WriteString(cosmetic->selector);
++    pickle.WriteString(cosmetic->op);
++    pickle.WriteString(cosmetic->value);
++    if (pickle.size() > 64 * 1024 * 1024) {
++      return {};
++    }
++  }
++  if (pickle.size() > 64 * 1024 * 1024) {
++    return {};
++  }
++  return std::string(pickle.AsStringView());
++}
++std::shared_ptr<const Engine> Engine::RestoreCache(std::string_view data) {
++  if (data.empty() || data.size() > 64 * 1024 * 1024) {
++    return nullptr;
++  }
++  auto input = base::PickleIterator::WithData(base::as_byte_span(data));
++  auto text = [&](std::string* output, size_t max) {
++    std::string_view view;
++    if (!input.ReadStringPiece(&view) || view.size() > max ||
++        !base::IsStringUTF8(view) || view.find('\0') != view.npos) {
++      return false;
++    }
++    output->assign(view);
++    return true;
++  };
++  auto strings = [&](auto* output) {
++    int count;
++    if (!input.ReadInt(&count) || count < 0 || count > 8192) {
++      return false;
++    }
++    for (int i = 0; i < count; ++i) {
++      std::string value;
++      if (!text(&value, 8192)) {
++        return false;
++      }
++      output->insert(output->end(), std::move(value));
++    }
++    return true;
++  };
++  std::string version, diagnostics;
++  if (!text(&version, 64) || version != "AuxParsedFilterEngine1" ||
++      !text(&diagnostics, 8 * 1024 * 1024)) {
++    return nullptr;
++  }
++  auto parsed = base::JSONReader::Read(diagnostics, base::JSON_PARSE_RFC);
++  if (!parsed || !parsed->is_list() || parsed->GetList().size() > 129) {
++    return nullptr;
++  }
++  for (const auto& value : parsed->GetList()) {
++    if (!value.is_dict() || !value.GetDict().FindString("id") ||
++        !value.GetDict().FindInt("networkRuleCount") ||
++        !value.GetDict().FindInt("cosmeticRuleCount") ||
++        !value.GetDict().FindInt("parseErrorCount") ||
++        !value.GetDict().FindList("invalidLines")) {
++      return nullptr;
++    }
++  }
++  auto engine = std::shared_ptr<Engine>(new Engine);
++  engine->diagnostics_ = std::move(parsed->GetList());
++  int count;
++  if (!input.ReadInt(&count) || count < 0 || count > 50000) {
++    return nullptr;
++  }
++  size_t compiled_memory = 0;
++  for (int i = 0; i < count; ++i) {
++    auto rule = std::make_unique<Rule>();
++    std::string regex;
++    bool match_case;
++    int party;
++    if (!text(&rule->text, 8192) || !text(&rule->source, 8192) ||
++        !text(&rule->host_key, 8192) || !input.ReadInt(&rule->line) ||
++        rule->line < 1 || !input.ReadBool(&rule->exception) ||
++        !input.ReadBool(&rule->important) || !input.ReadInt(&party) ||
++        party < -1 || party > 1 || !strings(&rule->types) ||
++        !strings(&rule->excluded) || !strings(&rule->domains) ||
++        !text(&regex, 32768) || !input.ReadBool(&match_case) ||
++        !text(&rule->redirect, 32) || !text(&rule->remove_param, 8192) ||
++        !text(&rule->method, 128)) {
++      return nullptr;
++    }
++    if (party != -1) {
++      rule->third_party = party == 1;
++    }
++    RE2::Options options;
++    options.set_log_errors(false);
++    options.set_case_sensitive(match_case);
++    options.set_max_mem(64 * 1024);
++    rule->regex = std::make_unique<RE2>(regex, options);
++    if (!rule->regex->ok()) {
++      return nullptr;
++    }
++    compiled_memory += static_cast<size_t>(rule->regex->ProgramSize()) * 64;
++    if (compiled_memory > 64 * 1024 * 1024) {
++      return nullptr;
++    }
++    if (rule->host_key.empty()) {
++      engine->global_rules_.push_back(rule.get());
++    } else {
++      engine->host_index_[rule->host_key].push_back(rule.get());
++    }
++    engine->rules_.push_back(std::move(rule));
++  }
++  if (!input.ReadInt(&count) || count < 0 || count > 50000) {
++    return nullptr;
++  }
++  for (int i = 0; i < count; ++i) {
++    auto rule = std::make_unique<Cosmetic>();
++    if (!strings(&rule->domains) || !input.ReadBool(&rule->exception) ||
++        !text(&rule->selector, 2048) || !SafeSelector(rule->selector) ||
++        !text(&rule->op, 32) || !text(&rule->value, 8192) ||
++        (!rule->op.empty() && rule->op != ":has-text(" &&
++         rule->op != ":matches-attr(" && rule->op != ":matches-css(")) {
++      return nullptr;
++    }
++    engine->cosmetics_.push_back(std::move(rule));
++  }
++  return input.ReachedEnd() ? engine : nullptr;
++}
+ Decision Engine::Evaluate(const Request& request) const {
+   Decision decision;
+   const Rule *filter = nullptr, *exception = nullptr;
+diff --git a/components/aux_adblock/engine.h b/components/aux_adblock/engine.h
+index 9e9cd70c5..5f036a742 100644
+--- a/components/aux_adblock/engine.h
++++ b/components/aux_adblock/engine.h
+@@ -29,6 +29,10 @@ class Engine {
+  public:
+   static std::shared_ptr<const Engine> Compile(
+       const std::vector<Source>& sources);
++  // Versioned parsed-rule cache; RE2 programs are reconstructed and bounded.
++  // This is not a serialization of RE2 machine code or a FlatBuffer.
++  std::string SerializeCache() const;
++  static std::shared_ptr<const Engine> RestoreCache(std::string_view data);
+   ~Engine();
+   Engine(const Engine&) = delete;
+   Engine& operator=(const Engine&) = delete;
+diff --git a/components/aux_adblock/engine_cache.cc b/components/aux_adblock/engine_cache.cc
+new file mode 100644
+index 000000000..b353f8d45
+--- /dev/null
++++ b/components/aux_adblock/engine_cache.cc
+@@ -0,0 +1,66 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "components/aux_adblock/engine_cache.h"
++
++#include "base/files/file_util.h"
++#include "base/files/important_file_writer.h"
++#include "base/pickle.h"
++#include "base/strings/string_number_conversions.h"
++#include "crypto/hash.h"
++
++namespace aux_adblock {
++EngineBuild LoadOrBuildEngine(base::FilePath directory,
++                              std::vector<Source> sources) {
++  constexpr size_t limit = 64 * 1024 * 1024;
++  base::Pickle identity;
++  identity.WriteString("AuxParsedFilterEngine1");
++  for (const auto& source : sources) {
++    identity.WriteString(source.id);
++    identity.WriteString(source.text);
++  }
++  const auto key = base::HexEncode(crypto::hash::Sha256(identity.AsBytes()));
++  const auto cache_directory = directory.AppendASCII("cache");
++  const auto path = cache_directory.AppendASCII("engine.bin");
++  const bool safe = !base::IsLink(directory) &&
++                    !base::IsLink(cache_directory) && !base::IsLink(path);
++  std::string stored;
++  if (safe && base::ReadFileToStringWithMaxSize(path, &stored, limit + 1024)) {
++    auto input = base::PickleIterator::WithData(base::as_byte_span(stored));
++    std::string_view stored_key, digest, payload;
++    if (input.ReadStringPiece(&stored_key) && stored_key == key &&
++        input.ReadStringPiece(&digest) && digest.size() == 64 &&
++        input.ReadStringPiece(&payload) && payload.size() <= limit &&
++        input.ReachedEnd() &&
++        digest == base::HexEncode(crypto::hash::Sha256(payload))) {
++      if (auto engine = Engine::RestoreCache(payload)) {
++        return {std::move(engine), true, payload.size()};
++      }
++    }
++  }
++  auto engine = Engine::Compile(sources);
++  if (!engine) {
++    return {nullptr, false, 0};
++  }
++  const auto payload = engine->SerializeCache();
++  if (!payload.empty() && safe && base::CreateDirectory(cache_directory) &&
++      base::SetPosixFilePermissions(directory, 0700) &&
++      base::SetPosixFilePermissions(cache_directory, 0700)) {
++    base::Pickle output;
++    output.WriteString(key);
++    output.WriteString(base::HexEncode(crypto::hash::Sha256(payload)));
++    output.WriteString(payload);
++    if (base::ImportantFileWriter::WriteFileAtomically(path,
++                                                       output.AsStringView())) {
++      base::SetPosixFilePermissions(path, 0600);
++    }
++  }
++  return {std::move(engine), false, payload.size()};
++}
++void ClearCache(const base::FilePath& directory) {
++  const auto cache = directory.AppendASCII("cache");
++  if (!base::IsLink(directory) && !base::IsLink(cache)) {
++    // Delete only our exact cache entry; subscriptions and custom rules
++    // survive.
++    base::DeleteFile(cache.AppendASCII("engine.bin"));
++  }
++}
++}  // namespace aux_adblock
+diff --git a/components/aux_adblock/engine_cache.h b/components/aux_adblock/engine_cache.h
+new file mode 100644
+index 000000000..ec75d9e75
+--- /dev/null
++++ b/components/aux_adblock/engine_cache.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef COMPONENTS_AUX_ADBLOCK_ENGINE_CACHE_H_
++#define COMPONENTS_AUX_ADBLOCK_ENGINE_CACHE_H_
++#include <tuple>
++
++#include "base/files/file_path.h"
++#include "components/aux_adblock/engine.h"
++namespace aux_adblock {
++using EngineBuild = std::tuple<std::shared_ptr<const Engine>, bool, size_t>;
++// Runs on the profile file sequence, never on the request/renderer path.
++EngineBuild LoadOrBuildEngine(base::FilePath directory,
++                              std::vector<Source> sources);
++void ClearCache(const base::FilePath& directory);
++}  // namespace aux_adblock
++#endif
+diff --git a/components/aux_adblock/engine_probe.cc b/components/aux_adblock/engine_probe.cc
+index 01b1eaf18..5e5dd11e4 100644
+--- a/components/aux_adblock/engine_probe.cc
++++ b/components/aux_adblock/engine_probe.cc
+@@ -17,6 +17,14 @@ example.test##article:has-text(Sponsor)
+ ||unknown.test^$unimplemented-option
+ /banner\.js$/
+ )RULES"}});
++  const auto cache = engine->SerializeCache();
++  CHECK(!cache.empty());
++  auto restored = aux_adblock::Engine::RestoreCache(cache);
++  CHECK(restored);
++  CHECK_EQ(restored->diagnostics(), engine->diagnostics());
++  CHECK(!aux_adblock::Engine::RestoreCache("invalid"));
++  CHECK(!aux_adblock::Engine::RestoreCache(cache.substr(0, cache.size() / 2)));
++  CHECK(!aux_adblock::Engine::RestoreCache(cache + "trailing"));
+   auto request = [](const char* url, const char* type = "script",
+                     bool third = true) {
+     return aux_adblock::Request{GURL(url), GURL("https://example.test/"), type,
+@@ -41,6 +49,17 @@ example.test##article:has-text(Sponsor)
+   CHECK_EQ(engine->Evaluate(request("https://noop.test/a.js")).redirect,
+            "noopjs");
+   CHECK(engine->Evaluate(request("https://files.test/banner.js")).block);
++  for (const auto* url :
++       {"https://ads.test/a.js", "https://ads.test/allowed/a.js",
++        "https://ads.test/allowed/critical/a.js",
++        "https://rewrite.test/?utm_source=x&a=1", "https://noop.test/a.js",
++        "https://files.test/banner.js", "wss://ads.test/socket"}) {
++    const auto type = GURL(url).SchemeIs("wss") ? "websocket" : "script";
++    CHECK_EQ(restored->Evaluate(request(url, type)).ToValue(),
++             engine->Evaluate(request(url, type)).ToValue());
++  }
++  CHECK_EQ(restored->Cosmetics(GURL("https://example.test/")),
++           engine->Cosmetics(GURL("https://example.test/")));
+   auto cosmetics = engine->Cosmetics(GURL("https://example.test/"));
+   CHECK_EQ(cosmetics.FindList("selectors")->size(), 1u);
+   CHECK_EQ(cosmetics.FindList("procedural")->size(), 1u);
