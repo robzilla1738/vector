@@ -1,6 +1,6 @@
 # Local account onboarding, import and recovery
 
-Status: **ready** for local flow and explicit measurements; display artwork and exact pixel comparison **draft**. Sources: SP2-O1 and SP2-S1 in `provenance-sp2.md`.
+Status: **ready** for local flow and explicit measurements; display artwork and exact pixel comparison **draft**. Sources: SP2-O1 and SP2-S1 in `../provenance.md`.
 
 ## Flow
 

@@ -1,6 +1,6 @@
 # Task conversation and composer
 
-Status: **ready** for functionality and dimensions explicitly listed; full viewport geometry **draft** until captures. Sources: SP2-U3 and SP2-H1 in `provenance-sp2.md`.
+Status: **ready** for functionality and dimensions explicitly listed; full viewport geometry **draft** until captures. Sources: SP2-U3 and SP2-H1 in `../provenance.md`.
 
 ## Shell and state
 

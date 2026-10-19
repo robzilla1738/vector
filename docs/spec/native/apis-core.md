@@ -1,6 +1,6 @@
 # Native account, preferences, notification and popup APIs
 
-Status: ready for listed signatures and behavior; open JSON response shapes and exact defaults marked draft below. Sources N1–N4 in `provenance-sp3.md`. Signatures are observed in declarative API descriptions; semantics are supported by the native feature map and caller intent. No runtime behavior is claimed.
+Status: ready for listed signatures and behavior; open JSON response shapes and exact defaults marked draft below. Sources N1–N4 in `../provenance.md`. Signatures are observed in declarative API descriptions; semantics are supported by the native feature map and caller intent. No runtime behavior is claimed.
 
 ## A0. Shared API boundary
 

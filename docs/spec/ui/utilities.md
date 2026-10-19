@@ -1,6 +1,6 @@
 # Mini popup, tab search, overlays and isolated frames
 
-Status: **ready** for explicitly described interactions and dimensions. Exact overlay placement relative to native windows, animations not measured below and visual baselines **draft**. Sources SP2-U4 and SP2-X1 in `provenance-sp2.md`.
+Status: **ready** for explicitly described interactions and dimensions. Exact overlay placement relative to native windows, animations not measured below and visual baselines **draft**. Sources SP2-U4 and SP2-X1 in `../provenance.md`.
 
 ## Tab search
 

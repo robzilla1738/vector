@@ -1,6 +1,6 @@
 # Native filtering and browser import
 
-Status: ready for filtering contracts/limits and importer lifecycle; import source/progress payloads are new Aux contracts as identified below. Sources N1, N6, N7 in `provenance-sp3.md`. Static evidence only; no source-profile access or runtime import was performed.
+Status: ready for filtering contracts/limits and importer lifecycle; import source/progress payloads are new Aux contracts as identified below. Sources N1, N6, N7 in `../provenance.md`. Static evidence only; no source-profile access or runtime import was performed.
 
 ## F1. Filtering architecture and constraints
 

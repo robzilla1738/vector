@@ -1,6 +1,6 @@
 # Native omnibox bridge
 
-Status: ready for lifecycle/signatures and upstream autocomplete behavior; dynamic object field contracts below are Aux design decisions pending target-version runtime confirmation. Source N5 plus N1 in `provenance-sp3.md`. The source declares 29 functions and 19 events. Evidence is static, not a runtime capture.
+Status: ready for lifecycle/signatures and upstream autocomplete behavior; dynamic object field contracts below are Aux design decisions pending target-version runtime confirmation. Source N5 plus N1 in `../provenance.md`. The source declares 29 functions and 19 events. Evidence is static, not a runtime capture.
 
 ## O1. Ownership and autocomplete
 

@@ -1,6 +1,6 @@
 # Settings surfaces
 
-Status: **ready** for route/control coverage. Dimensions not listed and exact screenshot parity remain **draft**. Sources: SP2-S1/S4 in `provenance-sp2.md`.
+Status: **ready** for route/control coverage. Dimensions not listed and exact screenshot parity remain **draft**. Sources: SP2-S1/S4 in `../provenance.md`.
 
 ## Shared frame
 

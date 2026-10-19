@@ -1,6 +1,6 @@
 # Web design tokens
 
-Status: **ready** for token implementation. Sources: SP2-T1 to T3 in `provenance-sp2.md`. Static measurements from target component version; no runtime pixel sampling.
+Status: **ready** for token implementation. Sources: SP2-T1 to T3 in `../provenance.md`. Static measurements from target component version; no runtime pixel sampling.
 
 ## Palette
 

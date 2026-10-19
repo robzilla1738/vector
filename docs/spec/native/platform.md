@@ -1,6 +1,6 @@
 # Native platform and local authentication
 
-Status: ready for independent lifecycle/auth implementation; CDP viewport extensions remain draft as marked below. Sources: N1, N2, N3 in `provenance-sp3.md`. Evidence is static artifact inspection, not a runtime observation of the target version. Aux-specific decisions come from the accepted plan.
+Status: ready for independent lifecycle/auth implementation; CDP viewport extensions remain draft as marked below. Sources: N1, N2, N3 in `../provenance.md`. Evidence is static artifact inspection, not a runtime observation of the target version. Aux-specific decisions come from the accepted plan.
 
 ## P1. Browser-owned lifecycle
 

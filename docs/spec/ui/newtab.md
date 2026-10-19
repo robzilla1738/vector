@@ -1,6 +1,6 @@
 # New tab and browser search
 
-Status: **ready** for first-frame layout and functional implementation; screenshot acceptance pending. Sources: SP2-T2, SP2-U1, SP2-U2 in `provenance-sp2.md`.
+Status: **ready** for first-frame layout and functional implementation; screenshot acceptance pending. Sources: SP2-T2, SP2-U1, SP2-U2 in `../provenance.md`.
 
 ## First frame geometry
 

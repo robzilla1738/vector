@@ -1,6 +1,6 @@
 # Task lists, projects, routines and memories
 
-Status: **ready** for the behaviors and explicit dimensions below. Exact route screenshots and all hover timings remain **draft**. Sources: SP2-S1/S2/S3 in `provenance-sp2.md`.
+Status: **ready** for the behaviors and explicit dimensions below. Exact route screenshots and all hover timings remain **draft**. Sources: SP2-S1/S2/S3 in `../provenance.md`.
 
 ## Shared route behavior
 

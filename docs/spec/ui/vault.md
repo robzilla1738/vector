@@ -1,6 +1,6 @@
 # Vault popup, unlock and autofill surfaces
 
-Status: **ready** for UX flow, field categories and measured popup dimensions; cryptographic parameters/API shapes belong to daemon spec and visual baselines remain **draft**. Sources: SP2-V1/V2 in `provenance-sp2.md`.
+Status: **ready** for UX flow, field categories and measured popup dimensions; cryptographic parameters/API shapes belong to daemon spec and visual baselines remain **draft**. Sources: SP2-V1/V2 in `../provenance.md`.
 
 ## Popup shell
 

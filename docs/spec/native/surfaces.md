@@ -1,6 +1,6 @@
 # Native surfaces and browser interaction
 
-Status: ready for behavior and explicitly identified owner-required dimensions; exact target-version pixel parity remains draft until disposable-profile screenshots are captured. Sources N1, N3, N8, N9 in `provenance-sp3.md`. Historical geometry/palette measurements are labelled and must not be passed off as live 1.26.1016 evidence.
+Status: ready for behavior and explicitly identified owner-required dimensions; exact target-version pixel parity remains draft until disposable-profile screenshots are captured. Sources N1, N3, N8, N9 in `../provenance.md`. Historical geometry/palette measurements are labelled and must not be passed off as live 1.26.1016 evidence.
 
 ## V1. Sidebar structure and dimensions
 
