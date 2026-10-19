@@ -1,0 +1,573 @@
+--- /dev/null
++++ b/chrome/browser/aux/auth_scheme_probe.cc
+@@ -0,0 +1,95 @@
++// Disposable generated-key fixtures only; never loads a supplied binding or
++// carrier.
++#include "base/at_exit.h"
++#include "base/base64.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/devtools/aux_cdp_authority.h"
++#include "crypto/keypair.h"
++#include "crypto/sign.h"
++#include "net/base/ip_address.h"
++
++namespace {
++bool Check(crypto::keypair::PrivateKey private_key,
++           crypto::sign::SignatureKind kind, const char *scheme) {
++  const auto public_key =
++      crypto::keypair::PublicKey::FromPrivateKey(private_key);
++  const auto raw = private_key.IsEcP256()
++                       ? private_key.ToUncompressedX962Point()
++                       : private_key.ToMldsa65PublicKey();
++  base::DictValue public_json;
++  public_json.Set("scheme", scheme);
++  public_json.Set("sig", base::Base64Encode(raw));
++  auto imported =
++      aux::ParseInstallationPublicKey(*base::WriteJson(public_json));
++  if (!imported)
++    return false;
++  const std::string bytes(32, 'x');
++  const std::string challenge = base::Base64Encode(bytes);
++  auto sign = [&](std::string_view message) {
++    return base::Base64Encode(
++        crypto::sign::Sign(kind, private_key, base::as_byte_span(message)));
++  };
++  const auto raw_signature = sign(bytes);
++  const auto http_signature =
++      sign(std::string("Aux Daemon Auth v1\0", 19) + bytes);
++  if (!aux::VerifyCdpChallenge(*imported, challenge, raw_signature) ||
++      aux::VerifyInstallationChallenge(*imported, challenge, raw_signature) ||
++      !aux::VerifyInstallationChallenge(*imported, challenge, http_signature) ||
++      aux::VerifyCdpChallenge(*imported, challenge, http_signature) ||
++      aux::VerifyCdpChallenge(
++          *imported, base::Base64Encode(std::string(32, 'y')), raw_signature) ||
++      aux::VerifyCdpChallenge(*imported, base::Base64Encode("short"),
++                              raw_signature))
++    return false;
++  auto tampered = *base::Base64Decode(raw_signature);
++  tampered.back() ^= 1;
++  if (aux::VerifyCdpChallenge(*imported, challenge,
++                              base::Base64Encode(tampered)))
++    return false;
++  public_json.Set("scheme", private_key.IsEcP256() ? "pq_v1" : "p256_v1");
++  if (aux::ParseInstallationPublicKey(*base::WriteJson(public_json)))
++    return false;
++  aux::CdpAuthority authority(public_key, 45203, {});
++  net::HttpServerRequestInfo request;
++  request.peer = net::IPEndPoint(net::IPAddress::IPv4Localhost(), 40000);
++  request.headers["host"] = "127.0.0.1:45203";
++  request.method = "GET";
++  request.path = "/json/challenge";
++  auto response = authority.Filter(request, false);
++  if (!response || response->status != 200)
++    return false;
++  auto issued =
++      base::JSONReader::ReadDict(response->body, base::JSON_PARSE_RFC);
++  if (!issued || !issued->FindString("challenge") ||
++      !issued->FindString("challengeId"))
++    return false;
++  auto issued_bytes = base::Base64Decode(*issued->FindString("challenge"));
++  if (!issued_bytes)
++    return false;
++  base::DictValue session;
++  session.Set("challengeId", *issued->FindString("challengeId"));
++  session.Set("signedChallenge",
++              sign(std::string_view(
++                  reinterpret_cast<const char *>(issued_bytes->data()),
++                  issued_bytes->size())));
++  request.method = "POST";
++  request.path = "/json/auth/session";
++  request.data = *base::WriteJson(session);
++  response = authority.Filter(request, false);
++  if (!response || response->status != 200)
++    return false;
++  response = authority.Filter(request, false);
++  return response && response->status == 401;
++}
++} // namespace
++int main() {
++  base::AtExitManager at_exit;
++  return Check(crypto::keypair::PrivateKey::GenerateEcP256(),
++               crypto::sign::ECDSA_SHA256, "p256_v1") &&
++                 Check(crypto::keypair::PrivateKey::GenerateMldsa65(),
++                       crypto::sign::MLDSA_65, "pq_v1")
++             ? 0
++             : 1;
++}
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -1,122 +1,261 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
++// Platform bridge to the supplied native authority; no replacement private key.
+ #include "chrome/browser/aux/installation_auth.h"
+ 
++#include <errno.h>
+ #include <fcntl.h>
+-#include <sys/stat.h>
++#include <poll.h>
++#include <sys/socket.h>
+ #include <unistd.h>
+ 
++#include <algorithm>
+ #include <array>
+ 
+ #include "base/base64.h"
++#include "base/command_line.h"
+ #include "base/environment.h"
++#include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
+ #include "base/path_service.h"
++#include "base/process/kill.h"
++#include "base/process/launch.h"
+ #include "base/strings/string_util.h"
++#include "base/time/time.h"
++#include "chrome/browser/aux/daemon_supervisor.h"
+ #include "crypto/sign.h"
+ namespace aux {
+ namespace {
+-std::optional<std::vector<uint8_t>> ReadPem(const base::FilePath& path,
+-                                            std::string_view type,
+-                                            bool private_key) {
+-  base::ScopedFD fd(
+-      open(path.value().c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+-  struct stat info;
+-  if (!fd.is_valid() || fstat(fd.get(), &info) != 0 || !S_ISREG(info.st_mode) ||
+-      info.st_size <= 0 || info.st_size > 16384 ||
+-      (private_key && (info.st_uid != geteuid() || (info.st_mode & 0077)))) {
+-    return std::nullopt;
++constexpr size_t kMaxCarrierOutput = 32768;
++constexpr auto kCarrierTimeout = base::Seconds(5);
++std::optional<std::string> DecodeChallenge(std::string_view challenge) {
++  auto bytes = base::Base64Decode(challenge);
++  if (!bytes || bytes->size() != 32)
++    return std::nullopt;
++  return std::string(bytes->begin(), bytes->end());
++}
++std::optional<std::string> HttpMessage(std::string_view challenge) {
++  auto bytes = DecodeChallenge(challenge);
++  if (!bytes)
++    return std::nullopt;
++  return std::string("Aux Daemon Auth v1\0", 19) + *bytes;
++}
++bool VerifyMessage(const crypto::keypair::PublicKey &key,
++                   std::string_view message, std::string_view signature) {
++  if (signature.size() > 8192)
++    return false;
++  auto bytes = base::Base64Decode(signature);
++  if (!bytes)
++    return false;
++  if (key.IsEcP256()) {
++    return crypto::sign::Verify(crypto::sign::ECDSA_SHA256, key,
++                                base::as_byte_span(message), *bytes);
+   }
+-  std::string pem;
+-  std::array<char, 1024> buffer;
+-  for (;;) {
+-    ssize_t count = read(fd.get(), buffer.data(), buffer.size());
+-    if (count == 0) {
+-      break;
++  return key.IsMldsa65() &&
++         crypto::sign::Verify(crypto::sign::MLDSA_65, key,
++                              base::as_byte_span(message), *bytes);
++}
++std::optional<base::DictValue> RunCarrier(const base::FilePath &home,
++                                          std::string_view command,
++                                          base::DictValue input) {
++  auto env = base::Environment::Create();
++  // This switch is an externally reviewed runtime acceptance gate, not an
++  // automatically manufactured approval or fallback to independent PEM keys.
++  if (env->GetVar("AUX_ENABLE_PROVIDED_NATIVE_CARRIER") != "1")
++    return std::nullopt;
++  auto paths = BundlePaths::FromBrowserExecutable();
++  if (!paths)
++    return std::nullopt;
++  const auto root = base::MakeAbsoluteFilePath(paths->root);
++  const auto canonical_home = base::MakeAbsoluteFilePath(home);
++  if (!home.IsAbsolute() || root.empty() || canonical_home.empty() ||
++      !base::DirectoryExists(canonical_home))
++    return std::nullopt;
++  auto bundled = [&](std::string_view relative) -> base::FilePath {
++    auto path = base::MakeAbsoluteFilePath(paths->root.AppendASCII(relative));
++    if (path.empty() || !root.IsParent(path))
++      return {};
++    int mode = 0;
++    if (!base::GetPosixFilePermissions(path, &mode) || (mode & 0022))
++      return {};
++    return path;
++  };
++  const auto carrier = bundled("native/aux-native-carrier");
++  const auto boundary = bundled("native/libaux-native-boundary.dylib");
++  const auto binding =
++      bundled("apps/daemon/Aux "
++              "Daemon.app/Contents/Resources/native/provided-native.node");
++  if (carrier.empty() || boundary.empty() || binding.empty())
++    return std::nullopt;
++  auto payload = base::WriteJson(input);
++  if (!payload || payload->size() > 4096)
++    return std::nullopt;
++  int sockets[2];
++  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) != 0)
++    return std::nullopt;
++  base::ScopedFD parent(sockets[0]), child(sockets[1]);
++  int one = 1;
++  if (setsockopt(parent.get(), SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one)) ||
++      fcntl(parent.get(), F_SETFL, O_NONBLOCK) == -1 ||
++      fcntl(parent.get(), F_SETFD, FD_CLOEXEC) == -1 ||
++      fcntl(child.get(), F_SETFD, FD_CLOEXEC) == -1)
++    return std::nullopt;
++  base::ScopedFD error(open("/dev/null", O_WRONLY | O_CLOEXEC));
++  if (!error.is_valid())
++    return std::nullopt;
++  base::CommandLine line(carrier);
++  line.AppendArgPath(binding);
++  line.AppendArg(std::string(command));
++  base::LaunchOptions options;
++  options.clear_environment = true;
++  options.environment["PATH"] = "/usr/bin:/bin";
++  options.environment["HOME"] = canonical_home.value();
++  options.environment["AUX_HOME"] = canonical_home.value();
++  options.environment["AUX_ENABLE_PROVIDED_NATIVE_CARRIER"] = "1";
++  options.environment["DYLD_INSERT_LIBRARIES"] = boundary.value();
++  options.fds_to_remap = {{child.get(), STDIN_FILENO},
++                          {child.get(), STDOUT_FILENO},
++                          {error.get(), STDERR_FILENO}};
++  auto process = base::LaunchProcess(line, options);
++  child.reset();
++  if (!process.IsValid())
++    return std::nullopt;
++  const auto deadline = base::TimeTicks::Now() + kCarrierTimeout;
++  auto refuse = [&]() -> std::optional<base::DictValue> {
++    // The process is still our unreaped child, so this PID cannot have been
++    // reused. Kill only this carrier; asynchronous cleanup avoids unbounded
++    // wait.
++    process.Terminate(1, false);
++    base::EnsureProcessTerminated(std::move(process));
++    return std::nullopt;
++  };
++  size_t sent = 0;
++  bool write_closed = false, eof = false;
++  std::string output;
++  while (!eof) {
++    const auto remaining = deadline - base::TimeTicks::Now();
++    if (remaining <= base::TimeDelta())
++      return refuse();
++    pollfd item{parent.get(),
++                static_cast<short>(POLLIN | (!write_closed ? POLLOUT : 0)), 0};
++    int result = poll(
++        &item, 1, std::max(1, static_cast<int>(remaining.InMilliseconds())));
++    if (result < 0) {
++      if (errno == EINTR)
++        continue;
++      return refuse();
+     }
+-    if (count < 0 || pem.size() + count > 16384) {
+-      return std::nullopt;
++    if (result == 0 || (item.revents & (POLLERR | POLLNVAL)))
++      return refuse();
++    if (!write_closed && (item.revents & POLLOUT)) {
++      ssize_t n =
++          send(parent.get(), payload->data() + sent, payload->size() - sent, 0);
++      if (n < 0 && errno != EINTR && errno != EAGAIN)
++        return refuse();
++      if (n > 0)
++        sent += n;
++      if (sent == payload->size()) {
++        shutdown(parent.get(), SHUT_WR);
++        write_closed = true;
++      }
+     }
+-    pem.append(buffer.data(), count);
++    if (item.revents & (POLLIN | POLLHUP)) {
++      std::array<char, 2048> bytes;
++      ssize_t n = read(parent.get(), bytes.data(), bytes.size());
++      if (n < 0) {
++        if (errno == EINTR || errno == EAGAIN)
++          continue;
++        return refuse();
++      }
++      if (n == 0) {
++        eof = true;
++        continue;
++      }
++      if (output.size() + n > kMaxCarrierOutput)
++        return refuse();
++      output.append(bytes.data(), n);
++    }
+   }
+-  const std::string begin = "-----BEGIN " + std::string(type) + "-----";
+-  const std::string end = "-----END " + std::string(type) + "-----";
+-  std::string_view text = base::TrimWhitespaceASCII(pem, base::TRIM_ALL);
+-  if (!base::StartsWith(text, begin) || !base::EndsWith(text, end)) {
+-    return std::nullopt;
+-  }
+-  text.remove_prefix(begin.size());
+-  text.remove_suffix(end.size());
+-  std::string decoded;
+-  if (!base::Base64Decode(text, &decoded,
+-                          base::Base64DecodePolicy::kForgiving)) {
+-    return std::nullopt;
+-  }
+-  return std::vector<uint8_t>(decoded.begin(), decoded.end());
+-}
+-std::optional<std::string> Message(std::string_view challenge) {
+-  std::string bytes;
+-  if (!base::Base64Decode(challenge, &bytes) || bytes.size() != 32) {
+-    return std::nullopt;
+-  }
+-  std::string message("Aux Daemon Auth v1\0", 19);
+-  message += bytes;
+-  return message;
+-}
+-}  // namespace
++  int exit_code = 1;
++  if (!process.WaitForExitWithTimeout(
++          std::max(base::TimeDelta(), deadline - base::TimeTicks::Now()),
++          &exit_code))
++    return refuse();
++  if (exit_code != 0)
++    return std::nullopt;
++  auto result = base::JSONReader::ReadDict(output, base::JSON_PARSE_RFC);
++  if (!result || result->Find("error"))
++    return std::nullopt;
++  return result;
++}
++} // namespace
+ base::FilePath StateHome() {
+   auto env = base::Environment::Create();
+-  if (auto value = env->GetVar("AUX_HOME"); value && !value->empty()) {
++  if (auto value = env->GetVar("AUX_HOME"); value && !value->empty())
+     return base::FilePath(*value);
+-  }
+   base::FilePath home;
+-  if (!base::PathService::Get(base::DIR_HOME, &home)) {
+-    return {};
+-  }
+-  return home.AppendASCII(".aux");
+-}
+-std::optional<crypto::keypair::PrivateKey> LoadInstallationPrivateKey(
+-    const base::FilePath& home) {
+-  auto bytes = ReadPem(home.AppendASCII("installation-private.pem"),
+-                       "PRIVATE KEY", true);
+-  if (!bytes) {
+-    return std::nullopt;
+-  }
+-  auto key = crypto::keypair::PrivateKey::FromPrivateKeyInfo(*bytes);
+-  if (!key || !key->IsEcP256()) {
+-    return std::nullopt;
+-  }
+-  return key;
+-}
+-std::optional<crypto::keypair::PublicKey> LoadInstallationPublicKey(
+-    const base::FilePath& home) {
+-  auto bytes =
+-      ReadPem(home.AppendASCII("installation-public.pem"), "PUBLIC KEY", false);
+-  if (!bytes) {
+-    return std::nullopt;
+-  }
+-  auto key = crypto::keypair::PublicKey::FromSubjectPublicKeyInfo(*bytes);
+-  if (!key || !key->IsEcP256()) {
+-    return std::nullopt;
+-  }
+-  return key;
+-}
+-std::optional<std::string> SignDaemonChallenge(const base::FilePath& home,
++  return base::PathService::Get(base::DIR_HOME, &home)
++             ? home.AppendASCII(".aux")
++             : base::FilePath();
++}
++std::optional<crypto::keypair::PrivateKey>
++LoadInstallationPrivateKey(const base::FilePath & /*home*/) {
++  // Legacy independent credential broker cannot export the supplied authority's
++  // private key. Keep it fail-closed until the actual Vault proxy is
++  // integrated.
++  return std::nullopt;
++}
++std::optional<crypto::keypair::PublicKey>
++ParseInstallationPublicKey(std::string_view json) {
++  if (json.size() > kMaxCarrierOutput)
++    return std::nullopt;
++  auto input = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++  const auto *scheme = input ? input->FindString("scheme") : nullptr;
++  const auto *sig = input ? input->FindString("sig") : nullptr;
++  if (!scheme || !sig)
++    return std::nullopt;
++  auto bytes = base::Base64Decode(*sig);
++  if (!bytes)
++    return std::nullopt;
++  if (*scheme == "p256_v1" && bytes->size() == 65 && (*bytes)[0] == 4)
++    return crypto::keypair::PublicKey::FromEcP256Point(*bytes);
++  if (*scheme == "pq_v1" && bytes->size() == 1952)
++    return crypto::keypair::PublicKey::FromMldsa65PublicKey(*bytes);
++  return std::nullopt;
++}
++std::optional<crypto::keypair::PublicKey>
++LoadInstallationPublicKey(const base::FilePath &home) {
++  auto result = RunCarrier(home, "get-public-keys", {});
++  auto json = result ? base::WriteJson(*result) : std::nullopt;
++  return json ? ParseInstallationPublicKey(*json) : std::nullopt;
++}
++std::optional<std::string> SignDaemonChallenge(const base::FilePath &home,
+                                                std::string_view challenge) {
+-  auto key = LoadInstallationPrivateKey(home);
+-  auto message = Message(challenge);
+-  if (!key || !message) {
+-    return std::nullopt;
+-  }
+-  return base::Base64Encode(crypto::sign::Sign(crypto::sign::ECDSA_SHA256, *key,
+-                                               base::as_byte_span(*message)));
+-}
+-bool VerifyInstallationChallenge(const crypto::keypair::PublicKey& key,
++  auto message = HttpMessage(challenge);
++  if (!message)
++    return std::nullopt;
++  base::DictValue input;
++  input.Set("challenge", base::Base64Encode(*message));
++  auto result = RunCarrier(home, "cdp-sign", std::move(input));
++  const auto *signature = result ? result->FindString("signature") : nullptr;
++  // The daemon verifies this unchanged native signature. One carrier invocation
++  // keeps the entire signing operation within its five-second I/O deadline.
++  if (!signature || signature->empty() || signature->size() > 8192 ||
++      !base::Base64Decode(*signature))
++    return std::nullopt;
++  return *signature;
++}
++bool VerifyInstallationChallenge(const crypto::keypair::PublicKey &key,
+                                  std::string_view challenge,
+                                  std::string_view signature) {
+-  auto message = Message(challenge);
+-  auto bytes = base::Base64Decode(signature);
+-  return message && bytes &&
+-         crypto::sign::Verify(crypto::sign::ECDSA_SHA256, key,
+-                              base::as_byte_span(*message), *bytes);
+-}
+-}  // namespace aux
++  auto message = HttpMessage(challenge);
++  return message && VerifyMessage(key, *message, signature);
++}
++bool VerifyCdpChallenge(const crypto::keypair::PublicKey &key,
++                        std::string_view challenge,
++                        std::string_view signature) {
++  auto bytes = DecodeChallenge(challenge);
++  return bytes && VerifyMessage(key, *bytes, signature);
++}
++} // namespace aux
+--- a/chrome/browser/aux/installation_auth.h
++++ b/chrome/browser/aux/installation_auth.h
+@@ -1,5 +1,5 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+-// Independently implemented from docs/spec/native/platform.md P2.
++// Supplied native-authority integration; HTTP and raw CDP inputs are distinct.
+ #ifndef CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
+ #define CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
+ #include <optional>
+@@ -11,14 +11,18 @@
+ namespace aux {
+ // Blocking functions: invoke on a MayBlock worker, never the UI thread.
+ base::FilePath StateHome();
+-std::optional<crypto::keypair::PrivateKey> LoadInstallationPrivateKey(
+-    const base::FilePath& home);
+-std::optional<crypto::keypair::PublicKey> LoadInstallationPublicKey(
+-    const base::FilePath& home);
+-std::optional<std::string> SignDaemonChallenge(const base::FilePath& home,
++std::optional<crypto::keypair::PrivateKey>
++LoadInstallationPrivateKey(const base::FilePath &home);
++std::optional<crypto::keypair::PublicKey>
++ParseInstallationPublicKey(std::string_view json);
++std::optional<crypto::keypair::PublicKey>
++LoadInstallationPublicKey(const base::FilePath &home);
++std::optional<std::string> SignDaemonChallenge(const base::FilePath &home,
+                                                std::string_view challenge);
+-bool VerifyInstallationChallenge(const crypto::keypair::PublicKey& key,
++bool VerifyInstallationChallenge(const crypto::keypair::PublicKey &key,
+                                  std::string_view challenge,
+                                  std::string_view signature);
+-}  // namespace aux
++bool VerifyCdpChallenge(const crypto::keypair::PublicKey &key,
++                        std::string_view challenge, std::string_view signature);
++} // namespace aux
+ #endif
+--- a/chrome/browser/devtools/aux_cdp_authority.cc
++++ b/chrome/browser/devtools/aux_cdp_authority.cc
+@@ -29,21 +29,20 @@
+   }
+   return false;
+ }
+-}  // namespace
+-CdpAuthority::CdpAuthority(crypto::keypair::PublicKey key,
+-                           uint16_t port,
++} // namespace
++CdpAuthority::CdpAuthority(crypto::keypair::PublicKey key, uint16_t port,
+                            std::set<std::string> origins)
+     : key_(std::move(key)), port_(port), origins_(std::move(origins)) {}
+ CdpAuthority::~CdpAuthority() = default;
+ void CdpAuthority::Prune(base::TimeTicks now) {
+   std::erase_if(challenges_,
+-                [now](const auto& item) { return item.second.expires <= now; });
++                [now](const auto &item) { return item.second.expires <= now; });
+   std::erase_if(sessions_,
+-                [now](const auto& item) { return item.second <= now; });
++                [now](const auto &item) { return item.second <= now; });
+ }
+-std::optional<CdpResponse> CdpAuthority::Filter(
+-    const net::HttpServerRequestInfo& request,
+-    bool websocket) {
++std::optional<CdpResponse>
++CdpAuthority::Filter(const net::HttpServerRequestInfo &request,
++                     bool websocket) {
+   if (!request.peer.address().IsLoopback() ||
+       !ValidHost(request.GetHeaderValue("host"), port_)) {
+     return Error(403, "FORBIDDEN", "Loopback host required");
+@@ -64,7 +63,7 @@
+     if (challenges_.size() >= 1024) {
+       auto oldest =
+           std::min_element(challenges_.begin(), challenges_.end(),
+-                           [](const auto& a, const auto& b) {
++                           [](const auto &a, const auto &b) {
+                              return a.second.expires < b.second.expires;
+                            });
+       challenges_.erase(oldest);
+@@ -82,8 +81,8 @@
+       return Error(400, "BAD_REQUEST", "Invalid session request");
+     }
+     auto input = base::JSONReader::ReadDict(request.data, base::JSON_PARSE_RFC);
+-    const std::string* id = input ? input->FindString("challengeId") : nullptr;
+-    const std::string* signature =
++    const std::string *id = input ? input->FindString("challengeId") : nullptr;
++    const std::string *signature =
+         input ? input->FindString("signedChallenge") : nullptr;
+     if (!id || !signature) {
+       return Error(400, "BAD_REQUEST", "Challenge and signature required");
+@@ -94,7 +93,7 @@
+     }
+     const auto challenge = std::move(found->second);
+     challenges_.erase(found);
+-    if (!VerifyInstallationChallenge(key_, challenge.bytes, *signature)) {
++    if (!VerifyCdpChallenge(key_, challenge.bytes, *signature)) {
+       return Error(401, "UNAUTHORIZED", "Signature could not be verified");
+     }
+     if (sessions_.size() >= 1024) {
+@@ -116,11 +115,11 @@
+   }
+   return std::nullopt;
+ }
+-CdpRequestFilter CreateCdpRequestFilter(
+-    std::shared_ptr<CdpAuthority> authority) {
++CdpRequestFilter
++CreateCdpRequestFilter(std::shared_ptr<CdpAuthority> authority) {
+   return base::BindRepeating(
+       [](std::shared_ptr<CdpAuthority> authority,
+-         const net::HttpServerRequestInfo& request,
++         const net::HttpServerRequestInfo &request,
+          bool websocket) -> std::optional<net::HttpServerResponseInfo> {
+         auto result = authority->Filter(request, websocket);
+         if (!result) {
+@@ -135,4 +134,4 @@
+       },
+       std::move(authority));
+ }
+-}  // namespace aux
++} // namespace aux

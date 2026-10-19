@@ -1,0 +1,5 @@
+{
+  "chrome/browser/aux/installation_auth.h": "20ea2f68c7295da07a8b8d0738c9a75dfea31e4b32daeadff69e04cd2986488c",
+  "chrome/browser/aux/installation_auth.cc": "200d7be0ab71dbd3169f12f96fc17ef3f24d9437d1d1982da85b8012cc58a647",
+  "chrome/browser/devtools/aux_cdp_authority.cc": "da5989b2a49c295b8f8d0985075dcfe7d7d6b8ad35670bf21225b37cd6693327"
+}
