@@ -49,6 +49,8 @@ steps.extend((f'native-compile-fixes/{name}/fix.patch', f'native-compile-fixes/{
 ])
 steps.append(('native-preference-effects/native.patch', 'native-preference-effects/manifest.json'))
 steps.append(('native-window-vibrancy/native.patch', 'native-window-vibrancy/manifest.json'))
+steps.append(('native-horizontal-shrink/native.patch', 'native-horizontal-shrink/manifest.json'))
+steps.append(('native-vertical-navigation/native.patch', 'native-vertical-navigation/manifest.json'))
 
 def safe(path):
     value = Path(path)
@@ -95,6 +97,32 @@ for patch_path, metadata in steps:
                 raise ValueError(f'New proposal source already exists: {path}')
             baseline[path] = None
 
+def restore_owned_wire_contracts(copy, report):
+    # Historical proposals precede these bytes; later compiler fixes pin them.
+    wire_edits = {
+        'chrome/browser/aux/daemon_supervisor.cc': [
+            ('"aux-daemon"', '"aside-daemon"', 1),
+            ('"AuxDaemonSessionToken"', '"AsideDaemonSessionToken"', 1),
+            ('"AuxDaemonSessionToken "', '"AsideDaemonSessionToken "', 1)],
+        'chrome/browser/aux/installation_auth.cc': [
+            ('std::string("Aux Daemon Auth v1\\0", 19)', 'std::string("Aside Daemon Auth v1\\0", 21)', 1)],
+        'chrome/browser/aux/auth_scheme_probe.cc': [
+            ('std::string("Aux Daemon Auth v1\\0", 19)', 'std::string("Aside Daemon Auth v1\\0", 21)', 1)],
+        'chrome/browser/devtools/aux_cdp_authority.cc': [
+            ('"AuxSessionToken"', '"AsideSessionToken"', 1),
+            ('"AuxSessionToken "', '"AsideSessionToken "', 1)],
+    }
+    for path, edits in wire_edits.items():
+        target = copy / path
+        text = target.read_text()
+        for find, replace, count in edits:
+            if text.count(find) != count:
+                raise ValueError(f'Wire correction anchor drift: {path}: {find}')
+            text = text.replace(find, replace)
+            report['wireEdits'].append({'path': path, 'find': find, 'replace': replace, 'count': count})
+        target.write_text(text)
+
+
 brand_manifest = json.loads((proposals / 'native-branding-assets/manifest.json').read_text())
 if sha((repository / 'assets/brand/arch-mark.svg').read_bytes()) != brand_manifest['canonicalSvgSha256']:
     raise ValueError('Canonical branding changed after native replacements were proposed')
@@ -114,6 +142,8 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             (copy / path).write_bytes(raw)
     environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(copy.parent))
     for name, patch, metadata in patches:
+        if name.startswith('native-compile-fixes/') and not report['wireEdits']:
+            restore_owned_wire_contracts(copy, report)
         data = json.loads((proposals / metadata).read_text()) if metadata else None
         items = data.get('files', data) if isinstance(data, dict) else data if isinstance(data, list) else []
         if isinstance(items, dict):
@@ -151,29 +181,8 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             (copy / path).parent.mkdir(parents=True, exist_ok=True)
             (copy / path).write_bytes(raw)
 
-    # Owner-required original protocol bytes, after the historical proposals.
-    wire_edits = {
-        'chrome/browser/aux/daemon_supervisor.cc': [
-            ('"aux-daemon"', '"aside-daemon"', 1),
-            ('"AuxDaemonSessionToken"', '"AsideDaemonSessionToken"', 1),
-            ('"AuxDaemonSessionToken "', '"AsideDaemonSessionToken "', 1)],
-        'chrome/browser/aux/installation_auth.cc': [
-            ('std::string("Aux Daemon Auth v1\\0", 19)', 'std::string("Aside Daemon Auth v1\\0", 21)', 1)],
-        'chrome/browser/aux/auth_scheme_probe.cc': [
-            ('std::string("Aux Daemon Auth v1\\0", 19)', 'std::string("Aside Daemon Auth v1\\0", 21)', 1)],
-        'chrome/browser/devtools/aux_cdp_authority.cc': [
-            ('"AuxSessionToken"', '"AsideSessionToken"', 1),
-            ('"AuxSessionToken "', '"AsideSessionToken "', 1)],
-    }
-    for path, edits in wire_edits.items():
-        target = copy / path
-        text = target.read_text()
-        for find, replace, count in edits:
-            if text.count(find) != count:
-                raise ValueError(f'Wire correction anchor drift: {path}: {find}')
-            text = text.replace(find, replace)
-            report['wireEdits'].append({'path': path, 'find': find, 'replace': replace, 'count': count})
-        target.write_text(text)
+    if not report['wireEdits']:
+        restore_owned_wire_contracts(copy, report)
     # Tools mutate npm/pip caches and bytecode. The bundled runtime is a seed;
     # the supplied lazy installer provisions the owned mutable home cache.
     target = copy / 'chrome/browser/aux/daemon_supervisor.cc'

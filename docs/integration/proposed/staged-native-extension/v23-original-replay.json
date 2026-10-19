@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "rollbackChain": [
+    "v16",
+    "v15",
+    "v14",
+    "v13",
+    "v12",
+    "v11",
+    "v10"
+  ],
+  "originalSnapshot": "/Users/rcourson/Documents/Vibe/web/out/native-original-replay-v16",
+  "freshComposition": "/Users/rcourson/Documents/Vibe/web/out/native-replayed-composition-v23",
+  "stagedComposition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-v23",
+  "sourceFilesMatched": 78,
+  "artworkTargetsMatched": 23,
+  "freshOrderedSteps": 32,
+  "freshComposerSha256": "13ba9193c9f490aff7b901d12a34bdc911879b486d81e46cd3a9cc22439cdd1a",
+  "sharedSourcesWritten": false,
+  "compiled": false
+}
