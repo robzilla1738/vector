@@ -9,19 +9,20 @@
  #include "base/json/json_reader.h"
  #include "base/json/json_writer.h"
  #include "base/strings/string_number_conversions.h"
-@@ -23,6 +25,11 @@
+@@ -23,6 +25,12 @@
  #include "chrome/browser/aux/profile_security_client.h"
  #include "chrome/browser/aux/profile_state.h"
  #include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
 +#include "content/public/browser/devtools_agent_host.h"
 +#include "content/public/browser/web_contents.h"
  #include "content/public/browser/storage_partition.h"
  #include "net/http/http_response_headers.h"
  #include "net/base/url_util.h"
-@@ -130,6 +137,327 @@
+@@ -130,6 +138,328 @@
    return task;
  }
  }  // namespace
@@ -297,7 +298,8 @@
 +      }
 +      closing_.push_back(row.target_id);
 +      model->CloseWebContents(live->contents,
-+                              TabStripModel::CLOSE_CREATE_HISTORICAL_TAB);
++                              TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB |
++                                  TabCloseTypes::CLOSE_USER_GESTURE);
 +    }
 +    ObserveClosures();
 +  }
@@ -349,7 +351,7 @@
 
  AuxNativeTaskFeed::AuxNativeTaskFeed(Profile* profile, UpdatedCallback updated)
      : profile_(profile), updated_(std::move(updated)) {}
-@@ -411,64 +739,25 @@
+@@ -411,64 +741,25 @@
  void AuxNativeTaskFeed::RequestAgentTabs(AgentTabsOperation operation,
                                          base::DictValue input,
                                          AgentTabsCallback callback) {

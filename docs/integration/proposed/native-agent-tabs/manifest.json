@@ -6,7 +6,7 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
       "baselineSha256": "e664ae432d66ac3e2440120332b485b5acd253887eacf9eff85243e5a8aa1fd3",
-      "outputSha256": "ace6121ad037eca3b4a4d717026cc5d0f21c1d5d97e63c9b3579ec8058bfafd3"
+      "outputSha256": "e38ac3e3679610c2d111bf64a9f6c7d88c95f164d838cb285d2eb4c9652ebe6a"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_native_task_feed.h",
