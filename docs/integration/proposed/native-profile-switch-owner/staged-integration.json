@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "stagedComposition": "out/native-reuse-composition-v45",
+  "originalReplay": "out/native-replayed-composition-v45",
+  "sourceOutputsMatched": 130,
+  "orderedPatches": 55,
+  "sharedSourceApplied": false,
+  "compiled": false,
+  "runtimeParity": false,
+  "missing": "Whole owner transaction, remaining profile-bound services, GN registration and actual compiled/runtime verification"
+}

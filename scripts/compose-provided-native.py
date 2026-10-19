@@ -61,6 +61,22 @@ steps.append(('native-agent-background-target/native.patch', 'native-agent-backg
 steps.append(('native-carrier-profile-layout/fix.patch', 'native-carrier-profile-layout/manifest.json'))
 steps.append(('native-ntp-final-guards/native.patch', 'native-ntp-final-guards/manifest.json'))
 steps.append(('native-ntp-build-fixes/fix.patch', 'native-ntp-build-fixes/manifest.json'))
+# Source-faithful same-window workspace transaction, staged in dependency order.
+steps.extend([
+    ('native-profile-switch-overlay/native.patch', 'native-profile-switch-overlay/manifest.json'),
+    ('native-profile-switch-owner/owner-primitives.patch', 'native-profile-switch-owner/owner-primitives-manifest.json'),
+    ('native-profile-switch-workspace/native.patch', 'native-profile-switch-workspace/manifest.json'),
+    ('native-profile-switch-workspace/factory.patch', 'native-profile-switch-workspace/factory-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/ownership.patch', 'native-profile-switch-owner/transaction-map/ownership-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/commands.patch', 'native-profile-switch-owner/transaction-map/commands-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/session-rebuild.patch', 'native-profile-switch-owner/transaction-map/session-rebuild-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/session-helper.patch', 'native-profile-switch-owner/transaction-map/session-helper-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/stable-controllers.patch', 'native-profile-switch-owner/transaction-map/stable-controllers-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/vertical-controller.patch', 'native-profile-switch-owner/transaction-map/vertical-controller-manifest.json'),
+    ('native-profile-switch-identity/native.patch', 'native-profile-switch-identity/manifest.json'),
+    ('native-profile-switch-collections/native.patch', 'native-profile-switch-collections/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/bookmark-views.patch', 'native-profile-switch-owner/transaction-map/bookmark-views-manifest.json'),
+])
 
 def safe(path):
     value = Path(path)
