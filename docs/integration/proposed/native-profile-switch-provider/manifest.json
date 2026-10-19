@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Exact f970432b4 private Features output; real binding prerequisites listed in README",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "baselineSha256": "da25941c0952d14be6241819a4ef2e7e2ac6930fae9797984c693884d2667083",
+      "outputSha256": "16a1a6d1d0bad2be6daf2022c76f59f10cdb7da8bde667445393c894f67a50ba"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": null,
+      "outputSha256": "f0e5f5070f58017ff991a6e088a60e4c9bc5bf5760ef67d4298de3f725f979a7"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

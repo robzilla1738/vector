@@ -1,0 +1,495 @@
+--- a/chrome/browser/ui/browser_window/public/browser_window_features.h
++++ b/chrome/browser/ui/browser_window/public/browser_window_features.h
+@@ -285,6 +285,12 @@
+   BrowserWindowFeatures();
+   ~BrowserWindowFeatures();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Internal native owner entry; no UI/API trigger is registered. False also
++  // covers a real security gate that is not ready; no success is synthesized.
++  bool RunAuxProfileSwitch(Profile* target);
++#endif
++
+   BrowserWindowFeatures(const BrowserWindowFeatures&) = delete;
+   BrowserWindowFeatures& operator=(const BrowserWindowFeatures&) = delete;
+ 
+@@ -354,6 +360,13 @@
+     bool had_keybindings = false;
+     bool had_extension_window = false;
+   } aux_private_profile_services_;
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  struct AuxProfileSwitchProvider;
++  struct AuxProfileSwitchProviderDeleter {
++    void operator()(AuxProfileSwitchProvider*) const;
++  };
+ #endif
+ 
+   // Members owned by all browser window types.
+@@ -611,6 +624,13 @@
+   raw_ptr<PinnedToolbarActions> pinned_toolbar_actions_ = nullptr;
+   raw_ptr<TabStripModel> tab_strip_model_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Cancel transaction/rebuild weak tasks before profile-bound service fields
++  // retire. The private out-of-line provider adds no public Views dependency.
++  std::unique_ptr<AuxProfileSwitchProvider, AuxProfileSwitchProviderDeleter>
++      aux_profile_switch_provider_;
++#endif
++
+   // Embedder features. Must be declared last.
+   // Keep this member last to ensure embedder features are torn down first, in
+   // reverse order of initialization.
+--- /dev/null
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -0,0 +1,449 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include <memory>
++#include <optional>
++#include <utility>
++#include "base/check_op.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ref.h"
++#include "chrome/browser/content_settings/cookie_settings_factory.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "chrome/browser/extensions/extension_browser_window_helper.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_actions.h"
++#include "chrome/browser/ui/browser_live_tab_context.h"
++#include "chrome/browser/ui/browser_select_file_dialog_controller.h"
++#include "chrome/browser/ui/browser_tab_menu_model_delegate.h"
++#include "chrome/browser/ui/extensions/extension_installed_watcher.h"
++#include "chrome/browser/ui/extensions/extension_side_panel_manager.h"
++#include "chrome/browser/ui/focus/browser_focus_controller_views.h"
++#include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
++#include "chrome/browser/ui/signin/signin_view_controller.h"
++#include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/toolbar/app_menu_icon_controller.h"
++#include "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h"
++#include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
++#include "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h"
++#include "chrome/browser/ui/views/location_bar/location_bar_view.h"
++#include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
++#include "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h"
++#include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
++#include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
++#include "chrome/browser/ui/views/toolbar/reload_button.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.h"
++#include "components/content_settings/browser/ui/cookie_controls_controller.h"
++
++// One physical owner/window/model. No renderer or extension API is registered
++// here. In particular this does not activate a partially migrated UI gesture.
++struct BrowserWindowFeatures::AuxProfileSwitchProvider {
++  struct Bindings {
++    raw_ptr<BrowserView> view;
++    raw_ptr<ToolbarView> toolbar;
++    raw_ptr<LocationBarView> location;
++    raw_ptr<VerticalTabStripRegionView> vertical;
++    raw_ptr<AvatarToolbarButton> avatar;
++    raw_ptr<MediaToolbarButtonView> media;
++    raw_ptr<BrowserUserEducationInterfaceImpl> education;
++    uint64_t view_generation = 0;
++    uint64_t actions_generation = 0;
++    uint64_t location_generation = 0;
++    uint64_t vertical_generation = 0;
++  };
++  explicit AuxProfileSwitchProvider(BrowserWindowFeatures& features)
++      : features_(features),
++        transaction(*static_cast<Browser*>(features.browser_.get())) {}
++  std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
++  Prepare(Browser&, Profile&);
++  void Begin(std::shared_ptr<Bindings>, base::WeakPtr<Profile>,
++             Browser&, Browser&, Browser&);
++  void Commit(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
++  void Finish(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
++  void Abort(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
++  base::raw_ref<BrowserWindowFeatures> features_;
++  aux::ProfileSwitchTransaction transaction;
++};
++
++void BrowserWindowFeatures::AuxProfileSwitchProviderDeleter::operator()(
++    AuxProfileSwitchProvider* provider) const {
++  delete provider;
++}
++
++bool BrowserWindowFeatures::RunAuxProfileSwitch(Profile* target) {
++  if (!browser_ || browser_->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++    return false;
++  }
++  if (!aux_profile_switch_provider_) {
++    aux_profile_switch_provider_.reset(new AuxProfileSwitchProvider(*this));
++  }
++  const auto result = aux_profile_switch_provider_->transaction.Run(
++      target,
++      base::BindOnce(&AuxProfileSwitchProvider::Prepare,
++                     base::Unretained(aux_profile_switch_provider_.get())),
++      base::PassKey<BrowserWindowFeatures>());
++  return result == aux::ProfileSwitchTransaction::Result::kSwitched ||
++         result == aux::ProfileSwitchTransaction::Result::kNoChange;
++}
++
++std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
++BrowserWindowFeatures::AuxProfileSwitchProvider::Prepare(Browser& browser,
++                                                       Profile& target) {
++  CHECK_EQ(features_->browser_, &browser);
++  // Explicit remaining source owners. Their presence is a real unsupported
++  // graph, never permission to retain old-profile services or return success.
++  // Remove a guard only with its actual cold/commit/abort lifecycle port.
++  if (features_->breadcrumb_manager_browser_agent_ ||
++      features_->comments_side_panel_coordinator_ || features_->contextual_tasks_browser_controller_ ||
++      features_->context_highlight_window_feature_ || features_->glic_iph_controller_ ||
++      features_->glic_split_button_controller_ || features_->most_recent_shared_tab_update_store_ ||
++      features_->session_service_tab_group_sync_observer_ || features_->organizer_panel_controller_ ||
++      features_->actor_ui_window_controller_ || features_->ai_overlay_dialog_controller_ ||
++      features_->ai_mode_page_action_controller_ || features_->data_protection_ui_controller_ ||
++      features_->new_tab_footer_controller_ || features_->cast_browser_controller_ ||
++      features_->ios_promo_controller_ || features_->chrome_labs_coordinator_ ||
++      features_->recent_activity_bubble_coordinator_ || features_->shared_tab_group_feedback_controller_ ||
++      features_->find_bar_controller_) {
++    return std::nullopt;
++  }
++  auto* view = BrowserView::GetBrowserViewForBrowser(&browser);
++  auto* toolbar = view ? view->toolbar() : nullptr;
++  auto* location = toolbar ? static_cast<LocationBarView*>(toolbar->location_bar())
++                           : nullptr;
++  if (!view || !toolbar || !location || !features_->browser_actions_ ||
++      !features_->browser_focus_controller_ || !features_->user_education_ || !features_->live_tab_context_ ||
++      !view->CanRebindForAuxProfileSwitch(&target) ||
++      !features_->browser_actions_->CanRebindForAuxProfileSwitch(&target) ||
++      !location->CanPrepareForAuxProfileSwitch(&target) ||
++      !toolbar->CanRebindOwnedActionsForAuxProfileSwitch() ||
++      !features_->CanPrepareAuxPrivateProfileServices(&target)) {
++    return std::nullopt;
++  }
++  auto plan = std::make_shared<Bindings>();
++  plan->view = view;
++  plan->toolbar = toolbar;
++  plan->location = location;
++  plan->vertical = view->vertical_tab_strip_region_view();
++  plan->avatar = toolbar->avatar_toolbar_button();
++  plan->media = static_cast<MediaToolbarButtonView*>(toolbar->media_button());
++  plan->education =
++      static_cast<BrowserUserEducationInterfaceImpl*>(features_->user_education_.get());
++  if ((plan->vertical && !plan->vertical->CanRebindForAuxProfileSwitch(&target)) ||
++      (plan->avatar && !plan->avatar->CanRebindForAuxProfileSwitch()) ||
++      (plan->media && !plan->media->CanPrepareForAuxProfileSwitch(&target)) ||
++      !plan->education->CanPrepareForAuxProfileSwitch() ||
++      (toolbar->reload_button() &&
++       !toolbar->reload_button()->CanRebindForAuxProfileSwitch()) ||
++      (features_->profile_menu_coordinator_ &&
++       !features_->profile_menu_coordinator_->CanPrepareForAuxProfileSwitch()) ||
++      (features_->signin_view_controller_ &&
++       !features_->signin_view_controller_->CanPrepareForAuxProfileSwitch()) ||
++      (features_->profile_customization_bubble_sync_controller_ &&
++       !features_->profile_customization_bubble_sync_controller_->CanPrepareForAuxProfileSwitch()) ||
++      (features_->extension_installed_watcher_ &&
++       !features_->extension_installed_watcher_->CanPrepareForAuxProfileSwitch()) ||
++      (features_->extension_browser_window_helper_ &&
++       !features_->extension_browser_window_helper_->CanPrepareForAuxProfileSwitch()) ||
++      (features_->browser_select_file_dialog_controller_ &&
++       !features_->browser_select_file_dialog_controller_->CanRebindForAuxProfileSwitch()) ||
++      (features_->data_sharing_bubble_controller_ &&
++       !features_->data_sharing_bubble_controller_->CanRebindForAuxProfileSwitch()) ||
++      (features_->tab_group_deletion_dialog_controller_ &&
++       !features_->tab_group_deletion_dialog_controller_->CanRebindForAuxProfileSwitch()) ||
++      (features_->tab_menu_model_delegate_ &&
++       !static_cast<chrome::BrowserTabMenuModelDelegate*>(
++            features_->tab_menu_model_delegate_.get())->CanRebindForAuxProfileSwitch(&browser)) ||
++      (features_->lens_overlay_entry_point_controller_ &&
++       !features_->lens_overlay_entry_point_controller_->CanRebindForAuxProfileSwitch()) ||
++      (features_->download_toolbar_ui_controller_ &&
++       !features_->download_toolbar_ui_controller_->CanRebindForAuxProfileSwitch())) {
++    return std::nullopt;
++  }
++  if (features_->cookie_controls_bubble_coordinator_ &&
++      !features_->cookie_controls_bubble_coordinator_->CanRebindForAuxProfileSwitch()) {
++    return std::nullopt;
++  }
++  return aux::ProfileSwitchTransaction::PreparedBindings(
++      base::BindOnce(&AuxProfileSwitchProvider::Begin,
++                     base::Unretained(this), plan, target.GetWeakPtr()),
++      base::BindOnce(&AuxProfileSwitchProvider::Commit,
++                     base::Unretained(this), plan),
++      base::BindOnce(&AuxProfileSwitchProvider::Finish,
++                     base::Unretained(this), plan),
++      base::BindOnce(&AuxProfileSwitchProvider::Abort,
++                     base::Unretained(this), plan));
++}
++
++void BrowserWindowFeatures::AuxProfileSwitchProvider::Begin(
++    std::shared_ptr<Bindings> plan,
++    base::WeakPtr<Profile> target, Browser&, Browser&, Browser&) {
++  CHECK(target);
++  // All old-source observation/IPC is retired before identity. Source-tab
++  // services that need real detach notifications remain until empty commit.
++  plan->view_generation = plan->view->BeginAuxProfileSwitch(target.get());
++  plan->actions_generation = features_->browser_actions_->BeginAuxProfileSwitch(target.get());
++  plan->location_generation = plan->location->BeginAuxProfileSwitch(target.get());
++  if (plan->vertical) {
++    plan->vertical_generation = plan->vertical->BeginAuxProfileSwitch(target.get());
++  }
++  if (features_->download_toolbar_ui_controller_) {
++    features_->download_toolbar_ui_controller_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->cookie_controls_bubble_coordinator_) {
++    features_->cookie_controls_bubble_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->side_panel_coordinator_) {
++    features_->side_panel_coordinator_->PreparePinningForAuxProfileSwitch();
++  }
++  if (features_->extension_side_panel_manager_) {
++    features_->extension_side_panel_manager_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->reading_list_side_panel_coordinator_) {
++    features_->reading_list_side_panel_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->bookmarks_side_panel_coordinator_) {
++    features_->bookmarks_side_panel_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->history_side_panel_coordinator_) {
++    features_->history_side_panel_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->history_clusters_side_panel_coordinator_) {
++    features_->history_clusters_side_panel_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->tabs_from_other_devices_side_panel_coordinator_) {
++    features_->tabs_from_other_devices_side_panel_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->bookmarks_service_feature_) {
++    features_->bookmarks_service_feature_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->extension_browser_window_helper_) {
++    features_->extension_browser_window_helper_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->extension_installed_watcher_) {
++    features_->extension_installed_watcher_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->profile_menu_coordinator_) {
++    features_->profile_menu_coordinator_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->signin_view_controller_) {
++    features_->signin_view_controller_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->profile_customization_bubble_sync_controller_) {
++    features_->profile_customization_bubble_sync_controller_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->lens_overlay_entry_point_controller_) {
++    features_->lens_overlay_entry_point_controller_->PrepareForAuxProfileSwitch();
++  }
++  plan->education->PrepareForAuxProfileSwitch();
++  if (plan->avatar) {
++    plan->avatar->PrepareForAuxProfileSwitch();
++  }
++  if (plan->media) {
++    plan->media->PrepareForAuxProfileSwitch();
++  }
++  plan->toolbar->app_menu_icon_controller()->PrepareForAuxProfileSwitch();
++  plan->toolbar->PrepareOwnedActionsForAuxProfileSwitch();
++  // Do not leave Features' alias pointing into the retired pinned subtree.
++  features_->pinned_toolbar_actions_ = nullptr;
++  features_->BeginAuxPrivateProfileServices(target.get());
++}
++
++void BrowserWindowFeatures::AuxProfileSwitchProvider::Commit(
++    std::shared_ptr<Bindings> plan,
++    Browser& browser, Browser&, Browser&) {
++  Profile* target = browser.GetProfile();
++  CHECK(browser.GetTabStripModel()->empty());
++  plan->view->RebindAuxProfileSwitch(plan->view_generation);
++  // Real action definitions/policies must exist before target toolbar/entries.
++  features_->browser_actions_->RebindAuxProfileSwitch(plan->actions_generation);
++  plan->location->RebindAuxProfileSwitch(plan->location_generation);
++  plan->toolbar->RebindOwnedActionsForAuxProfileSwitch(target);
++  features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  features_->RebindAuxPrivateProfileServices();
++  if (features_->cookie_controls_controller_) {
++    // Real source-tab deactivation/detach removed page-action observers. No
++    // OnUiClosing/reload is run; replace only its private settings sources.
++    CHECK(features_->cookie_controls_controller_->CanRetireWithoutUi());
++    features_->cookie_controls_controller_.reset();
++    features_->cookie_controls_controller_ =
++        std::make_unique<content_settings::CookieControlsController>(
++            browser.GetUnownedUserDataHost(),
++            CookieSettingsFactory::GetForProfile(target), nullptr,
++            HostContentSettingsMapFactory::GetForProfile(target), false);
++  }
++  if (features_->cookie_controls_bubble_coordinator_) {
++    features_->cookie_controls_bubble_coordinator_->RebindForAuxProfileSwitch(
++        features_->browser_actions_->root_action_item());
++  }
++  static_cast<BrowserFocusControllerViews*>(features_->browser_focus_controller_.get())
++      ->RebindForAuxProfileSwitch(browser);
++  features_->live_tab_context_->RebindForAuxProfileSwitch();
++  if (features_->browser_select_file_dialog_controller_) {
++    features_->browser_select_file_dialog_controller_->RebindForAuxProfileSwitch(browser);
++  }
++  if (features_->data_sharing_bubble_controller_) {
++    features_->data_sharing_bubble_controller_->RebindForAuxProfileSwitch(target);
++  }
++  if (features_->tab_group_deletion_dialog_controller_) {
++    features_->tab_group_deletion_dialog_controller_->RebindForAuxProfileSwitch(&browser, target);
++  }
++  if (features_->tab_menu_model_delegate_) {
++    static_cast<chrome::BrowserTabMenuModelDelegate*>(features_->tab_menu_model_delegate_.get())->RebindForAuxProfileSwitch(&browser, target);
++  }
++  if (features_->profile_menu_coordinator_) {
++    features_->profile_menu_coordinator_->RebindForAuxProfileSwitch(*target);
++  }
++  if (features_->signin_view_controller_) {
++    features_->signin_view_controller_->RebindForAuxProfileSwitch(*target);
++  }
++  if (features_->profile_customization_bubble_sync_controller_) {
++    features_->profile_customization_bubble_sync_controller_->RebindForAuxProfileSwitch(*target);
++  }
++  if (features_->extension_installed_watcher_) {
++    features_->extension_installed_watcher_->RebindForAuxProfileSwitch(browser);
++  }
++  if (features_->extension_browser_window_helper_) {
++    features_->extension_browser_window_helper_->RebindForAuxProfileSwitch(target);
++  }
++  if (features_->bookmarks_service_feature_) {
++    features_->bookmarks_service_feature_->RebindForAuxProfileSwitch(browser);
++  }
++  if (plan->avatar) {
++    plan->avatar->RebindForAuxProfileSwitch(target);
++  }
++  if (plan->media) {
++    plan->media->RebindForAuxProfileSwitch();
++  }
++  plan->toolbar->app_menu_icon_controller()->RebindForAuxProfileSwitch(*target);
++  if (plan->toolbar->reload_button()) {
++    plan->toolbar->reload_button()->RebindForAuxProfileSwitch(target);
++  }
++  plan->education->RebindForAuxProfileSwitch(*plan->view);
++  if (features_->lens_overlay_entry_point_controller_) {
++    features_->lens_overlay_entry_point_controller_->RebindForAuxProfileSwitch(target);
++  }
++  if (features_->reading_list_side_panel_coordinator_) {
++    features_->reading_list_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->bookmarks_side_panel_coordinator_) {
++    features_->bookmarks_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->history_side_panel_coordinator_) {
++    features_->history_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->history_clusters_side_panel_coordinator_) {
++    features_->history_clusters_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->tabs_from_other_devices_side_panel_coordinator_) {
++    features_->tabs_from_other_devices_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->extension_side_panel_manager_) {
++    features_->extension_side_panel_manager_->RebindForAuxProfileSwitch(target);
++  }
++  if (features_->side_panel_coordinator_) {
++    features_->side_panel_coordinator_->RebindPinningForAuxProfileSwitch(target);
++  }
++  if (features_->download_toolbar_ui_controller_) {
++    features_->download_toolbar_ui_controller_->RebindForAuxProfileSwitch(target);
++  }
++  if (plan->vertical) {
++    plan->vertical->RebindAuxProfileSwitch();
++  }
++}
++
++void BrowserWindowFeatures::AuxProfileSwitchProvider::Finish(
++    std::shared_ptr<Bindings> plan,
++    Browser&, Browser&, Browser&) {
++  features_->FinishAuxPrivateProfileServices();
++  features_->browser_actions_->EndAuxProfileSwitch(plan->actions_generation);
++  plan->location->EndAuxProfileSwitch(plan->location_generation);
++  if (plan->vertical) {
++    plan->vertical->EndAuxProfileSwitch(plan->vertical_generation);
++  }
++  plan->view->EndAuxProfileSwitch(plan->view_generation);
++  if (features_->lens_overlay_entry_point_controller_) {
++    features_->lens_overlay_entry_point_controller_->UpdateEntryPointsState(true);
++  }
++}
++
++void BrowserWindowFeatures::AuxProfileSwitchProvider::Abort(
++    std::shared_ptr<Bindings> plan,
++    Browser& browser, Browser&, Browser&) {
++  // Core has not committed identity. Genuine source tabs are already back.
++  // No target profile service was constructed; restore actual source only.
++  features_->browser_actions_->EndAuxProfileSwitch(plan->actions_generation);
++  plan->toolbar->AbortOwnedActionsForAuxProfileSwitch(browser.GetProfile());
++  features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  features_->AbortAuxPrivateProfileServices();
++  if (features_->download_toolbar_ui_controller_) {
++    features_->download_toolbar_ui_controller_->AbortForAuxProfileSwitch(browser.GetProfile());
++  }
++  if (features_->cookie_controls_bubble_coordinator_) {
++    features_->cookie_controls_bubble_coordinator_->RebindForAuxProfileSwitch(
++        features_->browser_actions_->root_action_item());
++  }
++  plan->location->AbortAuxProfileSwitch(plan->location_generation);
++  if (features_->extension_browser_window_helper_) {
++    features_->extension_browser_window_helper_->AbortAuxProfileSwitch();
++  }
++  if (features_->extension_installed_watcher_) {
++    features_->extension_installed_watcher_->RebindForAuxProfileSwitch(browser);
++  }
++  if (features_->bookmarks_service_feature_) {
++    features_->bookmarks_service_feature_->RebindForAuxProfileSwitch(browser);
++  }
++  if (plan->avatar) {
++    plan->avatar->RebindForAuxProfileSwitch(browser.GetProfile());
++  }
++  if (plan->media) {
++    plan->media->RebindForAuxProfileSwitch();
++  }
++  plan->toolbar->app_menu_icon_controller()->RebindForAuxProfileSwitch(*browser.GetProfile());
++  plan->education->RebindForAuxProfileSwitch(*plan->view);
++  if (features_->lens_overlay_entry_point_controller_) {
++    features_->lens_overlay_entry_point_controller_->AbortAuxProfileSwitch();
++  }
++  if (features_->reading_list_side_panel_coordinator_) {
++    features_->reading_list_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->bookmarks_side_panel_coordinator_) {
++    features_->bookmarks_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->history_side_panel_coordinator_) {
++    features_->history_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->history_clusters_side_panel_coordinator_) {
++    features_->history_clusters_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->tabs_from_other_devices_side_panel_coordinator_) {
++    features_->tabs_from_other_devices_side_panel_coordinator_->RebindForAuxProfileSwitch();
++  }
++  if (features_->extension_side_panel_manager_) {
++    features_->extension_side_panel_manager_->AbortForAuxProfileSwitch(browser.GetProfile());
++  }
++  if (features_->side_panel_coordinator_) {
++    features_->side_panel_coordinator_->RebindPinningForAuxProfileSwitch(browser.GetProfile());
++  }
++  if (plan->vertical) {
++    plan->vertical->RebindAuxProfileSwitch();
++    plan->vertical->EndAuxProfileSwitch(plan->vertical_generation);
++  }
++  plan->view->EndAuxProfileSwitch(plan->view_generation);
++  if (features_->lens_overlay_entry_point_controller_) {
++    features_->lens_overlay_entry_point_controller_->UpdateEntryPointsState(true);
++  }
++}
++#endif
