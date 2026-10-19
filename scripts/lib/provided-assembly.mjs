@@ -12,6 +12,20 @@ const digest = async (path) => {
 const json = async (path) => JSON.parse(await readFile(path, 'utf8'));
 const safe = (path) => typeof path === 'string' && path.length && !isAbsolute(path) && !path.split('/').some((part) => ['', '.', '..'].includes(part));
 const inside = (parent, child) => child === parent || child.startsWith(parent + sep);
+async function mapFiles(entries, visit) {
+  const result = new Array(entries.length);
+  let next = 0, failure;
+  const workers = Array.from({ length: Math.min(8, entries.length) }, async () => {
+    while (!failure && next < entries.length) {
+      const index = next++;
+      try { result[index] = await visit(entries[index]); }
+      catch (error) { failure ??= error; }
+    }
+  });
+  await Promise.all(workers);
+  if (failure) throw failure;
+  return result.filter(Boolean);
+}
 async function absent(path) {
   try { await lstat(path); throw new Error(`Assembly output already exists: ${path}`); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -69,7 +83,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
       const leaves = component.files.filter((file) => file.type !== 'directory').map((file) => file.path).sort();
       if (new Set(leaves).size !== leaves.length || JSON.stringify(await tree(sourceRoot)) !== JSON.stringify(leaves)) throw new Error(`Incomplete staged component inventory: ${component.source}`);
       await mkdir(destination, { recursive: true });
-      for (const file of component.files) {
+      const copied = await mapFiles(component.files, async (file) => {
         if (!safe(file.path)) throw new Error('Unsafe staged resource path');
         // Every parent is checked, so a staged symlink cannot redirect a later copy.
         let parent = sourceRoot;
@@ -89,16 +103,17 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
           const link = file.outputLinkTarget ?? file.linkTarget;
           if (!stat.isSymbolicLink() || await readlink(source) !== link || isAbsolute(link) || !inside(sourceRoot, resolve(dirname(source), link))) throw new Error('Staged link changed or escapes its component');
           await symlink(link, target);
-          report.files.push({ path: join(component.target, file.path), type: 'symlink', linkTarget: link });
+          return { path: join(component.target, file.path), type: 'symlink', linkTarget: link };
         } else {
           if (!stat.isFile() || stat.isSymbolicLink() || !/^[a-f0-9]{64}$/.test(file.outputSha256)) throw new Error('Staged resource is not a pinned regular file');
           if (await digest(source) !== file.outputSha256) throw new Error(`Staged resource hash changed: ${file.path}`);
           await copyFile(source, target, constants.COPYFILE_FICLONE);
           await chmod(target, mode);
           if (await digest(target) !== file.outputSha256) throw new Error('Resource changed during assembly');
-          report.files.push({ path: join(component.target, file.path), type: 'file', sha256: file.outputSha256, mode, source: join(component.source, file.path), changeKinds: file.changeKinds ?? [] });
+          return { path: join(component.target, file.path), type: 'file', sha256: file.outputSha256, mode, source: join(component.source, file.path), changeKinds: file.changeKinds ?? [] };
         }
-      }
+      });
+      report.files.push(...copied);
       report.components.push({ source: component.source, target: component.target, records: component.files.length });
     }
     const provenance = join(temporary, 'provenance');
