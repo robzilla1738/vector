@@ -20,7 +20,7 @@ function publicKeys(value, init=false) {
   return {...data, publicKeyHash:crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex')};
 }
 function checkOriginal(call, { initialize=false, expectedHash, challenge }) {
-  const invoke=(command,input)=>{if(!allowed.has(command))throw new ProbeError('unapproved-command');return parse(call(command,input===undefined?'':JSON.stringify(input)));};
+  const invoke=(command,input)=>{if(!allowed.has(command))throw new ProbeError('unapproved-command');try{return parse(call(command,input===undefined?'':JSON.stringify(input)));}catch(error){const failure=error instanceof ProbeError?error:new ProbeError('original-native-command-threw');failure.lastAllowedCommand=command;throw failure;}};
   const status=invoke('install-status');
   if (typeof status.installed!=='boolean')throw new ProbeError('invalid-install-status');
   if (initialize ? status.installed : !status.installed)throw new ProbeError(initialize?'unexpected-existing-installation':'installation-not-shared');

@@ -62,7 +62,7 @@ module.exports=async function approvedDpDiagnostic() {
     const forbiddenGroup=crypto.createHash('sha256').update('8CPD4K4TBB.at.studio.AsideBrowser.cryptography').digest('hex');
     if(result.exactRows?.accessGroupHashes?.includes(forbiddenGroup))throw new ProbeError('original-group-domain-unacceptable');
     result={...result,operation,scope,dpCallsAttempted:true,originalCommandsInvoked:operation!=='cleanup',secretsLogged:false};
-  } catch(error) {result={ok:false,code:error instanceof ProbeError?error.code:'probe-failed',statuses:error instanceof ProbeError?error.statuses:[],secretsLogged:false};}
+  } catch(error) {result={ok:false,code:error instanceof ProbeError?error.code:'probe-failed',statuses:error instanceof ProbeError?error.statuses:[],...(['install-status','install-init','get-public-keys','cdp-sign'].includes(error?.lastAllowedCommand)?{lastAllowedCommand:error.lastAllowedCommand}:{}),secretsLogged:false};}
   await new Promise((resolve,reject)=>process.stdout.write(`${JSON.stringify(result)}\n`,e=>e?reject(e):resolve()));
   process.exit(result.ok?0:1);
 };

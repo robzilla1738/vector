@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "originalNativeSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "addressFileOffsetMapping": "__TEXT vmaddr=fileoff=0, independently inspected",
+  "ranges": [
+    {
+      "symbol": "runCommand",
+      "start": "0x48eb4",
+      "endExclusive": "0x49af8",
+      "sha256": "ec642b4b1e9a352db37d92dfa32c394d7b05390625d683a0df1f0ed9f6800fc2"
+    },
+    {
+      "symbol": "cmdInstallInit",
+      "start": "0x34df4",
+      "endExclusive": "0x3a990",
+      "sha256": "37e82a7b259c86b940286f58b2848a36f03fe7706ef327bf83001f9ee573c62d"
+    },
+    {
+      "symbol": "cmdInstallStatus",
+      "start": "0x3a990",
+      "endExclusive": "0x3b660",
+      "sha256": "da4d6ee49a40b1221fb00484a00f5ecfc8d0bf21c07a9e5ea6bd280f0da3d6d2"
+    },
+    {
+      "symbol": "cmdGetPublicKeys",
+      "start": "0x418bc",
+      "endExclusive": "0x43110",
+      "sha256": "8d8e43d5320fae686067cc25920467073f5fdda51c1486684d6921785a064b19"
+    }
+  ],
+  "matchedBranches": [
+    {
+      "address": "0x4956c",
+      "instruction": "bl 0x34df4 cmdInstallInitSSyF"
+    },
+    {
+      "address": "0x495f0",
+      "instruction": "bl 0x3a990 cmdInstallStatusSSyF"
+    },
+    {
+      "address": "0x49744",
+      "instruction": "bl 0x418bc cmdGetPublicKeysSSyF"
+    }
+  ],
+  "inputHandling": "runCommand stores input as nativeInputLines before command dispatch; matched functions are no-argument bodies. No readLine/nativeInputLines getter or JSON input deserializer call was found in those three bodies; dataWithJSONObject calls serialize output.",
+  "conclusion": "No required scheme input, no evidence JSON{} caused observed failure. Empty input change is fidelity only.",
+  "nativeCommandsExecuted": false,
+  "approvedArtifactsModified": false
+}

@@ -665,3 +665,7 @@ Pinned actual daemon and no-argument native symbols show install-init requires n
 ## Shared DP authority blocked under current ad hoc constraints (2026-10-19, L1)
 
 Static local SDK headers identify root-observed exact delete-34018 as missing entitlement and tie DP default/shared groups to app/group claims. Apple primary documentation/published Security validation supports no identified ad hoc path establishing the required writable shared daemon/CLI/carrier authority without changing current constraints. Not-found reads do not prove mutation/cleanup authority; original init error remains unattributed. Recorded narrow blocker/limits in node-native-boundary/dp-ad-hoc-blocker.md. No fakeTeam/originalgroup fallback, DeveloperID/provisioning, backend/format change or experimental entitlement relaxation proposed. No agent DP/native execution, signing or approved-home/artifact mutation.
+
+## Parameterless native dispatcher and bounded trace (2026-10-19, L1)
+
+Pinned original native dispatcher directly calls no-argument init/status/public implementations; three body disassemblies show no input-line reader/getter or JSON-input deserializer. JSON{} is not supported as cause of the observed failure; exact empty input remains a fidelity correction. Prepared future error trace limited to lastAllowedCommand from four fixed public names, with callback failures sanitized; pure injected-failure tests cover status/init/public attribution. Three focused tests/syntax pass. No approved artifact/home mutation or native/DP execution.
