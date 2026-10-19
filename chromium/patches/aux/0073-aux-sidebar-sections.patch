@@ -13,10 +13,10 @@ index ca65408a67..cea1fcfa94 100644
        "views/tab_search_bubble_host.cc",
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000..f6c567f3c3
+index 0000000000..7b40af7267
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
-@@ -0,0 +1,596 @@
+@@ -0,0 +1,724 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -41,9 +41,11 @@ index 0000000000..f6c567f3c3
 +#include "base/strings/utf_string_conversions.h"
 +#include "base/task/thread_pool.h"
 +#include "base/values.h"
++#include "chrome/app/chrome_command_ids.h"
 +#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 +#include "chrome/browser/favicon/favicon_service_factory.h"
 +#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_commands.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
 +#include "components/bookmarks/browser/bookmark_node.h"
@@ -64,10 +66,16 @@ index 0000000000..f6c567f3c3
 +#include "ui/base/models/image_model.h"
 +#include "ui/color/color_id.h"
 +#include "ui/gfx/geometry/insets.h"
++#include "ui/menus/simple_menu_model.h"
++#include "ui/views/accessibility/view_accessibility.h"
 +#include "ui/views/background.h"
 +#include "ui/views/border.h"
++#include "ui/views/controls/button/image_button.h"
++#include "ui/views/controls/button/image_button_factory.h"
 +#include "ui/views/controls/button/label_button.h"
++#include "ui/views/controls/highlight_path_generator.h"
 +#include "ui/views/controls/label.h"
++#include "ui/views/controls/menu/menu_runner.h"
 +#include "ui/views/layout/box_layout.h"
 +#include "ui/views/style/typography.h"
 +#include "ui/views/view_tracker.h"
@@ -80,6 +88,10 @@ index 0000000000..f6c567f3c3
 +constexpr char kSigningPrefix[] = "Aside Daemon Auth v1";
 +constexpr size_t kMaxChatsShown = 3;
 +constexpr base::TimeDelta kPollInterval = base::Seconds(2);
++constexpr int kCommandPin = 1;
++constexpr int kCommandMarkRead = 2;
++constexpr int kCommandArchive = 3;
++constexpr int kCommandDelete = 4;
 +constexpr int kRowRadius = 10;
 +constexpr int kRowIconSize = 18;
 +
@@ -204,6 +216,9 @@ index 0000000000..f6c567f3c3
 +    UpdateBackground();
 +  }
 +
++  const std::string& chat_id() const { return chat_id_; }
++  void set_chat_id(std::string id) { chat_id_ = std::move(id); }
++
 +  void SetFavicon(const gfx::ImageSkia& image) {
 +    SetImageModel(views::Button::STATE_NORMAL,
 +                  ui::ImageModel::FromImageSkia(image));
@@ -226,6 +241,7 @@ index 0000000000..f6c567f3c3
 +  }
 +
 +  const bool selected_;
++  std::string chat_id_;
 +};
 +
 +BEGIN_METADATA(AuxSidebarRow)
@@ -384,12 +400,15 @@ index 0000000000..f6c567f3c3
 +      show_all_chats_ ? chats_.size() : std::min(chats_.size(), kMaxChatsShown);
 +  for (size_t i = 0; i < shown; ++i) {
 +    const Chat& chat = chats_[i];
-+    AddChildView(std::make_unique<AuxSidebarRow>(
++    auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
 +        base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
 +                            chat.id),
 +        base::UTF8ToUTF16(chat.title), ui::ImageModel(),
 +        /*emphasized=*/chat.unread,
 +        /*selected=*/chat.id == active_chat_id_));
++    row->set_chat_id(chat.id);
++    row->SetTooltipText(base::UTF8ToUTF16(chat.title));
++    row->set_context_menu_controller(this);
 +  }
 +  if (chats_.size() > kMaxChatsShown) {
 +    AddChildView(std::make_unique<AuxSidebarRow>(
@@ -439,32 +458,32 @@ index 0000000000..f6c567f3c3
 +  if (!authorization_.empty()) {
 +    request->headers.SetHeader("Authorization", authorization_);
 +  }
-+  loader_ =
++  std::unique_ptr<network::SimpleURLLoader> loader =
 +      network::SimpleURLLoader::Create(std::move(request), kTrafficAnnotation);
 +  if (!post_body.empty()) {
-+    loader_->AttachStringForUpload(post_body, "application/json");
++    loader->AttachStringForUpload(post_body, "application/json");
 +  }
-+  loader_->DownloadToString(
++  network::SimpleURLLoader* raw_loader = loader.get();
++  raw_loader->DownloadToString(
 +      browser_->GetProfile()->GetURLLoaderFactory().get(),
 +      base::BindOnce(
 +          [](base::WeakPtr<AuxSidebarView> self, LoadCallback callback,
++             std::unique_ptr<network::SimpleURLLoader> loader,
 +             std::optional<std::string> body) {
++            const network::mojom::URLResponseHead* info =
++                loader->ResponseInfo();
++            const int code =
++                info && info->headers ? info->headers->response_code() : 0;
 +            if (!self) {
 +              return;
 +            }
-+            const network::SimpleURLLoader* loader = self->loader_.get();
-+            const bool ok =
-+                body && loader->ResponseInfo() &&
-+                loader->ResponseInfo()->headers &&
-+                loader->ResponseInfo()->headers->response_code() == 200;
-+            if (loader->ResponseInfo() && loader->ResponseInfo()->headers &&
-+                loader->ResponseInfo()->headers->response_code() == 401) {
++            if (code == 401) {
 +              self->authorization_.clear();
 +            }
-+            std::move(callback).Run(ok ? std::optional<std::string>(*body)
-+                                       : std::nullopt);
++            std::move(callback).Run(body && code == 200 ? std::move(body)
++                                                        : std::nullopt);
 +          },
-+          weak_factory_.GetWeakPtr(), std::move(callback)),
++          weak_factory_.GetWeakPtr(), std::move(callback), std::move(loader)),
 +      1024 * 1024);
 +}
 +
@@ -574,6 +593,8 @@ index 0000000000..f6c567f3c3
 +      chat.id = *id;
 +      chat.title = title && !title->empty() ? *title : "New chat";
 +      chat.unread = item->FindBool("unread").value_or(false);
++      chat.pinned = item->FindBool("pinned").value_or(false);
++      chat.can_pin = item->FindBool("canPin").value_or(false);
 +      const std::string* status = item->FindString("status");
 +      chat.running = status && *status == "running";
 +      chats.push_back(std::move(chat));
@@ -582,7 +603,8 @@ index 0000000000..f6c567f3c3
 +  const auto same = [](const std::vector<Chat>& a, const std::vector<Chat>& b) {
 +    return std::ranges::equal(a, b, [](const Chat& x, const Chat& y) {
 +      return x.id == y.id && x.title == y.title && x.unread == y.unread &&
-+             x.running == y.running;
++             x.running == y.running && x.pinned == y.pinned &&
++             x.can_pin == y.can_pin;
 +    });
 +  };
 +  if (same(chats, chats_)) {
@@ -611,14 +633,120 @@ index 0000000000..f6c567f3c3
 +  browser_->OpenGURL(url, WindowOpenDisposition::CURRENT_TAB);
 +}
 +
++void AuxSidebarView::ShowContextMenuForViewImpl(
++    views::View* source,
++    const gfx::Point& point,
++    ui::mojom::MenuSourceType source_type) {
++  const auto* row = static_cast<AuxSidebarRow*>(source);
++  const auto chat = std::ranges::find(chats_, row->chat_id(), &Chat::id);
++  if (chat == chats_.end() || !GetWidget()) {
++    return;
++  }
++  menu_chat_id_ = chat->id;
++  menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++  if (chat->can_pin || chat->pinned) {
++    menu_model_->AddItem(kCommandPin, chat->pinned ? u"Unpin" : u"Pin");
++  }
++  if (chat->unread) {
++    menu_model_->AddItem(kCommandMarkRead, u"Mark as read");
++  }
++  menu_model_->AddItem(kCommandArchive, u"Archive");
++  menu_model_->AddItem(kCommandDelete, u"Delete");
++  menu_pinned_ = chat->pinned;
++  menu_runner_ = std::make_unique<views::MenuRunner>(
++      menu_model_.get(), views::MenuRunner::HAS_MNEMONICS);
++  menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
++                          views::MenuAnchorPosition::kTopLeft, source_type);
++}
++
++void AuxSidebarView::ExecuteCommand(int command_id, int event_flags) {
++  const char* action = nullptr;
++  switch (command_id) {
++    case kCommandPin:
++      action = menu_pinned_ ? "unpin" : "pin";
++      break;
++    case kCommandMarkRead:
++      action = "mark-read";
++      break;
++    case kCommandArchive:
++      action = "archive";
++      break;
++    case kCommandDelete:
++      action = "delete";
++      break;
++    default:
++      return;
++  }
++  PostChatAction(menu_chat_id_, action);
++}
++
++void AuxSidebarView::PostChatAction(const std::string& session_id,
++                                    const std::string& action) {
++  EnsureSession(base::BindOnce(
++      [](base::WeakPtr<AuxSidebarView> self, std::string url_path) {
++        if (!self) {
++          return;
++        }
++        self->Load(DaemonUrl(url_path), "{}",
++                   base::BindOnce(
++                       [](base::WeakPtr<AuxSidebarView> self,
++                          std::optional<std::string>) {
++                         if (self) {
++                           self->in_flight_ = false;
++                           self->Poll();
++                         }
++                       },
++                       self));
++      },
++      weak_factory_.GetWeakPtr(),
++      base::StrCat(
++          {"/session/for-chrome/", session_id, "/", action,
++           "?accountId=", base::NumberToString(account_id_.value_or(0))})));
++}
++
++AuxSidebarFooter::AuxSidebarFooter(BrowserWindowInterface* browser) {
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(8, 6), 0));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kEnd);
++
++  const auto make_button = [&](const gfx::VectorIcon& icon, int command,
++                               const std::u16string& name) {
++    auto button = views::CreateVectorImageButton(base::BindRepeating(
++        [](BrowserWindowInterface* browser, int command) {
++          chrome::ExecuteCommand(browser, command);
++        },
++        base::Unretained(browser), command));
++    button->SetImageModel(
++        views::Button::STATE_NORMAL,
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle,
++                                       kRowIconSize + 2));
++    button->GetViewAccessibility().SetName(name);
++    button->SetTooltipText(name);
++    views::InstallCircleHighlightPathGenerator(button.get());
++    return button;
++  };
++
++  AddChildView(make_button(vector_icons::kAccountCircleIcon,
++                           IDC_SHOW_AVATAR_MENU, u"Profile"));
++  auto* spacer = AddChildView(std::make_unique<views::View>());
++  layout->SetFlexForView(spacer, 1);
++  AddChildView(
++      make_button(vector_icons::kSearchIcon, IDC_TAB_SEARCH, u"Search tabs"));
++}
++
++AuxSidebarFooter::~AuxSidebarFooter() = default;
++
++BEGIN_METADATA(AuxSidebarFooter)
++END_METADATA
++
 +BEGIN_METADATA(AuxSidebarView)
 +END_METADATA
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
 new file mode 100644
-index 0000000000..5b8cb8758d
+index 0000000000..d1dcbf9129
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,144 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -641,6 +769,9 @@ index 0000000000..5b8cb8758d
 +#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 +#include "components/bookmarks/browser/base_bookmark_model_observer.h"
 +#include "components/bookmarks/browser/bookmark_model.h"
++#include "ui/menus/simple_menu_model.h"
++#include "ui/views/context_menu_controller.h"
++#include "ui/views/controls/menu/menu_runner.h"
 +#include "ui/views/view.h"
 +
 +class BrowserWindowInterface;
@@ -653,6 +784,8 @@ index 0000000000..5b8cb8758d
 +// Bookmarks and Chats sections that sit above the vertical tab strip. Chats
 +// come from the local daemon's authenticated sidebar feed.
 +class AuxSidebarView : public views::View,
++                       public views::ContextMenuController,
++                       public ui::SimpleMenuModel::Delegate,
 +                       public bookmarks::BaseBookmarkModelObserver,
 +                       public TabStripModelObserver {
 +  METADATA_HEADER(AuxSidebarView, views::View)
@@ -668,6 +801,8 @@ index 0000000000..5b8cb8758d
 +    std::string title;
 +    bool unread = false;
 +    bool running = false;
++    bool pinned = false;
++    bool can_pin = false;
 +  };
 +
 +  // views::View:
@@ -681,6 +816,15 @@ index 0000000000..5b8cb8758d
 +      const TabStripSelectionChange& selection) override;
 +  void OnTabChangedAt(tabs::TabInterface* tab,
 +                      TabChangeType change_type) override;
++
++  // views::ContextMenuController:
++  void ShowContextMenuForViewImpl(
++      views::View* source,
++      const gfx::Point& point,
++      ui::mojom::MenuSourceType source_type) override;
++
++  // ui::SimpleMenuModel::Delegate:
++  void ExecuteCommand(int command_id, int event_flags) override;
 +
 +  // bookmarks::BaseBookmarkModelObserver:
 +  void BookmarkModelChanged() override;
@@ -700,6 +844,7 @@ index 0000000000..5b8cb8758d
 +  void FetchChats();
 +  void OnChatsLoaded(std::optional<std::string> body);
 +  void OpenChat(const std::string& session_id);
++  void PostChatAction(const std::string& session_id, const std::string& action);
 +  void OpenNewChat();
 +  void OpenNewTab();
 +  void UpdateActiveChat();
@@ -718,7 +863,10 @@ index 0000000000..5b8cb8758d
 +      bookmark_observation_{this};
 +  base::RepeatingTimer poll_timer_;
 +  base::CancelableTaskTracker favicon_tracker_;
-+  std::unique_ptr<network::SimpleURLLoader> loader_;
++  std::unique_ptr<ui::SimpleMenuModel> menu_model_;
++  std::unique_ptr<views::MenuRunner> menu_runner_;
++  std::string menu_chat_id_;
++  bool menu_pinned_ = false;
 +
 +  std::string authorization_;
 +  base::TimeTicks authorization_expiry_;
@@ -731,9 +879,20 @@ index 0000000000..5b8cb8758d
 +  base::WeakPtrFactory<AuxSidebarView> weak_factory_{this};
 +};
 +
++// Profile and tab search buttons pinned to the bottom of the sidebar.
++class AuxSidebarFooter : public views::View {
++  METADATA_HEADER(AuxSidebarFooter, views::View)
++
++ public:
++  explicit AuxSidebarFooter(BrowserWindowInterface* browser);
++  AuxSidebarFooter(const AuxSidebarFooter&) = delete;
++  AuxSidebarFooter& operator=(const AuxSidebarFooter&) = delete;
++  ~AuxSidebarFooter() override;
++};
++
 +#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..7386a18382 100644
+index b7cdb8f557..8dda75189c 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,8 @@
@@ -757,7 +916,23 @@ index b7cdb8f557..7386a18382 100644
    bottom_button_container_ =
        AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
            state_controller_, root_action_item, browser_view->browser(),
-@@ -740,9 +747,9 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -158,6 +165,15 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
+           region_horizontal_padding, 0, region_horizontal_padding));
+ 
++  aux_footer_ = AddChildView(
++      std::make_unique<AuxSidebarFooter>(browser_view->browser()));
++  aux_footer_->SetProperty(views::kMarginsKey,
++                           gfx::Insets::VH(0, region_horizontal_padding));
++  aux_footer_->SetProperty(
++      views::kFlexBehaviorKey,
++      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
++                               views::MaximumFlexSizeRule::kUnbounded));
++
+   gemini_button_ = AddChildView(std::make_unique<views::View>());
+ 
+   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
+@@ -740,9 +756,9 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
                &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
                base::Unretained(this)));
  
@@ -770,32 +945,35 @@ index b7cdb8f557..7386a18382 100644
  
    OnCollapseStateChanged(state_controller_->GetCollapseState());
  }
-@@ -767,6 +774,8 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -767,6 +783,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                             resize_area_->is_resizing());
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
 +  aux_sidebar_->SetVisible(!collapsed);
 +  bottom_button_container_->SetVisible(collapsed);
++  aux_footer_->SetVisible(!collapsed);
  
    if (tab_strip_view()) {
      tab_strip_view()->SetCollapsedState(collapsed);
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d6..2e69239a56 100644
+index 76f8e997d6..334a80b3b2 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-@@ -31,6 +31,7 @@
+@@ -31,6 +31,8 @@
  #include "ui/views/controls/resize_area_delegate.h"
  #include "ui/views/focus/focus_manager.h"
  
++class AuxSidebarFooter;
 +class AuxSidebarView;
  class BrowserView;
  class VerticalTabStripTopContainer;
  class VerticalTabStripBottomContainer;
-@@ -240,6 +241,7 @@ class VerticalTabStripRegionView final
+@@ -240,6 +242,8 @@ class VerticalTabStripRegionView final
  
    raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
    raw_ptr<views::Separator> top_button_separator_ = nullptr;
 +  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
++  raw_ptr<AuxSidebarFooter> aux_footer_ = nullptr;
    raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
    raw_ptr<views::View> gemini_button_ = nullptr;
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;

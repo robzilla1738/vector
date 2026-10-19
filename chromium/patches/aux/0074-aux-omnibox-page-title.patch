@@ -1,0 +1,84 @@
+diff --git a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
+index 4e23238dea..abae748a0b 100644
+--- a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
++++ b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc
+@@ -260,6 +260,21 @@ bool ChromeLocationBarModelDelegate::IsHomePage(const GURL& url) const {
+   return url.spec() == profile->GetPrefs()->GetString(prefs::kHomePage);
+ }
+ 
++std::u16string ChromeLocationBarModelDelegate::GetDisplayTitleOverride() const {
++  // The Aux agent manager titles its own pages (chats, settings), so the
++  // omnibox shows that title instead of the extension URL.
++  content::NavigationEntry* entry = GetNavigationEntry();
++  if (!entry || entry->IsInitialEntry()) {
++    return std::u16string();
++  }
++  const GURL& url = entry->GetURL();
++  if (!url.SchemeIs(extensions::kExtensionScheme) ||
++      url.host() != "fjdhphbdlfjogobdofoaagnlnkoibdge") {
++    return std::u16string();
++  }
++  return entry->GetTitleForDisplay();
++}
++
+ bool ChromeLocationBarModelDelegate::IsContextualTasksPage() const {
+   content::NavigationEntry* entry = GetNavigationEntry();
+   if (!entry || entry->IsInitialEntry()) {
+diff --git a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h
+index b4d971dbff..fb079411d8 100644
+--- a/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h
++++ b/chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h
+@@ -48,6 +48,7 @@ class ChromeLocationBarModelDelegate : public LocationBarModelDelegate {
+   bool IsNewTabPage() const override;
+   bool IsNewTabPageURL(const GURL& url) const override;
+   bool IsHomePage(const GURL& url) const override;
++  std::u16string GetDisplayTitleOverride() const override;
+   bool IsContextualTasksPage() const override;
+   GURL GetContextualTasksInnerFrameURL() const override;
+   AutocompleteClassifier* GetAutocompleteClassifier() override;
+diff --git a/components/omnibox/browser/location_bar_model_delegate.cc b/components/omnibox/browser/location_bar_model_delegate.cc
+index ec0eddc10f..6218031617 100644
+--- a/components/omnibox/browser/location_bar_model_delegate.cc
++++ b/components/omnibox/browser/location_bar_model_delegate.cc
+@@ -55,6 +55,10 @@ bool LocationBarModelDelegate::IsHomePage(const GURL& url) const {
+   return false;
+ }
+ 
++std::u16string LocationBarModelDelegate::GetDisplayTitleOverride() const {
++  return std::u16string();
++}
++
+ bool LocationBarModelDelegate::IsContextualTasksPage() const {
+   return false;
+ }
+diff --git a/components/omnibox/browser/location_bar_model_delegate.h b/components/omnibox/browser/location_bar_model_delegate.h
+index d5c6d18f92..713abe6267 100644
+--- a/components/omnibox/browser/location_bar_model_delegate.h
++++ b/components/omnibox/browser/location_bar_model_delegate.h
+@@ -89,6 +89,10 @@ class LocationBarModelDelegate {
+ 
+   // Returns true if the current page is a contextual tasks UI page (i.e.
+   // chrome://contextual-tasks/).
++  // Text shown in place of the URL while the omnibox is not being edited, or
++  // empty to show the URL.
++  virtual std::u16string GetDisplayTitleOverride() const;
++
+   virtual bool IsContextualTasksPage() const;
+ 
+   // Returns the inner frame URL associated with the current contextual tasks UI
+diff --git a/components/omnibox/browser/location_bar_model_impl.cc b/components/omnibox/browser/location_bar_model_impl.cc
+index fceda6b642..c993730ee7 100644
+--- a/components/omnibox/browser/location_bar_model_impl.cc
++++ b/components/omnibox/browser/location_bar_model_impl.cc
+@@ -57,6 +57,11 @@ std::u16string LocationBarModelImpl::GetFormattedFullURL() const {
+ }
+ 
+ std::u16string LocationBarModelImpl::GetURLForDisplay() const {
++  if (std::u16string title = delegate_->GetDisplayTitleOverride();
++      !title.empty()) {
++    return title;
++  }
++
+   // For the contextual tasks page, apply "origin-swapping" logic in order to
+   // display the proper URL in the Omnibox.
+   if (IsContextualTasksPage()) {

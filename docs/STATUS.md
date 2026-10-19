@@ -11,7 +11,8 @@ Last updated 2026-10-19.
 
 ## Differences from Aside
 
-- Sidebar: native Bookmarks, Chats (live from the daemon, active chat highlighted, New Chat, Show all) and Tabs sections sit above Chromium's vertical tab strip (`0073-aux-sidebar-sections.patch`). Still missing against Aside: pinned tile grid, profile pill and bottom avatar/search bar, chat row actions (pin, archive, mark read), section collapse, Aside's exact glass material and sizing.
+- Sidebar: native Bookmarks, Chats and Tabs sections sit above Chromium's vertical tab strip, with a profile and tab-search footer pinned to the bottom (`0073-aux-sidebar-sections.patch`). Chats come live from the daemon, the open chat is highlighted, and right-click offers Pin, Mark as read, Archive and Delete (Pin only for sessions the daemon allows). Still missing against Aside: pinned tile grid at the top (pinned tabs use Chromium's own layout inside the tab list), profile pill, section collapse, Aside's exact glass material and sizing.
+- Omnibox: Aux extension pages show their page title instead of the extension URL (`0074-aux-omnibox-page-title.patch`). The rest of the toolbar is stock Chromium.
 - `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/aux-private-shim.js`), not native. Omnibox, adblock, mini popup window chrome and the importer WebUI are not native.
 - The very first tab at startup can render Chromium's Google new tab page because it navigates before the unpacked extensions load. Every later new tab opens the Aux new tab page.
 - Local accounts only. There is no Aux cloud.
@@ -20,4 +21,4 @@ Last updated 2026-10-19.
 
 ## Next
 
-Remaining sidebar parts, native toolbar/omnibox parity, native `chrome.aside*` APIs, a signed non-component build, `Aux.app` assembly with the browser, daemon and CLI inside one bundle.
+Remaining sidebar parts (pinned tiles, profile pill), toolbar styling, tab switcher, tab search bubble, profile menu and icon picker, importer, adblock, native `chrome.aside*` APIs, a signed non-component build, `Aux.app` assembly with the browser, daemon and CLI inside one bundle.
