@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "provided profile-security and native-provided-entrypoints combined tree",
+  "baselineNote": "Current root proposed/native tree already includes newtab.html and main.html#/ entrypoint changes; all baseline hashes pin this combined tree",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_state.h",
+      "baselineSha256": "d5737db41154cfdb295c1eb8cd55fa2b543448d734dfc08e760ff3d35695988b",
+      "outputSha256": "c9ad28bc0ca11159315eea15f8a9c0f90df1e747fdd80c32f290938af9f3aa0c"
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.cc",
+      "baselineSha256": "3a6aa8e63f645b6c06e8b2cbf70f0f8e7c0642cbd1acffbdee0dc1f262882703",
+      "outputSha256": "34a48b6ab45f23390edb2e562e89bc638317b144e2ca9418ca0a5bf8a6672850"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "6186ff8d65a49448e6a4b11e5e37f000011abfd0410cdc7237bce08425ba64ec",
+      "outputSha256": "33e9faa79ae7f223ef77b73585e115b0acb0ed46aa190a24c019378c2add3040"
+    }
+  ]
+}

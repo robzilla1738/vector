@@ -1,0 +1,231 @@
+--- a/chrome/browser/aux/profile_state.h
++++ b/chrome/browser/aux/profile_state.h
+@@ -13,6 +13,9 @@
+   bool bound = false;
+   bool local_anonymous = false;
+   std::string bound_user_id;
++  // Actual app-account:N current PWM UUID from authenticated accounts.list.
++  std::string pwm_account_id;
++  bool requires_password_verification = false;
+   bool configured = false;
+   bool locked = true;
+   bool onboarding_complete = false;
+@@ -22,7 +25,7 @@
+   }
+ };
+ // Blocking metadata only; call on a MayBlock task. Vault stays locked until
+-// authenticated FetchProfileSecurity verifies actual daemon auth.status.
++// authenticated FetchProfileSecurity verifies actual daemon accounts.list authStatus.
+ ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
+                                          const base::FilePath& profile_path);
+ }  // namespace aux
+--- a/chrome/browser/aux/profile_security_client.cc
++++ b/chrome/browser/aux/profile_security_client.cc
+@@ -8,6 +8,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/time/time.h"
+ #include "base/values.h"
++#include "base/uuid.h"
+ #include "url/gurl.h"
+ #include "net/base/escape.h"
+ #include "net/http/http_status_code.h"
+@@ -53,7 +54,7 @@
+         base::WriteJson(input).value_or("{}"), true);
+     auto request = std::make_unique<network::ResourceRequest>();
+     request->url = GURL("http://127.0.0.1:" + base::NumberToString(port_) +
+-        "/trpc/passwordManager.auth.status?input=" + encoded);
++        "/trpc/passwordManager.accounts.list?input=" + encoded);
+     request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+     request->redirect_mode = network::mojom::RedirectMode::kError;
+     request->headers.SetHeader("Authorization", authorization_);
+@@ -73,16 +74,33 @@
+         *body, base::JSON_PARSE_RFC) : std::nullopt;
+     const auto* result = reply ? reply->FindDict("result") : nullptr;
+     const auto* data = result ? result->FindDict("data") : nullptr;
+-    const auto initialized = data ? data->FindBool("isInitialized") : std::nullopt;
+-    const auto locked = data ? data->FindBool("isLocked") : std::nullopt;
+-    const auto verification = data ? data->FindBool("requiresPasswordVerification") : std::nullopt;
++    const auto* current = data ? data->FindString("currentPwmAccountId") : nullptr;
++    const auto* accounts = data ? data->FindList("accounts") : nullptr;
++    const base::DictValue* status = nullptr;
++    if (current && base::Uuid::ParseLowercase(*current).is_valid() && accounts) {
++      for (const auto& value : *accounts) {
++        if (value.is_dict() && value.GetDict().FindString("id") &&
++            *value.GetDict().FindString("id") == *current) {
++          status = value.GetDict().FindDict("authStatus");
++          break;
++        }
++      }
++    }
++    const auto initialized = status ? status->FindBool("isInitialized") : std::nullopt;
++    const auto locked = status ? status->FindBool("isLocked") : std::nullopt;
++    const auto verification = status ? status->FindBool("requiresPasswordVerification") : std::nullopt;
+     if (!initialized || !locked || !verification) {
+       state_.error = "Authenticated Vault status is unavailable";
+       Finish(std::move(state_));
+       return;
+     }
++    state_.pwm_account_id = *current;
+     state_.configured = *initialized;
+-    state_.locked = !*initialized || *locked || *verification;
++    // Supplied popup Z2/oh routes by isInitialized/isLocked. Verification only
++    // restricts biometric alternatives in the actual unlock actor; it is not a
++    // global lock, and turning it into one would make the original route loop.
++    state_.locked = !*initialized || *locked;
++    state_.requires_password_verification = *verification;
+     state_.error.clear();
+     // Rebinding/account deletion while status was in flight invalidates it.
+     base::ThreadPool::PostTaskAndReplyWithResult(
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -3,6 +3,7 @@
+ #include "chrome/browser/aux/profile_gate.h"
+ 
+ #include <map>
++#include <optional>
+ 
+ #include "base/environment.h"
+ #include "base/functional/bind.h"
+@@ -103,7 +104,10 @@
+     return allowed_ && profile_ &&
+            extensions::ExtensionRegistry::Get(profile_.get())
+                ->enabled_extensions()
+-               .Contains(kAgentExtensionId);
++               .Contains(kAgentExtensionId) &&
++           extensions::ExtensionRegistry::Get(profile_.get())
++               ->enabled_extensions()
++               .Contains(kVaultExtensionId);
+   }
+ 
+  private:
+@@ -241,8 +245,12 @@
+     const bool extension_ready =
+         extensions::ExtensionRegistry::Get(profile_.get())
+             ->enabled_extensions()
+-            .Contains(kAgentExtensionId);
+-    allowed_ = state.allows_browsing() && extension_ready;
++            .Contains(kAgentExtensionId) &&
++        extensions::ExtensionRegistry::Get(profile_.get())
++            ->enabled_extensions()
++            .Contains(kVaultExtensionId);
++    const bool retain_setup = AwaitingVaultSetupCompletion(state);
++    allowed_ = state.allows_browsing() && extension_ready && !retain_setup;
+     if (!allowed_) {
+       ClearPreload();
+       for (auto* browser : GetAllBrowserWindowInterfaces()) {
+@@ -251,10 +259,21 @@
+           browser->GetWindow()->Hide();
+         }
+       }
+-      if (extension_ready) {
+-        ShowBootstrap(state.configured && state.onboarding_complete
+-                          ? "/unlock"
+-                          : "/onboarding");
++      if (extension_ready && !retain_setup) {
++        if (state.bound && state.account_id && state.local_anonymous) {
++          // Use the original integrated Vault actors, never the cloud sign-in
++          // splash. Setup receives the actual current PWM UUID, not a guessed
++          // account id or a synthetic bootstrap completion record.
++          ShowBootstrap(!state.configured && !state.pwm_account_id.empty()
++                            ? VaultSetupURL(state)
++                            : VaultRoute("/popup/authentication"),
++                        state.account_id);
++        } else {
++          // Preserve the existing cloud sign-in/onboarding criteria and route.
++          ShowBootstrap(GURL("chrome-extension://" +
++                             std::string(kAgentExtensionId) + "/main.html#/"),
++                        state.account_id);
++        }
+       }
+     } else {
+       CloseBootstrap();
+@@ -270,12 +289,39 @@
+     timer_.Start(FROM_HERE, base::Milliseconds(500),
+                  base::BindOnce(&ProfileGate::Refresh, weak_.GetWeakPtr()));
+   }
+-  void ShowBootstrap(std::string route) {
+-    if (widget_ && !widget_->IsClosed() && route_ == route) {
++  GURL VaultRoute(const std::string& route) const {
++    return GURL("chrome-extension://" + std::string(kVaultExtensionId) +
++                "/popup.html#" + route);
++  }
++  GURL VaultSetupURL(const ProfileSecurityState& state) const {
++    return VaultRoute("/setup?pwmAccountId=" + state.pwm_account_id);
++  }
++  bool AwaitingVaultSetupCompletion(const ProfileSecurityState& state) const {
++    if (!state.bound || !state.account_id || !state.local_anonymous ||
++        !bootstrap_contents_ || bootstrap_account_id_ != state.account_id ||
++        !route_.starts_with(VaultRoute("/setup?pwmAccountId=").spec()) ||
++        (!state.pwm_account_id.empty() && route_ != VaultSetupURL(state).spec())) {
++      return false;
++    }
++    // auth.setup unlocks before recovery save/ack. Retain that original view
++    // until its own Finish/Open Vault journey commits the actual ready route.
++    // This is a view-lifecycle hold, never a persisted onboarding/auth flag.
++    const auto& current = bootstrap_contents_->GetLastCommittedURL();
++    const auto fragment = current.ref();
++    const auto path = fragment.substr(0, fragment.find('?'));
++    return current.host() != kVaultExtensionId ||
++           current.path() != "/popup.html" ||
++           (path != "/popup/vault" && path != "/popup/vault/");
++  }
++  void ShowBootstrap(const GURL& url, std::optional<int> account_id) {
++    const auto route = url.spec();
++    if (widget_ && !widget_->IsClosed() && route_ == route &&
++        bootstrap_account_id_ == account_id) {
+       return;
+     }
+     CloseBootstrap();
+-    route_ = std::move(route);
++    route_ = route;
++    bootstrap_account_id_ = account_id;
+     delegate_ = std::make_unique<views::WidgetDelegate>();
+     delegate_->SetTitle(u"Aux setup");
+     auto webview = std::make_unique<views::WebView>(profile_.get());
+@@ -297,13 +343,14 @@
+     if (initialize_tab_) {
+       initialize_tab_.Run(contents->GetWebContents());
+     }
+-    contents->LoadInitialURL(GURL("chrome-extension://" +
+-                                  std::string(kAgentExtensionId) +
+-                                  "/main.html#/"));
++    bootstrap_contents_ = contents->GetWebContents()->GetWeakPtr();
++    contents->LoadInitialURL(url);
+     widget_->Show();
+     contents->RequestFocus();
+   }
+   void CloseBootstrap() {
++    bootstrap_contents_.reset();
++    bootstrap_account_id_.reset();
+     if (widget_) {
+       widget_->RemoveObserver(this);
+       widget_.reset();
+@@ -330,7 +377,8 @@
+   }
+   void OnExtensionLoaded(content::BrowserContext*,
+                          const extensions::Extension* extension) override {
+-    if (extension->id() == kAgentExtensionId) {
++    if (extension->id() == kAgentExtensionId ||
++        extension->id() == kVaultExtensionId) {
+       CloseBootstrap();
+       ClearPreload();
+       Refresh();
+@@ -339,7 +387,8 @@
+   void OnExtensionUnloaded(content::BrowserContext*,
+                            const extensions::Extension* extension,
+                            extensions::UnloadedExtensionReason) override {
+-    if (extension->id() == kAgentExtensionId) {
++    if (extension->id() == kAgentExtensionId ||
++        extension->id() == kVaultExtensionId) {
+       CloseBootstrap();
+       ClearPreload();
+       allowed_ = false;
+@@ -353,6 +402,8 @@
+   base::WeakPtr<Profile> profile_;
+   bool allowed_ = false, reading_ = false;
+   std::string route_;
++  std::optional<int> bootstrap_account_id_;
++  base::WeakPtr<content::WebContents> bootstrap_contents_;
+   std::unique_ptr<network::SimpleURLLoader> loader_;
+   base::OneShotTimer timer_;
+   std::unique_ptr<views::WidgetDelegate> delegate_;
