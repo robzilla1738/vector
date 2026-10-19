@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v48",
+  "appliedSources": 133,
+  "artworkTargets": 23,
+  "gnGenerationPassed": true,
+  "gnTargetCount": 36072,
+  "gnFileCount": 5013,
+  "initialObjectPassCount": 19,
+  "initialObjectFailureCount": 1,
+  "initialElapsedSeconds": 46.41774916648865,
+  "compilerCorrection": "Function-local trivially destructible explicit64-bit independent workspace sequence",
+  "correctedObjectPassed": true,
+  "correctedElapsedSeconds": 19.139647960662842,
+  "directChangedObjectsPassed": 20,
+  "objects": [
+    {
+      "target": "obj/chrome/browser/ui/ui/browser.o",
+      "sha256": "c2f7a91df8f8c6e56b625878d46bcd763f36bb7a18175524ee50581f1eecb320"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/browser_command_controller.o",
+      "sha256": "e2fdfdb82d4b17639aed3f39a03fec3d2507acefb8075a1e9eff98f4f091fd2a"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/browser_manager_service.o",
+      "sha256": "6105b7f5377d7ae4975aae45752f2211fc3be599afb855f0a9b306f99b7e7614"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/browser_view.o",
+      "sha256": "de3029c97b40d7c4ed46ef15c8bcf06aacc9eb1c930c175a6aa92f2056620c46"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/aux_ntp_transition_state.o",
+      "sha256": "5f8299d92f26c4bd8ae1a8e71e5c0ef7db1544e12c9af4217cca03fca47f16f5"
+    },
+    {
+      "target": "obj/chrome/browser/ui/browser_window_theme_observer_impl/browser_window_theme_observer.o",
+      "sha256": "64adcd746c59d2543324f444f9b69d1c7e2ce9bade7ba9f5cf65a4e9c72da75b"
+    },
+    {
+      "target": "obj/chrome/browser/ui/browser_init_state/browser_init_state.o",
+      "sha256": "27387a46f8acf448278350a37a3a09489759c12d37cb31c309e0449195ea9e8e"
+    },
+    {
+      "target": "obj/chrome/browser/ui/tabs/impl/vertical_tab_strip_state_controller.o",
+      "sha256": "274e3ccbe06b42d9d38ad9cc7be9ce42f81c0d6116358e1b9b7e7713d5db3982"
+    },
+    {
+      "target": "obj/chrome/browser/ui/tabs/tab_strip_impl/tab_strip_model.o",
+      "sha256": "e7ea499119300e590700648fb4aa53829bd4d2e5aeaedff21e1fe980577c98eb"
+    },
+    {
+      "target": "obj/chrome/browser/ui/sessions/sessions/session_service_browser_helper.o",
+      "sha256": "cfcfab5496c5057b9059043089f82e4ed1b192c05952acf7b4919078beabb4e5"
+    },
+    {
+      "target": "obj/chrome/browser/ui/bookmarks/impl/bookmark_bar_controller.o",
+      "sha256": "03db5b8f2ff5149c61c0f1d8273e0ee214c8847b902148b4a14a5f4423b84167"
+    },
+    {
+      "target": "obj/chrome/browser/ui/views/frame/contents_web_view/contents_web_view.o",
+      "sha256": "72ab871bf6dea42f20493a29f57283288f96e40f22e495545d757f80971d48a5"
+    },
+    {
+      "target": "obj/chrome/browser/ui/views/bookmarks/impl/bookmark_bar_view.o",
+      "sha256": "4ffe2446f477e7976f560b122c1fc6a68f5eb081e28332a979aea8ef36eec903"
+    },
+    {
+      "target": "obj/chrome/browser/ui/views/bookmarks/saved_tab_groups/impl/saved_tab_group_bar.o",
+      "sha256": "bf3733f7d0bc13c0ee4202229a41340f167c590851dd3e4a3429930f4c2e9144"
+    },
+    {
+      "target": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+      "sha256": "f799d27b74b1e6198dfd844154eadef7d749e7c7b11bc299ded0bb2410354ab1"
+    },
+    {
+      "target": "obj/chrome/browser/prefs/impl/browser_prefs.o",
+      "sha256": "9a5e837774d1733fa4fd34ea92dd193ebf92f155790f81569ade179340c6e8c8"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/aux_profile_switch_owner.o",
+      "sha256": "7c10a843fcb95f64e9febde7d1d37c0176e402969d43ccc6381c8c1745f0e24f"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/aux_profile_switch_workspaces.o",
+      "sha256": "c63f13a397a797c7c8e5e335c7094965360cf7c70fbf08315a939c5c37dd71a6"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/aux_profile_switch_tabs.o",
+      "sha256": "cb4e0b0597b433926d6b03030aedc4a20e615f17d05b86cfda9e56703b98e7d0"
+    },
+    {
+      "target": "obj/chrome/browser/ui/ui/aux_profile_switch_session_rebuild.o",
+      "sha256": "cb0b1ed877b1419ba1a713c8cd26bf2b57f26938158db77bf019c3cdf1707bd8"
+    }
+  ],
+  "fullBrowserLinked": false,
+  "packagedUiObserved": false,
+  "profileSwitchActivated": false,
+  "runtimeParity": false
+}

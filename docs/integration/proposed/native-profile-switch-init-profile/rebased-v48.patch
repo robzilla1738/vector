@@ -1,0 +1,76 @@
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -12,12 +12,14 @@
+ #include <string>
+ 
+ #include "base/files/file_path.h"
++#include "base/types/pass_key.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "components/tab_groups/tab_group_id.h"
+ #include "ui/base/mojom/window_show_state.mojom.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ #include "ui/gfx/geometry/rect.h"
+ 
++class Browser;
+ class BrowserWindowInterface;
+ class Profile;
+ class ScopedProfileKeepAlive;
+@@ -105,6 +107,11 @@
+     return aux_profile_switch_workspace_id_;
+   }
+ 
++  // Original in-place switch changes the real creation-parameter profile.
++  // All other creation metadata is retained; external access remains const.
++  void RebindProfileForAuxProfileSwitch(Profile& profile,
++                                        base::PassKey<Browser>);
++
+   // Original per-window cache-profile map; separate from the active Browser
+   // profile keepalive, retained until this window's state is destroyed.
+   void KeepAuxProfileSwitchProfileAlive(Profile* profile);
+@@ -116,7 +123,9 @@
+ 
+  private:
+   // This Browser's create params.
+-  const BrowserWindowCreateParams browser_window_create_params_;
++  // Immutable to all external consumers. The private Browser transaction's
++  // PassKey method may rebind ONLY profile, matching supplied InitState+8.
++  BrowserWindowCreateParams browser_window_create_params_;
+ 
+   // Original Browser+0xf8, separate from the real browser SessionID.
+   const uint64_t aux_profile_switch_workspace_id_;
+--- a/chrome/browser/ui/browser_init_state.cc
++++ b/chrome/browser/ui/browser_init_state.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/browser_init_state.h"
+ 
+ #include "base/atomic_sequence_num.h"
++#include "base/check.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+@@ -64,6 +65,14 @@
+ 
+ BrowserInitState::~BrowserInitState() = default;
+ 
++void BrowserInitState::RebindProfileForAuxProfileSwitch(
++    Profile& profile,
++    base::PassKey<Browser>) {
++  CHECK(profile.IsRegularProfile());
++  CHECK(browser_window_create_params_.profile->IsRegularProfile());
++  browser_window_create_params_.profile = profile;
++}
++
+ void BrowserInitState::KeepAuxProfileSwitchProfileAlive(Profile* profile) {
+   if (!profile) {
+     return;
+--- a/chrome/browser/ui/browser.cc
++++ b/chrome/browser/ui/browser.cc
+@@ -630,6 +630,8 @@
+   // agree. The window, SessionID, model and its delegate remain unchanged.
+   profile_keep_alive_ = std::move(prepared_keep_alive);
+   profile_ = target;
++  init_state_->RebindProfileForAuxProfileSwitch(
++      *target, base::PassKey<Browser>());
+   tab_strip_model_->RebindProfileForAuxProfileSwitch(
+       target, base::PassKey<Browser>());
+ }

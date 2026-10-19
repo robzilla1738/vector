@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Appliedv48; original3-file source port replayed exactly against savedv47, then current3counted counter corrections reapplied",
+  "originalPatchSha256": "840472927242c704781bd6a4601473422d5d9bcd00b87755151df665265db3e8",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "baselineSha256": "8294ec6a371de3e9614eaccde9eaf670db29c2a85995e4996b2f84d46d525907",
+      "outputSha256": "42807bc4a7abe8819837a3faa2b206b85b6d88823c0482fc666edbcd0a9bc8ea"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.cc",
+      "baselineSha256": "39899833fbfc1697a22157cec1aa0a3e566009b04bcce7b84795fa4c1de39fa5",
+      "outputSha256": "579e0a39eabd63717e6857ae27d45eed08826e3997eb1cbf8a532c21ad8cf607"
+    },
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "baselineSha256": "4bea8714b533db5e4371be8575d45512c5c4aa5fed5dad28ed6ee380432e957f",
+      "outputSha256": "79dd0778a3c01d23c46e81f6c51bdd459135ebf660adbd8cc5fa241527229601"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
