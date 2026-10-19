@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "kind": "source-only-development-signing-executor",
+  "sources": [
+    {
+      "path": "vendor/provided/execute-development-signing.mjs",
+      "sha256": "d0a026c0074c6167866cac6d5e1a906d838c76c07f6d5fff183c44a9c157f92f"
+    },
+    {
+      "path": "vendor/provided/execute-development-signing.test.mjs",
+      "sha256": "58cbd62e1db2f4a4ea5c79938fa8e145bd0af0cb400fea772da2a871b30ad33d"
+    },
+    {
+      "path": "vendor/provided/plan-development-dp.mjs",
+      "sha256": "06492966acff309628cbc7c78fa54fae1f1eb3a3e363e4e84f5079abd503b7bf"
+    },
+    {
+      "path": "vendor/provided/authenticate-development-profile.mjs",
+      "sha256": "5238c749ac373b37e16844245599f592fa3620067877e64c9468ea39427315e6"
+    },
+    {
+      "path": "scripts/lib/provided-signing-policy.mjs",
+      "sha256": "b561b8a7af314d32ef91179d6905561bd6176efa4590814a769e4b2897072937"
+    }
+  ],
+  "rootInspectedBeforeWork": [
+    {
+      "path": "vendor/provided/plan-development-dp.mjs",
+      "sha256": "06492966acff309628cbc7c78fa54fae1f1eb3a3e363e4e84f5079abd503b7bf"
+    },
+    {
+      "path": "vendor/provided/authenticate-development-profile.mjs",
+      "sha256": "5238c749ac373b37e16844245599f592fa3620067877e64c9468ea39427315e6"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/proposal.json",
+      "sha256": "4b18b25aab5b39e4cac7feb17692f7a601e847084ed2b71231061df3c25b7768"
+    }
+  ],
+  "correctedRootPublicIdentity": {
+    "teamSource": "Root current proposal subject OU correction; no hardcoded Team in executor",
+    "team": "9F2JXY8TCK",
+    "leafCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "certificateAloneProvesGroupAuthority": false
+  },
+  "checks": {
+    "pureAndDisposableFilesystemTestsPassed": 8,
+    "syntaxPassed": true,
+    "signingExecuted": false,
+    "cmsHelperExecuted": false,
+    "actualProfileRead": false,
+    "privateKeyAccess": false,
+    "provisioningExecuted": false,
+    "nativeBuildExecuted": false,
+    "dpExecuted": false,
+    "existingApprovalHomeReadOrModified": false
+  },
+  "runtimeAcceptance": false,
+  "remaining": [
+    "Actual root-only complete package plan verification/signing",
+    "Actual current CMS/authenticated profiles",
+    "Actual leaf/Team/profile/capabilities and signed-receipt observation",
+    "New diagnostic preview and actual DP/runtime acceptance"
+  ]
+}
