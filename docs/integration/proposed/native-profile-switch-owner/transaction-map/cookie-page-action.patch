@@ -1,0 +1,20 @@
+--- a/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_page_action_controller.cc
++++ b/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_page_action_controller.cc
+@@ -194,6 +194,17 @@
+   if (!controller) {
+     return;
+   }
++  // Real TabModels can move between the active and cached workspace windows.
++  // Resolve both the controller AND bubble close source from the actual new
++  // window on activation, instead of keeping Init's original coordinator.
++  bubble_will_close_subscription_ =
++      bubble_delegate_->RegisterBubbleClosingCallback(base::BindRepeating(
++          &CookieControlsPageActionController::OnBubbleClosed,
++          base::Unretained(this)));
++  if (controller_observation_.IsObserving() &&
++      controller_observation_.GetSource() != controller) {
++    controller_observation_.Reset();
++  }
+   if (!controller_observation_.IsObserving()) {
+     controller_observation_.Observe(controller);
+   }

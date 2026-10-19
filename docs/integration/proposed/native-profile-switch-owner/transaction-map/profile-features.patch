@@ -1,0 +1,310 @@
+--- a/chrome/browser/extensions/extension_browser_window_helper.h
++++ b/chrome/browser/extensions/extension_browser_window_helper.h
+@@ -7,6 +7,8 @@
+ 
+ #include "base/memory/raw_ref.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/browser/extension_registry_observer.h"
+ #include "extensions/buildflags/buildflags.h"
+@@ -33,6 +35,11 @@
+ 
+   ~ExtensionBrowserWindowHelper() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+  private:
+   // ExtensionRegistryObserver:
+   void OnExtensionUnloaded(content::BrowserContext* browser_context,
+--- a/chrome/browser/extensions/extension_browser_window_helper.cc
++++ b/chrome/browser/extensions/extension_browser_window_helper.cc
+@@ -5,8 +5,10 @@
+ #include "chrome/browser/extensions/extension_browser_window_helper.h"
+ 
+ #include "base/check_deref.h"
++#include "base/check_op.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/tab_list/tab_list_interface.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_muted_utils.h"
+ #include "chrome/common/url_constants.h"
+@@ -105,10 +107,37 @@
+ 
+ ExtensionBrowserWindowHelper::~ExtensionBrowserWindowHelper() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ExtensionBrowserWindowHelper::PrepareForAuxProfileSwitch() {
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  // Old registry unload events must not close tabs after identity has moved.
++  registry_observation_.Reset();
++}
++
++void ExtensionBrowserWindowHelper::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(!registry_observation_.IsObserving());
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  auto* tabs = TabListInterface::From(&browser_.get());
++  CHECK(tabs);
++  CHECK_EQ(tabs->GetTabCount(), 0);
++  registry_observation_.Observe(ExtensionRegistry::Get(target_profile));
++}
++#endif
++
+ void ExtensionBrowserWindowHelper::OnExtensionUnloaded(
+     content::BrowserContext* browser_context,
+     const Extension* extension,
+     UnloadedExtensionReason reason) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!registry_observation_.IsObserving() ||
++      browser_context != browser_->GetProfile()) {
++    return;
++  }
++#endif
+   // Clean up any tabs from |extension|, unless it was terminated. In the
+   // terminated case (as when the extension crashed), we let the sad tabs stay.
+   if (reason != extensions::UnloadedExtensionReason::TERMINATE)
+--- a/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h
+@@ -5,10 +5,13 @@
+ #ifndef CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_SESSION_SERVICE_TAB_GROUP_SYNC_OBSERVER_H_
+ #define CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_SESSION_SERVICE_TAB_GROUP_SYNC_OBSERVER_H_
+ 
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "components/saved_tab_groups/public/saved_tab_group.h"
+ #include "components/saved_tab_groups/public/tab_group_sync_service.h"
+ #include "components/saved_tab_groups/public/types.h"
+@@ -39,6 +42,14 @@
+       const SessionServiceTabGroupSyncObserver&) = delete;
+   SessionServiceTabGroupSyncObserver& operator=(
+       const SessionServiceTabGroupSyncObserver&) = delete;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Preserve the model/session identity; suppress real persistence while tabs
++  // move and attach only to the actual target profile's sync service.
++  uint64_t BeginAuxProfileSwitch();
++  void RebindAuxProfileSwitch(Profile* target_profile);
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
+ 
+  private:
+   // Overridden from tab_groups::TabGroupSyncService::Observer
+@@ -71,6 +82,9 @@
+ 
+   // The service providing data for SavedTabGroups.
+   raw_ptr<TabGroupSyncService> service_ = nullptr;
++
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <optional>
+ 
++#include "base/check_op.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+@@ -34,9 +35,51 @@
+ }
+ 
+ SessionServiceTabGroupSyncObserver::~SessionServiceTabGroupSyncObserver() {
++  if (service_) {
++    service_->RemoveObserver(this);
++  }
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++uint64_t SessionServiceTabGroupSyncObserver::BeginAuxProfileSwitch() {
++  CHECK(profile_->IsRegularProfile());
++  CHECK_EQ(tab_strip_model_->profile(), profile_);
++  aux_profile_switch_paused_ = true;
++  if (service_) {
++    service_->RemoveObserver(this);
++    service_ = nullptr;
++  }
++  return ++aux_profile_switch_generation_;
++}
++
++void SessionServiceTabGroupSyncObserver::RebindAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!service_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK(tab_strip_model_->empty());
++  CHECK_EQ(tab_strip_model_->profile(), target_profile);
++  profile_ = target_profile;
++  service_ = TabGroupSyncServiceFactory::GetForProfile(profile_);
++  // The owner must preserve the same real eligibility check as feature Init.
++  // If the target has no sync service, destroy this prepared optional feature.
+   CHECK(service_);
+-  service_->RemoveObserver(this);
++  service_->AddObserver(this);
+ }
++
++void SessionServiceTabGroupSyncObserver::EndAuxProfileSwitch(
++    uint64_t generation) {
++  if (generation != aux_profile_switch_generation_) {
++    return;
++  }
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(tab_strip_model_->profile(), profile_);
++  aux_profile_switch_paused_ = false;
++  // Real group metadata is captured by the generation-bound touched-profile
++  // session rebuild after the actual registered workspaces have settled.
++}
++#endif
+ 
+ void SessionServiceTabGroupSyncObserver::OnTabGroupAdded(
+     const tab_groups::SavedTabGroup& group,
+@@ -78,6 +121,9 @@
+ void SessionServiceTabGroupSyncObserver::UpdateTabGroupSessionMetadata(
+     const std::optional<LocalTabGroupID> local_id,
+     std::optional<std::string> sync_id) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   if (!local_id.has_value()) {
+     return;
+   }
+--- a/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h
+@@ -5,8 +5,12 @@
+ #ifndef CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_MOST_RECENT_SHARED_TAB_UPDATE_STORE_H_
+ #define CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_MOST_RECENT_SHARED_TAB_UPDATE_STORE_H_
+ 
++#include <cstdint>
++
+ #include "base/feature_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/saved_tab_groups/public/types.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -44,8 +48,17 @@
+       const MostRecentSharedTabUpdateStore& other) = delete;
+   ~MostRecentSharedTabUpdateStore();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Keep this userdata owner stable, but never carry old-profile local IDs or
++  // async promo anchors across the real model/profile migration.
++  uint64_t BeginAuxProfileSwitch();
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
++
+   // Returns whether `tab_identifiers` has been set.
+-  bool HasUpdate() { return last_updated_tab_.has_value(); }
++  bool HasUpdate() {
++    return !aux_profile_switch_paused_ && last_updated_tab_.has_value();
++  }
+ 
+   // Gets the identifiers of the most recent locally-updated shared tab.
+   std::optional<TabIdentifiers> GetLastUpdatedTab() {
+@@ -73,6 +86,9 @@
+   // The most recent local update to a tab within this browser window.
+   // LocalTabID will be null in the case where the user removed the tab.
+   std::optional<TabIdentifiers> last_updated_tab_;
++
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc
+@@ -4,8 +4,11 @@
+ 
+ #include "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h"
+ 
++#include "base/check_op.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+@@ -32,9 +35,32 @@
+                                 *this) {}
+ MostRecentSharedTabUpdateStore::~MostRecentSharedTabUpdateStore() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++uint64_t MostRecentSharedTabUpdateStore::BeginAuxProfileSwitch() {
++  CHECK_EQ(browser_window_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_window_->GetProfile()->IsRegularProfile());
++  aux_profile_switch_paused_ = true;
++  last_updated_tab_.reset();
++  return ++aux_profile_switch_generation_;
++}
++
++void MostRecentSharedTabUpdateStore::EndAuxProfileSwitch(uint64_t generation) {
++  if (generation != aux_profile_switch_generation_) {
++    return;
++  }
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(browser_window_->GetTabStripModel()->profile(),
++           browser_window_->GetProfile());
++  aux_profile_switch_paused_ = false;
++}
++#endif
++
+ void MostRecentSharedTabUpdateStore::SetLastUpdatedTab(
+     LocalTabGroupID group_id,
+     std::optional<LocalTabID> tab_id) {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   last_updated_tab_ = {group_id, tab_id};
+ 
+   MaybeShowPromo(feature_engagement::kIPHTabGroupsSharedTabChangedFeature);
+@@ -42,12 +68,30 @@
+ 
+ ui::TrackedElement* MostRecentSharedTabUpdateStore::GetIPHAnchor(
+     BrowserView* browser_view) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Old queued promos have no current target-profile update/anchor. Do not
++  // resolve old local IDs through another profile's global tab lookup.
++  if (aux_profile_switch_paused_ || !last_updated_tab_ || !browser_view ||
++      browser_view->browser() != browser_window_) {
++    return nullptr;
++  }
++  auto* model = browser_window_->GetTabStripModel();
++  if (!model->SupportsTabGroups() ||
++      !model->group_model()->ContainsTabGroup(last_updated_tab_->first)) {
++    return nullptr;
++  }
++#endif
+   CHECK(last_updated_tab_.has_value());
+ 
+   if (last_updated_tab_->second.has_value()) {
+     // Last update was an active tab. Anchor to this tab.
+     tabs::TabInterface* tab = SavedTabGroupUtils::GetGroupedTab(
+         last_updated_tab_->first, last_updated_tab_->second.value());
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (tab && tab->GetBrowserWindowInterface() != browser_window_) {
++      return nullptr;
++    }
++#endif
+     views::View* tab_view =
+         tab ? browser_view->tab_strip_view()->GetTabAnchorView(tab->GetHandle())
+             : nullptr;

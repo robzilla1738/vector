@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual applied v32; disjoint parent Browser/model/workspace/BrowserWindowFeatures orchestration",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/extension_browser_window_helper.h",
+      "baselineSha256": "e3e7408e07a8f5bc3c8025460a22a037ef41e1786bfdf5e2539dde4d4488255f",
+      "outputSha256": "fd435eb87bada15e7915ebb8a1df6ea30aca5bb8b8f63bb813eab8ea22b25b69"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_browser_window_helper.cc",
+      "baselineSha256": "eb39a5968dd8106aeaef863e982fe86bb4c64870fd82a1a57f1f82986c2a0eb3",
+      "outputSha256": "9cc785130edc9af45ab2bcf301d90da4b3cb7c3a500c33a1dc2b141fab870378"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h",
+      "baselineSha256": "886280ed58fc72e385b66155c21ed09dc172ed41cea08ef5068b3f260351ddc3",
+      "outputSha256": "980f54ef9286f3923f60eb6d8ed935a532ec22179d3d790135ff91a1d9ddcbdf"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc",
+      "baselineSha256": "620f514922dc8fd7643f2a6d4d7895a7a4dd37a4ae434170d1ec86016bc17750",
+      "outputSha256": "6583d4b551abf014a54989ccbbcebaf7a24db6b0adc1571a78ee4893adf63ce8"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h",
+      "baselineSha256": "21d9f470f9e0f6000216732948f552afdfc75cdb1ced3b58b29a1cadabaf3cfa",
+      "outputSha256": "ca8954137dad05c10a67c7ff809820c55870c366dff040da8cfb60a3298e528f"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc",
+      "baselineSha256": "7c0ae8d794d4426476dc0b6924d804b6f341a7086efa253ff822c20453e950e4",
+      "outputSha256": "d6b59751a842c1aa26b5e1fdaf198b5ffbe6332d652be77f6fede176cf7ae047"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

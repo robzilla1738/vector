@@ -241,6 +241,82 @@
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/BUILD.gn",
       "sha256": "4108b626ec9825770350000450e39a8d1b6e4539df39f163c1c5fc0b777f7140"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/extension_browser_window_helper.h",
+      "sha256": "e3e7408e07a8f5bc3c8025460a22a037ef41e1786bfdf5e2539dde4d4488255f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/extension_browser_window_helper.cc",
+      "sha256": "eb39a5968dd8106aeaef863e982fe86bb4c64870fd82a1a57f1f82986c2a0eb3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_instant_controller.h",
+      "sha256": "e5933a9fb1bd619315335b57cfd014a2b88b39f8a772d41c0fa2594bbd903194"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_instant_controller.cc",
+      "sha256": "cd73dc5134c3e1cae7b456c9b2ac08f50da8dcbf21ce9dfe2c759e3a490a6bc0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/search/instant_controller.h",
+      "sha256": "a1eae19ad33ecf2ffdce7ba50b0a33400005f291cd6e4bc1b443b77c9c01885d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/search/instant_controller.cc",
+      "sha256": "deeefefa35f0d49d196915c4512ec7ad9be0e9996b2ef134721a5c5d16bba943"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.cc",
+      "sha256": "2d1ccad8af47371df687a6f701327568c8dc91d90e10259a26ca3492df42ea43"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h",
+      "sha256": "886280ed58fc72e385b66155c21ed09dc172ed41cea08ef5068b3f260351ddc3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc",
+      "sha256": "620f514922dc8fd7643f2a6d4d7895a7a4dd37a4ae434170d1ec86016bc17750"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h",
+      "sha256": "21d9f470f9e0f6000216732948f552afdfc75cdb1ced3b58b29a1cadabaf3cfa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc",
+      "sha256": "7c0ae8d794d4426476dc0b6924d804b6f341a7086efa253ff822c20453e950e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/browser/ui/cookie_controls_controller.h",
+      "sha256": "b3c033e0afc4350f3068c4b56f27f10a0651bc709edc5f0c73830f17564a6079"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/browser/ui/cookie_controls_controller.cc",
+      "sha256": "51ad1491d0f5e652ddc1cf1ad46c960a7dc80ee906f930e06da584b41445308e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h",
+      "sha256": "63c4f475a1176932de04a200c618b709ccbdb382213de4ead630b237b573ede5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc",
+      "sha256": "24c5848c6120aeac0192e696c9b2c6c0987e0d7a8e2c21e4a1eebea14d6389ba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_view_controller.h",
+      "sha256": "17d862c21e88e3caa66bd3b8ad1170549fe6c67e7172c13e866d4c70a09d9902"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_view_controller.cc",
+      "sha256": "a64e126839b7225bdd2c59d2d777a636817d62520d6d5f686f13d49ef9734d0e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_page_action_controller.h",
+      "sha256": "b307baf58f36fdb450974d1242c2a7488bf2322d06c982c3c6b33a25b143caf4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_page_action_controller.cc",
+      "sha256": "36782324219e54f9199b8695ddd99388a5198cab0dcc595d2a4f6a6eb6173ee0"
     }
   ],
   "originalRoutines": {

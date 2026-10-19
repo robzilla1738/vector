@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual applied v32; disjoint parent profile transaction",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_page_action_controller.cc",
+      "baselineSha256": "36782324219e54f9199b8695ddd99388a5198cab0dcc595d2a4f6a6eb6173ee0",
+      "outputSha256": "71ce5a103ec087109e35b8bb48dc11aebd3a9ad498303647147ca05628fb838c"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
