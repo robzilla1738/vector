@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "new disjoint core source; ordered dependencies inREADME; no actual trigger/coldbindingprovider",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": null,
+      "outputSha256": "7f85ecf02b013a0df7886a88d98b243928c5f216f6381ee6c91d1797d3b57396"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h",
+      "baselineSha256": null,
+      "outputSha256": "32d48934859a7826d93e1cdeb17862e864e37100341bf5fb0ca3d45564bbb7dd"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "uiTriggerEnabled": false
+}
