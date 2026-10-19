@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "stagedCompositionSha256": "11eb8c62443da145f90286858b4af541808bf0305fd19c703a39fb9ac28e8ca8",
+  "freshOriginalReplaySha256": "b12e609b7580d2cf0084e008f2710b4e4007951e78cf0d8aa427c49cf6854277",
+  "matchedSourceOutputs": 98,
+  "matchedArtworkOutputs": 23,
+  "orderedSteps": 40,
+  "applied": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

@@ -57,6 +57,8 @@ steps.append(('native-ntp-preloader/port-native.patch', 'native-ntp-preloader/po
 steps.append(('native-ntp-preloader/content-recovery.patch', 'native-ntp-preloader/content-recovery-manifest.json'))
 steps.append(('native-ntp-compile-fixes/fix.patch', 'native-ntp-compile-fixes/manifest.json'))
 steps.append(('native-ntp-background/native.patch', 'native-ntp-background/manifest.json'))
+steps.append(('native-agent-background-target/native.patch', 'native-agent-background-target/manifest.json'))
+steps.append(('native-carrier-profile-layout/fix.patch', 'native-carrier-profile-layout/manifest.json'))
 
 def safe(path):
     value = Path(path)
