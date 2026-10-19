@@ -1,0 +1,57 @@
+--- a/chrome/browser/ui/browser_select_file_dialog_controller.h
++++ b/chrome/browser/ui/browser_select_file_dialog_controller.h
+@@ -8,6 +8,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ #include "ui/gfx/native_ui_types.h"
+@@ -47,6 +48,13 @@
+       const BrowserSelectFileDialogController&) = delete;
+   ~BrowserSelectFileDialogController() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Cold preflight refuses an active genuine platform chooser. No selection
++  // is completed, cancelled or replayed by profile migration.
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(BrowserWindowInterface& browser);
++#endif
++
+   // Opens a file selection dialog for the browser's currently active tab.
+   void OpenFile();
+ 
+@@ -62,7 +70,8 @@
+   // maintains its own lifetime, but we hold a reference to manage interaction.
+   scoped_refptr<ui::SelectFileDialog> select_file_dialog_;
+ 
+-  const raw_ref<Profile> profile_;
++  // Changed only at the actual Aux same-window empty-model boundary.
++  raw_ref<Profile> profile_;
+   const raw_ref<TabStripModel> tab_strip_model_;
+   const raw_ref<ui::BaseWindow> base_window_;
+   const raw_ref<content::PageNavigator> page_navigator_;
+--- a/chrome/browser/ui/browser_select_file_dialog_controller.cc
++++ b/chrome/browser/ui/browser_select_file_dialog_controller.cc
+@@ -102,3 +102,20 @@
+ void BrowserSelectFileDialogController::FileSelectionCanceled() {
+   select_file_dialog_.reset();
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool BrowserSelectFileDialogController::CanRebindForAuxProfileSwitch() const {
++  return !select_file_dialog_;
++}
++
++void BrowserSelectFileDialogController::RebindForAuxProfileSwitch(
++    BrowserWindowInterface& browser) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK_EQ(From(&browser), this);
++  CHECK_EQ(browser.GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser.GetProfile()->IsRegularProfile());
++  CHECK_EQ(browser.GetTabStripModel(), &tab_strip_model_.get());
++  CHECK(tab_strip_model_->empty());
++  profile_ = *browser.GetProfile();
++}
++#endif

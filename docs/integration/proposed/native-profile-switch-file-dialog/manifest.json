@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Actual applied v62 (these files unchanged from v55)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_select_file_dialog_controller.h",
+      "baselineSha256": "2569cb0977bb8f6c19c8ae93f6ead1ceadc15f204c393e3a5797eb4445e24f65",
+      "outputSha256": "8b0eef426c2cb1f432b401c9e3ee6114fc5dc5723235148d5e6844b8457cd9e6"
+    },
+    {
+      "path": "chrome/browser/ui/browser_select_file_dialog_controller.cc",
+      "baselineSha256": "0da1a9c2baf632c70c03964ab1012b80851673b06c4f8cab59d10e16bf23ce59",
+      "outputSha256": "54649e92fe5043b9f01cb15aac7ef55061885fbc4aec2f335a53ff3a6e852923"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

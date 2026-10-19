@@ -1,0 +1,9 @@
+# Actual open-file profile source
+
+Two exact applied v62 source outputs. The supplied Features refresh at `0x4164b0c` recreates its actual BrowserSelectFileDialogController in slot `+0x78`, after real Browser profile identity is committed. Constructor `0x2f6bec4` carries the exact class and source-path literals pinned in `source-evidence.json`. The same bounded refresh also recreates its SessionServiceBrowserHelper in `+0x1f0`; constructor `0x3076180` contains its exact class/source literals. This confirms these are genuine profile sources, not guessed menu metadata.
+
+The current Chromium 155 open-file controller captures the profile that receives `last_selected_directory` writes. Leaving it bound to the source would update the wrong profile after switching. This adaptation retains the same real controller, page navigator, tab model and base window, and changes only the profile source at the actual empty-model boundary. Its checked same-window userdata identity prevents rebinding a different controller or another model.
+
+Cold preparation must require `CanRebindForAuxProfileSwitch()` before any switch effects. A currently active genuine platform chooser blocks this migration rather than inventing selection/cancellation or allowing its result to navigate the new profile. On commit, the actual Features provider calls `RebindForAuxProfileSwitch(*browser)` before target insertion. No abort action is needed because the old controller has not been changed before identity commit. Ordinary OpenFile uses the original native chooser and policy unchanged.
+
+Exact two-file disposable replay matches all output hashes. No shared native writes/build, chooser launch, owner file/data, OS grants or runtime acceptance. Existing implementation object needs focused compilation; the public header's buildflags include requires the existing corresponding GN public dependency if not already exposed. This does not install a successful complete provider or UI trigger.

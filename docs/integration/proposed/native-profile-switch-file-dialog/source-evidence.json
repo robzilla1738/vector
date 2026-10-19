@@ -1,0 +1,36 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "literals": [
+    {
+      "va": "0xdacd4d4",
+      "value": "BrowserSelectFileDialogController"
+    },
+    {
+      "va": "0xdacd4f6",
+      "value": "../../chrome/browser/ui/browser_select_file_dialog_controller.cc"
+    },
+    {
+      "va": "0xdac88f0",
+      "value": "SessionServiceBrowserHelper"
+    },
+    {
+      "va": "0xdac890c",
+      "value": "../../chrome/browser/ui/sessions/session_service_browser_helper.cc"
+    }
+  ],
+  "proofs": [
+    {
+      "path": "proofs/feature-profile-observer.txt",
+      "sha256": "d51a10772301cd02310b1e7a9221d2b6825b6af45297fb122ab8937dc3425997"
+    },
+    {
+      "path": "proofs/feature-session-helper.txt",
+      "sha256": "58b770d023f98e66055442068a51f1a607af4f2dc7ee5e426ad08292ac8af1e8"
+    },
+    {
+      "path": "proofs/features-profile-refresh.txt",
+      "sha256": "8ff608f3af34d18c30ec5d135d81b1e7adf847ece983af8cfc784dae24aafc97"
+    }
+  ]
+}
