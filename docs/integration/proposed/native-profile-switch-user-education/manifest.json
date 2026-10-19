@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Actual shared v71; files unchanged by preceding profile proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.h",
+      "baselineSha256": "f57fa20a23f2d7b9de754a611ef10f33ce4a55256cf357507cfea1da005de4a4",
+      "outputSha256": "dd013015df3ed6c09afb62213644a575a3d116b63cf7d366b293e6b2709dc217"
+    },
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.cc",
+      "baselineSha256": "442bf7c57d4474bd926ef4e48d8af81d0fcb350d9ed7399fa5b4f2e0bde341b4",
+      "outputSha256": "9162ea63021dde96e2a2d79bb57323b981aa83db27aa923b01d2c3d1b0203377"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

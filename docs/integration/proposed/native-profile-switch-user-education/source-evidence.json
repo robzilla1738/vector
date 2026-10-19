@@ -1,0 +1,21 @@
+{
+  "kind": "Actual current profile context and forwarding-precondition invalidation ownership",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.h",
+      "sha256": "f57fa20a23f2d7b9de754a611ef10f33ce4a55256cf357507cfea1da005de4a4"
+    },
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.cc",
+      "sha256": "442bf7c57d4474bd926ef4e48d8af81d0fcb350d9ed7399fa5b4f2e0bde341b4"
+    },
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_context.cc",
+      "sha256": "8cbb247d64ebe502b16fb1af15878c63c365e2b53b273ad54918c146f5fa0693"
+    },
+    {
+      "path": "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h",
+      "sha256": "e5d9fd9b2f01251ee1560bee23ad33c564ad55262cedba467c4c1c1a3387f196"
+    }
+  ]
+}
