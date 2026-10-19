@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Exact v55 shared outputs; requires separate sidebar seam 1d5cb85a5 before compile",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "baselineSha256": "3b56f0ba5725ce6bf4fda4fb4e16978791efb33e49ff7d8e39db5d07344a3144",
+      "outputSha256": "fe0ee511f91ec7a24954083c02078359a98494ddef5e1c66bf964a6de77b25af"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "d1fc3166c13216e3f9f90aed192dafca7325e71770533c21369efc4c55637fcd",
+      "outputSha256": "afbe08e56dbe2afce6776c8454a6cdc8a850ddb8787d03734e5ec01ee0129a62"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "f48b7b6ab999ba74f4fc6b1cf6420c63e160af53e5e00ed151a721ab448937eb",
+      "outputSha256": "6e2060cb59adf3abdaade5eda904f512ba4623b828d7118b2a3fbbba238de174"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,79 @@
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -269,6 +269,12 @@
+ 
+   // Returns either the Horizontal or Vertical TabStrip.
+   TabStripRegionView* tab_strip_view() const;
++
++  // Actual same-window profile transaction owner. May be null when the
++  // window has no native vertical region; no test accessor is used by it.
++  VerticalTabStripRegionView* vertical_tab_strip_region_view() const {
++    return vertical_tab_strip_region_view_.get();
++  }
+ 
+   // Test only function. When the VerticalTabs feature is enabled,
+   // `vertical_tab_strip_container_` will have a value for normal tabbed
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+ 
+ #include <optional>
++#include <cstdint>
+ 
+ #include "base/callback_list.h"
+ #include "base/containers/flat_set.h"
+@@ -34,6 +35,7 @@
+ class AuxSidebarFooter;
+ class AuxSidebarView;
+ class BrowserView;
++class Profile;
+ class VerticalTabStripTopContainer;
+ class VerticalTabStripBottomContainer;
+ class VerticalTabStripFocusSwipeController;
+@@ -81,6 +83,13 @@
+   VerticalTabStripRegionView& operator=(const VerticalTabStripRegionView&) =
+       delete;
+   ~VerticalTabStripRegionView() override;
++
++  // The real region owns the actual sidebar/footer; retain these views and
++  // their callback lists across the supplied same-window transaction.
++  bool CanRebindForAuxProfileSwitch(Profile* target) const;
++  uint64_t BeginAuxProfileSwitch(Profile* target);
++  void RebindAuxProfileSwitch();
++  void EndAuxProfileSwitch(uint64_t generation);
+ 
+   TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen) override;
+ 
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -730,6 +730,29 @@
+   }
+ }
+ 
++bool VerticalTabStripRegionView::CanRebindForAuxProfileSwitch(
++    Profile* target) const {
++  return aux_sidebar_ && aux_footer_ && resize_area_ &&
++         !resize_area_->is_resizing() &&
++         aux_sidebar_->CanRebindForAuxProfileSwitch(target);
++}
++
++uint64_t VerticalTabStripRegionView::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanRebindForAuxProfileSwitch(target));
++  return aux_sidebar_->BeginAuxProfileSwitch(target);
++}
++
++void VerticalTabStripRegionView::RebindAuxProfileSwitch() {
++  // Both commit and rollback derive the actual currently authoritative
++  // Browser profile. Do not copy another window's rendered rows or sources.
++  aux_sidebar_->RebindAuxProfileSwitch();
++  aux_footer_->RebindForAuxProfileSwitch();
++}
++
++void VerticalTabStripRegionView::EndAuxProfileSwitch(uint64_t generation) {
++  aux_sidebar_->EndAuxProfileSwitch(generation);
++}
++
+ void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+   top_button_container_->SetAgentActive(active);
+   aux_footer_->SetAgentActive(active);
