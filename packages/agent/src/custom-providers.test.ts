@@ -118,6 +118,13 @@ test('whole-batch validation preserves the original snapshot on conflict or inva
   const f = fixture();
   try {
     f.providers.set(1, { 'custom-fixture': config });
+    assert.throws(
+      () =>
+        f.providers.set(1, {
+          'custom-fixture': { ...config, createOnly: true },
+        }),
+      /already configured/,
+    );
     const path = join(f.home, '1/custom-provider-secrets.json'),
       before = readFileSync(path, 'utf8');
     assert.throws(
@@ -133,6 +140,7 @@ test('whole-batch validation preserves the original snapshot on conflict or inva
       { ...config, baseUrl: 'http://outside.invalid' },
       { ...config, baseUrl: 'https://user:secret@example.invalid/v1' },
       { ...config, baseUrl: 'https://example.invalid/#fragment' },
+      { ...config, headers: { constructor: 'fixture-secret' } },
       { ...config, models: [model, model] },
       { ...config, models: [{ ...model, reasoning: false }] },
       {

@@ -1,0 +1,110 @@
+.custom-model-settings {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.custom-model-settings h3,
+.custom-model-editor h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.custom-model-settings p {
+  margin: 6px 0;
+}
+.custom-provider-card {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.custom-model-editor {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.custom-model-editor label {
+  display: grid;
+  gap: 7px;
+  font-weight: 500;
+}
+.custom-model-editor input:not([type="checkbox"]),
+.custom-model-editor textarea,
+.custom-model-editor select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--raised);
+  color: inherit;
+  font: inherit;
+}
+.custom-model-editor fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+}
+.custom-model-editor legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.custom-model-editor .custom-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.custom-model-editor .custom-header-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.custom-model-editor .custom-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.custom-model-editor .custom-toggle input {
+  width: auto;
+  flex: none;
+}
+.custom-model-editor .custom-saved-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.custom-model-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.custom-model-editor .custom-order {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.custom-model-editor small {
+  color: var(--muted);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.custom-model-editor [role="alert"] {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 620px) {
+  .custom-model-editor .custom-model-grid,
+  .custom-model-editor .custom-header-row {
+    grid-template-columns: 1fr;
+  }
+  .custom-provider-card {
+    padding: 14px;
+  }
+}

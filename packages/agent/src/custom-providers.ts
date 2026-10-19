@@ -127,7 +127,14 @@ const endpoint = z
       return false;
     }
   }, 'Use HTTPS or loopback HTTP, without URL credentials or a fragment.');
-const headerName = z.string().regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,200}$/);
+const headerName = z
+  .string()
+  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,200}$/)
+  .refine(
+    (value) =>
+      !['__proto__', 'prototype', 'constructor'].includes(value.toLowerCase()),
+    'This header name is reserved.',
+  );
 const headers = z.record(
   headerName,
   z
@@ -173,6 +180,7 @@ export const customProviderUpdate = configSchema
   .safeExtend({
     apiKey: z.string().min(1).max(16384).optional(),
     removeApiKey: z.boolean().optional(),
+    createOnly: z.boolean().optional(),
     headers: headers.optional(),
     preserveHeaderNames: z.array(headerName).max(100).default([]),
   })
@@ -302,6 +310,11 @@ export class CustomProviders {
       snapshot = this.read(accountId);
     for (const [id, update] of Object.entries(batch)) {
       const previous = snapshot.providers[id];
+      if (update.createOnly && previous)
+        fail(
+          'CONFLICT',
+          'This provider ID is already configured. Choose another ID or edit the existing provider.',
+        );
       const names = new Set<string>(),
         merged: Record<string, string> = {};
       for (const name of update.preserveHeaderNames) {
@@ -335,6 +348,7 @@ export class CustomProviders {
       const {
         apiKey,
         removeApiKey,
+        createOnly: _createOnly,
         headers: _headers,
         preserveHeaderNames: _preserve,
         ...config
