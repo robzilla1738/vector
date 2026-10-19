@@ -42,7 +42,15 @@
  #endif  // CHROME_BROWSER_UI_SESSIONS_SESSION_SERVICE_BROWSER_HELPER_H_
 --- a/chrome/browser/ui/sessions/session_service_browser_helper.cc
 +++ b/chrome/browser/ui/sessions/session_service_browser_helper.cc
-@@ -84,6 +84,41 @@
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/sessions/session_service_browser_helper.h"
+ 
++#include "base/check_op.h"
+ #include "base/check_deref.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -84,6 +85,41 @@
  
  SessionServiceBrowserHelper::~SessionServiceBrowserHelper() = default;
  
@@ -84,7 +92,7 @@
  void SessionServiceBrowserHelper::OnTabStripModelChanged(
      TabStripModel* tab_strip_model,
      const TabStripModelChange& change,
-@@ -182,6 +217,9 @@
+@@ -182,6 +218,9 @@
  
  void SessionServiceBrowserHelper::OnTabGroupChanged(
      const TabGroupChange& change) {
@@ -94,7 +102,7 @@
    // If apps ever get tab grouping, this function needs to be updated to
    // retrieve AppSessionService from the correct factory. Additionally,
    // AppSessionService doesn't support SetTabGroupMetadata, so some
-@@ -219,6 +257,9 @@
+@@ -219,6 +258,9 @@
  void SessionServiceBrowserHelper::OnTabPinnedStateChanged(
      tabs::TabInterface* tab,
      int index) {
@@ -104,7 +112,7 @@
    // See comment in `OnTabGroupChanged`.
    DCHECK(!IsRelevantToAppSessionService(browser_type_));
    SessionService* session_service =
-@@ -278,6 +319,9 @@
+@@ -278,6 +320,9 @@
  }
  
  void SessionServiceBrowserHelper::SyncHistoryWithTabs(int index) {
@@ -114,7 +122,7 @@
    SessionServiceBase* service = GetSessionService();
  
    SessionService* session_service =
-@@ -318,6 +362,9 @@
+@@ -318,6 +363,9 @@
  void SessionServiceBrowserHelper::UpdateTabGroupSessionDataForTab(
      tabs::TabInterface* tab,
      std::optional<tab_groups::TabGroupId> group) {
@@ -124,7 +132,7 @@
    // See comment in `OnTabGroupChanged`.
    DCHECK(!IsRelevantToAppSessionService(browser_type_));
    SessionService* const session_service =
-@@ -334,6 +381,9 @@
+@@ -334,6 +382,9 @@
  void SessionServiceBrowserHelper::UpdateSplitTabSessionData(
      tabs::TabInterface* tab,
      std::optional<split_tabs::SplitTabId> split_id) {
@@ -134,7 +142,7 @@
    DCHECK(!IsRelevantToAppSessionService(browser_type_));
    SessionService* const session_service =
        SessionServiceFactory::GetForProfile(&*profile_);
-@@ -348,6 +398,9 @@
+@@ -348,6 +399,9 @@
  
  void SessionServiceBrowserHelper::UpdateSplitTabSessionVisualData(
      const split_tabs::SplitTabId& split_id) {
@@ -144,7 +152,7 @@
    SessionService* const session_service =
        SessionServiceFactory::GetForProfile(&*profile_);
    if (!session_service) {
-@@ -360,6 +413,9 @@
+@@ -360,6 +414,9 @@
  }
  
  SessionServiceBase* SessionServiceBrowserHelper::GetSessionService() {
@@ -154,7 +162,7 @@
    if (IsRelevantToAppSessionService(browser_type_)) {
      return AppSessionServiceFactory::GetForProfile(&*profile_);
    }
-@@ -367,6 +423,9 @@
+@@ -367,6 +424,9 @@
  }
  
  SessionServiceBase* SessionServiceBrowserHelper::GetSessionServiceIfExisting() {

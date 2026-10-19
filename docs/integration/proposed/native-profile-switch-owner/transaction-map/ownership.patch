@@ -34,18 +34,19 @@
    void Shutdown() override;
 --- a/chrome/browser/ui/browser_manager_service.cc
 +++ b/chrome/browser/ui/browser_manager_service.cc
-@@ -5,6 +5,10 @@
+@@ -5,6 +5,11 @@
  #include "chrome/browser/ui/browser_manager_service.h"
  
  #include <algorithm>
 +
++#include "base/check_op.h"
 +#include "base/functional/callback.h"
 +#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 +#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
  
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/lifetime/application_lifetime_desktop.h"
-@@ -38,6 +42,77 @@
+@@ -38,6 +43,77 @@
    BrowserManagerServiceFactory::GetForProfile(browser->GetProfile())
        ->DeleteBrowser(browser);
  }

@@ -10,7 +10,7 @@
     {
       "path": "chrome/browser/ui/browser_manager_service.cc",
       "baselineSha256": "492fbdf3867cddffe1c93ce83da91a3b8226635f8293640ebd89f792b2fa5d84",
-      "outputSha256": "f6ffb51e995ca154386d09e77c509b6c486464c97ab74ed771aebd0424b8c84e"
+      "outputSha256": "ef9371b5f718dad5c5f344ee8c436e424fc9993237793ccf4b02faad6323d6b6"
     }
   ],
   "sharedSourceModified": false,

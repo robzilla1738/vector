@@ -10,7 +10,7 @@
     {
       "path": "chrome/browser/ui/sessions/session_service_browser_helper.cc",
       "baselineSha256": "eaf3bce0b16e8a9a8b12a9c71e1ac43637f21c7959df5519c09a005528946756",
-      "outputSha256": "3ffe583a5b3f67b3aab52232dae1a9ac6e2974c5b7b6667029c2b8e1c4f91be7"
+      "outputSha256": "72bedeb934e799f7510c2135fb1fc02ab7d9d52e048ecfe13e5702c8b2268c42"
     }
   ],
   "sharedSourceModified": false,

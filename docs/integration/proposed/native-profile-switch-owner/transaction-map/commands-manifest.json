@@ -5,7 +5,7 @@
     {
       "path": "chrome/browser/ui/browser_command_controller.cc",
       "baselineSha256": "264464dcb5abdc4f0342f8bca2560229682aa1be9328571c626f77837fb1800e",
-      "outputSha256": "0ffa387270075c732ec429a1824e48b5bd9286e68bbae307176582d66e1c7065"
+      "outputSha256": "edbd1c69d964b8c1eaa3814bd1528db9d8d85e6d3ba1456cbad7e115e0143448"
     },
     {
       "path": "chrome/browser/ui/browser_command_controller.h",
