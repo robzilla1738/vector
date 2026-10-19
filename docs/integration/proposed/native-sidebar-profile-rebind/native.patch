@@ -1,0 +1,222 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -53,6 +53,13 @@
+   AuxSidebarView& operator=(const AuxSidebarView&) = delete;
+   ~AuxSidebarView() override;
+ 
++  // Internal same-window transaction. Cold validation precedes all effects;
++  // both commit and abort rebind the real currently authoritative profile.
++  bool CanRebindForAuxProfileSwitch(Profile* target) const;
++  uint64_t BeginAuxProfileSwitch(Profile* target);
++  void RebindAuxProfileSwitch();
++  void EndAuxProfileSwitch(uint64_t generation);
++
+   // Called with whether any chat is running, whenever that changes.
+   using RunningChangedCallback = base::RepeatingCallback<void(bool)>;
+   void SetRunningChangedCallback(RunningChangedCallback callback) {
+@@ -97,6 +104,7 @@
+   void BookmarkModelBeingDeleted() override;
+ 
+  private:
++  void BindProfileSources();
+   void Rebuild();
+   void ScheduleRebuild();
+   void AddPinnedTiles();
+@@ -125,6 +133,9 @@
+   void OpenBookmark(const GURL& url);
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
++  base::WeakPtr<Profile> bound_profile_;
++  bool profile_switch_paused_ = false;
++  uint64_t profile_switch_generation_ = 0;
+   base::ScopedObservation<bookmarks::BookmarkModel,
+                           bookmarks::BaseBookmarkModelObserver>
+       bookmark_observation_{this};
+@@ -185,6 +196,8 @@
+   ~AuxSidebarFooter() override;
+ 
+   void SetAgentActive(bool active);
++  // Refresh existing footer controls from the same Browser's real profile.
++  void RebindForAuxProfileSwitch();
+ 
+  private:
+   void Build();
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -8,6 +8,8 @@
+ #include <utility>
+ 
+ #include "base/callback_list.h"
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/environment.h"
+ #include "base/files/file_path.h"
+ #include "base/functional/bind.h"
+@@ -1004,11 +1006,18 @@
+   layout->set_cross_axis_alignment(
+       views::BoxLayout::CrossAxisAlignment::kStretch);
+ 
++  browser_->GetTabStripModel()->AddObserver(this);
++  BindProfileSources();
++  UpdateActiveChat();
++  Rebuild();
++}
++
++void AuxSidebarView::BindProfileSources() {
++  bound_profile_ = browser_->GetProfile()->GetWeakPtr();
+   if (bookmarks::BookmarkModel* model =
+           BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile())) {
+     bookmark_observation_.Observe(model);
+   }
+-  browser_->GetTabStripModel()->AddObserver(this);
+   pref_changes_.Init(browser_->GetProfile()->GetPrefs());
+   pref_changes_.Add(kFolderStatePref,
+                     base::BindRepeating(&AuxSidebarView::ScheduleRebuild,
+@@ -1023,8 +1032,83 @@
+       browser_->GetProfile(),
+       base::BindRepeating(&AuxSidebarView::OnTaskSnapshot,
+                           weak_factory_.GetWeakPtr()));
++}
++
++bool AuxSidebarView::CanRebindForAuxProfileSwitch(Profile* target) const {
++  if (!target || !target->IsRegularProfile() || profile_switch_paused_ ||
++      bound_profile_.get() != browser_->GetProfile()) {
++    return false;
++  }
++  // An ongoing native drag owns actual tab/view pointers; do not migrate it.
++  if (pinned_grid_ &&
++      static_cast<AuxPinnedGrid*>(pinned_grid_.get())->IsDragging()) {
++    return false;
++  }
++  auto* prefs = target->GetPrefs();
++  return prefs && prefs->FindPreference(kFolderStatePref) &&
++         prefs->FindPreference(kSectionStatePref) &&
++         prefs->FindPreference("aux.browser.sidebar_bookmarks");
++}
++
++uint64_t AuxSidebarView::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanRebindForAuxProfileSwitch(target));
++  profile_switch_paused_ = true;
++  const uint64_t generation = ++profile_switch_generation_;
++  weak_factory_.InvalidateWeakPtrs();
++  rebuild_pending_ = false;
++  task_feed_->Stop();
++  bookmark_observation_.Reset();
++  pref_changes_.Reset();
++  favicon_tracker_.TryCancelAll();
++  menu_runner_.reset();
++  menu_model_.reset();
++  if (review_widget_) {
++    review_widget_->Close();
++    review_widget_.reset();
++  }
++  return generation;
++}
++
++void AuxSidebarView::RebindAuxProfileSwitch() {
++  CHECK(profile_switch_paused_);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK(!bookmark_observation_.IsObserving());
++  // Destroy the old feed before its replacement. This closes only its actual
++  // observer/transport; it neither cancels nor fabricates daemon tasks.
++  task_feed_.reset();
++  projected_tasks_.clear();
++  chats_.clear();
++  feed_state_ = AuxNativeTaskFeed::State::kConnecting;
++  feed_error_.clear();
++  action_error_.clear();
++  active_chat_id_.clear();
++  collapsed_sections_.clear();
++  expanded_bookmark_folders_.clear();
++  menu_chat_id_.clear();
++  menu_tab_contents_.reset();
++  menu_bookmark_id_ = -1;
++  menu_bookmark_uuid_.clear();
++  menu_pinned_ = false;
++  show_all_chats_ = false;
++  any_running_ = false;
++  BindProfileSources();
++}
++
++void AuxSidebarView::EndAuxProfileSwitch(uint64_t generation) {
++  if (generation != profile_switch_generation_ || !profile_switch_paused_) {
++    return;
++  }
++  CHECK_EQ(bound_profile_.get(), browser_->GetProfile());
++  profile_switch_paused_ = false;
++  if (running_changed_) {
++    running_changed_.Run(false);
++  }
++  // Target tab insertion has now settled; derive its actual active chat.
+   UpdateActiveChat();
+   Rebuild();
++  if (GetWidget()) {
++    task_feed_->Start();
++  }
+ }
+ 
+ AuxSidebarView::~AuxSidebarView() {
+@@ -1057,6 +1141,9 @@
+ }
+ 
+ void AuxSidebarView::ScheduleRebuild() {
++  if (profile_switch_paused_) {
++    return;
++  }
+   if (rebuild_pending_) {
+     return;
+   }
+@@ -1172,6 +1259,9 @@
+ }
+ 
+ void AuxSidebarView::UpdateActiveChat() {
++  if (profile_switch_paused_) {
++    return;
++  }
+   std::string id;
+   if (content::WebContents* contents =
+           browser_->GetTabStripModel()->GetActiveWebContents()) {
+@@ -1327,7 +1417,9 @@
+ }
+ 
+ void AuxSidebarView::AddedToWidget() {
+-  task_feed_->Start();
++  if (!profile_switch_paused_) {
++    task_feed_->Start();
++  }
+ }
+ 
+ void AuxSidebarView::RemovedFromWidget() {
+@@ -1349,6 +1441,9 @@
+ }
+ 
+ void AuxSidebarView::Rebuild() {
++  if (profile_switch_paused_) {
++    return;
++  }
+   if (menu_runner_ && menu_runner_->IsRunning()) {
+     return;
+   }
+@@ -1495,6 +1590,9 @@
+ }
+ 
+ void AuxSidebarView::OnTaskSnapshot(const AuxNativeTaskFeed::Snapshot& snapshot) {
++  if (profile_switch_paused_) {
++    return;
++  }
+   if (projected_tasks_ == snapshot.tasks && feed_state_ == snapshot.state &&
+       feed_error_ == snapshot.error)
+     return;
+@@ -1928,6 +2026,12 @@
+ 
+ AuxSidebarFooter::~AuxSidebarFooter() = default;
+ 
++void AuxSidebarFooter::RebindForAuxProfileSwitch() {
++  weak_factory_.InvalidateWeakPtrs();
++  agent_active_ = false;
++  Build();
++}
++
+ void AuxSidebarFooter::SetAgentActive(bool active) {
+   agent_active_ = active;
+   if (agent_button_) {

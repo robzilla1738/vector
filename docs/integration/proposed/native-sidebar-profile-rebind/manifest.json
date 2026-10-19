@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "Actual appliedv55; source-bound native sidebar remains same view/model/browser owner",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "baselineSha256": "89d7b06b19d22bbb3c31e78154e99ee9f4e64fa38f3ce184fc28d940b2388644",
+      "outputSha256": "8487df30a40afce0e8b594e2058e7bd09b5fd2de9b43f1445bbe598d72f94e71"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "2928fc6d48a4a2835f3475fd9245ae8e81149f223559bdd3520c74ce72093653",
+      "outputSha256": "bf00dd4bc9d0aed140a4572a9662164e8f6e9a7ecfb2e1988826a7f4c6e09fb2"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
