@@ -7,7 +7,8 @@ import { findMachOSeaSection, readSeaBlob, writeSeaBlob, injectMachOSeaBlob } fr
 export const DAEMON_VERSION = '1.26.1016.1852';
 export const DAEMON_BINARY_SHA256 = '60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286';
 export const DAEMON_CODE_SHA256 = '5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5';
-export const nativeShimPath = fileURLToPath(new URL('./daemon-native.cjs', import.meta.url));
+export const nativeShimPath = fileURLToPath(new URL('./aux-native.cjs', import.meta.url));
+export const disposableTestShimPath = fileURLToPath(new URL('./daemon-native.cjs', import.meta.url));
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 const edit = (name, from, to, count) => ({ name, from, to, count });
 
@@ -44,7 +45,7 @@ export const platformEdits = [
   edit('HTTP token offset', 'ei.slice(24).trim()', 'ei.slice(22).trim()', 2),
   edit('WS token offset', 'let ei=ti.slice(18)', 'let ei=ti.slice(16)', 1),
   // Never fall through to the original binding (custom Keychain and OS grants).
-  edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[process.env.AUX_NATIVE_HELPER_BINDING??path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
+  edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
   edit('telemetry disabled', 'new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{'.replace('ASIDE_', 'AUX_'), 'new PostHog(AUX_POSTHOG_PROJECT_API_KEY,{disabled:!0,', 1),
   // Local-only boundary: rejected network requests retain their original errors;
   // nothing here invents plans, account state, search results or sync success.

@@ -1,0 +1,21 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -55,7 +55,17 @@
+     command.AppendArgPath(paths.daemon_script);
+   }
+   base::LaunchOptions options;
+-  options.environment["AUX_HOME"] = home.value();
++  const auto canonical_home = base::MakeAbsoluteFilePath(home);
++  const auto boundary = base::MakeAbsoluteFilePath(
++      paths.root.AppendASCII("native/libaux-native-boundary.dylib"));
++  int boundary_mode = 0;
++  if (!home.IsAbsolute() || canonical_home.empty() || boundary.empty() ||
++      !root.IsParent(boundary) ||
++      !base::GetPosixFilePermissions(boundary, &boundary_mode) ||
++      (boundary_mode & 0022)) return base::Process();
++  options.environment["AUX_HOME"] = canonical_home.value();
++  options.environment["DYLD_INSERT_LIBRARIES"] = boundary.value();
++  // Runtime acceptance is inherited only; never manufacture it at startup.
+   options.environment["AUX_PORT"] = base::NumberToString(port);
+   options.environment["AUX_BROWSER_PID"] =
+       base::NumberToString(base::GetCurrentProcId());

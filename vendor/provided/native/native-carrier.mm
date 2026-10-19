@@ -1,33 +1,36 @@
 // Self-contained original-native command carrier. No replacement cryptography.
+#include <CommonCrypto/CommonDigest.h>
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
-#include <CommonCrypto/CommonDigest.h>
-#include <dlfcn.h>
 #include <cstdlib>
+#include <dlfcn.h>
 #include <iostream>
 #include <limits.h>
 #include <string>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace {
-int Fail(const char* message) {
+int Fail(const char *message) {
   // Messages are constants: never print native inputs, keys or stored values.
   std::cerr << message << '\n';
   return 1;
 }
-}
-int main(int argc, const char* argv[]) {
+} // namespace
+int main(int argc, const char *argv[]) {
   @autoreleasepool {
-    using Validate = bool (*)(const void*, const void*, const void*, const void*, const void*);
-    auto validate = reinterpret_cast<Validate>(dlsym(RTLD_DEFAULT, "AuxNativeBoundaryValidate"));
-    if (!validate || !validate((const void*)(unsigned long)&SecItemAdd,
-                              (const void*)(unsigned long)&SecItemCopyMatching,
-                              (const void*)(unsigned long)&SecItemDelete,
-                              (const void*)(unsigned long)&SecItemUpdate,
-                              (const void*)(unsigned long)&SecKeyCreateRandomKey))
+    using Validate = bool (*)(const void *, const void *, const void *,
+                              const void *, const void *);
+    auto validate = reinterpret_cast<Validate>(
+        dlsym(RTLD_DEFAULT, "AuxNativeBoundaryValidate"));
+    if (!validate ||
+        !validate((const void *)(unsigned long)&SecItemAdd,
+                  (const void *)(unsigned long)&SecItemCopyMatching,
+                  (const void *)(unsigned long)&SecItemDelete,
+                  (const void *)(unsigned long)&SecItemUpdate,
+                  (const void *)(unsigned long)&SecKeyCreateRandomKey))
       return Fail("Aux native query boundary is not active");
-    const char* home = std::getenv("AUX_HOME");
+    const char *home = std::getenv("AUX_HOME");
     char canonical[PATH_MAX];
     if (!home || home[0] != '/' || !realpath(home, canonical))
       return Fail("Absolute existing AUX_HOME required");
@@ -35,83 +38,139 @@ int main(int argc, const char* argv[]) {
     CC_SHA256(canonical, static_cast<CC_LONG>(strlen(canonical)), digest);
     static const char hex[] = "0123456789abcdef";
     std::string scope;
-    for (unsigned char byte : digest) { scope += hex[byte >> 4]; scope += hex[byte & 15]; }
-    if (setenv("AUX_NATIVE_KEYCHAIN_SCOPE", scope.c_str(), 1)) return Fail("Cannot set Aux native scope");
+    for (unsigned char byte : digest) {
+      scope += hex[byte >> 4];
+      scope += hex[byte & 15];
+    }
+    using Configure = bool (*)(const char *);
+    auto configure = reinterpret_cast<Configure>(
+        dlsym(RTLD_DEFAULT, "AuxNativeBoundaryConfigureScope"));
+    if (!configure || !configure(scope.c_str()))
+      return Fail("Cannot establish fixed Aux native scope");
     if (argc == 2 && std::string(argv[1]) == "--verify-boundary") {
-      std::cout << "{\"boundaryActive\":true,\"originalBindingLoaded\":false}\n";
+      std::cout
+          << "{\"boundaryActive\":true,\"originalBindingLoaded\":false}\n";
       return 0;
     }
-    const bool verifyLoad = argc == 3 && std::string(argv[1]) == "--verify-load";
-    const char* bindingPath = verifyLoad ? argv[2] : (argc == 3 ? argv[1] : nullptr);
+    const bool verifyLoad =
+        argc == 3 && std::string(argv[1]) == "--verify-load";
+    const char *bindingPath =
+        verifyLoad ? argv[2] : (argc == 3 ? argv[1] : nullptr);
     using Latch = void (*)();
     using IsDenied = bool (*)();
     using RefusedCalls = uint64_t (*)();
-    auto latch = reinterpret_cast<Latch>(dlsym(RTLD_DEFAULT, "AuxNativeBoundaryDenyAll"));
-    auto isDenied = reinterpret_cast<IsDenied>(dlsym(RTLD_DEFAULT, "AuxNativeBoundaryIsDenyAll"));
-    auto refusedCalls = reinterpret_cast<RefusedCalls>(dlsym(RTLD_DEFAULT, "AuxNativeBoundaryRefusedCalls"));
+    auto latch = reinterpret_cast<Latch>(
+        dlsym(RTLD_DEFAULT, "AuxNativeBoundaryDenyAll"));
+    auto isDenied = reinterpret_cast<IsDenied>(
+        dlsym(RTLD_DEFAULT, "AuxNativeBoundaryIsDenyAll"));
+    auto refusedCalls = reinterpret_cast<RefusedCalls>(
+        dlsym(RTLD_DEFAULT, "AuxNativeBoundaryRefusedCalls"));
     std::string command, input;
     if (verifyLoad) {
-      if (!latch || !isDenied || !refusedCalls) return Fail("Deny-all boundary handshake unavailable");
+      if (!latch || !isDenied || !refusedCalls)
+        return Fail("Deny-all boundary handshake unavailable");
       latch();
-      if (!isDenied()) return Fail("Deny-all boundary latch failed");
+      if (!isDenied())
+        return Fail("Deny-all boundary latch failed");
     } else {
-      // Actual crypto remains held until isolated runtime acceptance is reviewed.
-      const char* accepted = std::getenv("AUX_ENABLE_PROVIDED_NATIVE_CARRIER");
+      // Actual crypto remains held until isolated runtime acceptance is
+      // reviewed.
+      const char *accepted = std::getenv("AUX_ENABLE_PROVIDED_NATIVE_CARRIER");
       if (!accepted || std::string(accepted) != "1")
-        return Fail("Provided native carrier requires explicit runtime acceptance");
-      if (argc != 3) return Fail("Usage: aux-native-carrier <provided-native.node> <command>");
+        return Fail(
+            "Provided native carrier requires explicit runtime acceptance");
+      using Isolated = bool (*)();
+      auto isolated = reinterpret_cast<Isolated>(
+          dlsym(RTLD_DEFAULT, "AuxNativeBoundaryHasIsolatedKeychain"));
+      if (!isolated || !isolated())
+        return Fail("Fresh isolated Keychain target has not been provisioned");
+      if (argc != 3)
+        return Fail(
+            "Usage: aux-native-carrier <provided-native.node> <command>");
       command = argv[2];
       if (command != "install-status" && command != "install-init" &&
           command != "get-public-keys" && command != "cdp-sign")
         return Fail("Native carrier command is not allowed");
-      for (char ch; std::cin.get(ch); ) {
-        if (input.size() >= 32768) return Fail("Native carrier input too large");
+      for (char ch; std::cin.get(ch);) {
+        if (input.size() >= 32768)
+          return Fail("Native carrier input too large");
         input += ch;
       }
-      NSData* inputBytes = [NSData dataWithBytes:input.data() length:input.size()];
-      id payload = input.empty() ? @{} : [NSJSONSerialization JSONObjectWithData:inputBytes options:0 error:nil];
-      if (![payload isKindOfClass:[NSDictionary class]]) return Fail("Native input must be a JSON object");
+      NSData *inputBytes = [NSData dataWithBytes:input.data()
+                                          length:input.size()];
+      id payload = input.empty()
+                       ? @{}
+                       : [NSJSONSerialization JSONObjectWithData:inputBytes
+                                                         options:0
+                                                           error:nil];
+      if (![payload isKindOfClass:[NSDictionary class]])
+        return Fail("Native input must be a JSON object");
       if (command == "cdp-sign") {
         id challenge = payload[@"challenge"];
-        if ([payload count] != 1 || ![challenge isKindOfClass:[NSString class]] || ![challenge length] || [challenge length] > 16384 ||
+        if ([payload count] != 1 ||
+            ![challenge isKindOfClass:[NSString class]] ||
+            ![challenge length] || [challenge length] > 16384 ||
             ![[NSData alloc] initWithBase64EncodedString:challenge options:0])
           return Fail("Invalid native signing request");
-      } else if ([payload count] != 0) return Fail("Unexpected native command input");
+      } else if ([payload count] != 0)
+        return Fail("Unexpected native command input");
     }
     // No module is loaded by the boundary-only probe. Runtime loading requires
     // this exact immutable supplied binding, never an arbitrary native module.
     struct stat info;
-    if (lstat(bindingPath, &info) || !S_ISREG(info.st_mode) || (info.st_mode & 0022))
-      return Fail("Provided binding must be a regular non-shared-writable file");
-    NSData* bindingBytes = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:bindingPath]];
-    if (!bindingBytes) return Fail("Cannot read provided native binding");
-    CC_SHA256(bindingBytes.bytes, static_cast<CC_LONG>(bindingBytes.length), digest);
+    if (lstat(bindingPath, &info) || !S_ISREG(info.st_mode) ||
+        (info.st_mode & 0022))
+      return Fail(
+          "Provided binding must be a regular non-shared-writable file");
+    NSData *bindingBytes = [NSData
+        dataWithContentsOfFile:[NSString stringWithUTF8String:bindingPath]];
+    if (!bindingBytes)
+      return Fail("Cannot read provided native binding");
+    CC_SHA256(bindingBytes.bytes, static_cast<CC_LONG>(bindingBytes.length),
+              digest);
     std::string bindingHash;
-    for (unsigned char byte : digest) { bindingHash += hex[byte >> 4]; bindingHash += hex[byte & 15]; }
-    if (bindingHash != "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb")
+    for (unsigned char byte : digest) {
+      bindingHash += hex[byte >> 4];
+      bindingHash += hex[byte & 15];
+    }
+    if (bindingHash !=
+        "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb")
       return Fail("Provided native binding hash mismatch");
-    void* library = dlopen(bindingPath, RTLD_LAZY | RTLD_LOCAL);
+    void *library = dlopen(bindingPath, RTLD_LAZY | RTLD_LOCAL);
     if (!library) {
       if (verifyLoad) {
-        std::cout << "{\"boundaryActive\":true,\"denyAll\":true,\"originalBindingLoaded\":false,\"exportsResolved\":false,\"refusedSecurityCalls\":" << refusedCalls() << "}\n";
+        std::cout << "{\"boundaryActive\":true,\"denyAll\":true,"
+                     "\"originalBindingLoaded\":false,\"exportsResolved\":"
+                     "false,\"refusedSecurityCalls\":"
+                  << refusedCalls() << "}\n";
         return 1;
       }
       return Fail("Cannot load provided native binding");
     }
-    using Run = const char* (*)(const char*, const char*);
-    using Free = void (*)(const char*);
+    using Run = const char *(*)(const char *, const char *);
+    using Free = void (*)(const char *);
     auto run = reinterpret_cast<Run>(dlsym(library, "AsideNativeRun"));
     auto freeResult = reinterpret_cast<Free>(dlsym(library, "AsideNativeFree"));
     if (verifyLoad) {
       const bool resolved = run && freeResult;
       dlclose(library);
-      if (!isDenied()) return Fail("Deny-all latch changed during load");
-      std::cout << "{\"boundaryActive\":true,\"denyAll\":true,\"originalBindingLoaded\":true,\"exportsResolved\":" << (resolved ? "true" : "false") << ",\"refusedSecurityCalls\":" << refusedCalls() << "}\n";
+      if (!isDenied())
+        return Fail("Deny-all latch changed during load");
+      std::cout << "{\"boundaryActive\":true,\"denyAll\":true,"
+                   "\"originalBindingLoaded\":true,\"exportsResolved\":"
+                << (resolved ? "true" : "false")
+                << ",\"refusedSecurityCalls\":" << refusedCalls() << "}\n";
       return resolved ? 0 : 1;
     }
-    if (!run || !freeResult) { dlclose(library); return Fail("Provided native command exports unavailable"); }
-    const char* result = run(command.c_str(), input.c_str());
-    if (!result) { dlclose(library); return Fail("Provided native command returned no result"); }
+    if (!run || !freeResult) {
+      dlclose(library);
+      return Fail("Provided native command exports unavailable");
+    }
+    const char *result = run(command.c_str(), input.c_str());
+    if (!result) {
+      dlclose(library);
+      return Fail("Provided native command returned no result");
+    }
     std::cout << result << '\n';
     freeResult(result);
     dlclose(library);
