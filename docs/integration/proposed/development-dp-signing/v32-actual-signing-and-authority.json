@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "signedReceiptSha256": "acf520e4ab393df3dfd36ec49993b5f69127121a062d6e939337f633e232b8b8",
+  "signedTargets": 11,
+  "developmentTargets": 3,
+  "untargetedLeavesPreserved": true,
+  "installationProofSha256": "4d07f576b259a847fea8f1593720a307912c6b02daf26718679119272d6c05c3",
+  "sameAuthorityHosts": [
+    "daemon",
+    "carrier",
+    "cli"
+  ],
+  "originalScheme": "pq_v1",
+  "publicKeyHash": "ef6f56d0efcd2065acd16b53511ea8123ce216fde8c2bdbc4e64a133bc4f9ede",
+  "allHostsRawCdpAndHttpAndTamperVerified": true,
+  "exactRows": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "cleanupOfIncompletePriorAttemptPassed": true,
+  "retainedAuthorityForBrowserVerification": true,
+  "installed": false,
+  "productionReady": false
+}
