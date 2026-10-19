@@ -1,0 +1,92 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -29,6 +29,7 @@
+ #include "content/public/browser/web_contents_delegate.h"
+ #include "net/base/url_util.h"
+ #include "third_party/skia/include/core/SkColor.h"
++#include "third_party/skia/include/core/SkRegion.h"
+ #include "ui/base/accelerators/accelerator.h"
+ #include "ui/base/accelerators/accelerator_manager.h"
+ #include "ui/base/accelerators/command.h"
+@@ -83,6 +84,35 @@
+   result.Append(std::move(row));
+   return result;
+ }
++gfx::Rect InitialPopupBounds(const gfx::Size& size) {
++  auto* screen = display::Screen::Get();
++  const auto area =
++      screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint())
++          .work_area();
++  gfx::Rect bounds(area.x() + (area.width() - size.width()) / 2,
++                   area.y() + area.height() / 3, size.width(), size.height());
++  bounds.AdjustToFit(area);
++  return bounds;
++}
++
++bool IsPopupMostlyVisible(const gfx::Rect& bounds) {
++  SkRegion visible;
++  for (const auto& display : display::Screen::Get()->GetAllDisplays()) {
++    const auto intersection = gfx::IntersectRects(bounds, display.work_area());
++    visible.op(SkIRect::MakeLTRB(intersection.x(), intersection.y(),
++                                 intersection.right(), intersection.bottom()),
++               SkRegion::kUnion_Op);
++  }
++  int64_t visible_area = 0;
++  for (SkRegion::Iterator rectangle(visible); !rectangle.done();
++       rectangle.next()) {
++    visible_area += static_cast<int64_t>(rectangle.rect().width()) *
++                    rectangle.rect().height();
++  }
++  return visible_area >
++         static_cast<int64_t>(bounds.width()) * bounds.height() / 2;
++}
++
+ class PopupBoundsAnimation : public gfx::LinearAnimation {
+  public:
+   PopupBoundsAnimation(views::Widget* widget, const gfx::Rect& target)
+@@ -223,19 +253,17 @@
+       widget_->GetFocusManager()->RegisterAccelerator(
+           ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE),
+           ui::AcceleratorManager::kHighPriority, this);
+-      auto* screen = display::Screen::Get();
+-      const auto area =
+-          screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint())
+-              .work_area();
+-      gfx::Rect initial_bounds(area.x() + (area.width() - size_.width()) / 2,
+-                               area.y() + area.height() / 3, size_.width(),
+-                               size_.height());
+-      initial_bounds.AdjustToFit(area);
+-      widget_->SetBoundsConstrained(initial_bounds);
+-    }
+-    webview_->LoadInitialURL(url);
++      widget_->SetBoundsConstrained(InitialPopupBounds(size_));
++    }
++    if (loaded_entry_url_ != url ||
++        webview_->GetWebContents()->GetBrowserContext() != profile_.get()) {
++      webview_->LoadInitialURL(url);
++      loaded_entry_url_ = url;
++    }
+     webview_->GetWebContents()->SetDelegate(this);
+-    Resize(size_);
++    if (!IsPopupMostlyVisible(widget_->GetWindowBoundsInScreen())) {
++      widget_->SetBoundsConstrained(InitialPopupBounds(size_));
++    }
+     CaptureAuxPopupActivation();
+     widget_->Show();
+     webview_->RequestFocus();
+@@ -259,6 +287,7 @@
+   }
+   void DestroyWindows() {
+     ClearAuxPopupActivation();
++    loaded_entry_url_ = GURL();
+     bounds_animation_.reset();
+     options_bounds_animation_.reset();
+     options_webview_ = nullptr;
+@@ -451,6 +480,7 @@
+   bool registered_ = false, picker_pending_ = false;
+   uint64_t generation_ = 0;
+   gfx::Size size_{440, 92};
++  GURL loaded_entry_url_;
+   std::unique_ptr<views::WidgetDelegate> delegate_, options_delegate_;
+   std::unique_ptr<views::Widget> widget_, options_;
+   raw_ptr<views::WebView> webview_ = nullptr;

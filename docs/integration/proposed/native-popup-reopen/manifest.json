@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-resize-animation CC516843883096e0d86387f33f784d271f6f586dc4a9211b5d5dccbd9a6ede1db8",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "516843883096e0d86387f33f784d271f6f586dc4a9211b5d5dccbd9a6ede1db8",
+      "outputSha256": "661a8ccfeb339715efbb37d6e9a441cc070d2980364eafb81cac8fedc206ca44"
+    }
+  ]
+}

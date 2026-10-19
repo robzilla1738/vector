@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/skia/include/core/SkRegion.h",
+      "sha256": "e2c9d8a05e5889e2ed6c8f56c2536e560e07ddd71f511918f40cc79964d562f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/webview.cc",
+      "sha256": "131e3bddab3bfc62e3ac478be7a8fd913151965c75842dd67659f9b302185e0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/display/screen.h",
+      "sha256": "383c03893910b724359610079113039e3b07dabb580674de22ab57544a5eb932"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/display/display.h",
+      "sha256": "5753c88c297600de04354850fe04c9d23f7e0a1ce40031556df9dd9457c7248f"
+    }
+  ],
+  "functions": [
+    {
+      "name": "Show",
+      "rva": "0x459577c",
+      "bytes": 3556,
+      "sha256": "5a66096c933f19e3452c366862760822de676cff3bb42258f358d6317ba1c870",
+      "evidenceId": "ev_dd76bf9c34ec4f870b3817f0875bc5a008222c9e015f83ba03de2622543b48de",
+      "snapshotPath": "/tmp/aux-popup-show-snapshot.json"
+    }
+  ],
+  "anchors": [
+    {
+      "rva": "0x4595854",
+      "meaning": "existing widget branches directly to common show path0459618c (exact branch retained in dossier assembly)"
+    },
+    {
+      "rva": "0x459618c",
+      "meaning": "common existing/new show starts with current window bounds then Screen virtual0x40/GetAllDisplays"
+    },
+    {
+      "meaning": "display stride160 bytes; work_area at40; intersection\u2192SkRegion union enum2"
+    },
+    {
+      "meaning": "sum disjoint region rectangle areas using signed64 multiplication; recover at visible area<=window area/2"
+    },
+    {
+      "meaning": "recovery calls04598240, same original cursor-display initial-bounds helper"
+    },
+    {
+      "meaning": "creation branch composes literal minipopup.html; reuse branch skips native navigation"
+    }
+  ],
+  "limits": [
+    "Original Show raw body has noncontiguous Ghidra ranges and external Objective-C/compiler helper calls remain separately bounded.",
+    "Current native locked main.html#/ routing is retained; this source does not prove a replacement lock route, and no security/account state is manufactured.",
+    "The remembered entry URL is navigation bookkeeping only; live ShowFor security fetch and BrowserContext comparison remain required. A separate authorized profile-ownership proposal will retire old contexts on profile change.",
+    "No native execution/build/signing, owner profile read, Keychain call or OS action occurred."
+  ]
+}
