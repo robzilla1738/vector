@@ -72,12 +72,18 @@ int main() {
   CHECK(!incomplete_cloud.bound && !incomplete_cloud.local_only.has_value());
   CHECK(!incomplete_cloud.binding_error.empty());
   row.Set("mode", "local");
-  row.Set("hasEverBoundCloudUser", true);
+  base::DictValue bootstrap;
+  bootstrap.Set("hasEverBoundCloudUser", true);
+  base::DictValue bootstraps;
+  bootstraps.Set("0", std::move(bootstrap));
+  registry.Set("localBootstraps", std::move(bootstraps));
   CHECK(!read().local_only.has_value());
-  row.Remove("hasEverBoundCloudUser");
-  row.Set("session", base::DictValue());
+  registry.Remove("localBootstraps");
+  base::DictValue sessions;
+  sessions.Set("0", base::DictValue());
+  registry.Set("sessions", std::move(sessions));
   CHECK(!read().local_only.has_value());
-  row.Remove("session");
+  registry.Remove("sessions");
   row.Set("mode", "unknown");
   CHECK(!read().local_only.has_value());
   row.Set("mode", "local");
@@ -88,10 +94,21 @@ int main() {
   bound->Set("accountId", 8);
   CHECK(!read().local_only.has_value());
   registry.Set("profileAccountBindings", base::DictValue());
+  base::DictValue legacy_binding;
+  legacy_binding.Set("profileId", "unrelated-fixture-profile");
+  legacy_binding.Set("profilePath", home.AppendASCII("unrelated-profile").value());
+  legacy_binding.Set("userId", "fixture-cloud-user");
   base::DictValue legacy;
-  legacy.Set("unmigrated-fixture-binding", base::DictValue());
+  legacy.Set("unrelated-fixture-profile", std::move(legacy_binding));
   registry.Set("profileBindings", std::move(legacy));
-  CHECK(!read().local_only.has_value());
+  CHECK(read().local_only == true);  // Unrelated legacy binding stays byte-exact.
+  auto* legacy_row = registry.FindDict("profileBindings")
+                         ->FindDict("unrelated-fixture-profile");
+  legacy_row->Set("profilePath", profile.value());
+  CHECK(!read().local_only.has_value());  // Same path, even under an old ID.
+  legacy_row->Set("profilePath", home.AppendASCII("unrelated-profile").value());
+  registry.FindDict("profileBindings")->Set(id, legacy_row->Clone());
+  CHECK(!read().local_only.has_value());  // Same ID, even with a wrong path.
   registry.Remove("profileBindings");
   registry.Set("profileAccountBindings", "malformed");
   CHECK(!read().local_only.has_value());

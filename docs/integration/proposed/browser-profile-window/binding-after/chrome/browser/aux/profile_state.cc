@@ -60,13 +60,22 @@ ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
   const auto id = ProfileIdForPath(path);
   const auto* binding = bindings ? bindings->FindDict(id) : nullptr;
   if (!binding) {
-    // Legacy cloud mappings are not permission to replace that identity with
-    // an anonymous account. Require explicit migration before local creation.
+    // Match the actual resolver's mutation scope: only this ID or exact path.
+    // Another profile's cloud mapping must not prevent fresh local creation.
     const auto* legacy = registry->FindDict("profileBindings");
-    if ((bindings && bindings->contains(id)) ||
-        (registry->contains("profileAccountBindings") && !bindings) ||
-        (registry->contains("profileBindings") && !legacy) ||
-        (legacy && !legacy->empty())) {
+    bool matching_path = false;
+    for (const auto* rows : {bindings, legacy}) {
+      if (!rows) continue;
+      for (const auto [key, value] : *rows) {
+        const auto* saved_path = value.is_dict()
+            ? value.GetDict().FindString("profilePath") : nullptr;
+        if (key == id || (saved_path && *saved_path == path.value())) {
+          matching_path = true;
+        }
+      }
+    }
+    if ((registry->contains("profileAccountBindings") && !bindings) ||
+        (registry->contains("profileBindings") && !legacy) || matching_path) {
       result.binding_error = "This profile requires an explicit account binding migration";
       result.error = result.binding_error;
       return result;
@@ -92,10 +101,19 @@ ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
     const auto* provider = account.FindString("provider");
     const auto* user = account.FindString("userId");
     const bool has_user = user && !user->empty();
-    const bool cloud_history = account.FindBool("hasEverBoundCloudUser").value_or(false);
-    if (!mode || (*mode != "local" && *mode != "cloud") ||
+    const auto account_key = base::NumberToString(*account_id);
+    const auto* sessions = registry->FindDict("sessions");
+    const auto* bootstraps = registry->FindDict("localBootstraps");
+    const auto* bootstrap = bootstraps ? bootstraps->FindDict(account_key) : nullptr;
+    const bool cloud_history = bootstrap &&
+        bootstrap->FindBool("hasEverBoundCloudUser").value_or(false);
+    const auto* session = sessions ? sessions->Find(account_key) : nullptr;
+    if ((registry->contains("sessions") && !sessions) ||
+        (registry->contains("localBootstraps") && !bootstraps) ||
+        !mode || (*mode != "local" && *mode != "cloud") ||
         (*mode == "cloud" && !has_user) ||
-        (*mode == "local" && (has_user || cloud_history || account.FindDict("session")))) {
+        (*mode == "local" &&
+         (has_user || cloud_history || (session && !session->is_none())))) {
       result.binding_error = "Profile account identity requires explicit repair";
       result.error = result.binding_error;
       return result;

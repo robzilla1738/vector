@@ -1,5 +1,5 @@
 {
-  "baselineCommit": "2f8265bd4",
+  "baselineCommit": "10262432e",
   "baselinePrefix": "docs/integration/proposed/local-profile-binding/",
   "files": {
     "chrome/browser/aux/profile_state.h": {
@@ -7,16 +7,16 @@
       "afterSha256": "87b156f13ba46458bff99d98cc686fd1353868900e561ab926d7ce6751f330a5"
     },
     "chrome/browser/aux/profile_state.cc": {
-      "beforeSha256": "b724e06349df2a216b89bd4a94708e5d331dded3718e286489f570cfa34d798a",
-      "afterSha256": "645ca01dba2f559b3bd824b6502398dec488fa8ee578f88a860098b6ccb5c33e"
+      "beforeSha256": "3f8d7acd5c8c9490f6945bb8929b22f61b1e3a164894a611fc142ce0fa47d946",
+      "afterSha256": "7fd321e0f22258e0264e70cd78b5f2df00fd3bb491f2aae35c88236852fa7a8a"
     },
     "chrome/browser/aux/profile_security_client.cc": {
       "beforeSha256": "0b0ff20c1024edf3c27ec7ceda9e1cabf1f98c6e594065c963d6c7b520417d0d",
       "afterSha256": "d355d3eb8450e61626ac3b06bd9ad3835dd7f258e356e8887cde02a9e9642cea"
     },
     "chrome/browser/aux/profile_state_probe.cc": {
-      "beforeSha256": "0965582ff5b4d6d6593c05e7b37f60b6e8ea4333fe69acecb56bab5ea55d0e32",
-      "afterSha256": "b8bb5a92f94954929f0dbb1ba46b77eef362b886067011b1e068694c368966a7"
+      "beforeSha256": "e6899f6de79093f2cf9873efa4708a86fcdce63b0b45174fcc812d1ce415c49b",
+      "afterSha256": "92c450a155d0b66e09d905decf08b44a29901dcf3f097eb42d8db80c3700b56d"
     }
   }
 }

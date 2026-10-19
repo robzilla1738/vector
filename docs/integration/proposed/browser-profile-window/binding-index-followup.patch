@@ -21,7 +21,7 @@
             configured && !locked && onboarding_complete;
 --- a/chrome/browser/aux/profile_state.cc
 +++ b/chrome/browser/aux/profile_state.cc
-@@ -83,6 +83,8 @@
+@@ -92,6 +92,8 @@
      result.error = result.binding_error;
      return result;
    }
