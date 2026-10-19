@@ -1,0 +1,96 @@
+:root {
+  font:
+    15px / 1.5 system-ui,
+    sans-serif;
+  color: #222;
+  background: #f3f3f1;
+}
+main {
+  max-width: 850px;
+  margin: 40px auto;
+  padding: 0 24px;
+}
+.brand {
+  font-weight: 600;
+  color: #5b625c;
+}
+h1 {
+  font-size: 32px;
+  line-height: 1.2;
+}
+h2 {
+  font-size: 19px;
+  margin-top: 0;
+}
+section {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+}
+label {
+  display: grid;
+  gap: 5px;
+  max-width: 280px;
+}
+input,
+button {
+  font: inherit;
+  border: 1px solid #aaa;
+  border-radius: 7px;
+  padding: 9px 12px;
+  background: white;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.actions,
+.observations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 15px 0;
+}
+.observations button {
+  font-size: 13px;
+}
+pre {
+  padding: 15px;
+  border-radius: 8px;
+  background: #f3f3f1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#capability {
+  font-weight: 600;
+}
+li {
+  margin: 8px 0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #191919;
+    color: #eee;
+  }
+  section {
+    background: #222;
+    border-color: #444;
+  }
+  input,
+  button {
+    background: #292929;
+    border-color: #666;
+  }
+  pre {
+    background: #171717;
+  }
+  .brand {
+    color: #b6c4b8;
+  }
+}
