@@ -1,0 +1,49 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4651a5c: b00544b5     	adrp	x21, 0xeee6000 <dyld_stub_binder+0xeee6000>
+ 4651a60: f9467ea0     	ldr	x0, [x21, #0xcf8]
+ 4651a64: b4fff980     	cbz	x0, 0x4651994 <_ChromeMain+0x464c6f8>
+ 4651a68: 974f3844     	bl	0x1a1fb78 <_ChromeMain+0x1a1a8dc>
+ 4651a6c: b4fff940     	cbz	x0, 0x4651994 <_ChromeMain+0x464c6f8>
+ 4651a70: aa0003f6     	mov	x22, x0
+ 4651a74: f9467ea0     	ldr	x0, [x21, #0xcf8]
+ 4651a78: b4fff8e0     	cbz	x0, 0x4651994 <_ChromeMain+0x464c6f8>
+ 4651a7c: 974f383f     	bl	0x1a1fb78 <_ChromeMain+0x1a1a8dc>
+ 4651a80: f9467ea8     	ldr	x8, [x21, #0xcf8]
+ 4651a84: b40001e8     	cbz	x8, 0x4651ac0 <_ChromeMain+0x464c824>
+ 4651a88: f9401d15     	ldr	x21, [x8, #0x38]
+ 4651a8c: b4fff840     	cbz	x0, 0x4651994 <_ChromeMain+0x464c6f8>
+ 4651a90: 974f3860     	bl	0x1a1fc10 <_ChromeMain+0x1a1a974>
+ 4651a94: 910023e8     	add	x8, sp, #0x8
+ 4651a98: aa1503e1     	mov	x1, x21
+ 4651a9c: 97eaaf56     	bl	0x40fd7f4 <_ChromeMain+0x40f8558>
+ 4651aa0: a940a3f5     	ldp	x21, x8, [sp, #0x8]
+ 4651aa4: 8b080508     	add	x8, x8, x8, lsl #1
+ 4651aa8: d37df118     	lsl	x24, x8, #3
+ 4651aac: b40006f8     	cbz	x24, 0x4651b88 <_ChromeMain+0x464c8ec>
+ 4651ab0: 52800319     	mov	w25, #0x18              ; =24
+ 4651ab4: b201f3fa     	mov	x26, #-0x5555555555555556 ; =-6148914691236517206
+ 4651ab8: f295557a     	movk	x26, #0xaaab
+ 4651abc: 1400000f     	b	0x4651af8 <_ChromeMain+0x464c85c>
+ 4651ac0: d2800015     	mov	x21, #0x0               ; =0
+ 4651ac4: 17fffff2     	b	0x4651a8c <_ChromeMain+0x464c7f0>
+ 4651ac8: 91208260     	add	x0, x19, #0x820
+ 4651acc: aa1503e1     	mov	x1, x21
+ 4651ad0: 974518da     	bl	0x1797e38 <_ChromeMain+0x1792b9c>
+ 4651ad4: f9441268     	ldr	x8, [x19, #0x820]
+ 4651ad8: eb080008     	subs	x8, x0, x8
+ 4651adc: 9343fd08     	asr	x8, x8, #3
+ 4651ae0: 9b1a7d08     	mul	x8, x8, x26
+ 4651ae4: f9041668     	str	x8, [x19, #0x828]
+ 4651ae8: 54fff900     	b.eq	0x4651a08 <_ChromeMain+0x464c76c>
+ 4651aec: 910062b5     	add	x21, x21, #0x18
+ 4651af0: f1006318     	subs	x24, x24, #0x18
+ 4651af4: 54000480     	b.eq	0x4651b84 <_ChromeMain+0x464c8e8>
+ 4651af8: aa1603e0     	mov	x0, x22
+ 4651afc: 974f3845     	bl	0x1a1fc10 <_ChromeMain+0x1a1a974>
+ 4651b00: aa1503e1     	mov	x1, x21
+ 4651b04: 974f387f     	bl	0x1a1fd00 <_ChromeMain+0x1a1aa64>

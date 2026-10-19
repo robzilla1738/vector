@@ -52,5 +52,20 @@
     }
   ],
   "sharedSourceModified": false,
-  "targetExecuted": false
+  "targetExecuted": false,
+  "authorizedOriginalSource": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/040fd7f4.c",
+    "sha256": "3849566b100cb4aa4a07afff7688a6c03779ffe007a33ff09654d074699da54e",
+    "copiedTo": "original-profile-order.c"
+  },
+  "profileOrderEvidence": [
+    {
+      "file": "profile-list-owner.txt",
+      "sha256": "bc19b39102b7bf864b3529c91d8bb7331f72de4eb84fda8fb1686e41e9a713b1"
+    },
+    {
+      "file": "profile-manager-lazy.txt",
+      "sha256": "7626dedba2e63ecf0364f31669d57b57849d9e9029cbf4c43b173c37879e3045"
+    }
+  ]
 }

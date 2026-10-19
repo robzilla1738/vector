@@ -1,0 +1,44 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 1a1fb78: d10103ff     	sub	sp, sp, #0x40
+ 1a1fb7c: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 1a1fb80: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 1a1fb84: 9100c3fd     	add	x29, sp, #0x30
+ 1a1fb88: aa0003f3     	mov	x19, x0
+ 1a1fb8c: 3940a008     	ldrb	w8, [x0, #0x28]
+ 1a1fb90: 360000c8     	tbz	w8, #0x0, 0x1a1fba8 <_ChromeMain+0x1a1a90c>
+ 1a1fb94: f9401a60     	ldr	x0, [x19, #0x30]
+ 1a1fb98: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 1a1fb9c: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 1a1fba0: 910103ff     	add	sp, sp, #0x40
+ 1a1fba4: d65f03c0     	ret
+ 1a1fba8: 52800028     	mov	w8, #0x1                ; =1
+ 1a1fbac: 3900a268     	strb	w8, [x19, #0x28]
+ 1a1fbb0: a900ffff     	stp	xzr, xzr, [sp, #0x8]
+ 1a1fbb4: f9000fff     	str	xzr, [sp, #0x18]
+ 1a1fbb8: 910023e1     	add	x1, sp, #0x8
+ 1a1fbbc: 52807d20     	mov	w0, #0x3e9              ; =1001
+ 1a1fbc0: 9413a26d     	bl	0x1f08574 <_ChromeMain+0x1f032d8>
+ 1a1fbc4: 52803a00     	mov	w0, #0x1d0              ; =464
+ 1a1fbc8: 9797bde8     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 1a1fbcc: aa0003f4     	mov	x20, x0
+ 1a1fbd0: 910023e1     	add	x1, sp, #0x8
+ 1a1fbd4: 9400020f     	bl	0x1a20410 <_ChromeMain+0x1a1b174>
+ 1a1fbd8: f9401a60     	ldr	x0, [x19, #0x30]
+ 1a1fbdc: f9001a74     	str	x20, [x19, #0x30]
+ 1a1fbe0: b5000100     	cbnz	x0, 0x1a1fc00 <_ChromeMain+0x1a1a964>
+ 1a1fbe4: 39c07fe8     	ldrsb	w8, [sp, #0x1f]
+ 1a1fbe8: 36fffd68     	tbz	w8, #0x1f, 0x1a1fb94 <_ChromeMain+0x1a1a8f8>
+ 1a1fbec: f94007e0     	ldr	x0, [sp, #0x8]
+ 1a1fbf0: f9400fe8     	ldr	x8, [sp, #0x18]
+ 1a1fbf4: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 1a1fbf8: 9797a4b0     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 1a1fbfc: 17ffffe6     	b	0x1a1fb94 <_ChromeMain+0x1a1a8f8>
+ 1a1fc00: 94424c10     	bl	0x2ab2c40 <_ChromeMain+0x2aad9a4>
+ 1a1fc04: 52803a01     	mov	w1, #0x1d0              ; =464
+ 1a1fc08: 9797a4ac     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 1a1fc0c: 17fffff6     	b	0x1a1fbe4 <_ChromeMain+0x1a1a948>
