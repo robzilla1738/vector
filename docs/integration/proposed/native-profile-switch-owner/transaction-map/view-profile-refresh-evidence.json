@@ -1,0 +1,52 @@
+{
+  "method": "bounded static disassembly and file-mapped literal bytes; no target execution",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "proofs": [
+    {
+      "path": "original-view-profile-refresh.txt",
+      "sha256": "f153a72e91c29a5ba1e129f20388571db529b843692e03c9ec539448584f0531"
+    },
+    {
+      "path": "original-view-service-constructor.txt",
+      "sha256": "dc8d19669da02d4abdfaf5f2b9778e7ce91b01521e2d42f7e62fb36dd6de2f5a"
+    },
+    {
+      "path": "original-view-active-content-refresh.txt",
+      "sha256": "55828429fca813787a0ddb9dc6906601cfb63ba03f8b24c437cdef9cf9ac46b8"
+    },
+    {
+      "path": "original-horizontal-old-profile-refresh.txt",
+      "sha256": "4e8ee489a9f3b3319a3fc27c2d8792a2929d2fe4ce7f274c10331d7b6ff8c081"
+    },
+    {
+      "path": "original-horizontal-profile-refresh.txt",
+      "sha256": "4ab69334b5788c0cad8a486a070797dc9a63534f45635fa743d40aefed92d442"
+    },
+    {
+      "path": "original-tab-search-source-anchor.txt",
+      "sha256": "36efec179553a3be0eefdbf695bd41187b51c80f190c9e75593738dd3c59a858"
+    },
+    {
+      "path": "original-tab-switcher-source-anchor.txt",
+      "sha256": "410f995815a354bbd0358d88fa392fd9223585348cf2d832e0cc99b960604ddc"
+    },
+    {
+      "path": "original-horizontal-old-metadata.txt",
+      "sha256": "1d3e10c1eba9f52ccaf4ff2fb7155963e5af65f1b1e51d4c06e16b24a0d8bc20"
+    },
+    {
+      "path": "original-horizontal-new-metadata.txt",
+      "sha256": "f1877a7d3ebfa9fb79a65bf3aa15b3a044a56756f72666886b96d8e8702a9990"
+    }
+  ],
+  "literals": {
+    "0xdec9778": "../../chrome/browser/ui/views/frame/aside_tab_search_bubble.cc",
+    "0xdec9afc": "../../chrome/browser/ui/views/frame/aside_tab_switcher.cc",
+    "0xdeca975": "../../chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h",
+    "0xdeca8cd": "HorizontalTabStripRegionViewOld",
+    "0xdeca8ed": "HorizontalTabStripRegionViewNew",
+    "0xcf01e2d": "horizontal_tab_strip.shrink_to_fit_enabled",
+    "0xcef4d0c": "aside.browser_preferences.horizontal_tab_strip_shrink_to_fit_enabled"
+  },
+  "runtimeAcceptance": false
+}

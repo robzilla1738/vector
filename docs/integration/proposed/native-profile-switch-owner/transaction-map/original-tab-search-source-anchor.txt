@@ -1,0 +1,36 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 459fe68: 39438a68     	ldrb	w8, [x19, #0xe2]
+ 459fe6c: 340006a8     	cbz	w8, 0x459ff40 <_ChromeMain+0x459aca4>
+ 459fe70: f9402268     	ldr	x8, [x19, #0x40]
+ 459fe74: b4000668     	cbz	x8, 0x459ff40 <_ChromeMain+0x459aca4>
+ 459fe78: f941a115     	ldr	x21, [x8, #0x340]
+ 459fe7c: b4000635     	cbz	x21, 0x459ff40 <_ChromeMain+0x459aca4>
+ 459fe80: 9100a3f6     	add	x22, sp, #0x28
+ 459fe84: a902ffff     	stp	xzr, xzr, [sp, #0x28]
+ 459fe88: b803f3ff     	stur	wzr, [sp, #0x3f]
+ 459fe8c: f9001fff     	str	xzr, [sp, #0x38]
+ 459fe90: 6f07e600     	movi.2d	v0, #0xffffffff00000000
+ 459fe94: 3c8483e0     	stur	q0, [sp, #0x48]
+ 459fe98: 3c8583e0     	stur	q0, [sp, #0x58]
+ 459fe9c: 3c8683e0     	stur	q0, [sp, #0x68]
+ 459fea0: 3c8783e0     	stur	q0, [sp, #0x78]
+ 459fea4: 790113ff     	strh	wzr, [sp, #0x88]
+ 459fea8: a9097fff     	stp	xzr, xzr, [sp, #0x90]
+ 459feac: b004a840     	adrp	x0, 0xdaa8000 <dyld_stub_binder+0xdaa8000>
+ 459feb0: 91330400     	add	x0, x0, #0xcc1
+ 459feb4: d004c941     	adrp	x1, 0xdec9000 <dyld_stub_binder+0xdec9000>
+ 459feb8: 911de021     	add	x1, x1, #0x778
+ 459febc: 910023e8     	add	x8, sp, #0x8
+ 459fec0: 52804462     	mov	w2, #0x223              ; =547
+ 459fec4: 96eac36f     	bl	0x50c80 <_ChromeMain+0x4b9e4>
+ 459fec8: 9100a3e1     	add	x1, sp, #0x28
+ 459fecc: 910023e2     	add	x2, sp, #0x8
+ 459fed0: aa1503e0     	mov	x0, x21
+ 459fed4: 9793018c     	bl	0x2a60504 <_ChromeMain+0x2a5b268>
+ 459fed8: aa0003f5     	mov	x21, x0
+ 459fedc: 9101c2c0     	add	x0, x22, #0x70
