@@ -33,6 +33,7 @@ import { createInboxRouter, InboxService } from './inbox/index.js';
 import { createMemoryRouter } from './memory/index.js';
 import { pollRoutines } from './routines/index.js';
 import { createAgentRouters } from './sessions/index.js';
+import { installOwnedTabsHttp } from './sessions/owned-tabs-http.js';
 import { createVaultRouters, VaultService } from './vault/index.js';
 
 export function createFeatures() {
@@ -154,8 +155,9 @@ export function createFeatures() {
       };
     },
     extendHttp(app: Hono, services: DaemonServices) {
-      if (!engine)
+      if (!engine || !vault)
         throw new Error('Agent engine must initialize before HTTP routes.');
+      installOwnedTabsHttp(app, services, engine, vault);
       installSessionHttp(app, services, engine);
     },
     runningSessionCount: () => engine?.semaphore.active ?? 0,

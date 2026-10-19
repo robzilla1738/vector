@@ -191,7 +191,7 @@ export class Sandbox {
       globalThis.browser = {
         getTabs: () => __auxRpc('tabs', {}),
         openTab: (url) => __auxRpc('open', {url}),
-        closeTab: (tabId) => __auxRpc('close', {tabId}),
+        closeTab: (targetId) => __auxRpc('close', {targetId}),
         attachTab: (targetId) => {
           if (typeof targetId !== 'string' || !targetId) throw new Error('A stable target identity is required.');
           return {

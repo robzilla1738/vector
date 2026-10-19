@@ -24,6 +24,8 @@ export function createReplService(
   const identity = scope.extend({ id: z.string().uuid() });
   const toolsByMethod: Record<string, string> = {
     tabs: 'browser_tabs',
+    open: 'browser_open',
+    close: 'browser_close',
     snapshot: 'page_view',
     navigate: 'browser_navigate',
     click: 'browser_click',
@@ -97,55 +99,10 @@ export function createReplService(
         },
         { signal },
       );
-    if (!['open', 'close'].includes(method))
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'Unknown sandbox capability.',
-      });
-    if (session.permissionMode === 'read-only')
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'The sandbox is read only.',
-      });
-    const input =
-      method === 'open'
-        ? z
-            .object({
-              url: z
-                .url()
-                .refine((url) =>
-                  ['http:', 'https:'].includes(new URL(url).protocol),
-                ),
-            })
-            .parse(params)
-        : z.object({ tabId: z.number().int().nonnegative() }).parse(params);
-    const toolCallId = randomUUID();
-    const decision = z.object({ verdict: z.enum(['allow', 'deny']) }).parse(
-      await engine.suspend(
-        accountId,
-        sessionId,
-        toolCallId,
-        'approval',
-        {
-          title: method === 'open' ? 'Open browser tab' : 'Close browser tab',
-          operation: input,
-        },
-        signal,
-      ),
-    );
-    if (decision.verdict !== 'allow')
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Browser operation was denied.',
-      });
-    return bridge.command(
-      route,
-      {
-        method: method === 'open' ? 'tabs.create' : 'tabs.remove',
-        params: input,
-      },
-      { signal },
-    );
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Unknown sandbox capability.',
+    });
   }
   async function close(accountId: number, id: string) {
     const value = sandboxes.get(id);
@@ -276,7 +233,7 @@ export function createReplService(
         .mutation(({ input }) => close(input.accountId, input.id)),
       replDescription: procedure.input(scope).query(({ input }) => {
         store.requireAccount(input.accountId);
-        return 'Persistent isolated JavaScript: browser.getTabs(), browser.attachTab(targetId), browser.openTab(url), browser.closeTab(tabId). A page supports snapshot/screenshot/navigate/click/type/scroll. Use snapshot refs and documentUrl from a fresh observation. No host imports, process or unrestricted filesystem/network access. Browser mutations require a human response in Aux. Idle sandboxes expire after 30 minutes.';
+        return 'Persistent isolated JavaScript: browser.getTabs(), browser.attachTab(targetId), browser.openTab(url), browser.closeTab(targetId). A page supports snapshot/screenshot/navigate/click/type/scroll. Use snapshot refs and documentUrl from a fresh observation. No host imports, process or unrestricted filesystem/network access. Browser mutations follow the session access policy; only tabs created by this session can be closed. Idle sandboxes expire after 30 minutes.';
       }),
     }),
     async close() {

@@ -129,11 +129,14 @@ export function installSessionHttp(
         break;
       case 'archive':
         engine.stop(accountId, id, 'aborted');
+        await engine.wait(accountId, id);
+        await engine.tabs.terminate(accountId, id);
         session.archived = true;
         break;
       case 'delete':
         engine.stop(accountId, id, 'aborted');
         await engine.wait(accountId, id);
+        await engine.tabs.terminate(accountId, id);
         store.set(accountId, 'sessions', id, { id, deleted: true });
         return c.json({ success: true });
       case 'mark-read':
