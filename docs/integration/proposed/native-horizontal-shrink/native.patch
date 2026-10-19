@@ -1,6 +1,15 @@
 --- a/chrome/browser/ui/tabs/tab_strip_prefs.h
 +++ b/chrome/browser/ui/tabs/tab_strip_prefs.h
-@@ -17,6 +17,10 @@
+@@ -4,6 +4,8 @@
+ 
+ #ifndef CHROME_BROWSER_UI_TABS_TAB_STRIP_PREFS_H_
+ #define CHROME_BROWSER_UI_TABS_TAB_STRIP_PREFS_H_
++
++#include "components/prefs/pref_service.h"
+ 
+ namespace user_prefs {
+ class PrefRegistrySyncable;
+@@ -17,6 +19,25 @@
  // Supplied browser-global vertical new-tab placement.
  inline constexpr char kAuxVerticalTabInsertionPosition[] =
      "aux.browser_preferences.vertical_tab_insertion_position";
@@ -8,6 +17,21 @@
 +    "aux.browser_preferences.horizontal_tab_strip_shrink_to_fit_enabled";
 +inline constexpr char kAuxProfileHorizontalTabShrinkEnabled[] =
 +    "horizontal_tab_strip.shrink_to_fit_enabled";
++
++// The supplied global preference overrides a profile only after an explicit
++// user setting exists. Otherwise retain the profile's effective value.
++inline bool GetAuxHorizontalTabShrinkEnabled(PrefService* local_state,
++                                              PrefService* profile_prefs) {
++  const auto* global = local_state
++      ? local_state->FindPreference(kAuxHorizontalTabShrinkEnabled) : nullptr;
++  if (global && global->HasUserSetting()) {
++    return global->GetValue()->GetBool();
++  }
++  return profile_prefs &&
++         profile_prefs->FindPreference(kAuxProfileHorizontalTabShrinkEnabled) &&
++         profile_prefs->GetBoolean(kAuxProfileHorizontalTabShrinkEnabled);
++}
++
  
  enum class TabSearchPosition {
    kLeadingHorizontalTabstrip,
@@ -47,7 +71,7 @@
             {"getTabSwitcherSortByRecentlyUsed",
              "setTabSwitcherSortByRecentlyUsed", kMru},
             {"getVerticalTabsBookmarksSectionEnabled",
-@@ -130,6 +130,35 @@
+@@ -130,6 +130,28 @@
      }
      if (!WriteAuxWindowVibrancyEnabled(args()[0].GetBool())) {
        return RespondNow(Error("Could not synchronize window vibrancy preference"));
@@ -57,28 +81,21 @@
 +  if (method == "getHorizontalTabShrinkEnabled" ||
 +      method == "setHorizontalTabShrinkEnabled") {
 +    auto* local_state = g_browser_process->local_state();
-+    if (!local_state) {
-+      return RespondNow(Error("Browser local state unavailable"));
-+    }
 +    if (!setter) {
 +      return RespondNow(WithArguments(
-+          local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled)));
++          tabs::GetAuxHorizontalTabShrinkEnabled(local_state, prefs)));
 +    }
 +    if (!args()[0].is_bool()) {
 +      return RespondNow(Error("Boolean value required"));
 +    }
-+    if (prefs->IsManagedPreference(kShrink) ||
-+        local_state->IsManagedPreference(tabs::kAuxHorizontalTabShrinkEnabled)) {
-+      return RespondNow(Error("Setting is managed"));
-+    }
 +    const bool enabled = args()[0].GetBool();
-+    local_state->SetBoolean(tabs::kAuxHorizontalTabShrinkEnabled, enabled);
++    if (local_state) {
++      local_state->SetBoolean(tabs::kAuxHorizontalTabShrinkEnabled, enabled);
++    }
 +    prefs->SetBoolean(kShrink, enabled);
 +    if (auto* manager = g_browser_process->profile_manager()) {
 +      for (Profile* loaded_profile : manager->GetLoadedProfiles()) {
-+        if (!loaded_profile->GetPrefs()->IsManagedPreference(kShrink)) {
-+          loaded_profile->GetPrefs()->SetBoolean(kShrink, enabled);
-+        }
++        loaded_profile->GetPrefs()->SetBoolean(kShrink, enabled);
 +      }
      }
      return RespondNow(NoArguments());
@@ -127,7 +144,7 @@
  #include "ui/views/cascading_property.h"
  #include "ui/views/interaction/view_subregion_anchor.h"
  #include "ui/views/layout/flex_layout.h"
-@@ -73,6 +83,148 @@
+@@ -73,6 +83,152 @@
  #if BUILDFLAG(IS_MAC)
  constexpr int kTabStripRegionInternalPaddingMac = 12;
  #endif
@@ -180,6 +197,10 @@
 +        base::BindRepeating(&TabStripScrollContainer::OnShrinkChanged,
 +                            base::Unretained(this)));
 +    profile_registrar_.Init(profile_->GetPrefs());
++    profile_registrar_.Add(
++        tabs::kAuxProfileHorizontalTabShrinkEnabled,
++        base::BindRepeating(&TabStripScrollContainer::OnShrinkChanged,
++                            base::Unretained(this)));
 +    profile_registrar_.Add(
 +        prefs::kTabScrollButtonsPinnedToTabstrip,
 +        base::BindRepeating(&TabStripScrollContainer::InvalidateLayout,
@@ -239,8 +260,8 @@
 +
 + private:
 +  bool ShrinkEnabled() const {
-+    return g_browser_process->local_state()->GetBoolean(
-+        tabs::kAuxHorizontalTabShrinkEnabled);
++    return tabs::GetAuxHorizontalTabShrinkEnabled(
++        g_browser_process->local_state(), profile_->GetPrefs());
 +  }
 +
 +  int GetTabStripAvailableWidth() const {
@@ -276,7 +297,7 @@
  
  namespace {
  
-@@ -220,7 +372,18 @@
+@@ -220,7 +376,18 @@
      }
    }
  
@@ -296,7 +317,7 @@
  
    // Allow the |tab_strip_| to grow into the free space available in
    // the HorizontalTabStripRegionViewOld.
-@@ -228,7 +391,7 @@
+@@ -228,7 +395,7 @@
        views::FlexSpecification(views::LayoutOrientation::kHorizontal,
                                 views::MinimumFlexSizeRule::kScaleToZero,
                                 views::MaximumFlexSizeRule::kPreferred);
@@ -305,7 +326,7 @@
  
    if (ShouldShowNewTabButton(browser)) {
      std::unique_ptr<TabStripControlButton> tab_strip_control_button =
-@@ -308,7 +471,14 @@
+@@ -308,7 +475,14 @@
    // the |tab_strip_| and the |tab_strip_| but not over the same
    // pixels. This could lead to this returning false when it should be returning
    // true.
@@ -321,7 +342,7 @@
      gfx::RectF rect_in_target_coords_f(gfx::Rect(point, gfx::Size(1, 1)));
      View::ConvertRectToTarget(this, tab_strip_, &rect_in_target_coords_f);
      return tab_strip_->IsRectInWindowCaption(
-@@ -318,7 +488,7 @@
+@@ -318,7 +492,7 @@
    // The child could have a non-rectangular shape, so if the rect is not in the
    // visual portions of the child view we treat it as a click to the caption.
    for (View* const child : children()) {
@@ -330,7 +351,7 @@
          child->GetVisible() && IsHitInView(child, point)) {
        return false;
      }
-@@ -330,8 +500,8 @@
+@@ -330,8 +504,8 @@
  views::View::Views HorizontalTabStripRegionViewOld::GetChildrenInZOrder() {
    views::View::Views children;
  
@@ -341,7 +362,7 @@
    }
  
    if (new_tab_button_) {
-@@ -388,7 +558,7 @@
+@@ -388,7 +562,7 @@
  
      // The y position is measured from the bottom of the tabstrip, and then
      // padding and button height are removed.
@@ -350,7 +371,7 @@
              TabStyle::Get()->GetBottomCornerRadius() +
              GetLayoutConstant(LayoutConstant::kTabStripPadding) +
              GetLayoutConstant(LayoutConstant::kNewTabButtonLeadingMargin);
-@@ -730,7 +900,7 @@
+@@ -730,7 +904,7 @@
    UpdateButtonBorders();
  
    if (tab_strip_left_margin.has_value() || tab_strip_right_margin.has_value()) {
@@ -378,9 +399,9 @@
    preferred_size.SetToMax(drag_context_->GetPreferredSize(available_size));
 -
 +  auto* local_state = g_browser_process->local_state();
-+  const bool shrink = local_state &&
-+      local_state->FindPreference(tabs::kAuxHorizontalTabShrinkEnabled) &&
-+      local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled);
++  auto* browser = GetBrowserWindowInterface();
++  const bool shrink = tabs::GetAuxHorizontalTabShrinkEnabled(
++      local_state, browser ? browser->GetProfile()->GetPrefs() : nullptr);
 +  if (shrink && available_size.width().is_bounded()) {
 +    preferred_size.set_width(std::max(
 +        GetMinimumSize().width(),
@@ -607,3 +628,13 @@
      ":tab",
      ":tab_strip",
      "//base",
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -345,6 +345,7 @@
+       ":tabs",
+       "//base",
+       "//chrome/browser/tab_list",
++      "//components/prefs",
+       "//components/sessions:session_id",
+       "//components/tab_groups",
+       "//ui/base",

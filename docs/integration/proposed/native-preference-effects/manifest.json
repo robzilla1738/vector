@@ -41,7 +41,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
       "baselineSha256": "8861fcc52080d5fa767316b0af46a1357483cdb1bdb4078e016797532f78cd94",
-      "outputSha256": "0ccb24854b3e086ade4f91f28df1661666abd1670fec72cec64a720ecedb6075",
+      "outputSha256": "c359763065d895f7df92742b83c286aaf7042aae36163210ae782e6b298d4c1e",
       "anchors": [
         {
           "find": "#include \"chrome/browser/ui/zoom/chrome_zoom_level_prefs.h\"",
@@ -90,7 +90,7 @@
         },
         {
           "find": "    prefs->SetString(kInsertion, args()[0].GetString());",
-          "replace": "    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    if (local_state->IsManagedPreference(tabs::kAuxVerticalTabInsertionPosition)) {\n      return RespondNow(Error(\"Setting is managed\"));\n    }\n    local_state->SetString(tabs::kAuxVerticalTabInsertionPosition,\n                           args()[0].GetString());",
+          "replace": "    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    local_state->SetString(tabs::kAuxVerticalTabInsertionPosition,\n                           args()[0].GetString());",
           "count": 1
         }
       ]

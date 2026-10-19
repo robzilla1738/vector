@@ -1,0 +1,31 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4341c14: d10083ff     	sub	sp, sp, #0x20
+ 4341c18: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 4341c1c: 910043fd     	add	x29, sp, #0x10
+ 4341c20: f90007ff     	str	xzr, [sp, #0x8]
+ 4341c24: 52800608     	mov	w8, #0x30               ; =48
+ 4341c28: 9ba80048     	umaddl	x8, w2, w8, x0
+ 4341c2c: f9401500     	ldr	x0, [x8, #0x28]
+ 4341c30: b4000180     	cbz	x0, 0x4341c60 <_ChromeMain+0x433c9c4>
+ 4341c34: 39805c28     	ldrsb	x8, [x1, #0x17]
+ 4341c38: a9402829     	ldp	x9, x10, [x1]
+ 4341c3c: f100011f     	cmp	x8, #0x0
+ 4341c40: 9a814121     	csel	x1, x9, x1, mi
+ 4341c44: 7100011f     	cmp	w8, #0x0
+ 4341c48: 9a884142     	csel	x2, x10, x8, mi
+ 4341c4c: f9400008     	ldr	x8, [x0]
+ 4341c50: f9401108     	ldr	x8, [x8, #0x20]
+ 4341c54: 910023e3     	add	x3, sp, #0x8
+ 4341c58: d63f0100     	blr	x8
+ 4341c5c: 370000a0     	tbnz	w0, #0x0, 0x4341c70 <_ChromeMain+0x433c9d4>
+ 4341c60: 52800000     	mov	w0, #0x0                ; =0
+ 4341c64: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ 4341c68: 910083ff     	add	sp, sp, #0x20
+ 4341c6c: d65f03c0     	ret
+ 4341c70: 52800020     	mov	w0, #0x1                ; =1
+ 4341c74: 17fffffc     	b	0x4341c64 <_ChromeMain+0x433c9c8>

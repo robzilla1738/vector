@@ -101,7 +101,7 @@
    if (method == "getBrowserColorScheme") {
      const auto scheme =
          ThemeServiceFactory::GetForProfile(profile())->GetBrowserColorScheme();
-@@ -161,14 +173,26 @@
+@@ -161,14 +173,23 @@
      return RespondNow(NoArguments());
    }
    if (method == "getVerticalTabInsertionPosition") {
@@ -121,9 +121,6 @@
 +    auto* local_state = g_browser_process->local_state();
 +    if (!local_state) {
 +      return RespondNow(Error("Browser local state unavailable"));
-+    }
-+    if (local_state->IsManagedPreference(tabs::kAuxVerticalTabInsertionPosition)) {
-+      return RespondNow(Error("Setting is managed"));
 +    }
 +    local_state->SetString(tabs::kAuxVerticalTabInsertionPosition,
 +                           args()[0].GetString());

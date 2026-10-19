@@ -54,7 +54,7 @@
   "historyLimit": "Current nativecheckout is shallow; removed legacy ScrollContainer is absent. Supplied153tag source requests returned404. Historical public Chromium130 source is pinned torestoreknown upstreammechanisms; it is not claimed to be suppliedAside source.",
   "observedSuppliedSemantics": [
     "Originalsetter validatesboolean and writesbrowserglobalvalue,currentprofile,loadedprofiles.",
-    "Originalconsumerobservesprofile horizontal_tab_strip.shrink_to_fit_enabled,readsglobaloverride,andinstalls/removeswidthcallbackfor shrinkenabled/disabled.",
+    "OriginalconsumerusesglobalonlywithanexplicitUSER_STOREvalue;otherwiseprofileeffectiveboolean,withprofileprefobserver.",
     "Originalobservercallbackinvalidatesrealnativelayout."
   ],
   "platformAdaptations": [
@@ -69,5 +69,33 @@
     "Existing155 scrollarrow rendering/menu/animation isreused; originalsuppliedarrowappearance and exacttiming stillneedvisualcomparison.",
     "Unifiedstrip featureflag explicitlyoutofthisdefaultlegacyadaptation; nounificationenablement.",
     "Legacytabdrag/group/pin/close/autoscroll/resize interactions remain actualUIacceptance requirements."
-  ]
+  ],
+  "precedence": {
+    "nativeStoreAccessor": "04341c14: store pointer at base+0x28+48*index",
+    "nativeUserSettingTest": "0909f340 loads base+0xe8, equivalent to index4, then calls store.GetValue",
+    "nativeStoreCount": "0909f214 tests indexes0..6 in decreasing precedence",
+    "matchingSourceEnum": "components/prefs/pref_value_store.h seven stores: managed0,supervised1,extension2,commandline3,user4,recommended5,default6",
+    "conclusion": "045d9b10 calls globalPreference.HasUserSetting before using effective globalBoolean; otherwise reads effective profileBoolean. A registered global default alone does not override profile state.",
+    "management": "No custom IsManaged rejection/skip in supplied vertical/horizontal setters. Preserve ordinary PrefService Set behavior (managed effective profile values remain managed); after explicit globaluseroverride supplied UI uses effective global value as observed.",
+    "sharedHelper": "tabs::GetAuxHorizontalTabShrinkEnabled(local_state,profile_prefs), used consistently by API, wrapper and TabStrip sizing",
+    "observation": "Wrapper observes effective profile shrink pref and global preference; global observation substitutes the supplied setter direct cached-global-flag update without adding a policy decision."
+  },
+  "nativePrecedenceEvidence": [
+    {
+      "path": "global-profile-precedence.txt",
+      "sha256": "3a4cd6945e8604c1792bef216882bab0ac65f13df7febfe3d867bc7c8fe2fad6"
+    },
+    {
+      "path": "pref-store-indexed-access.txt",
+      "sha256": "3d1618cfbb2cc9e616f03a4c1f43d17930cdc3f988687ca38eb7d18d427d1f8c"
+    },
+    {
+      "path": "pref-store-user-setting.txt",
+      "sha256": "b47ac620c6713277c224236a1f68548e0720e17d05e7d7ad6e5dc45598d969a3"
+    }
+  ],
+  "matchingPrefStoreSource": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_value_store.h",
+    "sha256": "c8984aa6df4f4502b3a0f91ec02653cf7518c60466c07ceb7fbb5a472aea0cda"
+  }
 }

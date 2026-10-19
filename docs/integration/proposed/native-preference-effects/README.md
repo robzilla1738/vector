@@ -17,3 +17,5 @@ The current Aux boolean has no UI consumer. Chromium155 has both legacy and unif
 After root integration, compile the affected API/macOS/browser-commands/pref registration objects through the serialized build wrapper. Observe top/bottom with pinned tabs and multiple disposable Aux profiles, then the actual vibrancy API/window behavior. A disposable Chromium profile or HOME does not isolate macOS CFPreferences; do not execute the setter against the Aux app domain without appropriate isolation/authorization.
 
 The domain is deliberately fixed across browser and native app-shim helpers, matching the original fixed application domain. Deriving it independently from each helper bundle would split the preference and notification authority.
+
+The original vertical setter writes through PrefService without an added IsManagedPreference rejection. The retired Aux guard was removed after source review; normal PrefService policy/value handling remains intact.

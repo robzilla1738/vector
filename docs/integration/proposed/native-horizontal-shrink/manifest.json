@@ -1,23 +1,16 @@
 {
   "version": 1,
-  "base": "proposed-v18 (vertical/fixed-vibrancy outputs), not unapplied shared v16",
+  "base": "final vertical/fixed-vibrancy proposal including original setter behavior (supersedes stagedv18)",
   "reason": "Restore supplied horizontal shrink/scroll behavior on Chromium155 default legacy strip; no TabStripUnification flag change. Adapt removed upstream ScrollContainer using current ScrollView/overflow/buttons and restore original tab scroll animation.",
   "files": [
     {
       "path": "chrome/browser/ui/tabs/tab_strip_prefs.h",
       "baselineSha256": "5be142bc4035d893fbe6081258b03fadc263ae2b0dcdb5ca3f17e0a22ed7db07",
-      "anchors": [
-        {
-          "find": "inline constexpr char kAuxVerticalTabInsertionPosition[] =\n    \"aux.browser_preferences.vertical_tab_insertion_position\";",
-          "replace": "inline constexpr char kAuxVerticalTabInsertionPosition[] =\n    \"aux.browser_preferences.vertical_tab_insertion_position\";\ninline constexpr char kAuxHorizontalTabShrinkEnabled[] =\n    \"aux.browser_preferences.horizontal_tab_strip_shrink_to_fit_enabled\";\ninline constexpr char kAuxProfileHorizontalTabShrinkEnabled[] =\n    \"horizontal_tab_strip.shrink_to_fit_enabled\";",
-          "count": 1
-        }
-      ],
-      "outputSha256": "b4d1941a164b5cc3a458a671f9a5af637d7f76abd5e20a0dd22add1b0e8415ea"
+      "outputSha256": "d91f80f846fd0700c00c723529f9913a60673dd134e165fdef82f05dd49bdb03"
     },
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
-      "baselineSha256": "0ccb24854b3e086ade4f91f28df1661666abd1670fec72cec64a720ecedb6075",
+      "baselineSha256": "c359763065d895f7df92742b83c286aaf7042aae36163210ae782e6b298d4c1e",
       "anchors": [
         {
           "find": "#include \"chrome/browser/profiles/profile.h\"",
@@ -41,11 +34,11 @@
         },
         {
           "find": "  if (method == \"getBrowserColorScheme\") {",
-          "replace": "  if (method == \"getHorizontalTabShrinkEnabled\" ||\n      method == \"setHorizontalTabShrinkEnabled\") {\n    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    if (!setter) {\n      return RespondNow(WithArguments(\n          local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled)));\n    }\n    if (!args()[0].is_bool()) {\n      return RespondNow(Error(\"Boolean value required\"));\n    }\n    if (prefs->IsManagedPreference(kShrink) ||\n        local_state->IsManagedPreference(tabs::kAuxHorizontalTabShrinkEnabled)) {\n      return RespondNow(Error(\"Setting is managed\"));\n    }\n    const bool enabled = args()[0].GetBool();\n    local_state->SetBoolean(tabs::kAuxHorizontalTabShrinkEnabled, enabled);\n    prefs->SetBoolean(kShrink, enabled);\n    if (auto* manager = g_browser_process->profile_manager()) {\n      for (Profile* loaded_profile : manager->GetLoadedProfiles()) {\n        if (!loaded_profile->GetPrefs()->IsManagedPreference(kShrink)) {\n          loaded_profile->GetPrefs()->SetBoolean(kShrink, enabled);\n        }\n      }\n    }\n    return RespondNow(NoArguments());\n  }\n  if (method == \"getBrowserColorScheme\") {",
+          "replace": "  if (method == \"getHorizontalTabShrinkEnabled\" ||\n      method == \"setHorizontalTabShrinkEnabled\") {\n    auto* local_state = g_browser_process->local_state();\n    if (!setter) {\n      return RespondNow(WithArguments(\n          tabs::GetAuxHorizontalTabShrinkEnabled(local_state, prefs)));\n    }\n    if (!args()[0].is_bool()) {\n      return RespondNow(Error(\"Boolean value required\"));\n    }\n    const bool enabled = args()[0].GetBool();\n    if (local_state) {\n      local_state->SetBoolean(tabs::kAuxHorizontalTabShrinkEnabled, enabled);\n    }\n    prefs->SetBoolean(kShrink, enabled);\n    if (auto* manager = g_browser_process->profile_manager()) {\n      for (Profile* loaded_profile : manager->GetLoadedProfiles()) {\n        loaded_profile->GetPrefs()->SetBoolean(kShrink, enabled);\n      }\n    }\n    return RespondNow(NoArguments());\n  }\n  if (method == \"getBrowserColorScheme\") {",
           "count": 1
         }
       ],
-      "outputSha256": "907c82eb13e3966e1bc0a395b87c24beecf1540a8cc4e7e21ad354e00ea55a07"
+      "outputSha256": "52777c5a7b6b622a578326dc17bf5fd6d2bd659e4dfb56b82fb0da7259a45101"
     },
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
@@ -62,81 +55,12 @@
     {
       "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
       "baselineSha256": "48f764c712457aefd2762b5a2c11cd8501f1aba4005721d794b23c8b9786a5ff",
-      "anchors": [
-        {
-          "find": "#include \"base/feature_list.h\"",
-          "replace": "#include \"base/feature_list.h\"\n#include \"base/scoped_observation.h\"\n#include \"chrome/browser/browser_process.h\"\n#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/common/pref_names.h\"\n#include \"components/prefs/pref_change_registrar.h\"\n#include \"components/prefs/pref_service.h\"",
-          "count": 1
-        },
-        {
-          "find": "#include \"chrome/browser/ui/views/tabs/tab_strip.h\"",
-          "replace": "#include \"chrome/browser/ui/views/tabs/tab_strip.h\"\n#include \"chrome/browser/ui/views/tabs/horizontal/horizontal_tab_strip_overflow_indicator_view.h\"\n#include \"chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h\"",
-          "count": 1
-        },
-        {
-          "find": "#include \"ui/views/border.h\"",
-          "replace": "#include \"ui/views/border.h\"\n#include \"ui/views/controls/scroll_view.h\"\n#include \"ui/views/view_observer.h\"",
-          "count": 1
-        },
-        {
-          "find": "namespace {\n\nclass FrameGrabHandle",
-          "replace": "// Restore the supplied legacy strip's scroll owner with Chromium155 controls.\n// Width-policy and preferred-size observation follow the former Chromium\n// TabStripScrollContainer; keep the existing default strip implementation.\nclass TabStripScrollContainer final : public views::View,\n                                      public views::ViewObserver {\n  METADATA_HEADER(TabStripScrollContainer, views::View)\n\n public:\n  TabStripScrollContainer(BrowserView* browser_view,\n                          std::unique_ptr<TabStrip> tab_strip)\n      : tab_strip_(tab_strip.get()), profile_(browser_view->GetProfile()) {\n    tab_strip_observation_.Observe(tab_strip_);\n    scroll_view_ = AddChildView(std::make_unique<views::ScrollView>(\n        views::ScrollView::ScrollWithLayers::kEnabled));\n    scroll_view_->SetBackgroundColor(std::nullopt);\n    scroll_view_->SetUseContentsPreferredSize(true);\n    scroll_view_->SetHorizontalScrollBarMode(\n        views::ScrollView::ScrollBarMode::kHiddenButEnabled);\n    scroll_view_->SetVerticalScrollBarMode(\n        views::ScrollView::ScrollBarMode::kDisabled);\n    scroll_view_->SetTreatAllScrollEventsAsHorizontal(true);\n    scroll_view_->SetCustomOverflowIndicator(\n        views::OverflowIndicatorAlignment::kLeft,\n        std::make_unique<HorizontalTabStripOverflowIndicatorView>(\n            views::OverflowIndicatorAlignment::kLeft),\n        HorizontalTabStripOverflowIndicatorView::kTotalThickness, false);\n    scroll_view_->SetCustomOverflowIndicator(\n        views::OverflowIndicatorAlignment::kRight,\n        std::make_unique<HorizontalTabStripOverflowIndicatorView>(\n            views::OverflowIndicatorAlignment::kRight),\n        HorizontalTabStripOverflowIndicatorView::kTotalThickness, false);\n    scroll_view_->SetContents(std::move(tab_strip));\n    scroll_buttons_ = AddChildView(std::make_unique<TabScrollButtonContainer>(\n        browser_view->browser()));\n    scroll_buttons_->SetScrollView(scroll_view_);\n    scroll_buttons_->SetVisible(false);\n    tab_strip_->SetAvailableWidthCallback(base::BindRepeating(\n        &TabStripScrollContainer::GetTabStripAvailableWidth,\n        base::Unretained(this)));\n    scrolled_subscription_ = scroll_view_->AddContentsScrolledCallback(\n        base::BindRepeating(&TabStripScrollContainer::OnContentsScrolled,\n                            base::Unretained(this)));\n    local_state_registrar_.Init(g_browser_process->local_state());\n    local_state_registrar_.Add(\n        tabs::kAuxHorizontalTabShrinkEnabled,\n        base::BindRepeating(&TabStripScrollContainer::OnShrinkChanged,\n                            base::Unretained(this)));\n    profile_registrar_.Init(profile_->GetPrefs());\n    profile_registrar_.Add(\n        prefs::kTabScrollButtonsPinnedToTabstrip,\n        base::BindRepeating(&TabStripScrollContainer::InvalidateLayout,\n                            base::Unretained(this), false));\n  }\n\n  ~TabStripScrollContainer() override {\n    scroll_buttons_->SetScrollView(nullptr);\n  }\n\n  void OnViewPreferredSizeChanged(views::View* view) override {\n    CHECK_EQ(view, tab_strip_);\n    PreferredSizeChanged();\n    InvalidateLayout();\n  }\n\n  gfx::Size CalculatePreferredSize(\n      const views::SizeBounds& available_size) const override {\n    return tab_strip_->GetPreferredSize(available_size);\n  }\n\n  gfx::Size GetMinimumSize() const override {\n    return gfx::Size(0, tab_strip_->GetMinimumSize().height());\n  }\n\n  bool IsRectInWindowCaption(const gfx::Rect& rect) {\n    const auto target_rect = [&](views::View* target) {\n      return gfx::ToEnclosingRect(views::View::ConvertRectToTarget(\n          this, target, gfx::RectF(rect)));\n    };\n    if (scroll_buttons_->GetVisible() &&\n        scroll_buttons_->bounds().Intersects(rect)) {\n      return scroll_buttons_->IsPositionInWindowCaption(\n          target_rect(scroll_buttons_).origin());\n    }\n    if (scroll_view_->bounds().Intersects(rect)) {\n      return tab_strip_->IsRectInWindowCaption(target_rect(tab_strip_));\n    }\n    return true;\n  }\n\n  void Layout(PassKey) override {\n    const int minimum_content_width = ShrinkEnabled()\n        ? tab_strip_->GetMinimumSize().width()\n        : tab_strip_->GetPreferredSize({}).width();\n    const bool show_buttons = minimum_content_width > width() &&\n        profile_->GetPrefs()->GetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip);\n    scroll_buttons_->SetVisible(show_buttons);\n    const int button_width = show_buttons\n        ? std::min(width(), scroll_buttons_->GetPreferredSize().width()) : 0;\n    scroll_view_->SetBounds(0, 0, std::max(0, width() - button_width), height());\n    scroll_buttons_->SetBounds(width() - button_width, 0, button_width, height());\n    scroll_view_->SetDrawOverflowIndicator(\n        minimum_content_width > scroll_view_->width());\n    scroll_view_->DeprecatedLayoutImmediately();\n  }\n\n private:\n  bool ShrinkEnabled() const {\n    return g_browser_process->local_state()->GetBoolean(\n        tabs::kAuxHorizontalTabShrinkEnabled);\n  }\n\n  int GetTabStripAvailableWidth() const {\n    return ShrinkEnabled() ? scroll_view_->width()\n                           : tab_strip_->GetPreferredSize({}).width();\n  }\n\n  void OnShrinkChanged() {\n    tab_strip_->InvalidateLayout();\n    tab_strip_->PreferredSizeChanged();\n    PreferredSizeChanged();\n    InvalidateLayout();\n  }\n\n  void OnContentsScrolled() {\n    tab_strip_->UpdateHoverCard(nullptr,\n        TabSlotController::HoverCardUpdateType::kAnimating);\n  }\n\n  const raw_ptr<TabStrip> tab_strip_;\n  const raw_ptr<Profile> profile_;\n  raw_ptr<views::ScrollView> scroll_view_ = nullptr;\n  raw_ptr<TabScrollButtonContainer> scroll_buttons_ = nullptr;\n  base::ScopedObservation<views::View, views::ViewObserver>\n      tab_strip_observation_{this};\n  PrefChangeRegistrar local_state_registrar_;\n  PrefChangeRegistrar profile_registrar_;\n  base::CallbackListSubscription scrolled_subscription_;\n};\n\nBEGIN_METADATA(TabStripScrollContainer)\nEND_METADATA\n\nnamespace {\n\nclass FrameGrabHandle",
-          "count": 1
-        },
-        {
-          "find": "  tab_strip_ = AddChildView(CreateTabStrip(this, browser_view));",
-          "replace": "  auto tab_strip = CreateTabStrip(this, browser_view);\n  tab_strip_ = tab_strip.get();\n  auto* local_state = g_browser_process->local_state();\n  if (local_state &&\n      local_state->FindPreference(tabs::kAuxHorizontalTabShrinkEnabled)) {\n    tab_strip_scroll_container_ = AddChildView(\n        std::make_unique<TabStripScrollContainer>(browser_view,\n                                                 std::move(tab_strip)));\n    tab_strip_container_ = tab_strip_scroll_container_;\n  } else {\n    tab_strip_container_ = AddChildView(std::move(tab_strip));\n  }",
-          "count": 1
-        },
-        {
-          "find": "  tab_strip_->SetProperty(views::kFlexBehaviorKey, tab_strip_flex_spec);",
-          "replace": "  tab_strip_container_->SetProperty(views::kFlexBehaviorKey, tab_strip_flex_spec);",
-          "count": 1
-        },
-        {
-          "find": "  if (IsHitInView(tab_strip_, point)) {",
-          "replace": "  if (tab_strip_scroll_container_ &&\n      IsHitInView(tab_strip_scroll_container_, point)) {\n    gfx::RectF rect(point, gfx::Size(1, 1));\n    View::ConvertRectToTarget(this, tab_strip_scroll_container_, &rect);\n    return tab_strip_scroll_container_->IsRectInWindowCaption(\n        gfx::ToEnclosingRect(rect));\n  }\n  if (!tab_strip_scroll_container_ && IsHitInView(tab_strip_, point)) {",
-          "count": 1
-        },
-        {
-          "find": "    if (child != tab_strip_ && child != reserved_grab_handle_space_ &&",
-          "replace": "    if (child != tab_strip_container_ && child != reserved_grab_handle_space_ &&",
-          "count": 1
-        },
-        {
-          "find": "  if (tab_strip_) {\n    children.emplace_back(tab_strip_.get());\n  }",
-          "replace": "  if (tab_strip_container_) {\n    children.emplace_back(tab_strip_container_.get());\n  }",
-          "count": 1
-        },
-        {
-          "find": "    int x = tab_strip_->bounds().right() -",
-          "replace": "    int x = tab_strip_container_->bounds().right() -",
-          "count": 1
-        },
-        {
-          "find": "    tab_strip_->SetProperty(\n        views::kMarginsKey,",
-          "replace": "    tab_strip_container_->SetProperty(\n        views::kMarginsKey,",
-          "count": 1
-        }
-      ],
-      "outputSha256": "ec0540fb97d888a51d39ded165d2fdca3c8f3a0298b648a417ba4301ae921b09"
+      "outputSha256": "daf4c67fe88e55f197ea4691cbcc2961584536294b4fe5572803f5ae554ccc9f"
     },
     {
       "path": "chrome/browser/ui/views/tabs/tab_strip.cc",
       "baselineSha256": "9b2c0eed8e98aba3aca76ad6853c133724f3cffcc59b99334fdbc0375b0fff51",
-      "anchors": [
-        {
-          "find": "#include \"chrome/browser/ui/views/tabs/tab_strip.h\"",
-          "replace": "#include \"chrome/browser/ui/views/tabs/tab_strip.h\"\n\n#include \"chrome/browser/browser_process.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"\n#include \"components/prefs/pref_service.h\"",
-          "count": 1
-        },
-        {
-          "find": "  preferred_size.SetToMax(drag_context_->GetPreferredSize(available_size));\n\n  return preferred_size;",
-          "replace": "  preferred_size.SetToMax(drag_context_->GetPreferredSize(available_size));\n  auto* local_state = g_browser_process->local_state();\n  const bool shrink = local_state &&\n      local_state->FindPreference(tabs::kAuxHorizontalTabShrinkEnabled) &&\n      local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled);\n  if (shrink && available_size.width().is_bounded()) {\n    preferred_size.set_width(std::max(\n        GetMinimumSize().width(),\n        std::min(preferred_size.width(), available_size.width().value())));\n  }\n  return preferred_size;",
-          "count": 1
-        }
-      ],
-      "outputSha256": "2e42f1ffec9c1ff8fae7a35b4ec74f851b68e09492400e938d6225596530ae14"
+      "outputSha256": "f0584b8e0a982e22952a47c645f393d6926447c991bc8a98888e4839540c26e9"
     },
     {
       "path": "chrome/browser/ui/views/tabs/tab_scrolling_animation.cc",
@@ -179,6 +103,11 @@
       "path": "chrome/browser/ui/views/tabs/BUILD.gn",
       "baselineSha256": "da73efcd2941892ec248f0e17f38762e0f399d1bbfcc151befcb1b77c546ee52",
       "outputSha256": "b964d4096738cda7aa1fa56e5c3eb7575c429059e32dee149e08a9eb97db1054"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/BUILD.gn",
+      "baselineSha256": "92c811957fdd1c3ca99b56fa246484861beb00c6eaa1ca8f9d0148fa3f6f78f3",
+      "outputSha256": "14e0d42e10db34845e2d1d49b5ebb2b41549f44e15ecbb99eb47a427e0038098"
     }
   ]
 }
