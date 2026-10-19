@@ -1,3 +1,5 @@
+import { TurnRail } from './turn-rail';
+import './intrinsic-surfaces.css';
 import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -104,7 +106,7 @@ export function Chat({
   const [pending, setPending] = useState(false);
   const [delivery, setDelivery] = useState('queue');
   const [latest, setLatest] = useState(true);
-  const transcript = useRef<HTMLDivElement>(null);
+  const transcript = useRef<HTMLElement>(null);
   const [answer, setAnswer] = useState('');
   const [queuedEdit, setQueuedEdit] = useState<{
     id: string;
@@ -491,7 +493,14 @@ export function Chat({
           <Plus size={16} />
         </Button>
       </header>
-      <div
+      <TurnRail
+        messages={messages}
+        transcript={transcript}
+        visible={!!sessionId}
+        onNavigate={() => setLatest(false)}
+      />
+      <section
+        aria-label="Conversation transcript"
         className="transcript"
         ref={transcript}
         onScroll={() => {
@@ -507,7 +516,11 @@ export function Chat({
           <Empty>Give Aux a task and add any useful context.</Empty>
         ) : (
           messages.map((message) => (
-            <article key={message.id} className={`message ${message.role}`}>
+            <article
+              key={message.id}
+              data-message-id={message.id}
+              className={`message ${message.role}`}
+            >
               <small>
                 {message.role === 'tool'
                   ? 'Tool activity'
@@ -519,12 +532,17 @@ export function Chat({
               {message.attachmentIds?.map((id) => {
                 const file = attachments.find((entry) => entry.id === id);
                 return (
-                  <div className="row wrap" key={id}>
-                    <Paperclip size={14} aria-hidden="true" />
-                    <span>
-                      {file
-                        ? `${file.fileName} · ${fileSize(file.size)}`
-                        : 'Attached file'}
+                  <div className="transcript-attachment row wrap" key={id}>
+                    <span className="attachment-icon" aria-hidden="true">
+                      <Paperclip size={16} />
+                    </span>
+                    <span className="attachment-label">
+                      <strong>{file?.fileName ?? 'Attached file'}</strong>
+                      <small>
+                        {file
+                          ? `${fileSize(file.size)} · ${file.mediaType}`
+                          : 'Metadata unavailable.'}
+                      </small>
                     </span>
                     {file && (
                       <Button
@@ -628,7 +646,7 @@ export function Chat({
             )}
           </section>
         )}
-      </div>
+      </section>
       {!latest && (
         <Button className="latest" onClick={() => setLatest(true)}>
           <ArrowDown size={14} />
@@ -638,15 +656,19 @@ export function Chat({
       {queuedEdit && (
         <Dialog
           title="Edit queued input"
-          onClose={() => setQueuedEdit(undefined)}
+          onClose={() => {
+            if (!pending) setQueuedEdit(undefined);
+          }}
         >
           <textarea
+            className="message-edit-body"
             aria-label="Queued input"
             value={queuedEdit.prompt}
             onChange={(event) =>
               setQueuedEdit({ ...queuedEdit, prompt: event.target.value })
             }
           />
+          {error && <ErrorNotice error={error} />}
           <Button
             disabled={pending || !queuedEdit.prompt.trim()}
             onClick={() =>
@@ -664,9 +686,12 @@ export function Chat({
           >
             Save
           </Button>
+          <Button disabled={pending} onClick={() => setQueuedEdit(undefined)}>
+            Cancel
+          </Button>
         </Dialog>
       )}
-      <footer className="composer-wrap">
+      <footer className="composer-wrap chat-bottom-actions">
         {error && <ErrorNotice error={error} />}
         <div className="queue">
           {session?.queue?.map((item, index) => (
@@ -699,6 +724,22 @@ export function Chat({
                 }
               >
                 ↑
+              </Button>
+              <Button
+                disabled={pending || index === session.queue.length - 1}
+                aria-label={`Move queued message ${index + 1} down`}
+                onClick={() =>
+                  void mutate('sessions.moveQueuedMessage', {
+                    queuedMessageId: item.id,
+                    version: item.version,
+                    beforeTimestamp:
+                      session.queue[index + 2]?.timestamp ?? null,
+                  })
+                    .then(setSession)
+                    .catch(() => {})
+                }
+              >
+                ↓
               </Button>
               <Button
                 disabled={pending}

@@ -1,0 +1,115 @@
+/* Approved intrinsic roles: visual-measurements.md M2/M3/M6. Host geometry remains unmeasured. */
+.chat .chat-bottom-actions {
+  width: 100%;
+  max-width: 896px;
+  box-sizing: border-box;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline: 16px;
+}
+.chat .chat-bottom-actions .queue {
+  display: flex;
+  flex-direction: column;
+  max-height: 208px;
+  padding: 6px 8px;
+  gap: 2px;
+  box-sizing: border-box;
+}
+.chat .chat-bottom-actions .queue > div {
+  gap: 8px;
+  padding: 0;
+  flex: none;
+  min-width: 0;
+}
+.chat .queue :where(div) > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.chat .message-edit-body {
+  min-height: 80px;
+  max-height: 320px;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: auto;
+  resize: vertical;
+}
+.dialog .message-edit-body {
+  width: 100%;
+  min-height: 80px;
+  max-height: 320px;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: auto;
+  resize: vertical;
+}
+.chat .transcript-attachment {
+  padding: 10px;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 16.8px;
+  background: oklch(100% 0 0);
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+:root[data-theme="dark"] .chat .transcript-attachment {
+  background: oklch(98.5% 0 0 / 0.08);
+}
+.chat .transcript-attachment > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.settings .setting {
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 10px;
+  gap: 12px;
+}
+.settings .setting > div:first-child {
+  padding-inline: 4px;
+}
+.settings .setting strong {
+  font-size: 14px;
+}
+.settings .setting small {
+  font-size: 12px;
+}
+.settings .setting select {
+  max-width: 100%;
+}
+.settings:has(a[aria-current="page"][href="#/settings/appearance"])
+  .setting
+  select {
+  width: 176px;
+}
+.popup-preview {
+  border-radius: 11.2px;
+  flex-shrink: 0;
+}
+@media (min-width: 1024px) {
+  .chat .chat-bottom-actions {
+    padding-inline: 32px;
+  }
+}
+
+.chat .transcript-attachment .attachment-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.chat .transcript-attachment .attachment-label strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.chat .transcript-attachment .attachment-label small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
