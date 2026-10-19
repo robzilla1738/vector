@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "actual applied v96 includes original helper prepare/target rebind port",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/extension_browser_window_helper.h",
+      "baselineSha256": "fd435eb87bada15e7915ebb8a1df6ea30aca5bb8b8f63bb813eab8ea22b25b69",
+      "outputSha256": "516572a90d1620f69b14c77d2fac874a4e33f3fb54be8d8497167f683ba60c6d"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_browser_window_helper.cc",
+      "baselineSha256": "9cc785130edc9af45ab2bcf301d90da4b3cb7c3a500c33a1dc2b141fab870378",
+      "outputSha256": "d01135c8c8300e04f3861f22de091fd51118bee047516af8b87b6d086ef90131"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

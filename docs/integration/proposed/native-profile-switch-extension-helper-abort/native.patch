@@ -1,0 +1,78 @@
+--- a/chrome/browser/extensions/extension_browser_window_helper.h
++++ b/chrome/browser/extensions/extension_browser_window_helper.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_EXTENSIONS_EXTENSION_BROWSER_WINDOW_HELPER_H_
+ 
+ #include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
+@@ -36,8 +37,10 @@
+   ~ExtensionBrowserWindowHelper() override;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanPrepareForAuxProfileSwitch() const;
+   void PrepareForAuxProfileSwitch();
+   void RebindForAuxProfileSwitch(Profile* target_profile);
++  void AbortAuxProfileSwitch();
+ #endif
+ 
+  private:
+@@ -52,6 +55,9 @@
+   // These pointers come from the associated Browser object and it will ensure
+   // they outlive this object.
+   const raw_ref<BrowserWindowInterface> browser_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::WeakPtr<Profile> aux_profile_switch_source_;
++#endif
+ 
+   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
+       registry_observation_{this};
+--- a/chrome/browser/extensions/extension_browser_window_helper.cc
++++ b/chrome/browser/extensions/extension_browser_window_helper.cc
+@@ -108,15 +108,24 @@
+ ExtensionBrowserWindowHelper::~ExtensionBrowserWindowHelper() = default;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ExtensionBrowserWindowHelper::CanPrepareForAuxProfileSwitch() const {
++  return !aux_profile_switch_source_ &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         browser_->GetProfile()->IsRegularProfile() &&
++         registry_observation_.IsObservingSource(
++             ExtensionRegistry::Get(browser_->GetProfile()));
++}
++
+ void ExtensionBrowserWindowHelper::PrepareForAuxProfileSwitch() {
+-  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
+-  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_profile_switch_source_ = browser_->GetProfile()->GetWeakPtr();
+   // Old registry unload events must not close tabs after identity has moved.
+   registry_observation_.Reset();
+ }
+ 
+ void ExtensionBrowserWindowHelper::RebindForAuxProfileSwitch(
+     Profile* target_profile) {
++  CHECK(aux_profile_switch_source_);
+   CHECK(!registry_observation_.IsObserving());
+   CHECK(target_profile);
+   CHECK(target_profile->IsRegularProfile());
+@@ -125,6 +134,17 @@
+   CHECK(tabs);
+   CHECK_EQ(tabs->GetTabCount(), 0);
+   registry_observation_.Observe(ExtensionRegistry::Get(target_profile));
++  aux_profile_switch_source_.reset();
++}
++
++void ExtensionBrowserWindowHelper::AbortAuxProfileSwitch() {
++  CHECK(aux_profile_switch_source_);
++  CHECK_EQ(browser_->GetProfile(), aux_profile_switch_source_.get());
++  CHECK(!registry_observation_.IsObserving());
++  // Core rollback has already restored the actual source tabs. This observer
++  // owns no tab transfer; the target-only empty-model guard must remain intact.
++  registry_observation_.Observe(ExtensionRegistry::Get(browser_->GetProfile()));
++  aux_profile_switch_source_.reset();
+ }
+ #endif
+ 
