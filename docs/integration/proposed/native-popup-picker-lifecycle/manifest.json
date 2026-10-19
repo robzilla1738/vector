@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-profile-ownership CC65cbf95010af412cbd81ed99198e8104226a774bd34ca2e0347080bfd9806327; existing unchanged popup header",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "65cbf95010af412cbd81ed99198e8104226a774bd34ca2e0347080bfd9806327",
+      "outputSha256": "1b49218ed290f8db7fc9efaeaaa99d703a55fb86f32de9eb6b0f67b81f2a4588"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h",
+      "baselineSha256": "0cb820967652c34ae60d1bca240b34362b78f04efef142982241152f1825d13b",
+      "outputSha256": "961c44933a7d432c8e7f74077256ac22b74dee31af624651b344a0773b382fa7"
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_mini_popup.json",
+      "baselineSha256": "578dd5a5bb429ba672ed7734135ff2d474e83c5f14c599d17167beaf76e92828",
+      "outputSha256": "6c505ae4ed39a75d142bc90b9e81c6b478b68f44cdca171249e215b760ddfd06"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -290,6 +290,7 @@
+   }
+   void DestroyWindows() {
+     ClearAuxPopupActivation();
++    picker_pending_ = false;
+     loaded_entry_url_ = GURL();
+     bounds_animation_.reset();
+     options_bounds_animation_.reset();
+@@ -471,9 +472,30 @@
+     }
+     registered_ = false;
+   }
+-  void SetPickerPending(bool pending) { picker_pending_ = pending; }
++  std::optional<std::string> BeginDirectoryPicker(
++      content::WebContents* source) {
++    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() ||
++        !OwnsPopupContents(source)) {
++      return "Aux mini popup unavailable";
++    }
++    if (picker_pending_) {
++      return "Folder picker request already in progress";
++    }
++    picker_pending_ = true;
++    return std::nullopt;
++  }
++  void FinishDirectoryPicker(content::WebContents* source) {
++    if (OwnsPopupContents(source)) {
++      picker_pending_ = false;
++    }
++  }
+ 
+  private:
++  bool OwnsPopupContents(content::WebContents* source) const {
++    return source &&
++           ((webview_ && source == webview_->web_contents()) ||
++            (options_webview_ && source == options_webview_->web_contents()));
++  }
+   friend class base::NoDestructor<PopupManager>;
+   PopupManager() = default;
+   ~PopupManager() override = default;
+@@ -608,15 +630,17 @@
+     if (!owner) {
+       return RespondNow(Error("Calling page is unavailable"));
+     }
++    if (auto error = manager.BeginDirectoryPicker(owner)) {
++      return RespondNow(Error(*error));
++    }
+     dialog_ = ui::SelectFileDialog::Create(
+         this, std::make_unique<ChromeSelectFilePolicy>(owner));
+     picker_hold_ = this;
+-    manager.SetPickerPending(true);
+-    dialog_->SelectFile(ui::SelectFileDialog::SELECT_FOLDER,
+-                        u"Choose a working folder", base::FilePath(), nullptr,
+-                        0, base::FilePath::StringType(),
++    dialog_->SelectFile(ui::SelectFileDialog::SELECT_FOLDER, std::u16string(),
++                        base::FilePath(), nullptr, 0,
++                        base::FilePath::StringType(),
+                         owner->GetTopLevelNativeWindow());
+-    return RespondLater();
++    return did_respond() ? AlreadyResponded() : RespondLater();
+   }
+   return RespondNow(Error("Unsupported popup method"));
+ }
+@@ -624,12 +648,12 @@
+   CompleteDirectory(file.local_path.value());
+ }
+ void AuxMiniPopupFunction::FileSelectionCanceled() {
+-  CompleteDirectory(std::string());
+-}
+-void AuxMiniPopupFunction::CompleteDirectory(std::string path) {
++  CompleteDirectory(std::nullopt);
++}
++void AuxMiniPopupFunction::CompleteDirectory(std::optional<std::string> path) {
+   auto retained = std::move(picker_hold_);
+   dialog_.reset();
+-  PopupManager::Get().SetPickerPending(false);
+-  Respond(WithArguments(std::move(path)));
++  PopupManager::Get().FinishDirectoryPicker(GetSenderWebContents());
++  Respond(path ? WithArguments(std::move(*path)) : NoArguments());
+ }
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
+@@ -1,6 +1,9 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_MINI_POPUP_AUX_MINI_POPUP_API_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_MINI_POPUP_AUX_MINI_POPUP_API_H_
++#include <optional>
++#include <string>
++
+ #include "chrome/browser/extensions/api/aux_common/aux_api.h"
+ #include "ui/shell_dialogs/select_file_dialog.h"
+ class PrefRegistrySimple;
+@@ -18,7 +21,7 @@
+  private:
+   void FileSelected(const ui::SelectedFileInfo& file, int index) override;
+   void FileSelectionCanceled() override;
+-  void CompleteDirectory(std::string path);
++  void CompleteDirectory(std::optional<std::string> path);
+   scoped_refptr<ui::SelectFileDialog> dialog_;
+   scoped_refptr<AuxMiniPopupFunction> picker_hold_;
+ };
+--- a/chrome/common/extensions/api/aux_mini_popup.json
++++ b/chrome/common/extensions/api/aux_mini_popup.json
+@@ -127,7 +127,8 @@
+           "parameters": [
+             {
+               "name": "result",
+-              "type": "string"
++              "type": "string",
++              "optional": true
+             }
+           ]
+         }

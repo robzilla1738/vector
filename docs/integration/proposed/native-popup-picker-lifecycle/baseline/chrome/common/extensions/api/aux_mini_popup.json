@@ -1,0 +1,151 @@
+[
+  {
+    "namespace": "auxMiniPopup",
+    "description": "Aux private native browser capability.",
+    "functions": [
+      {
+        "name": "hide",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getEnabled",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "enabled",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getShortcut",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setShortcut",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "shortcut",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "setState",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "state",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "setSize",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "width",
+            "type": "integer"
+          },
+          {
+            "name": "height",
+            "type": "integer"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "setOptionWindowSize",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "width",
+            "type": "integer"
+          },
+          {
+            "name": "height",
+            "type": "integer"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "pickDirectory",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "switchProfile",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "profileIndex",
+            "type": "integer"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      }
+    ]
+  }
+]

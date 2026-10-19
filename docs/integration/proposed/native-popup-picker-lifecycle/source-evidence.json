@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459676c.c",
+      "sha256": "db640518edb2d31ae8ab388402f5097a1736a4d657c1d5d9979b5628d8f43c8b"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459699c.c",
+      "sha256": "df14c947e0b2977d0d60921cc1f582303c7e581b88ec84c6f7f3216d800d912e"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594b00.c",
+      "sha256": "6ec909b1239ae3e140614353d03945223fa68ae51d70f83a3c5863003d300ebf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/shell_dialogs/select_file_dialog.h",
+      "sha256": "b599bff45dd8803df90e43642887c1a8078f473d8a0b9dae271ef23aa8e91998"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_function.h",
+      "sha256": "b7d21adba7e74da120ead3ea1136e5a03046f29009a6ba92965f670c4b3b0b3a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/minipopup.html",
+      "sha256": "52eeee71612a84c0502bf1c81f9365645002ad05dad1387750327288d2a6c715"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/browser-binding-CzDmxQNA.js",
+      "sha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/route-Dh145hWk.js",
+      "sha256": "dfadb589105484e5bb80c0f1a90dd7e14682f13c07de2c765371523eca2f21bf"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/minipopup-LkDLFvnq.js",
+      "sha256": "8fd650df3497acc5e8a5c34ab5990f45c9e97c0c920e4a7735f7b28aba72469e"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/queries-ldd77hNk.js",
+      "sha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/strip-markdown-DRcmtuJc.js",
+      "sha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb"
+    }
+  ],
+  "functions": [
+    {
+      "name": "Run",
+      "rva": "0x427de54",
+      "bytes": 1116,
+      "sha256": "4cc6715616717cae79c748c5bc9cf031ca323b80fdb1a4aca14cb11fd50361f8",
+      "evidenceId": "ev_18ffb83aaa850512dcc01e3136610d8525a24e726bfc5e619573695abb2eb307"
+    },
+    {
+      "name": "Cancel",
+      "rva": "0x427e2b0",
+      "bytes": 192,
+      "sha256": "d1be6151463ba4f75e877fa1d751f4f6b8c774480866ab865be68b8f49032745",
+      "evidenceId": "ev_dc80108186a79ead0ba9204eb29b8008db7d8be734a71ac09a358b31ec223e60"
+    },
+    {
+      "name": "OpenFolderPicker",
+      "rva": "0x459676c",
+      "bytes": 552,
+      "sha256": "47f8e14842ce9dde72360b624b21e0c255374f58bdc7ca2a3c512f76471b3832",
+      "evidenceId": "ev_114788f2c92a4f72a432ebeb9942929debae0afd99ef54c53d671cf7ad17ef90"
+    },
+    {
+      "name": "CloseFolderPicker",
+      "rva": "0x459699c",
+      "bytes": 452,
+      "sha256": "3812cb695bd3a65bc408105f170e6890a724cca55e46e6c96b0a7c34d7494555",
+      "evidenceId": "ev_dd68d779814530a625d301e4e8583142e442b97726322beff3a4dd2c2a1cb468"
+    },
+    {
+      "name": "Selected",
+      "rva": "0x8134484",
+      "bytes": 300,
+      "sha256": "4ab99162e59e9922d51d67b9c5d139415fb4999b610e03617a5c15e06c69413a",
+      "evidenceId": null
+    },
+    {
+      "name": "ListenerDestructor",
+      "rva": "0x427dc7c",
+      "bytes": 112,
+      "sha256": "86d4251fa64fe35706261e4c23fe3b2e1dc98c86209ad93e65a24637661ce0a8",
+      "evidenceId": null
+    }
+  ],
+  "anchors": [
+    {
+      "rva": "0x427df44",
+      "meaning": "Run calls OpenFolderPicker with current sender; result2 duplicate,1 unavailable,0 successful reservation."
+    },
+    {
+      "rva": "0xcf0a5e9",
+      "value": "Folder picker request already in progress"
+    },
+    {
+      "rva": "0x427e31c",
+      "meaning": "Cancel calls CloseFolderPicker with sender before NoArguments response and releasing retained API function."
+    },
+    {
+      "rva": "0x8134534",
+      "meaning": "Selected calls CloseFolderPicker with sender before actual selected path response and releasing retained API function."
+    },
+    {
+      "rva": "0x459699c",
+      "meaning": "Close clears pending only if sender matches current main/options WebContents; does not require visible widget at completion."
+    },
+    {
+      "meaning": "SelectFileDialog Listener contract says exactly one callback, possibly synchronous. Current ExtensionFunction has AlreadyResponded for synchronous completion."
+    }
+  ],
+  "limits": [
+    "Source-backed change preserves current user-gesture gate, listener self-retention and real ChromeSelectFilePolicy. It does not invent a forced native dialog-close operation.",
+    "No original source establishes current Aux locked main.html#/ route as faithful; original Show only creates minipopup.html.1852 root redirects according to its real surface/account and extension layout creates account context. No gate is changed here.",
+    "Native owner-window destruction may or may not synchronously close an open OS panel. Listener lifetime until actual callback is preserved; actual callback/native focus behavior still needs disposable observation.",
+    "No target executable, owner picker/dialog, profile, Keychain or OS grant was used."
+  ]
+}
