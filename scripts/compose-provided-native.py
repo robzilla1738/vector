@@ -47,6 +47,7 @@ steps.extend((f'native-compile-fixes/{name}/fix.patch', f'native-compile-fixes/{
     '001-omnibox-callback', '002-event-enum-arrays',
     '003-task-popover-shadow', '003-platform-boundaries',
 ])
+steps.append(('native-preference-effects/native.patch', 'native-preference-effects/manifest.json'))
 
 def safe(path):
     value = Path(path)

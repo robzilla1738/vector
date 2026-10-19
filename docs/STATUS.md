@@ -605,3 +605,7 @@ Follow-up registers pending launches before awaiting controllers; shutdown waits
 ## Applied launcher shutdown ownership (2026-10-19, integrator)
 
 Applied the pinned launcher delta after reviewing and correcting its pending-start shutdown race. The guardian bounds signals to its own live process group; launcher shutdown awaits pending controllers and cancels readiness work. Three focused disposable authored-process tests pass against the actual applied launcher, covering normal/forced cleanup, stop-before-launch refusal and SIGTERM during pending startup. Temporary state is retained and its path printed because detached descendants remain unverified. Updated daemon/CLI stage preservation audit and the20-case offline extraction/contract check pass; actual packaged behavior remains pending.
+
+## Supplied preference effects staged for native integration (2026-10-19)
+
+Reviewed and composedv17 in a disposable tree: seven changed files and66 source files verified against the appliedv16 baseline. It restores browser-global vertical insertion with the original top default and actual NewTab placement after pinned tabs, plus the original inverted macOS app-domain vibrancy preference and notification contract. The vertical constant uses the existing narrow tab preferences header. The fresh-checkout composer includes the same pinned patch. No shared source was changed while build23833 runs; v17 is unapplied/uncompiled, and vibrancy rendering plus default legacy horizontal shrink remain active integration work.
