@@ -42,7 +42,11 @@ const original = require(bindingPath);
 if (loadOnly) {
   // Original NAPI entry registration is allowed; original commands/PDF actions
   // are not. This mode cannot become production inside the same process.
-  module.exports = Object.freeze({ get boundaryStatus() { return guard.status(); },
+  const descriptors = Object.getOwnPropertyDescriptors(original);
+  const registration = Object.freeze({ originalBindingLoaded: true,
+    runExportRegistered: typeof descriptors.run?.value === 'function',
+    pdfExportRegistered: Object.hasOwn(descriptors, 'pdf') });
+  module.exports = Object.freeze({ registration, get boundaryStatus() { return guard.status(); },
     run() { throw new Error('Native execution disabled in load-only mode'); },
     get pdf() { throw new Error('Native PDF execution disabled in load-only mode'); },
   });
