@@ -56,6 +56,7 @@ export type Status =
   | 'interrupted'
   | 'aborted';
 export interface Message {
+  attachmentIds?: string[] | undefined;
   id: string;
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -94,6 +95,7 @@ export interface Suspension {
   resolvedAt?: number;
 }
 export interface Queued {
+  attachmentIds?: string[] | undefined;
   id: string;
   prompt: string;
   timestamp: number;

@@ -10,6 +10,7 @@ import {
   type ToolSet,
 } from 'ai';
 import { z } from 'zod';
+import { Attachments } from './attachments.js';
 import { Credentials } from './credentials.js';
 import { defaultModel, resolveModel } from './providers.js';
 import { type AgentStorage, fail } from './storage.js';
@@ -29,6 +30,7 @@ export interface AgentExtensions {
 }
 export class AgentEngine {
   readonly credentials: Credentials;
+  readonly attachments: Attachments;
   readonly events = new EventEmitter();
   private active = new Map<
     string,
@@ -49,6 +51,7 @@ export class AgentEngine {
     readonly extensions: AgentExtensions = {},
   ) {
     this.credentials = new Credentials(store);
+    this.attachments = new Attachments(store);
   }
   private key(accountId: number, id: string) {
     return `${accountId}:${id}`;
@@ -179,11 +182,33 @@ export class AgentEngine {
       suspension: suspensions.find((s) => !s.resolvedAt) ?? null,
     };
   }
+  userContent(session: Session, prompt: string, attachmentIds: string[] = []) {
+    if (
+      attachmentIds.length > 10 ||
+      new Set(attachmentIds).size !== attachmentIds.length
+    )
+      fail('BAD_REQUEST', 'Use at most ten distinct attachments');
+    if (!attachmentIds.length) return prompt;
+    const attached = this.attachments.content(
+      session.accountId,
+      session.id,
+      attachmentIds,
+      session.model ?? defaultModel,
+      (value) => this.credentials.redact(session.accountId, value),
+    );
+    return [
+      { type: 'text' as const, text: prompt },
+      ...(typeof attached === 'string'
+        ? [{ type: 'text' as const, text: attached }]
+        : attached),
+    ];
+  }
   prompt(
     accountId: number,
     id: string,
     prompt: string,
     idempotencyKey?: string,
+    attachmentIds: string[] = [],
   ) {
     if (this.closed)
       fail('PRECONDITION_FAILED', 'Agent engine is shutting down');
@@ -196,16 +221,18 @@ export class AgentEngine {
     if (session.archived)
       fail('CONFLICT', 'Unarchive the session before continuing');
     if (session.projectId) this.requireProject(accountId, session.projectId);
+    const content = this.userContent(session, prompt, attachmentIds);
     if (idempotencyKey) session.idempotencyKeys.push(idempotencyKey);
     const runId = randomUUID();
     session.messages.push({
       id: randomUUID(),
       role: 'user',
       content: prompt,
+      attachmentIds,
       turnId: runId,
       createdAt: Date.now(),
     });
-    session.context.push({ role: 'user', content: prompt });
+    session.context.push({ role: 'user', content });
     session.runs.push({ id: runId, status: 'running', createdAt: Date.now() });
     session.status = 'running';
     delete session.error;
@@ -226,7 +253,13 @@ export class AgentEngine {
         const queued = latest.queue.shift();
         if (!queued) return;
         this.save(latest);
-        this.prompt(accountId, id, queued.prompt, queued.id);
+        this.prompt(
+          accountId,
+          id,
+          queued.prompt,
+          queued.id,
+          queued.attachmentIds,
+        );
       });
     this.active.set(key, { controller, promise });
     this.emit(session, 'run-started', { runId });
@@ -311,7 +344,7 @@ export class AgentEngine {
         const next = latest.queue.shift();
         if (next) {
           this.save(latest);
-          this.prompt(accountId, id, next.prompt, next.id);
+          this.prompt(accountId, id, next.prompt, next.id, next.attachmentIds);
         }
       });
     this.active.set(key, { controller, promise });
@@ -528,6 +561,7 @@ export class AgentEngine {
     prompt: string,
     kind: 'prompt' | 'steering' = 'prompt',
     idempotencyKey?: string,
+    attachmentIds: string[] = [],
   ) {
     const session = this.get(accountId, id);
     if (
@@ -536,7 +570,9 @@ export class AgentEngine {
         session.queue.some((item) => item.id === idempotencyKey))
     )
       return this.public(session);
+    this.userContent(session, prompt, attachmentIds);
     const item = {
+      attachmentIds,
       id: idempotencyKey ?? randomUUID(),
       prompt: z.string().trim().min(1).parse(prompt),
       timestamp: Date.now(),
@@ -548,7 +584,7 @@ export class AgentEngine {
     if (!this.active.has(this.key(accountId, id))) {
       session.queue.shift();
       this.save(session);
-      return this.prompt(accountId, id, prompt, item.id);
+      return this.prompt(accountId, id, prompt, item.id, item.attachmentIds);
     }
     if (kind === 'steering') this.stop(accountId, id, 'interrupted');
     return this.public(this.get(accountId, id));

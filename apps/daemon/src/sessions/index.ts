@@ -2,6 +2,7 @@
 
 import {
   AgentEngine,
+  attachmentInput,
   bindingSchema,
   createSchema,
   fail,
@@ -145,6 +146,7 @@ export function createAgentRouters(
         createSchema.extend({
           message: z.string().trim().min(1),
           idempotencyKey: z.string().optional(),
+          attachmentIds: z.array(z.string().uuid()).max(10).default([]),
         }),
       )
       .mutation(({ input }) => {
@@ -154,6 +156,7 @@ export function createAgentRouters(
           session.id,
           input.message,
           input.idempotencyKey,
+          input.attachmentIds,
         );
       }),
     prompt: procedure
@@ -162,6 +165,7 @@ export function createAgentRouters(
           message: z.string().trim().min(1).optional(),
           prompt: z.string().trim().min(1).optional(),
           idempotencyKey: z.string().optional(),
+          attachmentIds: z.array(z.string().uuid()).max(10).default([]),
         }),
       )
       .mutation(({ input }) =>
@@ -170,8 +174,58 @@ export function createAgentRouters(
           input.sessionId,
           input.message ?? input.prompt ?? '',
           input.idempotencyKey,
+          input.attachmentIds,
         ),
       ),
+    uploadAttachment: procedure
+      .input(sessionScope.extend(attachmentInput.shape))
+      .mutation(({ input }) => {
+        get(input);
+        const file = engine.attachments.upload(
+          input.accountId,
+          input.sessionId,
+          input,
+        );
+        engine.emit(get(input), 'attachment-added', file);
+        return file;
+      }),
+    attachments: procedure.input(sessionScope).query(({ input }) => {
+      get(input);
+      return engine.attachments.list(input.accountId, input.sessionId);
+    }),
+    readAttachment: procedure
+      .input(sessionScope.extend({ attachmentId: z.string().uuid() }))
+      .query(({ input }) => {
+        get(input);
+        return engine.attachments.read(
+          input.accountId,
+          input.sessionId,
+          input.attachmentId,
+        );
+      }),
+    removeAttachment: procedure
+      .input(sessionScope.extend({ attachmentId: z.string().uuid() }))
+      .mutation(({ input }) => {
+        const s = get(input);
+        if (
+          [...s.messages, ...s.queue].some((entry) =>
+            entry.attachmentIds?.includes(input.attachmentId),
+          )
+        )
+          fail(
+            'CONFLICT',
+            'Submitted attachments remain part of the transcript; clear messages to remove them',
+          );
+        engine.attachments.remove(
+          input.accountId,
+          input.sessionId,
+          input.attachmentId,
+        );
+        engine.emit(get(input), 'attachment-removed', {
+          id: input.attachmentId,
+        });
+        return { removed: true };
+      }),
     get: procedure
       .input(sessionScope)
       .query(({ input }) => engine.public(get(input))),
@@ -219,18 +273,37 @@ export function createAgentRouters(
         ),
       ),
     queue: procedure
-      .input(sessionScope.extend({ prompt: z.string().trim().min(1) }))
+      .input(
+        sessionScope.extend({
+          prompt: z.string().trim().min(1),
+          attachmentIds: z.array(z.string().uuid()).max(10).default([]),
+        }),
+      )
       .mutation(({ input }) =>
-        engine.queue(input.accountId, input.sessionId, input.prompt),
+        engine.queue(
+          input.accountId,
+          input.sessionId,
+          input.prompt,
+          'prompt',
+          undefined,
+          input.attachmentIds,
+        ),
       ),
     steer: procedure
-      .input(sessionScope.extend({ prompt: z.string().trim().min(1) }))
+      .input(
+        sessionScope.extend({
+          prompt: z.string().trim().min(1),
+          attachmentIds: z.array(z.string().uuid()).max(10).default([]),
+        }),
+      )
       .mutation(({ input }) =>
         engine.queue(
           input.accountId,
           input.sessionId,
           input.prompt,
           'steering',
+          undefined,
+          input.attachmentIds,
         ),
       ),
     abort: procedure
@@ -339,11 +412,17 @@ export function createAgentRouters(
       const s = get(input);
       if (['running', 'suspended'].includes(s.status))
         fail('CONFLICT', 'Cannot clear an active run');
+      for (const file of engine.attachments.list(
+        input.accountId,
+        input.sessionId,
+      ))
+        engine.attachments.remove(input.accountId, input.sessionId, file.id);
       s.messages = [];
       s.context = [];
       s.runs = [];
       s.toolCalls = [];
       s.suspensions = [];
+      s.queue = [];
       return { session: updated(s) };
     }),
     branch: procedure
@@ -361,14 +440,37 @@ export function createAgentRouters(
           parentId: s.id,
           title: `${s.title} (branch)`,
         });
-        branch.messages = s.messages.slice(0, index + 1).map((m) => ({ ...m }));
+        const copied = new Map<string, string>();
+        branch.messages = s.messages.slice(0, index + 1).map((m) => ({
+          ...m,
+          attachmentIds: m.attachmentIds?.map((id) => {
+            let target = copied.get(id);
+            if (!target) {
+              target = engine.attachments.copy(
+                input.accountId,
+                s.id,
+                branch.id,
+                id,
+              );
+              copied.set(id, target);
+            }
+            return target;
+          }),
+        }));
         branch.context = branch.messages
           .filter((m) => m.role !== 'tool')
-          .map((m) => ({
-            role:
-              m.role === 'user' ? ('user' as const) : ('assistant' as const),
-            content: m.content,
-          }));
+          .map((m) =>
+            m.role === 'user'
+              ? {
+                  role: 'user' as const,
+                  content: engine.userContent(
+                    branch,
+                    m.content,
+                    m.attachmentIds,
+                  ),
+                }
+              : { role: 'assistant' as const, content: m.content },
+          );
         return { session: updated(branch) };
       }),
     editUserMessage: procedure
@@ -390,16 +492,25 @@ export function createAgentRouters(
         latest.messages = latest.messages.slice(0, index);
         latest.context = latest.messages
           .filter((m) => m.role !== 'tool')
-          .map((m) => ({
-            role:
-              m.role === 'user' ? ('user' as const) : ('assistant' as const),
-            content: m.content,
-          }));
+          .map((m) =>
+            m.role === 'user'
+              ? {
+                  role: 'user' as const,
+                  content: engine.userContent(
+                    latest,
+                    m.content,
+                    m.attachmentIds,
+                  ),
+                }
+              : { role: 'assistant' as const, content: m.content },
+          );
         engine.save(latest);
         const session = engine.prompt(
           input.accountId,
           input.sessionId,
           input.content,
+          undefined,
+          s.messages[index]?.attachmentIds,
         );
         return { session, messages: get(input).messages };
       }),
@@ -429,6 +540,11 @@ export function createAgentRouters(
     delete: procedure.input(sessionScope).mutation(async ({ input }) => {
       engine.stop(input.accountId, input.sessionId, 'aborted');
       await engine.wait(input.accountId, input.sessionId);
+      for (const file of engine.attachments.list(
+        input.accountId,
+        input.sessionId,
+      ))
+        engine.attachments.remove(input.accountId, input.sessionId, file.id);
       store.set(input.accountId, 'sessions', input.sessionId, null);
       return { deleted: true };
     }),

@@ -230,3 +230,61 @@ test('external execution owns suspensions and cancellation closes cleanly', asyn
     f.close();
   }
 });
+
+test('attachments are explicit, session scoped, durable, and type checked before accepted input', async () => {
+  const f = fixture();
+  try {
+    const first = f.engine.create(
+      createSchema.parse({ accountId: f.accountId }),
+    );
+    const other = f.engine.create(
+      createSchema.parse({ accountId: f.accountId }),
+    );
+    const file = f.engine.attachments.upload(f.accountId, first.id, {
+      fileName: '../fixture.txt',
+      mediaType: 'text/plain',
+      base64: Buffer.from('Synthetic attached context').toString('base64'),
+    });
+    assert.equal(file.fileName, 'fixture.txt');
+    assert.equal(first.context.length, 0);
+    assert.ok(
+      !JSON.stringify(
+        f.engine.attachments.list(f.accountId, first.id),
+      ).includes('Synthetic'),
+    );
+    assert.throws(
+      () =>
+        f.engine.prompt(f.accountId, other.id, 'Read file', undefined, [
+          file.id,
+        ]),
+      /does not exist/,
+    );
+    assert.equal(f.engine.get(f.accountId, other.id).messages.length, 0);
+    assert.throws(
+      () =>
+        f.engine.attachments.upload(f.accountId, first.id, {
+          fileName: 'fake.pdf',
+          mediaType: 'application/pdf',
+          base64: Buffer.from('not a PDF').toString('base64'),
+        }),
+      /media type/,
+    );
+    f.engine.prompt(f.accountId, first.id, 'Use this context', undefined, [
+      file.id,
+    ]);
+    await f.engine.wait(f.accountId, first.id);
+    const persisted = f.engine.get(f.accountId, first.id);
+    assert.deepEqual(persisted.messages[0]?.attachmentIds, [file.id]);
+    assert.ok(
+      JSON.stringify(persisted.context).includes('Synthetic attached context'),
+    );
+    assert.equal(
+      new AgentEngine(f.store).attachments.read(f.accountId, first.id, file.id)
+        .sha256,
+      file.sha256,
+    );
+  } finally {
+    await f.engine.close();
+    f.close();
+  }
+});
