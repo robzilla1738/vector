@@ -64,6 +64,24 @@ export function developmentCapabilities(def, observation, proposal, browserRevie
 export function checkProfileReport(report, { cmsSha256, proposalSha256, role, now, testMacIdentifier, allowAppleTrustNetwork = false }) {
   if (!Number.isFinite(Date.parse(now)) || !Number.isFinite(Date.parse(report?.evaluatedAt)) || report.version !== 1 || !['cmsSignatureVerified', 'appleProvisioningPolicyVerified', 'metadataClaimsMatch'].every(k => report[k] === true) || report.offlinePositiveRevocationVerified !== !allowAppleTrustNetwork || report.onlinePositiveRevocationVerified !== allowAppleTrustNetwork || report.networkAccessAllowed !== allowAppleTrustNetwork || report.signingAuthorized !== false || report.cmsSha256 !== cmsSha256 || report.proposalSha256 !== proposalSha256 || report.role !== role || report.reviewedDeviceSha256 !== hash(testMacIdentifier) || !(Date.parse(report.profileCreationDate) <= Date.parse(now) && Date.parse(report.profileExpirationDate) > Date.parse(now)) || Math.abs(Date.parse(report.evaluatedAt) - Date.parse(now)) > 300000) throw Error('Fresh exact CMS/profile authentication report required');
 }
+function samePreparedLeaf(expected, actual) {
+  return actual && (expected.link !== undefined
+    ? actual.link === expected.link && actual.sha256 === undefined
+    : actual.link === undefined && actual.sha256 === expected.sha256 && actual.mode === expected.mode);
+}
+/** Existing prepared resources remain exact; explicitly reviewed additions such
+ * as the eight diagnostic leaves/profiles are captured by the full snapshot. */
+export function assertPreparedOverlayInventory(prepared, packaged) {
+  const actual = new Map(packaged.map(f => [f.path, f]));
+  if (actual.size !== packaged.length) throw Error('Duplicate packaged inventory leaf');
+  let matched = 0;
+  for (const leaf of prepared) {
+    if (!leaf.path.startsWith('Resources/aux/')) continue;
+    if (!samePreparedLeaf(leaf, actual.get('Aux.app/Contents/' + leaf.path))) throw Error('Full package is not exact prepared three-host overlay');
+    matched++;
+  }
+  return matched;
+}
 function snapshot(directory) {
   const files = [];
   function walk(dir) { for (const name of fs.readdirSync(dir).sort()) { const absolute = path.join(dir, name), stat = fs.lstatSync(absolute), relative = path.relative(directory, absolute); if (stat.isDirectory() && !stat.isSymbolicLink()) walk(absolute); else if (stat.isSymbolicLink()) { const link = fs.readlinkSync(absolute), real = fs.realpathSync(absolute); if (path.isAbsolute(link) || !real.startsWith(directory + '/')) throw Error('Escaping package link'); files.push({ path: relative, link }); } else { files.push({ path: relative, sha256: hash(regular(absolute, 1024 * 1024 * 1024)), mode: stat.mode & 0o777 }); } } }
@@ -79,9 +97,9 @@ export function planDevelopmentDp(request) {
   if (prep.kind !== 'unsigned-development-preparation-not-executable-signing-policy' || prep.signingPerformed !== false || prep.dpExecuted !== false || prep.proposalSha256 !== proposalSha256 || prep.boundaryReceiptSha256 !== hash(receiptBytes) || receipt.buildExitCode !== 0 || receipt.mapFixturePassed !== true) throw Error('Concrete unsigned preparation/current boundary receipt required');
   for (const pin of nativePackagingManifest().sources) if (!receipt.sources.some(p => p.path === pin.path && p.sha256 === pin.sha256)) throw Error('Current boundary source pin mismatch');
   for (const name of ['aux-native-carrier', 'libaux-native-boundary.dylib', 'aux-native-guard.node', 'aux-cli-launcher']) { const pin = receipt.outputs?.find(p => path.basename(p.path) === name); if (!pin || hash(regular(pin.path)) !== pin.sha256) throw Error('Boundary artifact pin mismatch'); }
-  const preparationRoot = path.dirname(preparationPath), preparedFiles = new Map(prep.inventory.filter(f => f.path.startsWith('Resources/aux/')).map(f => [f.path, f]));
+  const preparationRoot = path.dirname(preparationPath);
   const blocked = [], artifacts = [];
-  for (const file of prep.inventory) { const p = path.join(preparationRoot, file.path); if (file.link ? fs.readlinkSync(p) !== file.link : hash(regular(p)) !== file.sha256) throw Error('Prepared three-host input changed'); }
+  for (const file of prep.inventory) { const p = path.join(preparationRoot, file.path), actual = file.link !== undefined ? { link: fs.readlinkSync(p) } : { sha256: hash(regular(p)), mode: fs.lstatSync(p).mode & 0o777 }; if (!samePreparedLeaf(file, actual)) throw Error('Prepared three-host input changed'); }
   if (!packageRoot) blocked.push('Full disposable package with reviewed three-host overlay is absent; outer browser/computer-use cannot be fabricated');
   let inventory = [], targets = [];
   if (packageRoot) {
@@ -91,7 +109,7 @@ export function planDevelopmentDp(request) {
     for (const source of packageReport.sourceRoots) { const s = fs.realpathSync(source); if (s === packageRoot || s.startsWith(packageRoot + '/') || packageRoot.startsWith(s + '/')) throw Error('Package/source overlap'); }
     inventory = snapshot(packageRoot);
     const live = new Map(inventory.map(f => [f.path, f]));
-    for (const [name, pin] of preparedFiles) { const actual = live.get('Aux.app/Contents/' + name); if (!actual || (pin.link ? actual.link !== pin.link : actual.sha256 !== pin.sha256)) throw Error('Full package is not exact prepared three-host overlay'); }
+    assertPreparedOverlayInventory(prep.inventory, inventory);
     for (const role of ['daemon', 'cli']) if (live.get(`${prefix}/apps/${role}/Aux ${role === 'daemon' ? 'Daemon' : 'CLI'}.app/Contents/Resources/native/provided-native.node`)?.sha256 !== bindings[role].sha256) throw Error('Original role binding changed');
     for (const d of developmentTargets) {
       const def = d.role === 'browser' ? { ...d, executable: browserReview?.executable } : d;

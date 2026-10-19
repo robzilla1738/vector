@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { developmentTargets, orderedDevelopmentTargets, developmentCapabilities, checkProfileReport } from './plan-development-dp.mjs';
+import { developmentTargets, orderedDevelopmentTargets, developmentCapabilities, checkProfileReport, assertPreparedOverlayInventory } from './plan-development-dp.mjs';
 const proposal = JSON.parse(fs.readFileSync(new URL('../../docs/integration/proposed/development-dp-signing/proposal.json', import.meta.url)));
 const sha = text => createHash('sha256').update(text).digest('hex');
 test('exact 8+3 topology preserves SEA main/wrapper split and signs inside out', () => {
@@ -35,4 +35,13 @@ test('pure CMS receipt joining refuses stale/device/profile/group-proposal misma
   assert.throws(() => checkProfileReport(online, expected));
   checkProfileReport(online, { ...expected, allowAppleTrustNetwork: true });
   for (const change of [r => r.evaluatedAt = 'invalid', r => r.evaluatedAt = '2026-10-18T00:00:00Z', r => r.profileExpirationDate = '2026-10-18T00:00:00Z', r => r.reviewedDeviceSha256 = '0'.repeat(64), r => r.cmsSha256 = '0'.repeat(64), r => r.proposalSha256 = '0'.repeat(64), r => r.signingAuthorized = true]) { const bad = structuredClone(report); change(bad); assert.throws(() => checkProfileReport(bad, expected)); }
+});
+
+test('complete 160-leaf preparation accepts eight additive diagnostic leaves but refuses mode or baseline drift', () => {
+  const prepared = Array.from({ length: 152 }, (_, index) => ({ path: `Resources/aux/fixture/${index}`, sha256: String(index).padStart(64, '0'), mode: index === 0 ? 0o755 : 0o644 }));
+  for (let i = 0; i < 8; i++) prepared.push({ path: `provisioning/fixture-${i}`, sha256: 'project', mode: 0o644 });
+  const packaged = prepared.slice(0, 152).map(f => ({ ...f, path: 'Aux.app/Contents/' + f.path }));
+  for (const role of ['daemon', 'cli']) for (const name of ['native-dp-diagnostic.cjs', 'dp-probe-common.cjs', 'dp-probe-policy.json', 'aux-dp-scope-helper.node']) packaged.push({ path: `Aux.app/Contents/Resources/aux/apps/${role}/native/${name}`, sha256: 'diagnostic-fixture', mode: name.endsWith('.node') ? 0o755 : 0o644 });
+  assert.equal(assertPreparedOverlayInventory(prepared, packaged), 152);
+  for (const mutate of [a => a[0].mode = 0o644, a => a[1].sha256 = 'drift', a => a.shift(), a => a.push(a[0])]) { const bad = structuredClone(packaged); mutate(bad); assert.throws(() => assertPreparedOverlayInventory(prepared, bad)); }
 });

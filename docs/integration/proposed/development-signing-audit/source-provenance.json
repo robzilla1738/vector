@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "kind": "bounded-source-only-development-signing-diagnostic-pairing-audit",
+  "rootInputs": [
+    {
+      "path": "vendor/provided/plan-development-dp.mjs",
+      "sha256": "06492966acff309628cbc7c78fa54fae1f1eb3a3e363e4e84f5079abd503b7bf"
+    },
+    {
+      "path": "vendor/provided/execute-development-signing.mjs",
+      "sha256": "d8e2481d1351548c3b07e5ec0ab2fb9fa8ded4fd036fa552a690bbd1751b755b"
+    },
+    {
+      "path": "vendor/provided/prepare-development-dp.mjs",
+      "sha256": "bb568e25954a8ef6b1eab1ea4f6651a1e1f159a026acbea530008ee97cb35aab"
+    },
+    {
+      "path": "vendor/provided/prepare-development-dp-diagnostic.mjs",
+      "sha256": "4605e3899b199f4d6d10994e8745075342348f6af2369d3f934e293549b8bafa"
+    },
+    {
+      "path": "vendor/provided/development-dp-review.mjs",
+      "sha256": "276760eb65e2d871997a9b114ae4cb79ff3c8a6791214b7de20119f7c451614f"
+    },
+    {
+      "path": "vendor/provided/run-development-dp-probe.mjs",
+      "sha256": "6a79e0a10d158faafa477d78e24245692901012f544dd79fac65b9a9894b61a1"
+    },
+    {
+      "path": "vendor/provided/development-dp-diagnostic.cjs",
+      "sha256": "6ce34fb4c76fde2927b19e8a0ddbc74445526d56b8893c5971fee62e091a0a99"
+    },
+    {
+      "path": "vendor/provided/native-diagnostic-hook.mjs",
+      "sha256": "7d01e14463acaaa8e2397a7a6f7ef3ee624cdb27d38959d8ed3529eb30e40152"
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "efcf3feff62575db879be9c913f91aa0c5d26c9309b553c6970497e87da8d436"
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "91085e810287552315d60cddec2c31dde44c3dfcc3175b953672407bc1e674f4"
+    },
+    {
+      "path": "vendor/provided/native/development-dp-scope-helper.mm",
+      "sha256": "21fcf19fc86f522ebeadfda99b58e76a8144d39e5d2ea42f1116eb7ce3f04570"
+    }
+  ],
+  "changedSources": [
+    {
+      "path": "vendor/provided/plan-development-dp.mjs",
+      "sha256": "7feed179e60f5f719cc8947b969b187c6125585c47062416bdd0851bcecc489b"
+    },
+    {
+      "path": "vendor/provided/plan-development-dp.test.mjs",
+      "sha256": "f27feee64c76a00d3130052d28df764327f7c288747bff44fec3e2f257df93b7"
+    }
+  ],
+  "unsignedV4Partition": {
+    "totalPreparedLeaves": 160,
+    "auxResourceBaseline": 152,
+    "nonPackageProvisioningLeaves": 8,
+    "additiveDiagnosticLeaves": 8
+  },
+  "finding": "Recorded mode drift was not checked in prepared/current overlay matching; both comparisons now enforce it. Eight diagnostic leaves are additive, not a substitute baseline.",
+  "checks": {
+    "plannerFocusedTestsPassed": 4,
+    "newFixtureCount": 1,
+    "syntaxPassed": true,
+    "builds": 0,
+    "signatures": 0,
+    "nativeOrCmsExecutions": 0,
+    "actualProfileInputs": 0,
+    "dpCalls": 0,
+    "approvedHomeReads": 0
+  },
+  "runtimeAcceptanceClaimed": false
+}
