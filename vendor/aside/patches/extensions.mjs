@@ -16,6 +16,14 @@ const TEXT_FILES = /\.(?:js|mjs|html|json|css|txt)$/;
 export const extensionPatches = {
   "agent-manager": [
     {
+      // Aside sizes its tab search window natively. Aux hosts the page in an extension popup,
+      // which sizes itself from the page, so the page needs an intrinsic size.
+      name: "tab search popup size",
+      file: "tabsearch.html",
+      find: "<style>html,body,#root{height:100%;overflow:hidden}</style>",
+      replace: "<style>html,body,#root{height:100%;overflow:hidden}html{width:640px;height:460px}</style>",
+    },
+    {
       // Aside serves the uBlock Origin asset catalog from its cloud; Aux reads it from upstream.
       name: "adblock filter catalog",
       file: "assets/recommended-filters-gA0HHZVC.js",

@@ -1,0 +1,57 @@
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+index f26cb999f3..459cf49742 100644
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -52,6 +52,11 @@
+ #include "chrome/browser/enterprise/watermark/settings.h"
+ #include "chrome/browser/extensions/browser_extension_window_controller.h"
+ #include "chrome/browser/extensions/extension_util.h"
++#include "chrome/browser/extensions/extension_view_host.h"
++#include "chrome/browser/extensions/extension_view_host_factory.h"
++#include "extensions/browser/extension_registry.h"
++#include "chrome/browser/ui/views/extensions/extension_popup.h"
++#include "chrome/browser/ui/extensions/extension_popup_types.h"
+ #include "chrome/browser/feature_engagement/tracker_factory.h"
+ #include "chrome/browser/glic/public/features.h"
+ #include "chrome/browser/headless/headless_mode_util.h"
+@@ -4247,6 +4252,25 @@ const views::Widget* BrowserView::GetWidget() const {
+ }
+ 
+ void BrowserView::CreateTabSearchBubble() {
++  // Aux shows the Aside tab search page (tabs, chats, history, bookmarks) in
++  // place of the stock Chromium tab search.
++  constexpr char kAuxExtensionId[] = "fjdhphbdlfjogobdofoaagnlnkoibdge";
++  if (const extensions::Extension* extension =
++          extensions::ExtensionRegistry::Get(browser()->GetProfile())
++              ->enabled_extensions()
++              .GetByID(kAuxExtensionId)) {
++    if (auto* anchor = GetLocationBarView()) {
++      auto host = extensions::ExtensionViewHostFactory::CreatePopupHost(
++          *extension, extension->GetResourceURL("tabsearch.html"), browser());
++      if (host) {
++        ExtensionPopup::ShowPopup(browser(), std::move(host),
++                                  views::BubbleAnchor(anchor),
++                                  views::BubbleBorder::TOP_CENTER,
++                                  PopupShowAction::kShow, base::DoNothing());
++        return;
++      }
++    }
++  }
+   if (auto* tab_search_host = GetTabSearchBubbleHost()) {
+     tab_search_host->ShowTabSearchBubble(true);
+   }
+diff --git a/components/omnibox/browser/aim_eligibility_service.cc b/components/omnibox/browser/aim_eligibility_service.cc
+index 3b6b5eba64..1dd527c87e 100644
+--- a/components/omnibox/browser/aim_eligibility_service.cc
++++ b/components/omnibox/browser/aim_eligibility_service.cc
+@@ -257,8 +257,8 @@ void AimEligibilityService::RegisterProfilePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterStringPref(kResponsePrefName, "");
+   registry->RegisterBooleanPref(kManualOverridePrefName, false);
+   registry->RegisterTimePref(kManualOverrideTimestampPrefName, base::Time());
+-  registry->RegisterIntegerPref(omnibox::kAIModeSettings,
+-                                kAiModeAllowedDefault);
++  // Aux does not ship Google's AI Mode; the policy default is "disallowed".
++  registry->RegisterIntegerPref(omnibox::kAIModeSettings, 1);
+   registry->RegisterIntegerPref(omnibox::kThirdPartyAiChatSettings,
+                                 kAiModeAllowedDefault);
+ }
