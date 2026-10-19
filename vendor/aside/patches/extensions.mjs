@@ -3,14 +3,14 @@
  * `Aside.*` CDP methods, `chrome.aside*` APIs, permission names and client identifiers stay
  * exactly as shipped, which is what keeps the copied code working unchanged.
  */
+import { execFileSync } from "node:child_process";
 import { copyFileSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import { PRODUCT_WORD } from "./brand.mjs";
 
 const here = import.meta.dirname;
 const TEXT_FILES = /\.(?:js|mjs|html|json|css|txt)$/;
 
-// A standalone "Aside" that is not part of an identifier, a dotted API name or a domain.
-const PRODUCT_WORD = /(?<![\w.@/-])Aside(?![\w]|\.[a-zA-Z]|-)/g;
 
 /** Anchored edits, per extension. `file` is relative to the extension root. */
 export const extensionPatches = {
@@ -50,7 +50,43 @@ export function rebrandExtension(directory, name, patches) {
     writeFileSync(path, text.split(patch.find).join(patch.replace));
   }
 
+  applyAuxArtwork(directory);
   installPrivateApiShim(directory);
+}
+
+const BRAND_DIR = join(here, "../../../assets/brand");
+const MARK_PATH = readFileSync(join(BRAND_DIR, "aux-mark-white.svg"), "utf8").match(/ d="([^"]+)"/)?.[1];
+// 847x671 mark centred in a 64x64 box at 70% width.
+const MARK_TRANSFORM = "translate(9.6 14.25) scale(0.0529)";
+
+/** Swaps Aside artwork for Aux: raster icons, embossed brand SVGs and the inline 64x64 brand component. */
+function applyAuxArtwork(directory) {
+  if (!MARK_PATH) throw new Error("Aux mark path not found");
+  for (const path of walk(directory)) {
+    const name = basename(path);
+    if (/\.png$/.test(name) && /^(?:icon-?\d+|favicon-(?:dark|light))\.png$/.test(name)) {
+      const size = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", path], { encoding: "utf8" });
+      const width = size.match(/pixelWidth: (\d+)/)[1];
+      const height = size.match(/pixelHeight: (\d+)/)[1];
+      execFileSync("sips", ["-z", height, width, join(BRAND_DIR, "aux-icon-1024.png"), "--out", path], { stdio: "ignore" });
+    } else if (/^brand-embossed-(light|dark)\.svg$/.test(name)) {
+      const dark = name.includes("dark");
+      writeFileSync(
+        path,
+        `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path transform="${MARK_TRANSFORM}" d="${MARK_PATH}" fill="${dark ? "#fff" : "#0A0A0A"}" fill-opacity="${dark ? 0.22 : 0.16}"/></svg>\n`,
+      );
+    } else if (path.endsWith(".js")) {
+      const source = readFileSync(path, "utf8");
+      const component =
+        /(\w+=\w+=>\(0,(\w+)\.jsxs\)\("svg",\{width:64,height:64,viewBox:"0 0 64 64",fill:"none",xmlns:"http:\/\/www\.w3\.org\/2000\/svg",\.\.\.\w+,children:)\[\(0,\2\.jsxs\)\("g",\{clipPath:"url\(#clip0_3720_\d+\)"[\s\S]*?\{width:64,height:64,fill:"white"\}\)\}\)\}\)\]\}\)/g;
+      const next = source.replace(
+        component,
+        (_, head, runtime) =>
+          `${head}(0,${runtime}.jsx)("path",{transform:"${MARK_TRANSFORM}",d:"${MARK_PATH}",fill:"currentColor",fillOpacity:.3})})`,
+      );
+      if (next !== source) writeFileSync(path, next);
+    }
+  }
 }
 
 /** Loads the private-API shim before any extension code runs. */

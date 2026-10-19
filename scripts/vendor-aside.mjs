@@ -20,6 +20,8 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { findMachOSeaSection, injectMachOSeaBlob, readSeaBlob, writeSeaBlob } from "../vendor/aside/lib/sea.mjs";
 import { applyPatches, daemonPatches, daemonPrelude, AUX_BUNDLE_ID } from "../vendor/aside/patches/daemon.mjs";
+import { PRODUCT_WORD, CLI_COMMAND } from "../vendor/aside/patches/brand.mjs";
+import { cliPatches } from "../vendor/aside/patches/cli.mjs";
 import { extensionPatches, rebrandExtension } from "../vendor/aside/patches/extensions.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -39,9 +41,11 @@ const run = (command, commandArgs, options = {}) =>
   execFileSync(command, commandArgs, { stdio: ["ignore", "inherit", "inherit"], ...options });
 const sha = (data) => createHash("sha256").update(data).digest("hex").slice(0, 16);
 const clone = (from, to) => {
-  rmSync(to, { recursive: true, force: true });
+  rmSync(to, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   mkdirSync(join(to, ".."), { recursive: true });
   run("cp", ["-cR", from, to]);
+  // A quarantined ad-hoc binary makes Gatekeeper block its first launch indefinitely.
+  run("xattr", ["-dr", "com.apple.quarantine", to]);
 };
 const setPlist = (plist, key, value) => run("plutil", ["-replace", key, "-string", value, plist]);
 
@@ -53,6 +57,22 @@ function signDaemon(app) {
     for (const entry of readdirSync(directory)) run("codesign", ["--force", "--sign", "-", "--deep", join(directory, entry)]);
   }
   run("codesign", ["--force", "--sign", "-", "--options", "runtime", "--entitlements", daemonEntitlements, app]);
+}
+
+/** Renames a nested helper app and gives it Aux's identity, name and icon. */
+function brandHelper(app, container, from, to, bundleId) {
+  const old = join(app, container, `${from}.app`);
+  if (!existsSync(old)) return;
+  const next = join(app, container, `${to}.app`);
+  renameSync(old, next);
+  rmSync(join(next, "Contents/_CodeSignature"), { recursive: true, force: true });
+  rmSync(join(next, "Contents/embedded.provisionprofile"), { force: true });
+  const plist = join(next, "Contents/Info.plist");
+  setPlist(plist, "CFBundleName", to);
+  setPlist(plist, "CFBundleDisplayName", to);
+  setPlist(plist, "CFBundleIdentifier", bundleId);
+  const icons = join(next, "Contents/Resources");
+  if (existsSync(join(icons, "AppIcon.icns"))) copyFileSync(join(root, "assets/brand/Aux.icns"), join(icons, "AppIcon.icns"));
 }
 
 function stageDaemon() {
@@ -78,6 +98,7 @@ function stageDaemon() {
   setPlist(plist, "CFBundleName", "Aux Daemon");
   setPlist(plist, "CFBundleDisplayName", "Aux Daemon");
   copyFileSync(shim, join(app, "Contents/Resources/native/aux-native.cjs"));
+  brandHelper(app, "Contents/Applications", "Aside Password Importer", "Aux Password Importer", `${AUX_BUNDLE_ID}.PasswordImporter`);
 
   const target = join(app, "Contents/MacOS/aux-daemon");
   run("codesign", ["--remove-signature", target]);
@@ -85,8 +106,57 @@ function stageDaemon() {
   injectMachOSeaBlob(host, writeSeaBlob({ ...blob, code }));
   writeFileSync(target, host);
   chmodSync(target, 0o755);
+  rebrandSkills(join(app, "Contents/Resources/static/skills"));
+  const icons = join(app, "Contents/Resources/AppIcon.icns");
+  if (existsSync(icons)) copyFileSync(join(root, "assets/brand/Aux.icns"), icons);
   signDaemon(app);
   console.log(`daemon ${blob.entryPath.split("/").slice(-3).join("/")} · ${sha(code)}`);
+}
+
+function rebrandSkills(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) rebrandSkills(path);
+    else if (entry.name.endsWith(".md")) writeFileSync(path, readFileSync(path, "utf8").replace(PRODUCT_WORD, "Aux").replace(CLI_COMMAND, "aux "));
+  }
+}
+
+const original_daemon_host = () => readFileSync(join(latest(join(support, "AsideDaemon/mac-arm64")), "Aside Daemon.app/Contents/MacOS/aside-daemon"));
+
+function stageCli() {
+  const source = join(homedir(), ".aside/cli/Aside CLI.app");
+  if (!existsSync(source)) throw new Error("Aside CLI not found; open Aside once so it installs the CLI");
+  const binary = join(source, "Contents/MacOS/aside");
+  const original = readFileSync(binary);
+  const section = findMachOSeaSection(original);
+  const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
+  const code = applyPatches(blob.code, cliPatches);
+
+  const app = join(out, "cli/Aux CLI.app");
+  clone(source, app);
+  rmSync(join(app, "Contents/_CodeSignature"), { recursive: true, force: true });
+  rmSync(join(app, "Contents/CodeResources"), { force: true });
+  rmSync(join(app, "Contents/embedded.provisionprofile"), { force: true });
+  rmSync(join(app, "Contents/Resources/native/aside-native.node"), { force: true });
+  renameSync(join(app, "Contents/MacOS/aside"), join(app, "Contents/MacOS/aux-cli"));
+  const plist = join(app, "Contents/Info.plist");
+  setPlist(plist, "CFBundleExecutable", "aux-cli");
+  setPlist(plist, "CFBundleIdentifier", `${AUX_BUNDLE_ID}.cli`);
+  setPlist(plist, "CFBundleName", "Aux CLI");
+  setPlist(plist, "CFBundleDisplayName", "Aux CLI");
+  copyFileSync(join(root, "vendor/aside/shims/aux-native.cjs"), join(app, "Contents/Resources/native/aux-native.cjs"));
+
+  // The daemon's Node runtime carries the CLI. The executable cannot be named `aux`: macOS
+  // stalls such a binary at exec, so `aux` is a symlink to `aux-cli`.
+  const target = join(app, "Contents/MacOS/aux-cli");
+  writeFileSync(target, original_daemon_host());
+  run("codesign", ["--remove-signature", target]);
+  const host = readFileSync(target);
+  injectMachOSeaBlob(host, writeSeaBlob({ ...blob, code }));
+  writeFileSync(target, host);
+  chmodSync(target, 0o755);
+  run("codesign", ["--force", "--sign", "-", "--entitlements", daemonEntitlements, app]);
+  console.log(`cli ${sha(code)}`);
 }
 
 function stageExtensions() {
@@ -94,7 +164,7 @@ function stageExtensions() {
     ["AsideAgentManager", "agent-manager"],
     ["AsidePasswordManager", "password-manager"],
   ];
-  rmSync(join(out, "extensions"), { recursive: true, force: true });
+  rmSync(join(out, "extensions"), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   for (const [component, name] of targets) {
     const from = latest(join(support, component));
     const to = join(out, "extensions", name);
@@ -114,6 +184,7 @@ function stageRuntime() {
 
 mkdirSync(out, { recursive: true });
 if (!only || only === "daemon") stageDaemon();
+if (!only || only === "cli") stageCli();
 if (!only || only === "extensions") stageExtensions();
 if (!only || only === "runtime") stageRuntime();
 console.log(`staged at ${out}`);

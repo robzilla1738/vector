@@ -19,6 +19,7 @@
   const server = http.createServer((request, response) => {
     const origin = request.headers.origin;
     const allowed = origin && allowedOrigins.has(origin);
+    if (process.env.AUX_BRIDGE_DEBUG) console.error("[aux-bridge]", request.method, request.url, origin ?? "no-origin");
     const headers = {
       "access-control-allow-origin": allowed ? origin : "null",
       "access-control-allow-headers": "content-type, x-aux-bridge",

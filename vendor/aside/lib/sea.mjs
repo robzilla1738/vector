@@ -30,7 +30,8 @@ export function readSeaBlob(buffer) {
   const entryPath = string().toString();
   const code = string().toString();
   const assets = [];
-  for (let remaining = u64(); remaining > 0; remaining--) {
+  // Bit 3 of the flags says whether an asset table follows the code.
+  for (let remaining = flags & 8 ? u64() : 0; remaining > 0; remaining--) {
     const key = string().toString();
     assets.push([key, Buffer.from(string())]);
   }
@@ -59,10 +60,12 @@ export function writeSeaBlob({ flags, reserved, entryPath, code, assets, tail })
   parts.push(reserved);
   string(entryPath);
   string(code);
-  u64(assets.length);
-  for (const [key, data] of assets) {
-    string(key);
-    string(data);
+  if (flags & 8) {
+    u64(assets.length);
+    for (const [key, data] of assets) {
+      string(key);
+      string(data);
+    }
   }
   parts.push(tail);
   return Buffer.concat(parts);

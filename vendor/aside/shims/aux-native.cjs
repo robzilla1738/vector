@@ -105,7 +105,7 @@ const handlers = {
 let original;
 function loadOriginal() {
   if (original !== undefined) return original;
-  const target = process.env.AUX_ASIDE_NATIVE_BINDING;
+  const target = process.env.AUX_ASIDE_NATIVE_BINDING ?? path.join(__dirname, "aside-native.node");
   try {
     original = target ? require(target) : null;
   } catch {

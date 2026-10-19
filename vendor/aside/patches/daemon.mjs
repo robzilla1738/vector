@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { AUX_SKILL_NAME, CLI_COMMAND, PRODUCT_WORD, SKILL_INSTALL_REPLACEMENT, SKILL_INSTALL_STEP } from "./brand.mjs";
 
 const here = import.meta.dirname;
 
@@ -46,6 +47,19 @@ export const daemonPatches = [
   { name: "local plan", find: /subscriptionPlan\?\?`free`/g, replace: "subscriptionPlan??`max`", min: 4 },
   exact("analytics opt-in", "get isOptedIn(){return settings(this.accountId).get(`analytics`).enabled}", "get isOptedIn(){return!1}"),
   exact("analytics client", "new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{", "new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{disabled:!0,"),
+
+  // Visible product name. The signing prefixes are a wire contract with the extensions and stay as shipped.
+  exact("daemon process match", "return/aside[- ]?daemon/i.test(Cn)", "return/a(?:side|ux)[- ]?daemon/i.test(Cn)"),
+  exact("skill name", "ASIDE_BROWSER_SKILL_NAME=`aside-browser`", `ASIDE_BROWSER_SKILL_NAME=\`${AUX_SKILL_NAME}\``),
+  exact("skill front matter", "name: aside-browser\\nversion", `name: ${AUX_SKILL_NAME}\\nversion`),
+  { name: "skill install step", find: SKILL_INSTALL_STEP, replace: SKILL_INSTALL_REPLACEMENT, min: 1 },
+  { name: "cli command", find: CLI_COMMAND, replace: "aux ", min: 5 },
+  {
+    name: "product prose",
+    find: PRODUCT_WORD,
+    replace: "Aux",
+    min: 100,
+  },
 
   // Installation keys and secure storage live in the bundled shim (see shims/aux-native.cjs)
   exact(
