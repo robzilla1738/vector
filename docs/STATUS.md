@@ -538,3 +538,6 @@ Follow-up staged source binds the private extension API to the real owned native
 ### Current supplied resource assembly
 
 Assembly of the refreshed stage completed with 10,790 recorded resources in `out/provided-resources-current`. It includes the fixed guarded CJS loader and memory bootstrap files; the compiled guard/carrier and final native app are still pending. Resource copying now uses at most eight concurrent file operations, preserves manifest order, and waits for all workers before failure cleanup. All three focused assembler fixtures pass. No app was signed, installed or launched by resource assembly.
+## Mutable supplied runtime cache seam (2026-10-19)
+
+Added absent-only verified bundled runtime provisioning into canonical private AUX_HOME/runtime, activated at the original lazy performInstall boundary. Existing mutable caches are retained; original metadata/update/error behavior remains. Nine allowlisted text relocations preserve original binary/signature bytes. Three focused disposable filesystem fixtures and pinned daemon adaptation checks pass. Root staging/native environment seams are documented in docs/integration/proposed/runtime-cache/README.md; no shared native edit or native/Keychain execution. Current guard/carrier builds remain queued, not accepted runtime evidence.
