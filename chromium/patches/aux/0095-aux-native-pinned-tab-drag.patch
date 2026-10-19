@@ -1,0 +1,541 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -32,6 +32,7 @@
+ 
+ class BrowserWindowInterface;
+ class Profile;
++class TabDragTarget;
+ 
+ namespace network {
+ class SimpleURLLoader;
+@@ -66,6 +67,8 @@
+     bool pinned = false;
+     bool can_pin = false;
+   };
++
++  TabDragTarget* GetPinnedTabDragTarget(const gfx::Point& point_in_screen);
+ 
+   // views::View:
+   void AddedToWidget() override;
+@@ -105,8 +108,11 @@
+                        int depth,
+                        int* count);
+   void ExecuteBookmarkCommand(int command);
+-  void ActivateTab(int index);
+-  void MovePinnedTab(int from, int to);
++  void ActivateTab(base::WeakPtr<content::WebContents> contents);
++  void MovePinnedTab(base::WeakPtr<content::WebContents> contents, int to);
++  void PinDraggedTab(base::WeakPtr<content::WebContents> contents, int to);
++  void FinishPinnedDrag(base::WeakPtr<content::WebContents> contents,
++                        const gfx::Point& point_in_screen);
+   void OnTaskSnapshot(const AuxNativeTaskFeed::Snapshot& snapshot);
+   void HandleChatClick(const std::string& session_id);
+   void OpenChat(const std::string& session_id);
+@@ -135,11 +141,12 @@
+   std::unique_ptr<views::MenuRunner> menu_runner_;
+   std::string menu_chat_id_;
+   bool menu_pinned_ = false;
+-  int menu_tab_index_ = -1;
++  base::WeakPtr<content::WebContents> menu_tab_contents_;
+   bool rebuild_pending_ = false;
+ 
+   std::vector<Chat> chats_;
+   std::set<std::string> collapsed_sections_;
++  raw_ptr<views::View> pinned_grid_ = nullptr;
+   std::set<std::string> expanded_bookmark_folders_;
+   int64_t menu_bookmark_id_ = -1;
+   std::string menu_bookmark_uuid_;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <utility>
+ 
++#include "base/callback_list.h"
+ #include "base/files/file_path.h"
+ #include "base/functional/bind.h"
+ #include "base/strings/strcat.h"
+@@ -35,6 +36,11 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/views/frame/aux_icon_picker.h"
+ #include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
++#include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_target.h"
+ #include "chrome/browser/ui/webui/profile_helper.h"
+ #include "components/bookmarks/browser/bookmark_client.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+@@ -55,6 +61,7 @@
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+ #include "ui/color/color_id.h"
+ #include "ui/compositor/layer.h"
++#include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/gfx/canvas.h"
+ #include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/insets.h"
+@@ -194,17 +201,21 @@
+   METADATA_HEADER(AuxPinnedTile, views::Button)
+ 
+  public:
+-  using MoveCallback = base::RepeatingCallback<void(int from, int to)>;
++  using MoveCallback =
++      base::RepeatingCallback<void(base::WeakPtr<content::WebContents>,
++                                   const gfx::Point&)>;
+ 
+   AuxPinnedTile(PressedCallback callback,
+                 MoveCallback move_callback,
+-                int tab_index,
++                base::WeakPtr<content::WebContents> contents,
+                 const ui::ImageModel& icon,
+                 const std::u16string& title,
+                 bool active)
+       : views::Button(std::move(callback)),
+         move_callback_(std::move(move_callback)),
+-        tab_index_(tab_index),
++        contents_(contents),
++        icon_(icon),
++        title_(title),
+         active_(active) {
+     auto image = std::make_unique<views::ImageView>(icon);
+     image->SetImageSize(gfx::Size(kTileIconSize, kTileIconSize));
+@@ -220,23 +231,64 @@
+     UpdateStyle();
+   }
+ 
+-  int tab_index() const { return tab_index_; }
+-
+-  // Dragging a tile onto another slot reorders the pinned tabs.
++  content::WebContents* contents() const { return contents_.get(); }
++  bool is_dragging() const { return dragging_; }
++  ~AuxPinnedTile() override { CancelDrag(); }
++
+   bool OnMousePressed(const ui::MouseEvent& event) override {
++    if (!event.IsOnlyLeftMouseButton()) {
++      return views::Button::OnMousePressed(event);
++    }
++    RequestFocus();
+     press_point_ = event.location();
+-    dragging_ = false;
++    CancelDrag();
+     return views::Button::OnMousePressed(event);
+   }
+ 
+   bool OnMouseDragged(const ui::MouseEvent& event) override {
++    if (!event.IsOnlyLeftMouseButton()) {
++      return views::Button::OnMouseDragged(event);
++    }
++    if (!contents_) {
++      CancelDrag();
++      return true;
++    }
+     if (!dragging_ && (event.location() - press_point_).Length() > 6) {
+       dragging_ = true;
++      auto* browser_view = BrowserView::GetBrowserViewForNativeWindow(
++          GetWidget()->GetNativeWindow());
++      if (browser_view && browser_view->tab_strip_view()) {
++        hover_lock_ = browser_view->tab_strip_view()->GetExpandOnHoverLock(
++            ExpandOnHoverLockType::kKeepCurrentState);
++      }
++      ghost_ = std::make_unique<views::Widget>();
++      views::Widget::InitParams params(
++          views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET,
++          views::Widget::InitParams::TYPE_TOOLTIP);
++      params.parent = GetWidget()->GetNativeView();
++      params.accept_events = false;
++      ghost_->Init(std::move(params));
++      auto preview = std::make_unique<views::LabelButton>(
++          views::Button::PressedCallback(), title_);
++      preview->SetImageModel(views::Button::STATE_NORMAL, icon_);
++      preview->SetImageLabelSpacing(8);
++      preview->SetBorder(views::CreateEmptyBorder(gfx::Insets(10)));
++      preview->SetBackground(views::CreateRoundedRectBackground(
++          ui::kColorSysSurface, kTileRadius));
++      ghost_->SetContentsView(std::move(preview));
+       SetPaintToLayer();
+       layer()->SetFillsBoundsOpaquely(false);
+       layer()->SetOpacity(0.5f);
+     }
+-    return dragging_ ? true : views::Button::OnMouseDragged(event);
++    if (!dragging_) {
++      return views::Button::OnMouseDragged(event);
++    }
++    auto point = event.location();
++    views::View::ConvertPointToScreen(this, &point);
++    ghost_->SetBounds(
++        gfx::Rect(point + gfx::Vector2d(12, 12), gfx::Size(180, kTileHeight)));
++    ghost_->ShowInactive();
++    return true;
+   }
+ 
+   void OnMouseReleased(const ui::MouseEvent& event) override {
+@@ -244,20 +296,25 @@
+       views::Button::OnMouseReleased(event);
+       return;
+     }
+-    dragging_ = false;
+-    DestroyLayer();
++    auto point = event.location();
++    views::View::ConvertPointToScreen(this, &point);
++    CancelDrag();
+     views::Button::OnMouseCaptureLost();
+-    gfx::Point point = event.location();
+-    views::View::ConvertPointToTarget(this, parent(), &point);
+-    const int count = static_cast<int>(parent()->children().size());
+-    const int column = std::clamp(
+-        point.x() * kTilesPerRow / std::max(parent()->width(), 1), 0,
+-        kTilesPerRow - 1);
+-    const int row = std::max(0, point.y() / (kTileHeight + kTileGap));
+-    const int target = std::clamp(row * kTilesPerRow + column, 0, count - 1);
+-    if (target != tab_index_) {
+-      move_callback_.Run(tab_index_, target);
+-    }
++    move_callback_.Run(contents_, point);
++  }
++
++  void OnMouseCaptureLost() override {
++    CancelDrag();
++    views::Button::OnMouseCaptureLost();
++  }
++
++  bool OnKeyPressed(const ui::KeyEvent& event) override {
++    if (event.key_code() == ui::VKEY_ESCAPE && dragging_) {
++      CancelDrag();
++      views::Button::OnMouseCaptureLost();
++      return true;
++    }
++    return views::Button::OnKeyPressed(event);
+   }
+ 
+  protected:
+@@ -267,6 +324,15 @@
+   }
+ 
+  private:
++  void CancelDrag() {
++    dragging_ = false;
++    ghost_.reset();
++    hover_lock_.reset();
++    if (layer()) {
++      DestroyLayer();
++    }
++  }
++
+   void UpdateStyle() {
+     const bool hovered = GetState() == views::Button::STATE_HOVERED ||
+                          GetState() == views::Button::STATE_PRESSED;
+@@ -281,7 +347,11 @@
+   }
+ 
+   const MoveCallback move_callback_;
+-  const int tab_index_;
++  const base::WeakPtr<content::WebContents> contents_;
++  const ui::ImageModel icon_;
++  const std::u16string title_;
++  std::unique_ptr<views::Widget> ghost_;
++  std::unique_ptr<ExpandOnHoverLock> hover_lock_;
+   const bool active_;
+   gfx::Point press_point_;
+   bool dragging_ = false;
+@@ -292,10 +362,83 @@
+ END_METADATA
+ 
+ // Lays pinned tiles out three to a row.
+-class AuxPinnedGrid : public views::View {
++class AuxPinnedGrid : public views::View, public TabDragTarget {
+   METADATA_HEADER(AuxPinnedGrid, views::View)
+ 
+  public:
++  using PinCallback =
++      base::RepeatingCallback<void(base::WeakPtr<content::WebContents>, int)>;
++  AuxPinnedGrid(BrowserWindowInterface* browser, PinCallback callback)
++      : browser_(browser), pin_callback_(std::move(callback)) {}
++  ~AuxPinnedGrid() override { destroying_.Notify(); }
++
++  void OnTabDragEntered() override {
++    auto* view = BrowserView::GetBrowserViewForBrowser(browser_);
++    if (view && view->tab_strip_view()) {
++      hover_lock_ = view->tab_strip_view()->GetExpandOnHoverLock(
++          ExpandOnHoverLockType::kKeepCurrentState);
++    }
++  }
++  TabDragContext* OnTabDragUpdated(TabDragTarget::DragController& controller,
++                                   const gfx::Point& point) override {
++    const auto& data = controller.GetSessionData();
++    dropped_contents_.reset();
++    if (data.tab_drag_data_.size() != 1 || !data.dragging_groups.empty()) {
++      return nullptr;
++    }
++    auto* contents = data.tab_drag_data_.front().contents.get();
++    if (!contents || contents->GetBrowserContext() != browser_->GetProfile()) {
++      return nullptr;
++    }
++    auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
++    auto* context = browser_view && browser_view->tab_strip_view()
++                        ? browser_view->tab_strip_view()->GetDragContext()
++                        : nullptr;
++    if (!context) {
++      return nullptr;
++    }
++    dropped_contents_ = contents->GetWeakPtr();
++    const auto local = views::View::ConvertPointFromScreen(this, point);
++    drop_slot_ =
++        std::clamp(local.y() / (kTileHeight + kTileGap) * kTilesPerRow +
++                       local.x() * kTilesPerRow / std::max(width(), 1),
++                   0, static_cast<int>(children().size()));
++    SetBackground(views::CreateRoundedRectBackground(
++        ui::kColorSysStateHoverOnSubtle, kTileRadius));
++    return context;
++  }
++  void OnTabDragExited(const gfx::Point& point) override { OnTabDragEnded(); }
++  void OnTabDragEnded() override {
++    dropped_contents_.reset();
++    hover_lock_.reset();
++    SetBackground(nullptr);
++  }
++  bool CanDropTab() override { return !!dropped_contents_; }
++  void HandleTabDrop(TabDragTarget::DragController& controller) override {
++    if (!dropped_contents_) {
++      return;
++    }
++    // Pin after the native controller has stopped dragging and restored its
++    // views.
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(pin_callback_, dropped_contents_, drop_slot_));
++    OnTabDragEnded();
++  }
++  base::CallbackListSubscription RegisterWillDestroyCallback(
++      base::OnceClosure callback) override {
++    return destroying_.Add(std::move(callback));
++  }
++  bool IsDragging() const {
++    if (dropped_contents_) {
++      return true;
++    }
++    return std::ranges::any_of(children(), [](const auto& child) {
++      const auto* tile = views::AsViewClass<AuxPinnedTile>(child.get());
++      return tile && tile->is_dragging();
++    });
++  }
++
+   gfx::Size CalculatePreferredSize(
+       const views::SizeBounds& available_size) const override {
+     const int width = available_size.width().is_bounded()
+@@ -303,8 +446,9 @@
+                           : kTilesPerRow * 64;
+     const int rows =
+         (static_cast<int>(children().size()) + kTilesPerRow - 1) / kTilesPerRow;
+-    return gfx::Size(width, rows > 0 ? rows * kTileHeight + (rows - 1) * kTileGap
+-                                     : 0);
++    return gfx::Size(width, rows > 0
++                                ? rows * kTileHeight + (rows - 1) * kTileGap
++                                : kTileHeight);
+   }
+ 
+   void Layout(PassKey) override {
+@@ -319,6 +463,14 @@
+       ++index;
+     }
+   }
++
++ private:
++  raw_ptr<BrowserWindowInterface> browser_;
++  PinCallback pin_callback_;
++  base::WeakPtr<content::WebContents> dropped_contents_;
++  int drop_slot_ = 0;
++  base::OnceClosureList destroying_;
++  std::unique_ptr<ExpandOnHoverLock> hover_lock_;
+ };
+ 
+ BEGIN_METADATA(AuxPinnedGrid)
+@@ -877,25 +1029,79 @@
+                      weak_factory_.GetWeakPtr()));
+ }
+ 
+-void AuxSidebarView::MovePinnedTab(int from, int to) {
+-  TabStripModel* model = browser_->GetTabStripModel();
++TabDragTarget* AuxSidebarView::GetPinnedTabDragTarget(const gfx::Point& point) {
++  if (!pinned_grid_ || !pinned_grid_->IsDrawn() ||
++      !pinned_grid_->GetBoundsInScreen().Contains(point)) {
++    return nullptr;
++  }
++  return static_cast<AuxPinnedGrid*>(pinned_grid_.get());
++}
++
++void AuxSidebarView::MovePinnedTab(base::WeakPtr<content::WebContents> contents,
++                                   int to) {
++  auto* model = browser_->GetTabStripModel();
++  const int from = contents ? model->GetIndexOfWebContents(contents.get()) : -1;
+   const int pinned = model->IndexOfFirstNonPinnedTab();
+-  if (from < pinned && to < pinned) {
+-    model->MoveWebContentsAt(from, to, /*select_after_move=*/false);
+-  }
+-}
+-
+-void AuxSidebarView::ActivateTab(int index) {
+-  browser_->GetTabStripModel()->ActivateTabAt(index);
++  if (from >= 0 && from < pinned && to >= 0 && to < pinned) {
++    model->MoveWebContentsAt(from, to, false);
++  }
++}
++
++void AuxSidebarView::PinDraggedTab(base::WeakPtr<content::WebContents> contents,
++                                   int to) {
++  if (!contents || contents->GetBrowserContext() != browser_->GetProfile()) {
++    return;
++  }
++  auto* model = browser_->GetTabStripModel();
++  const int index = model->GetIndexOfWebContents(contents.get());
++  if (index < 0) {
++    return;
++  }
++  model->SetTabPinned(index, true);
++  MovePinnedTab(contents,
++                std::clamp(to, 0, model->IndexOfFirstNonPinnedTab() - 1));
++  ScheduleRebuild();
++}
++
++void AuxSidebarView::FinishPinnedDrag(
++    base::WeakPtr<content::WebContents> contents,
++    const gfx::Point& point) {
++  auto* model = browser_->GetTabStripModel();
++  const int index =
++      contents ? model->GetIndexOfWebContents(contents.get()) : -1;
++  if (index < 0 || !model->IsTabPinned(index) || !GetWidget()) {
++    return;
++  }
++  if (pinned_grid_ && pinned_grid_->GetBoundsInScreen().Contains(point)) {
++    const auto local = views::View::ConvertPointFromScreen(pinned_grid_, point);
++    MovePinnedTab(
++        contents,
++        std::clamp(
++            local.y() / (kTileHeight + kTileGap) * kTilesPerRow +
++                local.x() * kTilesPerRow / std::max(pinned_grid_->width(), 1),
++            0, model->IndexOfFirstNonPinnedTab() - 1));
++  } else if (GetWidget()->GetWindowBoundsInScreen().Contains(point)) {
++    model->SetTabPinned(index, false);
++  }
++  ScheduleRebuild();
++}
++
++void AuxSidebarView::ActivateTab(base::WeakPtr<content::WebContents> contents) {
++  auto* model = browser_->GetTabStripModel();
++  const int index =
++      contents ? model->GetIndexOfWebContents(contents.get()) : -1;
++  if (index >= 0) {
++    model->ActivateTabAt(index);
++  }
+ }
+ 
+ void AuxSidebarView::AddPinnedTiles() {
+   TabStripModel* model = browser_->GetTabStripModel();
+   const int pinned = model->IndexOfFirstNonPinnedTab();
+-  if (pinned <= 0) {
+-    return;
+-  }
+-  auto* grid = AddChildView(std::make_unique<AuxPinnedGrid>());
++  auto* grid = AddChildView(std::make_unique<AuxPinnedGrid>(
++      browser_, base::BindRepeating(&AuxSidebarView::PinDraggedTab,
++                                    weak_factory_.GetWeakPtr())));
++  pinned_grid_ = grid;
+   grid->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(4, 0, 4, 0));
+   for (int i = 0; i < pinned; ++i) {
+     content::WebContents* contents = model->GetWebContentsAt(i);
+@@ -913,10 +1119,11 @@
+     }
+     auto* tile = grid->AddChildView(std::make_unique<AuxPinnedTile>(
+         base::BindRepeating(&AuxSidebarView::ActivateTab,
+-                            base::Unretained(this), i),
+-        base::BindRepeating(&AuxSidebarView::MovePinnedTab,
+-                            base::Unretained(this)),
+-        i, icon, contents->GetTitle(), i == model->active_index()));
++                            weak_factory_.GetWeakPtr(), contents->GetWeakPtr()),
++        base::BindRepeating(&AuxSidebarView::FinishPinnedDrag,
++                            weak_factory_.GetWeakPtr()),
++        contents->GetWeakPtr(), icon, contents->GetTitle(),
++        i == model->active_index()));
+     tile->set_context_menu_controller(this);
+   }
+ }
+@@ -1107,10 +1314,15 @@
+   if (menu_runner_ && menu_runner_->IsRunning()) {
+     return;
+   }
++  if (pinned_grid_ &&
++      static_cast<AuxPinnedGrid*>(pinned_grid_.get())->IsDragging()) {
++    return;
++  }
+   ReadSidebarState();
+   if (review_widget_ && !review_widget_->IsClosed())
+     return;
+   favicon_tracker_.TryCancelAll();
++  pinned_grid_ = nullptr;
+   RemoveAllChildViews();
+   AddPinnedTiles();
+ 
+@@ -1335,7 +1547,11 @@
+     if (!GetWidget()) {
+       return;
+     }
+-    menu_tab_index_ = tile->tab_index();
++    menu_tab_contents_ =
++        tile->contents() ? tile->contents()->GetWeakPtr() : nullptr;
++    if (!menu_tab_contents_) {
++      return;
++    }
+     menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
+     menu_model_->AddItem(kCommandTabReload, u"Reload");
+     menu_model_->AddItem(kCommandTabDuplicate, u"Duplicate");
+@@ -1421,15 +1637,18 @@
+     case kCommandTabUnpin:
+     case kCommandTabClose: {
+       TabStripModel* model = browser_->GetTabStripModel();
+-      if (!model->ContainsIndex(menu_tab_index_)) {
++      const int index =
++          menu_tab_contents_
++              ? model->GetIndexOfWebContents(menu_tab_contents_.get())
++              : -1;
++      if (index < 0 || !model->IsTabPinned(index)) {
+         return;
+       }
+       model->ExecuteContextMenuCommand(
+-          menu_tab_index_,
+-          command_id == kCommandTabReload      ? tabs::CommandReload
+-          : command_id == kCommandTabDuplicate ? tabs::CommandDuplicate
+-          : command_id == kCommandTabUnpin     ? tabs::CommandTogglePinned
+-                                               : tabs::CommandCloseTab);
++          index, command_id == kCommandTabReload      ? tabs::CommandReload
++                 : command_id == kCommandTabDuplicate ? tabs::CommandDuplicate
++                 : command_id == kCommandTabUnpin ? tabs::CommandTogglePinned
++                                                  : tabs::CommandCloseTab);
+       return;
+     }
+     case kCommandPin:
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -82,6 +82,8 @@
+       delete;
+   ~VerticalTabStripRegionView() override;
+ 
++  TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen) override;
++
+   VerticalTabStripTopContainer* GetTopContainer() {
+     return top_button_container_;
+   }
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -1161,3 +1161,12 @@
+ 
+ BEGIN_METADATA(VerticalTabStripRegionView)
+ END_METADATA
++
++TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
++    const gfx::Point& point_in_screen) {
++  if (aux_sidebar_) {
++    if (auto* target = aux_sidebar_->GetPinnedTabDragTarget(point_in_screen))
++      return target;
++  }
++  return BaseTabStripRegionView::GetTabDragTarget(point_in_screen);
++}
