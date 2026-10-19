@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "combined provided profile security/bootstrap/binding proposals; paths otherwise unchanged from frozen checkout",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "f2dd96d41e4d91d04a392dcedc9e777f15c7234ab4bf9629c50de8926647d3f1",
+      "outputSha256": "2928fc6d48a4a2835f3475fd9245ae8e81149f223559bdd3520c74ce72093653"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "baselineSha256": "dfc88358021e506a6371f8faf8d28f8c261a284477d3892c15aa1b3e09f80c69",
+      "outputSha256": "89d7b06b19d22bbb3c31e78154e99ee9f4e64fa38f3ce184fc28d940b2388644"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "baselineSha256": "04a1c9dc61d030e9feeac79894aa99d6507cd8666d2d7d30a096282063553371",
+      "outputSha256": "62ba3a2f06e018d0c4b21894763bebf46cf86e8ae3f111a4117ec5b9ae490648"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "sourceVersion": "1.26.1016.1852",
+  "inputRoot": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852",
+  "files": [
+    {
+      "path": "assets/extension-main-Dz1-AsCT.js",
+      "sourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "anchors": [
+        {
+          "find": "id:\"/u/$userId/settings\"",
+          "count": 1,
+          "offset": 65138,
+          "context": "h:\"/u/$userId/routines\",getParentRoute:()=>T}),m=Xr.update({id:\"/u/$userId/settings\",path:\"/u/$userId/settings\",getParentRoute:()=>T}),q=eo.update({id:\"/experimental/v2\",path:\"/experimental/v2\",getParentRoute:()=>O}),ma=ro.update({id:\"/\",path:\"/\",getParentRoute:()=>K}),Ia=ao.upda"
+        },
+        {
+          "find": "/_web/(profile)/u/$userId/tasks/$sessionId/",
+          "count": 1,
+          "offset": 41679,
+          "context": "=l({playground:x(!0).optional(),[Qe]:I().optional()}),Po=n(\"/_web/(profile)/u/$userId/tasks/$sessionId/\")({beforeLoad:async({context:{queryClient:e,trpc:t},params:r,search:o})=>{const u=Number(r.userId),p=r.sessionId;if(He(o.host).kind===\"local\")try{await Promise.all([e.query({.."
+        },
+        {
+          "find": "/_web/(profile)/u/$userId/tasks\"",
+          "count": 1,
+          "offset": 33597,
+          "context": "28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44])),Gr=n(\"/_web/(profile)/u/$userId/tasks\")({component:a(zr,\"component\"),staticData:{titleSegment:\"Chats\"}}),Zr=()=>s(()=>import(\"./route-Dm1PQ3ni.js\"),__vite__mapDeps([259,2,10,11,1,3,4,5,6,7])),Jr=n(\"/_web/(settings)/u/$userId/r"
+        },
+        {
+          "find": "/_web/(profile)/u/$userId/tasks/new\"",
+          "count": 1,
+          "offset": 36389,
+          "context": ",188,242,243,183,184,186,244,245,86,270,54,246,248])),io=n(\"/_web/(profile)/u/$userId/tasks/new\")({component:a(so,\"component\"),validateSearch:l({projectId:I().min(1).optional()}),staticData:{titleSegment:\"New Chat\"}}),uo=()=>s(()=>import(\"./inbox-BIWs6dWb.js\"),__vite__mapDeps([27"
+        }
+      ]
+    },
+    {
+      "path": "tabsearch.html",
+      "sourceSha256": "c51fc9b279715d5a17c5ea902ed23e5a5d9762fccde7b7f4ef061a13766f2fd2",
+      "anchors": [
+        {
+          "find": "type=\"module\"",
+          "count": 1,
+          "offset": 369,
+          "context": "body,#root{height:100%;overflow:hidden}</style>\n    <script type=\"module\" crossorigin src=\"/assets/tabsearch-3k_2hgil.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/browser-color-scheme-Df5VSuPV.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/m"
+        }
+      ]
+    },
+    {
+      "path": "assets/tabsearch-3k_2hgil.js",
+      "sourceSha256": "a988898d132dc507d84efe21f86184a67e62524381c69dbef645d2203d7988aa",
+      "anchors": [
+        {
+          "find": "function O(){try{window.close()}",
+          "count": 1,
+          "offset": 5932,
+          "context": "items.length>0)}function Ve(e){return e.flatMap(t=>t.items)}function O(){try{window.close()}catch{return}}function Oe(e){return e.key.toLowerCase()===\"a\"&&e.shiftKey&&(e.metaKey||e.ctrlKey)}function Qe(){const[e,t]=(0,i.useState)(\"\"),[r,a]=(0,i.useState)(\"\"),[l,d]=(0,i.useState)("
+        },
+        {
+          "find": "Oe(e){return e.key.toLowerCase()===\"a\"&&e.shiftKey&&(e.metaKey||e.ctrlKey)}",
+          "count": 1,
+          "offset": 5987,
+          "context": "ems)}function O(){try{window.close()}catch{return}}function Oe(e){return e.key.toLowerCase()===\"a\"&&e.shiftKey&&(e.metaKey||e.ctrlKey)}function Qe(){const[e,t]=(0,i.useState)(\"\"),[r,a]=(0,i.useState)(\"\"),[l,d]=(0,i.useState)(0),[c,y]=(0,i.useState)(null),[x,E]=(0,i.useState)(0),["
+        }
+      ]
+    }
+  ]
+}

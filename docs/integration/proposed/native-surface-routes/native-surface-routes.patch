@@ -1,0 +1,233 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -8,6 +8,7 @@
+ #include <utility>
+
+ #include "base/callback_list.h"
++#include "base/environment.h"
+ #include "base/files/file_path.h"
+ #include "base/functional/bind.h"
+ #include "base/strings/strcat.h"
+@@ -19,6 +20,10 @@
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_gate.h"
++#include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/favicon/favicon_service_factory.h"
+@@ -54,6 +59,8 @@
+ #include "components/tabs/public/tab_interface.h"
+ #include "components/vector_icons/vector_icons.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/storage_partition.h"
++#include "ui/base/base_window.h"
+ #include "third_party/skia/include/core/SkPathBuilder.h"
+ #include "ui/base/accelerators/accelerator.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+@@ -90,6 +97,45 @@
+ namespace {
+
+ constexpr char kAgentManagerId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
++// Resolve the actual account before opening supplied account-scoped routes.
++// Never fall back to currentAccountId or route the caller into another profile.
++void OpenAgentRoute(BrowserWindowInterface* browser, std::string suffix) {
++  const auto authorization = aux::BrowserPlatform::Get().authorization();
++  uint16_t port = 21520;
++  if (auto text = base::Environment::Create()->GetVar("AUX_PORT")) {
++    unsigned value = 0;
++    if (!base::StringToUint(*text, &value) || !value || value > 65535) {
++      chrome::ShowWarningMessageBoxAsync(browser->GetWindow()->GetNativeWindow(),
++          u"Aux navigation unavailable", u"The local daemon port is invalid.");
++      return;
++    }
++    port = value;
++  }
++  aux::FetchProfileSecurity(aux::StateHome(),
++      browser->GetProfile()->GetOriginalProfile()->GetPath(),
++      browser->GetProfile()->GetDefaultStoragePartition()
++          ->GetURLLoaderFactoryForBrowserProcess(), port, authorization,
++      base::BindOnce(
++          [](base::WeakPtr<BrowserWindowInterface> browser, std::string suffix,
++             std::string authorization, aux::ProfileSecurityState state) {
++            if (!browser) return;
++            if (authorization != aux::BrowserPlatform::Get().authorization() ||
++                !state.allows_browsing() || !state.account_id) {
++              aux::CanShowBrowser(browser->GetProfile()->GetOriginalProfile());
++              chrome::ShowWarningMessageBoxAsync(
++                  browser->GetWindow()->GetNativeWindow(),
++                  u"Aux navigation unavailable",
++                  state.error.empty() ? u"Unlock this browser profile before opening Aux."
++                                      : base::UTF8ToUTF16(state.error));
++              return;
++            }
++            browser->OpenGURL(GURL(base::StrCat({"chrome-extension://",
++                kAgentManagerId, "/main.html#/u/",
++                base::NumberToString(*state.account_id), suffix})),
++                WindowOpenDisposition::NEW_FOREGROUND_TAB);
++          }, browser->GetWeakPtr(), std::move(suffix), authorization));
++}
++
+ constexpr size_t kMaxChatsShown = 3;
+ constexpr char kFolderStatePref[] =
+     "aux.browser.sidebar.expanded_bookmark_folders";
+@@ -620,10 +666,7 @@
+         DeleteProfile();
+         return;
+       case IDC_OPTIONS:
+-        browser_->OpenGURL(
+-            GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                               "/index.html#/settings/general"})),
+-            WindowOpenDisposition::NEW_FOREGROUND_TAB);
++        OpenAgentRoute(browser_, "/settings/general");
+         break;
+       default:
+         chrome::ExecuteCommand(browser_, command_id);
+@@ -1303,11 +1346,6 @@
+
+ void AuxSidebarView::BookmarkModelBeingDeleted() {
+   bookmark_observation_.Reset();
+-}
+-
+-GURL AuxSidebarView::AgentManagerUrl(const std::string& fragment) const {
+-  return GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                            "/index.html#", fragment}));
+ }
+
+ void AuxSidebarView::Rebuild() {
+@@ -1521,18 +1559,15 @@
+ }
+
+ void AuxSidebarView::OpenChat(const std::string& session_id) {
+-  browser_->OpenGURL(AgentManagerUrl("/chat/" + session_id),
+-                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++  OpenAgentRoute(browser_, "/tasks/" + session_id);
+ }
+
+ void AuxSidebarView::OpenNewChat() {
+-  browser_->OpenGURL(AgentManagerUrl("/chat"),
+-                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++  OpenAgentRoute(browser_, "/tasks/new");
+ }
+
+ void AuxSidebarView::OpenAllChats() {
+-  browser_->OpenGURL(AgentManagerUrl("/tasks"),
+-                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
++  OpenAgentRoute(browser_, "/tasks");
+ }
+
+ void AuxSidebarView::OpenBookmark(const GURL& url) {
+@@ -1748,10 +1783,7 @@
+ AuxAgentPill::AuxAgentPill(BrowserWindowInterface* browser)
+     : views::Button(base::BindRepeating(
+           [](BrowserWindowInterface* browser) {
+-            browser->OpenGURL(
+-                GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                                   "/index.html#/tasks"})),
+-                WindowOpenDisposition::NEW_FOREGROUND_TAB);
++            OpenAgentRoute(browser, "/tasks");
+           },
+           base::Unretained(browser))) {
+   auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+@@ -1795,10 +1827,7 @@
+   explicit AuxBoltButton(BrowserWindowInterface* browser)
+       : views::Button(base::BindRepeating(
+             [](BrowserWindowInterface* browser) {
+-              browser->OpenGURL(
+-                  GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                                     "/index.html#/tasks"})),
+-                  WindowOpenDisposition::NEW_FOREGROUND_TAB);
++              OpenAgentRoute(browser, "/tasks");
+             },
+             base::Unretained(browser))) {
+     GetViewAccessibility().SetName(u"Agent activity");
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -123,7 +123,6 @@
+   void UpdateActiveChat();
+   void OpenAllChats();
+   void OpenBookmark(const GURL& url);
+-  GURL AgentManagerUrl(const std::string& fragment) const;
+
+   const raw_ptr<BrowserWindowInterface> browser_;
+   base::ScopedObservation<bookmarks::BookmarkModel,
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -5,16 +5,20 @@
+ #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+
+ #include "base/functional/bind.h"
++#include "base/environment.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/task/thread_pool.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "content/public/browser/keyboard_event_processing_result.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/storage_partition.h"
+ #include "components/input/native_web_keyboard_event.h"
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/common/extension_set.h"
+@@ -70,13 +74,21 @@
+     contents->SetPreferredSize(kSearchSize);
+     contents_ = SetContentsView(std::move(contents));
+     ShowMessage(u"Checking this browser profile…");
+-    base::ThreadPool::PostTaskAndReplyWithResult(
+-        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-        base::BindOnce([](base::FilePath path) {
+-          return aux::ReadProfileSecurity(aux::StateHome(), path);
+-        }, profile->GetOriginalProfile()->GetPath()),
+-        base::BindOnce(&AuxSearchBubble::OnSecurity,
+-                       weak_factory_.GetWeakPtr()));
++    uint16_t port = 21520;
++    if (auto text = base::Environment::Create()->GetVar("AUX_PORT")) {
++      unsigned value = 0;
++      if (!base::StringToUint(*text, &value) || !value || value > 65535) {
++        ShowMessage(u"The local daemon port is invalid.");
++        return;
++      }
++      port = value;
++    }
++    authorization_ = aux::BrowserPlatform::Get().authorization();
++    aux::FetchProfileSecurity(aux::StateHome(),
++        profile->GetOriginalProfile()->GetPath(),
++        profile->GetDefaultStoragePartition()->GetURLLoaderFactoryForBrowserProcess(),
++        port, authorization_, base::BindOnce(&AuxSearchBubble::OnSecurity,
++                                            weak_factory_.GetWeakPtr()));
+   }
+  private:
+   void ShowMessage(const std::u16string& text) {
+@@ -88,7 +100,8 @@
+   void OnSecurity(aux::ProfileSecurityState security) {
+     if (!profile_)
+       return;
+-    if (!security.allows_browsing()) {
++    if (authorization_ != aux::BrowserPlatform::Get().authorization() ||
++        !security.allows_browsing()) {
+       ShowMessage(security.error.empty()
+           ? u"Unlock Aux and finish setup before searching this profile."
+           : base::UTF8ToUTF16(security.error));
+@@ -104,11 +117,12 @@
+         std::make_unique<AuxSearchWebView>(profile_.get()));
+     webview->SetPreferredSize(kSearchSize);
+     webview->LoadInitialURL(GURL("chrome-extension://" +
+-        std::string(aux::kAgentExtensionId) + "/index.html#/tab-search"));
++        std::string(aux::kAgentExtensionId) + "/tabsearch.html"));
+     webview->RequestFocus();
+     if (GetWidget())
+       GetWidget()->LayoutRootViewIfNecessary();
+   }
++  std::string authorization_;
+   base::WeakPtr<Profile> profile_;
+   raw_ptr<views::View> contents_ = nullptr;
+   base::WeakPtrFactory<AuxSearchBubble> weak_factory_{this};
