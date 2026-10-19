@@ -556,3 +556,7 @@ Added bounded dedicated unchanged bundled-Node main/worker load-only runner requ
 ## Bounded supplied runtime seed measured (2026-10-19)
 
 Eight file workers plus per-operation immutable source directory validation cache preserve exclusive publication/version-last and await all workers before cleanup. Existing three filesystem fixtures pass. Actual source-only staged runtime copy into disposable0700home completed in98.2255s for10929entries/367666482filebytes with9textrelocations; original Node SHA cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4 preserved. No runtime code executed; detailed evidence in runtime-cache/full-seed-evidence.json. Timing overlaps build contention, not a controlled serial benchmark.
+
+## Current boundary compiler compatibility (2026-10-19)
+
+Queued older boundary build31341 failed because kSecUseUserIndependentKeychain is tvOS-only and explicitly unavailable on macOS. Its selector refusal is now compiled only for TARGET_OS_TV; macOS does not reference an unsupported symbol. Separate queued guard27971 completed exit0. Fresh complete current boundary build62014 started through shared wrapper for actual source-matching receipt; no original native commands/DP calls authorized or executed by compilation.

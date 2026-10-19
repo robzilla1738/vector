@@ -41,7 +41,9 @@ NSDictionary *Map(NSDictionary *input, NSString *scope, bool update,
          (__bridge id)kSecMatchItemList, (__bridge id)kSecMatchSearchList,
          (__bridge id)kSecUseKeychain, (__bridge id)kSecUseItemList,
          (__bridge id)kSecAttrSynchronizable,
+#if TARGET_OS_TV
          (__bridge id)kSecUseUserIndependentKeychain
+#endif
        ])
     if (input[key])
       return nil;
