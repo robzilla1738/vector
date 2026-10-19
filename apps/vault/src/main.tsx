@@ -399,6 +399,26 @@ function AuthGate({
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [biometry, setBiometry] = useState<{
+    available: boolean;
+    enrolled: boolean;
+  }>();
+  useEffect(() => {
+    let active = true;
+    void rpc<{ available: boolean; enrolled: boolean }>(
+      'passwordManager.auth.biometricStatus',
+      { accountId },
+    )
+      .then((value) => {
+        if (active) setBiometry(value);
+      })
+      .catch((error) => {
+        if (active) setError(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accountId]);
   async function submit() {
     if (mode !== 'unlock' && password !== confirmPassword) {
       setError('The passwords do not match.');
@@ -583,6 +603,25 @@ function AuthGate({
                 ? 'Create Vault'
                 : 'Recover access'}
         </Button>
+        {mode === 'unlock' && biometry?.available && biometry.enrolled && (
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setPending(true);
+              setError('');
+              void rpc(
+                'passwordManager.auth.biometricUnlock',
+                { accountId },
+                true,
+              )
+                .then(onUnlocked)
+                .catch((error) => setError(error.message))
+                .finally(() => setPending(false));
+            }}
+          >
+            Use Touch ID
+          </Button>
+        )}
         {initialized && (
           <Button
             className="ghost"
@@ -1057,6 +1096,26 @@ function VaultSettings({
   const [confirmation, setConfirmation] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [biometry, setBiometry] = useState<{
+    available: boolean;
+    enrolled: boolean;
+  }>();
+  useEffect(() => {
+    let active = true;
+    void rpc<{ available: boolean; enrolled: boolean }>(
+      'passwordManager.auth.biometricStatus',
+      { accountId },
+    )
+      .then((value) => {
+        if (active) setBiometry(value);
+      })
+      .catch((error) => {
+        if (active) setError(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accountId]);
   return (
     <Dialog title="Vault preferences" onClose={onClose}>
       <form
@@ -1189,7 +1248,46 @@ function VaultSettings({
           Delete all items
         </Button>
       </div>
-      <small>Touch ID requires the native secure-credential helper.</small>
+      <section className="stack">
+        <h3>Touch ID</h3>
+        {biometry?.available ? (
+          <>
+            <p>
+              {biometry.enrolled
+                ? 'Touch ID is enabled for this Vault.'
+                : 'Enter your current Vault password above, then choose to enable Touch ID.'}
+            </p>
+            <Button
+              disabled={pending || (!biometry.enrolled && !current)}
+              onClick={() =>
+                void mutate(
+                  biometry.enrolled
+                    ? 'passwordManager.auth.biometricRemove'
+                    : 'passwordManager.auth.biometricEnroll',
+                  biometry.enrolled ? {} : { currentPassword: current },
+                )
+                  .then((value) => {
+                    setBiometry(
+                      value as { available: boolean; enrolled: boolean },
+                    );
+                    setCurrent('');
+                  })
+                  .catch((error) => setError(error.message))
+              }
+            >
+              {biometry.enrolled
+                ? 'Turn off Touch ID unlock'
+                : 'Enable Touch ID unlock'}
+            </Button>
+          </>
+        ) : (
+          <small>
+            Touch ID is unavailable until the native secure-credential helper
+            and device permissions are ready.
+          </small>
+        )}
+      </section>
+
       {error && <ErrorNotice error={error} />}
       <span hidden>{accountId}</span>
     </Dialog>

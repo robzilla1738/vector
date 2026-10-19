@@ -12,6 +12,7 @@ import {
 } from './schema.js';
 import type { VaultService } from './service.js';
 
+export type { VaultBiometryAdapter } from './service.js';
 export { VaultService } from './service.js';
 
 const scope = z.object({ accountId: z.number().int().nonnegative() });
@@ -23,13 +24,6 @@ export function createVaultRouters(
   { t, procedure, store }: DaemonServices,
   vault: VaultService,
 ) {
-  const unsupported = () => {
-    throw new TRPCError({
-      code: 'NOT_IMPLEMENTED',
-      message:
-        'Touch ID is unavailable until the native secure-credential helper is installed.',
-    });
-  };
   const auth = t.router({
     status: procedure
       .input(scope)
@@ -73,18 +67,27 @@ export function createVaultRouters(
           unlockedCount: accounts.filter((account) => !account.locked).length,
         };
       }),
-    biometricStatus: procedure.input(scope).query(({ input }) => {
-      store.requireAccount(input.accountId);
-      return {
-        available: false,
-        enrolled: false,
-        reason: 'native_helper_unavailable',
-      };
+    biometricStatus: procedure
+      .input(scope)
+      .query(({ input }) => vault.biometricStatus(input.accountId)),
+    biometricEnroll: procedure
+      .input(scope.extend({ currentPassword: unlockPassword }))
+      .mutation(({ input }) =>
+        vault.enrollBiometry(input.accountId, input.currentPassword),
+      ),
+    biometricRemove: procedure
+      .input(scope)
+      .mutation(({ input }) => vault.removeBiometry(input.accountId)),
+    biometricUnlock: procedure
+      .input(scope)
+      .mutation(({ input }) => vault.unlockBiometry(input.accountId)),
+    biometricUnlockAll: procedure.input(scope).mutation(() => {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message:
+          'Choose an account and unlock its Vault explicitly with Touch ID.',
+      });
     }),
-    biometricEnroll: procedure.input(scope).mutation(unsupported),
-    biometricRemove: procedure.input(scope).mutation(unsupported),
-    biometricUnlock: procedure.input(scope).mutation(unsupported),
-    biometricUnlockAll: procedure.input(scope).mutation(unsupported),
     verifyRecovery: procedure
       .input(scope.extend({ recoveryKey: z.string().max(256) }))
       .mutation(({ input }) =>

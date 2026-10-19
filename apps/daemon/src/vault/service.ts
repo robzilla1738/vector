@@ -71,13 +71,33 @@ function writeJson(path: string, value: unknown) {
     closeSync(directory);
   }
 }
+export interface VaultBiometryAdapter {
+  status(
+    accountId: number,
+  ): Promise<{ available: boolean; enrolled: boolean; reason?: string }>;
+  enroll(
+    accountId: number,
+    key: string,
+  ): Promise<{ available: boolean; enrolled: boolean; reason?: string }>;
+  unlock(accountId: number): Promise<{ key: string }>;
+  remove(
+    accountId: number,
+  ): Promise<{ available: boolean; enrolled: boolean; reason?: string }>;
+}
 export class VaultService {
   private keys = new Map<number, Uint8Array>();
+  private generations = new Map<number, number>();
   private unregister: () => void;
-  constructor(private store: VaultStore) {
-    this.unregister = store.registerAccountDeletionHandler((accountId) => {
-      this.lock(accountId);
-    });
+  constructor(
+    private store: VaultStore,
+    private biometry?: VaultBiometryAdapter,
+  ) {
+    this.unregister = store.registerAccountDeletionHandler(
+      async (accountId) => {
+        if (this.biometry) await this.removeBiometry(accountId);
+        this.lock(accountId);
+      },
+    );
     for (const account of store.accounts()) this.publishSecurity(account.id);
   }
   private file(accountId: number) {
@@ -178,25 +198,14 @@ export class VaultService {
   async unlock(accountId: number, password: string) {
     await cryptoReady;
     const envelope = this.read(accountId);
-    const derived = passwordKey(password, envelope.kdf);
-    let key: Uint8Array;
-    try {
-      key = open(
-        envelope.passwordWrap,
-        derived,
-        domain(accountId, 'master/password'),
-      );
-    } catch {
-      failure('UNAUTHORIZED', 'That password did not unlock the Vault.');
-    } finally {
-      if (derived) wipe(derived);
-    }
+    const key = this.passwordMaster(envelope, password);
     this.lock(accountId);
     this.keys.set(accountId, key);
     this.publishSecurity(accountId);
     return this.status(accountId);
   }
   lock(accountId: number) {
+    this.generations.set(accountId, (this.generations.get(accountId) ?? 0) + 1);
     const key = this.keys.get(accountId);
     if (key) {
       wipe(key);
@@ -280,19 +289,7 @@ export class VaultService {
     if (newPassword.length < 8)
       failure('BAD_REQUEST', 'Choose a password with at least 8 characters.');
     const envelope = this.read(accountId);
-    const oldDerived = passwordKey(currentPassword, envelope.kdf);
-    let master: Uint8Array;
-    try {
-      master = open(
-        envelope.passwordWrap,
-        oldDerived,
-        domain(accountId, 'master/password'),
-      );
-    } catch {
-      failure('UNAUTHORIZED', 'The current Vault password is incorrect.');
-    } finally {
-      wipe(oldDerived);
-    }
+    const master = this.passwordMaster(envelope, currentPassword);
     const kdf = createKdf();
     let derived: Uint8Array | undefined;
     try {
@@ -311,6 +308,148 @@ export class VaultService {
       wipe(master);
       if (derived) wipe(derived);
     }
+  }
+  private passwordMaster(envelope: Envelope, password: string) {
+    const derived = passwordKey(password, envelope.kdf);
+    try {
+      return open(
+        envelope.passwordWrap,
+        derived,
+        domain(envelope.accountId, 'master/password'),
+      );
+    } catch {
+      failure('UNAUTHORIZED', 'That password did not unlock the Vault.');
+    } finally {
+      wipe(derived);
+    }
+  }
+  biometricStatus(accountId: number) {
+    this.store.requireAccount(accountId);
+    return (
+      this.biometry?.status(accountId) ??
+      Promise.resolve({
+        available: false,
+        enrolled: false,
+        reason: 'native_helper_unavailable',
+      })
+    );
+  }
+  async enrollBiometry(accountId: number, currentPassword: string) {
+    await cryptoReady;
+    if (!this.biometry)
+      failure(
+        'PRECONDITION_FAILED',
+        'Touch ID requires the native secure-credential helper.',
+      );
+    const envelope = this.read(accountId);
+    const master = this.passwordMaster(envelope, currentPassword);
+    const generation = this.generations.get(accountId) ?? 0;
+    try {
+      const result = await this.biometry.enroll(
+        accountId,
+        Buffer.from(master).toString('base64'),
+      );
+      if ((this.generations.get(accountId) ?? 0) !== generation) {
+        await this.biometry.remove(accountId);
+        failure(
+          'PRECONDITION_FAILED',
+          'This Vault was locked while enrollment was pending. Try again.',
+        );
+      }
+      this.store.requireAccount(accountId);
+      if (!result.enrolled)
+        failure(
+          'PRECONDITION_FAILED',
+          'Biometric enrollment was not completed.',
+        );
+      return result;
+    } finally {
+      wipe(master);
+    }
+  }
+  async unlockBiometry(accountId: number) {
+    await cryptoReady;
+    if (!this.biometry)
+      failure(
+        'PRECONDITION_FAILED',
+        'Touch ID requires the native secure-credential helper.',
+      );
+    this.read(accountId);
+    const generation = this.generations.get(accountId) ?? 0;
+    const result = await this.biometry.unlock(accountId);
+    if (!/^[A-Za-z0-9+/]{43}=$/.test(result.key))
+      failure(
+        'UNAUTHORIZED',
+        'The native helper returned an invalid Vault key.',
+      );
+    const master = new Uint8Array(Buffer.from(result.key, 'base64'));
+    let plaintext: Uint8Array | undefined;
+    let accepted = false;
+    try {
+      if ((this.generations.get(accountId) ?? 0) !== generation)
+        failure(
+          'PRECONDITION_FAILED',
+          'This Vault was locked while Touch ID was pending. Try again.',
+        );
+      if (
+        master.length !== 32 ||
+        Buffer.from(master).toString('base64') !== result.key
+      )
+        failure(
+          'UNAUTHORIZED',
+          'The native helper returned an invalid Vault key.',
+        );
+      const envelope = this.read(accountId);
+      const first = Object.values(envelope.vaults)[0];
+      if (!first)
+        failure(
+          'PRECONDITION_FAILED',
+          'Unlock with your password and create a personal Vault before using Touch ID.',
+        );
+      try {
+        plaintext = open(
+          first.sealed,
+          master,
+          domain(accountId, `vault/${first.id}/${first.revision}`),
+        );
+      } catch {
+        failure(
+          'UNAUTHORIZED',
+          'Touch ID could not authenticate the key for this Vault.',
+        );
+      }
+      const record = vaultSchema.parse(
+        JSON.parse(new TextDecoder().decode(plaintext)),
+      );
+      if (record.id !== first.id || record.revision !== first.revision)
+        failure(
+          'UNAUTHORIZED',
+          'The biometric Vault record identity does not match.',
+        );
+      this.lock(accountId);
+      this.keys.set(accountId, master);
+      this.publishSecurity(accountId);
+      accepted = true;
+      return this.status(accountId);
+    } finally {
+      if (!accepted) {
+        if (this.keys.get(accountId) === master) this.keys.delete(accountId);
+        wipe(master);
+      }
+      if (plaintext) wipe(plaintext);
+    }
+  }
+  async removeBiometry(accountId: number) {
+    this.store.requireAccount(accountId);
+    if (!this.biometry)
+      failure(
+        'PRECONDITION_FAILED',
+        'Touch ID requires the native secure-credential helper.',
+      );
+    const result = await this.biometry.remove(accountId);
+    if (result.enrolled)
+      failure('PRECONDITION_FAILED', 'The biometric key could not be removed.');
+    return result;
   }
   private encrypt(
     accountId: number,
@@ -628,7 +767,9 @@ export class VaultService {
   cipherHistory(accountId: number, itemId: string) {
     return this.read(accountId).history[itemId] ?? [];
   }
-  clear(accountId: number) {
+  async clear(accountId: number) {
+    this.key(accountId);
+    if (this.biometry) await this.removeBiometry(accountId);
     this.key(accountId);
     this.lock(accountId);
     rmSync(this.file(accountId));

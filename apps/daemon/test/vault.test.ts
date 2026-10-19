@@ -12,9 +12,10 @@ import {
   wipe,
 } from '../src/cipher/crypto.js';
 import { itemFields, itemPatchSchema } from '../src/vault/schema.js';
+import type { VaultBiometryAdapter } from '../src/vault/service.js';
 import { VaultService } from '../src/vault/service.js';
 
-function fixture() {
+function fixture(biometry?: VaultBiometryAdapter) {
   const directory = mkdtempSync(join(tmpdir(), 'aux-vault-test-'));
   const store = {
     accounts() {
@@ -51,7 +52,7 @@ function fixture() {
       return () => true;
     },
   };
-  const vault = new VaultService(store);
+  const vault = new VaultService(store, biometry);
   return {
     vault,
     file: join(directory, 'vault-state.json'),
@@ -152,10 +153,28 @@ test('ciphertext corruption and cross-account associated data fail authenticatio
   } finally {
     wipe(key);
   }
-  const fixtureState = fixture();
+  let enrollmentCalls = 0;
+  const fixtureState = fixture({
+    status: async () => ({ available: true, enrolled: true }),
+    enroll: async () => {
+      enrollmentCalls++;
+      return { available: true, enrolled: true };
+    },
+    unlock: async () => ({ key: Buffer.alloc(32).toString('base64') }),
+    remove: async () => ({ available: true, enrolled: false }),
+  });
   try {
     const { vault, file } = fixtureState;
     await vault.setup(1, 'tamper test password');
+    await assert.rejects(
+      vault.enrollBiometry(1, 'wrong enrollment password'),
+      /did not unlock/,
+    );
+    assert.equal(enrollmentCalls, 0);
+    vault.lock(1);
+    await assert.rejects(vault.unlockBiometry(1), /could not authenticate/);
+    assert.equal(vault.status(1).locked, true);
+    await vault.unlock(1, 'tamper test password');
     const vaultId = vault.snapshot(1).vaults[0]?.id;
     assert.ok(vaultId);
     const item = vault.createItems(1, [
