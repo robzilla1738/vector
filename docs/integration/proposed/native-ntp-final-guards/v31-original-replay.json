@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "stagedManifestSha256": "c761535192d9e06275ed4dc88401d77c01eec3e4d911ec2f364ac20cb328dfb5",
+  "originalReplayManifestSha256": "619ce0bbf1266b61db6ee963e3f0b54f2668daa88293c9b892daa6d1ad5edba9",
+  "matchedSources": 98,
+  "matchedArtwork": 23,
+  "steps": 41,
+  "actualAppliedBackup": "out/native-reuse-composition-v31/native-before-apply-rqu92ey7",
+  "compiled": false,
+  "runtimeAcceptance": false
+}
