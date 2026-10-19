@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "receiptSha256": "f77d28d5c488c8d0909c417754f804c4c9f085b80b592df98db4d98bd77c18f8",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "appLeaves": 563,
+  "historicalComposition": "v27; native source has now advanced to v30",
+  "productionReady": false
+}

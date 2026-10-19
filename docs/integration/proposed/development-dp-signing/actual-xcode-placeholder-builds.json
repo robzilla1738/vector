@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "scope": "three-fixed-Aux-development-hosts",
+  "results": [
+    {
+      "version": 1,
+      "actualLeafSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+      "actualTeamId": "9F2JXY8TCK",
+      "profileEmbedded": true,
+      "app": "/Users/rcourson/Documents/Vibe/web/out/development-provisioning-v4/future-derived-data/Build/Products/Development/daemon.app"
+    },
+    {
+      "role": "cli-sea",
+      "exitCode": 0,
+      "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/development-provisioning/cli-sea.log",
+      "actualLeafSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+      "actualTeamId": "9F2JXY8TCK",
+      "actualApp": "/Users/rcourson/Documents/Vibe/web/out/development-provisioning-v4/future-derived-data/Build/Products/Development/cli-sea.app",
+      "profileEmbedded": true
+    },
+    {
+      "role": "carrier",
+      "exitCode": 0,
+      "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/development-provisioning/carrier.log",
+      "actualLeafSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+      "actualTeamId": "9F2JXY8TCK",
+      "actualApp": "/Users/rcourson/Documents/Vibe/web/out/development-provisioning-v4/future-derived-data/Build/Products/Development/carrier.app",
+      "profileEmbedded": true
+    }
+  ],
+  "actualProductHostsSigned": false,
+  "testPlaceholdersOnly": true,
+  "offlineProfileAuthentication": {
+    "passed": false,
+    "stage": "apple-profile-offline-trust",
+    "osStatus": -67635,
+    "sdkMeaning": "Incomplete certificate revocation check"
+  }
+}

@@ -722,3 +722,9 @@ The v2 preflight above is historical: root subsequently saved its provisioning p
 ### Explicit profile-bearing carrier layout resolver proposal
 
 Staged a one-source installation-auth follow-up selecting only the fixed carrier app executable when bundle.json explicitly says nativeCarrierLayout=profile-bundle. Genuine missing metadata/absent field preserves the existing loose default; wrong types/unknown strings, malformed/unreadable/unsafe metadata and missing selected executable fail closed without fallback. Existing approval gate, canonical/mode guards, original binding/boundary/transport/auth bytes remain. Source APIs and root's explicit development-layout packaging marker inspected; exact patch replay/hash pass. No shared native write/build, execution, DP/Keychain or owner-state access. Compile and actual authority acceptance remain pending. Proposal: docs/integration/proposed/native-carrier-profile-layout/README.md.
+
+### Actual v27 build and scoped Xcode test signatures
+
+Full native v27 build completed successfully in19m45.47s/571 steps with generated-key probe passing. Its matching build receipt is now historical after applying reviewed v30 UI/carrier delta under the global lock; all98 source and23 artwork outputs first matched a fresh40-step original replay. V30 GN generation/focused compilation is next.
+
+All three temporary authored Xcode provisioning apps built successfully and actual extracted leaf certificate SHA1/Team verified as47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90/9F2JXY8TCK, with embedded profiles. These are placeholder signatures, not actual product host acceptance. The profile CMS helper compiled; its first actual offline profile authentication refused with -67635 (incomplete revocation check). An explicit Apple trust-network verification mode is being prepared without weakening the signature/policy/positive revocation gates.
