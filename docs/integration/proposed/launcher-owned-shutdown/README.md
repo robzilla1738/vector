@@ -18,13 +18,13 @@ Every temporary launch that actually starts now prints its exact retained tempor
 
 ## Profile-state fixture: exact deferred invocation
 
-The actual target is `//chrome/browser/aux:profile_state_probe` (testonly). Current forthcoming source has `int main()` with no command-line arguments. It creates its own ScopedTempDir and fixtures; do not supply a real home/profile or reuse the old out/AuxAside/profile_state_probe binary. Current out/AuxFast has enable_aux_browser=true, enable_aux_shell=false, is_component_build=false, aux_test_hooks=false; its profile-state executable has not yet been built by this lane. The full browser build does not automatically build this target.
+The actual target is `//chrome/browser/aux:profile_state_probe` (testonly). Current forthcoming source has `int main()` with no command-line arguments. It creates its own ScopedTempDir and fixtures; do not supply a real home/profile or reuse the old out/AuxAside/profile_state_probe binary. Current out/AuxFast has enable_aux_browser=true, enable_aux_shell=false, is_component_build=false, aux_test_hooks=false; root built its profile-state executable separately after the fullv24 build. It passed with exit0 in a fresh private HOME; see profile-state-actual-proof.json. The full browser build does not automatically build this target.
 
-Only after full build23833 releases /tmp/aux-build.lock, parent can run the following focused command from the exact active Chromium checkout. This is documentation, not a queued build:
+For reproduction, run only after the active native build releases /tmp/aux-build.lock, from the exact Chromium checkout. The actual recorded run used the following focused command:
 
 ```sh
 python3 /Users/rcourson/Documents/Vibe/web/scripts/native-build.py \
-  /Users/rcourson/Documents/Code/aux-chromium-security-155/depot_tools/autoninja \
+  /Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja \
   -C out/AuxFast profile_state_probe -j 2
 ```
 
@@ -43,4 +43,4 @@ with tempfile.TemporaryDirectory(prefix='aux-profile-state-proof-') as scratch:
 PYTHON
 ```
 
-Expected acceptance is actual exit0; CHECK failures abort/nonzero. The fixture covers missing/malformed registry metadata, exact profile hash/path/account mapping, anonymous-local vs genuine cloud/history classification, absent/stale/reordered index refusal, unrelated vs same-path/ID legacy mappings, read-only registry preservation and0600 vs0644 refusal. It deliberately remains locked/unconfigured until actual authenticated Vault verification; it does not call that service or synthesize unlocked state. ProfileIdForPath uses upstream SHA256, not native installation/DP keys. Source review proves fixture intent, not compiled/runtime success. No invocation was executed and no build was queued here.
+Expected acceptance is actual exit0; CHECK failures abort/nonzero. The fixture covers missing/malformed registry metadata, exact profile hash/path/account mapping, anonymous-local vs genuine cloud/history classification, absent/stale/reordered index refusal, unrelated vs same-path/ID legacy mappings, read-only registry preservation and0600 vs0644 refusal. It deliberately remains locked/unconfigured until actual authenticated Vault verification; it does not call that service or synthesize unlocked state. ProfileIdForPath uses upstream SHA256, not native installation/DP keys. The actual recorded build and invocation passed; the receipt pins the executable and flags. This fixture does not prove packaged Vault/authentication acceptance. No build is queued by this documentation.
