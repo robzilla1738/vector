@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 Skills/Toast ownership",
+  "files": [
+    {
+      "path": "chrome/browser/ui/toasts/toast_controller.h",
+      "baselineSha256": "24b3eade73fd7b4f81ec1564970deb3d933ec96c5e2f8e9e9085bad34c3ff7bf",
+      "outputSha256": "bf4ec637d58dfeba1db5acc4df2fe63fde29d7b7db86cc12509373ca56a193ca"
+    },
+    {
+      "path": "chrome/browser/ui/toasts/toast_controller.cc",
+      "baselineSha256": "b18a0596e7074707597a5faa6ad9304e44991865a8668bfc97d0f3fb7594ebb1",
+      "outputSha256": "568bee4d9cea92ecdf29474584092b374d101d9664c1c1aca782ce1a6fd7c549"
+    },
+    {
+      "path": "chrome/browser/skills/skills_ui_window_controller.h",
+      "baselineSha256": "9970476f2682f9b2cf2a6d5fd7ca69698d0ce185be1e7e9fec10d654f0e9d240",
+      "outputSha256": "2588de60ac3752f22c5b9f6079ea78c542463da32401c51f2fdb39118606b0be"
+    },
+    {
+      "path": "chrome/browser/skills/skills_ui_window_controller.cc",
+      "baselineSha256": "64530513ca95f00ee128d51799a1e6c6cf2cee311417555b4e09dc995240164a",
+      "outputSha256": "ce904441a7b540a5e4091eed2ec43bb468a240242fb90c2207dc86945bea9db0"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

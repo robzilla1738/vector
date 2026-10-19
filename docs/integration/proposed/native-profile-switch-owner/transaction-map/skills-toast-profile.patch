@@ -1,0 +1,430 @@
+--- a/chrome/browser/ui/toasts/toast_controller.h
++++ b/chrome/browser/ui/toasts/toast_controller.h
+@@ -97,6 +97,8 @@
+ 
+   void Init();
+   bool IsShowingToast() const;
++  // Includes queued/closing ownership and callbacks, not just the current ID.
++  bool HasPendingToastWork() const;
+   bool CanShowToast(ToastId id) const;
+   std::optional<ToastId> GetCurrentToastId() const;
+ 
+@@ -172,6 +174,7 @@
+   base::ScopedClosureRunner currently_showing_toast_close_callback_;
+   base::OneShotTimer toast_close_timer_;
+   bool is_omnibox_popup_showing_ = false;
++  int toast_mutation_depth_ = 0;
+ 
+   // Subscription to be notified when the browser window enters fullscreen.
+   base::CallbackListSubscription fullscreen_subscription_;
+--- a/chrome/browser/ui/toasts/toast_controller.cc
++++ b/chrome/browser/ui/toasts/toast_controller.cc
+@@ -10,6 +10,7 @@
+ #include <utility>
+ #include <vector>
+ 
++#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/check_is_test.h"
+ #include "base/check_op.h"
+@@ -121,6 +122,14 @@
+   return GetCurrentToastId().has_value();
+ }
+ 
++bool ToastController::HasPendingToastWork() const {
++  return toast_mutation_depth_ != 0 || next_toast_params_.has_value() ||
++         currently_showing_toast_id_.has_value() ||
++         !!currently_showing_toast_close_callback_ || toast_view_ ||
++         toast_widget_ || toast_observer_.IsObserving() ||
++         toast_close_timer_.IsRunning();
++}
++
+ bool ToastController::CanShowToast(ToastId toast_id) const {
+   if (static_cast<toasts::ToastAlertLevel>(
+           g_browser_process->local_state()->GetInteger(
+@@ -138,6 +147,8 @@
+ }
+ 
+ bool ToastController::MaybeShowToast(ToastParams params) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   if (!CanShowToast(params.toast_id)) {
+     RecordToastFailedToShow(params.toast_id);
+     return false;
+@@ -175,6 +186,8 @@
+ #endif
+ 
+ void ToastController::OnWidgetDestroyed(views::Widget* widget) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   currently_showing_toast_close_callback_.RunAndReset();
+ 
+   // Inform subscribers that Widget was destroyed. Pass in toast_id_ before it
+@@ -220,17 +233,25 @@
+     BrowserWindowInterface* browser_interface) {
+   tabs::TabInterface* const tab_interface =
+       browser_interface->GetActiveTabInterface();
++  omnibox_helper_observer_.Reset();
++  Observe(nullptr);
++  if (!tab_interface) {
++    // Real collection transfer can temporarily leave no active tab. Retire
++    // only the old renderer observation; retain the actual toast/queue state.
++    return;
++  }
+   content::WebContents* const web_contents = tab_interface->GetContents();
+   OmniboxTabHelper* const tab_helper =
+       OmniboxTabHelper::FromWebContents(web_contents);
+   CHECK(tab_helper);
+-  omnibox_helper_observer_.Reset();
+   omnibox_helper_observer_.Observe(tab_helper);
+   Observe(web_contents);
+   ClearTabScopedToasts(/*is_navigation=*/false);
+ }
+ 
+ void ToastController::QueueToast(ToastParams params) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   next_toast_params_ = std::move(params);
+ }
+ 
+@@ -279,6 +300,8 @@
+ }
+ 
+ void ToastController::ShowToast(ToastParams params) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   // TODO(crbug.com/367755347): Remove check when test is fixed.
+   CHECK(!toast_registry_->IsEmpty());
+   const ToastSpecification* current_toast_spec =
+@@ -305,6 +328,8 @@
+ }
+ 
+ void ToastController::CloseToast(toasts::ToastCloseReason reason) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   // Stop the auto-dismiss timer to prevent it from firing while the toast view
+   // is closing or animating out.
+   toast_close_timer_.Stop();
+@@ -315,6 +340,8 @@
+ 
+ void ToastController::CreateToast(ToastParams params,
+                                   const ToastSpecification* spec) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   // TODO(crbug.com/364730656): Replace this logic when improving
+   // ToastController testability.
+   views::View* anchor_view = GetAnchorView(spec->is_global_scope());
+@@ -473,6 +500,8 @@
+ }
+ 
+ void ToastController::ClearTabScopedToasts(bool is_navigation) {
++  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
++                                      toast_mutation_depth_ + 1);
+   if (next_toast_params_.has_value()) {
+     const ToastId toast_id = next_toast_params_.value().toast_id;
+     const ToastSpecification* const specification =
+--- a/chrome/browser/skills/skills_ui_window_controller.h
++++ b/chrome/browser/skills/skills_ui_window_controller.h
+@@ -14,12 +14,15 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/toasts/api/toast_id.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/signin/public/identity_manager/identity_manager.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class BrowserWindowInterface;
++class Profile;
+ struct ToastParams;
+ 
+ namespace skills {
+@@ -34,6 +37,13 @@
+ 
+   static SkillsUiWindowController* From(
+       BrowserWindowInterface* browser_window_interface);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++  void AbortForAuxProfileSwitch(Profile* source_profile);
++#endif
+ 
+   // signin::IdentityManager::Observer:
+   void OnPrimaryAccountChanged(
+@@ -76,6 +86,8 @@
+                                    std::string_view skill_icon);
+ 
+  private:
++  void BindProfileSources(Profile* profile);
++
+   // Shows after a skill is saved or deleted. Takes in toast params to display.
+   void ShowSkillToast(ToastParams params);
+   void OnToastClosed(const std::string& skill_id);
+@@ -101,6 +113,12 @@
+   base::flat_map<std::string, base::OnceCallback<void(bool)>>
+       skills_v2_delete_callbacks_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
++  bool aux_profile_switch_prepared_ = false;
++  int aux_callback_depth_ = 0;
++#endif
++
+   base::WeakPtrFactory<SkillsUiWindowController> weak_factory_{this};
+ };
+ 
+--- a/chrome/browser/skills/skills_ui_window_controller.cc
++++ b/chrome/browser/skills/skills_ui_window_controller.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/skills/skills_ui_window_controller.h"
+ 
++#include "base/auto_reset.h"
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/functional/bind.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
+@@ -32,7 +35,12 @@
+     : browser_window_interface_(browser_window_interface),
+       scoped_data_holder_(browser_window_interface->GetUnownedUserDataHost(),
+                           *this) {
+-  Profile* profile = browser_window_interface_->GetProfile();
++  BindProfileSources(browser_window_interface_->GetProfile());
++}
++
++void SkillsUiWindowController::BindProfileSources(Profile* profile) {
++  CHECK(pref_registrar_.IsEmpty());
++  CHECK(!identity_manager_observation_.IsObserving());
+   if (profile) {
+     pref_registrar_.Init(profile->GetPrefs());
+     pref_registrar_.Add(
+@@ -47,6 +55,86 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool SkillsUiWindowController::CanRebindForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
++      !pending_deletions_.empty() || !skills_v2_delete_callbacks_.empty() ||
++      From(browser_window_interface_) != this ||
++      browser_window_interface_->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !browser_window_interface_->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  if (auto* toast = ToastController::From(browser_window_interface_);
++      toast && toast->HasPendingToastWork()) {
++    return false;
++  }
++  auto* model = browser_window_interface_->GetTabStripModel();
++  if (!model) {
++    return false;
++  }
++  for (int i = 0; i < model->count(); ++i) {
++    if (auto* controller = SkillsUiTabControllerInterface::From(
++            model->GetTabAtIndex(i));
++        controller && controller->IsShowing()) {
++      return false;
++    }
++  }
++  return true;
++}
++
++void SkillsUiWindowController::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_switch_source_profile_ = browser_window_interface_->GetProfile();
++  aux_profile_switch_prepared_ = true;
++  identity_manager_observation_.Reset();
++  pref_registrar_.Reset();
++  // Cold boundary proves no live toast/deletion callback is being discarded.
++  // Only this controller's now-detached pref/identity private tasks are retired.
++  weak_factory_.InvalidateWeakPtrs();
++}
++
++void SkillsUiWindowController::RebindForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_switch_source_profile_);
++  CHECK(!aux_callback_depth_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_window_interface_->GetProfile(), target_profile);
++  CHECK(browser_window_interface_->GetTabStripModel()->empty());
++  CHECK(pending_deletions_.empty());
++  CHECK(skills_v2_delete_callbacks_.empty());
++  // These are UI action metadata, not saved Skill objects. A source toast must
++  // never later invoke/delete a same-ID object through target profile services.
++  last_saved_skill_id_.clear();
++  last_saved_skill_name_.clear();
++  last_saved_skill_icon_.clear();
++  last_deleted_skill_id_.clear();
++  action_clicked_ = false;
++  BindProfileSources(target_profile);
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_prepared_ = false;
++}
++
++void SkillsUiWindowController::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(browser_window_interface_->GetProfile(), source_profile);
++  CHECK(pending_deletions_.empty());
++  CHECK(skills_v2_delete_callbacks_.empty());
++  auto* model = browser_window_interface_->GetTabStripModel();
++  CHECK(model);
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
++  }
++  // Real source action metadata survives a failed pre-identity transfer.
++  BindProfileSources(source_profile);
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_prepared_ = false;
++}
++#endif
++
+ SkillsUiWindowController::~SkillsUiWindowController() {
+   if (!pending_deletions_.empty()) {
+     skills::SkillsService* skills_service = SkillsServiceFactory::GetForProfile(
+@@ -67,6 +155,11 @@
+ 
+ void SkillsUiWindowController::OnPrimaryAccountChanged(
+     const signin::PrimaryAccountChangeEvent& event_details) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   CloseDialogsAndReloadSkillsPages();
+ }
+ 
+@@ -74,10 +167,20 @@
+     const CoreAccountInfo& account_info,
+     const GoogleServiceAuthError& error,
+     signin_metrics::SourceForRefreshTokenOperation token_operation_source) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   CloseDialogsAndReloadSkillsPages();
+ }
+ 
+ void SkillsUiWindowController::CloseDialogsAndReloadSkillsPages() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   TabStripModel* tab_strip_model =
+       browser_window_interface_->GetTabStripModel();
+   if (!tab_strip_model) {
+@@ -107,12 +210,22 @@
+ 
+ void SkillsUiWindowController::OnSkillSaved(std::string_view skill_id,
+                                             bool hide_toast_button) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   StoreLastSavedSkillMetadata(skill_id, "", "");
+   ShowToast(hide_toast_button ? ToastId::kSkillSavedWithoutInvokeButton
+                               : ToastId::kSkillSaved);
+ }
+ 
+ void SkillsUiWindowController::OnSkillDeleted(std::string_view skill_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   last_deleted_skill_id_ = skill_id;
+   pending_deletions_.insert(last_deleted_skill_id_);
+   skills::SkillsService* skills_service = SkillsServiceFactory::GetForProfile(
+@@ -132,6 +245,11 @@
+     ToastId toast_id,
+     const std::string& skill_id,
+     base::OnceCallback<void(bool)> callback) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   action_clicked_ = false;
+ 
+   ToastParams params(toast_id);
+@@ -150,6 +268,11 @@
+ }
+ 
+ void SkillsUiWindowController::UndoLastSkillRemoval() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   action_clicked_ = true;
+   if (last_deleted_skill_id_.empty()) {
+     return;
+@@ -173,6 +296,11 @@
+ }
+ 
+ void SkillsUiWindowController::OnToastClosed(const std::string& skill_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   auto it = skills_v2_delete_callbacks_.find(skill_id);
+   if (it != skills_v2_delete_callbacks_.end()) {
+     std::move(it->second).Run(action_clicked_);
+@@ -194,11 +322,21 @@
+ }
+ 
+ void SkillsUiWindowController::ShowSkillToast(ToastParams params) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   ToastController::From(browser_window_interface_)
+       ->MaybeShowToast(std::move(params));
+ }
+ 
+ void SkillsUiWindowController::InvokeLastSavedSkill() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   InvokeSkill(last_saved_skill_id_, last_saved_skill_name_,
+               last_saved_skill_icon_);
+ }
+@@ -206,6 +344,11 @@
+ void SkillsUiWindowController::InvokeSkill(std::string_view skill_id,
+                                            std::string_view skill_name,
+                                            std::string_view skill_icon) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   if (skill_id.empty()) {
+     return;
+   }
+@@ -227,6 +370,11 @@
+     std::string_view skill_id,
+     std::string_view skill_name,
+     std::string_view skill_icon) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Transfer is synchronous and must not reenter profile-sensitive user work.
++  CHECK(!aux_profile_switch_prepared_);
++  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++#endif
+   last_saved_skill_id_ = skill_id;
+   last_saved_skill_name_ = skill_name;
+   last_saved_skill_icon_ = skill_icon;
