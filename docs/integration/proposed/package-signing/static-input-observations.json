@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "operation": "static-display-and-policy-only",
+  "results": [
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/aux-cli-launcher",
+      "observation": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "8662609f5da6c32b77e2124a848b1e91bda1b42ef2ac7b1bc2e300ee9c48addd"
+      },
+      "decisions": {
+        "preserveKeys": [],
+        "removeKeys": []
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "observation": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.daemon",
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.cs.disable-library-validation": true
+        },
+        "unsigned": false,
+        "sha256": "75e69c59aab6d42ab9701a4a6f615daaf4bcdef946b9c37602d1b9693eb12d09"
+      },
+      "decisions": {
+        "preserveKeys": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "addDyldEnvironmentForBoundary": true
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "observation": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.cli",
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.cs.disable-library-validation": true
+        },
+        "unsigned": false,
+        "sha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71"
+      },
+      "decisions": {
+        "preserveKeys": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "addDyldEnvironmentForBoundary": true
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/MacOS/aux-password-importer",
+      "observation": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.security.network.client": true,
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.PasswordImporter",
+          "com.apple.developer.authentication-services.autofill-credential-provider": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.app-sandbox": true
+        },
+        "unsigned": false,
+        "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369"
+      },
+      "decisions": {
+        "preserveKeys": [
+          "com.apple.security.app-sandbox",
+          "com.apple.security.network.client"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups",
+          "com.apple.developer.authentication-services.autofill-credential-provider"
+        ]
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aux-password-importer-provider",
+      "observation": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.PasswordImporter.CredentialProvider",
+          "com.apple.developer.authentication-services.autofill-credential-provider": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.app-sandbox": true
+        },
+        "unsigned": false,
+        "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507"
+      },
+      "decisions": {
+        "preserveKeys": [
+          "com.apple.security.app-sandbox"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups",
+          "com.apple.developer.authentication-services.autofill-credential-provider"
+        ]
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+      "observation": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.security.automation.apple-events": true,
+          "com.apple.security.personal-information.addressbook": true
+        },
+        "unsigned": false,
+        "sha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c"
+      },
+      "decisions": {
+        "preserveKeys": [
+          "com.apple.security.automation.apple-events",
+          "com.apple.security.personal-information.addressbook"
+        ],
+        "removeKeys": []
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/native/aux-native-carrier",
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/aux-native-carrier",
+      "observation": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6"
+      },
+      "decisions": {
+        "preserveKeys": [],
+        "removeKeys": []
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib",
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/libaux-native-boundary.dylib",
+      "observation": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "9464d02152e995dcdeb1f4f729853658c35af8452df914f4aa3a04f9090d4c00"
+      },
+      "decisions": {
+        "preserveKeys": [],
+        "removeKeys": []
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/aux-native-guard.node",
+      "observation": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "5165002d24803c2952cce574e83b970a290832385d1d387b3d48421782994475"
+      },
+      "decisions": {
+        "preserveKeys": [],
+        "removeKeys": []
+      }
+    },
+    {
+      "target": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/aux-native-guard.node",
+      "observation": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "5165002d24803c2952cce574e83b970a290832385d1d387b3d48421782994475"
+      },
+      "decisions": {
+        "preserveKeys": [],
+        "removeKeys": []
+      }
+    }
+  ],
+  "finalPackagePolicyGenerated": false,
+  "outerBrowserReviewPending": true,
+  "signingPerformed": false,
+  "codeLaunched": false
+}
