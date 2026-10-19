@@ -54,7 +54,7 @@ export interface SemanticResult {
 interface Chunk {
   id: string;
   source: string;
-  sourceKind: 'memory' | 'browser';
+  sourceKind: 'memory' | 'browser' | 'context';
   profileId: string | null;
   content: string;
   line: number;
@@ -341,7 +341,7 @@ export class MemoryService {
     accountId: number,
     source: {
       id: string;
-      kind: 'memory' | 'browser';
+      kind: 'memory' | 'browser' | 'context';
       content: string;
       profileId: string | null;
       metadata: Record<string, unknown>;
@@ -450,7 +450,7 @@ export class MemoryService {
     accountId: number,
     queries: string[],
     maxResults: number,
-    kind: 'memory' | 'browser',
+    kind: 'memory' | 'browser' | 'context',
     profileId?: string,
     sources?: Set<string>,
   ) {
