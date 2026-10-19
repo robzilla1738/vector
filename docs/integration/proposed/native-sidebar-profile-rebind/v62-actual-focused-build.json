@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v62",
+  "sourceOutputsMatchedByOriginalReplay": 158,
+  "orderedOriginalPatches": 72,
+  "gnGenerationPassed": true,
+  "gnTargetCount": 36072,
+  "gnFileCount": 5013,
+  "focusedChangedObjectsPassed": 8,
+  "elapsedSeconds": 24.24347710609436,
+  "targets": {
+    "browser": "obj/chrome/browser/ui/ui/browser.o",
+    "unload_controller": "obj/chrome/browser/ui/ui/unload_controller.o",
+    "profile_menu_coordinator": "obj/chrome/browser/ui/ui/profile_menu_coordinator.o",
+    "aux_sidebar_view": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "vertical_tab_strip_region_view": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "signin_view_controller": "obj/chrome/browser/ui/signin/impl/signin_view_controller.o",
+    "profile_customization_bubble_sync_controller": "obj/chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller_impl/profile_customization_bubble_sync_controller.o",
+    "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o"
+  },
+  "fullBrowserLinked": false,
+  "profileSwitchActivated": false,
+  "packagedUiObserved": false,
+  "runtimeParity": false
+}
