@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "Actual appliedv67 unchanged existing view header targets; stagedv70 LocationBar/OmniboxView internal methods",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/BUILD.gn",
+      "baselineSha256": "44039e972b48d1a98dc2dc0131fec19996ebe7bb46491bc2267fb810a8b44236",
+      "outputSha256": "f56023cf2b6336954442b1e55c7ff43988a20a112066fc4c7610f6a11b2e1c55"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/BUILD.gn",
+      "baselineSha256": "61e0ab0b36335c725ab65ae23e09085086b2125c859263a9bcd8b0678f3b550f",
+      "outputSha256": "2a55d610c37abb162666e07e90cf82f828174064aab7fb887d0ff8fa2fe96d40"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

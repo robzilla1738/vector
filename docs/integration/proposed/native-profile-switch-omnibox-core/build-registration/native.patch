@@ -1,0 +1,24 @@
+--- a/chrome/browser/ui/omnibox/BUILD.gn
++++ b/chrome/browser/ui/omnibox/BUILD.gn
+@@ -20,6 +20,7 @@
+   sources = []
+   deps = []
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/profiles:profile",
+     "//components/contextual_search:public",
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -605,7 +605,10 @@
+   source_set("browser_select_file_dialog_controller") {
+     public = [ "browser_select_file_dialog_controller.h" ]
+     sources = [ "browser_select_file_dialog_controller.cc" ]
+-    public_deps = [ "//ui/base/unowned_user_data" ]
++    public_deps = [
++      "//chrome/browser:buildflags",
++      "//ui/base/unowned_user_data",
++    ]
+     deps = [
+       "//chrome/browser/profiles:profile",
+       "//chrome/browser/ui/browser_window",

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v67",
+  "appliedSources": 173,
+  "originalReplayMatched": true,
+  "orderedPatches": 77,
+  "gnGenerationPassed": true,
+  "focusedChangedObjectsAndMacSubclassPassed": 8,
+  "elapsedSeconds": 33.98073196411133,
+  "targets": {
+    "browser_select_file_dialog_controller": "obj/chrome/browser/ui/browser_select_file_dialog_controller/browser_select_file_dialog_controller.o",
+    "extension_side_panel_coordinator": "obj/chrome/browser/ui/extensions/impl/extension_side_panel_coordinator.o",
+    "extension_side_panel_manager": "obj/chrome/browser/ui/extensions/impl/extension_side_panel_manager.o",
+    "side_panel_coordinator": "obj/chrome/browser/ui/views/side_panel/side_panel/side_panel_coordinator.o",
+    "side_panel_toolbar_pinning_controller": "obj/chrome/browser/ui/views/side_panel/side_panel/side_panel_toolbar_pinning_controller.o",
+    "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+    "render_widget_host_view_base": "obj/content/browser/browser/render_widget_host_view_base.o",
+    "render_widget_host_view_mac": "obj/content/browser/browser/render_widget_host_view_mac.o"
+  },
+  "fullBrowserLinked": false,
+  "packagedUiObserved": false,
+  "runtimeParity": false
+}

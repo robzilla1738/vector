@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "Appliedv67 unchanged existing public header targets; staged omnibox/file-dialog internal rebind methods",
+  "files": [
+    {
+      "path": "chrome/browser/ui/omnibox/BUILD.gn",
+      "baselineSha256": "c38925be9a553f7b32cbc3a1bc3a11a9de6a4773166d1ca54fff95527b13e1cd",
+      "outputSha256": "fb4b1047ced6a4ceaba368b42bc4ca2619b2922f27a5ae53f7c71cd721c3dc94"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "8abfbc1f6e2c943db300a4ec9ec55d2fa964ceb74d1ce97fd3f41d682d5813d4",
+      "outputSha256": "e01faf9aa61fb5f4718ceb4c25b4b60fa9984357504e390824e174e7886b80fb"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
