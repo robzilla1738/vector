@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04598780.c",
+      "sha256": "a6fffcf484c49a453cb5d4a47322773f15fd6a4cb9b9bdbfc5f4fa5ea5aebf6f"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/objc/objc-dump.txt",
+      "sha256": "889b7c360c72668c6493bdb062e434bc7693d133617089bb57361d59f754b3a5"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSVisualEffectView.h",
+      "sha256": "39cd1010675c5ecc9da580b00940b5ee32bf1175fa62852be2f68e67949bd84c"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSGlassEffectView.h",
+      "sha256": "cea54a3472014e6bb561e0a0f17dd279f2bd12e8ae92435cb50b5a2dfeb11cc6"
+    }
+  ],
+  "functions": [
+    {
+      "name": "PopulateCreateWindowParams",
+      "rva": "0x2132740",
+      "endExclusive": "0x2132888",
+      "rawSliceSha256": "ab20f62c5cd85d461928149ac3234af967b82d561a2f798610ea117c68738bc3",
+      "rawSliceBytes": 328,
+      "evidenceId": "ev_0ddd0d92e489cbaefb4b244c9305499ccb29dcf46bca447498e7f9fb989acf6c",
+      "snapshotPath": "/tmp/aux-popup-effect-names-snapshot.json",
+      "snapshotSha256": "7369ea3736b183c6419c7eecfcfa306891b3f70e9b189680432c0fc7a95a0940"
+    },
+    {
+      "name": "CreateNSWindow",
+      "rva": "0x2132a58",
+      "endExclusive": "0x2132c84",
+      "rawSliceSha256": "d44a38e3ab9e7e0f37382d9f8ea933db61cc81dd0c22aeaea48f11534712024d",
+      "rawSliceBytes": 556,
+      "evidenceId": "ev_1624d43f55f0d7c1d933da8afe6c9c24a78fbc53a5bd7c0b2588a6d6365d06f5",
+      "snapshotPath": "/tmp/aux-popup-effect-window-snapshot.json",
+      "snapshotSha256": "108bf286804e6fdce904be3c4202399b5676db5d9d5e07b10b04d970ae1c2aed"
+    },
+    {
+      "name": "CreateContentView",
+      "rva": "0x4383880",
+      "endExclusive": "0x4384058",
+      "rawSliceSha256": "1d9b0586ae555f8de3ee6004ffda52dffb3116ae58d1d9218c01a7d6c85f5f02",
+      "rawSliceBytes": 2008,
+      "evidenceId": "ev_2d98e176eae015cd1c201c60fe35b2f9320f18c5032ddc4dffd734300e650d16",
+      "snapshotPath": "/tmp/aux-popup-effect-material-snapshot.json",
+      "snapshotSha256": "cd4bfbbeeaa3d9ded1b2137640f0c8d37f5bb9adcd9f7ee8bdd5f931482693f1"
+    }
+  ],
+  "literalAndCallSites": [
+    {
+      "rva": "0xd6e3dfc",
+      "value": "DesktopMediaPickerVisualEffect",
+      "references": [
+        "0x4595b94",
+        "0x4598b98"
+      ]
+    },
+    {
+      "rva": "0xd4c996c",
+      "value": "PermissionPromptNotificationBubble"
+    },
+    {
+      "rva": "0x4383114",
+      "meaning": "NativeWidgetMacNSWindow usePermissionPromptVisualEffect setter"
+    },
+    {
+      "rva": "0x4383104",
+      "meaning": "NativeWidgetMacNSWindow usePermissionPromptVisualEffect getter"
+    },
+    {
+      "rva": "0x2132b0c",
+      "meaning": "CreateNSWindow calls setter via 0xa131e58"
+    },
+    {
+      "rva": "0x43839c4",
+      "meaning": "CreateContentView calls getter via 0xc382da4"
+    },
+    {
+      "rva": "0x43839f4",
+      "meaning": "__isPlatformVersionAtLeast(1,27,0,0)"
+    },
+    {
+      "rva": "0x43843a0",
+      "meaning": "existing original compositor hosting helper, already ported for browser vibrancy"
+    }
+  ],
+  "limits": [
+    "Headerless functions preserve exact arm64 bytes but cannot resolve out-of-slice calls without the separate pinned Mach-O selector decoder.",
+    "CreateContentView Ghidra body is noncontiguous; browser branch leaves this slice and is preserved, not reconstructed from its incomplete pseudocode.",
+    "CreateNSWindow extraction ends after the relevant property setter and is not the whole original function.",
+    "No shared native files were changed, compiled, signed or executed; actual material, focus, child popup and both-theme rendering require observation."
+  ]
+}

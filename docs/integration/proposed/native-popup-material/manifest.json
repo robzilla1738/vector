@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-background-override CC03b6bc180c17ab9a34b6711eba83265ebe93921312b826493bfb7001c74e09d3; existing browser-window vibrancy bridge (v67 unchanged)",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "baselineSha256": "c8d5eef1a5161f425fde0c2544c17f80e83c9d053989bb991a6d9944478ef9b7",
+      "outputSha256": "4b3a5cfea55967a323a6bc02a9b306875b220d1f34e4483886f8655978ac9da1"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "03b6bc180c17ab9a34b6711eba83265ebe93921312b826493bfb7001c74e09d3",
+      "outputSha256": "9d9ce8a4631143756047bb4a01b866e542019c024e342a0ebe79a8b9234bfc7d"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm",
+      "baselineSha256": "732b6ec397cff11aaf94e50f16229fc6b7f0195ca7f959bd6c1bce9c4000da03",
+      "outputSha256": "ccfd9cc2bf1507b46b07177b8f613445a49bfeff073c1c94df54652e38413847"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/native_widget_mac_nswindow.h",
+      "baselineSha256": "face0d4daf1640347e65e87cdf4f1f6bcfb3b227d4f980d1cac87db382b8b1a9",
+      "outputSha256": "113d06e778fd37a117f06a4d51fd6b99685339ebb4fb2c09089dd882a77ab7aa"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/native_widget_mac_nswindow.mm",
+      "baselineSha256": "9f5f2ab2d6f9c959c7593d782a2fc4276294bc02f79c2fc609f717711dca7efc",
+      "outputSha256": "0f5115c54a86445ffb3d255942e8d3791b26dd41d4a3d47252244e42d9ca579f"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm",
+      "baselineSha256": "3096ae5b3d6d94269aea5768fdf5f3ac35ebfc303b81579ed0ada0e5a466a660",
+      "outputSha256": "9410b8992cce952afe26c4f4cf260e031d57c12acdf93f5167e0a0146f6833ca"
+    },
+    {
+      "path": "components/remote_cocoa/common/native_widget_ns_window.mojom",
+      "baselineSha256": "9a3db5073f43bc1bcfba31252b668dbf113ce58c77b023f32cfb27b3f1d45a49",
+      "outputSha256": "05f779a619fdd15660a61c1fcad8d238715cc372b866f9d7cd08fe269c141a0d"
+    },
+    {
+      "path": "ui/views/widget/native_widget_mac.mm",
+      "baselineSha256": "70bc19b9ef4c9d9f203dbe1f8b001ae7a9014dd55a2cc904e87209757cbc9b40",
+      "outputSha256": "540c1e6e4481a55adf063742233e3d2ba1c2cc66682fc974dbbd6925d9835bb6"
+    }
+  ]
+}

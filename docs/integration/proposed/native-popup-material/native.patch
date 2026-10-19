@@ -1,0 +1,222 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -2,7 +2,7 @@
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+   deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
+-  frameworks = [ "AppKit.framework", "QuartzCore.framework" ]
++  frameworks = [ "AppKit.framework" ]
+ }
+ 
+ source_set("headers") {
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -51,7 +51,6 @@
+     dialog_->ListenerDestroyed();
+   }
+ }
+-void ApplyAuxPopupMaterial(gfx::NativeWindow window);
+ void CaptureAuxPopupActivation();
+ void ClearAuxPopupActivation();
+ void RestoreAuxPopupActivation();
+@@ -171,6 +170,7 @@
+           views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+           views::Widget::InitParams::TYPE_POPUP);
+       params.delegate = delegate_.get();
++      params.name = "DesktopMediaPickerVisualEffect";
+       params.rounded_corners = gfx::RoundedCornersF(16);
+       params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
+       widget_->Init(std::move(params));
+@@ -178,7 +178,6 @@
+       widget_->GetFocusManager()->RegisterAccelerator(
+           ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE),
+           ui::AcceleratorManager::kHighPriority, this);
+-      ApplyAuxPopupMaterial(widget_->GetNativeWindow());
+       auto* screen = display::Screen::Get();
+       const auto area =
+           screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint())
+@@ -294,6 +293,8 @@
+         views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+         views::Widget::InitParams::TYPE_POPUP);
+     params.delegate = options_delegate_.get();
++    params.name = "DesktopMediaPickerVisualEffect";
++    params.rounded_corners = gfx::RoundedCornersF(12);
+     params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
+     options_->Init(std::move(params));
+     options_->AddObserver(this);
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
+@@ -1,8 +1,6 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #import <AppKit/AppKit.h>
+-#import <QuartzCore/QuartzCore.h>
+ 
+-#include "ui/gfx/native_ui_types.h"
+ namespace extensions {
+ namespace {
+ __weak NSWindow* g_previous_key_window;
+@@ -26,28 +24,4 @@
+     [previous makeKeyAndOrderFront:nil];
+   }
+ }
+-void ApplyAuxPopupMaterial(gfx::NativeWindow native_window) {
+-  NSWindow* window = native_window.GetNativeNSWindow();
+-  if (!window) {
+-    return;
+-  }
+-  window.opaque = NO;
+-  window.backgroundColor = NSColor.clearColor;
+-  NSView* contents = window.contentView;
+-  contents.wantsLayer = YES;
+-  contents.layer.cornerRadius = 16;
+-  contents.layer.masksToBounds = YES;
+-  if (NSWorkspace.sharedWorkspace
+-          .accessibilityDisplayShouldReduceTransparency) {
+-    window.backgroundColor = NSColor.windowBackgroundColor;
+-    return;
+-  }
+-  NSVisualEffectView* effect =
+-      [[NSVisualEffectView alloc] initWithFrame:contents.bounds];
+-  effect.material = NSVisualEffectMaterialHUDWindow;
+-  effect.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+-  effect.state = NSVisualEffectStateActive;
+-  effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+-  [contents addSubview:effect positioned:NSWindowBelow relativeTo:nil];
+-}
+ }  // namespace extensions
+--- a/components/remote_cocoa/app_shim/native_widget_mac_nswindow.h
++++ b/components/remote_cocoa/app_shim/native_widget_mac_nswindow.h
+@@ -108,6 +108,9 @@
+ // Whether this window functions as a tooltip.
+ @property(assign, nonatomic) BOOL isTooltip;
+ 
++// Whether the native content host uses the supplied popup background effect.
++@property(assign, nonatomic) BOOL usePermissionPromptVisualEffect;
++
+ // Whether this window is headless.
+ @property(assign, nonatomic) BOOL isHeadless;
+ 
+--- a/components/remote_cocoa/app_shim/native_widget_mac_nswindow.mm
++++ b/components/remote_cocoa/app_shim/native_widget_mac_nswindow.mm
+@@ -232,6 +232,7 @@
+ @synthesize bridgedNativeWidgetId = _bridgedNativeWidgetId;
+ @synthesize bridge = _bridge;
+ @synthesize isTooltip = _isTooltip;
++@synthesize usePermissionPromptVisualEffect = _usePermissionPromptVisualEffect;
+ @synthesize isShufflingForOrdering = _isShufflingForOrdering;
+ @synthesize preventKeyWindow = _preventKeyWindow;
+ @synthesize childWindowAddedHandler = _childWindowAddedHandler;
+--- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
++++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
+@@ -231,6 +231,40 @@
+   return nil;
+ }
+ 
++NSView* CreatePermissionPromptBackgroundEffectView(
++    NSRect bounds,
++    std::optional<int> corner_radius) {
++  NSView* effect = nil;
++  if (@available(macOS 27, *)) {
++    NSGlassEffectView* glass = [[NSGlassEffectView alloc] initWithFrame:bounds];
++    glass.style = NSGlassEffectViewStyleRegular;
++    if (corner_radius) {
++      glass.cornerRadius = *corner_radius;
++    }
++    glass.contentView = [[NSView alloc] initWithFrame:glass.bounds];
++    SEL selector = NSSelectorFromString(@"_setVibrantBlendingStyleForSubtree:");
++    if ([glass respondsToSelector:selector]) {
++      reinterpret_cast<void (*)(id, SEL, NSInteger)>(objc_msgSend)(
++          glass, selector, 0);
++    }
++    effect = glass;
++  } else {
++    NSVisualEffectView* visual =
++        [[NSVisualEffectView alloc] initWithFrame:bounds];
++    visual.material = NSVisualEffectMaterialPopover;
++    visual.blendingMode = NSVisualEffectBlendingModeBehindWindow;
++    visual.state = NSVisualEffectStateActive;
++    visual.wantsLayer = YES;
++    if (corner_radius && *corner_radius >= 1) {
++      visual.layer.cornerRadius = *corner_radius;
++      visual.layer.masksToBounds = YES;
++    }
++    effect = visual;
++  }
++  effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  return effect;
++}
++
+ NSView* CreateBrowserWindowBackgroundEffectView(
+     NSRect bounds,
+     bool fullscreen,
+@@ -537,6 +571,8 @@
+       break;
+   }
+   ns_window.releasedWhenClosed = NO;
++  ns_window.usePermissionPromptVisualEffect =
++      params->use_permission_prompt_visual_effect;
+ 
+   if (params->titlebar_appears_transparent) {
+     ns_window.titlebarAppearsTransparent = YES;
+@@ -1026,6 +1062,15 @@
+       ui::RemoteAccessibility::GetTokenForLocalElement(window_),
+       ui::RemoteAccessibility::GetTokenForLocalElement(bridged_view_));
+ 
++  const bool browser_window =
++      [window_ isKindOfClass:[BrowserNativeWidgetWindow class]];
++  NSView* popup_effect = nil;
++  if (!browser_window && window_.usePermissionPromptVisualEffect) {
++    popup_effect = CreatePermissionPromptBackgroundEffectView(
++        bridged_view_.bounds, corner_radius);
++    [bridged_view_ addSubview:popup_effect];
++  }
++
+   // Beware: This view was briefly removed (in favor of a bare CALayer) in
+   // https://crrev.com/c/1236675. The ordering of unassociated layers relative
+   // to NSView layers is undefined on macOS 10.12 and earlier, so the compositor
+@@ -1039,11 +1084,19 @@
+       std::make_unique<ui::DisplayCALayerTree>(background_layer);
+   [compositor_view setLayer:background_layer];
+   [compositor_view setWantsLayer:YES];
+-  [bridged_view_ addSubview:compositor_view];
++  if (popup_effect) {
++    AttachCompositorToWindowBackground(bridged_view_, popup_effect,
++                                      compositor_view);
++  } else {
++    [bridged_view_ addSubview:compositor_view];
++  }
+ 
+   [bridged_view_ setWantsLayer:YES];
+   if (corner_radius) {
+     bridged_view_.layer.cornerRadius = *corner_radius;
++    if (popup_effect && *corner_radius > 0) {
++      bridged_view_.layer.cornerCurve = kCACornerCurveContinuous;
++    }
+     bridged_view_.layer.masksToBounds = YES;
+   }
+ 
+--- a/components/remote_cocoa/common/native_widget_ns_window.mojom
++++ b/components/remote_cocoa/common/native_widget_ns_window.mojom
+@@ -49,6 +49,9 @@
+ 
+   // Whether or not window animations should be initially enabled.
+   bool animation_enabled;
++
++  // Uses the supplied native permission/popup background effect.
++  bool use_permission_prompt_visual_effect = false;
+ };
+ 
+ // Ways of changing the visibility of the bridged NSWindow.
+--- a/ui/views/widget/native_widget_mac.mm
++++ b/ui/views/widget/native_widget_mac.mm
+@@ -1152,6 +1152,10 @@
+     params->window_class = remote_cocoa::mojom::WindowClass::kOverlay;
+   }
+   params->animation_enabled = widget_params.animation_enabled;
++  params->use_permission_prompt_visual_effect =
++      widget_params.name == "DesktopMediaPickerDialogView" ||
++      widget_params.name == "DesktopMediaPickerVisualEffect" ||
++      widget_params.name == "PermissionPromptNotificationBubble";
+ }
+ 
+ NativeWidgetMacNSWindow* NativeWidgetMac::CreateNSWindow(
