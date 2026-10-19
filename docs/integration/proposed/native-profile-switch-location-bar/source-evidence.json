@@ -1,0 +1,29 @@
+{
+  "kind": "Actual Chromium 155 constructor, source observation, weak callback and child profile graph",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.h",
+      "sha256": "d6a96bf35934b40affa0a7b7ba0902402bf1a494c3ee932c93a7ae77ad72277d"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "sha256": "836033c511c5a4cb2457e356b3ca250507d5a37a14f0374ae49f2ddf0dfafb84"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/selected_keyword_view.h",
+      "sha256": "0c6158a0942971c6bc07dfefb8dafcce7425b7d0e9b80d9a8dd32dda2582de2d"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/selected_keyword_view.cc",
+      "sha256": "9dbc5928080b85336f033180386ec9f65c4ce16a8488bd6c0bf2bf3a43ad6237"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "sha256": "81422192a73cb1a7356218ec796f424724ec6d315a656e15bfff37d7d0dfa770"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "d377cab3093b5de02720f25f5b69bad3a86dc4bc2f71ea60c7ef7228a611e4a8"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.h
+@@ -13,6 +13,7 @@
+ #include <string_view>
+ 
+ #include "base/gtest_prod_util.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/supports_user_data.h"
+@@ -116,6 +117,11 @@
+ 
+   // Initialize, create the underlying views, etc.
+   void Init();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch();
++#endif
+ 
+   // Exposes the RenderText for tests.
+ #if defined(UNIT_TEST)
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+@@ -280,6 +280,28 @@
+ #endif
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool OmniboxViewViews::CanPrepareForAuxProfileSwitch() const {
++  return !IsIMEComposing() && !IsMenuShowing();
++}
++
++void OmniboxViewViews::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  weak_factory_.InvalidateWeakPtrs();
++  scoped_template_url_service_observation_.Reset();
++}
++
++void OmniboxViewViews::RebindForAuxProfileSwitch() {
++  CHECK(location_bar_view_);
++  CHECK(location_bar_view_->GetProfile()->IsRegularProfile());
++  scoped_template_url_service_observation_.Reset();
++  scoped_template_url_service_observation_.Observe(
++      controller()->client()->GetTemplateURLService());
++  SetShouldDoLearning(!location_bar_view_->GetProfile()->IsOffTheRecord());
++  InstallPlaceholderText();
++}
++#endif
++
+ void OmniboxViewViews::Init() {
+   set_controller(this);
+   SetTextInputType(GetPreferredTextInputType());
+--- a/chrome/browser/ui/views/location_bar/selected_keyword_view.h
++++ b/chrome/browser/ui/views/location_bar/selected_keyword_view.h
+@@ -8,6 +8,7 @@
+ #include <string>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
+ #include "components/omnibox/browser/searchbox_utils.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -58,6 +59,10 @@
+   void OnThemeChanged() override;
+   SkColor GetForegroundColor() const override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  void RebindForAuxProfileSwitch(Profile& profile);
++#endif
++
+   // The current keyword, or an empty string if no keyword is displayed.
+   void SetKeyword(const std::u16string& keyword);
+   const std::u16string& GetKeyword() const;
+@@ -74,7 +79,7 @@
+   void UpdateIcon();
+ 
+   // May be nullptr in tests.
+-  const raw_ptr<Profile> profile_;
++  raw_ptr<Profile> profile_;
+ 
+   // May be nullptr in tests.
+   const raw_ptr<const OmniboxController> omnibox_controller_;
+--- a/chrome/browser/ui/views/location_bar/selected_keyword_view.cc
++++ b/chrome/browser/ui/views/location_bar/selected_keyword_view.cc
+@@ -179,6 +179,14 @@
+   UpdateIcon();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void SelectedKeywordView::RebindForAuxProfileSwitch(Profile& profile) {
++  profile_ = &profile;
++  SetKeyword(std::u16string());
++  UpdateIcon();
++}
++#endif
++
+ void SelectedKeywordView::SetKeyword(const std::u16string& keyword) {
+   if (keyword_ == keyword) {
+     return;
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -8,6 +8,7 @@
+ #include <stddef.h>
+ 
+ #include <memory>
++#include <cstdint>
+ #include <string>
+ #include <string_view>
+ #include <vector>
+@@ -30,6 +31,7 @@
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/security_state/core/security_state.h"
+ #include "services/device/public/cpp/geolocation/buildflags.h"
++#include "chrome/browser/buildflags.h"
+ #include "third_party/metrics_proto/omnibox_event.pb.h"
+ #include "third_party/skia/include/core/SkColor.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+@@ -132,6 +134,14 @@
+   LocationBarView& operator=(const LocationBarView&) = delete;
+   ~LocationBarView() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanPrepareForAuxProfileSwitch(Profile* target) const;
++  uint64_t BeginAuxProfileSwitch(Profile* target);
++  void RebindAuxProfileSwitch(uint64_t generation);
++  void EndAuxProfileSwitch(uint64_t generation);
++  void AbortAuxProfileSwitch(uint64_t generation);
++#endif
++
+   // Returns the location bar border radius in DIPs.
+   int GetBorderRadius() const;
+   static int ComputeBorderRadius(gfx::Size size);
+@@ -527,7 +537,13 @@
+   const raw_ptr<BrowserWindowInterface> browser_;
+ 
+   // May be nullptr in tests.
+-  const raw_ptr<Profile> profile_;
++  raw_ptr<Profile> profile_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
++  base::WeakPtr<Profile> aux_profile_switch_source_;
++  void BindPrefsForAuxProfileSwitch();
++#endif
+ 
+   // The omnibox controller.
+   std::unique_ptr<OmniboxController> omnibox_controller_;
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -2009,6 +2009,11 @@
+ }
+ 
+ void LocationBarView::OnChanged() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_paused_) {
++    return;
++  }
++#endif
+   TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
+   // Ensure that background colors get updated on tab-switch.
+   RefreshBackground();
+@@ -2427,3 +2432,79 @@
+ ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
+ ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
+ END_METADATA
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool LocationBarView::CanPrepareForAuxProfileSwitch(Profile* target) const {
++  return target && target->IsRegularProfile() && browser_ &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         profile_ == browser_->GetProfile() && is_initialized_ &&
++         !aux_profile_switch_paused_ && !in_popup_state_transition_ &&
++         !is_popup_mode_ && omnibox_controller_ &&
++         omnibox_view_ && selected_keyword_view_ && pref_registrar_ &&
++         !omnibox_popup_aim_presenter_ && !omnibox_popup_file_selector_ &&
++         !omnibox::IsWebUIOmniboxPopupEnabled() &&
++         !omnibox::IsWebUIOmniboxInBrowserViewEnabled() &&
++         !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
++         !omnibox_controller_->IsPopupOpen() &&
++         !omnibox_controller_->edit_model()->user_input_in_progress() &&
++         omnibox_view_->CanPrepareForAuxProfileSwitch();
++}
++
++uint64_t LocationBarView::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanPrepareForAuxProfileSwitch(target));
++  aux_profile_switch_paused_ = true;
++  aux_profile_switch_source_ = profile_->GetWeakPtr();
++  const uint64_t generation = ++aux_profile_switch_generation_;
++  weak_factory_.InvalidateWeakPtrs();
++  pref_registrar_->Reset();
++  omnibox_view_->PrepareForAuxProfileSwitch();
++  omnibox_controller_->StopAutocomplete(/*clear_result=*/true);
++  return generation;
++}
++
++void LocationBarView::BindPrefsForAuxProfileSwitch() {
++  pref_registrar_->Reset();
++  pref_registrar_->Init(profile_->GetPrefs());
++  pref_registrar_->Add(omnibox::kShowAiModeOmniboxButton,
++                       base::BindRepeating(&LocationBarView::OnChanged,
++                                           base::Unretained(this)));
++}
++
++void LocationBarView::RebindAuxProfileSwitch(uint64_t generation) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK(browser_->GetTabStripModel()->empty());
++  profile_ = browser_->GetProfile();
++  omnibox_controller_->RebindClientForAuxProfileSwitch(
++      std::make_unique<ChromeOmniboxClient>(this, browser_, profile_));
++  selected_keyword_view_->RebindForAuxProfileSwitch(*profile_);
++  omnibox_view_->RebindForAuxProfileSwitch();
++  BindPrefsForAuxProfileSwitch();
++}
++
++void LocationBarView::EndAuxProfileSwitch(uint64_t generation) {
++  if (generation != aux_profile_switch_generation_ ||
++      !aux_profile_switch_paused_) {
++    return;
++  }
++  CHECK_EQ(profile_, browser_->GetProfile());
++  aux_profile_switch_paused_ = false;
++  aux_profile_switch_source_.reset();
++  OnChanged();
++}
++
++void LocationBarView::AbortAuxProfileSwitch(uint64_t generation) {
++  if (generation != aux_profile_switch_generation_ ||
++      !aux_profile_switch_paused_) {
++    return;
++  }
++  CHECK_EQ(aux_profile_switch_source_.get(), browser_->GetProfile());
++  CHECK_EQ(profile_, browser_->GetProfile());
++  // The original client/providers were never replaced before identity.
++  // Restore real source observations after its actual tabs are restored.
++  omnibox_view_->RebindForAuxProfileSwitch();
++  BindPrefsForAuxProfileSwitch();
++  EndAuxProfileSwitch(generation);
++}
++#endif
