@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "sourceVersion": "1.26.1016.1852",
+  "inspection": "static only; no requests or execution",
+  "files": [
+    {
+      "component": "agent",
+      "path": "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sourceSha256": "c303b278cb4536eedee05f941eb557c002dc287e357a3a8f8f96f60f50bed889",
+      "occurrences": [
+        {
+          "literal": "asidehq.com",
+          "byteOffset": 3056,
+          "context": "e agreeing to our\",\" \",(0,t.jsx)(O,{className:\"underline\",to:\"https://asidehq.com/policy/terms\",children:\"Terms of Service\"}),\" \",\"and\",\" \",(0,t.jsx)(O,{className:\"underline\",to:\"https://asidehq.com/policy/priva"
+        },
+        {
+          "literal": "asidehq.com",
+          "byteOffset": 3173,
+          "context": "rvice\"}),\" \",\"and\",\" \",(0,t.jsx)(O,{className:\"underline\",to:\"https://asidehq.com/policy/privacy\",children:\"Privacy Policy\"}),\".\"]})]})},Me=({actionLabel:e,disabled:n,isCurrent:s,period:a,plan:o,price:x,onPlanSe"
+        },
+        {
+          "literal": "asidehq.com",
+          "byteOffset": 8457,
+          "context": "ly\":\"monthly\"}async function $(e){if(typeof window>\"u\")return\"https://asidehq.com\";if(window.location.protocol!==\"chrome-extension:\")return window.location.href;const n=new URL(\"/billing/return\",T);n.searchParam"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/ai-CzEX5E7S.js",
+      "sourceSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "occurrences": [
+        {
+          "literal": "asidehq.com",
+          "byteOffset": 5625,
+          "context": "e agreeing to our\",\" \",(0,e.jsx)(D,{className:\"underline\",to:\"https://asidehq.com/policy/terms\",children:\"Terms of Service\"}),\" \",\"and\",\" \",(0,e.jsx)(D,{className:\"underline\",to:\"https://asidehq.com/policy/priva"
+        },
+        {
+          "literal": "asidehq.com",
+          "byteOffset": 5742,
+          "context": "rvice\"}),\" \",\"and\",\" \",(0,e.jsx)(D,{className:\"underline\",to:\"https://asidehq.com/policy/privacy\",children:\"Privacy Policy\"}),\".\"]})]})},es=({disabled:s,onPlanSelect:r,plan:t})=>{const o=t.prices.monthly,n=t.id="
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/artifact-test-CdjpLuI1.js",
+      "sourceSha256": "a8ae44f0cf25f06d16aba21ccb9ae9d4ec11c6228e3d9a027f6b7bd0a0da9f14",
+      "occurrences": [
+        {
+          "literal": "aside.at",
+          "byteOffset": 5629,
+          "context": ":\"#ff9500\",location:\"Sisterita\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o},{name:\"Sam Rivera\",email:\"sam@example.com\"}],description:`Sisterita\n669 Commercial St., San Francisco, CA 94111`,dr"
+        },
+        {
+          "literal": "aside.at",
+          "byteOffset": 6033,
+          "context": "ndarName:\"Work\",color:\"#0b57d0\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o}],description:\"Heads-down time for the launch checklist.\",draft:\"\"}),a(\"Several guests, few details\",\"calendar-event"
+        },
+        {
+          "literal": "aside.at",
+          "byteOffset": 6315,
+          "context": "ndarName:\"Work\",color:\"#7c3aed\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o},{name:\"Mina Lee\",email:\"mina@example.com\"},{name:\"Theo Park\",email:\"theo@example.com\"},{name:\"Sam Rivera\",email:\"sa"
+        },
+        {
+          "literal": "aside.com",
+          "byteOffset": 7237,
+          "context": "\ufffd\ufffd\uc911\ud558\uc138\uc694. \uc9c0\uae08 \uc2dc\uc791\ud574 \ubcf4\uc138\uc694 \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67 https://aside.com\"}),a(\"Long English post, over 280\",\"x-tweet-draft\",{profile:d,body:\"Most of your workday happens in tabs you are already logged i"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/channels-CJn5l9_T.js",
+      "sourceSha256": "7f177cce26d5f305aad4bc3de0d67f513a8d5751fa5401aa243d0186816681e9",
+      "occurrences": [
+        {
+          "literal": "docs.aside.com",
+          "byteOffset": 12618,
+          "context": "onId:s.applicationId??\"\",publicKey:s.publicKey??\"\"})}},cs=s=>`https://docs.aside.com/help/channels-${s}.md`,it=new Map([[\"slack\",{fields:le.slack.fields,createSchema:ee,createDefaults:{platform:\"slack\",projectId:nu"
+        },
+        {
+          "literal": "docs.aside.com",
+          "byteOffset": 28452,
+          "context": "Data(m.remoteControl.status.queryKey({accountId:s}),p)}})),M=`https://docs.aside.com/help/channels-${t===\"grok-bot\"?t:t.split(\"-\")[1]}}.md`,F=D||P.isPending,l=(p,w)=>{if(!p&&(w.reason===\"escape-key\"||F)){w.cancel()"
+        },
+        {
+          "literal": "static.asidehq.com",
+          "byteOffset": 29377,
+          "context": "(ne,{className:\"mb-3 rounded-lg\",children:[(0,e.jsx)(ae,{src:`https://static.asidehq.com/bots/${t}.jpg`}),(0,e.jsx)(te,{children:n.charAt(0)})]}),label:n,description:`Let ${n} use Aside for browser tasks on your device"
+        },
+        {
+          "literal": "static.asidehq.com",
+          "byteOffset": 35003,
+          "context": "\"border-muted rounded-md border\",children:[(0,e.jsx)(ae,{src:`https://static.asidehq.com/bots/${s.platform}.jpg`}),(0,e.jsx)(te,{children:r.label.charAt(0)})]}),(0,e.jsx)(I,{title:s.displayName,description:o}),(0,e.jsx"
+        },
+        {
+          "literal": "static.asidehq.com",
+          "byteOffset": 35690,
+          "context": "\"border-muted rounded-md border\",children:[(0,e.jsx)(ae,{src:`https://static.asidehq.com/bots/${s}.jpg`}),(0,e.jsx)(te,{children:s.charAt(0)})]}),(0,e.jsx)(I,{title:n.label}),(0,e.jsx)(k,{size:\"icon\",variant:\"secondary"
+        },
+        {
+          "literal": "static.asidehq.com",
+          "byteOffset": 36744,
+          "context": "\"border-muted rounded-md border\",children:[(0,e.jsx)(ae,{src:`https://static.asidehq.com/bots/${s}.jpg`}),(0,e.jsx)(te,{children:t.charAt(0)})]}),(0,e.jsx)(I,{title:t,description:n}),(0,e.jsxs)(X,{disabled:y,children:["
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/chat-wBzshK0k.js",
+      "sourceSha256": "4747cb41cb38e8db6da226b4043959a83c4d19c029cafc21a6e6446ab6581642",
+      "occurrences": [
+        {
+          "literal": "aside.com",
+          "byteOffset": 2481,
+          "context": "u away.\n3. Make it easy to find your way back.\n\n[Visit Aside](https://aside.com) when you\u2019re ready.\n\n\\`\\`\\`ts\nconst conversation = { storage: \"memory\", threads: 1 };\n\\`\\`\\`\n\n\uadf8\ub9ac\uace0 \ud55c\uad6d\uc5b4\ub85c \uae38\uac8c \uc774"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/developers-DTvaoVBC.js",
+      "sourceSha256": "c5f9e7bb2a2c1439ac9d28fa5c56f22b97e78a148ae8a1b516287073d8ab807d",
+      "occurrences": [
+        {
+          "literal": "releases.aside.com",
+          "byteOffset": 6320,
+          "context": "d sign in with the same Aside account:\\n\\n```bash\\ncurl -fsSL https://releases.aside.com/install.sh | bash\\naside login\\naside host list           # this device should show as online\\naside host use <device>   # make i"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/experimental-Xq3YsEPK.js",
+      "sourceSha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "occurrences": [
+        {
+          "literal": "@at.studio",
+          "byteOffset": 1701,
+          "context": "tions({accountId:t}));return a?.email?.trim().toLowerCase().endsWith(\"@at.studio\")?(0,e.jsx)(me,{children:s},t):(0,e.jsx)(O,{className:\"size-full\",children:(0,e.jsx)(\"main\",{className:\"mx-auto w-full max-w-2xl "
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/route-TQyeTEXE.js",
+      "sourceSha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+      "occurrences": [
+        {
+          "literal": "docs.aside.com",
+          "byteOffset": 60349,
+          "context": "rome://extensions\"},{label:\"Docs\",icon:h2,kind:\"external\",to:\"https://docs.aside.com\"},{label:\"Community\",icon:N2,kind:\"external\",to:\"https://discord.gg/2h4cNW6ayc\"}],v=\"h-8 text-muted-foreground data-[active=true]"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/strip-markdown-DRcmtuJc.js",
+      "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "occurrences": [
+        {
+          "literal": "api.aside.com",
+          "byteOffset": 36755,
+          "context": "t}}),i.complete()})().catch(l=>i.error(_r.from(l)))})}var Zt=\"https://api.aside.com\";function K1(e,t){const n=typeof e==\"string\"?new URL(e,`${Zt}/`):e;return fetch(n,t)}var Jr={kind:\"local\"},si={host:Jr,deviceName"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/subscription-C_XzJh5Z.js",
+      "sourceSha256": "02b3872561f7e2f15f7d7a882f24b4e0fbcda10bdb6ad57522702ac15138c00c",
+      "occurrences": [
+        {
+          "literal": "aside.com",
+          "byteOffset": 508,
+          "context": ";function t(e,a){const r=e?.email?.toLowerCase();return r?.endsWith(\"@aside.com\")||r?.endsWith(\"@at.studio\")?!0:a.includes(e?.subscriptionPlan??\"free\")}function o(e,{experimentalEligible:a=!1}={}){return a?!0:"
+        },
+        {
+          "literal": "@at.studio",
+          "byteOffset": 534,
+          "context": "?.email?.toLowerCase();return r?.endsWith(\"@aside.com\")||r?.endsWith(\"@at.studio\")?!0:a.includes(e?.subscriptionPlan??\"free\")}function o(e,{experimentalEligible:a=!1}={}){return a?!0:t(e,s)}export{o as i,i as n"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "occurrences": [
+        {
+          "literal": "api.aside.com",
+          "byteOffset": 326062,
+          "context": "er\",\n  \"cursor\",\n  \"console\",\n  \"bubble\"\n], ww = Z(yw), bw = \"https://api.aside.com\";\nfunction Sw(e, t) {\n  const r = typeof e == \"string\" ? new URL(e, `${bw}/`) : e;\n  return fetch(r, t);\n}\nvar _w = p().max(300, "
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "occurrences": [
+        {
+          "literal": "aside.at",
+          "byteOffset": 274152,
+          "context": "ocalhost:5175\",\"http://127.0.0.1:5175\",\"http://0.0.0.0:5175\",\"https://aside.at\"]);function Kv(e){try{return Zv.has(new URL(e).origin)}catch{return!1}}function qv(e){return typeof e==\"object\"&&e!==null&&\"sourc"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "manifest.json",
+      "sourceSha256": "afa06a5fc5b0ca836413f8b7b8eae20d440dff502b1871b0cdb489a04d244570",
+      "occurrences": [
+        {
+          "literal": "api.aside.com",
+          "byteOffset": 2165,
+          "context": "\": [\n        \"main.html\"\n      ],\n      \"matches\": [\n        \"https://api.aside.com/*\",\n        \"https://api.asidehq.com/*\"\n      ]\n    }\n  ],\n  \"commands\": {\n    \"_execute_action\": {\n      \"suggested_key\": {\n    "
+        },
+        {
+          "literal": "api.asidehq.com",
+          "byteOffset": 2200,
+          "context": "     \"matches\": [\n        \"https://api.aside.com/*\",\n        \"https://api.asidehq.com/*\"\n      ]\n    }\n  ],\n  \"commands\": {\n    \"_execute_action\": {\n      \"suggested_key\": {\n        \"default\": \"Alt+Shift+B\",\n       "
+        }
+      ]
+    },
+    {
+      "component": "vault",
+      "path": "assets/globals-CO6zPMxV.js",
+      "sourceSha256": "ea788a39e761d38b2db819f978b62fdf908680adc4daf88e60c4e8cc4cce9404",
+      "occurrences": [
+        {
+          "literal": "api.aside.com",
+          "byteOffset": 294829,
+          "context": "x)(mx,{className:Ce(\"animate-spin text-inherit\",n),...o}),hx=\"https://api.aside.com\",gx=(n,o,r,c,u,d,f,m)=>{let g=document.documentElement,b=[\"light\",\"dark\"];function p(k){(Array.isArray(n)?n:[n]).forEach(j=>{let "
+        },
+        {
+          "literal": "static.asidehq.com",
+          "byteOffset": 603969,
+          "context": "includes(u.protocol)||u.hostname===\"logos.context.dev\"||u.hostname===\"static.asidehq.com\")return{host:\"\",fallbackUrl:r??c};const d=u.hostname.toLowerCase().replace(/\\.$/,\"\"),f=I4(d);return{host:f.isIcann&&f.domain?d:\"\""
+        }
+      ]
+    },
+    {
+      "component": "vault",
+      "path": "background.js",
+      "sourceSha256": "eb760bfead1afc936c7c4b12573423809a224a3859781991ae40f4e4c00139fb",
+      "occurrences": [
+        {
+          "literal": "api.aside.com",
+          "byteOffset": 859235,
+          "context": "e(), Ma(), Gv(), Bp(), Hc();\n})), Ne, Wr = $((() => {\n  Ne = \"https://api.aside.com\";\n})), be, Dp = $((() => {\n  be = {\n    auth: \"standalone_auth\",\n    wrappedPmk: \"standalone_pmk_wrapped\",\n    pmkWrapKey: \"stand"
+        }
+      ]
+    }
+  ]
+}
