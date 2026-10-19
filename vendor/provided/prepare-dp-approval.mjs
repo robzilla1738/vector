@@ -4,6 +4,8 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+const {bindings:rolePins}=createRequire(import.meta.url)('./native-role-pins.cjs');
 import { adaptCliBinary } from './cli-adapter.mjs';
 import { adaptDaemonBinary } from './daemon-adapter.mjs';
 import { nativePackagingManifest } from './native-packaging-manifest.mjs';
@@ -38,12 +40,12 @@ export function prepareDpApproval({resourceRoot,nativeOutput,helperReceipt,previ
     const app=path.join(root,'apps',spec.name,spec.app),executable=path.join(app,'Contents/MacOS',spec.executable),native=path.join(app,'Contents/Resources/native');
     const original=fs.readFileSync(regular(spec.source)),adapted=spec.adapt(original),signing=suppliedSeaSigningPolicy(spec.source);
     fs.mkdirSync(path.dirname(executable),{recursive:true,mode:0o700});fs.mkdirSync(native,{recursive:true,mode:0o700});fs.writeFileSync(executable,adapted.binary,{flag:'wx',mode:0o755});
-    for(const name of ['aux-native.cjs','native-load-diagnostic.cjs','native-load-only-probe.cjs','native-dp-diagnostic.cjs','dp-probe-common.cjs','dp-probe-policy.json'])copy(path.join(repository,'vendor/provided',name),path.join(native,name));
-    copy(artifact('aux-native-guard.node'),path.join(native,'aux-native-guard.node'));copy(binding,path.join(native,'provided-native.node'));copy(helper.output.path,path.join(native,'aux-dp-scope-helper.node'));
+    for(const name of ['aux-native.cjs','native-role-pins.cjs','native-load-diagnostic.cjs','native-load-only-probe.cjs','native-dp-diagnostic.cjs','dp-probe-common.cjs','dp-probe-policy.json'])copy(path.join(repository,'vendor/provided',name),path.join(native,name));
+    copy(artifact('aux-native-guard.node'),path.join(native,'aux-native-guard.node'));const roleBinding=regular(path.join(resourceRoot,rolePins[spec.name].suffix.slice(1),'provided-native.node'));if(sha(roleBinding)!==rolePins[spec.name].sha256)throw Error('Original role binding drift');copy(roleBinding,path.join(native,'provided-native.node'));copy(helper.output.path,path.join(native,'aux-dp-scope-helper.node'));
     const entitlements=path.join(staged,`${spec.name}-entitlements.plist`);fs.writeFileSync(entitlements,command('/usr/bin/plutil',['-convert','xml1','-o','-','-'],{input:JSON.stringify(signing.values)}).stdout,{flag:'wx',mode:0o600});
     command('/usr/bin/codesign',['--force','--sign','-','--timestamp=none','--options','runtime','--entitlements',entitlements,executable]);command('/usr/bin/codesign',['--verify','--strict','--all-architectures',executable]);
     let launch=executable;if(spec.name==='cli'){launch=path.join(path.dirname(executable),'aux-cli');copy(artifact('aux-cli-launcher'),launch);}
-    hosts.push({host:spec.name,executable,launch,originalBinarySha256:createHash('sha256').update(original).digest('hex'),adaptedCodeSha256:adapted.codeSha256,signedBinarySha256:sha(executable),signing});
+    hosts.push({host:spec.name,bindingSha256:sha(roleBinding),executable,launch,originalBinarySha256:createHash('sha256').update(original).digest('hex'),adaptedCodeSha256:adapted.codeSha256,signedBinarySha256:sha(executable),signing});
   }
   function inventory(directory){for(const name of fs.readdirSync(directory).sort()){const p=path.join(directory,name),s=fs.lstatSync(p);if(s.isDirectory())inventory(p);else artifacts.push({path:regular(p),sha256:sha(p)});}}inventory(staged);
   const old=JSON.parse(fs.readFileSync(previewPath));

@@ -34,16 +34,14 @@ if (status?.boundaryActive !== true || status.denyAll !== loadOnly) {
 process.env.AUX_HOME = home;
 process.env.AUX_NATIVE_KEYCHAIN_SCOPE = scope;
 const bindingPath = owned('provided-native.node');
-if (crypto.createHash('sha256').update(fs.readFileSync(bindingPath)).digest('hex') !==
-    'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb') {
-  throw new Error('Provided native binding hash mismatch');
-}
+const { verifyNativeRole } = require(owned('native-role-pins.cjs'));
+const bindingRole = verifyNativeRole(directory, crypto.createHash('sha256').update(fs.readFileSync(bindingPath)).digest('hex'));
 const original = require(bindingPath);
 if (loadOnly) {
   // Original NAPI entry registration is allowed; original commands/PDF actions
   // are not. This mode cannot become production inside the same process.
   const descriptors = Object.getOwnPropertyDescriptors(original);
-  const registration = Object.freeze({ originalBindingLoaded: true,
+  const registration = Object.freeze({ originalBindingLoaded: true, bindingRole,
     runExportRegistered: typeof descriptors.run?.value === 'function',
     pdfExportRegistered: Object.hasOwn(descriptors, 'pdf') });
   module.exports = Object.freeze({ registration, get boundaryStatus() { return guard.status(); },

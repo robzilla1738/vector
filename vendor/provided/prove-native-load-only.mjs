@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+const { bindings: rolePins } = createRequire(import.meta.url)('./native-role-pins.cjs');
 import { nativePackagingManifest } from './native-packaging-manifest.mjs';
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const digest = (p) => createHash('sha256').update(fs.readFileSync(p)).digest('hex');
@@ -17,7 +19,7 @@ function signed(p) {
   const r = spawnSync('/usr/bin/codesign', ['--verify', '--strict', '--all-architectures', regular(p)], { timeout: 10000, maxBuffer: 8192 });
   if (r.status !== 0) throw new Error('Signed proof artifact verification failed');
 }
-export function proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInventory }) {
+export function proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInventory, role = 'daemon' }) {
   resourceRoot = fs.realpathSync(resourceRoot); nativeOutput = fs.realpathSync(nativeOutput);
   const receiptPath = regular(path.join(nativeOutput, 'native-build-receipt.json'));
   const receipt = JSON.parse(fs.readFileSync(receiptPath));
@@ -35,15 +37,16 @@ export function proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInvento
   const inventory = JSON.parse(fs.readFileSync(regular(runtimeInventory))).components?.runtime;
   const nodePin = inventory?.files?.find((e) => e.path === 'node/bin/node');
   if (inventory?.sourceVersion !== '1.26.1019.335' || !nodePin || digest(node) !== nodePin.sourceSha256) throw new Error('Unchanged supplied runtime Node required');
-  const binding = regular(path.join(resourceRoot, 'apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node'));
-  if (digest(binding) !== 'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb') throw new Error('Original supplied binding pin mismatch');
+  const rolePin=rolePins[role];if(!rolePin)throw new Error('Explicit original native role required');
+  const binding=regular(path.join(resourceRoot,rolePin.suffix.slice(1),'provided-native.node'));
+  if(digest(binding)!==rolePin.sha256)throw new Error('Original supplied role binding pin mismatch');
   for (const p of [node, guard, boundary, binding]) signed(p);
   const root = fs.realpathSync(fs.mkdtempSync(path.join(tmpdir(), 'aux-native-load-proof-')));
   fs.chmodSync(root, 0o700);
   try {
-    const home = path.join(root, 'home'), otherHome = path.join(root, 'other-home'), directory = path.join(root, 'native'), temporary = path.join(root, 'tmp');
-    for (const p of [home, otherHome, directory, temporary]) fs.mkdirSync(p, { mode: 0o700 });
-    const copies = [[guard, 'aux-native-guard.node'], [boundary, 'libaux-native-boundary.dylib'], [binding, 'provided-native.node'], [path.join(repository, 'vendor/provided/aux-native.cjs'), 'aux-native.cjs'], [path.join(repository, 'vendor/provided/native-load-only-probe.cjs'), 'probe.cjs']];
+    const home = path.join(root, 'home'), otherHome = path.join(root, 'other-home'), directory = path.join(root, 'Resources/aux',rolePin.suffix.slice(1)), temporary = path.join(root, 'tmp');
+    for (const p of [home, otherHome, directory, temporary]) fs.mkdirSync(p, { recursive:true,mode: 0o700 });
+    const copies = [[guard, 'aux-native-guard.node'], [boundary, 'libaux-native-boundary.dylib'], [binding, 'provided-native.node'], [path.join(repository, 'vendor/provided/aux-native.cjs'), 'aux-native.cjs'], [path.join(repository, 'vendor/provided/native-role-pins.cjs'), 'native-role-pins.cjs'], [path.join(repository, 'vendor/provided/native-load-only-probe.cjs'), 'probe.cjs']];
     for (const [source, name] of copies) {
       const target = path.join(directory, name); fs.copyFileSync(regular(source), target, fs.constants.COPYFILE_EXCL);
       if (digest(source) !== digest(target)) throw new Error('Proof copy mismatch');
@@ -57,15 +60,15 @@ export function proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInvento
     if (r.status !== 0) throw new Error('Dedicated Node load-only proof refused (no SEA acceptance implied)');
     const result = JSON.parse(r.stdout);
     for (const p of [result.main, result.worker]) {
-      if (p?.importedPointersVerified !== true || p.denyAll !== true || p.canonicalScopeBound !== true || p.scopeChangeRefused !== true || p.originalBindingLoaded !== true || p.runExportRegistered !== true || p.originalCommandsInvoked !== false || p.originalPdfInvoked !== false || !Number.isSafeInteger(p.refusedSecurityCalls)) throw new Error('Incomplete load-only proof');
+      if (p?.bindingRole !== role || p?.importedPointersVerified !== true || p.denyAll !== true || p.canonicalScopeBound !== true || p.scopeChangeRefused !== true || p.originalBindingLoaded !== true || p.runExportRegistered !== true || p.originalCommandsInvoked !== false || p.originalPdfInvoked !== false || !Number.isSafeInteger(p.refusedSecurityCalls)) throw new Error('Incomplete load-only proof');
     }
-    return { ...result, nativeBuildReceiptSha256: digest(receiptPath), nodeSha256: digest(node), bindingSha256: digest(binding),
+    return { ...result, bindingRole:role, nativeBuildReceiptSha256: digest(receiptPath), nodeSha256: digest(node), bindingSha256: digest(binding),
       guardSha256: digest(guard), boundarySha256: digest(boundary), shimSha256: digest(path.join(directory, 'aux-native.cjs')),
       proofSha256: digest(path.join(directory, 'probe.cjs')), signedInputsVerified: true, suppliedSeaLoadingProven: false, dpRuntimeAccepted: false };
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [resourceRoot, nativeOutput, runtimeInventory] = process.argv.slice(2);
+  const [resourceRoot, nativeOutput, runtimeInventory, role] = process.argv.slice(2);
   if (!resourceRoot || !nativeOutput || !runtimeInventory) throw new Error('Usage: prove-native-load-only.mjs <resource-root> <native-output> <runtime-inventory>');
-  console.log(JSON.stringify(proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInventory }), null, 2));
+  console.log(JSON.stringify(proveNativeLoadOnly({ resourceRoot, nativeOutput, runtimeInventory, role }), null, 2));
 }

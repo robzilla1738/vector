@@ -18,7 +18,7 @@ function proof({ directory, otherHome }) {
   const canonicalScopeBound = process.env.AUX_NATIVE_KEYCHAIN_SCOPE === crypto.createHash('sha256').update(home).digest('hex');
   if (!scopeChangeRefused || !canonicalScopeBound || status.denyAll !== true || !Number.isSafeInteger(status.refusedSecurityCalls)) throw new Error('Native scope/latch proof failed');
   return { importedPointersVerified: true, denyAll: true, canonicalScopeBound, scopeChangeRefused,
-    originalBindingLoaded: true, runExportRegistered: true, pdfExportRegistered: binding.registration.pdfExportRegistered,
+    originalBindingLoaded: true, bindingRole: binding.registration.bindingRole, runExportRegistered: true, pdfExportRegistered: binding.registration.pdfExportRegistered,
     refusedSecurityCalls: status.refusedSecurityCalls, originalCommandsInvoked: false, originalPdfInvoked: false };
 }
 if (!isMainThread) {

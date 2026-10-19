@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { adaptDaemonBinary } from './daemon-adapter.mjs';
 import { adaptCliBinary } from './cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../aside/lib/sea.mjs';
+import { createRequire } from 'node:module';
+const { bindings: rolePins } = createRequire(import.meta.url)('./native-role-pins.cjs');
 import { nativePackagingManifest } from './native-packaging-manifest.mjs';
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const hash = (b) => createHash('sha256').update(b).digest('hex');
@@ -56,9 +58,13 @@ export function proveSuppliedSeaLoadOnly({ resourceRoot, nativeOutput, evidenceP
     boundary = diagnostic;
   }
   const guard = artifact('aux-native-guard.node'), launcher = artifact('aux-cli-launcher');
-  const binding = regular(path.join(resourceRoot, 'apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node'));
-  if (sha(binding) !== 'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb') throw new Error('Supplied binding pin drift');
-  command('/usr/bin/codesign', ['--verify', '--strict', '--all-architectures', binding]);
+  const bindings = {};
+  for (const [role, pin] of Object.entries(rolePins)) {
+    const binding = regular(path.join(resourceRoot, pin.suffix.slice(1), 'provided-native.node'));
+    if (sha(binding) !== pin.sha256) throw new Error('Supplied role binding pin drift');
+    command('/usr/bin/codesign', ['--verify', '--strict', '--all-architectures', binding]);
+    bindings[role] = binding;
+  }
   const output = path.resolve(repository, 'out/provided-sea-proof'); fs.mkdirSync(output, { recursive: true });
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(output, 'disposable-'))); fs.chmodSync(temporary, 0o700);
   try {
@@ -70,11 +76,12 @@ export function proveSuppliedSeaLoadOnly({ resourceRoot, nativeOutput, evidenceP
     ];
     const results = [];
     for (const host of hosts) {
+      const binding = bindings[host.name];
       const original = fs.readFileSync(regular(host.original)), adapted = host.adapt(original), policy = originalPolicy(host.original);
       const app = path.join(root, 'apps', host.name, host.app), executable = path.join(app, 'Contents/MacOS', host.executable), native = path.join(app, 'Contents/Resources/native');
       fs.mkdirSync(path.dirname(executable), { recursive: true, mode: 0o700 }); fs.mkdirSync(native, { recursive: true, mode: 0o700 });
       fs.writeFileSync(executable, adapted.binary, { flag: 'wx', mode: 0o755 });
-      for (const [source, name] of [[guard, 'aux-native-guard.node'], [binding, 'provided-native.node'], ...['aux-native.cjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'].map((name) => [path.join(repository, 'vendor/provided', name), name])]) {
+      for (const [source, name] of [[guard, 'aux-native-guard.node'], [binding, 'provided-native.node'], ...['aux-native.cjs', 'native-role-pins.cjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'].map((name) => [path.join(repository, 'vendor/provided', name), name])]) {
         fs.copyFileSync(regular(source), path.join(native, name));
         if (sha(source) !== sha(path.join(native, name))) throw new Error('Diagnostic staging byte drift');
       }
@@ -116,12 +123,12 @@ export function proveSuppliedSeaLoadOnly({ resourceRoot, nativeOutput, evidenceP
       if (host.name === 'cli' && !launcherPassed) throw new Error('CLI native launcher proof failed; direct fallback is diagnostic only');
       const result = JSON.parse(execution.stdout);
       if (result.host !== 'supplied-sea' || result.productMainStarted !== false || result.dpRuntimeAccepted !== false) throw new Error('SEA diagnostic did not exit before product main');
-      for (const p of [result.main, result.worker]) if (p?.importedPointersVerified !== true || p.denyAll !== true || p.canonicalScopeBound !== true || p.scopeChangeRefused !== true || p.originalCommandsInvoked !== false || p.originalPdfInvoked !== false || p.originalBindingLoaded !== true || p.runExportRegistered !== true || p.pdfExportRegistered !== true || !Number.isSafeInteger(p.refusedSecurityCalls)) throw new Error('SEA registration proof incomplete');
-      results.push({ host: host.name, originalBinarySha256: hash(original), adaptedCodeSha256: adapted.codeSha256, adaptedUnsignedBinarySha256: hash(adapted.binary), signedBinarySha256: sha(executable), launcherUsed: host.name === 'cli', launcherPassed, ...(launcherFailure ? { launcherFailure, directSeaFallbackUsed: true } : {}), signingPolicy: policy, result });
+      for (const p of [result.main, result.worker]) if (p?.bindingRole !== host.name || p?.importedPointersVerified !== true || p.denyAll !== true || p.canonicalScopeBound !== true || p.scopeChangeRefused !== true || p.originalCommandsInvoked !== false || p.originalPdfInvoked !== false || p.originalBindingLoaded !== true || p.runExportRegistered !== true || p.pdfExportRegistered !== true || !Number.isSafeInteger(p.refusedSecurityCalls)) throw new Error('SEA registration proof incomplete');
+      results.push({ host: host.name, bindingSha256:sha(binding), originalBinarySha256: hash(original), adaptedCodeSha256: adapted.codeSha256, adaptedUnsignedBinarySha256: hash(adapted.binary), signedBinarySha256: sha(executable), launcherUsed: host.name === 'cli', launcherPassed, ...(launcherFailure ? { launcherFailure, directSeaFallbackUsed: true } : {}), signingPolicy: policy, result });
     }
     const evidence = { version: 1, nativeBuildReceiptSha256: sha(receiptPath), nativeBinariesRecompiled: false,
       diagnosticSources: ['native-diagnostic-hook.mjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs', 'daemon-adapter.mjs', 'cli-adapter.mjs', 'prove-sea-load-only.mjs'].map((name) => ({ path: `vendor/provided/${name}`, sha256: sha(path.join(repository, 'vendor/provided', name)) })), results,
-      diagnosticBoundaryUsed: Boolean(diagnosticBoundary), boundarySha256: sha(boundary), guardSha256: sha(guard), bindingSha256: sha(binding), originalCommandsInvoked: false, dpRuntimeAccepted: false };
+      diagnosticBoundaryUsed: Boolean(diagnosticBoundary), boundarySha256: sha(boundary), guardSha256: sha(guard), bindingSha256ByRole: Object.fromEntries(Object.entries(bindings).map(([role,file])=>[role,sha(file)])), originalCommandsInvoked: false, dpRuntimeAccepted: false };
     fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`); return evidence;
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }

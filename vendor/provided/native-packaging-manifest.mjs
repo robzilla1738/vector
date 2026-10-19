@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const digest = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run') {
-  const sources = ['aux-native.cjs', 'build-native-boundary.mjs', 'native/keychain-query-map.h',
+  const sources = ['aux-native.cjs', 'native-role-pins.cjs', 'build-native-boundary.mjs', 'native/keychain-query-map.h',
     'native/keychain-query-map.mm', 'native/keychain-interpose.mm', 'native/sea-resource-pointer.mm', 'native/native-carrier.mm',
     'native/node-boundary-guard.mm', 'native/cli-launcher.mm', 'native/keychain-query-map-test.mm'].map((name) => {
     const path = resolve(repository, 'vendor/provided', name);
@@ -28,6 +28,7 @@ export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run')
   });
   return { version: 1, verification: 'inventory-only; compilation/load/DP acceptance tracked separately',
     productionReady: false, sources, outputs,
+    immutableOriginals: { daemon: 'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb', cli: '66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc' },
     immutableOriginal: { name: 'provided-native.node', sha256: 'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb' } };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
