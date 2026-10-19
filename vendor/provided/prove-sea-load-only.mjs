@@ -135,3 +135,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.error(error.message); if (error.proofDiagnostic) console.error(error.proofDiagnostic); process.exitCode = 1;
   }
 }
+
+// Pure staging helpers reused by the approval preparer; neither runs native code.
+export { command as checkedSubprocess, originalPolicy as suppliedSeaSigningPolicy };

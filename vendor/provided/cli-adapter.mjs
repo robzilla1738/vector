@@ -1,6 +1,6 @@
 /** Rebrand the pinned supplied CLI without replacing its commands or RPC implementation. */
 import { createHash } from 'node:crypto';
-import { nativeDiagnosticExpression } from './native-diagnostic-hook.mjs';
+import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from './native-diagnostic-hook.mjs';
 import { brandProductPreservingWires } from './wire-brand.mjs';
 import { CLI_COMMAND } from '../aside/patches/brand.mjs';
 import { findMachOSeaSection, readSeaBlob, writeSeaBlob, injectMachOSeaBlob } from '../aside/lib/sea.mjs';
@@ -34,7 +34,7 @@ export function adaptCliCode(original) {
   if (!binding) throw new Error('Supplied CLI native loader anchor missing');
   edit('isolated native binding', 'integration', binding,
     'function candidateBindingPaths() {\n\treturn [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")];\n}', 1);
-  edit('load-only native SEA diagnostic', 'integration', 'buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch', `if(process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY===\`1\`){await ${nativeDiagnosticExpression};}else buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch`, 1);
+  edit('load-only native SEA diagnostic', 'integration', 'buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch', `if(${nativeDiagnosticPredicate}){await ${nativeDiagnosticExpression};}else buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch`, 1);
   const branded = brandProductPreservingWires(code, { productCount: 101, wireCounts: {
     'AsideDaemonSessionToken ': 2, 'AsideSessionToken': 0,
     'Aside Daemon Auth v1': 1, 'Aside Daemon Dev Auth v1': 0, 'Aside.': 0,

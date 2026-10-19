@@ -3,6 +3,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 module.exports = async function diagnoseSuppliedSea() {
+  if (process.env.AUX_PROVIDED_DP_PROBE === '1') return require('./native-dp-diagnostic.cjs')();
   if (process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY !== '1' || process.env.AUX_ENABLE_PROVIDED_NATIVE_CARRIER) throw new Error('Dedicated load-only process required');
   const home = await fs.realpath(process.env.AUX_HOME);
   const metadata = await fs.lstat(home);

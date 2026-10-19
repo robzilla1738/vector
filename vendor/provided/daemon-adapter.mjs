@@ -1,6 +1,6 @@
 /** Pinned supplied daemon adaptation. No substitute RPC handlers or plan bypasses. */
 import { createHash } from 'node:crypto';
-import { nativeDiagnosticExpression } from './native-diagnostic-hook.mjs';
+import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from './native-diagnostic-hook.mjs';
 import { brandProductPreservingWires } from './wire-brand.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -39,7 +39,7 @@ export const platformEdits = [
   edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
   edit('bundled runtime lazy cache provisioning', 'async function performInstall(Cn){let ei=path.resolve(Cn.runtimeDir??AUX_RUNTIME_DIR),ti=resolveAgentRuntimeTarget(Cn.platform,Cn.arch);setAgentRuntimeProgress(', 'async function performInstall(Cn){let ei=path.resolve(Cn.runtimeDir??AUX_RUNTIME_DIR),ti=resolveAgentRuntimeTarget(Cn.platform,Cn.arch);await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/runtime-bootstrap.cjs`))(ei);setAgentRuntimeProgress(', 1),
   edit('bundled memory startup provisioning', 'async function main(){(0,import_undici.setGlobalDispatcher)', 'async function main(){await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/memory-bootstrap.cjs`))();(0,import_undici.setGlobalDispatcher)', 1),
-  edit('load-only native SEA diagnostic', '(process.argv.includes(`--verify-local-memory`)?', `(process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY===\`1\`?${nativeDiagnosticExpression}:process.argv.includes(\`--verify-local-memory\`)?`, 1),
+  edit('load-only native SEA diagnostic', '(process.argv.includes(`--verify-local-memory`)?', `(${nativeDiagnosticPredicate}?${nativeDiagnosticExpression}:process.argv.includes(\`--verify-local-memory\`)?`, 1),
   edit('telemetry disabled', 'new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{'.replace('ASIDE_', 'AUX_'), 'new PostHog(AUX_POSTHOG_PROJECT_API_KEY,{disabled:!0,', 1),
   // Local-only boundary: rejected network requests retain their original errors;
   // nothing here invents plans, account state, search results or sync success.

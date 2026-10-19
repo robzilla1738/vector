@@ -1,0 +1,112 @@
+{
+  "core": {
+    "version": 1,
+    "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+    "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "nativeReceiptSha256": "fa82f5db283bdf7d3837f853ba6624d459205a4691e4298e230bee0ef45b600e",
+    "originalBindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+    "installationRows": [
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.meta",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.sig",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.kem",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      },
+      {
+        "itemClass": "kSecClassGenericPassword",
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.dk",
+        "dataProtectionKeychain": true,
+        "authenticationUI": "kSecUseAuthenticationUIFail"
+      }
+    ],
+    "commands": [
+      "install-status",
+      "install-init",
+      "get-public-keys",
+      "cdp-sign"
+    ],
+    "sameScopeContinuationFamilies": [
+      {
+        "name": "installation",
+        "logicalService": "aside.install",
+        "logicalAccounts": [
+          "aside.install.meta",
+          "aside.install.sig",
+          "aside.install.kem",
+          "aside.dk"
+        ]
+      },
+      {
+        "name": "Vault password session",
+        "source": "SESSION_ACCOUNT_PREFIX=aside.pwm.session; sessionAccount(id)=prefix_id",
+        "logicalKey": "aside.pwm.session_<nativeSlot from this home PWM registry>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ],
+        "biometry": false
+      },
+      {
+        "name": "Vault auth envelope",
+        "source": "storageKey(id)=AUX_KEYCHAIN_ID_PREFIX.pwm.auth_id",
+        "logicalKey": "aux.pwm.auth_<PWM account UUID from this home>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      },
+      {
+        "name": "Chrome sync fixture key",
+        "source": "getChromeSyncKeyStorageKey(id)=AUX_KEYCHAIN_ID_PREFIX.csk_id",
+        "logicalKey": "aux.csk_<test account ID from this home>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      },
+      {
+        "name": "MCP fixture credentials",
+        "source": "credentialIndexKey(account)=mcp:index:account; credentialKey(account,server)=mcp:account:server",
+        "logicalKey": "mcp:index:<test account ID> or mcp:<test account ID>:<explicit local fixture server ID>",
+        "operations": [
+          "read",
+          "save",
+          "clear"
+        ]
+      }
+    ],
+    "forbidden": [
+      "original Aside group fallback",
+      "owner rows/accounts/credentials",
+      "other Aux scope",
+      "biometric or interactive UI grant",
+      "file-Keychain backend",
+      "keychain/default/search-list changes",
+      "wildcard/prefix enumeration",
+      "unseen selector families",
+      "install-destroy",
+      "dk-unwrap"
+    ],
+    "actualDefaultEntitlementGroup": "UNKNOWN until observed; separate ad hoc hosts may not share DP authority, never borrow original group"
+  },
+  "approvalId": "4d1e3f31dca7970939fc11b6feb39b7ddc6d4b3d23a8e74b863adc4f193d6f5e"
+}
