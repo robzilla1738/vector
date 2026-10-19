@@ -119,6 +119,32 @@ export class ChannelService {
     this.store.set(accountId, 'channelPolicies', id, parsed);
     return parsed;
   }
+  async testConnection(
+    accountId: number,
+    input: { connectionId?: string | undefined; token?: string | undefined },
+  ) {
+    this.store.requireAccount(accountId);
+    const existing = input.connectionId
+      ? this.get(accountId, input.connectionId)
+      : undefined;
+    const token =
+      input.token ??
+      (existing ? this.credentials.key(accountId, existing.id) : undefined);
+    if (!token)
+      fail('BAD_REQUEST', 'Provide a token or an owned connection to verify');
+    z.string()
+      .regex(/^\d{4,20}:[A-Za-z0-9_-]{20,200}$/)
+      .parse(token);
+    const identity = await this.transport.identify(
+      token,
+      AbortSignal.timeout(15000),
+    );
+    this.store.requireAccount(accountId);
+    if (existing) this.get(accountId, existing.id);
+    if (existing && existing.identity.id !== identity.id)
+      fail('CONFLICT', 'The token belongs to a different bot');
+    return { verified: true, identity };
+  }
   async create(
     accountId: number,
     input: { name: string; token: string; enabled: boolean },
@@ -164,6 +190,7 @@ export class ChannelService {
     },
   ) {
     const row = this.get(accountId, id);
+    const expected = JSON.stringify(row);
     await this.stop(accountId, id);
     if (patch.token) {
       const token = z
@@ -176,8 +203,15 @@ export class ChannelService {
       );
       if (identity.id !== row.identity.id)
         fail('CONFLICT', 'Use a new connection for a different bot identity');
+      if (JSON.stringify(this.get(accountId, id)) !== expected)
+        fail(
+          'CONFLICT',
+          'Channel connection changed while verifying credentials',
+        );
       this.credentials.set(accountId, id, { type: 'api_key', key: token });
     }
+    if (JSON.stringify(this.get(accountId, id)) !== expected)
+      fail('CONFLICT', 'Channel connection changed while updating');
     if (patch.name !== undefined) row.name = patch.name;
     if (patch.enabled !== undefined) row.enabled = patch.enabled;
     delete row.error;
@@ -263,7 +297,12 @@ export class ChannelService {
         (!id || row.connectionId === id),
     );
   }
-  decide(accountId: number, requestId: string, approved: boolean) {
+  decide(
+    accountId: number,
+    requestId: string,
+    approved: boolean,
+    expectedPolicy?: ChannelPolicy,
+  ) {
     const request = this.pairings(accountId).find(
       (row) => row.id === requestId,
     );
@@ -271,6 +310,13 @@ export class ChannelService {
     this.get(accountId, request.connectionId);
     if (request.state !== 'pending')
       fail('CONFLICT', 'Pairing request was already decided');
+    if (
+      approved &&
+      expectedPolicy &&
+      JSON.stringify(channelPolicy.parse(expectedPolicy)) !==
+        JSON.stringify(this.policy(accountId, request.connectionId))
+    )
+      fail('CONFLICT', 'Channel policy changed. Review sender access again.');
     request.state = approved ? 'approved' : 'rejected';
     this.store.set(accountId, 'channelPairings', request.id, request);
     if (approved) {

@@ -31,6 +31,20 @@ export function createChannelRouter(
   });
   return t.router({
     connections: t.router({
+      test: procedure
+        .input(
+          scope
+            .extend({
+              connectionId: z.string().uuid().optional(),
+              token: z.string().min(1).max(250).optional(),
+            })
+            .refine((input) => !!input.connectionId || !!input.token, {
+              message: 'Choose a connection or provide a token',
+            }),
+        )
+        .mutation(({ input }) =>
+          service.testConnection(input.accountId, input),
+        ),
       create: procedure
         .input(
           scope.extend({
@@ -73,9 +87,19 @@ export function createChannelRouter(
           service.pairings(input.accountId, input.connectionId),
         ),
       approve: procedure
-        .input(scope.extend({ requestId: z.string().uuid() }))
+        .input(
+          scope.extend({
+            requestId: z.string().uuid(),
+            expectedPolicy: channelPolicy.optional(),
+          }),
+        )
         .mutation(({ input }) =>
-          service.decide(input.accountId, input.requestId, true),
+          service.decide(
+            input.accountId,
+            input.requestId,
+            true,
+            input.expectedPolicy,
+          ),
         ),
       reject: procedure
         .input(scope.extend({ requestId: z.string().uuid() }))

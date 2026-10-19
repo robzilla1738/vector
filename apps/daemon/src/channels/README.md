@@ -50,3 +50,15 @@ account isolation, replay, default task permission, credential redaction/mode, p
 revocation, removal and uncertain-send retry rejection. No real bot login/messages were
 performed. Continuous Telegram polling and outbound delivery remain unverified against
 a live owner-authorized bot; OAuth/cloud transports and groups/media remain unsupported.
+
+
+Settings UI is at `#/settings/channels` in the agent extension. New connections are
+verified via getMe and saved disabled; receiving requires an explicit enable action.
+Connection `test({accountId,token? ,connectionId?})` calls getMe only, never saves,
+polls or sends. Pairing review reloads current policy and submits expectedPolicy;
+changed policy rejects approval rather than silently changing the reviewed grant.
+The UI supports identity checks, receiving/restart, names/token replacement/removal,
+pairing decisions, principal enable/disable/removal, and read-only/guard task/reply policy.
+Tokens remain transient password-input state and are never written to localStorage.
+Token replacement checks that the owned connection still exists before persisting,
+so a concurrent removal cannot be undone by an in-flight verification response.

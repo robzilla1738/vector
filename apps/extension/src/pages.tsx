@@ -1,5 +1,6 @@
 import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { ChannelsSettings } from './channels';
 import { rpc } from './daemon';
 import { preference } from './native';
 import type { Session } from './types';
@@ -154,6 +155,7 @@ const settingsSections = [
   ['model', 'AI connections'],
   ['plugins/mcps', 'Tool servers'],
   ['plugins/skills', 'Skills'],
+  ['channels', 'Channels'],
   ['context-awareness', 'Activity context'],
   ['mini-popup', 'Quick popup'],
   ['privacy', 'Privacy and blocking'],
@@ -238,6 +240,9 @@ export function Settings({
         </h2>
         {error && <ErrorNotice error={error} />}
         <div className="stack">
+          {section === 'channels' && (
+            <ChannelsSettings key={accountId} accountId={accountId} />
+          )}
           {section === 'appearance' && (
             <>
               <Setting
@@ -444,6 +449,7 @@ export function Settings({
             'model',
             'context-awareness',
             'developers',
+            'channels',
           ].includes(section) && (
             <BackendPanel
               accountId={accountId}
