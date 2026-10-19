@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/BUILD.gn",
+      "baselineSha256": "330529c12fa4d9ac797f45112830835b9301819b41669b0f141ff829fd924207",
+      "outputSha256": "54f1b47bb02930592db957632fa34e4f83db6afe43ab3f04c4cdb025e1794b72"
+    },
+    {
+      "path": "chrome/browser/ui/search_engines/BUILD.gn",
+      "baselineSha256": "1293d5f549362e51140359522df6f1e004dd650c9b7aee5ef1cb978ff6e0ef5c",
+      "outputSha256": "54d34d6cccc50dd4d655f7da3e1fdfa9626337eb89d0565cb63dc90f1709d299"
+    }
+  ],
+  "compiled": false
+}
