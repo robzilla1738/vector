@@ -1,6 +1,6 @@
 # Supplied native binding boundary — staged, not enabled
 
-This boundary preserves the supplied `.node` implementation rather than replacing its KEM, wrapped data key, biometric storage or PDF implementation. No original native command has been executed. The interceptor is compiled but has not been injected into a daemon or CLI. It must not be injected into Chromium or another owner process.
+This boundary preserves the supplied `.node` implementation rather than replacing its KEM, wrapped data key, biometric storage or PDF implementation. No original native command has been executed. An earlier interceptor revision compiled; current guard/carrier/launcher revisions and receipts remain pending, and none has been injected into a supplied daemon or CLI. It must not be injected into Chromium or another owner process.
 
 ## Exact static input
 
@@ -59,7 +59,7 @@ Compile the pure mapper and fixture executable with `xcrun clang++ -std=c++20 -f
 1. Review complete CryptoKit/Secure Enclave query coverage. Unclassified framework queries currently fail; do not loosen them based on convenience. A declared fresh key creation path may require special treatment after its actual selector/permanence semantics are known.
 2. Pin the original binding and load it only through a self-contained, daemon/CLI-only native carrier that guarantees the interceptor is active. Packaging an env variable alone is not proof that DYLD interposition occurred. Preserve original PDF entrypoints.
 3. Make browser authentication call the same actual native install/public/sign authority and scheme. Do not override only the signature key while retaining another original KEM authority. The test PEM bridge remains test-only.
-4. Use a freshly created disposable Keychain for any later authorized runtime exercise. Do not use the owner's login Keychain or grant OS permissions. Preserve truthful failures for unsupported enclave/biometric/accessibility behavior; mock Chromium Keychain is not evidence of custom helper isolation.
+4. Preserve original DataProtection storage semantics; do not substitute a file Keychain. Later new Aux-only DP operations require explicit authorization after compiled isolation review. Never read original owner selectors or grant OS permissions. Preserve truthful entitlement/enclave/biometric/accessibility failures; mock Chromium Keychain is not evidence of custom helper isolation. See docs/integration/proposed/node-native-boundary/dp-production-design.md and approval-preview/.
 5. Prove actual interposition and untouched owner state before enabling product use. No production-ready claim is made by these compile/fixture checks.
 
 ## Minimal self-contained native carrier
