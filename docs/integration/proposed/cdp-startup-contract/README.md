@@ -1,0 +1,46 @@
+# Supplied daemon / native browser startup contract
+
+Static audit only. Pinned daemon code SHA5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5; current adapted code SHA7613531728aaa8206a0e29b3635186435342a62d33ef70728fbfc683048f8987. `daemon-audit.json` contains13 exact fail-closed anchors; regenerate via `node vendor/provided/cdp-startup-audit.mjs out/reuse-inspection/installed-index.mjs`. `source-and-anchor.json` pins the shared native source snapshots inspected and the one proposed discovery-env hunk. Shared sources were read, never changed. No supplied/native code, network, Keychain, model or owner state was executed.
+
+## Configuration actually consumed
+
+| Setting | Supplied/adapted behavior | Native integration requirement |
+|---|---|---|
+| AUX_HOME | Absolute supplied home override, otherwise ~/.aux | Same canonical private0700 home for daemon, Node workers and C carrier; no PEM substitute |
+| AUX_HOST | Loopback allowlist; default127.0.0.1 | Set127.0.0.1 explicitly |
+| AUX_PORT | Number override; adapted default21520 | Supervisor validates1..65535 and passes owned port |
+| DAEMON_BASE_URL | Unprefixed override; otherwise http://HOST:PORT | Set owned http://127.0.0.1:port, avoid inherited original service endpoint |
+| AUX_BROWSER_CDP_HOST | Override; adapted default localhost:45203 | Set127.0.0.1:45203, matching native fixed listener; value is host:port without scheme |
+| AUX_BROWSER_PID | Zero original consumer | Existing independent watchdog is absent; setting this env does not establish parent-lifetime shutdown |
+| AUX_AGENT_RUNTIME_DIR | Counted override selects root/agent-runtime | Preserve original cached-version validation/update errors |
+| AUX_COMPUTER_USE_SOURCE_APP | Counted override selects bundled source app | Native helper permission and self-capture identity remain separate acceptance |
+| DYLD_INSERT_LIBRARIES | Host-loader boundary requirement, not original JS discovery | Set fixed canonical boundary dylib before exec; runtime pointer guard must verify |
+
+There is no DevToolsActivePort discovery or browser-PID-based CDP selection in this source. Native port45203 is fixed in RemoteDebuggingServer factory and authority; changing only daemon env to a different port cannot move the listener. The proposed hunk fixes explicit owned endpoints rather than add another configurability path. It does not enable native execution, bypass policy, set acceptance flags or alter source home/crypto behavior.
+
+## Concrete readiness sequence
+
+1. Browser main calls BrowserPlatform.Start before PreProfileInit. It reads the two supplied component manifests, then starts its owned daemon and waits in a RunLoop.
+2. Adapted daemon main first awaits pinned absent-only memory seeding. `getStartupWaitUrl()` returns null; its original local-API wait is a no-op, so it does not wait for browser CDP. Main then binds the HTTP server with ready=false.
+3. Original bootstrap awaits ensureInstallationKey (actual native install-status/init), per-account DB/directory/bootstrap and workflow settlement. Agent runtime refresh starts without await. PWM initialization, remote events and history backfill launch detached. Session lifecycle merely registers extension-connect reconciliation; extension commands are not awaited before ready. Ready becomes true only after bootstrap resolves.
+4. Supervisor checks actual health service `aside-daemon`, version1.26.1016.1852, ready=true and exact owned child PID. It then performs HTTP challenge/session using the original supplied native authority and preserved wire domain/scheme. Only authenticated success yields supervisor kReady.
+5. BrowserPlatform then calls LoadInstallationPublicKey via bounded worker carrier, which invokes original get-public-keys. It does not invoke install-init or depend on browser CDP. After public-key import it returns success; PreProfileInit/profile/component work and authenticated RemoteDebuggingServer startup can proceed.
+6. Original CdpClient is lazy; construction alone does not start a connection. When needed, its authorizer ensures installation status, obtains /json/challenge, signs raw32 native bytes, exchanges /json/auth/session, gets authorized /json/version, then opens returned webSocketDebuggerUrl with Authorization. Aside.* extension commands take their preserved dispatch branch before CDP ensureConnected.
+
+No direct CDP-before-ready cycle appears in this inspected path. This is bounded static evidence, not proof that every migration/workflow callback or runtime dependency is deadlock-free. Do not move public-key load ahead of daemon initialization as a speculative fix: fresh installation authority must exist first. Do not make daemon ready or fabricate keys to break an apparent wait.
+
+## Two authentication exchanges
+
+HTTP daemon: GET /auth/daemon/challenge?clientKind=chromium -> {challengeId,challenge,...}; decoded challenge32bytes; signature over `Aside Daemon Auth v1\0` (21bytes) + raw challenge. POST /auth/daemon/session {challengeId,signedChallenge} -> {token_type:'AsideDaemonSessionToken',access_token,expiresInSeconds:86400}. Original HTTP token is DK-derived HS256, aud aside-daemon-localhost, iss aside-daemon. Original challenge TTL30s, cap1024. Session issuance also requires actual dk-unwrap/derive, not just public-key verification.
+
+Browser CDP: GET /json/challenge -> {challengeId,challenge}; signature is original cdp-sign on raw32bytes with NO HTTP prefix. POST /json/auth/session same request field names -> {token_type:'AsideSessionToken',access_token,expiresInSeconds}; Authorization is `AsideSessionToken <token>` for JSON discovery and WS upgrade. Native authority TTL30s/cap1024 challenge; one-use consumption;24h sessions. Both public formats are actual p256_v1/raw65 or pq_v1/MLDSA65/raw1952, and actual original native signature bytes. Native filter validates loopback peer/Host and allowlisted Origin; absent Origin is allowed for daemon. HTTP status401/403 triggers the original authorizer refresh logic even if native error wording differs.
+
+## Actual remaining gaps
+
+- **DP authority is unproven.** Guard/carrier current sources remain uncompiled behind31341/27971. Load-deny and actual host/worker pointer proof are pending; actual Aux DP operations require reviewed authorization. Shared authority across differently signed daemon/CLI/carrier has not been established. Original DP/enclave/access-control must survive; entitlement errors are real, not a file/PEM fallback opportunity.
+- **Ready is insufficient as native-health proof.** ensureInstallationKey logs and returns false when helper is unavailable, and original bootstrap continues. Consequently health ready may become true while installation auth still fails. Supervisor must keep actual successful session and public-key acquisition as gates; do not treat ready as a crypto success signal.
+- **Frozen/shared native sources still describe the old independent runtime.** Snapshot supervisor expects service aux-daemon/version0.2.0/AuxDaemonSessionToken; live installation_auth still reads PEM. Root's staged composition must supply preserved schemes/domain + real original carrier, version, fixed DYLD/runtime paths, actual provided registry/profile gates and removal of stale importer override. Earlier auth proposal uses Aux HTTPdomain/session and is being corrected by root; this audit does not reapply it.
+- **No parent watchdog in the reused daemon.** Native normal shutdown still uses authenticated /shutdown and verified-child termination. Browser external death may orphan daemon; AUX_BROWSER_PID alone does nothing. A separately reviewed minimal actual-process-lifetime seam is needed if this remains a requirement, without probing/stopping the owner's original daemon.
+- **Policy disable stays real.** Native remote listener respects managed allowed and explicit user enabled preference. Daemon ready does not guarantee CDP is enabled; user/policy disable must remain an explicit browser-tool error.
+- **Some methods need actual native protocol support.** Supplied ensureProfileWindow sends Browser.ensureChromiumProfile then Browser.ensureProfile fallback(-32601). Neither method appears in inspected chrome/browser/devtools or browser/aux source. These are separate from preserved Aside.* extension commands; no broad claim that extension dispatch covers all browser-native calls. Native protocol/schema audit and real supplied workflow observation remain required.
+- **Recovery identity can change.** BrowserPlatform caches its public key once. Restart against the same installation should remain consistent; explicit installation repair/rotation while browser lives would require coherent authority refresh. No silent auto-rotation or key fabrication is proposed.

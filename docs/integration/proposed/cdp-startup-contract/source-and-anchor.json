@@ -1,0 +1,17 @@
+{
+  "nativeSourceSha256": {
+    "chrome/browser/aux/browser_platform.cc": "dfacc8d7e99cbc1e7fa8dbd8e8334a8f4ee1594958f8730b9aa47bdcf1de88c2",
+    "chrome/browser/aux/daemon_supervisor.cc": "153d97de022cd00cdd9202b1df1084b734398618f773c9cc9a8005dec2f3c968",
+    "chrome/browser/devtools/aux_cdp_authority.cc": "da5989b2a49c295b8f8d0985075dcfe7d7d6b8ad35670bf21225b37cd6693327",
+    "chrome/browser/devtools/remote_debugging_server.cc": "978261bd1ecddd90516a35133d703aadf310257714eb4e9bcb55804e37c38660",
+    "chrome/browser/chrome_browser_main.cc": "75d282d2f7f3ad3863c7815a71be5413a6284a22a6ee6792aee70e188df395c2"
+  },
+  "edit": {
+    "path": "chrome/browser/aux/daemon_supervisor.cc",
+    "sourceSha256": "153d97de022cd00cdd9202b1df1084b734398618f773c9cc9a8005dec2f3c968",
+    "find": "  options.environment[\"AUX_PORT\"] = base::NumberToString(port);",
+    "replace": "  options.environment[\"AUX_PORT\"] = base::NumberToString(port);\n  // Bind supplied runtime discovery to this browser, never inherited endpoints.\n  options.environment[\"AUX_HOST\"] = \"127.0.0.1\";\n  options.environment[\"AUX_BROWSER_CDP_HOST\"] = \"127.0.0.1:45203\";\n  options.environment[\"DAEMON_BASE_URL\"] =\n      \"http://127.0.0.1:\" + base::NumberToString(port);",
+    "count": 1
+  },
+  "status": "proposal only; no shared source edited"
+}

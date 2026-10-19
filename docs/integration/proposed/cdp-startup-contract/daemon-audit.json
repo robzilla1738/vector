@@ -1,0 +1,72 @@
+{
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "adaptedCodeSha256": "7613531728aaa8206a0e29b3635186435342a62d33ef70728fbfc683048f8987",
+  "verification": "static anchors only; not daemon/CDP/native execution or whole-program deadlock proof",
+  "checks": [
+    {
+      "name": "no mandatory startup API wait",
+      "anchor": "function getStartupWaitUrl(){return null}",
+      "count": 1
+    },
+    {
+      "name": "CDP host override and original default",
+      "anchor": "ASIDE_BROWSER_CDP_HOST=process.env.ASIDE_BROWSER_CDP_HOST??`localhost:45103`",
+      "count": 1
+    },
+    {
+      "name": "HTTP host and port environment",
+      "anchor": "configuredHost=process.env.ASIDE_HOST||`127.0.0.1`,HOST=LOOPBACK_HOSTS$1.has(configuredHost)?configuredHost:`127.0.0.1`,PORT=Number(process.env.ASIDE_PORT)||21420",
+      "count": 1
+    },
+    {
+      "name": "installation initialized first in bootstrap",
+      "anchor": "async function bootstrap(){await ensureInstallationKey()",
+      "count": 1
+    },
+    {
+      "name": "ready set only after bootstrap resolves",
+      "anchor": "await bootstrap(),clearTimeout(si),ri=!0",
+      "count": 1
+    },
+    {
+      "name": "CDP receives raw native-sign bytes",
+      "anchor": "let ti=await signCdpChallenge(new Uint8Array(ei))",
+      "count": 1
+    },
+    {
+      "name": "CDP challenge route",
+      "anchor": "this.#e(`/json/challenge`",
+      "count": 1
+    },
+    {
+      "name": "CDP session route",
+      "anchor": "this.#e(`/json/auth/session`",
+      "count": 1
+    },
+    {
+      "name": "CDP session schema preserves original scheme",
+      "anchor": "token_type:literal(`AsideSessionToken`)",
+      "count": 1
+    },
+    {
+      "name": "extension commands bypass CDP websocket",
+      "anchor": "if(Cn.startsWith(`Aside.`)){let ti=await sendCommandToExtension",
+      "count": 1
+    },
+    {
+      "name": "startup session reconciliation waits for extension connect",
+      "anchor": "globalExtensionBridge.onConnect(({accountId:Cn,profileId:ei,browserMode:ti})",
+      "count": 1
+    },
+    {
+      "name": "independent browser PID override is unused",
+      "anchor": "process.env.ASIDE_BROWSER_PID",
+      "count": 0
+    },
+    {
+      "name": "independent parent watcher is absent",
+      "anchor": "process.ppid",
+      "count": 0
+    }
+  ]
+}

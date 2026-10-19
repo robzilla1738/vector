@@ -1,0 +1,14 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -57,6 +57,11 @@
+   base::LaunchOptions options;
+   options.environment["AUX_HOME"] = home.value();
+   options.environment["AUX_PORT"] = base::NumberToString(port);
++  // Bind supplied runtime discovery to this browser, never inherited endpoints.
++  options.environment["AUX_HOST"] = "127.0.0.1";
++  options.environment["AUX_BROWSER_CDP_HOST"] = "127.0.0.1:45203";
++  options.environment["DAEMON_BASE_URL"] =
++      "http://127.0.0.1:" + base::NumberToString(port);
+   options.environment["AUX_BROWSER_PID"] =
+       base::NumberToString(base::GetCurrentProcId());
+   options.environment["AUX_IMPORTER_PATH"] =
