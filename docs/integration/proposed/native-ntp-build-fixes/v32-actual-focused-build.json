@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "compositionSha256": "4a85856c32b85eb8bcfd63d88c106f2617b86a72f25d46cc36d6c1f5796eb772",
+  "originalReplaySha256": "e1accbbc641b621490ff877c9b7930b1dc05cba0f1d23833e26178f62f2f241e",
+  "matchedSourceOutputs": 98,
+  "originalReplaySteps": 42,
+  "actualFocusedCompileExitCode": 0,
+  "actualFocusedCompiledObjects": [
+    "ContentsWebView",
+    "AuxNtpTransitionState",
+    "BrowserView"
+  ],
+  "priorSuccessfulCompiledObjects": [
+    "installation_auth",
+    "ntp_prerender_service"
+  ],
+  "focusedBuildElapsed": "35.34s",
+  "fullBuildPending": true,
+  "runtimeAcceptance": false
+}
