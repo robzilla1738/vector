@@ -1,0 +1,63 @@
+--- a/chrome/browser/ui/focus/browser_focus_controller_views.h
++++ b/chrome/browser/ui/focus/browser_focus_controller_views.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_FOCUS_BROWSER_FOCUS_CONTROLLER_VIEWS_H_
+ 
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/focus/browser_focus_controller.h"
+ #include "ui/base/interaction/element_identifier.h"
+ 
+@@ -26,6 +27,10 @@
+                               ToolbarButtonProvider* toolbar_button_provider);
+   ~BrowserFocusControllerViews() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void RebindForAuxProfileSwitch(BrowserWindowInterface& browser);
++#endif
++
+   BrowserFocusControllerViews(const BrowserFocusControllerViews&) = delete;
+   BrowserFocusControllerViews& operator=(const BrowserFocusControllerViews&) =
+       delete;
+@@ -38,7 +43,7 @@
+  private:
+   views::View* GetViewForId(ui::ElementIdentifier element_id);
+ 
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
+   const raw_ref<BrowserElements> browser_elements_;
+   const raw_ref<ToolbarButtonProvider> toolbar_button_provider_;
+ };
+--- a/chrome/browser/ui/focus/browser_focus_controller_views.cc
++++ b/chrome/browser/ui/focus/browser_focus_controller_views.cc
+@@ -42,6 +42,20 @@
+       toolbar_button_provider_(CHECK_DEREF(toolbar_button_provider)) {}
+ 
+ BrowserFocusControllerViews::~BrowserFocusControllerViews() = default;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void BrowserFocusControllerViews::RebindForAuxProfileSwitch(
++    BrowserWindowInterface& browser) {
++  CHECK_EQ(BrowserFocusController::From(&browser), this);
++  CHECK(profile_->IsRegularProfile());
++  CHECK(browser.GetProfile()->IsRegularProfile());
++  // No profile services are cached here. Preserve the actual window, element
++  // context and toolbar provider; future accessibility gestures resolve the
++  // authoritative target's real education service and engagement tracker.
++  profile_ = *browser.GetProfile();
++}
++#endif
++
+ 
+ void BrowserFocusControllerViews::FocusWebContentsPane() {
+   auto* multi_contents_view = views::AsViewClass<MultiContentsView>(
+--- a/chrome/browser/ui/focus/BUILD.gn
++++ b/chrome/browser/ui/focus/BUILD.gn
+@@ -14,6 +14,7 @@
+   ]
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/ui:browser_element_identifiers",
+     "//ui/base/unowned_user_data",

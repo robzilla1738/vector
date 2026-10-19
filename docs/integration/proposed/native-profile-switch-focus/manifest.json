@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/focus/browser_focus_controller_views.h",
+      "baselineSha256": "7dc382be628f44a42981037d5dddeee3a16b64fdd66908b623f3d8497105e6a3",
+      "outputSha256": "cb8b5b15957e4990f67a772f77fb58948cd6dd0823631b2e64ea97a7e59ff06d"
+    },
+    {
+      "path": "chrome/browser/ui/focus/browser_focus_controller_views.cc",
+      "baselineSha256": "0f66f911c5021b98be1b62cd230a55efa56a1c9467d9b80220d126d646a5a283",
+      "outputSha256": "303b6dc0e3f577fca86544a0e042362c8cf0af2e35bc733867a505930ffca99f"
+    },
+    {
+      "path": "chrome/browser/ui/focus/BUILD.gn",
+      "baselineSha256": "5df14b85a517d5bdd4dc3b73de4b3fba9ba5f23d5d6d97cae0d8e187f5682376",
+      "outputSha256": "b5058acadc80d38a808476f4f6078e03898e9d9786839c6c49d8b4e03e87d127"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
