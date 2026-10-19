@@ -319,3 +319,5 @@ Prepared a separate shared engine patch tracking acquired permits by run identit
 
 - Root applied the scheduler permit ownership patch. Parent child-wait releases only its own permit and reacquires with the same cancellation signal before returning to the provider loop. Cancellation cannot decrement another run's permit; generic human suspensions keep their existing semantics.
 - All three focused tests passed against the actual integrated engine: two parents plus queued children at concurrency2; cancellation during child wait; cancellation during reacquisition behind an unrelated run. Counters remained bounded and returned to zero. No provider was called.
+
+- Root mounted notification tools and the dedicated role-bound helper/service, including account/security invalidation, shutdown and explicit permission routing. The notification process cannot cancel the Vault or context helper. Clipboard recall remains explicitly unavailable without an authorized source. Integrated daemon checks passed; actual OS notification authorization, enqueue/banner and activation acceptance remain outstanding.

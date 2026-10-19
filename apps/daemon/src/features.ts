@@ -28,6 +28,8 @@ import {
   createNativeImportRouter,
   createPasswordImporterAdapter,
 } from './helpers/index.js';
+import { createNotificationService } from './helpers/notifications.js';
+import { notificationTools } from './helpers/tools.js';
 import {
   createHistoryCollector,
   createHistoryRouter,
@@ -57,6 +59,9 @@ export function createFeatures() {
   let channels: ChannelService | undefined;
   let helper: HelperClient | undefined;
   let contextHelper: HelperClient | undefined;
+  let notificationHelper: HelperClient | undefined;
+  let notifications: ReturnType<typeof createNotificationService> | undefined;
+  let unregisterNotificationDeletion: (() => void) | undefined;
   let contextObserver: ReturnType<typeof createContextObserver> | undefined;
   let unregisterContextDeletion: (() => void) | undefined;
   let importer: HelperClient | undefined;
@@ -85,6 +90,7 @@ export function createFeatures() {
             .join('\n')}\n${active.map((item) => item.body).join('\n\n')}`;
         },
         tools: (session, signal) => ({
+          ...notificationTools(notifications, session, signal),
           ...(engine ? mcpTools(engine, session, signal) : {}),
           ...(channels ? channelTools(channels, session, signal) : {}),
           ...(engine && helper
@@ -142,6 +148,11 @@ export function createFeatures() {
           process.env.AUX_HELPER_PATH,
           join(services.store.home, 'context-helper-artifacts'),
         );
+        notificationHelper = new HelperClient(
+          process.env.AUX_HELPER_PATH,
+          join(services.store.home, 'notification-helper-artifacts'),
+          { role: 'notifications' },
+        );
       }
       context = new ContextService(
         memory,
@@ -161,6 +172,23 @@ export function createFeatures() {
         credentialExchange.start();
       }
       const passkeys = createPasskeyRouter(services, vault);
+      if (notificationHelper) {
+        notifications = createNotificationService(
+          services,
+          activeEngine,
+          notificationHelper,
+          {
+            isUnlocked: (accountId) =>
+              !!vault && !vault.status(accountId).locked,
+          },
+        );
+        const service = notifications;
+        activeEngine.registerCloseHandler(() => service.close());
+        unregisterNotificationDeletion =
+          services.store.registerAccountDeletionHandler((accountId) =>
+            service.invalidate(accountId),
+          );
+      }
       contextObserver = createContextObserver(services, context, {
         isUnlocked: (accountId) => !!vault && !vault.status(accountId).locked,
       });
@@ -171,6 +199,7 @@ export function createFeatures() {
         (accountId) => {
           passkeys.service.clearEphemeral(accountId);
           contextObserver?.changed(accountId);
+          notifications?.invalidate(accountId);
         },
       );
       routineTimer = setInterval(() => {
@@ -216,7 +245,13 @@ export function createFeatures() {
             }
           : {}),
         ...(helper
-          ? { computerUse: createHelperRouter(services, helper) }
+          ? {
+              computerUse: createHelperRouter(
+                services,
+                helper,
+                notificationHelper,
+              ),
+            }
           : {}),
         memory: createMemoryRouter(services, memory),
         contextAwareness: createContextRouter(services, context),
@@ -251,6 +286,8 @@ export function createFeatures() {
     async shutdown() {
       historyCollector?.close();
       await contextObserver?.close();
+      notifications?.close();
+      unregisterNotificationDeletion?.();
       unregisterContextDeletion?.();
       if (routineTimer) clearInterval(routineTimer);
       await repl?.close();
@@ -260,6 +297,7 @@ export function createFeatures() {
       unregisterPasskeySecurity?.();
       await helper?.close();
       await contextHelper?.close();
+      await notificationHelper?.close();
       await importer?.close();
       await engine?.close();
     },
