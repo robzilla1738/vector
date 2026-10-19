@@ -1,0 +1,83 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -24,6 +24,8 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
++#include "components/keep_alive_registry/keep_alive_types.h"
++#include "components/keep_alive_registry/scoped_keep_alive.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_registry_simple.h"
+ #include "components/prefs/pref_service.h"
+@@ -202,6 +204,7 @@
+     dismiss_.Stop();
+     profile_observer_.Reset();
+     profile_.reset();
++    keep_alive_.reset();
+   }
+   std::optional<std::string> Configure(Profile* profile,
+                                        bool enabled,
+@@ -225,6 +228,10 @@
+       }
+       registered_ = true;
+       accelerator_ = accelerator;
++      if (!keep_alive_) {
++        keep_alive_ = std::make_unique<ScopedKeepAlive>(
++            KeepAliveOrigin::AUX_MINI_POPUP, KeepAliveRestartOption::ENABLED);
++      }
+       BindProfile(profile);
+     } else {
+       if (registered_ && listener) {
+@@ -236,6 +243,7 @@
+       DestroyWindows();
+       dismiss_.Stop();
+       size_ = gfx::Size(440, 92);
++      keep_alive_.reset();
+     }
+     return std::nullopt;
+   }
+@@ -510,6 +518,7 @@
+       }
+     }
+     registered_ = false;
++    keep_alive_.reset();
+   }
+   std::optional<std::string> BeginDirectoryPicker(
+       content::WebContents* source) {
+@@ -572,6 +581,7 @@
+     }
+     registered_ = false;
+     accelerator_ = ui::Accelerator();
++    keep_alive_.reset();
+     auto* prefs = pref_registrar_.prefs();
+     if (prefs->GetBoolean(kEnabled)) {
+       Profile* profile = profile_.get();
+@@ -589,6 +599,7 @@
+   ~PopupManager() override = default;
+   base::WeakPtr<Profile> profile_;
+   base::ScopedObservation<Profile, ProfileObserver> profile_observer_{this};
++  std::unique_ptr<ScopedKeepAlive> keep_alive_;
+   PrefChangeRegistrar pref_registrar_;
+   bool writing_preference_ = false;
+   ui::Accelerator accelerator_;
+--- a/components/keep_alive_registry/keep_alive_types.h
++++ b/components/keep_alive_registry/keep_alive_types.h
+@@ -96,6 +96,7 @@
+   // c/b/loader
+   FETCH_KEEPALIVE_REQUEST,
+   AUX_FOUNDATION_MODELS,
++  AUX_MINI_POPUP,
+ };
+ 
+ // Restart: Allow Chrome to restart when all the registered KeepAlives allow
+--- a/components/keep_alive_registry/keep_alive_types.cc
++++ b/components/keep_alive_registry/keep_alive_types.cc
+@@ -11,6 +11,8 @@
+   switch (origin) {
+     case KeepAliveOrigin::AUX_FOUNDATION_MODELS:
+       return out << "AUX_FOUNDATION_MODELS";
++    case KeepAliveOrigin::AUX_MINI_POPUP:
++      return out << "AUX_MINI_POPUP";
+     case KeepAliveOrigin::APP_CONTROLLER:
+       return out << "APP_CONTROLLER";
+     case KeepAliveOrigin::BROWSER:

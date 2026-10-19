@@ -1,0 +1,13 @@
+# Registered popup process lifetime
+
+Apply this three-file incremental proposal after `native-popup-startup` (`f8f44391b`); exact baselines and outputs are in `manifest.json`. Add `//components/keep_alive_registry` to the popup target's dependencies through the root-owned GN composition. No shared sources or GN were edited here.
+
+Original `04599e90` stores the actual accelerator registration result at manager+20. Only the successful branch at `04599fd0..0459a024` acquires its keepalive if manager+50 is empty: the original object contains `{origin:25,restart:1}`, then invokes the real registry. Shortcut observer `045996ac` releases that object before refreshing registration; enabled observer `04599728` retires the coordinator and accelerator before releasing it. Failure and a disabled preference never acquire it. Raw bytes and exact source hashes are pinned in `source-evidence.json` and the startup proposal's bounded assembly extracts.
+
+The153 numeric origin's diagnostic name is not recovered. This155 adaptation adds `KeepAliveOrigin::AUX_MINI_POPUP` at the end of the real enum and its exhaustive ostream switch, preserving every existing enum value. It uses the actual `KeepAliveRestartOption::ENABLED` (value1). `KeepAliveRegistry` keys per-origin counts in maps, has no maximum/count sentinel, and requires only the added printable case. It does not borrow or relabel current numeric25. This explicit platform adaptation was agreed with the integrator.
+
+Acquire follows actual successful registration, not a getter, shown widget, enabled flag alone or a mock result. Ordinary hide/reopen, options close and popup resizing retain it. Shortcut preference change releases/reacquires it through real registration. Disable, profile retirement and process teardown release it when the corresponding actual registration is retired; the latter two are explicit cleanup for the retained manager's155 lifecycle. Disable/shutdown finish retiring widgets before releasing the process lifetime. An occupied/denied shortcut never receives a lifetime.
+
+The API setters' existing register-new-before-unregister-old shortcut validation remains unchanged; their failed replacement preserves the actual prior registration and its existing lifetime. This slice does not claim full original setter canonicalization/rollback parity.
+
+`python3 verify.py` checks source byte pins, exact three-file replay, acquisition/release placement, retained hide behavior and unchanged existing enum ordinals. No compilation, app execution, OS shortcut registration, signing, dialogs, grants or owner data access occurred. Actual native compile and browser process lifetime observation remain integrator verification.

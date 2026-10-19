@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-startup f8f44391b",
+  "requiredIntegration": [
+    "Add //components/keep_alive_registry to aux_mini_popup target deps (root GN ownership)."
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "d4cd0ccb90ff9a78be17d2ea9b24542738929d41e4e15a5be03a4bd517228f7f",
+      "outputSha256": "1f81a9af0db339350ae8b242672400dc304020eb5a8e5c142315eab1d29d39c5"
+    },
+    {
+      "path": "components/keep_alive_registry/keep_alive_types.h",
+      "baselineSha256": "ab83ad152ec13a113a8b5044a31f59d865cbd1dc7d2735dff14c6eae1ed247cc",
+      "outputSha256": "3757da22705cbfbed01c9051d69e0561a0498dc16cb4c093d993d7d06a6668a1"
+    },
+    {
+      "path": "components/keep_alive_registry/keep_alive_types.cc",
+      "baselineSha256": "99a7345d3e750fd6902b07ae965d5b7c06cdb362f7571643f36c2771f37cc787",
+      "outputSha256": "c2fd1c9dfb7e9d208f910a79b5612ba74851719953fa59d512b886775322d0c3"
+    }
+  ]
+}
