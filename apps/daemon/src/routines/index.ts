@@ -5,7 +5,7 @@ import rrule from 'rrule';
 import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
 
-const routineFields = z.object({
+export const routineFields = z.object({
   projectId: z.string().nullable().default(null),
   name: z.string().trim().min(1),
   prompt: z.string().trim().min(1),
@@ -55,7 +55,7 @@ function recurrence(
     return fail('BAD_REQUEST', 'Invalid recurrence rule or timezone');
   }
 }
-function validate(
+export function validateRoutine(
   engine: AgentEngine,
   accountId: number,
   record: z.infer<typeof routineFields>,
@@ -147,7 +147,7 @@ export function createRoutineRouter(
       .mutation(({ input }) => {
         const { accountId, ...record } = input;
         const now = Date.now();
-        const nextRunAt = validate(engine, accountId, record, now);
+        const nextRunAt = validateRoutine(engine, accountId, record, now);
         return persist(accountId, {
           ...record,
           id: randomUUID(),
@@ -165,12 +165,22 @@ export function createRoutineRouter(
           ...patch,
           updatedAt: Date.now(),
         });
-        record.nextRunAt = validate(engine, accountId, record, Date.now());
+        record.nextRunAt = validateRoutine(
+          engine,
+          accountId,
+          record,
+          Date.now(),
+        );
         return persist(accountId, record);
       }),
     activate: procedure.input(routineScope).mutation(({ input }) => {
       const record = get(input.accountId, input.routineId);
-      record.nextRunAt = validate(engine, input.accountId, record, Date.now());
+      record.nextRunAt = validateRoutine(
+        engine,
+        input.accountId,
+        record,
+        Date.now(),
+      );
       return persist(input.accountId, {
         ...record,
         state: 'active',
@@ -223,7 +233,7 @@ function runRoutine(
   executionId: string,
 ) {
   if (record.state !== 'active') fail('CONFLICT', 'Routine is not active');
-  validate(engine, accountId, record, Date.now());
+  validateRoutine(engine, accountId, record, Date.now());
   const db = store.accountDb(accountId);
   try {
     db.exec(

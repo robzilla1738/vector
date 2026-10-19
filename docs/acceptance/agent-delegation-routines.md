@@ -1,0 +1,21 @@
+# Agent delegation and routine tools
+
+Implements `docs/spec/daemon/agent.md` Tool inventory/Subagents and `docs/spec/daemon/services.md` Routines. This slice preserves the existing browser tools and does not add provider endpoints or search implementations.
+
+`routine_update` offers create, suggest, update, pause, resume and delete. A daemon adapter uses the routines RPC's actual schema, target/project checks and recurrence validator, then invokes the existing authenticated caller. Concrete validated previews go through mutation policy; deletion uses final confirmation. Suggestions stay drafts. Account/session identity comes from the caller rather than model arguments. Private and child tasks cannot create persistent schedules. Routine authority cannot exceed the authorizing task, and working roots must match. Approval-time changes to the target or task policy fail clearly. An intent receipt is durable before mutation; an interrupted uncertain result is never blindly replayed. This is an at-most-once safety guard, not an atomic claim that every interrupted operation finished.
+
+Subagents accept fresh context, read-only context/code explorers, forked text context and server-configured custom profiles. Custom profiles and model categories require explicit service resolvers; unavailable configuration fails. Children have explicit parent linkage, independent runtime/transcript state and no inherited active window/target, owned tabs, tool-call context, attachments or REPL handles. Forks copy bounded redacted text evidence, never SDK tool messages. One delegation level, three concurrently running/suspended children and 32 total children per parent bound delegation. Stable parent/tool identity prevents duplicate child creation on retry. Explorers have an allowlist across the complete merged tool set, including injected tools. Parent policy synchronization only narrows child access; it never adds new allows or approved grants.
+
+Child decisions are represented by distinct durable parent tool IDs and the original approval/question/confirmation schema, with explicit child identity. Responses and cancellations are recorded on both sides through monotonic engine events. Live decision ownership allows an idle parent to hold a real pending child decision without treating it as a restarted run. Parent cancellation stops children and cancels routed decisions. Reusing a recorded child decision ID fails rather than replaying an operation.
+
+## Integration
+
+Root must apply `docs/implementation/agent-tool-hooks.patch` to the shared engine/permission modules. This lane has not edited those modules. The hooks centrally restrict merged tools, supply child instructions, route suspensions, track live decision ownership, block conflicting parent prompts, preserve a decision after parent generation ends, cancel children on stop and synchronize policy again after approvals.
+
+At feature creation, configure the engine with `configureAgentTools(activeEngine, { prepareRoutineUpdate: createRoutineToolAdapter(services, activeEngine) })`. Optional `customSubagentProfile(accountId,id)` and `subagentModel(accountId,category)` callbacks supply trusted local profile definitions and available model selections. No fallback invents a configured model or custom profile. Root owns this feature mount.
+
+## Verification and remaining evidence
+
+Agent and daemon typechecks pass with a lane-local workspace import mapping. Biome passes all eight touched TypeScript files. Four focused no-provider fixtures pass: fork/custom handle isolation and explorer policy; child count/model unavailability; parent-routed denial/cancellation; shared routine schedule validation, draft suggestions, stale approvals, authority limits and interrupted replay refusal. Eight existing engine/owned-tab tests pass, preserving browser ownership and existing policy boundaries. No model API was called.
+
+The routed-decision unit fixture explicitly models the proposed central live-decision lookup exemption. Full engine hook integration, root feature mount and actual model-driven child/approval/routine execution still need integrated verification. Custom profile authoring UI and category resolvers are not supplied by this slice. Native cache/refresh0101 remains staged only in the separate native lane; no native source changed here.

@@ -10,6 +10,12 @@ import { z } from 'zod';
 import type { AgentEngine } from './engine.js';
 import { approveOperation } from './permissions.js';
 import { fail } from './storage.js';
+import {
+  startSubagent,
+  subagentInput,
+  synchronizeChildPolicy,
+} from './subagents.js';
+import { agentToolServices } from './tool-services.js';
 
 function titleForTool(name: string) {
   return name.replaceAll('_', ' ');
@@ -36,6 +42,7 @@ export function sessionTools(
     execute: () => Promise<T> | T,
   ) {
     const session = engine.get(accountId, sessionId);
+    synchronizeChildPolicy(engine, session);
     if (!session.toolCalls.some((call) => call.id === id)) {
       session.toolCalls.push({
         id,
@@ -49,6 +56,7 @@ export function sessionTools(
     try {
       if (
         ![
+          'routine_update',
           'read_file',
           'write_file',
           'edit_file',
@@ -368,41 +376,57 @@ export function sessionTools(
     }),
     subagent: tool({
       description:
-        'Start one fresh-context child task. Children cannot delegate recursively; explorer tasks have read-only filesystem policy.',
-      inputSchema: z.object({
-        task: z.string().trim().min(1),
-        profile: z
-          .enum(['fresh', 'context-explorer', 'code-explorer'])
-          .default('fresh'),
-      }),
+        'Start a bounded child task using fresh, read-only explorer, text-only forked context, or an independently configured custom profile. Children cannot recursively delegate and never inherit live browser/REPL handles.',
+      inputSchema: subagentInput,
       execute: (input, { toolCallId }) =>
-        tracked('subagent', input, toolCallId, () => {
-          const parent = engine.get(accountId, sessionId);
-          if (parent.parentId)
-            fail('FORBIDDEN', 'Child sessions cannot delegate recursively');
-          const children = engine
-            .list(accountId)
-            .filter((s) => s.parentId === sessionId);
-          if (
-            children.filter(
-              (s) => s.status === 'running' || s.status === 'suspended',
-            ).length >= 3
-          )
-            fail(
-              'PRECONDITION_FAILED',
-              'At most three child tasks may run concurrently',
-            );
-          const { id: parentId, triggerIdempotencyKey, ...creation } = parent;
-          const child = engine.create({
-            ...creation,
-            parentId,
-            title: input.task.slice(0, 100),
-            trigger: 'subagent',
-            ephemeral: true,
-            permissionMode:
-              input.profile === 'fresh' ? parent.permissionMode : 'read-only',
-          });
-          return engine.prompt(accountId, child.id, input.task);
+        tracked('subagent', input, toolCallId, () =>
+          startSubagent(
+            engine,
+            accountId,
+            sessionId,
+            input,
+            toolCallId,
+            signal,
+          ),
+        ),
+    }),
+    routine_update: tool({
+      description:
+        'Create/suggest/update/pause/resume/delete a validated local cron or heartbeat routine. Preview the concrete record for approval; suggestions remain drafts. Deletion requires human confirmation.',
+      inputSchema: z
+        .object({
+          operation: z.enum([
+            'create',
+            'suggest',
+            'update',
+            'pause',
+            'resume',
+            'delete',
+          ]),
+          routineId: z.string().min(1).max(128).optional(),
+          record: z.record(z.string(), z.unknown()).optional(),
+        })
+        .strict(),
+      execute: (input, { toolCallId }) =>
+        tracked('routine_update', input, toolCallId, async () => {
+          const prepare = agentToolServices(engine).prepareRoutineUpdate;
+          if (!prepare)
+            fail('PRECONDITION_FAILED', 'Routine service is unavailable');
+          const session = engine.get(accountId, sessionId);
+          const prepared = await prepare(session, input, toolCallId, signal);
+          await approveOperation(
+            engine,
+            accountId,
+            sessionId,
+            toolCallId,
+            'routine_update',
+            'Update local routine',
+            prepared.preview,
+            signal,
+            { mutation: true, finalAction: input.operation === 'delete' },
+          );
+          signal.throwIfAborted();
+          return prepared.execute();
         }),
     }),
     subagent_wait: tool({

@@ -24,6 +24,12 @@ export type { Selection } from './providers.js';
 export { defaultModel, resolveModel, selectionSchema } from './providers.js';
 export type { AgentStorage } from './storage.js';
 export { fail } from './storage.js';
+export {
+  type AgentToolServices,
+  type CustomSubagentProfile,
+  configureAgentTools,
+  type RoutineToolInput,
+} from './tool-services.js';
 export { sessionTools } from './tools.js';
 export type {
   Bridge,
