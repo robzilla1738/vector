@@ -13,7 +13,7 @@ app = root / "dist" / "Aux Computer Use.app"
 macos = app / "Contents" / "MacOS"
 macos.mkdir(parents=True, exist_ok=True)
 executable = macos / "aux-computer-use"
-subprocess.run(["xcrun", "swiftc", "-swift-version", "5", "-O", "-target", "arm64-apple-macos14.0", *map(str, sorted((root / "Sources").glob("*.swift"))), "-framework", "AppKit", "-framework", "ApplicationServices", "-framework", "Contacts", "-framework", "Carbon", "-framework", "Security", "-framework", "LocalAuthentication", "-o", str(executable)], check=True)
+subprocess.run(["xcrun", "swiftc", "-swift-version", "5", "-O", "-target", "arm64-apple-macos14.0", *map(str, sorted((root / "Sources").glob("*.swift"))), "-framework", "AppKit", "-framework", "ApplicationServices", "-framework", "Contacts", "-framework", "Carbon", "-framework", "Security", "-framework", "LocalAuthentication", "-framework", "UserNotifications", "-o", str(executable)], check=True)
 plist = {"CFBundleIdentifier": "dev.aux.computer-use", "CFBundleName": "Aux Computer Use", "CFBundleDisplayName": "Aux Computer Use", "CFBundleExecutable": executable.name, "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "0.1.0", "CFBundleVersion": "1", "LSMinimumSystemVersion": "14.0", "LSUIElement": True, "NSContactsUsageDescription": "Aux looks up contacts only when you request a contact task.", "NSAppleEventsUsageDescription": "Aux controls another app only for the operation you approve.", "NSFaceIDUsageDescription": "Aux uses device biometry to unlock the local vault you enrolled."}
 identities = json.loads((root.parents[1] / "docs/design/extension-identities.json").read_text())
 plist["AuxNativeMessagingOrigins"] = [f"chrome-extension://{identity['id']}/" for identity in identities.values()]

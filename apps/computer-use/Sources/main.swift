@@ -18,6 +18,7 @@ final class AuxMenuDelegate: NSObject, NSApplicationDelegate {
 }
 let application = NSApplication.shared
 application.setActivationPolicy(.accessory)
+installNotificationDelegate()
 let delegate = AuxMenuDelegate()
 if CommandLine.arguments.contains("--menu-bar") {
     application.delegate = delegate

@@ -28,7 +28,7 @@ func automationPermission(_ bundleId: String, request: Bool) throws -> [String: 
 func permissionStatus(_ params: [String: Any]) throws -> [String: Any] {
     let targets = params["automationTargets"] as? [String] ?? []
     guard targets.count <= 20 else { throw HelperError("BAD_REQUEST", "Too many automation targets") }
-    return ["accessibility": AXIsProcessTrusted() ? "granted" : "not-granted", "screenRecording": CGPreflightScreenCaptureAccess() ? "granted" : "not-granted", "contacts": contactPermission(), "automation": try targets.map { try automationPermission($0, request: false) }, "fullDiskAccess": "unknown", "messages": "requires-authorized-operation", "biometry": biometricAvailability(), "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required"]
+    return ["accessibility": AXIsProcessTrusted() ? "granted" : "not-granted", "screenRecording": CGPreflightScreenCaptureAccess() ? "granted" : "not-granted", "contacts": contactPermission(), "notifications": try notificationStatus(), "automation": try targets.map { try automationPermission($0, request: false) }, "fullDiskAccess": "unknown", "messages": "requires-authorized-operation", "biometry": biometricAvailability(), "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required"]
 }
 func requestPermission(_ params: [String: Any]) throws -> [String: Any] {
     switch try requiredString(params, "kind", limit: 50) {
@@ -36,6 +36,7 @@ func requestPermission(_ params: [String: Any]) throws -> [String: Any] {
         let granted = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
         return ["initiated": true, "granted": granted]
     case "screenRecording": return ["initiated": true, "granted": CGRequestScreenCaptureAccess()]
+    case "notifications": return try requestNotificationPermission()
     case "contacts":
         let semaphore = DispatchSemaphore(value: 0)
         var granted = false
@@ -146,7 +147,10 @@ func appleScriptLiteral(_ value: String) -> String { "\"" + value.replacingOccur
 func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] {
     switch method {
     case "ping": return ["service": "aux-computer-use", "version": "0.1.0", "pid": ProcessInfo.processInfo.processIdentifier]
-    case "capabilities": return ["methods": ["permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.frontmost", "apps.open", "accessibility.snapshot", "semantic.prepare", "semantic.capture", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required", "messagesRead": "unavailable"]
+    case "capabilities": return ["methods": ["notifications.status", "notifications.enqueue", "notifications.takeActivations", "permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.frontmost", "apps.open", "accessibility.snapshot", "semantic.prepare", "semantic.capture", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required", "messagesRead": "unavailable"]
+    case "notifications.status": return try notificationStatus()
+    case "notifications.enqueue": return try enqueueNotification(params)
+    case "notifications.takeActivations": return try takeNotificationActivations()
     case "permissions.status": return try permissionStatus(params)
     case "permissions.request": return try requestPermission(params)
     case "vault.biometryAvailable": return biometricAvailability()

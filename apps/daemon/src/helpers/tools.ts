@@ -7,6 +7,7 @@ import {
 } from '@aux/agent';
 import { z } from 'zod';
 import type { HelperClient, HelperMethod } from './client.js';
+import { notificationInputSchema } from './notifications.js';
 
 type HelperTools = ReturnType<NonNullable<AgentExtensions['tools']>>;
 const actionSchema = z.discriminatedUnion('action', [
@@ -178,6 +179,43 @@ export function computerUseTools(
           { signal },
         );
       },
+    },
+  };
+}
+
+/** Always mount these names, including explicit unavailable capability results. */
+export function notificationTools(
+  service: import('./notifications.js').NotificationService | undefined,
+  session: Session,
+  signal: AbortSignal,
+): HelperTools {
+  return {
+    notification: {
+      description:
+        'Show the exact title/body through the native notification helper after session policy and OS authorization checks. Optional sessionLink is this session ID, activating its bound ordinary Aux chat on click. Success means enqueued, never guaranteed delivery. Permission is requested only through explicit settings actions.',
+      inputSchema: notificationInputSchema,
+      execute: async (
+        input: z.infer<typeof notificationInputSchema>,
+        { toolCallId },
+      ) => {
+        if (!service)
+          fail('PRECONDITION_FAILED', 'Native notifications are unavailable');
+        return service.enqueue(session, input, toolCallId, signal);
+      },
+    },
+    clip_search: {
+      description:
+        'Search owner-authorized clip evidence. This installation has no authorized clip source; the capability is unavailable and does not read the clipboard.',
+      inputSchema: z.object({
+        query: z.string().min(1).max(1000),
+        from: z.number().nonnegative().optional(),
+        to: z.number().nonnegative().optional(),
+      }),
+      execute: async () =>
+        fail(
+          'PRECONDITION_FAILED',
+          'Clip search is unavailable: no owner-authorized clip source is configured',
+        ),
     },
   };
 }
