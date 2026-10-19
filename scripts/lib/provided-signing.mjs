@@ -120,17 +120,8 @@ export async function inspectProvidedSigningTree(root) {
   await walk();
   return { root, files, bundles };
 }
-function embeddedEntitlements(path, policy) {
-  let xml;
-  try {
-    xml = command(['-d', '--entitlements', '-', '--xml', path]);
-  } catch (error) {
-    if (!String(error.stderr).includes('code object is not signed at all'))
-      throw new Error(`Cannot inspect embedded signature: ${path}`);
-    xml = '';
-  }
-  const values = xml.trim() ? jsonPlist(xml) : {},
-    preserve = policy?.preserveKeys ?? [],
+export function applyProvidedEntitlementPolicy(values, policy, { canAddBoundaryDyld = false } = {}) {
+  const preserve = policy?.preserveKeys ?? [],
     remove = policy?.removeKeys ?? [];
   if (
     !Array.isArray(preserve) ||
@@ -140,7 +131,7 @@ function embeddedEntitlements(path, policy) {
     throw new Error('Entitlement decisions must be distinct explicit keys');
   const keys = Object.keys(values).sort();
   if (JSON.stringify([...preserve, ...remove].sort()) !== JSON.stringify(keys))
-    throw new Error(`Exhaustive entitlement policy required: ${path}`);
+    throw new Error('Exhaustive entitlement policy required');
   const result = {};
   for (const key of preserve) {
     if (
@@ -153,12 +144,31 @@ function embeddedEntitlements(path, policy) {
       );
     result[key] = values[key];
   }
+  const addDyldEnvironmentForBoundary = policy?.addDyldEnvironmentForBoundary === true;
+  if (addDyldEnvironmentForBoundary) {
+    const key = 'com.apple.security.cs.allow-dyld-environment-variables';
+    if (!canAddBoundaryDyld || keys.includes(key)) throw new Error('DYLD boundary exception requires a changed supplied hardened SEA host');
+    result[key] = true;
+  }
   return {
     observedKeys: keys,
     preserveKeys: preserve,
     removeKeys: remove,
+    addDyldEnvironmentForBoundary,
     values: result,
   };
+}
+
+function embeddedEntitlements(path, policy, options) {
+  let xml;
+  try {
+    xml = command(['-d', '--entitlements', '-', '--xml', path]);
+  } catch (error) {
+    if (!String(error.stderr).includes('code object is not signed at all'))
+      throw new Error(`Cannot inspect embedded signature: ${path}`);
+    xml = '';
+  }
+  return applyProvidedEntitlementPolicy(xml.trim() ? jsonPlist(xml) : {}, policy, options);
 }
 
 function signingOptions(path) {
@@ -253,12 +263,18 @@ export async function planProvidedSigning({
       if (target.executable !== `Contents/MacOS/${metadata.CFBundleExecutable}`)
         throw new Error('Bundle executable does not match Info.plist');
     }
+    const options = signingOptions(join(snapshot.root, code));
+    const suppliedBoundaryHost = target.kind === 'bundle' && options.includes('runtime') && (
+      (target.path.endsWith('apps/daemon/Aux Daemon.app') && target.executable === 'Contents/MacOS/aux-daemon') ||
+      (target.path.endsWith('apps/cli/Aux CLI.app') && target.executable === 'Contents/MacOS/aux-cli')
+    );
     steps.push({
       ...target,
-      options: signingOptions(join(snapshot.root, code)),
+      options,
       entitlements: embeddedEntitlements(
         join(snapshot.root, code),
         target.entitlements,
+        { canAddBoundaryDyld: suppliedBoundaryHost },
       ),
     });
   }
@@ -309,6 +325,7 @@ export async function runProvidedSigning(plan, { mode = 'verify-only' } = {}) {
       entitlements: {
         preserveKeys: s.entitlements.preserveKeys,
         removeKeys: s.entitlements.removeKeys,
+        addDyldEnvironmentForBoundary: s.entitlements.addDyldEnvironmentForBoundary,
       },
     })),
     verifyPreserved: plan.verifyPreserved,
@@ -345,7 +362,7 @@ export async function runProvidedSigning(plan, { mode = 'verify-only' } = {}) {
       command(args);
       command(['--verify', '--strict', path]);
       const observed = embeddedEntitlements(path, {
-        preserveKeys: step.entitlements.preserveKeys,
+        preserveKeys: Object.keys(step.entitlements.values),
         removeKeys: [],
       });
       if (
