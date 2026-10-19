@@ -7,6 +7,7 @@ import {
 import type { VaultItem } from './client';
 import { resolveAccount, rpc } from './client';
 import { installClipboardLifetime } from './clipboard-background';
+import { createInlineAutofill } from './inline-autofill';
 import { installPasskeyLifecycle } from './passkeys/lifecycle';
 import { installSubmissionWatch } from './submission-watch';
 
@@ -23,6 +24,7 @@ type Target = {
 };
 type Request = {
   type?: string;
+  requestToken?: string;
   contextToken?: string;
   itemId?: string;
   accountId?: number;
@@ -122,6 +124,14 @@ async function live(target: Target) {
   )
     throw new Error('This page changed. Open the form menu again.');
 }
+const inlineAutofill = createInlineAutofill({
+  incognito: chrome.extension.inIncognitoContext,
+  resolveAccount,
+  rpc,
+  send,
+  live,
+  openPopup: () => chrome.action.openPopup(),
+});
 chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   if (
     sender.id !== chrome.runtime.id ||
@@ -136,6 +146,32 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   )
     return;
   const target = contentTarget(sender);
+  if (
+    typeof request.type === 'string' &&
+    request.type.startsWith('aux.vault.inline.') &&
+    target
+  ) {
+    void (async () => {
+      const tab = await chrome.tabs.get(target.tabId);
+      if (!tab.url || tab.incognito !== chrome.extension.inIncognitoContext)
+        throw new Error('The selected profile or page changed.');
+      return inlineAutofill.handle(request, {
+        ...target,
+        topLevelUrl: tab.url,
+        createdAt: Date.now(),
+      });
+    })()
+      .then((result) => respond({ result }))
+      .catch((error) =>
+        respond({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Inline Vault action failed.',
+        }),
+      );
+    return true;
+  }
   if (request.type === 'aux.vault.focus' && target) {
     focused.set(target.tabId, target);
     respond({ result: true });
@@ -199,6 +235,7 @@ async function handle(request: Request) {
   if (request.type === 'aux.vault.clearPending') {
     await submissionWatch.clear();
     pending.clear();
+    inlineAutofill.clear();
     return true;
   }
   if (request.type === 'aux.vault.pageContext') {
@@ -377,6 +414,7 @@ async function handle(request: Request) {
   });
 }
 chrome.tabs.onRemoved.addListener((tabId) => {
+  inlineAutofill.clear(tabId);
   focused.delete(tabId);
   for (const [token, target] of pending)
     if (target.tabId === tabId) pending.delete(token);
@@ -385,6 +423,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (!change.url && change.status !== 'loading') return;
+  inlineAutofill.clear(tabId);
   focused.delete(tabId);
   for (const [token, target] of pending)
     if (target.tabId === tabId) pending.delete(token);

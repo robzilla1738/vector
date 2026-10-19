@@ -1,4 +1,6 @@
 import type { FieldKey, PageFillContext } from './autofill-protocol';
+import type { InlineReply } from './inline-autofill';
+import { createInlinePanel } from './inline-panel';
 
 // MV3 content scripts are classic scripts: keep their runtime vocabulary local.
 const fieldLabels = {
@@ -39,9 +41,11 @@ let submission:
 const host = document.createElement('aux-vault-controls');
 const shadow = host.attachShadow({ mode: 'closed' });
 const button = document.createElement('button');
-button.textContent = 'Open Aux Vault';
+button.textContent = 'Show Aux logins';
 button.type = 'button';
-button.setAttribute('aria-label', 'Open Aux Vault for this form');
+button.setAttribute('aria-label', 'Show matching Aux logins for this form');
+button.setAttribute('aria-haspopup', 'dialog');
+button.setAttribute('aria-expanded', 'false');
 button.style.cssText =
   'font:12px/20px system-ui;padding:4px 8px;border:1px solid #8885;border-radius:8px;background:Canvas;color:CanvasText;cursor:pointer;box-shadow:0 2px 6px #0002';
 shadow.append(button);
@@ -92,12 +96,19 @@ function position() {
     return;
   }
   const rect = focused.getBoundingClientRect();
-  host.style.left = `${Math.min(Math.max(4, rect.right - 112), innerWidth - 132)}px`;
-  host.style.top = `${Math.min(rect.bottom + 4, innerHeight - 36)}px`;
+  const width = inlinePanel.open ? 308 : 132;
+  const height = inlinePanel.open ? host.getBoundingClientRect().height : 36;
+  host.style.left = `${Math.max(0, Math.min(rect.right - width, innerWidth - width))}px`;
+  host.style.top = `${Math.max(0, Math.min(rect.bottom + 4, innerHeight - height))}px`;
   host.style.display = 'block';
 }
 document.addEventListener('focusin', (event) => {
   if (!isField(event.target) || !usable(event.target)) return;
+  if (event.target === focused && inlinePanel.open) {
+    position();
+    return;
+  }
+  closeInline();
   focused = event.target;
   context = undefined;
   position();
@@ -107,12 +118,121 @@ document.addEventListener('focusin', (event) => {
 });
 addEventListener('scroll', position, { passive: true, capture: true });
 addEventListener('resize', position, { passive: true });
+async function inlineRequest<T>(
+  type: string,
+  input: Record<string, unknown> = {},
+): Promise<T> {
+  const response = (await chrome.runtime.sendMessage({ type, ...input })) as {
+    result?: T;
+    error?: string;
+  };
+  if (response.error || response.result === undefined)
+    throw new Error(response.error ?? 'Inline Vault action is unavailable.');
+  return response.result;
+}
+let inlineToken: string | undefined,
+  inlineEpoch = 0,
+  inlineTimer: ReturnType<typeof setInterval> | undefined,
+  inlinePolling = false;
+function closeInline() {
+  const token = inlineToken;
+  inlineToken = undefined;
+  inlineEpoch++;
+  if (inlineTimer) clearInterval(inlineTimer);
+  inlineTimer = undefined;
+  inlinePanel.close();
+  button.setAttribute('aria-expanded', 'false');
+  if (token)
+    void inlineRequest('aux.vault.inline.dismiss', {
+      requestToken: token,
+    }).catch(() => undefined);
+  position();
+}
+const inlinePanel = createInlinePanel(shadow, {
+  async fill(itemId, selectedFields) {
+    if (!inlineToken) throw new Error('Open suggestions for this field again.');
+    await inlineRequest('aux.vault.inline.fill', {
+      requestToken: inlineToken,
+      itemId,
+      selectedFields,
+    });
+    closeInline();
+  },
+  async unlock() {
+    if (!inlineToken) throw new Error('Open suggestions for this field again.');
+    await inlineRequest('aux.vault.inline.unlock', {
+      requestToken: inlineToken,
+    });
+    inlinePanel.notice(
+      'Unlock in the Vault popup, then return to this same form.',
+    );
+  },
+  close: closeInline,
+});
+async function refreshInline(epoch: number) {
+  if (inlinePolling || !inlineToken || epoch !== inlineEpoch) return;
+  inlinePolling = true;
+  try {
+    const reply = await inlineRequest<InlineReply>('aux.vault.inline.refresh', {
+      requestToken: inlineToken,
+    });
+    if (epoch !== inlineEpoch) return;
+    if (reply.items !== undefined) inlinePanel.render(reply);
+    position();
+  } catch {
+    if (epoch === inlineEpoch) closeInline();
+  } finally {
+    inlinePolling = false;
+  }
+}
 button.addEventListener('click', (event) => {
   if (!event.isTrusted) return;
-  void chrome.runtime.sendMessage({ type: 'aux.vault.open' }).catch(() => {
-    button.textContent = 'Open the Vault toolbar button';
-  });
+  if (submission) {
+    void chrome.runtime.sendMessage({ type: 'aux.vault.open' });
+    return;
+  }
+  if (inlinePanel.open) {
+    closeInline();
+    return;
+  }
+  const epoch = ++inlineEpoch;
+  void inlineRequest<InlineReply>('aux.vault.inline.list')
+    .then((reply) => {
+      if (epoch !== inlineEpoch) return;
+      inlineToken = reply.requestToken;
+      inlinePanel.render(reply);
+      button.setAttribute('aria-expanded', 'true');
+      position();
+      inlineTimer = setInterval(() => void refreshInline(epoch), 2000);
+      setTimeout(() => {
+        if (epoch === inlineEpoch) closeInline();
+      }, 120000);
+    })
+    .catch(() => {
+      if (epoch === inlineEpoch)
+        void chrome.runtime
+          .sendMessage({ type: 'aux.vault.open' })
+          .catch(() => {
+            button.textContent = 'Open the Vault toolbar button';
+          });
+    });
 });
+document.addEventListener(
+  'pointerdown',
+  (event) => {
+    if (inlinePanel.open && !event.composedPath().includes(host)) closeInline();
+  },
+  true,
+);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) closeInline();
+});
+addEventListener('pagehide', () => {
+  closeInline();
+  context = undefined;
+  submission = undefined;
+});
+
 function selectFields(): Selection {
   if (!focused || !usable(focused))
     throw new Error('Focus a visible field before filling.');
@@ -219,6 +339,7 @@ document.addEventListener(
   'submit',
   (event) => {
     if (!event.isTrusted || !(event.target instanceof HTMLFormElement)) return;
+    closeInline();
     const form = event.target;
     if (submitGesture?.form !== form || Date.now() - submitGesture.at > 2000)
       return;
@@ -248,7 +369,7 @@ document.addEventListener(
     setTimeout(() => {
       if (submission?.token === token) {
         submission = undefined;
-        button.textContent = 'Open Aux Vault';
+        button.textContent = 'Show Aux logins';
       }
     }, 120000);
     // No plaintext leaves this isolated actor until the popup explicitly accepts.
@@ -257,7 +378,7 @@ document.addEventListener(
       .then((response) => {
         if (response?.error && submission?.token === token) {
           submission = undefined;
-          button.textContent = 'Open Aux Vault';
+          button.textContent = 'Show Aux logins';
         }
       })
       .catch(() => {
@@ -325,7 +446,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
     if (request.type === 'aux.vault.dismissSubmission') {
       if (submission?.token === request.suggestionToken) {
         submission = undefined;
-        button.textContent = 'Open Aux Vault';
+        button.textContent = 'Show Aux logins';
       }
       respond({ result: true });
       return;

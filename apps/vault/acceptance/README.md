@@ -12,7 +12,7 @@ Implemented geometries:
 - Generator uses384px maximum width,64×28/12px length input and160px slider connected to the existing generation options. History/management/generator maximum widths remain CSS maxima; their intrinsic contents determine actual width. Other item/import/recovery dialogs retain their own existing default width/height bounds.
 - Neutral theme roles continue through the shared Aux tokens, including M6's N14.5/N98.5 55%-alpha muted text. No native material, unresolved sidebar role or final composited color is inferred.
 
-Not implemented/claimed by this slice: an additional item-type submenu, icon picker, create-Vault popover, separate export dialog, real inline autofill result panel, native save/update positioning, passkey/Touch ID/recovery-word geometry or reference screenshot parity. The existing content-script actuator only opens Vault; it is not the measured308px autofill result panel, and the popup's FillReview checklist is not relabeled as suggestions. These require separate behavior slices. Shared modal focus/cancel handling is reused unchanged.
+Not implemented/claimed by this slice: an additional item-type submenu, icon picker, create-Vault popover, separate export dialog, native save/update positioning, passkey/Touch ID/recovery-word geometry or reference screenshot parity. At the geometry delivery the content-script actuator only opened Vault; the separate actor-backed inline suggestion slice is now documented in `inline.md`. The popup's FillReview checklist is not relabeled as suggestions. These require separate behavior slices. Shared modal focus/cancel handling is reused unchanged.
 
 Run after building the Vault app:
 
