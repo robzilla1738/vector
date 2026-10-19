@@ -1,3 +1,4 @@
+import { readContextActivity } from './context-bridge';
 import { daemonUrl, getToken, resolveAccount } from './daemon';
 import { readHistoryVisits } from './history-bridge';
 
@@ -185,6 +186,7 @@ const commands: Record<
   string,
   (params: Record<string, unknown>) => Promise<unknown>
 > = {
+  'context.activity': readContextActivity,
   'history.visits': readHistoryVisits,
   'tabs.owned.create': (params) =>
     ownedCommand(async () => {

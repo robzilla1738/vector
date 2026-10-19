@@ -19,6 +19,7 @@ import {
 import { createReplService } from './cli/repl.js';
 import { accountSkills, createSkillRouters } from './cli/skills.js';
 import { createContextRouter } from './context/index.js';
+import { createContextObserver } from './context/observer.js';
 import { createVaultBiometryAdapter, HelperClient } from './helpers/client.js';
 import {
   computerUseTools,
@@ -50,6 +51,9 @@ export function createFeatures() {
   let historyCollector: ReturnType<typeof createHistoryCollector> | undefined;
   let channels: ChannelService | undefined;
   let helper: HelperClient | undefined;
+  let contextHelper: HelperClient | undefined;
+  let contextObserver: ReturnType<typeof createContextObserver> | undefined;
+  let unregisterContextDeletion: (() => void) | undefined;
   let importer: HelperClient | undefined;
   let vault: VaultService | undefined;
   let repl: ReturnType<typeof createReplService> | undefined;
@@ -125,10 +129,14 @@ export function createFeatures() {
           process.env.AUX_HELPER_PATH,
           join(services.store.home, 'helper-artifacts'),
         );
+        contextHelper = new HelperClient(
+          process.env.AUX_HELPER_PATH,
+          join(services.store.home, 'context-helper-artifacts'),
+        );
       }
       context = new ContextService(
         memory,
-        helper ? createHelperCaptureAdapter(helper) : undefined,
+        contextHelper ? createHelperCaptureAdapter(contextHelper) : undefined,
       );
       if (process.env.AUX_IMPORTER_PATH)
         importer = new HelperClient(
@@ -140,8 +148,17 @@ export function createFeatures() {
         helper ? createVaultBiometryAdapter(helper) : undefined,
       );
       const passkeys = createPasskeyRouter(services, vault);
+      contextObserver = createContextObserver(services, context, {
+        isUnlocked: (accountId) => !!vault && !vault.status(accountId).locked,
+      });
+      unregisterContextDeletion = services.store.registerAccountDeletionHandler(
+        (accountId) => contextObserver?.changed(accountId),
+      );
       unregisterPasskeySecurity = vault.registerSecurityChangeHandler(
-        (accountId) => passkeys.service.clearEphemeral(accountId),
+        (accountId) => {
+          passkeys.service.clearEphemeral(accountId);
+          contextObserver?.changed(accountId);
+        },
       );
       routineTimer = setInterval(() => {
         for (const account of services.store.accounts())
@@ -155,6 +172,7 @@ export function createFeatures() {
       }, 1000);
       routineTimer.unref();
       historyCollector.start();
+      contextObserver.start();
       const skills = createSkillRouters(services);
       repl = createReplService(services, activeEngine);
       const agentRouters = createAgentRouters(services, activeEngine);
@@ -205,16 +223,21 @@ export function createFeatures() {
     ) {
       if (key === 'browsingHistoryEnabled' && previous !== value)
         historyCollector?.settingsChanged(accountId);
+      if (key === 'contextAwarenessEnabled' && previous !== value)
+        contextObserver?.changed(accountId);
     },
     runningSessionCount: () => engine?.semaphore.active ?? 0,
     async shutdown() {
       historyCollector?.close();
+      await contextObserver?.close();
+      unregisterContextDeletion?.();
       if (routineTimer) clearInterval(routineTimer);
       await repl?.close();
       await channels?.close();
       vault?.close();
       unregisterPasskeySecurity?.();
       await helper?.close();
+      await contextHelper?.close();
       await importer?.close();
       await engine?.close();
     },
