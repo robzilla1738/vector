@@ -11,12 +11,98 @@ index ca65408a67..cea1fcfa94 100644
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
        "views/tab_search_bubble_host.cc",
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+index b7cdb8f557..8dda75189c 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+ 
++#include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++
+ #include <algorithm>
+ #include <optional>
+ 
+@@ -141,6 +143,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+   top_button_separator_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
++  aux_sidebar_ = AddChildView(
++      std::make_unique<AuxSidebarView>(browser_view->browser()));
++  aux_sidebar_->SetProperty(
++      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++
+   bottom_button_container_ =
+       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
+           state_controller_, root_action_item, browser_view->browser(),
+@@ -158,6 +165,15 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
+           region_horizontal_padding, 0, region_horizontal_padding));
+ 
++  aux_footer_ = AddChildView(
++      std::make_unique<AuxSidebarFooter>(browser_view->browser()));
++  aux_footer_->SetProperty(views::kMarginsKey,
++                           gfx::Insets::VH(0, region_horizontal_padding));
++  aux_footer_->SetProperty(
++      views::kFlexBehaviorKey,
++      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
++                               views::MaximumFlexSizeRule::kUnbounded));
++
+   gemini_button_ = AddChildView(std::make_unique<views::View>());
+ 
+   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
+@@ -740,9 +756,9 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+               &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
+               base::Unretained(this)));
+ 
+-  std::optional<size_t> separator_index = GetIndexOf(top_button_separator_);
+-  CHECK(separator_index.has_value());
+-  ReorderChildView(tab_strip_view(), separator_index.value() + 1);
++  std::optional<size_t> sidebar_index = GetIndexOf(aux_sidebar_);
++  CHECK(sidebar_index.has_value());
++  ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
+ 
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
+ }
+@@ -767,6 +783,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+                            resize_area_->is_resizing());
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
++  aux_sidebar_->SetVisible(!collapsed);
++  bottom_button_container_->SetVisible(collapsed);
++  aux_footer_->SetVisible(!collapsed);
+ 
+   if (tab_strip_view()) {
+     tab_strip_view()->SetCollapsedState(collapsed);
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+index 76f8e997d6..334a80b3b2 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -31,6 +31,8 @@
+ #include "ui/views/controls/resize_area_delegate.h"
+ #include "ui/views/focus/focus_manager.h"
+ 
++class AuxSidebarFooter;
++class AuxSidebarView;
+ class BrowserView;
+ class VerticalTabStripTopContainer;
+ class VerticalTabStripBottomContainer;
+@@ -240,6 +242,8 @@ class VerticalTabStripRegionView final
+ 
+   raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
++  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
++  raw_ptr<AuxSidebarFooter> aux_footer_ = nullptr;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000..4bfa764ec0
+index 0000000000..b90bf72492
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
-@@ -0,0 +1,747 @@
+@@ -0,0 +1,1444 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -41,11 +127,34 @@ index 0000000000..4bfa764ec0
 +#include "base/strings/utf_string_conversions.h"
 +#include "base/task/thread_pool.h"
 +#include "base/values.h"
++#include "base/task/single_thread_task_runner.h"
++#include "cc/paint/paint_flags.h"
 +#include "chrome/app/chrome_command_ids.h"
++#include "chrome/app/vector_icons/vector_icons.h"
 +#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/browser_process.h"
 +#include "chrome/browser/favicon/favicon_service_factory.h"
 +#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_avatar_icon_util.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_window.h"
 +#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/simple_message_box.h"
++#include "chrome/browser/ui/webui/profile_helper.h"
++#include "components/favicon/content/content_favicon_driver.h"
++#include "components/tabs/public/tab_context_menu_command.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
++#include "ui/views/controls/image_view.h"
++#include "ui/views/controls/separator.h"
++#include "ui/views/layout/layout_provider.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/widget/widget.h"
++#include "ui/base/mojom/menu_source_type.mojom.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
 +#include "components/bookmarks/browser/bookmark_node.h"
@@ -247,6 +356,528 @@ index 0000000000..4bfa764ec0
 +BEGIN_METADATA(AuxSidebarRow)
 +END_METADATA
 +
++constexpr int kTilesPerRow = 3;
++constexpr int kTileHeight = 40;
++constexpr int kTileGap = 6;
++constexpr int kTileRadius = 12;
++constexpr int kTileIconSize = 16;
++
++// One pinned tab, drawn as a rounded tile with its favicon centered.
++class AuxPinnedTile : public views::Button {
++  METADATA_HEADER(AuxPinnedTile, views::Button)
++
++ public:
++  AuxPinnedTile(PressedCallback callback,
++                int tab_index,
++                const ui::ImageModel& icon,
++                const std::u16string& title,
++                bool active)
++      : views::Button(std::move(callback)),
++        tab_index_(tab_index),
++        active_(active) {
++    auto image = std::make_unique<views::ImageView>(icon);
++    image->SetImageSize(gfx::Size(kTileIconSize, kTileIconSize));
++    image->SetCanProcessEventsWithinSubtree(false);
++    image_ = image.get();
++    SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical))
++        ->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
++    AddChildView(std::move(image));
++    SetTooltipText(title);
++    GetViewAccessibility().SetName(title);
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    UpdateStyle();
++  }
++
++  int tab_index() const { return tab_index_; }
++
++ protected:
++  void StateChanged(views::Button::ButtonState old_state) override {
++    views::Button::StateChanged(old_state);
++    UpdateStyle();
++  }
++
++ private:
++  void UpdateStyle() {
++    const bool hovered = GetState() == views::Button::STATE_HOVERED ||
++                         GetState() == views::Button::STATE_PRESSED;
++    SetBackground(views::CreateRoundedRectBackground(
++        hovered || active_ ? ui::kColorSysStateHoverOnProminent
++                           : ui::kColorSysStateHoverOnSubtle,
++        kTileRadius));
++    SetBorder(views::CreateRoundedRectBorder(
++        1, kTileRadius,
++        active_ ? ui::kColorSysOnSurfaceSubtle : ui::kColorSysDivider));
++    SchedulePaint();
++  }
++
++  const int tab_index_;
++  const bool active_;
++  raw_ptr<views::ImageView> image_ = nullptr;
++};
++
++BEGIN_METADATA(AuxPinnedTile)
++END_METADATA
++
++// Lays pinned tiles out three to a row.
++class AuxPinnedGrid : public views::View {
++  METADATA_HEADER(AuxPinnedGrid, views::View)
++
++ public:
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    const int width = available_size.width().is_bounded()
++                          ? available_size.width().value()
++                          : kTilesPerRow * 64;
++    const int rows =
++        (static_cast<int>(children().size()) + kTilesPerRow - 1) / kTilesPerRow;
++    return gfx::Size(width, rows > 0 ? rows * kTileHeight + (rows - 1) * kTileGap
++                                     : 0);
++  }
++
++  void Layout(PassKey) override {
++    const int width =
++        (this->width() - (kTilesPerRow - 1) * kTileGap) / kTilesPerRow;
++    int index = 0;
++    for (views::View* child : children()) {
++      const int row = index / kTilesPerRow;
++      const int column = index % kTilesPerRow;
++      child->SetBounds(column * (width + kTileGap),
++                       row * (kTileHeight + kTileGap), width, kTileHeight);
++      ++index;
++    }
++  }
++};
++
++BEGIN_METADATA(AuxPinnedGrid)
++END_METADATA
++
++constexpr int kMenuWidth = 252;
++constexpr int kMenuRowIcon = 16;
++constexpr int kCommandEditProfile = 100;
++constexpr int kCommandDeleteProfile = 101;
++constexpr int kCommandTabReload = 110;
++constexpr int kCommandTabDuplicate = 111;
++constexpr int kCommandTabUnpin = 112;
++constexpr int kCommandTabClose = 113;
++
++// A full width row of the profile menu.
++class AuxMenuRow : public views::Button {
++  METADATA_HEADER(AuxMenuRow, views::Button)
++
++ public:
++  AuxMenuRow(PressedCallback callback,
++             const ui::ImageModel& icon,
++             const std::u16string& text)
++      : views::Button(std::move(callback)) {
++    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(7, 8), 10));
++    layout->set_cross_axis_alignment(
++        views::BoxLayout::CrossAxisAlignment::kCenter);
++    auto icon_view = std::make_unique<views::ImageView>(icon);
++    icon_view->SetImageSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));
++    icon_view->SetPreferredSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));
++    icon_view->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(icon_view));
++    auto label = std::make_unique<views::Label>(
++        text, views::style::CONTEXT_MENU, views::style::STYLE_BODY_3);
++    label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    label->SetElideBehavior(gfx::ELIDE_TAIL);
++    label->SetEnabledColor(ui::kColorSysOnSurface);
++    label->SetCanProcessEventsWithinSubtree(false);
++    layout->SetFlexForView(AddChildView(std::move(label)), 1);
++    GetViewAccessibility().SetName(text);
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    UpdateBackground();
++  }
++
++  void AddTrailingIcon(const gfx::VectorIcon& icon) {
++    auto view = std::make_unique<views::ImageView>(
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle, 14));
++    view->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(view));
++  }
++
++  void AddTrailingText(const std::u16string& text) {
++    auto label = std::make_unique<views::Label>(
++        text, views::style::CONTEXT_MENU, views::style::STYLE_BODY_5);
++    label->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
++    label->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(label));
++  }
++
++  views::ImageButton* AddTrailingButton(const gfx::VectorIcon& icon,
++                                        PressedCallback callback,
++                                        const std::u16string& name) {
++    auto button = views::CreateVectorImageButton(std::move(callback));
++    button->SetImageModel(
++        views::Button::STATE_NORMAL,
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle, 14));
++    button->GetViewAccessibility().SetName(name);
++    button->SetTooltipText(name);
++    views::InstallCircleHighlightPathGenerator(button.get());
++    return AddChildView(std::move(button));
++  }
++
++ protected:
++  void StateChanged(views::Button::ButtonState old_state) override {
++    views::Button::StateChanged(old_state);
++    UpdateBackground();
++  }
++
++ private:
++  void UpdateBackground() {
++    const bool hovered = GetState() == views::Button::STATE_HOVERED ||
++                         GetState() == views::Button::STATE_PRESSED;
++    SetBackground(hovered ? views::CreateRoundedRectBackground(
++                                ui::kColorSysStateHoverOnSubtle, 8)
++                          : nullptr);
++  }
++};
++
++BEGIN_METADATA(AuxMenuRow)
++END_METADATA
++
++gfx::ImageSkia ProfileAvatar(ProfileAttributesEntry* entry, int size) {
++  return profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(size * 2), size,
++                                      size, profiles::SHAPE_CIRCLE)
++      .AsImageSkia();
++}
++
++std::vector<ProfileAttributesEntry*> AllProfiles() {
++  return g_browser_process->profile_manager()
++      ->GetProfileAttributesStorage()
++      .GetAllProfilesAttributesSortedForDisplay();
++}
++
++// Aside's profile menu: the profiles on this Mac, then the browser sections.
++class AuxProfileMenu : public views::BubbleDialogDelegate,
++                       public ui::SimpleMenuModel::Delegate {
++ public:
++  static void Show(BrowserWindowInterface* browser, views::View* anchor) {
++    auto menu = std::make_unique<AuxProfileMenu>(browser, anchor);
++    views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET)
++        ->Show();
++  }
++
++  AuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor)
++      : views::BubbleDialogDelegate(anchor, views::BubbleBorder::BOTTOM_LEFT),
++        browser_(browser) {
++    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    SetShowCloseButton(false);
++    set_margins(gfx::Insets::VH(6, 6));
++    set_fixed_width(kMenuWidth);
++    auto contents = std::make_unique<views::View>();
++    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical));
++    contents_ = SetContentsView(std::move(contents));
++    Build();
++  }
++
++  ~AuxProfileMenu() override = default;
++
++  // ui::SimpleMenuModel::Delegate:
++  void ExecuteCommand(int command_id, int event_flags) override {
++    switch (command_id) {
++      case kCommandEditProfile:
++        EditProfile();
++        return;
++      case kCommandDeleteProfile:
++        DeleteProfile();
++        return;
++      case IDC_OPTIONS:
++        browser_->OpenGURL(
++            GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
++                               "/main.html#/u/0/settings/general"})),
++            WindowOpenDisposition::NEW_FOREGROUND_TAB);
++        break;
++      default:
++        chrome::ExecuteCommand(browser_, command_id);
++        break;
++    }
++    GetWidget()->Close();
++  }
++
++ private:
++  void Build() {
++    auto title = std::make_unique<views::Label>(
++        u"Profiles", views::style::CONTEXT_LABEL, views::style::STYLE_BODY_5);
++    title->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
++    title->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    title->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(2, 8, 4, 8)));
++    contents_->AddChildView(std::move(title));
++
++    const base::FilePath current = browser_->GetProfile()->GetPath();
++    for (ProfileAttributesEntry* entry : AllProfiles()) {
++      const base::FilePath path = entry->GetPath();
++      auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
++          base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this),
++                              path),
++          ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon)),
++          entry->GetName()));
++      if (path == current) {
++        row->AddTrailingIcon(kCheckIcon);
++      }
++      row->AddTrailingButton(
++          kMoreVertIcon,
++          base::BindRepeating(&AuxProfileMenu::ShowProfileActions,
++                              base::Unretained(this), path),
++          u"Profile actions");
++    }
++    contents_->AddChildView(std::make_unique<AuxMenuRow>(
++        base::BindRepeating(&AuxProfileMenu::NewProfile,
++                            base::Unretained(this)),
++        ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorSysOnSurfaceSubtle,
++                                       kMenuRowIcon),
++        u"New profile"));
++    contents_->AddChildView(std::make_unique<views::Separator>());
++
++    AddSubmenuRow(kBookmarkManagerIcon, u"Bookmarks", kSubmenuBookmarks);
++    AddSubmenuRow(vector_icons::kDownloadIcon, u"Downloads", kSubmenuDownloads);
++    AddSubmenuRow(vector_icons::kExtensionFilledIcon, u"Extensions", kSubmenuExtensions);
++    AddSubmenuRow(vector_icons::kHistoryIcon, u"History", kSubmenuHistory);
++    AddSubmenuRow(vector_icons::kCodeIcon, u"Developers", kSubmenuDevelopers);
++    AddCommandRow(kSettingsIcon, u"Settings", IDC_OPTIONS, u"\u2318,");
++    contents_->AddChildView(std::make_unique<views::Separator>());
++    AddCommandRow(kAddIcon, u"New Tab", IDC_NEW_TAB, u"\u2318T");
++    AddCommandRow(kIncognitoIcon, u"Incognito Window",
++                  IDC_NEW_INCOGNITO_WINDOW, u"\u21E7\u2318N");
++  }
++
++  enum Submenu {
++    kSubmenuBookmarks,
++    kSubmenuDownloads,
++    kSubmenuExtensions,
++    kSubmenuHistory,
++    kSubmenuDevelopers,
++  };
++
++  void AddCommandRow(const gfx::VectorIcon& icon,
++                     const std::u16string& text,
++                     int command,
++                     const std::u16string& shortcut) {
++    auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
++        base::BindRepeating(&AuxProfileMenu::ExecuteCommand,
++                            base::Unretained(this), command, 0),
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle,
++                                       kMenuRowIcon),
++        text));
++    row->AddTrailingText(shortcut);
++  }
++
++  void AddSubmenuRow(const gfx::VectorIcon& icon,
++                     const std::u16string& text,
++                     Submenu submenu) {
++    auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
++        views::Button::PressedCallback(),
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle,
++                                       kMenuRowIcon),
++        text));
++    row->SetCallback(base::BindRepeating(&AuxProfileMenu::ShowSubmenu,
++                                         base::Unretained(this),
++                                         base::Unretained(row), submenu));
++    row->AddTrailingIcon(kChevronRightIcon);
++  }
++
++  void RunMenu(views::View* anchor, bool to_the_right) {
++    menu_runner_ = std::make_unique<views::MenuRunner>(
++        menu_model_.get(), views::MenuRunner::HAS_MNEMONICS);
++    gfx::Rect bounds = anchor->GetBoundsInScreen();
++    if (to_the_right) {
++      bounds.set_x(bounds.right());
++      bounds.set_width(0);
++    }
++    menu_runner_->RunMenuAt(GetWidget(), nullptr, bounds,
++                            views::MenuAnchorPosition::kTopLeft,
++                            ui::mojom::MenuSourceType::kMouse);
++  }
++
++  void ShowSubmenu(views::View* row, Submenu submenu) {
++    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    switch (submenu) {
++      case kSubmenuBookmarks:
++        menu_model_->AddItem(IDC_BOOKMARK_THIS_TAB, u"Bookmark This Tab");
++        menu_model_->AddItem(IDC_BOOKMARK_ALL_TABS, u"Bookmark All Tabs");
++        menu_model_->AddItem(IDC_SHOW_BOOKMARK_MANAGER, u"Bookmark Manager");
++        break;
++      case kSubmenuDownloads:
++        menu_model_->AddItem(IDC_SHOW_DOWNLOADS, u"Show All Downloads");
++        break;
++      case kSubmenuExtensions:
++        menu_model_->AddItem(IDC_MANAGE_EXTENSIONS, u"Manage Extensions");
++        break;
++      case kSubmenuHistory:
++        menu_model_->AddItem(IDC_SHOW_HISTORY, u"Show Full History");
++        menu_model_->AddItem(IDC_CLEAR_BROWSING_DATA,
++                             u"Clear Browsing Data\u2026");
++        break;
++      case kSubmenuDevelopers:
++        menu_model_->AddItem(IDC_DEV_TOOLS, u"Developer Tools");
++        menu_model_->AddItem(IDC_DEV_TOOLS_CONSOLE, u"JavaScript Console");
++        menu_model_->AddItem(IDC_VIEW_SOURCE, u"View Source");
++        menu_model_->AddItem(IDC_TASK_MANAGER, u"Task Manager");
++        break;
++    }
++    RunMenu(row, /*to_the_right=*/true);
++  }
++
++  void ShowProfileActions(const base::FilePath& path) {
++    action_profile_ = path;
++    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    menu_model_->AddItem(kCommandEditProfile, u"Edit");
++    menu_model_->AddItem(kCommandDeleteProfile, u"Delete");
++    if (AllProfiles().size() < 2) {
++      menu_model_->SetEnabledAt(1, false);
++    }
++    RunMenu(contents_, /*to_the_right=*/true);
++  }
++
++  void SwitchTo(const base::FilePath& path) {
++    if (path != browser_->GetProfile()->GetPath()) {
++      profiles::SwitchToProfile(path, /*always_create=*/false);
++    }
++    GetWidget()->Close();
++  }
++
++  void EditProfile() {
++    profiles::SwitchToProfile(
++        action_profile_, /*always_create=*/false,
++        base::BindOnce([](BrowserWindowInterface* browser) {
++          if (browser) {
++            browser->OpenGURL(GURL("chrome://settings/manageProfile"),
++                              WindowOpenDisposition::NEW_FOREGROUND_TAB);
++          }
++        }));
++    GetWidget()->Close();
++  }
++
++  void DeleteProfile() {
++    chrome::ShowQuestionMessageBoxAsync(
++        GetWidget()->GetNativeWindow(), u"Delete profile?",
++        u"This permanently deletes this profile's bookmarks, history and "
++        u"passwords from this Mac.",
++        base::BindOnce(
++            [](base::FilePath path, chrome::MessageBoxResult result) {
++              if (result == chrome::MESSAGE_BOX_RESULT_YES) {
++                webui::DeleteProfileAtPath(
++                    path, ProfileMetrics::DELETE_PROFILE_USER_MANAGER);
++              }
++            },
++            action_profile_));
++    GetWidget()->Close();
++  }
++
++  void NewProfile() {
++    ProfileManager::CreateMultiProfileAsync(
++        u"New profile", /*icon_index=*/0, /*is_hidden=*/false,
++        base::BindOnce([](Profile* profile) {
++          if (profile) {
++            webui::OpenNewWindowForProfile(profile);
++          }
++        }));
++    GetWidget()->Close();
++  }
++
++  const raw_ptr<BrowserWindowInterface> browser_;
++  raw_ptr<views::View> contents_ = nullptr;
++  base::FilePath action_profile_;
++  std::unique_ptr<ui::SimpleMenuModel> menu_model_;
++  std::unique_ptr<views::MenuRunner> menu_runner_;
++};
++
++// Circular avatar with a small chevron, opening the profile menu.
++class AuxProfileButton : public views::Button {
++  METADATA_HEADER(AuxProfileButton, views::Button)
++
++ public:
++  AuxProfileButton(BrowserWindowInterface* browser)
++      : views::Button(base::BindRepeating(
++            [](AuxProfileButton* self, BrowserWindowInterface* browser) {
++              AuxProfileMenu::Show(browser, self);
++            },
++            base::Unretained(this),
++            base::Unretained(browser))) {
++    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(4, 6), 2));
++    layout->set_cross_axis_alignment(
++        views::BoxLayout::CrossAxisAlignment::kCenter);
++    ProfileAttributesEntry* entry =
++        g_browser_process->profile_manager()
++            ->GetProfileAttributesStorage()
++            .GetProfileAttributesWithPath(browser->GetProfile()->GetPath());
++    auto avatar = std::make_unique<views::ImageView>(
++        entry ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, 20))
++              : ui::ImageModel::FromVectorIcon(
++                    vector_icons::kAccountCircleIcon,
++                    ui::kColorSysOnSurfaceSubtle, 20));
++    avatar->SetImageSize(gfx::Size(20, 20));
++    avatar->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(avatar));
++    auto chevron = std::make_unique<views::ImageView>(
++        ui::ImageModel::FromVectorIcon(vector_icons::kKeyboardArrowDownIcon,
++                                       ui::kColorSysOnSurfaceSubtle, 12));
++    chevron->SetCanProcessEventsWithinSubtree(false);
++    AddChildView(std::move(chevron));
++    GetViewAccessibility().SetName(u"Profile");
++    SetTooltipText(u"Profiles");
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    UpdateBackground();
++  }
++
++ protected:
++  void StateChanged(views::Button::ButtonState old_state) override {
++    views::Button::StateChanged(old_state);
++    UpdateBackground();
++  }
++
++ private:
++  void UpdateBackground() {
++    const bool hovered = GetState() == views::Button::STATE_HOVERED ||
++                         GetState() == views::Button::STATE_PRESSED;
++    SetBackground(hovered ? views::CreateRoundedRectBackground(
++                                ui::kColorSysStateHoverOnSubtle, 12)
++                          : nullptr);
++  }
++};
++
++BEGIN_METADATA(AuxProfileButton)
++END_METADATA
++
++// One dot per profile; the current profile's dot is filled.
++class AuxProfileDot : public views::Button {
++  METADATA_HEADER(AuxProfileDot, views::Button)
++
++ public:
++  AuxProfileDot(const base::FilePath& path, bool current)
++      : views::Button(base::BindRepeating(
++            [](base::FilePath path) {
++              profiles::SwitchToProfile(path, /*always_create=*/false);
++            },
++            path)),
++        current_(current) {
++    SetPreferredSize(gfx::Size(14, 20));
++    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    GetViewAccessibility().SetName(u"Switch profile");
++  }
++
++  void PaintButtonContents(gfx::Canvas* canvas) override {
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(GetColorProvider()->GetColor(
++        current_ ? ui::kColorSysOnSurface : ui::kColorSysOnSurfaceSubtle));
++    flags.setAlphaf(current_ ? 1.0f : 0.5f);
++    canvas->DrawCircle(gfx::PointF(width() / 2.0f, height() / 2.0f), 2.5f,
++                       flags);
++  }
++
++ private:
++  const bool current_;
++};
++
++BEGIN_METADATA(AuxProfileDot)
++END_METADATA
++
 +}  // namespace
 +
 +AuxSidebarView::AuxSidebarView(BrowserWindowInterface* browser)
@@ -274,12 +905,71 @@ index 0000000000..4bfa764ec0
 +  if (selection.active_tab_changed()) {
 +    UpdateActiveChat();
 +  }
++  // Pinned tiles mirror the tab strip model. A tile can be the button that
++  // triggered this change, so rebuild after the current event unwinds.
++  if (change.type() != TabStripModelChange::kSelectionOnly ||
++      selection.active_tab_changed()) {
++    ScheduleRebuild();
++  }
 +}
 +
 +void AuxSidebarView::OnTabChangedAt(tabs::TabInterface* tab,
 +                                    TabChangeType change_type) {
 +  if (tab == browser_->GetActiveTabInterface()) {
 +    UpdateActiveChat();
++  }
++  if (tab->IsPinned() && change_type != TabChangeType::kLoadingOnly) {
++    ScheduleRebuild();
++  }
++}
++
++void AuxSidebarView::ScheduleRebuild() {
++  if (rebuild_pending_) {
++    return;
++  }
++  rebuild_pending_ = true;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(
++                     [](base::WeakPtr<AuxSidebarView> self) {
++                       if (self) {
++                         self->rebuild_pending_ = false;
++                         self->Rebuild();
++                       }
++                     },
++                     weak_factory_.GetWeakPtr()));
++}
++
++void AuxSidebarView::ActivateTab(int index) {
++  browser_->GetTabStripModel()->ActivateTabAt(index);
++}
++
++void AuxSidebarView::AddPinnedTiles() {
++  TabStripModel* model = browser_->GetTabStripModel();
++  const int pinned = model->IndexOfFirstNonPinnedTab();
++  if (pinned <= 0) {
++    return;
++  }
++  auto* grid = AddChildView(std::make_unique<AuxPinnedGrid>());
++  grid->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(4, 0, 4, 0));
++  for (int i = 0; i < pinned; ++i) {
++    content::WebContents* contents = model->GetWebContentsAt(i);
++    if (!contents) {
++      continue;
++    }
++    ui::ImageModel icon = ui::ImageModel::FromVectorIcon(
++        kGlobeIcon, ui::kColorSysOnSurfaceSubtle, kTileIconSize);
++    if (auto* driver =
++            favicon::ContentFaviconDriver::FromWebContents(contents)) {
++      const gfx::Image favicon = driver->GetFavicon();
++      if (!favicon.IsEmpty()) {
++        icon = ui::ImageModel::FromImage(favicon);
++      }
++    }
++    auto* tile = grid->AddChildView(std::make_unique<AuxPinnedTile>(
++        base::BindRepeating(&AuxSidebarView::ActivateTab,
++                            base::Unretained(this), i),
++        i, icon, contents->GetTitle(), i == model->active_index()));
++    tile->set_context_menu_controller(this);
 +  }
 +}
 +
@@ -347,6 +1037,7 @@ index 0000000000..4bfa764ec0
 +void AuxSidebarView::Rebuild() {
 +  favicon_tracker_.TryCancelAll();
 +  RemoveAllChildViews();
++  AddPinnedTiles();
 +
 +  // Returns whether the section is expanded.
 +  auto add_header = [this](const std::string& key, const std::u16string& text) {
@@ -660,6 +1351,23 @@ index 0000000000..4bfa764ec0
 +    views::View* source,
 +    const gfx::Point& point,
 +    ui::mojom::MenuSourceType source_type) {
++  if (const auto* tile = views::AsViewClass<AuxPinnedTile>(source)) {
++    if (!GetWidget()) {
++      return;
++    }
++    menu_tab_index_ = tile->tab_index();
++    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    menu_model_->AddItem(kCommandTabReload, u"Reload");
++    menu_model_->AddItem(kCommandTabDuplicate, u"Duplicate");
++    menu_model_->AddItem(kCommandTabUnpin, u"Unpin Tab");
++    menu_model_->AddItem(kCommandTabClose, u"Close");
++    menu_runner_ = std::make_unique<views::MenuRunner>(
++        menu_model_.get(), views::MenuRunner::HAS_MNEMONICS);
++    menu_runner_->RunMenuAt(GetWidget(), nullptr,
++                            gfx::Rect(point, gfx::Size()),
++                            views::MenuAnchorPosition::kTopLeft, source_type);
++    return;
++  }
 +  const auto* row = static_cast<AuxSidebarRow*>(source);
 +  const auto chat = std::ranges::find(chats_, row->chat_id(), &Chat::id);
 +  if (chat == chats_.end() || !GetWidget()) {
@@ -685,6 +1393,22 @@ index 0000000000..4bfa764ec0
 +void AuxSidebarView::ExecuteCommand(int command_id, int event_flags) {
 +  const char* action = nullptr;
 +  switch (command_id) {
++    case kCommandTabReload:
++    case kCommandTabDuplicate:
++    case kCommandTabUnpin:
++    case kCommandTabClose: {
++      TabStripModel* model = browser_->GetTabStripModel();
++      if (!model->ContainsIndex(menu_tab_index_)) {
++        return;
++      }
++      model->ExecuteContextMenuCommand(
++          menu_tab_index_,
++          command_id == kCommandTabReload      ? tabs::CommandReload
++          : command_id == kCommandTabDuplicate ? tabs::CommandDuplicate
++          : command_id == kCommandTabUnpin     ? tabs::CommandTogglePinned
++                                               : tabs::CommandCloseTab);
++      return;
++    }
 +    case kCommandPin:
 +      action = menu_pinned_ ? "unpin" : "pin";
 +      break;
@@ -727,34 +1451,93 @@ index 0000000000..4bfa764ec0
 +           "?accountId=", base::NumberToString(account_id_.value_or(0))})));
 +}
 +
-+AuxSidebarFooter::AuxSidebarFooter(BrowserWindowInterface* browser) {
++AuxAgentPill::AuxAgentPill(BrowserWindowInterface* browser)
++    : views::Button(base::BindRepeating(
++          [](BrowserWindowInterface* browser) {
++            browser->OpenGURL(
++                GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
++                                   "/main.html#/u/0/tasks"})),
++                WindowOpenDisposition::NEW_FOREGROUND_TAB);
++          },
++          base::Unretained(browser))) {
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(2, 0), 0));
++  layout->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
++  layout->set_cross_axis_alignment(
++      views::BoxLayout::CrossAxisAlignment::kCenter);
++  auto icon = std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
++      vector_icons::kDesktopWindowsIcon, SK_ColorWHITE, 16));
++  icon->SetCanProcessEventsWithinSubtree(false);
++  AddChildView(std::move(icon));
++  SetBackground(views::CreateRoundedRectBackground(SkColorSetRGB(0x6B, 0x63, 0xF0),
++                                                    11));
++  SetBorder(views::CreateRoundedRectBorder(
++      1, 11, SkColorSetARGB(0x80, 0xB4, 0xAF, 0xFF)));
++  GetViewAccessibility().SetName(u"Chats");
++  SetTooltipText(u"Chats");
++  SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++}
++
++AuxAgentPill::~AuxAgentPill() = default;
++
++gfx::Size AuxAgentPill::CalculatePreferredSize(
++    const views::SizeBounds& available_size) const {
++  return gfx::Size(66, 22);
++}
++
++void AuxAgentPill::Layout(PassKey) {
++  LayoutSuperclass<views::Button>(this);
++}
++
++BEGIN_METADATA(AuxAgentPill)
++END_METADATA
++
++AuxSidebarFooter::AuxSidebarFooter(BrowserWindowInterface* browser)
++    : browser_(browser) {
++  Build();
++}
++
++void AuxSidebarFooter::Build() {
++  RemoveAllChildViews();
++  profile_button_ = nullptr;
 +  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
 +      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(8, 6), 0));
-+  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kEnd);
++  layout->set_cross_axis_alignment(
++      views::BoxLayout::CrossAxisAlignment::kCenter);
 +
-+  const auto make_button = [&](const gfx::VectorIcon& icon, int command,
-+                               const std::u16string& name) {
-+    auto button = views::CreateVectorImageButton(base::BindRepeating(
-+        [](BrowserWindowInterface* browser, int command) {
-+          chrome::ExecuteCommand(browser, command);
-+        },
-+        base::Unretained(browser), command));
-+    button->SetImageModel(
-+        views::Button::STATE_NORMAL,
-+        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle,
-+                                       kRowIconSize + 2));
-+    button->GetViewAccessibility().SetName(name);
-+    button->SetTooltipText(name);
-+    views::InstallCircleHighlightPathGenerator(button.get());
-+    return button;
-+  };
++  profile_button_ =
++      AddChildView(std::make_unique<AuxProfileButton>(browser_));
 +
-+  AddChildView(make_button(vector_icons::kAccountCircleIcon,
-+                           IDC_SHOW_AVATAR_MENU, u"Profile"));
++  const std::vector<ProfileAttributesEntry*> profiles = AllProfiles();
++  if (profiles.size() > 1) {
++    auto* dots = AddChildView(std::make_unique<views::View>());
++    dots->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal));
++    dots->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
++    for (ProfileAttributesEntry* entry : profiles) {
++      dots->AddChildView(std::make_unique<AuxProfileDot>(
++          entry->GetPath(),
++          entry->GetPath() == browser_->GetProfile()->GetPath()));
++    }
++  }
++
 +  auto* spacer = AddChildView(std::make_unique<views::View>());
 +  layout->SetFlexForView(spacer, 1);
-+  AddChildView(
-+      make_button(vector_icons::kSearchIcon, IDC_TAB_SEARCH, u"Search tabs"));
++
++  auto search = views::CreateVectorImageButton(base::BindRepeating(
++      [](BrowserWindowInterface* browser) {
++        chrome::ExecuteCommand(browser, IDC_TAB_SEARCH);
++      },
++      base::Unretained(browser_.get())));
++  search->SetImageModel(
++      views::Button::STATE_NORMAL,
++      ui::ImageModel::FromVectorIcon(vector_icons::kSearchIcon,
++                                     ui::kColorSysOnSurfaceSubtle,
++                                     kRowIconSize));
++  search->GetViewAccessibility().SetName(u"Search tabs");
++  search->SetTooltipText(u"Search tabs");
++  views::InstallCircleHighlightPathGenerator(search.get());
++  AddChildView(std::move(search));
 +}
 +
 +AuxSidebarFooter::~AuxSidebarFooter() = default;
@@ -766,10 +1549,10 @@ index 0000000000..4bfa764ec0
 +END_METADATA
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
 new file mode 100644
-index 0000000000..01229a6262
+index 0000000000..084e3ca274
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,177 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -795,6 +1578,7 @@ index 0000000000..01229a6262
 +#include "components/bookmarks/browser/bookmark_model.h"
 +#include "ui/menus/simple_menu_model.h"
 +#include "ui/views/context_menu_controller.h"
++#include "ui/views/controls/button/button.h"
 +#include "ui/views/controls/menu/menu_runner.h"
 +#include "ui/views/view.h"
 +
@@ -857,6 +1641,9 @@ index 0000000000..01229a6262
 +
 + private:
 +  void Rebuild();
++  void ScheduleRebuild();
++  void AddPinnedTiles();
++  void ActivateTab(int index);
 +  void Poll();
 +  void EnsureSession(base::OnceClosure then);
 +  void OnChallengeLoaded(base::OnceClosure then,
@@ -892,6 +1679,8 @@ index 0000000000..01229a6262
 +  std::unique_ptr<views::MenuRunner> menu_runner_;
 +  std::string menu_chat_id_;
 +  bool menu_pinned_ = false;
++  int menu_tab_index_ = -1;
++  bool rebuild_pending_ = false;
 +
 +  std::string authorization_;
 +  base::TimeTicks authorization_expiry_;
@@ -905,7 +1694,24 @@ index 0000000000..01229a6262
 +  base::WeakPtrFactory<AuxSidebarView> weak_factory_{this};
 +};
 +
-+// Profile and tab search buttons pinned to the bottom of the sidebar.
++// The purple agent pill that leads the sidebar header. It opens the chat list.
++class AuxAgentPill : public views::Button {
++  METADATA_HEADER(AuxAgentPill, views::Button)
++
++ public:
++  explicit AuxAgentPill(BrowserWindowInterface* browser);
++  AuxAgentPill(const AuxAgentPill&) = delete;
++  AuxAgentPill& operator=(const AuxAgentPill&) = delete;
++  ~AuxAgentPill() override;
++
++  // views::View:
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override;
++  void Layout(PassKey) override;
++};
++
++// Profile button, profile pager dots and tab search pinned to the bottom of
++// the sidebar. The profile button opens Aside's profile menu.
 +class AuxSidebarFooter : public views::View {
 +  METADATA_HEADER(AuxSidebarFooter, views::View)
 +
@@ -914,92 +1720,13 @@ index 0000000000..01229a6262
 +  AuxSidebarFooter(const AuxSidebarFooter&) = delete;
 +  AuxSidebarFooter& operator=(const AuxSidebarFooter&) = delete;
 +  ~AuxSidebarFooter() override;
++
++ private:
++  void Build();
++
++  const raw_ptr<BrowserWindowInterface> browser_;
++  raw_ptr<views::View> profile_button_ = nullptr;
++  base::WeakPtrFactory<AuxSidebarFooter> weak_factory_{this};
 +};
 +
 +#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_VIEW_H_
-diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..8dda75189c 100644
---- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-+++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,8 @@
- 
- #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
- 
-+#include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
-+
- #include <algorithm>
- #include <optional>
- 
-@@ -141,6 +143,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
-   top_button_separator_->SetProperty(
-       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
- 
-+  aux_sidebar_ = AddChildView(
-+      std::make_unique<AuxSidebarView>(browser_view->browser()));
-+  aux_sidebar_->SetProperty(
-+      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
-+
-   bottom_button_container_ =
-       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
-           state_controller_, root_action_item, browser_view->browser(),
-@@ -158,6 +165,15 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
-               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
-           region_horizontal_padding, 0, region_horizontal_padding));
- 
-+  aux_footer_ = AddChildView(
-+      std::make_unique<AuxSidebarFooter>(browser_view->browser()));
-+  aux_footer_->SetProperty(views::kMarginsKey,
-+                           gfx::Insets::VH(0, region_horizontal_padding));
-+  aux_footer_->SetProperty(
-+      views::kFlexBehaviorKey,
-+      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
-+                               views::MaximumFlexSizeRule::kUnbounded));
-+
-   gemini_button_ = AddChildView(std::make_unique<views::View>());
- 
-   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
-@@ -740,9 +756,9 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
-               &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
-               base::Unretained(this)));
- 
--  std::optional<size_t> separator_index = GetIndexOf(top_button_separator_);
--  CHECK(separator_index.has_value());
--  ReorderChildView(tab_strip_view(), separator_index.value() + 1);
-+  std::optional<size_t> sidebar_index = GetIndexOf(aux_sidebar_);
-+  CHECK(sidebar_index.has_value());
-+  ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
- 
-   OnCollapseStateChanged(state_controller_->GetCollapseState());
- }
-@@ -767,6 +783,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
-                            resize_area_->is_resizing());
- 
-   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
-+  aux_sidebar_->SetVisible(!collapsed);
-+  bottom_button_container_->SetVisible(collapsed);
-+  aux_footer_->SetVisible(!collapsed);
- 
-   if (tab_strip_view()) {
-     tab_strip_view()->SetCollapsedState(collapsed);
-diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d6..334a80b3b2 100644
---- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-+++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-@@ -31,6 +31,8 @@
- #include "ui/views/controls/resize_area_delegate.h"
- #include "ui/views/focus/focus_manager.h"
- 
-+class AuxSidebarFooter;
-+class AuxSidebarView;
- class BrowserView;
- class VerticalTabStripTopContainer;
- class VerticalTabStripBottomContainer;
-@@ -240,6 +242,8 @@ class VerticalTabStripRegionView final
- 
-   raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
-   raw_ptr<views::Separator> top_button_separator_ = nullptr;
-+  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
-+  raw_ptr<AuxSidebarFooter> aux_footer_ = nullptr;
-   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
-   raw_ptr<views::View> gemini_button_ = nullptr;
-   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
