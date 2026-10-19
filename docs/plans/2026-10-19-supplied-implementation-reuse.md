@@ -8,6 +8,8 @@ Reuse the implementation supplied by the owner, preserve its UI and behavior, an
 
 Work locally on main, use parallel agents for substantial disjoint implementation, keep tests focused, and continue until the requested result is complete. No push, hosted Actions, Developer ID signing, notarization or release. The owner separately authorized scoped Apple Development provisioning/signing for the three disposable Aux authentication helpers; preserve that exact scope and the actual certificate/profile gates.
 
+The owner reiterated the development priority: keep everything local and focus on1:1 Aside UI and behavior. Signing/release preparation is not a milestone or prerequisite for source fidelity work. Retain existing bounded authentication evidence without repeating signing pipelines as a substitute for implementation.
+
 ## Fidelity requirements
 
 - Preserve component/rendering implementation, styles, typography, geometry, menus, states, shortcuts, transitions and workflows.

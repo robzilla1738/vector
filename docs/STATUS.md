@@ -769,3 +769,7 @@ Full v32 candidate assembled10799providedresources/563nativeleaves, diagnostic h
 ### Actual browser startup exposed standalone wire-token branding defect
 
 V32 direct daemon authentication succeeded (HTTP200 in15ms), but returned `AuxDaemonSessionToken`; native correctly requires the supplied `AsideDaemonSessionToken`. The branding mask protected three space-suffixed header forms and missed the standalone response constant. Protection now covers the complete token (four daemon occurrences, two CLI), with a standalone/header regression fixture and actual pinned daemon assertion. All six focused checks passed. The original signed v32 copy/evidence remains historical and unchanged; fresh packaging/signing/browser verification is required. Existing approved installation authority is retained, not regenerated.
+
+### Development priority: faithful local UI and behavior
+
+Owner clarified that signing/release work is not the development priority. No new signing pass was executed after that instruction. The corrected standalone wire-token source has been staged and a fresh v32 native candidate assembled, but remains unsigned/unlaunched; earlier actual signed authority evidence is retained. Current implementation work focuses on supplied same-window profile switching (real tab/collection transfer, cache roles, stable controller/view rebinds) and exact popup geometry. Integrated proposals are still staged source until their complete transaction and compiled/runtime checks pass; they are not declared working parity.
