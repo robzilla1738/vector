@@ -18,8 +18,10 @@ import '@aux/ui/tokens.css';
 import './styles.css';
 import type { FillContext, Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
+import { OneTimeCode } from './one-time-code';
 import { PasskeyConsent } from './passkeys/consent';
 import { requestIdFromHash } from './passkeys/native';
+import { PasswordGenerator } from './password-generator';
 import { VaultManagement } from './vault-management';
 
 function App() {
@@ -503,6 +505,9 @@ function ItemDetail({
             value={item.loginFields.password}
             onError={onError}
           />
+          {item.loginFields.totp && (
+            <OneTimeCode accountId={accountId} itemId={item.id} />
+          )}
         </>
       )}
       {item.urls.map((url) => (
@@ -638,6 +643,7 @@ function ItemEditor({
   const [destination, setDestination] = useState(item?.vaultId ?? vaultId);
   const [username, setUsername] = useState(item?.loginFields?.username ?? '');
   const [password, setPassword] = useState(item?.loginFields?.password ?? '');
+  const [totp, setTotp] = useState(item?.loginFields?.totp ?? '');
   const [urls, setUrls] = useState(item?.urls.join('\n') ?? '');
   const [notes, setNotes] = useState(item?.notes ?? '');
   const [tags, setTags] = useState(item?.tags.join(', ') ?? '');
@@ -711,9 +717,7 @@ function ItemEditor({
                   loginFields: {
                     username,
                     password,
-                    ...(item?.loginFields?.totp
-                      ? { totp: item.loginFields.totp }
-                      : {}),
+                    ...(totp.trim() ? { totp: totp.trim() } : {}),
                   },
                 }
               : {}),
@@ -779,28 +783,26 @@ function ItemEditor({
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
-            <Button
-              disabled={generating}
-              onClick={() => {
-                setGenerating(true);
-                void rpc<{ password: string }>(
-                  'passwordManager.generatePassword',
-                  {
-                    length: 24,
-                    lowercase: true,
-                    uppercase: true,
-                    digits: true,
-                    symbols: true,
-                  },
-                  true,
-                )
-                  .then((result) => setPassword(result.password))
-                  .catch((error) => setError(error.message))
-                  .finally(() => setGenerating(false));
-              }}
-            >
+            <label>
+              One-time code setup key or otpauth URI
+              <input
+                className="field"
+                type="password"
+                autoComplete="off"
+                value={totp}
+                maxLength={4096}
+                onChange={(event) => setTotp(event.target.value)}
+              />
+            </label>
+            <Button onClick={() => setGenerating(true)}>
               Create a password
             </Button>
+            {generating && (
+              <PasswordGenerator
+                onUse={setPassword}
+                onClose={() => setGenerating(false)}
+              />
+            )}
           </>
         )}
         {(categoryFields[category] ?? []).map((name) => (

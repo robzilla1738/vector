@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
 import { importInput, parseLocalImport } from '../import/local.js';
 import { generatePassword, generatorOptions } from '../passwords/generator.js';
+import { oneTimeCode } from '../passwords/totp.js';
 import {
   encryptedRecordSchema,
   itemFields,
@@ -164,6 +165,23 @@ export function createVaultRouters(
       getItem: procedure
         .input(itemScope)
         .query(({ input }) => vault.getItem(input.accountId, input.itemId)),
+      getOneTimeCode: procedure.input(itemScope).query(({ input }) => {
+        const item = vault.getItem(input.accountId, input.itemId);
+        if (item.state !== 'active' || item.reprompt || !item.loginFields?.totp)
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'This saved item has no available one-time code.',
+          });
+        try {
+          return oneTimeCode(item.loginFields.totp);
+        } catch {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'This saved one-time code setup is invalid or unsupported.',
+          });
+        }
+      }),
       getItemHistory: procedure
         .input(itemScope)
         .query(({ input }) => vault.itemHistory(input.accountId, input.itemId)),
