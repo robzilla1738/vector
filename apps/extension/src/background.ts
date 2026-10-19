@@ -1,6 +1,7 @@
 import { readContextActivity } from './context-bridge';
 import { daemonUrl, getToken, reconnect, resolveAccount } from './daemon';
 import { readHistoryVisits } from './history-bridge';
+import { activateNotificationChat } from './notification-bridge';
 
 function navigationUrl(value: unknown) {
   const url = new URL(String(value));
@@ -187,6 +188,7 @@ const commands: Record<
   string,
   (params: Record<string, unknown>) => Promise<unknown>
 > = {
+  'chat.activate': activateNotificationChat,
   'context.activity': readContextActivity,
   'history.visits': readHistoryVisits,
   'tabs.owned.create': (params) =>

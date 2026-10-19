@@ -19,6 +19,7 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 const defaultAllowed = new Set([
+  'chat.activate',
   'context.activity',
   'history.visits',
   'tabs.owned.create',

@@ -35,6 +35,7 @@ export function createHelperRouter(
             'contacts',
             'automation',
             'fullDiskAccess',
+            'notifications',
           ]),
           bundleId: z.string().optional(),
         }),

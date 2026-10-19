@@ -8,6 +8,10 @@ type NativeEvent = {
 };
 export type ProfileContext = {
   profileId: string;
+  accountId?: number;
+  browserMode?: 'default' | 'incognito';
+  isCurrent?: boolean;
+  isLocked?: boolean;
   profilePath?: string;
   profileIndex?: number;
 };

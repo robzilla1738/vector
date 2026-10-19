@@ -20,6 +20,8 @@ export type HelperMethod =
   | 'ping'
   | 'capabilities'
   | 'permissions.status'
+  | 'notifications.status'
+  | 'notifications.enqueue'
   | 'permissions.request'
   | 'screen.capture'
   | 'input.click'
