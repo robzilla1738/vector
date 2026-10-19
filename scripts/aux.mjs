@@ -41,6 +41,36 @@ function loadEnvFile(path) {
   return values;
 }
 
+/**
+ * The new tab override is registered only once the extension finishes loading, which can lose the
+ * race against the first tab and leave the stock Google page there. Once the extension is up,
+ * navigate such a tab to chrome://newtab again so the override applies.
+ */
+async function fixFirstTab() {
+  const base = `http://127.0.0.1:${upstreamPort}`;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await new Promise((done) => setTimeout(done, 500));
+    try {
+      const targets = await (await fetch(`${base}/json/list`)).json();
+      if (!targets.some((target) => target.url.startsWith("chrome-extension://fjdhphbdlfjogobdofoaagnlnkoibdge/"))) continue;
+      for (const target of targets) {
+        if (target.type !== "page" || !/^(?:chrome:\/\/new-?tab|https:\/\/www\.google\.com\/_\/chrome\/newtab|chrome-search:)/.test(target.url)) continue;
+        const socket = new WebSocket(target.webSocketDebuggerUrl);
+        await new Promise((done, fail) => {
+          socket.onopen = done;
+          socket.onerror = fail;
+        });
+        socket.send(JSON.stringify({ id: 1, method: "Page.navigate", params: { url: "chrome://newtab/" } }));
+        await new Promise((done) => setTimeout(done, 300));
+        socket.close();
+      }
+      return;
+    } catch {
+      // Browser still starting.
+    }
+  }
+}
+
 function seedRuntime() {
   const from = join(staged, "agent-runtime");
   const to = join(home, "runtime");
@@ -127,6 +157,7 @@ if (flag("--no-browser")) {
     { stdio: "inherit", env: { ...process.env, ASIDE_HOME: home } },
   );
   children.push(browser);
+  if (!extraBrowserArgs.some((arg) => !arg.startsWith("-"))) fixFirstTab();
   browser.on("exit", (code) => {
     stop();
     process.exit(code ?? 0);
