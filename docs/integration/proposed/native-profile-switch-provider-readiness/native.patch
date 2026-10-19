@@ -1,0 +1,226 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -5,6 +5,12 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
++#include "chrome/browser/ui/toasts/toast_controller.h"
++#include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
++#include "chrome/browser/skills/skills_ui_window_controller.h"
+ #include "base/check_op.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/raw_ref.h"
+@@ -69,6 +75,8 @@
+         transaction(*static_cast<Browser*>(features.browser_.get())) {}
+   std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
+   Prepare(Browser&, Profile&);
++  std::shared_ptr<Bindings> CollectReadyBindings(Browser&, Profile&);
++  bool Revalidate(std::shared_ptr<Bindings>, Browser&, Profile&);
+   void Begin(std::shared_ptr<Bindings>, base::WeakPtr<Profile>,
+              Browser&, Browser&, Browser&);
+   void Commit(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+@@ -99,16 +107,16 @@
+          result == aux::ProfileSwitchTransaction::Result::kNoChange;
+ }
+ 
+-std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
+-BrowserWindowFeatures::AuxProfileSwitchProvider::Prepare(Browser& browser,
+-                                                       Profile& target) {
++std::shared_ptr<BrowserWindowFeatures::AuxProfileSwitchProvider::Bindings>
++BrowserWindowFeatures::AuxProfileSwitchProvider::CollectReadyBindings(
++    Browser& browser, Profile& target) {
+   CHECK_EQ(features_->browser_, &browser);
+   // Explicit remaining source owners. Their presence is a real unsupported
+   // graph, never permission to retain old-profile services or return success.
+   // Remove a guard only with its actual cold/commit/abort lifecycle port.
+   if (features_->breadcrumb_manager_browser_agent_ ||
+       features_->comments_side_panel_coordinator_ || features_->contextual_tasks_browser_controller_ ||
+-      features_->context_highlight_window_feature_ || features_->glic_iph_controller_ ||
++      features_->glic_iph_controller_ ||
+       features_->glic_split_button_controller_ || features_->most_recent_shared_tab_update_store_ ||
+       features_->session_service_tab_group_sync_observer_ || features_->organizer_panel_controller_ ||
+       features_->actor_ui_window_controller_ || features_->ai_overlay_dialog_controller_ ||
+@@ -117,7 +125,22 @@
+       features_->ios_promo_controller_ || features_->chrome_labs_coordinator_ ||
+       features_->recent_activity_bubble_coordinator_ || features_->shared_tab_group_feedback_controller_ ||
+       features_->find_bar_controller_) {
+-    return std::nullopt;
++    return nullptr;
++  }
++  if (!CanSwitchAuxAgentTabsProfile(&browser) ||
++      (features_->tab_strip_service_feature_ &&
++       features_->tab_strip_service_feature_->HasExternalBindingsOrActiveInvocation()) ||
++      (features_->tab_strip_ui_controller_ &&
++       features_->tab_strip_ui_controller_->HasClientsOrActiveCommand()) ||
++      (features_->context_highlight_window_feature_ &&
++       !features_->context_highlight_window_feature_->CanPauseForAuxProfileSwitch()) ||
++      (features_->skills_ui_window_controller_ &&
++       !features_->skills_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
++    return nullptr;
++  }
++  if (auto* toast = ToastController::From(&browser);
++      toast && toast->HasPendingToastWork()) {
++    return nullptr;
+   }
+   auto* view = BrowserView::GetBrowserViewForBrowser(&browser);
+   auto* toolbar = view ? view->toolbar() : nullptr;
+@@ -130,7 +153,7 @@
+       !location->CanPrepareForAuxProfileSwitch(&target) ||
+       !toolbar->CanRebindOwnedActionsForAuxProfileSwitch() ||
+       !features_->CanPrepareAuxPrivateProfileServices(&target)) {
+-    return std::nullopt;
++    return nullptr;
+   }
+   auto plan = std::make_shared<Bindings>();
+   plan->view = view;
+@@ -170,13 +193,36 @@
+        !features_->lens_overlay_entry_point_controller_->CanRebindForAuxProfileSwitch()) ||
+       (features_->download_toolbar_ui_controller_ &&
+        !features_->download_toolbar_ui_controller_->CanRebindForAuxProfileSwitch())) {
+-    return std::nullopt;
++    return nullptr;
+   }
+   if (features_->cookie_controls_bubble_coordinator_ &&
+       !features_->cookie_controls_bubble_coordinator_->CanRebindForAuxProfileSwitch()) {
++    return nullptr;
++  }
++  return plan;
++}
++
++bool BrowserWindowFeatures::AuxProfileSwitchProvider::Revalidate(
++    std::shared_ptr<Bindings> original, Browser& browser, Profile& target) {
++  auto current = CollectReadyBindings(browser, target);
++  return current && current->view == original->view &&
++         current->toolbar == original->toolbar &&
++         current->location == original->location &&
++         current->vertical == original->vertical &&
++         current->avatar == original->avatar && current->media == original->media &&
++         current->education == original->education;
++}
++
++std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
++BrowserWindowFeatures::AuxProfileSwitchProvider::Prepare(Browser& browser,
++                                                       Profile& target) {
++  auto plan = CollectReadyBindings(browser, target);
++  if (!plan) {
+     return std::nullopt;
+   }
+   return aux::ProfileSwitchTransaction::PreparedBindings(
++      base::BindRepeating(&AuxProfileSwitchProvider::Revalidate,
++                          base::Unretained(this), plan),
+       base::BindOnce(&AuxProfileSwitchProvider::Begin,
+                      base::Unretained(this), plan, target.GetWeakPtr()),
+       base::BindOnce(&AuxProfileSwitchProvider::Commit,
+@@ -193,6 +239,14 @@
+   CHECK(target);
+   // All old-source observation/IPC is retired before identity. Source-tab
+   // services that need real detach notifications remain until empty commit.
++  // Core has just recoverably revalidated real clients/commands/widgets after
++  // cache construction, before these source observer/IPC effects begin.
++  if (features_->context_highlight_window_feature_) {
++    features_->context_highlight_window_feature_->PrepareForAuxProfileSwitch();
++  }
++  if (features_->skills_ui_window_controller_) {
++    features_->skills_ui_window_controller_->PrepareForAuxProfileSwitch();
++  }
+   plan->view_generation = plan->view->BeginAuxProfileSwitch(target.get());
+   // Retire Cast before real old pinned/view teardown can call its icon path.
+   features_->BeginAuxPrivateProfileServices(target.get());
+@@ -274,6 +328,9 @@
+   plan->toolbar->RebindOwnedActionsForAuxProfileSwitch(target);
+   features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
+   features_->RebindAuxPrivateProfileServices();
++  if (features_->skills_ui_window_controller_) {
++    features_->skills_ui_window_controller_->RebindForAuxProfileSwitch(target);
++  }
+   if (features_->cookie_controls_controller_) {
+     // Real source-tab deactivation/detach removed page-action observers. No
+     // OnUiClosing/reload is run; replace only its private settings sources.
+@@ -369,6 +426,9 @@
+     std::shared_ptr<Bindings> plan,
+     Browser&, Browser&, Browser&) {
+   features_->FinishAuxPrivateProfileServices();
++  if (features_->context_highlight_window_feature_) {
++    features_->context_highlight_window_feature_->FinishForAuxProfileSwitch();
++  }
+   features_->browser_actions_->EndAuxProfileSwitch(plan->actions_generation);
+   plan->location->EndAuxProfileSwitch(plan->location_generation);
+   if (plan->vertical) {
+@@ -389,6 +449,13 @@
+   plan->toolbar->AbortOwnedActionsForAuxProfileSwitch(browser.GetProfile());
+   features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
+   features_->AbortAuxPrivateProfileServices();
++  if (features_->skills_ui_window_controller_) {
++    features_->skills_ui_window_controller_->AbortForAuxProfileSwitch(
++        browser.GetProfile());
++  }
++  if (features_->context_highlight_window_feature_) {
++    features_->context_highlight_window_feature_->FinishForAuxProfileSwitch();
++  }
+   if (features_->download_toolbar_ui_controller_) {
+     features_->download_toolbar_ui_controller_->AbortForAuxProfileSwitch(browser.GetProfile());
+   }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
+@@ -20,6 +20,7 @@
+  public:
+   enum class Result { kRejected, kNoChange, kAwaitingSecurity, kSwitched };
+   using Phase = base::OnceCallback<void(Browser&, Browser&, Browser&)>;
++  using Revalidate = base::RepeatingCallback<bool(Browser&, Profile&)>;
+ 
+   class PreparedBindings {
+    public:
+@@ -35,7 +36,9 @@
+     // All phases are mandatory actual implementations. No default/no-op plan
+     // exists. Construct only after cold validation of every remaining source,
+     // including the native Agent/sidebar's actual profile-bound WebContents.
+-    PreparedBindings(Phase begin, Phase commit, Phase finish, Phase abort);
++    PreparedBindings(Revalidate revalidate, Phase begin, Phase commit,
++                     Phase finish, Phase abort);
++    Revalidate revalidate_;
+     Phase begin_;
+     Phase commit_;
+     Phase finish_;
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -48,9 +48,11 @@
+ };
+ 
+ ProfileSwitchTransaction::PreparedBindings::PreparedBindings(
+-    Phase begin, Phase commit, Phase finish, Phase abort)
+-    : begin_(std::move(begin)), commit_(std::move(commit)),
++    Revalidate revalidate, Phase begin, Phase commit, Phase finish, Phase abort)
++    : revalidate_(std::move(revalidate)),
++      begin_(std::move(begin)), commit_(std::move(commit)),
+       finish_(std::move(finish)), abort_(std::move(abort)) {
++  CHECK(revalidate_);
+   CHECK(begin_);
+   CHECK(commit_);
+   CHECK(finish_);
+@@ -111,6 +113,9 @@
+   if (target == previous) {
+     return Result::kNoChange;
+   }
++  // Protect the actual owner against reentrant switches/close while real cache
++  // constructors and their observers run, not only after construction ends.
++  base::AutoReset<bool> active(&browser.aux_profile_switch_in_progress_, true);
+   // All unported/native profile-bound surfaces must refuse HERE, before cache
+   // creation, menus, tabs, identity or auth/bootstrap side effects.
+   auto bindings = std::move(prepare).Run(browser, *target);
+@@ -150,7 +155,12 @@
+       return Result::kRejected;
+     }
+   }
+-  base::AutoReset<bool> active(&browser.aux_profile_switch_in_progress_, true);
++  // Cache creation can synchronously invoke real observers. New clients or
++  // changed source widgets must reject recoverably before any source mutation.
++  if (browser.GetProfile() != previous ||
++      !bindings->revalidate_.Run(browser, *target)) {
++    return Result::kRejected;
++  }
+   base::AutoReset<bool> old_active(&old_cache.aux_profile_switch_in_progress_, true);
+   base::AutoReset<bool> next_active(&next_cache.aux_profile_switch_in_progress_, true);
+   Scope scope;
