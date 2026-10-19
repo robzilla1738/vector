@@ -1,0 +1,5132 @@
+From: Aux clean-room build
+Subject: [PATCH 0087] Native account, browser preferences, notification, omnibox and popup APIs
+
+Specs: docs/spec/native/apis-core.md A0-A4; native/omnibox.md O1-O4; native/platform.md P1-P3.
+Independent implementation using public upstream Chromium APIs. Remaining acceptance gaps are recorded separately.
+
+diff --git a/chrome/browser/aux/daemon_supervisor.cc b/chrome/browser/aux/daemon_supervisor.cc
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -3,12 +3,14 @@
+ #include "chrome/browser/aux/daemon_supervisor.h"
+ 
+ #include "base/command_line.h"
++#include "base/environment.h"
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/path_service.h"
+ #include "base/process/launch.h"
++#include "base/process/process_handle.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/aux/installation_auth.h"
+@@ -48,6 +50,27 @@
+   base::LaunchOptions options;
+   options.environment["AUX_HOME"] = home.value();
+   options.environment["AUX_PORT"] = base::NumberToString(port);
++  options.environment["AUX_BROWSER_PID"] =
++      base::NumberToString(base::GetCurrentProcId());
++  options.environment["AUX_HELPER_PATH"] =
++      paths.root
++          .AppendASCII(
++              "apps/computer-use/Aux Computer "
++              "Use.app/Contents/MacOS/aux-computer-use")
++          .value();
++  options.environment["AUX_EMBEDDING_MODEL_DIR"] =
++      paths.root.AppendASCII("apps/memory/models/minilm").value();
++  const base::FilePath runtime = paths.root.AppendASCII("runtime");
++  std::string path =
++      runtime.value() + ":" + runtime.AppendASCII("python/bin").value();
++  if (auto inherited = base::Environment::Create()->GetVar("PATH")) {
++    path += ":" + *inherited;
++  }
++  options.environment["PATH"] = path;
++  options.environment["FONTCONFIG_PATH"] =
++      runtime.AppendASCII("poppler/etc/fonts").value();
++  options.environment["FONTCONFIG_FILE"] =
++      runtime.AppendASCII("poppler/etc/fonts/fonts.conf").value();
+   options.current_directory = paths.root;
+   return base::LaunchProcess(command, options);
+ }
+diff --git a/chrome/browser/extensions/api/BUILD.gn b/chrome/browser/extensions/api/BUILD.gn
+--- a/chrome/browser/extensions/api/BUILD.gn
++++ b/chrome/browser/extensions/api/BUILD.gn
+@@ -28,6 +28,11 @@
+   # APIs supported on Win/Mac/Linux and desktop Android go here.
+   # TODO(https://crbug.com/356905053): Add more APIs here.
+   public_deps = [
++    "//chrome/browser/extensions/api/aux_account",
++    "//chrome/browser/extensions/api/aux_browser_preferences",
++    "//chrome/browser/extensions/api/aux_notification",
++    "//chrome/browser/extensions/api/aux_omnibox",
++    "//chrome/browser/extensions/api/aux_mini_popup",
+     "//chrome/browser/extensions/api/activity_log_private",
+     "//chrome/browser/extensions/api/browsing_data",
+     "//chrome/browser/extensions/api/commands",
+@@ -214,6 +219,11 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/extensions/api/aux_account:headers",
++    "//chrome/browser/extensions/api/aux_browser_preferences:headers",
++    "//chrome/browser/extensions/api/aux_notification:headers",
++    "//chrome/browser/extensions/api/aux_omnibox:headers",
++    "//chrome/browser/extensions/api/aux_mini_popup:headers",
+     # This is not directly included by the target, but specified here
+     # to avoid cyclic dependency chain related to private_membership
+     # protos.
+diff --git a/chrome/browser/prefs/BUILD.gn b/chrome/browser/prefs/BUILD.gn
+--- a/chrome/browser/prefs/BUILD.gn
++++ b/chrome/browser/prefs/BUILD.gn
+@@ -58,6 +58,8 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/extensions/api/aux_browser_preferences",
++    "//chrome/browser/extensions/api/aux_mini_popup",
+     ":prefs",
+     ":util",
+     "//chrome/browser:browser_process",
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/prefs/browser_prefs.h"
++#include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
++#include "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h"
+ 
+ #include <array>
+ #include <optional>
+@@ -1422,6 +1424,9 @@
+ }
+ 
+ void RegisterLocalState(PrefRegistrySimple* registry) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  extensions::RegisterAuxPopupLocalStatePrefs(registry);
++#endif
+   registry->RegisterBooleanPref(prefs::kNativeBenchmarkEnabled, false);
+   registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -2057,6 +2062,9 @@
+   tab_search_prefs::RegisterProfilePrefs(registry);
+   ThemeColorPickerHandler::RegisterProfilePrefs(registry);
+   ThemeService::RegisterProfilePrefs(registry);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  extensions::RegisterAuxProfilePrefs(registry);
++#endif
+   toolbar::RegisterProfilePrefs(registry);
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
+diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/extensions/api/_api_features.json
+--- a/chrome/common/extensions/api/_api_features.json
++++ b/chrome/common/extensions/api/_api_features.json
+@@ -11,6 +11,91 @@
+ // renderer.
+ 
+ {
++  "auxOmnibox": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.omnibox"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "auxMiniPopup": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.miniPopup"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "auxAccount": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.account"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "auxBrowserPreferences": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.browserPreferences"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "auxNotification": {
++    "dependencies": [
++      "permission:dev.aux.ext.private.notification"
++    ],
++    "contexts": [
++      "privileged_extension"
++    ],
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
+   "accessibilityFeatures": [{
+     "dependencies": ["permission:accessibilityFeatures.modify"],
+     "contexts": ["privileged_extension"]
+diff --git a/chrome/common/extensions/api/_permission_features.json b/chrome/common/extensions/api/_permission_features.json
+--- a/chrome/common/extensions/api/_permission_features.json
++++ b/chrome/common/extensions/api/_permission_features.json
+@@ -11,6 +11,90 @@
+ // chrome/test/data/extensions/api_test/stubs_app/manifest.json
+ 
+ {
++  "dev.aux.ext.private.account": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.browserPreferences": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.omnibox": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.notification": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.miniPopup": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.adblock": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.ext.private.browserImport": {
++    "channel": "stable",
++    "extension_types": [
++      "extension"
++    ],
++    "location": "component",
++    "allowlist": [
++      "34DF148348EE7D0A4C537833D8E36AF936BC74E5",
++      "751F3FBCC5E39A06A9A19BF0603E2648EB8F0DA3"
++    ],
++    "component_extensions_auto_granted": false
++  },
+   "accessibilityFeatures.modify": {
+     "channel": "stable",
+     "extension_types": ["extension", "platform_app"],
+diff --git a/chrome/common/extensions/api/api_sources.gni b/chrome/common/extensions/api/api_sources.gni
+--- a/chrome/common/extensions/api/api_sources.gni
++++ b/chrome/common/extensions/api/api_sources.gni
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//chrome/common/features.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//components/guest_view/buildflags/buildflags.gni")
+ import("//pdf/features.gni")
+ 
+@@ -175,6 +176,10 @@
+   }
+ }
+ 
++if (enable_aux_browser) {
++  uncompiled_sources_ += [ "aux_account.json", "aux_browser_preferences.json", "aux_notification.json", "aux_omnibox.json", "aux_mini_popup.json" ]
++}
++
+ chrome_extensions_api_schema_sources = get_path_info(schema_sources_, "abspath")
+ 
+ chrome_extensions_types_only_schema_sources =
+diff --git a/chrome/common/extensions/permissions/chrome_api_permissions.cc b/chrome/common/extensions/permissions/chrome_api_permissions.cc
+--- a/chrome/common/extensions/permissions/chrome_api_permissions.cc
++++ b/chrome/common/extensions/permissions/chrome_api_permissions.cc
+@@ -31,6 +31,14 @@
+ // add the corresponding permission message rule to
+ // ChromePermissionMessageProvider::GetPermissionMessages as well.
+ constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
++    {APIPermissionID::kAuxAccount, "dev.aux.ext.private.account", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxBrowserPreferences, "dev.aux.ext.private.browserPreferences", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxOmnibox, "dev.aux.ext.private.omnibox", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxNotification, "dev.aux.ext.private.notification", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxMiniPopup, "dev.aux.ext.private.miniPopup", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxAdblock, "dev.aux.ext.private.adblock", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxBrowserImport, "dev.aux.ext.private.browserImport", APIPermissionInfo::kFlagCannotBeOptional},
++
+     // Register permissions for all extension types.
+     {APIPermissionID::kBackground, "background",
+      APIPermissionInfo::kFlagDoesNotRequireManagedSessionFullLoginWarning},
+diff --git a/extensions/browser/extension_event_histogram_value.h b/extensions/browser/extension_event_histogram_value.h
+--- a/extensions/browser/extension_event_histogram_value.h
++++ b/extensions/browser/extension_event_histogram_value.h
+@@ -603,6 +603,7 @@
+   DICTATION_PRIVATE_ON_BROWSER_LOG_EVENT = 578,
+   RUNTIME_ON_ENABLED = 579,
+   ENTERPRISE_WEBRTC_ON_CAPTURE_STOPPED = 580,
++  AUXOMNIBOX_EVENT = 581,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+diff --git a/extensions/browser/extension_function_histogram_value.h b/extensions/browser/extension_function_histogram_value.h
+--- a/extensions/browser/extension_function_histogram_value.h
++++ b/extensions/browser/extension_function_histogram_value.h
+@@ -2051,6 +2051,84 @@
+   ENTERPRISE_WEBRTC_STARTCAPTURE = 1986,
+   ENTERPRISE_WEBRTC_GETCAPTURESTATUS = 1987,
+   ENTERPRISE_WEBRTC_STOPCAPTURE = 1988,
++  AUXACCOUNT_GETPROFILECONTEXT = 1989,
++  AUXACCOUNT_GETPROFILES = 1990,
++  AUXACCOUNT_OPENPROFILEROUTE = 1991,
++  AUXACCOUNT_SIGNDAEMONAUTHCHALLENGE = 1992,
++  AUXBROWSERPREFERENCES_GETWINDOWBACKGROUNDVIBRANCYENABLED = 1993,
++  AUXBROWSERPREFERENCES_SETWINDOWBACKGROUNDVIBRANCYENABLED = 1994,
++  AUXBROWSERPREFERENCES_GETBROWSERCOLORSCHEME = 1995,
++  AUXBROWSERPREFERENCES_SETBROWSERCOLORSCHEME = 1996,
++  AUXBROWSERPREFERENCES_GETTABSTYLE = 1997,
++  AUXBROWSERPREFERENCES_SETTABSTYLE = 1998,
++  AUXBROWSERPREFERENCES_GETVERTICALTABINSERTIONPOSITION = 1999,
++  AUXBROWSERPREFERENCES_SETVERTICALTABINSERTIONPOSITION = 2000,
++  AUXBROWSERPREFERENCES_GETHORIZONTALTABSHRINKENABLED = 2001,
++  AUXBROWSERPREFERENCES_SETHORIZONTALTABSHRINKENABLED = 2002,
++  AUXBROWSERPREFERENCES_GETTABSWITCHERSORTBYRECENTLYUSED = 2003,
++  AUXBROWSERPREFERENCES_SETTABSWITCHERSORTBYRECENTLYUSED = 2004,
++  AUXBROWSERPREFERENCES_GETDEFAULTZOOM = 2005,
++  AUXBROWSERPREFERENCES_SETDEFAULTZOOM = 2006,
++  AUXBROWSERPREFERENCES_GETAUTOPIPENABLED = 2007,
++  AUXBROWSERPREFERENCES_SETAUTOPIPENABLED = 2008,
++  AUXBROWSERPREFERENCES_GETVERTICALTABSBOOKMARKSSECTIONENABLED = 2009,
++  AUXBROWSERPREFERENCES_SETVERTICALTABSBOOKMARKSSECTIONENABLED = 2010,
++  AUXBROWSERPREFERENCES_GETKEEPTASKSRUNNINGSTATE = 2011,
++  AUXBROWSERPREFERENCES_SETKEEPTASKSRUNNINGENABLED = 2012,
++  AUXBROWSERPREFERENCES_GETDEFAULTBROWSERSTATE = 2013,
++  AUXBROWSERPREFERENCES_SETASDEFAULTBROWSER = 2014,
++  AUXBROWSERPREFERENCES_GETDOCKSTATE = 2015,
++  AUXBROWSERPREFERENCES_ADDTODOCK = 2016,
++  AUXBROWSERPREFERENCES_GETBROWSERVERSION = 2017,
++  AUXBROWSERPREFERENCES_GETSYNCSTATUS = 2018,
++  AUXBROWSERPREFERENCES_CHECKFORUPDATES = 2019,
++  AUXBROWSERPREFERENCES_GETLANGUAGESETTINGS = 2020,
++  AUXBROWSERPREFERENCES_GETSUPPORTEDLANGUAGES = 2021,
++  AUXBROWSERPREFERENCES_SETPREFERREDLANGUAGES = 2022,
++  AUXBROWSERPREFERENCES_SETSPELLCHECKENABLED = 2023,
++  AUXBROWSERPREFERENCES_GETSEARCHENGINES = 2024,
++  AUXBROWSERPREFERENCES_SETDEFAULTSEARCHENGINE = 2025,
++  AUXNOTIFICATION_REQUESTPERMISSION = 2026,
++  AUXNOTIFICATION_REVOKEPERMISSION = 2027,
++  AUXOMNIBOX_CREATESESSION = 2028,
++  AUXOMNIBOX_DESTROYSESSION = 2029,
++  AUXOMNIBOX_GETSEARCHENGINES = 2030,
++  AUXOMNIBOX_ONFOCUSCHANGED = 2031,
++  AUXOMNIBOX_QUERYAUTOCOMPLETE = 2032,
++  AUXOMNIBOX_STOPAUTOCOMPLETE = 2033,
++  AUXOMNIBOX_OPENAUTOCOMPLETEMATCH = 2034,
++  AUXOMNIBOX_SETPOPUPSELECTION = 2035,
++  AUXOMNIBOX_OPENPOPUPSELECTION = 2036,
++  AUXOMNIBOX_ONNAVIGATIONLIKELY = 2037,
++  AUXOMNIBOX_DELETEAUTOCOMPLETEMATCH = 2038,
++  AUXOMNIBOX_ACTIVATEKEYWORD = 2039,
++  AUXOMNIBOX_EXECUTEACTION = 2040,
++  AUXOMNIBOX_ONTHUMBNAILREMOVED = 2041,
++  AUXOMNIBOX_GETPLACEHOLDERCONFIG = 2042,
++  AUXOMNIBOX_GETRECENTTABS = 2043,
++  AUXOMNIBOX_GETTABPREVIEW = 2044,
++  AUXOMNIBOX_GETINPUTSTATE = 2045,
++  AUXOMNIBOX_NOTIFYSESSIONSTARTED = 2046,
++  AUXOMNIBOX_NOTIFYSESSIONABANDONED = 2047,
++  AUXOMNIBOX_ADDFILECONTEXT = 2048,
++  AUXOMNIBOX_ADDTABCONTEXT = 2049,
++  AUXOMNIBOX_DELETECONTEXT = 2050,
++  AUXOMNIBOX_CLEARFILES = 2051,
++  AUXOMNIBOX_SUBMITQUERY = 2052,
++  AUXOMNIBOX_OPENLENSSEARCH = 2053,
++  AUXOMNIBOX_SETACTIVETOOLMODE = 2054,
++  AUXOMNIBOX_SETACTIVEMODELMODE = 2055,
++  AUXOMNIBOX_ACTIVATEMETRICSFUNNEL = 2056,
++  AUXMINIPOPUP_HIDE = 2057,
++  AUXMINIPOPUP_GETENABLED = 2058,
++  AUXMINIPOPUP_SETENABLED = 2059,
++  AUXMINIPOPUP_GETSHORTCUT = 2060,
++  AUXMINIPOPUP_SETSHORTCUT = 2061,
++  AUXMINIPOPUP_SETSTATE = 2062,
++  AUXMINIPOPUP_SETSIZE = 2063,
++  AUXMINIPOPUP_SETOPTIONWINDOWSIZE = 2064,
++  AUXMINIPOPUP_PICKDIRECTORY = 2065,
++  AUXMINIPOPUP_SWITCHPROFILE = 2066,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+diff --git a/extensions/common/mojom/api_permission_id.mojom b/extensions/common/mojom/api_permission_id.mojom
+--- a/extensions/common/mojom/api_permission_id.mojom
++++ b/extensions/common/mojom/api_permission_id.mojom
+@@ -300,6 +300,14 @@
+   kPublicSuffix = 273,
+   kEnterpriseWebrtc = 274,
+ 
++  kAuxAccount = 275,
++  kAuxBrowserPreferences = 276,
++  kAuxOmnibox = 277,
++  kAuxNotification = 278,
++  kAuxMiniPopup = 279,
++  kAuxAdblock = 280,
++  kAuxBrowserImport = 281,
++
+   // Add new entries at the end of the enum and be sure to update the
+   // "ExtensionPermission3" enum in
+   // tools/metrics/histograms/metadata/extensions/enums.xml (by running
+diff --git a/tools/metrics/histograms/metadata/extensions/enums.xml b/tools/metrics/histograms/metadata/extensions/enums.xml
+--- a/tools/metrics/histograms/metadata/extensions/enums.xml
++++ b/tools/metrics/histograms/metadata/extensions/enums.xml
+@@ -809,6 +809,7 @@
+   <int value="578" label="DICTATION_PRIVATE_ON_BROWSER_LOG_EVENT"/>
+   <int value="579" label="RUNTIME_ON_ENABLED"/>
+   <int value="580" label="ENTERPRISE_WEBRTC_ON_CAPTURE_STOPPED"/>
++  <int value="581" label="AUXOMNIBOX_EVENT"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_event_histogram_value.h:HistogramValue) -->
+@@ -2921,6 +2922,84 @@
+   <int value="1986" label="ENTERPRISE_WEBRTC_STARTCAPTURE"/>
+   <int value="1987" label="ENTERPRISE_WEBRTC_GETCAPTURESTATUS"/>
+   <int value="1988" label="ENTERPRISE_WEBRTC_STOPCAPTURE"/>
++  <int value="1989" label="AUXACCOUNT_GETPROFILECONTEXT"/>
++  <int value="1990" label="AUXACCOUNT_GETPROFILES"/>
++  <int value="1991" label="AUXACCOUNT_OPENPROFILEROUTE"/>
++  <int value="1992" label="AUXACCOUNT_SIGNDAEMONAUTHCHALLENGE"/>
++  <int value="1993" label="AUXBROWSERPREFERENCES_GETWINDOWBACKGROUNDVIBRANCYENABLED"/>
++  <int value="1994" label="AUXBROWSERPREFERENCES_SETWINDOWBACKGROUNDVIBRANCYENABLED"/>
++  <int value="1995" label="AUXBROWSERPREFERENCES_GETBROWSERCOLORSCHEME"/>
++  <int value="1996" label="AUXBROWSERPREFERENCES_SETBROWSERCOLORSCHEME"/>
++  <int value="1997" label="AUXBROWSERPREFERENCES_GETTABSTYLE"/>
++  <int value="1998" label="AUXBROWSERPREFERENCES_SETTABSTYLE"/>
++  <int value="1999" label="AUXBROWSERPREFERENCES_GETVERTICALTABINSERTIONPOSITION"/>
++  <int value="2000" label="AUXBROWSERPREFERENCES_SETVERTICALTABINSERTIONPOSITION"/>
++  <int value="2001" label="AUXBROWSERPREFERENCES_GETHORIZONTALTABSHRINKENABLED"/>
++  <int value="2002" label="AUXBROWSERPREFERENCES_SETHORIZONTALTABSHRINKENABLED"/>
++  <int value="2003" label="AUXBROWSERPREFERENCES_GETTABSWITCHERSORTBYRECENTLYUSED"/>
++  <int value="2004" label="AUXBROWSERPREFERENCES_SETTABSWITCHERSORTBYRECENTLYUSED"/>
++  <int value="2005" label="AUXBROWSERPREFERENCES_GETDEFAULTZOOM"/>
++  <int value="2006" label="AUXBROWSERPREFERENCES_SETDEFAULTZOOM"/>
++  <int value="2007" label="AUXBROWSERPREFERENCES_GETAUTOPIPENABLED"/>
++  <int value="2008" label="AUXBROWSERPREFERENCES_SETAUTOPIPENABLED"/>
++  <int value="2009" label="AUXBROWSERPREFERENCES_GETVERTICALTABSBOOKMARKSSECTIONENABLED"/>
++  <int value="2010" label="AUXBROWSERPREFERENCES_SETVERTICALTABSBOOKMARKSSECTIONENABLED"/>
++  <int value="2011" label="AUXBROWSERPREFERENCES_GETKEEPTASKSRUNNINGSTATE"/>
++  <int value="2012" label="AUXBROWSERPREFERENCES_SETKEEPTASKSRUNNINGENABLED"/>
++  <int value="2013" label="AUXBROWSERPREFERENCES_GETDEFAULTBROWSERSTATE"/>
++  <int value="2014" label="AUXBROWSERPREFERENCES_SETASDEFAULTBROWSER"/>
++  <int value="2015" label="AUXBROWSERPREFERENCES_GETDOCKSTATE"/>
++  <int value="2016" label="AUXBROWSERPREFERENCES_ADDTODOCK"/>
++  <int value="2017" label="AUXBROWSERPREFERENCES_GETBROWSERVERSION"/>
++  <int value="2018" label="AUXBROWSERPREFERENCES_GETSYNCSTATUS"/>
++  <int value="2019" label="AUXBROWSERPREFERENCES_CHECKFORUPDATES"/>
++  <int value="2020" label="AUXBROWSERPREFERENCES_GETLANGUAGESETTINGS"/>
++  <int value="2021" label="AUXBROWSERPREFERENCES_GETSUPPORTEDLANGUAGES"/>
++  <int value="2022" label="AUXBROWSERPREFERENCES_SETPREFERREDLANGUAGES"/>
++  <int value="2023" label="AUXBROWSERPREFERENCES_SETSPELLCHECKENABLED"/>
++  <int value="2024" label="AUXBROWSERPREFERENCES_GETSEARCHENGINES"/>
++  <int value="2025" label="AUXBROWSERPREFERENCES_SETDEFAULTSEARCHENGINE"/>
++  <int value="2026" label="AUXNOTIFICATION_REQUESTPERMISSION"/>
++  <int value="2027" label="AUXNOTIFICATION_REVOKEPERMISSION"/>
++  <int value="2028" label="AUXOMNIBOX_CREATESESSION"/>
++  <int value="2029" label="AUXOMNIBOX_DESTROYSESSION"/>
++  <int value="2030" label="AUXOMNIBOX_GETSEARCHENGINES"/>
++  <int value="2031" label="AUXOMNIBOX_ONFOCUSCHANGED"/>
++  <int value="2032" label="AUXOMNIBOX_QUERYAUTOCOMPLETE"/>
++  <int value="2033" label="AUXOMNIBOX_STOPAUTOCOMPLETE"/>
++  <int value="2034" label="AUXOMNIBOX_OPENAUTOCOMPLETEMATCH"/>
++  <int value="2035" label="AUXOMNIBOX_SETPOPUPSELECTION"/>
++  <int value="2036" label="AUXOMNIBOX_OPENPOPUPSELECTION"/>
++  <int value="2037" label="AUXOMNIBOX_ONNAVIGATIONLIKELY"/>
++  <int value="2038" label="AUXOMNIBOX_DELETEAUTOCOMPLETEMATCH"/>
++  <int value="2039" label="AUXOMNIBOX_ACTIVATEKEYWORD"/>
++  <int value="2040" label="AUXOMNIBOX_EXECUTEACTION"/>
++  <int value="2041" label="AUXOMNIBOX_ONTHUMBNAILREMOVED"/>
++  <int value="2042" label="AUXOMNIBOX_GETPLACEHOLDERCONFIG"/>
++  <int value="2043" label="AUXOMNIBOX_GETRECENTTABS"/>
++  <int value="2044" label="AUXOMNIBOX_GETTABPREVIEW"/>
++  <int value="2045" label="AUXOMNIBOX_GETINPUTSTATE"/>
++  <int value="2046" label="AUXOMNIBOX_NOTIFYSESSIONSTARTED"/>
++  <int value="2047" label="AUXOMNIBOX_NOTIFYSESSIONABANDONED"/>
++  <int value="2048" label="AUXOMNIBOX_ADDFILECONTEXT"/>
++  <int value="2049" label="AUXOMNIBOX_ADDTABCONTEXT"/>
++  <int value="2050" label="AUXOMNIBOX_DELETECONTEXT"/>
++  <int value="2051" label="AUXOMNIBOX_CLEARFILES"/>
++  <int value="2052" label="AUXOMNIBOX_SUBMITQUERY"/>
++  <int value="2053" label="AUXOMNIBOX_OPENLENSSEARCH"/>
++  <int value="2054" label="AUXOMNIBOX_SETACTIVETOOLMODE"/>
++  <int value="2055" label="AUXOMNIBOX_SETACTIVEMODELMODE"/>
++  <int value="2056" label="AUXOMNIBOX_ACTIVATEMETRICSFUNNEL"/>
++  <int value="2057" label="AUXMINIPOPUP_HIDE"/>
++  <int value="2058" label="AUXMINIPOPUP_GETENABLED"/>
++  <int value="2059" label="AUXMINIPOPUP_SETENABLED"/>
++  <int value="2060" label="AUXMINIPOPUP_GETSHORTCUT"/>
++  <int value="2061" label="AUXMINIPOPUP_SETSHORTCUT"/>
++  <int value="2062" label="AUXMINIPOPUP_SETSTATE"/>
++  <int value="2063" label="AUXMINIPOPUP_SETSIZE"/>
++  <int value="2064" label="AUXMINIPOPUP_SETOPTIONWINDOWSIZE"/>
++  <int value="2065" label="AUXMINIPOPUP_PICKDIRECTORY"/>
++  <int value="2066" label="AUXMINIPOPUP_SWITCHPROFILE"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
+@@ -3316,6 +3395,13 @@
+   <int value="272" label="kBluetoothPeripheral"/>
+   <int value="273" label="kPublicSuffix"/>
+   <int value="274" label="kEnterpriseWebrtc"/>
++  <int value="275" label="kAuxAccount"/>
++  <int value="276" label="kAuxBrowserPreferences"/>
++  <int value="277" label="kAuxOmnibox"/>
++  <int value="278" label="kAuxNotification"/>
++  <int value="279" label="kAuxMiniPopup"/>
++  <int value="280" label="kAuxAdblock"/>
++  <int value="281" label="kAuxBrowserImport"/>
+ </enum>
+ 
+ <enum name="ExtensionPinReason">
+diff --git a/chrome/browser/extensions/api/aux_account/BUILD.gn b/chrome/browser/extensions/api/aux_account/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_account/BUILD.gn
+@@ -0,0 +1,10 @@
++source_set("aux_account") {
++  sources = [ "aux_account_api.cc", "aux_account_api.h" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++  deps = [ "//base", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
++}
++
++source_set("headers") {
++ sources = [ "aux_account_api.h" ]
++ public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_account/aux_account_api.cc b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -0,0 +1,244 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Account/profile and installation signing: native/apis-core A1, platform
++// P2/P3.
++#include "chrome/browser/extensions/api/aux_account/aux_account_api.h"
++
++#include "base/base64.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "content/public/browser/web_contents.h"
++namespace extensions {
++namespace {
++base::ListValue ProfileSnapshot(Profile* current) {
++  base::ListValue result;
++  auto* manager = g_browser_process->profile_manager();
++  int index = 0;
++  for (auto* entry : manager->GetProfileAttributesStorage()
++                         .GetAllProfilesAttributesSortedForDisplay()) {
++    base::DictValue profile;
++    profile.Set("profileId", entry->GetPath().BaseName().value());
++    profile.Set("profilePath", entry->GetPath().value());
++    profile.Set("profileIndex", index++);
++    profile.Set("name", base::UTF16ToUTF8(entry->GetLocalProfileName()));
++    profile.Set("isCurrent",
++                entry->GetPath() == current->GetOriginalProfile()->GetPath());
++    result.Append(std::move(profile));
++  }
++  return result;
++}
++base::ListValue ReadSecurity(base::FilePath home, base::ListValue profiles) {
++  std::string text;
++  std::optional<base::DictValue> registry;
++  if (base::ReadFileToStringWithMaxSize(home.AppendASCII("accounts.json"),
++                                        &text, 4 * 1024 * 1024)) {
++    registry = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++  }
++  const auto* bindings =
++      registry ? registry->FindList("profileBindings") : nullptr;
++  for (auto& value : profiles) {
++    auto& profile = value.GetDict();
++    profile.Set("isLocked", true);
++    profile.Set("configured", false);
++    const auto* path = profile.FindString("profilePath");
++    const auto* id = profile.FindString("profileId");
++    if (!bindings || !path || !id) {
++      continue;
++    }
++    for (const auto& candidate : *bindings) {
++      if (!candidate.is_dict()) {
++        continue;
++      }
++      const auto& binding = candidate.GetDict();
++      const auto* bound_path = binding.FindString("profilePath");
++      const auto* bound_id = binding.FindString("profileId");
++      const auto account = binding.FindInt("accountId");
++      if (!account || *account < 0 || !bound_path || *bound_path != *path ||
++          !bound_id || *bound_id != *id) {
++        continue;
++      }
++      profile.Set("accountId", *account);
++      const auto security_path =
++          home.AppendASCII("u")
++              .AppendASCII(base::NumberToString(*account))
++              .AppendASCII("security-state.json");
++      int permissions = 0;
++      if (base::IsLink(security_path) ||
++          !base::GetPosixFilePermissions(security_path, &permissions) ||
++          (permissions & 0077) ||
++          !base::ReadFileToStringWithMaxSize(security_path, &text, 16384)) {
++        break;
++      }
++      auto security = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++      if (!security || security->FindInt("version") != 1 ||
++          security->FindInt("accountId") != account ||
++          !security->FindBool("configured") || !security->FindBool("locked") ||
++          !security->FindDouble("updatedAt")) {
++        break;
++      }
++      const bool configured = security->FindBool("configured").value_or(false);
++      profile.Set("configured", configured);
++      profile.Set("isLocked",
++                  !configured || security->FindBool("locked").value_or(true));
++      break;
++    }
++  }
++  return profiles;
++}
++bool GateRoute(const GURL& url) {
++  if (url.host() != aux::kAgentExtensionId &&
++      url.host() != aux::kVaultExtensionId) {
++    return false;
++  }
++  return url.path() == "/onboarding" || url.path() == "/onboarding.html" ||
++         url.path() == "/unlock" || url.path() == "/unlock.html" ||
++         url.ref() == "/unlock" || url.ref() == "/onboarding";
++}
++}  // namespace
++base::ListValue ReadAuxProfileSecurity(base::FilePath home,
++                                       base::ListValue profiles) {
++  return ReadSecurity(std::move(home), std::move(profiles));
++}
++ExtensionFunction::ResponseAction AuxAccountFunction::RunAux() {
++  const std::string method = name();
++  if (method == "auxAccount.signDaemonAuthChallenge") {
++    if (args().size() != 1 || !args()[0].is_string()) {
++      return RespondNow(Error("A base64 challenge is required"));
++    }
++    const auto& challenge = args()[0].GetString();
++    const auto bytes = base::Base64Decode(challenge);
++    if (!bytes || bytes->size() != 32) {
++      return RespondNow(Error("Challenge must contain 32 bytes"));
++    }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&aux::SignDaemonChallenge, aux::StateHome(), challenge),
++        base::BindOnce(&AuxAccountFunction::DidSign, base::RetainedRef(this)));
++    return RespondLater();
++  }
++  auto profiles = ProfileSnapshot(profile());
++  if (method == "auxAccount.openProfileRoute") {
++    if (args().size() != 1 || !args()[0].is_dict()) {
++      return RespondNow(Error("Profile route options are required"));
++    }
++    const auto& options = args()[0].GetDict();
++    const auto* path = options.FindString("profilePath");
++    const auto* id = options.FindString("profileId");
++    const auto* target = options.FindString("url");
++    const auto* source = options.FindString("sourceUrl");
++    if (!path || !id || !target || !source) {
++      return RespondNow(Error("Profile route identity is incomplete"));
++    }
++    const GURL url(*target), source_url(*source);
++    if (!url.is_valid() ||
++        (!url.SchemeIsHTTPOrHTTPS() && !url.SchemeIs("chrome-extension")) ||
++        !source_url.is_valid() || source_url.host() != extension_id()) {
++      return RespondNow(Error("Profile route is not allowed"));
++    }
++    if (url.SchemeIs("chrome-extension") &&
++        url.host() != aux::kAgentExtensionId &&
++        url.host() != aux::kVaultExtensionId) {
++      return RespondNow(Error("Extension route is not allowed"));
++    }
++    bool found = false;
++    for (const auto& value : profiles) {
++      if (value.GetDict().FindString("profilePath") &&
++          *value.GetDict().FindString("profilePath") == *path &&
++          *value.GetDict().FindString("profileId") == *id) {
++        found = true;
++      }
++    }
++    if (!found) {
++      return RespondNow(Error("Profile is not registered"));
++    }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadSecurity, aux::StateHome(), std::move(profiles)),
++        base::BindOnce(&AuxAccountFunction::DidCheckRoute,
++                       base::RetainedRef(this), base::FilePath(*path), url));
++    return RespondLater();
++  }
++  if (!args().empty()) {
++    return RespondNow(Error("This method takes no arguments"));
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadSecurity, aux::StateHome(), std::move(profiles)),
++      base::BindOnce(&AuxAccountFunction::DidReadProfiles,
++                     base::RetainedRef(this)));
++  return RespondLater();
++}
++void AuxAccountFunction::DidSign(std::optional<std::string> signature) {
++  if (!signature) {
++    Respond(Error("Installation signing credential is missing or unsafe"));
++    return;
++  }
++  base::DictValue result;
++  result.Set("signedChallenge", *signature);
++  Respond(WithArguments(std::move(result)));
++}
++void AuxAccountFunction::DidReadProfiles(base::ListValue profiles) {
++  if (!browser_context()) {
++    Respond(Error("Profile is no longer available"));
++    return;
++  }
++  if (std::string_view(name()) == "auxAccount.getProfiles") {
++    Respond(WithArguments(std::move(profiles)));
++    return;
++  }
++  for (auto& value : profiles) {
++    if (value.GetDict().FindBool("isCurrent").value_or(false)) {
++      value.GetDict().Set(
++          "browserMode", profile()->IsOffTheRecord() ? "incognito" : "default");
++      Respond(WithArguments(std::move(value)));
++      return;
++    }
++  }
++  Respond(Error("Calling profile is no longer registered"));
++}
++void AuxAccountFunction::DidCheckRoute(base::FilePath path,
++                                       GURL url,
++                                       base::ListValue profiles) {
++  if (!browser_context() || !g_browser_process ||
++      !g_browser_process->profile_manager()) {
++    Respond(Error("Profile is no longer available"));
++    return;
++  }
++  bool unlocked = false;
++  for (const auto& value : profiles) {
++    if (value.GetDict().FindString("profilePath") &&
++        *value.GetDict().FindString("profilePath") == path.value()) {
++      unlocked = !value.GetDict().FindBool("isLocked").value_or(true);
++    }
++  }
++  if (!unlocked && !GateRoute(url)) {
++    Respond(WithArguments(false));
++    return;
++  }
++  auto* target = g_browser_process->profile_manager()->GetProfileByPath(path);
++  if (!target) {
++    Respond(Error("Selected profile is not loaded"));
++    return;
++  }
++  if (profile()->IsOffTheRecord()) {
++    Respond(Error("Cross-profile routes are unavailable in private browsing"));
++    return;
++  }
++  NavigateParams navigation(target, url, ui::PAGE_TRANSITION_LINK);
++  navigation.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  Navigate(&navigation);
++  Respond(WithArguments(navigation.navigated_or_inserted_contents != nullptr));
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_account/aux_account_api.h b/chrome/browser/extensions/api/aux_account/aux_account_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.h
+@@ -0,0 +1,42 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ACCOUNT_AUX_ACCOUNT_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_ACCOUNT_AUX_ACCOUNT_API_H_
++#include "base/files/file_path.h"
++#include "base/values.h"
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++#include "url/gurl.h"
++namespace extensions {
++base::ListValue ReadAuxProfileSecurity(base::FilePath home,
++                                       base::ListValue profiles);
++class AuxAccountFunction : public AuxFunction {
++ protected:
++  ~AuxAccountFunction() override = default;
++  ResponseAction RunAux() override;
++
++ private:
++  void DidReadProfiles(base::ListValue profiles);
++  void DidSign(std::optional<std::string> signature);
++  void DidCheckRoute(base::FilePath path, GURL url, base::ListValue profiles);
++};
++#define AUX_ACCOUNT_FUNCTION(Class, Method, Histogram) \
++  class Class final : public AuxAccountFunction {      \
++   public:                                             \
++    DECLARE_EXTENSION_FUNCTION(Method, Histogram)      \
++   protected:                                          \
++    ~Class() override = default;                       \
++  };
++AUX_ACCOUNT_FUNCTION(AuxAccountGetProfileContextFunction,
++                     "auxAccount.getProfileContext",
++                     AUXACCOUNT_GETPROFILECONTEXT)
++AUX_ACCOUNT_FUNCTION(AuxAccountGetProfilesFunction,
++                     "auxAccount.getProfiles",
++                     AUXACCOUNT_GETPROFILES)
++AUX_ACCOUNT_FUNCTION(AuxAccountOpenProfileRouteFunction,
++                     "auxAccount.openProfileRoute",
++                     AUXACCOUNT_OPENPROFILEROUTE)
++AUX_ACCOUNT_FUNCTION(AuxAccountSignDaemonAuthChallengeFunction,
++                     "auxAccount.signDaemonAuthChallenge",
++                     AUXACCOUNT_SIGNDAEMONAUTHCHALLENGE)
++#undef AUX_ACCOUNT_FUNCTION
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+@@ -0,0 +1,11 @@
++source_set("aux_browser_preferences") {
++  sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
++  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
++  frameworks = [ "Foundation.framework" ]
++}
++
++source_set("headers") {
++ sources = [ "aux_browser_preferences_api.h" ]
++ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -0,0 +1,363 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independently authored preference bindings: native/apis-core A2.
++#include "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h"
++
++#include <algorithm>
++#include <cmath>
++
++#include "base/functional/bind.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/supports_user_data.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/search_engines/template_url_service_factory.h"
++#include "chrome/browser/themes/theme_service.h"
++#include "chrome/browser/themes/theme_service_factory.h"
++#include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
++#include "chrome/common/pref_names.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
++#include "components/keep_alive_registry/keep_alive_types.h"
++#include "components/keep_alive_registry/scoped_keep_alive.h"
++#include "components/language/core/browser/language_prefs.h"
++#include "components/language/core/browser/pref_names.h"
++#include "components/pref_registry/pref_registry_syncable.h"
++#include "components/prefs/pref_service.h"
++#include "components/search_engines/template_url.h"
++#include "components/search_engines/template_url_service.h"
++#include "components/spellcheck/browser/pref_names.h"
++#include "components/version_info/version_info.h"
++#include "third_party/blink/public/common/page/page_zoom.h"
++#include "ui/base/l10n/l10n_util.h"
++namespace extensions {
++base::DictValue ReadAuxDockState();
++base::DictValue AddAuxToDock();
++namespace {
++constexpr char kVibrancy[] = "aux.browser.window_vibrancy";
++constexpr char kInsertion[] = "aux.browser.vertical_tab_insertion";
++constexpr char kShrink[] = "aux.browser.horizontal_tab_shrink";
++constexpr char kMru[] = "aux.browser.tab_switcher_mru";
++constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
++constexpr char kKeepTasks[] = "aux.browser.keep_tasks_running";
++struct KeepTasksRuntime : base::SupportsUserData::Data {
++  std::unique_ptr<ScopedKeepAlive> keep_alive;
++};
++constexpr char kKeepTasksRuntimeKey[] = "aux.keep_tasks_runtime";
++base::DictValue SearchEngines(Profile* profile) {
++  auto* service = TemplateURLServiceFactory::GetForProfile(profile);
++  service->Load();
++  base::ListValue engines;
++  const auto* current = service->GetDefaultSearchProvider();
++  for (const auto& engine : service->GetTemplateURLs()) {
++    if (!engine->SupportsReplacement(service->search_terms_data())) {
++      continue;
++    }
++    base::DictValue row;
++    row.Set("id", base::NumberToString(engine->id()));
++    row.Set("name", base::UTF16ToUTF8(engine->short_name()));
++    row.Set("keyword", base::UTF16ToUTF8(engine->keyword()));
++    row.Set("isDefault", engine == current);
++    engines.Append(std::move(row));
++  }
++  base::DictValue result;
++  result.Set("engines", std::move(engines));
++  if (current) {
++    result.Set("defaultEngineId", base::NumberToString(current->id()));
++  }
++  return result;
++}
++}  // namespace
++void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterBooleanPref(kVibrancy, true);
++  registry->RegisterStringPref(kInsertion, "bottom");
++  registry->RegisterBooleanPref(kShrink, true);
++  registry->RegisterBooleanPref(kMru, true);
++  registry->RegisterBooleanPref(kBookmarks, true);
++  registry->RegisterBooleanPref(kKeepTasks, false);
++}
++ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
++  const std::string_view method = std::string_view(name()).substr(22);
++  auto* prefs = profile()->GetPrefs();
++  const bool setter = base::StartsWith(method, "set");
++  const bool requires_value = setter && method != "setAsDefaultBrowser";
++  if (requires_value && args().size() != 1) {
++    return RespondNow(Error("Exactly one setting value is required"));
++  }
++  if (!requires_value && !args().empty()) {
++    return RespondNow(Error("This method takes no arguments"));
++  }
++  struct BooleanPref {
++    std::string_view getter, setter;
++    const char* key;
++  };
++  for (const auto& item : std::initializer_list<BooleanPref>{
++           {"getWindowBackgroundVibrancyEnabled",
++            "setWindowBackgroundVibrancyEnabled", kVibrancy},
++           {"getHorizontalTabShrinkEnabled", "setHorizontalTabShrinkEnabled",
++            kShrink},
++           {"getTabSwitcherSortByRecentlyUsed",
++            "setTabSwitcherSortByRecentlyUsed", kMru},
++           {"getVerticalTabsBookmarksSectionEnabled",
++            "setVerticalTabsBookmarksSectionEnabled", kBookmarks}}) {
++    if (method == item.getter) {
++      return RespondNow(WithArguments(prefs->GetBoolean(item.key)));
++    }
++    if (method == item.setter) {
++      if (!args()[0].is_bool()) {
++        return RespondNow(Error("Boolean value required"));
++      }
++      if (prefs->IsManagedPreference(item.key)) {
++        return RespondNow(Error("Setting is managed"));
++      }
++      prefs->SetBoolean(item.key, args()[0].GetBool());
++      return RespondNow(NoArguments());
++    }
++  }
++  if (method == "getBrowserColorScheme") {
++    const auto scheme =
++        ThemeServiceFactory::GetForProfile(profile())->GetBrowserColorScheme();
++    return RespondNow(WithArguments(
++        scheme == ThemeService::BrowserColorScheme::kLight  ? "light"
++        : scheme == ThemeService::BrowserColorScheme::kDark ? "dark"
++                                                            : "system"));
++  }
++  if (method == "setBrowserColorScheme") {
++    if (!args()[0].is_string()) {
++      return RespondNow(Error("Appearance value required"));
++    }
++    const auto& scheme = args()[0].GetString();
++    if (scheme != "light" && scheme != "dark" && scheme != "system") {
++      return RespondNow(Error("Unknown appearance"));
++    }
++    ThemeServiceFactory::GetForProfile(profile())->SetBrowserColorScheme(
++        scheme == "light"  ? ThemeService::BrowserColorScheme::kLight
++        : scheme == "dark" ? ThemeService::BrowserColorScheme::kDark
++                           : ThemeService::BrowserColorScheme::kSystem);
++    return RespondNow(NoArguments());
++  }
++  if (method == "getTabStyle") {
++    return RespondNow(WithArguments(
++        prefs->GetBoolean(prefs::kVerticalTabsEnabled) ? "vertical"
++                                                       : "horizontal"));
++  }
++  if (method == "setTabStyle") {
++    if (!args()[0].is_string() || (args()[0].GetString() != "vertical" &&
++                                   args()[0].GetString() != "horizontal")) {
++      return RespondNow(Error("Tab style must be vertical or horizontal"));
++    }
++    if (prefs->IsManagedPreference(prefs::kVerticalTabsEnabled)) {
++      return RespondNow(Error("Setting is managed"));
++    }
++    prefs->SetBoolean(prefs::kVerticalTabsEnabled,
++                      args()[0].GetString() == "vertical");
++    return RespondNow(NoArguments());
++  }
++  if (method == "getVerticalTabInsertionPosition") {
++    return RespondNow(WithArguments(prefs->GetString(kInsertion)));
++  }
++  if (method == "setVerticalTabInsertionPosition") {
++    if (!args()[0].is_string() ||
++        (args()[0].GetString() != "top" && args()[0].GetString() != "bottom")) {
++      return RespondNow(Error("Insertion position must be top or bottom"));
++    }
++    prefs->SetString(kInsertion, args()[0].GetString());
++    return RespondNow(NoArguments());
++  }
++  if (method == "getDefaultZoom") {
++    return RespondNow(
++        WithArguments(profile()->GetZoomLevelPrefs()->GetDefaultZoomFactor()));
++  }
++  if (method == "setDefaultZoom") {
++    if (!args()[0].is_double() && !args()[0].is_int()) {
++      return RespondNow(Error("Zoom must be numeric"));
++    }
++    const double factor = args()[0].GetDouble();
++    if (!std::isfinite(factor) || factor < 0.25 || factor > 5) {
++      return RespondNow(Error("Zoom factor must be between 0.25 and 5"));
++    }
++    profile()->GetZoomLevelPrefs()->SetDefaultZoomLevelPref(
++        blink::ZoomFactorToZoomLevel(factor));
++    return RespondNow(NoArguments());
++  }
++  if (method == "getKeepTasksRunningState") {
++    base::DictValue value;
++    value.Set("enabled", prefs->GetBoolean(kKeepTasks));
++    auto* runtime = static_cast<KeepTasksRuntime*>(
++        profile()->GetUserData(kKeepTasksRuntimeKey));
++    value.Set("effective", runtime && runtime->keep_alive != nullptr);
++    return RespondNow(WithArguments(std::move(value)));
++  }
++  if (method == "setKeepTasksRunningEnabled") {
++    if (!args()[0].is_bool()) {
++      return RespondNow(Error("Boolean value required"));
++    }
++    const bool enabled = args()[0].GetBool();
++    if (profile()->IsOffTheRecord() && enabled) {
++      return RespondNow(
++          Error("Private profiles cannot remain active in background"));
++    }
++    auto runtime = std::make_unique<KeepTasksRuntime>();
++    if (enabled) {
++      runtime->keep_alive = std::make_unique<ScopedKeepAlive>(
++          KeepAliveOrigin::BACKGROUND_MODE_MANAGER,
++          KeepAliveRestartOption::DISABLED);
++    }
++    profile()->SetUserData(kKeepTasksRuntimeKey, std::move(runtime));
++    prefs->SetBoolean(kKeepTasks, enabled);
++    return RespondNow(NoArguments());
++  }
++  if (method == "getAutoPipEnabled") {
++    auto* map = HostContentSettingsMapFactory::GetForProfile(profile());
++    return RespondNow(
++        WithArguments(map->GetDefaultContentSetting(
++                          ContentSettingsType::AUTO_PICTURE_IN_PICTURE,
++                          nullptr) != CONTENT_SETTING_BLOCK));
++  }
++  if (method == "setAutoPipEnabled") {
++    if (!args()[0].is_bool()) {
++      return RespondNow(Error("Boolean value required"));
++    }
++    HostContentSettingsMapFactory::GetForProfile(profile())
++        ->SetDefaultContentSetting(ContentSettingsType::AUTO_PICTURE_IN_PICTURE,
++                                   args()[0].GetBool() ? CONTENT_SETTING_ALLOW
++                                                       : CONTENT_SETTING_BLOCK);
++    return RespondNow(NoArguments());
++  }
++  if (method == "getBrowserVersion") {
++    return RespondNow(
++        WithArguments(std::string(version_info::GetVersionNumber())));
++  }
++  if (method == "getSyncStatus") {
++    base::DictValue value;
++    value.Set("mode", "local");
++    value.Set("available", false);
++    return RespondNow(WithArguments(std::move(value)));
++  }
++  if (method == "checkForUpdates") {
++    base::DictValue value;
++    value.Set("version", std::string(version_info::GetVersionNumber()));
++    value.Set("status", "local");
++    return RespondNow(WithArguments(std::move(value)));
++  }
++  if (method == "getDefaultBrowserState" || method == "setAsDefaultBrowser") {
++    auto worker =
++        base::MakeRefCounted<shell_integration::DefaultBrowserWorker>();
++    if (setter) {
++      worker->StartSetAsDefault(
++          base::BindOnce(&AuxBrowserPreferencesFunction::DidDefaultBrowser,
++                         base::RetainedRef(this)));
++    } else {
++      worker->StartCheckIsDefault(
++          base::BindOnce(&AuxBrowserPreferencesFunction::DidDefaultBrowser,
++                         base::RetainedRef(this)));
++    }
++    return RespondLater();
++  }
++  if (method == "getDockState" || method == "addToDock") {
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(method == "addToDock" ? &AddAuxToDock
++                                             : &ReadAuxDockState),
++        base::BindOnce(&AuxBrowserPreferencesFunction::DidDock,
++                       base::RetainedRef(this)));
++    return RespondLater();
++  }
++  if (method == "getLanguageSettings") {
++    language::LanguagePrefs languages(prefs);
++    std::vector<std::string> codes;
++    languages.GetAcceptLanguagesList(&codes);
++    base::ListValue list;
++    for (const auto& code : codes) {
++      list.Append(code);
++    }
++    base::DictValue value;
++    value.Set("preferredLanguages", std::move(list));
++    value.Set("spellCheckEnabled",
++              prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));
++    return RespondNow(WithArguments(std::move(value)));
++  }
++  if (method == "getSupportedLanguages") {
++    base::ListValue list;
++    for (const auto& code : l10n_util::GetAcceptLanguagesForLocale(
++             g_browser_process->GetApplicationLocale())) {
++      base::DictValue value;
++      value.Set("code", code);
++      value.Set("name",
++                base::UTF16ToUTF8(l10n_util::GetDisplayNameForLocale(
++                    code, g_browser_process->GetApplicationLocale(), true)));
++      list.Append(std::move(value));
++    }
++    base::DictValue result;
++    result.Set("languages", std::move(list));
++    return RespondNow(WithArguments(std::move(result)));
++  }
++  if (method == "setPreferredLanguages") {
++    if (!args()[0].is_list() || args()[0].GetList().empty() ||
++        args()[0].GetList().size() > 100) {
++      return RespondNow(Error("A bounded nonempty language list is required"));
++    }
++    std::vector<std::string> codes;
++    for (const auto& value : args()[0].GetList()) {
++      if (!value.is_string() || value.GetString().empty() ||
++          value.GetString().size() > 35 ||
++          !std::ranges::all_of(value.GetString(), [](char c) {
++            return base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) || c == '-';
++          })) {
++        return RespondNow(Error("Invalid language code"));
++      }
++      if (std::ranges::find(codes, value.GetString()) == codes.end()) {
++        codes.push_back(value.GetString());
++      }
++    }
++    language::LanguagePrefs(prefs).SetUserSelectedLanguagesList(codes);
++    return RespondNow(NoArguments());
++  }
++  if (method == "setSpellCheckEnabled") {
++    if (!args()[0].is_bool()) {
++      return RespondNow(Error("Boolean value required"));
++    }
++    if (prefs->IsManagedPreference(spellcheck::prefs::kSpellCheckEnable)) {
++      return RespondNow(Error("Setting is managed"));
++    }
++    prefs->SetBoolean(spellcheck::prefs::kSpellCheckEnable,
++                      args()[0].GetBool());
++    return RespondNow(NoArguments());
++  }
++  if (method == "getSearchEngines") {
++    return RespondNow(WithArguments(SearchEngines(profile())));
++  }
++  if (method == "setDefaultSearchEngine") {
++    if (!args()[0].is_string()) {
++      return RespondNow(Error("Engine identity required"));
++    }
++    auto* service = TemplateURLServiceFactory::GetForProfile(profile());
++    if (!service->loaded()) {
++      return RespondNow(Error("Search engines are still loading"));
++    }
++    for (const auto& engine : service->GetTemplateURLs()) {
++      if (base::NumberToString(engine->id()) == args()[0].GetString()) {
++        if (!engine->SupportsReplacement(service->search_terms_data())) {
++          return RespondNow(Error("Engine does not support search"));
++        }
++        service->SetUserSelectedDefaultSearchProvider(engine);
++        return RespondNow(NoArguments());
++      }
++    }
++    return RespondNow(Error("Search engine no longer exists"));
++  }
++  return RespondNow(Error("Unsupported Aux preference method"));
++}
++void AuxBrowserPreferencesFunction::DidDefaultBrowser(
++    shell_integration::DefaultWebClientState state) {
++  base::DictValue value;
++  value.Set("isDefault", state == shell_integration::IS_DEFAULT);
++  value.Set("known", state != shell_integration::UNKNOWN_DEFAULT);
++  Respond(WithArguments(std::move(value)));
++}
++void AuxBrowserPreferencesFunction::DidDock(base::DictValue state) {
++  Respond(WithArguments(std::move(state)));
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
+@@ -0,0 +1,306 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_PREFERENCES_AUX_BROWSER_PREFERENCES_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_PREFERENCES_AUX_BROWSER_PREFERENCES_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++#include "chrome/browser/shell_integration.h"
++class PrefRegistrySimple;
++namespace user_prefs {
++class PrefRegistrySyncable;
++}
++namespace extensions {
++void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
++class AuxBrowserPreferencesFunction : public AuxFunction {
++ protected:
++  ~AuxBrowserPreferencesFunction() override = default;
++  ResponseAction RunAux() override;
++
++ private:
++  void DidDefaultBrowser(shell_integration::DefaultWebClientState state);
++  void DidDock(base::DictValue state);
++};
++class AuxBrowserPreferencesGetWindowBackgroundVibrancyEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.getWindowBackgroundVibrancyEnabled",
++      AUXBROWSERPREFERENCES_GETWINDOWBACKGROUNDVIBRANCYENABLED)
++ protected:
++  ~AuxBrowserPreferencesGetWindowBackgroundVibrancyEnabledFunction() override =
++      default;
++};
++class AuxBrowserPreferencesSetWindowBackgroundVibrancyEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.setWindowBackgroundVibrancyEnabled",
++      AUXBROWSERPREFERENCES_SETWINDOWBACKGROUNDVIBRANCYENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetWindowBackgroundVibrancyEnabledFunction() override =
++      default;
++};
++class AuxBrowserPreferencesGetBrowserColorSchemeFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getBrowserColorScheme",
++                             AUXBROWSERPREFERENCES_GETBROWSERCOLORSCHEME)
++ protected:
++  ~AuxBrowserPreferencesGetBrowserColorSchemeFunction() override = default;
++};
++class AuxBrowserPreferencesSetBrowserColorSchemeFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setBrowserColorScheme",
++                             AUXBROWSERPREFERENCES_SETBROWSERCOLORSCHEME)
++ protected:
++  ~AuxBrowserPreferencesSetBrowserColorSchemeFunction() override = default;
++};
++class AuxBrowserPreferencesGetTabStyleFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getTabStyle",
++                             AUXBROWSERPREFERENCES_GETTABSTYLE)
++ protected:
++  ~AuxBrowserPreferencesGetTabStyleFunction() override = default;
++};
++class AuxBrowserPreferencesSetTabStyleFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setTabStyle",
++                             AUXBROWSERPREFERENCES_SETTABSTYLE)
++ protected:
++  ~AuxBrowserPreferencesSetTabStyleFunction() override = default;
++};
++class AuxBrowserPreferencesGetVerticalTabInsertionPositionFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.getVerticalTabInsertionPosition",
++      AUXBROWSERPREFERENCES_GETVERTICALTABINSERTIONPOSITION)
++ protected:
++  ~AuxBrowserPreferencesGetVerticalTabInsertionPositionFunction() override =
++      default;
++};
++class AuxBrowserPreferencesSetVerticalTabInsertionPositionFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.setVerticalTabInsertionPosition",
++      AUXBROWSERPREFERENCES_SETVERTICALTABINSERTIONPOSITION)
++ protected:
++  ~AuxBrowserPreferencesSetVerticalTabInsertionPositionFunction() override =
++      default;
++};
++class AuxBrowserPreferencesGetHorizontalTabShrinkEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.getHorizontalTabShrinkEnabled",
++      AUXBROWSERPREFERENCES_GETHORIZONTALTABSHRINKENABLED)
++ protected:
++  ~AuxBrowserPreferencesGetHorizontalTabShrinkEnabledFunction() override =
++      default;
++};
++class AuxBrowserPreferencesSetHorizontalTabShrinkEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.setHorizontalTabShrinkEnabled",
++      AUXBROWSERPREFERENCES_SETHORIZONTALTABSHRINKENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetHorizontalTabShrinkEnabledFunction() override =
++      default;
++};
++class AuxBrowserPreferencesGetTabSwitcherSortByRecentlyUsedFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.getTabSwitcherSortByRecentlyUsed",
++      AUXBROWSERPREFERENCES_GETTABSWITCHERSORTBYRECENTLYUSED)
++ protected:
++  ~AuxBrowserPreferencesGetTabSwitcherSortByRecentlyUsedFunction() override =
++      default;
++};
++class AuxBrowserPreferencesSetTabSwitcherSortByRecentlyUsedFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.setTabSwitcherSortByRecentlyUsed",
++      AUXBROWSERPREFERENCES_SETTABSWITCHERSORTBYRECENTLYUSED)
++ protected:
++  ~AuxBrowserPreferencesSetTabSwitcherSortByRecentlyUsedFunction() override =
++      default;
++};
++class AuxBrowserPreferencesGetDefaultZoomFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getDefaultZoom",
++                             AUXBROWSERPREFERENCES_GETDEFAULTZOOM)
++ protected:
++  ~AuxBrowserPreferencesGetDefaultZoomFunction() override = default;
++};
++class AuxBrowserPreferencesSetDefaultZoomFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setDefaultZoom",
++                             AUXBROWSERPREFERENCES_SETDEFAULTZOOM)
++ protected:
++  ~AuxBrowserPreferencesSetDefaultZoomFunction() override = default;
++};
++class AuxBrowserPreferencesGetAutoPipEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getAutoPipEnabled",
++                             AUXBROWSERPREFERENCES_GETAUTOPIPENABLED)
++ protected:
++  ~AuxBrowserPreferencesGetAutoPipEnabledFunction() override = default;
++};
++class AuxBrowserPreferencesSetAutoPipEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setAutoPipEnabled",
++                             AUXBROWSERPREFERENCES_SETAUTOPIPENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetAutoPipEnabledFunction() override = default;
++};
++class AuxBrowserPreferencesGetVerticalTabsBookmarksSectionEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.getVerticalTabsBookmarksSectionEnabled",
++      AUXBROWSERPREFERENCES_GETVERTICALTABSBOOKMARKSSECTIONENABLED)
++ protected:
++  ~AuxBrowserPreferencesGetVerticalTabsBookmarksSectionEnabledFunction()
++      override = default;
++};
++class AuxBrowserPreferencesSetVerticalTabsBookmarksSectionEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION(
++      "auxBrowserPreferences.setVerticalTabsBookmarksSectionEnabled",
++      AUXBROWSERPREFERENCES_SETVERTICALTABSBOOKMARKSSECTIONENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetVerticalTabsBookmarksSectionEnabledFunction()
++      override = default;
++};
++class AuxBrowserPreferencesGetKeepTasksRunningStateFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getKeepTasksRunningState",
++                             AUXBROWSERPREFERENCES_GETKEEPTASKSRUNNINGSTATE)
++ protected:
++  ~AuxBrowserPreferencesGetKeepTasksRunningStateFunction() override = default;
++};
++class AuxBrowserPreferencesSetKeepTasksRunningEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setKeepTasksRunningEnabled",
++                             AUXBROWSERPREFERENCES_SETKEEPTASKSRUNNINGENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetKeepTasksRunningEnabledFunction() override = default;
++};
++class AuxBrowserPreferencesGetDefaultBrowserStateFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getDefaultBrowserState",
++                             AUXBROWSERPREFERENCES_GETDEFAULTBROWSERSTATE)
++ protected:
++  ~AuxBrowserPreferencesGetDefaultBrowserStateFunction() override = default;
++};
++class AuxBrowserPreferencesSetAsDefaultBrowserFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setAsDefaultBrowser",
++                             AUXBROWSERPREFERENCES_SETASDEFAULTBROWSER)
++ protected:
++  ~AuxBrowserPreferencesSetAsDefaultBrowserFunction() override = default;
++};
++class AuxBrowserPreferencesGetDockStateFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getDockState",
++                             AUXBROWSERPREFERENCES_GETDOCKSTATE)
++ protected:
++  ~AuxBrowserPreferencesGetDockStateFunction() override = default;
++};
++class AuxBrowserPreferencesAddToDockFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.addToDock",
++                             AUXBROWSERPREFERENCES_ADDTODOCK)
++ protected:
++  ~AuxBrowserPreferencesAddToDockFunction() override = default;
++};
++class AuxBrowserPreferencesGetBrowserVersionFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getBrowserVersion",
++                             AUXBROWSERPREFERENCES_GETBROWSERVERSION)
++ protected:
++  ~AuxBrowserPreferencesGetBrowserVersionFunction() override = default;
++};
++class AuxBrowserPreferencesGetSyncStatusFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getSyncStatus",
++                             AUXBROWSERPREFERENCES_GETSYNCSTATUS)
++ protected:
++  ~AuxBrowserPreferencesGetSyncStatusFunction() override = default;
++};
++class AuxBrowserPreferencesCheckForUpdatesFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.checkForUpdates",
++                             AUXBROWSERPREFERENCES_CHECKFORUPDATES)
++ protected:
++  ~AuxBrowserPreferencesCheckForUpdatesFunction() override = default;
++};
++class AuxBrowserPreferencesGetLanguageSettingsFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getLanguageSettings",
++                             AUXBROWSERPREFERENCES_GETLANGUAGESETTINGS)
++ protected:
++  ~AuxBrowserPreferencesGetLanguageSettingsFunction() override = default;
++};
++class AuxBrowserPreferencesGetSupportedLanguagesFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getSupportedLanguages",
++                             AUXBROWSERPREFERENCES_GETSUPPORTEDLANGUAGES)
++ protected:
++  ~AuxBrowserPreferencesGetSupportedLanguagesFunction() override = default;
++};
++class AuxBrowserPreferencesSetPreferredLanguagesFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setPreferredLanguages",
++                             AUXBROWSERPREFERENCES_SETPREFERREDLANGUAGES)
++ protected:
++  ~AuxBrowserPreferencesSetPreferredLanguagesFunction() override = default;
++};
++class AuxBrowserPreferencesSetSpellCheckEnabledFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setSpellCheckEnabled",
++                             AUXBROWSERPREFERENCES_SETSPELLCHECKENABLED)
++ protected:
++  ~AuxBrowserPreferencesSetSpellCheckEnabledFunction() override = default;
++};
++class AuxBrowserPreferencesGetSearchEnginesFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getSearchEngines",
++                             AUXBROWSERPREFERENCES_GETSEARCHENGINES)
++ protected:
++  ~AuxBrowserPreferencesGetSearchEnginesFunction() override = default;
++};
++class AuxBrowserPreferencesSetDefaultSearchEngineFunction final
++    : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setDefaultSearchEngine",
++                             AUXBROWSERPREFERENCES_SETDEFAULTSEARCHENGINE)
++ protected:
++  ~AuxBrowserPreferencesSetDefaultSearchEngineFunction() override = default;
++};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
+@@ -0,0 +1,21 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#import <Foundation/Foundation.h>
++
++#include "base/apple/bundle_locations.h"
++#include "base/values.h"
++#include "chrome/browser/mac/dock.h"
++namespace extensions {
++base::DictValue ReadAuxDockState() {
++  auto state = dock::ChromeIsInTheDock();
++  base::DictValue value;
++  value.Set("inDock", state == dock::ChromeInDockStatus::kPresent);
++  value.Set("known", state != dock::ChromeInDockStatus::kFailure);
++  return value;
++}
++base::DictValue AddAuxToDock() {
++  auto result = dock::AddIcon(base::apple::OuterBundle().bundlePath, nil);
++  auto state = ReadAuxDockState();
++  state.Set("success", result != dock::AddIconStatus::kFailure);
++  return state;
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_common/BUILD.gn b/chrome/browser/extensions/api/aux_common/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_common/BUILD.gn
+@@ -0,0 +1,5 @@
++source_set("aux_common") {
++  sources = [ "aux_api.cc", "aux_api.h" ]
++  public_deps = [ "//extensions/browser", "//chrome/browser/profiles:profile" ]
++  deps = [ "//chrome/browser/aux:platform", "//chrome/browser:buildflags", "//extensions/common" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_common/aux_api.cc b/chrome/browser/extensions/api/aux_common/aux_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_common/aux_api.cc
+@@ -0,0 +1,23 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/profiles/profile.h"
++#include "extensions/common/extension.h"
++namespace extensions {
++ExtensionFunction::ResponseAction AuxFunction::Run() {
++  if (!BUILDFLAG(ENABLE_AUX_BROWSER) || !extension() ||
++      (extension_id() != aux::kAgentExtensionId &&
++       extension_id() != aux::kVaultExtensionId)) {
++    return RespondNow(Error("Aux private capability is unavailable"));
++  }
++  if (!browser_context()) {
++    return RespondNow(Error("Profile is no longer available"));
++  }
++  return RunAux();
++}
++Profile* AuxFunction::profile() const {
++  return Profile::FromBrowserContext(browser_context());
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_common/aux_api.h b/chrome/browser/extensions/api/aux_common/aux_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_common/aux_api.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_COMMON_AUX_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_COMMON_AUX_API_H_
++#include "extensions/browser/extension_function.h"
++class Profile;
++namespace extensions {
++class AuxFunction : public ExtensionFunction {
++ protected:
++  ~AuxFunction() override = default;
++  ResponseAction Run() final;
++  virtual ResponseAction RunAux() = 0;
++  Profile* profile() const;
++};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -0,0 +1,11 @@
++source_set("aux_mini_popup") {
++  sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
++  deps = [ "//base", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
++  frameworks = [ "AppKit.framework", "QuartzCore.framework" ]
++}
++
++source_set("headers") {
++ sources = [ "aux_mini_popup_api.h" ]
++ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -0,0 +1,436 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independently authored native popup and global shortcut: apis-core A4.
++#include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
++
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/no_destructor.h"
++#include "base/scoped_observation.h"
++#include "base/task/thread_pool.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/extensions/api/aux_account/aux_account_api.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
++#include "components/prefs/pref_registry_simple.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/base/accelerators/accelerator_manager.h"
++#include "ui/base/accelerators/command.h"
++#include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
++#include "ui/display/display.h"
++#include "ui/display/screen.h"
++#include "ui/gfx/geometry/rounded_corners_f.h"
++#include "ui/shell_dialogs/selected_file_info.h"
++#include "ui/views/controls/webview/webview.h"
++#include "ui/views/focus/focus_manager.h"
++#include "ui/views/widget/widget.h"
++#include "ui/views/widget/widget_delegate.h"
++#include "ui/views/widget/widget_observer.h"
++namespace extensions {
++AuxMiniPopupFunction::AuxMiniPopupFunction() = default;
++AuxMiniPopupFunction::~AuxMiniPopupFunction() {
++  if (dialog_) {
++    dialog_->ListenerDestroyed();
++  }
++}
++void ApplyAuxPopupMaterial(gfx::NativeWindow window);
++namespace {
++constexpr char kEnabled[] = "aux.popup.enabled",
++               kShortcut[] = "aux.popup.shortcut";
++base::ListValue ProfileIdentity(Profile* profile) {
++  base::DictValue row;
++  row.Set("profileId",
++          profile->GetOriginalProfile()->GetPath().BaseName().value());
++  row.Set("profilePath", profile->GetOriginalProfile()->GetPath().value());
++  base::ListValue result;
++  result.Append(std::move(row));
++  return result;
++}
++class PopupManager : public ui::GlobalAcceleratorListener::Observer,
++                     public ui::AcceleratorTarget,
++                     public views::WidgetObserver,
++                     public ProfileObserver {
++ public:
++  static PopupManager& Get() {
++    static base::NoDestructor<PopupManager> manager;
++    return *manager;
++  }
++  std::optional<std::string> Configure(Profile* profile,
++                                       bool enabled,
++                                       std::string shortcut) {
++    auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++    const auto accelerator = ui::Command::StringToAccelerator(shortcut);
++    if (accelerator.key_code() == ui::VKEY_UNKNOWN) {
++      return "Shortcut is not valid";
++    }
++    if (enabled) {
++      if (!listener || listener->IsShortcutHandlingSuspended()) {
++        return "Global shortcut registration is unavailable";
++      }
++      if (!registered_ || accelerator_ != accelerator) {
++        if (!listener->RegisterAccelerator(accelerator, this)) {
++          return "Global shortcut is already in use or was denied";
++        }
++        if (registered_) {
++          listener->UnregisterAccelerator(accelerator_, this);
++        }
++      }
++      registered_ = true;
++      accelerator_ = accelerator;
++      BindProfile(profile);
++    } else {
++      if (registered_ && listener) {
++        if (listener->IsShortcutHandlingSuspended()) {
++          return "Global shortcut configuration is temporarily unavailable";
++        }
++        listener->UnregisterAccelerator(accelerator_, this);
++      }
++      registered_ = false;
++      Hide();
++    }
++    return std::nullopt;
++  }
++  void BindProfile(Profile* profile) {
++    if (profile_.get() == profile) {
++      return;
++    }
++    Hide();
++    profile_observer_.Reset();
++    profile_ = profile->GetWeakPtr();
++    profile_observer_.Observe(profile);
++  }
++  void ShowFor(Profile* profile) {
++    BindProfile(profile);
++    const uint64_t generation = ++generation_;
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadAuxProfileSecurity, aux::StateHome(),
++                       ProfileIdentity(profile)),
++        base::BindOnce(
++            [](uint64_t generation, base::WeakPtr<Profile> profile,
++               base::ListValue rows) {
++              auto& manager = Get();
++              if (manager.generation_ != generation || !profile ||
++                  manager.profile_.get() != profile.get()) {
++                return;
++              }
++              const bool locked =
++                  rows.empty() ||
++                  rows[0].GetDict().FindBool("isLocked").value_or(true);
++              manager.Show(locked);
++            },
++            generation, profile->GetWeakPtr()));
++  }
++  void Show(bool locked) {
++    const GURL url("chrome-extension://" + std::string(aux::kAgentExtensionId) +
++                   "/index.html#" + (locked ? "/onboarding" : "/mini-popup"));
++    if (!widget_ || widget_->IsClosed()) {
++      DestroyWindows();
++      delegate_ = std::make_unique<views::WidgetDelegate>();
++      auto webview = std::make_unique<views::WebView>(profile_.get());
++      webview_ = webview.get();
++      delegate_->SetContentsView(std::move(webview));
++      widget_ = std::make_unique<views::Widget>();
++      views::Widget::InitParams params(
++          views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++          views::Widget::InitParams::TYPE_POPUP);
++      params.delegate = delegate_.get();
++      params.rounded_corners = gfx::RoundedCornersF(16);
++      params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
++      widget_->Init(std::move(params));
++      widget_->AddObserver(this);
++      widget_->GetFocusManager()->RegisterAccelerator(
++          ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE),
++          ui::AcceleratorManager::kHighPriority, this);
++      ApplyAuxPopupMaterial(widget_->GetNativeWindow());
++    }
++    webview_->LoadInitialURL(url);
++    Resize(size_);
++    widget_->Show();
++    webview_->RequestFocus();
++  }
++  void Hide() {
++    ++generation_;
++    dismiss_.Stop();
++    if (options_) {
++      options_->Hide();
++    }
++    if (widget_) {
++      widget_->Hide();
++    }
++  }
++  void DestroyWindows() {
++    if (options_) {
++      options_->RemoveObserver(this);
++      options_.reset();
++    }
++    options_delegate_.reset();
++    if (widget_) {
++      widget_->RemoveObserver(this);
++      if (widget_->GetFocusManager()) {
++        widget_->GetFocusManager()->UnregisterAccelerators(this);
++      }
++      widget_.reset();
++    }
++    webview_ = nullptr;
++    delegate_.reset();
++  }
++  void Resize(gfx::Size size) {
++    size_ = size;
++    if (!widget_ || widget_->IsClosed()) {
++      return;
++    }
++    auto area = display::Screen::Get()
++                    ->GetDisplayNearestWindow(widget_->GetNativeWindow())
++                    .work_area();
++    size.SetToMin(area.size());
++    gfx::Rect bounds(size_);
++    bounds.set_size(size);
++    bounds.set_origin(gfx::Point(
++        area.CenterPoint().x() - size.width() / 2,
++        area.y() + std::max(20, (area.height() - size.height()) / 4)));
++    widget_->SetBoundsConstrained(bounds);
++  }
++  std::optional<std::string> ResizeOptions(Profile* profile, gfx::Size size) {
++    if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() ||
++        profile_.get() != profile) {
++      return "Popup is not open in this profile";
++    }
++    if (!options_ || options_->IsClosed()) {
++      if (options_) {
++        options_->RemoveObserver(this);
++      }
++      options_.reset();
++      options_delegate_ = std::make_unique<views::WidgetDelegate>();
++      auto contents = std::make_unique<views::WebView>(profile);
++      auto* webview = contents.get();
++      options_delegate_->SetContentsView(std::move(contents));
++      options_ = std::make_unique<views::Widget>();
++      views::Widget::InitParams params(
++          views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++          views::Widget::InitParams::TYPE_WINDOW);
++      params.delegate = options_delegate_.get();
++      params.rounded_corners = gfx::RoundedCornersF(16);
++      options_->Init(std::move(params));
++      options_->AddObserver(this);
++      webview->LoadInitialURL(GURL("chrome-extension://" +
++                                   std::string(aux::kAgentExtensionId) +
++                                   "/index.html#/settings/general"));
++    }
++    options_->SetSize(size);
++    options_->Show();
++    return std::nullopt;
++  }
++  void SetState(std::string state) {
++    if (state == "compact") {
++      Resize(gfx::Size(560, 240));
++    } else if (state == "compact-with-attachments") {
++      Resize(gfx::Size(560, 340));
++    } else {
++      Resize(gfx::Size(720, 640));
++    }
++  }
++  void OnKeyPressed(const ui::Accelerator&) override {
++    if (auto* active =
++            GlobalBrowserCollection::GetInstance()->GetActiveBrowser()) {
++      ShowFor(active->GetProfile());
++    } else if (profile_) {
++      ShowFor(profile_.get());
++    }
++  }
++  void ExecuteCommand(const std::string&, const std::string&) override {
++    OnKeyPressed(accelerator_);
++  }
++  bool AcceleratorPressed(const ui::Accelerator&) override {
++    Hide();
++    return true;
++  }
++  bool CanHandleAccelerators() const override {
++    return widget_ && widget_->IsVisible();
++  }
++  void OnWidgetActivationChanged(views::Widget*, bool active) override {
++    if (active) {
++      dismiss_.Stop();
++      return;
++    }
++    dismiss_.Start(FROM_HERE, base::Milliseconds(100), base::BindOnce([] {
++                     auto& manager = Get();
++                     if (!manager.picker_pending_ &&
++                         (!manager.widget_ || !manager.widget_->IsActive()) &&
++                         (!manager.options_ || !manager.options_->IsActive())) {
++                       manager.Hide();
++                     }
++                   }));
++  }
++  void OnProfileWillBeDestroyed(Profile*) override {
++    Hide();
++    DestroyWindows();
++    profile_observer_.Reset();
++    profile_.reset();
++    if (registered_) {
++      if (auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++          listener && !listener->IsShortcutHandlingSuspended()) {
++        listener->UnregisterAccelerator(accelerator_, this);
++      }
++    }
++    registered_ = false;
++  }
++  void SetPickerPending(bool pending) { picker_pending_ = pending; }
++
++ private:
++  friend class base::NoDestructor<PopupManager>;
++  PopupManager() = default;
++  ~PopupManager() override = default;
++  base::WeakPtr<Profile> profile_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observer_{this};
++  ui::Accelerator accelerator_;
++  bool registered_ = false, picker_pending_ = false;
++  uint64_t generation_ = 0;
++  gfx::Size size_{560, 240};
++  std::unique_ptr<views::WidgetDelegate> delegate_, options_delegate_;
++  std::unique_ptr<views::Widget> widget_, options_;
++  raw_ptr<views::WebView> webview_ = nullptr;
++  base::OneShotTimer dismiss_;
++};
++}  // namespace
++void RegisterAuxPopupLocalStatePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterBooleanPref(kEnabled, false);
++  registry->RegisterStringPref(kShortcut, "Command+Shift+Space");
++}
++ExtensionFunction::ResponseAction AuxMiniPopupFunction::RunAux() {
++  const auto method = std::string_view(name()).substr(13);
++  auto* prefs = g_browser_process->local_state();
++  auto& manager = PopupManager::Get();
++  if (method == "getEnabled") {
++    if (prefs->GetBoolean(kEnabled)) {
++      if (auto error =
++              manager.Configure(profile(), true, prefs->GetString(kShortcut))) {
++        return RespondNow(Error(*error));
++      }
++    }
++    return RespondNow(WithArguments(prefs->GetBoolean(kEnabled)));
++  }
++  if (method == "getShortcut") {
++    return RespondNow(WithArguments(prefs->GetString(kShortcut)));
++  }
++  if (method == "hide") {
++    manager.Hide();
++    return RespondNow(NoArguments());
++  }
++  if (method == "setEnabled") {
++    if (args().size() != 1 || !args()[0].is_bool()) {
++      return RespondNow(Error("Enabled flag required"));
++    }
++    if (prefs->IsManagedPreference(kEnabled)) {
++      return RespondNow(Error("Popup setting is managed"));
++    }
++    if (auto error = manager.Configure(profile(), args()[0].GetBool(),
++                                       prefs->GetString(kShortcut))) {
++      return RespondNow(Error(*error));
++    }
++    prefs->SetBoolean(kEnabled, args()[0].GetBool());
++    return RespondNow(NoArguments());
++  }
++  if (method == "setShortcut") {
++    if (args().size() != 1 || !args()[0].is_string() ||
++        args()[0].GetString().size() > 128) {
++      return RespondNow(Error("Shortcut string required"));
++    }
++    if (prefs->IsManagedPreference(kShortcut)) {
++      return RespondNow(Error("Shortcut is managed"));
++    }
++    if (auto error = manager.Configure(profile(), prefs->GetBoolean(kEnabled),
++                                       args()[0].GetString())) {
++      return RespondNow(Error(*error));
++    }
++    prefs->SetString(kShortcut, args()[0].GetString());
++    return RespondNow(NoArguments());
++  }
++  if (method == "setState") {
++    if (args().size() != 1 || !args()[0].is_string() ||
++        (args()[0].GetString() != "compact" &&
++         args()[0].GetString() != "compact-with-attachments" &&
++         args()[0].GetString() != "expanded")) {
++      return RespondNow(Error("Invalid popup state"));
++    }
++    manager.SetState(args()[0].GetString());
++    return RespondNow(NoArguments());
++  }
++  if (method == "setSize" || method == "setOptionWindowSize") {
++    if (args().size() != 2 || !args()[0].is_int() || !args()[1].is_int()) {
++      return RespondNow(Error("Integer popup dimensions required"));
++    }
++    const int width = args()[0].GetInt(), height = args()[1].GetInt();
++    if (width < 240 || width > 4096 || height < 120 || height > 4096) {
++      return RespondNow(Error("Popup dimensions are outside supported bounds"));
++    }
++    if (method == "setSize") {
++      manager.Resize(gfx::Size(width, height));
++    } else if (auto error =
++                   manager.ResizeOptions(profile(), gfx::Size(width, height))) {
++      return RespondNow(Error(*error));
++    }
++    return RespondNow(NoArguments());
++  }
++  if (method == "switchProfile") {
++    if (args().size() != 1 || !args()[0].is_int() || args()[0].GetInt() < 0) {
++      return RespondNow(Error("Profile index required"));
++    }
++    const auto entries = g_browser_process->profile_manager()
++                             ->GetProfileAttributesStorage()
++                             .GetAllProfilesAttributesSortedForDisplay();
++    const size_t index = args()[0].GetInt();
++    if (index >= entries.size()) {
++      return RespondNow(Error("Profile is no longer registered"));
++    }
++    auto* selected = g_browser_process->profile_manager()->GetProfileByPath(
++        entries[index]->GetPath());
++    if (!selected) {
++      return RespondNow(Error("Selected profile is not loaded"));
++    }
++    manager.ShowFor(selected);
++    return RespondNow(NoArguments());
++  }
++  if (method == "pickDirectory") {
++    if (!args().empty() || !user_gesture()) {
++      return RespondNow(Error("Directory selection requires a user gesture"));
++    }
++    auto* owner = GetSenderWebContents();
++    if (!owner) {
++      return RespondNow(Error("Calling page is unavailable"));
++    }
++    dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(owner));
++    picker_hold_ = this;
++    manager.SetPickerPending(true);
++    dialog_->SelectFile(ui::SelectFileDialog::SELECT_FOLDER,
++                        u"Choose a working folder", base::FilePath(), nullptr,
++                        0, base::FilePath::StringType(),
++                        owner->GetTopLevelNativeWindow());
++    return RespondLater();
++  }
++  return RespondNow(Error("Unsupported popup method"));
++}
++void AuxMiniPopupFunction::FileSelected(const ui::SelectedFileInfo& file, int) {
++  CompleteDirectory(file.local_path.value());
++}
++void AuxMiniPopupFunction::FileSelectionCanceled() {
++  CompleteDirectory(std::string());
++}
++void AuxMiniPopupFunction::CompleteDirectory(std::string path) {
++  auto retained = std::move(picker_hold_);
++  dialog_.reset();
++  PopupManager::Get().SetPickerPending(false);
++  Respond(WithArguments(std::move(path)));
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
+@@ -0,0 +1,92 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_MINI_POPUP_AUX_MINI_POPUP_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_MINI_POPUP_AUX_MINI_POPUP_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++#include "ui/shell_dialogs/select_file_dialog.h"
++class PrefRegistrySimple;
++namespace extensions {
++void RegisterAuxPopupLocalStatePrefs(PrefRegistrySimple* registry);
++class AuxMiniPopupFunction : public AuxFunction,
++                             public ui::SelectFileDialog::Listener {
++ public:
++  AuxMiniPopupFunction();
++
++ protected:
++  ~AuxMiniPopupFunction() override;
++  ResponseAction RunAux() override;
++
++ private:
++  void FileSelected(const ui::SelectedFileInfo& file, int index) override;
++  void FileSelectionCanceled() override;
++  void CompleteDirectory(std::string path);
++  scoped_refptr<ui::SelectFileDialog> dialog_;
++  scoped_refptr<AuxMiniPopupFunction> picker_hold_;
++};
++class AuxMiniPopupHideFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.hide", AUXMINIPOPUP_HIDE)
++ protected:
++  ~AuxMiniPopupHideFunction() override = default;
++};
++class AuxMiniPopupGetEnabledFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.getEnabled", AUXMINIPOPUP_GETENABLED)
++ protected:
++  ~AuxMiniPopupGetEnabledFunction() override = default;
++};
++class AuxMiniPopupSetEnabledFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.setEnabled", AUXMINIPOPUP_SETENABLED)
++ protected:
++  ~AuxMiniPopupSetEnabledFunction() override = default;
++};
++class AuxMiniPopupGetShortcutFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.getShortcut",
++                             AUXMINIPOPUP_GETSHORTCUT)
++ protected:
++  ~AuxMiniPopupGetShortcutFunction() override = default;
++};
++class AuxMiniPopupSetShortcutFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.setShortcut",
++                             AUXMINIPOPUP_SETSHORTCUT)
++ protected:
++  ~AuxMiniPopupSetShortcutFunction() override = default;
++};
++class AuxMiniPopupSetStateFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.setState", AUXMINIPOPUP_SETSTATE)
++ protected:
++  ~AuxMiniPopupSetStateFunction() override = default;
++};
++class AuxMiniPopupSetSizeFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.setSize", AUXMINIPOPUP_SETSIZE)
++ protected:
++  ~AuxMiniPopupSetSizeFunction() override = default;
++};
++class AuxMiniPopupSetOptionWindowSizeFunction final
++    : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.setOptionWindowSize",
++                             AUXMINIPOPUP_SETOPTIONWINDOWSIZE)
++ protected:
++  ~AuxMiniPopupSetOptionWindowSizeFunction() override = default;
++};
++class AuxMiniPopupPickDirectoryFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.pickDirectory",
++                             AUXMINIPOPUP_PICKDIRECTORY)
++ protected:
++  ~AuxMiniPopupPickDirectoryFunction() override = default;
++};
++class AuxMiniPopupSwitchProfileFunction final : public AuxMiniPopupFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxMiniPopup.switchProfile",
++                             AUXMINIPOPUP_SWITCHPROFILE)
++ protected:
++  ~AuxMiniPopupSwitchProfileFunction() override = default;
++};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
+@@ -0,0 +1,31 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#import <AppKit/AppKit.h>
++#import <QuartzCore/QuartzCore.h>
++
++#include "ui/gfx/native_ui_types.h"
++namespace extensions {
++void ApplyAuxPopupMaterial(gfx::NativeWindow native_window) {
++  NSWindow* window = native_window.GetNativeNSWindow();
++  if (!window) {
++    return;
++  }
++  window.opaque = NO;
++  window.backgroundColor = NSColor.clearColor;
++  NSView* contents = window.contentView;
++  contents.wantsLayer = YES;
++  contents.layer.cornerRadius = 16;
++  contents.layer.masksToBounds = YES;
++  if (NSWorkspace.sharedWorkspace
++          .accessibilityDisplayShouldReduceTransparency) {
++    window.backgroundColor = NSColor.windowBackgroundColor;
++    return;
++  }
++  NSVisualEffectView* effect =
++      [[NSVisualEffectView alloc] initWithFrame:contents.bounds];
++  effect.material = NSVisualEffectMaterialHUDWindow;
++  effect.blendingMode = NSVisualEffectBlendingModeBehindWindow;
++  effect.state = NSVisualEffectStateActive;
++  effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  [contents addSubview:effect positioned:NSWindowBelow relativeTo:nil];
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_notification/BUILD.gn b/chrome/browser/extensions/api/aux_notification/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_notification/BUILD.gn
+@@ -0,0 +1,10 @@
++source_set("aux_notification") {
++  sources = [ "aux_notification_api.cc", "aux_notification_api.h" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//content/public/browser" ]
++  deps = [ "//base", "//chrome/browser/extensions", "//third_party/blink/public/common", "//third_party/blink/public/mojom:mojom_platform_headers" ]
++}
++
++source_set("headers") {
++ sources = [ "aux_notification_api.h" ]
++ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//content/public/browser" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc b/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc
+@@ -0,0 +1,63 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/extensions/api/aux_notification/aux_notification_api.h"
++
++#include "base/functional/bind.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/permission_controller.h"
++#include "content/public/browser/permission_request_description.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/blink/public/common/permissions/permission_utils.h"
++#include "third_party/blink/public/mojom/permissions/permission.mojom.h"
++#include "url/origin.h"
++namespace extensions {
++ExtensionFunction::ResponseAction AuxNotificationFunction::RunAux() {
++  if (args().size() != 1) {
++    return RespondNow(Error("One permission target is required"));
++  }
++  if (std::string_view(name()) == "auxNotification.revokePermission") {
++    if (!args()[0].is_string()) {
++      return RespondNow(Error("Origin string required"));
++    }
++    const GURL url(args()[0].GetString());
++    const auto origin = url::Origin::Create(url);
++    if (!url.SchemeIsHTTPOrHTTPS() || origin.opaque() ||
++        url != origin.GetURL()) {
++      return RespondNow(Error("A valid web origin is required"));
++    }
++    profile()->GetPermissionController()->ResetPermission(
++        blink::PermissionType::NOTIFICATIONS, origin);
++    return RespondNow(WithArguments(true));
++  }
++  if (!args()[0].is_int()) {
++    return RespondNow(Error("Tab identity required"));
++  }
++  content::WebContents* tab = nullptr;
++  if (!ExtensionTabUtil::GetTabById(args()[0].GetInt(), profile(), false,
++                                    &tab) ||
++      !tab || tab->GetBrowserContext() != profile()) {
++    return RespondNow(Error("Tab is unavailable in this profile"));
++  }
++  auto* frame = tab->GetPrimaryMainFrame();
++  if (!frame ||
++      !frame->GetLastCommittedOrigin().GetURL().SchemeIsHTTPOrHTTPS()) {
++    return RespondNow(
++        Error("Notification permission requires an active web origin"));
++  }
++  if (!user_gesture()) {
++    return RespondNow(Error("Notification permission requires a user gesture"));
++  }
++  auto descriptor = blink::mojom::PermissionDescriptor::New();
++  descriptor->name = blink::mojom::PermissionName::NOTIFICATIONS;
++  profile()->GetPermissionController()->RequestPermissionFromCurrentDocument(
++      frame, content::PermissionRequestDescription(std::move(descriptor), true),
++      base::BindOnce(&AuxNotificationFunction::DidRequest,
++                     base::RetainedRef(this)));
++  return RespondLater();
++}
++void AuxNotificationFunction::DidRequest(content::PermissionResult result) {
++  Respond(
++      WithArguments(result.status == blink::mojom::PermissionStatus::GRANTED));
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_notification/aux_notification_api.h b/chrome/browser/extensions/api/aux_notification/aux_notification_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_notification/aux_notification_api.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_NOTIFICATION_AUX_NOTIFICATION_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_NOTIFICATION_AUX_NOTIFICATION_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++#include "content/public/browser/permission_result.h"
++namespace extensions {
++class AuxNotificationFunction : public AuxFunction {
++ protected:
++  ~AuxNotificationFunction() override = default;
++  ResponseAction RunAux() override;
++
++ private:
++  void DidRequest(content::PermissionResult result);
++};
++class AuxNotificationRequestPermissionFunction final
++    : public AuxNotificationFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxNotification.requestPermission",
++                             AUXNOTIFICATION_REQUESTPERMISSION)
++ protected:
++  ~AuxNotificationRequestPermissionFunction() override = default;
++};
++class AuxNotificationRevokePermissionFunction final
++    : public AuxNotificationFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxNotification.revokePermission",
++                             AUXNOTIFICATION_REVOKEPERMISSION)
++ protected:
++  ~AuxNotificationRevokePermissionFunction() override = default;
++};
++}  // namespace extensions
++#endif
+diff --git a/chrome/browser/extensions/api/aux_omnibox/BUILD.gn b/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
+@@ -0,0 +1,10 @@
++source_set("aux_omnibox") {
++  sources = [ "aux_omnibox_api.cc", "aux_omnibox_api.h" ]
++  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++  deps = [ "//base", "//chrome/browser/autocomplete", "//chrome/browser/extensions", "//chrome/browser/preloading/prefetch/search_prefetch", "//chrome/browser/preloading/search_preload", "//chrome/browser/search_engines", "//chrome/browser/tab_list", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/navigator", "//components/omnibox/browser", "//components/search_engines", "//components/tabs:public", "//content/public/browser", "//extensions/browser", "//ui/base" ]
++}
++
++source_set("headers") {
++ sources = [ "aux_omnibox_api.h" ]
++ public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -0,0 +1,823 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Independent owned AutocompleteController sessions: native/omnibox O1-O4.
++#include "chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.h"
++
++#include <algorithm>
++#include <map>
++#include <optional>
++
++#include "base/base64.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/scoped_multi_source_observation.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/uuid.h"
++#include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
++#include "chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.h"
++#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service_factory.h"
++#include "chrome/browser/preloading/search_preload/search_preload_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/search_engines/template_url_service_factory.h"
++#include "chrome/browser/tab_list/tab_list_interface.h"
++#include "chrome/browser/tab_list/tab_list_interface_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "components/omnibox/browser/actions/omnibox_action.h"
++#include "components/omnibox/browser/autocomplete_classifier.h"
++#include "components/omnibox/browser/autocomplete_controller.h"
++#include "components/omnibox/browser/autocomplete_match_type.h"
++#include "components/search_engines/template_url.h"
++#include "components/search_engines/template_url_service.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "extensions/browser/event_router.h"
++#include "extensions/browser/extension_event_histogram_value.h"
++#include "ui/base/base_window.h"
++namespace extensions {
++namespace {
++struct VisibleTab {
++  int id;
++  raw_ptr<BrowserWindowInterface> browser;
++  raw_ptr<tabs::TabInterface> tab;
++};
++std::vector<VisibleTab> VisibleTabs(Profile* profile) {
++  std::vector<VisibleTab> tabs;
++  for (auto* browser : GetAllBrowserWindowInterfaces()) {
++    if (browser->GetProfile() != profile) {
++      continue;
++    }
++    auto* list = TabListInterface::From(browser);
++    if (!list) {
++      continue;
++    }
++    for (int i = 0; i < list->GetTabCount(); ++i) {
++      auto* tab = list->GetTab(i);
++      if (tab && tab->GetContents()) {
++        tabs.push_back(
++            {ExtensionTabUtil::GetTabId(tab->GetContents()), browser, tab});
++      }
++    }
++  }
++  std::ranges::sort(tabs, {}, &VisibleTab::id);
++  return tabs;
++}
++WindowOpenDisposition Disposition(const base::DictValue& request) {
++  const auto* value = request.FindString("disposition");
++  if (!value || *value == "currentTab") {
++    return WindowOpenDisposition::CURRENT_TAB;
++  }
++  if (*value == "newForegroundTab") {
++    return WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  }
++  if (*value == "newBackgroundTab") {
++    return WindowOpenDisposition::NEW_BACKGROUND_TAB;
++  }
++  if (*value == "newWindow") {
++    return WindowOpenDisposition::NEW_WINDOW;
++  }
++  return WindowOpenDisposition::UNKNOWN;
++}
++base::DictValue TabSummary(const VisibleTab& tab) {
++  auto* contents = tab.tab->GetContents();
++  base::DictValue value;
++  value.Set("tabId", tab.id);
++  value.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
++  value.Set("url", contents->GetLastCommittedURL().spec());
++  value.Set("windowId", ExtensionTabUtil::GetWindowIdOfTab(contents));
++  return value;
++}
++class OmniboxSession : public AutocompleteController::Observer,
++                       public TabListInterfaceObserver,
++                       public BrowserCollectionObserver {
++ public:
++  OmniboxSession(content::WebContents* owner, std::string extension_id)
++      : id_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
++        owner_(owner),
++        extension_id_(std::move(extension_id)),
++        frame_id_(owner->GetPrimaryMainFrame()->GetGlobalId()) {
++    AutocompleteControllerConfig config;
++    config.provider_types =
++        AutocompleteClassifier::DefaultOmniboxProviders(false);
++    config.unscoped_open_tab_suggestions = true;
++    controller_ = std::make_unique<AutocompleteController>(
++        std::make_unique<ChromeAutocompleteProviderClient>(
++            profile(), base::BindRepeating(
++                           [](base::WeakPtr<content::WebContents> contents) {
++                             return contents.get();
++                           },
++                           owner->GetWeakPtr())),
++        config);
++    controller_->AddObserver(this);
++    browsers_.Observe(GlobalBrowserCollection::GetInstance());
++    for (auto* browser : GetAllBrowserWindowInterfaces()) {
++      ObserveBrowser(browser);
++    }
++  }
++  ~OmniboxSession() override {
++    controller_->RemoveObserver(this);
++    controller_->Stop(AutocompleteStopReason::kClobbered);
++  }
++  bool Owns(content::WebContents* owner, std::string_view extension_id) const {
++    return owner_ == owner && extension_id_ == extension_id &&
++           owner->GetPrimaryMainFrame()->GetGlobalId() == frame_id_;
++  }
++  Profile* profile() const {
++    return Profile::FromBrowserContext(owner_->GetBrowserContext());
++  }
++  const std::string& id() const { return id_; }
++  void Emit(std::string event_name,
++            base::DictValue payload = {},
++            bool has_payload = true) {
++    if (!owner_->GetPrimaryMainFrame() ||
++        owner_->GetPrimaryMainFrame()->GetGlobalId() != frame_id_) {
++      return;
++    }
++    base::ListValue args;
++    args.Append(id_);
++    if (has_payload) {
++      args.Append(std::move(payload));
++    }
++    auto event = std::make_unique<Event>(events::AUXOMNIBOX_EVENT,
++                                         "auxOmnibox." + event_name,
++                                         std::move(args), profile());
++    event->restrict_to_dispatch_target = Event::DispatchTarget{
++        owner_->GetPrimaryMainFrame()->GetProcess()->GetID()};
++    event->will_dispatch_callback = base::BindRepeating(
++        [](content::BrowserContext* expected, content::BrowserContext* actual,
++           mojom::ContextType, const Extension*, const base::DictValue*,
++           std::optional<base::ListValue>&, mojom::EventFilteringInfoPtr&,
++           bool*) { return expected == actual; },
++        base::Unretained(owner_->GetBrowserContext()));
++    EventRouter::Get(profile())->DispatchEventToExtension(extension_id_,
++                                                          std::move(event));
++  }
++  base::DictValue InputState() const {
++    base::DictValue result;
++    result.Set("text", text_);
++    result.Set("focused", focused_);
++    result.Set("selectionStart",
++               static_cast<int>(base::UTF8ToUTF16(text_).size()));
++    result.Set("selectionEnd",
++               static_cast<int>(base::UTF8ToUTF16(text_).size()));
++    result.Set("activeToolMode", tool_mode_);
++    result.Set("activeModelMode", model_mode_);
++    if (!keyword_.empty()) {
++      result.Set("keyword", keyword_);
++    }
++    base::ListValue contexts;
++    for (const auto& [id, context] : contexts_) {
++      contexts.Append(context.summary.Clone());
++    }
++    result.Set("contexts", std::move(contexts));
++    return result;
++  }
++  void InputChanged() { Emit("onInputStateChanged", InputState()); }
++  void Query(std::string text,
++             bool prevent_inline = false,
++             bool zero_prefix = false) {
++    controller_->Stop(AutocompleteStopReason::kClobbered);
++    text_ = std::move(text);
++    ++revision_;
++    selected_ = -1;
++    AutocompleteInput input(base::UTF8ToUTF16(text_),
++                            metrics::OmniboxEventProto::NTP_REALBOX,
++                            ChromeAutocompleteSchemeClassifier(profile()));
++    input.set_current_url(owner_->GetLastCommittedURL());
++    input.set_prevent_inline_autocomplete(prevent_inline);
++    if (zero_prefix) {
++      input.set_focus_type(metrics::OmniboxFocusType::INTERACTION_FOCUS);
++    }
++    input.set_in_keyword_mode(!keyword_.empty());
++    controller_->Start(input);
++    InputChanged();
++  }
++  void Stop(bool clear) {
++    controller_->Stop(clear ? AutocompleteStopReason::kClobbered
++                            : AutocompleteStopReason::kInteraction);
++    if (clear) {
++      matches_.clear();
++      tab_ids_.clear();
++      ++revision_;
++      selected_ = -1;
++      PublishResults();
++    }
++  }
++  void OnResultChanged(AutocompleteController* controller,
++                       bool default_changed) override {
++    matches_.clear();
++    tab_ids_.clear();
++    ++revision_;
++    selected_ = -1;
++    const auto tabs = VisibleTabs(profile());
++    for (const auto& match : controller_->result()) {
++      if (matches_.size() >= 128) {
++        break;
++      }
++      matches_.push_back(match);
++      std::optional<int> tab_id;
++      if (match.has_tab_match.value_or(false)) {
++        for (const auto& tab : tabs) {
++          if (tab.tab->GetContents()->GetLastCommittedURL() ==
++              match.destination_url) {
++            tab_id = tab.id;
++            break;
++          }
++        }
++      }
++      tab_ids_.push_back(tab_id);
++    }
++    PublishResults();
++  }
++  void PublishResults() {
++    base::DictValue result;
++    result.Set("revision", revision_);
++    result.Set("input", text_);
++    result.Set("done", controller_->done());
++    base::ListValue rows;
++    for (size_t i = 0; i < matches_.size(); ++i) {
++      const auto& match = matches_[i];
++      base::DictValue row;
++      row.Set("id", base::NumberToString(static_cast<int>(match.type)) + ":" +
++                        match.destination_url.spec() + ":" +
++                        base::UTF16ToUTF8(match.fill_into_edit));
++      row.Set("index", static_cast<int>(i));
++      row.Set("title", base::UTF16ToUTF8(match.contents));
++      row.Set("description", base::UTF16ToUTF8(match.description));
++      row.Set("destinationUrl", match.destination_url.spec());
++      row.Set("fillIntoEdit", base::UTF16ToUTF8(match.fill_into_edit));
++      row.Set("type", AutocompleteMatchType::ToString(match.type));
++      row.Set("isSearch", AutocompleteMatch::IsSearchType(match.type));
++      row.Set("deletable", match.SupportsDeletion());
++      if (tab_ids_[i]) {
++        row.Set("tabId", *tab_ids_[i]);
++      }
++      rows.Append(std::move(row));
++    }
++    result.Set("matches", std::move(rows));
++    Emit("onAutocompleteResultChanged", std::move(result));
++  }
++  std::optional<size_t> Selection(const base::DictValue& request,
++                                  bool use_selected = false) const {
++    const auto revision = request.FindInt("revision");
++    const auto index = request.FindInt("index");
++    const int selected = index.value_or(use_selected ? selected_ : -1);
++    if (!revision || *revision != revision_ || selected < 0 ||
++        static_cast<size_t>(selected) >= matches_.size()) {
++      return std::nullopt;
++    }
++    return selected;
++  }
++  std::optional<std::string> Open(const base::DictValue& request,
++                                  bool use_selected = false) {
++    const auto index = Selection(request, use_selected);
++    if (!index) {
++      return "Selection is stale or unavailable";
++    }
++    const auto disposition = Disposition(request);
++    if (disposition == WindowOpenDisposition::UNKNOWN) {
++      return "Unknown navigation disposition";
++    }
++    if (tab_ids_[*index] && disposition == WindowOpenDisposition::CURRENT_TAB) {
++      for (const auto& tab : VisibleTabs(profile())) {
++        if (tab.id == *tab_ids_[*index]) {
++          TabListInterface::From(tab.browser)
++              ->ActivateTab(tab.tab->GetHandle());
++          tab.browser->GetWindow()->Activate();
++          return std::nullopt;
++        }
++      }
++      return "Selected tab was closed";
++    }
++    return NavigateTo(matches_[*index].destination_url, disposition);
++  }
++  std::optional<std::string> NavigateTo(const GURL& url,
++                                        WindowOpenDisposition disposition) {
++    if (disposition == WindowOpenDisposition::UNKNOWN || !url.is_valid() ||
++        url.SchemeIs("javascript") || url.SchemeIs("data")) {
++      return "Navigation target is not allowed";
++    }
++    auto* browser =
++        GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(owner_);
++    if (disposition == WindowOpenDisposition::CURRENT_TAB && browser) {
++      auto navigation = owner_->GetController().LoadURL(
++          url, content::Referrer(), ui::PAGE_TRANSITION_TYPED, std::string());
++      return navigation
++                 ? std::nullopt
++                 : std::make_optional<std::string>("Navigation was rejected");
++    }
++    if (!browser) {
++      browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
++          owner_->GetTopLevelNativeWindow());
++    }
++    if (!browser || browser->GetProfile() != profile()) {
++      return "Owning browser window is unavailable";
++    }
++    NavigateParams params(browser, url, ui::PAGE_TRANSITION_TYPED);
++    params.disposition = disposition;
++    params.source_contents = owner_;
++    Navigate(&params);
++    return params.navigated_or_inserted_contents
++               ? std::nullopt
++               : std::optional<std::string>("Navigation could not be opened");
++  }
++  void ObserveBrowser(BrowserWindowInterface* browser) {
++    if (browser->GetProfile() != profile()) {
++      return;
++    }
++    auto* list = TabListInterface::From(browser);
++    if (list && !tabs_.IsObservingSource(list)) {
++      tabs_.AddObservation(list);
++    }
++  }
++  void OnBrowserCreated(BrowserWindowInterface* browser) override {
++    ObserveBrowser(browser);
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnBrowserClosed(BrowserWindowInterface* browser) override {
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnTabAdded(TabListInterface&, tabs::TabInterface*, int) override {
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnActiveTabChanged(TabListInterface&, tabs::TabInterface*) override {
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnTabRemoved(TabListInterface&,
++                    tabs::TabInterface*,
++                    TabRemovedReason) override {
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnTabMoved(TabListInterface&, tabs::TabInterface*, int, int) override {
++    Emit("onTabStripChanged", {}, false);
++  }
++  void OnTabListDestroyed(TabListInterface& list) override {
++    tabs_.RemoveObservation(&list);
++  }
++  struct Context {
++    base::DictValue summary;
++    std::string bytes;
++  };
++  std::string id_;
++  raw_ptr<content::WebContents> owner_;
++  std::string extension_id_;
++  content::GlobalRenderFrameHostId frame_id_;
++  std::unique_ptr<AutocompleteController> controller_;
++  std::string text_, keyword_, tool_mode_, model_mode_, thumbnail_,
++      metrics_funnel_;
++  base::TimeTicks interaction_started_;
++  bool focused_ = false, block_auto_tabs_ = false;
++  int revision_ = 0, selected_ = -1;
++  std::vector<AutocompleteMatch> matches_;
++  std::vector<std::optional<int>> tab_ids_;
++  std::map<std::string, Context> contexts_;
++  size_t context_bytes_ = 0;
++  base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
++      browsers_{this};
++  base::ScopedMultiSourceObservation<TabListInterface, TabListInterfaceObserver>
++      tabs_{this};
++};
++class OmniboxOwnerState
++    : public content::WebContentsUserData<OmniboxOwnerState>,
++      public content::WebContentsObserver {
++ public:
++  ~OmniboxOwnerState() override = default;
++  std::map<std::string, std::unique_ptr<OmniboxSession>> sessions;
++  void DidFinishNavigation(content::NavigationHandle* navigation) override {
++    if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&
++        !navigation->IsSameDocument()) {
++      sessions.clear();
++    }
++  }
++
++ private:
++  friend class content::WebContentsUserData<OmniboxOwnerState>;
++  explicit OmniboxOwnerState(content::WebContents* owner)
++      : content::WebContentsUserData<OmniboxOwnerState>(*owner),
++        content::WebContentsObserver(owner) {}
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++WEB_CONTENTS_USER_DATA_KEY_IMPL(OmniboxOwnerState);
++base::DictValue SearchEngines(Profile* profile) {
++  auto* service = TemplateURLServiceFactory::GetForProfile(profile);
++  service->Load();
++  base::DictValue result;
++  base::ListValue engines;
++  const auto* current = service->GetDefaultSearchProvider();
++  for (const auto& engine : service->GetTemplateURLs()) {
++    if (!engine->SupportsReplacement(service->search_terms_data())) {
++      continue;
++    }
++    base::DictValue row;
++    row.Set("id", base::NumberToString(engine->id()));
++    row.Set("name", base::UTF16ToUTF8(engine->short_name()));
++    row.Set("keyword", base::UTF16ToUTF8(engine->keyword()));
++    row.Set("isDefault", engine == current);
++    engines.Append(std::move(row));
++  }
++  result.Set("engines", std::move(engines));
++  if (current) {
++    result.Set("defaultEngineId", base::NumberToString(current->id()));
++  }
++  return result;
++}
++}  // namespace
++ExtensionFunction::ResponseAction AuxOmniboxFunction::RunAux() {
++  const std::string_view method = std::string_view(name()).substr(11);
++  if (method == "getSearchEngines") {
++    if (!args().empty()) {
++      return RespondNow(Error("No arguments expected"));
++    }
++    return RespondNow(WithArguments(SearchEngines(profile())));
++  }
++  auto* owner = GetSenderWebContents();
++  if (!owner || owner->GetBrowserContext() != profile() ||
++      !owner->GetPrimaryMainFrame()) {
++    return RespondNow(Error("An active extension page is required"));
++  }
++  OmniboxOwnerState::CreateForWebContents(owner);
++  auto* state = OmniboxOwnerState::FromWebContents(owner);
++  if (method == "createSession") {
++    if (args().size() > 1 || (!args().empty() && !args()[0].is_dict())) {
++      return RespondNow(Error("Invalid session options"));
++    }
++    std::string initial;
++    if (!args().empty()) {
++      const auto& options = args()[0].GetDict();
++      for (const auto [key, value] : options) {
++        if (key != "surface" && key != "initialText") {
++          return RespondNow(Error("Unknown session option"));
++        }
++      }
++      const auto* surface = options.FindString("surface");
++      if (surface && *surface != "newtab" && *surface != "sidepanel") {
++        return RespondNow(Error("Unknown search surface"));
++      }
++      const auto* text = options.FindString("initialText");
++      if (text) {
++        initial = *text;
++      }
++      if (initial.size() > 8192) {
++        return RespondNow(Error("Input is too long"));
++      }
++    }
++    if (state->sessions.size() >= 16) {
++      return RespondNow(Error("Too many active search sessions"));
++    }
++    auto session = std::make_unique<OmniboxSession>(owner, extension_id());
++    session->text_ = initial;
++    const std::string id = session->id();
++    state->sessions.emplace(id, std::move(session));
++    base::DictValue result;
++    result.Set("sessionId", id);
++    return RespondNow(WithArguments(std::move(result)));
++  }
++  if (args().empty() || !args()[0].is_string()) {
++    return RespondNow(Error("Session identity is required"));
++  }
++  const auto found = state->sessions.find(args()[0].GetString());
++  if (found == state->sessions.end() ||
++      !found->second->Owns(owner, extension_id())) {
++    return RespondNow(Error("Search session is unavailable for this page"));
++  }
++  auto& session = *found->second;
++  auto request = [&]() -> const base::DictValue* {
++    return args().size() > 1 && args()[1].is_dict() ? &args()[1].GetDict()
++                                                    : nullptr;
++  };
++  if (method == "destroySession") {
++    state->sessions.erase(found);
++    return RespondNow(NoArguments());
++  }
++  if (method == "getInputState") {
++    return RespondNow(WithArguments(session.InputState()));
++  }
++  if (method == "onFocusChanged") {
++    if (args().size() != 2 || !args()[1].is_bool()) {
++      return RespondNow(Error("Focus state required"));
++    }
++    session.focused_ = args()[1].GetBool();
++    if (!session.focused_) {
++      session.Stop(false);
++    }
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "queryAutocomplete") {
++    if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
++        args()[1].GetString().size() > 8192 ||
++        (args().size() == 3 && !args()[2].is_dict())) {
++      return RespondNow(Error("Invalid autocomplete query"));
++    }
++    bool prevent = false;
++    if (args().size() == 3) {
++      prevent = args()[2]
++                    .GetDict()
++                    .FindBool("preventInlineAutocomplete")
++                    .value_or(false);
++    }
++    const bool zero_prefix =
++        args().size() == 3 &&
++        args()[2].GetDict().FindBool("zeroPrefix").value_or(false);
++    session.Query(args()[1].GetString(), prevent, zero_prefix);
++    return RespondNow(NoArguments());
++  }
++  if (method == "stopAutocomplete") {
++    if (args().size() != 2 || !args()[1].is_bool()) {
++      return RespondNow(Error("Clear-result flag required"));
++    }
++    session.Stop(args()[1].GetBool());
++    return RespondNow(NoArguments());
++  }
++  if (method == "openAutocompleteMatch" || method == "openPopupSelection") {
++    const auto* value = request();
++    if (!value) {
++      return RespondNow(Error("Selection required"));
++    }
++    auto error = session.Open(*value, method == "openPopupSelection");
++    return RespondNow(error ? Error(*error) : NoArguments());
++  }
++  if (method == "setPopupSelection") {
++    const auto* value = request();
++    const auto index = value ? session.Selection(*value) : std::nullopt;
++    if (!index) {
++      return RespondNow(Error("Selection is stale"));
++    }
++    session.selected_ = *index;
++    session.Emit("onSelectionUpdated", value->Clone());
++    return RespondNow(NoArguments());
++  }
++  if (method == "deleteAutocompleteMatch") {
++    const auto* value = request();
++    const auto index = value ? session.Selection(*value) : std::nullopt;
++    if (!index || !session.matches_[*index].SupportsDeletion()) {
++      return RespondNow(Error("Result cannot be deleted"));
++    }
++    session.controller_->DeleteMatch(session.matches_[*index]);
++    return RespondNow(NoArguments());
++  }
++  if (method == "activateKeyword") {
++    const auto* value = request();
++    const auto index = value ? session.Selection(*value) : std::nullopt;
++    if (!index) {
++      return RespondNow(Error("Selection is stale"));
++    }
++    const auto& match = session.matches_[*index];
++    const auto& keyword = match.associated_keyword.empty()
++                              ? match.keyword
++                              : match.associated_keyword;
++    if (keyword.empty()) {
++      return RespondNow(Error("Result has no keyword scope"));
++    }
++    session.keyword_ = base::UTF16ToUTF8(keyword);
++    base::DictValue changed;
++    changed.Set("keyword", session.keyword_);
++    session.Emit("onKeywordSelectedChanged", std::move(changed));
++    session.Query(session.keyword_ + " ");
++    return RespondNow(NoArguments());
++  }
++  if (method == "onNavigationLikely") {
++    const auto* value = request();
++    const auto index = value ? session.Selection(*value) : std::nullopt;
++    if (!index) {
++      return RespondNow(Error("Selection is stale"));
++    }
++    const auto& match = session.matches_[*index];
++    if (auto* service =
++            SearchPrefetchServiceFactory::GetForProfile(profile())) {
++      service->OnNavigationLikely(
++          *index, match, omnibox::mojom::NavigationPredictor::kMouseDown,
++          owner);
++    }
++    if (auto* service = SearchPreloadService::GetForProfile(profile())) {
++      service->OnNavigationLikely(
++          *index, match, omnibox::mojom::NavigationPredictor::kMouseDown,
++          owner);
++    }
++    return RespondNow(NoArguments());
++  }
++  if (method == "executeAction") {
++    const auto* value = request();
++    const auto index = value ? session.Selection(*value) : std::nullopt;
++    const auto action = value ? value->FindInt("actionIndex") : std::nullopt;
++    if (!index || !action || *action < 0 ||
++        static_cast<size_t>(*action) >=
++            session.matches_[*index].actions.size()) {
++      return RespondNow(Error("Action is stale or unavailable"));
++    }
++    const auto& url = session.matches_[*index].actions[*action]->getUrl();
++    if (url.is_empty()) {
++      return RespondNow(
++          Error("This native action is not available on this surface"));
++    }
++    auto error = session.NavigateTo(url, Disposition(*value));
++    return RespondNow(error ? Error(*error) : NoArguments());
++  }
++  if (method == "getPlaceholderConfig") {
++    auto* engine = TemplateURLServiceFactory::GetForProfile(profile())
++                       ->GetDefaultSearchProvider();
++    base::DictValue result;
++    result.Set("placeholder", "Search the web or enter an address");
++    if (engine) {
++      result.Set("providerName", base::UTF16ToUTF8(engine->short_name()));
++    }
++    return RespondNow(WithArguments(std::move(result)));
++  }
++  if (method == "getRecentTabs") {
++    auto tabs = VisibleTabs(profile());
++    std::ranges::sort(tabs, [](const VisibleTab& a, const VisibleTab& b) {
++      return a.tab->GetContents()->GetLastActiveTimeTicks() >
++             b.tab->GetContents()->GetLastActiveTimeTicks();
++    });
++    base::ListValue rows;
++    for (const auto& tab : tabs) {
++      rows.Append(TabSummary(tab));
++    }
++    base::DictValue result;
++    result.Set("tabs", std::move(rows));
++    return RespondNow(WithArguments(std::move(result)));
++  }
++  if (method == "getTabPreview" || method == "addTabContext") {
++    if (args().size() < 2 || !args()[1].is_int()) {
++      return RespondNow(Error("Tab identity required"));
++    }
++    for (const auto& tab : VisibleTabs(profile())) {
++      if (tab.id == args()[1].GetInt()) {
++        auto summary = TabSummary(tab);
++        if (method == "addTabContext") {
++          if (session.contexts_.size() >= 32) {
++            return RespondNow(Error("Too many attachments"));
++          }
++          const auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
++          summary.Set("contextToken", token);
++          summary.Set("kind", "tab");
++          summary.Set("name", summary.FindString("title")
++                                  ? *summary.FindString("title")
++                                  : "Browser tab");
++          summary.Set("state", "ready");
++          session.contexts_.emplace(
++              token, OmniboxSession::Context{summary.Clone(), {}});
++          session.InputChanged();
++        }
++        return RespondNow(WithArguments(std::move(summary)));
++      }
++    }
++    return RespondNow(Error("Tab is unavailable in this profile"));
++  }
++  if (method == "addFileContext") {
++    const auto* value = request();
++    if (!value || session.contexts_.size() >= 32) {
++      return RespondNow(Error("File context is unavailable"));
++    }
++    const auto *name = value->FindString("name"),
++               *type = value->FindString("type"),
++               *data = value->FindString("dataBase64");
++    const auto size = value->FindInt("size");
++    if (!name || name->empty() || name->size() > 255 ||
++        name->find('/') != std::string::npos || !type || type->size() > 255 ||
++        !size || *size < 0 || *size > 32 * 1024 * 1024 || !data ||
++        data->size() > 45 * 1024 * 1024) {
++      return RespondNow(Error("Invalid file context"));
++    }
++    std::string bytes;
++    if (!base::Base64Decode(*data, &bytes) ||
++        bytes.size() != static_cast<size_t>(*size) ||
++        session.context_bytes_ + bytes.size() > 64 * 1024 * 1024) {
++      return RespondNow(Error("File content is invalid or too large"));
++    }
++    const auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    base::DictValue summary;
++    summary.Set("contextToken", token);
++    summary.Set("kind", "file");
++    summary.Set("name", *name);
++    summary.Set("type", *type);
++    summary.Set("size", *size);
++    summary.Set("state", "ready");
++    session.context_bytes_ += bytes.size();
++    session.contexts_.emplace(
++        token, OmniboxSession::Context{summary.Clone(), std::move(bytes)});
++    if (base::StartsWith(*type, "image/")) {
++      session.thumbnail_ = token;
++    }
++    session.Emit("onFileContextAdded", summary.Clone());
++    session.InputChanged();
++    return RespondNow(WithArguments(std::move(summary)));
++  }
++  if (method == "deleteContext") {
++    if (args().size() < 2 || !args()[1].is_string()) {
++      return RespondNow(Error("Context token required"));
++    }
++    const auto context = session.contexts_.find(args()[1].GetString());
++    if (context == session.contexts_.end()) {
++      return RespondNow(Error("Attachment no longer exists"));
++    }
++    session.context_bytes_ -= context->second.bytes.size();
++    session.contexts_.erase(context);
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "clearFiles") {
++    if (args().size() != 2 || !args()[1].is_bool()) {
++      return RespondNow(Error("Automatic-context flag required"));
++    }
++    std::erase_if(session.contexts_, [](const auto& context) {
++      const auto* kind = context.second.summary.FindString("kind");
++      return kind && *kind == "file";
++    });
++    session.context_bytes_ = 0;
++    session.thumbnail_.clear();
++    session.block_auto_tabs_ = args()[1].GetBool();
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "onThumbnailRemoved") {
++    if (!session.thumbnail_.empty()) {
++      const auto thumbnail = session.contexts_.find(session.thumbnail_);
++      if (thumbnail != session.contexts_.end()) {
++        session.context_bytes_ -= thumbnail->second.bytes.size();
++        session.contexts_.erase(thumbnail);
++      }
++      session.thumbnail_.clear();
++    }
++    session.Emit("onThumbnailChanged");
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "setActiveToolMode" || method == "setActiveModelMode") {
++    if (args().size() != 2 || !args()[1].is_string() ||
++        args()[1].GetString().size() > 256) {
++      return RespondNow(Error("Invalid mode"));
++    }
++    const auto& mode = args()[1].GetString();
++    if (method == "setActiveToolMode") {
++      if (!mode.empty() && mode != "image" && mode != "file" && mode != "tab") {
++        return RespondNow(Error("Unknown tool mode"));
++      }
++      session.tool_mode_ = mode;
++    } else {
++      session.model_mode_ = mode;
++    }
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "submitQuery") {
++    const auto* value = request();
++    const auto* text = value ? value->FindString("text") : nullptr;
++    if (!text || text->empty() || text->size() > 8192) {
++      return RespondNow(Error("Query text required"));
++    }
++    if (!session.model_mode_.empty()) {
++      return RespondNow(
++          Error("Agent input must be submitted through the authenticated "
++                "session API"));
++    }
++    session.Query(*text);
++    if (session.matches_.empty()) {
++      return RespondNow(Error("No search target is available"));
++    }
++    base::DictValue selection;
++    selection.Set("revision", session.revision_);
++    selection.Set("index", 0);
++    if (const auto* disposition = value->FindString("disposition")) {
++      selection.Set("disposition", *disposition);
++    }
++    auto error = session.Open(selection);
++    return RespondNow(error ? Error(*error) : NoArguments());
++  }
++  if (method == "notifySessionAbandoned") {
++    session.Stop(true);
++    return RespondNow(NoArguments());
++  }
++  if (method == "notifySessionStarted") {
++    session.interaction_started_ = base::TimeTicks::Now();
++    session.focused_ = true;
++    session.InputChanged();
++    return RespondNow(NoArguments());
++  }
++  if (method == "activateMetricsFunnel") {
++    if (args().size() != 2 || !args()[1].is_string() ||
++        args()[1].GetString().empty() || args()[1].GetString().size() > 128) {
++      return RespondNow(Error("Invalid local interaction label"));
++    }
++    session.metrics_funnel_ = args()[1].GetString();
++    return RespondNow(NoArguments());
++  }
++  if (method == "openLensSearch") {
++    return RespondNow(Error("Visual search is unavailable in local mode"));
++  }
++  return RespondNow(Error("Unsupported Aux omnibox method"));
++}
++}  // namespace extensions
+diff --git a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.h b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.h
+@@ -0,0 +1,217 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_OMNIBOX_AUX_OMNIBOX_API_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_OMNIBOX_AUX_OMNIBOX_API_H_
++#include "chrome/browser/extensions/api/aux_common/aux_api.h"
++namespace extensions {
++class AuxOmniboxFunction : public AuxFunction {
++ protected:
++  ~AuxOmniboxFunction() override = default;
++  ResponseAction RunAux() override;
++};
++class AuxOmniboxCreateSessionFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.createSession",
++                             AUXOMNIBOX_CREATESESSION)
++ protected:
++  ~AuxOmniboxCreateSessionFunction() override = default;
++};
++class AuxOmniboxDestroySessionFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.destroySession",
++                             AUXOMNIBOX_DESTROYSESSION)
++ protected:
++  ~AuxOmniboxDestroySessionFunction() override = default;
++};
++class AuxOmniboxGetSearchEnginesFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.getSearchEngines",
++                             AUXOMNIBOX_GETSEARCHENGINES)
++ protected:
++  ~AuxOmniboxGetSearchEnginesFunction() override = default;
++};
++class AuxOmniboxOnFocusChangedFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.onFocusChanged",
++                             AUXOMNIBOX_ONFOCUSCHANGED)
++ protected:
++  ~AuxOmniboxOnFocusChangedFunction() override = default;
++};
++class AuxOmniboxQueryAutocompleteFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.queryAutocomplete",
++                             AUXOMNIBOX_QUERYAUTOCOMPLETE)
++ protected:
++  ~AuxOmniboxQueryAutocompleteFunction() override = default;
++};
++class AuxOmniboxStopAutocompleteFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.stopAutocomplete",
++                             AUXOMNIBOX_STOPAUTOCOMPLETE)
++ protected:
++  ~AuxOmniboxStopAutocompleteFunction() override = default;
++};
++class AuxOmniboxOpenAutocompleteMatchFunction final
++    : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.openAutocompleteMatch",
++                             AUXOMNIBOX_OPENAUTOCOMPLETEMATCH)
++ protected:
++  ~AuxOmniboxOpenAutocompleteMatchFunction() override = default;
++};
++class AuxOmniboxSetPopupSelectionFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.setPopupSelection",
++                             AUXOMNIBOX_SETPOPUPSELECTION)
++ protected:
++  ~AuxOmniboxSetPopupSelectionFunction() override = default;
++};
++class AuxOmniboxOpenPopupSelectionFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.openPopupSelection",
++                             AUXOMNIBOX_OPENPOPUPSELECTION)
++ protected:
++  ~AuxOmniboxOpenPopupSelectionFunction() override = default;
++};
++class AuxOmniboxOnNavigationLikelyFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.onNavigationLikely",
++                             AUXOMNIBOX_ONNAVIGATIONLIKELY)
++ protected:
++  ~AuxOmniboxOnNavigationLikelyFunction() override = default;
++};
++class AuxOmniboxDeleteAutocompleteMatchFunction final
++    : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.deleteAutocompleteMatch",
++                             AUXOMNIBOX_DELETEAUTOCOMPLETEMATCH)
++ protected:
++  ~AuxOmniboxDeleteAutocompleteMatchFunction() override = default;
++};
++class AuxOmniboxActivateKeywordFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.activateKeyword",
++                             AUXOMNIBOX_ACTIVATEKEYWORD)
++ protected:
++  ~AuxOmniboxActivateKeywordFunction() override = default;
++};
++class AuxOmniboxExecuteActionFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.executeAction",
++                             AUXOMNIBOX_EXECUTEACTION)
++ protected:
++  ~AuxOmniboxExecuteActionFunction() override = default;
++};
++class AuxOmniboxOnThumbnailRemovedFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.onThumbnailRemoved",
++                             AUXOMNIBOX_ONTHUMBNAILREMOVED)
++ protected:
++  ~AuxOmniboxOnThumbnailRemovedFunction() override = default;
++};
++class AuxOmniboxGetPlaceholderConfigFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.getPlaceholderConfig",
++                             AUXOMNIBOX_GETPLACEHOLDERCONFIG)
++ protected:
++  ~AuxOmniboxGetPlaceholderConfigFunction() override = default;
++};
++class AuxOmniboxGetRecentTabsFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.getRecentTabs",
++                             AUXOMNIBOX_GETRECENTTABS)
++ protected:
++  ~AuxOmniboxGetRecentTabsFunction() override = default;
++};
++class AuxOmniboxGetTabPreviewFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.getTabPreview",
++                             AUXOMNIBOX_GETTABPREVIEW)
++ protected:
++  ~AuxOmniboxGetTabPreviewFunction() override = default;
++};
++class AuxOmniboxGetInputStateFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.getInputState",
++                             AUXOMNIBOX_GETINPUTSTATE)
++ protected:
++  ~AuxOmniboxGetInputStateFunction() override = default;
++};
++class AuxOmniboxNotifySessionStartedFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.notifySessionStarted",
++                             AUXOMNIBOX_NOTIFYSESSIONSTARTED)
++ protected:
++  ~AuxOmniboxNotifySessionStartedFunction() override = default;
++};
++class AuxOmniboxNotifySessionAbandonedFunction final
++    : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.notifySessionAbandoned",
++                             AUXOMNIBOX_NOTIFYSESSIONABANDONED)
++ protected:
++  ~AuxOmniboxNotifySessionAbandonedFunction() override = default;
++};
++class AuxOmniboxAddFileContextFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.addFileContext",
++                             AUXOMNIBOX_ADDFILECONTEXT)
++ protected:
++  ~AuxOmniboxAddFileContextFunction() override = default;
++};
++class AuxOmniboxAddTabContextFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.addTabContext",
++                             AUXOMNIBOX_ADDTABCONTEXT)
++ protected:
++  ~AuxOmniboxAddTabContextFunction() override = default;
++};
++class AuxOmniboxDeleteContextFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.deleteContext",
++                             AUXOMNIBOX_DELETECONTEXT)
++ protected:
++  ~AuxOmniboxDeleteContextFunction() override = default;
++};
++class AuxOmniboxClearFilesFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.clearFiles", AUXOMNIBOX_CLEARFILES)
++ protected:
++  ~AuxOmniboxClearFilesFunction() override = default;
++};
++class AuxOmniboxSubmitQueryFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.submitQuery", AUXOMNIBOX_SUBMITQUERY)
++ protected:
++  ~AuxOmniboxSubmitQueryFunction() override = default;
++};
++class AuxOmniboxOpenLensSearchFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.openLensSearch",
++                             AUXOMNIBOX_OPENLENSSEARCH)
++ protected:
++  ~AuxOmniboxOpenLensSearchFunction() override = default;
++};
++class AuxOmniboxSetActiveToolModeFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.setActiveToolMode",
++                             AUXOMNIBOX_SETACTIVETOOLMODE)
++ protected:
++  ~AuxOmniboxSetActiveToolModeFunction() override = default;
++};
++class AuxOmniboxSetActiveModelModeFunction final : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.setActiveModelMode",
++                             AUXOMNIBOX_SETACTIVEMODELMODE)
++ protected:
++  ~AuxOmniboxSetActiveModelModeFunction() override = default;
++};
++class AuxOmniboxActivateMetricsFunnelFunction final
++    : public AuxOmniboxFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxOmnibox.activateMetricsFunnel",
++                             AUXOMNIBOX_ACTIVATEMETRICSFUNNEL)
++ protected:
++  ~AuxOmniboxActivateMetricsFunnelFunction() override = default;
++};
++}  // namespace extensions
++#endif
+diff --git a/chrome/common/extensions/api/aux_account.json b/chrome/common/extensions/api/aux_account.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_account.json
+@@ -0,0 +1,77 @@
++[
++  {
++    "namespace": "auxAccount",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "getProfileContext",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getProfiles",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "openProfileRoute",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "signDaemonAuthChallenge",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "challenge",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      }
++    ]
++  }
++]
+diff --git a/chrome/common/extensions/api/aux_browser_preferences.json b/chrome/common/extensions/api/aux_browser_preferences.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_browser_preferences.json
+@@ -0,0 +1,473 @@
++[
++  {
++    "namespace": "auxBrowserPreferences",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "getWindowBackgroundVibrancyEnabled",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setWindowBackgroundVibrancyEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getBrowserColorScheme",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setBrowserColorScheme",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getTabStyle",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setTabStyle",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getVerticalTabInsertionPosition",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setVerticalTabInsertionPosition",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getHorizontalTabShrinkEnabled",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setHorizontalTabShrinkEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getTabSwitcherSortByRecentlyUsed",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setTabSwitcherSortByRecentlyUsed",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getDefaultZoom",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "number"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setDefaultZoom",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "number"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getAutoPipEnabled",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setAutoPipEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getVerticalTabsBookmarksSectionEnabled",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setVerticalTabsBookmarksSectionEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "value",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getKeepTasksRunningState",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setKeepTasksRunningEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "enabled",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getDefaultBrowserState",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setAsDefaultBrowser",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getDockState",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "addToDock",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getBrowserVersion",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getSyncStatus",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "checkForUpdates",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getLanguageSettings",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "getSupportedLanguages",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setPreferredLanguages",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "languageCodes",
++            "type": "array",
++            "items": {
++              "type": "string"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setSpellCheckEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "enabled",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getSearchEngines",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "any"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setDefaultSearchEngine",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "engineId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      }
++    ]
++  }
++]
+diff --git a/chrome/common/extensions/api/aux_mini_popup.json b/chrome/common/extensions/api/aux_mini_popup.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_mini_popup.json
+@@ -0,0 +1,151 @@
++[
++  {
++    "namespace": "auxMiniPopup",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "hide",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getEnabled",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setEnabled",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "enabled",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getShortcut",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "setShortcut",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "shortcut",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setState",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "state",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setSize",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "width",
++            "type": "integer"
++          },
++          {
++            "name": "height",
++            "type": "integer"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setOptionWindowSize",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "width",
++            "type": "integer"
++          },
++          {
++            "name": "height",
++            "type": "integer"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "pickDirectory",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "string"
++            }
++          ]
++        }
++      },
++      {
++        "name": "switchProfile",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "profileIndex",
++            "type": "integer"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      }
++    ]
++  }
++]
+diff --git a/chrome/common/extensions/api/aux_notification.json b/chrome/common/extensions/api/aux_notification.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_notification.json
+@@ -0,0 +1,46 @@
++[
++  {
++    "namespace": "auxNotification",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "requestPermission",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "tabId",
++            "type": "integer"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      },
++      {
++        "name": "revokePermission",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "origin",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "boolean"
++            }
++          ]
++        }
++      }
++    ]
++  }
++]
+diff --git a/chrome/common/extensions/api/aux_omnibox.json b/chrome/common/extensions/api/aux_omnibox.json
+new file mode 100644
+--- /dev/null
++++ b/chrome/common/extensions/api/aux_omnibox.json
+@@ -0,0 +1,916 @@
++[
++  {
++    "namespace": "auxOmnibox",
++    "description": "Aux private native browser capability.",
++    "functions": [
++      {
++        "name": "createSession",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "options",
++            "type": "object",
++            "optional": true,
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "destroySession",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getSearchEngines",
++        "type": "function",
++        "parameters": [],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "onFocusChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "focused",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "queryAutocomplete",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "input",
++            "type": "string"
++          },
++          {
++            "name": "options",
++            "type": "object",
++            "optional": true,
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "stopAutocomplete",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "clearResult",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "openAutocompleteMatch",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setPopupSelection",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "openPopupSelection",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "onNavigationLikely",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "deleteAutocompleteMatch",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "activateKeyword",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "executeAction",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "onThumbnailRemoved",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "getPlaceholderConfig",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getRecentTabs",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getTabPreview",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "tabId",
++            "type": "integer"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "getInputState",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "notifySessionStarted",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "notifySessionAbandoned",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "addFileContext",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "addTabContext",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "tabId",
++            "type": "integer"
++          },
++          {
++            "name": "delayUpload",
++            "type": "boolean",
++            "optional": true
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": [
++            {
++              "name": "result",
++              "type": "object",
++              "additionalProperties": {
++                "type": "any"
++              }
++            }
++          ]
++        }
++      },
++      {
++        "name": "deleteContext",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "contextToken",
++            "type": "string"
++          },
++          {
++            "name": "fromAutomaticChip",
++            "type": "boolean",
++            "optional": true
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "clearFiles",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "shouldBlockAutoSuggestedTabs",
++            "type": "boolean"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "submitQuery",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "request",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "openLensSearch",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setActiveToolMode",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "toolMode",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "setActiveModelMode",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "modelMode",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      },
++      {
++        "name": "activateMetricsFunnel",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "funnelName",
++            "type": "string"
++          }
++        ],
++        "returns_async": {
++          "name": "callback",
++          "parameters": []
++        }
++      }
++    ],
++    "events": [
++      {
++        "name": "onAutocompleteResultChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onSelectionUpdated",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onStepSelection",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onOpenCurrentSelection",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onAimButtonVisibilityChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onKeywordSelectedChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onInputTextChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onThumbnailChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onContextualInputStatusChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onTabStripChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          }
++        ]
++      },
++      {
++        "name": "onInputStateChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onFileContextAdded",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onAutoSuggestedTabContextChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onLensSearchEligibilityChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onContentSharingPolicyChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onAimEligibilityChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onShowAiModePrefChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onSmartTabSharingActiveChanged",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      },
++      {
++        "name": "onSessionInvalidated",
++        "type": "function",
++        "parameters": [
++          {
++            "name": "sessionId",
++            "type": "string"
++          },
++          {
++            "name": "payload",
++            "type": "object",
++            "additionalProperties": {
++              "type": "any"
++            }
++          }
++        ]
++      }
++    ]
++  }
++]
