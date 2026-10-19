@@ -18,6 +18,7 @@ test('generated Xcode project has three explicit app targets, products and signi
  const project=provisioningProject(proposal),objects=Object.values(project.objects);
  assert.equal(objects.filter(x=>x.isa==='PBXNativeTarget').length,3);
  const configs=objects.filter(x=>x.isa==='XCBuildConfiguration');assert.equal(configs.length,4);assert.ok(configs.every(c=>c.buildSettings.CODE_SIGNING_ALLOWED==='NO'));
+ assert.ok(configs.filter(c=>c.buildSettings.CODE_SIGN_STYLE==='Automatic').every(c=>c.buildSettings.CODE_SIGN_IDENTITY==='Apple Development'));
  assert.equal(objects.filter(x=>x.isa==='PBXFileReference'&&x.explicitFileType==='wrapper.application').length,3);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'aux-dp-project-fixture-'));
  try{const file=path.join(dir,'project.pbxproj');fs.writeFileSync(file,xmlPlist(project));const check=spawnSync('/usr/bin/plutil',['-lint',file],{encoding:'utf8'});assert.equal(check.status,0,check.stderr);}finally{fs.rmSync(dir,{recursive:true,force:true});}

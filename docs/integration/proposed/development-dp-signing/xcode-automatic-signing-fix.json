@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "observedError": "Automatic signing rejects a manually specified SHA1 identity; Xcode requires Apple Development",
+  "placeholderIdentitySelector": "Apple Development",
+  "actualDeveloperHostCertificateSha1RemainsRequired": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "defaultSigningAllowed": false,
+  "replacementProject": "/Users/rcourson/Documents/Vibe/web/out/development-provisioning-v4/provisioning/AuxDpProfiles.xcodeproj/project.pbxproj",
+  "replacementProjectSha256": "25bcf0b7c77975f1a2a30ef43393fb7bbc4b2bd779bcd479535cec145ea85e8b",
+  "humanAuthorization": "Use computer and Xcode to make what you need of you can. For Robert courson",
+  "provisioningBuild": "queued behind live native build",
+  "historicalPreparation": "v2project was opened and saved by Xcode; do not use its original inventory as current full preparation evidence",
+  "actualTeamId": "9F2JXY8TCK",
+  "certificateCommonNameIdentifier": "68DV3N28DS",
+  "teamIdSource": "Exact public certificate OU; not CN parenthetical",
+  "xcodeAccount": "Robert Courson",
+  "xcodeObservedReadyRoles": [
+    "daemon",
+    "cli-sea",
+    "carrier"
+  ],
+  "xcodeObservedDeviceRegistered": true,
+  "candidateMacProfileSha256": "faa4760e2746dcea329ad272390a33d9960c3419bb8b991654a35ac5b7ee1a6d",
+  "candidateCmsAuthenticated": false,
+  "actualProductHostsSigned": false
+}

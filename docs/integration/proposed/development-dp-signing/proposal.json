@@ -7,15 +7,16 @@
   "dpExecutionAuthorizedByThisProposal": false,
   "identityInspection": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/signing-identity-inspection.json",
-    "sha256": "2aa8d91a37b2db4ef2160b7436a99f2369f013f2896de81422f3f1bd1d083f90",
+    "sha256": "9347b4e9206bf3f576c3e115138966a624f7fcc4c2ed32f5a46c9cf43f754b7e",
     "identityKind": "Apple Development",
     "publicCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
-    "teamId": "68DV3N28DS",
-    "certificateAloneProvesGroupAuthority": false
+    "teamId": "9F2JXY8TCK",
+    "certificateAloneProvesGroupAuthority": false,
+    "teamIdSource": "Public certificate subject OU=9F2JXY8TCK, O=Robert Courson; CN parenthetical68DV3N28DS is not Team ID"
   },
   "exactExistingDisposableHome": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
   "exactScope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
-  "proposedFirstAndOnlySharedGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "proposedFirstAndOnlySharedGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
   "proposedDpHosts": [
     {
       "role": "daemon",
@@ -29,10 +30,10 @@
         "finalCopiedTargetPinRequired": true
       },
       "proposedEntitlements": {
-        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.daemon",
-        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
         "keychain-access-groups": [
-          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
         ],
         "com.apple.security.cs.allow-jit": true,
         "com.apple.security.cs.allow-unsigned-executable-memory": true,
@@ -45,11 +46,11 @@
         "sha256": null,
         "cmsAuthorizationVerified": false,
         "availabilityInspected": false,
-        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.daemon",
-        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredExactAppId": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "requiredGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
         "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
-        "requiredTeamIdentifier": "68DV3N28DS",
-        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredTeamIdentifier": "9F2JXY8TCK",
+        "requiredApplicationIdentifierPrefix": "9F2JXY8TCK",
         "requiredPlatform": "macOS",
         "mustAuthorizeActualTestMac": true,
         "mustBeUnexpiredAtSigningAndExecution": true
@@ -67,10 +68,10 @@
         "finalCopiedTargetPinRequired": true
       },
       "proposedEntitlements": {
-        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.cli",
-        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.cli",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
         "keychain-access-groups": [
-          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
         ],
         "com.apple.security.cs.allow-jit": true,
         "com.apple.security.cs.allow-unsigned-executable-memory": true,
@@ -83,11 +84,11 @@
         "sha256": null,
         "cmsAuthorizationVerified": false,
         "availabilityInspected": false,
-        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.cli",
-        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredExactAppId": "9F2JXY8TCK.dev.aux.browser.cli",
+        "requiredGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
         "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
-        "requiredTeamIdentifier": "68DV3N28DS",
-        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredTeamIdentifier": "9F2JXY8TCK",
+        "requiredApplicationIdentifierPrefix": "9F2JXY8TCK",
         "requiredPlatform": "macOS",
         "mustAuthorizeActualTestMac": true,
         "mustBeUnexpiredAtSigningAndExecution": true
@@ -105,10 +106,10 @@
         "finalCopiedTargetPinRequired": true
       },
       "proposedEntitlements": {
-        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.native-carrier",
-        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
         "keychain-access-groups": [
-          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
         ]
       },
       "preserveExistingRuntimeFlag": false,
@@ -117,11 +118,11 @@
         "sha256": null,
         "cmsAuthorizationVerified": false,
         "availabilityInspected": false,
-        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.native-carrier",
-        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredExactAppId": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+        "requiredGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
         "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
-        "requiredTeamIdentifier": "68DV3N28DS",
-        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredTeamIdentifier": "9F2JXY8TCK",
+        "requiredApplicationIdentifierPrefix": "9F2JXY8TCK",
         "requiredPlatform": "macOS",
         "mustAuthorizeActualTestMac": true,
         "mustBeUnexpiredAtSigningAndExecution": true
@@ -159,9 +160,10 @@
     "rawProfilesCopied": false
   },
   "currentBlockers": [
-    "No usable matching local development provisioning profile currently exists",
-    "Explicit approval for developer private-key signing is absent",
-    "Provisioning/create/network operations remain unauthorized",
-    "Profile-bearing carrier packaging and CLI actual-main association not implemented or observed"
-  ]
+    "Matching actual profile CMS authentication and exact final signed-byte verification remain required"
+  ],
+  "rootHumanAuthorization": {
+    "text": "Use computer and Xcode to make what you need of you can. For Robert courson",
+    "scope": "Local development provisioning and signing for three fixed Aux helpers in disposable test; no release or notarization"
+  }
 }
