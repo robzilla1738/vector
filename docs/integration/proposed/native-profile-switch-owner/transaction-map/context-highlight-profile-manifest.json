@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 ContextHighlightWindowFeature",
+  "files": [
+    {
+      "path": "chrome/browser/ui/context_highlight/context_highlight_window_feature.h",
+      "baselineSha256": "a5dbee343763f24559558a4e68b2171fe18a75d72032ce4b7e58e8b805191b4e",
+      "outputSha256": "2a6d9a6abda713f1c25cc2b9321212b7beaf7b79dad81de9f4da298ab051f00f"
+    },
+    {
+      "path": "chrome/browser/ui/context_highlight/context_highlight_window_feature.cc",
+      "baselineSha256": "148b591ffca877f63da3844f1b55b7b649846aa2b5893c4baa0748ebbff594c2",
+      "outputSha256": "bdd70de6fc6e3cdb888aae9a384f7ee95a3f7e8d9110888f7037dff2ec3541f7"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

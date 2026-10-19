@@ -1,0 +1,124 @@
+--- a/chrome/browser/ui/context_highlight/context_highlight_window_feature.h
++++ b/chrome/browser/ui/context_highlight/context_highlight_window_feature.h
+@@ -7,6 +7,8 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "components/viz/common/surfaces/tracked_element_rects.h"
+ #include "content/public/browser/tracked_element_observer.h"
+ #include "ui/base/interaction/element_identifier.h"
+@@ -38,6 +40,13 @@
+   // Called when the tracked element bounds from a
+   void CheckAndUpdateTrackedElementRects();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanPauseForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Call after real committed target insertion OR real source rollback.
++  void FinishForAuxProfileSwitch();
++#endif
++
+   DECLARE_USER_DATA(ContextHighlightWindowFeature);
+ 
+  private:
+@@ -54,6 +63,11 @@
+   // Sets up the overlay view in the browser window.
+   void CreateViewForOverlay();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++  int aux_update_depth_ = 0;
++#endif
++
+   raw_ptr<BrowserWindowInterface> browser_;
+   views::ViewTracker context_highlight_view_tracker_;
+   base::CallbackListSubscription active_tab_subscription_;
+--- a/chrome/browser/ui/context_highlight/context_highlight_window_feature.cc
++++ b/chrome/browser/ui/context_highlight/context_highlight_window_feature.cc
+@@ -4,7 +4,10 @@
+ 
+ #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
+ 
++#include "base/auto_reset.h"
++#include "base/check.h"
+ #include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/context_highlight/context_highlight_overlay_view.h"
+ #include "chrome/browser/ui/context_highlight/context_highlight_tab_feature.h"
+@@ -32,8 +35,54 @@
+   return Get(browser->GetUnownedUserDataHost());
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ContextHighlightWindowFeature::CanPauseForAuxProfileSwitch() const {
++  return !aux_profile_switch_prepared_ && !aux_update_depth_ &&
++         From(browser_) == this &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         browser_->GetProfile()->IsRegularProfile();
++}
++
++void ContextHighlightWindowFeature::PrepareForAuxProfileSwitch() {
++  CHECK(CanPauseForAuxProfileSwitch());
++  aux_profile_switch_prepared_ = true;
++  // Keep the actual tab renderer observations and shared window overlay alive.
++  // Only hide the stale source geometry during collection transfer.
++  if (context_highlight_view_tracker_.view()) {
++    auto* host = BrowserElementsViews::From(browser_)->GetView(
++        kContextHighlightViewElementId);
++    CHECK(host);
++    host->SetVisible(false);
++  }
++}
++
++void ContextHighlightWindowFeature::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_update_depth_);
++  CHECK(From(browser_) == this);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  aux_profile_switch_prepared_ = false;
++  CheckAndUpdateTrackedElementRects();
++}
++#endif
++
+ void ContextHighlightWindowFeature::CheckAndUpdateTrackedElementRects() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   auto* tab_feature = GetActiveTabFeature();
++  if (!tab_feature) {
++    // An actually empty model has no active renderer geometry to display.
++    if (context_highlight_view_tracker_.view()) {
++      auto* host = BrowserElementsViews::From(browser_)->GetView(
++          kContextHighlightViewElementId);
++      CHECK(host);
++      host->SetVisible(false);
++    }
++    return;
++  }
+   OnTrackedElementRectsChanged(tab_feature->latest_rects(),
+                                tab_feature->latest_scale_factor());
+ }
+@@ -41,6 +90,9 @@
+ void ContextHighlightWindowFeature::OnTrackedElementRectsChanged(
+     const viz::TrackedElementRects& rects,
+     float device_scale_factor) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::AutoReset<int> update_scope(&aux_update_depth_, aux_update_depth_ + 1);
++#endif
+   // View is created lazyly
+   const auto kAIHighlightFeature = static_cast<viz::TrackedElementFeature>(
+       TrackedElementFeature::kAIHighlight);
+@@ -84,7 +136,7 @@
+ tabs::ContextHighlightTabFeature*
+ ContextHighlightWindowFeature::GetActiveTabFeature() {
+   tabs::TabInterface* tab = browser_->GetActiveTabInterface();
+-  return tabs::ContextHighlightTabFeature::From(tab);
++  return tab ? tabs::ContextHighlightTabFeature::From(tab) : nullptr;
+ }
+ 
+ DEFINE_USER_DATA(ContextHighlightWindowFeature);
