@@ -1,0 +1,317 @@
+--- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
++++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
+@@ -9,6 +9,7 @@
+ #include <Security/Security.h>
+ #import <SecurityInterface/SecurityInterface.h>
+ #import <objc/runtime.h>
++#import <objc/message.h>
+ #include <stddef.h>
+ #include <stdint.h>
+ 
+@@ -110,6 +111,124 @@
+       gfx::NativeWindow(window));
+ }
+ 
++// The supplied browser window bridge reads this fixed app domain, including
++// when hosted in an app-shim process whose own bundle identifier differs.
++const CFStringRef kWindowEffectPreferenceDomain = CFSTR("dev.aux.browser");
++const CFStringRef kWindowVibrancyDisabledKey =
++    CFSTR("windowBackgroundVibrancyDisabled");
++
++bool ReadWindowVibrancyDisabled() {
++  CFPreferencesAppSynchronize(kWindowEffectPreferenceDomain);
++  base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
++      CFPreferencesCopyAppValue(kWindowVibrancyDisabledKey,
++                                kWindowEffectPreferenceDomain));
++  return value && CFGetTypeID(value.get()) == CFBooleanGetTypeID() &&
++         CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()));
++}
++
++std::optional<int> ReadWindowGlassVariant() {
++  if (@available(macOS 26, *)) {
++    CFPreferencesAppSynchronize(kWindowEffectPreferenceDomain);
++    base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
++        CFPreferencesCopyAppValue(CFSTR("liquidGlassVariant"),
++                                  kWindowEffectPreferenceDomain));
++    int variant = 0;
++    if (value && CFGetTypeID(value.get()) == CFNumberGetTypeID() &&
++        CFNumberGetValue(static_cast<CFNumberRef>(value.get()),
++                         kCFNumberIntType, &variant) &&
++        variant >= 1 && variant <= 20) {
++      return variant;
++    }
++  }
++  return std::nullopt;
++}
++
++bool IsGlassBackgroundEffectView(NSView* view) {
++  if (@available(macOS 26, *)) {
++    Class glass_class = NSClassFromString(@"NSGlassEffectView");
++    return glass_class && [view isKindOfClass:glass_class];
++  }
++  return false;
++}
++
++NSView* FindWindowBackgroundEffectView(NSView* root) {
++  for (NSView* child in root.subviews) {
++    if ([child isKindOfClass:[NSVisualEffectView class]] ||
++        IsGlassBackgroundEffectView(child)) {
++      return child;
++    }
++  }
++  return nil;
++}
++
++NSView* FindCompositorSuperview(NSView* root) {
++  if ([root isKindOfClass:[ViewsCompositorSuperview class]]) {
++    return root;
++  }
++  for (NSView* child in root.subviews) {
++    if (NSView* compositor = FindCompositorSuperview(child)) {
++      return compositor;
++    }
++  }
++  return nil;
++}
++
++NSView* CreateBrowserWindowBackgroundEffectView(
++    NSRect bounds,
++    bool fullscreen,
++    bool disabled,
++    std::optional<int> glass_variant) {
++  NSView* effect = nil;
++  if (@available(macOS 26, *)) {
++    Class glass_class = NSClassFromString(@"NSGlassEffectView");
++    if (!fullscreen && glass_class) {
++      effect = [[glass_class alloc] initWithFrame:bounds];
++      if (glass_variant) {
++        [effect setValue:@(*glass_variant) forKey:@"variant"];
++      }
++      // Preserve the supplied optional AppKit blending selector; do not select
++      // a new material or substitute a custom-painted backdrop.
++      SEL selector =
++          NSSelectorFromString(@"_setVibrantBlendingStyleForSubtree:");
++      if ([effect respondsToSelector:selector]) {
++        reinterpret_cast<void (*)(id, SEL, NSInteger)>(objc_msgSend)(
++            effect, selector, 0);
++      }
++    }
++  }
++  if (!effect) {
++    NSVisualEffectView* visual =
++        [[NSVisualEffectView alloc] initWithFrame:bounds];
++    visual.material = NSVisualEffectMaterialUnderWindowBackground;
++    visual.blendingMode = NSVisualEffectBlendingModeBehindWindow;
++    visual.state = NSVisualEffectStateFollowsWindowActiveState;
++    effect = visual;
++  }
++  effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  effect.hidden = disabled;
++  return effect;
++}
++
++void AttachCompositorToWindowBackground(NSView* root,
++                                        NSView* effect,
++                                        NSView* compositor) {
++  NSView* container = root;
++  if (IsGlassBackgroundEffectView(effect)) {
++    SEL selector = @selector(contentView);
++    if ([effect respondsToSelector:selector]) {
++      id content = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(effect,
++                                                                 selector);
++      if ([content isKindOfClass:[NSView class]]) {
++        container = content;
++      }
++    }
++  }
++  [compositor removeFromSuperview];
++  compositor.frame = container.bounds;
++  compositor.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  [container addSubview:compositor];
++}
++
+ bool IsBackgroundEffectView(NSView* view) {
+   if ([view isKindOfClass:[NSVisualEffectView class]]) {
+     return true;
+@@ -442,6 +561,12 @@
+ }
+ 
+ NativeWidgetNSWindowBridge::~NativeWidgetNSWindowBridge() {
++  window_effect_preferences_timer_.Stop();
++  if (window_effect_preferences_observed_) {
++    CFNotificationCenterRemoveObserver(
++        CFNotificationCenterGetDarwinNotifyCenter(), this,
++        kWindowEffectPreferenceDomain, nullptr);
++  }
+   SetLocalEventMonitorEnabled(false);
+   DCHECK(!local_event_monitor_);
+   GetPendingWindowTitleMap().erase(window_);
+@@ -802,6 +927,78 @@
+   [window_ setContentView:nil];
+ }
+ 
++void NativeWidgetNSWindowBridge::StartWindowEffectPreferencesObserver() {
++  window_vibrancy_disabled_ = ReadWindowVibrancyDisabled();
++  window_glass_variant_ = ReadWindowGlassVariant();
++  if (window_effect_preferences_observed_) {
++    return;
++  }
++  CFNotificationCenterAddObserver(
++      CFNotificationCenterGetDarwinNotifyCenter(), this,
++      [](CFNotificationCenterRef, void* observer, CFStringRef name,
++         const void*, CFDictionaryRef) {
++        if (name && CFEqual(name, kWindowEffectPreferenceDomain)) {
++          static_cast<NativeWidgetNSWindowBridge*>(observer)
++              ->UpdateWindowEffectPreferences();
++        }
++      },
++      kWindowEffectPreferenceDomain, nullptr,
++      CFNotificationSuspensionBehaviorDeliverImmediately);
++  window_effect_preferences_observed_ = true;
++  window_effect_preferences_timer_.Start(
++      FROM_HERE, base::Milliseconds(250),
++      base::BindRepeating(
++          &NativeWidgetNSWindowBridge::UpdateWindowEffectPreferences,
++          factory_.GetWeakPtr()));
++}
++
++void NativeWidgetNSWindowBridge::ReplaceWindowBackgroundEffectView(
++    bool fullscreen) {
++  NSView* compositor = FindCompositorSuperview(bridged_view_);
++  [FindWindowBackgroundEffectView(bridged_view_) removeFromSuperview];
++  NSView* effect = CreateBrowserWindowBackgroundEffectView(
++      bridged_view_.bounds, fullscreen, window_vibrancy_disabled_,
++      window_glass_variant_);
++  [bridged_view_ addSubview:effect positioned:NSWindowBelow relativeTo:nil];
++  if (compositor) {
++    AttachCompositorToWindowBackground(bridged_view_, effect, compositor);
++  }
++}
++
++void NativeWidgetNSWindowBridge::UpdateWindowEffectPreferences() {
++  const bool disabled = ReadWindowVibrancyDisabled();
++  const std::optional<int> variant = ReadWindowGlassVariant();
++  const bool disabled_changed = disabled != window_vibrancy_disabled_;
++  const bool variant_changed = variant != window_glass_variant_;
++  window_vibrancy_disabled_ = disabled;
++  window_glass_variant_ = variant;
++  NSView* effect = FindWindowBackgroundEffectView(bridged_view_);
++  if (!effect) {
++    return;
++  }
++  if (disabled_changed) {
++    effect.hidden = disabled;
++    if (is_translucent_window_ && !IsWindowModalSheet()) {
++      window_.opaque = disabled;
++      NSColor* background = NSColor.windowBackgroundColor;
++      if (@available(macOS 26, *)) {
++        if (!disabled) {
++          background = [background colorWithAlphaComponent:0.001];
++        }
++      }
++      window_.backgroundColor = background;
++    }
++  }
++  if (variant_changed && IsGlassBackgroundEffectView(effect)) {
++    if (variant) {
++      [effect setValue:@(*variant) forKey:@"variant"];
++    } else {
++      ReplaceWindowBackgroundEffectView(
++          (window_.styleMask & NSWindowStyleMaskFullScreen) != 0);
++    }
++  }
++}
++
+ void NativeWidgetNSWindowBridge::CreateContentView(
+     uint64_t ns_view_id,
+     const gfx::Rect& bounds,
+@@ -844,6 +1041,12 @@
+   }
+ 
+   [window_ setContentView:bridged_view_];
++  if (base::apple::BaseBundleID() == "dev.aux.browser" &&
++      [window_ isKindOfClass:[BrowserNativeWidgetWindow class]]) {
++    StartWindowEffectPreferencesObserver();
++    ReplaceWindowBackgroundEffectView(
++        (window_.styleMask & NSWindowStyleMaskFullScreen) != 0);
++  }
+ }
+ 
+ void NativeWidgetNSWindowBridge::CloseWindow() {
+@@ -1585,13 +1788,24 @@
+   // for the composited NonClientFrameView, which should be the case since the
+   // native shape is what's most appropriate for displaying sheets on Mac.
+   if (is_translucent_window_ && !IsWindowModalSheet()) {
+-    [window_ setOpaque:NO];
++    [window_ setOpaque:window_effect_preferences_observed_
++                           ? window_vibrancy_disabled_
++                           : NO];
+     // A completely transparent background ([NSColor clearColor]) causes AppKit
+     // to continuously invalidate the window surface, resulting in high CPU
+     // and energy usage. Using an almost-transparent color (alpha 0.001) avoids
+     // this performance issue while remaining visually indistinguishable.
+-    [window_ setBackgroundColor:[[NSColor windowBackgroundColor]
+-                                    colorWithAlphaComponent:0.001]];
++    NSColor* background = NSColor.windowBackgroundColor;
++    if (window_effect_preferences_observed_) {
++      if (@available(macOS 26, *)) {
++        if (!window_vibrancy_disabled_) {
++          background = [background colorWithAlphaComponent:0.001];
++        }
++      }
++    } else {
++      background = [background colorWithAlphaComponent:0.001];
++    }
++    [window_ setBackgroundColor:background];
+ 
+     // Don't block waiting for the initial frame of completely transparent
+     // windows. This allows us to avoid blocking on the UI thread e.g, while
+@@ -1718,6 +1932,16 @@
+   OrderChildren();
+ 
+   host_->OnWindowFullscreenTransitionComplete(is_fullscreen);
++  if (window_effect_preferences_observed_ && bridged_view_) {
++    NSView* effect = FindWindowBackgroundEffectView(bridged_view_);
++    bool should_use_glass = false;
++    if (@available(macOS 26, *)) {
++      should_use_glass = !is_fullscreen && NSClassFromString(@"NSGlassEffectView");
++    }
++    if (effect && should_use_glass != IsGlassBackgroundEffectView(effect)) {
++      ReplaceWindowBackgroundEffectView(is_fullscreen);
++    }
++  }
+   if (is_fullscreen && immersive_mode_controller_) {
+     immersive_mode_controller_->FullscreenTransitionCompleted();
+   }
+--- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h
++++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h
+@@ -14,6 +14,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
+ #include "components/remote_cocoa/app_shim/immersive_mode_controller_cocoa.h"
+ #include "components/remote_cocoa/app_shim/immersive_mode_tabbed_controller_cocoa.h"
+ #import "components/remote_cocoa/app_shim/mouse_capture_delegate.h"
+@@ -389,6 +390,10 @@
+  private:
+   friend class views::test::BridgedNativeWidgetTestApi;
+ 
++  void StartWindowEffectPreferencesObserver();
++  void UpdateWindowEffectPreferences();
++  void ReplaceWindowBackgroundEffectView(bool fullscreen);
++
+   // Attach child windows, if the window is visible (see comment inline).
+   void OrderChildren();
+ 
+@@ -454,6 +459,10 @@
+   std::unique_ptr<CocoaWindowMoveLoop> window_move_loop_;
+   ui::mojom::ModalType modal_type_ = ui::mojom::ModalType::kNone;
+   bool is_translucent_window_ = false;
++  base::RepeatingTimer window_effect_preferences_timer_;
++  bool window_effect_preferences_observed_ = false;
++  bool window_vibrancy_disabled_ = false;
++  std::optional<int> window_glass_variant_;
+   id __strong local_event_monitor_;
+ 
+   raw_ptr<NativeWidgetNSWindowBridge> parent_ =

@@ -1,0 +1,92 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 438560c: d100c3ff     	sub	sp, sp, #0x30
+ 4385610: a9014ff4     	stp	x20, x19, [sp, #0x10]
+ 4385614: a9027bfd     	stp	x29, x30, [sp, #0x20]
+ 4385618: 910083fd     	add	x29, sp, #0x20
+ 438561c: f0053d53     	adrp	x19, 0xeb30000 <dyld_stub_binder+0xeb30000>
+ 4385620: 9104e273     	add	x19, x19, #0x138
+ 4385624: aa1303e0     	mov	x0, x19
+ 4385628: 955e5e20     	bl	0x9b1cea8 <_ChromeMain+0x9b17c0c>
+ 438562c: b0053d80     	adrp	x0, 0xeb36000 <dyld_stub_binder+0xeb36000>
+ 4385630: 9101e000     	add	x0, x0, #0x78
+ 4385634: aa1303e1     	mov	x1, x19
+ 4385638: 955e5e1f     	bl	0x9b1ceb4 <_ChromeMain+0x9b17c18>
+ 438563c: b4000360     	cbz	x0, 0x43856a8 <_ChromeMain+0x438040c>
+ 4385640: aa0003f3     	mov	x19, x0
+ 4385644: b9000fff     	str	wzr, [sp, #0xc]
+ 4385648: 951f65ab     	bl	0x8b5ecf4 <_ChromeMain+0x8b59a58>
+ 438564c: aa0003f4     	mov	x20, x0
+ 4385650: 95345543     	bl	0x909ab5c <_ChromeMain+0x90958c0>
+ 4385654: eb00029f     	cmp	x20, x0
+ 4385658: 54000241     	b.ne	0x43856a0 <_ChromeMain+0x4380404>
+ 438565c: 910033e2     	add	x2, sp, #0xc
+ 4385660: aa1303e0     	mov	x0, x19
+ 4385664: 52800121     	mov	w1, #0x9                ; =9
+ 4385668: 95345540     	bl	0x909ab68 <_ChromeMain+0x90958cc>
+ 438566c: 340001a0     	cbz	w0, 0x43856a0 <_ChromeMain+0x4380404>
+ 4385670: b9400fe8     	ldr	w8, [sp, #0xc]
+ 4385674: 51005109     	sub	w9, w8, #0x14
+ 4385678: 31004d3f     	cmn	w9, #0x13
+ 438567c: b2600108     	orr	x8, x8, #0x100000000
+ 4385680: 9a8833f4     	csel	x20, xzr, x8, lo
+ 4385684: aa1303e0     	mov	x0, x19
+ 4385688: 950b181d     	bl	0x864b6fc <_ChromeMain+0x8646460>
+ 438568c: aa1403e0     	mov	x0, x20
+ 4385690: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 4385694: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 4385698: 9100c3ff     	add	sp, sp, #0x30
+ 438569c: d65f03c0     	ret
+ 43856a0: d2800014     	mov	x20, #0x0               ; =0
+ 43856a4: 17fffff8     	b	0x4385684 <_ChromeMain+0x43803e8>
+ 43856a8: d2800014     	mov	x20, #0x0               ; =0
+ 43856ac: 17fffff8     	b	0x438568c <_ChromeMain+0x43803f0>
+ 43856b0: 14000001     	b	0x43856b4 <_ChromeMain+0x4380418>
+ 43856b4: aa0003f4     	mov	x20, x0
+ 43856b8: aa1303e0     	mov	x0, x19
+ 43856bc: 950b1810     	bl	0x864b6fc <_ChromeMain+0x8646460>
+ 43856c0: aa1403e0     	mov	x0, x20
+ 43856c4: 94f1f790     	bl	0x8003504 <_ChromeMain+0x7ffe268>
+		...
+ 43856d0: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ 43856d4: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 43856d8: 910043fd     	add	x29, sp, #0x10
+ 43856dc: f0053d53     	adrp	x19, 0xeb30000 <dyld_stub_binder+0xeb30000>
+ 43856e0: 9104e273     	add	x19, x19, #0x138
+ 43856e4: aa1303e0     	mov	x0, x19
+ 43856e8: 955e5df0     	bl	0x9b1cea8 <_ChromeMain+0x9b17c0c>
+ 43856ec: 90053d60     	adrp	x0, 0xeb31000 <dyld_stub_binder+0xeb31000>
+ 43856f0: 912a6000     	add	x0, x0, #0xa98
+ 43856f4: aa1303e1     	mov	x1, x19
+ 43856f8: 955e5def     	bl	0x9b1ceb4 <_ChromeMain+0x9b17c18>
+ 43856fc: b4000220     	cbz	x0, 0x4385740 <_ChromeMain+0x43804a4>
+ 4385700: aa0003f3     	mov	x19, x0
+ 4385704: 951f657c     	bl	0x8b5ecf4 <_ChromeMain+0x8b59a58>
+ 4385708: aa0003f4     	mov	x20, x0
+ 438570c: 957389b2     	bl	0xa067dd4 <_ChromeMain+0xa062b38>
+ 4385710: eb00029f     	cmp	x20, x0
+ 4385714: 54000261     	b.ne	0x4385760 <_ChromeMain+0x43804c4>
+ 4385718: aa1303e0     	mov	x0, x19
+ 438571c: 95738a11     	bl	0xa067f60 <_ChromeMain+0xa062cc4>
+ 4385720: 7100001f     	cmp	w0, #0x0
+ 4385724: 1a9f07f4     	cset	w20, ne
+ 4385728: aa1303e0     	mov	x0, x19
+ 438572c: 950b17f4     	bl	0x864b6fc <_ChromeMain+0x8646460>
+ 4385730: aa1403e0     	mov	x0, x20
+ 4385734: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ 4385738: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ 438573c: d65f03c0     	ret
+ 4385740: 52800014     	mov	w20, #0x0               ; =0
+ 4385744: 17fffffb     	b	0x4385730 <_ChromeMain+0x4380494>
+ 4385748: 14000001     	b	0x438574c <_ChromeMain+0x43804b0>
+ 438574c: aa0003f4     	mov	x20, x0
+ 4385750: aa1303e0     	mov	x0, x19
+ 4385754: 950b17ea     	bl	0x864b6fc <_ChromeMain+0x8646460>
+ 4385758: aa1403e0     	mov	x0, x20
+ 438575c: 94f1f76a     	bl	0x8003504 <_ChromeMain+0x7ffe268>
+ 4385760: 52800014     	mov	w20, #0x0               ; =0
+ 4385764: 17fffff1     	b	0x4385728 <_ChromeMain+0x438048c>

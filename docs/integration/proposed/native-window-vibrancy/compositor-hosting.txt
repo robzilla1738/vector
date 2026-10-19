@@ -1,0 +1,86 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 43843a0: d10143ff     	sub	sp, sp, #0x50
+ 43843a4: a9015ff8     	stp	x24, x23, [sp, #0x10]
+ 43843a8: a90257f6     	stp	x22, x21, [sp, #0x20]
+ 43843ac: a9034ff4     	stp	x20, x19, [sp, #0x30]
+ 43843b0: a9047bfd     	stp	x29, x30, [sp, #0x40]
+ 43843b4: 910103fd     	add	x29, sp, #0x40
+ 43843b8: aa0203f5     	mov	x21, x2
+ 43843bc: aa0103f4     	mov	x20, x1
+ 43843c0: aa0003f3     	mov	x19, x0
+ 43843c4: 94f1fce9     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 43843c8: aa1403e0     	mov	x0, x20
+ 43843cc: 94f1fce7     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 43843d0: aa1503e0     	mov	x0, x21
+ 43843d4: 94f1fce5     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 43843d8: aa1403e0     	mov	x0, x20
+ 43843dc: 94f1fce3     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 43843e0: 94f1fce2     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 43843e4: d00559a8     	adrp	x8, 0xeeba000 <dyld_stub_binder+0xeeba000>
+ 43843e8: 910e4108     	add	x8, x8, #0x390
+ 43843ec: 38bfc108     	ldaprb	w8, [x8]
+ 43843f0: d00559b7     	adrp	x23, 0xeeba000 <dyld_stub_binder+0xeeba000>
+ 43843f4: 36000768     	tbz	w8, #0x0, 0x43844e0 <_ChromeMain+0x437f244>
+ 43843f8: f941c6f6     	ldr	x22, [x23, #0x388]
+ 43843fc: aa1603e0     	mov	x0, x22
+ 4384400: 951f63c1     	bl	0x8b5d304 <_ChromeMain+0x8b58068>
+ 4384404: b40002f6     	cbz	x22, 0x4384460 <_ChromeMain+0x437f1c4>
+ 4384408: aa1403e0     	mov	x0, x20
+ 438440c: aa1603e2     	mov	x2, x22
+ 4384410: 950db8ee     	bl	0x86f27c8 <_ChromeMain+0x86ed52c>
+ 4384414: aa0003f6     	mov	x22, x0
+ 4384418: aa1403e0     	mov	x0, x20
+ 438441c: 94f1fcd0     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 4384420: 34000256     	cbz	w22, 0x4384468 <_ChromeMain+0x437f1cc>
+ 4384424: 90054c28     	adrp	x8, 0xed08000 <dyld_stub_binder+0xed08000>
+ 4384428: f945d116     	ldr	x22, [x8, #0xba0]
+ 438442c: aa1403e0     	mov	x0, x20
+ 4384430: aa1603e2     	mov	x2, x22
+ 4384434: 95910cb4     	bl	0xa7c7704 <_ChromeMain+0xa7c2468>
+ 4384438: 36000180     	tbz	w0, #0x0, 0x4384468 <_ChromeMain+0x437f1cc>
+ 438443c: aa1403e0     	mov	x0, x20
+ 4384440: aa1603e1     	mov	x1, x22
+ 4384444: 95fffa9a     	bl	0xc382eac <_ChromeMain+0xc37dc10>
+ 4384448: 94f1fcbc     	bl	0x8003738 <_ChromeMain+0x7ffe49c>
+ 438444c: aa0003f6     	mov	x22, x0
+ 4384450: aa1403e0     	mov	x0, x20
+ 4384454: 94f1fcc2     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 4384458: b40000d6     	cbz	x22, 0x4384470 <_ChromeMain+0x437f1d4>
+ 438445c: 14000008     	b	0x438447c <_ChromeMain+0x437f1e0>
+ 4384460: aa1403e0     	mov	x0, x20
+ 4384464: 94f1fcbe     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 4384468: aa1403e0     	mov	x0, x20
+ 438446c: 94f1fcbc     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 4384470: aa1303e0     	mov	x0, x19
+ 4384474: 94f1fcbd     	bl	0x8003768 <_ChromeMain+0x7ffe4cc>
+ 4384478: aa1303f6     	mov	x22, x19
+ 438447c: aa1503e0     	mov	x0, x21
+ 4384480: 95898200     	bl	0xa5e4c80 <_ChromeMain+0xa5df9e4>
+ 4384484: aa1603e0     	mov	x0, x22
+ 4384488: 95ac1ee1     	bl	0xae8c00c <_ChromeMain+0xae86d70>
+ 438448c: aa1503e0     	mov	x0, x21
+ 4384490: 95146757     	bl	0x889e1ec <_ChromeMain+0x8898f50>
+ 4384494: aa1503e0     	mov	x0, x21
+ 4384498: 52800242     	mov	w2, #0x12               ; =18
+ 438449c: 9579b459     	bl	0xa1f1600 <_ChromeMain+0xa1ec364>
+ 43844a0: aa1603e0     	mov	x0, x22
+ 43844a4: aa1503e2     	mov	x2, x21
+ 43844a8: 959cc3ef     	bl	0xaab5464 <_ChromeMain+0xaab01c8>
+ 43844ac: aa1603e0     	mov	x0, x22
+ 43844b0: 94f1fcab     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 43844b4: aa1503e0     	mov	x0, x21
+ 43844b8: 94f1fca9     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 43844bc: aa1403e0     	mov	x0, x20
+ 43844c0: 94f1fca7     	bl	0x800375c <_ChromeMain+0x7ffe4c0>
+ 43844c4: aa1303e0     	mov	x0, x19
+ 43844c8: a9447bfd     	ldp	x29, x30, [sp, #0x40]
+ 43844cc: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+ 43844d0: a94257f6     	ldp	x22, x21, [sp, #0x20]
+ 43844d4: a9415ff8     	ldp	x24, x23, [sp, #0x10]
+ 43844d8: 910143ff     	add	sp, sp, #0x50
+ 43844dc: 14f1fca0     	b	0x800375c <_ChromeMain+0x7ffe4c0>

@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "artifact": {
+    "containerPath": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/Current/Aside Framework",
+    "containerSha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "slicePath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sliceSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "architecture": "arm64"
+  },
+  "method": "Bounded static arm64 disassembly and Mach-O chained-fixup/Objective-C selector/CFString decoding. No target execution, preference/Keychain/OS grant access or deep analysis.",
+  "observations": {
+    "sourceLocation": "0xdcc92b3 decodes ../../components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm; 0xdcc931e decodes StartWindowEffectPreferencesObserver",
+    "auxHostGuard": "base::apple::BaseBundleID()==dev.aux.browser; chrome/app/chrome_main_mac.mm SetUpBundleOverrides configuresit from the actualouterapp, preservinggenericcomponent/appshim isolation.",
+    "browserGate": "04383998..39bc: NSClassFromString(BrowserNativeWidgetWindow), isKindOfClass gates observer+browser effect. Ordinary nonbrowser and permissionprompt paths remain separate.",
+    "reader": "043856d0: AppSynchronize; CopyAppValue(windowBackgroundVibrancyDisabled, at.studio.AsideBrowser); only CFBoolean true disables, absent/wrongtype false.",
+    "variant": "0438560c: optional CFNumber liquidGlassVariant, int values1..20 only, mac26+ at callers.",
+    "creator": "04384058: mac26+, !fullscreen and dynamically available NSGlassEffectView => Glass; optionalvariant via KVC; optional _setVibrantBlendingStyleForSubtree:0; fallback NSVisualEffectView material21 (UnderWindowBackground), blending0 (BehindWindow), state0 (FollowsWindowActiveState). Both autoresize18 and hidden=disabled.",
+    "hosting": "043843a0: Glass contentView when exposed/nonnil else root; remove compositor from old parent, frame=containerbounds, resize18, addSubview. 0438541c preserves compositor across replacement.",
+    "liveRefresh": "04385768 Darwin name equality then reader; cached disabled/variant changes update effect hidden, translucent nonsheet window opaque and background. Disabled fullwindowBackgroundColor; enabled mac26 alpha0.001. Newvariant set viaKVC; removedvariant replaces effect.",
+    "pollingRefresh": "04383b90..3bf4: weak-bound0438582c callback, timeruser_task+0x58, delay250000us+0x40, Reset0094f4ac. Proposedbase::RepeatingTimer retains250msrefresh and weaklifetime.",
+    "fullscreen": "043850fc..5180 compares mac26&&!fullscreen against actualeffectclass; replace only when class differs.",
+    "domainRebrand": "Only fixed at.studio.AsideBrowser -> fixed dev.aux.browser. Original key names/private selectors/values retained; domain must not depend on app-shim ownbundle identifier."
+  },
+  "outputs": [
+    {
+      "path": "effect-creation.txt",
+      "sha256": "a6557b2a875288be5081b0be5b4f02ebe4f804d82f3f41ab61b6ded8610ac9ef",
+      "start": "0x4384058",
+      "endExclusive": "0x4384234"
+    },
+    {
+      "path": "preference-reader.txt",
+      "sha256": "06e28458680f3dd906ce5d080c74349ccf58a89639393cd4e64c8535a0b8dbb8",
+      "start": "0x438560c",
+      "endExclusive": "0x4385768"
+    },
+    {
+      "path": "darwin-and-refresh.txt",
+      "sha256": "dbe2c85e7f1e1b389b5164a95144d6dc0ae4e15353d3af39f5b4cae581e3a43d",
+      "start": "0x4385768",
+      "endExclusive": "0x4385ab4"
+    },
+    {
+      "path": "compositor-hosting.txt",
+      "sha256": "91934516d408804fa9b1210f4e4c3c9ecff642fe75955b6577f3eb718c67929c",
+      "start": "0x43843a0",
+      "endExclusive": "0x43844e0"
+    },
+    {
+      "path": "effect-replacement.txt",
+      "sha256": "01b37c9c0ba3be51a462a09ccad2129466aab36a3222736fee1502909e52beef",
+      "start": "0x438541c",
+      "endExclusive": "0x43854c4"
+    },
+    {
+      "path": "observer-registration.txt",
+      "sha256": "edccfe275a71437313c91c46330e2ddd3157a86d1948b6c14e9571e34280548f",
+      "start": "0x4383b1c",
+      "endExclusive": "0x4383c3c"
+    },
+    {
+      "path": "fullscreen-consumer.txt",
+      "sha256": "d329cf5d6f26c8cf7bd01507410df1ea2f20d6f1ee6672324171da9b7e6bc150",
+      "start": "0x43850fc",
+      "endExclusive": "0x4385184"
+    },
+    {
+      "path": "decoded-selectors.txt",
+      "sha256": "376cad53f4746b872f5cfc69bbd4bf40861a3e1ac272c4d94c759d78efe8d738"
+    }
+  ],
+  "nativeGuardInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/app/chrome_main_mac.mm",
+      "sha256": "4c6d0561bd0dcca14f2b9f78dba76002e76e0b472933c3ccee00546bc7e2b250"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/BUILD.gn",
+      "sha256": "631cc63025a3fa13612c9749ba76817364beee9814817adcf457be9846ac3c32"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/foundation_util.h",
+      "sha256": "17ef1daaedeedeae4aef210bec2dd64cb28736069a947badddf3dfe3c5677645"
+    }
+  ],
+  "limitations": [
+    "Source-level adaptation, not recovered original C++ source.",
+    "Permission-prompt-specific effect path is outside this browser-window preference patch and remains current155 behavior.",
+    "No C++ compile or runtime/visual observation; compositor transparency and fullscreen/Glass behavior require actual packaged macOS acceptance."
+  ],
+  "acceptance": {
+    "applied": false,
+    "compiled": false,
+    "executed": false,
+    "globalPreferencesTouched": false,
+    "ownerDataTouched": false
+  }
+}
