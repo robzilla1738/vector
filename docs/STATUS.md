@@ -8,21 +8,34 @@ Source, compilation, native observation and accepted behavior remain separate.
 
 ## Current implementation
 
-The [fourth integrated batch](evidence/aside-parallel-integration-batch4-2026-10-18.json)
-is source/product `24a0eb158`, with **6,183 passing tests /869files** in101.87s.
-The sole native build passes61steps; its preserved framework/dSYM UUID is
-`4C4C4421-5555-3144-A19E-7CA4E255B39A`. It includes Home Ask focus ownership,
-literal Control-release handling, stale-event rejection and a pre-accelerator
-performance observer. Source, build and actual native observations remain separate.
+The [fifth integrated batch](evidence/aside-parallel-integration-batch5-2026-10-18.json)
+is product `873d478be`, with **6,187 passing tests /869files** in103.75s after
+runtime dist rebuild. Both native builds complete sequentially with matching symbols:
+Aux framework/dSYM `4C4C4422-5555-3144-A1DE-A83B684A9A1D` and stock
+`4C4C4488-5555-3144-A181-1370107449ED`. No full check overlaps native compilation.
 
-The current diagnostic presents all ten distinct fixture documents, but still
-produces no tab latency/interval pair. Full modifier-lifetime input visibly dismisses
-the preview and selects the expected tab in the new build; this verifies that
-sequence, not latency. The actual AppKit accelerator timestamp ingress is being
-completed in the tools lane. There are **0qualified paired samples**. The normal
-bounded diagnostic retires browser/helpers0. A separate manual diagnostic normally
-quits its browser, then requires terminating its stuck stdin gate; its launcher
-exits1. This failed harness retirement is retained, not called a clean run.
+This batch preserves exact interrupted tool calls through context compaction,
+restores Memory-tree keyboard ownership when a row disappears, and adds the actual
+AppKit original-event timestamp ingress. Focused failing-before/passing-after
+regressions support the product fixes. The native timestamp feed receives an
+independent source review and exact69-patch/975-path replay; source proof alone
+does not establish native behavior.
+
+Aux's bounded diagnostic now observes all ten distinct fixture documents, one
+original tab-switch latency/frame-interval pair, command input and warm-window
+presentation. Browser and helper retire0. This uses the canonical full modifier
+lifetime helper. A preceding diagnostic using the retired flags-only helper stops
+at strict address-focus preparation and is retained as a failure. There are still
+**0qualified paired samples**; stock's bounded diagnostic fails the timing pair after ten actual fixture documents.
+A bounded source investigation of stock ingress is active; the full campaign waits.
+No latency, p95, idle-memory or daily-use target pass is claimed from one diagnostic.
+
+The [previous24a native observation](evidence/aside-parallel-integration-batch4-2026-10-18.json)
+verifies Home Ask yielding Cmd-L to actual address navigation, and the complete
+Control-release sequence dismissing preview/activating the expected tab. A single
+synthetic typing comparison succeeds in plain text and Home Ask; intermittent
+corruption and IME acceptance remain open. Current populated Memory/Forget and
+successful long-conversation compaction still need native acceptance.
 
 Earlier cd76 native Routines geometry, wide/narrow model-menu states and normal
 runtime forced0/exit0 remain [pinned to that candidate](evidence/aside-native-cd76-observations-2026-10-18.json).
@@ -41,9 +54,9 @@ removing its disposable Profile and lock. This is deterministic fixture acceptan
 not held-out reliability or resolution of the original crash.
 
 Native testing reproduced Home Ask stealing Cmd-L focus. Its focused failing
-fixture and owner-slot fix are integrated and compiled; current native acceptance
-is pending. The new native Control-release route is compiled and observed for the
-complete modifier sequence. Prior batch full checks passed6,121/6,150/6,174 tests.
+fixture and owner-slot fix are integrated and compiled; native24a acceptance
+now passes the owned address-navigation case. The native Control-release route is compiled and observed for the
+complete modifier sequence. Earlier batch full checks passed6,121/6,150/6,174/6,183 tests.
 
 ## Evidence and remaining acceptance
 
@@ -90,8 +103,9 @@ launcher retirement stay with one integrator and the existing plain lock.
   Current preview and diagnostic findings are preserved without approximate symbolization.
 - **Performance:** matching155 Aux and stock builds exist; the ten-document barrier
   is observed on both. There are0qualified paired samples. The actual AppKit CtrlTab
-  timestamp ingress must pass a bounded diagnostic before another full campaign;
-  the compiled physical Control-release sequence has native behavior evidence. Original cold/input/tab/memory targets
+  timestamp ingress now passes the bounded Aux diagnostic; matching stock signals
+  and the full paired campaign remain. The physical Control-release sequence has
+  native behavior evidence. Original cold/input/tab/memory targets
   remain unchanged. Actual boot/preload bytes and positive/zero/unknown provider usage
   are measured honestly; disk payload is not idle process memory.
 

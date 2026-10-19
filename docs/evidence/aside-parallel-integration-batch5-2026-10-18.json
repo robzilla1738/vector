@@ -1,0 +1,200 @@
+{
+  "main": "873d478bee03e79962b50023d8dd17126fc83b8b",
+  "status": "Source integrated and full check passed; native build/acceptance pending",
+  "fullCheck": {
+    "command": "npx tsc -b && npm run check",
+    "session": 14141,
+    "exit": 0,
+    "tests": 6187,
+    "files": 869,
+    "seconds": 103.75,
+    "log": "/tmp/aux-parallel-batch5-check-2026-10-18.log",
+    "nativeCompilerConcurrent": false
+  },
+  "AI": {
+    "privateCommit": "3d353ede8",
+    "integratedCommit": "bb0852c2f",
+    "defect": "Actual interrupted:true restart tool result was classified resolved and original call input discarded by semantic compaction.",
+    "before": "Targeted exact producer-shape regression fails missing original call/body despite completed summary.",
+    "after": "Both context projections preserve exact original call/result; complete transcript unchanged, no action replay.",
+    "focused": {
+      "count": 88,
+      "files": [
+        "conversation-compaction.test.ts",
+        "agent-context.test.ts",
+        "idle-conversation-compaction.test.ts",
+        "run-message-order.test.ts",
+        "queued-task-documents.test.ts",
+        "run-message-queue.test.ts"
+      ],
+      "seconds": 4.03,
+      "distRebuilt": true,
+      "outputSession": 34188,
+      "outputChunk": "7b97b6"
+    },
+    "queue": "No additional supported race established; atomic reorder and final delivery checks retain fixture evidence, not native acceptance."
+  },
+  "UI": {
+    "privateCommit": "12d4988a2",
+    "integratedCommit": "873d478be",
+    "defect": "Focused Memory row removal left keyboard focus on body.",
+    "before": "Focused row retirement test fails;10existingpass.",
+    "after": "Surviving folder regains single roving stop; newer editor focus/caret preserved.",
+    "focused": {
+      "count": 20,
+      "files": [
+        "MemoryDocumentBrowser.test.tsx",
+        "MemoryWorkspace.test.tsx"
+      ],
+      "seconds": 0.66
+    },
+    "isolatedTypecheck": "Blocked by missing built chromium-driver dist; integrated full check typecheck passes.",
+    "geometry": "Existing source32px/gap6/r11.2/icon16/indent8+14depth/ellipsis matches reference; no style changes.",
+    "native": "Pending new-build populated Memory/Forget acceptance."
+  },
+  "measurement": {
+    "privateCommit": "d10bc7f",
+    "integratedCommit": "5ab65cd70",
+    "scope": "Actual accepted AppKit CtrlTab feeds original NSEvent timestamp through existing shell/document/widget and fixture gates; no event dispatch/consumption or invented clock.",
+    "replay": "69Aux patches/975paths plus stock1patch/9paths, zero byte/mode mismatches.",
+    "independentReview": "AI read-only review found no concrete blocker; no execution proof.",
+    "native": "Pending current sole Aux/thenstock builds and bounded actual metric pair."
+  },
+  "helper": {
+    "integratedCommit": "1c0e225c3",
+    "sourceSHA256": "70437eb640ad78f52006d060d74c3c15871a443deab876928af2f99558f781bd",
+    "approvedBinarySHA256": "01ff36983380c1869928fca143bc5e5df5abdfbdede353d07e83748027b81fc8",
+    "scope": "Exact original PID full modifier lifetime; existing generation/frontmost/window gates unchanged.",
+    "existingHelperTests": "5pass node --test tests/benchmarks/native-perf-helper.test.mjs",
+    "nativeBehavior": "24a/21 preview dismissed and expected tab activated; no qualified latency pair yet."
+  },
+  "remaining": [
+    "Original155SIGTRAP exact historical symbols unavailable, unresolved.",
+    "0qualified paired samples; no performance pass.",
+    "Earliercd76 manual20/20 remains pinned to that candidate.",
+    "Complete reference both themes/widths/states and broad browser/lifecycle acceptance remain incomplete."
+  ],
+  "nativeAux": {
+    "status": "complete",
+    "record": "/tmp/aux-appkit-ingress-d10bc7f-root-build-2026-10-18/results/attempt1/aux/build.json",
+    "symbols": {
+      "identityPath": "/private/tmp/aux-appkit-ingress-d10bc7f-root-build-2026-10-18/results/attempt1/aux/symbols/identity.json",
+      "identitySHA256": "b42c9be978c0dadf61a7695e58309e07ba7ac5ea1c41b3372a686625b0ae6be5",
+      "frameworkUUID": [
+        {
+          "uuid": "4C4C4422-5555-3144-A1DE-A83B684A9A1D",
+          "arch": "arm64"
+        }
+      ],
+      "artifacts": 5
+    },
+    "steps": [
+      {
+        "label": "Verify exact native delta applies",
+        "exit": 0,
+        "seconds": 0.012
+      },
+      {
+        "label": "Apply exact native delta",
+        "exit": 0,
+        "seconds": 0.006
+      },
+      {
+        "label": "Build current renderer",
+        "exit": 0,
+        "seconds": 3.67
+      },
+      {
+        "label": "Stage renderer",
+        "exit": 0,
+        "seconds": 0.313
+      },
+      {
+        "label": "Stage generated host bindings",
+        "exit": 0,
+        "seconds": 1.825
+      },
+      {
+        "label": "Incremental native chrome build (16 workers)",
+        "exit": 0,
+        "seconds": 526.987
+      },
+      {
+        "label": "Stage current rebuilt runtime",
+        "exit": 0,
+        "seconds": 30.065
+      }
+    ],
+    "liveAcceptance": "Bounded required-signals diagnostic passes, broad UI/AI/browser acceptance pending"
+  },
+  "diagnostics": [
+    {
+      "session": 33102,
+      "exit": 1,
+      "root": "/tmp/aux-appkit-batch5-diagnostic-aux-Vg1V6S",
+      "error": "Exact address focus unavailable after one actual fixture; retired v3 helper used during prep, did not reach timing",
+      "browserExit": 0
+    },
+    {
+      "session": 59256,
+      "exit": 0,
+      "root": "/tmp/aux-appkit-batch5-v4-diagnostic-aux-WVUTVh",
+      "helper": "canonical approvedv4 forall input",
+      "actualDistinctFixtures": 10,
+      "tabLatencyUs": 33704,
+      "nativeFrameIntervalUs": 8333,
+      "commandPresentationDeltaMs": 28,
+      "warmFirstFrameUs": 93261,
+      "warmControlsUs": 193261,
+      "browserExit": 0,
+      "helperExits": [
+        0
+      ],
+      "performanceQualification": false,
+      "limit": "One diagnostic observation; no p95/paired/idle-target acceptance."
+    },
+    {
+      "session": 6925,
+      "root": "/tmp/aux-appkit-batch5-v4-diagnostic-stock-6rWnDq",
+      "exit": 1,
+      "browserExit": 0,
+      "actualDistinctFixtures": 10,
+      "helper": "canonical approvedv4 throughout",
+      "failure": "Native tab latency/interval pair absent",
+      "qualifiedPerformance": false
+    }
+  ],
+  "nativeStock": {
+    "status": "complete",
+    "record": "/tmp/aux-appkit-ingress-d10bc7f-root-build-2026-10-18/results/attempt1/stock/build.json",
+    "symbols": {
+      "identityPath": "/private/tmp/aux-appkit-ingress-d10bc7f-root-build-2026-10-18/results/attempt1/stock/symbols/identity.json",
+      "identitySHA256": "777e3dfe22fac04669b937e6477eaa4207aef105cad5cb968fb5df210f3d0b8e",
+      "frameworkUUID": [
+        {
+          "uuid": "4C4C4488-5555-3144-A181-1370107449ED",
+          "arch": "arm64"
+        }
+      ],
+      "artifacts": 3
+    },
+    "steps": [
+      {
+        "label": "Verify exact native delta applies",
+        "exit": 0,
+        "seconds": 0.012
+      },
+      {
+        "label": "Apply exact native delta",
+        "exit": 0,
+        "seconds": 0.005
+      },
+      {
+        "label": "Incremental native chrome build (16 workers)",
+        "exit": 0,
+        "seconds": 670.236
+      }
+    ],
+    "liveAcceptance": "Bounded diagnostic fails missing original tab timing pair after10actualfixture tabs; originalbrowser/helper retire0."
+  }
+}
