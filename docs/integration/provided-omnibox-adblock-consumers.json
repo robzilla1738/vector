@@ -1,0 +1,98 @@
+[
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/newtab-CnOLQ0yu.js",
+    "sha256": "e300bb70a84a0630c94f20469822517ca0ca02be902d9bb150492994f719cb19",
+    "anchors": [
+      {
+        "offset": 23803,
+        "find": "isSearchType",
+        "count": 3,
+        "context": "=(e,t)=>t>=0&&t<e.length?e[t]:null,nn=e=>({contents:e,description:\"Search\",fillIntoEdit:e,isSearchType:!0,type:ct}),lt=e=>e?.type===ct,ke=e=>/^(?:aside|chrome):\\/\\//i.test(e),Ue=e=>e.replace(/^aside:\\/\\//i,\"chrome://\"),Fe=(e,t)=>{const r=t.match(/^(aside|chrome):\\/\\//i)?.[0];return!r||!/^(?:aside|chrome):\\/\\//i"
+      },
+      {
+        "offset": 14190,
+        "find": "setPopupSelection(h,i)",
+        "count": 1,
+        "context": "eout(O.current),O.current=window.setTimeout(()=>{a(h,async()=>{await chrome.asideOmnibox?.setPopupSelection(h,i)})},u?.lazy?100:0))},[a,_]),oe=(0,n.useCallback)(()=>{E(!1),g.current=!1,z(!1),A();const s=l.current?.sessionId;s&&a(s,async()=>{await chrome.asideOmnibox?.stopAutocomplete(s,!0)})},[A,a]),le=(0,n.useCallback)("
+      },
+      {
+        "offset": 24993,
+        "find": "session not found or not owned by this extension",
+        "count": 1,
+        "context": "un=e=>we(e[0])?e.slice(0,Qt):e,ln=e=>e instanceof Error&&e.message.includes(\"asideOmnibox session not found or not owned by this extension\"),dn=({browserInputText:e,input:t,isInputFocused:r,mode:o,selection:c,topMatch:m})=>{if(o!==\"search\"||!r||!t||t.includes(`\n`)||c&&Number(c.line??0)!==0)return null;const w=U(t);if(!w)return null;for(const y of"
+      }
+    ]
+  },
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/search-view-gCFKEZ8L.js",
+    "sha256": "67a5e527be3aa7c5d9c7a9116341eea0dfa5cd9f4939c5e4ac1e46f2e9969037",
+    "anchors": [
+      {
+        "offset": 2895,
+        "find": "areMatchesShowing:!0,line:l,mouseButton:0,url:n.destinationUrl",
+        "count": 1,
+        "context": "destinationUrl);if(c){A(c);return}chrome.asideOmnibox?.openAutocompleteMatch(d.sessionId,{areMatchesShowing:!0,line:l,mouseButton:0,url:n.destinationUrl})},[a,d]),b=(0,p.useRef)(null),L=(0,p.useCallback)(n=>l=>{!l.movementX&&!l.movementY||b.current===n||(b.current=n,x({actionIndex:0,line:n,state:\"normal\"},{lazy:!0}))},[x]),R=(0,p.useCallback)(()=>{b.current=nu"
+      },
+      {
+        "offset": 5510,
+        "find": "{bytesBase64:h,fileName:o.name",
+        "count": 1,
+        "context": "=o.type||\"application/octet-stream\",h=await Ne(o);if(!(await i.addFileContext(a.sessionId,{bytesBase64:h,fileName:o.name,imageDataUrl:Ae(u,h),isDeletable:!0,mimeType:u,selectionTimeMs:Date.now()}))?.ok)throw new Error(\"Failed to add image context.\");r(),await Te(),await i.openLensSearch(a.sessionId)}catch(i){C.error(i instanceof"
+      },
+      {
+        "offset": 5617,
+        "find": "?.ok",
+        "count": 1,
+        "context": "leName:o.name,imageDataUrl:Ae(u,h),isDeletable:!0,mimeType:u,selectionTimeMs:Date.now()}))?.ok)throw new Error(\"Failed to add image context.\");r(),await Te(),await i.openLensSearch(a.sessionId)}catch(i){C.error(i instanceof Error?i.message:\"Failed to search the image.\")}});return(0,p.useEffect)(()=>(F(e"
+      }
+    ]
+  },
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/search-navigation-TWhZq3-H.js",
+    "sha256": "1bdf37a8cc1ff709ab1a1f54b40af0b4c3b89b5d96e7278e18ecfb17e813d145",
+    "anchors": [
+      {
+        "offset": 1508,
+        "find": "selection:a",
+        "count": 1,
+        "context": "ait f(n);return}await chrome.asideOmnibox?.openPopupSelection(t,{disposition:\"currentTab\",selection:a})},b=t=>{if(!t||/\\s/.test(t))return null;const e=h(t);if(e)return e;if(!/^(\\[::1\\]|localhost|\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-z0-9-]+\\.)+[a-z]{2,})(?::\\d{1,5})?(?:[/?#].*)?$/i.test(t))return null;try{const a=/^(?"
+      },
+      {
+        "offset": 1210,
+        "find": "actionIndex:0,line:0,state:\"normal\"",
+        "count": 1,
+        "context": "r.sessionId,e,{preventInlineAutocomplete:!1}).catch(p)});return c?(await g(r.sessionId,c,{actionIndex:0,line:0,state:\"normal\"}),!0):!1}finally{clearTimeout(s),n.onAutocompleteResultChanged.removeListener(i),await n.destroySession(r.sessionId)}},g=async(t,e,a)=>{const n=h(e.destinationUrl);if(n){await f(n);return}await chrome.asideOmn"
+      }
+    ]
+  },
+  {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/privacy-BeEEt9Qu.js",
+    "sha256": "b69101623284eed5fb8c7a108489861f7dc65cd9c4885584992624c1f883556c",
+    "anchors": [
+      {
+        "offset": 6968,
+        "find": "activeUpdateJobIds.length",
+        "count": 3,
+        "context": "tate\"],queryFn:()=>t.getState(),refetchInterval:r=>r.state.data?.compiling||r.state.data?.activeUpdateJobIds.length?1e3:!1,retry:!1}),subscriptions:t=>N({queryKey:[...V,\"subscriptions\"],queryFn:()=>t.getSubscriptions(),refetchInterval:r=>r.state.data?.some(s=>Jt.has(s.status))?1e3:!1,retry:!1}),customRules:t=>N({queryKey:[."
+      },
+      {
+        "offset": 16916,
+        "find": "t.saveCustomRules({rules:o})",
+        "count": 1,
+        "context": "a);const o=xs(a);if(Ne(o)>rs)throw new Error(\"Your rules exceed the 4 MiB limit.\");return t.saveCustomRules({rules:o})},$=(t,...r)=>!t||r.some(s=>s.toLowerCase().includes(t)),K=t=>{if(!t.trim())return[];const r=[...t.matchAll(/^!\\s*Title:\\s*(.*)$/gm)];return r.length===0?[{name:\"\",rules:t}]:r.map((s,a)=>{const o=s[1]?.trim()||"
+      },
+      {
+        "offset": 7852,
+        "find": "await t.addSubscription(n)",
+        "count": 1,
+        "context": "(t),enabled:s}),i=j({...Qt,enabled:s}),{confirm:u}=W(),x=S(async n=>{const{updateJobId:d}=await t.addSubscription(n);await Le(t,d)}),y=S(({id:n,enabled:d})=>t.setSubscriptionEnabled(n,d)),v=S(n=>Ee(t,{type:\"text\",index:n})),b=(0,h.useMemo)(()=>new Map(c.data?.map(n=>[n.url,n])??[]),[c.data]),w=o.trim().toLowerCase(),p=(0,h.u"
+      },
+      {
+        "offset": 18631,
+        "find": "t.startSubscriptionUpdate()",
+        "count": 1,
+        "context": "u),disabled:!y||x})]})},js=({api:t,canUpdate:r,description:s,disabled:a})=>{const o=S(()=>t.startSubscriptionUpdate()),l=S(()=>t.clearEngineCache()),c=()=>{const i=g.loading(\"Updating filters\u2026\");o.mutate(void 0,{onSuccess:u=>{Cs(t,u.jobId,i)},onError:()=>g.dismiss(i)})},m=()=>{l.mutate(void 0,{onSuccess:()=>g.success(\"Filter "
+      }
+    ]
+  }
+]

@@ -1,0 +1,100 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -256,12 +256,15 @@
+                         base::UTF16ToUTF8(match.fill_into_edit));
+       row.Set("index", static_cast<int>(i));
+       row.Set("title", base::UTF16ToUTF8(match.contents));
++      row.Set("contents", base::UTF16ToUTF8(match.contents));
+       row.Set("description", base::UTF16ToUTF8(match.description));
+       row.Set("destinationUrl", match.destination_url.spec());
+       row.Set("fillIntoEdit", base::UTF16ToUTF8(match.fill_into_edit));
+       row.Set("type", AutocompleteMatchType::ToString(match.type));
+       row.Set("isSearch", AutocompleteMatch::IsSearchType(match.type));
++      row.Set("isSearchType", AutocompleteMatch::IsSearchType(match.type));
+       row.Set("deletable", match.SupportsDeletion());
++      row.Set("supportsDeletion", match.SupportsDeletion());
+       if (tab_ids_[i]) {
+         row.Set("tabId", *tab_ids_[i]);
+       }
+@@ -272,13 +275,25 @@
+   }
+   std::optional<size_t> Selection(const base::DictValue& request,
+                                   bool use_selected = false) const {
++    // The supplied UI uses line and optional nested popup selection; older
++    // internal callers use revision/index. Neither may escape this owned session.
++    const auto* nested = request.FindDict("selection");
++    const auto& selection = nested ? *nested : request;
+     const auto revision = request.FindInt("revision");
+-    const auto index = request.FindInt("index");
+-    const int selected = index.value_or(use_selected ? selected_ : -1);
+-    if (!revision || *revision != revision_ || selected < 0 ||
+-        static_cast<size_t>(selected) >= matches_.size()) {
++    if (request.Find("revision") && (!revision || *revision != revision_))
+       return std::nullopt;
+-    }
++    const auto index = selection.FindInt("index");
++    const auto line = selection.FindInt("line");
++    if ((selection.Find("index") && !index) ||
++        (selection.Find("line") && !line) ||
++        (index && line && *index != *line)) return std::nullopt;
++    const int selected = line.value_or(index.value_or(use_selected ? selected_ : -1));
++    if (selected < 0 || static_cast<size_t>(selected) >= matches_.size())
++      return std::nullopt;
++    if (const auto* expected = request.FindString("url"); expected &&
++        GURL(*expected) != matches_[selected].destination_url)
++      return std::nullopt;
++    if (request.Find("url") && !request.FindString("url")) return std::nullopt;
+     return selected;
+   }
+   std::optional<std::string> Open(const base::DictValue& request,
+@@ -491,7 +506,7 @@
+   const auto found = state->sessions.find(args()[0].GetString());
+   if (found == state->sessions.end() ||
+       !found->second->Owns(owner, extension_id())) {
+-    return RespondNow(Error("Search session is unavailable for this page"));
++    return RespondNow(Error("auxOmnibox session not found or not owned by this extension"));
+   }
+   auto& session = *found->second;
+   auto request = [&]() -> const base::DictValue* {
+@@ -682,19 +697,23 @@
+     if (!value || session.contexts_.size() >= 32) {
+       return RespondNow(Error("File context is unavailable"));
+     }
+-    const auto *name = value->FindString("name"),
+-               *type = value->FindString("type"),
+-               *data = value->FindString("dataBase64");
++    const auto* name = value->FindString("fileName");
++    if (!name) name = value->FindString("name");
++    const auto* type = value->FindString("mimeType");
++    if (!type) type = value->FindString("type");
++    const auto* data = value->FindString("bytesBase64");
++    if (!data) data = value->FindString("dataBase64");
+     const auto size = value->FindInt("size");
+     if (!name || name->empty() || name->size() > 255 ||
+-        name->find('/') != std::string::npos || !type || type->size() > 255 ||
+-        !size || *size < 0 || *size > 32 * 1024 * 1024 || !data ||
+-        data->size() > 45 * 1024 * 1024) {
++        name->find('/') != std::string::npos ||
++        name->find('\\') != std::string::npos || !type || type->size() > 255 ||
++        (value->Find("size") && (!size || *size < 0 || *size > 32 * 1024 * 1024)) ||
++        !data || data->size() > 45 * 1024 * 1024) {
+       return RespondNow(Error("Invalid file context"));
+     }
+     std::string bytes;
+-    if (!base::Base64Decode(*data, &bytes) ||
+-        bytes.size() != static_cast<size_t>(*size) ||
++    if (!base::Base64Decode(*data, &bytes) || bytes.size() > 32 * 1024 * 1024 ||
++        (size && bytes.size() != static_cast<size_t>(*size)) ||
+         session.context_bytes_ + bytes.size() > 64 * 1024 * 1024) {
+       return RespondNow(Error("File content is invalid or too large"));
+     }
+@@ -704,7 +723,8 @@
+     summary.Set("kind", "file");
+     summary.Set("name", *name);
+     summary.Set("type", *type);
+-    summary.Set("size", *size);
++    summary.Set("size", static_cast<int>(bytes.size()));
++    summary.Set("ok", true);
+     summary.Set("state", "ready");
+     session.context_bytes_ += bytes.size();
+     session.contexts_.emplace(

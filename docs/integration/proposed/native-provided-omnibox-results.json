@@ -1,0 +1,46 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc",
+      "sourceSha256": "ed0b1da094c5d42c93c541570667116523a8fc9f62fcd96baccaaf1bdedb7631",
+      "outputSha256": "e96a5580caee4b33d8e13192175d082d7107196b1f011bb84d15c0bc8a51e5e3",
+      "anchors": [
+        {
+          "find": "Search session is unavailable for this page",
+          "replace": "auxOmnibox session not found or not owned by this extension",
+          "count": 1
+        },
+        {
+          "find": "      row.Set(\"title\", base::UTF16ToUTF8(match.contents));",
+          "replace": "      row.Set(\"title\", base::UTF16ToUTF8(match.contents));\n      row.Set(\"contents\", base::UTF16ToUTF8(match.contents));",
+          "count": 1
+        },
+        {
+          "find": "      row.Set(\"isSearch\", AutocompleteMatch::IsSearchType(match.type));\n      row.Set(\"deletable\", match.SupportsDeletion());",
+          "replace": "      row.Set(\"isSearch\", AutocompleteMatch::IsSearchType(match.type));\n      row.Set(\"isSearchType\", AutocompleteMatch::IsSearchType(match.type));\n      row.Set(\"deletable\", match.SupportsDeletion());\n      row.Set(\"supportsDeletion\", match.SupportsDeletion());",
+          "count": 1
+        },
+        {
+          "find": "    const auto revision = request.FindInt(\"revision\");\n    const auto index = request.FindInt(\"index\");\n    const int selected = index.value_or(use_selected ? selected_ : -1);\n    if (!revision || *revision != revision_ || selected < 0 ||\n        static_cast<size_t>(selected) >= matches_.size()) {\n      return std::nullopt;\n    }\n    return selected;",
+          "replace": "    // The supplied UI uses line and optional nested popup selection; older\n    // internal callers use revision/index. Neither may escape this owned session.\n    const auto* nested = request.FindDict(\"selection\");\n    const auto& selection = nested ? *nested : request;\n    const auto revision = request.FindInt(\"revision\");\n    if (request.Find(\"revision\") && (!revision || *revision != revision_))\n      return std::nullopt;\n    const auto index = selection.FindInt(\"index\");\n    const auto line = selection.FindInt(\"line\");\n    if ((selection.Find(\"index\") && !index) ||\n        (selection.Find(\"line\") && !line) ||\n        (index && line && *index != *line)) return std::nullopt;\n    const int selected = line.value_or(index.value_or(use_selected ? selected_ : -1));\n    if (selected < 0 || static_cast<size_t>(selected) >= matches_.size())\n      return std::nullopt;\n    if (const auto* expected = request.FindString(\"url\"); expected &&\n        GURL(*expected) != matches_[selected].destination_url)\n      return std::nullopt;\n    if (request.Find(\"url\") && !request.FindString(\"url\")) return std::nullopt;\n    return selected;",
+          "count": 1
+        },
+        {
+          "find": "    const auto *name = value->FindString(\"name\"),\n               *type = value->FindString(\"type\"),\n               *data = value->FindString(\"dataBase64\");\n    const auto size = value->FindInt(\"size\");\n    if (!name || name->empty() || name->size() > 255 ||\n        name->find('/') != std::string::npos || !type || type->size() > 255 ||\n        !size || *size < 0 || *size > 32 * 1024 * 1024 || !data ||\n        data->size() > 45 * 1024 * 1024) {",
+          "replace": "    const auto* name = value->FindString(\"fileName\");\n    if (!name) name = value->FindString(\"name\");\n    const auto* type = value->FindString(\"mimeType\");\n    if (!type) type = value->FindString(\"type\");\n    const auto* data = value->FindString(\"bytesBase64\");\n    if (!data) data = value->FindString(\"dataBase64\");\n    const auto size = value->FindInt(\"size\");\n    if (!name || name->empty() || name->size() > 255 ||\n        name->find('/') != std::string::npos ||\n        name->find('\\\\') != std::string::npos || !type || type->size() > 255 ||\n        (value->Find(\"size\") && (!size || *size < 0 || *size > 32 * 1024 * 1024)) ||\n        !data || data->size() > 45 * 1024 * 1024) {",
+          "count": 1
+        },
+        {
+          "find": "    if (!base::Base64Decode(*data, &bytes) ||\n        bytes.size() != static_cast<size_t>(*size) ||\n        session.context_bytes_ + bytes.size() > 64 * 1024 * 1024) {",
+          "replace": "    if (!base::Base64Decode(*data, &bytes) || bytes.size() > 32 * 1024 * 1024 ||\n        (size && bytes.size() != static_cast<size_t>(*size)) ||\n        session.context_bytes_ + bytes.size() > 64 * 1024 * 1024) {",
+          "count": 1
+        },
+        {
+          "find": "    summary.Set(\"size\", *size);",
+          "replace": "    summary.Set(\"size\", static_cast<int>(bytes.size()));\n    summary.Set(\"ok\", true);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

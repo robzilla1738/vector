@@ -483,3 +483,7 @@ Bounded static instruction analysis of the hash-pinned supplied arm64 framework 
 ### Original import permission flow compatibility
 
 Extended static evidence to full original import entry body0x4276580..0x42774a8 and original explicit permission/file UI followed by asynchronous stored-import navigation. Staged removal of only the independent transient user_gesture rejection, which conflicts with that flow; private component/profile/mode/caller/source/job/archive protections and actual worker remain. No OS permission is fabricated or prompted. Static patch replay/hash checks pass; native remains uncompiled. Also corrected routing documentation for the owner's explicit exception preserving Aside.* protocol names (Aux native private namespaces remain separate).
+
+### Original omnibox/adblock object audit
+
+Pinned actual UI consumers revealed omnibox row names (contents/isSearchType/supportsDeletion), line/nested-selection inputs, fileName/mimeType/bytesBase64+ok context contract and session-expiry error recognition differ from independent native implementation. Staged narrow adaptation retains actual owned frame/session/results, URL identity checks, optional revision checks, real bounded file storage and truthful unsupported Lens behavior. Disposable replay/SHA checks pass; native uncompiled. Full action/contextual-search/mode/modifier behavior remains unresolved. Reviewed core adblock state/subscription/custom-rule/update calls already agree in shape; no speculative patch or full engine parity claim. See docs/integration/provided-omnibox-adblock.md.
