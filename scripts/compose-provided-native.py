@@ -52,6 +52,7 @@ steps.append(('native-window-vibrancy/native.patch', 'native-window-vibrancy/man
 steps.append(('native-horizontal-shrink/native.patch', 'native-horizontal-shrink/manifest.json'))
 steps.append(('native-vertical-navigation/native.patch', 'native-vertical-navigation/manifest.json'))
 steps.append(('native-compile-fixes/004-horizontal-boundaries/fix.patch', 'native-compile-fixes/004-horizontal-boundaries/manifest.json'))
+steps.append(('native-preference-consumers/native.patch', 'native-preference-consumers/manifest.json'))
 
 def safe(path):
     value = Path(path)
@@ -142,7 +143,18 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
             (copy / path).parent.mkdir(parents=True, exist_ok=True)
             (copy / path).write_bytes(raw)
     environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(copy.parent))
+    def add_generated_key_probe():
+        if 'generatedKeyProbeTarget' in report:
+            return
+        gn = copy / 'chrome/browser/aux/BUILD.gn'
+        gn.write_text(gn.read_text() + '\nexecutable("auth_scheme_probe") {\n  testonly = true\n  sources = [ "auth_scheme_probe.cc" ]\n  deps = [ ":platform", "//base", "//crypto", "//net" ]\n}\n')
+        report['generatedKeyProbeTarget'] = '//chrome/browser/aux:auth_scheme_probe'
+
     for name, patch, metadata in patches:
+        # Follow-ups pin the applied v24 GN file, including this probe target.
+        # Historical patches pin the earlier file without it.
+        if name == 'native-preference-consumers/native.patch':
+            add_generated_key_probe()
         if name.startswith('native-compile-fixes/') and not report['wireEdits']:
             restore_owned_wire_contracts(copy, report)
         data = json.loads((proposals / metadata).read_text()) if metadata else None
@@ -199,9 +211,7 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
         text = text.replace(find, replace)
         report['runtimeCacheEdits'].append({'path': 'chrome/browser/aux/daemon_supervisor.cc', 'find': find, 'replace': replace, 'count': 1})
     target.write_text(text)
-    gn = copy / 'chrome/browser/aux/BUILD.gn'
-    gn.write_text(gn.read_text() + '\nexecutable("auth_scheme_probe") {\n  testonly = true\n  sources = [ "auth_scheme_probe.cc" ]\n  deps = [ ":platform", "//base", "//crypto", "//net" ]\n}\n')
-    report['generatedKeyProbeTarget'] = '//chrome/browser/aux:auth_scheme_probe'
+    add_generated_key_probe()
     combined = []
     for path, before in sorted(baseline.items()):
         after = (copy / path).read_bytes()
