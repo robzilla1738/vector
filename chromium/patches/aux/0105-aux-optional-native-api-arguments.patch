@@ -1,0 +1,85 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -451,11 +451,12 @@
+   OmniboxOwnerState::CreateForWebContents(owner);
+   auto* state = OmniboxOwnerState::FromWebContents(owner);
+   if (method == "createSession") {
+-    if (args().size() > 1 || (!args().empty() && !args()[0].is_dict())) {
++    if (args().size() > 1 ||
++        (!args().empty() && !args()[0].is_none() && !args()[0].is_dict())) {
+       return RespondNow(Error("Invalid session options"));
+     }
+     std::string initial;
+-    if (!args().empty()) {
++    if (!args().empty() && args()[0].is_dict()) {
+       const auto& options = args()[0].GetDict();
+       for (const auto [key, value] : options) {
+         if (key != "surface" && key != "initialText") {
+@@ -519,18 +520,19 @@
+   if (method == "queryAutocomplete") {
+     if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
+         args()[1].GetString().size() > 8192 ||
+-        (args().size() == 3 && !args()[2].is_dict())) {
++        (args().size() == 3 && !args()[2].is_none() &&
++         !args()[2].is_dict())) {
+       return RespondNow(Error("Invalid autocomplete query"));
+     }
+     bool prevent = false;
+-    if (args().size() == 3) {
++    if (args().size() == 3 && args()[2].is_dict()) {
+       prevent = args()[2]
+                     .GetDict()
+                     .FindBool("preventInlineAutocomplete")
+                     .value_or(false);
+     }
+     const bool zero_prefix =
+-        args().size() == 3 &&
++        args().size() == 3 && args()[2].is_dict() &&
+         args()[2].GetDict().FindBool("zeroPrefix").value_or(false);
+     session.Query(args()[1].GetString(), prevent, zero_prefix);
+     return RespondNow(NoArguments());
+@@ -651,7 +653,10 @@
+     return RespondNow(WithArguments(std::move(result)));
+   }
+   if (method == "getTabPreview" || method == "addTabContext") {
+-    if (args().size() < 2 || !args()[1].is_int()) {
++    const size_t maximum_args = method == "addTabContext" ? 3 : 2;
++    if (args().size() < 2 || args().size() > maximum_args ||
++        !args()[1].is_int() ||
++        (args().size() == 3 && !args()[2].is_none() && !args()[2].is_bool())) {
+       return RespondNow(Error("Tab identity required"));
+     }
+     for (const auto& tab : VisibleTabs(profile())) {
+@@ -717,7 +722,8 @@
+     return RespondNow(WithArguments(std::move(summary)));
+   }
+   if (method == "deleteContext") {
+-    if (args().size() < 2 || !args()[1].is_string()) {
++    if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
++        (args().size() == 3 && !args()[2].is_none() && !args()[2].is_bool())) {
+       return RespondNow(Error("Context token required"));
+     }
+     const auto context = session.contexts_.find(args()[1].GetString());
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.cc
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+@@ -724,7 +724,8 @@
+     return;
+   }
+   if (method == "startSubscriptionUpdate") {
+-    if (args.size() > 1 || (!args.empty() && !args[0].is_dict())) {
++    if (args.size() > 1 ||
++        (!args.empty() && !args[0].is_none() && !args[0].is_dict())) {
+       fail("Update options are invalid");
+       return;
+     }
+@@ -737,7 +738,9 @@
+     }
+     std::vector<std::string> ids;
+     const auto* requested =
+-        args.empty() ? nullptr : args[0].GetDict().FindList("ids");
++        args.empty() || args[0].is_none()
++            ? nullptr
++            : args[0].GetDict().FindList("ids");
+     if (requested) {
+       for (const auto& item : *requested) {
+         if (!item.is_string() || !Subscription(item.GetString())) {
