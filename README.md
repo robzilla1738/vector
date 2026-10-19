@@ -11,9 +11,12 @@ The supplied implementation now has a pinned, atomic staging path:
 ```sh
 pnpm stage:provided --replace
 pnpm check:provided
+pnpm assemble:provided
 ```
 
 Staging replaces only a verified generated stage and keeps its previous output as a sibling backup. Use `node scripts/stage-provided.mjs --output <fresh-directory>` for another candidate, and `node scripts/check-provided.mjs <directory>` to audit it. The stage preserves the supplied Agent/Vault UI, daemon/CLI code, agent runtime and catalog-verified memory distributions with recorded Aux changes. It deliberately reports incomplete native/helper/startup integration; it is not yet a runnable production app. `pnpm check` runs the supplied-component checks and preservation audit, not final product acceptance. See [staging details](docs/source/provided-apps.md).
+
+`assemble:provided` verifies staged file hashes, modes, complete leaf coverage and contained dependency links while copying the supplied components into a new `out/provided-resources` directory in the final `Contents/Resources/aux` layout. It refuses an existing output. This is resource assembly, not a signed browser or installation. See [assembly and signing](docs/source/provided-assembly.md).
 
 The build/packaging pipeline is transitioning to the supplied implementation. The commands below currently build the earlier independent components; they are recovery/development tools and do not yet produce the requested faithful reused build. Existing staging machinery under `vendor/aside/` and `scripts/vendor-aside.mjs` is being reviewed against the pinned supplied version before reuse.
 

@@ -53,6 +53,7 @@ function brandPlist(bytes, path, target) {
   if (typeof data.CFBundleIdentifier === 'string') data.CFBundleIdentifier = data.CFBundleIdentifier.replace('at.studio.AsideBrowser', 'dev.aux.browser');
   if (data.CFBundleExecutable === target.sourceExecutable) data.CFBundleExecutable = target.executable;
   if (data.CFBundleExecutable === 'aside-password-importer') data.CFBundleExecutable = 'aux-password-importer';
+  if (data.CFBundleExecutable === 'aside-password-importer-provider') data.CFBundleExecutable = 'aux-password-importer-provider';
   // Preserve compiled module/principal-class names, including the credential-provider extension.
   if (!path.includes('.appex/')) data.CFBundleIconFile = 'Aux.icns';
   return Buffer.from(JSON.stringify(data));
@@ -117,6 +118,12 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         await mkdir(dirname(join(app, path)), { recursive: true });
         await writeFile(join(app, path), bytes);
         files.push({ path, outputSha256: hash(bytes), changeKinds: ['branding'], added: true });
+      }
+      for (const file of files.filter((entry) => entry.path.endsWith('/Info.plist'))) {
+        const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', join(app, file.path)], { encoding: 'utf8' }));
+        if (typeof plist.CFBundleExecutable !== 'string' || !/^[A-Za-z0-9_.-]+$/.test(plist.CFBundleExecutable)) throw new Error('Invalid staged bundle executable declaration');
+        const binary = await lstat(join(app, dirname(file.path), 'MacOS', plist.CFBundleExecutable));
+        if (!binary.isFile() || binary.isSymbolicLink() || !(binary.mode & 0o111)) throw new Error('Staged bundle executable declaration does not resolve to executable code');
       }
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
         executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets } };
