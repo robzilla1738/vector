@@ -114,7 +114,31 @@ func key(_ code: CGKeyCode, flags: CGEventFlags = [], text: String? = nil, windo
       up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
     }
   }
+  // Flags on Tab alone never release a held-chord preview. Emit the same
+  // modifier lifetime as a physical key chord, only to the original PID.
+  let modifiers: [(CGEventFlags, CGKeyCode)] = [
+    (.maskControl, 59), (.maskCommand, 55), (.maskAlternate, 58), (.maskShift, 56)
+  ].filter { flags.contains($0.0) }
+  var held: CGEventFlags = []
+  var presses: [CGEvent] = []
+  var releases: [CGEvent] = []
+  for (flag, code) in modifiers {
+    guard let press = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true) else {
+      throw NSError(domain: "Original modifier input unavailable", code: 1)
+    }
+    held.insert(flag); press.type = .flagsChanged; press.flags = held
+    presses.append(press)
+  }
+  for (flag, code) in modifiers.reversed() {
+    guard let release = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else {
+      throw NSError(domain: "Original modifier release unavailable", code: 1)
+    }
+    held.remove(flag); release.type = .flagsChanged; release.flags = held
+    releases.append(release)
+  }
+  for press in presses { press.postToPid(pid) }
   down.postToPid(pid); up.postToPid(pid)
+  for release in releases { release.postToPid(pid) }
   try current()
 }
 while let line = readLine() {

@@ -41,5 +41,25 @@
     "Current native Home Cmd-L fix and full reference/accessibility acceptance remain unverified.",
     "Earlier cd76 manual20/20 is not a new24a run.",
     "Original155SIGTRAP unresolved; exact historical symbols unavailable."
-  ]
+  ],
+  "nativeHomeAcceptance": {
+    "launcherSession": 24563,
+    "browserPID": 43925,
+    "runtimePID": 43947,
+    "disposableProfile": "aux-dev-xDa0EL",
+    "compiledProduct": "24a0eb158",
+    "frameworkUUID": "4C4C4421-5555-3144-A19E-7CA4E255B39A",
+    "nativeBuildOnLaunch": "0steps;renderer unchanged",
+    "HomeAskCmdL": "Selected Ask, Cmd-L, pasted synthetic localhost URL: value appeared in address combobox while composer stayed empty. Return navigated owned typing fixture, selected tab/title and page AX verified; no conversation created.",
+    "typingProbe": "Exact synthetic115-character sentence typed intact once in plain textarea and once in Home composer, both AX verified. No send/provider call. Does not resolve intermittent corruption or IME acceptance.",
+    "retirement": "Native menu Quit; original runtime forced=0 exit_code=0; launcher24563 joined0.",
+    "timingQualification": false
+  },
+  "crashReportMetadataOnly": {
+    "scope": "Authorized default Aux Crashpad reports only; filename/size/mtime inspected. No owner Profile data.",
+    "pendingDumpCount": 42,
+    "latestMtimeUTC": "2026-10-18T14:41:54.637874+00:00",
+    "latestFilename": "0df30e23-7376-44db-a64a-c1e04ff13744.dmp",
+    "limit": "No newer pending dump than this timestamp observed; does not establish crash absence or diagnose original155SIGTRAP."
+  }
 }
