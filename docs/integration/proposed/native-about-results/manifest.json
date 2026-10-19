@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-provided-preference-results",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "be9d40abdad48ebd5abbe8ac2876ad97d2b21f23804787eeba86652fa6497dcb",
+      "outputSha256": "8861fcc52080d5fa767316b0af46a1357483cdb1bdb4078e016797532f78cd94",
+      "anchors": [
+        {
+          "find": "    value.Set(\"status\", \"local\");",
+          "replace": "    value.Set(\"status\", \"disabled\");\n    value.Set(\"message\", \"Chromium \" + std::string(version_info::GetVersionNumber()) +\n        \". Updates are disabled for this local Aux build.\");",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

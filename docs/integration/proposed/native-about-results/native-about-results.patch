@@ -1,0 +1,13 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -244,7 +244,9 @@
+   if (method == "checkForUpdates") {
+     base::DictValue value;
+     value.Set("version", std::string(version_info::GetVersionNumber()));
+-    value.Set("status", "local");
++    value.Set("status", "disabled");
++    value.Set("message", "Chromium " + std::string(version_info::GetVersionNumber()) +
++        ". Updates are disabled for this local Aux build.");
+     return RespondNow(WithArguments(std::move(value)));
+   }
+   if (method == "getDefaultBrowserState" || method == "setAsDefaultBrowser") {

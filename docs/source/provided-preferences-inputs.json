@@ -1,0 +1,756 @@
+{
+  "version": 1,
+  "scope": "Static pinned implementation only; no source execution, browser, network or owner state",
+  "schemaSha256": "42b5d90cfcb115da723e6effa4e86f0a5a8e5b6330f9bf4dd250a65c545a4ba3",
+  "methods": [
+    {
+      "name": "getWindowBackgroundVibrancyEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 8959
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 5640
+        }
+      ]
+    },
+    {
+      "name": "setWindowBackgroundVibrancyEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 3,
+          "firstOffset": 9205
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 5690
+        }
+      ]
+    },
+    {
+      "name": "getBrowserColorScheme",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/browser-color-scheme-Df5VSuPV.js",
+          "count": 1,
+          "firstOffset": 46701
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 2,
+          "firstOffset": 4974
+        }
+      ]
+    },
+    {
+      "name": "setBrowserColorScheme",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/browser-color-scheme-Df5VSuPV.js",
+          "count": 1,
+          "firstOffset": 46880
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 5000
+        }
+      ]
+    },
+    {
+      "name": "getTabStyle",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 13122
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 2,
+          "firstOffset": 5163
+        },
+        {
+          "component": "agent",
+          "path": "assets/utils-DCBm67_n.js",
+          "count": 1,
+          "firstOffset": 15882
+        }
+      ]
+    },
+    {
+      "name": "setTabStyle",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 1,
+          "firstOffset": 13204
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 2,
+          "firstOffset": 5179
+        }
+      ]
+    },
+    {
+      "name": "getVerticalTabInsertionPosition",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 7309
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 5830
+        }
+      ]
+    },
+    {
+      "name": "setVerticalTabInsertionPosition",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 7345
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 5877
+        }
+      ]
+    },
+    {
+      "name": "getHorizontalTabShrinkEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 15338
+        }
+      ]
+    },
+    {
+      "name": "setHorizontalTabShrinkEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 4,
+          "firstOffset": 15372
+        }
+      ]
+    },
+    {
+      "name": "getTabSwitcherSortByRecentlyUsed",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 2,
+          "firstOffset": 19506
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 2,
+          "firstOffset": 5354
+        }
+      ]
+    },
+    {
+      "name": "setTabSwitcherSortByRecentlyUsed",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 2,
+          "firstOffset": 19543
+        },
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 2,
+          "firstOffset": 5391
+        }
+      ]
+    },
+    {
+      "name": "getDefaultZoom",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 1,
+          "firstOffset": 16748
+        }
+      ]
+    },
+    {
+      "name": "setDefaultZoom",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 1,
+          "firstOffset": 16833
+        }
+      ]
+    },
+    {
+      "name": "getAutoPipEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 4,
+          "firstOffset": 591012
+        }
+      ]
+    },
+    {
+      "name": "setAutoPipEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 4,
+          "firstOffset": 591034
+        }
+      ]
+    },
+    {
+      "name": "getVerticalTabsBookmarksSectionEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 2,
+          "firstOffset": 17542
+        }
+      ]
+    },
+    {
+      "name": "setVerticalTabsBookmarksSectionEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "count": 2,
+          "firstOffset": 17585
+        }
+      ]
+    },
+    {
+      "name": "getKeepTasksRunningState",
+      "references": []
+    },
+    {
+      "name": "setKeepTasksRunningEnabled",
+      "references": []
+    },
+    {
+      "name": "getDefaultBrowserState",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 15840
+        },
+        {
+          "component": "agent",
+          "path": "assets/extension-main-Dz1-AsCT.js",
+          "count": 1,
+          "firstOffset": 47850
+        },
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 588079
+        },
+        {
+          "component": "agent",
+          "path": "assets/nudges-7TFAp4B-.js",
+          "count": 1,
+          "firstOffset": 1204
+        }
+      ]
+    },
+    {
+      "name": "setAsDefaultBrowser",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 15920
+        },
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 588142
+        },
+        {
+          "component": "agent",
+          "path": "assets/nudges-7TFAp4B-.js",
+          "count": 1,
+          "firstOffset": 1422
+        }
+      ]
+    },
+    {
+      "name": "getDockState",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 1,
+          "firstOffset": 15964
+        }
+      ]
+    },
+    {
+      "name": "addToDock",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/done-DPzI9pFd.js",
+          "count": 6,
+          "firstOffset": 12577
+        },
+        {
+          "component": "agent",
+          "path": "assets/extension-main-Dz1-AsCT.js",
+          "count": 1,
+          "firstOffset": 24181
+        }
+      ]
+    },
+    {
+      "name": "getBrowserVersion",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 595709
+        },
+        {
+          "component": "agent",
+          "path": "assets/strip-markdown-DRcmtuJc.js",
+          "count": 1,
+          "firstOffset": 31615
+        },
+        {
+          "component": "agent",
+          "path": "assets/update-banner-C_z-hMCt.js",
+          "count": 1,
+          "firstOffset": 2063
+        }
+      ]
+    },
+    {
+      "name": "getSyncStatus",
+      "references": []
+    },
+    {
+      "name": "checkForUpdates",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 595795
+        }
+      ]
+    },
+    {
+      "name": "getLanguageSettings",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 2,
+          "firstOffset": 581196
+        }
+      ]
+    },
+    {
+      "name": "getSupportedLanguages",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/dist-De5uIWSk.js",
+          "count": 1,
+          "firstOffset": 77473
+        },
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 581272
+        }
+      ]
+    },
+    {
+      "name": "setPreferredLanguages",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 581452
+        }
+      ]
+    },
+    {
+      "name": "setSpellCheckEnabled",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 592902
+        }
+      ]
+    },
+    {
+      "name": "getSearchEngines",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 589381
+        }
+      ]
+    },
+    {
+      "name": "setDefaultSearchEngine",
+      "references": [
+        {
+          "component": "agent",
+          "path": "assets/general-3dgRbrRk.js",
+          "count": 1,
+          "firstOffset": 589528
+        }
+      ]
+    }
+  ],
+  "referencedFiles": [
+    {
+      "component": "agent",
+      "path": "assets/appearance-Ceuw3-j6.js",
+      "sourceSha256": "5d6795dc6c007d961e8960cc41e6825634be81da00d023e179647bc22e20f318",
+      "methods": [
+        "getWindowBackgroundVibrancyEnabled",
+        "setWindowBackgroundVibrancyEnabled",
+        "getTabStyle",
+        "setTabStyle",
+        "getVerticalTabInsertionPosition",
+        "setVerticalTabInsertionPosition",
+        "getHorizontalTabShrinkEnabled",
+        "setHorizontalTabShrinkEnabled",
+        "getTabSwitcherSortByRecentlyUsed",
+        "setTabSwitcherSortByRecentlyUsed",
+        "getDefaultZoom",
+        "setDefaultZoom",
+        "getVerticalTabsBookmarksSectionEnabled",
+        "setVerticalTabsBookmarksSectionEnabled"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/browser-color-scheme-Df5VSuPV.js",
+      "sourceSha256": "3fce1340a0762bc33f0595a61e1debd88beea6e9bcc4c11b97c988ab45273b9a",
+      "methods": [
+        "getBrowserColorScheme",
+        "setBrowserColorScheme"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/dist-De5uIWSk.js",
+      "sourceSha256": "6f7e3c73b171a150cec360bc83a28002853f308e099314bf71dd3c14dbc3d5c4",
+      "methods": [
+        "getSupportedLanguages"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/done-DPzI9pFd.js",
+      "sourceSha256": "aea41f2be6aa1cd51f1171ac4a2cb209263328db276255bdf25733df6aa0bbfb",
+      "methods": [
+        "getWindowBackgroundVibrancyEnabled",
+        "setWindowBackgroundVibrancyEnabled",
+        "getBrowserColorScheme",
+        "setBrowserColorScheme",
+        "getTabStyle",
+        "setTabStyle",
+        "getVerticalTabInsertionPosition",
+        "setVerticalTabInsertionPosition",
+        "getTabSwitcherSortByRecentlyUsed",
+        "setTabSwitcherSortByRecentlyUsed",
+        "getDefaultBrowserState",
+        "setAsDefaultBrowser",
+        "getDockState",
+        "addToDock"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/extension-main-Dz1-AsCT.js",
+      "sourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "methods": [
+        "getDefaultBrowserState",
+        "addToDock"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/general-3dgRbrRk.js",
+      "sourceSha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "methods": [
+        "getAutoPipEnabled",
+        "setAutoPipEnabled",
+        "getDefaultBrowserState",
+        "setAsDefaultBrowser",
+        "getBrowserVersion",
+        "checkForUpdates",
+        "getLanguageSettings",
+        "getSupportedLanguages",
+        "setPreferredLanguages",
+        "setSpellCheckEnabled",
+        "getSearchEngines",
+        "setDefaultSearchEngine"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/nudges-7TFAp4B-.js",
+      "sourceSha256": "921e9c6bf20493f6cc7daec0135a2f10214f4a802c2c30b1365329e2b976f579",
+      "methods": [
+        "getDefaultBrowserState",
+        "setAsDefaultBrowser"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/strip-markdown-DRcmtuJc.js",
+      "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "methods": [
+        "getBrowserVersion"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/update-banner-C_z-hMCt.js",
+      "sourceSha256": "3fc13ddf82defd8bd6d1c0f6c6d2f4df770d624bf9a7aec0b1494c8a093fc1b9",
+      "methods": [
+        "getBrowserVersion"
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/utils-DCBm67_n.js",
+      "sourceSha256": "c95e1cdbfbee45c1354898d72aa8523d956249025847b14da0255c616aafc359",
+      "methods": [
+        "getTabStyle"
+      ]
+    }
+  ],
+  "flowAnchors": [
+    {
+      "component": "agent",
+      "path": "assets/general-3dgRbrRk.js",
+      "sourceSha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "anchors": [
+        {
+          "find": "Sl=e=>",
+          "count": 1,
+          "offset": 593584,
+          "context": "re unavailable\",tg=[\"daemon\",\"health\"],uo=\"aside.settings.backgroundServiceLag\",Sl=e=>e?e===\"dev\"||e.startsWith(\"v\")?`Current version is ${e}`:`Current version is v${e}`:\"Current version unavailable\",ho=e=>e?.trim().replace(/^v/i,\"\"),ng=async()=>{try{const e=await fetch(new URL(\"/health\",Wl),{signal:AbortSignal.timeout(2e3)});if(!e.ok)return null;const t=await e.json();return{version:typeof t.version==\"string\"?t.version:void 0,startedAt:typeof t.startedAt==\"string\"?t.startedAt:void 0}}catch{return null}},ig=(e,t,n)=>{if(!n)return\""
+        },
+        {
+          "find": "ng=async()=>",
+          "count": 1,
+          "offset": 593738,
+          "context": "rsion is v${e}`:\"Current version unavailable\",ho=e=>e?.trim().replace(/^v/i,\"\"),ng=async()=>{try{const e=await fetch(new URL(\"/health\",Wl),{signal:AbortSignal.timeout(2e3)});if(!e.ok)return null;const t=await e.json();return{version:typeof t.version==\"string\"?t.version:void 0,startedAt:typeof t.startedAt==\"string\"?t.startedAt:void 0}}catch{return null}},ig=(e,t,n)=>{if(!n)return\"Browser update controls unavailable\";const i=Sl(e);if(!t)return i;if(t.message)return t.message;switch(t.status){case\"updated\":return(0,A.jsxs)(A.Fragment,{chil"
+        },
+        {
+          "find": "ig=(e,t,n)=>",
+          "count": 1,
+          "offset": 594014,
+          "context": ",startedAt:typeof t.startedAt==\"string\"?t.startedAt:void 0}}catch{return null}},ig=(e,t,n)=>{if(!n)return\"Browser update controls unavailable\";const i=Sl(e);if(!t)return i;if(t.message)return t.message;switch(t.status){case\"updated\":return(0,A.jsxs)(A.Fragment,{children:[i,\". Aside is up to date.\"]});case\"nearly_updated\":return(0,A.jsxs)(A.Fragment,{children:[i,\". Restart to finish updating.\"]});case\"disabled_by_admin\":return\"Updates are disabled by your administrator.\";case\"disabled\":return\"Updates are disabled for this build.\";case\"de"
+        },
+        {
+          "find": "sg=(e,t,n)=>",
+          "count": 1,
+          "offset": 595179,
+          "context": "em(uo,JSON.stringify({lag:e,startedAt:t})),!0):n.startedAt===t}catch{return!0}},sg=(e,t,n)=>{if(n)return\"Checking background service version.\";if(!e?.version)return\"Background service is not responding. Restart Aside.\";const i=Sl(e.version),r=ho(e.version),s=ho(t);return r&&s&&r!==s&&rg(`${r}->${s}`,e.startedAt)?`${i}. Restart Aside to finish updating the background service.`:`${i}. Running normally.`},ag=()=>{const e=(0,at.useRef)(!1),t=!!Tn(),n=typeof chrome>\"u\"?void 0:chrome.runtime?.getManifest?.(),i=n?.version_name??n?.version,{dat"
+        },
+        {
+          "find": "getBrowserVersion()",
+          "count": 1,
+          "offset": 595709,
+          "context": "version,{data:r}=en({queryKey:[\"browserPreferences\",\"version\"],queryFn:()=>Wt().getBrowserVersion(),enabled:t}),{data:s,isPending:a,mutate:o}=Fn({mutationFn:()=>Wt().checkForUpdates()}),{data:l,isLoading:c}=en({queryKey:tg,queryFn:ng,refetchInterval:3e4});(0,at.useEffect)(()=>{!t||e.current||(e.current=!0,o())},[t,o]);const h=ig(r,s,t),d=sg(l,i,c);return(0,A.jsxs)(A.Fragment,{children:[(0,A.jsxs)(Bt,{children:[(0,A.jsx)(qt,{title:\"Browser\",description:h,searchTerms:[\"update\",\"updates\",\"check for updates\"]}),(0,A.jsx)(pn,{children:(0,A.jsxs)(yt"
+        },
+        {
+          "find": "checkForUpdates()",
+          "count": 1,
+          "offset": 595795,
+          "context": "wserVersion(),enabled:t}),{data:s,isPending:a,mutate:o}=Fn({mutationFn:()=>Wt().checkForUpdates()}),{data:l,isLoading:c}=en({queryKey:tg,queryFn:ng,refetchInterval:3e4});(0,at.useEffect)(()=>{!t||e.current||(e.current=!0,o())},[t,o]);const h=ig(r,s,t),d=sg(l,i,c);return(0,A.jsxs)(A.Fragment,{children:[(0,A.jsxs)(Bt,{children:[(0,A.jsx)(qt,{title:\"Browser\",description:h,searchTerms:[\"update\",\"updates\",\"check for updates\"]}),(0,A.jsx)(pn,{children:(0,A.jsxs)(yt,{className:\"click-depth-effect\",disabled:!t||a,onClick:()=>o(),children:[a&&(0,A.js"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/strip-markdown-DRcmtuJc.js",
+      "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "anchors": [
+        {
+          "find": "queryKey:[\"application\",\"app-version\"]",
+          "count": 1,
+          "offset": 31440,
+          "context": "within ApplicationProvider\");return e}var U1=({children:e})=>{const{data:t}=Jt({queryKey:[\"application\",\"app-version\"],queryFn:()=>{const o=chrome.asideBrowserPreferences;if(!o)throw new Error(\"chrome.asideBrowserPreferences API is unavailable\");return o.getBrowserVersion()},enabled:typeof chrome<\"u\"&&!!chrome.runtime?.id,staleTime:1/0}),n=(0,f.useMemo)(()=>{const o=chrome.runtime?.getManifest?.();return{os:oc(),daemonVersion:o?.version_name??o?.version}},[]),r=(0,f.useMemo)(()=>({...n,appVersion:t}),[n,t]);return(0,p.jsx)(Js,{value:r,children:e})};function oc()"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/update-banner-C_z-hMCt.js",
+      "sourceSha256": "3fc13ddf82defd8bd6d1c0f6c6d2f4df770d624bf9a7aec0b1494c8a093fc1b9",
+      "anchors": [
+        {
+          "find": "getBrowserVersion()",
+          "count": 1,
+          "offset": 2063,
+          "context": "l)throw new Error(\"chrome.asideBrowserPreferences API is unavailable\");return l.getBrowserVersion()}}),n=o?.[0]??e?.changelog,c=n?.minBackgroundServiceVersion,d=typeof chrome>\"u\"?void 0:chrome.runtime?.getManifest().version,h=n?Date.parse(n.date):NaN,V=n?e?.dismissedVersion===n.version:!1,A=!!(n&&i&&b(n.minVersion,i)&&(!c||d&&b(c,d))&&Date.now()-h<=K),v=(0,g.useCallback)(l=>{t(p=>{const u={requestedAt:p?.requestedAt??Date.now(),dismissedVersion:l.version,changelog:l};return C(u),u})},[]),S=(0,g.useCallback)(()=>{n&&v(n)},[n,v]);return(0,g.useE"
+        },
+        {
+          "find": "A=!!(n&&i&&b(n.minVersion,i)",
+          "count": 1,
+          "offset": 2273,
+          "context": "est().version,h=n?Date.parse(n.date):NaN,V=n?e?.dismissedVersion===n.version:!1,A=!!(n&&i&&b(n.minVersion,i)&&(!c||d&&b(c,d))&&Date.now()-h<=K),v=(0,g.useCallback)(l=>{t(p=>{const u={requestedAt:p?.requestedAt??Date.now(),dismissedVersion:l.version,changelog:l};return C(u),u})},[]),S=(0,g.useCallback)(()=>{n&&v(n)},[n,v]);return(0,g.useEffect)(()=>{const l=o?.[0];!r||!l||t(p=>{const u={requestedAt:Date.now(),dismissedVersion:p?.dismissedVersion??null,changelog:l};return C(u),u})},[o,r]),{isVisible:A&&!V,handleClose:S,latest:n}},J=()=>typeof chrome>\"u\"?"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/extension-main-Dz1-AsCT.js",
+      "sourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "anchors": [
+        {
+          "find": "settings/experimental/\")({",
+          "count": 1,
+          "offset": 46922,
+          "context": "5,170,196,126,150,153,160,161,127,86,50,191])),Fo=n(\"/_web/(settings)/u/$userId/settings/experimental/\")({component:a(No,\"component\"),beforeLoad:async({context:{trpc:e,queryClient:t},params:{userId:r}})=>{const o=Number.parseInt(r,10);if(!await t.query({...e.analytics.isExperimentalEligible.queryOptions({accountId:o}),staleTime:\"static\"}))throw c({to:\"/u/$userId/settings/general\",params:{userId:r},replace:!0})}}),Mo=()=>s(()=>import(\"./general-3dgRbrRk.js\"),__vite__mapDeps([307,2,72,10,11,1,3,4,5,6,7,50,18,73,13,14,15,16,17,19,20,21,22,23,24,25,26,27"
+        },
+        {
+          "find": "analytics.isExperimentalEligible.queryOptions",
+          "count": 4,
+          "offset": 46053,
+          "context": "serId:r}})=>{const o=Number.parseInt(r,10),[u]=await Promise.all([t.query({...e.analytics.isExperimentalEligible.queryOptions({accountId:o}),staleTime:\"static\"}),t.query({...e.settings.getAll.queryOptions({accountId:o}),staleTime:\"static\"})]);if(!u)throw c({to:\"/u/$userId/settings/general\",params:{userId:r},replace:!0})}}),ko=()=>s(()=>import(\"./developers-DTvaoVBC.js\"),__vite__mapDeps([303,2,10,11,1,3,4,5,6,7,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,92,94,79,304,133,129,91,93,95,82,144,145,67,305,196,150,86,50])),"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/experimental-Xq3YsEPK.js",
+      "sourceSha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "anchors": [
+        {
+          "find": "a?.email?.trim().toLowerCase().endsWith(\"@at.studio\")",
+          "count": 1,
+          "offset": 1660,
+          "context": "ntId:t}=P(),n=I(),{data:a}=C(n.accounts.get.queryOptions({accountId:t}));return a?.email?.trim().toLowerCase().endsWith(\"@at.studio\")?(0,e.jsx)(me,{children:s},t):(0,e.jsx)(O,{className:\"size-full\",children:(0,e.jsx)(\"main\",{className:\"mx-auto w-full max-w-2xl px-8 pt-16 pb-40\",children:s})})}function me({children:s}){const t=typeof chrome<\"u\"&&!!chrome.tabs?.query&&!!customElements.get(\"webview\"),n=R(),[a,l]=(0,x.useState)(null),[r,u]=(0,x.useState)(null),[c,o]=(0,x.useState)(!1),[h,d]=(0,x.useState)(null),{data:m=[],isFetching:p,error:E,refetch:z}=C({queryKey:L,enabled:t,que"
+        },
+        {
+          "find": "customElements.get(\"webview\")",
+          "count": 1,
+          "offset": 1951,
+          "context": "})}function me({children:s}){const t=typeof chrome<\"u\"&&!!chrome.tabs?.query&&!!customElements.get(\"webview\"),n=R(),[a,l]=(0,x.useState)(null),[r,u]=(0,x.useState)(null),[c,o]=(0,x.useState)(!1),[h,d]=(0,x.useState)(null),{data:m=[],isFetching:p,error:E,refetch:z}=C({queryKey:L,enabled:t,queryFn:async()=>{const[i,D]=await Promise.all([chrome.tabs.query({}),chrome.tabs.getCurrent()]);return i.filter(y=>typeof y.id==\"number\"&&y.id!==D?.id&&!y.active&&!y.discarded&&/^https?:\\/\\//.test(y.url??\"\"))}});(0,x.useEffect)(()=>{if(!t)return;const i=()=>{n.invalida"
+        },
+        {
+          "find": "c.attachTab(s)",
+          "count": 1,
+          "offset": 5833,
+          "context": "=()=>r.current.onDetached();return c.addEventListener(\"detached\",h),u.append(c),c.attachTab(s).then(()=>{o||r.current.onAttached()},d=>{o||r.current.onError(d.message)}),()=>{o=!0,c.removeEventListener(\"detached\",h),c.remove()}},[s]),(0,e.jsx)(\"div\",{ref:l,className:\"min-h-0 flex-1\"})}function $e(){return(0,e.jsxs)(de,{children:[(0,e.jsx)(oe,{segments:[\"Settings\",\"Experimental\"]}),(0,e.jsx)(se,{children:(0,e.jsx)(\"h1\",{children:\"Experimental\"})}),(0,e.jsxs)(ce,{className:\"mb-8\",children:[(0,e.jsx)(Z,{}),(0,e.jsx)(le,{className:\"line-clamp"
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/done-DPzI9pFd.js",
+      "sourceSha256": "aea41f2be6aa1cd51f1171ac4a2cb209263328db276255bdf25733df6aa0bbfb",
+      "anchors": [
+        {
+          "find": "n.isDefault||!n.canSet",
+          "count": 1,
+          "offset": 15887,
+          "context": "i)return c;if(t){const n=await i.getDefaultBrowserState();c.defaultBrowserState=n.isDefault||!n.canSet?n:await i.setAsDefaultBrowser()}if(a){const n=await i.getDockState();c.dockState=n.isAdded||!n.canAdd?n:await i.addToDock()}return c},rt=K({defaultBrowser:T(),addToDock:T(),keepTasksRunning:T(),helpImproveAside:T()}),nt=[{id:\"defaultBrowser\",label:\"Set Aside as your default browser\",description:\"You can switch back anytime\"},{id:\"addToDock\",label:Re()?\"Pin Aside to taskbar\":\"Add Aside to Dock\",description:\"Easily start browsing or run task when "
+        },
+        {
+          "find": "n.isAdded||!n.canAdd",
+          "count": 1,
+          "offset": 15991,
+          "context": ":await i.setAsDefaultBrowser()}if(a){const n=await i.getDockState();c.dockState=n.isAdded||!n.canAdd?n:await i.addToDock()}return c},rt=K({defaultBrowser:T(),addToDock:T(),keepTasksRunning:T(),helpImproveAside:T()}),nt=[{id:\"defaultBrowser\",label:\"Set Aside as your default browser\",description:\"You can switch back anytime\"},{id:\"addToDock\",label:Re()?\"Pin Aside to taskbar\":\"Add Aside to Dock\",description:\"Easily start browsing or run task when you need it\"},{id:\"helpImproveAside\",label:\"Help improve Aside\",description:\"Share crash reports, bug "
+        }
+      ]
+    },
+    {
+      "component": "daemon",
+      "path": "extracted-static-daemon-source.js",
+      "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "anchors": [
+        {
+          "find": "function isExperimentalEligible(",
+          "count": 1,
+          "offset": 1341507,
+          "context": "function isExperimentalEligible({email:Cn,isCanary:ei=!1,featureFlag:ti=!1}={}){return ei||ti?!0:!!Cn?.trim().toLowerCase().endsWith(INTERNAL_EMAIL_SUFFIX)}var INTERNAL_EMAIL_SUFFIX,EXPERIMENTAL_FEATURE_FLAG_KEY,init_is_experimental_eligible=__esmMin((()=>{INTERNAL_EMAIL_SUFFIX=`@at.studio`,EXPERIMENTAL_FEATURE_FLAG_KEY=`experimental`})),productVariant$1,LOOPBACK_HOSTS$1,configuredHost,HOST,PORT,DAEMON_BASE_URL,ASIDE"
+        },
+        {
+          "find": "function isAccountExperimentalEligible(",
+          "count": 1,
+          "offset": 1722510,
+          "context": "function isAccountExperimentalEligible(Cn){let ei=AccountRegistry.getAccount(Cn)?.email;return isExperimentalEligible({email:ei,isCanary:!1})?!0:posthog(Cn).isFeatureEnabled(EXPERIMENTAL_FEATURE_FLAG_KEY).catch(()=>!1)}function isAccountExperimentalEligibleCached(Cn){let ei=AccountRegistry.getAccount(Cn)?.email;return isExperimentalEligible({email:ei,isCanary:!1})?!0:posthog(Cn).isFeatureEnabledCached(`experimental`)"
+        },
+        {
+          "find": "isExperimentalEligible:accountProcedure.query",
+          "count": 1,
+          "offset": 11703751,
+          "context": "isExperimentalEligible:accountProcedure.query(({ctx:Cn})=>isAccountExperimentalEligible(Cn.accountId))})})),stripePriceLookupKeySchema,billingPortalResponseSchema,billingUsageResponseSchema,embeddedCheckoutResponseSchema,billingRouter,init_routes$22=__esmMin((()=>{init_zod(),init_add_on_credits(),init_procedure(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySch"
+        }
+      ]
+    }
+  ]
+}
