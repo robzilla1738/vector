@@ -37,6 +37,7 @@ export const platformEdits = [
   edit('explicit external skill synchronization', 'syncInstalledAsideBrowserSkills().catch(()=>{})', 'process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAsideBrowserSkills().catch(()=>{})', 1),
   // Never fall through to the original binding (custom Keychain and OS grants).
   edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
+  edit('bundled memory startup provisioning', 'async function main(){(0,import_undici.setGlobalDispatcher)', 'async function main(){await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/memory-bootstrap.cjs`))();(0,import_undici.setGlobalDispatcher)', 1),
   edit('telemetry disabled', 'new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{'.replace('ASIDE_', 'AUX_'), 'new PostHog(AUX_POSTHOG_PROJECT_API_KEY,{disabled:!0,', 1),
   // Local-only boundary: rejected network requests retain their original errors;
   // nothing here invents plans, account state, search results or sync success.

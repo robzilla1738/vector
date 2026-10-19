@@ -5,9 +5,9 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const stat = async (p) => { try { return await fs.lstat(p); } catch (e) { if (e.code !== 'ENOENT') throw e; } };
-async function directory(p) {
+async function directory(p, ownerOnly = false) {
   const s = await fs.lstat(p);
-  if (!s.isDirectory() || s.isSymbolicLink() || s.uid !== process.getuid() || (s.mode & 0o022)) throw new Error('Unsafe memory cache directory');
+  if (!s.isDirectory() || s.isSymbolicLink() || s.uid !== process.getuid() || (s.mode & 0o022) || (ownerOnly && (s.mode & 0o7777) !== 0o700)) throw new Error('Unsafe memory cache directory');
 }
 async function chain(p) {
   const absolute = path.resolve(p);
@@ -20,9 +20,15 @@ async function chain(p) {
 }
 async function seedBundledMemory({ source, home, entries }) {
   if (!path.isAbsolute(source) || !path.isAbsolute(home)) throw new Error('Absolute memory source/home required');
+  source = path.resolve(source); home = path.resolve(home);
+  const contains = (parent, child) => {
+    const relative = path.relative(parent, child);
+    return !relative || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+  };
+  if (contains(source, home) || contains(home, source)) throw new Error('Memory source and destination must be disjoint');
   await chain(source);
   if (!await stat(home)) await fs.mkdir(home, { mode: 0o700 });
-  await chain(home); await directory(home);
+  await chain(home); await directory(home, true);
   const groups = new Map(), seen = new Set();
   for (const e of entries) {
     if (typeof e.path !== 'string' || !/^(memory-catalog\.json|(?:models|memory-runtimes)(?:\/[a-f0-9]{64}(?:\/[a-zA-Z0-9_.-]+)*)?)$/.test(e.path) || e.path.split('/').some((p) => p === '.' || p === '..')) throw new Error('Invalid memory allowlist path');
@@ -49,6 +55,20 @@ async function seedBundledMemory({ source, home, entries }) {
       bytes.set(e.path, b);
     }
   }
+  const validateExisting = async (target, group, list) => {
+    const existing = await fs.lstat(target);
+    if (existing.isSymbolicLink() || (group === 'memory-catalog.json' ? !existing.isFile() : !existing.isDirectory())) throw new Error('Unsafe existing memory destination');
+    for (const e of list) {
+      let p = target;
+      const parts = e.path.slice(group.length + 1).split('/').filter(Boolean);
+      for (let i = 0; i < parts.length; i++) {
+        p = path.join(p, parts[i]); const child = await stat(p);
+        if (!child) break;
+        const expectDirectory = i < parts.length - 1 || e.type === 'directory';
+        if (child.isSymbolicLink() || (expectDirectory ? !child.isDirectory() : !child.isFile())) throw new Error('Unsafe existing memory cache descendant');
+      }
+    }
+  };
   const report = { seeded: [], retained: [] };
   // Catalog published last; existing signed/newer/modified catalog is untouched.
   const ordered = [...groups].sort(([a], [b]) => (a === 'memory-catalog.json') - (b === 'memory-catalog.json'));
@@ -61,25 +81,16 @@ async function seedBundledMemory({ source, home, entries }) {
     }
     const existing = await stat(target);
     if (existing) {
-      if (existing.isSymbolicLink() || (group === 'memory-catalog.json' ? !existing.isFile() : !existing.isDirectory())) throw new Error('Unsafe existing memory destination');
-      // Refuse symlinks at pinned descendants too, without reading existing bytes.
-      for (const e of list) {
-        let p = target;
-        for (const part of e.path.slice(group.length + 1).split('/').filter(Boolean)) {
-          p = path.join(p, part); const child = await stat(p);
-          if (!child) break;
-          if (child.isSymbolicLink()) throw new Error('Unsafe existing memory cache symlink');
-        }
-      }
+      await validateExisting(target, group, list);
       report.retained.push(group); continue;
     }
     if (group === 'memory-catalog.json') {
       try { await fs.writeFile(target, bytes.get(group), { mode: 0o600, flag: 'wx' }); }
-      catch (e) { if (e.code !== 'EEXIST') throw e; report.retained.push(group); continue; }
+      catch (e) { if (e.code !== 'EEXIST') throw e; await validateExisting(target, group, list); report.retained.push(group); continue; }
     } else {
       // Exclusive reservation avoids rename replacing an existing empty cache.
       try { await fs.mkdir(target, { mode: 0o700 }); }
-      catch (e) { if (e.code !== 'EEXIST') throw e; await directory(target); report.retained.push(group); continue; }
+      catch (e) { if (e.code !== 'EEXIST') throw e; await validateExisting(target, group, list); report.retained.push(group); continue; }
       for (const e of [...list].sort((a, b) => (a.path.endsWith('/CURRENT') ? 1 : 0) - (b.path.endsWith('/CURRENT') ? 1 : 0) || a.path.length - b.path.length)) {
         if (e.path === group) continue;
         const p = path.join(home, e.path);

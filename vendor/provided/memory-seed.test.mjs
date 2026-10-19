@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, symlink, rm, realpath } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, symlink, rm, realpath, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -38,4 +38,12 @@ test('pin failure precedes any cache publication; source/destination symlinks re
   await assert.rejects(seedBundledMemory(g), /Unsafe/);
   const h = await fixture(t); await rm(join(h.source, 'memory-catalog.json')); await symlink('/dev/null', join(h.source, 'memory-catalog.json'));
   await assert.rejects(seedBundledMemory(h), /source type/);
+  const j = await fixture(t); await mkdir(j.home, { mode: 0o700 }); await chmod(j.home, 0o755);
+  await assert.rejects(seedBundledMemory(j), /Unsafe memory cache directory/);
+  await assert.rejects(seedBundledMemory({ ...j, home: join(j.source, 'nested') }), /disjoint/);
+  await assert.rejects(seedBundledMemory({ ...j, home: join(j.source, '..') }), /disjoint/);
+  const k = await fixture(t); await mkdir(join(k.home, 'models', k.key), { recursive: true, mode: 0o700 });
+  await writeFile(join(k.home, 'models', k.key, 'gen'), 'not-a-directory');
+  await assert.rejects(seedBundledMemory(k), /Unsafe existing memory cache descendant/);
+
 });
