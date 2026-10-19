@@ -29,6 +29,22 @@ export type AutocompleteResult = {
   done: boolean;
   matches: Match[];
 };
+export type ImportSource = {
+  id: string;
+  name: string;
+  installed: boolean;
+  profiles: { id: string; name: string }[];
+  categories?: string[];
+};
+export type ImportProgress = {
+  jobId: string;
+  sourceId: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+  completed: number;
+  total: number;
+  category?: string;
+  error?: string;
+};
 type NativeChrome = typeof chrome & {
   auxAccount?: {
     getProfileContext: () => Promise<ProfileContext>;
@@ -54,6 +70,16 @@ type NativeChrome = typeof chrome & {
     (...args: unknown[]) => Promise<unknown>
   >;
   auxMiniPopup?: Record<string, (...args: unknown[]) => Promise<unknown>>;
+  auxBrowserImport?: {
+    getImportSources: () => Promise<ImportSource[]>;
+    startImport: (options: {
+      sourceId: string;
+      sourceProfileId?: string;
+      categories: string[];
+    }) => Promise<ImportProgress>;
+    getImportProgress: (jobId: string) => Promise<ImportProgress>;
+    cancelImport: (jobId: string) => Promise<void>;
+  };
 };
 export const native = globalThis.chrome as NativeChrome | undefined;
 export function requireAccount() {

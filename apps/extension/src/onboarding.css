@@ -1,0 +1,216 @@
+/* docs/spec/ui/onboarding.md: 640x520, 48/32 pt body inset, 440 pt actions. */
+.setup-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.setup-card {
+  width: min(640px, calc(100vw - 32px));
+  height: min(520px, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--page);
+  box-shadow: 0 20px 80px #0002;
+}
+.setup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 28px 14px;
+}
+.setup-header > svg,
+.setup-header .aux-mark {
+  width: 26px;
+  height: 26px;
+}
+.setup-header small {
+  margin-left: auto;
+  color: var(--muted);
+}
+.setup-progress {
+  list-style: none;
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0 28px;
+}
+.setup-progress li {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--border);
+}
+.setup-progress li[aria-current],
+.setup-progress li[data-complete="true"] {
+  background: var(--text);
+}
+.setup-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 32px 48px;
+}
+.setup-body h1 {
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  margin: 0 0 18px;
+  outline: none;
+}
+.setup-body h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.setup-body p {
+  line-height: 1.55;
+}
+.setup-body .muted,
+.setup-body small {
+  color: var(--muted);
+}
+.setup-body label:not(.setup-check):not(.setup-source) {
+  display: grid;
+  gap: 7px;
+}
+.setup-body input:not([type="checkbox"]):not([type="radio"]),
+.setup-body select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--page);
+  color: var(--text);
+}
+.setup-body fieldset {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.setup-check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.setup-check input {
+  margin-top: 3px;
+}
+.setup-check small {
+  margin-left: auto;
+}
+.setup-source {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11.2px;
+}
+.setup-source span {
+  display: grid;
+  gap: 3px;
+}
+.setup-source small {
+  font-size: 12px;
+}
+.setup-result {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+.setup-result p {
+  margin: 0;
+}
+.setup-result li {
+  margin-block: 8px;
+  overflow-wrap: anywhere;
+}
+.setup-result li small {
+  display: block;
+}
+.setup-result progress {
+  width: 100%;
+}
+.setup-permission {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.setup-permission div {
+  flex: 1;
+}
+.setup-permission p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.setup-art {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin: 30px 0;
+}
+.setup-art > svg,
+.setup-art .aux-mark {
+  width: 64px;
+  height: 64px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transform: rotate(-8deg);
+}
+.setup-art > span:not(.aux-mark) {
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+}
+.setup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: min(440px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 12px 0 24px;
+}
+.setup-footer > :first-child {
+  margin-right: auto;
+}
+@media (max-width: 540px) {
+  .setup-body {
+    padding: 24px;
+  }
+  .setup-header {
+    padding-inline: 24px;
+  }
+  .setup-footer {
+    flex-wrap: wrap;
+  }
+  .setup-art {
+    gap: 10px;
+  }
+}
+
+.setup-progress .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

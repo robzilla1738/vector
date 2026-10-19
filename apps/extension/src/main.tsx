@@ -1,4 +1,4 @@
-import { Button, ErrorNotice, Mark } from '@aux/ui';
+import { ErrorNotice } from '@aux/ui';
 import { AuthGate } from '@aux/ui/security';
 import {
   createHashHistory,
@@ -16,6 +16,7 @@ import './styles.css';
 import { Chat } from './chat';
 import { reconnect, resolveAccount, rpc } from './daemon';
 import { Newtab } from './newtab';
+import { Onboarding } from './onboarding';
 import { Collection, Settings, Tasks } from './pages';
 import { TabSearch } from './tab-search';
 
@@ -82,30 +83,31 @@ function Shell() {
   }, []);
   return (
     <>
-      {!gate && !['/tab-search', '/mini-popup'].includes(path) && (
-        <nav className="navigation" aria-label="Aux navigation">
-          <a className="wordmark" href="#/">
-            Aux
-          </a>
-          {[
-            ['/tasks', 'Tasks'],
-            ['/inbox', 'Updates'],
-            ['/projects', 'Projects'],
-            ['/routines', 'Routines'],
-            ['/memory', 'Memory'],
-            ['/settings/general', 'Preferences'],
-          ].map(([href, label]) => (
-            <a
-              href={`#${href}`}
-              key={href}
-              aria-current={path.startsWith(href ?? '') ? 'page' : undefined}
-            >
-              {label}
+      {!gate &&
+        !['/', '/tab-search', '/mini-popup', '/onboarding'].includes(path) && (
+          <nav className="navigation" aria-label="Aux navigation">
+            <a className="wordmark" href="#/">
+              Aux
             </a>
-          ))}
-          <small>{account?.name ?? 'Local account'}</small>
-        </nav>
-      )}
+            {[
+              ['/tasks', 'Tasks'],
+              ['/inbox', 'Updates'],
+              ['/projects', 'Projects'],
+              ['/routines', 'Routines'],
+              ['/memory', 'Memory'],
+              ['/settings/general', 'Preferences'],
+            ].map(([href, label]) => (
+              <a
+                href={`#${href}`}
+                key={href}
+                aria-current={path.startsWith(href ?? '') ? 'page' : undefined}
+              >
+                {label}
+              </a>
+            ))}
+            <small>{account?.name ?? 'Local account'}</small>
+          </nav>
+        )}
       {error && path !== '/' && (
         <div className="connection">
           <ErrorNotice
@@ -299,42 +301,6 @@ const onboardingRoute = createRoute({
     </AccountRoute>
   ),
 });
-function Onboarding({ accountId }: { accountId: number }) {
-  const [error, setError] = useState('');
-  const [pending, setPending] = useState(false);
-  return (
-    <main className="onboarding secondary stack">
-      <Mark />
-      <h1>Make room for what matters.</h1>
-      <p>
-        This account stays on this Mac. Connect a model, choose access rules,
-        and make Aux your own.
-      </p>
-      <a href="#/settings/model">Choose how Aux connects to AI</a>
-      <a href="#/settings/agents">Choose what Aux can access</a>
-      <a href="#/settings/appearance">Look and layout</a>
-      {error && <ErrorNotice error={error} />}
-      <Button
-        disabled={pending}
-        onClick={() => {
-          setPending(true);
-          void rpc(
-            'accounts.completeOnboarding',
-            { accountId, deferModelSetup: true },
-            true,
-          )
-            .then(() => {
-              location.hash = '/';
-            })
-            .catch((e) => setError(e.message))
-            .finally(() => setPending(false));
-        }}
-      >
-        Finish with model setup deferred
-      </Button>
-    </main>
-  );
-}
 const tabSearchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/tab-search',

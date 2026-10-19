@@ -39,6 +39,7 @@ export default defineConfig({
                 'dev.aux.ext.private.account',
                 'dev.aux.ext.private.omnibox',
                 'dev.aux.ext.private.browserPreferences',
+                'dev.aux.ext.private.browserImport',
                 'dev.aux.ext.private.miniPopup',
               ],
               host_permissions: [
