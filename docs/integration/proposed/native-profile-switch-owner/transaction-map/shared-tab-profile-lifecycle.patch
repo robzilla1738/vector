@@ -1,0 +1,386 @@
+--- a/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h
+@@ -10,6 +10,7 @@
+ #include <string>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
+ #include "components/saved_tab_groups/public/saved_tab_group.h"
+@@ -46,12 +47,18 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Preserve the model/session identity; suppress real persistence while tabs
+   // move and attach only to the actual target profile's sync service.
++  bool CanBeginAuxProfileSwitch() const;
+   uint64_t BeginAuxProfileSwitch();
+   void RebindAuxProfileSwitch(Profile* target_profile);
+   void EndAuxProfileSwitch(uint64_t generation);
++  void AbortAuxProfileSwitch(uint64_t generation, Profile* source_profile);
+ #endif
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++#endif
++
+   // Overridden from tab_groups::TabGroupSyncService::Observer
+   void OnTabGroupAdded(const tab_groups::SavedTabGroup& group,
+                        tab_groups::TriggerSource source) override;
+@@ -83,8 +90,11 @@
+   // The service providing data for SavedTabGroups.
+   raw_ptr<TabGroupSyncService> service_ = nullptr;
+ 
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
++  int aux_callback_depth_ = 0;
+   bool aux_profile_switch_paused_ = false;
+   uint64_t aux_profile_switch_generation_ = 0;
++  base::WeakPtrFactory<SessionServiceTabGroupSyncObserver> aux_mutation_weak_factory_{this};
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc
+@@ -6,7 +6,10 @@
+ 
+ #include <optional>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/check_op.h"
++#include "content/public/browser/web_contents.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+@@ -41,7 +44,21 @@
+ }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SessionServiceTabGroupSyncObserver::LeaveAuxMutation() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++bool SessionServiceTabGroupSyncObserver::CanBeginAuxProfileSwitch() const {
++  return !aux_profile_switch_paused_ && !aux_callback_depth_ && service_ &&
++         profile_->IsRegularProfile() && tab_strip_model_->SupportsTabGroups() &&
++         tab_strip_model_->profile() == profile_ &&
++         service_ == TabGroupSyncServiceFactory::GetForProfile(profile_);
++}
++
+ uint64_t SessionServiceTabGroupSyncObserver::BeginAuxProfileSwitch() {
++  CHECK(CanBeginAuxProfileSwitch());
++  aux_switch_source_profile_ = profile_;
+   CHECK(profile_->IsRegularProfile());
+   CHECK_EQ(tab_strip_model_->profile(), profile_);
+   aux_profile_switch_paused_ = true;
+@@ -59,6 +76,8 @@
+   CHECK(target_profile);
+   CHECK(target_profile->IsRegularProfile());
+   CHECK(tab_strip_model_->empty());
++  CHECK(tab_strip_model_->SupportsTabGroups());
++  CHECK(!aux_callback_depth_);
+   CHECK_EQ(tab_strip_model_->profile(), target_profile);
+   profile_ = target_profile;
+   service_ = TabGroupSyncServiceFactory::GetForProfile(profile_);
+@@ -74,16 +93,47 @@
+     return;
+   }
+   CHECK(aux_profile_switch_paused_);
++  CHECK(!aux_callback_depth_);
++  CHECK(service_);
++  CHECK_EQ(service_, TabGroupSyncServiceFactory::GetForProfile(profile_));
+   CHECK_EQ(tab_strip_model_->profile(), profile_);
++  aux_switch_source_profile_ = nullptr;
+   aux_profile_switch_paused_ = false;
+   // Real group metadata is captured by the generation-bound touched-profile
+   // session rebuild after the actual registered workspaces have settled.
+ }
++
++void SessionServiceTabGroupSyncObserver::AbortAuxProfileSwitch(
++    uint64_t generation, Profile* source_profile) {
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!aux_callback_depth_);
++  CHECK(!service_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(profile_, source_profile);
++  CHECK_EQ(tab_strip_model_->profile(), source_profile);
++  for (int i = 0; i < tab_strip_model_->count(); ++i) {
++    CHECK_EQ(tab_strip_model_->GetWebContentsAt(i)->GetBrowserContext(),
++             source_profile);
++  }
++  service_ = TabGroupSyncServiceFactory::GetForProfile(source_profile);
++  CHECK(service_);
++  service_->AddObserver(this);
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_paused_ = false;
++}
+ #endif
+ 
+ void SessionServiceTabGroupSyncObserver::OnTabGroupAdded(
+     const tab_groups::SavedTabGroup& group,
+     tab_groups::TriggerSource source) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SessionServiceTabGroupSyncObserver::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   if (tab_groups::TriggerSource::REMOTE == source) {
+     // Do nothing if this change came from sync.
+     return;
+@@ -96,6 +146,12 @@
+ void SessionServiceTabGroupSyncObserver::OnTabGroupRemoved(
+     const tab_groups::LocalTabGroupID& local_id,
+     tab_groups::TriggerSource source) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SessionServiceTabGroupSyncObserver::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   if (tab_groups::TriggerSource::REMOTE == source) {
+     // Do nothing if this change came from sync.
+     return;
+@@ -108,6 +164,12 @@
+     const tab_groups::SavedTabGroup& new_group,
+     const base::Uuid& old_sync_id,
+     tab_groups::TriggerSource source) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SessionServiceTabGroupSyncObserver::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   UpdateTabGroupSessionMetadata(new_group.local_group_id(),
+                                 new_group.saved_guid().AsLowercaseString());
+ }
+@@ -115,12 +177,24 @@
+ void SessionServiceTabGroupSyncObserver::OnTabGroupLocalIdChanged(
+     const base::Uuid& sync_id,
+     const std::optional<LocalTabGroupID>& local_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SessionServiceTabGroupSyncObserver::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   UpdateTabGroupSessionMetadata(local_id, sync_id.AsLowercaseString());
+ }
+ 
+ void SessionServiceTabGroupSyncObserver::UpdateTabGroupSessionMetadata(
+     const std::optional<LocalTabGroupID> local_id,
+     std::optional<std::string> sync_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SessionServiceTabGroupSyncObserver::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   if (aux_profile_switch_paused_) {
+     return;
+   }
+--- a/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h
+@@ -9,6 +9,7 @@
+ 
+ #include "base/feature_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -16,6 +17,7 @@
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class BrowserView;
++class Profile;
+ 
+ namespace ui {
+ class TrackedElement;
+@@ -51,7 +53,10 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Keep this userdata owner stable, but never carry old-profile local IDs or
+   // async promo anchors across the real model/profile migration.
++  bool CanBeginAuxProfileSwitch() const;
+   uint64_t BeginAuxProfileSwitch();
++  void RebindAuxProfileSwitch(Profile* target_profile);
++  void AbortAuxProfileSwitch(uint64_t generation, Profile* source_profile);
+   void EndAuxProfileSwitch(uint64_t generation);
+ #endif
+ 
+@@ -62,7 +67,7 @@
+ 
+   // Gets the identifiers of the most recent locally-updated shared tab.
+   std::optional<TabIdentifiers> GetLastUpdatedTab() {
+-    return last_updated_tab_;
++    return aux_profile_switch_paused_ ? std::nullopt : last_updated_tab_;
+   }
+ 
+   // Sets the identifiers for a recent local update to a tab. Passing
+@@ -75,6 +80,10 @@
+   ui::TrackedElement* GetIPHAnchor(BrowserView* browser_view);
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++#endif
++
+   // Attempt to trigger the IPH after a relevant change.
+   void MaybeShowPromo(const base::Feature& feature);
+ 
+@@ -87,8 +96,12 @@
+   // LocalTabID will be null in the case where the user removed the tab.
+   std::optional<TabIdentifiers> last_updated_tab_;
+ 
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
++  bool aux_profile_switch_committed_ = false;
++  int aux_callback_depth_ = 0;
+   bool aux_profile_switch_paused_ = false;
+   uint64_t aux_profile_switch_generation_ = 0;
++  base::WeakPtrFactory<MostRecentSharedTabUpdateStore> aux_mutation_weak_factory_{this};
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc
+@@ -4,7 +4,11 @@
+ 
+ #include "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h"
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/check_op.h"
++#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "content/public/browser/web_contents.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
+@@ -36,12 +40,74 @@
+ MostRecentSharedTabUpdateStore::~MostRecentSharedTabUpdateStore() = default;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void MostRecentSharedTabUpdateStore::LeaveAuxMutation() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++bool MostRecentSharedTabUpdateStore::CanBeginAuxProfileSwitch() const {
++  if (aux_profile_switch_paused_ || aux_callback_depth_ ||
++      From(browser_window_) != this ||
++      browser_window_->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !browser_window_->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  auto* model = browser_window_->GetTabStripModel();
++  if (!model || !model->SupportsTabGroups() ||
++      model->profile() != browser_window_->GetProfile() ||
++      !TabGroupSyncServiceFactory::GetForProfile(browser_window_->GetProfile())) {
++    return false;
++  }
++  auto* education = BrowserUserEducationInterface::From(browser_window_);
++  const auto& feature = feature_engagement::kIPHTabGroupsSharedTabChangedFeature;
++  return !education || (!education->IsFeaturePromoQueued(feature) &&
++                         !education->IsFeaturePromoActive(feature));
++}
++
+ uint64_t MostRecentSharedTabUpdateStore::BeginAuxProfileSwitch() {
++  CHECK(CanBeginAuxProfileSwitch());
++  aux_switch_source_profile_ = browser_window_->GetProfile();
++  aux_profile_switch_committed_ = false;
+   CHECK_EQ(browser_window_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
+   CHECK(browser_window_->GetProfile()->IsRegularProfile());
+   aux_profile_switch_paused_ = true;
++  return ++aux_profile_switch_generation_;
++}
++
++void MostRecentSharedTabUpdateStore::RebindAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!aux_profile_switch_committed_);
++  CHECK(!aux_callback_depth_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_window_->GetProfile(), target_profile);
++  auto* model = browser_window_->GetTabStripModel();
++  CHECK(model->empty());
++  CHECK(model->SupportsTabGroups());
++  CHECK_EQ(model->profile(), target_profile);
++  CHECK(TabGroupSyncServiceFactory::GetForProfile(target_profile));
+   last_updated_tab_.reset();
+-  return ++aux_profile_switch_generation_;
++  aux_profile_switch_committed_ = true;
++}
++
++void MostRecentSharedTabUpdateStore::AbortAuxProfileSwitch(
++    uint64_t generation, Profile* source_profile) {
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!aux_profile_switch_committed_);
++  CHECK(!aux_callback_depth_);
++  CHECK(aux_switch_source_profile_);
++  CHECK_EQ(source_profile, aux_switch_source_profile_);
++  CHECK_EQ(browser_window_->GetProfile(), source_profile);
++  auto* model = browser_window_->GetTabStripModel();
++  CHECK_EQ(model->profile(), source_profile);
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
++  }
++  // The actual original local IDs were retained; no promo is manufactured.
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_paused_ = false;
+ }
+ 
+ void MostRecentSharedTabUpdateStore::EndAuxProfileSwitch(uint64_t generation) {
+@@ -49,6 +115,10 @@
+     return;
+   }
+   CHECK(aux_profile_switch_paused_);
++  CHECK(aux_profile_switch_committed_);
++  CHECK(!aux_callback_depth_);
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_committed_ = false;
+   CHECK_EQ(browser_window_->GetTabStripModel()->profile(),
+            browser_window_->GetProfile());
+   aux_profile_switch_paused_ = false;
+@@ -58,6 +128,12 @@
+ void MostRecentSharedTabUpdateStore::SetLastUpdatedTab(
+     LocalTabGroupID group_id,
+     std::optional<LocalTabID> tab_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &MostRecentSharedTabUpdateStore::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   if (aux_profile_switch_paused_) {
+     return;
+   }
+@@ -68,6 +144,12 @@
+ 
+ ui::TrackedElement* MostRecentSharedTabUpdateStore::GetIPHAnchor(
+     BrowserView* browser_view) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &MostRecentSharedTabUpdateStore::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Old queued promos have no current target-profile update/anchor. Do not
+   // resolve old local IDs through another profile's global tab lookup.
+@@ -113,6 +195,12 @@
+ 
+ void MostRecentSharedTabUpdateStore::MaybeShowPromo(
+     const base::Feature& feature) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &MostRecentSharedTabUpdateStore::LeaveAuxMutation,
++      aux_mutation_weak_factory_.GetWeakPtr()));
++#endif
+   BrowserUserEducationInterface::From(browser_window_)
+       ->MaybeShowFeaturePromo(feature);
+ }

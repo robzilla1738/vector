@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 earlier shared-tab Begin/Rebind/End hooks",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h",
+      "baselineSha256": "980f54ef9286f3923f60eb6d8ed935a532ec22179d3d790135ff91a1d9ddcbdf",
+      "outputSha256": "dfcc33db3d0e9fee07d2fb77016910fc26cbde0d24114bbf07f9f596966003c6"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc",
+      "baselineSha256": "6583d4b551abf014a54989ccbbcebaf7a24db6b0adc1571a78ee4893adf63ce8",
+      "outputSha256": "8d62a2910c24cc05049e1b08a7edb43d624f67a513d72854d7c7e6f816d0553b"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h",
+      "baselineSha256": "ca8954137dad05c10a67c7ff809820c55870c366dff040da8cfb60a3298e528f",
+      "outputSha256": "4ce07726601e01c176d0d5b3f7b795e780ed1c4e92400efc8ce9cc54629b29c2"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc",
+      "baselineSha256": "d6b59751a842c1aa26b5e1fdaf198b5ffbe6332d652be77f6fede176cf7ae047",
+      "outputSha256": "6a8684caa5c371bf2496937944f8acd418cb089c2414ca7064f018e575be1760"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
