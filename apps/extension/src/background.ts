@@ -1,5 +1,5 @@
 import { readContextActivity } from './context-bridge';
-import { daemonUrl, getToken, resolveAccount } from './daemon';
+import { daemonUrl, getToken, reconnect, resolveAccount } from './daemon';
 import { readHistoryVisits } from './history-bridge';
 
 function navigationUrl(value: unknown) {
@@ -9,6 +9,7 @@ function navigationUrl(value: unknown) {
   return url.href;
 }
 let socket: WebSocket | undefined;
+let connecting = false;
 let retry = 0;
 const running = new Map<number, AbortController>();
 const debuggedTabs = new Set<number>();
@@ -444,6 +445,8 @@ async function pageAction(params: Record<string, unknown>, kind: string) {
 }
 
 async function connect() {
+  if (connecting || socket) return;
+  connecting = true;
   try {
     const [context, token] = await Promise.all([resolveAccount(), getToken()]);
     socket = new WebSocket(
@@ -471,6 +474,7 @@ async function connect() {
     };
     socket.onclose = () => {
       socket = undefined;
+      reconnect();
       chrome.alarms.create('aux.reconnect', {
         delayInMinutes: Math.min(0.1 * 2 ** retry++, 1),
       });
@@ -478,6 +482,8 @@ async function connect() {
     socket.onerror = () => socket?.close();
   } catch {
     chrome.alarms.create('aux.reconnect', { delayInMinutes: 1 });
+  } finally {
+    connecting = false;
   }
 }
 async function handle(data: string) {
@@ -523,5 +529,8 @@ chrome.action.onClicked.addListener((tab) => {
 });
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+});
+chrome.runtime.onStartup.addListener(() => {
+  void connect();
 });
 void connect();
