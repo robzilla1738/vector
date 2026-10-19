@@ -41,13 +41,26 @@ const profile = temporaryRoot ? join(temporaryRoot, 'profile') : options.profile
 await mkdir(home, { recursive: true, mode: 0o700 });
 const children = new Set();
 let stopping = false;
+const pendingLaunches = new Set();
 async function start(command, arguments_, env) {
-  const child = await launchOwnedProcess(command, arguments_, { cwd: root, env });
+  if (stopping) return null;
+  const pending = launchOwnedProcess(command, arguments_, { cwd: root, env });
+  pendingLaunches.add(pending);
+  let child;
+  try {
+    child = await pending;
+  } finally {
+    pendingLaunches.delete(pending);
+  }
   children.add(child);
   child.done.then(outcome => {
     children.delete(child);
     if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);
   });
+  if (stopping) {
+    await child.stop();
+    return null;
+  }
   if (!child.pid) {
     await stop(1);
     throw new Error('The packaged executable could not be started.');
@@ -55,12 +68,18 @@ async function start(command, arguments_, env) {
   return child;
 }
 let shutdown;
+const startupAbort = new AbortController();
 function stop(code) {
   if (shutdown) return shutdown;
   stopping = true;
+  startupAbort.abort();
   shutdown = (async () => {
-    const outcomes = await Promise.all([...children].map(child => child.stop()));
-    const failed = outcomes.some(outcome => outcome.error || outcome.forced || !outcome.groupStopped);
+    // Pending controllers are retained even if their completion callback removes
+    // them from children before the shutdown snapshot is taken.
+    const launched = await Promise.allSettled([...pendingLaunches]);
+    const owned = new Set([...children, ...launched.filter(result => result.status === 'fulfilled').map(result => result.value)]);
+    const outcomes = await Promise.all([...owned].map(child => child.stop()));
+    const failed = launched.some(result => result.status === 'rejected') || outcomes.some(outcome => outcome.error || outcome.forced || !outcome.groupStopped);
     // Native shutdown has no launcher-visible success receipt, and the supplied
     // runtime may start detached shell groups. Group absence is not proof that
     // every descendant stopped; never delete potentially live application state.
@@ -70,24 +89,33 @@ function stop(code) {
   return shutdown;
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));
+async function main() {
+  if (stopping) return;
 const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port) };
 if (options.noBrowser) {
   const boundary = join(resources, 'native/libaux-native-boundary.dylib');
   const stat = await lstat(boundary);
-  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o022) || await realpath(boundary) !== boundary) throw new Error('Fixed packaged native boundary required.');
+  if (stopping) return;
+  const canonicalBoundary = await realpath(boundary);
+  if (stopping) return;
+  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o022) || canonicalBoundary !== boundary) throw new Error('Fixed packaged native boundary required.');
   for (const key of Object.keys(env)) if (key.startsWith('DYLD_')) delete env[key];
   env.DYLD_INSERT_LIBRARIES = boundary;
   const daemon = await start(join(resources, 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'), [], env);
+  if (stopping) return;
   let ready = false;
   for (let attempt = 0; attempt < 120 && !stopping; attempt++) {
     try {
-      const response = await fetch(`http://127.0.0.1:${options.port}/health`, { signal: AbortSignal.timeout(500) });
+      const response = await fetch(`http://127.0.0.1:${options.port}/health`, { signal: AbortSignal.any([AbortSignal.timeout(500), startupAbort.signal]) });
+      if (stopping) return;
       if (response.ok) {
         const health = await response.json();
+        if (stopping) return;
         if (health.service !== 'aside-daemon' || health.pid !== daemon.pid) throw new Error('Port is occupied by another daemon.');
         if (health.ready) { ready = true; break; }
       }
     } catch (error) {
+      if (stopping) return;
       if (error.message === 'Port is occupied by another daemon.' || (!(error instanceof TypeError) && error.name !== 'TimeoutError')) { await stop(1); throw error; }
     }
     await delay(250);
@@ -103,3 +131,6 @@ if (options.noBrowser) {
     ...browserArgs,
   ], env);
 }
+
+}
+await main();

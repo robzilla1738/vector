@@ -59,7 +59,7 @@ process.on('SIGINT', stop);
 process.on('disconnect', stop);
 process.on('message', message => {
   if (message?.event === 'stop') return stop();
-  if (message?.event !== 'launch' || launched) return;
+  if (message?.event !== 'launch' || launched || stopping || cleaning) return;
   launched = true;
   child = spawn(message.command, message.args, { cwd: message.cwd, env: message.env, stdio: 'inherit' });
   child.once('spawn', () => void send({ event: 'started', pid: child.pid }));
