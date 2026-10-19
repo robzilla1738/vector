@@ -12,6 +12,7 @@ Work locally on main, use parallel agents for substantial disjoint implementatio
 
 - Preserve component/rendering implementation, styles, typography, geometry, menus, states, shortcuts, transitions and workflows.
 - Replace branding, Aux artwork and app/extension/bundle identifiers consistently. Keep contracts consistent across every affected caller and callee.
+- Use the updated owner-supplied `arch-mark.svg` everywhere Aux branding appears. Keep its full two-path geometry/viewBox; the canonical repository copy is `assets/brand/arch-mark.svg`. Generate app/extension/menu icons and inline UI variants from it, and include source/derived asset hashes in staged provenance.
 - Isolate local paths, ports, authentication identity and data from installed Aside. Local-only cloud boundaries remain explicit; never invent successful service responses to make a screen appear functional.
 - Keep necessary platform adaptations small and separately reviewable. Do not redesign a surface or rebuild a supplied capability to avoid adapting it.
 - Authorized source reuse is expected. Byte-identical unchanged UI/style files are evidence of fidelity; clean-room hash-inequality requirements are superseded.

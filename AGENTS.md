@@ -8,6 +8,7 @@ Read `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.m
 
 - Reuse the supplied source and packaged implementation directly. Preserve component structure, CSS, typography, layout, interactions and behavior. Do not approximate them with newly designed screens.
 - Change product names, Aux artwork/icons, bundle and extension identities, state locations and identifiers consistently across the stack. Make only integration changes necessary for Aux Chromium and local boundaries.
+- The owner-provided `arch-mark.svg` (2026-10-19) is the canonical Aux logo. Preserve its complete two-path geometry and viewBox in `assets/brand/arch-mark.svg`; derive app, extension and UI assets from that SVG. Do not reuse the retired raster-derived mark or independently redraw it.
 - Keep a pinned source inventory and reviewable count-checked patches. Separate branding/identifier changes from necessary platform adaptations. Do not introduce unrelated visual or functional changes.
 - The supplied implementation wins when existing independent Aux code differs. Reuse its daemon, Agent/Vault extensions, CLI, helpers and runtimes where needed to preserve behavior. Do not force its UI onto a replacement backend merely to retain prior work.
 - Authorized static inputs include `~/Downloads/aside-rea 2`, `~/AI Blueprints/06` and installed component packages under `~/Library/Application Support/Aside/`. Agent/Vault target version is `1.26.1016.1852`; pin exact files/hashes. Static implementation copying is authorized; owner accounts, profiles and credentials are not.

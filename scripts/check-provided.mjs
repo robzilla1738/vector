@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // Preservation audit: unchanged source equality is expected, never a clean-room failure.
 import { createHash } from 'node:crypto';
-import { lstat, readdir, readFile } from 'node:fs/promises';
+import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { providedAppRoots } from './lib/provided-apps.mjs';
+import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
+import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
+import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(process.argv[2] ?? join(repository, 'out/provided-reuse'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -22,6 +26,12 @@ async function files(root, directory = '') {
 }
 const stack = await json(join(output, 'manifest.json'));
 if (stack.version !== 1 || stack.implementation !== 'supplied') throw new Error('Not a supplied implementation stage');
+if (!stack.brandInputs?.length) throw new Error('Restage: updated canonical Aux logo provenance is missing');
+const expectedBrandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
+if (JSON.stringify(stack.brandInputs.map((file) => file.path).sort()) !== JSON.stringify(expectedBrandPaths.sort())) throw new Error('Incomplete Aux branding provenance');
+for (const input of stack.brandInputs) {
+  if (!safe(input.path) || !/^(assets\/brand\/|vendor\/provided-ui\/branding\/)/.test(input.path) || hash(await readFile(join(repository, input.path))) !== input.sha256) throw new Error('Restage: Aux branding assets changed');
+}
 const pins = await json(join(repository, 'docs/source/provided-ui-inputs.json'));
 const ui = await json(join(output, 'ui/manifest.json'));
 let unchanged = 0, changed = 0, css = 0;
@@ -67,6 +77,10 @@ for (const component of ['daemon', 'cli']) {
   const report = apps.components[component];
   if (!safe(report.app)) throw new Error('Unsafe app report path');
   const root = join(output, 'apps', report.app);
+  const binary = await readFile(join(providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
+  const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
+  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode);
+  if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
   for (const file of [...report.files, ...report.removed]) {
@@ -81,5 +95,58 @@ for (const component of ['daemon', 'cli']) {
   }
   if (sources.size) throw new Error('Unreported omitted app source resources');
 }
+let runtimeFiles = 0, memoryFiles = 0;
+if (stack.components.distribution) {
+  const distribution = await json(join(output, 'distribution/manifest.json'));
+  const distributionPins = await json(join(repository, 'docs/source/provided-runtime-inputs.json'));
+  if (distribution.runtimeRoot !== join(stack.finalApp, 'Contents/Resources/aux/agent-runtime')) throw new Error('Runtime relocation destination differs from the declared app');
+  for (const component of ['runtime', 'memory']) {
+    const report = distribution.components[component], pinned = distributionPins.components[component];
+    const root = join(output, 'distribution', component), remaining = new Map(pinned.files.map((file) => [file.path, file]));
+    const reported = new Set();
+    for (const file of report.files) {
+      if (!safe(file.path) || reported.has(file.path)) throw new Error('Unsafe or repeated distribution record');
+      reported.add(file.path);
+      const original = remaining.get(file.path), path = join(root, file.path), stat = await lstat(path);
+      if (!original) {
+        if (component !== 'runtime' || !['tmp', '.npmrc'].includes(file.path)) throw new Error('Unpinned added distribution input');
+        if (file.path === 'tmp' && (!stat.isDirectory() || (await readdir(path)).length || (stat.mode & 0o777) !== 0o700)) throw new Error('Runtime temporary state is not fresh');
+        if (file.path === '.npmrc' && (!stat.isFile() || (stat.mode & 0o777) !== 0o600 || (await readFile(path, 'utf8')) !== 'fund=false\naudit=false\nupdate-notifier=false\n')) throw new Error('Unexpected generated npm configuration');
+        continue;
+      }
+      remaining.delete(file.path);
+      if (file.type !== original.type || file.mode !== original.mode || (stat.mode & 0o777) !== original.mode) throw new Error('Distribution type or mode mismatch');
+      if (file.type === 'directory') {
+        if (!stat.isDirectory()) throw new Error('Distribution directory replaced');
+      } else if (file.type === 'symlink') {
+        if (!stat.isSymbolicLink() || await readlink(path) !== original.linkTarget || file.outputLinkTarget !== original.linkTarget) throw new Error('Distribution dependency link changed');
+      } else {
+        if (!stat.isFile() || file.sourceSha256 !== original.sourceSha256) throw new Error('Distribution source pin mismatch');
+        const bytes = await readFile(path);
+        if (hash(bytes) !== file.outputSha256) throw new Error('Distribution output changed');
+        if (file.anchors?.length) {
+          let text = (await readFile(join(pinned.inputRoot, file.path))).toString('utf8');
+          if (hash(text) !== original.sourceSha256) throw new Error('Relocated distribution source changed');
+          for (const anchor of file.anchors) {
+            if (!anchor.find || text.split(anchor.find).length - 1 !== anchor.count) throw new Error('Distribution relocation count mismatch');
+            text = text.split(anchor.find).join(anchor.replace);
+          }
+          if (!Buffer.from(text).equals(bytes)) throw new Error('Unreported distribution change');
+        } else if (file.sourceSha256 !== file.outputSha256) throw new Error('Distribution binary or dependency changed');
+        if (component === 'runtime') runtimeFiles++; else memoryFiles++;
+      }
+    }
+    if (remaining.size) throw new Error('Omitted distribution source records');
+    async function coverage(directory = '') {
+      for (const entry of await readdir(join(root, directory), { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (!reported.has(path)) throw new Error(`Unreported distribution path: ${path}`);
+        if (entry.isDirectory()) await coverage(path);
+      }
+    }
+    await coverage();
+  }
+} else throw new Error('Restage: supplied runtime and memory distributions are missing');
 console.log(`Preservation verified: ${unchanged} unchanged UI files; ${changed} explicitly changed; ${css} stylesheets preserve layout; ${appFiles} app resource records.`);
+console.log(`Distribution preservation: ${runtimeFiles} runtime files and ${memoryFiles} memory files, with declared relocations only.`);
 console.log(`Production ready: ${stack.productionReady}. This audit verifies recorded preservation, not native integration or runtime/UI acceptance.`);
