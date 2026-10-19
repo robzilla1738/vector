@@ -1,0 +1,134 @@
+{
+  "atUTC": "2026-10-19T00:02:30.876145+00:00",
+  "product": "cd76f71b6e0205da66b749d01908c04c0e924450",
+  "nativeFrameworkUUID": "4C4C44EB-5555-3144-A185-09FCC5F3A992",
+  "runnerGitSha": "5f2d14fd3",
+  "scope": "Full20 manual native deterministic local-fixture smoke; no runner-started actions or automatic approval. Actual original runtime read-back uses permitted runs.get and runs.events only. This is not held-out real-site or daily-use-readiness evidence.",
+  "runner": {
+    "session": 72812,
+    "exit": 0,
+    "valid": true,
+    "complete": true,
+    "pass": 20,
+    "total": 20,
+    "report": {
+      "path": "/Users/rcourson/Documents/Vibe/web/tests/benchmarks/reports/tasks-local-2026-10-18T23-47-44-217Z.json",
+      "sha256": "9d1f2ec3852fd482e046516123f2fa2f619def567fbe78f42ed99d2586b5e1d5",
+      "bytes": 55505
+    },
+    "modelSelection": "native configured route",
+    "overrides": null,
+    "uiDefaults": {
+      "confirmation": "Ask first",
+      "model": "Automatic",
+      "thinking": "Auto"
+    },
+    "actualModels": ["anthropic/claude-sonnet-5.5"],
+    "wireEffort": "not captured"
+  },
+  "observedMetrics": {
+    "calls": 55,
+    "inputTokens": 2073332,
+    "outputTokens": 6471,
+    "cachedInputTokens": 2024809,
+    "cachePositive": 55,
+    "cacheZero": 0,
+    "cacheUnknown": 0,
+    "costUsd": 0.3884234,
+    "estimatedCostCalls": 0,
+    "providerDurationMs": 99546,
+    "wallTimingLimit": "Manual task wall timings include operator preparation/review; not interaction-performance measurements."
+  },
+  "durableReceipts": {
+    "uncertain": [
+      {
+        "taskId": "L10-modal-reference",
+        "stepId": "st_mvehezyu_3kqqeh0",
+        "op": "click",
+        "status": "ok",
+        "effect": "uncertain",
+        "receipt": {
+          "remoteConfirmed": false,
+          "uncertain": true,
+          "unconfirmed": false,
+          "dispatchedBeforeTakeover": false,
+          "identity": {
+            "pageId": "cb469483-0179-4b84-8cab-981ed6e96b0f",
+            "documentEpoch": 20,
+            "target": "r5"
+          }
+        }
+      },
+      {
+        "taskId": "L13-edit-owner-status",
+        "stepId": "st_mvehhcpb_4zwmtdm",
+        "op": "click",
+        "status": "ok",
+        "effect": "uncertain",
+        "receipt": {
+          "remoteConfirmed": false,
+          "uncertain": true,
+          "unconfirmed": false,
+          "dispatchedBeforeTakeover": false,
+          "identity": {
+            "pageId": "cb469483-0179-4b84-8cab-981ed6e96b0f",
+            "documentEpoch": 25,
+            "target": "r4"
+          }
+        }
+      }
+    ],
+    "independentEffects": "All fixture effect oracles pass, including exact write contents and no duplicates. No original uncertain click target repeats in returned steps.",
+    "detailedWorkTrace": "Not requested; outside existing authority. No grant expansion."
+  },
+  "artifacts": {
+    "audit": {
+      "path": "/tmp/aux-native-cd76-manual20-acceptance-2026-10-18/manual20-readonly-audit.json",
+      "sha256": "43fd78c45bed15887bdec9019e23b4953276a73bfe40547086ea70b4ab8a5b64",
+      "bytes": 72115
+    },
+    "ownership": {
+      "path": "/tmp/aux-native-cd76-manual20-acceptance-2026-10-18/ownership.json",
+      "sha256": "37aac585ea9ba056e15875a82b097117ae950373ce7fbae3520b080bba4bc19d",
+      "bytes": 881
+    },
+    "launchLog": {
+      "path": "/tmp/aux-cd76-manual20-launch-2026-10-18.log",
+      "sha256": "20e86a480e560cf9f22d22b4a5a333a11027937b3a0071b8e2ff9caebafc4790",
+      "bytes": 64668
+    },
+    "runnerLog": {
+      "path": "/tmp/aux-cd76-manual20-run-2026-10-18.log",
+      "sha256": "c745c5e51ebfd5a505dc98e5ab37c38f67cecdd79c86d390f6051335e7739080",
+      "bytes": 25255
+    }
+  },
+  "retirement": {
+    "launcherSession": 73980,
+    "exit": 0,
+    "originalLauncher": 27120,
+    "originalBrowser": 27312,
+    "originalRuntime": 27329,
+    "nativeQuitMenu": "Aux > Quit Aux",
+    "runtimeForced": 0,
+    "runtimeExitCode": 0,
+    "processesGone": true,
+    "disposableProfileRemoved": true,
+    "originalLock": "retired by original launcher normally"
+  },
+  "otherNativeObservations": [
+    "Model context popup showed estimated26858/effective128000 tokens, outputreserve4000, modelwindow1000000, lastobserved36078.",
+    "Manual Compact context on one-turn chat returns could-not-safely-reduce/original-history-preserved; no long-context success or interrupt/cancel acceptance is implied.",
+    "Context popup and no-change feedback fit within observed native window; Escape returns focus."
+  ],
+  "operatorExtras": [
+    "Home Ask CmdL sequence submitted a URL as chat; stopped immediately via native Stop. UI source fixture subsequently reproduces focus theft; integrated source fix0b32d50f5 awaits current native observation.",
+    "First L03 typeText submission had corrupted punctuation and did not match harness goal; read-only run completed, page reset, new exact pasted goal independently scored. Neither extra is included in20 matched task metrics."
+  ],
+  "remaining": [
+    "Performance gates not measured successfully.",
+    "Original155SIGTRAP remains unresolved without matching oldframework.",
+    "Full reference/IME/accessibility and browser acceptance remain open.",
+    "NewHomefocus/nativeControlrelease/benchmark-ingress source postdates this compiled candidate."
+  ]
+}
