@@ -1,0 +1,341 @@
+--- a/chrome/browser/ui/browser_window/public/browser_window_features.h
++++ b/chrome/browser/ui/browser_window/public/browser_window_features.h
+@@ -359,6 +359,7 @@
+     bool had_instant = false;
+     bool had_keybindings = false;
+     bool had_extension_window = false;
++    bool had_cast = false;
+   } aux_private_profile_services_;
+ #endif
+ 
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -113,7 +113,7 @@
+       features_->session_service_tab_group_sync_observer_ || features_->organizer_panel_controller_ ||
+       features_->actor_ui_window_controller_ || features_->ai_overlay_dialog_controller_ ||
+       features_->ai_mode_page_action_controller_ || features_->data_protection_ui_controller_ ||
+-      features_->new_tab_footer_controller_ || features_->cast_browser_controller_ ||
++      features_->new_tab_footer_controller_ ||
+       features_->ios_promo_controller_ || features_->chrome_labs_coordinator_ ||
+       features_->recent_activity_bubble_coordinator_ || features_->shared_tab_group_feedback_controller_ ||
+       features_->find_bar_controller_) {
+@@ -194,6 +194,8 @@
+   // All old-source observation/IPC is retired before identity. Source-tab
+   // services that need real detach notifications remain until empty commit.
+   plan->view_generation = plan->view->BeginAuxProfileSwitch(target.get());
++  // Retire Cast before real old pinned/view teardown can call its icon path.
++  features_->BeginAuxPrivateProfileServices(target.get());
+   plan->actions_generation = features_->browser_actions_->BeginAuxProfileSwitch(target.get());
+   plan->location_generation = plan->location->BeginAuxProfileSwitch(target.get());
+   if (plan->vertical) {
+@@ -258,7 +260,6 @@
+   plan->toolbar->PrepareOwnedActionsForAuxProfileSwitch();
+   // Do not leave Features' alias pointing into the retired pinned subtree.
+   features_->pinned_toolbar_actions_ = nullptr;
+-  features_->BeginAuxPrivateProfileServices(target.get());
+ }
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Commit(
+--- a/chrome/browser/ui/views/media_router/cast_browser_controller.h
++++ b/chrome/browser/ui/views/media_router/cast_browser_controller.h
+@@ -6,6 +6,9 @@
+ #define CHROME_BROWSER_UI_VIEWS_MEDIA_ROUTER_CAST_BROWSER_CONTROLLER_H_
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/functional/callback_helpers.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/toolbar/cast/cast_toolbar_button_controller.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+ #include "components/media_router/browser/issues_observer.h"
+@@ -42,6 +45,10 @@
+   CastBrowserController& operator=(const CastBrowserController&) = delete;
+   ~CastBrowserController() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  static bool CanReleaseForAuxProfileSwitch(BrowserWindowInterface* browser);
++#endif
++
+   // Opens/closes the cast dialog.
+   void ToggleDialog();
+   // Updates the icon.
+@@ -69,6 +76,12 @@
+ 
+   void StopObservingMirroringMediaControllerHosts();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::ScopedClosureRunner EnterAuxProfileCallback();
++  void LeaveAuxProfileCallback();
++  unsigned aux_profile_callback_depth_ = 0;
++#endif
++
+   const raw_ptr<BrowserWindowInterface> browser_;
+ 
+   ui::ScopedUnownedUserData<CastBrowserController> scoped_unowned_user_data_;
+@@ -82,6 +95,9 @@
+ 
+   // The list of routes we are observing to see if mirroring pauses.
+   std::vector<MediaRoute::Id> tracked_mirroring_routes_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<CastBrowserController> aux_weak_factory_{this};
++#endif
+ };
+ 
+ }  // namespace media_router
+--- a/chrome/browser/ui/views/media_router/cast_browser_controller.cc
++++ b/chrome/browser/ui/views/media_router/cast_browser_controller.cc
+@@ -5,6 +5,12 @@
+ #include "chrome/browser/ui/views/media_router/cast_browser_controller.h"
+ 
+ #include <algorithm>
++
++#include "base/check_op.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/media_router/media_router_dialog_controller_views.h"
+ 
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/browser_actions.h"
+@@ -57,18 +63,66 @@
+   StopObservingMirroringMediaControllerHosts();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool CastBrowserController::CanReleaseForAuxProfileSwitch(
++    BrowserWindowInterface* browser) {
++  if (!browser || !browser->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  if (auto* controller = From(browser);
++      controller && controller->aux_profile_callback_depth_) {
++    return false;
++  }
++  auto* model = browser->GetTabStripModel();
++  if (!model) {
++    return false;
++  }
++  for (int index = 0; index < model->count(); ++index) {
++    // Read existing tab-owned state only; never instantiate or close a dialog.
++    auto* dialog = MediaRouterDialogControllerViews::FromWebContents(
++        model->GetWebContentsAt(index));
++    if (dialog && !dialog->CanRelinquishForAuxProfileSwitch()) {
++      return false;
++    }
++  }
++  return true;
++}
++
++base::ScopedClosureRunner CastBrowserController::EnterAuxProfileCallback() {
++  ++aux_profile_callback_depth_;
++  return base::ScopedClosureRunner(base::BindOnce(
++      &CastBrowserController::LeaveAuxProfileCallback,
++      aux_weak_factory_.GetWeakPtr()));
++}
++
++void CastBrowserController::LeaveAuxProfileCallback() {
++  CHECK_GT(aux_profile_callback_depth_, 0u);
++  --aux_profile_callback_depth_;
++}
++#endif
++
++
+ void CastBrowserController::OnIssue(const media_router::Issue& issue) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   issue_severity_ = issue.info().severity;
+   UpdateIcon();
+ }
+ 
+ void CastBrowserController::OnIssuesCleared() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   issue_severity_.reset();
+   UpdateIcon();
+ }
+ 
+ void CastBrowserController::OnRoutesUpdated(
+     const std::vector<media_router::MediaRoute>& routes) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   has_local_route_ =
+       std::ranges::contains(routes, true, &media_router::MediaRoute::is_local);
+   StopObservingMirroringMediaControllerHosts();
+@@ -86,12 +140,18 @@
+ }
+ 
+ void CastBrowserController::OnFreezeInfoChanged() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   UpdateIcon();
+ }
+ 
+ // TODO(crbug.com/375030079): Move this logic to the profile controller to avoid
+ // recalculating the icon for every browser.
+ void CastBrowserController::UpdateIcon() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   auto* action_item = static_cast<actions::StatefulImageActionItem*>(
+       actions::ActionManager::Get().FindAction(
+           kActionRouteMedia,
+@@ -181,6 +241,9 @@
+ }
+ 
+ void CastBrowserController::ToggleDialog() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   tabs::TabInterface* const tab = browser_->GetActiveTabInterface();
+   if (!tab || !tab->GetContents()) {
+     return;
+--- a/chrome/browser/ui/views/media_router/cast_dialog_coordinator.h
++++ b/chrome/browser/ui/views/media_router/cast_dialog_coordinator.h
+@@ -5,7 +5,10 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_MEDIA_ROUTER_CAST_DIALOG_COORDINATOR_H_
+ #define CHROME_BROWSER_UI_VIEWS_MEDIA_ROUTER_CAST_DIALOG_COORDINATOR_H_
+ 
++#include <vector>
++
+ #include "base/functional/callback_helpers.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
+@@ -93,6 +96,9 @@
+   void Hide();
+ 
+   bool IsShowing() const;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool HasPendingWorkForAuxProfileSwitch() const;
++#endif
+ 
+   CastDialogView* GetCastDialogView();
+ 
+@@ -129,6 +135,9 @@
+ 
+   views::ViewTracker cast_dialog_view_tracker_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::vector<base::WeakPtr<views::Widget>> aux_live_widgets_;
++#endif
+   base::WeakPtrFactory<CastDialogCoordinator> weak_ptr_factory_{this};
+ };
+ 
+--- a/chrome/browser/ui/views/media_router/cast_dialog_coordinator.cc
++++ b/chrome/browser/ui/views/media_router/cast_dialog_coordinator.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/ui/views/media_router/cast_dialog_coordinator.h"
+ 
+ #include <memory>
++#include <algorithm>
++#include "ui/views/widget/widget.h"
+ 
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -114,6 +116,14 @@
+   cast_dialog_view_tracker_.SetView(nullptr);
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool CastDialogCoordinator::HasPendingWorkForAuxProfileSwitch() const {
++  return IsShowing() || weak_ptr_factory_.HasWeakPtrs() ||
++         std::ranges::any_of(aux_live_widgets_,
++                             [](const auto& widget) { return !!widget; });
++}
++#endif
++
+ bool CastDialogCoordinator::IsShowing() const {
+   return cast_dialog_view_tracker_.view() != nullptr;
+ }
+@@ -137,6 +147,10 @@
+   cast_dialog_view_tracker_.SetView(cast_dialog_view.get());
+   views::Widget* widget = views::BubbleDialogDelegateView::CreateBubble(
+       std::move(cast_dialog_view));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::erase_if(aux_live_widgets_, [](const auto& previous) { return !previous; });
++  aux_live_widgets_.push_back(widget->GetWeakPtr());
++#endif
+   widget->Show();
+   std::move(after_shown_callback).Run(ShowCastDialogStatus::kSuccess);
+ }
+--- a/chrome/browser/ui/views/media_router/media_router_dialog_controller_views.h
++++ b/chrome/browser/ui/views/media_router/media_router_dialog_controller_views.h
+@@ -38,6 +38,10 @@
+       const MediaRouterDialogControllerViews&) = delete;
+ 
+   ~MediaRouterDialogControllerViews() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRelinquishForAuxProfileSwitch() const;
++#endif
+ 
+   // MediaRouterDialogController:
+   bool ShowMediaRouterDialogForPresentation(
+--- a/chrome/browser/ui/views/media_router/media_router_dialog_controller_views.cc
++++ b/chrome/browser/ui/views/media_router/media_router_dialog_controller_views.cc
+@@ -167,6 +167,15 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool MediaRouterDialogControllerViews::CanRelinquishForAuxProfileSwitch() const {
++  return !ui_ && !start_presentation_context_ && !fullscreen_blocker_ &&
++         !scoped_widget_observations_.IsObservingAnySource() &&
++         !weak_ptr_factory_.HasWeakPtrs() &&
++         !cast_dialog_coordinator_.HasPendingWorkForAuxProfileSwitch();
++}
++#endif
++
+ bool MediaRouterDialogControllerViews::IsShowingMediaRouterDialog() const {
+   return cast_dialog_coordinator_.IsShowing();
+ }
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+@@ -256,6 +256,7 @@
+   return target && target->IsRegularProfile() && browser_ &&
+          browser_->GetProfile()->IsRegularProfile() && view &&
+          !aux_private_profile_services_.active &&
++         media_router::CastBrowserController::CanReleaseForAuxProfileSwitch(browser_) &&
+          (!extension_keybinding_registry_ || view->GetFocusManager()) &&
+          (!incognito_clear_browsing_data_dialog_coordinator_ ||
+           incognito_clear_browsing_data_dialog_coordinator_
+@@ -273,6 +274,10 @@
+   state.had_instant = !!instant_controller_;
+   state.had_keybindings = !!extension_keybinding_registry_;
+   state.had_extension_window = !!extension_window_controller_;
++  state.had_cast = !!cast_browser_controller_;
++  // This original destructor resolves mirroring route hosts via the browser's
++  // current profile. Retire it while actual source identity is still current.
++  cast_browser_controller_.reset();
+   // Keep source Instant/window owners through genuine detach notifications.
+   // They still refer to the correct source profile until the empty commit.
+   // Its real destructor unregisters old accelerators and clears ONLY this
+@@ -308,6 +313,11 @@
+     instant_controller_ = std::make_unique<BrowserInstantController>(
+         profile, browser_->GetTabStripModel());
+   }
++  if (media_router::MediaRouterEnabled(profile)) {
++    cast_browser_controller_ =
++        GetUserDataFactory().CreateInstance<media_router::CastBrowserController>(
++            *browser_, browser_);
++  }
+   if (incognito_clear_browsing_data_dialog_coordinator_) {
+     incognito_clear_browsing_data_dialog_coordinator_
+         ->RebindForAuxProfileSwitch(*browser_);
+@@ -341,6 +351,11 @@
+         std::make_unique<ExtensionKeybindingRegistryViews>(
+             browser_, extensions::ExtensionKeybindingRegistry::ALL_EXTENSIONS,
+             view->GetFocusManager());
++  }
++  if (state.had_cast) {
++    cast_browser_controller_ =
++        GetUserDataFactory().CreateInstance<media_router::CastBrowserController>(
++            *browser_, browser_);
+   }
+   FinishAuxPrivateProfileServices();
+ }

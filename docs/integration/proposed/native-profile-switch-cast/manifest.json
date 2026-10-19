@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "base": "Ordered after b3a0f6aa2 provider; other eight files exact current source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "baselineSha256": "16a1a6d1d0bad2be6daf2022c76f59f10cdb7da8bde667445393c894f67a50ba",
+      "outputSha256": "1537d21c2b9a3f617e3a7632d0fe880255c22ca44a64d26f01af4e87db4ab2ca"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "f0e5f5070f58017ff991a6e088a60e4c9bc5bf5760ef67d4298de3f725f979a7",
+      "outputSha256": "ac21e584e9aaec3ffaeff734ce47007be5ad68eb823534f78b5abfa49c7b7c55"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/cast_browser_controller.h",
+      "baselineSha256": "84c0c47e94eb9675dcee8f2ec2897268e76ef871cf65eb6baa64b8ebd1110d03",
+      "outputSha256": "0aa8119d33d9845aa96bb394dd00ccf2ae140d4fbac0c316783b3403e9cd6607"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/cast_browser_controller.cc",
+      "baselineSha256": "b3810c7584d9bebac25977ca8a0513da7ce42f7380526711d9ca073f3cf8dcc0",
+      "outputSha256": "03518dc1d3ab4d0dc5291297104cb2d0fbba5f8ce871171d20b8b5be9d10502c"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/cast_dialog_coordinator.h",
+      "baselineSha256": "975a4fe892a6bd89b790e8f7cc2d6d836ce20ae136bf757d5759b3f90803c9ab",
+      "outputSha256": "ecaa1e7dcdd7b6d017af8bb6d4d50fd7725479fadafa45d3c07960c03150ad74"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/cast_dialog_coordinator.cc",
+      "baselineSha256": "56fbb175cf1d96422b7931ee99780e88f45f73eed176305830b31027a11a4c51",
+      "outputSha256": "841be8135c3d7525267530b53531b88b82d560f9276cf6b8b0a1ef4ba8bf709e"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/media_router_dialog_controller_views.h",
+      "baselineSha256": "bca1db8cbfd53010f5590d5f7ea86fe9a227c4e242fb472c4cf889882c3a321f",
+      "outputSha256": "79110d9ad13cc5dfdf212df5e9c8039193e4e2dd925b24b714db03c319090c25"
+    },
+    {
+      "path": "chrome/browser/ui/views/media_router/media_router_dialog_controller_views.cc",
+      "baselineSha256": "38ebf0edef7864ce6fb2529a675130c098031164eb9db533f28d60592f849135",
+      "outputSha256": "d37aebd8218d3d88cbaab2c8a1584a465d4e5895ce2bab1ef8689660a6aefba3"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "baselineSha256": "db58b05d890f645df81be7e7c5b3737a8df5f6de3f4cba2c147c11d66ddccef5",
+      "outputSha256": "25e78be7a93ff1046eca5ee49545aeec964eb1dd0bbf6079544f3bbc44cd03a9"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
