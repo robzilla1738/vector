@@ -34,6 +34,10 @@ import {
 } from './history/index.js';
 import type { DaemonServices } from './http/server.js';
 import { installSessionHttp } from './http/sessions.js';
+import {
+  CredentialExchange,
+  createCredentialExchangeRouter,
+} from './import/exchange.js';
 import { createInboxRouter, InboxService } from './inbox/index.js';
 import { mcpTools } from './mcp/index.js';
 import { createMemoryRouter } from './memory/index.js';
@@ -55,6 +59,7 @@ export function createFeatures() {
   let contextObserver: ReturnType<typeof createContextObserver> | undefined;
   let unregisterContextDeletion: (() => void) | undefined;
   let importer: HelperClient | undefined;
+  let credentialExchange: CredentialExchange | undefined;
   let vault: VaultService | undefined;
   let repl: ReturnType<typeof createReplService> | undefined;
   let routineTimer: NodeJS.Timeout | undefined;
@@ -147,6 +152,10 @@ export function createFeatures() {
         services.store,
         helper ? createVaultBiometryAdapter(helper) : undefined,
       );
+      if (importer) {
+        credentialExchange = new CredentialExchange(services, vault, importer);
+        credentialExchange.start();
+      }
       const passkeys = createPasskeyRouter(services, vault);
       contextObserver = createContextObserver(services, context, {
         isUnlocked: (accountId) => !!vault && !vault.status(accountId).locked,
@@ -185,6 +194,14 @@ export function createFeatures() {
         channel: createChannelRouter(services, channels),
         ...createVaultRouters(services, vault),
         passkeys: passkeys.router,
+        ...(credentialExchange
+          ? {
+              credentialExchange: createCredentialExchangeRouter(
+                services,
+                credentialExchange,
+              ),
+            }
+          : {}),
         ...(importer
           ? {
               nativeImport: createNativeImportRouter(
@@ -234,6 +251,7 @@ export function createFeatures() {
       if (routineTimer) clearInterval(routineTimer);
       await repl?.close();
       await channels?.close();
+      await credentialExchange?.close();
       vault?.close();
       unregisterPasskeySecurity?.();
       await helper?.close();
