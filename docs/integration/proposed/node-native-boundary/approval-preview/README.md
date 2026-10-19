@@ -1,6 +1,6 @@
 # One disposable Data Protection scope: approval runbook
 
-Status: preparation only. No original installation, signing, Vault, PDF or Keychain command has run. The helper build is queued behind the shared Chromium build; the version-2 runnable preview will be produced only from a successful source-matching helper receipt. The existing version-1 JSON is not a runnable approval.
+Status: preparation only. No original installation, signing, Vault, PDF or Keychain command has run. The prior queued helper job ended without an output or successful receipt; the version-2 runnable preview will be produced only from a successful source-matching helper receipt. The existing version-1 JSON is not a runnable approval.
 
 This uses the original native binding and macOS Data Protection Keychain semantics. A disposable HOME isolates application metadata and supplies a hashed item namespace; it does **not** create a separate Keychain database. The actual default/shared entitlement group of the ad hoc hosts is unknown. Original Aside access-group selectors are removed, unknown selectors refuse, and there is no fallback to the original group, file Keychain, search-list change, enumeration, biometric prompt or OS grant.
 
@@ -47,3 +47,7 @@ node vendor/provided/run-approved-dp-probe.mjs \
 ```
 
 Actual DP accessibility, default entitlement group and cross-host authority remain unproven until this approved probe succeeds. Load-only proofs establish registration and boundary interception, not crypto or Keychain acceptance.
+
+## Build the helper after the browser build finishes
+
+Run `node vendor/provided/build-dp-scope-helper.mjs out/provided-dp-helper-current` only after the current full native build is terminal. It compiles through the shared build lock into a new private directory, checks the fixed policy/header agreement and unchanged source/Node-header hashes, verifies the resulting signature, then publishes an actual successful receipt. It never loads the helper, starts a supplied host or calls a Security API. A failed build publishes no successful receipt. Pass that receipt to the existing preview preparer; do not treat the earlier missing job as a successful build or ask for approval of a non-runnable preview.

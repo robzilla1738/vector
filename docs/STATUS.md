@@ -612,3 +612,7 @@ Reviewed and composedv18 in a disposable tree: seven changed files and66 source 
 ## DP cleanup includes supplied default account0 (2026-10-19, L1)
 
 Verified exact pinned original accounts.json v1/schema/default account0 and password-manager/accounts.json v1/nativeSlot/sessionAccount anchors. Cleanup now accepts nonnegative account IDs, preserving aux.csk_0 and exact aside.pwm.session_-1 for the actual negative native slot. Added a pure private-filesystem fixture for default account0/Vault/MCP selectors and invalid MCP fixture references/types; tightened serverId type to avoid string-coercion acceptance. Two focused pure tests and syntax pass; no native or DP invocation, policy/header/compiled pins unchanged. Helper44452 subsequently became unavailable (Unknown process, prior OS wrapper absent, output absent) while root build51865 remained live; no compile receipt or duplicate queue inferred.
+
+## Repeatable fixed-scope helper build prepared (2026-10-19)
+
+Helper job44452 is terminal: its handle and exact OS process are absent and it produced no helper binary/receipt. No replacement was queued behind the still-live browser build. Added a new-output-only builder for the exact fixed-scope helper, with policy/header agreement, actual locked compilation, unchanged source/header hashes and signature verification required before receipt publication. Syntax passes; actual helper compilation remains deferred until the full browser build finishes. No native helper was loaded or DP operation executed.
