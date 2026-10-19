@@ -1,0 +1,67 @@
+--- a/chrome/browser/ui/views/toolbar/reload_button.h
++++ b/chrome/browser/ui/views/toolbar/reload_button.h
+@@ -10,6 +10,8 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/chrome_views_export.h"
+ #include "chrome/browser/ui/views/toolbar/reload_control.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+@@ -44,6 +46,13 @@
+   ReloadButton(const ReloadButton&) = delete;
+   ReloadButton& operator=(const ReloadButton&) = delete;
+   ~ReloadButton() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  // The owner verifies committed Browser identity before calling this with
++  // its actual regular target profile. Keeps the button/menu/callbacks alive.
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   Mode GetVisibleMode() const { return visible_mode_; }
+ 
+@@ -112,7 +121,7 @@
+ 
+   // This can't be null. But it may not record anything if the feature is
+   // disabled or if profile is missing.
+-  const std::unique_ptr<WaapUIMetricsRecorder> metrics_recorder_;
++  std::unique_ptr<WaapUIMetricsRecorder> metrics_recorder_;
+ 
+   // This may be NULL when testing.
+   raw_ptr<CommandUpdater, DanglingUntriaged> command_updater_;
+--- a/chrome/browser/ui/views/toolbar/reload_button.cc
++++ b/chrome/browser/ui/views/toolbar/reload_button.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <stddef.h>
+ 
++#include "base/check.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "build/build_config.h"
+ #include "chrome/app/chrome_command_ids.h"
+@@ -95,6 +96,22 @@
+ 
+ ReloadButton::~ReloadButton() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ReloadButton::CanRebindForAuxProfileSwitch() const {
++  return !IsMenuShowing();
++}
++
++void ReloadButton::RebindForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  // The recorder caches a Profile-keyed service and the last source input.
++  // Retire that pair rather than attributing an old input to the new profile.
++  // Construction binds the real target service; no input or metric is emitted.
++  metrics_recorder_ = std::make_unique<WaapUIMetricsRecorder>(target_profile);
++}
++#endif
++
+ bool ReloadButton::GetDoubleClickTimerIsRunning() const {
+   return double_click_timer_.IsRunning();
+ }

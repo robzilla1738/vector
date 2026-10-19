@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual read-only current155 ReloadButton sources; no toolbar overlap",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/toolbar/reload_button.h",
+      "baselineSha256": "0bc23c20ce3c33d19459728fd194b2fbc0335d35c9b3e0c2e08edb8cce71ea50",
+      "outputSha256": "268044958c16914c73c3f3179d93e9fb6a614a7d9e2ff2834c485c48f9165882"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/reload_button.cc",
+      "baselineSha256": "e51b2ddfef3516670da8027b1c1904a774875ec05b7e290e222df91d6cb03f81",
+      "outputSha256": "9a348918dfd9de4d8bcc0f2840c30488e946c915d6a97767af917a53c6173a8d"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

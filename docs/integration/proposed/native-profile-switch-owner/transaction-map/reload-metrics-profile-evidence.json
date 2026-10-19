@@ -1,0 +1,43 @@
+{
+  "method": "actual current155 source constructor/method/lifetime inspection; no runtime",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/reload_button.h",
+      "sha256": "0bc23c20ce3c33d19459728fd194b2fbc0335d35c9b3e0c2e08edb8cce71ea50"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/reload_button.cc",
+      "sha256": "e51b2ddfef3516670da8027b1c1904a774875ec05b7e290e222df91d6cb03f81"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/waap/waap_ui_metrics_recorder.h",
+      "sha256": "9afa0821d1d6aef960608eb999d022a3fa1259c0bd629bd12374a653ba8c858a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/waap/waap_ui_metrics_recorder.cc",
+      "sha256": "61ef8e7fdabef28f7cec5fc05b8c0ba0d2a4046e20a9668d54c2ed94feb970ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/waap/waap_ui_metrics_service.h",
+      "sha256": "c91c28e1d3809cd81ee5fdf6ef0367c7d616c9e6678d0cadc3301ea9b3212ce1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/waap/initial_webui_window_metrics_manager.h",
+      "sha256": "420004d0f215612300680674a2e8e2f8bafebd2e4a436b3938a50035620b3326"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/waap/initial_webui_window_metrics_manager.cc",
+      "sha256": "ea5f3bcdb196b7c825bd024166962ae02806249ca6e15f98048829922bca04b8"
+    }
+  ],
+  "anchors": {
+    "recorded_service": "WaapUIMetricsRecorder::WaapUIMetricsRecorder -> WaapUIMetricsService::Get(profile)",
+    "input_pair": "OnButtonPressedStart -> last_input_info_; DidExecuteReloadCommand records then resets",
+    "lifetime": "WaapUIMetricsRecorder destructor default; no metric flushing",
+    "menu_guard": "ToolbarButton::IsMenuShowing",
+    "remaining_window_owner": "InitialWebUIWindowMetricsManager caches birth service and first-window classification"
+  },
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
