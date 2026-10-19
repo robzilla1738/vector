@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "elapsedSeconds": 98.22552325000001,
+  "sourceEntries": 10929,
+  "sourceFileBytes": 367666482,
+  "relocatedTextFiles": 9,
+  "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+  "preservedNodeSha256": true,
+  "seeded": true,
+  "workers": 8,
+  "executedRuntimeCode": false
+}

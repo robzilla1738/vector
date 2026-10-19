@@ -72,24 +72,40 @@ async function seedBundledRuntime({ source, home, bundleRuntimeRoot, pins }) {
   }
   const staging = await fs.mkdtemp(path.join(home, '.aux-runtime-seed-'));
   try {
-    for (const e of pins.files.filter((e) => e.type === 'directory').sort((a, b) => a.path.length - b.path.length)) {
-      await chain(path.dirname(path.join(source, e.path)));
-      const s = await fs.lstat(path.join(source, e.path));
+    // Distribution is immutable for this seed operation. Cache only validated
+    // source directories, never payload bytes or state across operations.
+    const directories = new Set([source]);
+    async function sourceDirectory(p) {
+      if (directories.has(p)) return;
+      if (!inside(source, p)) throw new Error('Runtime parent escapes distribution');
+      await sourceDirectory(path.dirname(p));
+      const s = await fs.lstat(p);
       if (!s.isDirectory() || s.isSymbolicLink()) throw new Error('Non-directory runtime source');
+      directories.add(p);
+    }
+    for (const e of pins.files.filter((e) => e.type === 'directory').sort((a, b) => a.path.length - b.path.length)) {
+      await sourceDirectory(path.join(source, e.path));
       await fs.mkdir(path.join(staging, e.path), { mode: e.mode });
     }
-    let relocatedTextFiles = 0;
-    for (const e of pins.files.filter((e) => e.type === 'file')) {
-      await chain(path.dirname(path.join(source, e.path)));
-      const original = originalBytes(await file(path.join(source, e.path)), e, bundleRuntimeRoot);
-      if (original.length !== e.size || sha(original) !== e.sourceSha256) throw new Error('Runtime payload pin mismatch');
-      const output = relocate(original, e, runtime);
-      if (e.anchors?.length) relocatedTextFiles++;
-      await fs.writeFile(path.join(staging, e.path), output, { flag: 'wx', mode: e.mode });
-      await fs.chmod(path.join(staging, e.path), e.mode);
-    }
+    let relocatedTextFiles = 0, next = 0;
+    const files = pins.files.filter((e) => e.type === 'file');
+    const completed = await Promise.allSettled(Array.from({ length: Math.min(8, files.length) }, async () => {
+      while (next < files.length) {
+        const e = files[next++];
+        await sourceDirectory(path.dirname(path.join(source, e.path)));
+        const original = originalBytes(await file(path.join(source, e.path)), e, bundleRuntimeRoot);
+        if (original.length !== e.size || sha(original) !== e.sourceSha256) throw new Error('Runtime payload pin mismatch');
+        const output = relocate(original, e, runtime);
+        if (e.anchors?.length) relocatedTextFiles++;
+        await fs.writeFile(path.join(staging, e.path), output, { flag: 'wx', mode: e.mode });
+        await fs.chmod(path.join(staging, e.path), e.mode);
+      }
+    }));
+    // Never remove staging while another worker can still write into it.
+    const failed = completed.find((result) => result.status === 'rejected');
+    if (failed) throw failed.reason;
     for (const e of pins.files.filter((e) => e.type === 'symlink')) {
-      const p = path.join(source, e.path); await chain(path.dirname(p));
+      const p = path.join(source, e.path); await sourceDirectory(path.dirname(p));
       if (!(await fs.lstat(p)).isSymbolicLink() || await fs.readlink(p) !== e.linkTarget || path.isAbsolute(e.linkTarget) || !inside(source, path.resolve(path.dirname(p), e.linkTarget)) || !inside(source, await fs.realpath(p))) throw new Error('Runtime symlink pin changed or escapes distribution');
       await fs.symlink(e.linkTarget, path.join(staging, e.path));
     }
