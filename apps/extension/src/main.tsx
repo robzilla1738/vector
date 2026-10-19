@@ -16,6 +16,7 @@ import { Chat } from './chat';
 import { reconnect, resolveAccount, rpc } from './daemon';
 import { Newtab } from './newtab';
 import { Collection, Settings, Tasks } from './pages';
+import { TabSearch } from './tab-search';
 
 type Account = Awaited<ReturnType<typeof resolveAccount>>;
 function Shell() {
@@ -42,28 +43,30 @@ function Shell() {
   }, []);
   return (
     <>
-      <nav className="navigation" aria-label="Aux navigation">
-        <a className="wordmark" href="#/">
-          Aux
-        </a>
-        {[
-          ['/tasks', 'Tasks'],
-          ['/inbox', 'Updates'],
-          ['/projects', 'Projects'],
-          ['/routines', 'Routines'],
-          ['/memory', 'Memory'],
-          ['/settings/general', 'Preferences'],
-        ].map(([href, label]) => (
-          <a
-            href={`#${href}`}
-            key={href}
-            aria-current={path.startsWith(href ?? '') ? 'page' : undefined}
-          >
-            {label}
+      {!['/tab-search', '/mini-popup'].includes(path) && (
+        <nav className="navigation" aria-label="Aux navigation">
+          <a className="wordmark" href="#/">
+            Aux
           </a>
-        ))}
-        <small>{account?.name ?? 'Local account'}</small>
-      </nav>
+          {[
+            ['/tasks', 'Tasks'],
+            ['/inbox', 'Updates'],
+            ['/projects', 'Projects'],
+            ['/routines', 'Routines'],
+            ['/memory', 'Memory'],
+            ['/settings/general', 'Preferences'],
+          ].map(([href, label]) => (
+            <a
+              href={`#${href}`}
+              key={href}
+              aria-current={path.startsWith(href ?? '') ? 'page' : undefined}
+            >
+              {label}
+            </a>
+          ))}
+          <small>{account?.name ?? 'Local account'}</small>
+        </nav>
+      )}
       {error && path !== '/' && (
         <div className="connection">
           <ErrorNotice
@@ -261,9 +264,25 @@ function Onboarding({ accountId }: { accountId: number }) {
     </main>
   );
 }
+const tabSearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tab-search',
+  component: () => (
+    <AccountRoute>
+      {(account) => <TabSearch accountId={account.accountId} />}
+    </AccountRoute>
+  ),
+});
+const miniPopupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mini-popup',
+  component: ChatRoute,
+});
 const router = createRouter({
   history: createHashHistory(),
   routeTree: rootRoute.addChildren([
+    tabSearchRoute,
+    miniPopupRoute,
     newtabRoute,
     chatRoute,
     sessionRoute,

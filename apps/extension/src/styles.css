@@ -327,20 +327,20 @@ body {
   height: calc(100% - 44px);
   display: flex;
 }
-.settings aside {
+.settings nav {
   width: 224px;
   flex-shrink: 0;
   overflow: auto;
   padding: 32px 12px;
   border-right: 0.5px solid var(--border);
 }
-.settings aside a {
+.settings nav a {
   display: block;
   text-decoration: none;
   padding: 8px 12px;
   border-radius: 8.4px;
 }
-.settings aside a[aria-current="page"] {
+.settings nav a[aria-current="page"] {
   background: var(--secondary);
 }
 .settings .secondary {
@@ -419,7 +419,7 @@ body {
   .secondary {
     padding: 32px 16px 80px;
   }
-  .settings aside {
+  .settings nav {
     width: 154px;
     font-size: 12px;
     padding: 16px 6px;
@@ -431,4 +431,60 @@ body {
   .task-grid {
     grid-template-columns: 1fr;
   }
+}
+.tab-search {
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+}
+.tab-search header {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  display: flex;
+  border-bottom: 0.5px solid var(--border);
+}
+.tab-search input {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 16px;
+  outline: 0;
+}
+.tab-results {
+  padding: 4px 8px;
+  overflow: auto;
+}
+.group-caption {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 8px;
+}
+.tab-results button {
+  height: 32px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 11.2px;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+  padding: 0 8px;
+  gap: 8px;
+}
+.tab-results button[aria-selected="true"] {
+  background: var(--secondary);
+}
+.tab-results button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-results button small {
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
 }

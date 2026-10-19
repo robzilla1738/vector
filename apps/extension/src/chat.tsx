@@ -1,4 +1,4 @@
-import { Button, Empty, ErrorNotice } from '@aux/ui';
+import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { ArrowDown, ArrowUp, Plus, Square } from 'lucide-react';
@@ -21,6 +21,7 @@ export function Chat({
   const [models, setModels] = useState<Model[]>([]);
   const [model, setModel] = useState('');
   const [effort, setEffort] = useState('medium');
+  const [extendedBrowsing, setExtendedBrowsing] = useState(false);
   const [permission, setPermission] = useState('guard');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
@@ -28,6 +29,12 @@ export function Chat({
   const [latest, setLatest] = useState(true);
   const transcript = useRef<HTMLDivElement>(null);
   const [answer, setAnswer] = useState('');
+  const [queuedEdit, setQueuedEdit] = useState<{
+    id: string;
+    version: number;
+    prompt: string;
+  }>();
+  const dispatchKey = useRef(crypto.randomUUID());
   const draftKey = `aux.draft.${accountId}.${sessionId ?? 'new'}`;
   const editor = useEditor({
     extensions: [StarterKit],
@@ -49,6 +56,7 @@ export function Chat({
     },
     onUpdate: ({ editor }) => {
       localStorage.setItem(draftKey, editor.getHTML());
+      dispatchKey.current = crypto.randomUUID();
     },
   });
   useEffect(() => {
@@ -138,14 +146,17 @@ export function Chat({
       if (!sessionId) {
         result = await mutate('sessions.createAndPrompt', {
           message: text,
-          triggerIdempotencyKey: crypto.randomUUID(),
+          triggerIdempotencyKey: dispatchKey.current,
           model: {
             provider: chosen.provider,
             modelId: chosen.modelId,
-            thinkingLevel: effort,
+            thinkingLevel: chosen.thinkingLevels?.includes(effort)
+              ? effort
+              : 'off',
             fastMode: false,
           } satisfies ModelSelection,
           permissionMode: permission,
+          runtimeConfig: { proactiveMode: extendedBrowsing },
           incognito: chrome?.extension?.inIncognitoContext ?? false,
         });
       } else {
@@ -156,7 +167,7 @@ export function Chat({
         result = await mutate(procedure, {
           message: text,
           prompt: text,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: dispatchKey.current,
         });
       }
       editor?.commands.clearContent();
@@ -271,7 +282,10 @@ export function Chat({
                   onClick={() =>
                     void mutate('sessions.resolveSuspension', {
                       toolCallId: suspension.toolCallId,
-                      response: { verdict: 'allow', always: false },
+                      response:
+                        suspension.kind === 'action-confirmation'
+                          ? { verdict: 'confirm' }
+                          : { verdict: 'allow', always: false },
                     })
                       .then(setSession)
                       .catch(() => {})
@@ -284,7 +298,10 @@ export function Chat({
                   onClick={() =>
                     void mutate('sessions.resolveSuspension', {
                       toolCallId: suspension.toolCallId,
-                      response: { verdict: 'deny', always: false },
+                      response:
+                        suspension.kind === 'action-confirmation'
+                          ? { verdict: 'cancel' }
+                          : { verdict: 'deny', always: false },
                     })
                       .then(setSession)
                       .catch(() => {})
@@ -303,6 +320,37 @@ export function Chat({
           Latest activity
         </Button>
       )}
+      {queuedEdit && (
+        <Dialog
+          title="Edit queued input"
+          onClose={() => setQueuedEdit(undefined)}
+        >
+          <textarea
+            aria-label="Queued input"
+            value={queuedEdit.prompt}
+            onChange={(event) =>
+              setQueuedEdit({ ...queuedEdit, prompt: event.target.value })
+            }
+          />
+          <Button
+            disabled={pending || !queuedEdit.prompt.trim()}
+            onClick={() =>
+              void mutate('sessions.updateQueuedMessage', {
+                queuedMessageId: queuedEdit.id,
+                version: queuedEdit.version,
+                prompt: queuedEdit.prompt,
+              })
+                .then((value) => {
+                  setSession(value);
+                  setQueuedEdit(undefined);
+                })
+                .catch(() => {})
+            }
+          >
+            Save
+          </Button>
+        </Dialog>
+      )}
       <footer className="composer-wrap">
         {error && <ErrorNotice error={error} />}
         <div className="queue">
@@ -312,8 +360,36 @@ export function Chat({
               <Button
                 disabled={pending}
                 onClick={() =>
+                  setQueuedEdit({
+                    id: item.id,
+                    version: item.version,
+                    prompt: item.prompt,
+                  })
+                }
+              >
+                Edit
+              </Button>
+              <Button
+                disabled={pending || index === 0}
+                aria-label={`Move queued message ${index + 1} up`}
+                onClick={() =>
+                  void mutate('sessions.moveQueuedMessage', {
+                    queuedMessageId: item.id,
+                    version: item.version,
+                    beforeTimestamp:
+                      session.queue[index - 1]?.timestamp ?? null,
+                  })
+                    .then(setSession)
+                    .catch(() => {})
+                }
+              >
+                ↑
+              </Button>
+              <Button
+                disabled={pending}
+                onClick={() =>
                   void mutate('sessions.removeQueuedMessage', {
-                    timestamp: item.timestamp,
+                    version: item.version,
                     queuedMessageId: item.id,
                   })
                     .then(setSession)
@@ -368,19 +444,22 @@ export function Chat({
                 }}
               >
                 {(
-                  models.find((m) => m.id === model)?.thinkingLevels ?? [
-                    'off',
-                    'minimal',
-                    'low',
-                    'medium',
-                    'high',
-                    'xhigh',
-                    'max',
-                  ]
+                  models.find((m) => m.id === model)?.thinkingLevels ?? ['off']
                 ).map((value) => (
                   <option key={value}>{value}</option>
                 ))}
               </select>
+              <Button
+                aria-pressed={extendedBrowsing}
+                onClick={() => {
+                  setExtendedBrowsing(!extendedBrowsing);
+                  void updateSelection({
+                    runtimeConfig: { proactiveMode: !extendedBrowsing },
+                  });
+                }}
+              >
+                Extended browsing
+              </Button>
               <select
                 aria-label="Access"
                 value={permission}

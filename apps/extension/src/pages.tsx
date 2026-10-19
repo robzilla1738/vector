@@ -220,7 +220,7 @@ export function Settings({
   }
   return (
     <div className="settings">
-      <aside>
+      <nav aria-label="Preferences sections">
         {settingsSections.map(([path, label]) => (
           <a
             aria-current={section === path ? 'page' : undefined}
@@ -230,7 +230,7 @@ export function Settings({
             {label}
           </a>
         ))}
-      </aside>
+      </nav>
       <main className="secondary">
         <h2>
           {settingsSections.find(([path]) => path === section)?.[1] ??

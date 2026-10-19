@@ -26,7 +26,7 @@ export type Session = {
   model: ModelSelection;
   permissionMode: string;
   transcriptRevision: number;
-  queue: { id?: string; timestamp: number; prompt: string }[];
+  queue: { id: string; timestamp: number; prompt: string; version: number }[];
   suspension?: {
     toolCallId: string;
     kind: string;

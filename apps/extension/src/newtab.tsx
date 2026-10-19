@@ -41,8 +41,12 @@ export function Newtab({ onTask }: { onTask: (draft: string) => void }) {
     void omnibox
       .createSession({ surface: 'newtab' })
       .then((value) => {
-        if (active) session.current = value.sessionId;
-        else void omnibox.destroySession(value.sessionId);
+        if (active) {
+          session.current = value.sessionId;
+          void omnibox
+            .queryAutocomplete(value.sessionId, input.current?.value ?? '')
+            .catch((error) => setError(error.message));
+        } else void omnibox.destroySession(value.sessionId);
       })
       .catch((e) => setError(e.message));
     return () => {
