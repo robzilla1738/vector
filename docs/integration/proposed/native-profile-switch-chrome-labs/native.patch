@@ -1,0 +1,285 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -5,6 +5,7 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
+ #include "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h"
+ #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
+ #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
+@@ -122,12 +123,14 @@
+       features_->actor_ui_window_controller_ || features_->ai_overlay_dialog_controller_ ||
+       features_->ai_mode_page_action_controller_ || features_->data_protection_ui_controller_ ||
+       features_->new_tab_footer_controller_ ||
+-      features_->ios_promo_controller_ || features_->chrome_labs_coordinator_ ||
++      features_->ios_promo_controller_ ||
+       features_->recent_activity_bubble_coordinator_ || features_->shared_tab_group_feedback_controller_ ||
+       features_->find_bar_controller_) {
+     return nullptr;
+   }
+-  if (!CanSwitchAuxAgentTabsProfile(&browser) ||
++  if ((features_->chrome_labs_coordinator_ &&
++       !features_->chrome_labs_coordinator_->CanRebindForAuxProfileSwitch()) ||
++      !CanSwitchAuxAgentTabsProfile(&browser) ||
+       (features_->tab_strip_service_feature_ &&
+        features_->tab_strip_service_feature_->HasExternalBindingsOrActiveInvocation()) ||
+       (features_->tab_strip_ui_controller_ &&
+@@ -247,6 +250,9 @@
+   if (features_->skills_ui_window_controller_) {
+     features_->skills_ui_window_controller_->PrepareForAuxProfileSwitch();
+   }
++  if (features_->chrome_labs_coordinator_) {
++    features_->chrome_labs_coordinator_->PrepareForAuxProfileSwitch();
++  }
+   plan->view_generation = plan->view->BeginAuxProfileSwitch(target.get());
+   // Retire Cast before real old pinned/view teardown can call its icon path.
+   features_->BeginAuxPrivateProfileServices(target.get());
+@@ -327,6 +333,9 @@
+   plan->location->RebindAuxProfileSwitch(plan->location_generation);
+   plan->toolbar->RebindOwnedActionsForAuxProfileSwitch(target);
+   features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  if (features_->chrome_labs_coordinator_) {
++    features_->chrome_labs_coordinator_->RebindForAuxProfileSwitch(target);
++  }
+   features_->RebindAuxPrivateProfileServices();
+   if (features_->skills_ui_window_controller_) {
+     features_->skills_ui_window_controller_->RebindForAuxProfileSwitch(target);
+@@ -448,6 +457,9 @@
+   features_->browser_actions_->EndAuxProfileSwitch(plan->actions_generation);
+   plan->toolbar->AbortOwnedActionsForAuxProfileSwitch(browser.GetProfile());
+   features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  if (features_->chrome_labs_coordinator_) {
++    features_->chrome_labs_coordinator_->AbortForAuxProfileSwitch(browser.GetProfile());
++  }
+   features_->AbortAuxPrivateProfileServices();
+   if (features_->skills_ui_window_controller_) {
+     features_->skills_ui_window_controller_->AbortForAuxProfileSwitch(
+--- a/chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h
++++ b/chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h
+@@ -5,7 +5,11 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_TOOLBAR_CHROME_LABS_CHROME_LABS_COORDINATOR_H_
+ #define CHROME_BROWSER_UI_VIEWS_TOOLBAR_CHROME_LABS_CHROME_LABS_COORDINATOR_H_
+ 
++#include <vector>
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/functional/callback_helpers.h"
++#include "chrome/browser/buildflags.h"
+ #include "build/buildflag.h"
+ #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_model.h"
+ #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+@@ -20,6 +24,8 @@
+ class ChromeLabsBubbleView;
+ class ChromeLabsViewController;
+ class PinnedActionToolbarButton;
++class Profile;
++namespace views { class Widget; }
+ 
+ class ChromeLabsCoordinator : public PinnedToolbarActionsModel::Observer {
+  public:
+@@ -39,6 +45,12 @@
+   ~ChromeLabsCoordinator() override;
+ 
+   void TearDown();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++  void AbortForAuxProfileSwitch(Profile* source_profile);
++#endif
+ 
+   bool BubbleExists();
+ 
+@@ -75,6 +87,15 @@
+ #endif
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void BindForAuxProfileSwitch();
++  base::ScopedClosureRunner EnterAuxProfileCallback();
++  void LeaveAuxProfileCallback();
++  bool aux_profile_switch_prepared_ = false;
++  unsigned aux_callback_depth_ = 0;
++  base::WeakPtr<Profile> aux_source_profile_;
++  std::vector<base::WeakPtr<views::Widget>> aux_live_widgets_;
++#endif
+   raw_ptr<BrowserWindowInterface, DanglingUntriaged> browser_;
+   std::unique_ptr<flags_ui::FlagsStorage> flags_storage_;
+   raw_ptr<flags_ui::FlagsState, DanglingUntriaged> flags_state_;
+@@ -89,6 +110,9 @@
+   bool should_circumvent_device_check_for_testing_ = false;
+ #endif
+   ui::ScopedUnownedUserData<ChromeLabsCoordinator> scoped_unowned_user_data_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<ChromeLabsCoordinator> aux_weak_factory_{this};
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TOOLBAR_CHROME_LABS_CHROME_LABS_COORDINATOR_H_
+--- a/chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.cc
++++ b/chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.cc
+@@ -4,7 +4,13 @@
+ 
+ #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
+ 
++#include <algorithm>
++#include "base/check_op.h"
++#include "base/functional/bind.h"
+ #include "base/metrics/histogram_functions.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/views/widget/widget.h"
+ #include "chrome/browser/about_flags.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -55,6 +61,81 @@
+   TearDown();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ChromeLabsCoordinator::CanRebindForAuxProfileSwitch() const {
++  return !aux_profile_switch_prepared_ && !aux_callback_depth_ &&
++         browser_->GetProfile()->IsRegularProfile() &&
++         From(browser_) == this && chrome_labs_action_item_ &&
++         chrome_labs_action_item_ == actions::ActionManager::Get().FindAction(
++             kActionShowChromeLabs,
++             BrowserActions::From(browser_)->root_action_item()) &&
++         !chrome_labs_bubble_view_tracker_.view() &&
++         !controller_ && !flags_storage_ && !flags_state_ &&
++         pinned_actions_observation_.IsObservingSource(
++             PinnedToolbarActionsModel::Get(browser_->GetProfile())) &&
++         std::ranges::none_of(aux_live_widgets_,
++                              [](const auto& widget) { return !!widget; });
++}
++
++void ChromeLabsCoordinator::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_source_profile_ = browser_->GetProfile()->GetWeakPtr();
++  aux_profile_switch_prepared_ = true;
++  pinned_actions_observation_.Reset();
++  chrome_labs_action_item_ = nullptr;
++}
++
++void ChromeLabsCoordinator::BindForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK(!pinned_actions_observation_.IsObserving());
++  CHECK(!chrome_labs_bubble_view_tracker_.view());
++  CHECK(!controller_ && !flags_storage_ && !flags_state_);
++  pinned_actions_observation_.Observe(
++      PinnedToolbarActionsModel::Get(browser_->GetProfile()));
++  chrome_labs_action_item_ = actions::ActionManager::Get().FindAction(
++      kActionShowChromeLabs, BrowserActions::From(browser_)->root_action_item());
++  CHECK(chrome_labs_action_item_);
++  aux_profile_switch_prepared_ = false;
++  aux_source_profile_.reset();
++  // Existing implementation reads actual target experiment state and actual
++  // newly rebuilt pinned button. Do not write flags or fabricate a notification.
++  MaybeInstallDotIndicator();
++}
++
++void ChromeLabsCoordinator::RebindForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(target_profile && target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK(browser_->GetTabStripModel()->empty());
++  BindForAuxProfileSwitch();
++}
++
++void ChromeLabsCoordinator::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_source_profile_);
++  CHECK_EQ(source_profile, aux_source_profile_.get());
++  CHECK_EQ(browser_->GetProfile(), source_profile);
++  auto* model = browser_->GetTabStripModel();
++  CHECK(model);
++  for (int index = 0; index < model->count(); ++index) {
++    CHECK_EQ(model->GetWebContentsAt(index)->GetBrowserContext(), source_profile);
++  }
++  BindForAuxProfileSwitch();
++}
++
++base::ScopedClosureRunner ChromeLabsCoordinator::EnterAuxProfileCallback() {
++  ++aux_callback_depth_;
++  return base::ScopedClosureRunner(base::BindOnce(
++      &ChromeLabsCoordinator::LeaveAuxProfileCallback,
++      aux_weak_factory_.GetWeakPtr()));
++}
++
++void ChromeLabsCoordinator::LeaveAuxProfileCallback() {
++  CHECK_GT(aux_callback_depth_, 0u);
++  --aux_callback_depth_;
++}
++#endif
++
++
+ void ChromeLabsCoordinator::TearDown() {
+   if (BubbleExists()) {
+     GetChromeLabsBubbleView()->GetWidget()->CloseWithReason(
+@@ -73,6 +154,10 @@
+ }
+ 
+ void ChromeLabsCoordinator::Show(ShowUserType user_type) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK(!aux_profile_switch_prepared_);
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Bypass possible incognito profile same as chrome://flags does.
+   Profile* original_profile = browser_->GetProfile()->GetOriginalProfile();
+@@ -115,6 +200,10 @@
+ 
+   views::Widget* const widget = views::BubbleDialogDelegateView::CreateBubble(
+       std::move(chrome_labs_bubble_view));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::erase_if(aux_live_widgets_, [](const auto& previous) { return !previous; });
++  aux_live_widgets_.push_back(widget->GetWeakPtr());
++#endif
+   widget->Show();
+ 
+   // Hide dot indicator once bubble has been shown.
+@@ -125,6 +214,10 @@
+ }
+ 
+ void ChromeLabsCoordinator::Hide() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK(!aux_profile_switch_prepared_);
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   if (BubbleExists()) {
+     GetChromeLabsBubbleView()->GetWidget()->CloseWithReason(
+         views::Widget::ClosedReason::kUnspecified);
+@@ -132,6 +225,10 @@
+ }
+ 
+ void ChromeLabsCoordinator::ShowOrHide() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK(!aux_profile_switch_prepared_);
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+ #if BUILDFLAG(IS_CHROMEOS)
+   if (is_waiting_to_show_) {
+     return;
+@@ -190,6 +287,10 @@
+ }
+ 
+ void ChromeLabsCoordinator::OnChromeLabsBubbleClosing() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK(!aux_profile_switch_prepared_);
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   controller_.reset();
+   flags_storage_.reset();
+   flags_state_ = nullptr;
+@@ -201,6 +302,12 @@
+ }
+ 
+ void ChromeLabsCoordinator::MaybeInstallDotIndicator() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  auto callback_scope = EnterAuxProfileCallback();
++#endif
+   PinnedActionToolbarButton* button = GetChromeLabsButton();
+   if (!button) {
+     return;

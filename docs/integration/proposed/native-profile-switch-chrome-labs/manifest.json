@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Ordered ff2528b92 provider output; exact current ChromeLabs source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "97330600b83e330828cde7eb4576f965f0fbfd2d9ac95f3338d5f87eb439b209",
+      "outputSha256": "438452ef1dd8906f62e6ba1716265828612593cc500319f40da9dea39607fab6"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h",
+      "baselineSha256": "0fa0299a03c3676de78606579462fddc8560f52eef9a739b1c0ea299ae2cc0be",
+      "outputSha256": "2093d56ef8fa9fd459a5a02945e4c0a6607305ba8f6032b45d8f6f3e1612c11b"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.cc",
+      "baselineSha256": "4ab85628d3a3b0edf8d61f276d487ed4aa193505ecd0e7eb1f9e80a48cca407b",
+      "outputSha256": "983344bd5b073f75c76d53f824069bbaaf97cd1a049783c6a789cd0f8dc57f0c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
