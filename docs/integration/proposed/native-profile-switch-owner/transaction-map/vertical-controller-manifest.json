@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v32; disjoint Browser cache-role/factory proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h",
+      "baselineSha256": "35f86d3344a3cc56a578aac964b0b845190bfd629d04298fff706590f9673afc",
+      "outputSha256": "07a8dbb8a871f74a5a1525ac736dbd77f49c63c16f07a581d21327232738c5f4"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "baselineSha256": "a99af0d6c4b51202a567141b6b8c4100cba57f64b4d1b80be0f70bccc293f518",
+      "outputSha256": "2951c927494201cc6fa2e6c3a3f9fbc229bfa932bba43db0563b889fedd92864"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

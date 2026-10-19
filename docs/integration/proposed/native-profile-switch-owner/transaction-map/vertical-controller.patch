@@ -1,0 +1,295 @@
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
+@@ -4,11 +4,15 @@
+ 
+ #ifndef CHROME_BROWSER_UI_TABS_VERTICAL_TAB_STRIP_STATE_CONTROLLER_H_
+ #define CHROME_BROWSER_UI_TABS_VERTICAL_TAB_STRIP_STATE_CONTROLLER_H_
++
++#include <cstdint>
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/timer/timer.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/sessions/session_service_base_observer.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+@@ -129,11 +133,23 @@
+   base::CallbackListSubscription RegisterOnModeChanged(
+       StateChangedCallback callback);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Internal same-window profile transaction. Preserve the actual window's
++  // collapse/width and all view/action/delegate subscriptions; cached preview
++  // geometry is deliberately different and is not a restored window state.
++  uint64_t BeginAuxProfileSwitch();
++  void RebindAuxProfileSwitch(SessionService* target_session_service);
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
++
+   static constexpr char kCollapsedKey[] = "vertical_tab_strip_collapsed";
+   static constexpr char kUncollapsedWidthKey[] =
+       "vertical_tab_strip_uncollapsed_width";
+ 
+  private:
++  void InitProfilePrefObservers();
++  void ObserveSessionService();
++
+   void NotifyCollapseChanged();
+   void NotifyExpandOnHoverEnabledChanged();
+   void NotifyModeWillChange();
+@@ -173,7 +189,7 @@
+   void OnLockCreated();
+   void OnLockDestroyed();
+ 
+-  const raw_ptr<PrefService> pref_service_;
++  raw_ptr<PrefService> pref_service_;
+   PrefChangeRegistrar pref_change_registrar_;
+   raw_ptr<actions::ActionItem> root_action_item_;
+   raw_ptr<SessionService> session_service_;
+@@ -207,6 +223,11 @@
+   bool is_expand_on_hover_enabled_ = false;
+   bool is_resizing_ = false;
+ 
++  bool aux_profile_switch_paused_ = false;
++  bool aux_profile_switch_previous_mode_ = false;
++  bool aux_profile_switch_previous_hover_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
++
+   base::OneShotTimer expand_on_hover_iph_startup_timer_;
+   base::OneShotTimer expand_on_hover_iph_collapse_timer_;
+ };
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <optional>
+ 
++#include "base/check_op.h"
+ #include "base/i18n/rtl.h"
+ #include "base/metrics/user_metrics.h"
+ #include "base/metrics/user_metrics_action.h"
+@@ -23,6 +24,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/tabs/features.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/toasts/api/toast_id.h"
+ #include "chrome/browser/ui/toasts/toast_controller.h"
+ #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+@@ -58,6 +60,37 @@
+       browser_window_(browser_window),
+       scoped_unowned_user_data_(browser_window->GetUnownedUserDataHost(),
+                                 *this) {
++  InitProfilePrefObservers();
++
++  if (restored_state_collapsed.has_value()) {
++    SetCollapsed(restored_state_collapsed.value());
++  }
++  if (restored_state_uncollapsed_width.has_value()) {
++    SetUncollapsedWidth(restored_state_uncollapsed_width.value());
++  }
++
++  UpdateCollapseActionItem();
++
++  // Observe active browser to update most recently used vertical tabs pref
++  // accordingly.
++  did_become_active_subscription_ = browser_window_->RegisterDidBecomeActive(
++      base::BindRepeating(&VerticalTabStripStateController::OnDidBecomeActive,
++                          base::Unretained(this)));
++
++  ObserveSessionService();
++
++  // Wait before attempting to show the expand on hover IPH on startup. This is
++  // an anti-pattern and is generally discouraged for snooze promos.
++  if (base::SequencedTaskRunner::HasCurrentDefault()) {
++    expand_on_hover_iph_collapse_timer_.Start(
++        FROM_HERE, base::Minutes(10),
++        base::BindOnce(
++            &VerticalTabStripStateController::MaybeShowExpandOnHoverIPH,
++            base::Unretained(this)));
++  }
++}
++
++void VerticalTabStripStateController::InitProfilePrefObservers() {
+   pref_change_registrar_.Init(pref_service_);
+ 
+   is_vertical_tabs_enabled_ =
+@@ -78,22 +111,9 @@
+             &VerticalTabStripStateController::OnExpandOnHoverEnabledChanged,
+             base::Unretained(this)));
+   }
+-
+-  if (restored_state_collapsed.has_value()) {
+-    SetCollapsed(restored_state_collapsed.value());
+-  }
+-  if (restored_state_uncollapsed_width.has_value()) {
+-    SetUncollapsedWidth(restored_state_uncollapsed_width.value());
+-  }
+-
+-  UpdateCollapseActionItem();
+-
+-  // Observe active browser to update most recently used vertical tabs pref
+-  // accordingly.
+-  did_become_active_subscription_ = browser_window_->RegisterDidBecomeActive(
+-      base::BindRepeating(&VerticalTabStripStateController::OnDidBecomeActive,
+-                          base::Unretained(this)));
+-
++}
++
++void VerticalTabStripStateController::ObserveSessionService() {
+   if (session_service_) {
+     session_service_->AddObserver(this);
+ 
+@@ -111,17 +131,78 @@
+           GlobalBrowserCollection::GetInstance());
+     }
+   }
+-
+-  // Wait before attempting to show the expand on hover IPH on startup. This is
+-  // an anti-pattern and is generally discouraged for snooze promos.
+-  if (base::SequencedTaskRunner::HasCurrentDefault()) {
+-    expand_on_hover_iph_collapse_timer_.Start(
+-        FROM_HERE, base::Minutes(10),
+-        base::BindOnce(
+-            &VerticalTabStripStateController::MaybeShowExpandOnHoverIPH,
+-            base::Unretained(this)));
+-  }
+-}
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++uint64_t VerticalTabStripStateController::BeginAuxProfileSwitch() {
++  CHECK_EQ(browser_window_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_window_->GetProfile()->IsRegularProfile());
++  CHECK_EQ(pref_service_, browser_window_->GetProfile()->GetPrefs());
++  CHECK_EQ(browser_window_->GetTabStripModel()->profile(),
++           browser_window_->GetProfile());
++  if (!aux_profile_switch_paused_) {
++    aux_profile_switch_previous_mode_ = is_vertical_tabs_enabled_;
++    aux_profile_switch_previous_hover_ = is_expand_on_hover_enabled_;
++  }
++  aux_profile_switch_paused_ = true;
++  return ++aux_profile_switch_generation_;
++}
++
++void VerticalTabStripStateController::RebindAuxProfileSwitch(
++    SessionService* target_session_service) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(browser_window_->GetProfile()->IsRegularProfile());
++  CHECK(browser_window_->GetTabStripModel()->empty());
++  CHECK_EQ(browser_window_->GetTabStripModel()->profile(),
++           browser_window_->GetProfile());
++  CHECK(!target_session_service ||
++        target_session_service->profile() == browser_window_->GetProfile());
++  if (session_service_) {
++    session_service_->RemoveObserver(this);
++  }
++  browser_collection_observation_.Reset();
++  session_service_ = target_session_service;
++  pref_change_registrar_.Reset();
++  pref_service_ = browser_window_->GetProfile()->GetPrefs();
++  const bool previous_mode = is_vertical_tabs_enabled_;
++  InitProfilePrefObservers();
++  if (enable_state_lock_count_ > 0) {
++    is_vertical_tabs_enabled_ = previous_mode;
++  }
++  ObserveSessionService();
++  // Preserve state_. The original cache factory forces its own expanded
++  // preview geometry; copying that state or startup prefs into this live
++  // window would incorrectly reset its collapse/width.
++}
++
++void VerticalTabStripStateController::EndAuxProfileSwitch(uint64_t generation) {
++  if (generation != aux_profile_switch_generation_) {
++    return;
++  }
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(pref_service_, browser_window_->GetProfile()->GetPrefs());
++  CHECK_EQ(browser_window_->GetTabStripModel()->profile(),
++           browser_window_->GetProfile());
++  CHECK(!browser_window_->GetTabStripModel()->empty());
++  if (enable_state_lock_count_ == 0) {
++    is_vertical_tabs_enabled_ =
++        pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
++  }
++  is_expand_on_hover_enabled_ =
++      IsVerticalTabsExpandOnHoverFeatureEnabled() &&
++      pref_service_->GetBoolean(prefs::kVerticalTabsExpandOnHoverEnabled);
++  aux_profile_switch_paused_ = false;
++  if (is_vertical_tabs_enabled_ != aux_profile_switch_previous_mode_) {
++    NotifyModeChanged();
++  }
++  if (is_expand_on_hover_enabled_ != aux_profile_switch_previous_hover_) {
++    NotifyExpandOnHoverEnabledChanged();
++  }
++  UpdateCollapseActionItem();
++  UpdateSessionService();
++  UpdatePrefService();
++}
++#endif
+ 
+ VerticalTabStripStateController::~VerticalTabStripStateController() {
+   if (session_service_) {
+@@ -310,6 +391,9 @@
+ }
+ 
+ void VerticalTabStripStateController::OnModeChanged() {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   const bool new_enabled =
+       pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
+   if (new_enabled &&
+@@ -332,6 +416,9 @@
+ }
+ 
+ void VerticalTabStripStateController::OnExpandOnHoverEnabledChanged() {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   is_expand_on_hover_enabled_ =
+       pref_service_->GetBoolean(prefs::kVerticalTabsExpandOnHoverEnabled);
+   if (is_expand_on_hover_enabled_) {
+@@ -364,6 +451,9 @@
+ void VerticalTabStripStateController::OnLockDestroyed() {
+   CHECK_GT(enable_state_lock_count_, 0);
+   enable_state_lock_count_--;
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+ 
+   if (enable_state_lock_count_ == 0) {
+     bool new_state = pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
+@@ -375,6 +465,9 @@
+ }
+ 
+ void VerticalTabStripStateController::UpdateSessionService() {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   if (session_service_ && !browser_collection_observation_.IsObserving()) {
+     session_service_->AddWindowExtraData(session_id_, kCollapsedKey,
+                                          base::ToString(state_.collapsed));
+@@ -385,6 +478,9 @@
+ }
+ 
+ void VerticalTabStripStateController::UpdatePrefService() {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   if (pref_service_) {
+     pref_service_->SetBoolean(prefs::kVerticalTabsCollapsedState,
+                               state_.collapsed);
+@@ -449,6 +545,9 @@
+ }
+ 
+ void VerticalTabStripStateController::MaybeShowExpandOnHoverIPH() {
++  if (aux_profile_switch_paused_) {
++    return;
++  }
+   if (tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&
+       ShouldDisplayVerticalTabs() &&
+       GetCollapseState() != VerticalTabStripCollapseState::kExpanded &&

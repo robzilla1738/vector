@@ -157,6 +157,18 @@
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ref.h",
       "sha256": "2a7a7f4215c16b1bfc3b4f699286a4aec0ee900a1c6d780e3a3026c45bc7307c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/vertical_tab_strip_state.h",
+      "sha256": "158ce8c346345847b4f535bf6daade0393aef7b00479a8b027911306aa004d21"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-switch-workspace/original-cache-create.txt",
+      "sha256": "24a5f427fa4750348d10ad57aa5fc28fe523f18416808dfcd2a965a1e1f286e6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-switch-workspace/README.md",
+      "sha256": "f221fc258e1e067730b86cdf4b49423b7747b26aca6cfc5e7e7271055d3d8694"
     }
   ],
   "originalRoutines": {
