@@ -30,8 +30,13 @@ rmSync(temporary, { recursive: true, force: true });
 mkdirSync(dirname(temporary), { recursive: true });
 function copy(from, to) {
   mkdirSync(dirname(to), { recursive: true });
-  cpSync(from, to, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+  if (process.platform === 'darwin') {
+    execFileSync('/bin/cp', ['-cR', from, to]);
+  } else {
+    cpSync(from, to, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+  }
 }
+console.log('Staging native app, independent executables and pinned runtimes…');
 copy(native, temporary);
 const bundle = join(temporary, 'Contents/Resources/aux');
 rmSync(bundle, { recursive: true, force: true });
@@ -47,8 +52,16 @@ copy(join(root, 'packages/ui/NOTICE.md'), join(bundle, 'licenses/ui/NOTICE.md'))
 copy(join(root, 'packages/ui/licenses'), join(bundle, 'licenses/ui/fonts-icons'));
 copy(join(root, 'vendor/runtime/sources.json'), join(bundle, 'licenses/runtime-sources.json'));
 copy(join(root, 'assets/brand/Aux.icns'), join(temporary, 'Contents/Resources/Aux.icns'));
+execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Set :CFBundleIconFile Aux.icns', join(temporary, 'Contents/Info.plist')]);
+for (const [directory, name] of [['computer-use', 'Aux Computer Use'], ['password-importer', 'Aux Password Importer']]) {
+  const app = join(bundle, 'apps', directory, `${name}.app/Contents`);
+  copy(join(root, 'assets/brand/Aux.icns'), join(app, 'Resources/Aux.icns'));
+  execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Add :CFBundleIconFile string Aux.icns', join(app, 'Info.plist')]);
+}
+
 const manifest = { version: '0.2.0', development: !!options.development, daemon: 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', cli: 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli', sourceRevision: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), assembledAt: new Date().toISOString() };
 writeFileSync(join(bundle, 'bundle.json'), JSON.stringify(manifest, null, 2) + '\n');
+console.log('Applying local ad hoc signature…');
 execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', temporary], { stdio: 'inherit' });
 if (options.development) {
   // Intermediate component builds resolve their own libraries beside Aux.app.

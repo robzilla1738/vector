@@ -2,7 +2,7 @@
 // Required real-model acceptance. Never runs against an owner's profile/home.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -34,7 +34,7 @@ assert(Number.isInteger(limit) && limit >= 1 && limit <= 20, 'Limit must be 1..2
 const providerId = 'vercel-ai-gateway';
 const model = { provider: providerId, modelId: 'meta/muse-spark-1.3-contributor', thinkingLevel: 'medium', fastMode: false };
 const previous = await client.scoped('models.getCredentialStatus', { providerId });
-assert(!previous.exists, 'Use a fresh disposable account without an existing provider credential.');
+assert(!previous.exists && (await client.scoped('models.listCredentials')).length === 0, 'Use a fresh disposable account without existing provider credentials.');
 const environment = await readFile(join(root, '.env'), 'utf8');
 const match = environment.match(/^\s*(?:export\s+)?AI_GATEWAY_API_KEY\s*=\s*(.+?)\s*$/m);
 assert(match, 'AI_GATEWAY_API_KEY is missing from the workspace .env.');
@@ -59,7 +59,18 @@ async function prompt(session, message, attachmentIds = []) {
   while (Date.now() < deadline) {
     const current = await client.scoped('sessions.get', { sessionId: session.id });
     assert.deepEqual(current.model, model, 'The task must use only the required contributor model.');
-    if (current.status === 'suspended') throw Error(`Task requires an unexpected human decision (${current.suspension?.kind}).`);
+    if (current.status === 'suspended') {
+      const pending = current.suspension;
+      // This suite already explicitly authorizes its own disposable fixture forms.
+      // No external communication, arbitrary shell or owner-page decision is resolved.
+      const documentUrl = pending?.request?.operation?.documentUrl;
+      if (pending?.kind === 'action-confirmation' && typeof documentUrl === 'string' && documentUrl.startsWith(site.url('').slice(0, -1) + '/')) {
+        await client.scoped('sessions.resolveSuspension', { sessionId: session.id, toolCallId: pending.toolCallId, response: { verdict: 'confirm' } }, true);
+        await delay(100);
+        continue;
+      }
+      throw Error(`Task requires an unexpected human decision (${pending?.kind}).`);
+    }
     if (['errored', 'aborted'].includes(current.status)) throw Error(`Task stopped with ${current.status}: ${current.error ?? 'inspect its local events'}`);
     if (current.status === 'idle') {
       const messages = await client.scoped('sessions.messages', { sessionId: session.id });
@@ -75,9 +86,9 @@ function toolNames(result) { return result.events.filter(event => event.type ===
 function browserEvidence(result) {
   const names = toolNames(result);
   assert(names.includes('page_view'), 'A browser observation is required.');
-  assert(names.every(name => ['browser_tabs', 'page_view', 'browser_navigate', 'browser_click', 'browser_type', 'browser_scroll'].includes(name)), 'Browser-only cases must use the actual browser tools.');
+  assert(names.every(name => ['browser_tabs', 'browser_open', 'browser_owned_tabs', 'browser_close', 'page_view', 'browser_navigate', 'browser_click', 'browser_type', 'browser_scroll'].includes(name)), 'Browser-only cases must use the actual browser tools.');
 }
-const browserInstruction = id => `Use only browser tools. Use one normal tab in this disposable profile and navigate it to ${site.url(id)}. Observe current element refs before acting. Do not use HTTP, shell, files, memory or other tools. `;
+const browserInstruction = id => `Use only browser tools. Open one normal tab owned by this task in this disposable profile at ${site.url(id)}. Observe current element refs before acting. Do not use HTTP, shell, files, memory or other tools. `;
 const has = (id, predicate) => assert(site.events(id).some(predicate), `Expected actual fixture action was not observed for ${id}.`);
 const cases = [
   { title: 'Read a browser page', run: async s => { const r = await prompt(s, browserInstruction('read') + 'Report its project code and delivery day/time.'); browserEvidence(r); assert(r.answer.includes(site.marker) && /Wednesday/.test(r.answer) && /14:30/.test(r.answer)); return r; } },
@@ -115,6 +126,7 @@ try {
       if (test.attachment) ids.push((await client.scoped('sessions.uploadAttachment', { sessionId: session.id, fileName: test.attachment.fileName, mediaType: test.attachment.mediaType, base64: Buffer.from(test.attachment.text).toString('base64'), idempotencyKey: randomUUID() }, true)).id);
       const output = await test.run(session, ids);
       result.passed = true;
+      scopes.delete(session.id);
       result.tools = [...new Set(toolNames(output))];
     } catch (error) {
       result.error = String(error.message).slice(0, 2000);
@@ -125,7 +137,13 @@ try {
   report.complete = limit === 20 && report.cases.every(test => test.passed);
 } finally {
   for (const sessionId of scopes) await client.scoped('sessions.abort', { sessionId }, true).catch(() => {});
-  await client.scoped('models.removeCredential', { providerId }, true);
+  try { await client.scoped('models.removeCredential', { providerId }, true); }
+  catch {
+    // The account was verified empty before this run. If the daemon disappeared,
+    // remove only this suite's disposable credential file rather than leaving it.
+    await rm(join(home, 'u', String(accountId), 'credentials.json'), { force: true });
+    report.credentialCleanup = 'removed disposable credential file after daemon became unavailable';
+  }
   await site.close();
   report.finishedAt = new Date().toISOString();
   await save();

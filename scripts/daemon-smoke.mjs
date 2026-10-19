@@ -75,14 +75,29 @@ try {
   socket.send(JSON.stringify({ method: 'register', connectionId: 'core-smoke', route: { accountId: registry.currentAccountId, profileId: 'smoke', browserMode: 'default' } }));
   assert.equal((await registered).method, 'registered');
   socket.close();
-  if (process.argv.includes('--repl')) {
-    async function rpc(name, input) {
+  async function rpc(name, input) {
       const response = await fetch(`${origin}/trpc/${name}`, {
         method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: registry.currentAccountId, ...input }),
       });
       return { status: response.status, body: await response.json() };
     }
+  if (process.argv.includes('--onboarding')) {
+    const denied = await rpc('accounts.completeOnboarding', { deferModelSetup: true });
+    assert.equal(denied.status, 412);
+    const setup = await rpc('passwordManager.auth.setup', { password: 'Disposable-password-for-onboarding' });
+    assert.equal(setup.status, 200);
+    assert.equal(typeof setup.body.result.data.recoveryKey, 'string');
+    const modelRequired = await rpc('accounts.completeOnboarding', { deferModelSetup: false });
+    assert.equal(modelRequired.status, 412);
+    const finished = await rpc('accounts.completeOnboarding', { deferModelSetup: true });
+    assert.equal(finished.status, 200);
+    assert.equal(typeof finished.body.result.data.onboardingCompletedAt, 'number');
+    await rpc('passwordManager.auth.lock', {});
+    assert.equal((await rpc('accounts.completeOnboarding', { deferModelSetup: true })).status, 412);
+    console.log('Onboarding gate smoke passed: security required, model deferral explicit, locked account rejected.');
+  }
+  if (process.argv.includes('--repl')) {
     const started = await rpc('cli.replStart', {});
     assert.equal(started.status, 200);
     const id = started.body.result.data.id;

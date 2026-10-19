@@ -20,7 +20,13 @@ if (targets.some((target) => !['daemon', 'cli'].includes(target))) throw new Err
 for (const target of targets) {
   const directory = join(output, target);
   if (target === 'daemon') {
-    await run('pnpm', ['--filter', '@aux/daemon', 'deploy', '--legacy', '--prod', '--force', directory]);
+    try {
+      await run('pnpm', ['--filter', '@aux/daemon', 'deploy', '--legacy', '--prod', '--force', directory]);
+    } finally {
+      // pnpm legacy deployment leaves its shared dependency-state cache in prod
+      // mode. Restore the developer install state so later scripts never prune it.
+      await run('pnpm', ['install', '--prod=false', '--frozen-lockfile']);
+    }
     const memoryPackage = await realpath(join(directory, 'node_modules/@aux/memory'));
     if (!memoryPackage.startsWith(await realpath(directory) + sep)) throw new Error('Deployed dependency escapes its self-contained runtime.');
     await cp(join(root, 'apps/memory/models/minilm'), join(memoryPackage, 'models/minilm'), { recursive: true });
