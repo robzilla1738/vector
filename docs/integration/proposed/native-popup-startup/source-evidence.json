@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04599728.c",
+      "sha256": "01614545abc83f346530230835000288c7e158e15ff6500850a08f6a5260ce63"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594b00.c",
+      "sha256": "6ec909b1239ae3e140614353d03945223fa68ae51d70f83a3c5863003d300ebf"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427ca84.c",
+      "sha256": "3517025dc6f57bdd1c7aebed7b4be121529fd50da2bd1aced28be8ec25df8837"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427cc20.c",
+      "sha256": "2cf2615614dda83304f4b2d147a007fd345a60109b0065827df495773391797c"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594700.c",
+      "sha256": "0ac414e83fa3c070097dc8241de028c6b37955bd9e246ac10dca5262097c02e0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045975a8.c",
+      "sha256": "57cf8ad5994d391ec718724c3125155ad36cac70781fbb8d5bbf0313446aaa6f"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597798.c",
+      "sha256": "ecfa1c4ea99c698c12c70840ad12839497a51c5152dd583954060e1dcf9f9e8a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427e8b0.c",
+      "sha256": "dcf8baf0fdb40857afd7a133be51b97e66834bd7944c7f625ae5e428c727ec17"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b"
+    }
+  ],
+  "functions": [
+    {
+      "name": "StartupInitializedGuard",
+      "rva": "0x36d87c0",
+      "bytes": 44,
+      "sha256": "cf2a2596310bba91f4d6d690597b68a5b3bec273a34f953788d468471f5bf6db"
+    },
+    {
+      "name": "NormalNonCacheStartup",
+      "rva": "0x36d8f24",
+      "bytes": 44,
+      "sha256": "5b9891e6d8c1e789431e7dcd8e84ca52efccf0708630b6785a2f4a2c87c3dd03"
+    },
+    {
+      "name": "CacheConstructorField",
+      "rva": "0x31cd628",
+      "bytes": 16,
+      "sha256": "2093070ea159cfdb6e2d511fd158ac09875bbcc64188a89a2fa2b98a976c3afb"
+    },
+    {
+      "name": "ShortcutPreferenceChanged",
+      "rva": "0x45996ac",
+      "bytes": 124,
+      "sha256": "7d4da50f1455c8f8d977a820b3825f31ea18d96c641ca5393f051bbccf01342c"
+    },
+    {
+      "name": "LastUsedLoadedProfile",
+      "rva": "0x27a55f4",
+      "bytes": 176,
+      "sha256": "49803483806cca92624aa094e34835f65402d024a3f186e1adab74beb43ad0cc"
+    },
+    {
+      "name": "RegistrationAndKeepAlive",
+      "rva": "0x4599e90",
+      "bytes": 444,
+      "sha256": "679c5e636ed2a996ee78d78a40051a57f10ab95d263adbfce5ff91cfc67f5551"
+    },
+    {
+      "name": "InactiveCallback",
+      "rva": "0x4597a94",
+      "bytes": 132,
+      "sha256": "48745ac8ee6ddd111ce947b6c29bbcd9656ff8100735d57b2271197254839f59"
+    }
+  ]
+}

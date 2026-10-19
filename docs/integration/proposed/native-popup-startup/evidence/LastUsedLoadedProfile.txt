@@ -1,0 +1,50 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 27a55f4: d10143ff     	sub	sp, sp, #0x50
+ 27a55f8: a9034ff4     	stp	x20, x19, [sp, #0x30]
+ 27a55fc: a9047bfd     	stp	x29, x30, [sp, #0x40]
+ 27a5600: 910103fd     	add	x29, sp, #0x40
+ 27a5604: b0063a08     	adrp	x8, 0xeee6000 <dyld_stub_binder+0xeee6000>
+ 27a5608: f9467d00     	ldr	x0, [x8, #0xcf8]
+ 27a560c: 97c9e95b     	bl	0x1a1fb78 <_ChromeMain+0x1a1a8dc>
+ 27a5610: aa0003f3     	mov	x19, x0
+ 27a5614: b40002a0     	cbz	x0, 0x27a5668 <_ChromeMain+0x27a03cc>
+ 27a5618: 910063f4     	add	x20, sp, #0x18
+ 27a561c: 910063e8     	add	x8, sp, #0x18
+ 27a5620: 9400006e     	bl	0x27a57d8 <_ChromeMain+0x27a053c>
+ 27a5624: 3980bfe8     	ldrsb	x8, [sp, #0x2f]
+ 27a5628: a941abe9     	ldp	x9, x10, [sp, #0x18]
+ 27a562c: f100011f     	cmp	x8, #0x0
+ 27a5630: 9a944121     	csel	x1, x9, x20, mi
+ 27a5634: 7100011f     	cmp	w8, #0x0
+ 27a5638: 9a884142     	csel	x2, x10, x8, mi
+ 27a563c: 910003e8     	mov	x8, sp
+ 27a5640: 91014260     	add	x0, x19, #0x50
+ 27a5644: 97bbcf74     	bl	0x1699414 <_ChromeMain+0x1694178>
+ 27a5648: 39c0bfe8     	ldrsb	w8, [sp, #0x2f]
+ 27a564c: 37f80228     	tbnz	w8, #0x1f, 0x27a5690 <_ChromeMain+0x27a03f4>
+ 27a5650: 910003e1     	mov	x1, sp
+ 27a5654: aa1303e0     	mov	x0, x19
+ 27a5658: 94000013     	bl	0x27a56a4 <_ChromeMain+0x27a0408>
+ 27a565c: aa0003f3     	mov	x19, x0
+ 27a5660: 39c05fe8     	ldrsb	w8, [sp, #0x17]
+ 27a5664: 37f800c8     	tbnz	w8, #0x1f, 0x27a567c <_ChromeMain+0x27a03e0>
+ 27a5668: aa1303e0     	mov	x0, x19
+ 27a566c: a9447bfd     	ldp	x29, x30, [sp, #0x40]
+ 27a5670: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+ 27a5674: 910143ff     	add	sp, sp, #0x50
+ 27a5678: d65f03c0     	ret
+ 27a567c: f94003e0     	ldr	x0, [sp]
+ 27a5680: f9400be8     	ldr	x8, [sp, #0x10]
+ 27a5684: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 27a5688: 97618e0c     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 27a568c: 17fffff7     	b	0x27a5668 <_ChromeMain+0x27a03cc>
+ 27a5690: f9400fe0     	ldr	x0, [sp, #0x18]
+ 27a5694: f94017e8     	ldr	x8, [sp, #0x28]
+ 27a5698: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 27a569c: 97618e07     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 27a56a0: 17ffffec     	b	0x27a5650 <_ChromeMain+0x27a03b4>

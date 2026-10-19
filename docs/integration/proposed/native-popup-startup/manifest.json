@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-retirement; BrowserView current shared v102+ exact pins",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "081df7fee882ea6aa662f9876012c5297d8cd4acffdcd6b70a399b27b8f0bc04",
+      "outputSha256": "d4cd0ccb90ff9a78be17d2ea9b24542738929d41e4e15a5be03a4bd517228f7f"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h",
+      "baselineSha256": "961c44933a7d432c8e7f74077256ac22b74dee31af624651b344a0773b382fa7",
+      "outputSha256": "77c2c4973df03325a33cf1e231ab1cb7ccdd2e5079cff13fb3bd49f330c4da05"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "018ecee54ab2c9814aab8008f476e209a98a6385b3896f539723f045665c1ff3",
+      "outputSha256": "da7a4402278333797b42d14ff001d782946e1ea1d7b2c5209c14697ad1b44660"
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "baselineSha256": "75d282d2f7f3ad3863c7815a71be5413a6284a22a6ee6792aee70e188df395c2",
+      "outputSha256": "1cbe4deedc086be1169ddd047656e3e2637c573466c0fb56da29da1f9c41788e"
+    }
+  ],
+  "requiredIntegration": [
+    "UI and BrowserMain owner targets need direct dependency on //chrome/browser/extensions/api/aux_mini_popup; root owns GN registration.",
+    "Apply all four outputs together; pure getters require mandatory BrowserView startup and actual process shutdown hooks."
+  ]
+}
