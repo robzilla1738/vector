@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v32; new disjoint sources; requires UI BUILD source registration and completed same-window owner transaction before calling",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": null,
+      "outputSha256": "4093fb68195b5971a63318a8adfe39ed5f799416f4cb9e480ea98bcc8ed587cb"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "baselineSha256": null,
+      "outputSha256": "7ce4faf93491926697e94013113ba25dbd642898a0e0cea1e812f2d544531b49"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
