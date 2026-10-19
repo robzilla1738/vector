@@ -1,0 +1,198 @@
+@import "@fontsource/geist/400.css";
+@import "@fontsource/geist/500.css";
+@import "@fontsource/geist/600.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/dm-sans/500.css";
+:root {
+  color-scheme: light;
+  --page: white;
+  --text: oklch(14.5% 0 0);
+  --raised: white;
+  --secondary: oklch(14.5% 0 0 / 0.08);
+  --muted: oklch(14.5% 0 0 / 0.55);
+  --border: oklch(14.5% 0 0 / 0.1);
+  --accent: oklch(14.5% 0 0 / 0.1);
+  --primary: oklch(14.5% 0 0 / 0.95);
+  --primary-text: oklch(98.5% 0 0 / 0.95);
+  --brand: oklch(68.5% 0.169 237.323);
+  --danger: oklch(57.7% 0.245 27.325);
+  --radius: 11.2px;
+  --shadow: 0 4px 6px -1px #0000000d, 0 2px 4px -2px #0000000d;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: oklch(20.5% 0 0);
+  --text: oklch(98.5% 0 0);
+  --raised: oklch(26.9% 0 0);
+  --secondary: oklch(98.5% 0 0 / 0.08);
+  --muted: oklch(98.5% 0 0 / 0.55);
+  --border: oklch(98.5% 0 0 / 0.15);
+  --accent: oklch(98.5% 0 0 / 0.1);
+  --primary: oklch(98.5% 0 0 / 0.85);
+  --primary-text: oklch(14.5% 0 0 / 0.85);
+  --brand: oklch(74.6% 0.16 232.661);
+  --danger: oklch(70.4% 0.191 22.216);
+  --shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  background: var(--page);
+  color: var(--text);
+  font:
+    14px / 1.5 Geist,
+    sans-serif;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+button,
+a,
+input,
+textarea,
+select {
+  outline-offset: 3px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--brand);
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+button,
+.field,
+select,
+textarea {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+button {
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+button:hover:not(:disabled) {
+  background: var(--secondary);
+}
+button.primary {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+}
+button.icon {
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+}
+.field,
+select,
+textarea {
+  padding: 8px 10px;
+}
+a {
+  color: inherit;
+}
+h1,
+h2 {
+  font-family: "DM Sans", sans-serif;
+  font-weight: 500;
+}
+h1 {
+  font-size: 30px;
+  line-height: 36px;
+}
+h2 {
+  font-size: 24px;
+  line-height: 32px;
+}
+small,
+.muted {
+  color: var(--muted);
+}
+pre,
+code {
+  font-family: "Geist Mono", monospace;
+}
+pre {
+  overflow: auto;
+  padding: 12px;
+  background: var(--secondary);
+  border-radius: var(--radius);
+}
+.error {
+  color: var(--danger);
+  border: 0.5px solid color-mix(in oklch, var(--danger) 20%, transparent);
+  background: color-mix(in oklch, var(--danger) 5%, transparent);
+  border-radius: 22.4px;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+.empty {
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: var(--muted);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.spread {
+  justify-content: space-between;
+}
+.keycap {
+  font-size: 11px;
+  min-width: 20px;
+  min-height: 18px;
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.dialog {
+  max-width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  background: var(--page);
+  color: var(--text);
+  border: 0.5px solid var(--border);
+  border-radius: 22.4px;
+  padding: 24px;
+  overflow: auto;
+}
+.dialog::backdrop {
+  background: #0005;
+  backdrop-filter: blur(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@aux/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
+  },
+  "dependencies": {
+    "lucide-react": "1.59.0",
+    "@fontsource/geist": "5.3.0",
+    "@fontsource/geist-mono": "5.3.0",
+    "@fontsource/dm-sans": "5.3.0"
+  }
+}

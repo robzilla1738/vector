@@ -1,0 +1,434 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  overflow: hidden;
+}
+.navigation {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--border);
+  overflow: auto;
+  white-space: nowrap;
+}
+.navigation a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+.navigation a[aria-current="page"] {
+  color: var(--text);
+}
+.navigation .wordmark {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 16px;
+}
+.navigation small {
+  margin-left: auto;
+}
+.connection {
+  padding: 8px;
+}
+.newtab {
+  height: calc(100% - 44px);
+  max-width: 1152px;
+  margin: auto;
+  padding: 160px 32px 80px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+}
+.search-region {
+  width: 100%;
+  max-width: 800px;
+  padding: 0 16px;
+  position: relative;
+}
+.search-card {
+  margin: 0 16px;
+  padding: 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 22.4px;
+  background: var(--raised);
+  box-shadow: var(--shadow);
+  transition: box-shadow 150ms;
+}
+.search-card:focus-within {
+  border-width: 1px;
+  box-shadow:
+    0 20px 25px -5px #0000000d,
+    0 8px 10px -6px #0000000d;
+}
+.search-card textarea {
+  display: block;
+  resize: none;
+  width: 100%;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  min-height: 32px;
+  max-height: 120px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+.mode-tabs {
+  height: 32px;
+  background: var(--secondary);
+  padding: 3px;
+  display: flex;
+  border-radius: 11.2px;
+}
+.mode-tabs button {
+  width: 64px;
+  border-radius: 8.4px;
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}
+.mode-tabs button[aria-selected="true"] {
+  background: var(--raised);
+  border: 0.5px solid var(--border);
+}
+.hint {
+  font-size: 12px;
+  margin-left: 8px;
+}
+.control-slot {
+  min-height: 48px;
+  padding: 12px 16px;
+}
+.suggestions {
+  position: absolute;
+  z-index: 2;
+  left: 32px;
+  right: 32px;
+  background: var(--raised);
+  border: 0.5px solid var(--border);
+  border-radius: 16.8px;
+  padding: 6px;
+  max-height: 360px;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+.suggestions button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.suggestions button[aria-selected="true"] {
+  background: var(--secondary);
+}
+.suggestions small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat {
+  height: calc(100% - 44px);
+  display: flex;
+  flex-direction: column;
+  max-width: 1024px;
+  margin: auto;
+  position: relative;
+}
+.chat-header {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-bottom: 0.5px solid var(--border);
+  font-weight: 500;
+}
+.transcript {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 24px;
+  overflow-anchor: auto;
+  scrollbar-gutter: stable;
+}
+.message {
+  margin: 0 0 24px;
+  overflow-wrap: anywhere;
+  line-height: 1.625;
+}
+.message > small {
+  font-size: 11px;
+}
+.message.user {
+  background: var(--accent);
+  padding: 8px 12px;
+  border-radius: 16.8px;
+  max-width: 85%;
+  margin-left: auto;
+  width: fit-content;
+}
+.message :where(p) {
+  margin: 0;
+}
+.message.tool {
+  border-left: 2px solid var(--border);
+  padding-left: 12px;
+  font-size: 12px;
+}
+.message table {
+  display: block;
+  overflow: auto;
+  border-collapse: collapse;
+}
+.message td,
+.message th {
+  padding: 8px 12px;
+  border: 0.5px solid var(--border);
+}
+.message img {
+  max-width: 100%;
+}
+.composer-wrap {
+  padding: 8px 16px 12px;
+  flex-shrink: 0;
+}
+.composer {
+  background: var(--raised);
+  border: 0.5px solid var(--border);
+  border-radius: 22.4px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.tiptap {
+  outline: none;
+  min-height: 64px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 16px;
+  line-height: 1.625;
+}
+.tiptap p {
+  margin: 0 0 8px;
+}
+.composer-actions {
+  align-items: flex-end;
+  gap: 8px;
+}
+.composer-actions select {
+  max-width: 180px;
+  font-size: 12px;
+  padding: 4px;
+  background: transparent;
+  border-color: transparent;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.local-note {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.approval {
+  border: 0.5px solid var(--border);
+  border-radius: 22.4px;
+  padding: 16px;
+  background: var(--secondary);
+}
+.approval pre {
+  max-height: 240px;
+}
+.latest {
+  position: absolute;
+  bottom: 210px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow);
+}
+.queue {
+  max-height: 208px;
+  overflow: auto;
+}
+.queue > div {
+  padding: 8px;
+  font-size: 12px;
+}
+.secondary {
+  height: calc(100% - 44px);
+  max-width: 736px;
+  margin: auto;
+  padding: 64px 32px 160px;
+  overflow: auto;
+}
+.secondary h1,
+.secondary h2 {
+  margin: 0 0 24px;
+}
+.secondary.wide {
+  max-width: 1168px;
+  padding: 24px;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 0.5px solid var(--border);
+  padding: 12px 0;
+  min-height: 48px;
+}
+.task-row > a {
+  flex: 1;
+  text-decoration: none;
+  min-width: 0;
+}
+.task-row strong,
+.task-row small,
+.setting strong,
+.setting small {
+  display: block;
+}
+.task-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-row small {
+  font-size: 12px;
+}
+.task-row button {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.task-grid .task-row {
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: block;
+}
+.settings {
+  height: calc(100% - 44px);
+  display: flex;
+}
+.settings aside {
+  width: 224px;
+  flex-shrink: 0;
+  overflow: auto;
+  padding: 32px 12px;
+  border-right: 0.5px solid var(--border);
+}
+.settings aside a {
+  display: block;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8.4px;
+}
+.settings aside a[aria-current="page"] {
+  background: var(--secondary);
+}
+.settings .secondary {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+.setting {
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--border);
+  gap: 16px;
+}
+.setting strong {
+  font-weight: 500;
+}
+.setting small {
+  font-size: 12px;
+  max-width: 300px;
+}
+.settings label,
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notice {
+  border: 0.5px solid var(--border);
+  padding: 12px;
+  border-radius: 11.2px;
+  overflow-wrap: anywhere;
+}
+.memory-editor {
+  width: 100%;
+  min-height: 320px;
+  font-family: "Geist Mono", monospace;
+}
+.onboarding {
+  max-width: 640px;
+}
+.backend-data {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .newtab {
+    padding: 64px 16px 80px;
+    gap: 32px;
+  }
+  .search-region {
+    padding: 0;
+  }
+  .search-card {
+    margin: 0;
+  }
+  .hint {
+    visibility: hidden;
+  }
+  .navigation {
+    gap: 16px;
+  }
+  .navigation a:not(.wordmark) {
+    font-size: 11px;
+  }
+  .navigation small {
+    display: none;
+  }
+  .composer-wrap {
+    padding: 6px;
+  }
+  .transcript {
+    padding: 16px 12px;
+  }
+  .composer-actions select {
+    max-width: 120px;
+  }
+  .secondary {
+    padding: 32px 16px 80px;
+  }
+  .settings aside {
+    width: 154px;
+    font-size: 12px;
+    padding: 16px 6px;
+  }
+  .task-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .task-grid {
+    grid-template-columns: 1fr;
+  }
+}
