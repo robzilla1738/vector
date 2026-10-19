@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "scope": "Disposable composition of final firstslice (proposedv18) then defaultlegacy shrink proposal",
+  "firstSliceManifestSha256": "ac1ad30fc4d663088b874351fa9f4188d78f5fb982750ddfadeb7850e8836377",
+  "firstSlicePatchSha256": "f4bf3191906e831a382c3495a96e2d27a9d2406b482506653955d9dcd9ab90b0",
+  "followupManifestSha256": "07162735d20288688eed281630765921c80668d77759c074cb0a797b0bf68b91",
+  "followupPatchSha256": "961745b15117c46f571df02c8854b91655f8f8f980130e1fa714cc4fbd9e30e2",
+  "files": 14,
+  "pinnedFirstSliceFiles": 7,
+  "pinnedFollowupFiles": 10,
+  "checkAndApplyPassed": true,
+  "allOutputsMatched": true,
+  "sharedNativeSourceUnchanged": true,
+  "appliedToSharedNative": false,
+  "compiled": false,
+  "targetExecuted": false,
+  "globalPreferencesTouched": false
+}

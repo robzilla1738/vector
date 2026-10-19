@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "originalNativeSliceSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "supplied": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04295bd0.c",
+      "sha256": "188b635f2b0e76aa09a724bff61097f5ba7d6facbb3dc1fafb83637e3d3b1308"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045d9b10.c",
+      "sha256": "5c11a7b635fba92cdcbbe97f2a1104ae532c9b54c423a3aafceac572b65f4a70"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045dec88.c",
+      "sha256": "94bca91c41f4dffcfacd578d65e1b111cf9ca3bb6188e993e6a04089a4426eb2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045db658.c",
+      "sha256": "03ca6d35a3159a78d4abd0bf559893b8cc2bb4ba3de85d6ff188cc0f724d9c85"
+    }
+  ],
+  "upstream": [
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_container_impl.cc",
+      "sha256": "c357ed2944aa1babe62f10f397869cf610dee2336da642c0925786f56e166c74",
+      "bytes": 62819
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_scrolling_animation.cc",
+      "sha256": "ecc1dcad2d4fe8a8d060672644c13dd0a5437532a9e53d7fc6fa931a56c6a2ef",
+      "bytes": 1253
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_scrolling_animation.h",
+      "sha256": "7a399a6548eb955cbfaa58e5d927c57e59e695998370b98a91893852c86c0482",
+      "bytes": 1419
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_strip.cc",
+      "sha256": "908d93440b182cb884eb2a2ae7f7a04a315ced5a69c2896546a7e431109dd7f5",
+      "bytes": 88461
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_strip_scroll_container.cc",
+      "sha256": "edb18e54aad0d1a5b83f7e0e82f965d180f66a698cf9cbe9596a75732c5c78a6",
+      "bytes": 13444
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/130.0.6723.58/chrome/browser/ui/views/tabs/tab_strip_scroll_container.h",
+      "sha256": "a3632b2c73deb463a00ae2ccd73bd54ebf6dfab22948acdcf3bbc017fe60b3a6",
+      "bytes": 3202
+    }
+  ],
+  "historyLimit": "Current nativecheckout is shallow; removed legacy ScrollContainer is absent. Supplied153tag source requests returned404. Historical public Chromium130 source is pinned torestoreknown upstreammechanisms; it is not claimed to be suppliedAside source.",
+  "observedSuppliedSemantics": [
+    "Originalsetter validatesboolean and writesbrowserglobalvalue,currentprofile,loadedprofiles.",
+    "Originalconsumerobservesprofile horizontal_tab_strip.shrink_to_fit_enabled,readsglobaloverride,andinstalls/removeswidthcallbackfor shrinkenabled/disabled.",
+    "Originalobservercallbackinvalidatesrealnativelayout."
+  ],
+  "platformAdaptations": [
+    "155defaultfactoryremainslegacy;TabStripUnification unchanged.",
+    "Use current155ScrollViewpreferredsize,overflowindicator and existingTabScrollButtonContainer because oldOverflowView/indicatorstrategy/ScrollContainer files were removed.",
+    "Regionzorder,margins,newtabbuttoncoordinatesandcaptionhit-tests useactualscrollcontainer;underlyingTabStrip remainsnativecontroller/drop/focusowner.",
+    "155TabStrippreferredwidth honorsviewport/minimumonlywhen shrinking;unshrunkcontentkeepspreferredwidthandscrolls.",
+    "RestoreoriginalupstreamTabScrollingAnimation and selectionvisibility algorithm. Getactualviewportwidth ratherthan callbackwidth becauseunshrunklayout usespreferredcontentwidth. Animationusesexistingboundsanimatorclock/duration."
+  ],
+  "limitations": [
+    "No targetexecution,compile,globalpreferencewrites or renderedparityobservation.",
+    "Existing155 scrollarrow rendering/menu/animation isreused; originalsuppliedarrowappearance and exacttiming stillneedvisualcomparison.",
+    "Unifiedstrip featureflag explicitlyoutofthisdefaultlegacyadaptation; nounificationenablement.",
+    "Legacytabdrag/group/pin/close/autoscroll/resize interactions remain actualUIacceptance requirements."
+  ]
+}

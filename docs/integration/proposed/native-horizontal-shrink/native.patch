@@ -1,0 +1,609 @@
+--- a/chrome/browser/ui/tabs/tab_strip_prefs.h
++++ b/chrome/browser/ui/tabs/tab_strip_prefs.h
+@@ -17,6 +17,10 @@
+ // Supplied browser-global vertical new-tab placement.
+ inline constexpr char kAuxVerticalTabInsertionPosition[] =
+     "aux.browser_preferences.vertical_tab_insertion_position";
++inline constexpr char kAuxHorizontalTabShrinkEnabled[] =
++    "aux.browser_preferences.horizontal_tab_strip_shrink_to_fit_enabled";
++inline constexpr char kAuxProfileHorizontalTabShrinkEnabled[] =
++    "horizontal_tab_strip.shrink_to_fit_enabled";
+ 
+ enum class TabSearchPosition {
+   kLeadingHorizontalTabstrip,
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/search_engines/template_url_service_factory.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
+@@ -40,7 +41,7 @@
+ bool ReadAuxWindowVibrancyEnabled();
+ bool WriteAuxWindowVibrancyEnabled(bool enabled);
+ namespace {
+-constexpr char kShrink[] = "aux.browser.horizontal_tab_shrink";
++constexpr const char* kShrink = tabs::kAuxProfileHorizontalTabShrinkEnabled;
+ constexpr char kMru[] = "aux.browser.tab_switcher_mru";
+ constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
+ constexpr char kKeepTasks[] = "aux.browser.keep_tasks_running";
+@@ -84,6 +85,7 @@
+ }
+ void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterStringPref(tabs::kAuxVerticalTabInsertionPosition, "top");
++  registry->RegisterBooleanPref(tabs::kAuxHorizontalTabShrinkEnabled, true);
+ }
+ ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
+   const std::string_view method = std::string_view(name()).substr(22);
+@@ -101,8 +103,6 @@
+     const char* key;
+   };
+   for (const auto& item : std::initializer_list<BooleanPref>{
+-           {"getHorizontalTabShrinkEnabled", "setHorizontalTabShrinkEnabled",
+-            kShrink},
+            {"getTabSwitcherSortByRecentlyUsed",
+             "setTabSwitcherSortByRecentlyUsed", kMru},
+            {"getVerticalTabsBookmarksSectionEnabled",
+@@ -130,6 +130,35 @@
+     }
+     if (!WriteAuxWindowVibrancyEnabled(args()[0].GetBool())) {
+       return RespondNow(Error("Could not synchronize window vibrancy preference"));
++    }
++    return RespondNow(NoArguments());
++  }
++  if (method == "getHorizontalTabShrinkEnabled" ||
++      method == "setHorizontalTabShrinkEnabled") {
++    auto* local_state = g_browser_process->local_state();
++    if (!local_state) {
++      return RespondNow(Error("Browser local state unavailable"));
++    }
++    if (!setter) {
++      return RespondNow(WithArguments(
++          local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled)));
++    }
++    if (!args()[0].is_bool()) {
++      return RespondNow(Error("Boolean value required"));
++    }
++    if (prefs->IsManagedPreference(kShrink) ||
++        local_state->IsManagedPreference(tabs::kAuxHorizontalTabShrinkEnabled)) {
++      return RespondNow(Error("Setting is managed"));
++    }
++    const bool enabled = args()[0].GetBool();
++    local_state->SetBoolean(tabs::kAuxHorizontalTabShrinkEnabled, enabled);
++    prefs->SetBoolean(kShrink, enabled);
++    if (auto* manager = g_browser_process->profile_manager()) {
++      for (Profile* loaded_profile : manager->GetLoadedProfiles()) {
++        if (!loaded_profile->GetPrefs()->IsManagedPreference(kShrink)) {
++          loaded_profile->GetPrefs()->SetBoolean(kShrink, enabled);
++        }
++      }
+     }
+     return RespondNow(NoArguments());
+   }
+--- a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_browser_preferences") {
+   sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+-  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
++  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
+   frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
+ }
+ 
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+@@ -5,6 +5,12 @@
+ #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
+ 
+ #include "base/feature_list.h"
++#include "base/scoped_observation.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/common/pref_names.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/prefs/pref_service.h"
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "build/build_config.h"
+@@ -38,6 +44,8 @@
+ #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
+ #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
++#include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_strip_overflow_indicator_view.h"
++#include "chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip_control_button.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip_controller.h"
+@@ -62,6 +70,8 @@
+ #include "ui/views/accessible_pane_view.h"
+ #include "ui/views/actions/action_view_controller.h"
+ #include "ui/views/border.h"
++#include "ui/views/controls/scroll_view.h"
++#include "ui/views/view_observer.h"
+ #include "ui/views/cascading_property.h"
+ #include "ui/views/interaction/view_subregion_anchor.h"
+ #include "ui/views/layout/flex_layout.h"
+@@ -73,6 +83,148 @@
+ #if BUILDFLAG(IS_MAC)
+ constexpr int kTabStripRegionInternalPaddingMac = 12;
+ #endif
++
++// Restore the supplied legacy strip's scroll owner with Chromium155 controls.
++// Width-policy and preferred-size observation follow the former Chromium
++// TabStripScrollContainer; keep the existing default strip implementation.
++class TabStripScrollContainer final : public views::View,
++                                      public views::ViewObserver {
++  METADATA_HEADER(TabStripScrollContainer, views::View)
++
++ public:
++  TabStripScrollContainer(BrowserView* browser_view,
++                          std::unique_ptr<TabStrip> tab_strip)
++      : tab_strip_(tab_strip.get()), profile_(browser_view->GetProfile()) {
++    tab_strip_observation_.Observe(tab_strip_);
++    scroll_view_ = AddChildView(std::make_unique<views::ScrollView>(
++        views::ScrollView::ScrollWithLayers::kEnabled));
++    scroll_view_->SetBackgroundColor(std::nullopt);
++    scroll_view_->SetUseContentsPreferredSize(true);
++    scroll_view_->SetHorizontalScrollBarMode(
++        views::ScrollView::ScrollBarMode::kHiddenButEnabled);
++    scroll_view_->SetVerticalScrollBarMode(
++        views::ScrollView::ScrollBarMode::kDisabled);
++    scroll_view_->SetTreatAllScrollEventsAsHorizontal(true);
++    scroll_view_->SetCustomOverflowIndicator(
++        views::OverflowIndicatorAlignment::kLeft,
++        std::make_unique<HorizontalTabStripOverflowIndicatorView>(
++            views::OverflowIndicatorAlignment::kLeft),
++        HorizontalTabStripOverflowIndicatorView::kTotalThickness, false);
++    scroll_view_->SetCustomOverflowIndicator(
++        views::OverflowIndicatorAlignment::kRight,
++        std::make_unique<HorizontalTabStripOverflowIndicatorView>(
++            views::OverflowIndicatorAlignment::kRight),
++        HorizontalTabStripOverflowIndicatorView::kTotalThickness, false);
++    scroll_view_->SetContents(std::move(tab_strip));
++    scroll_buttons_ = AddChildView(std::make_unique<TabScrollButtonContainer>(
++        browser_view->browser()));
++    scroll_buttons_->SetScrollView(scroll_view_);
++    scroll_buttons_->SetVisible(false);
++    tab_strip_->SetAvailableWidthCallback(base::BindRepeating(
++        &TabStripScrollContainer::GetTabStripAvailableWidth,
++        base::Unretained(this)));
++    scrolled_subscription_ = scroll_view_->AddContentsScrolledCallback(
++        base::BindRepeating(&TabStripScrollContainer::OnContentsScrolled,
++                            base::Unretained(this)));
++    local_state_registrar_.Init(g_browser_process->local_state());
++    local_state_registrar_.Add(
++        tabs::kAuxHorizontalTabShrinkEnabled,
++        base::BindRepeating(&TabStripScrollContainer::OnShrinkChanged,
++                            base::Unretained(this)));
++    profile_registrar_.Init(profile_->GetPrefs());
++    profile_registrar_.Add(
++        prefs::kTabScrollButtonsPinnedToTabstrip,
++        base::BindRepeating(&TabStripScrollContainer::InvalidateLayout,
++                            base::Unretained(this), false));
++  }
++
++  ~TabStripScrollContainer() override {
++    scroll_buttons_->SetScrollView(nullptr);
++  }
++
++  void OnViewPreferredSizeChanged(views::View* view) override {
++    CHECK_EQ(view, tab_strip_);
++    PreferredSizeChanged();
++    InvalidateLayout();
++  }
++
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    return tab_strip_->GetPreferredSize(available_size);
++  }
++
++  gfx::Size GetMinimumSize() const override {
++    return gfx::Size(0, tab_strip_->GetMinimumSize().height());
++  }
++
++  bool IsRectInWindowCaption(const gfx::Rect& rect) {
++    const auto target_rect = [&](views::View* target) {
++      return gfx::ToEnclosingRect(views::View::ConvertRectToTarget(
++          this, target, gfx::RectF(rect)));
++    };
++    if (scroll_buttons_->GetVisible() &&
++        scroll_buttons_->bounds().Intersects(rect)) {
++      return scroll_buttons_->IsPositionInWindowCaption(
++          target_rect(scroll_buttons_).origin());
++    }
++    if (scroll_view_->bounds().Intersects(rect)) {
++      return tab_strip_->IsRectInWindowCaption(target_rect(tab_strip_));
++    }
++    return true;
++  }
++
++  void Layout(PassKey) override {
++    const int minimum_content_width = ShrinkEnabled()
++        ? tab_strip_->GetMinimumSize().width()
++        : tab_strip_->GetPreferredSize({}).width();
++    const bool show_buttons = minimum_content_width > width() &&
++        profile_->GetPrefs()->GetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip);
++    scroll_buttons_->SetVisible(show_buttons);
++    const int button_width = show_buttons
++        ? std::min(width(), scroll_buttons_->GetPreferredSize().width()) : 0;
++    scroll_view_->SetBounds(0, 0, std::max(0, width() - button_width), height());
++    scroll_buttons_->SetBounds(width() - button_width, 0, button_width, height());
++    scroll_view_->SetDrawOverflowIndicator(
++        minimum_content_width > scroll_view_->width());
++    scroll_view_->DeprecatedLayoutImmediately();
++  }
++
++ private:
++  bool ShrinkEnabled() const {
++    return g_browser_process->local_state()->GetBoolean(
++        tabs::kAuxHorizontalTabShrinkEnabled);
++  }
++
++  int GetTabStripAvailableWidth() const {
++    return ShrinkEnabled() ? scroll_view_->width()
++                           : tab_strip_->GetPreferredSize({}).width();
++  }
++
++  void OnShrinkChanged() {
++    tab_strip_->InvalidateLayout();
++    tab_strip_->PreferredSizeChanged();
++    PreferredSizeChanged();
++    InvalidateLayout();
++  }
++
++  void OnContentsScrolled() {
++    tab_strip_->UpdateHoverCard(nullptr,
++        TabSlotController::HoverCardUpdateType::kAnimating);
++  }
++
++  const raw_ptr<TabStrip> tab_strip_;
++  const raw_ptr<Profile> profile_;
++  raw_ptr<views::ScrollView> scroll_view_ = nullptr;
++  raw_ptr<TabScrollButtonContainer> scroll_buttons_ = nullptr;
++  base::ScopedObservation<views::View, views::ViewObserver>
++      tab_strip_observation_{this};
++  PrefChangeRegistrar local_state_registrar_;
++  PrefChangeRegistrar profile_registrar_;
++  base::CallbackListSubscription scrolled_subscription_;
++};
++
++BEGIN_METADATA(TabStripScrollContainer)
++END_METADATA
+ 
+ namespace {
+ 
+@@ -220,7 +372,18 @@
+     }
+   }
+ 
+-  tab_strip_ = AddChildView(CreateTabStrip(this, browser_view));
++  auto tab_strip = CreateTabStrip(this, browser_view);
++  tab_strip_ = tab_strip.get();
++  auto* local_state = g_browser_process->local_state();
++  if (local_state &&
++      local_state->FindPreference(tabs::kAuxHorizontalTabShrinkEnabled)) {
++    tab_strip_scroll_container_ = AddChildView(
++        std::make_unique<TabStripScrollContainer>(browser_view,
++                                                 std::move(tab_strip)));
++    tab_strip_container_ = tab_strip_scroll_container_;
++  } else {
++    tab_strip_container_ = AddChildView(std::move(tab_strip));
++  }
+ 
+   // Allow the |tab_strip_| to grow into the free space available in
+   // the HorizontalTabStripRegionViewOld.
+@@ -228,7 +391,7 @@
+       views::FlexSpecification(views::LayoutOrientation::kHorizontal,
+                                views::MinimumFlexSizeRule::kScaleToZero,
+                                views::MaximumFlexSizeRule::kPreferred);
+-  tab_strip_->SetProperty(views::kFlexBehaviorKey, tab_strip_flex_spec);
++  tab_strip_container_->SetProperty(views::kFlexBehaviorKey, tab_strip_flex_spec);
+ 
+   if (ShouldShowNewTabButton(browser)) {
+     std::unique_ptr<TabStripControlButton> tab_strip_control_button =
+@@ -308,7 +471,14 @@
+   // the |tab_strip_| and the |tab_strip_| but not over the same
+   // pixels. This could lead to this returning false when it should be returning
+   // true.
+-  if (IsHitInView(tab_strip_, point)) {
++  if (tab_strip_scroll_container_ &&
++      IsHitInView(tab_strip_scroll_container_, point)) {
++    gfx::RectF rect(point, gfx::Size(1, 1));
++    View::ConvertRectToTarget(this, tab_strip_scroll_container_, &rect);
++    return tab_strip_scroll_container_->IsRectInWindowCaption(
++        gfx::ToEnclosingRect(rect));
++  }
++  if (!tab_strip_scroll_container_ && IsHitInView(tab_strip_, point)) {
+     gfx::RectF rect_in_target_coords_f(gfx::Rect(point, gfx::Size(1, 1)));
+     View::ConvertRectToTarget(this, tab_strip_, &rect_in_target_coords_f);
+     return tab_strip_->IsRectInWindowCaption(
+@@ -318,7 +488,7 @@
+   // The child could have a non-rectangular shape, so if the rect is not in the
+   // visual portions of the child view we treat it as a click to the caption.
+   for (View* const child : children()) {
+-    if (child != tab_strip_ && child != reserved_grab_handle_space_ &&
++    if (child != tab_strip_container_ && child != reserved_grab_handle_space_ &&
+         child->GetVisible() && IsHitInView(child, point)) {
+       return false;
+     }
+@@ -330,8 +500,8 @@
+ views::View::Views HorizontalTabStripRegionViewOld::GetChildrenInZOrder() {
+   views::View::Views children;
+ 
+-  if (tab_strip_) {
+-    children.emplace_back(tab_strip_.get());
++  if (tab_strip_container_) {
++    children.emplace_back(tab_strip_container_.get());
+   }
+ 
+   if (new_tab_button_) {
+@@ -388,7 +558,7 @@
+ 
+     // The y position is measured from the bottom of the tabstrip, and then
+     // padding and button height are removed.
+-    int x = tab_strip_->bounds().right() -
++    int x = tab_strip_container_->bounds().right() -
+             TabStyle::Get()->GetBottomCornerRadius() +
+             GetLayoutConstant(LayoutConstant::kTabStripPadding) +
+             GetLayoutConstant(LayoutConstant::kNewTabButtonLeadingMargin);
+@@ -730,7 +900,7 @@
+   UpdateButtonBorders();
+ 
+   if (tab_strip_left_margin.has_value() || tab_strip_right_margin.has_value()) {
+-    tab_strip_->SetProperty(
++    tab_strip_container_->SetProperty(
+         views::kMarginsKey,
+         gfx::Insets::TLBR(0, tab_strip_left_margin.value_or(0), 0,
+                           tab_strip_right_margin.value_or(0)));
+--- a/chrome/browser/ui/views/tabs/tab_strip.cc
++++ b/chrome/browser/ui/views/tabs/tab_strip.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
++
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
++#include "components/prefs/pref_service.h"
+ 
+ #include <stddef.h>
+ 
+@@ -2181,7 +2185,15 @@
+   // origin), so we need to be able to cover the union of their bounds.
+   gfx::Size preferred_size = tab_container_->GetPreferredSize(available_size);
+   preferred_size.SetToMax(drag_context_->GetPreferredSize(available_size));
+-
++  auto* local_state = g_browser_process->local_state();
++  const bool shrink = local_state &&
++      local_state->FindPreference(tabs::kAuxHorizontalTabShrinkEnabled) &&
++      local_state->GetBoolean(tabs::kAuxHorizontalTabShrinkEnabled);
++  if (shrink && available_size.width().is_bounded()) {
++    preferred_size.set_width(std::max(
++        GetMinimumSize().width(),
++        std::min(preferred_size.width(), available_size.width().value())));
++  }
+   return preferred_size;
+ }
+ 
+--- /dev/null
++++ b/chrome/browser/ui/views/tabs/tab_scrolling_animation.cc
+@@ -0,0 +1,33 @@
++// Copyright 2022 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/tabs/tab_scrolling_animation.h"
++
++TabScrollingAnimation::TabScrollingAnimation(
++    views::View* contents_view,
++    gfx::AnimationContainer* bounds_animator_container,
++    base::TimeDelta duration,
++    const gfx::Rect start_visible_rect,
++    const gfx::Rect end_visible_rect)
++    : gfx::LinearAnimation(duration,
++                           gfx::LinearAnimation::kDefaultFrameRate,
++                           this),
++      contents_view_(contents_view),
++      start_visible_rect_(start_visible_rect),
++      end_visible_rect_(end_visible_rect) {
++  SetContainer(bounds_animator_container);
++}
++
++void TabScrollingAnimation::AnimateToState(double state) {
++  gfx::Rect intermediary_rect(
++      start_visible_rect_.x() +
++          (end_visible_rect_.x() - start_visible_rect_.x()) * state,
++      start_visible_rect_.y(), start_visible_rect_.width(),
++      start_visible_rect_.height());
++  contents_view_->ScrollRectToVisible(intermediary_rect);
++}
++
++void TabScrollingAnimation::AnimationEnded(const gfx::Animation* animation) {
++  contents_view_->ScrollRectToVisible(end_visible_rect_);
++}
+--- /dev/null
++++ b/chrome/browser/ui/views/tabs/tab_scrolling_animation.h
+@@ -0,0 +1,41 @@
++// Copyright 2022 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_TABS_TAB_SCROLLING_ANIMATION_H_
++#define CHROME_BROWSER_UI_VIEWS_TABS_TAB_SCROLLING_ANIMATION_H_
++
++#include "base/memory/raw_ptr.h"
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/linear_animation.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/views/view.h"
++
++// Helper class that manages the tab scrolling animation.
++class TabScrollingAnimation : public gfx::LinearAnimation,
++                              public gfx::AnimationDelegate {
++ public:
++  explicit TabScrollingAnimation(
++      views::View* contents_view,
++      gfx::AnimationContainer* bounds_animator_container,
++      base::TimeDelta duration,
++      const gfx::Rect start_visible_rect,
++      const gfx::Rect end_visible_rect);
++
++  TabScrollingAnimation(const TabScrollingAnimation&) = delete;
++  TabScrollingAnimation& operator=(const TabScrollingAnimation&) = delete;
++  ~TabScrollingAnimation() override = default;
++
++  // gfx::LinearAnimation:
++  void AnimateToState(double state) override;
++
++  // gfx::AnimationDelegate:
++  void AnimationEnded(const gfx::Animation* animation) override;
++
++ private:
++  const raw_ptr<views::View> contents_view_;
++  const gfx::Rect start_visible_rect_;
++  const gfx::Rect end_visible_rect_;
++};
++
++#endif  // CHROME_BROWSER_UI_VIEWS_TABS_TAB_SCROLLING_ANIMATION_H_
+--- a/chrome/browser/ui/views/tabs/tab_container_impl.h
++++ b/chrome/browser/ui/views/tabs/tab_container_impl.h
+@@ -34,6 +34,7 @@
+ #include "ui/views/view_targeter_delegate.h"
+ 
+ class TabStrip;
++class TabScrollingAnimation;
+ class TabHoverCardController;
+ class TabDragPositioningDelegateBase;
+ 
+@@ -179,6 +180,7 @@
+ 
+   class RemoveTabDelegate;
+   views::ViewModelT<Tab>* GetTabsViewModel();
++  void ScrollTabToVisible(int model_index);
+ 
+   // Uses `bounds_animator_` to animate `view` to `target`. Use this rather than
+   // calling `bounds_animator_.AnimateViewTo()` directly so animations correctly
+@@ -373,6 +375,7 @@
+   bool in_tab_close_ = false;
+ 
+   base::RepeatingCallback<int()> available_width_callback_;
++  std::unique_ptr<TabScrollingAnimation> tab_scrolling_animation_;
+ 
+   std::vector<ZOrderableTabContainerElement> z_ordered_children_cache_;
+   bool z_order_cache_dirty_ = true;
+--- a/chrome/browser/ui/views/tabs/tab_container_impl.cc
++++ b/chrome/browser/ui/views/tabs/tab_container_impl.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/tabs/tab_container_impl.h"
++
++#include "chrome/browser/ui/views/tabs/tab_scrolling_animation.h"
++#include "ui/views/controls/scroll_view.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -257,6 +260,64 @@
+     // state we can just snap to the new bounds.
+     CompleteAnimationAndLayout();
+   }
++  if (new_active_index.has_value()) {
++    ScrollTabToVisible(new_active_index.value());
++  }
++}
++
++void TabContainerImpl::ScrollTabToVisible(int model_index) {
++  views::View* contents = parent();
++  views::ScrollView* scroll_view = contents
++      ? views::ScrollView::GetScrollViewForContents(contents) : nullptr;
++  if (!scroll_view || GetTabCount() == 0) {
++    return;
++  }
++  const gfx::Rect visible_content_rect = scroll_view->GetVisibleRect();
++
++  // If the tab strip won't be scrollable after the current tabstrip animations
++  // complete, scroll animation wouldn't be meaningful.
++  if (tabs_view_model_.ideal_bounds(GetTabCount() - 1).right() <=
++      visible_content_rect.width()) {
++    return;
++  }
++
++  gfx::Rect active_tab_ideal_bounds =
++      tabs_view_model_.ideal_bounds(model_index);
++
++  if ((active_tab_ideal_bounds.x() >= visible_content_rect.x()) &&
++      (active_tab_ideal_bounds.right() <= visible_content_rect.right())) {
++    return;
++  }
++
++  int start_edge;
++  int target_edge;
++  bool scroll_left = active_tab_ideal_bounds.x() < visible_content_rect.x();
++  if (scroll_left) {
++    // Scroll the left edge of |visible_content_rect| to show the left edge of
++    // the tab at |model_index|. We can leave the width entirely up to the
++    // ScrollView.
++    int start_left_edge(visible_content_rect.x());
++    int target_left_edge(active_tab_ideal_bounds.x());
++
++    start_edge = start_left_edge;
++    target_edge = target_left_edge;
++  } else {
++    // Scroll the right edge of |visible_content_rect| to show the right edge
++    // of the tab at |model_index|. We can leave the width entirely up to the
++    // ScrollView.
++    int start_right_edge(visible_content_rect.right());
++    int target_right_edge(active_tab_ideal_bounds.right());
++    start_edge = start_right_edge;
++    target_edge = target_right_edge;
++  }
++  if (tab_scrolling_animation_) {
++    tab_scrolling_animation_->Stop();
++  }
++  tab_scrolling_animation_ = std::make_unique<TabScrollingAnimation>(
++      contents, bounds_animator_.container(),
++      bounds_animator_.GetAnimationDuration(),
++      gfx::Rect(start_edge, 0, 0, 0), gfx::Rect(target_edge, 0, 0, 0));
++  tab_scrolling_animation_->Start();
+ }
+ 
+ Tab* TabContainerImpl::RemoveTabFromViewModel(int model_index) {
+@@ -679,6 +740,7 @@
+ }
+ 
+ void TabContainerImpl::CancelAnimation() {
++  tab_scrolling_animation_.reset();
+   drag_position_delegate_->CompleteEndDragAnimations();
+   bounds_animator_.Cancel();
+ }
+--- a/chrome/browser/ui/views/tabs/BUILD.gn
++++ b/chrome/browser/ui/views/tabs/BUILD.gn
+@@ -204,6 +204,8 @@
+   sources = [
+     "tab_container.cc",
+     "tab_container_impl.cc",
++    "tab_scrolling_animation.cc",
++    "tab_scrolling_animation.h",
+     "tab_slot_animation_delegate.cc",
+     "tab_strip_layout_helper.cc",
+     "z_orderable_tab_container_element.cc",
+@@ -231,6 +233,7 @@
+     "//ui/base/mojom:ui_base_types",
+     "//ui/display",
+     "//ui/gfx",
++    "//ui/gfx/animation",
+     "//ui/gfx/range",
+     "//ui/views",
+   ]
+@@ -408,6 +411,7 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser:browser_process",
+     ":tab",
+     ":tab_strip",
+     "//base",
