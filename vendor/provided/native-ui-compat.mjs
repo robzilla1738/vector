@@ -16,6 +16,7 @@ export const unresolvedNativeCapabilities = Object.freeze([
   'dev.aux.blink.expose-wv',
   'dev.aux.ext.private.capture-tab-without-userinteraction',
   'dev.aux.ext.private.launch-extension',
+  'Packaged supplied extension-command bridge registration/routing acceptance remains unverified',
   'Native account gate requires supplied registry and authenticated Vault status',
 ]);
 
