@@ -1,0 +1,19 @@
+{
+  "name": "@aux/daemon",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@aux/contracts": "workspace:*",
+    "@hono/node-server": "^1.19.11",
+    "@trpc/server": "^11.13.4",
+    "hono": "^4.12.8",
+    "ws": "^8.21.3",
+    "zod": "^4.3.6"
+  }
+}
