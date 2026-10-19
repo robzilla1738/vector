@@ -36,4 +36,4 @@ Do not invent a supposedly reference-compatible reprompt protocol from the boole
 
 The existing import spec inventories an OS credential-exchange session and helper. A session distinguishes pending, importing, success, failure, cancellation and expiry; it tracks password/passkey totals and completed counts. New import invalidates an earlier active session, and cancellation stops future work. Account/profile targeting, an unlocked destination Vault, explicit user consent and passkey-key validation are required. Generic CSV/JSON export import does not establish native exchange support.
 
-Native callback schema details, public OS eligibility/entitlements, actual system permission flow and independently implemented key conversion still need separate evidence. No helper or credential-provider extension has been launched for this investigation.
+See `../native/credential-exchange.md` for the public macOS26 exchange flow, data representation and target session behavior. Real ad hoc app eligibility, private transport design and actual system exchange remain unverified. No helper or credential-provider extension has been launched for this investigation.
