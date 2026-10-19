@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual applied v32 session source; requires creation-time cache-role accessor from d3d42bb34",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": "555ff376b893f8b59c94d1cfc29814acbcbc8085fe471b403c6a65a5a5b49961",
+      "outputSha256": "fc9730251c1d5239b7b888da0ac4f99014109f220a69940276d60e23e415e5f1"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

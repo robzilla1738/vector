@@ -251,6 +251,13 @@
     "04560b20": "Remove old profile-bound command observers/subscriptions",
     "0455ebf0": "Initialize target profile-bound command prefs/services",
     "0455f5d0": "Initialize command state on preserved updater",
-    "04560a50": "Schedule bookmark-model-ready command update"
+    "04560a50": "Schedule bookmark-model-ready command update",
+    "0455d6bc": "Delayed generation-checked drain of touched profile paths, loaded-profile lookup, original-profile existing SessionService saving check and reset",
+    "021836b8": "SessionService::ScheduleResetCommands: pending reset, pending command clear, ranges/tracking/selection clear, BuildCommandsFromBrowsers, flags and save timer",
+    "0108d1d0": "SessionService factory singleton: native literal0xdac2f02 is SessionService",
+    "027a56a4": "Loaded ProfileManager map lookup by exact path; does not create/load a Profile",
+    "023bf730": "SessionServiceBase::ShouldTrackBrowser: exact profile match first; omit flag rejected only when not marked cached workspace; retains ordinary trusted/type checks",
+    "02e85080": "BrowserInitState constructor moves CreateParams, copies+44 omit/trigger to+f0 and registers userdata key0xead4ad0",
+    "031cd7ac": "Browser constructor constructs BrowserInitState via2e85080 and storesit atBrowser+0x198; originalSwitch+8 write therefore modifiesCreateParams.profile"
   }
 }

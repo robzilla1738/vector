@@ -1,0 +1,31 @@
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -21,6 +21,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service_base_observer.h"
+ #include "chrome/browser/sessions/session_service_log.h"
+@@ -845,8 +846,19 @@
+     return false;
+   }
+ 
+-  if (BrowserInitState::From(browser)->omit_from_session_restore()) {
++  const auto* init_state = BrowserInitState::From(browser);
++  if (init_state->omit_from_session_restore()) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    // Supplied023bf7f4..800: omitted ordinary windows remain excluded, but
++    // positively marked profile-workspace caches retain their REAL tabs in
++    // their own profile's session rebuild. This is not the workspace owner ID
++    // and does not bypass the profile/type/trusted-source checks around it.
++    if (!init_state->is_aux_profile_switch_cache()) {
++      return false;
++    }
++#else
+     return false;
++#endif
+   }
+ 
+   // Never track app popup windows that do not have a trusted source (i.e.
