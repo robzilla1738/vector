@@ -1,0 +1,13 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
+@@ -5,10 +5,6 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
+ namespace extensions {
+ ExtensionFunction::ResponseAction AuxBrowserImportFunction::RunAux() {
+-  if (std::string_view(name()) == "auxBrowserImport.startImport" &&
+-      !user_gesture()) {
+-    return RespondNow(Error("Browser import requires explicit user consent"));
+-  }
+   aux_import::ImportService::Get(profile())->Invoke(
+       std::string(std::string_view(name()).substr(17)), args().Clone(),
+       extension_id(),

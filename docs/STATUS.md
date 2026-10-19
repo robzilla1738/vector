@@ -479,3 +479,7 @@ Removed prior runtime rewrites of supplied HTTP/CDP session schemes, auth domain
 ### Original Dock capability semantics recovered
 
 Bounded static instruction analysis of the hash-pinned supplied arm64 framework recovered actual supported/isAdded/canAdd expressions and real presence/add call chain. canAdd is true only for confirmed absence, not an invented global capability flag. Staged exact original result fields around current real Chromium action, preserving/documenting the original read-failure isAdded quirk and retaining known/inDock uncertainty fields. No owner Dock state or action used. Audit hash/instruction checks and disposable patch replay pass; staged C++ uncompiled. Original import prefix confirms dataKinds/sourceProfileId but does not prove absence of later/inherited gesture guards; that gap remains. See docs/integration/provided-dock-contract.md.
+
+### Original import permission flow compatibility
+
+Extended static evidence to full original import entry body0x4276580..0x42774a8 and original explicit permission/file UI followed by asynchronous stored-import navigation. Staged removal of only the independent transient user_gesture rejection, which conflicts with that flow; private component/profile/mode/caller/source/job/archive protections and actual worker remain. No OS permission is fabricated or prompted. Static patch replay/hash checks pass; native remains uncompiled. Also corrected routing documentation for the owner's explicit exception preserving Aside.* protocol names (Aux native private namespaces remain separate).

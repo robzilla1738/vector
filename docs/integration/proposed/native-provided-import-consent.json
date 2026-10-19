@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc",
+      "sourceSha256": "64a4790561b2dd4ed1f9d3f27178da26115860856386bb28e37caacad67d26ea",
+      "outputSha256": "0f670a25085e6059b6b9d16ffe8e93bebd8ef0a2c64d342be9f6d718594c9e4b",
+      "anchors": [
+        {
+          "find": "  if (std::string_view(name()) == \"auxBrowserImport.startImport\" &&\n      !user_gesture()) {\n    return RespondNow(Error(\"Browser import requires explicit user consent\"));\n  }\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

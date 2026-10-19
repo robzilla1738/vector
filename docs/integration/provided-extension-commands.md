@@ -11,7 +11,7 @@ The routing chain is explicit:
 3. Agent background schema-validates the envelope, resolves current native profile context and compares accountId/profileId/browserMode. Stale socket/context-generation replies are discarded. A per-command AbortController reaches the actual handler.
 4. The supplied switch executes real extension APIs and replies `{id,result,error?}`. Disconnect aborts outstanding operations.
 
-Branding must change the daemon's **prefix test**, schema literals, calls, Agent case labels and expected-error literals consistently to Aux. The normal proper-case product rewrite does so, including the otherwise incomplete `Aside.` prefix. Lowercase `runCommand`, `cancelCommand`, account schema fields and compatible lowercase channel names remain unchanged. The UI hook additionally records exact command literal anchors; no compatibility stub is installed.
+The owner explicitly preserves the supplied `Aside.*` command protocol, auth/token/health wire strings and compatible lowercase keys. The daemon prefix test, schema literals, calls, Agent case labels and expected-error literals must therefore all remain Aside. Aux private native API namespaces and component identities are separate adaptations. No compatibility stub or duplicate native domain is needed. Earlier prose recommending renaming the command protocol is superseded by this explicit wire exception.
 
 ## Actual execution dependencies
 

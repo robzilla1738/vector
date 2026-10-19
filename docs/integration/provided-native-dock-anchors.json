@@ -22,10 +22,10 @@
       "sha256": "0962d930ce25db4c0b7b58233289d7a8a7ed21fdbd9427c4447f733e7e58bd71"
     },
     {
-      "name": "import-input-handler-prefix",
+      "name": "import-input-handler",
       "arm64RvaStart": "0x4276580",
-      "arm64RvaEndExclusive": "0x42769b0",
-      "sha256": "1f53c1287441bc6a51c9b8e35c7241c8c31045d8af5fe229217e5a83f46187f2"
+      "arm64RvaEndExclusive": "0x42774a8",
+      "sha256": "5a9deac904b87adfd71648352aae274f3370605abc1095597816eb5402b067b9"
     }
   ],
   "dockStateFields": {
@@ -38,5 +38,5 @@
     "absent": 1,
     "present": 2
   },
-  "limits": "Bounded static raw instructions; no target execution or OS state reads. Dock primitive role inferred from matching upstream implementation and observed call chain. Import prefix does not prove absence of later or inherited gesture guards."
+  "limits": "Bounded static raw instructions; no target execution or OS state reads. Dock primitive role inferred from matching upstream implementation and observed call chain. Full import entry body is covered; indirect/inherited callees are not a complete authorization proof."
 }

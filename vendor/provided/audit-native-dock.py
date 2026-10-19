@@ -33,7 +33,7 @@ with open(sys.argv[1], 'rb') as source:
             ('dock-state-handler', 0x814c024, 0x814c18c),
             ('dock-add-handler', 0x814c190, 0x814c1bc),
             ('dock-presence-primitive', 0x303395c, 0x3033a18),
-            ('import-input-handler-prefix', 0x4276580, 0x42769b0),
+            ('import-input-handler', 0x4276580, 0x42774a8),
         ]
         anchors = [{'name': name, 'arm64RvaStart': hex(start),
                     'arm64RvaEndExclusive': hex(end),
@@ -48,6 +48,6 @@ with open(sys.argv[1], 'rb') as source:
                   'anchors': anchors,
                   'dockStateFields': {'supported': 'true', 'isAdded': 'status != 1', 'canAdd': 'status == 1'},
                   'statusValues': {'readFailure': 0, 'absent': 1, 'present': 2},
-                  'limits': 'Bounded static raw instructions; no target execution or OS state reads. Dock primitive role inferred from matching upstream implementation and observed call chain. Import prefix does not prove absence of later or inherited gesture guards.'}
+                  'limits': 'Bounded static raw instructions; no target execution or OS state reads. Dock primitive role inferred from matching upstream implementation and observed call chain. Full import entry body is covered; indirect/inherited callees are not a complete authorization proof.'}
         view.release()
         print(json.dumps(report, indent=2))
