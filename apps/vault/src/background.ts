@@ -81,12 +81,12 @@ async function dismiss(target: Target & { token: string }) {
 }
 async function currentAccount(accountId?: number, unlocked = true) {
   const account = await resolveAccount();
-  if (accountId !== undefined && accountId !== account.accountId)
-    throw new Error('The local account changed. Open Vault again.');
   for (const target of suggestions.values())
     if (target.accountId !== account.accountId) await dismiss(target);
   for (const [token, target] of pending)
     if (target.accountId !== account.accountId) pending.delete(token);
+  if (accountId !== undefined && accountId !== account.accountId)
+    throw new Error('The local account changed. Open Vault again.');
   const status = await rpc<{ locked: boolean }>('passwordManager.auth.status', {
     accountId: account.accountId,
   });
@@ -195,7 +195,11 @@ async function handle(request: Request) {
   }
   if (request.type === 'aux.vault.pendingSave') {
     await currentAccount(request.accountId);
-    const tab = await activeTab();
+    const tab = (
+      await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+    ).find((tab) => tab.incognito === chrome.extension.inIncognitoContext);
+    if (tab?.id === undefined || !tab.url || !/^https?:/.test(tab.url))
+      return null;
     const target = suggestions.get(tab.id);
     if (!target) return null;
     try {

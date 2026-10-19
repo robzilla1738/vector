@@ -243,8 +243,13 @@ document.addEventListener(
       username,
       password: passwords[0].value,
     };
+    button.textContent = 'Review submitted login';
+    position();
     setTimeout(() => {
-      if (submission?.token === token) submission = undefined;
+      if (submission?.token === token) {
+        submission = undefined;
+        button.textContent = 'Open Aux Vault';
+      }
     }, 120000);
     // No plaintext leaves this isolated actor until the popup explicitly accepts.
     void chrome.runtime
@@ -312,7 +317,10 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
       return;
     }
     if (request.type === 'aux.vault.dismissSubmission') {
-      if (submission?.token === request.suggestionToken) submission = undefined;
+      if (submission?.token === request.suggestionToken) {
+        submission = undefined;
+        button.textContent = 'Open Aux Vault';
+      }
       respond({ result: true });
       return;
     }
