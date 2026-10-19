@@ -86,12 +86,73 @@
     switchProfile: nothing,
   };
 
+  const importListeners = new Set();
+  const importJobs = new Map();
+  const emitImport = (job, changes) => {
+    if (job.state !== "running") return;
+    Object.assign(job, changes);
+    for (const listener of importListeners) listener({ ...job });
+  };
+
+  async function addBookmarks(nodes, parentId) {
+    for (const node of nodes ?? []) {
+      if (node.type === "folder") {
+        const folder = await chrome.bookmarks.create({ parentId, title: node.name || "Folder" });
+        await addBookmarks(node.children, folder.id);
+      } else if (node.url && /^(?:https?|ftp|file):/.test(node.url)) {
+        await chrome.bookmarks.create({ parentId, title: node.name || node.url, url: node.url });
+      }
+    }
+  }
+
+  async function runImport(job, { sourceName, sourceId, sourceProfileId, dataKinds }) {
+    try {
+      const kinds = dataKinds ?? ["history", "bookmarks"];
+      emitImport(job, { currentDataKind: kinds.includes("history") ? "history" : "bookmarks" });
+      const data = await bridge("/import/read", { sourceId, profileId: sourceProfileId, dataKinds: kinds });
+      if (kinds.includes("history")) {
+        // addUrl stamps visits with the current time, so replay oldest first to keep recency order.
+        for (const entry of [...data.history].reverse()) {
+          if (job.state !== "running") return;
+          await chrome.history.addUrl({ url: entry.url }).catch(() => {});
+        }
+      }
+      if (kinds.includes("bookmarks") && data.bookmarks) {
+        emitImport(job, { currentDataKind: "bookmarks" });
+        const folder = await chrome.bookmarks.create({ parentId: "1", title: `Imported from ${sourceName}` });
+        const { bookmark_bar: bar, other, synced } = data.bookmarks;
+        await addBookmarks(bar?.children, folder.id);
+        for (const extra of [other, synced]) {
+          if (!extra?.children?.length) continue;
+          const group = await chrome.bookmarks.create({ parentId: folder.id, title: extra.name || "Other bookmarks" });
+          await addBookmarks(extra.children, group.id);
+        }
+      }
+      emitImport(job, { state: "succeeded", currentDataKind: undefined });
+    } catch (error) {
+      emitImport(job, { state: "failed", currentDataKind: undefined, errorMessage: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   const importer = {
-    getImportSources: async () => [],
-    startImport: async () => ({ error: "Import is not available in this build." }),
-    getImportProgress: async () => ({}),
-    cancelImport: nothing,
-    onImportProgress: { addListener() {}, removeListener() {}, hasListener: () => false },
+    getImportSources: () => bridge("/import/sources"),
+    startImport: async (request) => {
+      const job = { jobId: crypto.randomUUID(), sourceId: request.sourceId, state: "running" };
+      importJobs.set(job.jobId, job);
+      // Listeners attach after startImport resolves, so begin on the next tick.
+      setTimeout(() => runImport(job, request), 0);
+      return { jobId: job.jobId };
+    },
+    getImportProgress: async (jobId) => ({ ...importJobs.get(jobId) }),
+    cancelImport: async (jobId) => {
+      const job = importJobs.get(jobId);
+      if (job?.state === "running") emitImport(job, { state: "cancelled" });
+    },
+    onImportProgress: {
+      addListener: (listener) => importListeners.add(listener),
+      removeListener: (listener) => importListeners.delete(listener),
+      hasListener: (listener) => importListeners.has(listener),
+    },
   };
 
   for (const [name, api] of Object.entries({
