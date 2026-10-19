@@ -15,6 +15,10 @@ export const providedAppRoots = {
   daemon: join(homedir(), 'Library/Application Support/Aside/AsideDaemon/mac-arm64/1.26.1016.1852/Aside Daemon.app'),
   cli: join(homedir(), '.aside/cli/Aside CLI.app'),
 };
+export const providedIntegrationFiles = Object.freeze({
+  daemon: ['aux-native.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json'],
+  cli: ['aux-native.cjs'],
+});
 const targets = {
   daemon: { app: 'Aux Daemon.app', sourceExecutable: 'aside-daemon', executable: 'aux-daemon', adapt: adaptDaemonBinary },
   cli: { app: 'Aux CLI.app', sourceExecutable: 'aside', executable: 'aux-cli', adapt: adaptCliBinary },
@@ -118,6 +122,13 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         await mkdir(dirname(join(app, path)), { recursive: true });
         await writeFile(join(app, path), bytes);
         files.push({ path, outputSha256: hash(bytes), changeKinds: ['branding'], added: true });
+      }
+      for (const name of providedIntegrationFiles[component]) {
+        const path = `Contents/Resources/native/${name}`, repositorySource = `vendor/provided/${name}`;
+        const bytes = await readFile(join(repository, repositorySource));
+        await mkdir(dirname(join(app, path)), { recursive: true });
+        await writeFile(join(app, path), bytes, { mode: 0o644 });
+        files.push({ path, repositorySource, outputSha256: hash(bytes), changeKinds: ['integration'], added: true });
       }
       for (const file of files.filter((entry) => entry.path.endsWith('/Info.plist'))) {
         const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', join(app, file.path)], { encoding: 'utf8' }));

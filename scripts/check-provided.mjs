@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { providedAppRoots } from './lib/provided-apps.mjs';
+import { providedAppRoots, providedIntegrationFiles } from './lib/provided-apps.mjs';
 import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
@@ -76,6 +76,9 @@ let appFiles = 0;
 for (const component of ['daemon', 'cli']) {
   const report = apps.components[component];
   if (!safe(report.app)) throw new Error('Unsafe app report path');
+  for (const name of providedIntegrationFiles[component]) {
+    if (!report.files.some((file) => file.path === `Contents/Resources/native/${name}` && file.repositorySource === `vendor/provided/${name}`)) throw new Error('Restage: fixed native/memory integration seam is missing');
+  }
   const root = join(output, 'apps', report.app);
   const binary = await readFile(join(providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
   const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
@@ -91,6 +94,10 @@ for (const component of ['daemon', 'cli']) {
       sources.delete(source);
     }
     if (file.outputSha256 && hash(await readFile(join(root, file.path))) !== file.outputSha256) throw new Error('App resource output hash mismatch');
+    if (file.repositorySource) {
+      const name = file.path.split('/').at(-1);
+      if (!file.added || !providedIntegrationFiles[component].includes(name) || file.path !== `Contents/Resources/native/${name}` || file.repositorySource !== `vendor/provided/${name}` || hash(await readFile(join(repository, file.repositorySource))) !== file.outputSha256) throw new Error('Restage current fixed integration seam');
+    }
     appFiles++;
   }
   if (sources.size) throw new Error('Unreported omitted app source resources');
