@@ -1,62 +1,52 @@
 # Building Aux locally
 
-Aux uses Chromium155.0.8059.85 on macOS arm64. The default product checkout is
-`~/Documents/Code/aux-chromium-security-155/chromium/src`; Fast output is
-`out/AuxFast/Aux.app`. `dev-defaults.json` and `dev-config.mjs` select these defaults.
-The preserved older product checkout is historical, not the current build target.
-See [STATUS](../docs/STATUS.md) for current source, build identity, observations and
-unfinished crash/performance acceptance. [Earlier build notes](../docs/archive/2026-10-18-native-building-history.md)
-are historical records and do not identify a current running preview.
+Aux uses Chromium155.0.8059.85 on macOS arm64. The shared checkout is
+`/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`.
+The existing dirty checkout contains owner work: never reset it or remove its changes.
+Read the root `AGENTS.md`, `docs/design/names.md` and `docs/STATUS.md` first.
+The earlier runtime/shell development commands are retired; their history remains
+under `docs/archive/`.
 
-From the repository root, use the existing launcher with a disposable Profile:
+## Native targets
 
-```bash
-node scripts/dev.mjs --temp-profile
-```
+- `out/AuxAside` is the intermediate component build. Its historical output directory
+  name is not a shipped product identifier. It must have `enable_aux_browser=true`
+  and `enable_aux_shell=false`; a disabled browser flag does not verify new sources.
+- `out/AuxFast` is the final independent non-component build. Use
+  `chromium/flags.aux.gn`, with `is_official_build=false` for the local unsigned build.
+  Preserve an existing args file before changing it. The browser executable lives
+  at `out/AuxFast/Aux.app/Contents/MacOS/Aux`.
+- Every native compile and generation command uses the shared serialization wrapper:
+  `python3 /Users/rcourson/Documents/Vibe/web/scripts/native-build.py <command> [args...]`.
+  Do not clear a live lock or run a second build against the same output.
 
-It holds one plain PID lock, regenerates contracts/bindings, rebuilds workspace
-modules and renderer, stages assets, builds Chromium incrementally, stages the
-runtime and launches. The same launcher owns the app and temporary Profile until
-normal application-menu Quit retires the app, runtime, Profile and lock. Do not
-start another builder while that preview is alive, force-clear its lock, reset a
-preserved checkout or replace its cleanup owner. Commit a coherent source slice
-before the complete build so embedded source metadata names the candidate honestly.
+The integrator applies lane patches to shared files and owns the patch series,
+root GN integration, startup, preferences and API registration. A delivered patch
+may already be applied to the shared checkout. Check before applying it again.
+Record focused enabled-object compilation separately from full linkage, runtime
+observation and parity acceptance.
 
-For runtime-only edits against an unchanged compiled native ABI and renderer:
+## Workspace and assembly
 
-```bash
-node scripts/dev.mjs --runtime-only --temp-profile
-```
+From the workspace root, run `pnpm build`, `node scripts/build-runtime.mjs`, then
+`node scripts/build-sea.mjs`. Package only independently built artifacts with
+`node scripts/package-aux.mjs --chromium /absolute/path/to/Aux.app --app /absolute/output/Aux.app`.
+Intermediate component packaging additionally requires `--development`; it does
+not satisfy final installation acceptance. Assembly uses local ad hoc signing.
+No push, hosted Actions, Developer ID signing, notarization or release is authorized.
 
-This checks the actual Mach-O host ABI before staging current runtime code and
-preserves the renderer. It cannot prove native changes or new renderer behavior.
-For LLDB observation, use an interactive terminal and the same owner:
+The native browser owns its bundled daemon lifecycle. For runtime observation,
+set a disposable `AUX_HOME` and `--user-data-dir`, and use `--use-mock-keychain`.
+Native import fixtures additionally require a supported disposable source-home
+override. Never test against the owner's real browser profiles or credential stores.
+Wait for the owned health endpoint and actual app registration before attaching a
+UI automation tool that could otherwise launch a second unconfigured instance.
+Use `node scripts/aux.mjs --temp-profile` for ordinary disposable development
+launches after assembly. Final acceptance also launches the app with only system
+tools on PATH, proving no external Node installation is needed.
 
-```bash
-node scripts/dev.mjs --temp-profile --debug-native
-```
-
-Without interactive stdin LLDB may retire on EOF. Deliberate debugger signals are
-not application-crash evidence. Never use LLDB to manipulate native UI.
-
-For a bounded build/tool command, use the launcher's same lock wrapper:
-
-```bash
-node scripts/dev.mjs -- chromium/aux-chromium build --flavor fast
-```
-
-An explicit `AUX_CHROMIUM_SRC` selects a different checkout; it does not authorize
-resetting that checkout or touching an owner's real Profile. Keep matching stock
-builds and their flags separate. A cloned Aux.app is not a compiled stock browser.
-Runtime unit tests import dist, so rebuild `npx tsc -b` after runtime edits before
-testing. Run `npm run check` per integrated source slice and observe changed native
-behavior after compilation. Consolidate native edits as area patches listed in
-`chromium/patches/series`, proving forward/reverse application and actual bytes.
-Compilation, observation and acceptance are distinct evidence.
-
-Renderer staging checks CSP/bootstrap order and uses actual asset inventory for
-GN. Reports for style/bytes/coverage are advisory; compile errors fail builds.
-Keep full ICU and existing correctness fixes. Native performance acceptance uses
-real matching155 Aux/stock builds and `pnpm perf`; source bytes or diagnostic
-Runtime Ready marks are not paired performance results. No push, hosted Actions,
-signing, notarization or release work is part of development.
+The final patch series must reconstruct current bytes from the upstream base.
+Forward/reverse patch checks are useful intermediate evidence; they do not replace
+fresh-series build, real disposable browser observation, provenance review, visual
+comparisons or the required model tasks. Current evidence and gaps are in
+`docs/STATUS.md`.
