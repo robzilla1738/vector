@@ -10,6 +10,16 @@ export {
   planCompaction,
 } from './compaction.js';
 export { Credentials } from './credentials.js';
+export {
+  type CustomModel,
+  type CustomProviderPrivate,
+  type CustomProviderPublic,
+  CustomProviders,
+  customModelSchema,
+  customProviderBatch,
+  customProviderId,
+  customThinkingLevel,
+} from './custom-providers.js';
 export type { AgentExtensions } from './engine.js';
 export { AgentEngine } from './engine.js';
 export { OpenAIOAuth } from './oauth/client.js';
