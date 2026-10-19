@@ -134,6 +134,10 @@ steps.extend([
     ('native-profile-switch-extension-helper-abort/native.patch', 'native-profile-switch-extension-helper-abort/manifest.json'),
     ('native-profile-switch-lens-abort/native.patch', 'native-profile-switch-lens-abort/manifest.json'),
     ('native-profile-switch-private-services/build-registration/native.patch', 'native-profile-switch-private-services/build-registration/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/cookie-profile-owners.patch', 'native-profile-switch-owner/transaction-map/cookie-profile-owners-manifest.json'),
+    ('native-profile-switch-browser-actions/source-abort/native.patch', 'native-profile-switch-browser-actions/source-abort/manifest.json'),
+    ('native-popup-retirement/native.patch', 'native-popup-retirement/manifest.json'),
+    ('native-profile-switch-agent-tabs-ownership/native.patch', 'native-profile-switch-agent-tabs-ownership/manifest.json'),
 ])
 
 if options.through:
