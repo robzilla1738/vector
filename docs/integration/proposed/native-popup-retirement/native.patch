@@ -1,0 +1,22 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -197,7 +197,11 @@
+         listener->UnregisterAccelerator(accelerator_, this);
+       }
+       registered_ = false;
++      accelerator_ = ui::Accelerator();
+       Hide();
++      DestroyWindows();
++      dismiss_.Stop();
++      size_ = gfx::Size(440, 92);
+     }
+     return std::nullopt;
+   }
+@@ -210,6 +214,7 @@
+     DestroyWindows();
+     // Hiding the old native windows can enqueue an activation dismissal.
+     dismiss_.Stop();
++    size_ = gfx::Size(440, 92);
+     profile_ = profile->GetWeakPtr();
+     profile_observer_.Observe(profile);
+   }

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-popup-picker-lifecycle CC1b49218ed290f8db7fc9efaeaaa99d703a55fb86f32de9eb6b0f67b81f2a4588",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "1b49218ed290f8db7fc9efaeaaa99d703a55fb86f32de9eb6b0f67b81f2a4588",
+      "outputSha256": "081df7fee882ea6aa662f9876012c5297d8cd4acffdcd6b70a399b27b8f0bc04"
+    }
+  ]
+}

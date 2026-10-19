@@ -1,0 +1,116 @@
+{
+  "evidenceId": "ev_621510db0c90ea74290514678170e2951cba0945124666fcead3ff0506bf68ae",
+  "authority": "shipped-artifact",
+  "confidence": "observed",
+  "procedure": {
+    "address": "0x4599728",
+    "name": "entry",
+    "classification": {
+      "external": false,
+      "thunk": false,
+      "thunk_target": null,
+      "provenance": "ghidra-function-manager"
+    },
+    "body": {
+      "available": true,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "start": "0x4599728",
+          "end": "0x45997ff"
+        }
+      ],
+      "total_bytes": 216,
+      "span_bytes": 216,
+      "non_contiguous": false,
+      "contains_entry": true
+    },
+    "signature": "undefined entry()",
+    "locals": [
+      {
+        "description": "undefined8 local_10 @ Stack[-0x10]:8",
+        "provenance": "ghidra-function-database"
+      },
+      {
+        "description": "undefined8 local_20 @ Stack[-0x20]:8",
+        "provenance": "ghidra-function-database"
+      }
+    ]
+  },
+  "pseudocode": "\n/* WARNING: Control flow encountered bad instruction data */\n/* WARNING: Possible PIC construction at 0x0459978c: Changing call to branch */\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\n\nvoid entry(long param_1)\n\n{\n  ulong uVar1;\n  long lVar2;\n  undefined8 uVar3;\n  undefined4 *puVar4;\n  \n  if (((_DAT_0eee6cf8 != 0) && (*(long *)(_DAT_0eee6cf8 + 0x38) != 0)) &&\n     (uVar1 = func_0x00306500(*(long *)(_DAT_0eee6cf8 + 0x38),0xcef4d6b,0x18), (uVar1 & 1) != 0)) {\n    func_0x027a55f4();\n                    /* WARNING: Bad instruction - Truncating control flow here */\n    halt_baddata();\n  }\n  lVar2 = *(long *)(param_1 + 0x48);\n  *(undefined8 *)(param_1 + 0x48) = 0;\n  if (lVar2 == 0) {\n    if ((*(char *)(param_1 + 0x20) != '\\0') && (lVar2 = func_0x02d5bfec(), lVar2 != 0)) {\n      func_0x0727d1b0(lVar2,param_1 + 0x28,param_1);\n    }\n    *(undefined1 *)(param_1 + 0x20) = 0;\n    *(undefined2 *)(param_1 + 0x28) = 0;\n    *(undefined4 *)(param_1 + 0x2c) = 0;\n    *(undefined4 *)(param_1 + 0x30) = 0;\n    *(undefined8 *)(param_1 + 0x38) = 0;\n    *(undefined1 *)(param_1 + 0x40) = 0;\n    *(undefined4 *)(param_1 + 0x44) = 0xffffffff;\n    puVar4 = *(undefined4 **)(param_1 + 0x50);\n    *(undefined8 *)(param_1 + 0x50) = 0;\n    if (puVar4 == (undefined4 *)0x0) {\n      return;\n    }\n    uVar3 = func_0x0282d480();\n    func_0x02981a00(uVar3,*puVar4,puVar4[1]);\n  }\n  else {\n    func_0x04595260();\n  }\n                    /* WARNING: Bad instruction - Truncating control flow here */\n  halt_baddata();\n}\n\n",
+  "assembly": [
+    "0x4599728: stp x20, x19, [sp, #-0x20]!",
+    "0x459972c: stp x29, x30, [sp, #0x10]",
+    "0x4599730: add x29, sp, #0x10",
+    "0x4599734: mov x19, x0",
+    "0x4599738: adrp x8, 0xeee6000",
+    "0x459973c: ldr x8, [x8, #0xcf8]",
+    "0x4599740: cbz x8, 0x04599778",
+    "0x4599744: ldr x0, [x8, #0x38]",
+    "0x4599748: cbz x0, 0x04599778",
+    "0x459974c: adrp x1, 0xcef4000",
+    "0x4599750: add x1, x1, #0xd6b",
+    "0x4599754: mov w2, #0x18",
+    "0x4599758: bl 0x00306500",
+    "0x459975c: tbz w0, #0x0, 0x04599778",
+    "0x4599760: bl 0x027a55f4",
+    "0x4599764: mov x1, x0",
+    "0x4599768: mov x0, x19",
+    "0x459976c: ldp x29, x30, [sp, #0x10]",
+    "0x4599770: ldp x20, x19, [sp], #0x20",
+    "0x4599774: b 0x04594b00",
+    "0x4599778: ldr x0, [x19, #0x48]",
+    "0x459977c: str xzr, [x19, #0x48]",
+    "0x4599780: cbz x0, 0x04599790",
+    "0x4599784: bl 0x04595260",
+    "0x4599788: mov w1, #0xe8",
+    "0x459978c: bl 0x00008eb8",
+    "0x4599790: ldrb w8, [x19, #0x20]",
+    "0x4599794: cbz w8, 0x045997ac",
+    "0x4599798: bl 0x02d5bfec",
+    "0x459979c: cbz x0, 0x045997ac",
+    "0x45997a0: add x1, x19, #0x28",
+    "0x45997a4: mov x2, x19",
+    "0x45997a8: bl 0x0727d1b0",
+    "0x45997ac: strb wzr, [x19, #0x20]",
+    "0x45997b0: strh wzr, [x19, #0x28]",
+    "0x45997b4: stp wzr, wzr, [x19, #0x2c]",
+    "0x45997b8: str xzr, [x19, #0x38]",
+    "0x45997bc: strb wzr, [x19, #0x40]",
+    "0x45997c0: mov w8, #0xffffffff",
+    "0x45997c4: str w8, [x19, #0x44]",
+    "0x45997c8: ldr x20, [x19, #0x50]",
+    "0x45997cc: str xzr, [x19, #0x50]",
+    "0x45997d0: cbz x20, 0x045997f4",
+    "0x45997d4: bl 0x0282d480",
+    "0x45997d8: ldp w1, w2, [x20]",
+    "0x45997dc: bl 0x02981a00",
+    "0x45997e0: mov x0, x20",
+    "0x45997e4: mov w1, #0x8",
+    "0x45997e8: ldp x29, x30, [sp, #0x10]",
+    "0x45997ec: ldp x20, x19, [sp], #0x20",
+    "0x45997f0: b 0x00008eb8",
+    "0x45997f4: ldp x29, x30, [sp, #0x10]",
+    "0x45997f8: ldp x20, x19, [sp], #0x20",
+    "0x45997fc: ret"
+  ],
+  "limitations": [
+    "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+    "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+    "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+    "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+    "References cover the complete Ghidra function-body AddressSet and exact entry. Dossier incoming edges omit sources owned by that function; procedure_references also retains those internal edges.",
+    "The dossier combines Ghidra FunctionManager, Listing, ReferenceManager, BasicBlockModel, and decompiler observations; provider-specific pseudocode and assembly are not cross-provider text invariants.",
+    "Resolved reference metadata identifies computed, indirect, external, call, jump, and data edges; unresolved targetless flows remain unknown, and function classifications distinguish thunks and externals.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted.",
+    "The Java bridge serializes one function request per Program and lets each decompilation run until it completes or the caller cancels.",
+    "macOS sessions require a matching executable Ghidra native decompiler; REA checks for it but does not build native components or change Gatekeeper quarantine state.",
+    "Headerless raw-binary analysis uses the caller-supplied architecture and entry address; file offset 0 is mapped at that address. Headers are not discovered from file bytes.",
+    "Little-endian generic Ghidra languages are used for x86, x86_64, arm, arm64, and NMOS 6502; m68k uses the big-endian 68000 default language, which decodes the 68040 superset. Big-endian ARM, Thumb-only, Cortex-M, 65C02, 65816, separate 68020/68030/CPU32/ColdFire variants, and other processor variants are unsupported in this increment.",
+    "Static analysis does not emulate reset vectors, memory-mapped I/O, or firmware boot sequences.",
+    "Unresolved computed or indirect flows without target addresses are not represented as reference edges.",
+    "Thunk and external classifications are Ghidra FunctionManager observations; they do not resolve targetless calls.",
+    "Pseudocode and assembly are Ghidra-specific representations, not original source or Hopper-equivalent text.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted."
+  ]
+}

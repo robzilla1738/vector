@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04599728.c",
+      "sha256": "01614545abc83f346530230835000288c7e158e15ff6500850a08f6a5260ce63"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594b00.c",
+      "sha256": "6ec909b1239ae3e140614353d03945223fa68ae51d70f83a3c5863003d300ebf"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427ca84.c",
+      "sha256": "3517025dc6f57bdd1c7aebed7b4be121529fd50da2bd1aced28be8ec25df8837"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427cc20.c",
+      "sha256": "2cf2615614dda83304f4b2d147a007fd345a60109b0065827df495773391797c"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04594700.c",
+      "sha256": "0ac414e83fa3c070097dc8241de028c6b37955bd9e246ac10dca5262097c02e0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045975a8.c",
+      "sha256": "57cf8ad5994d391ec718724c3125155ad36cac70781fbb8d5bbf0313446aaa6f"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04597798.c",
+      "sha256": "ecfa1c4ea99c698c12c70840ad12839497a51c5152dd583954060e1dcf9f9e8a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0427e8b0.c",
+      "sha256": "dcf8baf0fdb40857afd7a133be51b97e66834bd7944c7f625ae5e428c727ec17"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b"
+    }
+  ],
+  "functions": [
+    {
+      "name": "EnabledPreferenceChanged",
+      "rva": "0x4599728",
+      "bytes": 216,
+      "sha256": "dce9a960b46a8055242544e19a9d5fb47b73e273622de0574faefcdcb63f7468",
+      "evidenceId": "ev_621510db0c90ea74290514678170e2951cba0945124666fcead3ff0506bf68ae",
+      "snapshotPath": "/tmp/aux-popup-enabled-change-snapshot.json"
+    },
+    {
+      "name": "FreshCoordinatorFactory",
+      "rva": "0x4594b00",
+      "bytes": 1044,
+      "sha256": "569a67ef81c0a883ae92a69e5fc1d96eccd7e2d2331c6121019033a0a30d5f1e"
+    },
+    {
+      "name": "MainCreation",
+      "rva": "0x459577c",
+      "bytes": 3556,
+      "sha256": "5a66096c933f19e3452c366862760822de676cff3bb42258f358d6317ba1c870"
+    }
+  ],
+  "anchors": [
+    {
+      "meaning": "Disabled enabled-pref observer clears manager coordinator pointer, invokes04595260 to retire actual tree, unregisters global accelerator then zeroes its registered flag/key tuple."
+    },
+    {
+      "meaning": "Fresh factory zeroes coordinator state byte range+0xac..+0xb3 including composer state+0xb0. Original main Widget desired size is0x5c000001b8 =440x92; state0 maps tocompact92."
+    },
+    {
+      "meaning": "Normal FinishHide retains coordinator/widget and same-profile Show reuses it; retirement is distinct from ordinary hide."
+    }
+  ],
+  "limits": [
+    "Disabled Ghidra extraction reports external-call/PIC truncation; full retained decompile and bounded original assembly establish the branch/control flow. Do not interpret its truncated pseudocode as successful runtime execution.",
+    "This patch intentionally does not remove getEnabled lazy registration until a genuine startup initialization/pref-observer seam exists.",
+    "No source establishes current default enabled/shortcut values here; they remain unchanged and are not claimed faithful.",
+    "No native builds, shared writes, registration/OS shortcut action, signing or owner state operation occurred."
+  ]
+}
