@@ -29,6 +29,10 @@ export default defineConfig({
                 'activeTab',
                 'storage',
                 'downloads',
+                'offscreen',
+                'alarms',
+                'clipboardRead',
+                'clipboardWrite',
                 'dev.aux.ext.private.account',
                 'dev.aux.ext.private.credentials',
               ],
@@ -65,6 +69,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        offscreen: new URL('./offscreen.html', import.meta.url).pathname,
         app: new URL('./index.html', import.meta.url).pathname,
         background: new URL('./src/background.ts', import.meta.url).pathname,
         content: new URL('./src/content.ts', import.meta.url).pathname,

@@ -6,9 +6,12 @@ import {
 } from './autofill-protocol';
 import type { VaultItem } from './client';
 import { resolveAccount, rpc } from './client';
+import { installClipboardLifetime } from './clipboard-background';
 import { installPasskeyLifecycle } from './passkeys/lifecycle';
+import { installSubmissionWatch } from './submission-watch';
 
 installPasskeyLifecycle(rpc, resolveAccount);
+installClipboardLifetime();
 
 type Target = {
   tabId: number;
@@ -74,11 +77,24 @@ async function send<T>(target: Target, message: Record<string, unknown>) {
 }
 async function dismiss(target: Target & { token: string }) {
   suggestions.delete(target.tabId);
+  void submissionWatch.changed().catch(() => undefined);
   await send(target, {
     type: 'aux.vault.dismissSubmission',
     suggestionToken: target.token,
   }).catch(() => undefined);
 }
+const submissionWatch = installSubmissionWatch(
+  suggestions,
+  dismiss,
+  async () => {
+    const account = await resolveAccount();
+    const status = await rpc<{ locked: boolean }>(
+      'passwordManager.auth.status',
+      { accountId: account.accountId },
+    );
+    return { accountId: account.accountId, locked: status.locked };
+  },
+);
 async function currentAccount(accountId?: number, unlocked = true) {
   const account = await resolveAccount();
   for (const target of suggestions.values())
@@ -114,6 +130,11 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   )
     return;
   const request = message as Request;
+  if (
+    typeof request.type === 'string' &&
+    request.type.startsWith('aux.vault.clipboard.')
+  )
+    return;
   const target = contentTarget(sender);
   if (request.type === 'aux.vault.focus' && target) {
     focused.set(target.tabId, target);
@@ -127,6 +148,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
     request.suggestionToken.length < 100
   ) {
     void (async () => {
+      await submissionWatch.ready;
       const account = await currentAccount(undefined, false);
       const tab = await chrome.tabs.get(target.tabId);
       if (!tab.url) throw new Error('This page is unavailable.');
@@ -139,6 +161,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
         topLevelUrl: tab.url,
         createdAt: Date.now(),
       });
+      await submissionWatch.changed();
       return true;
     })()
       .then((result) => respond({ result }))
@@ -172,6 +195,12 @@ async function activeTab() {
   return tab as chrome.tabs.Tab & { id: number; url: string };
 }
 async function handle(request: Request) {
+  await submissionWatch.ready;
+  if (request.type === 'aux.vault.clearPending') {
+    await submissionWatch.clear();
+    pending.clear();
+    return true;
+  }
   if (request.type === 'aux.vault.pageContext') {
     const tab = await activeTab();
     const target = focused.get(tab.id);
@@ -352,6 +381,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   for (const [token, target] of pending)
     if (target.tabId === tabId) pending.delete(token);
   suggestions.delete(tabId);
+  void submissionWatch.changed().catch(() => undefined);
 });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (!change.url && change.status !== 'loading') return;

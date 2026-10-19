@@ -254,8 +254,14 @@ document.addEventListener(
     // No plaintext leaves this isolated actor until the popup explicitly accepts.
     void chrome.runtime
       .sendMessage({ type: 'aux.vault.submitted', suggestionToken: token })
+      .then((response) => {
+        if (response?.error && submission?.token === token) {
+          submission = undefined;
+          button.textContent = 'Open Aux Vault';
+        }
+      })
       .catch(() => {
-        submission = undefined;
+        if (submission?.token === token) submission = undefined;
       });
   },
   true,
