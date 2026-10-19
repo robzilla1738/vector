@@ -16,10 +16,12 @@ Last updated 2026-10-19.
 
 ## Differences from Aside
 
-- Sidebar: native Bookmarks, Chats and Tabs sections sit above Chromium's vertical tab strip, with a profile and tab-search footer pinned to the bottom (`0073-aux-sidebar-sections.patch`). Sections collapse from their headers. Chats come live from the daemon, the open chat is highlighted, and right-click offers Pin, Mark as read, Archive and Delete (Pin only for sessions the daemon allows). Pinned tabs use Chromium's own pinned container, capped at three tiles per row like Aside's tile grid (`0079-aux-pinned-tab-grid.patch`), so pin drag and drop keeps working. Still missing: the profile pill, Aside's glass (vibrancy) material and exact sizing. The footer profile button opens Chromium's profile menu, not Aside's.
-- Omnibox and toolbar: Aux extension pages show their page title instead of the extension URL (`0074`). The app menu button is hidden (`0077`, the menu bar is the entry point) and Google's AI Mode is off by default (`0076`). The rest of the toolbar is stock Chromium: Aside's always-visible Downloads button and `aside://` display scheme are not reproduced.
+- Sidebar: native pinned tile grid (three per row), Bookmarks, Chats and Tabs sections above Chromium's vertical tab strip (`0073`, `0079`). The header is Aside's purple agent pill (opens the chat list) and the sidebar toggle. The footer has the profile avatar with chevron, profile pager dots (when there is more than one profile) and tab search. Sections collapse from their headers. Chats come live from the daemon, the open chat is highlighted, and right-click offers Pin, Mark as read, Archive and Delete (Pin only for sessions the daemon allows). Pinned tiles right-click to Reload, Duplicate, Unpin and Close. Chromium's own pinned container is kept empty, so dragging tabs to pin or reorder tiles is not supported.
+- Profile menu: Aside's panel (profiles with check and Edit/Delete, New profile, Bookmarks, Downloads, Extensions, History and Developers submenus, Settings, New Tab, Incognito Window). Edit opens Chromium's profile customization page, not Aside's icon picker.
+- Window material: Chromium's glass frame (macOS vibrancy) is on by default (`0080`). The toolbar has no avatar button for regular profiles.
+- Omnibox and toolbar: Aux extension pages show their page title instead of the extension URL (`0074`). The app menu button is hidden (`0077`, the menu bar is the entry point), Google's AI Mode is off by default (`0076`) and Downloads is pinned to the toolbar (`0078`). The `aside://` display scheme is not reproduced.
 - Product strings: Chromium's own UI text says Aux (`0075-aux-product-strings.patch`). Profiles created before that patch keep their stored name ("Your Chromium").
-- `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/`), not native. The mini popup window chrome is not native, and the Aside profile menu and icon picker are not reproduced.
+- `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/`), not native. The mini popup window chrome is not native, and Aside's profile icon picker, Ctrl-Tab switcher, update badge and blocked-page interstitial are not reproduced.
 - The new tab override registers after the extension loads, so the first tab can start on Chromium's Google page. The launcher detects that and navigates the tab to `chrome://newtab` once the extension is up.
 - Local accounts only. There is no Aux cloud.
 - The Computer Use helper's own windows still show Aside strings (binary text).
@@ -27,6 +29,4 @@ Last updated 2026-10-19.
 
 ## Next
 
-Native sidebar profile pill, vibrancy material, `aside://` omnibox scheme, Aside's profile menu and icon picker, native `chrome.aside*` APIs, a signed non-component build, and a Node-free launcher.
-
-- Toolbar: Downloads is pinned by default (patch 0078).
+Profile icon picker, `aside://` omnibox scheme, Aside's Ctrl-Tab switcher and blocked-page interstitial, native `chrome.aside*` APIs, exact sidebar sizing against Aside, tile drag and drop, a signed non-component build, and a Node-free launcher.
