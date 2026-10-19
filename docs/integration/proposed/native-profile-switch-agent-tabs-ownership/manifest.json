@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h",
+      "baselineSha256": "eb3ad5b5309a53c50021553cd5ee18f952f6a52d2c29cd53dca8f4ffccdf7c75",
+      "outputSha256": "b537bf81635c495cc4f7ade0aed12e2ad1cd1e41880e05bd87afc33323189221"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "8cd3a40336365cdadb67960df98ca4271d85de76b4e0da8c4cfabfdca834c7ee",
+      "outputSha256": "ab9ce3a1e2238eac1c7d68778ef7501a1270944d8da1e95ddb5d8b34fdc39913"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "fidelityAcceptance": false
+}

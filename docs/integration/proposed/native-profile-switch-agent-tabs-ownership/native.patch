@@ -1,0 +1,82 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h
+@@ -6,6 +6,10 @@
+ #include <memory>
+ class BrowserWindowInterface;
+ namespace views { class ImageButton; }
++// Cold ownership check only: the actual per-window bubble must finish closing
++// before its old profile can leave this physical window.
++bool CanSwitchAuxAgentTabsProfile(BrowserWindowInterface* browser);
++
+ // Native toolbar control backed exclusively by verified owned-target records.
+ std::unique_ptr<views::ImageButton> CreateAuxAgentTabsButton(
+     BrowserWindowInterface* browser);
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -10,6 +10,7 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/json/json_reader.h"
++#include "base/no_destructor.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -38,6 +39,18 @@
+ 
+ namespace {
+ using Operation = AuxNativeTaskFeed::AgentTabsOperation;
++struct AgentTabsBubbleOwner {
++  base::WeakPtr<BrowserWindowInterface> browser;
++  base::WeakPtr<views::Widget> widget;
++};
++std::vector<AgentTabsBubbleOwner>& AgentTabsBubbleOwners() {
++  static base::NoDestructor<std::vector<AgentTabsBubbleOwner>> owners;
++  std::erase_if(*owners, [](const auto& owner) {
++    return !owner.browser || !owner.widget;
++  });
++  return *owners;
++}
++
+ struct OwnedTab {
+   std::string target_id;
+   std::string session_tab_id;
+@@ -278,6 +291,17 @@
+ };
+ }  // namespace
+ 
++bool CanSwitchAuxAgentTabsProfile(BrowserWindowInterface* browser) {
++  if (!browser) {
++    return false;
++  }
++  // Closing is asynchronous. Wait for the real Widget's destruction, without
++  // mistaking a hide/Close request for completion or affecting other windows.
++  return std::ranges::none_of(AgentTabsBubbleOwners(), [browser](const auto& owner) {
++    return owner.browser.get() == browser;
++  });
++}
++
+ std::unique_ptr<views::ImageButton> CreateAuxAgentTabsButton(
+     BrowserWindowInterface* browser) {
+   auto button = views::CreateVectorImageButton(views::Button::PressedCallback());
+@@ -287,11 +311,15 @@
+   button->SetTooltipText(u"Agent-owned tabs");
+   button->GetViewAccessibility().SetName(u"Agent-owned tabs");
+   button->SetCallback(base::BindRepeating(
+-      [](BrowserWindowInterface* browser, views::ImageButton* anchor) {
+-        auto bubble = std::make_unique<AgentTabsBubble>(browser, anchor);
+-        views::BubbleDialogDelegate::CreateBubbleDeprecated(
+-            std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET)
+-            ->Show();
+-      }, base::Unretained(browser), base::Unretained(button.get())));
++      [](base::WeakPtr<BrowserWindowInterface> owner, views::ImageButton* anchor) {
++        if (!owner) {
++          return;
++        }
++        auto bubble = std::make_unique<AgentTabsBubble>(owner.get(), anchor);
++        auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++            std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++        AgentTabsBubbleOwners().push_back({owner, widget->GetWeakPtr()});
++        widget->Show();
++      }, browser->GetWeakPtr(), base::Unretained(button.get())));
+   return button;
+ }
