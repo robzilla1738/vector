@@ -261,21 +261,30 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
    std::string chat_id_;
  };
  
-@@ -485,6 +515,13 @@
+@@ -483,6 +513,13 @@
+   return profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(size * 2), size,
+                                       size, profiles::SHAPE_CIRCLE)
        .AsImageSkia();
- }
- 
++}
++
 +ui::ImageModel MenuAvatar(ProfileAttributesEntry* entry) {
 +  ui::ImageModel chosen = AuxProfileIconImage(entry->GetPath(), kMenuRowIcon);
 +  return chosen.IsEmpty()
 +             ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon))
 +             : chosen;
-+}
-+
+ }
+ 
  std::vector<ProfileAttributesEntry*> AllProfiles() {
-   return g_browser_process->profile_manager()
-       ->GetProfileAttributesStorage()
-@@ -555,7 +592,7 @@
+@@ -492,6 +529,8 @@
+ }
+ 
+ // Aside's profile menu: the profiles on this Mac, then the browser sections.
++void RefreshAuxProfileButton(views::View* button);
++
+ class AuxProfileMenu : public views::BubbleDialogDelegate,
+                        public ui::SimpleMenuModel::Delegate {
+  public:
+@@ -555,7 +594,7 @@
        auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
            base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this),
                                path),
@@ -284,7 +293,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
            entry->GetName()));
        if (path == current) {
          row->AddTrailingIcon(kCheckIcon);
-@@ -682,15 +719,12 @@
+@@ -682,15 +721,33 @@
    }
  
    void EditProfile() {
@@ -299,13 +308,34 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
 +    views::View* anchor = GetAnchorView();
 +    const base::FilePath path = action_profile_;
      GetWidget()->Close();
-+    if (anchor) {
-+      ShowAuxIconPicker(anchor, path);
++    if (!anchor) {
++      return;
 +    }
++    // The picker is a bubble that dismisses on deactivation, so it must open
++    // after this menu has finished closing.
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(
++            [](std::unique_ptr<views::ViewTracker> tracker,
++               base::FilePath path) {
++              views::View* anchor = tracker->view();
++              if (!anchor) {
++                return;
++              }
++              auto refresh = std::make_unique<views::ViewTracker>(anchor);
++              ShowAuxIconPicker(
++                  anchor, path,
++                  base::BindOnce(
++                      [](std::unique_ptr<views::ViewTracker> tracker) {
++                        RefreshAuxProfileButton(tracker->view());
++                      },
++                      std::move(refresh)));
++            },
++            std::make_unique<views::ViewTracker>(anchor), path));
    }
  
    void DeleteProfile() {
-@@ -747,11 +781,16 @@
+@@ -747,14 +804,19 @@
          g_browser_process->profile_manager()
              ->GetProfileAttributesStorage()
              .GetProfileAttributesWithPath(browser->GetProfile()->GetPath());
@@ -326,8 +356,48 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
 +    auto avatar = std::make_unique<views::ImageView>(avatar_image);
      avatar->SetImageSize(gfx::Size(20, 20));
      avatar->SetCanProcessEventsWithinSubtree(false);
-     AddChildView(std::move(avatar));
-@@ -991,20 +1030,24 @@
+-    AddChildView(std::move(avatar));
++    avatar_ = AddChildView(std::move(avatar));
+     auto chevron = std::make_unique<views::ImageView>(
+         ui::ImageModel::FromVectorIcon(vector_icons::kKeyboardArrowDownIcon,
+                                        ui::kColorSysOnSurfaceSubtle, 12));
+@@ -764,8 +826,17 @@
+     SetTooltipText(u"Profiles");
+     SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+     UpdateBackground();
++    browser_ = browser;
+   }
+ 
++  void RefreshAvatar() {
++    ui::ImageModel image =
++        AuxProfileIconImage(browser_->GetProfile()->GetPath(), 20);
++    if (!image.IsEmpty()) {
++      avatar_->SetImage(image);
++    }
++  }
++
+  protected:
+   void StateChanged(views::Button::ButtonState old_state) override {
+     views::Button::StateChanged(old_state);
+@@ -780,8 +851,17 @@
+                                 ui::kColorSysStateHoverOnSubtle, 12)
+                           : nullptr);
+   }
++
++  raw_ptr<BrowserWindowInterface> browser_ = nullptr;
++  raw_ptr<views::ImageView> avatar_ = nullptr;
+ };
+ 
++void RefreshAuxProfileButton(views::View* button) {
++  if (button && button->GetClassName() == AuxProfileButton::kViewClassName) {
++    static_cast<AuxProfileButton*>(button)->RefreshAvatar();
++  }
++}
++
+ BEGIN_METADATA(AuxProfileButton)
+ END_METADATA
+ 
+@@ -991,20 +1071,24 @@
    AddPinnedTiles();
  
    // Returns whether the section is expanded.
@@ -360,7 +430,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
      header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
      return !collapsed;
    };
-@@ -1276,6 +1319,14 @@
+@@ -1276,6 +1360,14 @@
      return;
    }
    chats_ = std::move(chats);
@@ -375,11 +445,10 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
    Rebuild();
  }
  
-@@ -1442,7 +1493,66 @@
- 
+@@ -1443,6 +1535,65 @@
  BEGIN_METADATA(AuxAgentPill)
  END_METADATA
-+
+ 
 +// Aside's agent status in the footer: a bolt with a dot that turns green while
 +// an agent is running. Opens the chat list.
 +class AuxBoltButton : public views::Button {
@@ -399,7 +468,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
 +    SetTooltipText(u"Agent activity");
 +    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
 +  }
- 
++
 +  void SetActive(bool active) {
 +    active_ = active;
 +    SchedulePaint();
@@ -442,7 +511,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
  AuxSidebarFooter::AuxSidebarFooter(BrowserWindowInterface* browser)
      : browser_(browser) {
    Build();
-@@ -1451,10 +1561,10 @@
+@@ -1451,10 +1602,10 @@
  void AuxSidebarFooter::Build() {
    RemoveAllChildViews();
    profile_button_ = nullptr;
@@ -455,7 +524,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
  
    profile_button_ =
        AddChildView(std::make_unique<AuxProfileButton>(browser_));
-@@ -1472,6 +1582,10 @@
+@@ -1472,6 +1623,10 @@
      }
    }
  
@@ -466,7 +535,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/
    auto* spacer = AddChildView(std::make_unique<views::View>());
    layout->SetFlexForView(spacer, 1);
  
-@@ -1493,6 +1607,13 @@
+@@ -1493,6 +1648,13 @@
  
  AuxSidebarFooter::~AuxSidebarFooter() = default;
  

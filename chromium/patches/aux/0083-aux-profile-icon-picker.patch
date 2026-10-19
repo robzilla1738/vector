@@ -534,15 +534,15 @@ new file mode 100644
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -1432,6 +1432,8 @@
-   registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
+@@ -1433,6 +1433,8 @@
    registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
    registry->RegisterStringPref(aux::kExternalLinkTargetPref, "little");
+ #endif
 +  // Keep in sync with kAuxProfileIconsPref in views/frame/aux_icon_picker.h.
 +  registry->RegisterDictionaryPref("aux.profile_icons");
- #endif
    // Call outs to individual subsystems that register Local State (browser-wide)
    // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+   // keep this list alphabetized.
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
