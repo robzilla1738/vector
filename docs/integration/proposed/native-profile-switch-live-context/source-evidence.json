@@ -1,0 +1,25 @@
+{
+  "kind": "Actual profile client, globally stable SessionID lookup and existing closing-context erasure source",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.h",
+      "sha256": "4dc2e03176ac8a0a90021e121f2f9c9247b66448055cd6403c7a9bd4a6ec8eef"
+    },
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.cc",
+      "sha256": "0b92d817aa7cfb291bbb9ae74475d4dd53be8b6791ea693cae4f6a4a95250a5f"
+    },
+    {
+      "path": "chrome/browser/sessions/chrome_tab_restore_service_client.cc",
+      "sha256": "fd16640e930427b90fca3c8bea07638e318cc60c5253a3f069bb8fd9855513a8"
+    },
+    {
+      "path": "components/sessions/core/tab_restore_service_helper.cc",
+      "sha256": "7151c62dce5b4330d64edbb0645332cdc942b0a13a78d05bb7065584a90c0cfa"
+    },
+    {
+      "path": "chrome/browser/sessions/tab_restore_service_factory.h",
+      "sha256": "f893f433f74a353cb5cd93b23e1a54aa859541eb931ffe779e56ad821f0a9467"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Actual current v83/84 shared inputs, these files untouched by prior proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.h",
+      "baselineSha256": "4dc2e03176ac8a0a90021e121f2f9c9247b66448055cd6403c7a9bd4a6ec8eef",
+      "outputSha256": "f92822132248d31ed352def93ac7efce98c91de0b5846455297b15d05fbaa28c"
+    },
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.cc",
+      "baselineSha256": "0b92d817aa7cfb291bbb9ae74475d4dd53be8b6791ea693cae4f6a4a95250a5f",
+      "outputSha256": "4483ed52d63cf75a1f0563f7728c0d5067cb233b7060117a8c9b3681c03b98af"
+    },
+    {
+      "path": "chrome/browser/sessions/chrome_tab_restore_service_client.cc",
+      "baselineSha256": "fd16640e930427b90fca3c8bea07638e318cc60c5253a3f069bb8fd9855513a8",
+      "outputSha256": "1b762dbed243a11f74fd825f5623cf41bc861ad4767e959885cd2a08205e9bf0"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

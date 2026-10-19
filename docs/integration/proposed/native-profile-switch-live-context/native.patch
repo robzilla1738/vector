@@ -1,0 +1,119 @@
+--- a/chrome/browser/ui/browser_live_tab_context.h
++++ b/chrome/browser/ui/browser_live_tab_context.h
+@@ -10,6 +10,7 @@
+ #include <vector>
+ 
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/sessions/core/live_tab_context.h"
+ #include "components/sessions/core/session_id.h"
+@@ -133,6 +134,11 @@
+   // Returns the LiveTabContext of the Browser with |desired_id| if
+   // such a Browser exists.
+   static sessions::LiveTabContext* FindContextWithID(SessionID desired_id);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  void RebindForAuxProfileSwitch();
++  static sessions::LiveTabContext* FindContextWithIDForAuxProfile(
++      SessionID desired_id, Profile* expected_profile);
++#endif
+ 
+   // Returns the LiveTabContext of the Browser containing the group with ID
+   // |group| if such a Browser exists within the given |profile|.
+@@ -145,7 +151,7 @@
+ 
+   const raw_ref<BrowserWindowInterface> browser_;
+   const raw_ref<TabStripModel> tab_strip_model_;
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
+   const raw_ref<ui::BaseWindow> base_window_;
+   const sessions::SessionWindow::WindowType window_type_;
+   const std::string app_name_;
+--- a/chrome/browser/ui/browser_live_tab_context.cc
++++ b/chrome/browser/ui/browser_live_tab_context.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/browser_live_tab_context.h"
++#include "base/check_op.h"
+ 
+ #include <memory>
+ #include <numeric>
+@@ -127,6 +128,36 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void BrowserLiveTabContext::RebindForAuxProfileSwitch() {
++  CHECK_EQ(Get(browser_->GetUnownedUserDataHost()), this);
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK_EQ(browser_->GetTabStripModel(), &tab_strip_model_.get());
++  CHECK_EQ(browser_->GetSessionID(), session_id_);
++  CHECK(tab_strip_model_->empty());
++  // BrowserClosed only retires the old helper's closing_contexts_ pointer;
++  // it does not manufacture a history entry or close this physical window.
++  if (auto* service =
++          TabRestoreServiceFactory::GetForProfileIfExisting(&profile_.get())) {
++    service->BrowserClosed(this);
++  }
++  profile_ = *browser_->GetProfile();
++}
++
++sessions::LiveTabContext* BrowserLiveTabContext::FindContextWithIDForAuxProfile(
++    SessionID desired_id, Profile* expected_profile) {
++  CHECK(expected_profile);
++  auto* browser =
++      GlobalBrowserCollection::GetInstance()->FindBrowserWithID(desired_id);
++  // The same real SessionID survives the in-place transaction. A stale
++  // source-profile restore ID must not resolve into its new target profile.
++  return browser && browser->GetProfile() == expected_profile
++             ? GetLiveTabContext(browser)
++             : nullptr;
++}
++#endif
++
+ void BrowserLiveTabContext::ShowBrowserWindow() {
+   base_window_->Show();
+ }
+--- a/chrome/browser/sessions/chrome_tab_restore_service_client.cc
++++ b/chrome/browser/sessions/chrome_tab_restore_service_client.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/sessions/chrome_tab_restore_service_client.h"
+ 
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#include "content/public/browser/web_contents.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_common_utils.h"
+ #include "chrome/common/url_constants.h"
+@@ -64,8 +66,14 @@
+   return AndroidLiveTabContext::FindContextForWebContents(
+       &static_cast<const sessions::ContentLiveTab*>(tab)->GetWebContents());
+ #else
+-  return BrowserLiveTabContext::FindContextForWebContents(
+-      &static_cast<const sessions::ContentLiveTab*>(tab)->GetWebContents());
++  auto& contents =
++      static_cast<const sessions::ContentLiveTab*>(tab)->GetWebContents();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (contents.GetBrowserContext() != profile_) {
++    return nullptr;
++  }
++#endif
++  return BrowserLiveTabContext::FindContextForWebContents(&contents);
+ #endif
+ }
+ 
+@@ -74,7 +82,12 @@
+ #if BUILDFLAG(IS_ANDROID)
+   return AndroidLiveTabContext::FindContextWithID(desired_id);
+ #else
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  return BrowserLiveTabContext::FindContextWithIDForAuxProfile(desired_id,
++                                                            profile_);
++#else
+   return BrowserLiveTabContext::FindContextWithID(desired_id);
++#endif
+ #endif
+ }
+ 
