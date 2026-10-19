@@ -31,9 +31,51 @@ export interface CapturePermissions {
   accessibility: 'granted' | 'denied' | 'unknown' | 'unavailable';
   screenCapture: 'granted' | 'denied' | 'unknown' | 'unavailable';
 }
+export interface CaptureCandidate {
+  id: string;
+  pid: number;
+  appName: string;
+  bundleId: string;
+}
+export type CapturePreparation =
+  | { state: 'ready'; candidate: CaptureCandidate }
+  | { state: 'skipped'; reason: string };
+export type CaptureResult =
+  | {
+      state: 'captured';
+      candidateId: string;
+      pid: number;
+      bundleId: string;
+      appName: string;
+      windowTitle: string;
+      content: string;
+      occurredAt: number;
+    }
+  | { state: 'skipped'; reason: string };
+export interface ObserverState {
+  running: boolean;
+  phase:
+    | 'waiting'
+    | 'checking'
+    | 'capturing'
+    | 'skipped'
+    | 'blocked'
+    | 'stopped';
+  reason?: string;
+  lastCapturedAt?: number;
+}
 export interface CaptureAdapter {
-  permissions(accountId: number): Promise<CapturePermissions>;
+  permissions(
+    accountId: number,
+    signal?: AbortSignal,
+  ): Promise<CapturePermissions>;
   requestPermissions(accountId: number): Promise<CapturePermissions>;
+  prepare?(accountId: number, signal: AbortSignal): Promise<CapturePreparation>;
+  capture?(
+    accountId: number,
+    candidate: CaptureCandidate,
+    signal: AbortSignal,
+  ): Promise<CaptureResult>;
 }
 const unavailable: CapturePermissions = {
   semanticCapture: 'unavailable',
@@ -60,6 +102,34 @@ export interface ContextSummary {
   model: unknown;
 }
 export class ContextService {
+  private observers = new Map<number, ObserverState>();
+  private captureVersions = new Map<number, number>();
+  captureVersion(accountId: number) {
+    return this.captureVersions.get(accountId) ?? 0;
+  }
+  private invalidateCapture(accountId: number) {
+    this.captureVersions.set(accountId, this.captureVersion(accountId) + 1);
+  }
+  setObserverState(accountId: number, state: ObserverState) {
+    this.observers.set(accountId, state);
+  }
+  captureAllowed(
+    accountId: number,
+    app: { bundleId: string; appName: string; domain?: string | null },
+  ) {
+    this.memory.store.requireAccount(accountId);
+    if (
+      this.memory.store.get(
+        accountId,
+        'settings',
+        'contextAwarenessEnabled',
+      ) !== true ||
+      this.pauseState(accountId)
+    )
+      fail('PRECONDITION_FAILED', 'Activity capture is disabled or paused');
+    if (this.excluded(accountId, { ...app, domain: app.domain ?? null }))
+      fail('FORBIDDEN', 'Activity source is excluded');
+  }
   constructor(
     readonly memory: MemoryService,
     readonly adapter?: CaptureAdapter,
@@ -146,8 +216,9 @@ export class ContextService {
         );
       domain = parsed.hostname.toLowerCase();
       for (const key of [...parsed.searchParams.keys()])
-        if (/password|token|secret|key|auth|code/i.test(key))
+        if (/password|token|secret|key|auth|code|session|credential/i.test(key))
           parsed.searchParams.set(key, '[redacted]');
+      parsed.hash = '';
       url = parsed.href;
     }
     const event: Activity = {
@@ -166,9 +237,11 @@ export class ContextService {
       fail('FORBIDDEN', 'Activity source is excluded');
     return event;
   }
-  async permissions(accountId: number) {
+  async permissions(accountId: number, signal?: AbortSignal) {
     this.memory.store.requireAccount(accountId);
-    return this.adapter ? this.adapter.permissions(accountId) : unavailable;
+    return this.adapter
+      ? this.adapter.permissions(accountId, signal)
+      : unavailable;
   }
   async requestPermissions(accountId: number) {
     this.memory.store.requireAccount(accountId);
@@ -188,18 +261,30 @@ export class ContextService {
           'contextAwarenessEnabled',
         ) === true,
       paused = this.pauseState(accountId);
-    const domain = url ? new URL(url).hostname.toLowerCase() : null;
+    if (url) new URL(url);
+    const observer = this.observers.get(accountId) ?? {
+      running: false,
+      phase: 'stopped' as const,
+      reason: 'observer-not-started',
+    };
     return {
       enabled,
       paused,
       permission,
-      capturing: enabled && !paused && permission.semanticCapture === 'granted',
-      urlObservable:
-        !!url &&
+      observer,
+      observing:
         enabled &&
         !paused &&
-        permission.semanticCapture === 'granted' &&
-        !this.excluded(accountId, { domain, bundleId: '', appName: '' }),
+        observer.running &&
+        permission.semanticCapture === 'granted',
+      capturing:
+        enabled &&
+        !paused &&
+        observer.running &&
+        observer.phase === 'capturing' &&
+        permission.semanticCapture === 'granted',
+      urlObservable: false,
+      browserCapture: 'requires-bound-extension-proof',
       exclusions: this.exclusions(accountId),
     };
   }
@@ -213,6 +298,7 @@ export class ContextService {
         domains: z.array(z.string().regex(/^[a-zA-Z0-9.-]+$/)),
       })
       .parse(value);
+    this.invalidateCapture(accountId);
     this.memory.store.set(accountId, 'contextSettings', 'exclusions', parsed);
     return parsed;
   }
@@ -225,6 +311,7 @@ export class ContextService {
         options.until ??
         (options.durationMs ? Date.now() + options.durationMs : null),
     };
+    this.invalidateCapture(accountId);
     this.memory.store.set(accountId, 'contextSettings', 'pause', pause);
     return pause;
   }
@@ -235,6 +322,7 @@ export class ContextService {
         'PRECONDITION_FAILED',
         'Semantic capture permission is unavailable or denied',
       );
+    this.invalidateCapture(accountId);
     this.memory.store.set(accountId, 'contextSettings', 'pause', {
       paused: false,
       until: null,
@@ -243,7 +331,11 @@ export class ContextService {
   }
   async ingest(accountId: number, input: z.infer<typeof activitySchema>) {
     const state = await this.status(accountId);
-    if (!state.capturing)
+    if (
+      !state.enabled ||
+      state.paused ||
+      state.permission.semanticCapture !== 'granted'
+    )
       fail(
         'PRECONDITION_FAILED',
         'Activity capture requires opt-in, granted native permission, and an unpaused observer',
@@ -253,7 +345,28 @@ export class ContextService {
       this.normalize(accountId, activitySchema.parse(input)),
     );
   }
-  private async record(accountId: number, event: Activity) {
+  async ingestObserved(
+    accountId: number,
+    input: z.infer<typeof activitySchema>,
+    assertCurrent: () => Promise<void>,
+  ) {
+    await assertCurrent();
+    const event = this.normalize(accountId, activitySchema.parse(input));
+    const result = await this.record(accountId, event, assertCurrent);
+    try {
+      await assertCurrent();
+    } catch (error) {
+      if (result.inserted)
+        this.clear(accountId, { kind: 'events', ids: [event.id] });
+      throw error;
+    }
+    return result;
+  }
+  private async record(
+    accountId: number,
+    event: Activity,
+    assertCurrent?: () => Promise<void>,
+  ) {
     const db = this.database(accountId);
     let inserted = false;
     try {
@@ -279,7 +392,7 @@ export class ContextService {
     }
     let indexError: string | undefined;
     try {
-      await this.index(accountId, event);
+      await this.index(accountId, event, assertCurrent);
     } catch (error) {
       indexError = error instanceof Error ? error.message : String(error);
     }
@@ -290,7 +403,11 @@ export class ContextService {
       ...(indexError ? { indexError } : {}),
     };
   }
-  private index(accountId: number, event: Activity) {
+  private index(
+    accountId: number,
+    event: Activity,
+    assertCurrent?: () => Promise<void>,
+  ) {
     return this.memory.indexSource(
       accountId,
       {
@@ -309,7 +426,8 @@ export class ContextService {
           domain: event.domain,
         },
       },
-      () => {
+      async () => {
+        await assertCurrent?.();
         try {
           return this.read(accountId, [event.id]).length === 1;
         } catch {
@@ -526,16 +644,19 @@ export class ContextService {
         | 'timeRange'
         | 'application'
         | 'domain'
-        | 'session';
+        | 'session'
+        | 'events';
       from?: number;
       to?: number;
       bundleId?: string;
       domain?: string;
       sessionId?: string;
+      ids?: string[];
     },
   ) {
     const db = this.database(accountId);
     try {
+      this.invalidateCapture(accountId);
       const midnight = new Date();
       midnight.setHours(0, 0, 0, 0);
       const rows = db.prepare('SELECT value FROM activity_events').all() as {
@@ -546,6 +667,7 @@ export class ContextService {
         .filter(
           (event) =>
             target.kind === 'all' ||
+            (target.kind === 'events' && !!target.ids?.includes(event.id)) ||
             (target.kind === 'today' &&
               event.occurredAt >= midnight.getTime()) ||
             (target.kind === 'timeRange' &&

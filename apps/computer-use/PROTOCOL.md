@@ -56,3 +56,13 @@ capability available, and otherwise denied/unavailable. Screen capture status re
 separate. Requesting context permission initiates Accessibility authorization and rechecks
 actual status. This adapter does not start an observer or collect any screen content.
 The integrator must apply opt-in and app/domain exclusions before each native snapshot.
+
+## Continuous observer semantic transport
+
+`semantic.prepare({})` is daemon-private, requires existing Accessibility permission and never prompts. It returns `{state:'ready',candidate:{id,pid,bundleId,appName}}` or `{state:'skipped',reason}`. It reads only application metadata and focused-window identity. Applications declaring HTTP/HTTPS URL handling (or known browser bundle identities) are skipped. The helper cannot prove browser profile/private mode from OS accessibility data.
+
+`semantic.capture({id})` consumes a fresh single-use token (ten-second lifetime). Before reading text/title/value attributes it performs a complete bounded role/children pass; web areas, unknown role trees, or a truncated pass cause a skipped result. Editable/secure subtrees are omitted entirely. A second pass reads bounded static text, rechecks roles, then verifies foreground process launch identity and exact focused window before/after title retrieval. It returns `{state:'captured',candidateId,pid,bundleId,appName,windowTitle,content,occurredAt,editableValuesOmitted:true,browserContentOmitted:true}` or a truthful skipped reason. Process/window change returns CONFLICT and discards content. Captures never contain a browser URL, account/profile claim, screenshot, or editable field value. Bounds: 1,000 nodes/depth 20, two-second inspection/three-second total traversal, 100,000 characters, 2,000 title characters. AX call timeouts limit individual calls; daemon deadlines additionally bound the transport.
+
+The daemon checks opt-in, current unlocked account, existing permission and exclusions before prepare/capture and before durable ledger/index commit. Browser metadata has a separate authenticated Aux extension route with actual native profile and incognito checks; this helper never infers private mode from a URL/title. Capability availability is distinct from whether a live observer is running. Tests compile this implementation and run pure policy fixtures; no owner application accessibility tree was captured.
+
+Public platform references: [Apple accessibility attribute API](https://developer.apple.com/documentation/applicationservices/1462085-axuielementcopyattributevalue), [Apple bundle URL scheme metadata](https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html).

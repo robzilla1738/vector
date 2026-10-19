@@ -4,8 +4,12 @@ export type {
   Activity,
   ActivityFilter,
   CaptureAdapter,
+  CaptureCandidate,
   CapturePermissions,
+  CapturePreparation,
+  CaptureResult,
   ContextSummary,
+  ObserverState,
 } from './context.js';
 export { activitySchema, ContextService } from './context.js';
 export { cosine, LocalEmbeddings } from './embeddings.js';

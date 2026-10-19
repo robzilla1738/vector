@@ -55,7 +55,12 @@ export function createContextRouter(
       .mutation(({ input }) => context.setExclusions(input.accountId, input)),
     ingest: procedure
       .input(scope.extend({ event: activitySchema }))
-      .mutation(({ input }) => context.ingest(input.accountId, input.event)),
+      .mutation(() =>
+        fail(
+          'FORBIDDEN',
+          'Caller-provided activity is not observed evidence; use the bound observer',
+        ),
+      ),
     events: procedure
       .input(filters)
       .query(({ input }) => context.events(input.accountId, filter(input))),
@@ -254,7 +259,12 @@ export function createContextRouter(
           sequence: z.number().nonnegative().optional(),
         }),
       )
-      .mutation(({ input }) => context.reportTabSignal(input.accountId, input)),
+      .mutation(() =>
+        fail(
+          'FORBIDDEN',
+          'Browser signals require a native Profile-bound observer route',
+        ),
+      ),
     summaryModelDefault: procedure.input(scope).query(({ input }) => {
       store.requireAccount(input.accountId);
       return (

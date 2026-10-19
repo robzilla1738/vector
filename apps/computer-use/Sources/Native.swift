@@ -146,7 +146,7 @@ func appleScriptLiteral(_ value: String) -> String { "\"" + value.replacingOccur
 func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] {
     switch method {
     case "ping": return ["service": "aux-computer-use", "version": "0.1.0", "pid": ProcessInfo.processInfo.processIdentifier]
-    case "capabilities": return ["methods": ["permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.frontmost", "apps.open", "accessibility.snapshot", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required", "messagesRead": "unavailable"]
+    case "capabilities": return ["methods": ["permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.frontmost", "apps.open", "accessibility.snapshot", "semantic.prepare", "semantic.capture", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required", "messagesRead": "unavailable"]
     case "permissions.status": return try permissionStatus(params)
     case "permissions.request": return try requestPermission(params)
     case "vault.biometryAvailable": return biometricAvailability()
@@ -162,6 +162,8 @@ func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] 
         event.post(tap: .cghidEventTap); return ["posted": true]
     case "apps.frontmost": return try frontmostApplication()
     case "accessibility.snapshot": return try accessibilitySnapshot(params)
+    case "semantic.prepare": return try semanticPrepare()
+    case "semantic.capture": return try semanticCapture(params)
     case "apps.list": return ["applications": NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }.map { ["pid": $0.processIdentifier, "bundleId": $0.bundleIdentifier ?? "", "name": $0.localizedName ?? "", "bundlePath": $0.bundleURL?.path ?? "", "active": $0.isActive] as [String: Any] }]
     case "apps.open":
         let bundleId = try requiredString(params, "bundleId", limit: 255)
