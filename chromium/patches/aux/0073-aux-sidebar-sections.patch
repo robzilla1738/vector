@@ -13,10 +13,10 @@ index ca65408a67..cea1fcfa94 100644
        "views/tab_search_bubble_host.cc",
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000..7b40af7267
+index 0000000000..4bfa764ec0
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
-@@ -0,0 +1,724 @@
+@@ -0,0 +1,747 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -303,6 +303,13 @@ index 0000000000..7b40af7267
 +  Rebuild();
 +}
 +
++void AuxSidebarView::ToggleSection(const std::string& key) {
++  if (!collapsed_sections_.erase(key)) {
++    collapsed_sections_.insert(key);
++  }
++  Rebuild();
++}
++
 +void AuxSidebarView::OpenNewTab() {
 +  browser_->OpenGURL(GURL("chrome://newtab/"),
 +                     WindowOpenDisposition::NEW_FOREGROUND_TAB);
@@ -341,14 +348,23 @@ index 0000000000..7b40af7267
 +  favicon_tracker_.TryCancelAll();
 +  RemoveAllChildViews();
 +
-+  auto add_header = [this](const std::u16string& text) {
-+    auto header = std::make_unique<views::Label>(
-+        text, views::style::CONTEXT_LABEL, views::style::STYLE_BODY_3);
-+    header->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
-+    header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  // Returns whether the section is expanded.
++  auto add_header = [this](const std::string& key, const std::u16string& text) {
++    const bool collapsed = collapsed_sections_.contains(key);
++    auto* header = AddChildView(std::make_unique<AuxSidebarRow>(
++        base::BindRepeating(&AuxSidebarView::ToggleSection,
++                            base::Unretained(this), key),
++        text, ui::ImageModel(), /*emphasized=*/false));
 +    header->SetBorder(
 +        views::CreateEmptyBorder(gfx::Insets::TLBR(14, 10, 6, 10)));
-+    AddChildView(std::move(header));
++    header->SetImageModel(views::Button::STATE_NORMAL,
++                          ui::ImageModel::FromVectorIcon(
++                              collapsed ? vector_icons::kSubmenuArrowOldIcon
++                                        : vector_icons::kCaretDownOldIcon,
++                              ui::kColorSysOnSurfaceSubtle, 12));
++    header->SetImageLabelSpacing(6);
++    header->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    return !collapsed;
 +  };
 +
 +  // Bookmarks.
@@ -356,10 +372,13 @@ index 0000000000..7b40af7267
 +      BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
 +  if (model && model->loaded() &&
 +      !model->bookmark_bar_node()->children().empty()) {
-+    add_header(u"Bookmarks");
++    const bool bookmarks_open = add_header("bookmarks", u"Bookmarks");
 +    favicon::FaviconService* favicons = FaviconServiceFactory::GetForProfile(
 +        browser_->GetProfile(), ServiceAccessType::EXPLICIT_ACCESS);
 +    for (const auto& node : model->bookmark_bar_node()->children()) {
++      if (!bookmarks_open) {
++        break;
++      }
 +      const GURL url = node->url();
 +      auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
 +          node->is_folder() ? views::Button::PressedCallback()
@@ -389,35 +408,39 @@ index 0000000000..7b40af7267
 +  }
 +
 +  // Chats.
-+  add_header(u"Chats");
-+  AddChildView(std::make_unique<AuxSidebarRow>(
-+      base::BindRepeating(&AuxSidebarView::OpenNewChat, base::Unretained(this)),
-+      u"New Chat",
-+      ui::ImageModel::FromVectorIcon(vector_icons::kEditSquareIcon,
-+                                     ui::kColorSysOnSurfaceSubtle,
-+                                     kRowIconSize)));
-+  const size_t shown =
-+      show_all_chats_ ? chats_.size() : std::min(chats_.size(), kMaxChatsShown);
-+  for (size_t i = 0; i < shown; ++i) {
-+    const Chat& chat = chats_[i];
-+    auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
-+        base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
-+                            chat.id),
-+        base::UTF8ToUTF16(chat.title), ui::ImageModel(),
-+        /*emphasized=*/chat.unread,
-+        /*selected=*/chat.id == active_chat_id_));
-+    row->set_chat_id(chat.id);
-+    row->SetTooltipText(base::UTF8ToUTF16(chat.title));
-+    row->set_context_menu_controller(this);
-+  }
-+  if (chats_.size() > kMaxChatsShown) {
++  const bool chats_open = add_header("chats", u"Chats");
++  if (chats_open) {
 +    AddChildView(std::make_unique<AuxSidebarRow>(
-+        base::BindRepeating(&AuxSidebarView::OpenAllChats,
++        base::BindRepeating(&AuxSidebarView::OpenNewChat,
 +                            base::Unretained(this)),
-+        u"Show all", ui::ImageModel()));
++        u"New Chat",
++        ui::ImageModel::FromVectorIcon(vector_icons::kEditSquareIcon,
++                                       ui::kColorSysOnSurfaceSubtle,
++                                       kRowIconSize)));
++    const size_t shown = show_all_chats_
++                             ? chats_.size()
++                             : std::min(chats_.size(), kMaxChatsShown);
++    for (size_t i = 0; i < shown; ++i) {
++      const Chat& chat = chats_[i];
++      auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
++          base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
++                              chat.id),
++          base::UTF8ToUTF16(chat.title), ui::ImageModel(),
++          /*emphasized=*/chat.unread,
++          /*selected=*/chat.id == active_chat_id_));
++      row->set_chat_id(chat.id);
++      row->SetTooltipText(base::UTF8ToUTF16(chat.title));
++      row->set_context_menu_controller(this);
++    }
++    if (chats_.size() > kMaxChatsShown) {
++      AddChildView(std::make_unique<AuxSidebarRow>(
++          base::BindRepeating(&AuxSidebarView::OpenAllChats,
++                              base::Unretained(this)),
++          u"Show all", ui::ImageModel()));
++    }
 +  }
 +
-+  add_header(u"Tabs");
++  add_header("tabs", u"Tabs");
 +  AddChildView(std::make_unique<AuxSidebarRow>(
 +      base::BindRepeating(&AuxSidebarView::OpenNewTab, base::Unretained(this)),
 +      u"New Tab",
@@ -743,10 +766,10 @@ index 0000000000..7b40af7267
 +END_METADATA
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
 new file mode 100644
-index 0000000000..d1dcbf9129
+index 0000000000..01229a6262
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,147 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -756,6 +779,7 @@ index 0000000000..d1dcbf9129
 +
 +#include <memory>
 +#include <optional>
++#include <set>
 +#include <string>
 +#include <vector>
 +
@@ -847,6 +871,7 @@ index 0000000000..d1dcbf9129
 +  void PostChatAction(const std::string& session_id, const std::string& action);
 +  void OpenNewChat();
 +  void OpenNewTab();
++  void ToggleSection(const std::string& key);
 +  void UpdateActiveChat();
 +  void OpenAllChats();
 +  void OpenBookmark(const GURL& url);
@@ -872,6 +897,7 @@ index 0000000000..d1dcbf9129
 +  base::TimeTicks authorization_expiry_;
 +  std::optional<int> account_id_;
 +  std::vector<Chat> chats_;
++  std::set<std::string> collapsed_sections_;
 +  std::string active_chat_id_;
 +  bool show_all_chats_ = false;
 +  bool in_flight_ = false;
