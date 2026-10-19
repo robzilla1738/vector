@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "nativeBuildReceiptSha256": "fa82f5db283bdf7d3837f853ba6624d459205a4691e4298e230bee0ef45b600e",
+  "nativeBinariesRecompiled": false,
+  "diagnosticSources": [
+    {
+      "path": "vendor/provided/native-diagnostic-hook.mjs",
+      "sha256": "7d01e14463acaaa8e2397a7a6f7ef3ee624cdb27d38959d8ed3529eb30e40152"
+    },
+    {
+      "path": "vendor/provided/native-load-diagnostic.cjs",
+      "sha256": "ab0babfd0bd3dfbc6df8db848f0006dd717ac5780ffb4cf1c1fd10289ac72011"
+    },
+    {
+      "path": "vendor/provided/native-load-only-probe.cjs",
+      "sha256": "43177b6d286a069d7605776d215bc32b94155e80d7f361d830565dc7493a8293"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "6079a03c1cf624858ef100067a391aeefccb938787813e467848b7b15beaae41"
+    },
+    {
+      "path": "vendor/provided/cli-adapter.mjs",
+      "sha256": "5ad67839b857f961f1df6b75dd1b51d9d1ff1d2d4219bd1ce53cc9cb89c0a6e3"
+    },
+    {
+      "path": "vendor/provided/prove-sea-load-only.mjs",
+      "sha256": "1760deea4aac9c5a6bf201c9bcdc44ce63a058b6aa964ffdd92664ae32ac40b7"
+    }
+  ],
+  "results": [
+    {
+      "host": "cli",
+      "originalBinarySha256": "17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a",
+      "adaptedCodeSha256": "8fef73c13376a758225100eb5b3a55c78bd6c83d37cece8583fdc59a68826a2a",
+      "adaptedUnsignedBinarySha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71",
+      "signedBinarySha256": "e275552ae72c1761ecb61779d6bd2999cbdab81cc90077fa9c4496eeac71328f",
+      "launcherUsed": true,
+      "launcherPassed": true,
+      "signingPolicy": {
+        "values": {
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "originalEntitlementKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation",
+          "keychain-access-groups"
+        ],
+        "preserved": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removed": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "added": [
+          "com.apple.security.cs.allow-dyld-environment-variables"
+        ],
+        "options": [
+          "runtime"
+        ]
+      },
+      "result": {
+        "version": 1,
+        "host": "supplied-sea",
+        "main": {
+          "importedPointersVerified": true,
+          "denyAll": true,
+          "canonicalScopeBound": true,
+          "scopeChangeRefused": true,
+          "originalBindingLoaded": true,
+          "runExportRegistered": true,
+          "pdfExportRegistered": true,
+          "refusedSecurityCalls": 0,
+          "originalCommandsInvoked": false,
+          "originalPdfInvoked": false
+        },
+        "worker": {
+          "importedPointersVerified": true,
+          "denyAll": true,
+          "canonicalScopeBound": true,
+          "scopeChangeRefused": true,
+          "originalBindingLoaded": true,
+          "runExportRegistered": true,
+          "pdfExportRegistered": true,
+          "refusedSecurityCalls": 0,
+          "originalCommandsInvoked": false,
+          "originalPdfInvoked": false
+        },
+        "productMainStarted": false,
+        "dpRuntimeAccepted": false
+      }
+    },
+    {
+      "host": "daemon",
+      "originalBinarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+      "adaptedCodeSha256": "5f3f8d429b3cd089bfeaba847404f25ccf7f42414275db562440984b6a58e456",
+      "adaptedUnsignedBinarySha256": "75e69c59aab6d42ab9701a4a6f615daaf4bcdef946b9c37602d1b9693eb12d09",
+      "signedBinarySha256": "565b28a6c972b5c8b3184c830c71835e46ab5557a7f4b281433972257f8aa34d",
+      "launcherUsed": false,
+      "launcherPassed": true,
+      "signingPolicy": {
+        "values": {
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "originalEntitlementKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation",
+          "keychain-access-groups"
+        ],
+        "preserved": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removed": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "added": [
+          "com.apple.security.cs.allow-dyld-environment-variables"
+        ],
+        "options": [
+          "runtime"
+        ]
+      },
+      "result": {
+        "version": 1,
+        "host": "supplied-sea",
+        "main": {
+          "importedPointersVerified": true,
+          "denyAll": true,
+          "canonicalScopeBound": true,
+          "scopeChangeRefused": true,
+          "originalBindingLoaded": true,
+          "runExportRegistered": true,
+          "pdfExportRegistered": true,
+          "refusedSecurityCalls": 0,
+          "originalCommandsInvoked": false,
+          "originalPdfInvoked": false
+        },
+        "worker": {
+          "importedPointersVerified": true,
+          "denyAll": true,
+          "canonicalScopeBound": true,
+          "scopeChangeRefused": true,
+          "originalBindingLoaded": true,
+          "runExportRegistered": true,
+          "pdfExportRegistered": true,
+          "refusedSecurityCalls": 0,
+          "originalCommandsInvoked": false,
+          "originalPdfInvoked": false
+        },
+        "productMainStarted": false,
+        "dpRuntimeAccepted": false
+      }
+    }
+  ],
+  "diagnosticBoundaryUsed": false,
+  "boundarySha256": "9464d02152e995dcdeb1f4f729853658c35af8452df914f4aa3a04f9090d4c00",
+  "guardSha256": "5165002d24803c2952cce574e83b970a290832385d1d387b3d48421782994475",
+  "bindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "originalCommandsInvoked": false,
+  "dpRuntimeAccepted": false
+}
