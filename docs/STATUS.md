@@ -13,6 +13,7 @@ Last updated 2026-10-19.
 
 - Sidebar: native Bookmarks, Chats (live from the daemon, active chat highlighted, New Chat, Show all) and Tabs sections sit above Chromium's vertical tab strip (`0073-aux-sidebar-sections.patch`). Still missing against Aside: pinned tile grid, profile pill and bottom avatar/search bar, chat row actions (pin, archive, mark read), section collapse, Aside's exact glass material and sizing.
 - `chrome.aside*` private APIs are JS shims (`vendor/aside/shims/aux-private-shim.js`), not native. Omnibox, adblock, mini popup window chrome and the importer WebUI are not native.
+- The very first tab at startup can render Chromium's Google new tab page because it navigates before the unpacked extensions load. Every later new tab opens the Aux new tab page.
 - Local accounts only. There is no Aux cloud.
 - The Computer Use helper's own windows still show Aside strings (binary text).
 - The browser is an unsigned component build that lives in `~/Documents/Code/aux-chromium-security-155`. macOS asks for Documents access on first launch.
