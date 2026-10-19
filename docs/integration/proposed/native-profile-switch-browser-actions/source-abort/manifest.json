@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "baselineSha256": "51d66ba471efb6e07b8094a9e18e66099d6edc2367d88e1a63b054cb1eb562f8",
+      "outputSha256": "e68e4c8fba81c39a383666c70a1c13974d9502c90b03e80f15d246308a5c4da9"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "reason": "Preserve untouched source action state after pre-identity abort"
+}
