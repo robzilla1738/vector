@@ -58,6 +58,8 @@ export function synchronizeChildPolicy(engine: AgentEngine, session: Session) {
   engine.save(session);
 }
 const readTools = new Set([
+  'websearch',
+  'mcp_discover',
   'read_file',
   'page_view',
   'browser_tabs',

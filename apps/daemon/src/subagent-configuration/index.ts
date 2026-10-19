@@ -146,9 +146,8 @@ export function createSubagentConfiguration(
       );
     return structuredClone(value);
   }
-  const callbacks: Pick<
-    AgentToolServices,
-    'customSubagentProfile' | 'subagentModel'
+  const callbacks: Required<
+    Pick<AgentToolServices, 'customSubagentProfile' | 'subagentModel'>
   > = {
     customSubagentProfile: (
       accountId,

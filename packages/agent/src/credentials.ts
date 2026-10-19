@@ -25,6 +25,11 @@ const credential = z.object({
 const credentialFile = z.record(z.string(), credential);
 export class Credentials {
   readonly oauth: OpenAIOAuth;
+  private redactors = new Set<(accountId: number, text: string) => string>();
+  registerRedactor(redactor: (accountId: number, text: string) => string) {
+    this.redactors.add(redactor);
+    return () => this.redactors.delete(redactor);
+  }
   constructor(
     private store: AgentStorage,
     private filename:
@@ -125,6 +130,7 @@ export class Credentials {
         accountId,
         this.oauth.redact(accountId, result),
       );
+    for (const redactor of this.redactors) result = redactor(accountId, result);
     return result.replace(/Bearer\s+\S+/gi, 'Bearer [redacted]');
   }
 }

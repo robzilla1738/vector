@@ -43,11 +43,18 @@ import {
 import { createInboxRouter, InboxService } from './inbox/index.js';
 import { mcpTools } from './mcp/index.js';
 import { createMemoryRouter } from './memory/index.js';
+import { createModelInventory } from './models/index.js';
 import { createPasskeyRouter } from './passkeys/index.js';
 import { pollRoutines } from './routines/index.js';
 import { createRoutineToolAdapter } from './routines/tool-adapter.js';
+import {
+  createSearchRouter,
+  createSearchService,
+  searchTools,
+} from './search/index.js';
 import { createAgentRouters } from './sessions/index.js';
 import { installOwnedTabsHttp } from './sessions/owned-tabs-http.js';
+import { createSubagentConfiguration } from './subagent-configuration/index.js';
 import { createVaultRouters, VaultService } from './vault/index.js';
 
 export function createFeatures() {
@@ -62,6 +69,9 @@ export function createFeatures() {
   let notificationHelper: HelperClient | undefined;
   let notifications: ReturnType<typeof createNotificationService> | undefined;
   let unregisterNotificationDeletion: (() => void) | undefined;
+  let search: ReturnType<typeof createSearchService> | undefined;
+  let unregisterSearchDeletion: (() => void) | undefined;
+  let unregisterSearchRedactor: (() => void) | undefined;
   let contextObserver: ReturnType<typeof createContextObserver> | undefined;
   let unregisterContextDeletion: (() => void) | undefined;
   let importer: HelperClient | undefined;
@@ -90,6 +100,7 @@ export function createFeatures() {
             .join('\n')}\n${active.map((item) => item.body).join('\n\n')}`;
         },
         tools: (session, signal) => ({
+          ...(search ? searchTools(search, session, signal) : {}),
           ...notificationTools(notifications, session, signal),
           ...(engine ? mcpTools(engine, session, signal) : {}),
           ...(channels ? channelTools(channels, session, signal) : {}),
@@ -130,8 +141,71 @@ export function createFeatures() {
         }),
       });
       const activeEngine = engine;
+      const subagentConfiguration = createSubagentConfiguration(
+        services,
+        activeEngine,
+        createModelInventory(services.store, activeEngine).inventory,
+        () => [
+          {
+            name: 'websearch',
+            label: 'Web search (requires configuration)',
+            readOnly: true,
+          },
+          {
+            name: 'memory_search',
+            label: 'Search saved memory',
+            readOnly: true,
+          },
+          {
+            name: 'memory_operators',
+            label: 'Edit saved memory',
+            readOnly: false,
+          },
+          {
+            name: 'history_search',
+            label: 'Search permitted activity',
+            readOnly: true,
+          },
+          {
+            name: 'history_read',
+            label: 'Read permitted activity',
+            readOnly: true,
+          },
+          {
+            name: 'browsing_history_search',
+            label: 'Search permitted visited pages',
+            readOnly: true,
+          },
+          {
+            name: 'mcp_discover',
+            label: 'Discover configured MCP tools',
+            readOnly: true,
+          },
+          {
+            name: 'mcp_call',
+            label: 'Run a confirmed MCP tool',
+            readOnly: false,
+          },
+          ...(helper
+            ? [
+                {
+                  name: 'computer_use',
+                  label: 'Operate the desktop',
+                  readOnly: false,
+                },
+                {
+                  name: 'notification',
+                  label: 'Show a permitted notification',
+                  readOnly: false,
+                },
+              ]
+            : []),
+        ],
+      );
       configureAgentTools(activeEngine, {
         prepareRoutineUpdate: createRoutineToolAdapter(services, activeEngine),
+        customSubagentProfile: subagentConfiguration.customSubagentProfile,
+        subagentModel: subagentConfiguration.subagentModel,
       });
       channels = new ChannelService(services.store, activeEngine);
       channels.resume(services.store.accounts().map((account) => account.id));
@@ -167,6 +241,17 @@ export function createFeatures() {
         services.store,
         helper ? createVaultBiometryAdapter(helper) : undefined,
       );
+      search = createSearchService(services, activeEngine, {
+        isUnlocked: (accountId) => !!vault && !vault.status(accountId).locked,
+      });
+      const searchService = search;
+      unregisterSearchRedactor = activeEngine.credentials.registerRedactor(
+        (accountId, text) => searchService.redact(accountId, text),
+      );
+      unregisterSearchDeletion = services.store.registerAccountDeletionHandler(
+        (accountId) => searchService.invalidate(accountId),
+      );
+      activeEngine.registerCloseHandler(() => searchService.close());
       if (importer) {
         credentialExchange = new CredentialExchange(services, vault, importer);
         credentialExchange.start();
@@ -200,6 +285,7 @@ export function createFeatures() {
           passkeys.service.clearEphemeral(accountId);
           contextObserver?.changed(accountId);
           notifications?.invalidate(accountId);
+          search?.invalidate(accountId);
         },
       );
       routineTimer = setInterval(() => {
@@ -225,6 +311,8 @@ export function createFeatures() {
           skills.projectSkills,
         ),
         channel: createChannelRouter(services, channels),
+        subagentConfiguration: subagentConfiguration.router,
+        search: createSearchRouter(services, search),
         ...createVaultRouters(services, vault),
         passkeys: passkeys.router,
         ...(credentialExchange
@@ -287,6 +375,8 @@ export function createFeatures() {
       historyCollector?.close();
       await contextObserver?.close();
       notifications?.close();
+      search?.close();
+      unregisterSearchDeletion?.();
       unregisterNotificationDeletion?.();
       unregisterContextDeletion?.();
       if (routineTimer) clearInterval(routineTimer);
@@ -300,6 +390,7 @@ export function createFeatures() {
       await notificationHelper?.close();
       await importer?.close();
       await engine?.close();
+      unregisterSearchRedactor?.();
     },
   };
 }
