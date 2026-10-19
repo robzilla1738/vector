@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "candidate": "out/provided-candidate-v24/Aux.app",
+  "packageReportSha256": "698597283f803997b796fb925d4bd757052d6042f0fa7d2c61b242b945c37651",
+  "nativeReceiptSha256": "bb621b4c2749aa7ac0c59935be6b1c7d5196c1293040fcee3a817d006aab890c",
+  "compositionSha256": "575a3fe25f496999d9e4831eb71802f2674651ccb354e656a6e302fe9868b965",
+  "boundaryReceiptSha256": "fa82f5db283bdf7d3837f853ba6624d459205a4691e4298e230bee0ef45b600e",
+  "nativeLeaves": 563,
+  "suppliedResources": 10797,
+  "signingPlanVerificationSha256": "8525f4b6f6940e2c5056ecc1bb9afeadbdf089c092e3e0c05277fe4e719ba162",
+  "signingPlanTargets": 11,
+  "signed": false,
+  "installed": false,
+  "functionalAcceptance": false,
+  "cliActualBindingProofPending": true
+}

@@ -53,6 +53,8 @@ steps.append(('native-horizontal-shrink/native.patch', 'native-horizontal-shrink
 steps.append(('native-vertical-navigation/native.patch', 'native-vertical-navigation/manifest.json'))
 steps.append(('native-compile-fixes/004-horizontal-boundaries/fix.patch', 'native-compile-fixes/004-horizontal-boundaries/manifest.json'))
 steps.append(('native-preference-consumers/native.patch', 'native-preference-consumers/manifest.json'))
+steps.append(('native-ntp-preloader/port-native.patch', 'native-ntp-preloader/port-manifest.json'))
+steps.append(('native-ntp-preloader/content-recovery.patch', 'native-ntp-preloader/content-recovery-manifest.json'))
 
 def safe(path):
     value = Path(path)
