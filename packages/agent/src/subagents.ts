@@ -394,3 +394,47 @@ export function routeChildSuspension(
     }
   })();
 }
+
+/** Optional shared scheduler seam is required before a parent can block on children. */
+export async function waitForSubagents(
+  engine: AgentEngine,
+  accountId: number,
+  parentId: string,
+  ids: string[],
+  signal: AbortSignal,
+) {
+  const unique = [...new Set(ids)];
+  if (!unique.length || unique.length > 3)
+    fail('BAD_REQUEST', 'Choose one to three owned child tasks');
+  for (const id of unique)
+    if (engine.get(accountId, id).parentId !== parentId)
+      fail('FORBIDDEN', 'Only this parent owns these child sessions');
+  signal.throwIfAborted();
+  const scheduler = engine as AgentEngine & {
+    yieldRunSlot?: <T>(
+      accountId: number,
+      id: string,
+      operation: () => Promise<T>,
+    ) => Promise<T>;
+  };
+  if (!scheduler.yieldRunSlot)
+    fail(
+      'PRECONDITION_FAILED',
+      'Child waiting requires the owned scheduler permit integration',
+    );
+  return scheduler.yieldRunSlot(accountId, parentId, async () => {
+    const results = await Promise.all(
+      unique.map(async (id) => {
+        const child = await engine.wait(accountId, id);
+        signal.throwIfAborted();
+        return {
+          sessionId: id,
+          status: child.status,
+          messages: child.messages,
+        };
+      }),
+    );
+    signal.throwIfAborted();
+    return results;
+  });
+}

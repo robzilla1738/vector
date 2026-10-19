@@ -14,6 +14,7 @@ import {
   startSubagent,
   subagentInput,
   synchronizeChildPolicy,
+  waitForSubagents,
 } from './subagents.js';
 import { agentToolServices } from './tool-services.js';
 
@@ -432,23 +433,22 @@ export function sessionTools(
     subagent_wait: tool({
       description:
         'Wait for owned child sessions and return their current status and transcript.',
-      inputSchema: z.object({ sessionIds: z.array(z.string()).min(1).max(3) }),
+      inputSchema: z.object({
+        sessionIds: z
+          .array(z.string().regex(/^[\w-]{1,128}$/))
+          .min(1)
+          .max(3),
+      }),
       execute: (input, { toolCallId }) =>
-        tracked('subagent_wait', input, toolCallId, async () => {
-          for (const id of input.sessionIds)
-            if (engine.get(accountId, id).parentId !== sessionId)
-              fail('FORBIDDEN', 'Only this parent owns these child sessions');
-          return Promise.all(
-            input.sessionIds.map(async (id) => {
-              const child = await engine.wait(accountId, id);
-              return {
-                sessionId: id,
-                status: child.status,
-                messages: child.messages,
-              };
-            }),
-          );
-        }),
+        tracked('subagent_wait', input, toolCallId, () =>
+          waitForSubagents(
+            engine,
+            accountId,
+            sessionId,
+            input.sessionIds,
+            signal,
+          ),
+        ),
     }),
     read_file: tool({
       description:
