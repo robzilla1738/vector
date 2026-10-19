@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Aux local browser, independently implemented from behavior specifications.",
+  "description": "Aux local browser, reusing the supplied implementation with Aux branding.",
   "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": ">=22.18.0"
@@ -12,7 +12,11 @@
     "aux": "node scripts/aux.mjs",
     "package": "node scripts/package-aux.mjs",
     "smoke": "node scripts/daemon-smoke.mjs",
-    "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",
+    "check": "pnpm test:provided && pnpm check:provided",
+    "stage:provided": "node scripts/stage-provided.mjs",
+    "check:provided": "node scripts/check-provided.mjs",
+    "test:provided": "node --test vendor/provided/*.test.mjs scripts/lib/provided-*.test.mjs",
+    "check:independent": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",
     "check:cleanroom": "node scripts/check-cleanroom.mjs",
     "reference:index": "node scripts/reference-hashes.mjs",
     "typecheck": "pnpm -r --if-present typecheck",

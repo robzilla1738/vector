@@ -1,0 +1,847 @@
+{
+  "version": 1,
+  "components": {
+    "daemon": {
+      "files": [
+        {
+          "path": "Contents/_CodeSignature/CodeResources",
+          "bytes": 38994,
+          "sha256": "7c4d03a25ad7a9b44d686140ff044f61b1ff65b7669f558000b782ccf10bae30",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/_CodeSignature/CodeResources",
+          "bytes": 3064,
+          "sha256": "44095309483fc63750eaf12cece987ec233a03645363df25374880a47ca58867",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/embedded.provisionprofile",
+          "bytes": 12575,
+          "sha256": "fa656fa58646a316e942ba854ab62fd7a796d7bc687c99fadc74e17789ac1cf0",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/Info.plist",
+          "bytes": 979,
+          "sha256": "311e3bb2671a979e4df6854d5e445f16f596a54eef0ca0d0093ac150aea70f08",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/MacOS/aside-password-importer",
+          "bytes": 345136,
+          "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369",
+          "mode": 448
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/_CodeSignature/CodeResources",
+          "bytes": 2355,
+          "sha256": "7e2c7127b73beb2ce96c885350335e67e4059a819066bbba4ed0f583e5c3f187",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/embedded.provisionprofile",
+          "bytes": 12714,
+          "sha256": "a1bb67bd0bf287f6463a0069fb68520a8f2a80ab3f9fc7993b4b0ab8e4023b5a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/Info.plist",
+          "bytes": 1497,
+          "sha256": "2d42caf47839947c4c5aaf0b5bc9c92ece59ef76ec07e39920efcdb2764c146d",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aside-password-importer-provider",
+          "bytes": 78928,
+          "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507",
+          "mode": 448
+        },
+        {
+          "path": "Contents/Applications/Aside Password Importer.app/Contents/Resources/AppIcon.icns",
+          "bytes": 747105,
+          "sha256": "96db686adb2029380023f8b31f2358a009309f8f373f46680ecad3bb7a428c31",
+          "mode": 384
+        },
+        {
+          "path": "Contents/CodeResources",
+          "bytes": 1800,
+          "sha256": "814bfb4f3934961364c8adf872f46904b9e581df7de2ba34a2cc6005ad5a5d50",
+          "mode": 384
+        },
+        {
+          "path": "Contents/embedded.provisionprofile",
+          "bytes": 12290,
+          "sha256": "98cbc9b207b0da27ec1205968f1c931eff751c6f53788a9388795b60be4f4783",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Info.plist",
+          "bytes": 924,
+          "sha256": "8461235b98fc1cdb29997cc4968323381fece06d9f4bd5bbb0fcc34ee40df20b",
+          "mode": 384
+        },
+        {
+          "path": "Contents/MacOS/aside-daemon",
+          "bytes": 158228336,
+          "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+          "mode": 448
+        },
+        {
+          "path": "Contents/Resources/AppIcon.icns",
+          "bytes": 747105,
+          "sha256": "96db686adb2029380023f8b31f2358a009309f8f373f46680ecad3bb7a428c31",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/aside-native.node",
+          "bytes": 9255280,
+          "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/Apache-2.0.txt",
+          "bytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/Bekko-NOTICE.txt",
+          "bytes": 1447,
+          "sha256": "57dc25fa5d349dbe7eb79d7c268948f531130fb9514fb2306863e7a62dcfb033",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/FxHash-LICENSE-MIT.txt",
+          "bytes": 1068,
+          "sha256": "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/NAPI-RS-LICENSE.txt",
+          "bytes": 2138,
+          "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/ONNX-Runtime-LICENSE.txt",
+          "bytes": 1073,
+          "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/ONNX-Runtime-ThirdPartyNotices.txt",
+          "bytes": 336906,
+          "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/R-EFI-AUTHORS.txt",
+          "bytes": 3693,
+          "sha256": "ff92bed461f50338dd703a9ba9aee496a425957873df1d91192776e4bdf5dda7",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/README.md",
+          "bytes": 1463,
+          "sha256": "caaedbf812985a488265bf7677a3be8655141dc4604e105585f210436d4e088a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/Rust-Process-ThirdPartyNotices.txt",
+          "bytes": 27042,
+          "sha256": "9dc367b4fa9a60078fb0a3963fef60d6e93f8e042f320d8e97c9aab516b17a7a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/Rust-ThirdPartyNotices.txt",
+          "bytes": 1060696,
+          "sha256": "a738d584aa768dc7b12a498f9d21d56297a34a855053e63e2b62ebe9ba7b59c5",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/local-memory-licenses/SimSIMD-LICENSE.txt",
+          "bytes": 11357,
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/conpty_console_list_agent.js",
+          "bytes": 721,
+          "sha256": "0d010879bb6680a0253d44363183d53e631f42972594eb6dcb1fb842c8c85e52",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/conpty_console_list_agent.js.map",
+          "bytes": 475,
+          "sha256": "e880507e8ebfcaf0fac8ffcb011a3bb3853847767c77bae744ad94ad096977c5",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/eventEmitter2.js",
+          "bytes": 1600,
+          "sha256": "f1c14613aa90c10def4ca7238329270871997eb26f919f7074dc25533e3e75dd",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/eventEmitter2.js.map",
+          "bytes": 1155,
+          "sha256": "2300f735c0a048d5b56a2821362f33cc9a811746b8a5b9552854f91a51f52810",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/eventEmitter2.test.js",
+          "bytes": 1266,
+          "sha256": "9cd06569c14d4cd180031ed4df914b817e75ceb104ac10ef65cae6815f46c568",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/eventEmitter2.test.js.map",
+          "bytes": 1396,
+          "sha256": "8d3742445dfccf223be42de83015447fbdbcc858a325c061302904f301f503cf",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/index.js",
+          "bytes": 2008,
+          "sha256": "c1b82c92c4c63aaa8e8441fc5a291c4727cd3f3550666d2fec7250e0f6d4b173",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/index.js.map",
+          "bytes": 987,
+          "sha256": "829a1a1f145a27eaaf5a636afdedf3ce9746bce25fd489ae04b5721d16f70acc",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/interfaces.js",
+          "bytes": 233,
+          "sha256": "56e4173f09aad26173f9d4c79800fda0b808c34424f987ef8d671cc931119a0a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/interfaces.js.map",
+          "bytes": 124,
+          "sha256": "8ad6939566c34a59f5b7e49307050b73102acce29eed11c12e02fc3d765cc276",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/shared/conout.js",
+          "bytes": 348,
+          "sha256": "6ae3b0532616da11aa2a11b4506bb89b0d40be005a9ea9fb369fb59eefdbda47",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/shared/conout.js.map",
+          "bytes": 204,
+          "sha256": "03aeb1e2efe8dc06f069c98bdd30122b2df278f2ac0fbb0a39c91e73801a8eda",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/terminal.js",
+          "bytes": 7454,
+          "sha256": "5ed5cd66a766afba4a04093284e999f8516d41936501839055800b10eca5d304",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/terminal.js.map",
+          "bytes": 5845,
+          "sha256": "c9e670bcd71467bd461f9ed969e1e712471f2cd94287543601b7df11ce8c472a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/terminal.test.js",
+          "bytes": 6250,
+          "sha256": "6f6ae435c9c6e93d8146fa7a79fe155ec3291880aa4de68fbad7ed8891e4f87b",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/terminal.test.js.map",
+          "bytes": 4151,
+          "sha256": "b22c83d59bafc013e5ac5016efb262cff8cbe782b79b064d3ce0f12ce55b41c1",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/testUtils.test.js",
+          "bytes": 807,
+          "sha256": "eb13d8ffc04ef385604b37170bafa9914736d5c5be8bca857c9f32958f6fe7ec",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/testUtils.test.js.map",
+          "bytes": 622,
+          "sha256": "ac8686314d11e1d90b32f5eb7e753bcd4a184ab4441ff12ea2c586a3b58785e6",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/types.js",
+          "bytes": 228,
+          "sha256": "408bf8287717b6322cc380ea66caf1b5e366dcf697707ae2f3cc454e08f3b151",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/types.js.map",
+          "bytes": 114,
+          "sha256": "980a71159075a8183a9a7981ac504e6c277785c33a1fc17eb6908d4abbb128da",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/unixTerminal.js",
+          "bytes": 13372,
+          "sha256": "a62e3a60c3bc1b0e7261f58284856df748dcee6761a2bc7a5a5ba98b22660473",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/unixTerminal.js.map",
+          "bytes": 9657,
+          "sha256": "fdc9afe47387e19f74b843cd620c7516895c5c99eba1c1a6aea636f41f9dda2b",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/unixTerminal.test.js",
+          "bytes": 19310,
+          "sha256": "608d6c9bcfa07873440ed813b499d347e3e79dace1cc58ea3bd61b53356f0937",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/unixTerminal.test.js.map",
+          "bytes": 11425,
+          "sha256": "44fb7f386894ab2cf5b557ec5cf74ec5417bb75faae608f0f667c365955c5e85",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/utils.js",
+          "bytes": 1548,
+          "sha256": "f75ad341c13fbf1a9a6605d7ee42dff5bbc5d43b7b381e413fb97eb1b8300beb",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/utils.js.map",
+          "bytes": 1142,
+          "sha256": "e699109e178ec671819a99db007389b5b39c3ac31d148ddcb47d9aca250327da",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsConoutConnection.js",
+          "bytes": 6119,
+          "sha256": "1440f70908fb1f55911ac8e936a1230f68a9c00c03096fcef6788eac6aad9d62",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsConoutConnection.js.map",
+          "bytes": 1660,
+          "sha256": "621dd488e7f33a2f2084cdb3d3df6560209105730d54ae3414fbbc3ba34c07c6",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsPtyAgent.js",
+          "bytes": 12388,
+          "sha256": "8636d16b38266112204061a22b135734177c242837982fd3a4055be726efa64a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsPtyAgent.js.map",
+          "bytes": 9105,
+          "sha256": "351a491b18e6ada481d318a93be7cc80af63f183e9c66f247f193e8bd4627106",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsPtyAgent.test.js",
+          "bytes": 4147,
+          "sha256": "4c83dd76ec446031876dc81869e4c204715f72c0ba7ba3389e10b390b6d08da1",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsPtyAgent.test.js.map",
+          "bytes": 2951,
+          "sha256": "1fbfffca813225c86f4a42b3e467a6b3c1a19885db5748d01e8b06d7df82ad94",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsTerminal.js",
+          "bytes": 7852,
+          "sha256": "c3a65716f53fed0135a8a633373d5f9c2ab092544d651f27ef0a67096dd3bcd9",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsTerminal.js.map",
+          "bytes": 5021,
+          "sha256": "ad8425423f7cb4b7c405e7275e02c628e2c9df21287413a7cfce1ffcbb997be8",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsTerminal.test.js",
+          "bytes": 10760,
+          "sha256": "325567d8d6b461df3d3b7990a51bac09f662733988df653de7ee9113880e67a3",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/windowsTerminal.test.js.map",
+          "bytes": 8847,
+          "sha256": "2a3a29c938a8af86827bd1af33a34da1039f36559e68575ae734a07975a956d3",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/worker/conoutSocketWorker.js",
+          "bytes": 848,
+          "sha256": "3e4bac095ac3870c3248a7302f5d10217de625f30c32b7000fe48a34788e47ac",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/lib/worker/conoutSocketWorker.js.map",
+          "bytes": 635,
+          "sha256": "b90f0ea24f182b1be7875070eafc360f91c9d9d5c997815453a117db52fd4250",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/LICENSE",
+          "bytes": 3326,
+          "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/package.json",
+          "bytes": 1615,
+          "sha256": "f8b6a14f7022c14f1cd5d109486f5dacd32bffb63a9a63e38eced37dacb47439",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+          "bytes": 103280,
+          "sha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/prebuilds/darwin-arm64/spawn-helper",
+          "bytes": 68464,
+          "sha256": "b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/prebuilds/darwin-x64/pty.node",
+          "bytes": 72080,
+          "sha256": "c8e53ab3e0f190b691fd838768a24771b6d352c6ae817a4b3049c817f27ac262",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/native/node-pty/prebuilds/darwin-x64/spawn-helper",
+          "bytes": 27968,
+          "sha256": "3ddfd4ac6b1500fc8c3a28b185d7973c193a8ab035f4763b2a5d4636eccf4514",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/1password/SKILL.md",
+          "bytes": 2393,
+          "sha256": "0cae18363941c91cb0d553bf87f2303c0014aae72b94fde8f2fe801aeddcd262",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/apple-passwords/SKILL.md",
+          "bytes": 5294,
+          "sha256": "6b016fd75dad47f4c509270fea67788c737a8605bc0aae151db5850c232e87ac",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/aside/SKILL.md",
+          "bytes": 5833,
+          "sha256": "05a28f498776693740b737d4f435259aedf8c345a16f38f90a9e479bd66be6a3",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/bitwarden/SKILL.md",
+          "bytes": 2319,
+          "sha256": "71ea6411f019965db8d7cb835b3653db4f43a86864c4d23a09a40c1f921275c2",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/captcha-solver/SKILL.md",
+          "bytes": 2425,
+          "sha256": "ad19f1cdc378113ed8a0a7e074a43c28009e6f2b96227a978d96dd179df64eff",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/channel/SKILL.md",
+          "bytes": 2462,
+          "sha256": "76f0134e7b2ba78694619a6a901fd36a0e7a767bd3f05747c4cc4dbea92c9a67",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/bookmarks.md",
+          "bytes": 954,
+          "sha256": "b1ad8ab1ce73905120b6673a18bc0d67984fa965832ee80b87bba22634615779",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/downloads.md",
+          "bytes": 1153,
+          "sha256": "27c6c573193f0a41ed4d7edc5adfe1f61a0b38f7bf3c15de82e1a98186281d9e",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/history.md",
+          "bytes": 546,
+          "sha256": "1c3e0b5d08c4486cbacde1df2e4deb5c795b065c02e82f7b7fe9a5ddfc79fb78",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/SKILL.md",
+          "bytes": 1036,
+          "sha256": "e854c4c2285106c1e86cd59e6bea8db333137175c2fae19218c4eded6ee6c4c4",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/tab-groups.md",
+          "bytes": 372,
+          "sha256": "fa7c299684810b77b1c12619471af875f0e2822ef7d731c1417743442c20e816",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/tabs.md",
+          "bytes": 698,
+          "sha256": "f3a744ab9a789ae2f9a07f02fb35174f7d50b601ff0a1d740aeba796fef107e3",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/top-sites.md",
+          "bytes": 130,
+          "sha256": "b5f00a5f599ae51312fb3ac212b88cdb4dea6afc6c5611d3452f598f78217fe7",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/chrome/windows.md",
+          "bytes": 664,
+          "sha256": "27da9d757a8f4b940dac1b2f2f03e3ee83216659a169d7dedb191a428ce4f864",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/dashlane/SKILL.md",
+          "bytes": 2290,
+          "sha256": "0599db202256936c3e93a5d383dfa9fa8cc3265ba49ed9b7560425443b686cb9",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/docx/LICENSE.txt",
+          "bytes": 1467,
+          "sha256": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/docx/SKILL.md",
+          "bytes": 11294,
+          "sha256": "35e5b1abb150f783f09c7f8cb67a5a0dfd3c835db3125c16a4df7ea519f035dc",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/draft-preview/SKILL.md",
+          "bytes": 5818,
+          "sha256": "1ef1581a57f91a0c6c9dec3908a7e0ae51e03ecb78776f6a4239a61d7eecfae9",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/google-accounts/SKILL.md",
+          "bytes": 875,
+          "sha256": "273ec0d59d040bed445291cf52137fbe1527d10f2015d44c2982ec7f5415c2fd",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/google-docs/SKILL.md",
+          "bytes": 5335,
+          "sha256": "b8539dba5c6764256792aef7c2cd1ca34752f93cd45fb3f6bc8f06b00a453007",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/google-gmail/SKILL.md",
+          "bytes": 6989,
+          "sha256": "b9730afa4b0abdf8579fe5f286e3ec436e48fc1fd3ef629c6944e7b0441c6c67",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/google-search/SKILL.md",
+          "bytes": 2590,
+          "sha256": "95148a7e39ea7994c8003029518e04203a3aa9ab6b7276024cd582652675675d",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/google-sheets/SKILL.md",
+          "bytes": 4818,
+          "sha256": "677f9f879c152657450440d16a0261bf2af00d9a229205e69b9fcd916183eb85",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/image-search/SKILL.md",
+          "bytes": 2572,
+          "sha256": "549cd7012ea6d3b41c821c1ff9e1334d0cdcaa99647f2a92766130fe4cdd78a8",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/imagegen/SKILL.md",
+          "bytes": 1812,
+          "sha256": "9e068ed5f96aa8fd8476bb718d06a64cfcf154e6c0ef77a7e636bf72f6d46006",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/imessage/SKILL.md",
+          "bytes": 4308,
+          "sha256": "6cb0d8e50d2cbf688c8f8a791cbe9544d38a25eb81f0ba221ab81fd7d9e85f2a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/kakaotalk/SKILL.md",
+          "bytes": 1798,
+          "sha256": "b2fd02d182285c738445d8cd7ff51c2cf5f5c0e323e73172b6318dc45e317dda",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/lastpass/SKILL.md",
+          "bytes": 2290,
+          "sha256": "6af1f54c636fbf2c8de9c4e381682d21866c667a36c9841b4c55c26b85307fbf",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/nordpass/SKILL.md",
+          "bytes": 1943,
+          "sha256": "8b0f3b0808d546971ae6818958de7b1ca6e99f7946db526cc1ed629d1542f37a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/notification-activation/SKILL.md",
+          "bytes": 5322,
+          "sha256": "35cde0b0ea0fcfaa59fd810fbfff5833c64b396b87f8f62d76479555a55e0e4c",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/notion/SKILL.md",
+          "bytes": 8061,
+          "sha256": "f145c1d9f82eea576c25f68e16e850af5110ea1a16e9b7d08e99c18c6ebee7cd",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/onboarding/SKILL.md",
+          "bytes": 7070,
+          "sha256": "38c13d78b8144a045853a559c619da384925393c3caf7367e19d7be5f881b2fc",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/password-manager/SKILL.md",
+          "bytes": 12429,
+          "sha256": "9b5d1156ec9c4a407145a02ad0f6c88d93017b0a1c6299faeaa9cb64e8c9b6af",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/pdf/SKILL.md",
+          "bytes": 2417,
+          "sha256": "b72b147c4193036cb7abbb5f84b2ce41a29539ee5aab77ffe68a6c846742b0e5",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/pptx/LICENSE.txt",
+          "bytes": 1467,
+          "sha256": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/pptx/SKILL.md",
+          "bytes": 7757,
+          "sha256": "f04fcb0f39b74767a70a3d3ecc0f51d96116274cc978f2dd7cd692ae32963823",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/proton-pass/SKILL.md",
+          "bytes": 2290,
+          "sha256": "be80a541225b16b4986f063b0ad8f07694c69071f9e0dd0c6902ffc7f93eb863",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/airtable/SKILL.md",
+          "bytes": 1367,
+          "sha256": "8e7f7f3a3b86b291fa4d12498c100b6cadfa4a2cffa40e0b3e2b00b619af5973",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/amazon/SKILL.md",
+          "bytes": 1685,
+          "sha256": "867d555144419051d74c008f7449438e57dc2394a61a7c7f24f21447cfe530e2",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/asana/SKILL.md",
+          "bytes": 1209,
+          "sha256": "b8b0ff9515dc76ad0ed1d6ee728a0f29e7f56601ca62b04604b2bd6976fced36",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/clickup/SKILL.md",
+          "bytes": 1423,
+          "sha256": "da0a8147ad4863a19a4cc18aa44f4980c7976c19eeb9f27dae805fac294cbfb4",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/confluence/SKILL.md",
+          "bytes": 1005,
+          "sha256": "1a0a8656450bf5c81c8f2c56c0abc090f9f451177d51b164104ac343b139b0c6",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/discord/SKILL.md",
+          "bytes": 1192,
+          "sha256": "4bf637b7c6598a8270d3fea65691653637b4226476a380cbea92073bd3ae1aca",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/github/SKILL.md",
+          "bytes": 1642,
+          "sha256": "169c0055f04f30161a35e20e6761a706416eb425dea250216766db7b13a4193e",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/google-calendar/SKILL.md",
+          "bytes": 1571,
+          "sha256": "cd7eee24a26265fe18033a787085bc9044ac3da1c49337d397773683e57b72ee",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/google-drive/SKILL.md",
+          "bytes": 1783,
+          "sha256": "5ef0ee8a8962c22cbfc2069f818b93e3efb0b7e1a57c36c0f367df8e0e96a8e8",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/google-forms/SKILL.md",
+          "bytes": 1253,
+          "sha256": "4179190490e26dfce5f220146ed909a63bab05afc13f658f62cd0dff0b9eeb07",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/google-slides/SKILL.md",
+          "bytes": 1689,
+          "sha256": "3be8d176c81d2a424045b9326c1ccab5e9d7375ea1813dcc06f0766a21c629cf",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/jira/SKILL.md",
+          "bytes": 1140,
+          "sha256": "744988381449edcb479fe4511b7c09efefd9fd2f3411a41b581379824935d8ad",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/linear/SKILL.md",
+          "bytes": 1079,
+          "sha256": "558744f29b8ace8e797ec4ac1eb128942c250eef7ef6685dfa86058bd465e16d",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/linkedin/SKILL.md",
+          "bytes": 15586,
+          "sha256": "cf36b6a4df2be04fac744eaf9c3075ed1cb97bada4d4297ad0f077b3799efcbc",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/notion/SKILL.md",
+          "bytes": 1419,
+          "sha256": "f394fd46cce7f22cb9922737af803ba3d48bc7facc283a2bdb9b7613fa5d1a40",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/site-specific/trello/SKILL.md",
+          "bytes": 1121,
+          "sha256": "06b8193da08b610dd1e02876fa65ba14b9c0fc029c9db0bf050ee14183297210",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/skill-creator/scripts/validate-frontmatter.mjs",
+          "bytes": 634,
+          "sha256": "60e4e6218d2b8e5e629e2ec52a22908d267b0dd8f52c51b93f76515fcd586461",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/skill-creator/SKILL.md",
+          "bytes": 2210,
+          "sha256": "13f6ed346c7085156ebbb22869e18c4903031fff1dd44e68f5fd241b2ea82f7a",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/slack/SKILL.md",
+          "bytes": 4016,
+          "sha256": "c46426c304498c5071a6d2b29cda7f1a9c277c9ecd0f459ff17984b3e97d02f5",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/visual-browse/SKILL.md",
+          "bytes": 4554,
+          "sha256": "8249645352269ba92d6f23ca197385ee01df869306087511bbf814f2df01b262",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/visualize/SKILL.md",
+          "bytes": 9851,
+          "sha256": "4cb87ed9f931b50006ec6d7bc56b1b15eb7f6470ca130f3c431d156ab8bab37b",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/x-twitter/SKILL.md",
+          "bytes": 6672,
+          "sha256": "cd2eed756a56f9b58f6091b1c567fba10092cb0688cf1febf953caa03fbc560c",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/xlsx/LICENSE.txt",
+          "bytes": 1467,
+          "sha256": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/xlsx/SKILL.md",
+          "bytes": 11728,
+          "sha256": "4aa22e76915c7aa2c78448dacb617f6358e861c18c607e0805610525405292c2",
+          "mode": 384
+        },
+        {
+          "path": "Contents/Resources/static/skills/builtin/youtube/SKILL.md",
+          "bytes": 4204,
+          "sha256": "e13c784330fa5bba868ddc739aca5ed6d11e1f4b255c1cd53c91e33878cf7a7c",
+          "mode": 384
+        }
+      ]
+    },
+    "cli": {
+      "files": [
+        {
+          "path": "Contents/_CodeSignature/CodeResources",
+          "bytes": 2617,
+          "sha256": "a25d905f19e1031534f1fad8fb37b5e225f078895a2c6dc1c2bc45edce14b4fd",
+          "mode": 420
+        },
+        {
+          "path": "Contents/CodeResources",
+          "bytes": 1674,
+          "sha256": "cc82e5ea194ac47676c76b7a8fb05c5fd454563a3805d85647fa4e7ae8e3371d",
+          "mode": 420
+        },
+        {
+          "path": "Contents/embedded.provisionprofile",
+          "bytes": 12305,
+          "sha256": "52822dada181b222b941c670caf0f236b5c92e49031b0b33958c2a1bf6359afe",
+          "mode": 420
+        },
+        {
+          "path": "Contents/Info.plist",
+          "bytes": 855,
+          "sha256": "70dea57318aec69bd98439390b5912e844c484357a3917da5487f6012a4516bf",
+          "mode": 420
+        },
+        {
+          "path": "Contents/MacOS/aside",
+          "bytes": 146277488,
+          "sha256": "17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a",
+          "mode": 493
+        },
+        {
+          "path": "Contents/Resources/native/aside-native.node",
+          "bytes": 9246656,
+          "sha256": "66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc",
+          "mode": 493
+        }
+      ]
+    }
+  }
+}
