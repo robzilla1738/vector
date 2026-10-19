@@ -54,7 +54,7 @@ diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browse
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.cc
-@@ -0,0 +1,478 @@
+@@ -0,0 +1,486 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#include "chrome/browser/ui/performance/native_performance.h"
@@ -367,6 +367,14 @@ new file mode 100644
 +      frame->GetRenderWidgetHost() == input_host_)
 +    ObserveTabKeyPress(event);
 +}
++void NativePerformance::ObserveNativeTabCommand(
++    content::WeakDocumentPtr document,
++    const input::NativeWebKeyboardEvent& event) {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  if (page_ && frame &&
++      page_->InputDocument().AsRenderFrameHostIfValid() == frame)
++    ObserveTabKeyPress(event);
++}
 +bool NativePerformance::OnShellKeyPress(content::WeakDocumentPtr document,
 +                                       const input::NativeWebKeyboardEvent& event) {
 +  ObserveTabShortcut(document, event);
@@ -537,7 +545,7 @@ diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,105 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
@@ -589,6 +597,10 @@ new file mode 100644
 +  // AppKit menu equivalents can dispatch before RenderWidgetHost key callbacks.
 +  void ObserveTabShortcut(content::WeakDocumentPtr document,
 +                          const input::NativeWebKeyboardEvent& event);
++
++  // Stock native commands have no shell; admit the original active fixture.
++  void ObserveNativeTabCommand(content::WeakDocumentPtr document,
++                               const input::NativeWebKeyboardEvent& event);
 +
 + private:
 +  void OnWidgetDestroying(views::Widget* widget) override;
@@ -726,3 +738,50 @@ index a4b175a64f5a58eec344df0b38c49df459f16ba7..fd1a0edac064434624cf980209c88bdd
  // *************** PROFILE PREFS ***************
  // These are attached to the user profile
  
+diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -34,6 +34,7 @@
+ #include "chrome/browser/ui/layout_constants.h"
+ #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
+ #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
++#include "chrome/browser/ui/performance/native_performance.h"
+ #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
+@@ -62,6 +63,8 @@
+ #include "components/remote_cocoa/common/native_widget_ns_window.mojom.h"
+ #include "components/remote_cocoa/common/native_widget_ns_window_host.mojom.h"
+ #include "components/web_modal/web_contents_modal_dialog_host.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
+ #include "ui/accessibility/platform/ax_platform_node.h"
+ #include "ui/actions/actions.h"
+ #include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
+@@ -703,6 +706,26 @@
+         browser_view_);
+   }
+ 
++  // Reserved AppKit tab commands can precede RootView/RenderWidgetHost input.
++  // Capture the original event and fixture before the synchronous tab switch.
++  if ((command == IDC_SELECT_NEXT_TAB || command == IDC_SELECT_PREVIOUS_TAB ||
++       command == IDC_CYCLE_TO_NEXT_TAB || command == IDC_CYCLE_TO_PREV_TAB) &&
++      window_open_disposition == WindowOpenDisposition::CURRENT_TAB &&
++      chrome::IsCommandEnabled(browser, command) &&
++      !browser->IsDeleteScheduled()) {
++    NSEvent* original = NSApp.currentEvent;
++    auto* widget = browser_view_->GetWidget();
++    auto* contents = browser->GetTabStripModel()->GetActiveWebContents();
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (original && original.type == NSEventTypeKeyDown && widget && frame &&
++        original.window == NSApp.keyWindow &&
++        original.window == widget->GetNativeWindow().GetNativeNSWindow()) {
++      if (auto* performance = NativePerformance::ForWidget(widget)) {
++        input::NativeWebKeyboardEvent physical{base::apple::OwnedNSEvent(original)};
++        performance->ObserveNativeTabCommand(frame->GetWeakDocumentPtr(), physical);
++      }
++    }
++  }
+   chrome::ExecuteCommandWithDisposition(browser, command,
+                                         window_open_disposition);
+   return true;
