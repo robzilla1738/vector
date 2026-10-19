@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v32 frozen source; independent of staged v33 view overlays",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_manager_service.h",
+      "baselineSha256": "a3c9a3328876110e9a796d81a8dfcc6d9e3169a00ae1d9b9a7a6300bf9c8f1c1",
+      "outputSha256": "44a096f97899c709903e0177ee1bdb12673732f8d84f01e883c2b85cf0cabaa5"
+    },
+    {
+      "path": "chrome/browser/ui/browser_manager_service.cc",
+      "baselineSha256": "492fbdf3867cddffe1c93ce83da91a3b8226635f8293640ebd89f792b2fa5d84",
+      "outputSha256": "f6ffb51e995ca154386d09e77c509b6c486464c97ab74ed771aebd0424b8c84e"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

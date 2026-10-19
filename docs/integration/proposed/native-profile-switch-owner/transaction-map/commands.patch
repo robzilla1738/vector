@@ -1,0 +1,140 @@
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -353,6 +353,18 @@
+             base::Unretained(this)));
+   }
+ 
++  InitProfilePrefObservers();
++  InitCommandState();
++  ScheduleBookmarkModelLoadUpdate();
++  InitProfileServiceObservers();
++}
++
++BrowserCommandController::~BrowserCommandController() {
++  TearDownProfileObservers(profile());
++  local_pref_registrar_.RemoveAll();
++}
++
++void BrowserCommandController::InitProfilePrefObservers() {
+   profile_pref_registrar_.Init(profile()->GetPrefs());
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+   aux_menu_pref_registrar_.Init(profile()->GetOriginalProfile()->GetPrefs());
+@@ -441,9 +453,23 @@
+                       base::Unretained(this)));
+     }
+   }
+-
+-  InitCommandState();
+-
++}
++
++void BrowserCommandController::InitProfileServiceObservers() {
++  sessions::TabRestoreService* tab_restore_service =
++      TabRestoreServiceFactory::GetForProfile(profile());
++  if (tab_restore_service) {
++    tab_restore_service->AddObserver(this);
++    if (!tab_restore_service->IsLoaded()) {
++      tab_restore_service->LoadTabsFromLastSession();
++    }
++  }
++
++  extension_state_observer_ =
++      std::make_unique<ExtensionStateObserver>(this, profile());
++}
++
++void BrowserCommandController::ScheduleBookmarkModelLoadUpdate() {
+   // Bookmark editing commands depend on the bookmark model to be loaded.
+   // Schedule a callback to update them once the model is loaded instead of just
+   // relying on other updates like TabStateChanged.
+@@ -460,33 +486,39 @@
+             &BrowserCommandController::UpdateCommandsForBookmarkEditing,
+             weak_ptr_factory_.GetWeakPtr()));
+   }
+-
+-  sessions::TabRestoreService* tab_restore_service =
+-      TabRestoreServiceFactory::GetForProfile(profile());
+-  if (tab_restore_service) {
+-    tab_restore_service->AddObserver(this);
+-    if (!tab_restore_service->IsLoaded()) {
+-      tab_restore_service->LoadTabsFromLastSession();
+-    }
+-  }
+-
+-  extension_state_observer_ =
+-      std::make_unique<ExtensionStateObserver>(this, profile());
+-}
+-
+-BrowserCommandController::~BrowserCommandController() {
++}
++
++void BrowserCommandController::TearDownProfileObservers(
++    Profile* previous_profile) {
+   extension_state_observer_.reset();
+-  // TabRestoreService may have been shutdown by the time we get here. Don't
+-  // trigger creating it.
+-  sessions::TabRestoreService* tab_restore_service =
+-      TabRestoreServiceFactory::GetForProfileIfExisting(profile());
+-  if (tab_restore_service) {
+-    tab_restore_service->RemoveObserver(this);
+-  }
+-  profile_pref_registrar_.RemoveAll();
+-  local_pref_registrar_.RemoveAll();
++  // The in-place owner has already changed browser_->GetProfile(). Remove the
++  // observer from the ACTUAL old service without creating a shutdown service.
++  if (auto* service =
++          TabRestoreServiceFactory::GetForProfileIfExisting(previous_profile)) {
++    service->RemoveObserver(this);
++  }
++  profile_pref_registrar_.Reset();
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  aux_menu_pref_registrar_.Reset();
++#endif
+   glic_enabling_subscription_.reset();
+-}
++  glic_active_instance_changed_subscription_ = {};
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void BrowserCommandController::RebindForAuxProfileSwitch(
++    Profile* previous_profile) {
++  CHECK(previous_profile);
++  CHECK_NE(previous_profile, profile());
++  // Supplied04560b20 ->0455ebf0 ->0455f5d0 ->04560a50. Preserve the updater
++  // and its command/UI observers; only real profile-bound sources are rebound.
++  TearDownProfileObservers(previous_profile);
++  InitProfilePrefObservers();
++  InitProfileServiceObservers();
++  InitCommandState();
++  ScheduleBookmarkModelLoadUpdate();
++}
++#endif
+ 
+ bool BrowserCommandController::IsReservedCommandOrKey(
+     int command_id,
+--- a/chrome/browser/ui/browser_command_controller.h
++++ b/chrome/browser/ui/browser_command_controller.h
+@@ -100,6 +100,12 @@
+   bool DispatchAuxMenuCommand(int command_id);
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Called by the frozen in-place profile transaction after authoritative
++  // identity changes. previous_profile remains alive until rebinding ends.
++  void RebindForAuxProfileSwitch(Profile* previous_profile);
++#endif
++
+   // Helper method to show the customize chrome sidepanel and optionally scroll
+   // to a specific section.
+   void ShowCustomizeChromeSidePanel(
+@@ -175,6 +181,11 @@
+   // be shown. Used for updating window command states only.
+   bool IsShowingLocationBar();
+ 
++  void InitProfilePrefObservers();
++  void InitProfileServiceObservers();
++  void TearDownProfileObservers(Profile* previous_profile);
++  void ScheduleBookmarkModelLoadUpdate();
++
+   // Initialize state for all browser commands.
+   void InitCommandState();
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v32 frozen source; disjoint ownership and staged view patches",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "264464dcb5abdc4f0342f8bca2560229682aa1be9328571c626f77837fb1800e",
+      "outputSha256": "0ffa387270075c732ec429a1824e48b5bd9286e68bbae307176582d66e1c7065"
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.h",
+      "baselineSha256": "5841dd0e6baa60b158c51442c03aab357b00aea4ca47db2cca212b78ee448c90",
+      "outputSha256": "bcbe8af0799c64155bb58059c5333d07ba13a579d21a46c3340020e514004832"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

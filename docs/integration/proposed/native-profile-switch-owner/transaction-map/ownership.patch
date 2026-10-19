@@ -1,0 +1,125 @@
+--- a/chrome/browser/ui/browser_manager_service.h
++++ b/chrome/browser/ui/browser_manager_service.h
+@@ -9,8 +9,10 @@
+ #include <vector>
+ 
+ #include "base/callback_list.h"
++#include "base/functional/callback_forward.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/observer_list.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "components/keyed_service/core/keyed_service.h"
+ 
+@@ -34,6 +36,20 @@
+   // requesting the browser close via BrowserWindow::Close(), which happens
+   // async and allows graceful teardown of the tab strip and associated data.
+   static void SynchronouslyDestroyBrowser(BrowserWindowInterface* browser);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Moves the SAME regular browser between profile-owned managers and rebinds
++  // its lifecycle subscriptions. The caller must have frozen its in-place
++  // profile-switch transaction and prepared all profile-bound controller/tab
++  // state. commit_identity must synchronously update its authoritative profile
++  // and keep-alive to target without external callbacks. It cannot fail or
++  // yield. This hook is not a replacement for that complete transaction.
++  // Returns false before committing if the actual managed ownership is absent
++  // or either profile/window is unsupported; it never opens a new window.
++  static bool TransferForAuxProfileSwitch(BrowserWindowInterface* browser,
++                                          Profile* target,
++                                          base::OnceClosure commit_identity);
++#endif
+ 
+   // KeyedService:
+   void Shutdown() override;
+--- a/chrome/browser/ui/browser_manager_service.cc
++++ b/chrome/browser/ui/browser_manager_service.cc
+@@ -5,6 +5,10 @@
+ #include "chrome/browser/ui/browser_manager_service.h"
+ 
+ #include <algorithm>
++
++#include "base/functional/callback.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ 
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/lifetime/application_lifetime_desktop.h"
+@@ -38,6 +42,77 @@
+   BrowserManagerServiceFactory::GetForProfile(browser->GetProfile())
+       ->DeleteBrowser(browser);
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool BrowserManagerService::TransferForAuxProfileSwitch(
++    BrowserWindowInterface* browser,
++    Profile* target,
++    base::OnceClosure commit_identity) {
++  if (!browser || !target || !commit_identity || browser->IsDeleteScheduled() ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL)
++    return false;
++  Profile* const previous = browser->GetProfile();
++  if (!previous || previous == target || !previous->IsRegularProfile() ||
++      !target->IsRegularProfile())
++    return false;
++  auto* source = BrowserManagerServiceFactory::GetForProfile(previous);
++  auto* destination = BrowserManagerServiceFactory::GetForProfile(target);
++  if (!source || !destination || source == destination ||
++      !source->browsers_and_subscriptions_for_testing_.empty() ||
++      !destination->browsers_and_subscriptions_for_testing_.empty())
++    return false;
++  auto position =
++      std::ranges::find_if(source->browsers_and_subscriptions_,
++                           [browser](const BrowserAndSubscriptions& entry) {
++                             return entry.browser.get() == browser;
++                           });
++  if (position == source->browsers_and_subscriptions_.end() ||
++      std::ranges::any_of(destination->browsers_and_subscriptions_,
++                          [browser](const BrowserAndSubscriptions& entry) {
++                            return entry.browser.get() == browser;
++                          }))
++    return false;
++
++  // Reserve before extracting ownership. No observer runs until identity,
++  // ownership, subscriptions and both collection lists are coherent again.
++  destination->browsers_and_subscriptions_.reserve(
++      destination->browsers_and_subscriptions_.size() + 1);
++  destination->browsers_activation_order_.reserve(
++      destination->browsers_activation_order_.size() + 1);
++  ScopedProfileKeepAlive source_keep_alive(
++      previous, ProfileKeepAliveOrigin::kBrowserWindow);
++  ScopedProfileKeepAlive target_keep_alive(
++      target, ProfileKeepAliveOrigin::kBrowserWindow);
++  BrowserAndSubscriptions moved = std::move(*position);
++  source->browsers_and_subscriptions_.erase(position);
++  std::erase(source->browsers_activation_order_, browser);
++  moved.activated_subscription = {};
++  moved.deactivated_subscription = {};
++  moved.closed_subscription = {};
++  std::move(commit_identity).Run();
++  CHECK_EQ(browser->GetProfile(), target);
++  CHECK(!browser->IsDeleteScheduled());
++
++  destination->browsers_and_subscriptions_.push_back(BrowserAndSubscriptions(
++      std::move(moved.browser),
++      browser->RegisterDidBecomeActive(
++          base::BindRepeating(&BrowserManagerService::OnBrowserActivated,
++                              base::Unretained(destination))),
++      browser->RegisterDidBecomeInactive(
++          base::BindRepeating(&BrowserManagerService::OnBrowserDeactivated,
++                              base::Unretained(destination))),
++      browser->RegisterBrowserDidClose(
++          base::BindRepeating(&BrowserManagerService::OnBrowserClosed,
++                              base::Unretained(destination)))));
++  // Supplied0456847c appends the existing browser to the destination's
++  // profile activation order without synthesizing a native activation.
++  destination->browsers_activation_order_.push_back(browser);
++  // Supplied04568238/0456847c deliberately do NOT emit collection create,
++  // close, activation or deactivation notifications during transfer. The
++  // same global browser identity/order and window remain alive throughout.
++  return true;
++}
++#endif
+ 
+ void BrowserManagerService::Shutdown() {
+   CHECK(browsers_and_subscriptions_for_testing_.empty());

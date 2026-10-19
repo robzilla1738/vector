@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "method": "Authorized static supplied decompile and bounded arm64 disassembly; actual Chromium155 source read only. No target execution.",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser.h",
+      "sha256": "3edd13e0b535790efb3254f1e2be505450c26fb8dae4c4dfab57c15d25ceb8e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser.cc",
+      "sha256": "185e71f8910d634dde2cf32218a8820ee42599a6210ae33dd116a20d3ca4123f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_init_state.h",
+      "sha256": "2de3096b2010dfc19aa2f1ee48da90b846305a78642f24913c7ed250916d8731"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_manager_service.h",
+      "sha256": "a3c9a3328876110e9a796d81a8dfcc6d9e3169a00ae1d9b9a7a6300bf9c8f1c1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_manager_service.cc",
+      "sha256": "492fbdf3867cddffe1c93ce83da91a3b8226635f8293640ebd89f792b2fa5d84"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_command_controller.h",
+      "sha256": "5841dd0e6baa60b158c51442c03aab357b00aea4ca47db2cca212b78ee448c90"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_command_controller.cc",
+      "sha256": "264464dcb5abdc4f0342f8bca2560229682aa1be9328571c626f77837fb1800e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "sha256": "7cd3bc38c8b2dd59ec034458cd0ec6f021371b8178221001aa3a109fdb480aeb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "c7f397afae4273fabfc24128562c6804049f1b18a3a27155b4ee3c156d54ffc0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "bce52729484749c1eadc5fa1cec1b21f343cec9851447e6e1592f25b3a3a4c30"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "e44665e77d10a6ea8597555ab88fff30574c6d7cf75a7f3babbe4be0fb4992cd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/sessions/session_service_browser_helper.h",
+      "sha256": "c759539eb96c2c0fc6e2c8af6430e0b1e488b90f29b96cdb49860893024d33ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/sessions/session_service_browser_helper.cc",
+      "sha256": "eaf3bce0b16e8a9a8b12a9c71e1ac43637f21c7959df5519c09a005528946756"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window_theme_observer.h",
+      "sha256": "ea284ba21cb05803b004dba2c09183d4e801ee19b3536e427bf392eab29acb0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window_theme_observer.cc",
+      "sha256": "6fab25b7ecfe728d0563d59d1e301fa68b276cfd2755fa05df39c66c2e250b77"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/bookmark_bar_controller.h",
+      "sha256": "609d8f8cf5b1722082b51ed084e8356383eb690f4b28e0d79de6e99942dbcbfc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/bookmark_bar_controller.cc",
+      "sha256": "7e9c5f1232608892809840e63c7d63a4659d8f84412c85b01589f91a52a3767a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h",
+      "sha256": "35f86d3344a3cc56a578aac964b0b845190bfd629d04298fff706590f9673afc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "sha256": "a99af0d6c4b51202a567141b6b8c4100cba57f64b4d1b80be0f70bccc293f518"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/zoom/browser_window_zoom_observer.cc",
+      "sha256": "ab03fb7cd870e6a7e9594f2b041011863d0524d1c43446d29352fd3b9581550d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_ui_controller/browser_ui_controller.h",
+      "sha256": "b1b13d55bc4d0dd3e16a1316045f39987f1a9b1e0219a71dc057899ce5a16e84"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_ui_controller/browser_ui_controller.cc",
+      "sha256": "65ba3c2f4041b40840a566a5f2b8e1e7d157813d9ede88ba14b9165cbb3b8135"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "sha256": "2a8909180ad13dd0d575df0372b85fa5fe6434c28aec3042509dbf20713b7c49"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_change_registrar.cc",
+      "sha256": "9d4c1459f0929b063c558106713566d4c7c59d9e42288125f191a8792e104fb5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/unowned_user_data/user_data_factory.h",
+      "sha256": "81d3d419a2539eb263cc9f115ba36ea527d8129010ef9418f57499e17274d9af"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04559f80.c",
+      "sha256": "aa281c5f7b93a7947ab805354cb9e0b293f7465656340b015f589ec2b08e9637"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/browser.h",
+      "sha256": "43d05e5d1c596f08eb47f51c9aac53a825d7f66e16af408c5224c58c77c46ac1"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/browser.cc",
+      "sha256": "409eb78509da559de2cc843166f638d2905eb5fddea7a142b0b229f3827ec883"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+      "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+    }
+  ],
+  "originalRoutines": {
+    "04559f80": "SwitchProfileInPlaceForAside: same Browser/window/model/session; identity/tabs/profile observers migrated in place",
+    "04568238": "Extract BrowserAndSubscriptions unique ownership, remove activation entry, destroy three subscriptions; no collection notifications",
+    "0456847c": "Adopt same unique browser, register three real lifecycle callbacks, append profile activation entry; no collection notifications",
+    "0455c674": "Retain per-profile-path ScopedProfileKeepAlive cache, not BrowserList registration",
+    "04560b20": "Remove old profile-bound command observers/subscriptions",
+    "0455ebf0": "Initialize target profile-bound command prefs/services",
+    "0455f5d0": "Initialize command state on preserved updater",
+    "04560a50": "Schedule bookmark-model-ready command update"
+  }
+}
