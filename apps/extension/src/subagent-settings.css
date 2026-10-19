@@ -1,0 +1,86 @@
+.subagent-settings,
+.subagent-form {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.subagent-settings h3,
+.subagent-settings h4 {
+  margin: 0;
+}
+.subagent-settings p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+.subagent-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.subagent-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 500;
+}
+.subagent-form input:not([type="checkbox"]),
+.subagent-form textarea,
+.subagent-form select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--raised);
+  color: inherit;
+  font: inherit;
+}
+.subagent-form textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+.subagent-form small {
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.subagent-form label span small {
+  display: block;
+}
+.subagent-form fieldset {
+  margin: 0;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.subagent-form legend {
+  padding: 0 5px;
+  font-weight: 600;
+}
+.subagent-settings .subagent-toggle,
+.subagent-form .subagent-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.subagent-toggle input {
+  width: auto;
+  flex: none;
+  margin-top: 3px;
+}
+.subagent-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .subagent-form fieldset,
+  .subagent-card {
+    padding: 12px;
+  }
+}
