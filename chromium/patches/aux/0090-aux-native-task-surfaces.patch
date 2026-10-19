@@ -1,0 +1,1481 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.h
+@@ -0,0 +1,119 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NATIVE_TASK_FEED_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NATIVE_TASK_FEED_H_
++
++#include <map>
++#include <memory>
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "url/gurl.h"
++
++class Profile;
++namespace aux {
++struct ProfileSecurityState;
++}
++namespace network {
++class SimpleURLLoader;
++}
++
++struct AuxNativeTask {
++  std::string id;
++  std::u16string title;
++  std::string status;
++  bool unread = false;
++  bool pinned = false;
++  bool can_pin = false;
++  struct PendingAction {
++    std::string id;
++    std::string kind;
++    std::u16string title;
++    std::u16string detail;
++    bool operator==(const PendingAction&) const = default;
++  };
++  std::optional<PendingAction> pending_action;
++  bool operator==(const AuxNativeTask&) const = default;
++};
++
++// Profile-bound authenticated projection for native task surfaces. It never
++// falls back to another profile's current account or reads installation keys.
++class AuxNativeTaskFeed {
++ public:
++  enum class State { kConnecting, kReady, kUnbound, kPrivate, kError };
++  struct Snapshot {
++    State state = State::kConnecting;
++    std::vector<AuxNativeTask> tasks;
++    std::u16string error;
++  };
++  using UpdatedCallback = base::RepeatingCallback<void(const Snapshot&)>;
++  using ActionCallback = base::OnceCallback<void(std::optional<std::u16string>)>;
++
++  AuxNativeTaskFeed(Profile* profile, UpdatedCallback updated);
++  ~AuxNativeTaskFeed();
++  AuxNativeTaskFeed(const AuxNativeTaskFeed&) = delete;
++  AuxNativeTaskFeed& operator=(const AuxNativeTaskFeed&) = delete;
++
++  void Start();
++  void Stop();
++  void Refresh();
++  void PerformAction(const std::string& task_id,
++                     const std::string& action,
++                     base::DictValue body,
++                     ActionCallback callback);
++  const Snapshot& snapshot() const { return snapshot_; }
++  base::WeakPtr<AuxNativeTaskFeed> GetWeakPtr() {
++    return weak_factory_.GetWeakPtr();
++  }
++
++ private:
++  using LoadCallback =
++      base::OnceCallback<void(std::optional<std::string>, int)>;
++  using AuthCallback = base::OnceCallback<void(bool)>;
++
++  void DispatchAction(const std::string& task_id,
++                      const std::string& action,
++                      base::DictValue body,
++                      ActionCallback callback);
++  void OnAccountResolved(aux::ProfileSecurityState security);
++  void EnsureAuthorization(AuthCallback callback);
++  void OnChallenge(AuthCallback callback,
++                   std::optional<std::string> body,
++                   int status);
++  void OnSigned(AuthCallback callback,
++                std::string challenge_id,
++                std::optional<std::string> signature);
++  void OnAuthorized(AuthCallback callback,
++                    std::optional<std::string> body,
++                    int status);
++  void FetchTasks(bool authorized);
++  void OnTasks(std::optional<std::string> body, int status);
++  void Load(const GURL& url,
++            std::optional<std::string> post_body,
++            LoadCallback callback);
++  void Fail(std::u16string error);
++  GURL AccountUrl(const std::string& path) const;
++
++  const raw_ptr<Profile> profile_;
++  UpdatedCallback updated_;
++  Snapshot snapshot_;
++  base::RepeatingTimer timer_;
++  std::map<uint64_t, std::unique_ptr<network::SimpleURLLoader>> loaders_;
++  uint64_t next_request_id_ = 0;
++  std::optional<int> account_id_;
++  std::string authorization_;
++  base::TimeTicks authorization_expiry_;
++  bool refresh_pending_ = false;
++  base::WeakPtrFactory<AuxNativeTaskFeed> weak_factory_{this};
++};
++
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NATIVE_TASK_FEED_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.cc
+@@ -0,0 +1,407 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++// Implements docs/spec/native/surfaces.md V2 and daemon/core.md authentication.
++
++#include "chrome/browser/ui/views/frame/aux_native_task_feed.h"
++
++#include <algorithm>
++#include <array>
++#include <utility>
++
++#include "base/check.h"
++#include "base/environment.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/storage_partition.h"
++#include "net/http/http_response_headers.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++
++namespace {
++constexpr size_t kMaximumResponseBytes = 2 * 1024 * 1024;
++constexpr size_t kMaximumTasks = 200;
++constexpr base::TimeDelta kRefreshInterval = base::Seconds(2);
++constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
++    net::DefineNetworkTrafficAnnotation("aux_native_task_projection", R"(
++      semantics {
++        sender: "Aux native task surfaces"
++        description: "Retrieves account-scoped local tasks and dispatches explicit task actions."
++        trigger: "A browser sidebar is visible or the user selects a task action."
++        data: "Signed local installation challenge, account and task identifiers, and explicit user action."
++        destination: LOCAL
++      }
++      policy {
++        cookies_allowed: NO
++        setting: "The native task sidebar is local to this browser profile."
++        policy_exception_justification: "Authenticated loopback transport only."
++      })");
++
++GURL DaemonUrl(const std::string& path) {
++  int port = 21520;
++  if (auto value = base::Environment::Create()->GetVar("AUX_PORT")) {
++    int parsed = 0;
++    if (base::StringToInt(*value, &parsed) && parsed > 0 && parsed <= 65535)
++      port = parsed;
++  }
++  return GURL("http://127.0.0.1:" + base::NumberToString(port) + path);
++}
++
++aux::ProfileSecurityState ResolveProfileSecurity(const base::FilePath& profile_path) {
++  return aux::ReadProfileSecurity(aux::StateHome(), profile_path);
++}
++
++bool ValidIdentity(const std::string& id) {
++  return !id.empty() && id.size() <= 128 &&
++         std::ranges::all_of(id, [](char character) {
++           return base::IsAsciiAlphaNumeric(character) || character == '-' ||
++                  character == '_';
++         });
++}
++
++std::optional<AuxNativeTask> ParseTask(const base::Value& value) {
++  const auto* row = value.GetIfDict();
++  if (!row)
++    return std::nullopt;
++  const auto* id = row->FindString("id");
++  const auto* title = row->FindString("title");
++  const auto* status = row->FindString("status");
++  if (!id || !ValidIdentity(*id) || !title || title->size() > 8192 || !status)
++    return std::nullopt;
++  AuxNativeTask task;
++  task.id = *id;
++  task.title = base::UTF8ToUTF16(*title);
++  task.status = *status;
++  task.unread = row->FindBool("unread").value_or(false);
++  task.pinned = row->FindBool("pinned").value_or(false);
++  task.can_pin = row->FindBool("canPin").value_or(false);
++  if (const auto* pending = row->FindDict("popover")) {
++    const auto* pending_id = pending->FindString("id");
++    const auto* kind = pending->FindString("kind");
++    const auto* request = pending->FindDict("request");
++    if (!pending_id || !ValidIdentity(*pending_id) || !kind || !request)
++      return std::nullopt;
++    AuxNativeTask::PendingAction action;
++    action.id = *pending_id;
++    action.kind = *kind;
++    if (const auto* label = request->FindString("title"))
++      action.title = base::UTF8ToUTF16(*label);
++    else
++      action.title = *kind == "ask-user-question" ? u"A detail is needed"
++                                                : u"Allow this action?";
++    if (const auto* message = request->FindString("message"))
++      action.detail = base::UTF8ToUTF16(*message);
++    if (const auto* operation = request->Find("operation")) {
++      auto json = base::WriteJson(*operation);
++      if (json)
++        action.detail += u"\n\n" + base::UTF8ToUTF16(*json);
++    }
++    if (action.detail.size() > 32768)
++      return std::nullopt;
++    task.pending_action = std::move(action);
++  }
++  return task;
++}
++}  // namespace
++
++AuxNativeTaskFeed::AuxNativeTaskFeed(Profile* profile, UpdatedCallback updated)
++    : profile_(profile), updated_(std::move(updated)) {}
++AuxNativeTaskFeed::~AuxNativeTaskFeed() = default;
++
++void AuxNativeTaskFeed::Start() {
++  if (timer_.IsRunning())
++    return;
++  Refresh();
++  timer_.Start(FROM_HERE, kRefreshInterval, this, &AuxNativeTaskFeed::Refresh);
++}
++
++void AuxNativeTaskFeed::Stop() {
++  timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  loaders_.clear();
++  refresh_pending_ = false;
++}
++
++void AuxNativeTaskFeed::Refresh() {
++  if (refresh_pending_)
++    return;
++  if (profile_->IsOffTheRecord()) {
++    snapshot_ = Snapshot{.state = State::kPrivate};
++    updated_.Run(snapshot_);
++    return;
++  }
++  refresh_pending_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&ResolveProfileSecurity,
++                     profile_->GetOriginalProfile()->GetPath()),
++      base::BindOnce(&AuxNativeTaskFeed::OnAccountResolved,
++                     weak_factory_.GetWeakPtr()));
++}
++
++void AuxNativeTaskFeed::OnAccountResolved(aux::ProfileSecurityState security) {
++  const auto account_id = security.account_id;
++  if (!security.allows_browsing()) {
++    account_id_.reset();
++    authorization_.clear();
++    refresh_pending_ = false;
++    snapshot_ = Snapshot{.state = State::kUnbound,
++                         .error = security.error.empty()
++                             ? u"Unlock Aux and finish setup for this browser profile."
++                             : base::UTF8ToUTF16(security.error)};
++    updated_.Run(snapshot_);
++    return;
++  }
++  if (account_id_ != account_id)
++    snapshot_.tasks.clear();
++  account_id_ = account_id;
++  EnsureAuthorization(base::BindOnce(&AuxNativeTaskFeed::FetchTasks,
++                                     weak_factory_.GetWeakPtr()));
++}
++
++void AuxNativeTaskFeed::EnsureAuthorization(AuthCallback callback) {
++  if (!authorization_.empty() &&
++      base::TimeTicks::Now() < authorization_expiry_) {
++    std::move(callback).Run(true);
++    return;
++  }
++  authorization_.clear();
++  Load(DaemonUrl("/auth/daemon/challenge?clientKind=chromium"), std::nullopt,
++       base::BindOnce(&AuxNativeTaskFeed::OnChallenge,
++                      weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++
++void AuxNativeTaskFeed::OnChallenge(AuthCallback callback,
++                                   std::optional<std::string> body,
++                                   int status) {
++  auto challenge = body && status == 200
++                       ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                       : std::nullopt;
++  const auto* id = challenge ? challenge->FindString("challengeId") : nullptr;
++  const auto* bytes = challenge ? challenge->FindString("challenge") : nullptr;
++  if (!id || id->empty() || !bytes || bytes->empty()) {
++    std::move(callback).Run(false);
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce([](std::string challenge) {
++        return aux::SignDaemonChallenge(aux::StateHome(), challenge);
++      }, *bytes),
++      base::BindOnce(&AuxNativeTaskFeed::OnSigned,
++                     weak_factory_.GetWeakPtr(), std::move(callback), *id));
++}
++
++void AuxNativeTaskFeed::OnSigned(AuthCallback callback,
++                                std::string challenge_id,
++                                std::optional<std::string> signature) {
++  if (!signature) {
++    std::move(callback).Run(false);
++    return;
++  }
++  base::DictValue input;
++  input.Set("challengeId", challenge_id);
++  input.Set("signedChallenge", *signature);
++  Load(DaemonUrl("/auth/daemon/session"), base::WriteJson(input),
++       base::BindOnce(&AuxNativeTaskFeed::OnAuthorized,
++                      weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++
++void AuxNativeTaskFeed::OnAuthorized(AuthCallback callback,
++                                    std::optional<std::string> body,
++                                    int status) {
++  auto session = body && status == 200
++                     ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                     : std::nullopt;
++  const auto* token = session ? session->FindString("access_token") : nullptr;
++  const auto* type = session ? session->FindString("token_type") : nullptr;
++  const auto expires = session ? session->FindInt("expiresInSeconds")
++                               : std::nullopt;
++  if (!token || token->empty() || !type || *type != "AuxDaemonSessionToken" ||
++      !expires || *expires <= 60 || *expires > 86400) {
++    std::move(callback).Run(false);
++    return;
++  }
++  authorization_ = "AuxDaemonSessionToken " + *token;
++  authorization_expiry_ = base::TimeTicks::Now() + base::Seconds(*expires - 60);
++  std::move(callback).Run(true);
++}
++
++GURL AuxNativeTaskFeed::AccountUrl(const std::string& path) const {
++  CHECK(account_id_);
++  return DaemonUrl(path + "?accountId=" + base::NumberToString(*account_id_));
++}
++
++void AuxNativeTaskFeed::FetchTasks(bool authorized) {
++  if (!authorized) {
++    Fail(u"Aux could not verify this installation. Reconnect the local browser.");
++    return;
++  }
++  Load(AccountUrl("/session/for-chrome/chats"), std::nullopt,
++       base::BindOnce(&AuxNativeTaskFeed::OnTasks, weak_factory_.GetWeakPtr()));
++}
++
++void AuxNativeTaskFeed::OnTasks(std::optional<std::string> body, int status) {
++  auto response = body && status == 200
++                      ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                      : std::nullopt;
++  const auto* pinned = response ? response->FindList("pinned") : nullptr;
++  const auto* recents = response ? response->FindList("recents") : nullptr;
++  if (!pinned || !recents || pinned->size() + recents->size() > kMaximumTasks) {
++    Fail(u"Tasks could not be loaded. Aux will try reconnecting.");
++    return;
++  }
++  std::vector<AuxNativeTask> tasks;
++  for (const auto* list : {pinned, recents}) {
++    for (const auto& value : *list) {
++      auto task = ParseTask(value);
++      if (!task || std::ranges::any_of(tasks, [&](const auto& previous) {
++            return previous.id == task->id;
++          })) {
++        Fail(u"Aux returned an invalid task projection.");
++        return;
++      }
++      tasks.push_back(std::move(*task));
++    }
++  }
++  refresh_pending_ = false;
++  snapshot_ = Snapshot{.state = State::kReady, .tasks = std::move(tasks)};
++  updated_.Run(snapshot_);
++}
++
++void AuxNativeTaskFeed::Fail(std::u16string error) {
++  refresh_pending_ = false;
++  snapshot_.state = State::kError;
++  snapshot_.error = std::move(error);
++  updated_.Run(snapshot_);
++}
++
++void AuxNativeTaskFeed::PerformAction(const std::string& task_id,
++                                     const std::string& action,
++                                     base::DictValue body,
++                                     ActionCallback callback) {
++  static constexpr auto kActions = std::to_array<std::string_view>(
++      {"pin", "unpin", "mark-read", "archive", "delete", "rename",
++       "resolve-popover", "move-to-project"});
++  if (!account_id_ || profile_->IsOffTheRecord() || !ValidIdentity(task_id) ||
++      !std::ranges::contains(kActions, action)) {
++    std::move(callback).Run(u"This task action is unavailable for this profile.");
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&ResolveProfileSecurity,
++                     profile_->GetOriginalProfile()->GetPath()),
++      base::BindOnce(
++          [](base::WeakPtr<AuxNativeTaskFeed> self, std::string task_id,
++             std::string action, base::DictValue body, ActionCallback callback,
++             aux::ProfileSecurityState security) {
++            if (!self)
++              return;
++            if (!security.allows_browsing() ||
++                security.account_id != self->account_id_) {
++              std::move(callback).Run(u"This profile binding changed. Reopen the task.");
++              self->Refresh();
++              return;
++            }
++            self->DispatchAction(task_id, action, std::move(body),
++                                 std::move(callback));
++          }, weak_factory_.GetWeakPtr(), task_id, action, std::move(body),
++          std::move(callback)));
++}
++
++void AuxNativeTaskFeed::DispatchAction(const std::string& task_id,
++                                       const std::string& action,
++                                       base::DictValue body,
++                                       ActionCallback callback) {
++  const int account_id = *account_id_;
++  EnsureAuthorization(base::BindOnce(
++      [](base::WeakPtr<AuxNativeTaskFeed> self, std::string task_id,
++         std::string action, base::DictValue body, int account_id,
++         ActionCallback callback, bool authorized) {
++        if (!self)
++          return;
++        if (!authorized || self->account_id_ != account_id) {
++          std::move(callback).Run(u"Reconnect this profile before trying again.");
++          return;
++        }
++        self->Load(
++            self->AccountUrl("/session/for-chrome/" + task_id + "/" + action),
++            base::WriteJson(body),
++            base::BindOnce(
++                [](base::WeakPtr<AuxNativeTaskFeed> self,
++                   ActionCallback callback, std::optional<std::string> body,
++                   int status) {
++                  if (!body || status != 200) {
++                    std::move(callback).Run(
++                        u"This task action could not be saved. Try again.");
++                    return;
++                  }
++                  std::move(callback).Run(std::nullopt);
++                  if (self)
++                    self->Refresh();
++                },
++                self, std::move(callback)));
++      },
++      weak_factory_.GetWeakPtr(), task_id, action, std::move(body), account_id,
++      std::move(callback)));
++}
++
++void AuxNativeTaskFeed::Load(const GURL& url,
++                            std::optional<std::string> post_body,
++                            LoadCallback callback) {
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = url;
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->headers.SetHeader("Cache-Control", "no-store");
++  if (!authorization_.empty())
++    request->headers.SetHeader("Authorization", authorization_);
++  if (post_body)
++    request->method = "POST";
++  auto loader = network::SimpleURLLoader::Create(std::move(request),
++                                                kTrafficAnnotation);
++  loader->SetTimeoutDuration(base::Seconds(10));
++  loader->SetAllowHttpErrorResults(true);
++  if (post_body)
++    loader->AttachStringForUpload(*post_body, "application/json");
++  const uint64_t id = ++next_request_id_;
++  auto* current = loader.get();
++  loaders_.emplace(id, std::move(loader));
++  current->DownloadToString(
++      profile_->GetDefaultStoragePartition()
++          ->GetURLLoaderFactoryForBrowserProcess()
++          .get(),
++      base::BindOnce(
++          [](base::WeakPtr<AuxNativeTaskFeed> self, uint64_t id,
++             LoadCallback callback, std::optional<std::string> body) {
++            if (!self)
++              return;
++            auto request = self->loaders_.find(id);
++            if (request == self->loaders_.end())
++              return;
++            const auto* information = request->second->ResponseInfo();
++            const int status = information && information->headers
++                                   ? information->headers->response_code()
++                                   : 0;
++            self->loaders_.erase(request);
++            if (status == 401) {
++              self->authorization_.clear();
++              self->authorization_expiry_ = base::TimeTicks();
++            }
++            std::move(callback).Run(std::move(body), status);
++          },
++          weak_factory_.GetWeakPtr(), id, std::move(callback)),
++      kMaximumResponseBytes);
++}
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_task_review_bubble.h
+@@ -0,0 +1,47 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TASK_REVIEW_BUBBLE_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TASK_REVIEW_BUBBLE_H_
++
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_native_task_feed.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
++
++namespace views {
++class Label;
++class MdTextButton;
++}
++
++// Native row-anchored review. The caller binds the profile-scoped feed; each
++// decision retains the task and pending-action identities that were displayed.
++class AuxTaskReviewBubble : public views::BubbleDialogDelegate {
++ public:
++  using ResolveCallback = base::RepeatingCallback<void(
++      const std::string&, const std::string&, base::DictValue,
++      AuxNativeTaskFeed::ActionCallback)>;
++  static views::Widget* Show(views::View* anchor,
++                            AuxNativeTask task,
++                            ResolveCallback resolve,
++                            base::OnceClosure open_conversation,
++                            base::OnceClosure on_closed);
++  ~AuxTaskReviewBubble() override;
++ private:
++  AuxTaskReviewBubble(views::View* anchor,
++                      AuxNativeTask task,
++                      ResolveCallback resolve,
++                      base::OnceClosure open_conversation,
++                      base::OnceClosure on_closed);
++  void Decide(bool allow);
++  void OnResolved(std::optional<std::u16string> error);
++  void OpenConversation();
++
++  const AuxNativeTask task_;
++  ResolveCallback resolve_;
++  base::OnceClosure open_conversation_;
++  raw_ptr<views::Label> error_label_ = nullptr;
++  raw_ptr<views::MdTextButton> allow_ = nullptr;
++  raw_ptr<views::MdTextButton> deny_ = nullptr;
++  base::WeakPtrFactory<AuxTaskReviewBubble> weak_factory_{this};
++};
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TASK_REVIEW_BUBBLE_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_task_review_bubble.cc
+@@ -0,0 +1,124 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++// Implements docs/spec/native/surfaces.md V2; dimensions remain provisional.
++#include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
++
++#include "base/functional/bind.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/mojom/dialog_button.mojom.h"
++#include "ui/color/color_id.h"
++#include "ui/views/controls/button/md_text_button.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/controls/scroll_view.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/widget/widget.h"
++
++views::Widget* AuxTaskReviewBubble::Show(
++    views::View* anchor, AuxNativeTask task, ResolveCallback resolve,
++    base::OnceClosure open_conversation, base::OnceClosure on_closed) {
++  auto bubble = std::unique_ptr<AuxTaskReviewBubble>(new AuxTaskReviewBubble(
++      anchor, std::move(task), std::move(resolve),
++      std::move(open_conversation), std::move(on_closed)));
++  auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++      std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++  widget->Show();
++  return widget;
++}
++
++AuxTaskReviewBubble::AuxTaskReviewBubble(
++    views::View* anchor, AuxNativeTask task, ResolveCallback resolve,
++    base::OnceClosure open_conversation, base::OnceClosure on_closed)
++    : views::BubbleDialogDelegate(anchor, views::BubbleBorder::LEFT_TOP),
++      task_(std::move(task)), resolve_(std::move(resolve)),
++      open_conversation_(std::move(open_conversation)) {
++  RegisterWindowClosingCallback(std::move(on_closed));
++  SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++  SetShowCloseButton(true);
++  SetTitle(task_.title);
++  set_close_on_deactivate(true);
++  set_fixed_width(360);
++  auto* contents = SetContentsView(std::make_unique<views::View>());
++  auto* layout = contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical, gfx::Insets(16), 12));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kStretch);
++
++  auto* heading = contents->AddChildView(std::make_unique<views::Label>(
++      task_.pending_action ? task_.pending_action->title : u"Task details"));
++  heading->SetMultiLine(true);
++  heading->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  if (task_.pending_action && !task_.pending_action->detail.empty()) {
++    auto scroll = std::make_unique<views::ScrollView>();
++    scroll->ClipHeightTo(0, 240);
++    auto detail = std::make_unique<views::Label>(task_.pending_action->detail);
++    detail->SetMultiLine(true);
++    detail->SetAllowCharacterBreak(true);
++    detail->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    detail->SetMaximumWidth(328);
++    detail->SetSelectable(true);
++    scroll->SetContents(std::move(detail));
++    contents->AddChildView(std::move(scroll));
++  }
++  error_label_ = contents->AddChildView(std::make_unique<views::Label>());
++  error_label_->SetMultiLine(true);
++  error_label_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  error_label_->SetEnabledColor(ui::kColorAlertHighSeverity);
++  error_label_->SetVisible(false);
++
++  if (task_.pending_action &&
++      (task_.pending_action->kind == "approval" ||
++       task_.pending_action->kind == "action-confirmation")) {
++    auto* actions = contents->AddChildView(std::make_unique<views::View>());
++    actions->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets(), 8));
++    deny_ = actions->AddChildView(std::make_unique<views::MdTextButton>(
++        base::BindRepeating(&AuxTaskReviewBubble::Decide,
++                            weak_factory_.GetWeakPtr(), false), u"Decline"));
++    allow_ = actions->AddChildView(std::make_unique<views::MdTextButton>(
++        base::BindRepeating(&AuxTaskReviewBubble::Decide,
++                            weak_factory_.GetWeakPtr(), true),
++        task_.pending_action->kind == "approval" ? u"Allow once" : u"Confirm"));
++    allow_->SetStyle(ui::ButtonStyle::kProminent);
++  }
++  contents->AddChildView(std::make_unique<views::MdTextButton>(
++      base::BindRepeating(&AuxTaskReviewBubble::OpenConversation,
++                          weak_factory_.GetWeakPtr()),
++      task_.pending_action && task_.pending_action->kind == "ask-user-question"
++          ? u"Answer in conversation" : u"Open conversation"));
++}
++
++AuxTaskReviewBubble::~AuxTaskReviewBubble() = default;
++
++void AuxTaskReviewBubble::Decide(bool allow) {
++  if (!allow_ || !allow_->GetEnabled() || !task_.pending_action)
++    return;
++  allow_->SetEnabled(false);
++  deny_->SetEnabled(false);
++  error_label_->SetVisible(false);
++  base::DictValue input;
++  input.Set("popoverId", task_.pending_action->id);
++  input.Set("action", allow ? "approve" : "deny");
++  resolve_.Run(task_.id, "resolve-popover", std::move(input),
++      base::BindOnce(&AuxTaskReviewBubble::OnResolved,
++                     weak_factory_.GetWeakPtr()));
++}
++
++void AuxTaskReviewBubble::OnResolved(std::optional<std::u16string> error) {
++  if (!error) {
++    GetWidget()->CloseWithReason(views::Widget::ClosedReason::kAcceptButtonClicked);
++    return;
++  }
++  allow_->SetEnabled(true);
++  deny_->SetEnabled(true);
++  error_label_->SetText(*error);
++  error_label_->SetVisible(true);
++  SizeToContents();
++}
++
++void AuxTaskReviewBubble::OpenConversation() {
++  if (open_conversation_)
++    std::move(open_conversation_).Run();
++  if (GetWidget())
++    GetWidget()->Close();
++}
++
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -18,9 +18,11 @@
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_native_task_feed.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/bookmarks/browser/base_bookmark_model_observer.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
++#include "components/prefs/pref_change_registrar.h"
+ #include "ui/menus/simple_menu_model.h"
+ #include "ui/views/context_menu_controller.h"
+ #include "ui/views/controls/button/button.h"
+@@ -96,16 +98,8 @@
+   void AddPinnedTiles();
+   void ActivateTab(int index);
+   void MovePinnedTab(int from, int to);
+-  void Poll();
+-  void EnsureSession(base::OnceClosure then);
+-  void OnChallengeLoaded(base::OnceClosure then,
+-                         std::optional<std::string> body);
+-  void OnSigned(base::OnceClosure then,
+-                std::string challenge_id,
+-                std::optional<std::string> signed_challenge);
+-  void OnSessionLoaded(base::OnceClosure then, std::optional<std::string> body);
+-  void FetchChats();
+-  void OnChatsLoaded(std::optional<std::string> body);
++  void OnTaskSnapshot(const AuxNativeTaskFeed::Snapshot& snapshot);
++  void HandleChatClick(const std::string& session_id);
+   void OpenChat(const std::string& session_id);
+   void PostChatAction(const std::string& session_id, const std::string& action);
+   void OpenNewChat();
+@@ -116,16 +110,17 @@
+   void OpenBookmark(const GURL& url);
+   GURL AgentManagerUrl(const std::string& fragment) const;
+ 
+-  using LoadCallback = base::OnceCallback<void(std::optional<std::string>)>;
+-  void Load(const GURL& url,
+-            const std::string& post_body,
+-            LoadCallback callback);
+-
+   const raw_ptr<BrowserWindowInterface> browser_;
+   base::ScopedObservation<bookmarks::BookmarkModel,
+                           bookmarks::BaseBookmarkModelObserver>
+       bookmark_observation_{this};
+-  base::RepeatingTimer poll_timer_;
++  std::unique_ptr<AuxNativeTaskFeed> task_feed_;
++  std::vector<AuxNativeTask> projected_tasks_;
++  AuxNativeTaskFeed::State feed_state_ = AuxNativeTaskFeed::State::kConnecting;
++  std::u16string feed_error_;
++  std::u16string action_error_;
++  base::WeakPtr<views::Widget> review_widget_;
++  PrefChangeRegistrar pref_changes_;
+   base::CancelableTaskTracker favicon_tracker_;
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
+@@ -134,14 +129,10 @@
+   int menu_tab_index_ = -1;
+   bool rebuild_pending_ = false;
+ 
+-  std::string authorization_;
+-  base::TimeTicks authorization_expiry_;
+-  std::optional<int> account_id_;
+   std::vector<Chat> chats_;
+   std::set<std::string> collapsed_sections_;
+   std::string active_chat_id_;
+   bool show_all_chats_ = false;
+-  bool in_flight_ = false;
+   bool any_running_ = false;
+   RunningChangedCallback running_changed_;
+ 
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -4,24 +4,18 @@
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
+ #include "chrome/browser/ui/views/frame/aux_icon_picker.h"
++#include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
++#include "components/prefs/pref_service.h"
+ 
+ #include <algorithm>
+ #include <utility>
+ 
+-#include "base/base64.h"
+-#include "base/containers/span.h"
+-#include "base/environment.h"
+ #include "base/files/file_path.h"
+-#include "base/files/file_util.h"
+ #include "base/functional/bind.h"
+-#include "base/json/json_reader.h"
+-#include "base/json/json_writer.h"
+-#include "base/path_service.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/task/thread_pool.h"
+ #include "base/values.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "cc/paint/paint_flags.h"
+@@ -61,15 +55,7 @@
+ #include "components/favicon_base/favicon_types.h"
+ #include "components/tabs/public/tab_interface.h"
+ #include "components/vector_icons/vector_icons.h"
+-#include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_contents.h"
+-#include "crypto/keypair.h"
+-#include "crypto/sign.h"
+-#include "net/traffic_annotation/network_traffic_annotation.h"
+-#include "services/network/public/cpp/resource_request.h"
+-#include "services/network/public/cpp/shared_url_loader_factory.h"
+-#include "services/network/public/cpp/simple_url_loader.h"
+-#include "services/network/public/mojom/url_response_head.mojom.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/color/color_id.h"
+@@ -90,12 +76,8 @@
+ 
+ namespace {
+ 
+-constexpr char kDaemonOrigin[] = "http://127.0.0.1:";
+-constexpr int kDefaultDaemonPort = 21520;
+-constexpr char kAgentManagerId[] = "fjdhphbdlfjogobdofoaagnlnkoibdge";
+-constexpr char kSigningPrefix[] = "Aside Daemon Auth v1";
++constexpr char kAgentManagerId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
+ constexpr size_t kMaxChatsShown = 3;
+-constexpr base::TimeDelta kPollInterval = base::Seconds(2);
+ constexpr int kCommandPin = 1;
+ constexpr int kCommandMarkRead = 2;
+ constexpr int kCommandArchive = 3;
+@@ -106,104 +88,6 @@
+ constexpr int kRowInset = 12;
+ constexpr int kRowTextSize = 13;
+ constexpr int kCaptionTextSize = 12;
+-
+-constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
+-    net::DefineNetworkTrafficAnnotation("aux_sidebar_daemon_feed", R"(
+-      semantics {
+-        sender: "Aux sidebar"
+-        description:
+-          "Reads the recent chats list from the Aux daemon running on this "
+-          "computer."
+-        trigger: "Every two seconds while a browser window shows the sidebar."
+-        data: "A local authentication challenge. No user data leaves the device."
+-        destination: LOCAL
+-      }
+-      policy {
+-        cookies_allowed: NO
+-        setting: "Not configurable."
+-        policy_exception_justification: "Local loopback request only."
+-      })");
+-
+-base::FilePath AuxHome() {
+-  std::unique_ptr<base::Environment> env = base::Environment::Create();
+-  std::string home = env->GetVar("ASIDE_HOME").value_or("");
+-  if (!home.empty()) {
+-    return base::FilePath::FromUTF8Unsafe(home);
+-  }
+-  base::FilePath user_home;
+-  base::PathService::Get(base::DIR_HOME, &user_home);
+-  return user_home.Append(".aux");
+-}
+-
+-int DaemonPort() {
+-  std::unique_ptr<base::Environment> env = base::Environment::Create();
+-  int port = 0;
+-  if (std::optional<std::string> value = env->GetVar("ASIDE_PORT");
+-      value && base::StringToInt(*value, &port) && port > 0) {
+-    return port;
+-  }
+-  return kDefaultDaemonPort;
+-}
+-
+-GURL DaemonUrl(const std::string& path) {
+-  return GURL(
+-      base::StrCat({kDaemonOrigin, base::NumberToString(DaemonPort()), path}));
+-}
+-
+-// Reads the account bound to this profile from the daemon's account file.
+-std::optional<int> ReadAccountId(const base::FilePath& file,
+-                                 const std::string& profile_directory) {
+-  std::string contents;
+-  if (!base::ReadFileToString(file, &contents)) {
+-    return std::nullopt;
+-  }
+-  std::optional<base::DictValue> root =
+-      base::JSONReader::ReadDict(contents, base::JSON_PARSE_RFC);
+-  if (!root) {
+-    return std::nullopt;
+-  }
+-  if (const base::DictValue* bindings =
+-          root->FindDict("profileAccountBindings")) {
+-    if (const base::DictValue* binding =
+-            bindings->FindDict(profile_directory)) {
+-      if (std::optional<int> id = binding->FindInt("accountId")) {
+-        return id;
+-      }
+-    }
+-  }
+-  return root->FindInt("currentAccountId");
+-}
+-
+-// Signs the daemon's challenge with this installation's key.
+-std::optional<std::string> SignChallenge(const base::FilePath& key_file,
+-                                         const std::string& challenge) {
+-  std::string pem;
+-  if (!base::ReadFileToString(key_file, &pem)) {
+-    return std::nullopt;
+-  }
+-  std::string base64;
+-  for (std::string_view line : base::SplitStringPiece(
+-           pem, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+-    if (!line.starts_with("-----")) {
+-      base64.append(line);
+-    }
+-  }
+-  std::optional<std::vector<uint8_t>> der = base::Base64Decode(base64);
+-  if (!der) {
+-    return std::nullopt;
+-  }
+-  std::optional<crypto::keypair::PrivateKey> key =
+-      crypto::keypair::PrivateKey::FromPrivateKeyInfo(*der);
+-  std::optional<std::vector<uint8_t>> decoded = base::Base64Decode(challenge);
+-  if (!key || !decoded) {
+-    return std::nullopt;
+-  }
+-  std::vector<uint8_t> input(std::begin(kSigningPrefix),
+-                             std::end(kSigningPrefix));  // Includes the NUL.
+-  input.insert(input.end(), decoded->begin(), decoded->end());
+-  return base::Base64Encode(
+-      crypto::sign::Sign(crypto::sign::ECDSA_SHA256, *key, input));
+-}
+ 
+ class AuxSidebarRow : public views::LabelButton {
+   METADATA_HEADER(AuxSidebarRow, views::LabelButton)
+@@ -223,7 +107,7 @@
+                                   : ui::kColorSysOnSurfaceSubtle);
+     label()->SetElideBehavior(gfx::ELIDE_TAIL);
+     SetLabelFont(kRowTextSize, emphasized);
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+     UpdateBackground();
+   }
+ 
+@@ -315,7 +199,7 @@
+     AddChildView(std::move(image));
+     SetTooltipText(title);
+     GetViewAccessibility().SetName(title);
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+     UpdateStyle();
+   }
+ 
+@@ -458,7 +342,7 @@
+     label->SetCanProcessEventsWithinSubtree(false);
+     layout->SetFlexForView(AddChildView(std::move(label)), 1);
+     GetViewAccessibility().SetName(text);
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+     UpdateBackground();
+   }
+ 
+@@ -528,7 +412,7 @@
+       .GetAllProfilesAttributesSortedForDisplay();
+ }
+ 
+-// Aside's profile menu: the profiles on this Mac, then the browser sections.
++// Native profile menu and browser navigation.
+ void RefreshAuxProfileButton(views::View* button);
+ 
+ class AuxProfileMenu : public views::BubbleDialogDelegate,
+@@ -569,7 +453,7 @@
+       case IDC_OPTIONS:
+         browser_->OpenGURL(
+             GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                               "/main.html#/u/0/settings/general"})),
++                               "/index.html#/settings/general"})),
+             WindowOpenDisposition::NEW_FOREGROUND_TAB);
+         break;
+       default:
+@@ -824,7 +708,7 @@
+     AddChildView(std::move(chevron));
+     GetViewAccessibility().SetName(u"Profile");
+     SetTooltipText(u"Profiles");
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+     UpdateBackground();
+     browser_ = browser;
+   }
+@@ -878,7 +762,7 @@
+             path)),
+         current_(current) {
+     SetPreferredSize(gfx::Size(14, 20));
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+     GetViewAccessibility().SetName(u"Switch profile");
+   }
+ 
+@@ -913,11 +797,21 @@
+     bookmark_observation_.Observe(model);
+   }
+   browser_->GetTabStripModel()->AddObserver(this);
++  pref_changes_.Init(browser_->GetProfile()->GetPrefs());
++  pref_changes_.Add("aux.browser.sidebar_bookmarks",
++      base::BindRepeating(&AuxSidebarView::ScheduleRebuild,
++                          weak_factory_.GetWeakPtr()));
++  task_feed_ = std::make_unique<AuxNativeTaskFeed>(
++      browser_->GetProfile(),
++      base::BindRepeating(&AuxSidebarView::OnTaskSnapshot,
++                          weak_factory_.GetWeakPtr()));
+   UpdateActiveChat();
+   Rebuild();
+ }
+ 
+-AuxSidebarView::~AuxSidebarView() = default;
++AuxSidebarView::~AuxSidebarView() {
++  browser_->GetTabStripModel()->RemoveObserver(this);
++}
+ 
+ void AuxSidebarView::OnTabStripModelChanged(
+     TabStripModel* tab_strip_model,
+@@ -1009,7 +903,7 @@
+   if (content::WebContents* contents =
+           browser_->GetTabStripModel()->GetActiveWebContents()) {
+     const GURL url = contents->GetVisibleURL();
+-    constexpr std::string_view kTasks = "/tasks/";
++    constexpr std::string_view kTasks = "/chat/";
+     if (url.SchemeIs("chrome-extension") && url.host() == kAgentManagerId) {
+       std::string_view ref = url.ref();
+       if (size_t at = ref.find(kTasks); at != std::string_view::npos) {
+@@ -1037,14 +931,13 @@
+ }
+ 
+ void AuxSidebarView::AddedToWidget() {
+-  Poll();
+-  poll_timer_.Start(
+-      FROM_HERE, kPollInterval,
+-      base::BindRepeating(&AuxSidebarView::Poll, base::Unretained(this)));
++  task_feed_->Start();
+ }
+ 
+ void AuxSidebarView::RemovedFromWidget() {
+-  poll_timer_.Stop();
++  task_feed_->Stop();
++  if (review_widget_)
++    review_widget_->Close();
+ }
+ 
+ void AuxSidebarView::BookmarkModelChanged() {
+@@ -1060,12 +953,13 @@
+ }
+ 
+ GURL AuxSidebarView::AgentManagerUrl(const std::string& fragment) const {
+-  std::string account = account_id_ ? base::NumberToString(*account_id_) : "0";
+   return GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                            "/newtab.html#/u/", account, fragment}));
++                            "/index.html#", fragment}));
+ }
+ 
+ void AuxSidebarView::Rebuild() {
++  if (review_widget_ && !review_widget_->IsClosed())
++    return;
+   favicon_tracker_.TryCancelAll();
+   RemoveAllChildViews();
+   AddPinnedTiles();
+@@ -1097,6 +991,7 @@
+   bookmarks::BookmarkModel* model =
+       BookmarkModelFactory::GetForBrowserContext(browser_->GetProfile());
+   if (model && model->loaded() &&
++      browser_->GetProfile()->GetPrefs()->GetBoolean("aux.browser.sidebar_bookmarks") &&
+       !model->bookmark_bar_node()->children().empty()) {
+     const bool bookmarks_open = add_header("bookmarks", u"Bookmarks");
+     favicon::FaviconService* favicons = FaviconServiceFactory::GetForProfile(
+@@ -1133,6 +1028,16 @@
+     }
+   }
+ 
++  if (!feed_error_.empty() || !action_error_.empty()) {
++    auto* error = AddChildView(std::make_unique<views::Label>(
++        action_error_.empty() ? feed_error_ : action_error_));
++    error->SetMultiLine(true);
++    error->SetMaximumWidth(250);
++    error->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    error->SetEnabledColor(ui::kColorAlertHighSeverity);
++    error->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(4, 12)));
++  }
++
+   // Chats.
+   const bool chats_open = add_header("chats", u"Chats");
+   if (chats_open) {
+@@ -1149,11 +1054,20 @@
+     for (size_t i = 0; i < shown; ++i) {
+       const Chat& chat = chats_[i];
+       auto* row = AddChildView(std::make_unique<AuxSidebarRow>(
+-          base::BindRepeating(&AuxSidebarView::OpenChat, base::Unretained(this),
++          base::BindRepeating(&AuxSidebarView::HandleChatClick, base::Unretained(this),
+                               chat.id),
+           base::UTF8ToUTF16(chat.title), ui::ImageModel(),
+           /*emphasized=*/chat.unread,
+           /*selected=*/chat.id == active_chat_id_));
++      const auto task = std::ranges::find(projected_tasks_, chat.id, &AuxNativeTask::id);
++      if (task != projected_tasks_.end()) {
++        if (task->pending_action || task->status == "running" || task->status == "error")
++          row->SetImageModel(views::Button::STATE_NORMAL,
++              ui::ImageModel::FromVectorIcon(
++                  task->pending_action ? vector_icons::kHelpIcon
++                  : task->status == "running" ? vector_icons::kPlayArrowIcon
++                  : vector_icons::kErrorIcon, ui::kColorSysOnSurfaceSubtle, 16));
++      }
+       row->set_chat_id(chat.id);
+       row->SetTooltipText(base::UTF8ToUTF16(chat.title));
+       row->set_context_menu_controller(this);
+@@ -1176,208 +1090,76 @@
+   InvalidateLayout();
+ }
+ 
+-void AuxSidebarView::Poll() {
+-  if (in_flight_) {
++void AuxSidebarView::OnTaskSnapshot(const AuxNativeTaskFeed::Snapshot& snapshot) {
++  if (projected_tasks_ == snapshot.tasks && feed_state_ == snapshot.state &&
++      feed_error_ == snapshot.error)
+     return;
+-  }
+-  in_flight_ = true;
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&ReadAccountId, AuxHome().AppendASCII("accounts.json"),
+-                     browser_->GetProfile()->GetBaseName().AsUTF8Unsafe()),
+-      base::BindOnce(
+-          [](base::WeakPtr<AuxSidebarView> self, std::optional<int> id) {
+-            if (!self) {
+-              return;
+-            }
+-            self->account_id_ = id;
+-            self->EnsureSession(base::BindOnce(
+-                &AuxSidebarView::FetchChats, self->weak_factory_.GetWeakPtr()));
+-          },
+-          weak_factory_.GetWeakPtr()));
+-}
+-
+-void AuxSidebarView::Load(const GURL& url,
+-                          const std::string& post_body,
+-                          LoadCallback callback) {
+-  auto request = std::make_unique<network::ResourceRequest>();
+-  request->url = url;
+-  request->method = post_body.empty() ? "GET" : "POST";
+-  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+-  if (!authorization_.empty()) {
+-    request->headers.SetHeader("Authorization", authorization_);
+-  }
+-  std::unique_ptr<network::SimpleURLLoader> loader =
+-      network::SimpleURLLoader::Create(std::move(request), kTrafficAnnotation);
+-  if (!post_body.empty()) {
+-    loader->AttachStringForUpload(post_body, "application/json");
+-  }
+-  network::SimpleURLLoader* raw_loader = loader.get();
+-  raw_loader->DownloadToString(
+-      browser_->GetProfile()->GetURLLoaderFactory().get(),
+-      base::BindOnce(
+-          [](base::WeakPtr<AuxSidebarView> self, LoadCallback callback,
+-             std::unique_ptr<network::SimpleURLLoader> loader,
+-             std::optional<std::string> body) {
+-            const network::mojom::URLResponseHead* info =
+-                loader->ResponseInfo();
+-            const int code =
+-                info && info->headers ? info->headers->response_code() : 0;
+-            if (!self) {
+-              return;
+-            }
+-            if (code == 401) {
+-              self->authorization_.clear();
+-            }
+-            std::move(callback).Run(body && code == 200 ? std::move(body)
+-                                                        : std::nullopt);
+-          },
+-          weak_factory_.GetWeakPtr(), std::move(callback), std::move(loader)),
+-      1024 * 1024);
+-}
+-
+-void AuxSidebarView::EnsureSession(base::OnceClosure then) {
+-  if (!authorization_.empty() &&
+-      base::TimeTicks::Now() < authorization_expiry_) {
+-    std::move(then).Run();
+-    return;
+-  }
+-  authorization_.clear();
+-  Load(DaemonUrl("/auth/daemon/challenge?clientKind=chromium"), std::string(),
+-       base::BindOnce(&AuxSidebarView::OnChallengeLoaded,
+-                      weak_factory_.GetWeakPtr(), std::move(then)));
+-}
+-
+-void AuxSidebarView::OnChallengeLoaded(base::OnceClosure then,
+-                                       std::optional<std::string> body) {
+-  std::optional<base::DictValue> parsed =
+-      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+-           : std::nullopt;
+-  const std::string* id = parsed ? parsed->FindString("challengeId") : nullptr;
+-  const std::string* challenge =
+-      parsed ? parsed->FindString("challenge") : nullptr;
+-  if (!id || !challenge) {
+-    in_flight_ = false;
+-    return;
+-  }
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&SignChallenge,
+-                     AuxHome().AppendASCII("install").AppendASCII("sig.pem"),
+-                     *challenge),
+-      base::BindOnce(&AuxSidebarView::OnSigned, weak_factory_.GetWeakPtr(),
+-                     std::move(then), *id));
+-}
+-
+-void AuxSidebarView::OnSigned(base::OnceClosure then,
+-                              std::string challenge_id,
+-                              std::optional<std::string> signed_challenge) {
+-  if (!signed_challenge) {
+-    in_flight_ = false;
+-    return;
+-  }
+-  std::string payload;
+-  base::JSONWriter::Write(base::DictValue()
+-                              .Set("challengeId", challenge_id)
+-                              .Set("signedChallenge", *signed_challenge),
+-                          &payload);
+-  Load(DaemonUrl("/auth/daemon/session"), payload,
+-       base::BindOnce(&AuxSidebarView::OnSessionLoaded,
+-                      weak_factory_.GetWeakPtr(), std::move(then)));
+-}
+-
+-void AuxSidebarView::OnSessionLoaded(base::OnceClosure then,
+-                                     std::optional<std::string> body) {
+-  std::optional<base::DictValue> parsed =
+-      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+-           : std::nullopt;
+-  const std::string* type = parsed ? parsed->FindString("token_type") : nullptr;
+-  const std::string* token =
+-      parsed ? parsed->FindString("access_token") : nullptr;
+-  const std::optional<int> lifetime =
+-      parsed ? parsed->FindInt("expiresInSeconds") : std::nullopt;
+-  if (!type || !token || *type != "AsideDaemonSessionToken" || !lifetime ||
+-      *lifetime <= 0) {
+-    in_flight_ = false;
+-    return;
+-  }
+-  authorization_ = base::StrCat({*type, " ", *token});
+-  authorization_expiry_ =
+-      base::TimeTicks::Now() + base::Seconds(std::max(*lifetime - 30, 1));
+-  std::move(then).Run();
+-}
+-
+-void AuxSidebarView::FetchChats() {
+-  const std::string account =
+-      account_id_ ? base::NumberToString(*account_id_) : "0";
+-  Load(DaemonUrl(
+-           base::StrCat({"/session/for-chrome/chats?accountId=", account})),
+-       std::string(),
+-       base::BindOnce(&AuxSidebarView::OnChatsLoaded,
+-                      weak_factory_.GetWeakPtr()));
+-}
+-
+-void AuxSidebarView::OnChatsLoaded(std::optional<std::string> body) {
+-  in_flight_ = false;
+-  std::optional<base::DictValue> parsed =
+-      body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+-           : std::nullopt;
+-  if (!parsed) {
+-    return;
+-  }
+-  std::vector<Chat> chats;
+-  for (const char* key : {"pinned", "recents"}) {
+-    const base::ListValue* list = parsed->FindList(key);
+-    if (!list) {
+-      continue;
+-    }
+-    for (const base::Value& value : *list) {
+-      const base::DictValue* item = value.GetIfDict();
+-      const std::string* id = item ? item->FindString("id") : nullptr;
+-      const std::string* title = item ? item->FindString("title") : nullptr;
+-      if (!id) {
+-        continue;
+-      }
+-      Chat chat;
+-      chat.id = *id;
+-      chat.title = title && !title->empty() ? *title : "New chat";
+-      chat.unread = item->FindBool("unread").value_or(false);
+-      chat.pinned = item->FindBool("pinned").value_or(false);
+-      chat.can_pin = item->FindBool("canPin").value_or(false);
+-      const std::string* status = item->FindString("status");
+-      chat.running = status && *status == "running";
+-      chats.push_back(std::move(chat));
+-    }
+-  }
+-  const auto same = [](const std::vector<Chat>& a, const std::vector<Chat>& b) {
+-    return std::ranges::equal(a, b, [](const Chat& x, const Chat& y) {
+-      return x.id == y.id && x.title == y.title && x.unread == y.unread &&
+-             x.running == y.running && x.pinned == y.pinned &&
+-             x.can_pin == y.can_pin;
+-    });
+-  };
+-  if (same(chats, chats_)) {
+-    return;
+-  }
+-  chats_ = std::move(chats);
+-  const bool running = std::ranges::any_of(
+-      chats_, [](const Chat& chat) { return chat.running; });
++  if (snapshot.state != AuxNativeTaskFeed::State::kReady && review_widget_)
++    review_widget_->Close();
++  projected_tasks_ = snapshot.tasks;
++  feed_state_ = snapshot.state;
++  feed_error_ = snapshot.error;
++  chats_.clear();
++  bool attention = false;
++  for (const auto& task : projected_tasks_) {
++    chats_.push_back(Chat{.id = task.id, .title = base::UTF16ToUTF8(task.title),
++                          .unread = task.unread,
++                          .running = task.status == "running",
++                          .pinned = task.pinned, .can_pin = task.can_pin});
++    attention |= task.pending_action.has_value();
++  }
++  if (attention)
++    collapsed_sections_.erase("chats");
++  if (attention)
++    show_all_chats_ = true;
++  const bool running = std::ranges::any_of(chats_, [](const Chat& chat) {
++    return chat.running;
++  });
+   if (running != any_running_) {
+     any_running_ = running;
+-    if (running_changed_) {
++    if (running_changed_)
+       running_changed_.Run(running);
+-    }
+-  }
+-  Rebuild();
++  }
++  ScheduleRebuild();
++}
++
++void AuxSidebarView::HandleChatClick(const std::string& session_id) {
++  if (review_widget_ && !review_widget_->IsClosed()) {
++    review_widget_->Activate();
++    return;
++  }
++  const auto task = std::ranges::find(projected_tasks_, session_id,
++                                     &AuxNativeTask::id);
++  if (task != projected_tasks_.end() && task->pending_action) {
++    for (const auto& child : children()) {
++      auto* row = views::AsViewClass<AuxSidebarRow>(child.get());
++      if (row && row->chat_id() == session_id) {
++        review_widget_ = AuxTaskReviewBubble::Show(
++            row, *task,
++            base::BindRepeating(&AuxNativeTaskFeed::PerformAction,
++                                task_feed_->GetWeakPtr()),
++            base::BindOnce(&AuxSidebarView::OpenChat,
++                           weak_factory_.GetWeakPtr(), session_id),
++            base::BindOnce([](base::WeakPtr<AuxSidebarView> self) {
++              if (self) {
++                self->review_widget_.reset();
++                self->ScheduleRebuild();
++              }
++            }, weak_factory_.GetWeakPtr()))->GetWeakPtr();
++        return;
++      }
++    }
++  }
++  OpenChat(session_id);
+ }
+ 
+ void AuxSidebarView::OpenChat(const std::string& session_id) {
+-  browser_->OpenGURL(AgentManagerUrl("/tasks/" + session_id),
++  browser_->OpenGURL(AgentManagerUrl("/chat/" + session_id),
+                      WindowOpenDisposition::NEW_FOREGROUND_TAB);
+ }
+ 
+ void AuxSidebarView::OpenNewChat() {
+-  browser_->OpenGURL(AgentManagerUrl("/tasks/new"),
++  browser_->OpenGURL(AgentManagerUrl("/chat"),
+                      WindowOpenDisposition::NEW_FOREGROUND_TAB);
+ }
+ 
+@@ -1472,26 +1254,15 @@
+ 
+ void AuxSidebarView::PostChatAction(const std::string& session_id,
+                                     const std::string& action) {
+-  EnsureSession(base::BindOnce(
+-      [](base::WeakPtr<AuxSidebarView> self, std::string url_path) {
+-        if (!self) {
++  task_feed_->PerformAction(
++      session_id, action, base::DictValue(),
++      base::BindOnce([](base::WeakPtr<AuxSidebarView> self,
++                        std::optional<std::u16string> error) {
++        if (!self)
+           return;
+-        }
+-        self->Load(DaemonUrl(url_path), "{}",
+-                   base::BindOnce(
+-                       [](base::WeakPtr<AuxSidebarView> self,
+-                          std::optional<std::string>) {
+-                         if (self) {
+-                           self->in_flight_ = false;
+-                           self->Poll();
+-                         }
+-                       },
+-                       self));
+-      },
+-      weak_factory_.GetWeakPtr(),
+-      base::StrCat(
+-          {"/session/for-chrome/", session_id, "/", action,
+-           "?accountId=", base::NumberToString(account_id_.value_or(0))})));
++        self->action_error_ = error.value_or(std::u16string());
++        self->ScheduleRebuild();
++      }, weak_factory_.GetWeakPtr()));
+ }
+ 
+ AuxAgentPill::AuxAgentPill(BrowserWindowInterface* browser)
+@@ -1499,7 +1270,7 @@
+           [](BrowserWindowInterface* browser) {
+             browser->OpenGURL(
+                 GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                                   "/main.html#/u/0/tasks"})),
++                                   "/index.html#/tasks"})),
+                 WindowOpenDisposition::NEW_FOREGROUND_TAB);
+           },
+           base::Unretained(browser))) {
+@@ -1518,7 +1289,7 @@
+       1, 11, SkColorSetARGB(0x80, 0xB4, 0xAF, 0xFF)));
+   GetViewAccessibility().SetName(u"Chats");
+   SetTooltipText(u"Chats");
+-  SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++  SetFocusBehavior(FocusBehavior::ALWAYS);
+ }
+ 
+ AuxAgentPill::~AuxAgentPill() = default;
+@@ -1546,13 +1317,13 @@
+             [](BrowserWindowInterface* browser) {
+               browser->OpenGURL(
+                   GURL(base::StrCat({"chrome-extension://", kAgentManagerId,
+-                                     "/main.html#/u/0/tasks"})),
++                                     "/index.html#/tasks"})),
+                   WindowOpenDisposition::NEW_FOREGROUND_TAB);
+             },
+             base::Unretained(browser))) {
+     GetViewAccessibility().SetName(u"Agent activity");
+     SetTooltipText(u"Agent activity");
+-    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
+   }
+ 
+   void SetActive(bool active) {
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -833,6 +833,8 @@
+ 
+   deps = [
+     "//chrome/browser/aux:profile_gate",
++    "//chrome/browser/aux:platform",
++    "//chrome/browser/aux:profile_state",
+     ":browser_element_identifiers",
+     ":browser_otr_state",
+     ":browser_ui_prefs",
+@@ -2758,6 +2760,10 @@
+       "aux_ntp_url.h",
+       "views/frame/aux_icon_picker.cc",
+       "views/frame/aux_icon_picker.h",
++      "views/frame/aux_native_task_feed.cc",
++      "views/frame/aux_native_task_feed.h",
++      "views/frame/aux_task_review_bubble.cc",
++      "views/frame/aux_task_review_bubble.h",
+       "views/frame/aux_sidebar_view.cc",
+       "views/frame/aux_tab_switcher.cc",
+       "views/frame/aux_tab_switcher.h",
