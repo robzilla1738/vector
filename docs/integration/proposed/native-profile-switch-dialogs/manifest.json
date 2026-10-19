@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "Exact applied v55 current native source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_menu_coordinator.h",
+      "baselineSha256": "6716bf83f7974ccb775f2d8aa01fdd73aefa8946edcd28f32680d76413e968a8",
+      "outputSha256": "e8dfdbcad4fa9fb425f90065a9d6a31f257765aedfaa3949253d12b0c554bb20"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_menu_coordinator.cc",
+      "baselineSha256": "f9d52371d88253c4374e7f055597a099a63fc90b701434db7522409e32f3091c",
+      "outputSha256": "ff4e4bf7f2da14834cfbdc427edf1b9becb71422a76043cef0ea4db428a28bbf"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h",
+      "baselineSha256": "7ba685100def4a814b4b99a2027d28a9b726ba256a3735b17055162bb5aad230",
+      "outputSha256": "ab25e8ab24fa8686f0d5e7e145e219f7af3c90d2a251fb72607874931c5efcb3"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.cc",
+      "baselineSha256": "f34a6d4529547efaab60306398a70cc6ce8b23e9e63e0610757ca701fba5cd87",
+      "outputSha256": "a291474bc984e8f856779bdce3644ae9b9d4b789b167405121588e8d3aef156b"
+    },
+    {
+      "path": "chrome/browser/ui/signin/signin_view_controller.h",
+      "baselineSha256": "e7a0af61a2c4517c3629cd0c89d06520ff04a5834bdd3b0f7dc0865363195abf",
+      "outputSha256": "f7cb505dad613778050f8350699326a891a50a77bc3814f9be6b99780c574f14"
+    },
+    {
+      "path": "chrome/browser/ui/signin/signin_view_controller.cc",
+      "baselineSha256": "c50d5697a392e95b66bf13e5cb9081eb98118ba8e9f57f84b189d523dddeb5a1",
+      "outputSha256": "9e6a3e19a4d10a616f299cd93dccae30f01bd41fafdd9b3fc051fb4bd9014ca3"
+    }
+  ],
+  "patchSha256": "7d9a6c9b465452bf9de93a0dd7c184999fb97a4f697f288b5226157d7de616fb",
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

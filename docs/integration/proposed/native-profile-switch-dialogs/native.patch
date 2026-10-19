@@ -1,0 +1,216 @@
+--- a/chrome/browser/ui/views/profiles/profile_menu_coordinator.h
++++ b/chrome/browser/ui/views/profiles/profile_menu_coordinator.h
+@@ -8,6 +8,7 @@
+ #include <optional>
+ 
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/signin/signin_promo_util.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -29,6 +30,14 @@
+   DECLARE_USER_DATA(ProfileMenuCoordinator);
+ 
+   ProfileMenuCoordinator(BrowserWindowInterface* browser, Profile* profile);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Cold readiness must pass before any actual window/profile effects.
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Actual Browser/model identity has changed; no tab is inserted yet.
++  void RebindForAuxProfileSwitch(Profile& target);
++#endif
+ 
+   // Returns the coordinator for `browser`, or null if it does not have one.
+   static ProfileMenuCoordinator* From(BrowserWindowInterface* browser);
+@@ -67,7 +76,8 @@
+   // bug is fixed.
+   const raw_ref<BrowserWindowInterface> browser_;
+ 
+-  const raw_ref<Profile> profile_;
++  // Mutated only by the internal Aux empty-model profile transaction.
++  raw_ref<Profile> profile_;
+   views::ViewTracker bubble_tracker_;
+ 
+   base::WeakPtrFactory<ProfileMenuCoordinator> weak_pointer_factory_{this};
+--- a/chrome/browser/ui/views/profiles/profile_menu_coordinator.cc
++++ b/chrome/browser/ui/views/profiles/profile_menu_coordinator.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "base/check_deref.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
+ #include "chrome/browser/signin/signin_promo_util.h"
+ #include "chrome/browser/signin/signin_ui_util.h"
+@@ -174,3 +175,26 @@
+     : scoped_unowned_user_data_(browser->GetUnownedUserDataHost(), *this),
+       browser_(CHECK_DEREF(browser)),
+       profile_(CHECK_DEREF(profile)) {}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool ProfileMenuCoordinator::CanPrepareForAuxProfileSwitch() const {
++  return browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         browser_->GetProfile()->IsRegularProfile();
++}
++
++void ProfileMenuCoordinator::PrepareForAuxProfileSwitch() {
++  weak_pointer_factory_.InvalidateWeakPtrs();
++  if (bubble_tracker_ && bubble_tracker_.view()->GetWidget()) {
++    bubble_tracker_.view()->GetWidget()->CloseNow();
++  }
++  CHECK(!bubble_tracker_.view());
++}
++
++void ProfileMenuCoordinator::RebindForAuxProfileSwitch(Profile& target) {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  CHECK(target.IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), &target);
++  CHECK(browser_->GetTabStripModel()->empty());
++  profile_ = target;
++}
++#endif
+--- a/chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h
++++ b/chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/search/background/ntp_custom_background_service.h"
+ #include "chrome/browser/ui/profiles/profile_customization_synced_theme_waiter.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -36,6 +37,14 @@
+ 
+   ProfileCustomizationBubbleSyncController(BrowserWindowInterface* bwi,
+                                            Profile* profile);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Cold readiness must pass before any actual window/profile effects.
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Actual Browser/model identity has changed; no tab is inserted yet.
++  void RebindForAuxProfileSwitch(Profile& target);
++#endif
+ 
+   // Returns the controller for `bwi`'s window, or null if it does not have
+   // one.
+@@ -94,7 +103,8 @@
+   void MaybeInvokeCallback(Outcome outcome);
+ 
+   const raw_ref<BrowserWindowInterface> bwi_;
+-  const raw_ref<Profile> profile_;
++  // Mutated only by the internal Aux empty-model profile transaction.
++  raw_ref<Profile> profile_;
+   std::unique_ptr<ProfileCustomizationSyncedThemeWaiter> theme_waiter_;
+   ShowBubbleCallback show_bubble_callback_;
+ };
+--- a/chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.cc
++++ b/chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "base/check_deref.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/search/background/ntp_custom_background_service.h"
+ #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
+ #include "chrome/browser/sync/sync_service_factory.h"
+@@ -179,3 +180,24 @@
+     std::move(show_bubble_callback_).Run(outcome);
+   }
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool ProfileCustomizationBubbleSyncController::CanPrepareForAuxProfileSwitch() const {
++  return bwi_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         bwi_->GetProfile()->IsRegularProfile() && !show_bubble_callback_;
++}
++
++void ProfileCustomizationBubbleSyncController::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  // The waiter captures old profile services with Unretained(this).
++  theme_waiter_.reset();
++}
++
++void ProfileCustomizationBubbleSyncController::RebindForAuxProfileSwitch(Profile& target) {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  CHECK(target.IsRegularProfile());
++  CHECK_EQ(bwi_->GetProfile(), &target);
++  CHECK(bwi_->GetTabStripModel()->empty());
++  profile_ = target;
++}
++#endif
+--- a/chrome/browser/ui/signin/signin_view_controller.h
++++ b/chrome/browser/ui/signin/signin_view_controller.h
+@@ -12,6 +12,7 @@
+ #include "base/gtest_prod_util.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/observer_list.h"
+ #include "build/build_config.h"
+@@ -93,6 +94,14 @@
+   SigninViewController(BrowserWindowInterface* browser,
+                        Profile* profile,
+                        TabStripModel* tab_strip_model);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Cold readiness must pass before any actual window/profile effects.
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Actual Browser/model identity has changed; no tab is inserted yet.
++  void RebindForAuxProfileSwitch(Profile& target);
++#endif
+ 
+   SigninViewController(const SigninViewController&) = delete;
+   SigninViewController& operator=(const SigninViewController&) = delete;
+@@ -295,7 +304,8 @@
+   // BrowserWindowInterface owning this controller.
+   const raw_ref<BrowserWindowInterface> browser_;
+ 
+-  const raw_ref<Profile> profile_;
++  // Mutated only by the internal Aux empty-model profile transaction.
++  raw_ref<Profile> profile_;
+   const raw_ref<TabStripModel> tab_strip_model_;
+ 
+   // Currently displayed modal dialog, or nullptr if none is displayed.
+--- a/chrome/browser/ui/signin/signin_view_controller.cc
++++ b/chrome/browser/ui/signin/signin_view_controller.cc
+@@ -18,6 +18,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/signin/account_preview_data_service_factory.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
+@@ -1027,3 +1028,28 @@
+ TabStripModel* SigninViewController::GetTabStripModel() {
+   return &tab_strip_model_.get();
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool SigninViewController::CanPrepareForAuxProfileSwitch() const {
++  return browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      browser_->GetProfile()->IsRegularProfile() && !dialog_ && !bubble_widget_
++#if BUILDFLAG(ENABLE_DICE_SUPPORT)
++      && !new_tab_web_contents_observer_
++#endif
++      ;
++}
++
++void SigninViewController::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  // Do not cancel or fabricate completion of an active sign-in flow.
++  weak_ptr_factory_.InvalidateWeakPtrs();
++}
++
++void SigninViewController::RebindForAuxProfileSwitch(Profile& target) {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  CHECK(target.IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), &target);
++  CHECK(browser_->GetTabStripModel()->empty());
++  profile_ = target;
++}
++#endif

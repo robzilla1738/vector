@@ -1,0 +1,15 @@
+# Stable profile dialog sources
+
+Six source files, exact applied v55 inputs. These are required Chromium 155 platform adaptations for the supplied same-window transaction. They retain the actual window's ProfileMenuCoordinator, ProfileCustomizationBubbleSyncController and SigninViewController userdata identities and their subscriber lists. They do not replace dialogs with Aux-designed UI or change ordinary profile UI behavior.
+
+The existing profile menu captures its profile in a raw reference; its asynchronous promo callback uses its own WeakPtrFactory. Preparation invalidates old promo callbacks and closes the actual existing menu widget through its real CloseNow lifecycle before profile identity changes. Commit changes the profile source only after the actual Browser identity is the target and its same tab model is empty. Subsequent menu opening uses the genuine target services and unchanged menu implementation.
+
+The customization controller's theme waiter captures old profile ThemeService/NTP background services with Unretained(this). Cold readiness refuses while a real customization result is pending. Preparation destroys any inactive waiter, then empty-model commit replaces only its profile source. No theme color is applied or fake theme-sync result emitted by migration.
+
+The signin controller retains an actual profile reference, tab model, observer list, modal dialog, bubble and optional signin tab observer. Cold readiness refuses an active modal, bubble or observed signin flow. Preparation invalidates old asynchronous weak callbacks without declaring the flow completed or cancelled. Empty-model commit changes only its profile source. The actual ordinary signin UI and current user's choice remain authoritative.
+
+BrowserWindowFeatures must call all three cold readiness methods before the core performs any effects. Call PrepareForAuxProfileSwitch in the begin phase, and RebindForAuxProfileSwitch(target) after real Browser/InitState/model identity commit while empty, before target insertion. If the core aborts before identity, preparation leaves the same old profile sources correct; it need not construct replacement controllers or replay a menu/promo. The complete provider still must audit and wire other services and actual native Agent side-panel hosts; this proposal installs no successful provider or UI trigger.
+
+The existing zoom observer needs no profile rebind: it observes the same tab model, removes actual per-tab ZoomController observations on genuine removal, adds target observations on genuine insertion, and derives the active tab dynamically. Replacing it would unnecessarily lose the stable real callback list.
+
+Verification: six exact source hashes and disposable patch replay, all output hashes matched. No shared native writes, build, target execution, owner state, OS grant or network. These three existing implementation objects need focused compilation by the integrator. Their public headers now include chrome/browser/buildflags.h; expose its existing buildflags target to the corresponding header targets if the composing GN graph does not already do so.

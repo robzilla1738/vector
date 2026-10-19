@@ -1,0 +1,37 @@
+{
+  "kind": "Current Chromium 155 profile-bound constructor/callback/destructor source; adaptation supporting recovered same-window transaction, not a claim of identically named supplied native hooks.",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_menu_coordinator.h",
+      "sha256": "6716bf83f7974ccb775f2d8aa01fdd73aefa8946edcd28f32680d76413e968a8"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_menu_coordinator.cc",
+      "sha256": "f9d52371d88253c4374e7f055597a099a63fc90b701434db7522409e32f3091c"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h",
+      "sha256": "7ba685100def4a814b4b99a2027d28a9b726ba256a3735b17055162bb5aad230"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.cc",
+      "sha256": "f34a6d4529547efaab60306398a70cc6ce8b23e9e63e0610757ca701fba5cd87"
+    },
+    {
+      "path": "chrome/browser/ui/signin/signin_view_controller.h",
+      "sha256": "e7a0af61a2c4517c3629cd0c89d06520ff04a5834bdd3b0f7dc0865363195abf"
+    },
+    {
+      "path": "chrome/browser/ui/signin/signin_view_controller.cc",
+      "sha256": "c50d5697a392e95b66bf13e5cb9081eb98118ba8e9f57f84b189d523dddeb5a1"
+    },
+    {
+      "path": "chrome/browser/ui/zoom/browser_window_zoom_observer.h",
+      "sha256": "0247db6f739835b5ab39561b76cf2d597d1038050557373ad708e6cc88e60cbd"
+    },
+    {
+      "path": "chrome/browser/ui/zoom/browser_window_zoom_observer.cc",
+      "sha256": "ab03fb7cd870e6a7e9594f2b041011863d0524d1c43446d29352fd3b9581550d"
+    }
+  ]
+}
