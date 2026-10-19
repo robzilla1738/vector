@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual current shared inputs; disjoint stable side-panel pinning observation adaptation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.h",
+      "baselineSha256": "cc6ada9f47ddd2a327fc58eac3a800a139b9f8c4a146d195c1a655e076329aba",
+      "outputSha256": "4115781eca04d10144b01bc4cace3558046d76703b55fdbd96076b4a6ce9643d"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc",
+      "baselineSha256": "587fe19334bfddefbe9ade0a8f8ab24ba45ccfa084d1f493c79da1ce1d478c04",
+      "outputSha256": "88ac09eedd59a9c52d66935d449c6088b32f4ed9ad5d738bc05d7d7a84074f85"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_coordinator.h",
+      "baselineSha256": "7cd155b3de9beac86712915c180c99016439bc3d5ee5e3ad8afca1bdb4ca1b97",
+      "outputSha256": "0751377a760896603c07561dbf7ce1befb11cce5f4b8b8eb39169f6069d10ca8"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_coordinator.cc",
+      "baselineSha256": "95495a0a7cc746def8bad6a5c3d96915bdae357d9c837350b28303d17dd5c4fc",
+      "outputSha256": "b3d6f0b61321a8702feeda81c81a53970358cce41c25a19fb5ea607041f1f1a6"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

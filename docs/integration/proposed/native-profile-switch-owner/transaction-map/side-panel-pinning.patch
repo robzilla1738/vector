@@ -1,0 +1,156 @@
+--- a/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.h
++++ b/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.h
+@@ -8,9 +8,12 @@
+ #include "base/memory/raw_ref.h"
+ #include "base/observer_list.h"
+ #include "base/observer_list_types.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+ #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
+ 
++class Profile;
+ class SidePanelEntry;
+ class SidePanelEntryKey;
+ 
+@@ -28,6 +31,13 @@
+    public:
+     virtual void OnPinStateChanged() = 0;
+   };
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Keep the same controller and pin-state observer list across the window's
++  // profile transaction. No model mutation or panel activation is performed.
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   // PinnedToolbarActionsModel::Observer:
+   void OnActionsChanged() override;
+@@ -70,6 +80,9 @@
+       /*check_empty=*/false,
+       base::ObserverListReentrancyPolicy::kAllowReentrancyUntriaged>
+       pin_state_change_observers_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++#endif
+   const raw_ref<BrowserWindowInterface> browser_;
+ };
+ 
+--- a/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.h"
+ 
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/check_deref.h"
+ #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -41,12 +43,50 @@
+ SidePanelToolbarPinningController::~SidePanelToolbarPinningController() =
+     default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SidePanelToolbarPinningController::PrepareForAuxProfileSwitch() {
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK(!aux_profile_switch_prepared_);
++  aux_profile_switch_prepared_ = true;
++  pinned_model_observation_.Reset();
++  extensions_model_observation_.Reset();
++}
++
++void SidePanelToolbarPinningController::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK(!pinned_model_observation_.IsObserving());
++  CHECK(!extensions_model_observation_.IsObserving());
++  pinned_model_observation_.Observe(
++      PinnedToolbarActionsModel::Get(target_profile));
++  extensions_model_observation_.Observe(ToolbarActionsModel::Get(target_profile));
++  aux_profile_switch_prepared_ = false;
++  // Preserve existing observers (including live side-panel header views) and
++  // let them read the actual target models. Do not set any pin preference.
++  OnActionsChanged();
++}
++#endif
++
+ void SidePanelToolbarPinningController::OnActionsChanged() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   pin_state_change_observers_.Notify(&Observer::OnPinStateChanged);
+   ReevaluateActiveState();
+ }
+ 
+ void SidePanelToolbarPinningController::OnToolbarPinnedActionsChanged() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   pin_state_change_observers_.Notify(&Observer::OnPinStateChanged);
+   ReevaluateActiveState();
+ }
+--- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.h
++++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.h
+@@ -12,6 +12,8 @@
+ #include "base/memory/raw_ref.h"
+ #include "base/observer_list.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/ui/side_panel/side_panel_entry.h"
+ #include "chrome/browser/ui/side_panel/side_panel_ui_base.h"
+@@ -21,6 +23,7 @@
+ #include "ui/views/view_observer.h"
+ 
+ class BrowserWindowInterface;
++class Profile;
+ class SidePanel;
+ 
+ namespace views {
+@@ -50,6 +53,13 @@
+       BrowserWindowInterface* browser_window_interface);
+ 
+   void TearDownPreBrowserWindowDestruction();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // These forward only the stable pinning controller's profile observations.
++  // Extension entries and other profile-bound panel owners have separate hooks.
++  void PreparePinningForAuxProfileSwitch();
++  void RebindPinningForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   // SidePanelUI:
+   using SidePanelUI::Close;
+--- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
+@@ -70,6 +70,19 @@
+   return Get(browser_window_interface->GetUnownedUserDataHost());
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SidePanelCoordinator::PreparePinningForAuxProfileSwitch() {
++  CHECK(side_panel_toolbar_pinning_controller_);
++  side_panel_toolbar_pinning_controller_->PrepareForAuxProfileSwitch();
++}
++
++void SidePanelCoordinator::RebindPinningForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(side_panel_toolbar_pinning_controller_);
++  side_panel_toolbar_pinning_controller_->RebindForAuxProfileSwitch(target_profile);
++}
++#endif
++
+ void SidePanelCoordinator::TearDownPreBrowserWindowDestruction() {
+   Close(SidePanelEntryHideReason::kSidePanelClosed,
+         /*suppress_animations=*/true);
