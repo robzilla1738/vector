@@ -1,0 +1,72 @@
+{
+  "kind": "static-source-only",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/aux.mjs",
+      "sha256": "c703ff4b6e48c8eee9d963dc23a3a43d9168ca1936416c27e27a5aabae9142e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native-ui-compat.mjs",
+      "sha256": "392349c7f42dd1658a68d9028584aa63a13c57a8ddda82a5d24fc31239c12011"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/daemon-adapter.mjs",
+      "sha256": "6079a03c1cf624858ef100067a391aeefccb938787813e467848b7b15beaae41"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-native.cjs",
+      "sha256": "5ec2865e0209974d859d042c617e760fac7b019025a6b1247d19e81df5a122f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc",
+      "sha256": "dfacc8d7e99cbc1e7fa8dbd8e8334a8f4ee1594958f8730b9aa47bdcf1de88c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "a1d3478b74bc807c51a153a1fe178bb9cd3c0359267ae6da8bf0ac02e0a81ea9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_gate.cc",
+      "sha256": "2ac5d07873cc2795ef3e4c34cf7822dc00921a7badbe1125b9b851ba846e1adc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc",
+      "sha256": "cf5483de050c1f12fd5080f13e53eca8aa93d8a79d473c6e59d313eefe993882"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/remote_debugging_server.cc",
+      "sha256": "978261bd1ecddd90516a35133d703aadf310257714eb4e9bcb55804e37c38660"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/aux_cdp_authority.cc",
+      "sha256": "8cfa9795e2d65038b6a7c95b15cc54485336024890e88f1aa973f63d1931f92e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/protocol/aux_profile_window.cc",
+      "sha256": "885e15ca4d0e97b78c87c36e528c71586ae895220edbdbca373aaa70c71bfc04"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/background.js",
+      "sha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/queries-ldd77hNk.js",
+      "sha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsidePasswordManager/1.26.1016.1852/background.js",
+      "sha256": "eb760bfead1afc936c7c4b12573423809a224a3859781991ae40f4e4c00139fb"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsidePasswordManager/1.26.1016.1852/assets/index.esm-B13NI78u.js",
+      "sha256": "ae0dddc0b7e2a9347ba6a98cc06f9a576fe7bbc312ce9d2e28f5211c35064092"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+    }
+  ],
+  "processesInspected": false,
+  "networkRequests": false,
+  "nativeBuild": false
+}

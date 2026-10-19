@@ -1,0 +1,13 @@
+{
+  "description": "Reject inconsistent custom daemon port in supplied browser mode before bundle access or state allocation; pin loopback self URL and native CDP environment",
+  "files": [
+    {
+      "path": "scripts/aux.mjs",
+      "baselineSha256": "c703ff4b6e48c8eee9d963dc23a3a43d9168ca1936416c27e27a5aabae9142e9",
+      "outputSha256": "2b3ee287e05282b8371de6cdca38028a666185e0398e689338b4eb578f321dcc"
+    }
+  ],
+  "patchSha256": "d93720e8bd88e2263a93a7cdc1e98695c6df2ee668db7fa8a6711225bb7dffac",
+  "nativeSourceModified": false,
+  "applicationLaunched": false
+}
