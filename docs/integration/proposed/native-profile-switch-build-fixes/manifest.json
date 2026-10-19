@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "Applied v47 actual focused compiler rejection of NoDestructor with trivially destructible atomic sequence",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_init_state.cc",
+      "baselineSha256": "286b98ea8372bcc53b1159d74938ca11ad3e812983101ae56f11745d362ca63b",
+      "outputSha256": "39899833fbfc1697a22157cec1aa0a3e566009b04bcce7b84795fa4c1de39fa5"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

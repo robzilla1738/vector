@@ -1,0 +1,21 @@
+--- a/chrome/browser/ui/browser_init_state.cc
++++ b/chrome/browser/ui/browser_init_state.cc
+@@ -5,7 +5,6 @@
+ #include "chrome/browser/ui/browser_init_state.h"
+ 
+ #include "base/atomic_sequence_num.h"
+-#include "base/no_destructor.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+@@ -21,8 +20,8 @@
+   }
+   // Match the supplied independent process-local owner sequence. Browser
+   // SessionIDs are generated separately and must never identify these caches.
+-  static base::NoDestructor<base::AtomicSequenceNumber> next_id;
+-  return static_cast<uint64_t>(next_id->GetNext()) + 1;
++  static base::AtomicSequenceNumberT<uint64_t> next_id;
++  return next_id.GetNext() + 1;
+ }
+ }  // namespace
+ 
