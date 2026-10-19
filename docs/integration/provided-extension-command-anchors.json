@@ -1,0 +1,319 @@
+{
+  "version": "1.26.1016.1852",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideDaemon/mac-arm64/1.26.1016.1852/Aside Daemon.app/Contents/MacOS/aside-daemon",
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+      "seaCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/background.js",
+      "sha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7"
+    }
+  ],
+  "conclusion": "Aside.* is the supplied extension command protocol, intercepted before the native CDP websocket; preserve the original handlers and route.",
+  "prefixes": [
+    "Aside.applePasswords",
+    "Aside.callExtensionMV3Api",
+    "Aside.clearAiTabsGroup",
+    "Aside.clearPasswordManagerGeneratedPasswordRefs",
+    "Aside.controlTab",
+    "Aside.createAgentTab",
+    "Aside.createPasswordManagerGeneratedPasswordRef",
+    "Aside.ensureTabInAiTabsGroup",
+    "Aside.fillPasswordManagerGeneratedPasswordRef",
+    "Aside.getThirdPartyCookies",
+    "Aside.grantNotificationPermission",
+    "Aside.listTabs",
+    "Aside.openProfileUrl",
+    "Aside.ownsTarget",
+    "Aside.performPasswordManagerAutofill",
+    "Aside.pickDirectory",
+    "Aside.playNotificationSound",
+    "Aside.resolveBindingWindow",
+    "Aside.resolvePasswordManagerGeneratedPasswordRefs",
+    "Aside.revokeNotificationPermission",
+    "Aside.searchHistory",
+    "Aside.setThirdPartyCookies",
+    "Aside.showNotification",
+    "Aside.waitForDownload"
+  ],
+  "commands": [
+    {
+      "method": "Aside.listTabs",
+      "handler": {
+        "offset": 290940,
+        "line": 9896,
+        "text": "case \"Aside.listTabs\": {\n      if (e.params.accountId !== void 0 && await G().catch(() => null) !== e.params.accountId)\n        return { items: [] };\n      const [n, o, i, s] = await Promise.all([\n        chrome.tabs.query({}),\n        chrome.debugger.getTargets().catch(() => []),\n        chrome.windows.getLastFocused().catch(() => null),\n        e.params.groupWindowId !== void 0 ? chrome.tabGroups.query({ windowId: e.params.groupWindowId }).catch(() => []) : []\n      ]), a = new Map(s.map((l) => [l.id, l])), c = /* @__PURE__ */ new Map();\n      for (const l of o) l.type === \"page\" && typeof l.tabId == \"number\" && typeof l.id == \"string\" && c.set(l.tabId, l.id);\n      const u = [];\n      for (const l of n) {\n        if (typeof l.id != \"number\" || !!l.incognito != (Dt() === \"incognito\")) continue;\n        const f = c.get(l.id), d = l.url ?? l.pendingUrl ?? \"\";\n        if (!f || !d || d.startsWith(\"chrome://\") || d.startsWith(\"chrome-extension://\") && (!e.params.extensionId || !d.startsWith(`chrome-extension://${e.params.extensionId}/`))) continue;\n        const h = l.windowId === e.params.groupWindowId ? a.get(l.groupId) : void 0;\n        u.push({\n          ...gy(l, f, i?.focused ? i.id : void 0),\n          ...h ? { group: {\n            id: h.id,\n            title: h.title?.trim() || \"Untitled group\"\n          } } : {}\n        });\n      }\n      return u.sort((l, f) => Number(f.active) - Number(l.acti"
+      }
+    },
+    {
+      "method": "Aside.ownsTarget",
+      "handler": {
+        "offset": 292392,
+        "line": 9922,
+        "text": "case \"Aside.ownsTarget\":\n      return { owned: await Be(e.params.targetId, !0).then(() => !0).catch(() => !1) };"
+      }
+    },
+    {
+      "method": "Aside.openProfileUrl",
+      "handler": {
+        "offset": 292509,
+        "line": 9924,
+        "text": "case \"Aside.openProfileUrl\": {\n      if (!r) throw new Error(\"Browser route is required to open a profile URL\");\n      const n = await Di(r);\n      return await chrome.tabs.create({\n        active: !0,\n        url: e.params.url,\n        windowId: n\n      }), { success: !0 };\n    }"
+      }
+    },
+    {
+      "method": "Aside.createAgentTab",
+      "handler": {
+        "offset": 292795,
+        "line": 9933,
+        "text": "case \"Aside.createAgentTab\": {\n      if (!r) throw new Error(\"Browser route is required to create an agent tab\");\n      const n = await Di(r, e.params.anchorTargetId), o = await chrome.tabs.create({\n        active: !1,\n        url: e.params.url,\n        windowId: n\n      });\n      if (o.id === void 0) throw new Error(`Failed to create Chrome tab for ${e.params.url}`);\n      const i = o.id;\n      return await Ci(() => $i(i)).catch((s) => {\n        console.warn(\"[extension-bridge] createAgentTab: failed to group new agent tab\", s);\n      }), {\n        tabId: i,\n        targetId: await Mi([i]),\n        windowId: n\n      };\n    }"
+      }
+    },
+    {
+      "method": "Aside.resolveBindingWindow",
+      "handler": {
+        "offset": 293433,
+        "line": 9950,
+        "text": "case \"Aside.resolveBindingWindow\":\n      return await Xv(Mi);"
+      }
+    },
+    {
+      "method": "Aside.searchHistory",
+      "handler": {
+        "offset": 293499,
+        "line": 9952,
+        "text": "case \"Aside.searchHistory\": {\n      const { query: n, ...o } = e.params;\n      return { items: (await chrome.history.search({\n        text: n,\n        ...o\n      })).map(cy) };\n    }"
+      }
+    },
+    {
+      "method": "Aside.getThirdPartyCookies",
+      "handler": {
+        "offset": 293686,
+        "line": 9959,
+        "text": "case \"Aside.getThirdPartyCookies\":\n      return await my();"
+      }
+    },
+    {
+      "method": "Aside.setThirdPartyCookies",
+      "handler": {
+        "offset": 293750,
+        "line": 9961,
+        "text": "case \"Aside.setThirdPartyCookies\": {\n      const n = chrome.privacy?.websites?.thirdPartyCookiesAllowed;\n      if (!n) throw new Error(\"Third-party cookie setting is not available.\");\n      return await py(n, e.params.value === \"allow\"), { success: !0 };\n    }"
+      }
+    },
+    {
+      "method": "Aside.ensureTabInAiTabsGroup",
+      "handler": {
+        "offset": 294015,
+        "line": 9966,
+        "text": "case \"Aside.ensureTabInAiTabsGroup\":\n      return await Ci(async () => {\n        const n = await Be(e.params.targetId);\n        return {\n          success: !0,\n          groupId: await $i(n),\n          tabId: n\n        };\n      });"
+      }
+    },
+    {
+      "method": "Aside.controlTab",
+      "handler": {
+        "offset": 294251,
+        "line": 9975,
+        "text": "case \"Aside.controlTab\":\n      return {\n        success: !0,\n        ...await mv(e.params, t, r?.windowId)\n      };"
+      }
+    },
+    {
+      "method": "Aside.waitForDownload",
+      "handler": {
+        "offset": 294371,
+        "line": 9980,
+        "text": "case \"Aside.waitForDownload\":\n      return await fy(e.params, t);"
+      }
+    },
+    {
+      "method": "Aside.showNotification",
+      "handler": {
+        "offset": 294441,
+        "line": 9982,
+        "text": "case \"Aside.showNotification\": {\n      const { title: n, message: o, type: i, clickPath: s, contextMessage: a, sound: c, customSound: u, ...l } = e.params;\n      if (!(i !== \"basic\" || l.buttons?.length || l.imageUrl || l.items?.length || l.progress !== void 0)) {\n        const d = crypto.randomUUID();\n        try {\n          await oy({\n            notificationId: d,\n            title: n,\n            body: a ? `${o}\n${a}` : o,\n            clickPath: s,\n            windowId: r?.windowId,\n            requireInteraction: l.requireInteraction,\n            silent: l.silent,\n            sound: c,\n            customSound: u\n          });\n        } catch (h) {\n          console.warn(\"[ExtensionBridge] Failed to show basic notification\", {\n            notificationId: d,\n            error: h instanceof Error ? h.message : String(h)\n          });\n        }\n        return { notificationId: d };\n      }\n      const f = await chrome.notifications.create({\n        type: i,\n        iconUrl: chrome.runtime.getURL(\"icons/icon-128.png\"),\n        title: n,\n        message: o,\n        contextMessage: a,\n        ...l\n      });\n      return ly(f, s, r?.windowId), { notificationId: f };\n    }"
+      }
+    },
+    {
+      "method": "Aside.playNotificationSound",
+      "handler": {
+        "offset": 295633,
+        "line": 10017,
+        "text": "case \"Aside.playNotificationSound\":\n      try {\n        await iy(e.params.sound, e.params.customSound);\n      } catch (n) {\n        console.warn(\"[ExtensionBridge] Failed to play notification sound\", {\n          sound: e.params.sound,\n          error: n instanceof Error ? n.message : String(n)\n        });\n      }\n      return { ok: !0 };"
+      }
+    },
+    {
+      "method": "Aside.grantNotificationPermission",
+      "handler": {
+        "offset": 295977,
+        "line": 10027,
+        "text": "case \"Aside.grantNotificationPermission\": {\n      const n = await Be(e.params.targetId);\n      if (!chrome.asideNotification) throw new Error(\"chrome.asideNotification API not available (requires Aside browser)\");\n      return await chrome.asideNotification.requestPermission(n), { success: !0 };\n    }"
+      }
+    },
+    {
+      "method": "Aside.revokeNotificationPermission",
+      "handler": {
+        "offset": 296284,
+        "line": 10032,
+        "text": "case \"Aside.revokeNotificationPermission\":\n      if (!chrome.asideNotification) throw new Error(\"chrome.asideNotification API not available (requires Aside browser)\");\n      return { revoked: await chrome.asideNotification.revokePermission(e.params.origin) };"
+      }
+    },
+    {
+      "method": "Aside.clearAiTabsGroup",
+      "handler": {
+        "offset": 296548,
+        "line": 10035,
+        "text": "case \"Aside.clearAiTabsGroup\": {\n      const n = await chrome.tabGroups.query({\n        title: sr,\n        ...r?.windowId !== void 0 ? { windowId: r.windowId } : {}\n      });\n      if (n.length === 0) return {\n        success: !0,\n        closedCount: 0\n      };\n      const o = e.params.keepTargetIds?.length ? new Set(e.params.keepTargetIds) : void 0, i = /* @__PURE__ */ new Map();\n      if (o) try {\n        for (const a of await chrome.debugger.getTargets()) a.type === \"page\" && typeof a.tabId == \"number\" && typeof a.id == \"string\" && i.set(a.tabId, a.id);\n      } catch {\n        return {\n          success: !0,\n          closedCount: 0\n        };\n      }\n      let s = 0;\n      for (const a of n) {\n        const c = (await chrome.tabs.query({ groupId: a.id })).map((u) => u.id).filter((u) => u != null).filter((u) => !o || !o.has(i.get(u) ?? \"\"));\n        for (const u of c) await qa(u, { signal: t }) && s++;\n      }\n      return {\n        success: !0,\n        closedCount: s\n      };\n    }"
+      }
+    },
+    {
+      "method": "Aside.callExtensionMV3Api",
+      "handler": {
+        "offset": 297554,
+        "line": 10063,
+        "text": "case \"Aside.callExtensionMV3Api\":\n      return await dy(e.params.method, e.params.args);"
+      }
+    },
+    {
+      "method": "Aside.createPasswordManagerGeneratedPasswordRef",
+      "handler": {
+        "offset": 297647,
+        "line": 10065,
+        "text": "case \"Aside.createPasswordManagerGeneratedPasswordRef\": {\n      const n = await ft(\"createGeneratedPasswordRef\", e.params);\n      if (!n?.refId) throw new Error(n?.error ?? \"Password manager extension command failed\");\n      return { refId: n.refId };\n    }"
+      }
+    },
+    {
+      "method": "Aside.fillPasswordManagerGeneratedPasswordRef",
+      "handler": {
+        "offset": 297909,
+        "line": 10070,
+        "text": "case \"Aside.fillPasswordManagerGeneratedPasswordRef\":\n      return await ft(\"fillGeneratedPasswordRef\", {\n        tabId: await Be(e.params.targetId),\n        refId: e.params.refId\n      }, { requireSuccess: !0 }), { success: !0 };"
+      }
+    },
+    {
+      "method": "Aside.resolvePasswordManagerGeneratedPasswordRefs",
+      "handler": {
+        "offset": 298144,
+        "line": 10075,
+        "text": "case \"Aside.resolvePasswordManagerGeneratedPasswordRefs\":\n      return { refs: (await ft(\"resolveGeneratedPasswordRefs\", e.params, { requireSuccess: !0 }))?.refs ?? [] };"
+      }
+    },
+    {
+      "method": "Aside.clearPasswordManagerGeneratedPasswordRefs",
+      "handler": {
+        "offset": 298319,
+        "line": 10077,
+        "text": "case \"Aside.clearPasswordManagerGeneratedPasswordRefs\":\n      return await ft(\"clearGeneratedPasswordRefs\", e.params, { requireSuccess: !0 }), { success: !0 };"
+      }
+    },
+    {
+      "method": "Aside.performPasswordManagerAutofill",
+      "handler": {
+        "offset": 298483,
+        "line": 10079,
+        "text": "case \"Aside.performPasswordManagerAutofill\":\n      return await ft(\"performAutofill\", {\n        tabId: await Be(e.params.targetId),\n        itemId: e.params.itemId,\n        pwmAccountId: e.params.pwmAccountId,\n        agentSessionId: e.params.agentSessionId\n      }, { requireSuccess: !0 }), { success: !0 };"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.capabilities",
+      "handler": {
+        "offset": 298796,
+        "line": 10086,
+        "text": "case \"Aside.applePasswords.capabilities\":\n      return { capabilities: await Re.capabilities() };"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.requestAuth",
+      "handler": {
+        "offset": 298898,
+        "line": 10088,
+        "text": "case \"Aside.applePasswords.requestAuth\":\n      return await Re.requestAuth();"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.verifyAuth",
+      "handler": {
+        "offset": 298980,
+        "line": 10090,
+        "text": "case \"Aside.applePasswords.verifyAuth\":\n      return await Re.verifyAuth(e.params.pin);"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.listLogins",
+      "handler": {
+        "offset": 299072,
+        "line": 10092,
+        "text": "case \"Aside.applePasswords.listLogins\":\n      return { items: await Re.listLogins(e.params.url) };"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.getPasswords",
+      "handler": {
+        "offset": 299175,
+        "line": 10094,
+        "text": "case \"Aside.applePasswords.getPasswords\":\n      return { items: await Re.getPasswords(e.params.url, e.params.username) };"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.saveLogin",
+      "handler": {
+        "offset": 299301,
+        "line": 10096,
+        "text": "case \"Aside.applePasswords.saveLogin\":\n      return await Re.saveLogin(e.params.url, e.params.username, e.params.password);"
+      }
+    },
+    {
+      "method": "Aside.applePasswords.getOtps",
+      "handler": {
+        "offset": 299429,
+        "line": 10098,
+        "text": "case \"Aside.applePasswords.getOtps\":\n      return { items: await Re.getOtps(e.params.url) };"
+      }
+    }
+  ],
+  "daemonAnchors": [
+    {
+      "offset": 2964224,
+      "line": 947,
+      "text": "if(Cn.startsWith(`Aside.`)){let ti=await sendCommandToExtension({method:Cn,params:ei},{...ni.extensionBridge,signal:ri});if(ri?.aborted)throw createAbortError$2();return ti}await this.ensureConnected(),ni.beforeSend?.();let ii=this.#i;if(!ii||ii.readyState!==WebSocket.OPEN)throw Error(`CDP websocket is not connected`);let ai=this.#l++,oi={id"
+    },
+    {
+      "offset": 2980140,
+      "line": 947,
+      "text": "method:`runCommand`,command:Cn,route:{accountId:ti.accountId,profileId:ti.profileId,browserMode:ti.browserMode,...ei.windowId===void 0?{}:{windowId:ei.windowId}}},{resolve:ii,reject:ai,promise:oi}=Promise.withResolvers(),si=setTimeout(()=>{this.pendingCommandRequests.delete(ri.id),ei.logTimeout!="
+    },
+    {
+      "offset": 2980875,
+      "line": 947,
+      "text": "method:`cancelCommand`}),ai(createAbortError$1(ei.signal))}:void 0;if(ei.signal?.addEventLis"
+    }
+  ],
+  "agentAnchors": [
+    {
+      "offset": 299528,
+      "line": 10102,
+      "text": "var yy = As(new URL(\"/extension-bridge/extension\", Je).toString())"
+    },
+    {
+      "offset": 305947,
+      "line": 10260,
+      "text": "const u = Ne.runCommandMessageSchema.safeParse(s);\n    if (!u.success) {\n      const d = `Unsupported command: ${c.data.command.method}`;\n      return o({\n     "
+    },
+    {
+      "offset": 306237,
+      "line": 10271,
+      "text": "if (u.data.route.accountId !== l.accountId || u.data.route.profileId !== l.profileId || u.data.route.browserMode !== l.browserMode) {\n      o({\n        id: u.data.id,\n        result: null,\n        error: \"Extension bridge command was routed to the wrong browser profile or mode\"\n      });\n      return;\n    }\n    const f = new AbortController();\n    t"
+    },
+    {
+      "offset": 306643,
+      "line": 10282,
+      "text": "const d = await vy(u.data.command, f.signal, u.data.route);\n      o({\n        id: u.data.id,\n        result: d\n      });\n    } catch (d) {\n      o({\n        id: u.data.id,\n        result: null,\n        error: d instanceof Error ?"
+    },
+    {
+      "offset": 305716,
+      "line": 10255,
+      "text": "this.runningCommands.get(a.data.id)?.abort(/* @__PURE__ */ new Error(`Extension command cancelled: ${a.data.id}`));\n      return;\n    }\n    co"
+    }
+  ]
+}

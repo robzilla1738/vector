@@ -439,3 +439,7 @@ Corrected the production seam to preserve original DP=true/enclave/access-contro
 ### Experimental supplied webview proposal checkpoint
 
 Staged a private custom-element/Mojo/GuestContentsHandle adapter for the supplied experimental attachTab consumer, with exact component/profile checks, authenticated Vault revalidation and cancellation/lease cleanup. All staged patches apply in order to disposable copies and output hashes match; JSON parsing and one renderer boundary lifecycle fixture pass. Native C++/Mojo is uncompiled and unrun, underlying Chromium feature remains disabled, and tab-view restoration is unverified. This is not runtime or parity acceptance. Required daemon custom CDP implementation now takes priority. See docs/integration/provided-native-webview.md.
+
+### Supplied extension-command routing correction
+
+The exact pinned SEA's 24 Aside.* prefixes are extension-bridge commands, not missing native CDP methods. Static evidence traces pre-websocket cdp.send diversion, runCommand/cancelCommand route envelopes, actual Agent context-generation/account/profile/mode validation and all 29 full supplied handler cases. No duplicate native dispatch was added. Original handlers use real Chromium extension APIs, Vault peer messaging and existing native profile/notification calls. Audit tool, hashes/offsets/call-shape inventory and remaining native boundaries are in docs/integration/provided-extension-commands.md and its anchors JSON. Pure transform tests and static audit pass; actual loaded reused stack and OS behavior remain unverified.

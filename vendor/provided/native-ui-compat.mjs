@@ -16,7 +16,6 @@ export const unresolvedNativeCapabilities = Object.freeze([
   'dev.aux.blink.expose-wv',
   'dev.aux.ext.private.capture-tab-without-userinteraction',
   'dev.aux.ext.private.launch-extension',
-  'Aux CDP custom methods require matching supplied-runtime/native dispatch',
   'Native account gate requires supplied registry and authenticated Vault status',
 ]);
 
@@ -64,7 +63,7 @@ export function transformProvidedNativeUi({ component, path, text }) {
     // Current native MiniPopup has a distinct permission; the supplied actor uses it.
     replace('"dev.aux.ext.private.browserPreferences"', '"dev.aux.ext.private.browserPreferences",\n    "dev.aux.ext.private.miniPopup"', 'integration');
   }
-  // Rewrite literal wire-method names only. Product prose and numeric tables are untouched.
+  // Rewrite literal extension-command names only. Product prose and numeric tables are untouched.
   for (const method of new Set(text.match(/(?<=["'`])Aside\.[a-z][A-Za-z0-9_]*/g) ?? [])) {
     replace(method, `Aux.${method.slice('Aside.'.length)}`);
   }
