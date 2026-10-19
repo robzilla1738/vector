@@ -276,6 +276,7 @@ export function createAgentRouters(
       .input(
         sessionScope.extend({
           prompt: z.string().trim().min(1),
+          idempotencyKey: z.string().optional(),
           attachmentIds: z.array(z.string().uuid()).max(10).default([]),
         }),
       )
@@ -285,7 +286,7 @@ export function createAgentRouters(
           input.sessionId,
           input.prompt,
           'prompt',
-          undefined,
+          input.idempotencyKey,
           input.attachmentIds,
         ),
       ),
@@ -293,6 +294,7 @@ export function createAgentRouters(
       .input(
         sessionScope.extend({
           prompt: z.string().trim().min(1),
+          idempotencyKey: z.string().optional(),
           attachmentIds: z.array(z.string().uuid()).max(10).default([]),
         }),
       )
@@ -302,7 +304,7 @@ export function createAgentRouters(
           input.sessionId,
           input.prompt,
           'steering',
-          undefined,
+          input.idempotencyKey,
           input.attachmentIds,
         ),
       ),

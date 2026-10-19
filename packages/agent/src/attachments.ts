@@ -8,6 +8,7 @@ import { defaultModel } from './providers.js';
 import { type AgentStorage, fail } from './storage.js';
 
 export const attachmentInput = z.object({
+  idempotencyKey: z.string().uuid().optional(),
   fileName: z.string().min(1).max(255),
   mediaType: z.enum([
     'text/plain',
@@ -72,12 +73,29 @@ export class Attachments {
       bytes.length > 2 * 1024 * 1024
     )
       fail('BAD_REQUEST', 'Attachment must be canonical base64, at most 2 MiB');
+    const prior = data.idempotencyKey
+      ? (this.store.get(
+          accountId,
+          'sessionAttachments',
+          data.idempotencyKey,
+        ) as StoredAttachment | null)
+      : null;
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    if (prior) {
+      if (
+        prior.sessionId !== sessionId ||
+        prior.sha256 !== digest ||
+        prior.mediaType !== data.mediaType
+      )
+        fail('CONFLICT', 'Attachment upload identity was reused');
+      const { base64, ...metadata } = prior;
+      return metadata;
+    }
+    const existing = this.list(accountId, sessionId);
+    if (existing.length >= 100)
+      fail('PRECONDITION_FAILED', 'Session attachment limit reached');
     if (
-      this.list(accountId, sessionId).reduce(
-        (size, file) => size + file.size,
-        0,
-      ) +
-        bytes.length >
+      existing.reduce((size, file) => size + file.size, 0) + bytes.length >
       8 * 1024 * 1024
     )
       fail(
@@ -113,12 +131,12 @@ export class Attachments {
         'Attachment content does not match its declared media type',
       );
     const attachment: StoredAttachment = {
-      id: randomUUID(),
+      id: data.idempotencyKey ?? randomUUID(),
       sessionId,
       fileName: basename(data.fileName.replaceAll('\\', '/')),
       mediaType: data.mediaType,
       size: bytes.length,
-      sha256: createHash('sha256').update(bytes).digest('hex'),
+      sha256: digest,
       createdAt: Date.now(),
       base64: data.base64,
     };
