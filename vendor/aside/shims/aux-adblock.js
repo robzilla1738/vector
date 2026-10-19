@@ -334,5 +334,12 @@
     chrome.alarms.onAlarm.addListener(async (alarm) => {
       if (alarm.name === DAILY_ALARM && (await local.get(KEY_ENABLED, false))) await adblock.startSubscriptionUpdate();
     });
+
+    // Whole-page blocks (`$document` and `$all` rules) show Aux's interstitial instead of Chromium's error page.
+    chrome.webNavigation?.onErrorOccurred.addListener(async (details) => {
+      if (details.frameId !== 0 || details.error !== "net::ERR_BLOCKED_BY_CLIENT" || !/^https?:/.test(details.url)) return;
+      if (!(await local.get(KEY_ENABLED, false))) return;
+      chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL(`blocked.html?url=${encodeURIComponent(details.url)}`) }).catch(() => {});
+    });
   }
 })();

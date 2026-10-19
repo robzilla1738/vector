@@ -67,7 +67,10 @@ export function rebrandExtension(directory, name, patches) {
   }
 
   applyAuxArtwork(directory);
-  if (name === "agent-manager") addManifestPermissions(directory, ["declarativeNetRequest", "unlimitedStorage"]);
+  if (name === "agent-manager") {
+    addManifestPermissions(directory, ["declarativeNetRequest", "unlimitedStorage", "webNavigation"]);
+    installBlockedPage(directory);
+  }
   installPrivateApiShim(directory);
 }
 
@@ -103,6 +106,13 @@ function applyAuxArtwork(directory) {
       );
       if (next !== source) writeFileSync(path, next);
     }
+  }
+}
+
+/** Aux's version of Aside's "Page blocked" interstitial, shown for whole-page filter matches. */
+function installBlockedPage(directory) {
+  for (const [from, to] of [["aux-blocked.html", "blocked.html"], ["aux-blocked.js", "aux-blocked.js"]]) {
+    writeFileSync(join(directory, to), readFileSync(join(here, "../shims", from), "utf8"));
   }
 }
 
