@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "combined supplied profile/security plus native-surface-routes; these files otherwise disjoint",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+      "baselineSha256": "9171163d1f3ad0b3704c02f9be291b3b47a72cf38a0057af4e702bf81f36632a",
+      "outputSha256": "e664ae432d66ac3e2440120332b485b5acd253887eacf9eff85243e5a8aa1fd3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_native_task_feed.h",
+      "baselineSha256": "6bf87eb5786cf50994430ee07030f30ff741545ae12f42d7f9274cb8b976f69e",
+      "outputSha256": "e737675bdd561a6f972bad830aa846f27d4f40bf7d7bd5066e958ba6924c652c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+      "baselineSha256": "4d84e28ca328b7b65bf4b68fd6a2bc58b8d8dc629bbee2bcda43dd1c8f265f36",
+      "outputSha256": "d4cd857bca491992080700b3c217536d6121c6172b6da8acda4a381071d54b7a"
+    }
+  ]
+}

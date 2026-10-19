@@ -1,0 +1,414 @@
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.cc
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.cc
+@@ -18,8 +18,9 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/task/thread_pool.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "content/public/browser/storage_partition.h"
+@@ -50,18 +51,20 @@
+         policy_exception_justification: "Authenticated loopback transport only."
+       })");
+
++uint16_t DaemonPort() {
++  if (auto value = base::Environment::Create()->GetVar("AUX_PORT")) {
++    unsigned parsed = 0;
++    return base::StringToUint(*value, &parsed) && parsed > 0 && parsed <= 65535
++               ? static_cast<uint16_t>(parsed)
++               : 0;
++  }
++  return 21520;
++}
++
+ GURL DaemonUrl(const std::string& path) {
+-  int port = 21520;
+-  if (auto value = base::Environment::Create()->GetVar("AUX_PORT")) {
+-    int parsed = 0;
+-    if (base::StringToInt(*value, &parsed) && parsed > 0 && parsed <= 65535)
+-      port = parsed;
+-  }
+-  return GURL("http://127.0.0.1:" + base::NumberToString(port) + path);
+-}
+-
+-aux::ProfileSecurityState ResolveProfileSecurity(const base::FilePath& profile_path) {
+-  return aux::ReadProfileSecurity(aux::StateHome(), profile_path);
++  const auto port = DaemonPort();
++  return port ? GURL("http://127.0.0.1:" + base::NumberToString(port) + path)
++              : GURL();
+ }
+
+ bool ValidIdentity(const std::string& id) {
+@@ -91,26 +94,37 @@
+   if (const auto* pending = row->FindDict("popover")) {
+     const auto* pending_id = pending->FindString("id");
+     const auto* kind = pending->FindString("kind");
+-    const auto* request = pending->FindDict("request");
+-    if (!pending_id || !ValidIdentity(*pending_id) || !kind || !request)
++    const auto* title = pending->FindString("title");
++    const auto* detail = pending->FindString("body");
++    const auto* actions = pending->FindList("actions");
++    if (!pending_id || !ValidIdentity(*pending_id) || !kind || !title ||
++        !detail || title->size() > 8192 || detail->size() > 32768 || !actions ||
++        actions->empty() || actions->size() > 2 ||
++        (*kind != "permission-approval" && *kind != "draft-approval" &&
++         *kind != "ask-user-question"))
++      return std::nullopt;
++    std::vector<std::string> action_ids;
++    for (const auto& value : *actions) {
++      const auto* row = value.GetIfDict();
++      const auto* id = row ? row->FindString("id") : nullptr;
++      if (!id || std::ranges::contains(action_ids, *id))
++        return std::nullopt;
++      action_ids.push_back(*id);
++    }
++    if ((*kind == "permission-approval" &&
++         (action_ids.size() != 2 ||
++          !std::ranges::contains(action_ids, "approve") ||
++          !std::ranges::contains(action_ids, "deny"))) ||
++        (*kind == "draft-approval" &&
++         action_ids != std::vector<std::string>{"review"}) ||
++        (*kind == "ask-user-question" &&
++         action_ids != std::vector<std::string>{"answer"}))
+       return std::nullopt;
+     AuxNativeTask::PendingAction action;
+     action.id = *pending_id;
+     action.kind = *kind;
+-    if (const auto* label = request->FindString("title"))
+-      action.title = base::UTF8ToUTF16(*label);
+-    else
+-      action.title = *kind == "ask-user-question" ? u"A detail is needed"
+-                                                : u"Allow this action?";
+-    if (const auto* message = request->FindString("message"))
+-      action.detail = base::UTF8ToUTF16(*message);
+-    if (const auto* operation = request->Find("operation")) {
+-      auto json = base::WriteJson(*operation);
+-      if (json)
+-        action.detail += u"\n\n" + base::UTF8ToUTF16(*json);
+-    }
+-    if (action.detail.size() > 32768)
+-      return std::nullopt;
++    action.title = base::UTF8ToUTF16(*title);
++    action.detail = base::UTF8ToUTF16(*detail);
+     task.pending_action = std::move(action);
+   }
+   return task;
+@@ -144,12 +158,8 @@
+     return;
+   }
+   refresh_pending_ = true;
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&ResolveProfileSecurity,
+-                     profile_->GetOriginalProfile()->GetPath()),
+-      base::BindOnce(&AuxNativeTaskFeed::OnAccountResolved,
+-                     weak_factory_.GetWeakPtr()));
++  VerifySecurity(base::BindOnce(&AuxNativeTaskFeed::OnAccountResolved,
++                                weak_factory_.GetWeakPtr()));
+ }
+
+ void AuxNativeTaskFeed::OnAccountResolved(aux::ProfileSecurityState security) {
+@@ -172,72 +182,35 @@
+                                      weak_factory_.GetWeakPtr()));
+ }
+
++void AuxNativeTaskFeed::VerifySecurity(
++    base::OnceCallback<void(aux::ProfileSecurityState)> callback) {
++  const auto authorization = aux::BrowserPlatform::Get().authorization();
++  aux::FetchProfileSecurity(
++      aux::StateHome(), profile_->GetOriginalProfile()->GetPath(),
++      profile_->GetDefaultStoragePartition()
++          ->GetURLLoaderFactoryForBrowserProcess(),
++      DaemonPort(), authorization,
++      base::BindOnce(
++          [](base::WeakPtr<AuxNativeTaskFeed> self, std::string authorization,
++             base::OnceCallback<void(aux::ProfileSecurityState)> callback,
++             aux::ProfileSecurityState state) {
++            if (!self)
++              return;
++            if (authorization != aux::BrowserPlatform::Get().authorization()) {
++              state.configured = false;
++              state.locked = true;
++              state.error = "Local daemon authorization changed. Reopen Aux.";
++            }
++            std::move(callback).Run(std::move(state));
++          },
++          weak_factory_.GetWeakPtr(), authorization, std::move(callback)));
++}
++
+ void AuxNativeTaskFeed::EnsureAuthorization(AuthCallback callback) {
+-  if (!authorization_.empty() &&
+-      base::TimeTicks::Now() < authorization_expiry_) {
+-    std::move(callback).Run(true);
+-    return;
+-  }
+-  authorization_.clear();
+-  Load(DaemonUrl("/auth/daemon/challenge?clientKind=chromium"), std::nullopt,
+-       base::BindOnce(&AuxNativeTaskFeed::OnChallenge,
+-                      weak_factory_.GetWeakPtr(), std::move(callback)));
+-}
+-
+-void AuxNativeTaskFeed::OnChallenge(AuthCallback callback,
+-                                   std::optional<std::string> body,
+-                                   int status) {
+-  auto challenge = body && status == 200
+-                       ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+-                       : std::nullopt;
+-  const auto* id = challenge ? challenge->FindString("challengeId") : nullptr;
+-  const auto* bytes = challenge ? challenge->FindString("challenge") : nullptr;
+-  if (!id || id->empty() || !bytes || bytes->empty()) {
+-    std::move(callback).Run(false);
+-    return;
+-  }
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce([](std::string challenge) {
+-        return aux::SignDaemonChallenge(aux::StateHome(), challenge);
+-      }, *bytes),
+-      base::BindOnce(&AuxNativeTaskFeed::OnSigned,
+-                     weak_factory_.GetWeakPtr(), std::move(callback), *id));
+-}
+-
+-void AuxNativeTaskFeed::OnSigned(AuthCallback callback,
+-                                std::string challenge_id,
+-                                std::optional<std::string> signature) {
+-  if (!signature) {
+-    std::move(callback).Run(false);
+-    return;
+-  }
+-  base::DictValue input;
+-  input.Set("challengeId", challenge_id);
+-  input.Set("signedChallenge", *signature);
+-  Load(DaemonUrl("/auth/daemon/session"), base::WriteJson(input),
+-       base::BindOnce(&AuxNativeTaskFeed::OnAuthorized,
+-                      weak_factory_.GetWeakPtr(), std::move(callback)));
+-}
+-
+-void AuxNativeTaskFeed::OnAuthorized(AuthCallback callback,
+-                                    std::optional<std::string> body,
+-                                    int status) {
+-  auto session = body && status == 200
+-                     ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+-                     : std::nullopt;
+-  const auto* token = session ? session->FindString("access_token") : nullptr;
+-  const auto* type = session ? session->FindString("token_type") : nullptr;
+-  const auto expires = session ? session->FindInt("expiresInSeconds")
+-                               : std::nullopt;
+-  if (!token || token->empty() || !type || *type != "AuxDaemonSessionToken" ||
+-      !expires || *expires <= 60 || *expires > 86400) {
+-    std::move(callback).Run(false);
+-    return;
+-  }
+-  authorization_ = "AuxDaemonSessionToken " + *token;
+-  authorization_expiry_ = base::TimeTicks::Now() + base::Seconds(*expires - 60);
+-  std::move(callback).Run(true);
++  // The browser supervisor owns the original supplied challenge/token contract.
++  // Reuse its live authorization rather than maintain a second protocol client.
++  authorization_ = aux::BrowserPlatform::Get().authorization();
++  std::move(callback).Run(!authorization_.empty());
+ }
+
+ GURL AuxNativeTaskFeed::AccountUrl(const std::string& path) const {
+@@ -277,9 +250,26 @@
+       tasks.push_back(std::move(*task));
+     }
+   }
+-  refresh_pending_ = false;
+-  snapshot_ = Snapshot{.state = State::kReady, .tasks = std::move(tasks)};
+-  updated_.Run(snapshot_);
++  VerifySecurity(base::BindOnce(
++      [](base::WeakPtr<AuxNativeTaskFeed> self, std::optional<int> account_id,
++         std::vector<AuxNativeTask> tasks, aux::ProfileSecurityState state) {
++        if (!self)
++          return;
++        if (!state.allows_browsing() || state.account_id != account_id ||
++            self->account_id_ != account_id) {
++          self->account_id_.reset();
++          self->snapshot_ = Snapshot{
++              .state = State::kUnbound,
++              .error =
++                  u"Unlock this browser profile before loading its tasks."};
++        } else {
++          self->snapshot_ =
++              Snapshot{.state = State::kReady, .tasks = std::move(tasks)};
++        }
++        self->refresh_pending_ = false;
++        self->updated_.Run(self->snapshot_);
++      },
++      weak_factory_.GetWeakPtr(), account_id_, std::move(tasks)));
+ }
+
+ void AuxNativeTaskFeed::Fail(std::u16string error) {
+@@ -301,10 +291,7 @@
+     std::move(callback).Run(u"This task action is unavailable for this profile.");
+     return;
+   }
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&ResolveProfileSecurity,
+-                     profile_->GetOriginalProfile()->GetPath()),
++  VerifySecurity(
+       base::BindOnce(
+           [](base::WeakPtr<AuxNativeTaskFeed> self, std::string task_id,
+              std::string action, base::DictValue body, ActionCallback callback,
+@@ -319,7 +306,8 @@
+             }
+             self->DispatchAction(task_id, action, std::move(body),
+                                  std::move(callback));
+-          }, weak_factory_.GetWeakPtr(), task_id, action, std::move(body),
++          },
++          weak_factory_.GetWeakPtr(), task_id, action, std::move(body),
+           std::move(callback)));
+ }
+
+@@ -338,9 +326,22 @@
+           std::move(callback).Run(u"Reconnect this profile before trying again.");
+           return;
+         }
++        std::string path = "/session/for-chrome/" + task_id + "/" + action;
++        if (action == "resolve-popover") {
++          const auto* decision = body.FindString("action");
++          const auto* popover = body.FindString("popoverId");
++          if (!decision || (*decision != "approve" && *decision != "deny") ||
++              !popover || !ValidIdentity(*popover)) {
++            std::move(callback).Run(u"This approval action is invalid.");
++            return;
++          }
++          body.Set("actionId", *decision);
++          body.Set("sessionId", task_id);
++          body.Remove("action");
++          path = "/session/for-chrome/resolve-popover-action";
++        }
+         self->Load(
+-            self->AccountUrl("/session/for-chrome/" + task_id + "/" + action),
+-            base::WriteJson(body),
++            self->AccountUrl(path), base::WriteJson(body),
+             base::BindOnce(
+                 [](base::WeakPtr<AuxNativeTaskFeed> self,
+                    ActionCallback callback, std::optional<std::string> body,
+@@ -366,6 +367,7 @@
+   auto request = std::make_unique<network::ResourceRequest>();
+   request->url = url;
+   request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->redirect_mode = network::mojom::RedirectMode::kError;
+   request->headers.SetHeader("Cache-Control", "no-store");
+   if (!authorization_.empty())
+     request->headers.SetHeader("Authorization", authorization_);
+@@ -399,7 +401,6 @@
+             self->loaders_.erase(request);
+             if (status == 401) {
+               self->authorization_.clear();
+-              self->authorization_expiry_ = base::TimeTicks();
+             }
+             std::move(callback).Run(std::move(body), status);
+           },
+@@ -410,14 +411,11 @@
+ void AuxNativeTaskFeed::RequestAgentTabs(AgentTabsOperation operation,
+                                         base::DictValue input,
+                                         AgentTabsCallback callback) {
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&ResolveProfileSecurity,
+-                     profile_->GetOriginalProfile()->GetPath()),
++  VerifySecurity(
+       base::BindOnce(
+-          [](base::WeakPtr<AuxNativeTaskFeed> self, AgentTabsOperation operation,
+-             base::DictValue input, AgentTabsCallback callback,
+-             aux::ProfileSecurityState security) {
++          [](base::WeakPtr<AuxNativeTaskFeed> self,
++             AgentTabsOperation operation, base::DictValue input,
++             AgentTabsCallback callback, aux::ProfileSecurityState security) {
+             if (!self)
+               return;
+             if (!security.allows_browsing()) {
+@@ -470,6 +468,7 @@
+                         std::move(callback).Run(std::move(body), std::nullopt);
+                       }, std::move(callback)));
+                 }, self, operation, std::move(input), std::move(callback)));
+-          }, weak_factory_.GetWeakPtr(), operation, std::move(input),
++          },
++          weak_factory_.GetWeakPtr(), operation, std::move(input),
+           std::move(callback)));
+ }
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.h
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.h
+@@ -93,15 +93,8 @@
+                       ActionCallback callback);
+   void OnAccountResolved(aux::ProfileSecurityState security);
+   void EnsureAuthorization(AuthCallback callback);
+-  void OnChallenge(AuthCallback callback,
+-                   std::optional<std::string> body,
+-                   int status);
+-  void OnSigned(AuthCallback callback,
+-                std::string challenge_id,
+-                std::optional<std::string> signature);
+-  void OnAuthorized(AuthCallback callback,
+-                    std::optional<std::string> body,
+-                    int status);
++  void VerifySecurity(
++      base::OnceCallback<void(aux::ProfileSecurityState)> callback);
+   void FetchTasks(bool authorized);
+   void OnTasks(std::optional<std::string> body, int status);
+   void Load(const GURL& url,
+@@ -118,7 +111,6 @@
+   uint64_t next_request_id_ = 0;
+   std::optional<int> account_id_;
+   std::string authorization_;
+-  base::TimeTicks authorization_expiry_;
+   bool refresh_pending_ = false;
+   base::WeakPtrFactory<AuxNativeTaskFeed> weak_factory_{this};
+ };
+--- a/chrome/browser/ui/views/frame/aux_task_review_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_task_review_bubble.cc
+@@ -66,25 +66,28 @@
+   error_label_->SetVisible(false);
+
+   if (task_.pending_action &&
+-      (task_.pending_action->kind == "approval" ||
+-       task_.pending_action->kind == "action-confirmation")) {
++      task_.pending_action->kind == "permission-approval") {
+     auto* actions = contents->AddChildView(std::make_unique<views::View>());
+     actions->SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kHorizontal, gfx::Insets(), 8));
+     deny_ = actions->AddChildView(std::make_unique<views::MdTextButton>(
+         base::BindRepeating(&AuxTaskReviewBubble::Decide,
+-                            weak_factory_.GetWeakPtr(), false), u"Decline"));
++                            weak_factory_.GetWeakPtr(), false),
++        u"Deny"));
+     allow_ = actions->AddChildView(std::make_unique<views::MdTextButton>(
+         base::BindRepeating(&AuxTaskReviewBubble::Decide,
+                             weak_factory_.GetWeakPtr(), true),
+-        task_.pending_action->kind == "approval" ? u"Allow once" : u"Confirm"));
++        u"Approve"));
+     allow_->SetStyle(ui::ButtonStyle::kProminent);
+   }
+   contents->AddChildView(std::make_unique<views::MdTextButton>(
+       base::BindRepeating(&AuxTaskReviewBubble::OpenConversation,
+                           weak_factory_.GetWeakPtr()),
+       task_.pending_action && task_.pending_action->kind == "ask-user-question"
+-          ? u"Answer in conversation" : u"Open conversation"));
++          ? u"Answer"
++      : task_.pending_action && task_.pending_action->kind == "draft-approval"
++          ? u"Review"
++          : u"Open conversation"));
+ }
+
+ AuxTaskReviewBubble::~AuxTaskReviewBubble() = default;
+@@ -105,7 +108,7 @@
+
+ void AuxTaskReviewBubble::OnResolved(std::optional<std::u16string> error) {
+   if (!error) {
+-    GetWidget()->CloseWithReason(views::Widget::ClosedReason::kAcceptButtonClicked);
++    OpenConversation();
+     return;
+   }
+   allow_->SetEnabled(true);
+@@ -121,4 +124,3 @@
+   if (GetWidget())
+     GetWidget()->Close();
+ }
+-
