@@ -1,0 +1,946 @@
+From: Aux clean-room build
+Subject: [PATCH 0089] Native profile bootstrap visibility gate and extension new-tab preload
+
+Specs: docs/spec/native/platform.md P3/P5; native/apis-core.md A1/A4.
+Independent path identities and owner-only local security metadata.
+
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -883,6 +883,7 @@
+   }
+ 
+   deps = [
++    "//chrome/browser/aux:profile_gate",
+     ":active_use_util",
+     ":after_startup_task_utils",
+     ":bad_message",
+@@ -2057,6 +2058,7 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/aux:profile_gate",
+     ":bad_message",
+     ":browser_features",
+     ":browser_process",
+diff --git a/chrome/browser/aux/BUILD.gn b/chrome/browser/aux/BUILD.gn
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -20,3 +20,20 @@
+   sources = [ "auth_probe.cc" ]
+   deps = [ ":platform", "//base", "//crypto", "//net" ]
+ }
++
++source_set("profile_state") {
++ sources = [ "profile_state.cc", "profile_state.h" ]
++ public_deps = [ "//base" ]
++ deps = [ "//crypto" ]
++}
++
++source_set("profile_gate") {
++  sources = [ "profile_gate.cc", "profile_gate.h" ]
++  deps = [ ":platform", ":profile_state", "//base", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/lifetime", "//chrome/browser/net", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//content/public/browser", "//extensions/browser", "//extensions/common", "//net", "//services/network/public/cpp", "//ui/base", "//ui/display", "//ui/views", "//ui/views/controls/webview" ]
++}
++
++executable("profile_state_probe") {
++ testonly = true
++ sources = [ "profile_state_probe.cc" ]
++ deps = [ ":profile_state", "//base" ]
++}
+diff --git a/chrome/browser/aux/daemon_supervisor.cc b/chrome/browser/aux/daemon_supervisor.cc
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -52,6 +52,12 @@
+   options.environment["AUX_PORT"] = base::NumberToString(port);
+   options.environment["AUX_BROWSER_PID"] =
+       base::NumberToString(base::GetCurrentProcId());
++  options.environment["AUX_IMPORTER_PATH"] =
++      paths.root
++          .AppendASCII(
++              "apps/password-importer/Aux Password "
++              "Importer.app/Contents/MacOS/aux-password-importer")
++          .value();
+   options.environment["AUX_HELPER_PATH"] =
+       paths.root
+           .AppendASCII(
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -54,6 +54,7 @@
+ #include "chrome/browser/metrics/shutdown_watcher_helper.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
+ #include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/performance_manager/public/chrome_browser_main_extra_parts_performance_manager.h"
+ #include "chrome/browser/performance_monitor/chrome_browser_main_extra_parts_performance_monitor.h"
+ #include "chrome/browser/policy/chrome_browser_policy_connector.h"
+@@ -2248,6 +2249,7 @@
+ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   // Keep networking and the UI task runner alive until owned daemon shutdown.
++  aux::ShutdownProfileGates();
+   aux::BrowserPlatform::Get().Shutdown();
+ #endif
+   TRACE_EVENT_END("toplevel", perfetto::Track::FromPointer(this));
+diff --git a/chrome/browser/extensions/api/aux_account/BUILD.gn b/chrome/browser/extensions/api/aux_account/BUILD.gn
+--- a/chrome/browser/extensions/api/aux_account/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_account/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_account") {
+   sources = [ "aux_account_api.cc", "aux_account_api.h" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+-  deps = [ "//base", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
++  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
+ }
+ 
+ source_set("headers") {
+diff --git a/chrome/browser/extensions/api/aux_account/aux_account_api.cc b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -12,6 +12,7 @@
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+@@ -29,7 +30,7 @@
+   for (auto* entry : manager->GetProfileAttributesStorage()
+                          .GetAllProfilesAttributesSortedForDisplay()) {
+     base::DictValue profile;
+-    profile.Set("profileId", entry->GetPath().BaseName().value());
++    profile.Set("profileId", aux::ProfileIdForPath(entry->GetPath()));
+     profile.Set("profilePath", entry->GetPath().value());
+     profile.Set("profileIndex", index++);
+     profile.Set("name", base::UTF16ToUTF8(entry->GetLocalProfileName()));
+@@ -40,59 +41,19 @@
+   return result;
+ }
+ base::ListValue ReadSecurity(base::FilePath home, base::ListValue profiles) {
+-  std::string text;
+-  std::optional<base::DictValue> registry;
+-  if (base::ReadFileToStringWithMaxSize(home.AppendASCII("accounts.json"),
+-                                        &text, 4 * 1024 * 1024)) {
+-    registry = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+-  }
+-  const auto* bindings =
+-      registry ? registry->FindList("profileBindings") : nullptr;
+   for (auto& value : profiles) {
+-    auto& profile = value.GetDict();
+-    profile.Set("isLocked", true);
+-    profile.Set("configured", false);
+-    const auto* path = profile.FindString("profilePath");
+-    const auto* id = profile.FindString("profileId");
+-    if (!bindings || !path || !id) {
++    auto& row = value.GetDict();
++    const auto* path = row.FindString("profilePath");
++    if (!path) {
+       continue;
+     }
+-    for (const auto& candidate : *bindings) {
+-      if (!candidate.is_dict()) {
+-        continue;
+-      }
+-      const auto& binding = candidate.GetDict();
+-      const auto* bound_path = binding.FindString("profilePath");
+-      const auto* bound_id = binding.FindString("profileId");
+-      const auto account = binding.FindInt("accountId");
+-      if (!account || *account < 0 || !bound_path || *bound_path != *path ||
+-          !bound_id || *bound_id != *id) {
+-        continue;
+-      }
+-      profile.Set("accountId", *account);
+-      const auto security_path =
+-          home.AppendASCII("u")
+-              .AppendASCII(base::NumberToString(*account))
+-              .AppendASCII("security-state.json");
+-      int permissions = 0;
+-      if (base::IsLink(security_path) ||
+-          !base::GetPosixFilePermissions(security_path, &permissions) ||
+-          (permissions & 0077) ||
+-          !base::ReadFileToStringWithMaxSize(security_path, &text, 16384)) {
+-        break;
+-      }
+-      auto security = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+-      if (!security || security->FindInt("version") != 1 ||
+-          security->FindInt("accountId") != account ||
+-          !security->FindBool("configured") || !security->FindBool("locked") ||
+-          !security->FindDouble("updatedAt")) {
+-        break;
+-      }
+-      const bool configured = security->FindBool("configured").value_or(false);
+-      profile.Set("configured", configured);
+-      profile.Set("isLocked",
+-                  !configured || security->FindBool("locked").value_or(true));
+-      break;
++    const auto security = aux::ReadProfileSecurity(home, base::FilePath(*path));
++    row.Set("profileId", aux::ProfileIdForPath(base::FilePath(*path)));
++    row.Set("isLocked", !security.allows_browsing());
++    row.Set("configured", security.configured);
++    row.Set("onboardingComplete", security.onboarding_complete);
++    if (security.account_id) {
++      row.Set("accountId", *security.account_id);
+     }
+   }
+   return profiles;
+diff --git a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -72,6 +72,7 @@
+ }  // namespace
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(kVibrancy, true);
++  registry->RegisterBooleanPref("aux.browser.preload_new_tab", true);
+   registry->RegisterStringPref(kInsertion, "bottom");
+   registry->RegisterBooleanPref(kShrink, true);
+   registry->RegisterBooleanPref(kMru, true);
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_mini_popup") {
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+-  deps = [ "//base", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
++  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/views", "//ui/views/controls/webview" ]
+   frameworks = [ "AppKit.framework", "QuartzCore.framework" ]
+ }
+ 
+diff --git a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -10,6 +10,7 @@
+ #include "base/timer/timer.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/extensions/api/aux_account/aux_account_api.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -50,7 +51,7 @@
+ base::ListValue ProfileIdentity(Profile* profile) {
+   base::DictValue row;
+   row.Set("profileId",
+-          profile->GetOriginalProfile()->GetPath().BaseName().value());
++          aux::ProfileIdForPath(profile->GetOriginalProfile()->GetPath()));
+   row.Set("profilePath", profile->GetOriginalProfile()->GetPath().value());
+   base::ListValue result;
+   result.Append(std::move(row));
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -832,6 +832,7 @@
+   ]
+ 
+   deps = [
++    "//chrome/browser/aux:profile_gate",
+     "//chrome/browser/aux:platform",
+     "//chrome/browser/aux:profile_state",
+     ":browser_element_identifiers",
+diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
+--- a/chrome/browser/ui/navigator/browser_navigator.cc
++++ b/chrome/browser/ui/navigator/browser_navigator.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/aux/profile_gate.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -947,6 +948,17 @@
+ 
+   base::WeakPtr<content::NavigationHandle> navigation_handle;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!contents_to_navigate_or_insert && !params->contents_to_insert &&
++      !params->opener && !params->post_data && params->extra_headers.empty() &&
++      (params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
++       params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB ||
++       params->disposition == WindowOpenDisposition::NEW_WINDOW)) {
++    params->contents_to_insert = aux::TakePreloadedNewTab(params->browser->GetProfile(), params->url);
++    contents_to_navigate_or_insert = params->contents_to_insert.get();
++  }
++#endif
++
+   std::unique_ptr<tabs::TabModel> tab_to_insert;
+   if (params->contents_to_insert) {
+     tab_to_insert =
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/aux/profile_gate.h"
++#include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
+ #include "chrome/browser/ui/performance/native_performance.h"
+ 
+ #include <stdint.h>
+@@ -1624,6 +1626,9 @@
+ // BrowserView, BrowserWindow implementation:
+ 
+ void BrowserView::Show() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
++#endif
+   // Attempts to show closed windows should no-op.
+   if (browser_widget_->IsClosed()) {
+     return;
+@@ -1689,6 +1694,9 @@
+ }
+ 
+ void BrowserView::ShowInactive() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
++#endif
+   if (!browser_widget_->IsVisible()) {
+     browser_widget_->ShowInactive();
+   }
+diff --git a/chrome/browser/aux/profile_gate.h b/chrome/browser/aux/profile_gate.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/profile_gate.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PROFILE_GATE_H_
++#define CHROME_BROWSER_AUX_PROFILE_GATE_H_
++#include <memory>
++
++#include "base/functional/callback.h"
++class Profile;
++class GURL;
++namespace content {
++class WebContents;
++}
++namespace aux {
++// UI-sequence visibility guard. First call starts authenticated binding and an
++// asynchronous account-state read; pending and invalid state deny visibility.
++bool CanShowBrowser(
++    Profile* profile,
++    base::RepeatingCallback<void(content::WebContents*)> initialize_tab = {});
++std::unique_ptr<content::WebContents> TakePreloadedNewTab(Profile* profile,
++                                                          const GURL& url);
++void ShutdownProfileGates();
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/profile_gate.cc b/chrome/browser/aux/profile_gate.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -0,0 +1,382 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Native first-window bootstrap: native/platform.md P3/P5.
++#include "chrome/browser/aux/profile_gate.h"
++
++#include <map>
++
++#include "base/environment.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/memory/weak_ptr.h"
++#include "base/no_destructor.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/lifetime/application_lifetime.h"
++#include "chrome/browser/net/system_network_context_manager.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "extensions/common/extension.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "ui/base/base_window.h"
++#include "ui/display/display.h"
++#include "ui/display/screen.h"
++#include "ui/views/controls/webview/webview.h"
++#include "ui/views/widget/widget.h"
++#include "ui/views/widget/widget_delegate.h"
++#include "ui/views/widget/widget_observer.h"
++namespace aux {
++namespace {
++constexpr auto kBindingAnnotation = net::DefineNetworkTrafficAnnotation(
++    "aux_profile_binding",
++    R"(semantics {sender:"Aux browser profile gate" description:"Bind the actual local Chromium profile to its independently managed local Aux account before allowing browser windows." trigger:"First window for a local profile." data:"Local profile identity/path/index and ephemeral installation authorization." destination:LOCAL} policy {cookies_allowed:NO setting:"Required local Aux profile setup." policy_exception_justification:"Local browser-owned daemon only."})");
++class ProfileGate final : public ProfileObserver,
++                          public extensions::ExtensionRegistryObserver,
++                          public views::WidgetObserver,
++                          public content::WebContentsObserver {
++ public:
++  explicit ProfileGate(
++      Profile* profile,
++      base::RepeatingCallback<void(content::WebContents*)> initialize_tab)
++      : initialize_tab_(std::move(initialize_tab)),
++        profile_(profile->GetWeakPtr()) {
++    pref_observer_.Init(profile->GetPrefs());
++    pref_observer_.Add(
++        "aux.browser.preload_new_tab",
++        base::BindRepeating(&ProfileGate::PreloadPreferenceChanged,
++                            weak_.GetWeakPtr()));
++    profile_observer_.Observe(profile);
++    extension_observer_.Observe(extensions::ExtensionRegistry::Get(profile));
++    Bind();
++  }
++  ~ProfileGate() override {
++    ClearPreload();
++    CloseBootstrap();
++  }
++  void SetInitializer(
++      base::RepeatingCallback<void(content::WebContents*)> callback) {
++    if (callback) {
++      initialize_tab_ = std::move(callback);
++    }
++  }
++  std::unique_ptr<content::WebContents> Take(const GURL& url) {
++    if (!allowed() || !preloaded_ || !preload_ready_ ||
++        (url != GURL("chrome://newtab/") && url != NewTabURL())) {
++      return nullptr;
++    }
++    Observe(nullptr);
++    preload_ready_ = false;
++    if (auto* entry = preloaded_->GetController().GetLastCommittedEntry()) {
++      entry->SetVirtualURL(GURL("chrome://newtab/"));
++    }
++    auto result = std::move(preloaded_);
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(&ProfileGate::WarmNewTab, weak_.GetWeakPtr()));
++    return result;
++  }
++  bool has_profile() const { return profile_ != nullptr; }
++  bool allowed() const {
++    return allowed_ && profile_ &&
++           extensions::ExtensionRegistry::Get(profile_.get())
++               ->enabled_extensions()
++               .Contains(kAgentExtensionId);
++  }
++
++ private:
++  GURL NewTabURL() const {
++    return GURL("chrome-extension://" + std::string(kAgentExtensionId) +
++                "/index.html");
++  }
++  void ClearPreload() {
++    Observe(nullptr);
++    preloaded_.reset();
++    preload_ready_ = false;
++  }
++  void WarmNewTab() {
++    if (!allowed() || preloaded_ || !initialize_tab_ ||
++        !profile_->GetPrefs()->GetBoolean("aux.browser.preload_new_tab")) {
++      return;
++    }
++    content::WebContents::CreateParams params(profile_.get());
++    params.initially_hidden = true;
++    preloaded_ = content::WebContents::Create(params);
++    initialize_tab_.Run(preloaded_.get());
++    Observe(preloaded_.get());
++    preloaded_->GetController().LoadURL(NewTabURL(), content::Referrer(),
++                                        ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
++                                        std::string());
++  }
++  void PreloadPreferenceChanged() {
++    ClearPreload();
++    WarmNewTab();
++  }
++  void DidStopLoading() override {
++    auto* entry = preloaded_
++                      ? preloaded_->GetController().GetLastCommittedEntry()
++                      : nullptr;
++    preload_ready_ = entry &&
++                     entry->GetPageType() == content::PAGE_TYPE_NORMAL &&
++                     preloaded_->GetLastCommittedURL() == NewTabURL();
++  }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    preload_ready_ = false;
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(&ProfileGate::ClearPreload, weak_.GetWeakPtr()));
++  }
++
++  void Bind() {
++    if (!profile_ || profile_->IsOffTheRecord()) {
++      Refresh();
++      return;
++    }
++    const auto& path = profile_->GetPath();
++    base::DictValue identity;
++    identity.Set("profileId", ProfileIdForPath(path));
++    identity.Set("profilePath", path.value());
++    int index = 0;
++    for (auto* entry : g_browser_process->profile_manager()
++                           ->GetProfileAttributesStorage()
++                           .GetAllProfilesAttributesSortedForDisplay()) {
++      if (entry->GetPath() == path) {
++        identity.Set("profileIndex", index);
++        break;
++      }
++      ++index;
++    }
++    uint16_t port = 21520;
++    if (auto text = base::Environment::Create()->GetVar("AUX_PORT")) {
++      unsigned number = 0;
++      if (!base::StringToUint(*text, &number) || number == 0 ||
++          number > 65535) {
++        Refresh();
++        return;
++      }
++      port = number;
++    }
++    auto request = std::make_unique<network::ResourceRequest>();
++    request->url = GURL("http://127.0.0.1:" + base::NumberToString(port) +
++                        "/accounts/profile-binding");
++    request->method = "POST";
++    request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++    request->redirect_mode = network::mojom::RedirectMode::kError;
++    request->headers.SetHeader("Authorization",
++                               BrowserPlatform::Get().authorization());
++    loader_ = network::SimpleURLLoader::Create(std::move(request),
++                                               kBindingAnnotation);
++    loader_->SetTimeoutDuration(base::Seconds(5));
++    loader_->AttachStringForUpload(base::WriteJson(identity).value_or("{}"),
++                                   "application/json");
++    loader_->DownloadToString(
++        g_browser_process->system_network_context_manager()
++            ->GetSharedURLLoaderFactory()
++            .get(),
++        base::BindOnce(&ProfileGate::DidBind, weak_.GetWeakPtr()), 65536);
++  }
++  void DidBind(std::optional<std::string>) {
++    loader_.reset();
++    Refresh();
++  }
++  void Refresh() {
++    if (!profile_ || reading_) {
++      return;
++    }
++    reading_ = true;
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadProfileSecurity, StateHome(),
++                       profile_->GetOriginalProfile()->GetPath()),
++        base::BindOnce(&ProfileGate::DidRead, weak_.GetWeakPtr()));
++  }
++  void DidRead(ProfileSecurityState state) {
++    reading_ = false;
++    if (!profile_) {
++      return;
++    }
++    const bool was_allowed = allowed_;
++    const bool extension_ready =
++        extensions::ExtensionRegistry::Get(profile_.get())
++            ->enabled_extensions()
++            .Contains(kAgentExtensionId);
++    allowed_ = state.allows_browsing() && extension_ready;
++    if (!allowed_) {
++      ClearPreload();
++      for (auto* browser : GetAllBrowserWindowInterfaces()) {
++        if (browser->GetProfile()->GetOriginalProfile() ==
++            profile_->GetOriginalProfile()) {
++          browser->GetWindow()->Hide();
++        }
++      }
++      if (extension_ready) {
++        ShowBootstrap(state.configured && state.onboarding_complete
++                          ? "/unlock"
++                          : "/onboarding");
++      }
++    } else {
++      CloseBootstrap();
++      WarmNewTab();
++      if (!was_allowed) {
++        for (auto* browser : GetAllBrowserWindowInterfaces()) {
++          if (browser->GetProfile() == profile_.get()) {
++            browser->GetWindow()->Show();
++          }
++        }
++      }
++    }
++    timer_.Start(FROM_HERE, base::Milliseconds(500),
++                 base::BindOnce(&ProfileGate::Refresh, weak_.GetWeakPtr()));
++  }
++  void ShowBootstrap(std::string route) {
++    if (widget_ && !widget_->IsClosed() && route_ == route) {
++      return;
++    }
++    CloseBootstrap();
++    route_ = std::move(route);
++    delegate_ = std::make_unique<views::WidgetDelegate>();
++    delegate_->SetTitle(u"Aux setup");
++    auto webview = std::make_unique<views::WebView>(profile_.get());
++    auto* contents = webview.get();
++    delegate_->SetContentsView(std::move(webview));
++    widget_ = std::make_unique<views::Widget>();
++    views::Widget::InitParams params(
++        views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++        views::Widget::InitParams::TYPE_WINDOW);
++    params.delegate = delegate_.get();
++    widget_->Init(std::move(params));
++    widget_->AddObserver(this);
++    auto area = display::Screen::Get()->GetPrimaryDisplay().work_area();
++    gfx::Size size(std::min(1040, area.width()), std::min(760, area.height()));
++    gfx::Rect bounds(size);
++    bounds.set_origin(gfx::Point(area.CenterPoint().x() - size.width() / 2,
++                                 area.CenterPoint().y() - size.height() / 2));
++    widget_->SetBounds(bounds);
++    if (initialize_tab_) {
++      initialize_tab_.Run(contents->GetWebContents());
++    }
++    contents->LoadInitialURL(GURL("chrome-extension://" +
++                                  std::string(kAgentExtensionId) +
++                                  "/index.html#" + route_));
++    widget_->Show();
++    contents->RequestFocus();
++  }
++  void CloseBootstrap() {
++    if (widget_) {
++      widget_->RemoveObserver(this);
++      widget_.reset();
++    }
++    delegate_.reset();
++    route_.clear();
++  }
++  void OnWidgetClosing(views::Widget*) override {
++    if (!allowed_) {
++      chrome::AttemptUserExit();
++    }
++  }
++  void OnProfileWillBeDestroyed(Profile*) override {
++    weak_.InvalidateWeakPtrs();
++    pref_observer_.RemoveAll();
++    ClearPreload();
++    timer_.Stop();
++    loader_.reset();
++    CloseBootstrap();
++    extension_observer_.Reset();
++    profile_observer_.Reset();
++    profile_.reset();
++    allowed_ = false;
++  }
++  void OnExtensionLoaded(content::BrowserContext*,
++                         const extensions::Extension* extension) override {
++    if (extension->id() == kAgentExtensionId) {
++      CloseBootstrap();
++      ClearPreload();
++      Refresh();
++    }
++  }
++  void OnExtensionUnloaded(content::BrowserContext*,
++                           const extensions::Extension* extension,
++                           extensions::UnloadedExtensionReason) override {
++    if (extension->id() == kAgentExtensionId) {
++      CloseBootstrap();
++      ClearPreload();
++      allowed_ = false;
++      Refresh();
++    }
++  }
++  base::RepeatingCallback<void(content::WebContents*)> initialize_tab_;
++  PrefChangeRegistrar pref_observer_;
++  std::unique_ptr<content::WebContents> preloaded_;
++  bool preload_ready_ = false;
++  base::WeakPtr<Profile> profile_;
++  bool allowed_ = false, reading_ = false;
++  std::string route_;
++  std::unique_ptr<network::SimpleURLLoader> loader_;
++  base::OneShotTimer timer_;
++  std::unique_ptr<views::WidgetDelegate> delegate_;
++  std::unique_ptr<views::Widget> widget_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observer_{this};
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                          extensions::ExtensionRegistryObserver>
++      extension_observer_{this};
++  base::WeakPtrFactory<ProfileGate> weak_{this};
++};
++struct GateRegistry {
++  bool stopping = false;
++  std::map<Profile*, std::unique_ptr<ProfileGate>> gates;
++};
++GateRegistry& Registry() {
++  static base::NoDestructor<GateRegistry> registry;
++  return *registry;
++}
++}  // namespace
++bool CanShowBrowser(
++    Profile* profile,
++    base::RepeatingCallback<void(content::WebContents*)> initialize_tab) {
++  auto& registry = Registry();
++  if (registry.stopping || !profile) {
++    return false;
++  }
++  auto* original = profile->GetOriginalProfile();
++  auto& gate = registry.gates[original];
++  if (!gate || !gate->has_profile()) {
++    gate = std::make_unique<ProfileGate>(original, std::move(initialize_tab));
++  }
++  gate->SetInitializer(std::move(initialize_tab));
++  return gate->allowed();
++}
++std::unique_ptr<content::WebContents> TakePreloadedNewTab(Profile* profile,
++                                                          const GURL& url) {
++  if (!profile || profile->IsOffTheRecord()) {
++    return nullptr;
++  }
++  const auto found = Registry().gates.find(profile);
++  return found == Registry().gates.end() ? nullptr : found->second->Take(url);
++}
++void ShutdownProfileGates() {
++  auto& registry = Registry();
++  registry.stopping = true;
++  registry.gates.clear();
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/profile_state.h b/chrome/browser/aux/profile_state.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/profile_state.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PROFILE_STATE_H_
++#define CHROME_BROWSER_AUX_PROFILE_STATE_H_
++#include <optional>
++#include <string>
++
++#include "base/files/file_path.h"
++namespace aux {
++// Pure identity of ProfileManager's registered absolute profile path.
++std::string ProfileIdForPath(const base::FilePath& path);
++struct ProfileSecurityState {
++  std::optional<int> account_id;
++  bool bound = false;
++  bool configured = false;
++  bool locked = true;
++  bool onboarding_complete = false;
++  std::string error;
++  bool allows_browsing() const {
++    return bound && configured && !locked && onboarding_complete;
++  }
++};
++// Blocking; call on a MayBlock task. Atomic metadata reads fail closed.
++ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
++                                         const base::FilePath& profile_path);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/aux/profile_state.cc b/chrome/browser/aux/profile_state.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/profile_state.cc
+@@ -0,0 +1,105 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/profile_state.h"
++
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include "base/containers/span.h"
++#include "base/files/scoped_file.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_number_conversions.h"
++#include "crypto/hash.h"
++namespace aux {
++namespace {
++std::optional<base::DictValue> ReadMetadata(const base::FilePath& path,
++                                            size_t limit) {
++  base::ScopedFD fd(
++      open(path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat info;
++  if (!fd.is_valid() || fstat(fd.get(), &info) || !S_ISREG(info.st_mode) ||
++      info.st_uid != geteuid() || (info.st_mode & 0077) || info.st_size < 0 ||
++      static_cast<uint64_t>(info.st_size) > limit) {
++    return std::nullopt;
++  }
++  std::string text(static_cast<size_t>(info.st_size), '\0');
++  size_t offset = 0;
++  while (offset < text.size()) {
++    const auto bytes =
++        read(fd.get(), base::as_writable_byte_span(text).subspan(offset).data(),
++             text.size() - offset);
++    if (bytes <= 0) {
++      return std::nullopt;
++    }
++    offset += bytes;
++  }
++  return base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++}
++}  // namespace
++std::string ProfileIdForPath(const base::FilePath& path) {
++  return "aux-profile:" + base::HexEncode(crypto::hash::Sha256(
++                              path.StripTrailingSeparators().value()));
++}
++ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
++                                         const base::FilePath& path) {
++  ProfileSecurityState result;
++  auto registry =
++      ReadMetadata(home.AppendASCII("accounts.json"), 4 * 1024 * 1024);
++  if (!registry) {
++    result.error = "Local account registry is not ready";
++    return result;
++  }
++  const auto* bindings = registry->FindList("profileBindings");
++  if (!bindings) {
++    return result;
++  }
++  const auto id = ProfileIdForPath(path);
++  for (const auto& value : *bindings) {
++    if (!value.is_dict()) {
++      continue;
++    }
++    const auto& binding = value.GetDict();
++    const auto* bound_path = binding.FindString("profilePath");
++    const auto* bound_id = binding.FindString("profileId");
++    if (!bound_path || *bound_path != path.value()) {
++      continue;
++    }
++    if (!bound_id || *bound_id != id) {
++      result.error =
++          "This profile requires an explicit account binding migration";
++      return result;
++    }
++    auto account = binding.FindInt("accountId");
++    if (!account || *account < 0) {
++      return result;
++    }
++    result.account_id = *account;
++    result.bound = true;
++    if (const auto* accounts = registry->FindList("accounts")) {
++      for (const auto& item : *accounts) {
++        if (!item.is_dict() || item.GetDict().FindInt("id") != account) {
++          continue;
++        }
++        result.onboarding_complete =
++            item.GetDict().FindDouble("onboardingCompletedAt").value_or(0) > 0;
++        break;
++      }
++    }
++    auto security =
++        ReadMetadata(home.AppendASCII("u")
++                         .AppendASCII(base::NumberToString(*account))
++                         .AppendASCII("security-state.json"),
++                     16384);
++    if (!security || security->FindInt("version") != 1 ||
++        security->FindInt("accountId") != account ||
++        !security->FindBool("configured") || !security->FindBool("locked") ||
++        !security->FindDouble("updatedAt")) {
++      return result;
++    }
++    result.configured = security->FindBool("configured").value();
++    result.locked = !result.configured || security->FindBool("locked").value();
++    return result;
++  }
++  return result;
++}
++}  // namespace aux
+diff --git a/chrome/browser/aux/profile_state_probe.cc b/chrome/browser/aux/profile_state_probe.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/profile_state_probe.cc
+@@ -0,0 +1,85 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include <iostream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/json/json_writer.h"
++#include "chrome/browser/aux/profile_state.h"
++namespace {
++void Save(const base::FilePath& path, const base::DictValue& value) {
++  CHECK(base::WriteFile(path, base::WriteJson(value).value()));
++  CHECK(base::SetPosixFilePermissions(path, 0600));
++}
++}  // namespace
++int main() {
++  base::ScopedTempDir temp;
++  CHECK(temp.CreateUniqueTempDir());
++  const auto home = temp.GetPath();
++  const auto profile = home.AppendASCII("browser/Default");
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  CHECK(aux::ProfileIdForPath(profile) !=
++        aux::ProfileIdForPath(home.AppendASCII("other/Default")));
++  base::DictValue binding;
++  binding.Set("profileId", aux::ProfileIdForPath(profile));
++  binding.Set("profilePath", profile.value());
++  binding.Set("accountId", 4);
++  base::ListValue bindings;
++  bindings.Append(binding.Clone());
++  base::DictValue account;
++  account.Set("id", 4);
++  base::ListValue accounts;
++  accounts.Append(account.Clone());
++  base::DictValue registry;
++  registry.Set("version", 1);
++  registry.Set("profileBindings", std::move(bindings));
++  registry.Set("accounts", std::move(accounts));
++  Save(home.AppendASCII("accounts.json"), registry);
++  CHECK(aux::ReadProfileSecurity(home, profile).bound);
++  CHECK(aux::ReadProfileSecurity(home, profile).locked);
++  const auto statehome = home.AppendASCII("u/4");
++  CHECK(base::CreateDirectory(statehome));
++  const auto file = statehome.AppendASCII("security-state.json");
++  base::DictValue state;
++  state.Set("version", 1);
++  state.Set("accountId", 4);
++  state.Set("configured", true);
++  state.Set("locked", false);
++  state.Set("updatedAt", 1234567890123.0);
++  Save(file, state);
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  registry.FindList("accounts")
++      ->front()
++      .GetDict()
++      .Set("onboardingCompletedAt", 1234567890123.0);
++  Save(home.AppendASCII("accounts.json"), registry);
++  CHECK(aux::ReadProfileSecurity(home, profile).allows_browsing());
++  state.Set("locked", true);
++  Save(file, state);
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  state.Set("locked", false);
++  state.Set("accountId", 5);
++  Save(file, state);
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  state.Set("accountId", 4);
++  Save(file, state);
++  CHECK(base::SetPosixFilePermissions(file, 0644));
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  Save(file, state);
++  auto moved = statehome.AppendASCII("other.json");
++  CHECK(base::Move(file, moved));
++  CHECK(base::CreateSymbolicLink(moved, file));
++  CHECK(!aux::ReadProfileSecurity(home, profile).allows_browsing());
++  CHECK(base::DeleteFile(file));
++  CHECK(base::Move(moved, file));
++  registry.FindList("profileBindings")
++      ->front()
++      .GetDict()
++      .Set("profileId", "Default");
++  Save(home.AppendASCII("accounts.json"), registry);
++  const auto legacy = aux::ReadProfileSecurity(home, profile);
++  CHECK(!legacy.bound);
++  CHECK(!legacy.error.empty());
++  std::cout << "Profile identity, setup/unlock/onboarding gate, metadata "
++               "ownership and migration checks passed\n";
++}
