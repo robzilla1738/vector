@@ -1,0 +1,48 @@
+{
+  "method": "static supplied decompile, bounded original arm64 disassembly and current upstream source inspection; no runtime execution",
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "sources": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04559f80.c",
+      "sha256": "aa281c5f7b93a7947ab805354cb9e0b293f7465656340b015f589ec2b08e9637"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "sha256": "476f970541fc9c4b8e0590b8e07fe873aa7af6a3ae3ed817e094b0198d020068"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/extensions/extension_side_panel_coordinator.cc",
+      "sha256": "0e433763d3adfe3a5a89562e0117c565829f850d2b3d14a5aab938d591948250"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc",
+      "sha256": "9ca07cbb9891a29d2529369a459dbea256c7d50f03ea4623e93db9308510214e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/side_panel/side_panel_registry.cc",
+      "sha256": "058c243f4a5d5dcfba0f77ad9b9aed36b50ae451065df21dde1dd33a1baafa60"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc",
+      "sha256": "587fe19334bfddefbe9ade0a8f8ab24ba45ccfa084d1f493c79da1ce1d478c04"
+    }
+  ],
+  "proofs": [
+    {
+      "path": "original-agent-panel-close.txt",
+      "sha256": "2e2b4b9c1d0517f7625ffc5bdd5a2fc77924c6c89ce854df3761d90eb2022621"
+    },
+    {
+      "path": "original-profile-feature-refresh.txt",
+      "sha256": "301366a92acd46f68a1c997ee06a660004d856fa2c56330c31a9d2a307188ca8"
+    }
+  ],
+  "limits": [
+    "Original close is Agent-key-specific. Window-wide old extension entry retirement is an explicit Chromium155 owner adaptation.",
+    "Old close virtual arguments 1,0,1 are observed; current API mapped via actual registry behavior, not assumed enum compatibility.",
+    "No full profile switch, native compilation or OS runtime acceptance."
+  ]
+}

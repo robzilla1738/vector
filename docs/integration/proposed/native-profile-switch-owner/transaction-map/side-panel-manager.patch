@@ -1,0 +1,186 @@
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.h
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.h
+@@ -10,6 +10,8 @@
+ #include "base/containers/flat_map.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/extensions/extension_side_panel_coordinator.h"
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/browser/extension_registry_observer.h"
+@@ -65,6 +67,15 @@
+   // side panel content.
+   void RegisterExtensionEntries();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Retires only this window's extension entries before changing its profile.
++  // Keeps this manager, the registry and unowned user-data registration alive.
++  void PrepareForAuxProfileSwitch();
++  // Requires the committed target profile and an empty tab model. Registers
++  // real target-profile entries without opening or navigating their views.
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   // ExtensionRegistryObserver implementation.
+   void OnExtensionLoaded(content::BrowserContext* browser_context,
+                          const Extension* extension) override;
+@@ -92,6 +103,10 @@
+   base::flat_map<ExtensionId, std::unique_ptr<ExtensionSidePanelCoordinator>>
+       coordinators_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++#endif
++
+   // Whether this class is tab-scoped or window-scoped.
+   const bool for_tab_;
+ 
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.cc
+@@ -6,10 +6,17 @@
+ 
+ #include <memory>
+ 
++#include "base/check.h"
++#include "base/check_op.h"
++
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/extensions/extension_side_panel_coordinator.h"
+ #include "content/public/browser/browser_context.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/side_panel/side_panel_registry.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#endif
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/common/extension.h"
+ #include "extensions/common/permissions/api_permission.h"
+@@ -60,6 +67,50 @@
+   return (it == coordinators_.end()) ? nullptr : it->second.get();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ExtensionSidePanelManager::PrepareForAuxProfileSwitch() {
++  CHECK(!for_tab_);
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(profile_->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), profile_);
++  CHECK_EQ(SidePanelRegistry::From(browser_), registry_);
++  CHECK(!aux_profile_switch_prepared_);
++  aux_profile_switch_prepared_ = true;
++  extension_registry_observation_.Reset();
++
++  // Closing a panel dispatches extension events and may run UI observers.
++  // Publish an empty manager first and stop all old service observations before
++  // removing any entry. Each coordinator remains alive during deregistration.
++  decltype(coordinators_) previous;
++  previous.swap(coordinators_);
++  for (auto& [id, coordinator] : previous) {
++    coordinator->PrepareForAuxProfileSwitch();
++  }
++  for (auto& [id, coordinator] : previous) {
++    // This synchronously closes a showing entry, clears its cached view/host,
++    // and releases the old window action reference before profile identity moves.
++    coordinator->DeregisterEntry();
++  }
++}
++
++void ExtensionSidePanelManager::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(!for_tab_);
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!extension_registry_observation_.IsObserving());
++  CHECK(coordinators_.empty());
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK_EQ(SidePanelRegistry::From(browser_), registry_);
++  CHECK(browser_->GetTabStripModel());
++  CHECK(browser_->GetTabStripModel()->empty());
++  profile_ = target_profile;
++  RegisterExtensionEntries();
++  aux_profile_switch_prepared_ = false;
++}
++#endif
++
+ void ExtensionSidePanelManager::RegisterExtensionEntries() {
+   ExtensionRegistry* extension_registry = ExtensionRegistry::Get(profile_);
+   extension_registry_observation_.Observe(extension_registry);
+@@ -72,6 +123,11 @@
+ void ExtensionSidePanelManager::OnExtensionLoaded(
+     content::BrowserContext* browser_context,
+     const Extension* extension) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ || browser_context != profile_) {
++    return;
++  }
++#endif
+   MaybeCreateExtensionSidePanelCoordinator(extension);
+ }
+ 
+@@ -79,6 +135,11 @@
+     content::BrowserContext* browser_context,
+     const Extension* extension,
+     UnloadedExtensionReason reason) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ || browser_context != profile_) {
++    return;
++  }
++#endif
+   auto it = coordinators_.find(extension->id());
+   if (it != coordinators_.end()) {
+     it->second->DeregisterEntry();
+--- a/chrome/browser/ui/extensions/extension_side_panel_coordinator.h
++++ b/chrome/browser/ui/extensions/extension_side_panel_coordinator.h
+@@ -12,6 +12,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/extensions/api/side_panel/side_panel_service.h"
+ #include "chrome/browser/extensions/extension_view_host.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -98,6 +100,13 @@
+   // To avoid re-entrancy this does not happen automatically in the destructor.
+   void DeregisterEntry();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Window-only first teardown phase. Stop backend callbacks for every old
++  // coordinator before the manager deregisters any entries. This object must
++  // subsequently be deregistered and destroyed; it is never rebound/reused.
++  void PrepareForAuxProfileSwitch();
++#endif
++
+   // Called when the native view is destroyed.
+   void OnViewDestroyed();
+ 
+--- a/chrome/browser/ui/extensions/extension_side_panel_coordinator.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_coordinator.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/extensions/extension_side_panel_coordinator.h"
+ 
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/extensions/extension_tab_util.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -134,6 +136,16 @@
+   return browser_ != nullptr;
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ExtensionSidePanelCoordinator::PrepareForAuxProfileSwitch() {
++  CHECK(!for_tab_);
++  CHECK(browser_);
++  CHECK_EQ(browser_->GetProfile(), profile_);
++  scoped_service_observation_.Reset();
++  weak_factory_.InvalidateWeakPtrs();
++}
++#endif
++
+ void ExtensionSidePanelCoordinator::DeregisterEntry() {
+   scoped_entry_observation_.Reset();
+   // Deregister synchronously closes the side panel if this entry is showing.

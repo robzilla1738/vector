@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual shared source read only; disjoint stable window side-panel owner adaptation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "baselineSha256": "82f9f5f8c0240ba990d28672fa268b1fb6f78c1da185d68da678d614ae47cc70",
+      "outputSha256": "e53803590d9a3ec1f5174caa630442dfe2e67c9957d66d1f47a87f2531996838"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "baselineSha256": "476f970541fc9c4b8e0590b8e07fe873aa7af6a3ae3ed817e094b0198d020068",
+      "outputSha256": "1d496f8bc2900427c1e37882304709b032c536815af8f2bd2f6aec8f00d0d83e"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator.h",
+      "baselineSha256": "8ee302a4e59653b4d054834a163a1b61128a9de83a68324d1cceded63737f8d3",
+      "outputSha256": "a7726786f4d028a973a4490995e19979476a7a9e4053f830058095dc3dd304ce"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator.cc",
+      "baselineSha256": "0e433763d3adfe3a5a89562e0117c565829f850d2b3d14a5aab938d591948250",
+      "outputSha256": "4888af3fb61c8a4aa1cfb360b72d433dea9a7f8a4c481bfc8d733b45d90c30fe"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
