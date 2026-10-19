@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "reason": "Actual Chromium155 compile errors: bounded span for partial socket writes, current base escaping API, out-of-line virtual default body. Separately preserve owner-required supplied AsideDaemonSessionToken wire in real Vault preflight.",
+  "files": [
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "baselineSha256": "40de9b444d8c74b315c2351da8e8dfdd83c96c9113acaa66bd85d168b2204d4e",
+      "outputSha256": "cf5483de050c1f12fd5080f13e53eca8aa93d8a79d473c6e59d313eefe993882",
+      "anchors": [
+        {
+          "find": "#include \"base/command_line.h\"",
+          "replace": "#include \"base/command_line.h\"\n#include \"base/containers/span.h\"",
+          "count": 1
+        },
+        {
+          "find": "      ssize_t n =\n          send(parent.get(), payload->data() + sent, payload->size() - sent, 0);",
+          "replace": "      const auto pending = base::span(*payload).subspan(sent);\n      const ssize_t n =\n          send(parent.get(), pending.data(), pending.size(), 0);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.cc",
+      "baselineSha256": "d355d3eb8450e61626ac3b06bd9ad3835dd7f258e356e8887cde02a9e9642cea",
+      "outputSha256": "33598eaafc14ec82d0191c2577e2630ac5d7ecc097fc5433873b7cadfde8347c",
+      "anchors": [
+        {
+          "find": "#include \"base/memory/ref_counted.h\"",
+          "replace": "#include \"base/memory/ref_counted.h\"\n#include \"base/strings/escape.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"net/base/escape.h\"\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "net::EscapeQueryParamValue(",
+          "replace": "base::EscapeQueryParamValue(",
+          "count": 1
+        },
+        {
+          "find": "!authorization_.starts_with(\"AuxDaemonSessionToken \")",
+          "replace": "!authorization_.starts_with(\"AsideDaemonSessionToken \")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/management/management_api_delegate.h",
+      "baselineSha256": "3e31012a369637f0322ba87bf476f6c86667d31284fefcd082b037ab306119f3",
+      "outputSha256": "7d65794283f20f09d901d1e61707c11090458d5caf9b19bc3a516a9e6fe49b4d",
+      "anchors": [
+        {
+          "find": "      content::BrowserContext* context, std::string* error) const {\n    *error = \"chrome.management.launchExtension is not supported on this platform.\";\n    return false;\n  }",
+          "replace": "      content::BrowserContext* context, std::string* error) const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/management/management_api.cc",
+      "baselineSha256": "97d99f4cfd956f1e10e30fb845d60150f0016f0acdc8a69613c7fb7e0a46781f",
+      "outputSha256": "af4aa73876780a4cd83187eeb0d2ad5f014b61de3ab74d2071dec43a7896a0e4",
+      "anchors": [
+        {
+          "find": "#include \"extensions/browser/api/management/management_api_constants.h\"",
+          "replace": "#include \"extensions/browser/api/management/management_api_constants.h\"\n#include \"extensions/browser/api/management/management_api_delegate.h\"",
+          "count": 1
+        },
+        {
+          "find": "namespace management = api::management;\n\nnamespace {",
+          "replace": "namespace management = api::management;\n\nbool ManagementAPIDelegate::LaunchExtensionFunctionDelegate(\n    const Extension* extension, content::WebContents* sender,\n    content::BrowserContext* context, std::string* error) const {\n  *error = \"chrome.management.launchExtension is not supported on this platform.\";\n  return false;\n}\n\nnamespace {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "appliedToNative": false,
+  "upstreamEvidence": [
+    {
+      "path": "base/containers/span.h",
+      "sha256": "307329af0e9fb55fe05527668a8c679e5c32c17233808e403541313fe89ed63c"
+    },
+    {
+      "path": "base/strings/escape.h",
+      "sha256": "cddc1ee4e432f60cd7e119247c137ddad2f7bce46b580d3b8db6a11b20653ef8"
+    },
+    {
+      "path": "extensions/browser/api/management/BUILD.gn",
+      "sha256": "8319509d9e7b2c343251609cf18676e202fe17cdc820cb5d3cc43868f6448442"
+    },
+    {
+      "path": "extensions/browser/api/management/management_api.h",
+      "sha256": "3f59525c89585ed06c6bcb3c51c08d2b021811dd7f2d2197ff506c8eaa2d284d"
+    }
+  ]
+}
