@@ -52,10 +52,9 @@ diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_c
          waap::NewWindowCreationSource::kBrowserInitiated, now);
 diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179aeebed7fb7
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.cc
-@@ -0,0 +1,377 @@
+@@ -0,0 +1,473 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#include "chrome/browser/ui/performance/native_performance.h"
@@ -84,6 +83,7 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +#include "components/viz/common/frame_timing_details.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/web_contents.h"
++#include "components/input/native_web_keyboard_event.h"
 +#include "third_party/blink/public/common/input/web_input_event.h"
 +#include "ui/compositor/compositor.h"
 +#include "ui/events/event.h"
@@ -114,22 +114,32 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +// Tracks only the served fixture in this original browser's active tab. A
 +// renderer load/paint notification alone is never recorded as presentation.
 +class NativePerformancePage : public content::WebContentsObserver,
-+                              public TabStripModelObserver {
++                              public TabStripModelObserver,
++                              public content::RenderWidgetHostObserver {
 + public:
 +  NativePerformancePage(NativePerformance* owner, TabStripModel* tabs)
 +      : owner_(owner), tabs_(tabs) {
 +    if (tabs_) {
 +      tabs_->AddObserver(this);
 +      Observe(tabs_->GetActiveWebContents());
++      AttachInputHost();
 +    }
 +  }
 +  ~NativePerformancePage() override {
++    DetachInputHost();
 +    if (tabs_) tabs_->RemoveObserver(this);
++  }
++  content::WeakDocumentPtr InputDocument() const {
++    auto* frame = web_contents() ? web_contents()->GetPrimaryMainFrame() : nullptr;
++    if (!frame) return {};
++    auto document = frame->GetWeakDocumentPtr();
++    return Current(document) ? document : content::WeakDocumentPtr();
 +  }
 + private:
 +  bool Current(content::WeakDocumentPtr document) const {
 +    auto* frame = document.AsRenderFrameHostIfValid();
-+    if (!frame || !tabs_ || !web_contents() ||
++    if (!frame || !frame->IsRenderFrameLive() || owner_->retired_ ||
++        !tabs_ || !web_contents() ||
 +        tabs_->GetActiveWebContents() != web_contents() ||
 +        web_contents()->GetPrimaryMainFrame() != frame ||
 +        !owner_->widget_ || !owner_->widget_->IsActive()) return false;
@@ -144,8 +154,41 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +           !fixture.has_username() && !fixture.has_password() &&
 +           frame->GetLastCommittedURL() == fixture;
 +  }
++  void AttachInputHost() {
++    if (input_host_ || !web_contents() || !web_contents()->GetPrimaryMainFrame()) return;
++    auto* frame = web_contents()->GetPrimaryMainFrame();
++    input_host_ = frame->GetRenderWidgetHost();
++    input_callback_ = base::BindRepeating(
++        &NativePerformancePage::OnKeyPress, base::Unretained(this),
++        frame->GetWeakDocumentPtr());
++    input_host_->AddObserver(this);
++    input_host_->AddKeyPressEventCallback(input_callback_);
++  }
++  void DetachInputHost() {
++    owner_->tab_input_document_ = {};
++    if (!input_host_) return;
++    input_host_->RemoveKeyPressEventCallback(input_callback_);
++    input_host_->RemoveObserver(this);
++    input_host_ = nullptr;
++    input_callback_.Reset();
++  }
++  bool OnKeyPress(content::WeakDocumentPtr document,
++                  const input::NativeWebKeyboardEvent& event) {
++    auto* frame = document.AsRenderFrameHostIfValid();
++    if (Current(document) && frame->GetRenderWidgetHost() == input_host_)
++      owner_->ObserveTabKeyPress(event);
++    return false;  // Measurement never handles or changes the original event.
++  }
++  void RenderWidgetHostDestroyed(content::RenderWidgetHost* host) override {
++    if (host == input_host_) DetachInputHost();
++  }
++  void WebContentsDestroyed() override { DetachInputHost(); }
++  void PrimaryPageChanged(content::Page&) override {
++    DetachInputHost();
++    AttachInputHost();
++  }
 +  void Present(bool tab_switch, base::TimeTicks input) {
-+    if (!web_contents() || !web_contents()->GetPrimaryMainFrame() || input.is_null()) return;
++    if (!web_contents() || !web_contents()->GetPrimaryMainFrame() || (tab_switch && input.is_null())) return;
 +    auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
 +    if (!Current(document)) return;
 +    web_contents()->GetPrimaryMainFrame()->GetRenderWidgetHost()->InsertVisualStateCallback(
@@ -164,8 +207,9 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +  void Presented(content::WeakDocumentPtr document, base::TimeTicks input,
 +                 bool tab_switch, const viz::FrameTimingDetails& details) {
 +    const auto time = details.presentation_feedback.timestamp;
-+    if (!Current(document) || time.is_null() || time < input) return;
++    if (!Current(document) || time.is_null()) return;
 +    if (tab_switch) {
++      if (input.is_null() || time < input) return;
 +      if (input != owner_->tab_input_time_) return;
 +      owner_->tab_input_time_ = base::TimeTicks();
 +      const auto& feedback = details.presentation_feedback;
@@ -182,7 +226,13 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +                                         interval);
 +      return;
 +    }
-+    if (owner_->interactive_recorded_) return;
++    // A distinct fixture document has reached the original active compositor.
++    // Preparation needs every document; cold interactivity remains one-shot.
++    if (!fixture_presented_) {
++      fixture_presented_ = true;
++      base::UmaHistogramBoolean("AuxPerf.FixturePresented", true);
++    }
++    if (input.is_null() || time < input || owner_->interactive_recorded_) return;
 +    const auto start = OriginalProcessStart();
 +    if (start.is_null() || time < start) return;
 +    owner_->interactive_recorded_ = true;
@@ -193,22 +243,32 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +      const TabStripModelChange&, const TabStripSelectionChange&) override {
 +    auto* active = tabs->GetActiveWebContents();
 +    if (active == web_contents()) return;
++    auto* previous = web_contents() ? web_contents()->GetPrimaryMainFrame() : nullptr;
++    const auto input = previous && previous->IsRenderFrameLive() &&
++        owner_->tab_input_document_.AsRenderFrameHostIfValid() == previous
++        ? owner_->tab_input_time_ : base::TimeTicks();
++    owner_->tab_input_document_ = {};
 +    weak_factory_.InvalidateWeakPtrs();
-+    loaded_ = painted_ = false;
++    loaded_ = painted_ = fixture_presented_ = false;
++    DetachInputHost();
 +    Observe(active);
-+    Present(true, owner_->tab_input_time_);
++    AttachInputHost();
++    Present(true, input);
 +  }
 +  void OnTabStripModelDestroyed(TabStripModel* tabs) override {
 +    CHECK(tabs == tabs_);
 +    // ModelDestroyed already removed this observer before this notification.
 +    tabs_ = nullptr;
 +    weak_factory_.InvalidateWeakPtrs();
++    DetachInputHost();
++    owner_->tab_input_document_ = {};
 +    Observe(nullptr);
 +  }
 +  void DidStartNavigation(content::NavigationHandle* navigation) override {
 +    if (!navigation->IsInPrimaryMainFrame() || navigation->IsSameDocument()) return;
++    owner_->tab_input_document_ = {};
 +    weak_factory_.InvalidateWeakPtrs();
-+    loaded_ = painted_ = false;
++    loaded_ = painted_ = fixture_presented_ = false;
 +    navigation_input_ = owner_->input_time_;
 +  }
 +  void DidFinishLoad(content::RenderFrameHost* frame, const GURL&) override {
@@ -222,9 +282,12 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +  }
 +  raw_ptr<NativePerformance> owner_;
 +  raw_ptr<TabStripModel> tabs_;
++  raw_ptr<content::RenderWidgetHost> input_host_ = nullptr;
++  content::RenderWidgetHost::KeyPressEventCallback input_callback_;
 +  base::TimeTicks navigation_input_;
 +  bool loaded_ = false;
 +  bool painted_ = false;
++  bool fixture_presented_ = false;
 +  base::WeakPtrFactory<NativePerformancePage> weak_factory_{this};
 +};
 +
@@ -279,10 +342,36 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +  input_time_ = timestamp;
 +  ++input_serial_;
 +}
++void NativePerformance::TabInput(base::TimeTicks timestamp) {
++  if (retired_ || !widget_ || !widget_->IsVisible() || !widget_->IsActive() ||
++      !page_ || timestamp.is_null() || timestamp == tab_input_time_) return;
++  auto document = page_->InputDocument();
++  if (!document.AsRenderFrameHostIfValid()) return;
++  tab_input_document_ = document;
++  tab_input_time_ = timestamp;
++}
++void NativePerformance::ObserveTabKeyPress(const input::NativeWebKeyboardEvent& event) {
++  if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown &&
++      event.windows_key_code == ui::VKEY_TAB &&
++      (event.GetModifiers() & blink::WebInputEvent::kControlKey) &&
++      !(event.GetModifiers() & (blink::WebInputEvent::kAltKey | blink::WebInputEvent::kMetaKey)) &&
++      !event.skip_if_unhandled)
++    TabInput(event.TimeStamp());
++}
++bool NativePerformance::OnShellKeyPress(content::WeakDocumentPtr document,
++                                       const input::NativeWebKeyboardEvent& event) {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  if (frame && frame->IsRenderFrameLive() && web_contents() &&
++      web_contents()->GetPrimaryMainFrame() == frame &&
++      frame->GetRenderWidgetHost() == input_host_)
++    ObserveTabKeyPress(event);
++  return false;  // Run before accelerator handling without consuming the key.
++}
 +void NativePerformance::OnKeyEvent(ui::KeyEvent* event) {
 +  if (event->type() == ui::EventType::kKeyPressed &&
-+      event->key_code() == ui::VKEY_TAB && event->IsControlDown())
-+    tab_input_time_ = event->time_stamp();
++      event->key_code() == ui::VKEY_TAB && event->IsControlDown() &&
++      !(event->flags() & (ui::EF_COMMAND_DOWN | ui::EF_ALT_DOWN)))
++    TabInput(event->time_stamp());
 +  if (event->type() == ui::EventType::kKeyPressed &&
 +      !(event->flags() & (ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN | ui::EF_ALT_DOWN))) {
 +    Input(event->time_stamp());
@@ -298,14 +387,20 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +void NativePerformance::AttachInputHost() {
 +  if (retired_ || !web_contents() || !web_contents()->GetPrimaryMainFrame()) return;
 +  input_host_ = web_contents()->GetPrimaryMainFrame()->GetRenderWidgetHost();
++  input_key_callback_ = base::BindRepeating(
++      &NativePerformance::OnShellKeyPress, base::Unretained(this),
++      web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr());
 +  input_host_->AddInputEventObserver(this);
 +  input_host_->AddObserver(this);
++  input_host_->AddKeyPressEventCallback(input_key_callback_);
 +}
 +void NativePerformance::DetachInputHost() {
 +  if (!input_host_) return;
++  input_host_->RemoveKeyPressEventCallback(input_key_callback_);
 +  input_host_->RemoveInputEventObserver(this);
 +  input_host_->RemoveObserver(this);
 +  input_host_ = nullptr;
++  input_key_callback_.Reset();
 +}
 +void NativePerformance::RenderWidgetHostDestroyed(content::RenderWidgetHost* host) {
 +  if (host == input_host_) DetachInputHost();
@@ -435,10 +530,9 @@ index 0000000000000000000000000000000000000000..9c35f69018c44699cd86b1fcda8179ae
 +}
 diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..97c4869769f3c2c5ff966f6ba7945b3e1950394e
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,97 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
@@ -501,6 +595,10 @@ index 0000000000000000000000000000000000000000..97c4869769f3c2c5ff966f6ba7945b3e
 +  void AttachInputHost();
 +  void DetachInputHost();
 +  void Input(base::TimeTicks timestamp);
++  void TabInput(base::TimeTicks timestamp);
++  void ObserveTabKeyPress(const input::NativeWebKeyboardEvent& event);
++  bool OnShellKeyPress(content::WeakDocumentPtr document,
++                       const input::NativeWebKeyboardEvent& event);
 +  void QuerySubmitted(content::WeakDocumentPtr document,
 +                      base::TimeTicks input,
 +                      uint64_t serial,
@@ -520,6 +618,8 @@ index 0000000000000000000000000000000000000000..97c4869769f3c2c5ff966f6ba7945b3e
 +  raw_ptr<content::RenderWidgetHost> input_host_ = nullptr;
 +  base::TimeTicks input_time_;
 +  base::TimeTicks tab_input_time_;
++  content::WeakDocumentPtr tab_input_document_;
++  content::RenderWidgetHost::KeyPressEventCallback input_key_callback_;
 +  bool interactive_recorded_ = false;
 +  uint64_t input_serial_ = 0;
 +  uint64_t recorded_serial_ = 0;
