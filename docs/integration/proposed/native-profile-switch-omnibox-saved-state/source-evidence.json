@@ -1,0 +1,92 @@
+{
+  "kind": "Actual source detach/save/restore mechanism, static only",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "sha256": "f582f9cc1e4bb9944982bd1c1640bcd20fb817fd23466d9bedcab70a74f73d3d",
+      "ranges": [
+        {
+          "firstLine": 822,
+          "lastLine": 838,
+          "text": "    tabs::TabHandle active_tab_handle) {\n  tabs::TabInterface* active_tab = active_tab_handle.Get();\n  if (!active_tab || !window_ ||\n      tab_strip_model_->GetActiveTab() != active_tab) {\n    return;\n  }\n  BrowserFocusController::From(this)->FocusWebContentsPane();\n}\n\nvoid Browser::OnTabDeactivated(WebContents* contents) {\n  ExclusiveAccessManager::From(this)->OnTabDeactivated(contents);\n  SearchTabHelper::FromWebContents(contents)->OnTabDeactivated();\n\n  // Save what the user's currently typing, so it can be restored when we\n  // switch back to this tab.\n  window_->GetLocationBar()->SaveStateToContents(contents);\n}"
+        },
+        {
+          "firstLine": 840,
+          "lastLine": 866,
+          "text": "void Browser::OnActiveTabChanged(const TabStripModelChange& change,\n                                 const TabStripSelectionChange& selection) {\n  TRACE_EVENT0(\"ui\", \"Browser::OnActiveTabChanged\");\n\n  // The side panel state needs to be updated on active tab changed\n  // even if the tab strip is empty.\n  if (change.type() != TabStripModelChange::kReplaced &&\n      !tab_strip_model_->closing_all()) {\n    SidePanelUI* side_panel_ui = SidePanelUI::From(this);\n    if (side_panel_ui) {\n      side_panel_ui->OnActiveTabChanged(\n          selection.old_contents, selection.new_contents,\n          /*tab_removed_for_deletion=*/\n          (change.type() == TabStripModelChange::kRemoved) &&\n              (TabRemoveReasonUtils::WillDeleteTab(\n                  change.GetRemove()->contents[0].remove_reason)));\n    }\n  }\n\n  if (tab_strip_model_->empty()) {\n    return;\n  }\n\n// Mac correctly sets the initial background color of new tabs to the theme\n// background color, so it does not need this block of code. Aura should\n// implement this as well.\n// https://crbug.com/41317454"
+        },
+        {
+          "firstLine": 990,
+          "lastLine": 1010,
+          "text": "}\n\nvoid Browser::TabDetachedAtImpl(content::WebContents* contents,\n                                bool was_active,\n                                DetachType type) {\n  if (type == DetachType::kDetach) {\n    // Save the current location bar state, but only if the tab being detached\n    // is the selected tab.  Because saving state can conditionally revert the\n    // location bar, saving the current tab's location bar state to a\n    // non-selected tab can corrupt both tabs.\n    if (was_active) {\n      LocationBar* location_bar = window_->GetLocationBar();\n      if (location_bar) {\n        location_bar->SaveStateToContents(contents);\n      }\n    }\n  }\n\n  SetAsDelegate(contents, false);\n  BrowserUiController::From(this)->RemoveScheduledUpdatesFor(contents);\n"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "d377cab3093b5de02720f25f5b69bad3a86dc4bc2f71ea60c7ef7228a611e4a8",
+      "ranges": [
+        {
+          "firstLine": 1623,
+          "lastLine": 1630,
+          "text": "void LocationBarView::SaveStateToContents(WebContents* contents) {\n  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {\n    omnibox_popup_view_->SaveStateToTab(contents);\n  } else {\n    omnibox_view_->SaveStateToTab(contents);\n  }\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "sha256": "836033c511c5a4cb2457e356b3ca250507d5a37a14f0374ae49f2ddf0dfafb84",
+      "ranges": [
+        {
+          "firstLine": 313,
+          "lastLine": 366,
+          "text": "void OmniboxViewViews::SaveStateToTab(content::WebContents* tab) {\n  DCHECK(tab);\n\n  // We don't want to keep the IME status, so force quit the current\n  // session here.  It may affect the selection status, so order is\n  // also important.\n  if (IsIMEComposing()) {\n    ConfirmCompositionText(/* keep_selection */ false);\n    GetInputMethod()->CancelComposition(this);\n  }\n\n  // NOTE: GetStateForTabSwitch() may affect GetSelectedRange(), so order is\n  // important.\n  const OmniboxEditModel::State state =\n      controller()->edit_model()->GetStateForTabSwitch();\n  tab->SetUserData(\n      OmniboxTabHelper::kOmniboxStateKey,\n      std::make_unique<OmniboxState>(state, GetSelectedRange(),\n                                     saved_selection_for_focus_change_));\n  UpdateAccessibleTextSelection();\n}\n\nvoid OmniboxViewViews::OnTabChanged(content::WebContents* web_contents) {\n  // Observe the WebContents for title changes and navigations for updating the\n  // placeholder text.\n  Observe(web_contents);\n\n  if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {\n    const OmniboxState* state = static_cast<OmniboxState*>(\n        web_contents->GetUserData(OmniboxTabHelper::kOmniboxStateKey));\n    controller()->edit_model()->RestoreState(state ? &state->model_state\n                                                   : nullptr);\n    if (state) {\n      // This assumes that the omnibox has already been focused or blurred as\n      // appropriate; otherwise, a subsequent OnFocus() or OnBlur() call could\n      // goof up the selection.  See comments on OnActiveTabChanged() call in\n      // Browser::ActiveTabChanged().\n      if (state->model_state.user_input_in_progress &&\n          state->model_state.user_text.empty() &&\n          state->model_state.keyword.empty()) {\n        // See comment in OmniboxEditModel::GetStateForTabSwitch() for details\n        // on this.\n        SelectAll(true);\n        saved_selection_for_focus_change_ = gfx::Range();\n      } else {\n        SetSelectedRange(state->selection);\n        saved_selection_for_focus_change_ =\n            state->saved_selection_for_focus_change;\n      }\n    }\n  }\n\n  // TODO(msw|oshima): Consider saving/restoring edit history.\n  ClearEditHistory();"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.cc",
+      "sha256": "abaa200791c86b6303504c38c0b6daccb2446e57e5fb3ba0f8c0b7e5d4a0171b",
+      "ranges": [
+        {
+          "firstLine": 294,
+          "lastLine": 385,
+          "text": "}\n\nmetrics::OmniboxEventProto::PageClassification\nOmniboxEditModel::GetPageClassification() const {\n  return controller_->client()->GetPageClassification(/*is_prefetch=*/false);\n}\n\nOmniboxEditModel::State OmniboxEditModel::GetStateForTabSwitch() const {\n  // NOTE: it's important this doesn't attempt to access any state that\n  // may come from the active WebContents. At the time this is called, the\n  // active WebContents has already changed.\n\n  // Like typing, switching tabs \"accepts\" the temporary text as the user\n  // text, because it makes little sense to have temporary text when the\n  // popup is closed.\n  std::u16string user_text;\n  if (user_input_in_progress_) {\n    const std::u16string display_text = GetText();\n    if (!MaybePrependKeyword(display_text).empty()) {\n      user_text = display_text;\n    }\n    // Else case is user deleted all the text. The expectation (which matches\n    // other browsers) is when the user restores the state a revert happens as\n    // well as a select all. The revert shouldn't be done here, as at the time\n    // this is called a revert would revert to the url of the newly activated\n    // tab (because at the time this is called, the WebContents has already\n    // changed). By leaving the |user_text| empty downstream code is able to\n    // detect this and select all.\n  } else {\n    user_text = user_text_;\n  }\n  return State(user_input_in_progress_, user_text, keyword_,\n               keyword_placeholder_, keyword_state_, keyword_mode_entry_method_,\n               focus_state_, input_);\n}\n\nvoid OmniboxEditModel::RestoreState(const State* state) {\n  TRACE_EVENT2(\"omnibox\", \"OmniboxEditModel::RestoreState\",\n               \"user_input_in_progress\",\n               state ? state->user_input_in_progress : false, \"is_focused\",\n               state ? (state->focus_state != OMNIBOX_FOCUS_NONE) : false);\n  // We need to update the permanent display texts correctly and revert the\n  // view regardless of whether there is saved state.\n  ResetDisplayTexts();\n\n  if (view_) {\n    view_->RevertAll();\n  }\n  // Restore the autocomplete controller's input, or clear it if this is a new\n  // tab.\n  input_ = state ? state->autocomplete_input : AutocompleteInput();\n  if (!state) {\n    return;\n  }\n\n  // The tab-management system saves the last-focused control for each tab and\n  // restores it. That operation also updates this edit model's focus_state_\n  // if necessary. This occurs before we reach this point in the code.\n  //\n  // The only reason we need to separately save and restore our focus state is\n  // to preserve our special \"invisible focus\" state used for the fakebox.\n  const bool invisible_focus_changed =\n      focus_state_ == OMNIBOX_FOCUS_INVISIBLE ||\n      state->focus_state == OMNIBOX_FOCUS_INVISIBLE;\n\n  if (invisible_focus_changed) {\n    SetFocusState(state->focus_state, OMNIBOX_FOCUS_CHANGE_TAB_SWITCH);\n  }\n\n  // Restore any user editing.\n  if (state->user_input_in_progress) {\n    // NOTE: Be sure to set keyword-related state AFTER invoking\n    // SetUserText(), as SetUserText() clears the keyword state.\n    if ((!state->user_text.empty() || !state->keyword.empty()) && view_) {\n      view_->SetUserText(state->user_text, false);\n    }\n    SetKeywordInfo(state->keyword_state, state->keyword,\n                   state->keyword_placeholder,\n                   state->keyword_mode_entry_method);\n    if (view_) {\n      view_->OnKeywordPlaceholderTextChange();\n    }\n  } else if (!state->user_text.empty()) {\n    // If the |user_input_in_progress| is false but we have |user_text|,\n    // restore the |user_text| to the model and the view. It's likely unelided\n    // text that the user has not made any modifications to.\n    InternalSetUserText(state->user_text);\n\n    // We let the View manage restoring the cursor position afterwards.\n    if (view_) {\n      view_->SetWindowTextAndCaretPos(state->user_text, 0, false, false);\n    }"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.h",
+      "sha256": "33b6b91d573b772fd4a0005a1e0bce6e64337d8b1595778c8e133128e95bf062",
+      "ranges": [
+        {
+          "firstLine": 55,
+          "lastLine": 80,
+          "text": " public:\n  struct State {\n    State(bool user_input_in_progress,\n          const std::u16string& user_text,\n          const std::u16string& keyword,\n          const std::u16string& keyword_placeholder,\n          KeywordState keyword_state,\n          metrics::OmniboxEventProto::KeywordModeEntryMethod\n              keyword_mode_entry_method,\n          OmniboxFocusState focus_state,\n          const AutocompleteInput& autocomplete_input);\n    State(const State& other);\n    State& operator=(const State&) = delete;\n    ~State();\n\n    bool user_input_in_progress;\n    const std::u16string user_text;\n    const std::u16string keyword;\n    const std::u16string keyword_placeholder;\n    const KeywordState keyword_state;\n    metrics::OmniboxEventProto::KeywordModeEntryMethod\n        keyword_mode_entry_method;\n    OmniboxFocusState focus_state;\n    const AutocompleteInput autocomplete_input;\n  };\n"
+        }
+      ]
+    },
+    {
+      "path": "components/omnibox/browser/autocomplete_input.h",
+      "sha256": "02efabc9c3ec6c8d077e3145fa050215c698370e4dfc102448448670d81c9e80",
+      "ranges": [
+        {
+          "firstLine": 451,
+          "lastLine": 570,
+          "text": " private:\n  friend class AutocompleteProviderTest;\n\n  // The common initialization of the non-default constructors, called after\n  // the initial fields are set. These remaining parameters are used as inputs\n  // to setting the remaining fields.\n  void Init(const std::u16string& text,\n            const AutocompleteSchemeClassifier& scheme_classifier);\n\n  // NOTE: Whenever adding a new field here, please make sure to update Clear()\n  // and EstimateMemoryUsage() methods.\n  std::u16string text_;\n  size_t cursor_position_;\n  GURL current_url_;\n  std::u16string current_title_;\n  metrics::OmniboxEventProto::PageClassification current_page_classification_;\n  metrics::OmniboxInputType type_;\n  url::Parsed parts_;\n  std::u16string scheme_;\n  GURL canonicalized_url_;\n  std::string desired_tld_;\n  bool prevent_inline_autocomplete_;\n  bool allow_exact_keyword_match_;\n  bool in_keyword_mode_;\n  bool omit_asynchronous_matches_;\n  metrics::OmniboxFocusType focus_type_ =\n      metrics::OmniboxFocusType::INTERACTION_DEFAULT;\n  std::vector<std::u16string> terms_prefixed_by_http_or_https_;\n  // The lens overlay suggest inputs to be sent as query parameters in\n  // the suggest requests.\n  std::optional<lens::proto::LensOverlaySuggestInputs>\n      lens_overlay_suggest_inputs_;\n  // Input state. This is specifically the primitive state, with regards to\n  // the tools and models that may be selected.\n  omnibox::InputState input_state_;\n\n  // The suggest inventory to be sent as query parameters in the suggest\n  // requests.\n  omnibox::SuggestInventory suggest_inventory_ =\n      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT;\n\n  // Flags for OmniboxDefaultNavigationsToHttps feature.\n  bool should_use_https_as_default_scheme_;\n  bool added_default_scheme_to_typed_url_ = false;\n  bool typed_url_had_http_scheme_ = false;\n  // Port used by the embedded https server in tests. This is used to determine\n  // the correct port while upgrading URLs to https if the original URL has a\n  // non-default port.\n  // TODO(crbug.com/40743298): Remove when URLLoaderInterceptor can simulate\n  // redirects.\n  int https_port_for_testing_;\n  // If true, indicates that the tests are using a faux-HTTPS server which is\n  // actually an HTTP server that pretends to serve HTTPS responses. Should only\n  // be true on iOS.\n  bool use_fake_https_for_https_upgrade_testing_;\n  std::u16string context_tab_title_;\n  GURL context_tab_url_;\n  // This is only relevant for contextual tasks where a previous query might\n  // be submitted and follow-up queries can be asked in the same thread.\n  std::string previous_query_;\n  // The method the input was entered (e.g. voice). Passed to suggest requests\n  // for searchboxes that want a smart compose responses. Used to determine\n  // when to trigger smart compose. Optional since it's currently only needed\n  // for composebox inputs.\n  std::optional<omnibox::metrics::ChromeSearchboxStats::InputMethod>\n      input_method_;\n  bool has_previous_submitted_thread_context_ = false;\n  bool has_auto_suggested_tab_ = false;\n};\n\n#endif  // COMPONENTS_OMNIBOX_BROWSER_AUTOCOMPLETE_INPUT_H_"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "9706772003c9423024dec54088221083806d382dbb0f76875aeb137e1173531d",
+      "ranges": [
+        {
+          "firstLine": 552,
+          "lastLine": 590,
+          "text": "TabStripModel::DetachTabsAndCollectionsForInsertion(\n    const std::vector<int>& tab_indices) {\n  const std::vector<tab_groups::TabGroupId> groups_to_move =\n      GetGroupsDestroyedFromRemovingIndices(tab_indices);\n\n  std::vector<tabs::TabInterface*> tab_interfaces =\n      GetTabsAtIndices(tab_indices);\n\n  std::vector<std::variant<std::unique_ptr<DetachedTab>,\n                           std::unique_ptr<DetachedTabCollection>>>\n      owned_tabs_and_collections;\n\n  for (const tabs::TabInterface* tab_interface : tab_interfaces) {\n    const int index = GetIndexOfTab(tab_interface);\n    if (index == TabStripModel::kNoTab) {\n      // If this is a tab, we already moved it as part of its group.\n      // If this is a header, we will move it when we get to its first tab.\n      continue;\n    }\n\n    const std::optional<tab_groups::TabGroupId> group =\n        tab_interface->GetGroup();\n    if (std::find(groups_to_move.begin(), groups_to_move.end(), group) !=\n        groups_to_move.end()) {\n      owned_tabs_and_collections.emplace_back(\n          DetachTabGroupForInsertion(group.value()));\n    } else if (tab_interface->IsSplit()) {\n      owned_tabs_and_collections.emplace_back(\n          DetachSplitTabForInsertion(tab_interface->GetSplit().value()));\n    } else {\n      owned_tabs_and_collections.emplace_back(DetachTabWithReasonAt(\n          index, TabRemovedReason::kInsertedIntoOtherTabStrip,\n          tabs::TabInterface::DetachReason::kInsertIntoOtherWindow));\n    }\n  }\n\n  return owned_tabs_and_collections;\n}\n"
+        }
+      ]
+    }
+  ]
+}

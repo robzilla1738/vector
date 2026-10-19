@@ -1,0 +1,102 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -542,6 +542,9 @@
+   bool aux_profile_switch_paused_ = false;
+   uint64_t aux_profile_switch_generation_ = 0;
+   base::WeakPtr<Profile> aux_profile_switch_source_;
++  base::WeakPtr<content::WebContents> aux_profile_switch_contents_;
++  bool aux_profile_switch_had_contents_ = false;
++  bool aux_profile_switch_saved_contents_ = false;
+   void BindPrefsForAuxProfileSwitch();
+ #endif
+ 
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -1626,6 +1626,12 @@
+   } else {
+     omnibox_view_->SaveStateToTab(contents);
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_paused_ &&
++      aux_profile_switch_contents_.get() == contents) {
++    aux_profile_switch_saved_contents_ = true;
++  }
++#endif
+ }
+ 
+ LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
+@@ -2446,7 +2452,6 @@
+          !omnibox::IsWebUIOmniboxInBrowserViewEnabled() &&
+          !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
+          !omnibox_controller_->IsPopupOpen() &&
+-         !omnibox_controller_->edit_model()->user_input_in_progress() &&
+          omnibox_view_->CanPrepareForAuxProfileSwitch();
+ }
+ 
+@@ -2454,6 +2459,12 @@
+   CHECK(CanPrepareForAuxProfileSwitch(target));
+   aux_profile_switch_paused_ = true;
+   aux_profile_switch_source_ = profile_->GetWeakPtr();
++  content::WebContents* source_contents = GetWebContents();
++  aux_profile_switch_contents_ =
++      source_contents ? source_contents->GetWeakPtr()
++                      : base::WeakPtr<content::WebContents>();
++  aux_profile_switch_had_contents_ = source_contents != nullptr;
++  aux_profile_switch_saved_contents_ = false;
+   const uint64_t generation = ++aux_profile_switch_generation_;
+   weak_factory_.InvalidateWeakPtrs();
+   pref_registrar_->Reset();
+@@ -2475,6 +2486,10 @@
+   CHECK_EQ(generation, aux_profile_switch_generation_);
+   CHECK(browser_->GetProfile()->IsRegularProfile());
+   CHECK(browser_->GetTabStripModel()->empty());
++  // Only the genuine Browser detach/deactivate path marks this after the
++  // real view saved draft/selection/IME state into this exact source tab.
++  CHECK(!aux_profile_switch_had_contents_ ||
++        (aux_profile_switch_contents_ && aux_profile_switch_saved_contents_));
+   profile_ = browser_->GetProfile();
+   omnibox_controller_->RebindClientForAuxProfileSwitch(
+       std::make_unique<ChromeOmniboxClient>(this, browser_, profile_));
+@@ -2491,6 +2506,9 @@
+   CHECK_EQ(profile_, browser_->GetProfile());
+   aux_profile_switch_paused_ = false;
+   aux_profile_switch_source_.reset();
++  aux_profile_switch_contents_.reset();
++  aux_profile_switch_had_contents_ = false;
++  aux_profile_switch_saved_contents_ = false;
+   OnChanged();
+ }
+ 
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+@@ -282,7 +282,9 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ bool OmniboxViewViews::CanPrepareForAuxProfileSwitch() const {
+-  return !IsIMEComposing() && !IsMenuShowing();
++  // Genuine SaveStateToTab commits/cancels composition using the ordinary
++  // tab-switch lifecycle before the source tab leaves this window.
++  return !IsMenuShowing();
+ }
+ 
+ void OmniboxViewViews::PrepareForAuxProfileSwitch() {
+--- a/chrome/browser/ui/omnibox/omnibox_controller.cc
++++ b/chrome/browser/ui/omnibox/omnibox_controller.cc
+@@ -70,7 +70,6 @@
+   CHECK(client);
+   CHECK(edit_model_->view());
+   CHECK(!IsPopupOpen());
+-  CHECK(!edit_model_->user_input_in_progress());
+   // The actual view/popup observe this same controller and edit model. Retire
+   // old async results before destroying provider-backed matches or services.
+   weak_ptr_factory_.InvalidateWeakPtrs();
+--- a/chrome/browser/ui/omnibox/omnibox_edit_model.cc
++++ b/chrome/browser/ui/omnibox/omnibox_edit_model.cc
+@@ -663,7 +663,6 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ void OmniboxEditModel::ResetForAuxProfileSwitch() {
+-  CHECK(!user_input_in_progress_);
+   weak_factory_.InvalidateWeakPtrs();
+   // Retire actual old-profile upload/session ownership; never preserve a
+   // contextual search handle or provider match in the new profile.

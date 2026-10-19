@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "base": "Exact ordered output of 12cbfe7e2 then 0edd36bc9, unchanged v62 inputs replayed first",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "baselineSha256": "caff3bfac6545ec46244227fbe265df262a322e5a72e75fb04d0ee33b00b2673",
+      "outputSha256": "fbeaca86e7ffa4da58de1b6cc5c460ce8754fc10973d7185a2b457144272a538"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "817cd3f621648d6978617f7abc3bbaa3d1156fae27edb68704ab9c949e37667d",
+      "outputSha256": "ce36d8c2a3511db74239b3786aa37e50a0d87788a534d351c7acf28106aed086"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "baselineSha256": "0e3b6ea36fb4a0057fe932ef1c460f82e69fbeabe334e48f5290968a60280e91",
+      "outputSha256": "f3f87054ad92cafb888dee29cd2df9c93fe173bf5d335ca0c6dc3826e7896817"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_controller.cc",
+      "baselineSha256": "84111ddd8198ff625ff6a7eaa83f6f7e74318fa3a5396379832e2d68a7039633",
+      "outputSha256": "240e691001af0f04dc7398a92631785793dcc5710f39b376ffe9e70cadd2a591"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_edit_model.cc",
+      "baselineSha256": "ce464367b5dd2690c09bca13653a406375004f801b9b72272697df3c99aa2eae",
+      "outputSha256": "d6d5fe3338b5e6ec23b1bd1557d42927ab533ad48c034f31f65f41780cbac27f"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
