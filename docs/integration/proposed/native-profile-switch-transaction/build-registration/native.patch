@@ -1,0 +1,31 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2770,6 +2770,8 @@
+       "views/frame/aux_profile_switch_workspaces.h",
+       "views/frame/aux_profile_switch_tabs.cc",
+       "views/frame/aux_profile_switch_tabs.h",
++      "views/frame/aux_profile_switch_transaction.cc",
++      "views/frame/aux_profile_switch_transaction.h",
+       "aux_profile_switch_session_rebuild.cc",
+       "aux_profile_switch_session_rebuild.h",
+       "views/frame/aux_icon_picker.cc",
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -648,6 +648,7 @@
+     "//ui/shell_dialogs",
+   ]
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//chrome/browser/extensions/api/messaging",
+     "//chrome/browser/media/webrtc",
+     "//chrome/browser/supervised_user",
+--- a/chrome/browser/ui/tabs/saved_tab_groups/BUILD.gn
++++ b/chrome/browser/ui/tabs/saved_tab_groups/BUILD.gn
+@@ -29,6 +29,7 @@
+     "tab_group_sync_delegate_desktop.h",
+   ]
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/ui/browser_window",

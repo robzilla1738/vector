@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "base": "Stagedv53 actual guarded transaction and profile feature hooks, appliedv48 shared inputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "f56b94e1ac6b7994fee7b582657f546ead30ba35f22a0dd6ce85f8bb9cefb77d",
+      "outputSha256": "8abfbc1f6e2c943db300a4ec9ec55d2fa964ceb74d1ce97fd3f41d682d5813d4"
+    },
+    {
+      "path": "chrome/browser/extensions/BUILD.gn",
+      "baselineSha256": "ec265d32ec22dc872f17bc6357f370452722f39518a313ffb107afb1f49aede1",
+      "outputSha256": "54bfff7ecf24d82438ac0cebaaeb4e4c4f81b4cc3dda5701b7df47a8cc3508bf"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/BUILD.gn",
+      "baselineSha256": "1fb5a2165a765c7e24a97eb106e9e8d2a2a57ba63cc0649ccc86780afda82f8d",
+      "outputSha256": "daf3666e4606a927a4cb09e428cc5d4284d9378553d9e5de6ef42f575b42c01b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

@@ -79,6 +79,13 @@ steps.extend([
     ('native-profile-switch-build-registration/native.patch', 'native-profile-switch-build-registration/manifest.json'),
     ('native-mini-popup-options/native-mini-popup-options.patch', 'native-mini-popup-options/manifest.json'),
     ('native-profile-switch-build-fixes/native.patch', 'native-profile-switch-build-fixes/manifest.json'),
+    ('native-profile-switch-init-profile/rebased-v48.patch', 'native-profile-switch-init-profile/rebased-v48-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/session-cache-policy.patch', 'native-profile-switch-owner/transaction-map/session-cache-policy-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/profile-features.patch', 'native-profile-switch-owner/transaction-map/profile-features-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/cookie-page-action.patch', 'native-profile-switch-owner/transaction-map/cookie-page-action-manifest.json'),
+    ('native-profile-switch-transaction/native.patch', 'native-profile-switch-transaction/manifest.json'),
+    ('native-profile-switch-transaction/build-registration/native.patch', 'native-profile-switch-transaction/build-registration/manifest.json'),
+    ('native-mini-popup-position-focus/native-mini-popup-position-focus.patch', 'native-mini-popup-position-focus/manifest.json'),
 ])
 
 def safe(path):
