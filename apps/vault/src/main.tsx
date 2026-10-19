@@ -16,12 +16,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@aux/ui/tokens.css';
 import './styles.css';
-import type { FillContext, Snapshot, VaultItem, VaultStatus } from './client';
+import type { FieldKey, PageFillContext } from './autofill-protocol';
+import type { Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
+import { exportSnapshot } from './export';
+import { FillReview } from './fill-review';
 import { OneTimeCode } from './one-time-code';
 import { PasskeyConsent } from './passkeys/consent';
 import { requestIdFromHash } from './passkeys/native';
 import { PasswordGenerator } from './password-generator';
+import { SaveSuggestion } from './save-suggestion';
 import { VaultManagement } from './vault-management';
 
 function App() {
@@ -33,6 +37,15 @@ function App() {
   const [authGate, setAuthGate] = useState<{ initialized: boolean }>();
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState('');
+  const saveError = useCallback(
+    (cause: unknown) =>
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'The submitted login could not be checked.',
+      ),
+    [],
+  );
   const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(false);
   const [query, setQuery] = useState('');
@@ -42,7 +55,7 @@ function App() {
   const [editor, setEditor] = useState<VaultItem | 'new'>();
   const [settings, setSettings] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [context, setContext] = useState<FillContext>();
+  const [context, setContext] = useState<PageFillContext>();
   const clearSecrets = useCallback(() => {
     setSnapshot(undefined);
     setSelectedId('');
@@ -141,12 +154,12 @@ function App() {
   }
   async function pageContext() {
     try {
-      const target = await backgroundRequest<FillContext>({
+      const target = await backgroundRequest<PageFillContext>({
         type: 'aux.vault.pageContext',
       });
       setContext(target);
       setNotice(
-        `Choose a matching login for ${new URL(target.documentUrl).hostname}.`,
+        `Choose a saved ${target.category === 'login' ? 'login' : target.category === 'card' ? 'card' : 'identity'} for ${new URL(target.documentUrl).hostname}.`,
       );
     } catch (error) {
       setError(
@@ -246,6 +259,14 @@ function App() {
       </header>
       {error && <ErrorNotice error={error} />}{' '}
       {notice && <output className="vault-notice">{notice}</output>}
+      {snapshot && (
+        <SaveSuggestion
+          accountId={accountId}
+          snapshot={snapshot}
+          onSaved={() => refresh(accountId)}
+          onError={saveError}
+        />
+      )}
       <div className="vault-panes">
         <section className="vault-list">
           <div className="search-row">
@@ -345,8 +366,8 @@ function App() {
                     .then(() => setSelectedId(''))
                     .catch(() => {});
               }}
-              onFill={() => {
-                if (!context) {
+              onFill={(selectedFields) => {
+                if (!context || !selectedFields) {
                   void pageContext();
                   return;
                 }
@@ -356,6 +377,7 @@ function App() {
                   accountId,
                   itemId: selected.id,
                   contextToken: context.contextToken,
+                  selectedFields,
                 })
                   .then(() => {
                     setNotice('The selected fields are filled.');
@@ -478,12 +500,12 @@ function ItemDetail({
 }: {
   item: VaultItem;
   accountId: number;
-  context?: FillContext;
+  context?: PageFillContext;
   pending: boolean;
   onEdit: () => void;
   onRestore: (revision: number) => Promise<void>;
   onDelete: () => void;
-  onFill: () => void;
+  onFill: (fields?: FieldKey[]) => void;
   onError: (error: string) => void;
 }) {
   const [history, setHistory] = useState<VaultItem[]>();
@@ -549,10 +571,13 @@ function ItemDetail({
       )}
       <small>{item.tags.join(' · ')}</small>
       <div className="stack detail-actions">
-        {item.loginFields && (
-          <Button disabled={pending} onClick={onFill}>
-            {context ? 'Fill selected fields' : 'Choose a field to fill'}
-          </Button>
+        {['login', 'card', 'identity'].includes(item.category) && (
+          <FillReview
+            category={item.category}
+            context={context}
+            pending={pending}
+            onFill={onFill}
+          />
         )}
         <Button
           disabled={pending}
@@ -1057,30 +1082,30 @@ function VaultSettings({
       <div className="stack">
         <h3>Export saved items</h3>
         <p>This file can contain readable passwords. Store it securely.</p>
-        <Button
-          disabled={!snapshot}
-          onClick={() => {
-            if (
-              !confirm('Export readable saved items? Store the file securely.')
-            )
-              return;
-            try {
-              const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-                type: 'application/json',
-              });
-              const url = URL.createObjectURL(blob);
-              const anchor = document.createElement('a');
-              anchor.href = url;
-              anchor.download = 'aux-vault-export.json';
-              anchor.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-            } catch {
-              onError('The Vault export could not be created.');
-            }
-          }}
-        >
-          Export
-        </Button>
+        {(['json', 'csv'] as const).map((format) => (
+          <Button
+            key={format}
+            disabled={!snapshot || pending || rotating}
+            onClick={() => {
+              if (
+                !snapshot ||
+                !confirm(
+                  'Export readable saved items? Store the file securely.',
+                )
+              )
+                return;
+              void exportSnapshot(snapshot, format).catch((error) =>
+                onError(
+                  error instanceof Error
+                    ? error.message
+                    : 'The Vault export could not be created.',
+                ),
+              );
+            }}
+          >
+            Export {format.toUpperCase()}
+          </Button>
+        ))}
         <Button
           disabled={pending}
           onClick={() => {

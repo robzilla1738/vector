@@ -28,6 +28,7 @@ export default defineConfig({
                 'tabs',
                 'activeTab',
                 'storage',
+                'downloads',
                 'dev.aux.ext.private.account',
                 'dev.aux.ext.private.credentials',
               ],

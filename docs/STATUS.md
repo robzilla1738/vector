@@ -204,3 +204,9 @@ Verification: owned files pass Biome and Vault TypeScript; production Vite build
 ## N-B Safari ZIP/fixture inventory followup 0099 (2026-10-19)
 
 Safari export ZIP import now validates archive paths/bounds, parses bookmarks through Chromium’s sandboxed utility, preserves history summary visit times/counts and imports password CSV through the native PasswordStore path. Import WebUI supplies explicit file/category consent; successful source/profile identities are stored internally. Nonofficial fixture-home inventory fails closed on invalid roots and disables real source encrypted categories. Enabled actual API/UI/preferences objects compile; Safari, ten-family inventory, encrypted and engine disposable probes pass. See `docs/acceptance/native-safari-import-0099.md`. Native sources are frozen for the integrator’s final noncomponent build. Running-browser Safari/OS permission/destination observation, Arc/extension metadata and filter cache/scheduling remain outstanding.
+
+### Integrated Vault field review and export controls
+
+Mounted submitted-login review and category-aware exact-field selection in the popup. Card/identity fields start unselected and require explicit acceptance; login choices use only the actor's recognized live fields. Same-document submission/save limits remain visible in the actor evidence. Added explicit JSON/CSV destination selection through the browser download chooser, preserving structured custom fields in CSV JSON cells and excluding the dedicated private passkey collection. Root Vault TypeScript and all Vault lint checks pass; actual native chooser/form/page observation remains outstanding.
+
+The integrated workspace production build, typecheck and lint passed before these final Vault actor mounts; the focused Vault production build is tracked below. Full non-component native build is running with0097/0098/0099/0100 sources frozen.

@@ -96,4 +96,5 @@ aux/0095-aux-native-pinned-tab-drag.patch
 aux/0096-aux-encrypted-import-live-filtering.patch
 aux/0097-aux-vault-passkeys.patch
 aux/0098-aux-native-startup-recovery.patch
+aux/0099-aux-safari-archive-fixture-import.patch
 aux/0100-aux-default-profile-isolation.patch
