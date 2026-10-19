@@ -95,8 +95,61 @@ function fixture(
     await store.write(workspaceId, state.files, state.history, state.prior);
     return { claim, document };
   };
-  return { db, repo, tasks, workspaceId, pipeline, store, source, generated };
+  return { db, repo, tasks, workspaceId, pipeline, store, source, generated, native };
 }
+it.each(["discovery", "extraction"])(
+  "keeps unextracted sessions forgotten across restart during %s",
+  async (path) => {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const f = fixture();
+    const runId = randomUUID();
+    f.repo.saveRun({
+      runId,
+      goal: "Synthetic unextracted session",
+      status: "completed",
+      pageIds: [],
+      config: { contextWorkspaceId: f.workspaceId },
+      result: { report: "The synthetic workshop meets every Tuesday afternoon." },
+      createdAt: Date.now() - 1000,
+      endedAt: Date.now() - 1000,
+    });
+    await f.pipeline.forget({ workspaceId: f.workspaceId, all: true });
+    await f.pipeline.close();
+    const extract = vi.fn(fixtureMemoryExtractor.extract);
+    const restarted = new MemoryPipeline(f.repo, f.native, "documents-test", {
+      ...fixtureMemoryExtractor,
+      extract,
+    });
+    try {
+      const outcome =
+        path === "discovery"
+          ? await restarted.sources(f.workspaceId)
+          : await restarted.extractRun(f.workspaceId, runId);
+      expect(outcome).toEqual(path === "discovery" ? [] : { extracted: 0 });
+      expect(extract).not.toHaveBeenCalled();
+      expect(await restarted.inbox(f.workspaceId)).toEqual([]);
+      expect((await restarted.recoverySnapshot())[0]!.claims).toEqual([]);
+      now++;
+      const freshId = randomUUID();
+      f.repo.saveRun({
+        runId: freshId,
+        goal: "Synthetic new session after Forget",
+        status: "completed",
+        pageIds: [],
+        config: { contextWorkspaceId: f.workspaceId },
+        result: { report: "The synthetic new workshop meets each Wednesday afternoon." },
+        createdAt: now,
+        endedAt: now,
+      });
+      expect((await restarted.sources(f.workspaceId)).map((source) => source.runId)).toEqual([freshId]);
+      expect(await restarted.extractRun(f.workspaceId, freshId)).toEqual({ extracted: 1 });
+      expect(extract).toHaveBeenCalledTimes(1);
+    } finally {
+      await restarted.close();
+    }
+  },
+);
 it("binds authoritative site edits to generation, document identity and revision", async () => {
   const f = fixture();
   const first = await f.pipeline.documentSet({

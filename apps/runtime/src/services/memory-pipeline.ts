@@ -485,6 +485,12 @@ export class MemoryPipeline {
     ) as string | undefined;
   }
 
+  private retiredRun(run: Run, retirement: { before: number; sourceHashes: string[] }): boolean {
+    return (
+      (run.endedAt ?? run.createdAt) <= retirement.before || retirement.sourceHashes.includes(sha(run.runId))
+    );
+  }
+
   private eligibleForRecall(
     workspaceId: string,
     claim: MemoryClaim,
@@ -1109,7 +1115,10 @@ export class MemoryPipeline {
         return { extracted: 0 };
       const sourceReport = this.report(run);
       const report = sourceReport ?? "";
-      const { claims, inbox, history, prior, activity } = await this.readClaims(workspaceId);
+      const { claims, inbox, history, prior, activity, retiredSources } = await this.readClaims(workspaceId);
+      // Forget All also retires sessions with no extracted note/watermark yet.
+      // Consult its durable cutoff before any new model admission or derivative.
+      if (this.retiredRun(run, retiredSources)) return { extracted: 0 };
       if (
         activity.some((entry) => entry.sourceRunId === runId && entry.status !== "failed") ||
         [...claims, ...inbox].some((claim) => claim.sourceRunId === runId)
@@ -1229,6 +1238,7 @@ export class MemoryPipeline {
   private async sourcesOwned(workspaceId: string) {
     this.requireSpace(workspaceId);
     const admission = this.sourceAdmission(workspaceId);
+    const { retiredSources } = await this.readClaims(workspaceId);
     const sources: { runId: string; goal: string; endedAt: number }[] = [];
     let offset = 0;
     for (;;) {
@@ -1245,6 +1255,7 @@ export class MemoryPipeline {
         const run = this.repo.getRun(candidate.runId);
         if (
           run &&
+          !this.retiredRun(run, retiredSources) &&
           (run.result?.report || run.result?.answer || run.result?.text) &&
           this.sourceEligible(workspaceId, run, admission)
         )
@@ -1703,8 +1714,7 @@ export class MemoryPipeline {
       if (
         !run ||
         run.status !== "completed" ||
-        (run.endedAt ?? run.createdAt) <= retired.before ||
-        retired.sourceHashes.includes(sha(runId)) ||
+        this.retiredRun(run, retired) ||
         !this.sourceEligible(workspaceId, run, admission)
       )
         throw new AuxError(
