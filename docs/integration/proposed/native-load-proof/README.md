@@ -26,3 +26,9 @@ rm -rf "$fixture"
 ```
 
 Never set AUX_ENABLE_PROVIDED_NATIVE_CARRIER for this check. The wrapper sets the fixed DYLD path and canonical scope; the original CJS guard must still independently validate imported pointers before any future original binding load. No original native commands should be used merely to make --help become a native loading test.
+
+## Actual receipt and registration evidence
+
+Fresh current build62014 completed exit0 through the shared native wrapper after the obsolete full build was deliberately interrupted by the integrator. All five outputs compiled; pure dictionary mapper fixtures passed with zero Keychain calls. build-receipt.json is the actual generated pre-sign receipt (SHA25613b341a6bbd02c9c245a5860d92bbe71ddb8e5f213eacf836fa6aa7bc4790d80), pinning9sources/4headers/compiler invocations/5outputs. Artifacts remain at the recorded lane out/provided-native-current paths.
+
+The actual runner65327 then completed exit0 with signed inputs. Both main and worker verified real imported Security pointers, latched deny-all, established canonical immutable scope and refused another home scope. Original NAPI run and PDF exports registered; both reported refusedSecurityCalls0. No original command/PDF was invoked. observed-result.json preserves the bounded stdout evidence. The unchanged bundled Node and original binding hashes match source pins. All private proof fixtures were removed. This is actual addon-registration evidence under unchanged Node, not evidence that supplied hardened SEA startup/entitlements or original DP operations work. Those fields remain false, and no runtime acceptance flag was enabled.

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "host": "unchanged-bundled-node",
+  "main": {
+    "importedPointersVerified": true,
+    "denyAll": true,
+    "canonicalScopeBound": true,
+    "scopeChangeRefused": true,
+    "originalBindingLoaded": true,
+    "runExportRegistered": true,
+    "pdfExportRegistered": true,
+    "refusedSecurityCalls": 0,
+    "originalCommandsInvoked": false,
+    "originalPdfInvoked": false
+  },
+  "worker": {
+    "importedPointersVerified": true,
+    "denyAll": true,
+    "canonicalScopeBound": true,
+    "scopeChangeRefused": true,
+    "originalBindingLoaded": true,
+    "runExportRegistered": true,
+    "pdfExportRegistered": true,
+    "refusedSecurityCalls": 0,
+    "originalCommandsInvoked": false,
+    "originalPdfInvoked": false
+  },
+  "nativeBuildReceiptSha256": "13b341a6bbd02c9c245a5860d92bbe71ddb8e5f213eacf836fa6aa7bc4790d80",
+  "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+  "bindingSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "guardSha256": "1c99bd53b4713a4ac020f626963e1e33fc33535dc4009dd563a1ff22d8609ea5",
+  "boundarySha256": "ee8a8f7ce46fb5770b533d752ea1a40aff85707dc45b4c6847394996b75d455b",
+  "shimSha256": "5ec2865e0209974d859d042c617e760fac7b019025a6b1247d19e81df5a122f4",
+  "proofSha256": "ceec3bf886f32fd9f884f2984528ecca092dfd4697599e5991fb38e3899d02e5",
+  "signedInputsVerified": true,
+  "suppliedSeaLoadingProven": false,
+  "dpRuntimeAccepted": false
+}
