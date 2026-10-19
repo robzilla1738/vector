@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "source": {
+    "path": "assets/brand/arch-mark.svg",
+    "suppliedPath": "/Users/rcourson/Downloads/arch-mark.svg",
+    "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+    "viewBox": "0 0 1024 1024",
+    "pathCount": 2,
+    "groupTransform": "scale(12.8)",
+    "clipSize": [
+      80,
+      80
+    ]
+  },
+  "outputs": [
+    {
+      "path": "assets/brand/Aux.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_128x128.png",
+      "sha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208",
+      "size": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_128x128@2x.png",
+      "sha256": "9fda07905a44bf0c056e3793c87c822157269f3b3601a29f4357b7d91b59ef17",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_16x16.png",
+      "sha256": "54d1367084448320ee39412e34a74524d518babadb4e6582ef2bda27f1aa3cbc",
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_16x16@2x.png",
+      "sha256": "ce4779bef975467d4b931717f4eb31ad4db9801f285f660f1b878209fca9fffc",
+      "size": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_256x256.png",
+      "sha256": "9fda07905a44bf0c056e3793c87c822157269f3b3601a29f4357b7d91b59ef17",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_256x256@2x.png",
+      "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_32x32.png",
+      "sha256": "ce4779bef975467d4b931717f4eb31ad4db9801f285f660f1b878209fca9fffc",
+      "size": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_32x32@2x.png",
+      "sha256": "c46f2de70d32a97808a84a25873863005cb4e88648fcec6859cfd9b8c3b8c45d",
+      "size": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_512x512.png",
+      "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "path": "assets/brand/Aux.iconset/icon_512x512@2x.png",
+      "sha256": "ef31c583eda0da94c0dfc0f00ee45fdbc1ff3bee22105a56a67c2edc80c5af5b",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "path": "assets/brand/MenuBarIcon.png",
+      "sha256": "8149dffabdd50af7fcb75d281d915efeb8a2a186b75f5b722b34fb18f3dda193",
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "assets/brand/MenuBarIcon@2x.png",
+      "sha256": "055381ec57654a855a476c5719d5aa79d1e6a1f180c374d5120c627d413cc5fa",
+      "size": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "assets/brand/aux-artwork-preview.png",
+      "sha256": "6916b2dcd0a7f7f3cbe25faf12a0b655914bb555ae4e3eb5366482f6f34fae44",
+      "size": [
+        1200,
+        760
+      ]
+    },
+    {
+      "path": "assets/brand/aux-icon-1024.png",
+      "sha256": "ef31c583eda0da94c0dfc0f00ee45fdbc1ff3bee22105a56a67c2edc80c5af5b",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "path": "assets/brand/aux-mark-current.svg",
+      "sha256": "ee9a684126472e7bf5dc45652b7ff092ed33d97c51de98ec2c86b4ccf5edb88b"
+    },
+    {
+      "path": "assets/brand/aux-mark-dark.svg",
+      "sha256": "10c3673a7627b695cc7d9c94cdd0e80bd2ac32eb69c0a7739ecee054d329ec50"
+    },
+    {
+      "path": "assets/brand/aux-mark-white.png",
+      "sha256": "4dc4da7e761fa2118d3ed7cc8dfa1be81de636626891aa60ba8e9e41b78af8d2",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "path": "assets/brand/aux-mark-white.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "vendor/provided-ui/branding/icon48.png",
+      "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf",
+      "size": [
+        48,
+        48
+      ]
+    }
+  ],
+  "consumers": [
+    {
+      "path": "scripts/lib/provided-ui.mjs",
+      "method": "Both source paths, exact group/clip and 1024 viewBox; existing 64px slot retained"
+    },
+    {
+      "path": "packages/ui/src/tokens.css",
+      "method": "Canonical SVG mask for shared Mark component"
+    },
+    {
+      "path": "apps/extension/src/first-frame.css",
+      "method": "Canonical SVG mask"
+    },
+    {
+      "path": "apps/vault/src/styles.css",
+      "method": "Canonical SVG mask"
+    },
+    {
+      "path": "scripts/package-aux.mjs",
+      "method": "Canonical Aux.icns copied at packaging"
+    },
+    {
+      "path": "Computer Use Resources/MenuBarIcon*.png",
+      "method": "Root packaging must copy canonical 16px/32px template assets into cloned helper, never source helper"
+    }
+  ],
+  "nativeProposal": {
+    "path": "docs/integration/proposed/native-branding-assets/manifest.json",
+    "sha256": "0bf738cff24e2f99de5991a8840e737187346329ddf35026ef999311dfa5f2ce",
+    "applied": false
+  },
+  "shapePolicy": "No crop, contour fitting or reshaping; full supplied SVG canvas retained; white/dark/currentColor and dark app canvas variants only"
+}

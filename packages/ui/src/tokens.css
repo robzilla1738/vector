@@ -204,7 +204,7 @@ pre {
   flex-shrink: 0;
   background: currentColor;
   mask:
-    url("../../../assets/brand/aux-mark-white.svg") center / contain no-repeat;
+    url("../../../assets/brand/arch-mark.svg") center / contain no-repeat;
 }
 
 .aux-security-gate {

@@ -1,3 +1,4 @@
+import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { createHash } from 'node:crypto';
 import {
   lstat,
@@ -157,11 +158,7 @@ export async function stageProvidedUi({
     if (error.code !== 'ENOENT') throw error;
   }
   const report = { version: 1, components: {} };
-  const mark = (
-    await readFile(join(repository, 'assets/brand/aux-mark-white.svg'), 'utf8')
-  ).match(/ d="([^"]+)"/)?.[1];
-  if (!mark) throw new Error('Aux mark path is missing');
-  const transform = 'translate(9.6 14.25) scale(0.0529)';
+  const mark = await readAuxMark();
   const temporary = await mkdtemp(join(dirname(destination), '.provided-ui-'));
   try {
     for (const component of ['agent', 'vault']) {
@@ -231,7 +228,7 @@ export async function stageProvidedUi({
             const anchor = {
               kind: 'branding',
               find: match[0],
-              replace: `${match[1]}(0,${match[2]}.jsx)("path",{transform:"${transform}",d:"${mark}",fill:"currentColor",fillOpacity:.3})})`,
+              replace: `${match[1].replace('viewBox:"0 0 64 64"', 'viewBox:"0 0 1024 1024"')}${auxMarkReactChildren(match[2], mark)}})`,
               count: 1,
             };
             text = apply(text, anchor);
@@ -242,7 +239,11 @@ export async function stageProvidedUi({
             const anchor = {
               kind: 'branding',
               find: text,
-              replace: `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path transform="${transform}" d="${mark}" fill="${dark ? '#fff' : '#0A0A0A'}" fill-opacity="${dark ? 0.22 : 0.16}"/></svg>\n`,
+              replace: auxMarkSvg(
+                mark,
+                dark ? '#fff' : '#0A0A0A',
+                dark ? 0.22 : 0.16,
+              ),
               count: 1,
             };
             text = apply(text, anchor);

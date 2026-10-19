@@ -1,48 +1,25 @@
-# Aux artwork
+# Aux canonical arch mark
 
-The user approved the generated colored icon on 2026-09-20. `aux-approved-source.png`
-preserves that output. Its exterior fringe was removed by deterministic masking;
-the interior artwork was retained. The matching white mark is extracted from this
-same colored icon, rather than the separately generated, differently shaped mark.
+The owner supplied `/Users/rcourson/Downloads/arch-mark.svg` as the updated Aux logo on 2026-10-19 and directed its use everywhere. `arch-mark.svg` is a byte-exact copy: SHA-256 `45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c`. It retains the supplied attribution comment, 1024×1024 viewBox, both path definitions, `scale(12.8)` group and 80×80 clip. The previous raster-derived symbol is superseded and remains recoverable in Git history.
 
-- `aux-icon-1024.png`: RGBA macOS master. Artwork is centered in an 824px box on
-  a 1024px canvas, with transparent exterior and balanced approximately 100px insets.
-  This is the padded flat asset for the current Electron/ICNS integration.
-- `Aux.iconset/`: all ten macOS standard/Retina entries, 16 through 1024 physical pixels.
-- `../icon.icns`: compiled native icon used by electron-builder.
-- `aux-mark-white.svg`: scalable, pure-white transparent silhouette.
-- `aux-mark-white.png`: matching transparent raster, 847 × 671px, including 24px insets.
-- `aux-artwork-preview.png`: inspection sheet on light/dark backgrounds and at small sizes.
+No image generation, path tracing, cropping, contour fitting, smoothing or shape redesign is used. `aux-mark-white.svg` is the byte-exact white alias; `aux-mark-dark.svg` and `aux-mark-current.svg` change only fills. The shared UI, first-frame new tab and independent Vault masks use the canonical SVG. Supplied UI inline SVG replacements retain both paths/group/clip and use a 1024 viewBox inside their original 64px component slots. The original slot tint/opacity remains a rendering-role choice, not a path change.
 
-The renderer uses the mark as a theme-colored CSS mask, so it stays legible in both
-appearances. The favicon, About panel and development Dock use the colored PNG.
-No black canvas, checkerboard, shadow or extra corner clipping is applied.
+`aux-mark-white.png` rasterizes the entire transparent 1024px SVG canvas in a disposable headless browser. Its alpha bounds are `[111,131,912,861]`; those intrinsic margins are preserved. `aux-icon-1024.png` composites that unchanged raster onto a dark `#171717` app-icon canvas. `Aux.iconset/`, `Aux.icns` and `vendor/provided-ui/branding/icon48.png` are size derivatives. `MenuBarIcon.png` and `MenuBarIcon@2x.png` are transparent 16px/32px white template derivatives for cloned Computer Use helper resources. No helper or installed browser is modified by generating these assets.
 
-## Rebuild
+`aux-artwork-preview.png` shows the supplied shape on light/dark and icon sizes; it was visually inspected. `inventory.json` pins the source and all active derivatives, consumer locations, and the separately staged native proposal. `aux-approved-source.png` from the obsolete raster process was removed from the active asset directory; its original bytes remain in prior commits.
 
-The approved source is committed; image generation is not part of a build.
-To re-extract deterministically from it, run from the repository root:
+## Reproduce
+
+Pillow and an explicitly disposable headless Chrome profile are used only to rasterize local SVG. No owner profile, network resource or OS grant is needed.
 
 ```sh
-uv run --python 3.9 --with pillow==11.3.0 --with numpy==2.0.2 --with scipy==1.13.1 --with opencv-python-headless==5.0.0.93 python scripts/prepare-aux-artwork.py
+python3 scripts/prepare-aux-artwork.py
 node scripts/make-icon.mjs
+python3 scripts/propose-native-branding.py --source-root /path/to/chromium/src
+node scripts/record-aux-brand.mjs
+node --test scripts/lib/aux-mark.test.mjs
 ```
 
-The second command requires macOS `sips` and `iconutil`; it validates the master,
-resizes directly from it, preserves alpha, refreshes the renderer PNG and iconset,
-and replaces the ICNS only after successful compilation. The old Quick Look SVG
-thumbnail step was removed because it could flatten the background.
+`make-icon.mjs` uses macOS `sips` and `iconutil` for the iconset/ICNS. The native proposal under `docs/integration/proposed/native-branding-assets` includes 23 narrowly listed product-brand resources, each with a baseline and replacement hash. It changes no live Chromium file. Root applies it after the frozen build, rebuilds the relevant resources/package and handles signing. Four original wide wordmark canvases retain their 97×22 or 194×44 dimensions with the canonical mark in the original leading square and transparent remaining width; no new text artwork is invented. Functional/provider icons are excluded.
 
-Apple references: [app icons](https://developer.apple.com/design/human-interface-guidelines/app-icons/)
-and [icon asset catalogs](https://developer.apple.com/documentation/xcode/configuring-your-app-icon).
-This supplies the existing flat ICNS integration, not a layered Icon Composer asset.
-
-## Generation provenance
-
-Built-in imagegen was used with the supplied image as reference. The selected prompt
-requested preservation of the colored rounded square and pale mark, removal of only
-the black exterior, transparent output, clean edges and macOS padding. The generated
-output retained unwanted fringe; the user authorized using the generated version,
-then deterministic cleanup produced the shipping files above. A separate prompt for
-a flat white cutout changed the silhouette and was not used. No image generation API
-key or external image service is needed to regenerate the final assets from the source.
+Historical `vendor/aside/patches/extensions.mjs` still belongs to the superseded staging path; its old single-path artwork extractor must not be used for this logo. The active faithful stager is `scripts/lib/provided-ui.mjs`, which uses `scripts/lib/aux-mark.mjs` and verifies both paths. Historical screenshots and prior source snapshots remain historical evidence, not active branding assets.

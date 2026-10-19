@@ -26,7 +26,7 @@ html[data-surface="app"] #first-frame {
   margin: 0 auto 48px;
   background: #e8e8e8;
   mask:
-    url("../../../assets/brand/aux-mark-white.svg") center / contain no-repeat;
+    url("../../../assets/brand/arch-mark.svg") center / contain no-repeat;
 }
 html[data-theme="dark"] .first-mark {
   background: #414141;

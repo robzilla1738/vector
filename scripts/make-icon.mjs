@@ -1,4 +1,4 @@
-// Build Aux's macOS icon from the approved transparent 1024px master.
+// Build Aux's macOS icon from the canonical-SVG-derived 1024px RGBA master.
 // Usage: node scripts/make-icon.mjs (macOS; no Quick Look rendering or background fill)
 import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, mkdtempSync, mkdirSync, renameSync, rmSync } from "node:fs";
@@ -18,7 +18,7 @@ if (
   !/pixelHeight: 1024\b/.test(properties) ||
   !/hasAlpha: yes\b/.test(properties)
 )
-  throw new Error("The Aux icon master must be a transparent 1024 × 1024 PNG.");
+  throw new Error("The Aux icon master must be a 1024 × 1024 RGBA PNG.");
 const work = mkdtempSync(join(tmpdir(), "aux-icon-"));
 try {
   const iconset = join(work, "Aux.iconset");

@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "canonicalSvgSha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+  "status": "proposal-only-not-applied",
+  "entries": [
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_128.png",
+      "baselineSha256": "ae9d84286a3fe2f8f011ae2f38adbb7d7b7a4df9fdfc2404e9b37979a54fcde6",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/linux/product_logo_128.png",
+      "replacementSha256": "242bc650cebadac69345d1c894a711af0b7a106ed3c4cf5628ab8bb33b705695",
+      "size": [
+        128,
+        128
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_24.png",
+      "baselineSha256": "f305188d6e14e6c2e080d00065602db4b963da2b6f29bc39b0998f407b45a030",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/linux/product_logo_24.png",
+      "replacementSha256": "4c45a8fd6a4f1b6325e7f7d492b1614d35624e97844654cc834683d110101af5",
+      "size": [
+        24,
+        24
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_256.png",
+      "baselineSha256": "190dc5dbd72d856627acdc86acec90ec2fcc27781a3a2654fd3aa49d570cd474",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/linux/product_logo_256.png",
+      "replacementSha256": "d229d1f32ba53f7b0aed59c1f3445bfebd195289de330bb74b53228e8c35d46a",
+      "size": [
+        256,
+        256
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_48.png",
+      "baselineSha256": "25a8c0aeab4ed89bab7d849da65e9c61e3cf19938406c6588ef5d420753923aa",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/linux/product_logo_48.png",
+      "replacementSha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf",
+      "size": [
+        48,
+        48
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/linux/product_logo_64.png",
+      "baselineSha256": "aa925e4c764b307240c494096158678aa1809c540be72f3d12f07a97b68aa4d1",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/linux/product_logo_64.png",
+      "replacementSha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19",
+      "size": [
+        64,
+        64
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_128.png",
+      "baselineSha256": "ea2d5a7c15ae1e03138d2bb227d3ed4684808c7de10a1443d776cde3ca3dcd9d",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_128.png",
+      "replacementSha256": "242bc650cebadac69345d1c894a711af0b7a106ed3c4cf5628ab8bb33b705695",
+      "size": [
+        128,
+        128
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_16.png",
+      "baselineSha256": "a393eac540413ebbc51ba033b96d6f87918d1039f1ec16cd8c0e6a57818f2ea1",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_16.png",
+      "replacementSha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c",
+      "size": [
+        16,
+        16
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_22_mono.png",
+      "baselineSha256": "eeed0143dfaaa12ffad808fd472b8b2428d0530a1af2bbac37c6869091fd266d",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_22_mono.png",
+      "replacementSha256": "8cf9de2139fb3e4bfd72c0f15f6dfb6912b5aa79b7d4fa166a39d938fdfd1ac0",
+      "size": [
+        22,
+        22
+      ],
+      "role": "transparent monochrome canonical mark"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_24.png",
+      "baselineSha256": "7a431699c78af352352932f6dd4e04848b57990c0a5675a66695e1dd454cb592",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_24.png",
+      "replacementSha256": "4c45a8fd6a4f1b6325e7f7d492b1614d35624e97844654cc834683d110101af5",
+      "size": [
+        24,
+        24
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_256.png",
+      "baselineSha256": "e14120fdefb8eb455f44eac572f34bda75c32c9404e5c3745d44793dae217331",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_256.png",
+      "replacementSha256": "d229d1f32ba53f7b0aed59c1f3445bfebd195289de330bb74b53228e8c35d46a",
+      "size": [
+        256,
+        256
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_48.png",
+      "baselineSha256": "008be542c4ee081c28461e5f6e8a133ce6abb1e2c0998dee414f2db44a6d9c91",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_48.png",
+      "replacementSha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf",
+      "size": [
+        48,
+        48
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/chromium/product_logo_64.png",
+      "baselineSha256": "aa7f129dcfe02276ebd365781c6a0c3c8ab1ca41abf3408ca47e604e7fe12018",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/product_logo_64.png",
+      "replacementSha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19",
+      "size": [
+        64,
+        64
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/linux/product_logo_16.png",
+      "baselineSha256": "fdbe4e892e67409252283e2eb1faa05a9be8131e4d2dbc1dcc0f5d14390be4e2",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/linux/product_logo_16.png",
+      "replacementSha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c",
+      "size": [
+        16,
+        16
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/linux/product_logo_32.png",
+      "baselineSha256": "aefac1d7018fefe100588d58bf8c452612ba755be878529d7b1c2f9f382d469e",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/linux/product_logo_32.png",
+      "replacementSha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614",
+      "size": [
+        32,
+        32
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_16.png",
+      "baselineSha256": "32ea0cf8a4f67b8fde3225391201f72bb4ef117295b104961c68d0502a7142d8",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/product_logo_16.png",
+      "replacementSha256": "3c44cb23c7b6aceedb6365de7ee44b0b9fe085d2ade056e20c0f90f6c6cbb90c",
+      "size": [
+        16,
+        16
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_32.png",
+      "baselineSha256": "c29f2c754d619246062db49e4ba1c3b8e96fcce18ec4524f5ef371172af385ad",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/product_logo_32.png",
+      "replacementSha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614",
+      "size": [
+        32,
+        32
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22.png",
+      "baselineSha256": "fd2ba439f3aad0b56b8228bc966f4f3c425a56f4c7c3e77b8a850fc7bfc93b24",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/product_logo_name_22.png",
+      "replacementSha256": "137e6b7ecd6401037e67ec6c5a218590c0408d3a070e6069711c5887982ff7cb",
+      "size": [
+        97,
+        22
+      ],
+      "role": "canonical mark in original leading square; remaining wordmark canvas transparent"
+    },
+    {
+      "target": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22_white.png",
+      "baselineSha256": "655d7d7e6d0b2997a948f8ca414a71e84e7c9615df928be01c1c4ca744085b9c",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_100_percent/chromium/product_logo_name_22_white.png",
+      "replacementSha256": "d74ed4f0ba75b5d558cebdf5c1cee75842b4b00bc73cb3c7f988135e33188ee8",
+      "size": [
+        97,
+        22
+      ],
+      "role": "canonical mark in original leading square; remaining wordmark canvas transparent"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_16.png",
+      "baselineSha256": "9fef85f58e6e4a2cdcbe8b0d3d8fe833547362ab1501ab700d745876fd830f4e",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_200_percent/chromium/product_logo_16.png",
+      "replacementSha256": "aec7726c4c9f0bb9b13962325453a9ad7277b571a6d0be76cca5cccad512d614",
+      "size": [
+        32,
+        32
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_32.png",
+      "baselineSha256": "926700351f770f2ae5d1298c75aa269da1416d1511e90a1eed07a5ac5e27e85e",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_200_percent/chromium/product_logo_32.png",
+      "replacementSha256": "faff5bdf4954232f80e8dea4b428dc7e3b47df555f76051fa8c0441509784b19",
+      "size": [
+        64,
+        64
+      ],
+      "role": "canonical app icon"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22.png",
+      "baselineSha256": "91f827498cde94ab869a24a861eaf37a6550733ec58f452124feeedccb4596f6",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_200_percent/chromium/product_logo_name_22.png",
+      "replacementSha256": "0b116dc932ac913dcb12dad9aed7b3c9f6a2c5c4065db7fb2072136edf50abc3",
+      "size": [
+        194,
+        44
+      ],
+      "role": "canonical mark in original leading square; remaining wordmark canvas transparent"
+    },
+    {
+      "target": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22_white.png",
+      "baselineSha256": "23195e26c92c275e99b9c55433e5add1741af93171cdee0ef6c4013f8a6cf205",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/default_200_percent/chromium/product_logo_name_22_white.png",
+      "replacementSha256": "c20c1009f044a460f2410a6e99c1dee61d672401e7df9490eb124cd6f152f5f9",
+      "size": [
+        194,
+        44
+      ],
+      "role": "canonical mark in original leading square; remaining wordmark canvas transparent"
+    },
+    {
+      "target": "chrome/app/theme/chromium/mac/app.icns",
+      "baselineSha256": "76dfed77bfeacfa433dbe660b093a44aac3c2a225bbce40e27f06b7a0f5b44d4",
+      "replacement": "docs/integration/proposed/native-branding-assets/chrome/app/theme/chromium/mac/app.icns",
+      "replacementSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "role": "canonical Aux ICNS"
+    }
+  ],
+  "applyPolicy": "After the frozen build, verify every baseline and replacement hash before any copy; stop on any mismatch. Copy only listed targets, then rebuild native resources/package and sign via root workflow."
+}
