@@ -6,7 +6,7 @@ Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reco
 
 Reuse the implementation supplied by the owner, preserve its UI and behavior, and change its branding, assets and identifiers to Aux. Deliver the faithful local Aux browser, including the supplied daemon, Agent/Vault UI, CLI, helpers and runtimes as needed. Adapt that implementation to Aux Chromium instead of replacing it with approximate screens or behavior.
 
-Work locally on main, use parallel agents for substantial disjoint implementation, keep tests focused, and continue until the requested result is complete. No push, hosted Actions, developer signing, notarization or release.
+Work locally on main, use parallel agents for substantial disjoint implementation, keep tests focused, and continue until the requested result is complete. No push, hosted Actions, Developer ID signing, notarization or release. The owner separately authorized scoped Apple Development provisioning/signing for the three disposable Aux authentication helpers; preserve that exact scope and the actual certificate/profile gates.
 
 ## Fidelity requirements
 
