@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04598fcc.c",
+      "sha256": "0144420135bd1f414c8ee314f452caf092f6e82e3eca1ce569ccf737805b886e"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04598780.c",
+      "sha256": "a6fffcf484c49a453cb5d4a47322773f15fd6a4cb9b9bdbfc5f4fa5ea5aebf6f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/web_contents_set_background_color.h",
+      "sha256": "273418d6cadaecc3bc2fcc752a6cc88fd16a106d8086203e06cd91430cc855aa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/web_contents_set_background_color.cc",
+      "sha256": "270769f09bd7b93c4b135f9845474013285d23b0f36c006c957c9052feae4a57"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/webview.cc",
+      "sha256": "131e3bddab3bfc62e3ac478be7a8fd913151965c75842dd67659f9b302185e0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/webview/BUILD.gn",
+      "sha256": "6fcbf47ef7594343fb249456e900424cf344a71c99693802fdb0d4a355364adc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/web_contents_user_data.h",
+      "sha256": "927e6d17933b8db504d1d79972473f696722c34ebb006c7c2bcc2445ed98cb34"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/render_widget_host_view.h",
+      "sha256": "035bf50d7dcd72ca6f3c11cd32f784f28f05631f15d6aa0ae851789c88e50c5b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/renderer_host/render_widget_host_view_base.cc",
+      "sha256": "81d2beec60333375f0072bac3b6c4131e39c9bfbc6d7b80dfeceef8e0d1712c3"
+    }
+  ],
+  "functions": [
+    {
+      "name": "ApplyTransparentBackground",
+      "rva": "0x4598fcc",
+      "sliceBytes": 508,
+      "sliceSha256": "8d8a9b572883c9db331f39e27a0322dd702244910f5072f69b7e9679cd11e2b0",
+      "evidenceId": "ev_b64bfdd2f07fedb7c8b69317d3f907d51797002dae42b4526419b5fd8172e753",
+      "snapshotPath": "/tmp/aux-popup-transparency-snapshot.json"
+    },
+    {
+      "name": "PersistentColorObserver",
+      "rva": "0x2a62d00",
+      "sliceBytes": 512,
+      "sliceSha256": "aadc15bdf5290db220a64e0b42f9694089d12e4ce8a375eba57188f99b050647",
+      "evidenceId": "ev_18ac62c4b50d4b8c1aa9431a7c534dbc66b0a336f9dd03293983c2c7bc1fec5e",
+      "snapshotPath": "/tmp/aux-popup-set-background-full-snapshot.json"
+    },
+    {
+      "name": "PageBroadcast",
+      "rva": "0x2a6e990",
+      "sliceBytes": 512,
+      "sliceSha256": "bdfab70d84e4b5ce60b7e12d576763ccecade41722853b0171f1026a2f727337",
+      "evidenceId": "ev_938ab643ffab15f10fec65f7e1cf760f3dd7a977ab5e1e325021b8b89a26285f",
+      "snapshotPath": "/tmp/aux-popup-notify-background-snapshot.json"
+    },
+    {
+      "name": "ViewSetBackgroundColor",
+      "rva": "0x32a83c0",
+      "sliceBytes": 384,
+      "sliceSha256": "3a1da5da43d5cea4523fcea74af6b1fc33ab9441d8ef52d028e45d51734f9de3",
+      "evidenceId": "ev_f4bbb41f0b1757ae53d6683cbf095ea0b5f0ffda81c7865e7819c94859190957",
+      "snapshotPath": "/tmp/aux-popup-view-background-snapshot.json"
+    }
+  ],
+  "observations": [
+    {
+      "source": "0459577c/04598780",
+      "behavior": "Both actual main and child creation call04598fcc before starting/displaying their supplied documents."
+    },
+    {
+      "source": "04598fcc",
+      "behavior": "Calls userdata color setter02a62d00 with0; sets optional page-base color0/present and broadcasts changes to pages; if current render view exists, calls032a83c0(view,0), then a further optional-color virtual call."
+    },
+    {
+      "source": "02a62d00",
+      "behavior": "Finds per-WebContents userdata, allocates observer state if absent and stores color; existing record changes color and applies it to current render view. Raw-provider decompiler has truncated tail/branch warnings; named type is inferred by matching current upstream mechanism."
+    },
+    {
+      "source": "032a83c0 and currentRenderWidgetHostViewBase::SetBackgroundColor",
+      "behavior": "Allows alpha0or255, compares/stores optional default background, updates platform color and changes renderer background opacity. This matches the named current public SetBackgroundColor method."
+    },
+    {
+      "source": "155WebContentsSetBackgroundColor",
+      "behavior": "Owned by WebContents userdata; applies stored color to outermost main frames on RenderFrameCreated. NativeViewHost reads its color when attaching the WebContents. Current create-only helper does not change existing color, so the Aux adapter replaces only a nontransparent record of that same exact helper type."
+    },
+    {
+      "source": "155WebContentsImpl::SetPageBaseBackgroundColor",
+      "behavior": "Persists optional renderer-side base color, broadcasts to existing pages and sends inCreateView when renderer broadcast is not yet ready."
+    }
+  ],
+  "limits": [
+    "No binary/native/browser execution or actual visual acceptance. Raw boundedGhidra omits external symbol/data resolution and carries bad-data/truncated-tail warnings where recorded.",
+    "Original helper final optional-color virtual call remains unidentified and is not independently guessed.155public color observer/base color/current-view APIs cover the specifically recovered effects.",
+    "No material change: The DesktopMediaPickerVisualEffect literal alone is not sufficient proof of an AppKit material enum. ExistingHUD remains an unresolved styling gap.",
+    "No global color policy, content-script override, new observer class, suppliedCSS/JS change, or root/native shared edit."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-mini-popup-position-focus CCa3fe2c... and child handoff BUILD2a230caf...",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "baselineSha256": "2a230caf8cdce1eb71c06f7ff18b0776d3f323e1c28aa45c78fc47c62414e36b",
+      "outputSha256": "c8d5eef1a5161f425fde0c2544c17f80e83c9d053989bb991a6d9944478ef9b7"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "a3fe2c2a8b4deff2193a65e2b2f70e742d7ebacc33156568afc5079bdc04b4da",
+      "outputSha256": "1af1ab19d632beed41ee0d35524a0604167d60a8cfd14d926ccc06493d938f25"
+    }
+  ]
+}
