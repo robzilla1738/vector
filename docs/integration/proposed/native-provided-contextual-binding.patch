@@ -1,0 +1,1247 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -1,43 +1,32 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+-// Independent owned AutocompleteController sessions: native/omnibox O1-O4.
++// Supplied extension boundary over Chromium's owned contextual search handler.
+ #include "chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.h"
+ 
+-#include <algorithm>
+ #include <map>
+ #include <optional>
+-
+ #include "base/base64.h"
++#include "base/containers/span.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/strings/string_util.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "base/functional/bind.h"
+-#include "base/memory/raw_ptr.h"
+-#include "base/scoped_multi_source_observation.h"
+-#include "base/scoped_observation.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/task/single_thread_task_runner.h"
++#include "base/task/bind_post_task.h"
+ #include "base/uuid.h"
+-#include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
+-#include "chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.h"
++#include "chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.h"
++#include "chrome/browser/extensions/api/aux_omnibox/provided_searchbox_page.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/extensions/extension_tab_util.h"
+-#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.h"
+-#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service_factory.h"
+-#include "chrome/browser/preloading/search_preload/search_preload_service.h"
+-#include "chrome/browser/profiles/profile.h"
+-#include "chrome/browser/search_engines/template_url_service_factory.h"
+ #include "chrome/browser/tab_list/tab_list_interface.h"
+-#include "chrome/browser/tab_list/tab_list_interface_observer.h"
+-#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+-#include "chrome/browser/ui/navigator/browser_navigator.h"
+-#include "chrome/browser/ui/navigator/browser_navigator_params.h"
+-#include "components/omnibox/browser/actions/omnibox_action.h"
+-#include "components/omnibox/browser/autocomplete_classifier.h"
+-#include "components/omnibox/browser/autocomplete_controller.h"
+-#include "components/omnibox/browser/autocomplete_match_type.h"
++#include "components/tabs/public/tab_interface.h"
++#include "chrome/browser/search_engines/template_url_service_factory.h"
++#include "components/omnibox/common/input_state.h"
+ #include "components/search_engines/template_url.h"
+ #include "components/search_engines/template_url_service.h"
+-#include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_process_host.h"
+@@ -46,378 +35,154 @@
+ #include "content/public/browser/web_contents_user_data.h"
+ #include "extensions/browser/event_router.h"
+ #include "extensions/browser/extension_event_histogram_value.h"
+-#include "ui/base/base_window.h"
++#include "mojo/public/cpp/bindings/remote.h"
++
+ namespace extensions {
+ namespace {
+-struct VisibleTab {
+-  int id;
+-  raw_ptr<BrowserWindowInterface> browser;
+-  raw_ptr<tabs::TabInterface> tab;
+-};
+-std::vector<VisibleTab> VisibleTabs(Profile* profile) {
+-  std::vector<VisibleTab> tabs;
+-  for (auto* browser : GetAllBrowserWindowInterfaces()) {
+-    if (browser->GetProfile() != profile) {
+-      continue;
+-    }
+-    auto* list = TabListInterface::From(browser);
+-    if (!list) {
+-      continue;
+-    }
+-    for (int i = 0; i < list->GetTabCount(); ++i) {
+-      auto* tab = list->GetTab(i);
+-      if (tab && tab->GetContents()) {
+-        tabs.push_back(
+-            {ExtensionTabUtil::GetTabId(tab->GetContents()), browser, tab});
+-      }
+-    }
+-  }
+-  std::ranges::sort(tabs, {}, &VisibleTab::id);
+-  return tabs;
+-}
++namespace native = searchbox::mojom;
++constexpr char kExpired[] = "auxOmnibox session not found or not owned by this extension";
+ WindowOpenDisposition Disposition(const base::DictValue& request) {
+   const auto* value = request.FindString("disposition");
+-  if (!value || *value == "currentTab") {
+-    return WindowOpenDisposition::CURRENT_TAB;
+-  }
+-  if (*value == "newForegroundTab") {
+-    return WindowOpenDisposition::NEW_FOREGROUND_TAB;
+-  }
+-  if (*value == "newBackgroundTab") {
+-    return WindowOpenDisposition::NEW_BACKGROUND_TAB;
+-  }
+-  if (*value == "newWindow") {
+-    return WindowOpenDisposition::NEW_WINDOW;
+-  }
++  if (!value || *value == "currentTab") return WindowOpenDisposition::CURRENT_TAB;
++  if (*value == "newForegroundTab") return WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  if (*value == "newBackgroundTab") return WindowOpenDisposition::NEW_BACKGROUND_TAB;
++  if (*value == "newWindow") return WindowOpenDisposition::NEW_WINDOW;
++  if (*value == "switchToTab") return WindowOpenDisposition::SWITCH_TO_TAB;
++  if (*value == "saveToDisk") return WindowOpenDisposition::SAVE_TO_DISK;
+   return WindowOpenDisposition::UNKNOWN;
+ }
+-base::DictValue TabSummary(const VisibleTab& tab) {
+-  auto* contents = tab.tab->GetContents();
+-  base::DictValue value;
+-  value.Set("tabId", tab.id);
+-  value.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
+-  value.Set("url", contents->GetLastCommittedURL().spec());
+-  value.Set("windowId", ExtensionTabUtil::GetWindowIdOfTab(contents));
++std::optional<native::SelectionLineState> SelectionState(const std::string& value) {
++  if (value == "normal") return native::SelectionLineState::kNormal;
++  if (value == "keywordMode") return native::SelectionLineState::kKeywordMode;
++  if (value == "focusedButtonAction") return native::SelectionLineState::kFocusedButtonAction;
++  if (value == "focusedButtonRemoveSuggestion") return native::SelectionLineState::kFocusedButtonRemoveSuggestion;
++  if (value == "focusedButtonAim") return native::SelectionLineState::kFocusedButtonAim;
++  if (value == "ctrlEnter") return native::SelectionLineState::kCtrlEnter;
++  // The supplied IDL does not issue the newer native voice/Lens selection states.
++  return std::nullopt;
++}
++native::ActionModifiersPtr Modifiers(const base::DictValue& request) {
++  auto value = native::ActionModifiers::New();
++  const auto* nested = request.FindDict("modifiers");
++  const auto& source = nested ? *nested : request;
++  value->alt_key = source.FindBool("altKey").value_or(false);
++  value->ctrl_key = source.FindBool("ctrlKey").value_or(false);
++  value->meta_key = source.FindBool("metaKey").value_or(false);
++  value->shift_key = source.FindBool("shiftKey").value_or(false);
+   return value;
+ }
+-class OmniboxSession : public AutocompleteController::Observer,
+-                       public TabListInterfaceObserver,
+-                       public BrowserCollectionObserver {
++std::optional<int32_t> NativeTabHandle(Profile* profile, int extension_tab_id) {
++  for (auto* browser : GetAllBrowserWindowInterfaces()) {
++    if (browser->GetProfile() != profile) continue;
++    auto* tabs = TabListInterface::From(browser);
++    if (!tabs) continue;
++    for (auto* tab : tabs->GetAllTabs()) {
++      auto* contents = tab->GetContents();
++      if (contents && contents->GetBrowserContext() == profile &&
++          ExtensionTabUtil::GetTabId(contents) == extension_tab_id)
++        return tab->GetHandle().raw_value();
++    }
++  }
++  return std::nullopt;
++}
++class OmniboxSession {
+  public:
+-  OmniboxSession(content::WebContents* owner, std::string extension_id)
++  OmniboxSession(content::WebContents* owner, std::string extension)
+       : id_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
+-        owner_(owner),
+-        extension_id_(std::move(extension_id)),
+-        frame_id_(owner->GetPrimaryMainFrame()->GetGlobalId()) {
+-    AutocompleteControllerConfig config;
+-    config.provider_types =
+-        AutocompleteClassifier::DefaultOmniboxProviders(false);
+-    config.unscoped_open_tab_suggestions = true;
+-    controller_ = std::make_unique<AutocompleteController>(
+-        std::make_unique<ChromeAutocompleteProviderClient>(
+-            profile(), base::BindRepeating(
+-                           [](base::WeakPtr<content::WebContents> contents) {
+-                             return contents.get();
+-                           },
+-                           owner->GetWeakPtr())),
+-        config);
+-    controller_->AddObserver(this);
+-    browsers_.Observe(GlobalBrowserCollection::GetInstance());
+-    for (auto* browser : GetAllBrowserWindowInterfaces()) {
+-      ObserveBrowser(browser);
+-    }
+-  }
+-  ~OmniboxSession() override {
+-    controller_->RemoveObserver(this);
+-    controller_->Stop(AutocompleteStopReason::kClobbered);
+-  }
+-  bool Owns(content::WebContents* owner, std::string_view extension_id) const {
+-    return owner_ == owner && extension_id_ == extension_id &&
+-           owner->GetPrimaryMainFrame()->GetGlobalId() == frame_id_;
+-  }
+-  Profile* profile() const {
+-    return Profile::FromBrowserContext(owner_->GetBrowserContext());
+-  }
+-  const std::string& id() const { return id_; }
+-  void Emit(std::string event_name,
+-            base::DictValue payload = {},
+-            bool has_payload = true) {
+-    if (!owner_->GetPrimaryMainFrame() ||
+-        owner_->GetPrimaryMainFrame()->GetGlobalId() != frame_id_) {
+-      return;
+-    }
+-    base::ListValue args;
+-    args.Append(id_);
+-    if (has_payload) {
+-      args.Append(std::move(payload));
+-    }
++        owner_(owner->GetWeakPtr()), extension_(std::move(extension)),
++        frame_(owner->GetPrimaryMainFrame()->GetGlobalId()),
++        page_(Profile::FromBrowserContext(owner->GetBrowserContext()),
++              base::BindRepeating(&OmniboxSession::Emit, base::Unretained(this))) {
++    backend_ = OwnedContextualSession::Create(owner,
++        commands_.BindNewPipeAndPassReceiver(), page_.Bind(),
++        base::BindOnce(&OmniboxSession::Invalidated, base::Unretained(this)));
++  }
++  ~OmniboxSession() {
++    // No extension events or pending callbacks may escape document teardown.
++    destroying_ = true;
++    page_.Close();
++    backend_.reset();
++    commands_.reset();
++  }
++  bool Owns(content::WebContents* owner, std::string_view extension) const {
++    return owner_ && owner_.get() == owner && extension_ == extension &&
++        owner->GetPrimaryMainFrame() &&
++        owner->GetPrimaryMainFrame()->GetGlobalId() == frame_ &&
++        backend_ && backend_->IsCurrentDocument();
++  }
++  void Emit(std::string name, base::DictValue payload = {}, bool has_payload = true) {
++    if (!owner_ || !owner_->GetPrimaryMainFrame() ||
++        owner_->GetPrimaryMainFrame()->GetGlobalId() != frame_) return;
++    auto* profile = Profile::FromBrowserContext(owner_->GetBrowserContext());
++    base::ListValue args; args.Append(id_);
++    if (has_payload) args.Append(std::move(payload));
+     auto event = std::make_unique<Event>(events::AUXOMNIBOX_EVENT,
+-                                         "auxOmnibox." + event_name,
+-                                         std::move(args), profile());
++        "auxOmnibox." + name, std::move(args), profile);
+     event->restrict_to_dispatch_target = Event::DispatchTarget{
+         owner_->GetPrimaryMainFrame()->GetProcess()->GetID()};
+     event->will_dispatch_callback = base::BindRepeating(
+         [](content::BrowserContext* expected, content::BrowserContext* actual,
+            mojom::ContextType, const Extension*, const base::DictValue*,
+-           std::optional<base::ListValue>&, mojom::EventFilteringInfoPtr&,
+-           bool*) { return expected == actual; },
+-        base::Unretained(owner_->GetBrowserContext()));
+-    EventRouter::Get(profile())->DispatchEventToExtension(extension_id_,
+-                                                          std::move(event));
+-  }
+-  base::DictValue InputState() const {
+-    base::DictValue result;
+-    result.Set("text", text_);
+-    result.Set("focused", focused_);
+-    result.Set("selectionStart",
+-               static_cast<int>(base::UTF8ToUTF16(text_).size()));
+-    result.Set("selectionEnd",
+-               static_cast<int>(base::UTF8ToUTF16(text_).size()));
+-    result.Set("activeToolMode", tool_mode_);
+-    result.Set("activeModelMode", model_mode_);
+-    if (!keyword_.empty()) {
+-      result.Set("keyword", keyword_);
+-    }
+-    base::ListValue contexts;
+-    for (const auto& [id, context] : contexts_) {
+-      contexts.Append(context.summary.Clone());
+-    }
+-    result.Set("contexts", std::move(contexts));
+-    return result;
+-  }
+-  void InputChanged() { Emit("onInputStateChanged", InputState()); }
+-  void Query(std::string text,
+-             bool prevent_inline = false,
+-             bool zero_prefix = false) {
+-    controller_->Stop(AutocompleteStopReason::kClobbered);
+-    text_ = std::move(text);
+-    ++revision_;
+-    selected_ = -1;
+-    AutocompleteInput input(base::UTF8ToUTF16(text_),
+-                            metrics::OmniboxEventProto::NTP_REALBOX,
+-                            ChromeAutocompleteSchemeClassifier(profile()));
+-    input.set_current_url(owner_->GetLastCommittedURL());
+-    input.set_prevent_inline_autocomplete(prevent_inline);
+-    if (zero_prefix) {
+-      input.set_focus_type(metrics::OmniboxFocusType::INTERACTION_FOCUS);
+-    }
+-    input.set_in_keyword_mode(!keyword_.empty());
+-    controller_->Start(input);
+-    InputChanged();
+-  }
+-  void Stop(bool clear) {
+-    controller_->Stop(clear ? AutocompleteStopReason::kClobbered
+-                            : AutocompleteStopReason::kInteraction);
+-    if (clear) {
+-      matches_.clear();
+-      tab_ids_.clear();
+-      ++revision_;
+-      selected_ = -1;
+-      PublishResults();
+-    }
+-  }
+-  void OnResultChanged(AutocompleteController* controller,
+-                       bool default_changed) override {
+-    matches_.clear();
+-    tab_ids_.clear();
+-    ++revision_;
+-    selected_ = -1;
+-    const auto tabs = VisibleTabs(profile());
+-    for (const auto& match : controller_->result()) {
+-      if (matches_.size() >= 128) {
+-        break;
+-      }
+-      matches_.push_back(match);
+-      std::optional<int> tab_id;
+-      if (match.has_tab_match.value_or(false)) {
+-        for (const auto& tab : tabs) {
+-          if (tab.tab->GetContents()->GetLastCommittedURL() ==
+-              match.destination_url) {
+-            tab_id = tab.id;
+-            break;
+-          }
+-        }
+-      }
+-      tab_ids_.push_back(tab_id);
+-    }
+-    PublishResults();
+-  }
+-  void PublishResults() {
+-    base::DictValue result;
+-    result.Set("revision", revision_);
+-    result.Set("input", text_);
+-    result.Set("done", controller_->done());
+-    base::ListValue rows;
+-    for (size_t i = 0; i < matches_.size(); ++i) {
+-      const auto& match = matches_[i];
+-      base::DictValue row;
+-      row.Set("id", base::NumberToString(static_cast<int>(match.type)) + ":" +
+-                        match.destination_url.spec() + ":" +
+-                        base::UTF16ToUTF8(match.fill_into_edit));
+-      row.Set("index", static_cast<int>(i));
+-      row.Set("title", base::UTF16ToUTF8(match.contents));
+-      row.Set("contents", base::UTF16ToUTF8(match.contents));
+-      row.Set("description", base::UTF16ToUTF8(match.description));
+-      row.Set("destinationUrl", match.destination_url.spec());
+-      row.Set("fillIntoEdit", base::UTF16ToUTF8(match.fill_into_edit));
+-      row.Set("type", AutocompleteMatchType::ToString(match.type));
+-      row.Set("isSearch", AutocompleteMatch::IsSearchType(match.type));
+-      row.Set("isSearchType", AutocompleteMatch::IsSearchType(match.type));
+-      row.Set("deletable", match.SupportsDeletion());
+-      row.Set("supportsDeletion", match.SupportsDeletion());
+-      if (tab_ids_[i]) {
+-        row.Set("tabId", *tab_ids_[i]);
+-      }
+-      rows.Append(std::move(row));
+-    }
+-    result.Set("matches", std::move(rows));
+-    Emit("onAutocompleteResultChanged", std::move(result));
+-  }
+-  std::optional<size_t> Selection(const base::DictValue& request,
+-                                  bool use_selected = false) const {
+-    // The supplied UI uses line and optional nested popup selection; older
+-    // internal callers use revision/index. Neither may escape this owned session.
++           std::optional<base::ListValue>&, mojom::EventFilteringInfoPtr&, bool*) {
++          return expected == actual;
++        }, base::Unretained(owner_->GetBrowserContext()));
++    EventRouter::Get(profile)->DispatchEventToExtension(extension_, std::move(event));
++  }
++  void Invalidated() {
++    if (!destroying_)
++      Emit("onSessionInvalidated", base::DictValue().Set("reason", "tabDestroyed"));
++    commands_.reset();
++  }
++  native::OmniboxPopupSelectionPtr Selection(const base::DictValue& request) const {
+     const auto* nested = request.FindDict("selection");
+-    const auto& selection = nested ? *nested : request;
+-    const auto revision = request.FindInt("revision");
+-    if (request.Find("revision") && (!revision || *revision != revision_))
+-      return std::nullopt;
+-    const auto index = selection.FindInt("index");
+-    const auto line = selection.FindInt("line");
+-    if ((selection.Find("index") && !index) ||
+-        (selection.Find("line") && !line) ||
+-        (index && line && *index != *line)) return std::nullopt;
+-    const int selected = line.value_or(index.value_or(use_selected ? selected_ : -1));
+-    if (selected < 0 || static_cast<size_t>(selected) >= matches_.size())
+-      return std::nullopt;
+-    if (const auto* expected = request.FindString("url"); expected &&
+-        GURL(*expected) != matches_[selected].destination_url)
+-      return std::nullopt;
+-    if (request.Find("url") && !request.FindString("url")) return std::nullopt;
+-    return selected;
+-  }
+-  std::optional<std::string> Open(const base::DictValue& request,
+-                                  bool use_selected = false) {
+-    const auto index = Selection(request, use_selected);
+-    if (!index) {
+-      return "Selection is stale or unavailable";
+-    }
+-    const auto disposition = Disposition(request);
+-    if (disposition == WindowOpenDisposition::UNKNOWN) {
+-      return "Unknown navigation disposition";
+-    }
+-    if (tab_ids_[*index] && disposition == WindowOpenDisposition::CURRENT_TAB) {
+-      for (const auto& tab : VisibleTabs(profile())) {
+-        if (tab.id == *tab_ids_[*index]) {
+-          TabListInterface::From(tab.browser)
+-              ->ActivateTab(tab.tab->GetHandle());
+-          tab.browser->GetWindow()->Activate();
+-          return std::nullopt;
+-        }
+-      }
+-      return "Selected tab was closed";
+-    }
+-    return NavigateTo(matches_[*index].destination_url, disposition);
+-  }
+-  std::optional<std::string> NavigateTo(const GURL& url,
+-                                        WindowOpenDisposition disposition) {
+-    if (disposition == WindowOpenDisposition::UNKNOWN || !url.is_valid() ||
+-        url.SchemeIs("javascript") || url.SchemeIs("data")) {
+-      return "Navigation target is not allowed";
+-    }
+-    auto* browser =
+-        GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(owner_);
+-    if (disposition == WindowOpenDisposition::CURRENT_TAB && browser) {
+-      auto navigation = owner_->GetController().LoadURL(
+-          url, content::Referrer(), ui::PAGE_TRANSITION_TYPED, std::string());
+-      return navigation
+-                 ? std::nullopt
+-                 : std::make_optional<std::string>("Navigation was rejected");
+-    }
+-    if (!browser) {
+-      browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
+-          owner_->GetTopLevelNativeWindow());
+-    }
+-    if (!browser || browser->GetProfile() != profile()) {
+-      return "Owning browser window is unavailable";
+-    }
+-    NavigateParams params(browser, url, ui::PAGE_TRANSITION_TYPED);
+-    params.disposition = disposition;
+-    params.source_contents = owner_;
+-    Navigate(&params);
+-    return params.navigated_or_inserted_contents
+-               ? std::nullopt
+-               : std::optional<std::string>("Navigation could not be opened");
+-  }
+-  void ObserveBrowser(BrowserWindowInterface* browser) {
+-    if (browser->GetProfile() != profile()) {
+-      return;
+-    }
+-    auto* list = TabListInterface::From(browser);
+-    if (list && !tabs_.IsObservingSource(list)) {
+-      tabs_.AddObservation(list);
+-    }
+-  }
+-  void OnBrowserCreated(BrowserWindowInterface* browser) override {
+-    ObserveBrowser(browser);
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnBrowserClosed(BrowserWindowInterface* browser) override {
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnTabAdded(TabListInterface&, tabs::TabInterface*, int) override {
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnActiveTabChanged(TabListInterface&, tabs::TabInterface*) override {
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnTabRemoved(TabListInterface&,
+-                    tabs::TabInterface*,
+-                    TabRemovedReason) override {
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnTabMoved(TabListInterface&, tabs::TabInterface*, int, int) override {
+-    Emit("onTabStripChanged", {}, false);
+-  }
+-  void OnTabListDestroyed(TabListInterface& list) override {
+-    tabs_.RemoveObservation(&list);
+-  }
+-  struct Context {
+-    base::DictValue summary;
+-    std::string bytes;
+-  };
+-  std::string id_;
+-  raw_ptr<content::WebContents> owner_;
+-  std::string extension_id_;
+-  content::GlobalRenderFrameHostId frame_id_;
+-  std::unique_ptr<AutocompleteController> controller_;
+-  std::string text_, keyword_, tool_mode_, model_mode_, thumbnail_,
+-      metrics_funnel_;
+-  base::TimeTicks interaction_started_;
+-  bool focused_ = false, block_auto_tabs_ = false;
+-  int revision_ = 0, selected_ = -1;
+-  std::vector<AutocompleteMatch> matches_;
+-  std::vector<std::optional<int>> tab_ids_;
+-  std::map<std::string, Context> contexts_;
+-  size_t context_bytes_ = 0;
+-  base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
+-      browsers_{this};
+-  base::ScopedMultiSourceObservation<TabListInterface, TabListInterfaceObserver>
+-      tabs_{this};
++    const auto& source = nested ? *nested : request;
++    const auto line = source.FindInt("line");
++    const auto index = source.FindInt("index");
++    if ((line && index && *line != *index) ||
++        (source.Find("line") && !line) || (source.Find("index") && !index)) return nullptr;
++    const int row = line.value_or(index.value_or(-1));
++    const auto* matches = page_.result().FindList("matches");
++    if (!matches || row < 0 || row > 255 || static_cast<size_t>(row) >= matches->size()) return nullptr;
++    if (const auto* url = request.FindString("url"); url &&
++        GURL(*url) != GURL(*(*matches)[row].GetDict().FindString("destinationUrl"))) return nullptr;
++    if (request.Find("url") && !request.FindString("url")) return nullptr;
++    const auto* state = source.FindString("state");
++    if ((source.Find("state") && !state) ||
++        (source.Find("actionIndex") && !source.FindInt("actionIndex"))) return nullptr;
++    const auto parsed = state ? SelectionState(*state) : native::SelectionLineState::kNormal;
++    const auto action = source.FindInt("actionIndex").value_or(0);
++    if (!parsed || action < 0 || action > 255) return nullptr;
++    auto selection = native::OmniboxPopupSelection::New();
++    selection->line = row; selection->state = *parsed; selection->action_index = action;
++    if (selection->state == native::SelectionLineState::kFocusedButtonAction) {
++      const auto* actions = (*matches)[row].GetDict().FindList("actions");
++      if (!actions || static_cast<size_t>(action) >= actions->size()) return nullptr;
++    }
++    return selection;
++  }
++  GURL Url(uint8_t line) const {
++    const auto* matches = page_.result().FindList("matches");
++    return matches && line < matches->size()
++        ? GURL(*(*matches)[line].GetDict().FindString("destinationUrl")) : GURL();
++  }
++  std::string id_, initial_text_;
++  base::WeakPtr<content::WebContents> owner_;
++  std::string extension_;
++  content::GlobalRenderFrameHostId frame_;
++  native::ProvidedSearchboxPage page_;
++  mojo::Remote<native::PageHandler> commands_;
++  std::unique_ptr<OwnedContextualSession> backend_;
++  bool destroying_ = false;
+ };
+-class OmniboxOwnerState
+-    : public content::WebContentsUserData<OmniboxOwnerState>,
+-      public content::WebContentsObserver {
++class OmniboxOwnerState : public content::WebContentsUserData<OmniboxOwnerState>,
++                          public content::WebContentsObserver {
+  public:
+   ~OmniboxOwnerState() override = default;
+   std::map<std::string, std::unique_ptr<OmniboxSession>> sessions;
+   void DidFinishNavigation(content::NavigationHandle* navigation) override {
+     if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&
+-        !navigation->IsSameDocument()) {
+-      sessions.clear();
+-    }
+-  }
+-
++        !navigation->IsSameDocument()) sessions.clear();
++  }
+  private:
+   friend class content::WebContentsUserData<OmniboxOwnerState>;
+   explicit OmniboxOwnerState(content::WebContents* owner)
+@@ -426,417 +191,266 @@
+   WEB_CONTENTS_USER_DATA_KEY_DECL();
+ };
+ WEB_CONTENTS_USER_DATA_KEY_IMPL(OmniboxOwnerState);
++bool Owns(base::WeakPtr<content::WebContents> owner, const std::string& id,
++          const std::string& extension) {
++  if (!owner) return false;
++  auto* state = OmniboxOwnerState::FromWebContents(owner.get());
++  if (!state) return false;
++  auto found = state->sessions.find(id);
++  return found != state->sessions.end() && found->second->Owns(owner.get(), extension);
++}
+ base::DictValue SearchEngines(Profile* profile) {
+-  auto* service = TemplateURLServiceFactory::GetForProfile(profile);
+-  service->Load();
+-  base::DictValue result;
+-  base::ListValue engines;
++  auto* service = TemplateURLServiceFactory::GetForProfile(profile); service->Load();
++  base::DictValue result; base::ListValue engines;
+   const auto* current = service->GetDefaultSearchProvider();
+   for (const auto& engine : service->GetTemplateURLs()) {
+-    if (!engine->SupportsReplacement(service->search_terms_data())) {
+-      continue;
+-    }
+-    base::DictValue row;
+-    row.Set("id", base::NumberToString(engine->id()));
+-    row.Set("name", base::UTF16ToUTF8(engine->short_name()));
+-    row.Set("keyword", base::UTF16ToUTF8(engine->keyword()));
+-    row.Set("isDefault", engine == current);
+-    engines.Append(std::move(row));
++    if (!engine->SupportsReplacement(service->search_terms_data())) continue;
++    engines.Append(base::DictValue().Set("id", base::NumberToString(engine->id()))
++        .Set("name", base::UTF16ToUTF8(engine->short_name()))
++        .Set("keyword", base::UTF16ToUTF8(engine->keyword())).Set("isDefault", engine == current));
+   }
+   result.Set("engines", std::move(engines));
+-  if (current) {
+-    result.Set("defaultEngineId", base::NumberToString(current->id()));
+-  }
++  if (current) result.Set("defaultEngineId", base::NumberToString(current->id()));
+   return result;
+ }
+ }  // namespace
++
+ ExtensionFunction::ResponseAction AuxOmniboxFunction::RunAux() {
+   const std::string_view method = std::string_view(name()).substr(11);
+   if (method == "getSearchEngines") {
+-    if (!args().empty()) {
+-      return RespondNow(Error("No arguments expected"));
+-    }
++    if (!args().empty()) return RespondNow(Error("No arguments expected"));
+     return RespondNow(WithArguments(SearchEngines(profile())));
+   }
+   auto* owner = GetSenderWebContents();
+-  if (!owner || owner->GetBrowserContext() != profile() ||
+-      !owner->GetPrimaryMainFrame()) {
++  if (!owner || owner->GetBrowserContext() != profile() || !owner->GetPrimaryMainFrame())
+     return RespondNow(Error("An active extension page is required"));
+-  }
+   OmniboxOwnerState::CreateForWebContents(owner);
+   auto* state = OmniboxOwnerState::FromWebContents(owner);
+   if (method == "createSession") {
+-    if (args().size() > 1 || (!args().empty() && !args()[0].is_dict())) {
++    if (args().size() > 1 || (!args().empty() && !args()[0].is_dict()))
+       return RespondNow(Error("Invalid session options"));
+-    }
+-    std::string initial;
++    if (state->sessions.size() >= 16) return RespondNow(Error("Too many active search sessions"));
++    auto session = std::make_unique<OmniboxSession>(owner, extension_id());
++    if (!session->backend_) return RespondNow(Error("Native search handler is unavailable"));
+     if (!args().empty()) {
+-      const auto& options = args()[0].GetDict();
+-      for (const auto [key, value] : options) {
+-        if (key != "surface" && key != "initialText") {
+-          return RespondNow(Error("Unknown session option"));
+-        }
++      const auto* initial = args()[0].GetDict().FindString("initialText");
++      if (initial) {
++        if (initial->size() > 8192) return RespondNow(Error("Input is too long"));
++        session->initial_text_ = *initial;
+       }
+-      const auto* surface = options.FindString("surface");
+-      if (surface && *surface != "newtab" && *surface != "sidepanel") {
+-        return RespondNow(Error("Unknown search surface"));
+-      }
+-      const auto* text = options.FindString("initialText");
+-      if (text) {
+-        initial = *text;
+-      }
+-      if (initial.size() > 8192) {
+-        return RespondNow(Error("Input is too long"));
+-      }
+-    }
+-    if (state->sessions.size() >= 16) {
+-      return RespondNow(Error("Too many active search sessions"));
+-    }
+-    auto session = std::make_unique<OmniboxSession>(owner, extension_id());
+-    session->text_ = initial;
+-    const std::string id = session->id();
++    }
++    std::string id = session->id_;
+     state->sessions.emplace(id, std::move(session));
+-    base::DictValue result;
+-    result.Set("sessionId", id);
+-    return RespondNow(WithArguments(std::move(result)));
+-  }
+-  if (args().empty() || !args()[0].is_string()) {
+-    return RespondNow(Error("Session identity is required"));
+-  }
+-  const auto found = state->sessions.find(args()[0].GetString());
+-  if (found == state->sessions.end() ||
+-      !found->second->Owns(owner, extension_id())) {
+-    return RespondNow(Error("auxOmnibox session not found or not owned by this extension"));
+-  }
++    return RespondNow(WithArguments(base::DictValue().Set("sessionId", id)));
++  }
++  if (args().empty() || !args()[0].is_string()) return RespondNow(Error("Session identity is required"));
++  auto found = state->sessions.find(args()[0].GetString());
++  if (found == state->sessions.end() || !found->second->Owns(owner, extension_id()))
++    return RespondNow(Error(kExpired));
+   auto& session = *found->second;
+-  auto request = [&]() -> const base::DictValue* {
+-    return args().size() > 1 && args()[1].is_dict() ? &args()[1].GetDict()
+-                                                    : nullptr;
++  auto* commands = session.backend_->commands();
++  const auto* request = args().size() > 1 ? args()[1].GetIfDict() : nullptr;
++  if (method == "destroySession") { state->sessions.erase(found); return RespondNow(NoArguments()); }
++  auto reply = base::BindOnce(
++      [self = base::WrapRefCounted(this), weak = owner->GetWeakPtr(),
++       id = session.id_, extension = extension_id()]
++      (std::optional<base::DictValue> value, std::optional<std::string> error) {
++        if (!Owns(weak, id, extension)) self->Respond(self->Error(kExpired));
++        else if (error) self->Respond(self->Error(*error));
++        else if (value) self->Respond(self->WithArguments(std::move(*value)));
++        else self->Respond(self->NoArguments());
++      });
++  auto guarded = [](decltype(reply) callback) {
++    return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++        base::BindPostTaskToCurrentDefault(std::move(callback)), std::nullopt,
++        std::optional<std::string>("Native operation was cancelled"));
+   };
+-  if (method == "destroySession") {
+-    state->sessions.erase(found);
+-    return RespondNow(NoArguments());
+-  }
+   if (method == "getInputState") {
+-    return RespondNow(WithArguments(session.InputState()));
++    commands->GetInputState(base::BindPostTaskToCurrentDefault(base::BindOnce(
++        [](decltype(reply) reply, const std::optional<omnibox::InputState>& value) {
++          base::DictValue result; result.Set("available", value.has_value());
++          if (value) result.Set("state", native::ProvidedInputState(*value));
++          std::move(reply).Run(std::move(result), std::nullopt);
++        }, guarded(std::move(reply)))));
++    return RespondLater();
+   }
+   if (method == "onFocusChanged") {
+-    if (args().size() != 2 || !args()[1].is_bool()) {
+-      return RespondNow(Error("Focus state required"));
+-    }
+-    session.focused_ = args()[1].GetBool();
+-    if (!session.focused_) {
+-      session.Stop(false);
+-    }
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
++    if (args().size() != 2 || !args()[1].is_bool()) return RespondNow(Error("Focus state required"));
++    commands->OnFocusChanged(args()[1].GetBool()); return RespondNow(NoArguments());
+   }
+   if (method == "queryAutocomplete") {
+     if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
+-        args()[1].GetString().size() > 8192 ||
+-        (args().size() == 3 && !args()[2].is_dict())) {
++        args()[1].GetString().size() > 8192 || (args().size() == 3 && !args()[2].is_dict()))
+       return RespondNow(Error("Invalid autocomplete query"));
+-    }
+-    bool prevent = false;
+-    if (args().size() == 3) {
+-      prevent = args()[2]
+-                    .GetDict()
+-                    .FindBool("preventInlineAutocomplete")
+-                    .value_or(false);
+-    }
+-    const bool zero_prefix =
+-        args().size() == 3 &&
+-        args()[2].GetDict().FindBool("zeroPrefix").value_or(false);
+-    session.Query(args()[1].GetString(), prevent, zero_prefix);
++    const auto input = base::UTF8ToUTF16(args()[1].GetString());
++    const base::DictValue empty;
++    const auto& options = args().size() == 3 ? args()[2].GetDict() : empty;
++    const auto* keyword = options.FindString("keyword");
++    const int cursor = options.FindInt("cursorPosition").value_or(input.size());
++    const bool ok = cursor >= 0 && session.backend_->Query(input,
++        options.FindBool("preventInlineAutocomplete").value_or(false), cursor,
++        keyword ? *keyword : std::string(), options.FindBool("zeroPrefix").value_or(false));
++    return RespondNow(ok ? NoArguments() : Error("Invalid native autocomplete input"));
++  }
++  if (method == "stopAutocomplete") {
++    if (args().size() != 2 || !args()[1].is_bool()) return RespondNow(Error("Clear-result flag required"));
++    session.backend_->StopAutocomplete(args()[1].GetBool()); return RespondNow(NoArguments());
++  }
++  if (method == "openAutocompleteMatch" || method == "setPopupSelection" ||
++      method == "openPopupSelection" || method == "executeAction" ||
++      method == "deleteAutocompleteMatch" || method == "onNavigationLikely" ||
++      method == "activateKeyword") {
++    auto selection = request ? session.Selection(*request) : nullptr;
++    if (!selection) return RespondNow(Error("Selection is stale or unavailable"));
++    const auto sequence = session.page_.sequence_id();
++    const GURL url = session.Url(selection->line);
++    const auto modifiers = Modifiers(*request);
++    const int mouse = request->FindInt("mouseButton").value_or(0);
++    if (mouse < 0 || mouse > 2) return RespondNow(Error("Invalid mouse button"));
++    if (method == "setPopupSelection") commands->SetPopupSelection(std::move(selection));
++    else if (method == "openPopupSelection") {
++      const auto disposition = Disposition(*request);
++      if (disposition == WindowOpenDisposition::UNKNOWN) return RespondNow(Error("Unknown navigation disposition"));
++      commands->SetPopupSelection(selection.Clone());
++      commands->OpenPopupSelection(sequence, std::move(selection), disposition);
++    } else if (method == "openAutocompleteMatch") {
++      if (!session.backend_->OpenMatch(sequence, selection->line, url,
++          request->FindBool("areMatchesShowing").value_or(true), mouse,
++          modifiers.Clone(), request->FindBool("viaKeyboard").value_or(false)))
++        return RespondNow(Error("Selection is stale or unavailable"));
++    } else if (method == "executeAction") {
++      if (!session.backend_->ExecuteAction(sequence, selection->line,
++          selection->action_index, url, mouse, *modifiers))
++        return RespondNow(Error("Native action is stale or unavailable"));
++    } else if (method == "deleteAutocompleteMatch") commands->DeleteAutocompleteMatch(selection->line, url);
++    else if (method == "onNavigationLikely") commands->OnNavigationLikely(selection->line, url,
++        omnibox::mojom::NavigationPredictor::kMouseDown);
++    else {
++      commands->ActivateKeyword(selection->line, url, base::TimeTicks::Now(),
++          request->FindBool("isMouseEvent").value_or(true));
++    }
+     return RespondNow(NoArguments());
+   }
+-  if (method == "stopAutocomplete") {
+-    if (args().size() != 2 || !args()[1].is_bool()) {
+-      return RespondNow(Error("Clear-result flag required"));
+-    }
+-    session.Stop(args()[1].GetBool());
++  if (method == "getRecentTabs") {
++    commands->GetRecentTabs(base::BindPostTaskToCurrentDefault(base::BindOnce(
++        [](decltype(reply) reply, base::WeakPtr<content::WebContents> owner, std::vector<native::TabInfoPtr> tabs) {
++          base::ListValue values;
++          for (const auto& tab : tabs) if (owner) values.Append(native::ProvidedTab(
++              Profile::FromBrowserContext(owner->GetBrowserContext()), *tab));
++          std::move(reply).Run(base::DictValue().Set("tabs", std::move(values)), std::nullopt);
++        }, guarded(std::move(reply)), owner->GetWeakPtr())));
++    return RespondLater();
++  }
++  if (method == "getTabPreview") {
++    if (args().size() != 2 || !args()[1].is_int()) return RespondNow(Error("Native tab identity required"));
++    const auto tab = NativeTabHandle(profile(), args()[1].GetInt());
++    if (!tab) return RespondNow(Error("Invalid tabId"));
++    commands->GetTabPreview(*tab, base::BindPostTaskToCurrentDefault(base::BindOnce(
++        [](decltype(reply) reply, const std::optional<std::string>& preview) {
++          base::DictValue result; result.Set("hasPreview", preview.has_value());
++          if (preview) result.Set("previewDataUrl", *preview);
++          std::move(reply).Run(std::move(result), std::nullopt);
++        }, guarded(std::move(reply)))));
++    return RespondLater();
++  }
++  if (method == "addFileContext" || method == "addTabContext") {
++    auto callback = base::BindPostTaskToCurrentDefault(base::BindOnce([](decltype(reply) reply,
++        OwnedContextualSession::ContextResult result) {
++      if (result) std::move(reply).Run(base::DictValue().Set("ok", true)
++          .Set("contextToken", result->ToString()), std::nullopt);
++      else std::move(reply).Run(base::DictValue().Set("ok", false)
++          .Set("errorType", native::ProvidedUploadError(result.error())), std::nullopt);
++    }, std::move(reply)));
++    if (method == "addTabContext") {
++      if (args().size() < 2 || !args()[1].is_int() ||
++          (args().size() == 3 && !args()[2].is_bool())) return RespondNow(Error("Native tab identity required"));
++      const auto tab = NativeTabHandle(profile(), args()[1].GetInt());
++      if (!tab) return RespondNow(Error("Invalid tabId"));
++      session.backend_->AddTabContext(*tab, args().size() == 3 && args()[2].GetBool(), std::move(callback));
++    } else {
++      if (!request) return RespondNow(Error("File context required"));
++      const auto* name = request->FindString("fileName");
++      const auto* mime = request->FindString("mimeType");
++      const auto* encoded = request->FindString("bytesBase64");
++      std::string bytes;
++      if (!name || !mime || !encoded || encoded->size() > 45 * 1024 * 1024 ||
++          !base::Base64Decode(*encoded, &bytes) || bytes.size() > 32 * 1024 * 1024)
++        return RespondNow(Error("Invalid or oversized file context"));
++      auto info = native::SelectedFileInfo::New();
++      info->file_name = *name; info->mime_type = *mime;
++      info->is_deletable = request->FindBool("isDeletable").value_or(true);
++      if (const auto* preview = request->FindString("imageDataUrl"); preview && preview->size() <= 45 * 1024 * 1024)
++        info->image_data_url = *preview;
++      const auto selected = request->FindDouble("selectionTimeMs");
++      info->selection_time = selected ? base::Time::FromMillisecondsSinceUnixEpoch(*selected) : base::Time::Now();
++      session.backend_->AddFileContext(std::move(info),
++          mojo_base::BigBuffer(base::as_byte_span(bytes)), std::move(callback));
++    }
++    return RespondLater();
++  }
++  if (method == "deleteContext") {
++    if (args().size() < 2 || !args()[1].is_string() ||
++        (args().size() == 3 && !args()[2].is_bool())) return RespondNow(Error("Context token required"));
++    auto token = base::UnguessableToken::DeserializeFromString(args()[1].GetString());
++    if (!token) return RespondNow(Error("Invalid native context token"));
++    session.backend_->DeleteContext(*token, args().size() == 3 && args()[2].GetBool());
+     return RespondNow(NoArguments());
+   }
+-  if (method == "openAutocompleteMatch" || method == "openPopupSelection") {
+-    const auto* value = request();
+-    if (!value) {
+-      return RespondNow(Error("Selection required"));
+-    }
+-    auto error = session.Open(*value, method == "openPopupSelection");
++  if (method == "clearFiles") {
++    if (args().size() != 2 || !args()[1].is_bool()) return RespondNow(Error("Automatic-context flag required"));
++    session.backend_->ClearFiles(args()[1].GetBool()); return RespondNow(NoArguments());
++  }
++  if (method == "onThumbnailRemoved")
++    return RespondNow(Error("Native thumbnail removal is unavailable; delete its context token"));
++  if (method == "notifySessionStarted") { session.backend_->NotifySessionStarted(); return RespondNow(NoArguments()); }
++  if (method == "notifySessionAbandoned") { session.backend_->NotifySessionAbandoned(); return RespondNow(NoArguments()); }
++  if (method == "openLensSearch") {
++    auto error = session.backend_->OpenLensSearch();
+     return RespondNow(error ? Error(*error) : NoArguments());
+   }
+-  if (method == "setPopupSelection") {
+-    const auto* value = request();
+-    const auto index = value ? session.Selection(*value) : std::nullopt;
+-    if (!index) {
+-      return RespondNow(Error("Selection is stale"));
+-    }
+-    session.selected_ = *index;
+-    session.Emit("onSelectionUpdated", value->Clone());
++  if (method == "activateMetricsFunnel") {
++    if (args().size() != 2 || !args()[1].is_string() || args()[1].GetString().size() > 128)
++      return RespondNow(Error("Metrics funnel required"));
++    commands->ActivateMetricsFunnel(args()[1].GetString()); return RespondNow(NoArguments());
++  }
++  if (method == "setActiveToolMode" || method == "setActiveModelMode") {
++    if (args().size() != 2 || !args()[1].is_string() || args()[1].GetString().size() > 128)
++      return RespondNow(Error("Native mode required"));
++    std::string name;
++    for (char c : args()[1].GetString()) {
++      if (base::IsAsciiUpper(c)) name += '_';
++      name += base::ToUpperASCII(c);
++    }
++    if (method == "setActiveToolMode") {
++      omnibox::ToolMode mode;
++      if (!omnibox::ToolMode_Parse("TOOL_MODE_" + name, &mode) || static_cast<int>(mode) > 10) return RespondNow(Error("Unknown native tool mode"));
++      commands->SetActiveToolMode(mode, false);
++    } else {
++      omnibox::ModelMode mode;
++      if (!omnibox::ModelMode_Parse("MODEL_MODE_" + name, &mode) || static_cast<int>(mode) > 4) return RespondNow(Error("Unknown native model mode"));
++      commands->SetActiveModelMode(mode, false);
++    }
+     return RespondNow(NoArguments());
+   }
+-  if (method == "deleteAutocompleteMatch") {
+-    const auto* value = request();
+-    const auto index = value ? session.Selection(*value) : std::nullopt;
+-    if (!index || !session.matches_[*index].SupportsDeletion()) {
+-      return RespondNow(Error("Result cannot be deleted"));
+-    }
+-    session.controller_->DeleteMatch(session.matches_[*index]);
++  if (method == "submitQuery") {
++    const auto* text = request ? request->FindString("text") : nullptr;
++    if (!text || text->empty() || text->size() > 8192) return RespondNow(Error("Query text required"));
++    auto modifiers = Modifiers(*request);
++    const int mouse = request->FindInt("mouseButton").value_or(0);
++    if (mouse < 0 || mouse > 2) return RespondNow(Error("Invalid mouse button"));
++    commands->SubmitQuery(*text, mouse, modifiers->alt_key, modifiers->ctrl_key,
++        modifiers->meta_key, modifiers->shift_key, request->FindBool("isVoiceSearch").value_or(false));
+     return RespondNow(NoArguments());
+   }
+-  if (method == "activateKeyword") {
+-    const auto* value = request();
+-    const auto index = value ? session.Selection(*value) : std::nullopt;
+-    if (!index) {
+-      return RespondNow(Error("Selection is stale"));
+-    }
+-    const auto& match = session.matches_[*index];
+-    const auto& keyword = match.associated_keyword.empty()
+-                              ? match.keyword
+-                              : match.associated_keyword;
+-    if (keyword.empty()) {
+-      return RespondNow(Error("Result has no keyword scope"));
+-    }
+-    session.keyword_ = base::UTF16ToUTF8(keyword);
+-    base::DictValue changed;
+-    changed.Set("keyword", session.keyword_);
+-    session.Emit("onKeywordSelectedChanged", std::move(changed));
+-    session.Query(session.keyword_ + " ");
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "onNavigationLikely") {
+-    const auto* value = request();
+-    const auto index = value ? session.Selection(*value) : std::nullopt;
+-    if (!index) {
+-      return RespondNow(Error("Selection is stale"));
+-    }
+-    const auto& match = session.matches_[*index];
+-    if (auto* service =
+-            SearchPrefetchServiceFactory::GetForProfile(profile())) {
+-      service->OnNavigationLikely(
+-          *index, match, omnibox::mojom::NavigationPredictor::kMouseDown,
+-          owner);
+-    }
+-    if (auto* service = SearchPreloadService::GetForProfile(profile())) {
+-      service->OnNavigationLikely(
+-          *index, match, omnibox::mojom::NavigationPredictor::kMouseDown,
+-          owner);
+-    }
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "executeAction") {
+-    const auto* value = request();
+-    const auto index = value ? session.Selection(*value) : std::nullopt;
+-    const auto action = value ? value->FindInt("actionIndex") : std::nullopt;
+-    if (!index || !action || *action < 0 ||
+-        static_cast<size_t>(*action) >=
+-            session.matches_[*index].actions.size()) {
+-      return RespondNow(Error("Action is stale or unavailable"));
+-    }
+-    const auto& url = session.matches_[*index].actions[*action]->getUrl();
+-    if (url.is_empty()) {
+-      return RespondNow(
+-          Error("This native action is not available on this surface"));
+-    }
+-    auto error = session.NavigateTo(url, Disposition(*value));
+-    return RespondNow(error ? Error(*error) : NoArguments());
+-  }
+   if (method == "getPlaceholderConfig") {
+-    auto* engine = TemplateURLServiceFactory::GetForProfile(profile())
+-                       ->GetDefaultSearchProvider();
+-    base::DictValue result;
+-    result.Set("placeholder", "Search the web or enter an address");
+-    if (engine) {
+-      result.Set("providerName", base::UTF16ToUTF8(engine->short_name()));
+-    }
+-    return RespondNow(WithArguments(std::move(result)));
+-  }
+-  if (method == "getRecentTabs") {
+-    auto tabs = VisibleTabs(profile());
+-    std::ranges::sort(tabs, [](const VisibleTab& a, const VisibleTab& b) {
+-      return a.tab->GetContents()->GetLastActiveTimeTicks() >
+-             b.tab->GetContents()->GetLastActiveTimeTicks();
+-    });
+-    base::ListValue rows;
+-    for (const auto& tab : tabs) {
+-      rows.Append(TabSummary(tab));
+-    }
+-    base::DictValue result;
+-    result.Set("tabs", std::move(rows));
+-    return RespondNow(WithArguments(std::move(result)));
+-  }
+-  if (method == "getTabPreview" || method == "addTabContext") {
+-    if (args().size() < 2 || !args()[1].is_int()) {
+-      return RespondNow(Error("Tab identity required"));
+-    }
+-    for (const auto& tab : VisibleTabs(profile())) {
+-      if (tab.id == args()[1].GetInt()) {
+-        auto summary = TabSummary(tab);
+-        if (method == "addTabContext") {
+-          if (session.contexts_.size() >= 32) {
+-            return RespondNow(Error("Too many attachments"));
+-          }
+-          const auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-          summary.Set("contextToken", token);
+-          summary.Set("kind", "tab");
+-          summary.Set("name", summary.FindString("title")
+-                                  ? *summary.FindString("title")
+-                                  : "Browser tab");
+-          summary.Set("state", "ready");
+-          session.contexts_.emplace(
+-              token, OmniboxSession::Context{summary.Clone(), {}});
+-          session.InputChanged();
+-        }
+-        return RespondNow(WithArguments(std::move(summary)));
+-      }
+-    }
+-    return RespondNow(Error("Tab is unavailable in this profile"));
+-  }
+-  if (method == "addFileContext") {
+-    const auto* value = request();
+-    if (!value || session.contexts_.size() >= 32) {
+-      return RespondNow(Error("File context is unavailable"));
+-    }
+-    const auto* name = value->FindString("fileName");
+-    if (!name) name = value->FindString("name");
+-    const auto* type = value->FindString("mimeType");
+-    if (!type) type = value->FindString("type");
+-    const auto* data = value->FindString("bytesBase64");
+-    if (!data) data = value->FindString("dataBase64");
+-    const auto size = value->FindInt("size");
+-    if (!name || name->empty() || name->size() > 255 ||
+-        name->find('/') != std::string::npos ||
+-        name->find('\\') != std::string::npos || !type || type->size() > 255 ||
+-        (value->Find("size") && (!size || *size < 0 || *size > 32 * 1024 * 1024)) ||
+-        !data || data->size() > 45 * 1024 * 1024) {
+-      return RespondNow(Error("Invalid file context"));
+-    }
+-    std::string bytes;
+-    if (!base::Base64Decode(*data, &bytes) || bytes.size() > 32 * 1024 * 1024 ||
+-        (size && bytes.size() != static_cast<size_t>(*size)) ||
+-        session.context_bytes_ + bytes.size() > 64 * 1024 * 1024) {
+-      return RespondNow(Error("File content is invalid or too large"));
+-    }
+-    const auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-    base::DictValue summary;
+-    summary.Set("contextToken", token);
+-    summary.Set("kind", "file");
+-    summary.Set("name", *name);
+-    summary.Set("type", *type);
+-    summary.Set("size", static_cast<int>(bytes.size()));
+-    summary.Set("ok", true);
+-    summary.Set("state", "ready");
+-    session.context_bytes_ += bytes.size();
+-    session.contexts_.emplace(
+-        token, OmniboxSession::Context{summary.Clone(), std::move(bytes)});
+-    if (base::StartsWith(*type, "image/")) {
+-      session.thumbnail_ = token;
+-    }
+-    session.Emit("onFileContextAdded", summary.Clone());
+-    session.InputChanged();
+-    return RespondNow(WithArguments(std::move(summary)));
+-  }
+-  if (method == "deleteContext") {
+-    if (args().size() < 2 || !args()[1].is_string()) {
+-      return RespondNow(Error("Context token required"));
+-    }
+-    const auto context = session.contexts_.find(args()[1].GetString());
+-    if (context == session.contexts_.end()) {
+-      return RespondNow(Error("Attachment no longer exists"));
+-    }
+-    session.context_bytes_ -= context->second.bytes.size();
+-    session.contexts_.erase(context);
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "clearFiles") {
+-    if (args().size() != 2 || !args()[1].is_bool()) {
+-      return RespondNow(Error("Automatic-context flag required"));
+-    }
+-    std::erase_if(session.contexts_, [](const auto& context) {
+-      const auto* kind = context.second.summary.FindString("kind");
+-      return kind && *kind == "file";
+-    });
+-    session.context_bytes_ = 0;
+-    session.thumbnail_.clear();
+-    session.block_auto_tabs_ = args()[1].GetBool();
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "onThumbnailRemoved") {
+-    if (!session.thumbnail_.empty()) {
+-      const auto thumbnail = session.contexts_.find(session.thumbnail_);
+-      if (thumbnail != session.contexts_.end()) {
+-        session.context_bytes_ -= thumbnail->second.bytes.size();
+-        session.contexts_.erase(thumbnail);
+-      }
+-      session.thumbnail_.clear();
+-    }
+-    session.Emit("onThumbnailChanged");
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "setActiveToolMode" || method == "setActiveModelMode") {
+-    if (args().size() != 2 || !args()[1].is_string() ||
+-        args()[1].GetString().size() > 256) {
+-      return RespondNow(Error("Invalid mode"));
+-    }
+-    const auto& mode = args()[1].GetString();
+-    if (method == "setActiveToolMode") {
+-      if (!mode.empty() && mode != "image" && mode != "file" && mode != "tab") {
+-        return RespondNow(Error("Unknown tool mode"));
+-      }
+-      session.tool_mode_ = mode;
+-    } else {
+-      session.model_mode_ = mode;
+-    }
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "submitQuery") {
+-    const auto* value = request();
+-    const auto* text = value ? value->FindString("text") : nullptr;
+-    if (!text || text->empty() || text->size() > 8192) {
+-      return RespondNow(Error("Query text required"));
+-    }
+-    if (!session.model_mode_.empty()) {
+-      return RespondNow(
+-          Error("Agent input must be submitted through the authenticated "
+-                "session API"));
+-    }
+-    session.Query(*text);
+-    if (session.matches_.empty()) {
+-      return RespondNow(Error("No search target is available"));
+-    }
+-    base::DictValue selection;
+-    selection.Set("revision", session.revision_);
+-    selection.Set("index", 0);
+-    if (const auto* disposition = value->FindString("disposition")) {
+-      selection.Set("disposition", *disposition);
+-    }
+-    auto error = session.Open(selection);
+-    return RespondNow(error ? Error(*error) : NoArguments());
+-  }
+-  if (method == "notifySessionAbandoned") {
+-    session.Stop(true);
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "notifySessionStarted") {
+-    session.interaction_started_ = base::TimeTicks::Now();
+-    session.focused_ = true;
+-    session.InputChanged();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "activateMetricsFunnel") {
+-    if (args().size() != 2 || !args()[1].is_string() ||
+-        args()[1].GetString().empty() || args()[1].GetString().size() > 128) {
+-      return RespondNow(Error("Invalid local interaction label"));
+-    }
+-    session.metrics_funnel_ = args()[1].GetString();
+-    return RespondNow(NoArguments());
+-  }
+-  if (method == "openLensSearch") {
+-    return RespondNow(Error("Visual search is unavailable in local mode"));
++    commands->GetCyclingPlaceholderConfig(base::BindPostTaskToCurrentDefault(base::BindOnce(
++        [](decltype(reply) reply, native::PlaceholderConfigPtr config) {
++          base::ListValue texts; for (const auto& text : config->texts) texts.Append(base::UTF16ToUTF8(text));
++          std::move(reply).Run(base::DictValue().Set("texts", std::move(texts))
++              .Set("changeTextAnimationIntervalMs", config->change_text_animation_interval.InMillisecondsF())
++              .Set("fadeTextAnimationDurationMs", config->fade_text_animation_duration.InMillisecondsF()), std::nullopt);
++        }, guarded(std::move(reply)))));
++    return RespondLater();
+   }
+   return RespondNow(Error("Unsupported Aux omnibox method"));
+ }
+--- a/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_omnibox/BUILD.gn
+@@ -1,10 +1,44 @@
+ source_set("aux_omnibox") {
+   sources = [ "aux_omnibox_api.cc", "aux_omnibox_api.h" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+-  deps = [ "//base", "//chrome/browser/autocomplete", "//chrome/browser/extensions", "//chrome/browser/preloading/prefetch/search_prefetch", "//chrome/browser/preloading/search_preload", "//chrome/browser/search_engines", "//chrome/browser/tab_list", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/navigator", "//components/omnibox/browser", "//components/search_engines", "//components/tabs:public", "//content/public/browser", "//extensions/browser", "//ui/base" ]
++  deps = [ ":owned_contextual_session", "//base", "//chrome/browser/autocomplete", "//chrome/browser/extensions", "//chrome/browser/preloading/prefetch/search_prefetch", "//chrome/browser/preloading/search_preload", "//chrome/browser/search_engines", "//chrome/browser/tab_list", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/navigator", "//components/omnibox/browser", "//components/search_engines", "//components/tabs:public", "//content/public/browser", "//extensions/browser", "//ui/base" ]
+ }
+ 
+ source_set("headers") {
+  sources = [ "aux_omnibox_api.h" ]
+  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+ }
++
++# Backend uses upstream implementation; API target retains private permission
++# registration and translates the supplied extension boundary without UI edits.
++source_set("owned_contextual_session") {
++  sources = [
++    "owned_contextual_session.cc",
++    "owned_contextual_session.h",
++    "provided_searchbox_page.cc",
++    "provided_searchbox_page.h",
++  ]
++  public_deps = [
++    "//base",
++    "//components/contextual_search:public",
++    "//components/omnibox/browser:mojo_bindings",
++    "//content/public/browser",
++    "//mojo/public/cpp/bindings",
++  ]
++  deps = [
++    "//chrome/browser/autocomplete",
++    "//chrome/browser/contextual_search",
++    "//chrome/browser/profiles:profile",
++    "//chrome/browser/ui/omnibox",
++    "//chrome/browser/ui/webui/cr_components/searchbox",
++    "//chrome/browser/ui/webui/cr_components/searchbox:searchbox_impl",
++    "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
++    "//components/contextual_search:public",
++    "//components/lens",
++    "//components/omnibox/browser",
++    "//components/omnibox/common",
++    "//third_party/omnibox_proto",
++    "//components/omnibox/common:features",
++    "//ui/gfx/geometry",
++  ]
++}

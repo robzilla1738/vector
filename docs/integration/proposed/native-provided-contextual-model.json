@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h",
+      "sourceSha256": "e72abfe61d4bacbb0da373c22688d973e78c2f920f8aff5387268cca4225af10",
+      "outputSha256": "1e348ca4fd1bb50993a60c2f33faeaf1f02894381100f507b5a9de32e6082c33",
+      "anchors": [
+        {
+          "find": "  OmniboxController* omnibox_controller() const;",
+          "count": 1,
+          "replace": "  // Embedders that require an owned edit model can opt out of the newer\n  // model-less experiment per handler, without changing a global feature.\n  virtual bool UsesModelController() const;\n\n  OmniboxController* omnibox_controller() const;"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc",
+      "sourceSha256": "0c9f4fa191b77250b196f420d61f778233a911e6c9f92d8610f6e87262b6a44f",
+      "outputSha256": "a18f28f72808e48ea6b633559bc21f32d09c343bc240d7bc183fc84c6595ec8e",
+      "anchors": [
+        {
+          "find": "base::FeatureList::IsEnabled(\n            omnibox::kWebUISearchboxWithoutModelController)",
+          "count": 1,
+          "replace": "!UsesModelController()"
+        },
+        {
+          "find": "!base::FeatureList::IsEnabled(\n          omnibox::kWebUISearchboxWithoutModelController)",
+          "count": 3,
+          "replace": "UsesModelController()"
+        },
+        {
+          "find": "base::FeatureList::IsEnabled(\n          omnibox::kWebUISearchboxWithoutModelController)",
+          "count": 11,
+          "replace": "!UsesModelController()"
+        },
+        {
+          "find": "OmniboxController* SearchboxHandler::omnibox_controller() const {",
+          "count": 1,
+          "replace": "bool SearchboxHandler::UsesModelController() const {\n  return !base::FeatureList::IsEnabled(\n      omnibox::kWebUISearchboxWithoutModelController);\n}\n\nOmniboxController* SearchboxHandler::omnibox_controller() const {"
+        }
+      ]
+    }
+  ],
+  "globalFeatureChecksReplaced": 15
+}

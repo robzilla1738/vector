@@ -3,9 +3,16 @@
 #include "chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.h"
 
 #include <utility>
+#include <limits>
 
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/notreached.h"
+#include "base/scoped_observation.h"
+#include "components/omnibox/browser/contextual_search_provider.h"
+#include "base/task/bind_post_task.h"
+#include "components/omnibox/browser/autocomplete_match.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -51,7 +58,8 @@ class OwnedContextualClient final : public ContextualOmniboxClient {
 };
 }  // namespace
 
-class OwnedContextualHandler final : public ContextualSearchboxHandler {
+class OwnedContextualHandler final : public ContextualSearchboxHandler,
+                                     public OmniboxEditModel::Observer {
  public:
   OwnedContextualHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler> commands,
@@ -78,10 +86,87 @@ class OwnedContextualHandler final : public ContextualSearchboxHandler {
         base::BindRepeating(&OwnedContextualHandler::GetSuggestInputs,
                             base::Unretained(this)));
     autocomplete_controller_observation_.Observe(autocomplete_controller());
+    edit_model_observation_.Observe(edit_model());
+  }
+  ~OwnedContextualHandler() override { edit_model_observation_.Reset(); }
+
+  // Port of WebuiOmniboxHandler::ActivateKeyword, applied to this owned model.
+  void ActivateKeyword(uint8_t line, const GURL& url,
+                       base::TimeTicks timestamp, bool is_mouse_event) override {
+    if (!GetMatchWithUrl(line, url)) return;
+    edit_model()->SetPopupSelection(OmniboxPopupSelection(
+        line, OmniboxPopupSelection::KEYWORD_MODE));
+    if (edit_model()->is_keyword_hint()) {
+      edit_model()->AcceptKeyword(is_mouse_event
+          ? metrics::OmniboxEventProto::CLICK_HINT_VIEW
+          : metrics::OmniboxEventProto::TAP_HINT_VIEW);
+    }
+  }
+  void OnSelectionChanged(OmniboxPopupSelection old_selection,
+                          OmniboxPopupSelection selection) override {
+    auto convert = [](OmniboxPopupSelection::LineState state)
+        -> std::optional<searchbox::mojom::SelectionLineState> {
+      using State = searchbox::mojom::SelectionLineState;
+      switch (state) {
+        case OmniboxPopupSelection::NORMAL: return State::kNormal;
+        case OmniboxPopupSelection::KEYWORD_MODE: return State::kKeywordMode;
+        case OmniboxPopupSelection::FOCUSED_BUTTON_ACTION: return State::kFocusedButtonAction;
+        case OmniboxPopupSelection::FOCUSED_BUTTON_AIM: return State::kFocusedButtonAim;
+        case OmniboxPopupSelection::FOCUSED_BUTTON_REMOVE_SUGGESTION: return State::kFocusedButtonRemoveSuggestion;
+        case OmniboxPopupSelection::CTRL_ENTER: return State::kCtrlEnter;
+        default: return std::nullopt;
+      }
+    };
+    const auto old_state = convert(old_selection.state);
+    const auto state = convert(selection.state);
+    if (!old_state || !state) return;
+    page_->UpdateSelection(searchbox::mojom::OmniboxPopupSelection::New(
+        old_selection.line, *old_state, old_selection.action_index),
+        searchbox::mojom::OmniboxPopupSelection::New(
+        selection.line, *state, selection.action_index));
+  }
+  // The shared WebUI handler likewise has no view redraw/character timing work
+  // for these observer callbacks without a MetricsReporter/native popup view.
+  void OnMatchIconUpdated(size_t index) override {
+    SearchboxHandler::OnResultChanged(autocomplete_controller(), false);
+  }
+  void OnContentsChanged() override {}
+  void OnCharTyped(base::TimeTicks timestamp) override {
+    if (metrics_tracker_.time_user_first_modified_omnibox().is_null())
+      metrics_tracker_.set_time_user_first_modified_omnibox(timestamp);
+  }
+  void OnResultChanged(AutocompleteController* controller,
+                       bool default_match_changed) override {
+    // There is no native view to register the controller as an observer. Keep
+    // its real edit model/keyword/default match synchronized before Page events.
+    omnibox_controller()->OnResultChanged(controller, default_match_changed);
+    SearchboxHandler::OnResultChanged(controller, default_match_changed);
+  }
+  void OnStart(AutocompleteController* controller,
+               const AutocompleteInput& input) override {
+    auto* provider = controller->autocomplete_provider_client();
+    page_->UpdateLensSearchEligibility(provider && provider->IsLensEnabled());
   }
 
+  bool HasMatch(uint32_t sequence, uint8_t line, const GURL& url) const {
+    return GetMatchWithUrl(sequence, line, url) != nullptr;
+  }
+  bool HasAction(uint32_t sequence, uint8_t line, const GURL& url,
+                 uint8_t action_index) const {
+    const auto* match = GetMatchWithUrl(sequence, line, url);
+    const auto* current = GetMatchWithUrl(line, url);
+    return match && current && action_index < match->actions.size() &&
+           action_index < current->actions.size() &&
+           match->actions[action_index] == current->actions[action_index];
+  }
   void SetEventDisconnectHandler(base::OnceClosure callback) {
     page_.set_disconnect_handler(std::move(callback));
+  }
+
+  void OnThumbnailRemoved() override {
+    // There is no LensSearchboxClient for this owned extension surface. The
+    // private extension boundary rejects this unsupported operation explicitly.
+    NOTREACHED();
   }
 
   // Expose the real native action only through the owner/document checks.
@@ -99,9 +184,15 @@ class OwnedContextualHandler final : public ContextualSearchboxHandler {
     return std::nullopt;
   }
 
+ protected:
+  bool UsesModelController() const override { return true; }
+  bool SupportsKeywordMode() const override { return true; }
+
  private:
   base::RepeatingCallback<std::optional<std::string>()> open_lens_;
   std::optional<std::string> last_lens_error_;
+  base::ScopedObservation<OmniboxEditModel, OmniboxEditModel::Observer>
+      edit_model_observation_{this};
 };
 
 // static
@@ -151,6 +242,10 @@ bool OwnedContextualSession::IsCurrentDocument() const {
          web_contents()->GetPrimaryMainFrame()->GetGlobalId() == frame_id_;
 }
 
+searchbox::mojom::PageHandler* OwnedContextualSession::commands() const {
+  return IsCurrentDocument() ? handler_.get() : nullptr;
+}
+
 contextual_search::ContextualSearchSessionHandle*
 OwnedContextualSession::GetSessionHandle() {
   if (!IsCurrentDocument()) {
@@ -179,6 +274,149 @@ std::optional<std::string> OwnedContextualSession::OpenLensSearch() {
     return "The owning search document is no longer active";
   }
   return handler_->DispatchLensSearch();
+}
+
+namespace {
+OwnedContextualSession::ContextResult AbortedContext() {
+  return base::unexpected(contextual_search::ContextUploadErrorType::kAborted);
+}
+}  // namespace
+
+void OwnedContextualSession::AddFileContext(
+    searchbox::mojom::SelectedFileInfoPtr info, mojo_base::BigBuffer bytes,
+    ContextCallback callback) {
+  if (!IsCurrentDocument() || !handler_) {
+    std::move(callback).Run(AbortedContext());
+    return;
+  }
+  if (!info || info->file_name.empty() || info->file_name.size() > 255 ||
+      info->file_name.find_first_of("/\\") != std::string::npos ||
+      info->mime_type.empty() || info->mime_type.size() > 255 ||
+      bytes.size() > 32 * 1024 * 1024) {
+    std::move(callback).Run(base::unexpected(
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
+    return;
+  }
+  // Native handler emits the token before uploading and subsequent real status
+  // events through Page. A revoked policy returns an actual upload error.
+  handler_->AddFileContext(
+      std::move(info), std::move(bytes),
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindPostTaskToCurrentDefault(base::BindOnce(
+              [](base::WeakPtr<OwnedContextualSession> session,
+                 ContextCallback callback, ContextResult result) {
+                std::move(callback).Run(
+                    session && session->IsCurrentDocument()
+                        ? std::move(result) : AbortedContext());
+              }, weak_factory_.GetWeakPtr(), std::move(callback))),
+          AbortedContext()));
+}
+
+void OwnedContextualSession::AddTabContext(
+    int32_t native_tab_handle, bool delay_upload, ContextCallback callback) {
+  if (!IsCurrentDocument() || !handler_) {
+    std::move(callback).Run(AbortedContext());
+    return;
+  }
+  // This is the native TabInterface handle from GetRecentTabs, NOT an inferred
+  // extension tab ID. Upstream validates actual tab/profile/context eligibility.
+  // Page ownership may disappear during asynchronous tab extraction.
+  handler_->AddTabContext(
+      native_tab_handle, delay_upload,
+      searchbox::mojom::TabAttachmentSource::kContextMenu,
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindPostTaskToCurrentDefault(base::BindOnce(
+              [](base::WeakPtr<OwnedContextualSession> session,
+                 ContextCallback callback, ContextResult result) {
+                std::move(callback).Run(
+                    session && session->IsCurrentDocument()
+                        ? std::move(result) : AbortedContext());
+              }, weak_factory_.GetWeakPtr(), std::move(callback))),
+          AbortedContext()));
+}
+
+bool OwnedContextualSession::DeleteContext(
+    const base::UnguessableToken& token, bool from_automatic_chip) {
+  if (!IsCurrentDocument() || !handler_ || token.is_empty()) {
+    return false;
+  }
+  // DeleteContext performs real cancellation/removal through the shared handle.
+  handler_->DeleteContext(token, from_automatic_chip);
+  return true;
+}
+
+bool OwnedContextualSession::ClearFiles(bool block_auto_suggested_tabs) {
+  if (!IsCurrentDocument() || !handler_) {
+    return false;
+  }
+  handler_->ClearFiles(block_auto_suggested_tabs);
+  return true;
+}
+
+bool OwnedContextualSession::NotifySessionStarted() {
+  if (!IsCurrentDocument() || !handler_) {
+    return false;
+  }
+  handler_->NotifySessionStarted();
+  return true;
+}
+bool OwnedContextualSession::NotifySessionAbandoned() {
+  if (!IsCurrentDocument() || !handler_) {
+    return false;
+  }
+  handler_->NotifySessionAbandoned();
+  return true;
+}
+
+bool OwnedContextualSession::Query(
+    const std::u16string& input, bool prevent_inline_autocomplete,
+    uint32_t cursor_position, const std::string& keyword, bool is_on_focus) {
+  if (!IsCurrentDocument() || !handler_ || input.size() > 8192 ||
+      cursor_position > input.size() || keyword.size() > 1024 ||
+      query_id_ == std::numeric_limits<int32_t>::max()) {
+    return false;
+  }
+  handler_->QueryAutocomplete(++query_id_, std::nullopt, input,
+      prevent_inline_autocomplete, cursor_position,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT, is_on_focus,
+      keyword, searchbox::mojom::InputMethod::kKeyboard);
+  return true;
+}
+bool OwnedContextualSession::StopAutocomplete(bool clear_result) {
+  if (!IsCurrentDocument() || !handler_) {
+    return false;
+  }
+  handler_->StopAutocomplete(clear_result);
+  return true;
+}
+
+bool OwnedContextualSession::OpenMatch(
+    uint32_t sequence_id, uint8_t line, const GURL& url,
+    bool matches_showing, uint8_t mouse_button,
+    searchbox::mojom::ActionModifiersPtr modifiers, bool via_keyboard) {
+  if (!IsCurrentDocument() || !handler_ || !modifiers || mouse_button > 2 ||
+      !handler_->HasMatch(sequence_id, line, url)) {
+    return false;
+  }
+  handler_->OpenAutocompleteMatch(sequence_id, line, url, matches_showing,
+      mouse_button, std::move(modifiers), via_keyboard);
+  return true;
+}
+
+bool OwnedContextualSession::ExecuteAction(
+    uint32_t sequence_id, uint8_t line, uint8_t action_index, const GURL& url,
+    uint8_t mouse_button, const searchbox::mojom::ActionModifiers& modifiers) {
+  if (!IsCurrentDocument() || !handler_ || mouse_button > 2 ||
+      !handler_->HasAction(sequence_id, line, url, action_index)) {
+    return false;
+  }
+  // ExecuteAction resolves its own current snapshot; require exact identity in
+  // the supplied snapshot AND current snapshot before native non-URL actions.
+  // This prevents a late request from actuating a changed result at the line.
+  handler_->ExecuteAction(line, action_index, url, base::TimeTicks::Now(),
+      mouse_button, modifiers.alt_key, modifiers.ctrl_key, modifiers.meta_key,
+      modifiers.shift_key);
+  return true;
 }
 
 void OwnedContextualSession::Close() {

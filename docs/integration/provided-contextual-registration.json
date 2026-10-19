@@ -1,4 +1,28 @@
 {
+  "getPlaceholderConfig": {
+    "table": "0xead8118",
+    "factory": "0x46aec1c",
+    "vtable": "0xe26fa18",
+    "run": "0x4285b58"
+  },
+  "getRecentTabs": {
+    "table": "0xead8130",
+    "factory": "0x46aec6c",
+    "vtable": "0xe26fa88",
+    "run": "0x4285e20"
+  },
+  "getTabPreview": {
+    "table": "0xead8148",
+    "factory": "0x46aecbc",
+    "vtable": "0xe26faf8",
+    "run": "0x42860e8"
+  },
+  "getInputState": {
+    "table": "0xead8160",
+    "factory": "0x46aed0c",
+    "vtable": "0xe26fb68",
+    "run": "0x42864ac"
+  },
   "createSession": {
     "table": "0xead7fc8",
     "factory": "0x46ae7bc",
@@ -29,5 +53,65 @@
     "vtable": "0xe26fee8",
     "run": "0x4288500"
   },
-  "openLensSearchBodySha256": "c0c1192c6e443d96b12e01fc8076b7a2f57cee43616439b08f5dea223ef2c0e4"
+  "openLensSearchBodySha256": "c0c1192c6e443d96b12e01fc8076b7a2f57cee43616439b08f5dea223ef2c0e4",
+  "objectKeyInstructionAnchors": {
+    "0x428f320": "toolMode",
+    "0x428f51c": "modelMode",
+    "0x428fbe8": "maxInstances",
+    "0x428fc7c": "imageGenUploadActive",
+    "0x4290278": "key",
+    "0x4290280": "value",
+    "0x4290350": "internalTabId",
+    "0x42903ec": "tabId",
+    "0x42905e4": "lastActiveMs",
+    "0x4290f14": "texts",
+    "0x4290f7c": "changeTextAnimationIntervalMs",
+    "0x4291008": "fadeTextAnimationDurationMs",
+    "0x42914d4": "hasPreview",
+    "0x4291524": "previewDataUrl",
+    "0x42915c4": "available",
+    "0x4291614": "state"
+  },
+  "converterRanges": {
+    "uploadStatus": {
+      "start": "0x428c6cc",
+      "size": 1156,
+      "sha256": "1351d6d4d9e373b29462ac4d9b8fa232ad3c02d07f1858721f5734c6f7baa2a7"
+    },
+    "fileContextAdded": {
+      "start": "0x428cbec",
+      "size": 664,
+      "sha256": "da8904c05fcd153eb2f4e821527251145399cb57f06e13279cc67be32ee21476"
+    },
+    "uploadError": {
+      "start": "0x428e780",
+      "size": 1088,
+      "sha256": "f9e5620e520c679ab9cf631b59a85c70fecf16bc905b3ed1aafbf83b423fde71"
+    },
+    "inputState": {
+      "start": "0x428ec64",
+      "size": 4136,
+      "sha256": "56141fdbd47f08bc72d5c71b25a55c9f2b50043e8b19dbedd3bb87392fbe6605"
+    },
+    "toolModelParams": {
+      "start": "0x428fe00",
+      "size": 1308,
+      "sha256": "9218437e10c2fbf0f7069c47f93881e13cbeebcbd879685121c19dc3e1b00c25"
+    },
+    "tabInfo": {
+      "start": "0x429031c",
+      "size": 816,
+      "sha256": "89b2451f65cf41d462de8ad56cf728f912f4cdfdaf3be49ca9282eb7a0802dd9"
+    },
+    "placeholderReply": {
+      "start": "0x4290e80",
+      "size": 608,
+      "sha256": "529cde170691a2607751a8fc597bd3897e340ca645bbd220374260bb753412b3"
+    },
+    "previewAndInputStateReply": {
+      "start": "0x42914a0",
+      "size": 544,
+      "sha256": "c9beefa33b602e9f66b0d104eee90d182081c8aa46a65ca1ce7f8956bbcd0280"
+    }
+  }
 }
