@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "actual applied v80",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "baselineSha256": "fe0ee511f91ec7a24954083c02078359a98494ddef5e1c66bf964a6de77b25af",
+      "outputSha256": "65283ec7a47aa7b75d17529f1da0b606481132b54da440d967c1ccbfcf6916dd"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "2eca7fbec8268d8aeea60b6d5e61cfbe98d8b7a59b958dd9f137f7192730df9a",
+      "outputSha256": "018ecee54ab2c9814aab8008f476e209a98a6385b3896f539723f045665c1ff3"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

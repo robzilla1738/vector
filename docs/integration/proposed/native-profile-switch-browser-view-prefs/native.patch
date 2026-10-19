@@ -1,0 +1,121 @@
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -40,6 +40,7 @@
+ #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
+ #include "chrome/browser/ui/views/tabs/tab.h"
+ #include "chrome/browser/ui/webui/tab_search/tab_search.mojom.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/buildflags.h"
+ #include "components/enterprise/buildflags/buildflags.h"
+ #include "components/infobars/core/infobar_container.h"
+@@ -186,6 +187,13 @@
+   const BrowserWindowInterface* browser() const { return browser_; }
+ 
+   Profile* GetProfile() const;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanRebindForAuxProfileSwitch(Profile* target) const;
++  uint64_t BeginAuxProfileSwitch(Profile* target);
++  void RebindAuxProfileSwitch(uint64_t generation);
++  void EndAuxProfileSwitch(uint64_t generation);
++#endif
+ 
+   const TopControlsSlideController* top_controls_slide_controller() const {
+     return top_controls_slide_controller_.get();
+@@ -1393,6 +1401,16 @@
+   base::CallbackListSubscription paint_as_active_subscription_;
+ 
+   PrefChangeRegistrar registrar_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Physical-window capability before any profile policy was applied.
++  bool aux_fullscreen_allowed_without_policy_ = false;
++  bool aux_profile_switch_paused_ = false;
++  uint64_t aux_profile_switch_generation_ = 0;
++  base::WeakPtr<Profile> aux_profile_switch_source_;
++  base::WeakPtr<Profile> aux_profile_switch_target_;
++  void BindPrefsForAuxProfileSwitch();
++#endif
++
+ 
+   base::CallbackListSubscription vertical_tab_subscription_;
+ 
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -1060,12 +1060,18 @@
+   }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_fullscreen_allowed_without_policy_ = CanFullscreen();
++  BindPrefsForAuxProfileSwitch();
++  UpdateFullscreenAllowedFromPolicy(aux_fullscreen_allowed_without_policy_);
++#else
+   registrar_.Init(GetProfile()->GetPrefs());
+   registrar_.Add(
+       prefs::kFullscreenAllowed,
+       base::BindRepeating(&BrowserView::UpdateFullscreenAllowedFromPolicy,
+                           base::Unretained(this), CanFullscreen()));
+   UpdateFullscreenAllowedFromPolicy(CanFullscreen());
++#endif
+ 
+   WebUIContentsPreloadManager::GetInstance()->WarmupForBrowser(browser_.get());
+ 
+@@ -6171,6 +6177,58 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool BrowserView::CanRebindForAuxProfileSwitch(Profile* target) const {
++  return !aux_profile_switch_paused_ && GetProfile()->IsRegularProfile() &&
++         target && target->IsRegularProfile() && target != GetProfile() &&
++         registrar_.prefs() == GetProfile()->GetPrefs();
++}
++
++uint64_t BrowserView::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanRebindForAuxProfileSwitch(target));
++  aux_profile_switch_paused_ = true;
++  aux_profile_switch_source_ = GetProfile()->GetWeakPtr();
++  aux_profile_switch_target_ = target->GetWeakPtr();
++  registrar_.Reset();
++  return ++aux_profile_switch_generation_;
++}
++
++void BrowserView::BindPrefsForAuxProfileSwitch() {
++  CHECK(!registrar_.prefs());
++  registrar_.Init(GetProfile()->GetPrefs());
++  registrar_.Add(
++      prefs::kFullscreenAllowed,
++      base::BindRepeating(&BrowserView::UpdateFullscreenAllowedFromPolicy,
++                          base::Unretained(this),
++                          aux_fullscreen_allowed_without_policy_));
++}
++
++void BrowserView::RebindAuxProfileSwitch(uint64_t generation) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(aux_profile_switch_target_);
++  CHECK_EQ(GetProfile(), aux_profile_switch_target_.get());
++  CHECK(browser_->GetTabStripModel()->empty());
++  BindPrefsForAuxProfileSwitch();
++}
++
++void BrowserView::EndAuxProfileSwitch(uint64_t generation) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK_EQ(generation, aux_profile_switch_generation_);
++  CHECK(GetProfile() == aux_profile_switch_source_.get() ||
++        GetProfile() == aux_profile_switch_target_.get());
++  // Rollback restores the source's real preference service after its tabs.
++  if (registrar_.prefs() != GetProfile()->GetPrefs()) {
++    registrar_.Reset();
++    BindPrefsForAuxProfileSwitch();
++  }
++  aux_profile_switch_paused_ = false;
++  aux_profile_switch_source_.reset();
++  aux_profile_switch_target_.reset();
++  UpdateFullscreenAllowedFromPolicy(aux_fullscreen_allowed_without_policy_);
++}
++#endif
++
+ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+     bool allowed_without_policy) {
+   auto* fullscreen_pref_path = prefs::kFullscreenAllowed;
