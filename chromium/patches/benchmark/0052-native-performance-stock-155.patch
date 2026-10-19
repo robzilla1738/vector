@@ -54,7 +54,7 @@ diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browse
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.cc
-@@ -0,0 +1,473 @@
+@@ -0,0 +1,478 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#include "chrome/browser/ui/performance/native_performance.h"
@@ -358,13 +358,18 @@ new file mode 100644
 +      !event.skip_if_unhandled)
 +    TabInput(event.TimeStamp());
 +}
-+bool NativePerformance::OnShellKeyPress(content::WeakDocumentPtr document,
-+                                       const input::NativeWebKeyboardEvent& event) {
++void NativePerformance::ObserveTabShortcut(
++    content::WeakDocumentPtr document,
++    const input::NativeWebKeyboardEvent& event) {
 +  auto* frame = document.AsRenderFrameHostIfValid();
 +  if (frame && frame->IsRenderFrameLive() && web_contents() &&
 +      web_contents()->GetPrimaryMainFrame() == frame &&
 +      frame->GetRenderWidgetHost() == input_host_)
 +    ObserveTabKeyPress(event);
++}
++bool NativePerformance::OnShellKeyPress(content::WeakDocumentPtr document,
++                                       const input::NativeWebKeyboardEvent& event) {
++  ObserveTabShortcut(document, event);
 +  return false;  // Run before accelerator handling without consuming the key.
 +}
 +void NativePerformance::OnKeyEvent(ui::KeyEvent* event) {
@@ -532,7 +537,7 @@ diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,101 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
@@ -580,6 +585,10 @@ new file mode 100644
 +  void RecordFirstFrame(base::TimeTicks presentation);
 +  // Same OpenEmptyWindow creation clock as Aux; native controls exist at first presentation.
 +  void SetWindowCreationStart(base::TimeTicks start);
++  // Observe only an accepted native shortcut from this original shell document.
++  // AppKit menu equivalents can dispatch before RenderWidgetHost key callbacks.
++  void ObserveTabShortcut(content::WeakDocumentPtr document,
++                          const input::NativeWebKeyboardEvent& event);
 +
 + private:
 +  void OnWidgetDestroying(views::Widget* widget) override;

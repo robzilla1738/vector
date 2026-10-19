@@ -148,10 +148,17 @@ index c836d5e..0af7383 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-index 7ee9fdc..79ca1c7 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-@@ -31,6 +31,7 @@
+@@ -23,6 +23,7 @@
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
+ #include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/performance/native_performance.h"
+ #include "components/prefs/pref_service.h"
+ #endif
+ #include "chrome/browser/ui/browser_command_controller.h"
+@@ -31,6 +32,7 @@
  #include "content/public/browser/render_widget_host.h"
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/render_widget_host_view.h"
@@ -159,7 +166,7 @@ index 7ee9fdc..79ca1c7 100644
  #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
  #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
  #import "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.h"
-@@ -223,6 +224,47 @@ bool IsAuxShortcutDocument(content::WebContents* contents, int64_t navigation_id
+@@ -223,6 +225,47 @@
  }
  }  // namespace
  
@@ -207,7 +214,7 @@ index 7ee9fdc..79ca1c7 100644
  // Cocoa calls its responder delegate before rejecting unmatched releases.
  // Only the exact physical second press can authorize this one-shot handoff.
  bool WebUIBrowserWindow::HandleAuxWebsiteKeyEvent(
-@@ -268,12 +310,59 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+@@ -268,12 +311,67 @@
    }
    auto found = aux_shortcuts_.find(accelerator);
    if (found == aux_shortcuts_.end()) return false;
@@ -235,6 +242,8 @@ index 7ee9fdc..79ca1c7 100644
 +    auto self = aux_weak_ptr_factory_.GetWeakPtr();
 +    auto* contents = shell->web_ui()->GetWebContents();
 +    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    const auto input_document = frame ? frame->GetWeakDocumentPtr()
++                                      : content::WeakDocumentPtr();
 +    std::optional<AuxTabPreviewRelease> owner;
 +    if (preview_tabs && frame) {
 +      owner = AuxTabPreviewRelease{
@@ -255,6 +264,12 @@ index 7ee9fdc..79ca1c7 100644
 +      self->aux_tab_preview_release_.reset();
 +      return dispatched;
 +    }
++    // AppKit can handle this original key before RenderWidgetHost sees it.
++    // Feed only the accepted shortcut, after its exact shell owner survived.
++    if (auto* performance = NativePerformance::ForWidget(self->widget())) {
++      input::NativeWebKeyboardEvent original{base::apple::OwnedNSEvent(native_down)};
++      performance->ObserveTabShortcut(input_document, original);
++    }
 +    // Repeated Tab presses share the original held-Control session and timestamp.
 +    const auto& previous = self->aux_tab_preview_release_;
 +    if (!previous || previous->contents.get() != owner->contents.get() ||
@@ -270,7 +285,7 @@ index 7ee9fdc..79ca1c7 100644
    auto* contents = FocusedAuxWebsite(browser_.get());
    const bool site_chord = !found->second.second && contents &&
        id != "new-tab" && id != "new-window" && id != "new-private-window" &&
-@@ -306,8 +395,7 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+@@ -306,8 +404,7 @@
    aux_site_shortcut_navigation_id_ = site_chord ? contents->GetPrimaryMainFrame()->GetNavigationId() : 0;
    aux_site_shortcut_url_ = site_chord ? contents->GetLastCommittedURL().spec() : "";
    aux_site_shortcut_contents_ = site_chord ? contents->GetWeakPtr() : base::WeakPtr<content::WebContents>();
