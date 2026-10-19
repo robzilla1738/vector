@@ -148,7 +148,7 @@ index c836d5e..0af7383 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-index 7ee9fdc..4d0ddfc 100644
+index 7ee9fdc..79ca1c7 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 @@ -31,6 +31,7 @@
@@ -159,7 +159,7 @@ index 7ee9fdc..4d0ddfc 100644
  #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
  #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
  #import "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.h"
-@@ -223,6 +224,46 @@ bool IsAuxShortcutDocument(content::WebContents* contents, int64_t navigation_id
+@@ -223,6 +224,47 @@ bool IsAuxShortcutDocument(content::WebContents* contents, int64_t navigation_id
  }
  }  // namespace
  
@@ -170,6 +170,8 @@ index 7ee9fdc..4d0ddfc 100644
 +    content::WebContents* event_contents) {
 +  NSEvent* physical = event.os_event.Get();
 +  if (!physical || !aux_tab_preview_release_) return false;
++  // An older event cannot retire a newer held-chord owner.
++  if (physical.timestamp < aux_tab_preview_release_->pressed_at) return false;
 +  auto* shell = GetWebUIBrowserUI();
 +  auto* contents = aux_tab_preview_release_->contents.get();
 +  NSWindow* owner = aux_tab_preview_release_->window.GetNativeNSWindow();
@@ -198,15 +200,14 @@ index 7ee9fdc..4d0ddfc 100644
 +      (physical.keyCode != 59 && physical.keyCode != 62) ||
 +      (physical.modifierFlags & NSEventModifierFlagControl))
 +    return false;
-+  auto release = std::exchange(aux_tab_preview_release_, std::nullopt);
-+  if (physical.timestamp < release->pressed_at) return false;
++  aux_tab_preview_release_.reset();
 +  return shell->DispatchAuxControlRelease();
 +}
 +
  // Cocoa calls its responder delegate before rejecting unmatched releases.
  // Only the exact physical second press can authorize this one-shot handoff.
  bool WebUIBrowserWindow::HandleAuxWebsiteKeyEvent(
-@@ -268,12 +309,59 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+@@ -268,12 +310,59 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
    }
    auto found = aux_shortcuts_.find(accelerator);
    if (found == aux_shortcuts_.end()) return false;
@@ -269,7 +270,7 @@ index 7ee9fdc..4d0ddfc 100644
    auto* contents = FocusedAuxWebsite(browser_.get());
    const bool site_chord = !found->second.second && contents &&
        id != "new-tab" && id != "new-window" && id != "new-private-window" &&
-@@ -306,8 +394,7 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+@@ -306,8 +395,7 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
    aux_site_shortcut_navigation_id_ = site_chord ? contents->GetPrimaryMainFrame()->GetNavigationId() : 0;
    aux_site_shortcut_url_ = site_chord ? contents->GetLastCommittedURL().spec() : "";
    aux_site_shortcut_contents_ = site_chord ? contents->GetWeakPtr() : base::WeakPtr<content::WebContents>();
