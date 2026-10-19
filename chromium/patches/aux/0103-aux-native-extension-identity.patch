@@ -1,0 +1,103 @@
+--- a/chrome/browser/ui/aux_ntp_url.h
++++ b/chrome/browser/ui/aux_ntp_url.h
+@@ -5,23 +5,33 @@
+ #ifndef CHROME_BROWSER_UI_AUX_NTP_URL_H_
+ #define CHROME_BROWSER_UI_AUX_NTP_URL_H_
+ 
++#include <string>
+ #include <string_view>
+ 
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "extensions/common/constants.h"
+ #include "url/gurl.h"
+ 
+-// True for the Aux agent manager's new tab page. Chats and settings share
+-// newtab.html but carry a route in the hash; the new tab page has none, or only
+-// the account prefix (#/u/0).
++// Only the root route is the new-tab surface; other extension routes remain
++// ordinary pages. Typed product aliases are normalized to chrome: by URL fixup.
+ inline bool IsAuxNtpUrl(const GURL& url) {
+-  if (!url.SchemeIs(extensions::kExtensionScheme) ||
+-      url.host() != "fjdhphbdlfjogobdofoaagnlnkoibdge" ||
+-      url.path() != "/newtab.html") {
++  if (url.has_username() || url.has_password() || url.has_port() ||
++      url.has_query()) {
+     return false;
+   }
+   const std::string_view ref = url.ref();
+-  return ref.empty() || ref == "/" ||
+-         (ref.starts_with("/u/") && ref.find('/', 3) == std::string_view::npos);
++  if (!ref.empty() && ref != "/") {
++    return false;
++  }
++  if (url.SchemeIs("chrome")) {
++    return url.host() == "newtab" && url.path() == "/";
++  }
++  if (url.SchemeIs("aux")) {
++    const std::string alias = url.GetWithoutRef().spec();
++    return alias == "aux://newtab" || alias == "aux://newtab/";
++  }
++  return url.SchemeIs(extensions::kExtensionScheme) &&
++         url.host() == aux::kAgentExtensionId && url.path() == "/index.html";
+ }
+ 
+ #endif  // CHROME_BROWSER_UI_AUX_NTP_URL_H_
+--- a/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
++++ b/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
+@@ -18,6 +18,7 @@
+ #include "base/task/cancelable_task_tracker.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "build/branding_buildflags.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/extensions/extension_url_overrides.h"
+ #include "chrome/browser/extensions/settings_api_helpers.h"
+ #include "chrome/browser/image_fetcher/image_fetcher_service_factory.h"
+@@ -407,7 +408,7 @@
+     return std::nullopt;
+   }
+   // The Aux agent manager owns the new tab page by design.
+-  if (extension->id() == "fjdhphbdlfjogobdofoaagnlnkoibdge") {
++  if (extension->id() == aux::kAgentExtensionId) {
+     return std::nullopt;
+   }
+ 
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -54,11 +54,6 @@
+ #include "chrome/browser/enterprise/watermark/settings.h"
+ #include "chrome/browser/extensions/browser_extension_window_controller.h"
+ #include "chrome/browser/extensions/extension_util.h"
+-#include "chrome/browser/extensions/extension_view_host.h"
+-#include "chrome/browser/extensions/extension_view_host_factory.h"
+-#include "extensions/browser/extension_registry.h"
+-#include "chrome/browser/ui/views/extensions/extension_popup.h"
+-#include "chrome/browser/ui/extensions/extension_popup_types.h"
+ #include "chrome/browser/feature_engagement/tracker_factory.h"
+ #include "chrome/browser/glic/public/features.h"
+ #include "chrome/browser/headless/headless_mode_util.h"
+@@ -4260,25 +4255,6 @@
+ }
+ 
+ void BrowserView::CreateTabSearchBubble() {
+-  // Aux shows its tab-search page with browsing and task results in
+-  // place of the stock Chromium tab search.
+-  constexpr char kAuxExtensionId[] = "fjdhphbdlfjogobdofoaagnlnkoibdge";
+-  if (const extensions::Extension* extension =
+-          extensions::ExtensionRegistry::Get(browser()->GetProfile())
+-              ->enabled_extensions()
+-              .GetByID(kAuxExtensionId)) {
+-    if (auto* anchor = GetLocationBarView()) {
+-      auto host = extensions::ExtensionViewHostFactory::CreatePopupHost(
+-          *extension, extension->GetResourceURL("tabsearch.html"), browser());
+-      if (host) {
+-        ExtensionPopup::ShowPopup(browser(), std::move(host),
+-                                  views::BubbleAnchor(anchor),
+-                                  views::BubbleBorder::TOP_CENTER,
+-                                  PopupShowAction::kShow, base::DoNothing());
+-        return;
+-      }
+-    }
+-  }
+   if (auto* tab_search_host = GetTabSearchBubbleHost()) {
+     tab_search_host->ShowTabSearchBubble(true);
+   }
