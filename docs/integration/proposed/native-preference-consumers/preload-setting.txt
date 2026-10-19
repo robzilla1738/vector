@@ -1,0 +1,21 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 39c4f44: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+ 39c4f48: 910003fd     	mov	x29, sp
+ 39c4f4c: d004a8a1     	adrp	x1, 0xceda000 <dyld_stub_binder+0xceda000>
+ 39c4f50: 9102a021     	add	x1, x1, #0xa8
+ 39c4f54: 528003c2     	mov	w2, #0x1e               ; =30
+ 39c4f58: 9723e6b4     	bl	0x2bea28 <_ChromeMain+0x2b978c>
+ 39c4f5c: 71000c1f     	cmp	w0, #0x3
+ 39c4f60: 540000c8     	b.hi	0x39c4f78 <_ChromeMain+0x39bfcdc>
+ 39c4f64: 90052c68     	adrp	x8, 0xdf50000 <dyld_stub_binder+0xdf50000>
+ 39c4f68: 912bb108     	add	x8, x8, #0xaec
+ 39c4f6c: 38604900     	ldrb	w0, [x8, w0, uxtw]
+ 39c4f70: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+ 39c4f74: d65f03c0     	ret
+ 39c4f78: 52800040     	mov	w0, #0x2                ; =2
+ 39c4f7c: 17fffffd     	b	0x39c4f70 <_ChromeMain+0x39bfcd4>

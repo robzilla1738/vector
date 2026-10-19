@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "staticArm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/034e3f1c.c",
+      "sha256": "d378e7d60899280869ee07cab133814720404b3b365e2c4448f6eb4e8cb0a792"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04633e10.c",
+      "sha256": "31b05406a4079ea7041c97a17198e89073f92825829e0f8444aa13512b4da5d8"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b1c64.c",
+      "sha256": "bc7ba9f8207cabd258609c326e84d1727e6a88fca63af40b28ba813aca8913fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b26d8.c",
+      "sha256": "5f19c863098d7ecaab5aae37758a1754c7ae0f708b0c06b4a5138bfc08e2fc8e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/background/extensions/background_mode_manager.cc",
+      "sha256": "9691d0ea0d95e29eb3cd7d136a2179d5baa457ef160197fd3f77d1ff8531de94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/preloading/preloading_prefs.cc",
+      "sha256": "a0582ae62ef2ff7d64bf9f5406f5fe3884eb76784964c220a980732e3753f9c5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_tab_switcher.cc",
+      "sha256": "b869696d8e541ad0a9bbabff3d1e8da50bd61fd08cfef57419f12a679a319247"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "sha256": "2928fc6d48a4a2835f3475fd9245ae8e81149f223559bdd3520c74ce72093653"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/aux/profile_prefs.h",
+      "sha256": "84c76409271c9bddad3de9dd3b323603b9f6c2a36d2e051d1f6b0bf505ac0dc3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "6d6884ce8f1d95a9962e1c1a165cdeeb40dcd2405eb13607d4583812e7364db0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/appearance-Ceuw3-j6.js",
+      "sha256": "bb8e15ed17f7791543ad69e740cc6efe90898c365367506898eef6397fe83393"
+    }
+  ],
+  "preloadIntegerLookup": {
+    "key": "net.network_prediction_options",
+    "address": "0x039c4f44",
+    "lookupAddress": "0x0df50aec",
+    "lookupBytes": [
+      1,
+      1,
+      2,
+      1
+    ],
+    "outsideRange": 2,
+    "enabledResult": 1
+  },
+  "globalBackgroundState": {
+    "getter": "0x04296b68",
+    "setter": "0x04296de0",
+    "localStateLoad": "g_browser_process pointer 0xeee6cf8 -> +0x38",
+    "key": "background_mode.enabled",
+    "fields": [
+      "supported",
+      "enabled",
+      "canSet",
+      "policyDisabled"
+    ],
+    "policyCheck": "0x0909e614 IsUserModifiablePreference"
+  },
+  "runtimeOrGlobalPreferencesTouched": false
+}

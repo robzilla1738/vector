@@ -1,0 +1,151 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -9,7 +9,6 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/supports_user_data.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+@@ -22,8 +21,6 @@
+ #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/content_settings/core/browser/host_content_settings_map.h"
+-#include "components/keep_alive_registry/keep_alive_types.h"
+-#include "components/keep_alive_registry/scoped_keep_alive.h"
+ #include "components/language/core/browser/language_prefs.h"
+ #include "components/language/core/browser/pref_names.h"
+ #include "components/pref_registry/pref_registry_syncable.h"
+@@ -44,11 +41,6 @@
+ constexpr const char* kShrink = tabs::kAuxProfileHorizontalTabShrinkEnabled;
+ constexpr char kMru[] = "aux.browser.tab_switcher_mru";
+ constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
+-constexpr char kKeepTasks[] = "aux.browser.keep_tasks_running";
+-struct KeepTasksRuntime : base::SupportsUserData::Data {
+-  std::unique_ptr<ScopedKeepAlive> keep_alive;
+-};
+-constexpr char kKeepTasksRuntimeKey[] = "aux.keep_tasks_runtime";
+ base::DictValue SearchEngines(Profile* profile) {
+   auto* service = TemplateURLServiceFactory::GetForProfile(profile);
+   service->Load();
+@@ -74,14 +66,12 @@
+ }
+ }  // namespace
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterBooleanPref("aux.browser.preload_new_tab", true);
+   registry->RegisterListPref("aux.browser.sidebar.expanded_bookmark_folders");
+   registry->RegisterListPref("aux.browser.sidebar.collapsed_sections");
+   registry->RegisterListPref("aux.browser.import.source_profiles");
+   registry->RegisterBooleanPref(kShrink, true);
+   registry->RegisterBooleanPref(kMru, true);
+   registry->RegisterBooleanPref(kBookmarks, true);
+-  registry->RegisterBooleanPref(kKeepTasks, false);
+ }
+ void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterStringPref(tabs::kAuxVerticalTabInsertionPosition, "top");
+@@ -114,9 +104,6 @@
+       if (!args()[0].is_bool()) {
+         return RespondNow(Error("Boolean value required"));
+       }
+-      if (prefs->IsManagedPreference(item.key)) {
+-        return RespondNow(Error("Setting is managed"));
+-      }
+       prefs->SetBoolean(item.key, args()[0].GetBool());
+       return RespondNow(NoArguments());
+     }
+@@ -231,30 +218,29 @@
+     return RespondNow(NoArguments());
+   }
+   if (method == "getKeepTasksRunningState") {
++    auto* local_state = g_browser_process->local_state();
++    const bool can_set = local_state && local_state->IsUserModifiablePreference(
++                                             prefs::kBackgroundModeEnabled);
+     base::DictValue value;
+-    value.Set("enabled", prefs->GetBoolean(kKeepTasks));
+-    auto* runtime = static_cast<KeepTasksRuntime*>(
+-        profile()->GetUserData(kKeepTasksRuntimeKey));
+-    value.Set("effective", runtime && runtime->keep_alive != nullptr);
++    value.Set("supported", local_state != nullptr);
++    value.Set("enabled", local_state && local_state->GetBoolean(
++                                            prefs::kBackgroundModeEnabled));
++    value.Set("canSet", can_set);
++    value.Set("policyDisabled", local_state && !can_set);
+     return RespondNow(WithArguments(std::move(value)));
+   }
+   if (method == "setKeepTasksRunningEnabled") {
+     if (!args()[0].is_bool()) {
+       return RespondNow(Error("Boolean value required"));
+     }
+-    const bool enabled = args()[0].GetBool();
+-    if (profile()->IsOffTheRecord() && enabled) {
+-      return RespondNow(
+-          Error("Private profiles cannot remain active in background"));
+-    }
+-    auto runtime = std::make_unique<KeepTasksRuntime>();
+-    if (enabled) {
+-      runtime->keep_alive = std::make_unique<ScopedKeepAlive>(
+-          KeepAliveOrigin::BACKGROUND_MODE_MANAGER,
+-          KeepAliveRestartOption::DISABLED);
+-    }
+-    profile()->SetUserData(kKeepTasksRuntimeKey, std::move(runtime));
+-    prefs->SetBoolean(kKeepTasks, enabled);
++    auto* local_state = g_browser_process->local_state();
++    if (!local_state) {
++      return RespondNow(Error("Browser local state unavailable"));
++    }
++    if (!local_state->IsUserModifiablePreference(prefs::kBackgroundModeEnabled)) {
++      return RespondNow(Error("Keep tasks running setting is disabled by policy"));
++    }
++    local_state->SetBoolean(prefs::kBackgroundModeEnabled, args()[0].GetBool());
+     return RespondNow(NoArguments());
+   }
+   if (method == "getAutoPipEnabled") {
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -23,6 +23,7 @@
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/lifetime/application_lifetime.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
++#include "chrome/browser/preloading/preloading_prefs.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+ #include "chrome/browser/profiles/profile_attributes_storage.h"
+@@ -30,6 +31,7 @@
+ #include "chrome/browser/profiles/profile_observer.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
++#include "chrome/common/pref_names.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/navigation_controller.h"
+@@ -66,7 +68,7 @@
+         profile_(profile->GetWeakPtr()) {
+     pref_observer_.Init(profile->GetPrefs());
+     pref_observer_.Add(
+-        "aux.browser.preload_new_tab",
++        prefs::kNetworkPredictionOptions,
+         base::BindRepeating(&ProfileGate::PreloadPreferenceChanged,
+                             weak_.GetWeakPtr()));
+     profile_observer_.Observe(profile);
+@@ -122,7 +124,8 @@
+   }
+   void WarmNewTab() {
+     if (!allowed() || preloaded_ || !initialize_tab_ ||
+-        !profile_->GetPrefs()->GetBoolean("aux.browser.preload_new_tab")) {
++        prefetch::GetPreloadPagesState(*profile_->GetPrefs()) ==
++            prefetch::PreloadPagesState::kNoPreloading) {
+       return;
+     }
+     content::WebContents::CreateParams params(profile_.get());
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -29,7 +29,7 @@
+ 
+ source_set("profile_gate") {
+   sources = [ "profile_gate.cc", "profile_gate.h" ]
+-  deps = [ ":platform", ":profile_state", "//base", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/lifetime", "//chrome/browser/net", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//content/public/browser", "//extensions/browser", "//extensions/common", "//net", "//services/network/public/cpp", "//ui/base", "//ui/display", "//ui/views", "//ui/views/controls/webview" ]
++  deps = [ ":platform", ":profile_state", "//base", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/lifetime", "//chrome/browser/net", "//chrome/browser/preloading:prefs", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//content/public/browser", "//extensions/browser", "//extensions/common", "//net", "//services/network/public/cpp", "//ui/base", "//ui/display", "//ui/views", "//ui/views/controls/webview" ]
+ }
+ 
+ executable("profile_state_probe") {

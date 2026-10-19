@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "manifestSha256": "fb8c5f169537b2baa7f46a24cc2a982cd310da5386fa5c5d673702f6885e02a1",
+  "patchSha256": "6d7c33974760515ca4dff0f39bbb7400b87ed2de919169b6c31d46ff16665d47",
+  "pinnedFiles": 3,
+  "checkAndApplyPassed": true,
+  "allOutputsMatched": true,
+  "sharedNativeSourceUnchanged": true,
+  "compiled": false,
+  "targetExecuted": false,
+  "globalPreferencesTouched": false
+}

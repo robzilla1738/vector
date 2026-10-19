@@ -1,0 +1,90 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 8262be0: 394183e8     	ldrb	w8, [sp, #0x60]
+ 8262be4: 34000068     	cbz	w8, 0x8262bf0 <_ChromeMain+0x825d954>
+ 8262be8: 910043e0     	add	x0, sp, #0x10
+ 8262bec: 9692c2d1     	bl	0x2713730 <_ChromeMain+0x270e494>
+ 8262bf0: 3942e3e8     	ldrb	w8, [sp, #0xb8]
+ 8262bf4: 34000068     	cbz	w8, 0x8262c00 <_ChromeMain+0x825d964>
+ 8262bf8: 9101a3e0     	add	x0, sp, #0x68
+ 8262bfc: 961a462f     	bl	0x8f44b8 <_ChromeMain+0x8ef21c>
+ 8262c00: a94e7bfd     	ldp	x29, x30, [sp, #0xe0]
+ 8262c04: a94d4ff4     	ldp	x20, x19, [sp, #0xd0]
+ 8262c08: a94c57f6     	ldp	x22, x21, [sp, #0xc0]
+ 8262c0c: 9103c3ff     	add	sp, sp, #0xf0
+ 8262c10: d65f03c0     	ret
+ 8262c14: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+ 8262c18: 910003fd     	mov	x29, sp
+ 8262c1c: 52800100     	mov	w0, #0x8                ; =8
+ 8262c20: 95247f07     	bl	0xcb8283c <_ChromeMain+0xcb7d5a0>
+ 8262c24: f900001f     	str	xzr, [x0]
+ 8262c28: 948d4f7a     	bl	0xa5b6a10 <_ChromeMain+0xa5b1774>
+ 8262c2c: 90030128     	adrp	x8, 0xe286000 <dyld_stub_binder+0xe286000>
+ 8262c30: 912d8108     	add	x8, x8, #0xb60
+ 8262c34: f9000008     	str	x8, [x0]
+ 8262c38: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+ 8262c3c: d65f03c0     	ret
+ 8262c40: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+ 8262c44: 910003fd     	mov	x29, sp
+ 8262c48: f9400400     	ldr	x0, [x0, #0x8]
+ 8262c4c: f9400008     	ldr	x8, [x0]
+ 8262c50: f940b508     	ldr	x8, [x8, #0x168]
+ 8262c54: d63f0100     	blr	x8
+ 8262c58: 52800001     	mov	w1, #0x0                ; =0
+ 8262c5c: 96dd88ba     	bl	0x39c4f44 <_ChromeMain+0x39bfca8>
+ 8262c60: 7100041f     	cmp	w0, #0x1
+ 8262c64: 1a9f17e0     	cset	w0, eq
+ 8262c68: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+ 8262c6c: d65f03c0     	ret
+ 8262c70: d100c3ff     	sub	sp, sp, #0x30
+ 8262c74: a9014ff4     	stp	x20, x19, [sp, #0x10]
+ 8262c78: a9027bfd     	stp	x29, x30, [sp, #0x20]
+ 8262c7c: 910083fd     	add	x29, sp, #0x20
+ 8262c80: aa0803f3     	mov	x19, x8
+ 8262c84: f9400400     	ldr	x0, [x0, #0x8]
+ 8262c88: f9400008     	ldr	x8, [x0]
+ 8262c8c: f940b508     	ldr	x8, [x8, #0x168]
+ 8262c90: d63f0100     	blr	x8
+ 8262c94: 52800001     	mov	w1, #0x0                ; =0
+ 8262c98: 96dd88ab     	bl	0x39c4f44 <_ChromeMain+0x39bfca8>
+ 8262c9c: 7100041f     	cmp	w0, #0x1
+ 8262ca0: 540000a0     	b.eq	0x8262cb4 <_ChromeMain+0x825da18>
+ 8262ca4: 9002c6a1     	adrp	x1, 0xdb36000 <dyld_stub_binder+0xdb36000>
+ 8262ca8: 91053421     	add	x1, x1, #0x14d
+ 8262cac: 91003fe2     	add	x2, sp, #0xf
+ 8262cb0: 14000004     	b	0x8262cc0 <_ChromeMain+0x825da24>
+ 8262cb4: f002ac01     	adrp	x1, 0xd7e5000 <dyld_stub_binder+0xd7e5000>
+ 8262cb8: 91299021     	add	x1, x1, #0xa64
+ 8262cbc: 91003be2     	add	x2, sp, #0xe
+ 8262cc0: aa1303e0     	mov	x0, x19
+ 8262cc4: 96438cfb     	bl	0x13460b0 <_ChromeMain+0x1340e14>
+ 8262cc8: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+ 8262ccc: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+ 8262cd0: 9100c3ff     	add	sp, sp, #0x30
+ 8262cd4: d65f03c0     	ret
+ 8262cd8: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ 8262cdc: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 8262ce0: 910043fd     	add	x29, sp, #0x10
+ 8262ce4: aa0003f3     	mov	x19, x0
+ 8262ce8: 90030128     	adrp	x8, 0xe286000 <dyld_stub_binder+0xe286000>
+ 8262cec: 912e4108     	add	x8, x8, #0xb90
+ 8262cf0: f9000008     	str	x8, [x0]
+ 8262cf4: f9400400     	ldr	x0, [x0, #0x8]
+ 8262cf8: 925e7408     	and	x8, x0, #0xfffffffc00000000
+ 8262cfc: 90034a89     	adrp	x9, 0xebb2000 <dyld_stub_binder+0xebb2000>
+ 8262d00: f9404529     	ldr	x9, [x9, #0x88]
+ 8262d04: eb09011f     	cmp	x8, x9
+ 8262d08: 54000041     	b.ne	0x8262d10 <_ChromeMain+0x825da74>
+ 8262d0c: 95247ede     	bl	0xcb82884 <_ChromeMain+0xcb7d5e8>
+ 8262d10: f900067f     	str	xzr, [x19, #0x8]
+ 8262d14: aa1303e0     	mov	x0, x19
+ 8262d18: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ 8262d1c: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ 8262d20: d65f03c0     	ret
+ 8262d24: aa0103e0     	mov	x0, x1
+ 8262d28: 14000001     	b	0x8262d2c <_ChromeMain+0x825da90>
+ 8262d2c: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!

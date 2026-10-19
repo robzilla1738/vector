@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "base": "applied nativev24 (source frozen during full build)",
+  "reason": "Use supplied Local State background setting and actual profile preloading eligibility; preserve supplied profile toggle semantics.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "52777c5a7b6b622a578326dc17bf5fd6d2bd659e4dfb56b82fb0da7259a45101",
+      "outputSha256": "f4c061bf002fcd682d1df18ec6f9afad1539ebae447fd66ec3f01a400dd38158",
+      "anchors": [
+        {
+          "find": "#include \"base/supports_user_data.h\"\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "#include \"components/keep_alive_registry/keep_alive_types.h\"\n#include \"components/keep_alive_registry/scoped_keep_alive.h\"\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "constexpr char kKeepTasks[] = \"aux.browser.keep_tasks_running\";\nstruct KeepTasksRuntime : base::SupportsUserData::Data {\n  std::unique_ptr<ScopedKeepAlive> keep_alive;\n};\nconstexpr char kKeepTasksRuntimeKey[] = \"aux.keep_tasks_runtime\";\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "  registry->RegisterBooleanPref(\"aux.browser.preload_new_tab\", true);\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "  registry->RegisterBooleanPref(kKeepTasks, false);\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "      if (prefs->IsManagedPreference(item.key)) {\n        return RespondNow(Error(\"Setting is managed\"));\n      }\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "    base::DictValue value;\n    value.Set(\"enabled\", prefs->GetBoolean(kKeepTasks));\n    auto* runtime = static_cast<KeepTasksRuntime*>(\n        profile()->GetUserData(kKeepTasksRuntimeKey));\n    value.Set(\"effective\", runtime && runtime->keep_alive != nullptr);\n    return RespondNow(WithArguments(std::move(value)));",
+          "replace": "    auto* local_state = g_browser_process->local_state();\n    const bool can_set = local_state && local_state->IsUserModifiablePreference(\n                                             prefs::kBackgroundModeEnabled);\n    base::DictValue value;\n    value.Set(\"supported\", local_state != nullptr);\n    value.Set(\"enabled\", local_state && local_state->GetBoolean(\n                                            prefs::kBackgroundModeEnabled));\n    value.Set(\"canSet\", can_set);\n    value.Set(\"policyDisabled\", local_state && !can_set);\n    return RespondNow(WithArguments(std::move(value)));",
+          "count": 1
+        },
+        {
+          "find": "    const bool enabled = args()[0].GetBool();\n    if (profile()->IsOffTheRecord() && enabled) {\n      return RespondNow(\n          Error(\"Private profiles cannot remain active in background\"));\n    }\n    auto runtime = std::make_unique<KeepTasksRuntime>();\n    if (enabled) {\n      runtime->keep_alive = std::make_unique<ScopedKeepAlive>(\n          KeepAliveOrigin::BACKGROUND_MODE_MANAGER,\n          KeepAliveRestartOption::DISABLED);\n    }\n    profile()->SetUserData(kKeepTasksRuntimeKey, std::move(runtime));\n    prefs->SetBoolean(kKeepTasks, enabled);",
+          "replace": "    auto* local_state = g_browser_process->local_state();\n    if (!local_state) {\n      return RespondNow(Error(\"Browser local state unavailable\"));\n    }\n    if (!local_state->IsUserModifiablePreference(prefs::kBackgroundModeEnabled)) {\n      return RespondNow(Error(\"Keep tasks running setting is disabled by policy\"));\n    }\n    local_state->SetBoolean(prefs::kBackgroundModeEnabled, args()[0].GetBool());",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "2ac5d07873cc2795ef3e4c34cf7822dc00921a7badbe1125b9b851ba846e1adc",
+      "outputSha256": "1876d61afd6241eead13cb20ba8013055ceb4547c66a36d6bc11bf9db9749e18",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/profiles/profile.h\"",
+          "replace": "#include \"chrome/browser/preloading/preloading_prefs.h\"\n#include \"chrome/browser/profiles/profile.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"components/prefs/pref_change_registrar.h\"",
+          "replace": "#include \"chrome/common/pref_names.h\"\n#include \"components/prefs/pref_change_registrar.h\"",
+          "count": 1
+        },
+        {
+          "find": "        \"aux.browser.preload_new_tab\",",
+          "replace": "        prefs::kNetworkPredictionOptions,",
+          "count": 1
+        },
+        {
+          "find": "        !profile_->GetPrefs()->GetBoolean(\"aux.browser.preload_new_tab\")) {",
+          "replace": "        prefetch::GetPreloadPagesState(*profile_->GetPrefs()) ==\n            prefetch::PreloadPagesState::kNoPreloading) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "6cf2b90e99418dbc161b60fd12840c8b9702d265a634f5ad2cb78f230fd05bc3",
+      "outputSha256": "d30eaa9a3585262c48a2cd318030229c3e4c7f6f0a6ff342692043fd338aeb25",
+      "anchors": [
+        {
+          "find": "\"//chrome/browser/net\", \"//chrome/browser/profiles:profile\"",
+          "replace": "\"//chrome/browser/net\", \"//chrome/browser/preloading:prefs\", \"//chrome/browser/profiles:profile\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

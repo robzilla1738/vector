@@ -1,0 +1,58 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 814c3e0: 91397108     	add	x8, x8, #0xe5c
+ 814c3e4: a9037fe8     	stp	x8, xzr, [sp, #0x30]
+ 814c3e8: f90017f4     	str	x20, [sp, #0x28]
+ 814c3ec: b0feaaa0     	adrp	x0, 0x56a1000 <_ChromeMain+0x569bd64>
+ 814c3f0: 91120000     	add	x0, x0, #0x480
+ 814c3f4: 9100c3e1     	add	x1, sp, #0x30
+ 814c3f8: 9100a3e2     	add	x2, sp, #0x28
+ 814c3fc: 97acb1f7     	bl	0x6c78bd8 <_ChromeMain+0x6c7393c>
+ 814c400: f9000660     	str	x0, [x19, #0x8]
+ 814c404: 52800028     	mov	w8, #0x1                ; =1
+ 814c408: 39004268     	strb	w8, [x19, #0x10]
+ 814c40c: 39c09fe8     	ldrsb	w8, [sp, #0x27]
+ 814c410: 36f80408     	tbz	w8, #0x1f, 0x814c490 <_ChromeMain+0x81471f4>
+ 814c414: f9400be0     	ldr	x0, [sp, #0x10]
+ 814c418: f94013e8     	ldr	x8, [sp, #0x20]
+ 814c41c: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 814c420: 9528d904     	bl	0xcb82830 <_ChromeMain+0xcb7d594>
+ 814c424: 1400001b     	b	0x814c490 <_ChromeMain+0x81471f4>
+ 814c428: f9400008     	ldr	x8, [x0]
+ 814c42c: f940b508     	ldr	x8, [x8, #0x168]
+ 814c430: d63f0100     	blr	x8
+ 814c434: d0026ce1     	adrp	x1, 0xceea000 <dyld_stub_binder+0xceea000>
+ 814c438: 9116fc21     	add	x1, x1, #0x5bf
+ 814c43c: 528005a2     	mov	w2, #0x2d               ; =45
+ 814c440: 9606e830     	bl	0x306500 <_ChromeMain+0x301264>
+ 814c444: 39003be0     	strb	w0, [sp, #0xe]
+ 814c448: 91003fe8     	add	x8, sp, #0xf
+ 814c44c: 91003be1     	add	x1, sp, #0xe
+ 814c450: aa1403e0     	mov	x0, x20
+ 814c454: 97b39dd1     	bl	0x6e33b98 <_ChromeMain+0x6e2e8fc>
+ 814c458: 39403ff5     	ldrb	w21, [sp, #0xf]
+ 814c45c: f0ff5948     	adrp	x8, 0x6c77000 <_ChromeMain+0x6c71d64>
+ 814c460: 91397108     	add	x8, x8, #0xe5c
+ 814c464: a9037fe8     	stp	x8, xzr, [sp, #0x30]
+ 814c468: f90017f4     	str	x20, [sp, #0x28]
+ 814c46c: b0feaaa0     	adrp	x0, 0x56a1000 <_ChromeMain+0x569bd64>
+ 814c470: 91120000     	add	x0, x0, #0x480
+ 814c474: 9100c3e1     	add	x1, sp, #0x30
+ 814c478: 9100a3e2     	add	x2, sp, #0x28
+ 814c47c: 97acb1d7     	bl	0x6c78bd8 <_ChromeMain+0x6c7393c>
+ 814c480: 39000275     	strb	w21, [x19]
+ 814c484: f9000660     	str	x0, [x19, #0x8]
+ 814c488: 52800028     	mov	w8, #0x1                ; =1
+ 814c48c: 39004268     	strb	w8, [x19, #0x10]
+ 814c490: a9467bfd     	ldp	x29, x30, [sp, #0x60]
+ 814c494: a9454ff4     	ldp	x20, x19, [sp, #0x50]
+ 814c498: a94457f6     	ldp	x22, x21, [sp, #0x40]
+ 814c49c: 9101c3ff     	add	sp, sp, #0x70
+ 814c4a0: d65f03c0     	ret
+ 814c4a4: d4200020     	brk	#0x1
+ 814c4a8: d101c3ff     	sub	sp, sp, #0x70
+ 814c4ac: a90457f6     	stp	x22, x21, [sp, #0x40]

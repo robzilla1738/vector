@@ -1,0 +1,44 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4296b68: d10243ff     	sub	sp, sp, #0x90
+ 4296b6c: a9055ff8     	stp	x24, x23, [sp, #0x50]
+ 4296b70: a90657f6     	stp	x22, x21, [sp, #0x60]
+ 4296b74: a9074ff4     	stp	x20, x19, [sp, #0x70]
+ 4296b78: a9087bfd     	stp	x29, x30, [sp, #0x80]
+ 4296b7c: 910203fd     	add	x29, sp, #0x80
+ 4296b80: aa0003f4     	mov	x20, x0
+ 4296b84: aa0803f3     	mov	x19, x8
+ 4296b88: 90056288     	adrp	x8, 0xeee6000 <dyld_stub_binder+0xeee6000>
+ 4296b8c: f9467d08     	ldr	x8, [x8, #0xcf8]
+ 4296b90: b4000068     	cbz	x8, 0x4296b9c <_ChromeMain+0x4291900>
+ 4296b94: f9401d15     	ldr	x21, [x8, #0x38]
+ 4296b98: 14000002     	b	0x4296ba0 <_ChromeMain+0x4291904>
+ 4296b9c: d2800015     	mov	x21, #0x0               ; =0
+ 4296ba0: f10002bf     	cmp	x21, #0x0
+ 4296ba4: 1a9f07e8     	cset	w8, ne
+ 4296ba8: a900ffff     	stp	xzr, xzr, [sp, #0x8]
+ 4296bac: f9000fff     	str	xzr, [sp, #0x18]
+ 4296bb0: 3900a3e8     	strb	w8, [sp, #0x28]
+ 4296bb4: 52800028     	mov	w8, #0x1                ; =1
+ 4296bb8: 390103e8     	strb	w8, [sp, #0x40]
+ 4296bbc: f004c461     	adrp	x1, 0xdb25000 <dyld_stub_binder+0xdb25000>
+ 4296bc0: 911b1021     	add	x1, x1, #0x6c4
+ 4296bc4: 910023e0     	add	x0, sp, #0x8
+ 4296bc8: 9100a3e3     	add	x3, sp, #0x28
+ 4296bcc: 52800122     	mov	w2, #0x9                ; =9
+ 4296bd0: 970a90bc     	bl	0x53aec0 <_ChromeMain+0x535c24>
+ 4296bd4: 394103e8     	ldrb	w8, [sp, #0x40]
+ 4296bd8: f0053156     	adrp	x22, 0xe8c1000 <dyld_stub_binder+0xe8c1000>
+ 4296bdc: 9121e2d6     	add	x22, x22, #0x878
+ 4296be0: f103fd1f     	cmp	x8, #0xff
+ 4296be4: 540000a0     	b.eq	0x4296bf8 <_ChromeMain+0x429195c>
+ 4296be8: f8687ac8     	ldr	x8, [x22, x8, lsl #3]
+ 4296bec: d100e3a0     	sub	x0, x29, #0x38
+ 4296bf0: 9100a3e1     	add	x1, sp, #0x28
+ 4296bf4: d63f0100     	blr	x8
+ 4296bf8: b5000455     	cbnz	x21, 0x4296c80 <_ChromeMain+0x42919e4>
+ 4296bfc: 3900a3ff     	strb	wzr, [sp, #0x28]
