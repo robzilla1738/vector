@@ -1,0 +1,179 @@
+--- a/chrome/browser/ui/browser_window_theme_observer.h
++++ b/chrome/browser/ui/browser_window_theme_observer.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/scoped_observation.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_observer.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -39,6 +40,12 @@
+   // Used by AppBrowserController to notify web app theme changes.
+   void NotifyThemeChanged(BrowserThemeChangeType type);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Internal completed profile transaction: preserve this callback list and
++  // its existing view subscribers while changing the actual ThemeService.
++  void RebindForAuxProfileSwitch(BrowserWindowInterface* browser);
++#endif
++
+   // ThemeServiceObserver:
+   void OnThemeChanged() override;
+ 
+--- a/chrome/browser/ui/browser_window_theme_observer.cc
++++ b/chrome/browser/ui/browser_window_theme_observer.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/browser_window_theme_observer.h"
+ 
++#include "base/check_op.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
+ #include "chrome/browser/ui/browser_window.h"
+@@ -40,3 +42,19 @@
+ void BrowserWindowThemeObserver::OnThemeChanged() {
+   theme_changed_callbacks_.Notify(BrowserThemeChangeType::kBrowserTheme);
+ }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void BrowserWindowThemeObserver::RebindForAuxProfileSwitch(
++    BrowserWindowInterface* browser) {
++  CHECK(browser);
++  CHECK_EQ(From(browser), this);
++  CHECK_EQ(browser->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser->GetProfile()->IsRegularProfile());
++  theme_service_observation_.Reset();
++  theme_service_observation_.Observe(
++      ThemeServiceFactory::GetForProfile(browser->GetProfile()));
++  // Existing BrowserView theme subscribers survive and read the real new
++  // profile. Invoke only after the model/controllers are coherent again.
++  OnThemeChanged();
++}
++#endif
+--- a/chrome/browser/ui/bookmarks/bookmark_bar_controller.h
++++ b/chrome/browser/ui/bookmarks/bookmark_bar_controller.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/memory/raw_ref.h"
+ #include "base/scoped_observation.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -92,6 +93,12 @@
+   // BrowserWindow if necessary.
+   void UpdateBookmarkBarState(StateChangeReason reason);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Rebind only profile pref sources on this SAME controller/delegate, after
++  // the target model and Browser identity have settled.
++  void RebindForAuxProfileSwitch();
++#endif
++
+   // TabStripModelObserver implementation:
+   void OnTabStripModelChanged(
+       TabStripModel* tab_strip_model,
+@@ -104,6 +111,8 @@
+       content::NavigationHandle* navigation_handle) override;
+ 
+  private:
++  void InitProfilePrefObservers(bool initialize_profile_prefs);
++
+   // Checks whether bookmark bar should be shown for the current browser.
+   bool ShouldShowBookmarkBar() const;
+ 
+--- a/chrome/browser/ui/bookmarks/bookmark_bar_controller.cc
++++ b/chrome/browser/ui/bookmarks/bookmark_bar_controller.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+ 
++#include "base/check_op.h"
+ #include "base/feature_list.h"
+ #include "base/types/to_address.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+@@ -75,6 +76,14 @@
+       scoped_data_holder_(browser.GetUnownedUserDataHost(), *this) {
+   tab_strip_model_->AddObserver(this);
+ 
++  InitProfilePrefObservers(/*initialize_profile_prefs=*/true);
++
++  // Initialize the bookmark bar state.
++  UpdateBookmarkBarState(StateChangeReason::kInit);
++}
++
++void BookmarkBarController::InitProfilePrefObservers(
++    bool initialize_profile_prefs) {
+   // Set up preference observer for bookmark bar visibility.
+   Profile* profile = browser_->GetProfile();
+   PrefService* prefs = profile->GetPrefs();
+@@ -95,24 +104,26 @@
+   // user choice of always showing the bookmark bar.
+   if (base::FeatureList::IsEnabled(
+           ntp_features::kNtpSimplificationBookmarkBar)) {
+-    const PrefService::Preference* state_pref =
+-        prefs->FindPreference(bookmarks::prefs::kBookmarkBarVisibilityState);
+-    const PrefService::Preference* show_pref =
+-        prefs->FindPreference(bookmarks::prefs::kShowBookmarkBar);
+-
+-    if (state_pref && state_pref->IsDefaultValue() && show_pref &&
+-        show_pref->IsUserControlled() && show_pref->GetValue()->GetBool()) {
+-      prefs->SetInteger(
+-          bookmarks::prefs::kBookmarkBarVisibilityState,
+-          static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysShow));
+-    }
+-
+-    // To test the auto-hiding locally all prefs must be cleared.
+-    if (base::FeatureList::IsEnabled(
+-            ntp_features::kBookmarkBarUpdatesForTesting)) {
+-      prefs->ClearPref(bookmarks::prefs::kBookmarkBarVisibilityState);
+-      prefs->ClearPref(prefs::kBookmarkBarPreviousInitialRenderOnNtpTime);
+-      prefs->ClearPref(prefs::kBookmarkBarRenderedOnNtpCount);
++    if (initialize_profile_prefs) {
++      const PrefService::Preference* state_pref =
++          prefs->FindPreference(bookmarks::prefs::kBookmarkBarVisibilityState);
++      const PrefService::Preference* show_pref =
++          prefs->FindPreference(bookmarks::prefs::kShowBookmarkBar);
++
++      if (state_pref && state_pref->IsDefaultValue() && show_pref &&
++          show_pref->IsUserControlled() && show_pref->GetValue()->GetBool()) {
++        prefs->SetInteger(
++            bookmarks::prefs::kBookmarkBarVisibilityState,
++            static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysShow));
++      }
++
++      // To test the auto-hiding locally all prefs must be cleared.
++      if (base::FeatureList::IsEnabled(
++              ntp_features::kBookmarkBarUpdatesForTesting)) {
++        prefs->ClearPref(bookmarks::prefs::kBookmarkBarVisibilityState);
++        prefs->ClearPref(prefs::kBookmarkBarPreviousInitialRenderOnNtpTime);
++        prefs->ClearPref(prefs::kBookmarkBarRenderedOnNtpCount);
++      }
+     }
+ 
+     pref_change_registrar_.Add(
+@@ -124,10 +135,20 @@
+     // Synchronize kShowBookmarkBar with kBookmarkBarVisibilityState at startup.
+     OnBookmarkBarVisibilityStateChanged();
+   }
+-
+-  // Initialize the bookmark bar state.
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void BookmarkBarController::RebindForAuxProfileSwitch() {
++  CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  CHECK_EQ(tab_strip_model_->profile(), browser_->GetProfile());
++  pref_change_registrar_.Reset();
++  InitProfilePrefObservers(/*initialize_profile_prefs=*/false);
++  // Keep the existing view delegate and force-show flags. Do not replay the
++  // constructor's pref migration/testing resets on every workspace switch.
+   UpdateBookmarkBarState(StateChangeReason::kInit);
+ }
++#endif
+ 
+ // Handles changes to `kBookmarkBarVisibilityState` when the NTP Simplification
+ // experiment is active.

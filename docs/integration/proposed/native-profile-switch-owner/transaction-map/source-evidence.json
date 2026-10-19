@@ -117,6 +117,46 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
       "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service.cc",
+      "sha256": "c81c16800929ac618834b2e4f50174472dee726b4248899d360f358379fcc80d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service_base.cc",
+      "sha256": "555ff376b893f8b59c94d1cfc29814acbcbc8085fe471b403c6a65a5a5b49961"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service_base.h",
+      "sha256": "70512015b080d69caee4f83a60ffebe494cfb8780bab0ce47cebaac0948a0581"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service_factory.cc",
+      "sha256": "e70956c142d79061a3a82e61e7782d738f55742d1d774149f5835958875a187c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.cc",
+      "sha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "70544757adb74bfe826a48f491bac456b7332d0e932ba1f2077d0da132f41678"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/bookmark_bar_view.h",
+      "sha256": "4f3c1ae3477f7134f7bd8e33a4165b64a71cb28fde23a67027751a041e9dcd4a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc",
+      "sha256": "5bb6901bafb68e488018be89db7cfb26c850deb3a5bc72fb8b8e1bb777f49e64"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/bookmarks/controllers/bookmark_bar_ui_controller.h",
+      "sha256": "a85b3c5ba1aceb77e8a80c02ed24b34c53e8a0d210d1859437b5c86f828c5fb7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ref.h",
+      "sha256": "2a7a7f4215c16b1bfc3b4f699286a4aec0ee900a1c6d780e3a3026c45bc7307c"
     }
   ],
   "originalRoutines": {

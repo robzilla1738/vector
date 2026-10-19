@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual applied v32; disjoint transaction-map and cache-role proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window_theme_observer.h",
+      "baselineSha256": "ea284ba21cb05803b004dba2c09183d4e801ee19b3536e427bf392eab29acb0c",
+      "outputSha256": "cfeb2adb804749ff5d54cb682f3e8fdf45e81c4446bf021016f4e55e6cf7d5be"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window_theme_observer.cc",
+      "baselineSha256": "6fab25b7ecfe728d0563d59d1e301fa68b276cfd2755fa05df39c66c2e250b77",
+      "outputSha256": "54476cc20188ea49e828744ff0f994a71973765942ffaa7205aa252487332047"
+    },
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmark_bar_controller.h",
+      "baselineSha256": "609d8f8cf5b1722082b51ed084e8356383eb690f4b28e0d79de6e99942dbcbfc",
+      "outputSha256": "b3a6a378e7b0b00dbd4952a4fecef9c39f6a0b763e8e8a0df9208d99cc3f6a1c"
+    },
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmark_bar_controller.cc",
+      "baselineSha256": "7e9c5f1232608892809840e63c7d63a4659d8f84412c85b01589f91a52a3767a",
+      "outputSha256": "8e8ca04f2abe2b1d668fd4173612c24d0615c6c0adec5ab3b06956f8d8a1548d"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
