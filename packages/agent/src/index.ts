@@ -12,6 +12,8 @@ export {
 export { Credentials } from './credentials.js';
 export type { AgentExtensions } from './engine.js';
 export { AgentEngine } from './engine.js';
+export { OpenAIOAuth } from './oauth/client.js';
+export type { OAuthEndpoints, OAuthNetwork } from './oauth/protocol.js';
 export {
   type AutoClosePolicy,
   type OwnedTab,

@@ -6,8 +6,8 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { Credentials } from './credentials.js';
+import { createOAuthModel } from './oauth/model.js';
 import type { AgentStorage } from './storage.js';
-import { fail } from './storage.js';
 export const selectionSchema = z.object({
   provider: z.string().min(1),
   modelId: z.string().min(1),
@@ -34,6 +34,8 @@ export function resolveModel(
   accountId: number,
   model: Selection,
 ): LanguageModel {
+  if (model.provider === 'openai-codex')
+    return createOAuthModel(credentials.oauth, accountId, model.modelId);
   const apiKey = credentials.key(accountId, model.provider);
   switch (model.provider) {
     case 'vercel-ai-gateway':
@@ -50,11 +52,6 @@ export function resolveModel(
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey,
       })(model.modelId);
-    case 'openai-codex':
-      return fail(
-        'NOT_IMPLEMENTED',
-        'Codex OAuth requires an independently configured supported OAuth flow',
-      );
     default: {
       const config = customSchema.parse(
         store.get(accountId, 'customProviders', model.provider),

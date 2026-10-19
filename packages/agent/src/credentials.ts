@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { OpenAIOAuth } from './oauth/client.js';
 import type { AgentStorage } from './storage.js';
 import { fail } from './storage.js';
 
@@ -22,12 +23,15 @@ const credential = z.object({
 });
 const credentialFile = z.record(z.string(), credential);
 export class Credentials {
+  readonly oauth: OpenAIOAuth;
   constructor(
     private store: AgentStorage,
     private filename:
       | 'credentials.json'
       | 'channel-credentials.json' = 'credentials.json',
-  ) {}
+  ) {
+    this.oauth = new OpenAIOAuth(store);
+  }
   private path(accountId: number) {
     this.store.requireAccount(accountId);
     const home = this.store.accountHome(accountId);
@@ -46,13 +50,21 @@ export class Credentials {
     return credentialFile.parse(JSON.parse(readFileSync(path, 'utf8')));
   }
   list(accountId: number) {
-    return Object.entries(this.read(accountId)).map(([providerId, value]) => ({
-      providerId,
-      exists: true,
-      type: value.type,
-    }));
+    const entries: { providerId: string; exists: boolean; type: string }[] =
+      Object.entries(this.read(accountId)).map(([providerId, value]) => ({
+        providerId,
+        exists: true,
+        type: value.type,
+      }));
+    if (
+      this.filename === 'credentials.json' &&
+      this.oauth.status(accountId).exists
+    )
+      entries.push({ providerId: 'openai-codex', exists: true, type: 'oauth' });
+    return entries;
   }
   status(accountId: number, providerId: string) {
+    if (providerId === 'openai-codex') return this.oauth.status(accountId);
     const value = this.read(accountId)[providerId];
     return { exists: !!value, type: value?.type ?? null };
   }
@@ -66,6 +78,11 @@ export class Credentials {
     return value.key;
   }
   set(accountId: number, providerId: string, value: unknown) {
+    if (providerId === 'openai-codex')
+      fail(
+        'BAD_REQUEST',
+        'Use the independently registered OAuth sign-in flow for this provider',
+      );
     const values = this.read(accountId);
     values[providerId] = credential.parse(value);
     this.write(accountId, values);
@@ -102,6 +119,8 @@ export class Credentials {
         : []),
     ])
       result = result.replaceAll(key, '[redacted]');
+    if (this.filename === 'credentials.json')
+      result = this.oauth.redact(accountId, result);
     return result.replace(/Bearer\s+\S+/gi, 'Bearer [redacted]');
   }
 }

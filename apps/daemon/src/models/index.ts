@@ -3,14 +3,16 @@
 import { type AgentEngine, defaultModel, fail, scope } from '@aux/agent';
 import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
+import { createOAuthModelProcedures } from './oauth.js';
 
 const providerScope = scope.extend({
   providerId: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
 });
 export function createModelRouter(
-  { t, procedure, store }: DaemonServices,
+  services: DaemonServices,
   engine: AgentEngine,
 ) {
+  const { t, procedure, store } = services;
   function configured(accountId: number, provider: string) {
     return (
       (store.get(accountId, 'modelIds', provider) as string[] | null) ??
@@ -41,13 +43,16 @@ export function createModelRouter(
     return model;
   }
   function inventory(accountId: number) {
-    return engine.credentials
-      .list(accountId)
-      .flatMap((credential) =>
-        configured(accountId, credential.providerId).map((modelId) =>
-          describe(credential.providerId, modelId),
-        ),
-      );
+    return engine.credentials.list(accountId).flatMap((credential) =>
+      credential.providerId === 'openai-codex'
+        ? engine.credentials.oauth.cachedCatalog(accountId).map((model) => ({
+            ...describe('openai-codex', model.slug),
+            name: model.displayName,
+          }))
+        : configured(accountId, credential.providerId).map((modelId) =>
+            describe(credential.providerId, modelId),
+          ),
+    );
   }
   async function catalog(provider: string) {
     if (!['vercel-ai-gateway', 'openrouter'].includes(provider))
@@ -84,6 +89,7 @@ export function createModelRouter(
     modelIds: z.array(z.string().min(1)).min(1),
   });
   return t.router({
+    ...createOAuthModelProcedures(services, engine),
     listSupported: procedure.input(scope).query(({ input }) => {
       store.requireAccount(input.accountId);
       return [
@@ -132,9 +138,16 @@ export function createModelRouter(
       ),
     removeCredential: procedure
       .input(providerScope)
-      .mutation(({ input }) =>
-        engine.credentials.remove(input.accountId, input.providerId),
-      ),
+      .mutation(async ({ input }) => {
+        if (input.providerId === 'openai-codex') {
+          const current = engine.credentials.oauth.status(
+            input.accountId,
+          ).registrationId;
+          if (!current) return { exists: false, type: null };
+          return engine.credentials.oauth.signOut(input.accountId, current);
+        }
+        return engine.credentials.remove(input.accountId, input.providerId);
+      }),
     listAiGatewayModelIds: procedure
       .input(providerScope)
       .query(({ input }) => configured(input.accountId, input.providerId)),
@@ -254,8 +267,12 @@ export function createModelRouter(
       return [
         {
           id: 'openai-codex',
-          available: false,
-          reason: 'OAuth flow is not configured in this local build',
+          available: true,
+          configured: engine.credentials.oauth.status(input.accountId).exists,
+          flow: 'loopback-pkce',
+          appName: 'Aux',
+          reason:
+            'Register Aux through a user-initiated ChatGPT sign-in; plan eligibility and current model access are verified by the provider.',
         },
       ];
     }),

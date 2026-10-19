@@ -1,0 +1,73 @@
+.oauth-settings {
+  display: grid;
+  gap: 18px;
+  max-width: 900px;
+  padding: 24px;
+  color: var(--foreground);
+}
+.oauth-settings header,
+.oauth-settings footer,
+.oauth-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.oauth-settings header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.oauth-settings header > div {
+  flex: 1;
+  min-width: 240px;
+}
+.oauth-settings h2,
+.oauth-settings h3 {
+  margin: 0 0 8px;
+}
+.oauth-settings p {
+  line-height: 1.5;
+  margin: 6px 0;
+}
+.oauth-settings-note,
+.oauth-account > div > p {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.oauth-account-list {
+  display: grid;
+  gap: 12px;
+}
+.oauth-account,
+.oauth-flow {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card);
+}
+.oauth-account {
+  display: grid;
+  gap: 12px;
+}
+.oauth-active {
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 7px;
+  vertical-align: middle;
+}
+.oauth-signout {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.oauth-signout :where(p) {
+  flex-basis: 100%;
+}
+.oauth-settings a {
+  color: inherit;
+  text-underline-offset: 3px;
+}

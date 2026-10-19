@@ -138,7 +138,7 @@ export function sessionTools(
     ];
     if (
       forbidden.some((root) => within(full, root)) ||
-      /(?:^|\/)(?:(?:channel-)?credentials\.json|(?:installation-private|private-key)\.pem|(?:token|session)-secret)(?:$|\/)/.test(
+      /(?:^|\/)(?:(?:channel-|oauth-)?credentials\.json|oauth-private\.key|oauth-refresh\.(?:lock|sqlite)(?:-[a-z]+)?|oauth-host\.json|(?:installation-private|private-key)\.pem|(?:token|session)-secret)(?:$|\/)/.test(
         full,
       )
     )
