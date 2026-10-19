@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "Appliedv62 existing header targets; staged side-panel source rebinding",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/BUILD.gn",
+      "baselineSha256": "1d4af7d3dc75bfff7e1e4be0b25743569e5b9fe96c07ac5016788cc04c480fc7",
+      "outputSha256": "66a29ba78d184c88737111c8aa695416225e2291b34ece65d4f66f549aebcb3b"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/BUILD.gn",
+      "baselineSha256": "4103a662e854beb9bf9402cebc84d05a38bceb2fa67e704aea6adff3033093ea",
+      "outputSha256": "dd82c18046bb616f3e2e7c79afbbe48b0fe8f3248cdb0f550570361bba586486"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

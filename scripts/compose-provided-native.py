@@ -93,6 +93,11 @@ steps.extend([
     ('native-profile-switch-sidebar-owner/native.patch', 'native-profile-switch-sidebar-owner/manifest.json'),
     ('native-profile-switch-dialogs/build-registration/native.patch', 'native-profile-switch-dialogs/build-registration/manifest.json'),
     ('native-sidebar-profile-rebind/abort-state.patch', 'native-sidebar-profile-rebind/abort-state-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/side-panel-manager.patch', 'native-profile-switch-owner/transaction-map/side-panel-manager-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/side-panel-pinning.patch', 'native-profile-switch-owner/transaction-map/side-panel-pinning-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/side-panel-build-registration/native.patch', 'native-profile-switch-owner/transaction-map/side-panel-build-registration/manifest.json'),
+    ('native-popup-background-override/native-popup-background-override.patch', 'native-popup-background-override/manifest.json'),
+    ('native-profile-switch-file-dialog/native.patch', 'native-profile-switch-file-dialog/manifest.json'),
 ])
 
 def safe(path):

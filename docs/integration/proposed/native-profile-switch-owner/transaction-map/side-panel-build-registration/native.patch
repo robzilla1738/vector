@@ -1,0 +1,21 @@
+--- a/chrome/browser/ui/extensions/BUILD.gn
++++ b/chrome/browser/ui/extensions/BUILD.gn
+@@ -62,7 +62,7 @@
+     "upload_extension_to_account_dialog.h",
+   ]
+ 
+-  public_deps = []
++  public_deps = [ "//chrome/browser:buildflags" ]
+ 
+   if (is_android) {
+     sources += [ "extension_install_ui_android.h" ]
+--- a/chrome/browser/ui/views/side_panel/BUILD.gn
++++ b/chrome/browser/ui/views/side_panel/BUILD.gn
+@@ -55,6 +55,7 @@
+     "tabs_from_other_devices/tabs_from_other_devices_side_panel_metrics.h",
+   ]
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser:browser_public_dependencies",
+     "//chrome/browser:primitives",
