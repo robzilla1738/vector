@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+index bfc981b7ee..165efd6515 100644
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -646,6 +646,11 @@ void ToolbarView::Init() {
+   // the widget (widget found by way of app_menu_button_->GetWidget()).
+   app_menu_icon_controller_.UpdateDelegate();
+ 
++  // Aux, like Aside, reaches the browser menu through the macOS menu bar.
++  if (app_menu_button_) {
++    app_menu_button_->SetVisible(false);
++  }
++
+   if (location_bar_view_) {
+     location_bar_view_->Init();
+   } else {
