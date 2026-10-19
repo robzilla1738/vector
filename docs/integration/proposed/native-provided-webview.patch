@@ -1,0 +1,814 @@
+--- a/extensions/common/mojom/api_permission_id.mojom
++++ b/extensions/common/mojom/api_permission_id.mojom
+@@ -310,6 +310,7 @@
+   kAuxCredentials = 282,
+   kAuxCaptureTabWithoutUserInteraction = 283,
+   kAuxLaunchExtension = 284,
++  kAuxExposeWebView = 285,
+ 
+   // Add new entries at the end of the enum and be sure to update the
+   // "ExtensionPermission3" enum in
+--- a/chrome/common/extensions/permissions/chrome_api_permissions.cc
++++ b/chrome/common/extensions/permissions/chrome_api_permissions.cc
+@@ -33,6 +33,7 @@
+ constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
+     {APIPermissionID::kAuxCaptureTabWithoutUserInteraction, "dev.aux.ext.private.capture-tab-without-userinteraction", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxLaunchExtension, "dev.aux.ext.private.launch-extension", APIPermissionInfo::kFlagCannotBeOptional},
++    {APIPermissionID::kAuxExposeWebView, "dev.aux.blink.expose-wv", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxCredentials, "dev.aux.ext.private.credentials", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxAccount, "dev.aux.ext.private.account", APIPermissionInfo::kFlagCannotBeOptional},
+     {APIPermissionID::kAuxBrowserPreferences, "dev.aux.ext.private.browserPreferences", APIPermissionInfo::kFlagCannotBeOptional},
+--- a/chrome/common/extensions/api/_permission_features.json
++++ b/chrome/common/extensions/api/_permission_features.json
+@@ -19,6 +19,13 @@
+     "component_extensions_auto_granted": false
+   },
+   "dev.aux.ext.private.launch-extension": {
++    "channel": "stable",
++    "extension_types": ["extension"],
++    "location": "component",
++    "allowlist": ["34DF148348EE7D0A4C537833D8E36AF936BC74E5"],
++    "component_extensions_auto_granted": false
++  },
++  "dev.aux.blink.expose-wv": {
+     "channel": "stable",
+     "extension_types": ["extension"],
+     "location": "component",
+--- a/chrome/common/extensions/api/_api_features.json
++++ b/chrome/common/extensions/api/_api_features.json
+@@ -95,6 +95,15 @@
+     ],
+     "component_extensions_auto_granted": false
+   },
++  "auxWebViewInternal": {
++    "dependencies": ["permission:dev.aux.blink.expose-wv"],
++    "channel": "stable",
++    "extension_types": ["extension"],
++    "contexts": ["privileged_extension"],
++    "location": "component",
++    "allowlist": ["34DF148348EE7D0A4C537833D8E36AF936BC74E5"],
++    "component_extensions_auto_granted": false
++  },
+   "auxAccount": {
+     "dependencies": [
+       "permission:dev.aux.ext.private.account"
+--- a/tools/metrics/histograms/metadata/extensions/enums.xml
++++ b/tools/metrics/histograms/metadata/extensions/enums.xml
+@@ -3428,6 +3428,7 @@
+   <int value="282" label="kAuxCredentials"/>
+   <int value="283" label="kAuxCaptureTabWithoutUserInteraction"/>
+   <int value="284" label="kAuxLaunchExtension"/>
++  <int value="285" label="kAuxExposeWebView"/>
+ </enum>
+ 
+ <enum name="ExtensionPinReason">
+--- a/chrome/common/BUILD.gn
++++ b/chrome/common/BUILD.gn
+@@ -695,6 +695,7 @@
+     "aux_recorder.mojom",
+     "aux_person_observer.mojom",
+     "aux_cosmetic_filters.mojom",
++    "aux_webview.mojom",
+     "chrome_render_frame.mojom",
+     "google_accounts_private_api_extension.mojom",
+     "media/webrtc_logging.mojom",
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -32,6 +32,19 @@
+   deps = [ ":platform", ":profile_state", "//base", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/lifetime", "//chrome/browser/net", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//content/public/browser", "//extensions/browser", "//extensions/common", "//net", "//services/network/public/cpp", "//ui/base", "//ui/display", "//ui/views", "//ui/views/controls/webview" ]
+ }
+ 
++source_set("webview_host") {
++  sources = [ "webview_host.cc", "webview_host.h" ]
++  deps = [
++    ":platform", ":profile_state", "//base",
++    "//chrome/browser:browser_process", "//chrome/browser:buildflags",
++    "//chrome/browser/extensions", "//chrome/browser/net",
++    "//chrome/browser/profiles:profile", "//chrome/common:mojo_bindings",
++    "//components/guest_contents/browser", "//content/public/browser",
++    "//content/public/common", "//extensions/browser", "//extensions/common",
++    "//mojo/public/cpp/bindings",
++  ]
++}
++
+ executable("profile_state_probe") {
+  testonly = true
+  sources = [ "profile_state_probe.cc" ]
+--- a/chrome/browser/chrome_browser_interface_binders.cc
++++ b/chrome/browser/chrome_browser_interface_binders.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
+ #include "chrome/browser/actor/actor_script_tool_receiver.h"
+ #include "chrome/browser/buildflags.h"
++#include "chrome/browser/aux/webview_host.h"
+ #include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
+ #include "chrome/browser/geic/geic_host.h"
+ #include "chrome/browser/glic/host/glic_page_handler.h"
+@@ -453,6 +454,7 @@
+ #if BUILDFLAG(ENABLE_AUX_ISOLATED_WORLDS)
+   map->Add<chrome::mojom::AuxCosmeticHost>(&aux::BindCosmeticFilterHost);
+ #endif
++  map->Add<aux::mojom::WebViewHost>(&aux::BindWebViewHost);
+   map->Add<glic::mojom::WebClientHandler>(&glic::BindGlicWebClientHandler);
+   // Defense in depth: privileged capability interfaces are not even registered
+   // for a frame outside a privileged process, so a non-PWC frame cannot
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -883,6 +883,7 @@
+   }
+ 
+   deps = [
++    "//chrome/browser/aux:webview_host",
+     "//chrome/browser/extensions/api/aux_adblock",
+     "//chrome/browser/aux:profile_gate",
+     ":active_use_util",
+--- a/extensions/renderer/extensions_renderer_api_provider.h
++++ b/extensions/renderer/extensions_renderer_api_provider.h
+@@ -48,6 +48,9 @@
+   // provides the delegate the ability to add more names to that allowlist.
+   virtual void EnableCustomElementAllowlist() const = 0;
+ 
++  // Called after native/API initialization, before page scripts execute.
++  virtual void DidInitializeScriptContext(ScriptContext* context) const {}
++
+   // Requires modules for defining WebView APIs within a ScriptContext's
+   // ModuleSystem.
+   virtual void RequireWebViewModules(ScriptContext* context) const = 0;
+--- a/extensions/renderer/dispatcher.cc
++++ b/extensions/renderer/dispatcher.cc
+@@ -440,6 +440,9 @@
+   RequireGuestViewModules(context);
+ #endif
+ 
++  for (const auto& api_provider : api_providers_)
++    api_provider->DidInitializeScriptContext(context);
++
+   const base::TimeDelta elapsed = base::TimeTicks::Now() - start_time;
+   switch (context->context_type()) {
+     case mojom::ContextType::kUnspecified:
+--- a/chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.h
++++ b/chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.h
+@@ -32,6 +32,7 @@
+       NativeExtensionBindingsSystem* bindings_system) const override;
+   void PopulateSourceMap(ResourceBundleSourceMap* source_map) const override;
+   void EnableCustomElementAllowlist() const override;
++  void DidInitializeScriptContext(ScriptContext* context) const override;
+   void RequireWebViewModules(ScriptContext* context) const override;
+ };
+ 
+--- a/chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.cc
++++ b/chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.cc
+@@ -12,6 +12,7 @@
+ #include "chrome/renderer/extensions/api/extension_hooks_delegate.h"
+ #include "chrome/renderer/extensions/api/identity_hooks_delegate.h"
+ #include "chrome/renderer/extensions/api/notifications_native_handler.h"
++#include "chrome/renderer/extensions/api/aux_webview_native_handler.h"
+ #include "chrome/renderer/extensions/api/page_capture_custom_bindings.h"
+ #include "chrome/renderer/extensions/api/tabs_hooks_delegate.h"
+ #include "components/guest_view/buildflags/buildflags.h"
+@@ -52,6 +53,11 @@
+     NativeExtensionBindingsSystem* bindings_system,
+     V8SchemaRegistry* v8_schema_registry,
+     ScriptContext* context) const {
++  if (!context->IsForServiceWorker() &&
++      context->GetAvailability("auxWebViewInternal").is_available()) {
++    module_system->RegisterNativeHandler("aux_webview",
++        std::make_unique<AuxWebViewNativeHandler>(context));
++  }
+   // TODO(crbug.com/356905053): Move handlers supported on desktop android here.
+   module_system->RegisterNativeHandler(
+       "notifications_private",
+@@ -132,6 +138,7 @@
+     ResourceBundleSourceMap* source_map) const {
+   static constexpr auto kSources = base::MakeFixedFlatMap<std::string_view,
+                                                           int>({
++      {"auxWebViewElement", IDR_RENDERER_RESOURCES_EXTENSIONS_AUX_WEBVIEW_ELEMENT_JS},
+       // Custom bindings.
+       {"action", IDR_RENDERER_RESOURCES_EXTENSIONS_ACTION_CUSTOM_BINDINGS_JS},
+       {"browserAction",
+@@ -254,6 +261,13 @@
+   source_map->RegisterSources(kSources);
+ }
+ 
++void ChromeExtensionsRendererAPIProvider::DidInitializeScriptContext(
++    ScriptContext* context) const {
++  if (!context->IsForServiceWorker() && context->GetRenderFrame() &&
++      context->GetAvailability("auxWebViewInternal").is_available())
++    context->module_system()->Require("auxWebViewElement");
++}
++
+ void ChromeExtensionsRendererAPIProvider::EnableCustomElementAllowlist() const {
+ }
+ 
+--- a/chrome/renderer/extensions/BUILD.gn
++++ b/chrome/renderer/extensions/BUILD.gn
+@@ -25,6 +25,8 @@
+     "api/chrome_extensions_renderer_api_provider.cc",
+     "api/extension_hooks_delegate.cc",
+     "api/identity_hooks_delegate.cc",
++    "api/aux_webview_native_handler.cc",
++    "api/aux_webview_native_handler.h",
+     "api/notifications_native_handler.cc",
+     "api/notifications_native_handler.h",
+     "api/page_capture_custom_bindings.cc",
+@@ -44,6 +46,8 @@
+   ]
+ 
+   deps = [
++    "//chrome/common:mojo_bindings",
++    "//mojo/public/cpp/bindings",
+     "//chrome/common",
+     "//chrome/common:non_code_constants",
+     "//chrome/common/extensions",
+--- a/chrome/renderer/resources/extensions/BUILD.gn
++++ b/chrome/renderer/resources/extensions/BUILD.gn
+@@ -13,6 +13,7 @@
+   input_files_base_dir = rebase_path(".", "//")
+ 
+   input_files = [
++    "aux_webview_element.js",
+     "action_custom_bindings.js",
+     "browser_action_custom_bindings.js",
+     "declarative_content_custom_bindings.js",
+--- a/chrome/renderer/resources/BUILD.gn
++++ b/chrome/renderer/resources/BUILD.gn
+@@ -74,6 +74,7 @@
+     "controlled_frame/controlled_frame_url_patterns_helper.js",
+     "controlled_frame/controlled_frame_web_request.js",
+     "controlled_frame/html_controlled_frame_element.js",
++    "extensions/aux_webview_element.js",
+     "extensions/action_custom_bindings.js",
+     "extensions/browser_action_custom_bindings.js",
+     "extensions/declarative_content_custom_bindings.js",
+--- /dev/null
++++ b/chrome/browser/aux/webview_host.cc
+@@ -0,0 +1,275 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/webview_host.h"
++#include <map>
++#include <memory>
++#include <optional>
++#include "base/environment.h"
++#include "base/feature_list.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/unguessable_token.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_security_client.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/net/system_network_context_manager.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "content/public/browser/document_service.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/common/content_features.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/common/extension.h"
++#include "extensions/common/permissions/permissions_data.h"
++#include "mojo/public/cpp/bindings/remote.h"
++namespace aux {
++namespace {
++bool Authorized(content::RenderFrameHost* frame) {
++  if (!BUILDFLAG(ENABLE_AUX_BROWSER) || !frame || !frame->IsActive() ||
++      frame->GetParent() || !frame->GetLastCommittedURL().SchemeIs("chrome-extension") ||
++      frame->GetLastCommittedURL().host() != kAgentExtensionId) return false;
++  const auto* registry = extensions::ExtensionRegistry::Get(frame->GetBrowserContext());
++  if (!registry) return false;
++  const auto* extension = registry->enabled_extensions().GetByID(kAgentExtensionId);
++  return extension && extension->location() == extensions::mojom::ManifestLocation::kComponent &&
++      extension->permissions_data()->HasAPIPermission(
++          extensions::mojom::APIPermissionID::kAuxExposeWebView);
++}
++// Do not overwrite a handle/validator owned by a different embedding feature.
++class LeaseMarker : public content::WebContentsUserData<LeaseMarker> {
++ public:
++  std::string active;
++ private:
++  friend content::WebContentsUserData<LeaseMarker>;
++  explicit LeaseMarker(content::WebContents* contents)
++      : content::WebContentsUserData<LeaseMarker>(*contents) {}
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++WEB_CONTENTS_USER_DATA_KEY_IMPL(LeaseMarker);
++class Host;
++class Lease : public content::WebContentsObserver {
++ public:
++  Lease(content::WebContents* target, base::OnceClosure detached)
++      : content::WebContentsObserver(target), detached_(std::move(detached)) {}
++  void WebContentsDestroyed() override {
++    Observe(nullptr);
++    if (detached_) std::move(detached_).Run();
++  }
++ private:
++  base::OnceClosure detached_;
++};
++class Host final : public content::DocumentService<mojom::WebViewHost>,
++                   public content::WebContentsObserver {
++ public:
++  Host(content::RenderFrameHost& frame,
++       mojo::PendingReceiver<mojom::WebViewHost> receiver)
++      : content::DocumentService<mojom::WebViewHost>(frame, std::move(receiver)),
++        content::WebContentsObserver(content::WebContents::FromRenderFrameHost(&frame)) {}
++  ~Host() override {
++    weak_.InvalidateWeakPtrs();
++    while (!leases_.empty()) Retire(leases_.begin()->first, false);
++  }
++  void BindClient(mojo::PendingRemote<mojom::WebViewClient> client) override {
++    if (client_.is_bound() || !Authorized(&render_frame_host())) {
++      ResetWithReasonAndDeleteThis(1, "Unauthorized webview client"); return;
++    }
++    client_.Bind(std::move(client));
++    client_.set_disconnect_handler(base::BindOnce(
++        [](base::WeakPtr<Host> self) { if (self) self->ResetAndDeleteThis(); }, weak_.GetWeakPtr()));
++  }
++  void AttachTab(int tab_id, const blink::LocalFrameToken& token,
++                 AttachTabCallback done) override {
++    if (!Authorized(&render_frame_host()) || !client_.is_bound() ||
++        leases_.size() + pending_ >= 8 || tab_id < 0 ||
++        !base::FeatureList::IsEnabled(features::kAttachUnownedInnerWebContents)) {
++      std::move(done).Run(false, "", "Native tab embedding is unavailable"); return;
++    }
++    auto* child = content::RenderFrameHost::FromFrameToken(
++        content::GlobalRenderFrameHostToken(render_frame_host().GetProcess()->GetID(), token));
++    content::WebContents* target = nullptr;
++    if (!Placeholder(child) || !extensions::ExtensionTabUtil::GetTabById(
++            tab_id, render_frame_host().GetBrowserContext(), false, &target) ||
++        !Target(target)) {
++      std::move(done).Run(false, "", "Tab or placeholder is unavailable in this profile"); return;
++    }
++    if (leases_.empty() && pending_ == 0) account_id_.reset();
++    ++pending_;
++    const auto frame_id = child->GetGlobalId();
++    Verify(base::BindOnce(&Host::DidVerify, weak_.GetWeakPtr(),
++        tab_id, target->GetWeakPtr(), frame_id, std::move(done)));
++  }
++  void Detach(const std::string& id, DetachCallback done) override {
++    const bool found = leases_.contains(id);
++    if (found) Retire(id, true);
++    std::move(done).Run(found);
++  }
++  void FrameDeleted(content::FrameTreeNodeId frame) override {
++    // Removing a placeholder must return its guest even if renderer IPC is lost.
++    for (auto it = leases_.begin(); it != leases_.end();) {
++      const auto id = it++->first;
++      const auto found = leases_.find(id);
++      if (found != leases_.end() && found->second.frame == frame)
++        Retire(id, true);
++    }
++  }
++ private:
++  struct Active {
++    base::WeakPtr<content::WebContents> target;
++    content::FrameTreeNodeId frame;
++    std::unique_ptr<Lease> observer;
++  };
++  bool Placeholder(content::RenderFrameHost* child) const {
++    return child && child->IsActive() && child->GetParent() == &render_frame_host() &&
++        child->GetBrowserContext() == render_frame_host().GetBrowserContext() &&
++        child->GetLastCommittedURL().IsAboutBlank() &&
++        child->GetLastCommittedOrigin().IsSameOriginWith(render_frame_host().GetLastCommittedOrigin());
++  }
++  bool Target(content::WebContents* target) const {
++    return target && !target->IsBeingDestroyed() &&
++        target != content::WebContents::FromRenderFrameHost(&render_frame_host()) &&
++        target->GetBrowserContext() == render_frame_host().GetBrowserContext() &&
++        !target->GetOuterWebContents();
++  }
++  void Verify(base::OnceCallback<void(bool)> done) {
++    uint16_t port = 21520;
++    if (auto text = base::Environment::Create()->GetVar("AUX_PORT")) {
++      unsigned parsed = 0;
++      if (!base::StringToUint(*text, &parsed) || !parsed || parsed > 65535) {
++        std::move(done).Run(false); return;
++      }
++      port = parsed;
++    }
++    if (!g_browser_process || !g_browser_process->system_network_context_manager()) {
++      std::move(done).Run(false); return;
++    }
++    const auto authorization = BrowserPlatform::Get().authorization();
++    auto* profile = Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
++    FetchProfileSecurity(StateHome(), profile->GetOriginalProfile()->GetPath(),
++        g_browser_process->system_network_context_manager()->GetSharedURLLoaderFactory(),
++        port, authorization, base::BindOnce(
++            [](base::WeakPtr<Host> self, std::string token,
++               base::OnceCallback<void(bool)> callback, ProfileSecurityState state) {
++              if (!self) return;
++              bool allowed = Authorized(&self->render_frame_host()) &&
++                  token == BrowserPlatform::Get().authorization() && state.allows_browsing();
++              if (allowed && self->account_id_ && self->account_id_ != state.account_id)
++                allowed = false;
++              if (allowed && !self->account_id_) self->account_id_ = state.account_id;
++              std::move(callback).Run(allowed);
++            }, weak_.GetWeakPtr(), authorization, std::move(done)));
++  }
++  void DidVerify(int tab_id, base::WeakPtr<content::WebContents> target,
++                 content::GlobalRenderFrameHostId frame_id,
++                 AttachTabCallback done, bool verified) {
++    auto* child = content::RenderFrameHost::FromID(frame_id);
++    content::WebContents* current = nullptr;
++    if (!verified || !Target(target.get()) || !Placeholder(child) ||
++        !extensions::ExtensionTabUtil::GetTabById(tab_id,
++            render_frame_host().GetBrowserContext(), false, &current) || current != target.get()) {
++      --pending_; std::move(done).Run(false, "", "Embedding authority changed"); return;
++    }
++    const auto node = child->GetFrameTreeNodeId();
++    child->PrepareForInnerWebContentsAttach(base::BindOnce(
++        &Host::DidPrepare, weak_.GetWeakPtr(), target, node, std::move(done)));
++  }
++  void DidPrepare(base::WeakPtr<content::WebContents> target,
++                  content::FrameTreeNodeId node, AttachTabCallback done,
++                  content::RenderFrameHost* prepared) {
++    if (!Target(target.get()) || !Placeholder(prepared) || prepared->GetFrameTreeNodeId() != node) {
++      --pending_; std::move(done).Run(false, "", "Placeholder preparation failed"); return;
++    }
++    Verify(base::BindOnce(&Host::AttachPrepared, weak_.GetWeakPtr(),
++        target, prepared->GetGlobalId(), node, std::move(done)));
++  }
++  void AttachPrepared(base::WeakPtr<content::WebContents> target,
++                      content::GlobalRenderFrameHostId frame_id,
++                      content::FrameTreeNodeId node, AttachTabCallback done, bool verified) {
++    --pending_;
++    auto* prepared = content::RenderFrameHost::FromID(frame_id);
++    if (!verified || !Target(target.get()) || !Placeholder(prepared) ||
++        prepared->GetFrameTreeNodeId() != node) {
++      std::move(done).Run(false, "", "Embedding authority changed"); return;
++    }
++    auto* handle = guest_contents::GuestContentsHandle::FromWebContents(target.get());
++    auto* marker = LeaseMarker::FromWebContents(target.get());
++    if ((handle && !marker) || (marker && !marker->active.empty())) {
++      std::move(done).Run(false, "", "Tab is already managed by another embedding"); return;
++    }
++    if (!handle) {
++      handle = guest_contents::GuestContentsHandle::CreateForWebContents(target.get());
++      LeaseMarker::CreateForWebContents(target.get());
++      marker = LeaseMarker::FromWebContents(target.get());
++    }
++    const auto id = base::UnguessableToken::Create().ToString();
++    marker->active = id;
++    handle->SetAttachmentValidator(base::BindRepeating(
++        [](base::WeakPtr<Host> self, content::GlobalRenderFrameHostId expected,
++           content::RenderFrameHost* frame) {
++          return self && frame && frame->GetGlobalId() == expected &&
++              self->Placeholder(frame) && Authorized(&self->render_frame_host());
++        }, weak_.GetWeakPtr(), frame_id));
++    auto observer = std::make_unique<Lease>(target.get(),
++        base::BindOnce(&Host::Retire, weak_.GetWeakPtr(), id, true));
++    leases_.emplace(id, Active{target, node, std::move(observer)});
++    handle->AttachToOuterWebContents(prepared);
++    if (target->GetOuterWebContents() != web_contents()) {
++      Retire(id, false);
++      std::move(done).Run(false, "", "Native attachment was rejected"); return;
++    }
++    if (!timer_.IsRunning()) timer_.Start(FROM_HERE, base::Seconds(1),
++        base::BindRepeating(&Host::VerifyActive, weak_.GetWeakPtr()));
++    std::move(done).Run(true, id, "");
++  }
++  void VerifyActive() {
++    if (verifying_ || leases_.empty()) return;
++    verifying_ = true;
++    Verify(base::BindOnce([](base::WeakPtr<Host> self, bool allowed) {
++      if (!self) return;
++      self->verifying_ = false;
++      if (!allowed) while (!self->leases_.empty())
++        self->Retire(self->leases_.begin()->first, true);
++    }, weak_.GetWeakPtr()));
++  }
++  void Retire(std::string id, bool notify) {
++    auto found = leases_.find(id);
++    if (found == leases_.end()) return;
++    auto target = found->second.target;
++    // Remove observer before detaching to prevent reentrant lease retirement.
++    auto active = std::move(found->second);
++    leases_.erase(found);
++    active.observer.reset();
++    if (target) {
++      auto* marker = LeaseMarker::FromWebContents(target.get());
++      if (marker && marker->active == id) marker->active.clear();
++      auto* handle = guest_contents::GuestContentsHandle::FromWebContents(target.get());
++      if (handle && target->GetOuterWebContents() == web_contents())
++        handle->DetachFromOuterWebContents();
++    }
++    if (leases_.empty()) {
++      timer_.Stop();
++      if (pending_ == 0) account_id_.reset();
++    }
++    if (notify && client_.is_connected()) client_->Detached(id);
++  }
++  std::map<std::string, Active> leases_;
++  size_t pending_ = 0;
++  std::optional<int> account_id_;
++  bool verifying_ = false;
++  base::RepeatingTimer timer_;
++  mojo::Remote<mojom::WebViewClient> client_;
++  base::WeakPtrFactory<Host> weak_{this};
++};
++}  // namespace
++void BindWebViewHost(content::RenderFrameHost* frame,
++                    mojo::PendingReceiver<mojom::WebViewHost> receiver) {
++  if (Authorized(frame)) new Host(*frame, std::move(receiver));
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/aux/webview_host.h
+@@ -0,0 +1,11 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_WEBVIEW_HOST_H_
++#define CHROME_BROWSER_AUX_WEBVIEW_HOST_H_
++#include "chrome/common/aux_webview.mojom.h"
++#include "mojo/public/cpp/bindings/pending_receiver.h"
++namespace content { class RenderFrameHost; }
++namespace aux {
++void BindWebViewHost(content::RenderFrameHost* frame,
++                    mojo::PendingReceiver<mojom::WebViewHost> receiver);
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/common/aux_webview.mojom
+@@ -0,0 +1,13 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++module aux.mojom;
++import "third_party/blink/public/mojom/tokens/tokens.mojom";
++interface WebViewClient {
++  Detached(string lease_id);
++};
++// Private extension-document service. It never transfers ownership of a tab.
++interface WebViewHost {
++  BindClient(pending_remote<WebViewClient> client);
++  AttachTab(int32 tab_id, blink.mojom.LocalFrameToken placeholder)
++      => (bool attached, string lease_id, string error);
++  Detach(string lease_id) => (bool detached);
++};
+--- /dev/null
++++ b/chrome/renderer/extensions/api/aux_webview_native_handler.cc
+@@ -0,0 +1,138 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/renderer/extensions/api/aux_webview_native_handler.h"
++#include <tuple>
++#include "base/functional/bind.h"
++#include "content/public/renderer/render_frame.h"
++#include "extensions/renderer/script_context.h"
++#include "gin/converter.h"
++#include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
++#include "third_party/blink/public/web/web_custom_element.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++#include "v8/include/v8-function.h"
++#include "v8/include/v8-promise.h"
++namespace extensions {
++AuxWebViewNativeHandler::AuxWebViewNativeHandler(ScriptContext* context)
++    : ObjectBackedNativeHandler(context) {}
++AuxWebViewNativeHandler::~AuxWebViewNativeHandler() {
++  if (is_valid()) Invalidate();
++}
++void AuxWebViewNativeHandler::AddRoutes() {
++  RouteHandlerFunction("attachTab", "auxWebViewInternal", base::BindRepeating(
++      &AuxWebViewNativeHandler::Attach, base::Unretained(this)));
++  RouteHandlerFunction("detach", "auxWebViewInternal", base::BindRepeating(
++      &AuxWebViewNativeHandler::Detach, base::Unretained(this)));
++  RouteHandlerFunction("listen", "auxWebViewInternal", base::BindRepeating(
++      &AuxWebViewNativeHandler::Listen, base::Unretained(this)));
++  RouteHandlerFunction("allowDefinition", "auxWebViewInternal", base::BindRepeating(
++      &AuxWebViewNativeHandler::AllowDefinition, base::Unretained(this)));
++}
++void AuxWebViewNativeHandler::Attach(const v8::FunctionCallbackInfo<v8::Value>& args) {
++  auto* isolate = GetIsolate();
++  auto v8_context = context()->v8_context();
++  int tab = -1;
++  auto reject = [&](const char* error) {
++    isolate->ThrowException(v8::Exception::Error(gin::StringToV8(isolate, error)));
++  };
++  if (args.Length() != 2 || !gin::ConvertFromV8(isolate, args[0], &tab) || tab < 0 ||
++      !args[1]->IsObject() || pending_.size() + leases_.size() >= 8) {
++    reject("Expected tab id and a local placeholder window"); return;
++  }
++  auto* owner = context()->GetRenderFrame();
++  v8::Local<v8::Context> child_context;
++  if (!owner || !owner->IsMainFrame() ||
++      !args[1].As<v8::Object>()->GetCreationContext().ToLocal(&child_context)) {
++    reject("Webview context is unavailable"); return;
++  }
++  auto* child = blink::WebLocalFrame::FrameForContext(child_context);
++  if (!child || child->Parent() != owner->GetWebFrame()) {
++    reject("Placeholder is not a direct local child"); return;
++  }
++  if (!remote_.is_bound()) {
++    owner->GetBrowserInterfaceBroker().GetInterface(remote_.BindNewPipeAndPassReceiver());
++    remote_.set_disconnect_handler(base::BindOnce(
++        &AuxWebViewNativeHandler::Disconnected, weak_.GetWeakPtr()));
++    remote_->BindClient(receiver_.BindNewPipeAndPassRemote());
++  }
++  auto resolver = v8::Promise::Resolver::New(v8_context).ToLocalChecked();
++  const uint64_t request = ++sequence_;
++  pending_.emplace(request, v8::Global<v8::Promise::Resolver>(isolate, resolver));
++  args.GetReturnValue().Set(resolver->GetPromise());
++  remote_->AttachTab(tab, child->GetLocalFrameToken(), base::BindOnce(
++      &AuxWebViewNativeHandler::DidAttach, weak_.GetWeakPtr(), request));
++}
++void AuxWebViewNativeHandler::DidAttach(uint64_t request, bool success,
++    const std::string& lease, const std::string& error) {
++  auto it = pending_.find(request);
++  if (!is_valid() || it == pending_.end()) return;
++  auto* isolate = GetIsolate();
++  v8::HandleScope handles(isolate);
++  v8::Context::Scope scope(context()->v8_context());
++  auto resolver = it->second.Get(isolate);
++  if (success && !lease.empty() && !retired_.erase(lease)) {
++    leases_.insert(lease);
++    std::ignore = resolver->Resolve(context()->v8_context(), gin::StringToV8(isolate, lease));
++  } else {
++    std::ignore = resolver->Reject(context()->v8_context(), v8::Exception::Error(
++        gin::StringToV8(isolate, error.empty() ? "Native tab attachment failed" : error)));
++  }
++  pending_.erase(it);
++}
++void AuxWebViewNativeHandler::Detach(const v8::FunctionCallbackInfo<v8::Value>& args) {
++  std::string lease;
++  if (args.Length() != 1 || !gin::ConvertFromV8(GetIsolate(), args[0], &lease) ||
++      !leases_.contains(lease) || !remote_.is_bound()) return;
++  remote_->Detach(lease, base::BindOnce(
++      [](base::WeakPtr<AuxWebViewNativeHandler> self, std::string id, bool detached) {
++        if (self) self->Detached(id);
++      }, weak_.GetWeakPtr(), lease));
++}
++void AuxWebViewNativeHandler::Listen(const v8::FunctionCallbackInfo<v8::Value>& args) {
++  if (args.Length() == 1 && args[0]->IsFunction())
++    listener_.Reset(GetIsolate(), args[0].As<v8::Function>());
++}
++void AuxWebViewNativeHandler::AllowDefinition(const v8::FunctionCallbackInfo<v8::Value>& args) {
++  if (args.Length() != 1 || !args[0]->IsFunction()) return;
++  blink::WebCustomElement::EmbedderNamesAllowedScope allow;
++  // This callback must be synchronous while reserved-name registration is allowed.
++  std::ignore = args[0].As<v8::Function>()->Call(
++      context()->v8_context(), context()->v8_context()->Global(), 0, nullptr);
++}
++void AuxWebViewNativeHandler::Detached(const std::string& lease) {
++  if (!is_valid()) return;
++  if (!leases_.erase(lease)) {
++    if (retired_.size() >= 16) retired_.erase(retired_.begin());
++    retired_.insert(lease);
++    return;
++  }
++  if (listener_.IsEmpty()) return;
++  auto* isolate = GetIsolate();
++  v8::HandleScope handles(isolate);
++  v8::Context::Scope scope(context()->v8_context());
++  v8::Local<v8::Value> args[] = {gin::StringToV8(isolate, lease)};
++  context()->SafeCallFunction(listener_.Get(isolate), 1, args);
++}
++void AuxWebViewNativeHandler::Disconnected() {
++  if (!is_valid()) return;
++  auto* isolate = GetIsolate();
++  v8::HandleScope handles(isolate);
++  v8::Context::Scope scope(context()->v8_context());
++  for (auto& [id, resolver] : pending_)
++    std::ignore = resolver.Get(isolate)->Reject(context()->v8_context(),
++        v8::Exception::Error(gin::StringToV8(isolate, "Native embedding connection closed")));
++  pending_.clear();
++  const auto leases = leases_;
++  for (const auto& id : leases) Detached(id);
++  receiver_.reset();
++  remote_.reset();
++}
++void AuxWebViewNativeHandler::Invalidate() {
++  weak_.InvalidateWeakPtrs();
++  remote_.reset();
++  receiver_.reset();
++  pending_.clear();
++  leases_.clear();
++  retired_.clear();
++  listener_.Reset();
++  ObjectBackedNativeHandler::Invalidate();
++}
++}  // namespace extensions
+--- /dev/null
++++ b/chrome/renderer/extensions/api/aux_webview_native_handler.h
+@@ -0,0 +1,41 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_RENDERER_EXTENSIONS_API_AUX_WEBVIEW_NATIVE_HANDLER_H_
++#define CHROME_RENDERER_EXTENSIONS_API_AUX_WEBVIEW_NATIVE_HANDLER_H_
++#include <cstdint>
++#include <map>
++#include <set>
++#include "base/memory/weak_ptr.h"
++#include "chrome/common/aux_webview.mojom.h"
++#include "extensions/renderer/object_backed_native_handler.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "v8/include/v8-persistent-handle.h"
++#include "v8/include/v8-promise.h"
++namespace extensions {
++class AuxWebViewNativeHandler final : public ObjectBackedNativeHandler,
++                                     public aux::mojom::WebViewClient {
++ public:
++  explicit AuxWebViewNativeHandler(ScriptContext* context);
++  ~AuxWebViewNativeHandler() override;
++  void Invalidate() override;
++ private:
++  void AddRoutes() override;
++  void Attach(const v8::FunctionCallbackInfo<v8::Value>& args);
++  void Detach(const v8::FunctionCallbackInfo<v8::Value>& args);
++  void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
++  void AllowDefinition(const v8::FunctionCallbackInfo<v8::Value>& args);
++  void DidAttach(uint64_t request, bool success, const std::string& lease,
++                 const std::string& error);
++  void Detached(const std::string& lease) override;
++  void Disconnected();
++  mojo::Remote<aux::mojom::WebViewHost> remote_;
++  mojo::Receiver<aux::mojom::WebViewClient> receiver_{this};
++  std::map<uint64_t, v8::Global<v8::Promise::Resolver>> pending_;
++  std::set<std::string> leases_;
++  std::set<std::string> retired_;
++  v8::Global<v8::Function> listener_;
++  uint64_t sequence_ = 0;
++  base::WeakPtrFactory<AuxWebViewNativeHandler> weak_{this};
++};
++}  // namespace extensions
++#endif
+--- /dev/null
++++ b/chrome/renderer/resources/extensions/aux_webview_element.js
+@@ -0,0 +1,76 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Native extension module, loaded only for the exact private feature grant.
++const native = requireNative('aux_webview');
++const elements = new Map();
++const retired = new Set();
++native.listen((lease) => {
++  const element = elements.get(lease);
++  if (element) element.nativeDetached(lease);
++  else {
++    if (retired.size >= 32) retired.delete(retired.values().next().value);
++    retired.add(lease);
++  }
++});
++class AuxWebViewElement extends HTMLElement {
++  #root;
++  #iframe;
++  #finishReady;
++  #ready;
++  #lease = null;
++  #generation = 0;
++  constructor() {
++    super();
++    this.#root = this.attachShadow({mode: 'closed'});
++    // Keep the shadow reference private; no page can acquire the native bridge.
++    this.createPlaceholder();
++  }
++  createPlaceholder() {
++    const frame = document.createElement('iframe');
++    frame.style.cssText = 'width:100%;height:100%;border:0;display:block';
++    frame.title = 'Live tab content';
++    this.#ready = new Promise((resolve) => {
++      this.#finishReady = resolve;
++      frame.addEventListener('load', resolve, {once:true});
++    });
++    this.#iframe = frame;
++    // A native module may retain a closed shadow root in a private field.
++    const style = document.createElement('style');
++    style.textContent = ':host{display:block}';
++    this.#root.replaceChildren(style, frame);
++  }
++  connectedCallback() {}
++  disconnectedCallback() {
++    ++this.#generation;
++    this.#finishReady();
++    if (this.#lease) native.detach(this.#lease);
++  }
++  async attachTab(tabId) {
++    if (!Number.isInteger(tabId) || tabId < 0) throw new TypeError('Expected a tab id');
++    if (!this.isConnected) throw new Error('Webview is not connected');
++    if (this.#lease) throw new Error('Webview already has an attached tab');
++    const generation = ++this.#generation;
++    await this.#ready;
++    if (!this.isConnected || generation !== this.#generation)
++      throw new Error('Webview attachment was cancelled');
++    const lease = await native.attachTab(tabId, this.#iframe.contentWindow);
++    if (retired.delete(lease)) throw new Error('Tab detached while attaching');
++    if (!this.isConnected || generation !== this.#generation) {
++      native.detach(lease);
++      throw new Error('Webview attachment was cancelled');
++    }
++    this.#lease = lease;
++    elements.set(lease, this);
++  }
++  nativeDetached(lease) {
++    if (this.#lease !== lease) return;
++    elements.delete(lease);
++    this.#lease = null;
++    ++this.#generation;
++    this.createPlaceholder();
++    this.dispatchEvent(new Event('detached'));
++  }
++}
++// Preserve an existing real provider rather than replacing its element.
++if (!customElements.get('webview')) {
++  native.allowDefinition(() => customElements.define('webview', AuxWebViewElement));
++}

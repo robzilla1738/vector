@@ -1,0 +1,13 @@
+// Copyright 2026 Aux Authors. All rights reserved.
+module aux.mojom;
+import "third_party/blink/public/mojom/tokens/tokens.mojom";
+interface WebViewClient {
+  Detached(string lease_id);
+};
+// Private extension-document service. It never transfers ownership of a tab.
+interface WebViewHost {
+  BindClient(pending_remote<WebViewClient> client);
+  AttachTab(int32 tab_id, blink.mojom.LocalFrameToken placeholder)
+      => (bool attached, string lease_id, string error);
+  Detach(string lease_id) => (bool detached);
+};

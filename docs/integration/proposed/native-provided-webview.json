@@ -1,0 +1,273 @@
+{
+  "applyAfter": [
+    "native-provided-entrypoints.patch",
+    "native-provided-profile-security.patch",
+    "native-provided-capture-launch.patch"
+  ],
+  "files": [
+    {
+      "path": "extensions/common/mojom/api_permission_id.mojom",
+      "originalNativeSha256": "5aceb8839f7d77d112e0d8b2ee45a55dab528fadf0fd601e3b868691a41d4228",
+      "expectedInputSha256": "b7ec39d912cb0b59f829ce3863690a52b42f28506aa769c46e1185e9428955c0",
+      "proposedSha256": "b44b467792b0d965372bfc4c49ccaaddfdda4c4b9c4789cb5ba2c0ae5f423e29",
+      "edits": [
+        {
+          "find": "  kAuxLaunchExtension = 284,",
+          "replace": "  kAuxLaunchExtension = 284,\n  kAuxExposeWebView = 285,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/permissions/chrome_api_permissions.cc",
+      "originalNativeSha256": "6dfbca0d9628839776692072746d500332ea1b42feb82b965b6edfb555143363",
+      "expectedInputSha256": "b11b7478ca2b0459ca204d1f1b1aede7a9d66f9f854b13abf081c58baddc5502",
+      "proposedSha256": "65af2ee5eabf918cbc6daa47078e56e79f21de700be375da51d6e680d763ef97",
+      "edits": [
+        {
+          "find": "    {APIPermissionID::kAuxCredentials,",
+          "replace": "    {APIPermissionID::kAuxExposeWebView, \"dev.aux.blink.expose-wv\", APIPermissionInfo::kFlagCannotBeOptional},\n    {APIPermissionID::kAuxCredentials,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/_permission_features.json",
+      "originalNativeSha256": "f4927b8e8696636d8c0ae2341acc1801d4fb0dd8db7d63a8cdd91e4d468463f6",
+      "expectedInputSha256": "f69cb63ff766eef89d523b0d798f1a2b167d88edc3945c9311ef7417b15d845b",
+      "proposedSha256": "d91f82c9ed3592431b03ab98b36aa6a351d74e649e8359f0103c29328b5fafd5",
+      "edits": [
+        {
+          "find": "  \"dev.aux.ext.private.credentials\": {",
+          "replace": "  \"dev.aux.blink.expose-wv\": {\n    \"channel\": \"stable\",\n    \"extension_types\": [\"extension\"],\n    \"location\": \"component\",\n    \"allowlist\": [\"34DF148348EE7D0A4C537833D8E36AF936BC74E5\"],\n    \"component_extensions_auto_granted\": false\n  },\n  \"dev.aux.ext.private.credentials\": {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/_api_features.json",
+      "originalNativeSha256": "981b7355db95e4c8d597d05782d0aaf0f1e17eb19104d9cfbfb96fe90c658e89",
+      "expectedInputSha256": "981b7355db95e4c8d597d05782d0aaf0f1e17eb19104d9cfbfb96fe90c658e89",
+      "proposedSha256": "7b919408056c05e8fb7d0713bb37be50d3afc4cc17d15b486f0a391276786c3f",
+      "edits": [
+        {
+          "find": "  \"auxAccount\": {",
+          "replace": "  \"auxWebViewInternal\": {\n    \"dependencies\": [\"permission:dev.aux.blink.expose-wv\"],\n    \"channel\": \"stable\",\n    \"extension_types\": [\"extension\"],\n    \"contexts\": [\"privileged_extension\"],\n    \"location\": \"component\",\n    \"allowlist\": [\"34DF148348EE7D0A4C537833D8E36AF936BC74E5\"],\n    \"component_extensions_auto_granted\": false\n  },\n  \"auxAccount\": {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "originalNativeSha256": "eeeffbf8e125a562bc028f876fa7a92ed220b141f209e21f5908e2026d4841eb",
+      "expectedInputSha256": "7de2a49c8bfe32275e35f91d42d628333e796d29c6379d7a90477d327f44fcef",
+      "proposedSha256": "0ef067e303727d6c4d61d0ddc6576ec2dec9dfe7508a4d850df97907dce1e415",
+      "edits": [
+        {
+          "find": "  <int value=\"284\" label=\"kAuxLaunchExtension\"/>",
+          "replace": "  <int value=\"284\" label=\"kAuxLaunchExtension\"/>\n  <int value=\"285\" label=\"kAuxExposeWebView\"/>",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/BUILD.gn",
+      "originalNativeSha256": "702dbe2349c98adb83b0dad19dbb4fd70939c1b2f3b048142a391250777081fd",
+      "expectedInputSha256": "702dbe2349c98adb83b0dad19dbb4fd70939c1b2f3b048142a391250777081fd",
+      "proposedSha256": "e6b8c25a494c3d061fc49193ed4673b63a60fcfe43fa737671e2167c19a6bb9e",
+      "edits": [
+        {
+          "find": "    \"aux_cosmetic_filters.mojom\",",
+          "replace": "    \"aux_cosmetic_filters.mojom\",\n    \"aux_webview.mojom\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "originalNativeSha256": "7efaf1c97407568014683d817761fcce9f550f7697b4859667b8f48aef6a64dc",
+      "expectedInputSha256": "7202650471f7d20bc5f592df3125cf942147065730d7c6557ce9c945ee42e6c4",
+      "proposedSha256": "a599ff57e888705e8ba12db5b18b8bf9c134c2f342c920949c6464150c439a08",
+      "edits": [
+        {
+          "find": "executable(\"profile_state_probe\") {",
+          "replace": "source_set(\"webview_host\") {\n  sources = [ \"webview_host.cc\", \"webview_host.h\" ]\n  deps = [\n    \":platform\", \":profile_state\", \"//base\",\n    \"//chrome/browser:browser_process\", \"//chrome/browser:buildflags\",\n    \"//chrome/browser/extensions\", \"//chrome/browser/net\",\n    \"//chrome/browser/profiles:profile\", \"//chrome/common:mojo_bindings\",\n    \"//components/guest_contents/browser\", \"//content/public/browser\",\n    \"//content/public/common\", \"//extensions/browser\", \"//extensions/common\",\n    \"//mojo/public/cpp/bindings\",\n  ]\n}\n\nexecutable(\"profile_state_probe\") {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_interface_binders.cc",
+      "originalNativeSha256": "fa793f4743c3b6821b9898a590ce1d2de5882be8ce73a3ba743469f5872bf163",
+      "expectedInputSha256": "fa793f4743c3b6821b9898a590ce1d2de5882be8ce73a3ba743469f5872bf163",
+      "proposedSha256": "f30d46d3cde920076f0cccb1da7323a259ddd2b29f9ebb4cf47ac5fa836c1bb0",
+      "edits": [
+        {
+          "find": "#include \"chrome/browser/buildflags.h\"",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/aux/webview_host.h\"",
+          "count": 1
+        },
+        {
+          "find": "  map->Add<glic::mojom::WebClientHandler>(&glic::BindGlicWebClientHandler);",
+          "replace": "  map->Add<aux::mojom::WebViewHost>(&aux::BindWebViewHost);\n  map->Add<glic::mojom::WebClientHandler>(&glic::BindGlicWebClientHandler);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "originalNativeSha256": "a3d04059616b6298e92d9e8f0a89ff781a12ef9989fd417c0c936d90f070aa67",
+      "expectedInputSha256": "a3d04059616b6298e92d9e8f0a89ff781a12ef9989fd417c0c936d90f070aa67",
+      "proposedSha256": "12b1634984919ca6a57d5f7e8a0ee41be0602bbd77e0567b499cd045b7d5f609",
+      "edits": [
+        {
+          "find": "    \"//chrome/browser/extensions/api/aux_adblock\",",
+          "replace": "    \"//chrome/browser/aux:webview_host\",\n    \"//chrome/browser/extensions/api/aux_adblock\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/renderer/extensions_renderer_api_provider.h",
+      "originalNativeSha256": "55585d5b3e484379dcb626bdf548727b9e7d327cbb7ecac13544d7feb8901a42",
+      "expectedInputSha256": "55585d5b3e484379dcb626bdf548727b9e7d327cbb7ecac13544d7feb8901a42",
+      "proposedSha256": "a50aa7339d30af054d7c67aae8bd87a44f9700883db8e7b8cfbbc3c7a0b1d630",
+      "edits": [
+        {
+          "find": "  virtual void EnableCustomElementAllowlist() const = 0;",
+          "replace": "  virtual void EnableCustomElementAllowlist() const = 0;\n\n  // Called after native/API initialization, before page scripts execute.\n  virtual void DidInitializeScriptContext(ScriptContext* context) const {}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/renderer/dispatcher.cc",
+      "originalNativeSha256": "039ca2bef1d31f6853a4593f851debac998b15363bd1ac158a380dc68a60ada0",
+      "expectedInputSha256": "039ca2bef1d31f6853a4593f851debac998b15363bd1ac158a380dc68a60ada0",
+      "proposedSha256": "4a84ba04fda8151f0207b725f5cc47d1541f48cffb4f8a29dd70a6ff3304979d",
+      "edits": [
+        {
+          "find": "  const base::TimeDelta elapsed = base::TimeTicks::Now() - start_time;",
+          "replace": "  for (const auto& api_provider : api_providers_)\n    api_provider->DidInitializeScriptContext(context);\n\n  const base::TimeDelta elapsed = base::TimeTicks::Now() - start_time;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.h",
+      "originalNativeSha256": "4cd7e1efcbcdc8d0bf19d3b25d76dc425ec19bfb10f064af7fee911e1825724e",
+      "expectedInputSha256": "4cd7e1efcbcdc8d0bf19d3b25d76dc425ec19bfb10f064af7fee911e1825724e",
+      "proposedSha256": "759443ee61c01705b9a5f7715aa4724108753b399fce58054fc8b6f1a62d1be3",
+      "edits": [
+        {
+          "find": "  void EnableCustomElementAllowlist() const override;",
+          "replace": "  void EnableCustomElementAllowlist() const override;\n  void DidInitializeScriptContext(ScriptContext* context) const override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.cc",
+      "originalNativeSha256": "9261d93a0c89eab6412ca7434a12de20233ae3e3011df794757281df6e369156",
+      "expectedInputSha256": "9261d93a0c89eab6412ca7434a12de20233ae3e3011df794757281df6e369156",
+      "proposedSha256": "6eab9eb6c9003c1f9ce3ba2112c1d3c14d1e779dce9437cce37d0b73a106d9a8",
+      "edits": [
+        {
+          "find": "#include \"chrome/renderer/extensions/api/notifications_native_handler.h\"",
+          "replace": "#include \"chrome/renderer/extensions/api/notifications_native_handler.h\"\n#include \"chrome/renderer/extensions/api/aux_webview_native_handler.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // TODO(crbug.com/356905053): Move handlers supported on desktop android here.",
+          "replace": "  if (!context->IsForServiceWorker() &&\n      context->GetAvailability(\"auxWebViewInternal\").is_available()) {\n    module_system->RegisterNativeHandler(\"aux_webview\",\n        std::make_unique<AuxWebViewNativeHandler>(context));\n  }\n  // TODO(crbug.com/356905053): Move handlers supported on desktop android here.",
+          "count": 1
+        },
+        {
+          "find": "      // Custom bindings.",
+          "replace": "      {\"auxWebViewElement\", IDR_RENDERER_RESOURCES_EXTENSIONS_AUX_WEBVIEW_ELEMENT_JS},\n      // Custom bindings.",
+          "count": 1
+        },
+        {
+          "find": "void ChromeExtensionsRendererAPIProvider::EnableCustomElementAllowlist() const {",
+          "replace": "void ChromeExtensionsRendererAPIProvider::DidInitializeScriptContext(\n    ScriptContext* context) const {\n  if (!context->IsForServiceWorker() && context->GetRenderFrame() &&\n      context->GetAvailability(\"auxWebViewInternal\").is_available())\n    context->module_system()->Require(\"auxWebViewElement\");\n}\n\nvoid ChromeExtensionsRendererAPIProvider::EnableCustomElementAllowlist() const {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/renderer/extensions/BUILD.gn",
+      "originalNativeSha256": "16531d78343049d0b382e258304593b40d932dc0112f8d78fb129ed16549171f",
+      "expectedInputSha256": "16531d78343049d0b382e258304593b40d932dc0112f8d78fb129ed16549171f",
+      "proposedSha256": "13932b73ecd5a9db2b090468b63e2d729ce1f5d1129376535dba26dd83a91ee7",
+      "edits": [
+        {
+          "find": "    \"api/notifications_native_handler.cc\",",
+          "replace": "    \"api/aux_webview_native_handler.cc\",\n    \"api/aux_webview_native_handler.h\",\n    \"api/notifications_native_handler.cc\",",
+          "count": 1
+        },
+        {
+          "find": "    \"//chrome/common\",",
+          "replace": "    \"//chrome/common:mojo_bindings\",\n    \"//mojo/public/cpp/bindings\",\n    \"//chrome/common\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/renderer/resources/extensions/BUILD.gn",
+      "originalNativeSha256": "12dbf0f1ccd1635c49333c2650d971729eb37737bf13a78e01bff36715123731",
+      "expectedInputSha256": "12dbf0f1ccd1635c49333c2650d971729eb37737bf13a78e01bff36715123731",
+      "proposedSha256": "52a08d6e25c8f85dd4c2b6bacdb4f2f277f69b69cd9e0afe481da3a9c4a02d5d",
+      "edits": [
+        {
+          "find": "    \"action_custom_bindings.js\",",
+          "replace": "    \"aux_webview_element.js\",\n    \"action_custom_bindings.js\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/renderer/resources/BUILD.gn",
+      "originalNativeSha256": "82caa9541371f848bbf36026d211208a6d92157627f539912afc9a5518de4fe5",
+      "expectedInputSha256": "82caa9541371f848bbf36026d211208a6d92157627f539912afc9a5518de4fe5",
+      "proposedSha256": "e5a6c19855c6f23f2667d9fff7ba28a0640f934a925d6faeddce458c2cc76323",
+      "edits": [
+        {
+          "find": "    \"extensions/action_custom_bindings.js\",",
+          "replace": "    \"extensions/aux_webview_element.js\",\n    \"extensions/action_custom_bindings.js\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/webview_host.cc",
+      "expectedInputSha256": null,
+      "proposedSha256": "44935b83073f7074c851bce2898efff02e6a3f34a295c4eef5400edf6c3c0f97"
+    },
+    {
+      "path": "chrome/browser/aux/webview_host.h",
+      "expectedInputSha256": null,
+      "proposedSha256": "b2ac507769c21830da31f10b1d6c5e5d09123c8930d302a650525dc221795d73"
+    },
+    {
+      "path": "chrome/common/aux_webview.mojom",
+      "expectedInputSha256": null,
+      "proposedSha256": "8fb6e6e61fb569538b0bbd2f34a0964d0e49a6e459c12ca88f9fedf2fdd13374"
+    },
+    {
+      "path": "chrome/renderer/extensions/api/aux_webview_native_handler.cc",
+      "expectedInputSha256": null,
+      "proposedSha256": "bf113addde398df47627d32cd6ccb03a547926196a2db21434f82421f207b05d"
+    },
+    {
+      "path": "chrome/renderer/extensions/api/aux_webview_native_handler.h",
+      "expectedInputSha256": null,
+      "proposedSha256": "3e202cf9cb452f3ba43e5216d2c6b7c56dbfb69cca7a80fcc409ca558845be5a"
+    },
+    {
+      "path": "chrome/renderer/resources/extensions/aux_webview_element.js",
+      "expectedInputSha256": null,
+      "proposedSha256": "0938549762c3a55d827382ddacf47d9de9dcd10c5d577ea619df5529b7b4c90d"
+    }
+  ],
+  "acceptance": "Staged C++ only, uncompiled/unrun. Requires original-native signing carrier and AttachUnownedInnerWebContents feature enabled only for Aux. No native checkout edits."
+}
