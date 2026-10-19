@@ -37,4 +37,4 @@ Anchored string patches with expected match counts. Changes are limited to: port
 
 ## Not yet native
 
-Vertical-tab sidebar, mini popup, importer WebUI, adblock, Computer Use helper, Aux cloud.
+Adblock, importer, omnibox, tab search and the sidebar run as JS shims or Aux's own native views rather than Aside's private browser APIs (see `docs/STATUS.md`). Not provided: mini popup window chrome, Aside's profile menu and icon picker, Aux cloud.
