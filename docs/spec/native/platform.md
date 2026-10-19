@@ -20,7 +20,7 @@ The browser signs the challenge with its installation credential, domain-separat
 
 Authenticated requests send that Authorization value and `Content-Type: application/json` for JSON bodies. Do not expose installation keys, session tokens, signatures or model credentials in logs. Browser extension account signing uses the same installation authority, not an extension-generated substitute. Missing installation keys are an actionable setup error, not permission to fall back to an unauthenticated session.
 
-Reference evidence establishes a domain-separated installation signer but does not prove the full key serialization/signature algorithm in this inspection. The daemon and browser must agree through the contracts spec; use an independently designed, audited standard implementation and mark cross-language auth verification as required acceptance evidence.
+Reference evidence establishes a domain-separated installation signer but does not prove the full key serialization/signature algorithm in this inspection. The independently selected Aux contract uses P-256 with SHA-256 and DER-encoded signatures, as coordinated with SP1. Follow the shared contracts for key encoding and exact message bytes; cross-language auth verification is required acceptance evidence. This is an Aux design decision, not a recovered reference algorithm.
 
 ## P3. Profile binding and startup gate
 
