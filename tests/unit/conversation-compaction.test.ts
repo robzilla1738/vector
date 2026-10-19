@@ -301,6 +301,56 @@ describe("semantic conversation compaction", () => {
     expect(f.state()!.projection?.prefixHash).not.toBe(projection?.prefixHash);
   });
 
+  it("preserves the exact unknown-effect call after restart marks its result interrupted", async () => {
+    const f = fixture();
+    const interrupted: ModelMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "original-dispatch",
+            toolName: "act",
+            input: {
+              steps: [{ op: "send", body: "SYNTHETIC_ORIGINAL_UNCONFIRMED_CONTENT" }],
+            },
+          },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "original-dispatch",
+            toolName: "act",
+            output: {
+              type: "json",
+              value: {
+                interrupted: true,
+                detail:
+                  "The process stopped before this tool result was recorded. Its outcome is unknown. Do not repeat a consequential action; inspect the write ledger and fresh page state first.",
+              },
+            },
+          },
+        ],
+      },
+    ];
+    f.transcript.append("r", interrupted);
+    f.transcript.append(
+      "r",
+      Array.from({ length: 12 }, (): ModelMessage => ({
+        role: "assistant",
+        content: "Later completed research. ".repeat(100),
+      })),
+    );
+    const original = f.transcript.entries("r");
+    const projected = await f.prepare();
+    expect(f.state()?.stats.compaction.status).toBe("completed");
+    for (const message of interrupted) expect(projected).toContainEqual(message);
+    expect(f.transcript.entries("r")).toEqual(original);
+  });
+
   it.each(["authority", "append", "cancel", "stop"])(
     "rejects a summary after %s even when its provider ignores cancellation",
     async (change) => {

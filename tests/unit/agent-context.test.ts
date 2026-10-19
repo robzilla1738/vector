@@ -226,32 +226,35 @@ describe("model working context", () => {
     });
   });
 
-  it("keeps unresolved effects and unanswered inputs exact while compacting other results", () => {
-    const unresolved = toolMsg("effect", {
-      status: "uncertain",
-      receiptId: "receipt",
-      content: "uncertain".repeat(1000),
-    });
-    const effect = callMsg("effect", "act", { command: "original".repeat(1000) });
-    const pending = callMsg("pending", "repl", { code: "pending".repeat(500) });
-    const messages = [
-      userTask,
-      effect,
-      unresolved,
-      toolMsg("read", "x".repeat(100_000), "webfetch"),
-      pending,
-    ];
-    const projected = prepareWorkingContext(messages, workingOptions).messages;
-    expect(projected[1]).toEqual(effect);
-    expect(projected[2]).toEqual(unresolved);
-    expect(projected[4]).toEqual(pending);
-    expect(() =>
-      prepareWorkingContext(
-        [userTask, callMsg("pending", "repl", { code: "x".repeat(100_000) })],
-        workingOptions,
-      ),
-    ).toThrow("larger context");
-  });
+  it.each([{ status: "uncertain" }, { interrupted: true }])(
+    "keeps unresolved effects %j and unanswered inputs exact while compacting other results",
+    (state) => {
+      const unresolved = toolMsg("effect", {
+        ...state,
+        receiptId: "receipt",
+        content: "uncertain".repeat(1000),
+      });
+      const effect = callMsg("effect", "act", { command: "original".repeat(1000) });
+      const pending = callMsg("pending", "repl", { code: "pending".repeat(500) });
+      const messages = [
+        userTask,
+        effect,
+        unresolved,
+        toolMsg("read", "x".repeat(100_000), "webfetch"),
+        pending,
+      ];
+      const projected = prepareWorkingContext(messages, workingOptions).messages;
+      expect(projected[1]).toEqual(effect);
+      expect(projected[2]).toEqual(unresolved);
+      expect(projected[4]).toEqual(pending);
+      expect(() =>
+        prepareWorkingContext(
+          [userTask, callMsg("pending", "repl", { code: "x".repeat(100_000) })],
+          workingOptions,
+        ),
+      ).toThrow("larger context");
+    },
+  );
 
   it("keeps a yielded program's original input while its cell is still running", () => {
     const messages = [

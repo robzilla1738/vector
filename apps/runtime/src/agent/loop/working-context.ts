@@ -124,7 +124,9 @@ export function hasUnresolvedEffect(value: unknown): boolean {
   return Object.entries(record).some(
     ([key, entry]) =>
       ((key === "status" || key === "state") && UNRESOLVED_STATES.has(String(entry))) ||
-      (["pending", "running", "uncertain"].includes(key) && entry === true) ||
+      // Restart/steering recovery records an unknown original outcome with
+      // interrupted:true, rather than a status string. Keep that call exact.
+      (["pending", "running", "uncertain", "interrupted"].includes(key) && entry === true) ||
       (key === "uncertainIntentIds" && Array.isArray(entry) && entry.length > 0) ||
       hasUnresolvedEffect(entry),
   );
