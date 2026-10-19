@@ -55,10 +55,11 @@ test('pinned actual daemon keeps real plan checks and count-checked Aux branding
   assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
   const result = adaptDaemonCode(original);
   assert.ok(result.code.includes('ei.includes(Cn?.subscriptionPlan??`free`)'));
-  for (const wire of ['AsideDaemonSessionToken ', 'AsideSessionToken', 'Aside Daemon Auth v1', 'Aside Daemon Dev Auth v1', 'aside.daemon.auth.', 'aside-daemon-localhost', '`aside-daemon`']) {
+  for (const wire of ['AsideDaemonSessionToken', 'AsideSessionToken', 'Aside Daemon Auth v1', 'Aside Daemon Dev Auth v1', 'aside.daemon.auth.', 'aside-daemon-localhost', '`aside-daemon`']) {
     assert.equal(result.code.split(wire).length, original.split(wire).length, wire);
   }
-  assert.equal(result.code.includes('AuxDaemonSessionToken '), false);
+  assert.equal(result.code.includes('AuxDaemonSessionToken'), false);
+  assert.ok(result.code.includes('DAEMON_AUTH_TOKEN_TYPE=`AsideDaemonSessionToken`'));
   assert.ok(result.code.includes('ei.slice(24).trim()'));
   assert.ok(result.code.includes('let ei=ti.slice(18)'));
   assert.ok(result.code.includes('Cn.startsWith(`Aside.`)'));

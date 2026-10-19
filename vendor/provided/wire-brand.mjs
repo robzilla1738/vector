@@ -1,6 +1,6 @@
 /** Preserve supplied protocol spellings while branding surrounding product code. */
 export const SUPPLIED_CAPITALIZED_WIRES = Object.freeze([
-  'AsideDaemonSessionToken ', 'AsideSessionToken', 'Aside Daemon Auth v1',
+  'AsideDaemonSessionToken', 'AsideSessionToken', 'Aside Daemon Auth v1',
   'Aside Daemon Dev Auth v1', 'Aside.',
 ]);
 export function brandProductPreservingWires(source, { productCount, wireCounts }) {

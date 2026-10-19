@@ -60,7 +60,7 @@ export function adaptDaemonCode(original) {
     applied.push({ name: e.name, count });
   }
   const branded = brandProductPreservingWires(code, { productCount: 654, wireCounts: {
-    'AsideDaemonSessionToken ': 3, 'AsideSessionToken': 1,
+    'AsideDaemonSessionToken': 4, 'AsideSessionToken': 1,
     'Aside Daemon Auth v1': 2, 'Aside Daemon Dev Auth v1': 1, 'Aside.': 78,
   } });
   code = branded.code;

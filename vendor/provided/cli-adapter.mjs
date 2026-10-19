@@ -36,7 +36,7 @@ export function adaptCliCode(original) {
     'function candidateBindingPaths() {\n\treturn [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")];\n}', 1);
   edit('load-only native SEA diagnostic', 'integration', 'buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch', `if(${nativeDiagnosticPredicate}){await ${nativeDiagnosticExpression};}else buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch`, 1);
   const branded = brandProductPreservingWires(code, { productCount: 101, wireCounts: {
-    'AsideDaemonSessionToken ': 2, 'AsideSessionToken': 0,
+    'AsideDaemonSessionToken': 2, 'AsideSessionToken': 0,
     'Aside Daemon Auth v1': 1, 'Aside Daemon Dev Auth v1': 0, 'Aside.': 0,
   } });
   code = branded.code; applied.push(...branded.edits);
