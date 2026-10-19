@@ -1,20 +1,27 @@
-diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
---- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
-+++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-@@ -161,7 +161,8 @@
-   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+diff --git a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
+index 98a11b3..44aa0eb 100644
+--- a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
++++ b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
+@@ -140,11 +140,13 @@
+ // NO if normal processing should take place.
+ - (BOOL)handleEvent:(NSEvent*)event {
  #if BUILDFLAG(ENABLE_AUX_SHELL)
-   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
--                           std::optional<bool> website_pass_through = std::nullopt);
-+                           std::optional<bool> website_pass_through = std::nullopt,
-+                           bool preview_tabs = false);
-   bool IsCommandIdEnabled(int command_id) const override;
-   void ExecuteCommand(int command_id, int event_flags) override;
- #endif
+-  if (event.type == NSEventTypeKeyDown || event.type == NSEventTypeKeyUp) {
++  if (event.type == NSEventTypeKeyDown || event.type == NSEventTypeKeyUp ||
++      event.type == NSEventTypeFlagsChanged) {
+     NSWindow* native_window = self.nsView.window;
+     if (native_window) {
+       auto* window = WebUIBrowserWindow::FromNativeWindow(gfx::NativeWindow(native_window));
+       input::NativeWebKeyboardEvent physical{base::apple::OwnedNSEvent(event)};
++      if (window && window->HandleAuxTabPreviewKeyEvent(physical, self.webContents)) return YES;
+       if (window && window->HandleAuxWebsiteKeyEvent(physical, self.webContents)) return YES;
+     }
+   }
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 32b50b8..6a75c98 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -776,16 +776,18 @@
+@@ -778,14 +778,30 @@ void WebUIBrowserUI::BindInterface(
  }
  
  bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool focus_shell,
@@ -31,19 +38,188 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browse
 -  shortcut.Set("key", "");
 +  shortcut.Set("key", preview_tabs ? "Tab" : "");
 +  shortcut.Set("ctrl", preview_tabs);
-   shortcut.Set("meta", false);
--  shortcut.Set("shift", false);
++  shortcut.Set("meta", false);
 +  shortcut.Set("shift", preview_tabs && command_id == "tab-previous");
++  shortcut.Set("alt", false);
++  shell_host_client_->OnEvent("onShortcut", *base::WriteJson(shortcut));
++  return true;
++}
++
++bool WebUIBrowserUI::DispatchAuxControlRelease() {
++  if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound() ||
++      browser_->IsDeleteScheduled())
++    return false;
++  base::DictValue shortcut;
++  shortcut.Set("key", "Control");
++  shortcut.Set("ctrl", false);
+   shortcut.Set("meta", false);
+   shortcut.Set("shift", false);
    shortcut.Set("alt", false);
-   shell_host_client_->OnEvent("onShortcut", *base::WriteJson(shortcut));
-   return true;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index a58759e..e85a2f3 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -161,7 +161,9 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
+-                           std::optional<bool> website_pass_through = std::nullopt);
++                           std::optional<bool> website_pass_through = std::nullopt,
++                           bool preview_tabs = false);
++  bool DispatchAuxControlRelease();
+   bool IsCommandIdEnabled(int command_id) const override;
+   void ExecuteCommand(int command_id, int event_flags) override;
+ #endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+index a82d309..7f024b5 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -319,6 +319,8 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+ 
+ WebUIBrowserWindow::~WebUIBrowserWindow() {
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  aux_weak_ptr_factory_.InvalidateWeakPtrs();
++  aux_tab_preview_release_.reset();
+   aux_site_shortcut_release_.reset();
+   if (auto* focus = widget_->GetFocusManager())
+     focus->UnregisterAccelerators(this);
+@@ -724,6 +726,17 @@ bool WebUIBrowserWindow::GetAcceleratorForCommandId(
+   return false;
+ }
+ 
++void WebUIBrowserWindow::OnWidgetActivationChanged(views::Widget* widget,
++                                                   bool active) {
++  DCHECK_EQ(widget, widget_.get());
++  if (!active) {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++    // Child modals can keep PaintAsActive true while taking keyboard ownership.
++    aux_tab_preview_release_.reset();
++#endif
++  }
++}
++
+ void WebUIBrowserWindow::OnWidgetBoundsChanged(views::Widget* widget,
+                                                const gfx::Rect& new_bounds) {
+   DCHECK_EQ(widget, widget_.get());
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
+index c836d5e..0af7383 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
+@@ -66,6 +66,8 @@ class WebUIBrowserWindow : public BrowserWindow,
+   bool HasAuxAccelerator(const ui::Accelerator& accelerator) const;
+   bool DispatchAuxAccelerator(const ui::Accelerator& accelerator,
+       const input::NativeWebKeyboardEvent* event = nullptr);
++  bool HandleAuxTabPreviewKeyEvent(const input::NativeWebKeyboardEvent& event,
++                                   content::WebContents* event_contents);
+   bool HandleAuxWebsiteKeyEvent(const input::NativeWebKeyboardEvent& event,
+                                 content::WebContents* event_contents);
+ #endif
+@@ -243,6 +245,7 @@ class WebUIBrowserWindow : public BrowserWindow,
+                                   ui::Accelerator* accelerator) const override;
+ 
+   // views::WidgetObserver:
++  void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
+   void OnWidgetBoundsChanged(views::Widget* widget,
+                              const gfx::Rect& new_bounds) override;
+ 
+@@ -352,6 +355,14 @@ class WebUIBrowserWindow : public BrowserWindow,
+     double pressed_at;
+   };
+   std::optional<AuxWebsiteShortcutRelease> aux_site_shortcut_release_;
++  struct AuxTabPreviewRelease {
++    base::WeakPtr<content::WebContents> contents;
++    gfx::NativeWindow window;
++    int64_t navigation_id;
++    std::string url;
++    double pressed_at;
++  };
++  std::optional<AuxTabPreviewRelease> aux_tab_preview_release_;
+ #endif
+ 
+   std::unique_ptr<WebUIBrowserModalDialogHost> modal_dialog_host_;
+@@ -368,6 +379,9 @@ class WebUIBrowserWindow : public BrowserWindow,
+   base::CallbackListSubscription theme_changed_subscription_;
+ 
+   base::CallbackListSubscription zoom_changed_subscription_;
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<WebUIBrowserWindow> aux_weak_ptr_factory_{this};
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+index 7ee9fdc..4d0ddfc 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-@@ -271,8 +271,18 @@
+@@ -31,6 +31,7 @@
+ #include "content/public/browser/render_widget_host.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_ui.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
+ #import "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.h"
+@@ -223,6 +224,46 @@ bool IsAuxShortcutDocument(content::WebContents* contents, int64_t navigation_id
+ }
+ }  // namespace
+ 
++// The responder delegate sees the original modifier event before Chromium
++// suppresses KeyUp following a browser-handled RawKeyDown on the same host.
++bool WebUIBrowserWindow::HandleAuxTabPreviewKeyEvent(
++    const input::NativeWebKeyboardEvent& event,
++    content::WebContents* event_contents) {
++  NSEvent* physical = event.os_event.Get();
++  if (!physical || !aux_tab_preview_release_) return false;
++  auto* shell = GetWebUIBrowserUI();
++  auto* contents = aux_tab_preview_release_->contents.get();
++  NSWindow* owner = aux_tab_preview_release_->window.GetNativeNSWindow();
++  auto* frame = event_contents ? event_contents->GetFocusedFrame() : nullptr;
++  if (!owner || GetNativeWindow().GetNativeNSWindow() != owner ||
++      NSApp.keyWindow != owner || (physical.window && physical.window != owner) ||
++      !shell || !contents || shell->web_ui()->GetWebContents() != contents ||
++      !IsAuxShortcutDocument(contents, aux_tab_preview_release_->navigation_id,
++                             aux_tab_preview_release_->url) ||
++      event_contents != contents || !frame ||
++      content::WebContents::FromRenderFrameHost(frame) != contents) {
++    aux_tab_preview_release_.reset();
++    return false;
++  }
++  if (physical.type == NSEventTypeKeyDown) {
++    const auto accelerator = ui::GetAcceleratorFromNativeWebKeyboardEvent(event);
++    const auto found = aux_shortcuts_.find(accelerator);
++    if (accelerator.key_code() != ui::VKEY_TAB ||
++        !(accelerator.modifiers() & ui::EF_CONTROL_DOWN) ||
++        found == aux_shortcuts_.end() ||
++        (found->second.first != "tab-next" && found->second.first != "tab-previous"))
++      aux_tab_preview_release_.reset();
++    return false;
++  }
++  if (physical.type != NSEventTypeFlagsChanged ||
++      (physical.keyCode != 59 && physical.keyCode != 62) ||
++      (physical.modifierFlags & NSEventModifierFlagControl))
++    return false;
++  auto release = std::exchange(aux_tab_preview_release_, std::nullopt);
++  if (physical.timestamp < release->pressed_at) return false;
++  return shell->DispatchAuxControlRelease();
++}
++
+ // Cocoa calls its responder delegate before rejecting unmatched releases.
+ // Only the exact physical second press can authorize this one-shot handoff.
+ bool WebUIBrowserWindow::HandleAuxWebsiteKeyEvent(
+@@ -268,12 +309,59 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+   }
+   auto found = aux_shortcuts_.find(accelerator);
+   if (found == aux_shortcuts_.end()) return false;
+-  if (found->second.first.empty()) return true;
++  if (found->second.first.empty()) {
++    aux_tab_preview_release_.reset();
++    return true;
++  }
    auto* shell = GetWebUIBrowserUI();
    if (!shell) return false;
-   const std::string& id = found->second.first;
+-  const std::string& id = found->second.first;
++  const std::string id = found->second.first;
++  const bool focus_shell = found->second.second;
 +  // Only an actual held Ctrl-Tab chord opens the preview. Menu commands and
 +  // alternate Next/Previous shortcuts continue to activate immediately.
 +  const bool preview_tabs =
@@ -53,20 +229,53 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrom
 +      accelerator.key_code() == ui::VKEY_TAB &&
 +      (accelerator.modifiers() & ui::EF_CONTROL_DOWN) &&
 +      (id == "tab-next" || id == "tab-previous");
++  if (!preview_tabs) aux_tab_preview_release_.reset();
++  const auto dispatch = [&](std::optional<bool> website_pass_through) {
++    auto self = aux_weak_ptr_factory_.GetWeakPtr();
++    auto* contents = shell->web_ui()->GetWebContents();
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    std::optional<AuxTabPreviewRelease> owner;
++    if (preview_tabs && frame) {
++      owner = AuxTabPreviewRelease{
++          contents->GetWeakPtr(), GetNativeWindow(), frame->GetNavigationId(),
++          contents->GetLastCommittedURL().spec(), native_down.timestamp};
++    }
++    const bool dispatched = shell->DispatchAuxShortcut(
++        id, focus_shell, website_pass_through, preview_tabs);
++    if (!self) return dispatched;
++    auto* current_shell = self->GetWebUIBrowserUI();
++    if (!dispatched || !owner || !current_shell ||
++        self->browser_->IsDeleteScheduled() ||
++        !owner->window.GetNativeNSWindow() ||
++        self->GetNativeWindow().GetNativeNSWindow() != owner->window.GetNativeNSWindow() ||
++        NSApp.keyWindow != owner->window.GetNativeNSWindow() ||
++        current_shell->web_ui()->GetWebContents() != owner->contents.get() ||
++        !IsAuxShortcutDocument(owner->contents.get(), owner->navigation_id, owner->url)) {
++      self->aux_tab_preview_release_.reset();
++      return dispatched;
++    }
++    // Repeated Tab presses share the original held-Control session and timestamp.
++    const auto& previous = self->aux_tab_preview_release_;
++    if (!previous || previous->contents.get() != owner->contents.get() ||
++        previous->window.GetNativeNSWindow() != owner->window.GetNativeNSWindow() ||
++        previous->navigation_id != owner->navigation_id ||
++        previous->url != owner->url || previous->pressed_at > owner->pressed_at)
++      self->aux_tab_preview_release_ = std::move(owner);
++    return dispatched;
++  };
    if (native_down && native_down.isARepeat)
 -    return shell->DispatchAuxShortcut(id, found->second.second);
-+    return shell->DispatchAuxShortcut(id, found->second.second, std::nullopt,
-+                                     preview_tabs);
++    return dispatch(std::nullopt);
    auto* contents = FocusedAuxWebsite(browser_.get());
    const bool site_chord = !found->second.second && contents &&
        id != "new-tab" && id != "new-window" && id != "new-private-window" &&
-@@ -306,7 +316,8 @@
+@@ -306,8 +394,7 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+   aux_site_shortcut_navigation_id_ = site_chord ? contents->GetPrimaryMainFrame()->GetNavigationId() : 0;
    aux_site_shortcut_url_ = site_chord ? contents->GetLastCommittedURL().spec() : "";
    aux_site_shortcut_contents_ = site_chord ? contents->GetWeakPtr() : base::WeakPtr<content::WebContents>();
-   return shell->DispatchAuxShortcut(id, found->second.second,
+-  return shell->DispatchAuxShortcut(id, found->second.second,
 -                                   site_chord ? std::optional<bool>(false) : std::nullopt);
-+                                   site_chord ? std::optional<bool>(false) : std::nullopt,
-+                                   preview_tabs);
++  return dispatch(site_chord ? std::optional<bool>(false) : std::nullopt);
  }
  #endif
  
