@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual read-only current155 DownloadToolbarUIController sources",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h",
+      "baselineSha256": "a4caec126dec331b9316a274642dafcb8bc63f9157f692d462403c31e2f8faf2",
+      "outputSha256": "ad61fcbb566005c7c34a504f69a2739acadc703b9da052985635f6d6d11c31a0"
+    },
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc",
+      "baselineSha256": "377c47e8a556d09ca0527bae49efc3ef1e639838356e08c6abeb9d104f8045e9",
+      "outputSha256": "12d49c059d3f176a1fe3edec7622e276e20b2ecd38f0658ec3eb6df3a0877e66"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

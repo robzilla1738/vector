@@ -1,0 +1,64 @@
+{
+  "method": "actual current155 source constructor/destructor/dispatch and widget/callback inspection; no runtime",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h",
+      "sha256": "a4caec126dec331b9316a274642dafcb8bc63f9157f692d462403c31e2f8faf2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc",
+      "sha256": "377c47e8a556d09ca0527bae49efc3ef1e639838356e08c6abeb9d104f8045e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/download/bubble/download_display_controller.h",
+      "sha256": "747339db418fa4267b7caac3e86481e41c24e629fc0ebe3b4b35dd4ecf7a690e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/download/bubble/download_display_controller.cc",
+      "sha256": "bb0d26394ad5723987fddff35daf3fc93e82838633d4ce3995bb6aad5848aad7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/download/bubble/download_bubble_ui_controller.h",
+      "sha256": "4e580b5a78fcc35b04ce3020d1d9bae3c28d0da9ac66cda04ddae03d89c983d8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/download/bubble/download_bubble_ui_controller.cc",
+      "sha256": "a1f24ac1ffcd61947409d07182a3bffc4d77032a59792f604da1597e86ec8f40"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/download/download_started_animation_views.h",
+      "sha256": "aa9d3d5de11496aef2ae7dcc528ed203bab410bcd9e2fb6ea6e02b52e8ffa35a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/download/download_started_animation_views.cc",
+      "sha256": "1318045657a8c95696868a980ac8d83e1976bb0a0df5eb8c11a12d9fa34c8604"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/download/bubble/download_bubble_update_service.cc",
+      "sha256": "d44c0979beb20440fa11d8edc8aa3474f1d577ea1b4f7ddf03f23dd3f8697995"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_actions.cc",
+      "sha256": "51d66ba471efb6e07b8094a9e18e66099d6edc2367d88e1a63b054cb1eb562f8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "c7f397afae4273fabfc24128562c6804049f1b18a3a27155b4ee3c156d54ffc0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/download/bubble/download_bubble_started_animation_views.h",
+      "sha256": "aa7b1fb5eed4c888dca31aa23d1c0e2a37ad1fcfcedc0a04bf852a3e939d612e"
+    }
+  ],
+  "anchors": {
+    "actual_owner": "DownloadToolbarUIController stable window userdata; no current DownloadToolbarButtonView class",
+    "paired_private_owners": "outer creates DownloadBubbleUIController then DownloadDisplayController; display sets bubble backpointer",
+    "permanent_action": "BrowserActions downloads callback resolves From(bwi) each invocation",
+    "service_dispatch": "DownloadBubbleUpdateService profile collection resolves current bubble_controller() and null-checks",
+    "bubble_lifetime": "OnBubbleClosing clears aliases before actual Widget destruction; real Widget weak tracking required",
+    "animation_lifetime": "DownloadStartedAnimationViews owns popup that self-cleans; actual GetWidget weak handle tracks cold scope"
+  },
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

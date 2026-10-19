@@ -1,0 +1,532 @@
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
+@@ -7,11 +7,14 @@
+ 
+ #include <optional>
+ #include <string>
++#include <vector>
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/timer/timer.h"
+ #include "base/types/expected.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/download/download_ui_model.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -41,6 +44,7 @@
+ class DownloadBubbleUIController;
+ class DownloadDisplayController;
+ class ProfileBrowserCollection;
++class Profile;
+ enum class GetAnchorFailureReason;
+ 
+ // DownloadToolbarUIController is a controller for the downloads button shown in
+@@ -68,6 +72,13 @@
+   ~DownloadToolbarUIController() override;
+ 
+   void TearDownPreBrowserWindowDestruction();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Requires committed target identity and its actual actions/pinned toolbar.
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   // DownloadDisplay:
+   void Show() override;
+@@ -309,6 +320,14 @@
+   ui::ScopedUnownedUserData<DownloadToolbarUIController>
+       scoped_unowned_user_data_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_profile_switch_rebinding_ = false;
++  int aux_callback_depth_ = 0;
++  std::vector<base::WeakPtr<views::Widget>> aux_live_bubble_widgets_;
++  std::vector<base::WeakPtr<views::Widget>> aux_live_animation_widgets_;
++#endif
++
+   base::WeakPtrFactory<DownloadToolbarUIController> weak_factory_{this};
+ };
+ 
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+@@ -8,9 +8,13 @@
+ 
+ DEFINE_USER_DATA(DownloadToolbarUIController);
+ 
++#include <algorithm>
+ #include <optional>
+ #include <string>
+ 
++#include "base/auto_reset.h"
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/functional/bind.h"
+ #include "base/i18n/number_formatting.h"
+ #include "base/location.h"
+@@ -33,6 +37,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/chrome_pages.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
+ #include "chrome/browser/ui/views/chrome_layout_provider.h"
+@@ -468,6 +473,89 @@
+ 
+ DownloadToolbarUIController::~DownloadToolbarUIController() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool DownloadToolbarUIController::CanRebindForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ || !browser_view_ ||
++      !controller_ || !bubble_controller_ || pending_bubble_ || bubble_delegate_ ||
++      bubble_contents_ || bubble_closer_ || immersive_revealed_lock_ ||
++      has_pending_download_started_animation_) {
++    return false;
++  }
++  auto* browser = browser_view_->browser();
++  if (From(browser) != this ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !browser->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  if (auto* button = GetDownloadsButton(browser_view_);
++      button && button->IsMenuShowing()) {
++    return false;
++  }
++  auto no_widgets = [](const auto& widgets) {
++    return std::ranges::none_of(widgets,
++                                [](const auto& widget) { return !!widget; });
++  };
++  return no_widgets(aux_live_bubble_widgets_) &&
++         no_widgets(aux_live_animation_widgets_);
++}
++
++void DownloadToolbarUIController::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_profile_switch_prepared_ = true;
++  weak_factory_.InvalidateWeakPtrs();
++  auto_close_bubble_timer_.Stop();
++  browser_collection_observation_.Reset();
++  // These private owners have paired lifetimes. Their destructors retire
++  // timers, fullscreen/power observations, old-profile watchers and weak tasks.
++  // No active view may hold their weak navigation/model handles at this point.
++  controller_.reset();
++  bubble_controller_.reset();
++  action_item_ = nullptr;
++  pending_security_content_.reset();
++  button_click_time_ = base::TimeTicks();
++}
++
++void DownloadToolbarUIController::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  auto* browser = browser_view_->browser();
++  CHECK_EQ(browser->GetProfile(), target_profile);
++  CHECK_EQ(From(browser), this);
++  CHECK(browser->GetTabStripModel()->empty());
++  CHECK(!controller_);
++  CHECK(!bubble_controller_);
++  base::AutoReset<bool> rebinding(&aux_profile_switch_rebinding_, true);
++
++  action_item_ = actions::ActionManager::Get().FindAction(
++      kActionShowDownloads, BrowserActions::From(browser)->root_action_item());
++  CHECK(action_item_);
++  action_item_->SetTooltipText(tooltip_texts_.at(0));
++  primary_view_mode_ = DownloadBubbleMode::kComplete;
++  is_dormant_ = false;
++  state_ = IconState::kComplete;
++  active_ = IconActive::kInactive;
++  progress_info_ = ProgressInfo();
++  redraw_progress_soon_ = false;
++  has_pending_download_started_animation_ = false;
++  aux_live_bubble_widgets_.clear();
++  aux_live_animation_widgets_.clear();
++
++  // The existing constructors read real target update/offline services and
++  // initialize display state from their genuine current download information.
++  bubble_controller_ = std::make_unique<DownloadBubbleUIController>(browser);
++  controller_ = std::make_unique<DownloadDisplayController>(
++      this, browser, bubble_controller_.get());
++  controller_->ListenToFullScreenChanges();
++  browser_collection_observation_.Observe(
++      ProfileBrowserCollection::GetForProfile(target_profile));
++  UpdateIconDormant();
++  UpdateIcon();
++  aux_profile_switch_prepared_ = false;
++}
++#endif
++
+ void DownloadToolbarUIController::TearDownPreBrowserWindowDestruction() {
+   immersive_revealed_lock_.reset();
+   // DownloadDisplayController depends on BrowserView.
+@@ -476,6 +564,13 @@
+ }
+ 
+ void DownloadToolbarUIController::Show() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+     return;
+@@ -484,6 +579,13 @@
+ }
+ 
+ void DownloadToolbarUIController::Hide() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   HideDetails();
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+@@ -498,15 +600,36 @@
+ }
+ 
+ void DownloadToolbarUIController::Enable() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   action_item_->SetEnabled(true);
+ }
+ 
+ void DownloadToolbarUIController::Disable() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   action_item_->SetEnabled(false);
+ }
+ 
+ void DownloadToolbarUIController::UpdateDownloadIcon(
+     const IconUpdateInfo& updates) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   // Whether to update the icon after processing any changes.
+   bool update_icon = false;
+ 
+@@ -564,6 +687,13 @@
+ 
+ void DownloadToolbarUIController::AnnounceAccessibleAlertNow(
+     const std::u16string& alert_text) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (auto* button = GetDownloadsButton(browser_view_)) {
+     button->GetViewAccessibility().AnnounceText(alert_text);
+   }
+@@ -618,6 +748,13 @@
+ // we do not show the partial view. If the partial view is already showing,
+ // there is nothing to do here, the controller should update the partial view.
+ void DownloadToolbarUIController::ShowDetails() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (bubble_delegate_ || pending_bubble_) {
+     return;
+   }
+@@ -632,6 +769,13 @@
+ }
+ 
+ void DownloadToolbarUIController::HideDetails() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (IsShowingDetails()) {
+     CloseDialog(views::Widget::ClosedReason::kUnspecified);
+   }
+@@ -643,6 +787,13 @@
+ }
+ 
+ void DownloadToolbarUIController::OnOfflineItemsInitialized() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   // Only update models if the complete view is showing. Offline items
+   // represent past downloads from history and are never displayed in the
+   // partial view (which only shows new un-actioned downloads). Furthermore,
+@@ -655,6 +806,13 @@
+ }
+ 
+ void DownloadToolbarUIController::UpdateIcon() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   auto* button = GetDownloadsButton(browser_view_);
+   if (!button) {
+     return;
+@@ -756,6 +914,13 @@
+ }
+ 
+ void DownloadToolbarUIController::OpenPrimaryDialog() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (!bubble_delegate_) {
+     return;
+   }
+@@ -769,6 +934,13 @@
+ 
+ void DownloadToolbarUIController::OpenSecurityDialog(
+     const ContentId& content_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (!bubble_delegate_) {
+     ShowBubble(DownloadBubbleMode::kComplete, content_id);
+     return;
+@@ -784,6 +956,13 @@
+ 
+ void DownloadToolbarUIController::CloseDialog(
+     views::Widget::ClosedReason reason) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (bubble_delegate_) {
+     bubble_delegate_->GetWidget()->CloseWithReason(reason);
+   }
+@@ -792,6 +971,13 @@
+ void DownloadToolbarUIController::OnSecurityDialogButtonPress(
+     const DownloadUIModel& model,
+     DownloadCommands::Command command) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (model.GetDangerType() ==
+           download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT &&
+       command == DownloadCommands::DISCARD) {
+@@ -802,6 +988,13 @@
+ }
+ 
+ void DownloadToolbarUIController::OnDialogInteracted() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   DeactivateAutoClose();
+ }
+ 
+@@ -820,11 +1013,25 @@
+ 
+ void DownloadToolbarUIController::OnBrowserActivated(
+     BrowserWindowInterface* browser) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   UpdateIconDormant();
+ }
+ 
+ void DownloadToolbarUIController::OnBrowserDeactivated(
+     BrowserWindowInterface* browser) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   UpdateIconDormant();
+ }
+ 
+@@ -833,6 +1040,13 @@
+ }
+ 
+ void DownloadToolbarUIController::InvokeUI() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (!bubble_delegate_ && !bubble_controller_->GetMainView().empty()) {
+     button_click_time_ = base::TimeTicks::Now();
+     ShowBubble(DownloadBubbleMode::kComplete);
+@@ -843,6 +1057,13 @@
+ }
+ 
+ void DownloadToolbarUIController::ShowPendingDownloadStartedAnimation() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (!has_pending_download_started_animation_) {
+     return;
+   }
+@@ -861,12 +1082,21 @@
+   // Animation cleans itself up after it's done.
+   if (auto* button = GetDownloadsButton(browser_view_)) {
+     const ui::ColorProvider* color_provider = button->GetColorProvider();
+-    new DownloadBubbleStartedAnimationViews(
++    auto* animation = new DownloadBubbleStartedAnimationViews(
+         web_contents, button->GetBoundsInScreen(),
+         color_provider->GetColor(
+             kColorDownloadToolbarButtonAnimationForeground),
+         color_provider->GetColor(
+             kColorDownloadToolbarButtonAnimationBackground));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (auto* widget = animation->GetWidget()) {
++      std::erase_if(aux_live_animation_widgets_,
++                    [](const auto& retiring) { return !retiring; });
++      aux_live_animation_widgets_.push_back(widget->GetWeakPtr());
++    }
++#else
++    static_cast<void>(animation);
++#endif
+   }
+ }
+ 
+@@ -974,6 +1204,13 @@
+ 
+ void DownloadToolbarUIController::OnBubbleAnchorAssembled(
+     base::expected<views::BubbleAnchor, GetAnchorFailureReason> anchor) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   pending_bubble_ = false;
+   // The bubble should not show if the button doesn't exist since it would have
+   // nothing to anchor to.
+@@ -1029,6 +1266,11 @@
+           std::move(bubble_delegate),
+           views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
+   CHECK(bubble_widget);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::erase_if(aux_live_bubble_widgets_,
++                [](const auto& widget) { return !widget; });
++  aux_live_bubble_widgets_.push_back(bubble_widget->GetWeakPtr());
++#endif
+ 
+   if (primary_view_mode_ != DownloadBubbleMode::kPartial &&
+       !button_click_time_.is_null()) {
+@@ -1080,6 +1322,13 @@
+ }
+ 
+ void DownloadToolbarUIController::OnBubbleClosing() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   immersive_revealed_lock_.reset();
+   bubble_delegate_ = nullptr;
+   bubble_contents_ = nullptr;
+@@ -1121,6 +1370,13 @@
+ }
+ 
+ void DownloadToolbarUIController::AutoClosePartialView() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   // Nothing to do if the bubble is not open.
+   if (!bubble_contents_) {
+     return;
+@@ -1209,6 +1465,13 @@
+ }
+ 
+ void DownloadToolbarUIController::UpdateIconDormant() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   // Ensure no updates are attempted once BrowserView destruction has started or
+   // if the host Widget has already been closed.
+   if (!browser_view_ || !browser_view_->GetWidget() ||
+@@ -1236,6 +1499,13 @@
+ }
+ 
+ void DownloadToolbarUIController::OnAnyRowRemoved() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                     aux_callback_depth_ + 1);
++#endif
+   if (bubble_contents_->info().row_list_view_info().rows().empty()) {
+     CloseDialog(views::Widget::ClosedReason::kUnspecified);
+   }
