@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sourceComposition": "out/native-reuse-composition-v24",
+  "command": [
+    "profile_state_probe"
+  ],
+  "binarySha256": "76869ca3fbc4fc470e147415b0688ec72ace7e0f7c05673f2d03bcde9fadb539",
+  "argsSha256": "0f484d6155c81fb28108deaf7c13d2999eb8b7c0077b62b171b69d710f714407",
+  "buildExitCode": 0,
+  "runExitCode": 0,
+  "disposableHome": true,
+  "keychainOperationsExecuted": false,
+  "ownerProfileUsed": false
+}

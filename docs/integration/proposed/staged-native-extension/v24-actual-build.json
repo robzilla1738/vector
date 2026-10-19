@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "receiptPath": "out/native-integration/provided-v24-native-build.json",
+  "receiptSha256": "bb621b4c2749aa7ac0c59935be6b1c7d5196c1293040fcee3a817d006aab890c",
+  "composition": "out/native-reuse-composition-v24",
+  "compositionSha256": "575a3fe25f496999d9e4831eb71802f2674651ccb354e656a6e302fe9868b965",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "artifacts": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "c9111c24c1b61cda7c9c01c3a09f687e233a0f9348be1ed859cb5711b94bed19"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "3421dedceb75a99f6dfb9d0ed41720ba8dfdd8fd9ded574871968eb30c986483"
+    }
+  ],
+  "appLeaves": 563,
+  "recordedAt": "2026-10-19T22:02:54.443110+00:00",
+  "buildSession": 5777,
+  "buildSteps": 4336,
+  "buildDuration": "30m09.81s",
+  "installed": false,
+  "functionalAcceptance": false
+}
