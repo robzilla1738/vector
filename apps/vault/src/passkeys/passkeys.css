@@ -1,0 +1,115 @@
+.passkey-consent {
+  max-width: 520px;
+  margin: 32px auto;
+  padding: 24px;
+  color: var(--text, #232323);
+  font:
+    14px / 1.5 Geist,
+    system-ui,
+    sans-serif;
+}
+.passkey-brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted, #686868);
+}
+.passkey-consent h1 {
+  font-size: 25px;
+  line-height: 1.2;
+  margin: 16px 0 24px;
+}
+.passkey-consent dl {
+  padding: 16px;
+  background: var(--panel, #f4f4f2);
+  border-radius: 12px;
+}
+.passkey-consent dt {
+  color: var(--muted, #686868);
+  font-size: 12px;
+}
+.passkey-consent dd {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.passkey-consent dd:last-child {
+  margin-bottom: 0;
+}
+.passkey-consent label {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0;
+}
+.passkey-consent input[type="password"],
+.passkey-consent select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+.passkey-consent .passkey-presence {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.passkey-presence input {
+  margin-top: 4px;
+}
+.passkey-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.passkey-consent button {
+  padding: 9px 14px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.passkey-actions button[type="submit"] {
+  background: var(--text, #232323);
+  color: var(--surface, #fff);
+  border-color: transparent;
+}
+.passkey-consent button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.passkey-consent .passkey-cancel {
+  margin-top: 24px;
+}
+.passkey-error {
+  padding: 12px;
+  border: 1px solid #b64b4b;
+  border-radius: 8px;
+  color: #a22;
+}
+.passkey-private {
+  padding: 12px;
+  background: var(--panel, #f4f4f2);
+  border-radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  .passkey-consent {
+    --text: #eee;
+    --muted: #aaa;
+    --panel: #282828;
+    --surface: #1b1b1b;
+    --border: #454545;
+  }
+  .passkey-error {
+    color: #ffb7b7;
+  }
+}
+@media (max-width: 500px) {
+  .passkey-consent {
+    margin: 0;
+    padding: 20px;
+  }
+}
