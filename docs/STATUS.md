@@ -2,6 +2,13 @@
 
 Updated 2026-10-19. The accepted clean-room plan replaces the former reference-vendoring architecture. Feature parity is not yet achieved.
 
+## Current acceptance snapshot
+
+- Actual disposable packaged component browser: daemon startup, native account signing, seven-stage onboarding, restart/unlock and new-tab return observed. The refreshed worker connects automatically. All five mandated L2 Muse browser tasks passed; post-run credentials are empty. Evidence: `docs/acceptance/native-browser-tasks-five.md`.
+- Full non-component Chromium build is running. Native cache/refresh, identifier cleanup, retired shell removal and optional-argument corrections remain staged for subsequent integration and compilation; they are not in the running interim browser.
+- Context observation and receipt-bound credential exchange services are integrated in source. Actual OS context capture remains unverified. Native credential exchange is unavailable under this host's ad hoc entitlement enforcement; no eligible signing is authorized.
+- Final20-task acceptance, native API/runtime scenarios, both-theme visual comparisons, fresh native reconstruction/build/provenance audit and final app installation remain outstanding. The sections below preserve slice history and its limitations; earlier waiting tables are historical snapshots.
+
 ## Phase 0
 
 - Complete: clean-room `AGENTS.md`, spec-team/build-team boundary, naming policy and spec templates committed to local main.
