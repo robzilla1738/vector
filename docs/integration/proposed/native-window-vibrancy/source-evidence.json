@@ -9,6 +9,8 @@
   },
   "method": "Bounded static arm64 disassembly and Mach-O chained-fixup/Objective-C selector/CFString decoding. No target execution, preference/Keychain/OS grant access or deep analysis.",
   "observations": {
+    "darwinThreadAndLifetime": "04385768..5824 directly uses raw observer and tailcalls updater; no mainqueue post/dispatch/weakcapture. SDK CFNotificationCenter.h requires mainthread runloop/commonmode for Darwin delivery. Proposal registers/removes onUIthread, retains directoriginalcallback and assertsUIthread; timer alone isweak-bound.",
+    "glassHiddenInvariant": "043843a0 uses Glass.contentView only ifnonnull; creator neverassignscontentView. Disabledrefresh04385914..597c onlyhides effect andupdateswindowopacity/background, noreparent. Therefore original assumescontentViewnil whennecessary; nonblank rendering undernonnull Glass.contentView is NOTproven.",
     "sourceLocation": "0xdcc92b3 decodes ../../components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm; 0xdcc931e decodes StartWindowEffectPreferencesObserver",
     "auxHostGuard": "base::apple::BaseBundleID()==dev.aux.browser; chrome/app/chrome_main_mac.mm SetUpBundleOverrides configuresit from the actualouterapp, preservinggenericcomponent/appshim isolation.",
     "browserGate": "04383998..39bc: NSClassFromString(BrowserNativeWidgetWindow), isKindOfClass gates observer+browser effect. Ordinary nonbrowser and permissionprompt paths remain separate.",
@@ -86,7 +88,8 @@
   "limitations": [
     "Source-level adaptation, not recovered original C++ source.",
     "Permission-prompt-specific effect path is outside this browser-window preference patch and remains current155 behavior.",
-    "No C++ compile or runtime/visual observation; compositor transparency and fullscreen/Glass behavior require actual packaged macOS acceptance."
+    "No C++ compile or runtime/visual observation; compositor transparency and fullscreen/Glass behavior require actual packaged macOS acceptance.",
+    "Turningvibrancyoff must beobserved withactual Glass.contentView: nullableSDKproperty doesnotguaranteedefaultnil; hidingeffectwouldhideitsdescendantcompositorifnonnull. Exactsourcehasnoreparentondisable, sonoworkaround is invented."
   ],
   "acceptance": {
     "applied": false,
@@ -94,5 +97,15 @@
     "executed": false,
     "globalPreferencesTouched": false,
     "ownerDataTouched": false
-  }
+  },
+  "sdkInputs": [
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreFoundation.framework/Headers/CFNotificationCenter.h",
+      "sha256": "43f35ca53e1b0fed5b1131497b5da5c64f43b49d501a0405918aa1792c92a891"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSGlassEffectView.h",
+      "sha256": "cea54a3472014e6bb561e0a0f17dd279f2bd12e8ae92435cb50b5a2dfeb11cc6"
+    }
+  ]
 }

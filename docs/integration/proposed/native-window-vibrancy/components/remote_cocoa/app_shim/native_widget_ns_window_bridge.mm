@@ -8,8 +8,8 @@
 #include <Foundation/Foundation.h>
 #include <Security/Security.h>
 #import <SecurityInterface/SecurityInterface.h>
-#import <objc/runtime.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -111,6 +111,64 @@ display::Display GetDisplayForWindow(NSWindow* window) {
       gfx::NativeWindow(window));
 }
 
+bool IsBackgroundEffectView(NSView* view) {
+  if ([view isKindOfClass:[NSVisualEffectView class]]) {
+    return true;
+  }
+
+  if (@available(macOS 26, *)) {
+    if ([view isKindOfClass:[NSGlassEffectView class]]) {
+      return true;
+    }
+  }
+
+  if ([view.identifier
+          isEqualToString:remote_cocoa::kOpaqueFrameBackgroundViewIdentifier]) {
+    return true;
+  }
+
+  return false;
+}
+
+}  // namespace
+
+@class NSWindowRestorationOptions;
+
+// An NSKeyedUnarchiver that can optionally vend NSWindowRestorationOptions.
+@interface RestorationOptionsKeyedUnarchiver : NSKeyedUnarchiver
+@property BOOL returnRestorationOptions;
+@end
+
+@implementation RestorationOptionsKeyedUnarchiver
+
+@synthesize returnRestorationOptions;
+
+- (NSWindowRestorationOptions*)_windowRestorationOptions {
+  // Returning a default-initialized NSWindowRestorationOptions from
+  // _windowRestorationOptions is enough to get windows to restore on the spaces
+  // whence they came.
+  if (self.returnRestorationOptions) {
+    return [[NSClassFromString(@"NSWindowRestorationOptions") alloc] init];
+  }
+
+  return nil;
+}
+
+@end
+
+// The NSView that hosts the composited CALayer drawing the UI. It fills the
+// window but is not hittable so that accessibility hit tests always go to the
+// BridgedContentView.
+@interface ViewsCompositorSuperview : NSView
+@end
+
+@implementation ViewsCompositorSuperview
+- (NSView*)hitTest:(NSPoint)aPoint {
+  return nil;
+}
+@end
+
+namespace {
 // The supplied browser window bridge reads this fixed app domain, including
 // when hosted in an app-shim process whose own bundle identifier differs.
 const CFStringRef kWindowEffectPreferenceDomain = CFSTR("dev.aux.browser");
@@ -229,62 +287,8 @@ void AttachCompositorToWindowBackground(NSView* root,
   [container addSubview:compositor];
 }
 
-bool IsBackgroundEffectView(NSView* view) {
-  if ([view isKindOfClass:[NSVisualEffectView class]]) {
-    return true;
-  }
-
-  if (@available(macOS 26, *)) {
-    if ([view isKindOfClass:[NSGlassEffectView class]]) {
-      return true;
-    }
-  }
-
-  if ([view.identifier
-          isEqualToString:remote_cocoa::kOpaqueFrameBackgroundViewIdentifier]) {
-    return true;
-  }
-
-  return false;
-}
-
 }  // namespace
 
-@class NSWindowRestorationOptions;
-
-// An NSKeyedUnarchiver that can optionally vend NSWindowRestorationOptions.
-@interface RestorationOptionsKeyedUnarchiver : NSKeyedUnarchiver
-@property BOOL returnRestorationOptions;
-@end
-
-@implementation RestorationOptionsKeyedUnarchiver
-
-@synthesize returnRestorationOptions;
-
-- (NSWindowRestorationOptions*)_windowRestorationOptions {
-  // Returning a default-initialized NSWindowRestorationOptions from
-  // _windowRestorationOptions is enough to get windows to restore on the spaces
-  // whence they came.
-  if (self.returnRestorationOptions) {
-    return [[NSClassFromString(@"NSWindowRestorationOptions") alloc] init];
-  }
-
-  return nil;
-}
-
-@end
-
-// The NSView that hosts the composited CALayer drawing the UI. It fills the
-// window but is not hittable so that accessibility hit tests always go to the
-// BridgedContentView.
-@interface ViewsCompositorSuperview : NSView
-@end
-
-@implementation ViewsCompositorSuperview
-- (NSView*)hitTest:(NSPoint)aPoint {
-  return nil;
-}
-@end
 
 // Self-owning animation delegate that starts a hide animation, then calls
 // -[NSWindow close] when the animation ends, releasing itself.
@@ -563,6 +567,7 @@ NativeWidgetNSWindowBridge::NativeWidgetNSWindowBridge(
 NativeWidgetNSWindowBridge::~NativeWidgetNSWindowBridge() {
   window_effect_preferences_timer_.Stop();
   if (window_effect_preferences_observed_) {
+    DCHECK([NSThread isMainThread]);
     CFNotificationCenterRemoveObserver(
         CFNotificationCenterGetDarwinNotifyCenter(), this,
         kWindowEffectPreferenceDomain, nullptr);
@@ -928,6 +933,7 @@ void NativeWidgetNSWindowBridge::DestroyContentView() {
 }
 
 void NativeWidgetNSWindowBridge::StartWindowEffectPreferencesObserver() {
+  DCHECK([NSThread isMainThread]);
   window_vibrancy_disabled_ = ReadWindowVibrancyDisabled();
   window_glass_variant_ = ReadWindowGlassVariant();
   if (window_effect_preferences_observed_) {
@@ -966,6 +972,7 @@ void NativeWidgetNSWindowBridge::ReplaceWindowBackgroundEffectView(
 }
 
 void NativeWidgetNSWindowBridge::UpdateWindowEffectPreferences() {
+  DCHECK([NSThread isMainThread]);
   const bool disabled = ReadWindowVibrancyDisabled();
   const std::optional<int> variant = ReadWindowGlassVariant();
   const bool disabled_changed = disabled != window_vibrancy_disabled_;

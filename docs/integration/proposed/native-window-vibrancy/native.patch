@@ -1,17 +1,18 @@
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-@@ -9,6 +9,7 @@
+@@ -8,6 +8,7 @@
+ #include <Foundation/Foundation.h>
  #include <Security/Security.h>
  #import <SecurityInterface/SecurityInterface.h>
- #import <objc/runtime.h>
 +#import <objc/message.h>
+ #import <objc/runtime.h>
  #include <stddef.h>
  #include <stdint.h>
- 
-@@ -110,6 +111,124 @@
-       gfx::NativeWindow(window));
+@@ -167,6 +168,128 @@
  }
+ @end
  
++namespace {
 +// The supplied browser window bridge reads this fixed app domain, including
 +// when hosted in an app-shim process whose own bundle identifier differs.
 +const CFStringRef kWindowEffectPreferenceDomain = CFSTR("dev.aux.browser");
@@ -130,15 +131,19 @@
 +  [container addSubview:compositor];
 +}
 +
- bool IsBackgroundEffectView(NSView* view) {
-   if ([view isKindOfClass:[NSVisualEffectView class]]) {
-     return true;
-@@ -442,6 +561,12 @@
++}  // namespace
++
++
+ // Self-owning animation delegate that starts a hide animation, then calls
+ // -[NSWindow close] when the animation ends, releasing itself.
+ @interface ViewsNSWindowCloseAnimator : NSObject <NSAnimationDelegate> {
+@@ -442,6 +565,13 @@
  }
  
  NativeWidgetNSWindowBridge::~NativeWidgetNSWindowBridge() {
 +  window_effect_preferences_timer_.Stop();
 +  if (window_effect_preferences_observed_) {
++    DCHECK([NSThread isMainThread]);
 +    CFNotificationCenterRemoveObserver(
 +        CFNotificationCenterGetDarwinNotifyCenter(), this,
 +        kWindowEffectPreferenceDomain, nullptr);
@@ -146,11 +151,12 @@
    SetLocalEventMonitorEnabled(false);
    DCHECK(!local_event_monitor_);
    GetPendingWindowTitleMap().erase(window_);
-@@ -802,6 +927,78 @@
+@@ -802,6 +932,80 @@
    [window_ setContentView:nil];
  }
  
 +void NativeWidgetNSWindowBridge::StartWindowEffectPreferencesObserver() {
++  DCHECK([NSThread isMainThread]);
 +  window_vibrancy_disabled_ = ReadWindowVibrancyDisabled();
 +  window_glass_variant_ = ReadWindowGlassVariant();
 +  if (window_effect_preferences_observed_) {
@@ -189,6 +195,7 @@
 +}
 +
 +void NativeWidgetNSWindowBridge::UpdateWindowEffectPreferences() {
++  DCHECK([NSThread isMainThread]);
 +  const bool disabled = ReadWindowVibrancyDisabled();
 +  const std::optional<int> variant = ReadWindowGlassVariant();
 +  const bool disabled_changed = disabled != window_vibrancy_disabled_;
@@ -225,7 +232,7 @@
  void NativeWidgetNSWindowBridge::CreateContentView(
      uint64_t ns_view_id,
      const gfx::Rect& bounds,
-@@ -844,6 +1041,12 @@
+@@ -844,6 +1048,12 @@
    }
  
    [window_ setContentView:bridged_view_];
@@ -238,7 +245,7 @@
  }
  
  void NativeWidgetNSWindowBridge::CloseWindow() {
-@@ -1585,13 +1788,24 @@
+@@ -1585,13 +1795,24 @@
    // for the composited NonClientFrameView, which should be the case since the
    // native shape is what's most appropriate for displaying sheets on Mac.
    if (is_translucent_window_ && !IsWindowModalSheet()) {
@@ -266,7 +273,7 @@
  
      // Don't block waiting for the initial frame of completely transparent
      // windows. This allows us to avoid blocking on the UI thread e.g, while
-@@ -1718,6 +1932,16 @@
+@@ -1718,6 +1939,16 @@
    OrderChildren();
  
    host_->OnWindowFullscreenTransitionComplete(is_fullscreen);
