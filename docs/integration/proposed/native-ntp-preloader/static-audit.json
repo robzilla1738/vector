@@ -1,0 +1,103 @@
+{
+  "targetSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "targetExecuted": false,
+  "labelsAreAnalysisDescriptionsNotRecoveredSymbols": true,
+  "boundedInstructionRanges": {
+    "resolveEligibleOverride": {
+      "start": "0x42b14c0",
+      "endExclusive": "0x42b17e8",
+      "sha256": "988787d75fcc70205657cc8f1817623372bf5a7f862a3fdbf480471aaf109809"
+    },
+    "getOrCreateProfileService": {
+      "start": "0x42b17e8",
+      "endExclusive": "0x42b1c44",
+      "sha256": "97c05be1a05f529f88c90c2111dd719779550d817886e0b85412bd0349e17a67"
+    },
+    "scheduleForBrowser": {
+      "start": "0x42b1c64",
+      "endExclusive": "0x42b1f4c",
+      "sha256": "788e201973e9183b66ac5a27aaebf3d4064520e2dac2ea697ad6044bf0ba0984"
+    },
+    "takeForBrowser": {
+      "start": "0x42b1f54",
+      "endExclusive": "0x42b2444",
+      "sha256": "f93e26686a9183635d3f98235dd9ffd3bd5d54312fdd1bfb2ecea8ff84f6bee0"
+    },
+    "checkTransferredHandle": {
+      "start": "0x42b2454",
+      "endExclusive": "0x42b26b0",
+      "sha256": "606255a5a0edf78f85438b2dfd8c77201e70a68deac56ddc7a1a2774ea086d0d"
+    },
+    "startPrerender": {
+      "start": "0x42b26d8",
+      "endExclusive": "0x42b2bb0",
+      "sha256": "74f25ea5a469fee48e792344c762cb6c5a98f2d94fa3040d69aac95885dfefe8"
+    },
+    "observedPreferenceChanged": {
+      "start": "0x42b2bcc",
+      "endExclusive": "0x42b2c7c",
+      "sha256": "0f210fae4c8bb1f5156d2a6266c82311c982e1afe4779368166ce592322e2d98"
+    },
+    "resetPrerender": {
+      "start": "0x42b34c0",
+      "endExclusive": "0x42b35c0",
+      "sha256": "8d79271f24b5ee8f5b666dff428866539c25ca65b00888a6c17af042b709c4b4"
+    },
+    "sourceBrowserGone": {
+      "start": "0x42b35e8",
+      "endExclusive": "0x42b36b0",
+      "sha256": "dc40d9fad6022559adc6c323d26362ed1ebdce767be4d017def551b2ccda306a"
+    },
+    "activationCandidateCallback": {
+      "start": "0x42b36b0",
+      "endExclusive": "0x42b3730",
+      "sha256": "2536a3c3e6b3209e1cc9aed9b6549991ae683d9508fb961b6534d44d7daa24d1"
+    },
+    "contentStartPrerenderEntry": {
+      "start": "0x4057aa0",
+      "endExclusive": "0x4057bf0",
+      "sha256": "3da63f6b989b20279aa681473e14caf883e3d9f2608802f2a200a17e8266475b"
+    }
+  },
+  "functionCoverage": "bounded, not exhaustive",
+  "directCalls": {
+    "0x42b153c": "0x16a186c",
+    "0x42b15e8": "0x3330a68",
+    "0x42b2120": "0x42b1c64",
+    "0x42b23e4": "0x42b1c64",
+    "0x42b2aa8": "0x4057aa0",
+    "0x42b2be8": "0x42b34c0",
+    "0x42b3628": "0x42b34c0"
+  },
+  "feature": {
+    "name": "AsideNtpPrerender",
+    "defaultValue": 1
+  },
+  "requiredAgentId": "fjdhphbdlfjogobdofoaagnlnkoibdge",
+  "requiredOverrideScheme": "chrome-extension",
+  "manifestOverrideKey": "newtab",
+  "requestedURL": "chrome://newtab/",
+  "observedPreferences": [
+    "extensions.chrome_url_overrides",
+    "net.network_prediction_options",
+    "aside.account_user_id",
+    "aside.account_id",
+    "aside.account_has_persisted_session",
+    "aside.account_auth_paused",
+    "browser.theme.color_scheme2"
+  ],
+  "missDelayMicroseconds": 500000,
+  "hitDelayMicroseconds": 0,
+  "preloadSettingLookup": [
+    1,
+    1,
+    2,
+    1
+  ],
+  "limitations": [
+    "Profile predicate helper semantics not fully resolved",
+    "Geometry getter and activation-lifetime callbacks need exact recovery",
+    "Original extension-scheme/effective-URL prerender exceptions not recovered",
+    "No actual prerender activation or renderer behavior observed"
+  ]
+}

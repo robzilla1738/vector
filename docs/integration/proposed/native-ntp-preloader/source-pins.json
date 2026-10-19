@@ -1,0 +1,64 @@
+{
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_gate.cc",
+      "sha256": "2ac5d07873cc2795ef3e4c34cf7822dc00921a7badbe1125b9b851ba846e1adc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_gate.h",
+      "sha256": "ba99ef49716bdb442817a589027fe11c4c41735d29b3d55443d46d454f735a13"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/navigator/browser_navigator.cc",
+      "sha256": "986c5f144a215b2218086858ece81b44d539161f0cc8bf0c4040a8c0463b74f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "6bff255932f834f53977c7b2dba3bee27be66ece9ed5a43ea97029a5f5d72ccd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/preloading/prerender/prerender_host_registry.cc",
+      "sha256": "5334fb7f9386c0f0bc179d0fe9f42da10ac5d4fbd5928c259a6bc36fd33a1ab0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/preloading/prerender/prerender_navigation_throttle.cc",
+      "sha256": "ea7e5cf47453b3f86a9340188cc824a78a491709912b80ceff25ca5bd31eca60"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/prerender_handle.h",
+      "sha256": "16ab942951923ec4b4c22155ab56afb64457e27b5b174073d4ab07277a1df02e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/preloading_trigger_type.h",
+      "sha256": "2fbdd08eb14cc55ad5f6b73e7eb12474b2732745b314c5a849bae9cbe74d1e7b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-preference-consumers/manifest.json",
+      "sha256": "fb8c5f169537b2baa7f46a24cc2a982cd310da5386fa5c5d673702f6885e02a1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-preference-consumers/native.patch",
+      "sha256": "6d7c33974760515ca4dff0f39bbb7400b87ed2de919169b6c31d46ff16665d47"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b17e8.c",
+      "sha256": "112cb549c0f4a96b2d98d503902d503a9f6525cbe191f7202baac843eb7fe524"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b1c64.c",
+      "sha256": "bc7ba9f8207cabd258609c326e84d1727e6a88fca63af40b28ba813aca8913fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b1f54.c",
+      "sha256": "77355321055643d1cc95c833129e9c1ca58867d41b0bf36fc0c4ea45f37f6320"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b2454.c",
+      "sha256": "25e79571e122ac984145a6be8ef99844f00b2378d287c693b69edc0294422b66"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042b26d8.c",
+      "sha256": "5f19c863098d7ecaab5aae37758a1754c7ae0f708b0c06b4a5138bfc08e2fc8e"
+    }
+  ]
+}

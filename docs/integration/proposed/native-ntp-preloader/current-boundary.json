@@ -1,0 +1,18 @@
+{
+  "parentCompositionSha256": "d863bf3ff0ec5eda03800b352b1d2df5085d5a9b18bfbecd03df73a6c5b78ffd",
+  "parentCompositionPatchSha256": "07bcb10ec7e94e597f375681afae0a5e23331667d4537c50743267f0f306600b",
+  "actualSharedProfileGateSha256": "2ac5d07873cc2795ef3e4c34cf7822dc00921a7badbe1125b9b851ba846e1adc",
+  "parentOutputProfileGateSha256": "1876d61afd6241eead13cb20ba8013055ceb4547c66a36d6bc11bf9db9749e18",
+  "preferenceProposalReplayedInTemporaryDirectory": true,
+  "currentPreloaderObservations": {
+    "usesHiddenWebContents": true,
+    "usesOrdinaryLoadURL": true,
+    "requiresDidStopLoading": true,
+    "takesProfileAndURLOnly": true,
+    "hasRealPrerenderHandle": false,
+    "startsRealPrerender": false,
+    "observesNetworkPredictionPreference": true
+  },
+  "sharedSourceModified": false,
+  "nativeBuildRun": false
+}

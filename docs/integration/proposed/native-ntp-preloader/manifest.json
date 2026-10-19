@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "kind": "static-fidelity-audit-no-native-patch",
+  "base": "frozen sharedv24 plus staged preference-consumers outputv25",
+  "files": [
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/README.md",
+      "sha256": "57cfcfb013fe2f976d2c60a707f01de8bd2630a8c28bea8781f645ee5747c195"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/activation-arm64.txt",
+      "sha256": "90698d80789780aa584f77e9f80a9710c3453e557d81864fbc4230f50fc9dad8"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/current-boundary.json",
+      "sha256": "05b1ecf59c83b2912fd8452030bfc7ae3997c2fea25f65beac5299000726f98a"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/eligibility-arm64.txt",
+      "sha256": "4bc432c2a283e195d4235ad2952cc2858b3fb3f272ee60ae865f9d6c9e344f4c"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/newtab-url-arm64.txt",
+      "sha256": "0c435516e1adab6c8b9beb5fe173b444405ab3ca6ecef3fc5b2034e3f6cc0d67"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/preference-callback-arm64.txt",
+      "sha256": "325f38a43624625fa26618f6d7e273cedd63e050c622556e9fcef7233052559d"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/prerender-entry-arm64.txt",
+      "sha256": "f7808940dbcad599a27feb9ae83db3377cfe7eee5aa4e3ed55fd4f7a0c38ff36"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/reset-callbacks-arm64.txt",
+      "sha256": "f96c17138a7687b699e83beae26f5cc323f2f0893380f9e9625e74ad89842472"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/source-pins.json",
+      "sha256": "9e67cc6f293f2a66b389c8901bdfa78d11fa504b692a73f68a4b5c742d3ba824"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/start-arm64.txt",
+      "sha256": "4b0a2df9e59ad4154fbd08d82e0059cd3389694de4137c42cbe0d5b30b8639d9"
+    },
+    {
+      "path": "docs/integration/proposed/native-ntp-preloader/static-audit.json",
+      "sha256": "c89e036ae4fa7172f41dc0fd50cd7d45af76fc75b8018eb8eea03bf71f1e93e8"
+    }
+  ],
+  "auditScript": {
+    "path": "vendor/provided/audit-native-ntp-preload.py",
+    "sha256": "0fd3c02f7515de6172baedfeb1758d0fe64e3f409fce13d5eee53fd6d01cefff"
+  },
+  "nativeImplementationComplete": false,
+  "sharedSourceModified": false,
+  "nativeBuildRun": false,
+  "runtimeAcceptance": false
+}
