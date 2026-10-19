@@ -1,0 +1,61 @@
+{
+  "method": "bounded static original arm64 disassembly and actual current155 source inspection",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "proofs": [
+    {
+      "path": "original-toolbar-owned-actions-refresh.txt",
+      "sha256": "0f19c30670f7696d1db785dddc62e0e15c58ff4febbee8900324a0638945f45d"
+    },
+    {
+      "path": "original-toolbar-active-content-update.txt",
+      "sha256": "0b6f9908111382c94934b8817dee08ea9aa25162341b9addca1d3cfc94db85bd"
+    },
+    {
+      "path": "original-toolbar-subtree-retirement.txt",
+      "sha256": "d68f5e31dee1db5f1951bb52a34b02059f42f648b7c410659bff3919f8eaa543"
+    },
+    {
+      "path": "original-toolbar-metadata.txt",
+      "sha256": "ee57a734ed39b140d6f601ba7eb72a6975b3c360cf4562d85fcbd5c6d5ce5d46"
+    }
+  ],
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "sha256": "3e722deed57d89b18fa80a31711635dd268d2d33828655a4ca35715f3596a9d9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "sha256": "2c4b20db624fadea2e6ae434462ce76753a3aa508a9a4e85a6f3dea99f16f95d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc",
+      "sha256": "a970cbff93a8c655135ccc757aa68b9546a9807f0afc6d7fe247d57010690600"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/extensions/extensions_toolbar_coordinator.cc",
+      "sha256": "b7b4379fa3e48edcf489466aace5593ed5095eb79653c8741ba7202b96e19729"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.cc",
+      "sha256": "7b3390a3b771cf33bd20b2b28af060b1a673b08a536283c9f8bcba319d93df20"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/toolbar_controller.cc",
+      "sha256": "fe4379c480191ea0625daef5852d66f824f19abb9c36743c6eecc76e914556a9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_member.cc",
+      "sha256": "d0ff228f6ef5a2f178a5773bfc8be7766f5c56177d75467db4a01f6a64e2ef33"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_member.h",
+      "sha256": "4b0a7430d9ae883ba56c2f23b152d153eb4d3304e55ae9b9a55462fa29453b36"
+    }
+  ],
+  "limits": [
+    "Original owner+720 class spelling not proven; no offset-based class substitution.",
+    "Current target service owner constructors are platform adaptations.",
+    "No native compilation or runtime acceptance."
+  ]
+}

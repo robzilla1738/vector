@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual shared read-only ToolbarView, disjoint parent LocationBar/Omnibox proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineSha256": "3e722deed57d89b18fa80a31711635dd268d2d33828655a4ca35715f3596a9d9",
+      "outputSha256": "bf2c9833a64b3b609457d961f0c1ed7d7351f1d6cf4dd2d04398aed877ee069b"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "2c4b20db624fadea2e6ae434462ce76753a3aa508a9a4e85a6f3dea99f16f95d",
+      "outputSha256": "101e9eced376c7d95a73f7657148f7b00e2756b6e232a90c28d36f34754296a5"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

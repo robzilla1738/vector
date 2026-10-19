@@ -1,0 +1,281 @@
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -13,6 +13,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/command_observer.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+@@ -120,6 +122,14 @@
+   // Create the contents of the Browser Toolbar.
+   void Init();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Rebuild only native extension/pinned toolbar owners and profile prefs.
++  // The outer toolbar, location bar and other controls remain alive.
++  bool CanRebindOwnedActionsForAuxProfileSwitch() const;
++  void PrepareOwnedActionsForAuxProfileSwitch();
++  void RebindOwnedActionsForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   // Forces the toolbar (and transitively the location bar) to update its
+   // current state.  If |tab| is non-NULL, we're switching (back?) to this tab
+   // and should restore any previous location bar state (such as user editing)
+@@ -469,12 +479,22 @@
+ 
+   std::unique_ptr<ExtensionsToolbarCoordinator> extensions_toolbar_coordinator_;
+ 
+-  BooleanPrefMember show_forward_button_;
++  std::unique_ptr<BooleanPrefMember> show_forward_button_ =
++      std::make_unique<BooleanPrefMember>();
+ 
+   // Controls whether or not a home button should be shown on the toolbar.
+-  BooleanPrefMember show_home_button_;
+-
+-  BooleanPrefMember show_chrome_labs_button_;
++  std::unique_ptr<BooleanPrefMember> show_home_button_ =
++      std::make_unique<BooleanPrefMember>();
++
++  std::unique_ptr<BooleanPrefMember> show_chrome_labs_button_ =
++      std::make_unique<BooleanPrefMember>();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_owned_actions_prepared_ = false;
++  bool aux_overflow_button_was_enabled_ = false;
++  std::optional<size_t> aux_extensions_child_index_;
++  std::optional<size_t> aux_pinned_actions_child_index_;
++#endif
+ 
+   // The display mode used when laying out the toolbar.
+   const DisplayMode display_mode_;
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -8,6 +8,8 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/command_line.h"
+ #include "base/containers/fixed_flat_map.h"
+ #include "base/feature_list.h"
+@@ -313,6 +315,124 @@
+ 
+ // Forwards the early teardown request to both the embedded and detached WebUI
+ // toolbar web views to stop renderer script execution before IPC disconnection.
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ToolbarView::CanRebindOwnedActionsForAuxProfileSwitch() const {
++  return !aux_owned_actions_prepared_ && initialized_ &&
++         display_mode_ == DisplayMode::kNormal &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         browser_->GetProfile()->IsRegularProfile() && !toolbar_webview_ &&
++         !detached_toolbar_webview_ && !features::IsWebUIToolbarEnabled() &&
++         !features::IsWebUIExtensionsContainerEnabled() &&
++         !features::IsWebUIPinnedToolbarActionsEnabled() &&
++         extensions_container_ && extensions_container_->parent() == this &&
++         pinned_toolbar_actions_container_ &&
++         pinned_toolbar_actions_container_->parent() == this &&
++         pinned_toolbar_actions_.get() == pinned_toolbar_actions_container_.get() &&
++         overflow_button_ &&
++         (!toolbar_controller_ || !toolbar_controller_->IsMenuRunning());
++}
++
++void ToolbarView::PrepareOwnedActionsForAuxProfileSwitch() {
++  CHECK(CanRebindOwnedActionsForAuxProfileSwitch());
++  aux_owned_actions_prepared_ = true;
++  aux_extensions_child_index_ = GetIndexOf(extensions_container_);
++  aux_pinned_actions_child_index_ = GetIndexOf(pinned_toolbar_actions_container_);
++  CHECK(aux_extensions_child_index_.has_value());
++  CHECK(aux_pinned_actions_child_index_.has_value());
++
++  // No callback may dereference the retiring pinned subtree. PrefMember::Init
++  // is one-shot, so destroy actual old members and construct fresh ones later.
++  show_forward_button_.reset();
++  show_home_button_.reset();
++  show_chrome_labs_button_.reset();
++  aux_overflow_button_was_enabled_ = overflow_button_->GetEnabled();
++  overflow_button_->SetEnabled(false);
++  overflow_button_->set_toolbar_controller(nullptr);
++  toolbar_controller_.reset();
++  extensions_toolbar_coordinator_.reset();
++
++  // The caller has already deregistered window extension side-panel entries,
++  // releasing their old BrowserActions references. Destructors close the real
++  // anchored extension widgets and remove old model/user-data observations.
++  auto* const extensions = extensions_container_.get();
++  extensions_container_ = nullptr;
++  auto* const pinned = pinned_toolbar_actions_container_.get();
++  pinned_toolbar_actions_container_ = nullptr;
++  pinned_toolbar_actions_ = nullptr;
++  RemoveChildViewT(extensions).reset();
++  RemoveChildViewT(pinned).reset();
++}
++
++void ToolbarView::RebindOwnedActionsForAuxProfileSwitch(Profile* target_profile) {
++  CHECK(aux_owned_actions_prepared_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK(browser_->GetTabStripModel());
++  CHECK(browser_->GetTabStripModel()->empty());
++  CHECK(!extensions_container_);
++  CHECK(!pinned_toolbar_actions_container_);
++  CHECK(!pinned_toolbar_actions_);
++  CHECK(!extensions_toolbar_coordinator_);
++  CHECK(!toolbar_controller_);
++
++  // Preserve the actual accessible child positions. The constructors read the
++  // real committed target profile and register fresh target model/user-data.
++  auto add_extensions = [&] {
++    extensions_container_ = AddChildViewAt(
++        std::make_unique<ExtensionsToolbarDesktop>(browser_),
++        *aux_extensions_child_index_);
++    extensions_toolbar_coordinator_ =
++        std::make_unique<ExtensionsToolbarCoordinator>(extensions_container_);
++  };
++  auto add_pinned = [&] {
++    pinned_toolbar_actions_container_ = AddChildViewAt(
++        std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this),
++        *aux_pinned_actions_child_index_);
++    pinned_toolbar_actions_ = pinned_toolbar_actions_container_;
++  };
++  if (*aux_extensions_child_index_ < *aux_pinned_actions_child_index_) {
++    add_extensions();
++    add_pinned();
++  } else {
++    add_pinned();
++    add_extensions();
++  }
++
++  PrefService* const prefs = target_profile->GetPrefs();
++  show_forward_button_ = std::make_unique<BooleanPrefMember>();
++  show_forward_button_->Init(
++      prefs::kShowForwardButton, prefs,
++      base::BindRepeating(&ToolbarView::OnShowForwardButtonChanged,
++                          base::Unretained(this)));
++  show_home_button_ = std::make_unique<BooleanPrefMember>();
++  show_home_button_->Init(
++      prefs::kShowHomeButton, prefs,
++      base::BindRepeating(&ToolbarView::OnShowHomeButtonChanged,
++                          base::Unretained(this)));
++  show_chrome_labs_button_ = std::make_unique<BooleanPrefMember>();
++  if (IsChromeLabsEnabled() && ShouldShowChromeLabsUI(target_profile)) {
++    show_chrome_labs_button_->Init(
++        chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy, prefs,
++        base::BindRepeating(&ToolbarView::OnChromeLabsPrefChanged,
++                            base::Unretained(this)));
++    pinned_toolbar_actions_container_->GetActionItemFor(kActionShowChromeLabs)
++        ->SetVisible(show_chrome_labs_button_->GetValue());
++  }
++  SetForwardButtonVisibility(show_forward_button_->GetValue());
++  if (home_) {
++    home_->SetVisible(show_home_button_->GetValue());
++  }
++  // Existing InitLayout replaces the layout/controller and their target model
++  // binding. It does not construct the permanent toolbar child controls.
++  InitLayout();
++  aux_extensions_child_index_.reset();
++  aux_pinned_actions_child_index_.reset();
++  aux_owned_actions_prepared_ = false;
++  overflow_button_->SetEnabled(aux_overflow_button_was_enabled_);
++}
++#endif
++
+ void ToolbarView::DestroyWebUIToolbarWebContents() {
+   if (toolbar_webview_) {
+     toolbar_webview_->DestroyWebContents();
+@@ -515,7 +635,7 @@
+     const bool should_show_chrome_labs_ui =
+         ShouldShowChromeLabsUI(browser_->GetProfile());
+     if (should_show_chrome_labs_ui) {
+-      show_chrome_labs_button_.Init(
++      show_chrome_labs_button_->Init(
+           chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy, prefs,
+           base::BindRepeating(&ToolbarView::OnChromeLabsPrefChanged,
+                               base::Unretained(this)));
+@@ -525,7 +645,7 @@
+       // value. Only call OnChromeLabsPrefChanged if there is a change from
+       // the initial value.
+       pinned_toolbar_actions_container_->GetActionItemFor(kActionShowChromeLabs)
+-          ->SetVisible(show_chrome_labs_button_.GetValue() &&
++          ->SetVisible(show_chrome_labs_button_->GetValue() &&
+                        should_show_chrome_labs_ui);
+     }
+   }
+@@ -650,20 +770,20 @@
+     toolbar_webview_->GetLocationBar()->Init(toolbar_webview_.get());
+   }
+ 
+-  show_forward_button_.Init(
++  show_forward_button_->Init(
+       prefs::kShowForwardButton, prefs,
+       base::BindRepeating(&ToolbarView::OnShowForwardButtonChanged,
+                           base::Unretained(this)));
+ 
+-  SetForwardButtonVisibility(show_forward_button_.GetValue());
+-
+-  show_home_button_.Init(
++  SetForwardButtonVisibility(show_forward_button_->GetValue());
++
++  show_home_button_->Init(
+       prefs::kShowHomeButton, prefs,
+       base::BindRepeating(&ToolbarView::OnShowHomeButtonChanged,
+                           base::Unretained(this)));
+ 
+   if (home_) {
+-    home_->SetVisible(show_home_button_.GetValue());
++    home_->SetVisible(show_home_button_->GetValue());
+   }
+ 
+   auto* vertical_tab_strip_state_controller =
+@@ -1502,7 +1622,8 @@
+ 
+ void ToolbarView::ChildVisibilityChanged(views::View* child) {
+   if (child == home_) {
+-    if (!home_->GetVisible() && show_home_button_.GetValue()) {
++    if (!home_->GetVisible() && show_home_button_ &&
++        show_home_button_->GetValue()) {
+       base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
+     }
+   }
+@@ -2057,11 +2178,14 @@
+ }
+ 
+ void ToolbarView::OnChromeLabsPrefChanged() {
++  if (!show_chrome_labs_button_) {
++    return;
++  }
+   actions::ActionItem* chrome_labs_action =
+       pinned_toolbar_actions_container_->GetActionItemFor(
+           kActionShowChromeLabs);
+   chrome_labs_action->SetVisible(
+-      show_chrome_labs_button_.GetValue() &&
++      show_chrome_labs_button_->GetValue() &&
+       ShouldShowChromeLabsUI(browser_->GetProfile()));
+   GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
+       chrome_labs_action->GetVisible()
+@@ -2078,13 +2202,19 @@
+ }
+ 
+ void ToolbarView::OnShowForwardButtonChanged() {
+-  SetForwardButtonVisibility(show_forward_button_.GetValue());
++  if (!show_forward_button_) {
++    return;
++  }
++  SetForwardButtonVisibility(show_forward_button_->GetValue());
+   InvalidateLayout();
+ }
+ 
+ void ToolbarView::OnShowHomeButtonChanged() {
++  if (!show_home_button_) {
++    return;
++  }
+   if (home_) {
+-    home_->SetVisible(show_home_button_.GetValue());
++    home_->SetVisible(show_home_button_->GetValue());
+   }
+ }
+ 
