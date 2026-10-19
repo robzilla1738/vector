@@ -1,0 +1,992 @@
+--- a/chrome/browser/ui/toasts/toast_controller.h
++++ b/chrome/browser/ui/toasts/toast_controller.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_TOASTS_TOAST_CONTROLLER_H_
+ #define CHROME_BROWSER_UI_TOASTS_TOAST_CONTROLLER_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -141,6 +142,8 @@
+   static constexpr base::TimeDelta kToastWithActionTimeout = base::Seconds(8);
+ 
+  private:
++  void LeaveAuxMutation();
++
+   void OnActiveTabChanged(BrowserWindowInterface* browser_interface);
+   void QueueToast(ToastParams params);
+   void ShowToast(ToastParams params);
+@@ -197,6 +200,8 @@
+ 
+   std::optional<ui::ScopedUnownedUserData<ToastController>>
+       scoped_unowned_user_data_;
++
++  base::WeakPtrFactory<ToastController> aux_mutation_weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_TOASTS_TOAST_CONTROLLER_H_
+--- a/chrome/browser/ui/toasts/toast_controller.cc
++++ b/chrome/browser/ui/toasts/toast_controller.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/ui/toasts/toast_controller.h"
+ 
+ #include <memory>
+@@ -10,7 +11,6 @@
+ #include <utility>
+ #include <vector>
+ 
+-#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/check_is_test.h"
+ #include "base/check_op.h"
+@@ -122,6 +122,11 @@
+   return GetCurrentToastId().has_value();
+ }
+ 
++void ToastController::LeaveAuxMutation() {
++  CHECK(toast_mutation_depth_ > 0);
++  --toast_mutation_depth_;
++}
++
+ bool ToastController::HasPendingToastWork() const {
+   return toast_mutation_depth_ != 0 || next_toast_params_.has_value() ||
+          currently_showing_toast_id_.has_value() ||
+@@ -147,8 +152,9 @@
+ }
+ 
+ bool ToastController::MaybeShowToast(ToastParams params) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   if (!CanShowToast(params.toast_id)) {
+     RecordToastFailedToShow(params.toast_id);
+     return false;
+@@ -186,8 +192,9 @@
+ #endif
+ 
+ void ToastController::OnWidgetDestroyed(views::Widget* widget) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   currently_showing_toast_close_callback_.RunAndReset();
+ 
+   // Inform subscribers that Widget was destroyed. Pass in toast_id_ before it
+@@ -250,8 +257,9 @@
+ }
+ 
+ void ToastController::QueueToast(ToastParams params) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   next_toast_params_ = std::move(params);
+ }
+ 
+@@ -300,8 +308,9 @@
+ }
+ 
+ void ToastController::ShowToast(ToastParams params) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   // TODO(crbug.com/367755347): Remove check when test is fixed.
+   CHECK(!toast_registry_->IsEmpty());
+   const ToastSpecification* current_toast_spec =
+@@ -328,8 +337,9 @@
+ }
+ 
+ void ToastController::CloseToast(toasts::ToastCloseReason reason) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   // Stop the auto-dismiss timer to prevent it from firing while the toast view
+   // is closing or animating out.
+   toast_close_timer_.Stop();
+@@ -340,8 +350,9 @@
+ 
+ void ToastController::CreateToast(ToastParams params,
+                                   const ToastSpecification* spec) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   // TODO(crbug.com/364730656): Replace this logic when improving
+   // ToastController testability.
+   views::View* anchor_view = GetAnchorView(spec->is_global_scope());
+@@ -500,8 +511,9 @@
+ }
+ 
+ void ToastController::ClearTabScopedToasts(bool is_navigation) {
+-  base::AutoReset<int> mutation_scope(&toast_mutation_depth_,
+-                                      toast_mutation_depth_ + 1);
++  ++toast_mutation_depth_;
++  base::ScopedClosureRunner mutation_scope(base::BindOnce(
++      &ToastController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   if (next_toast_params_.has_value()) {
+     const ToastId toast_id = next_toast_params_.value().toast_id;
+     const ToastSpecification* const specification =
+--- a/chrome/browser/skills/skills_ui_window_controller.h
++++ b/chrome/browser/skills/skills_ui_window_controller.h
+@@ -86,6 +86,10 @@
+                                    std::string_view skill_icon);
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++#endif
++
+   void BindProfileSources(Profile* profile);
+ 
+   // Shows after a skill is saved or deleted. Takes in toast params to display.
+@@ -120,6 +124,8 @@
+ #endif
+ 
+   base::WeakPtrFactory<SkillsUiWindowController> weak_factory_{this};
++
++  base::WeakPtrFactory<SkillsUiWindowController> aux_mutation_weak_factory_{this};
+ };
+ 
+ }  // namespace skills
+--- a/chrome/browser/skills/skills_ui_window_controller.cc
++++ b/chrome/browser/skills/skills_ui_window_controller.cc
+@@ -2,9 +2,9 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/skills/skills_ui_window_controller.h"
+ 
+-#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/check_op.h"
+ #include "base/functional/bind.h"
+@@ -56,6 +56,11 @@
+ }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SkillsUiWindowController::LeaveAuxMutation() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
+ bool SkillsUiWindowController::CanRebindForAuxProfileSwitch() const {
+   if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
+       !pending_deletions_.empty() || !skills_v2_delete_callbacks_.empty() ||
+@@ -158,7 +163,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   CloseDialogsAndReloadSkillsPages();
+ }
+@@ -170,7 +177,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   CloseDialogsAndReloadSkillsPages();
+ }
+@@ -179,7 +188,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   TabStripModel* tab_strip_model =
+       browser_window_interface_->GetTabStripModel();
+@@ -213,7 +224,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   StoreLastSavedSkillMetadata(skill_id, "", "");
+   ShowToast(hide_toast_button ? ToastId::kSkillSavedWithoutInvokeButton
+@@ -224,7 +237,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   last_deleted_skill_id_ = skill_id;
+   pending_deletions_.insert(last_deleted_skill_id_);
+@@ -248,7 +263,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   action_clicked_ = false;
+ 
+@@ -271,7 +288,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   action_clicked_ = true;
+   if (last_deleted_skill_id_.empty()) {
+@@ -299,7 +318,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   auto it = skills_v2_delete_callbacks_.find(skill_id);
+   if (it != skills_v2_delete_callbacks_.end()) {
+@@ -325,7 +346,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   ToastController::From(browser_window_interface_)
+       ->MaybeShowToast(std::move(params));
+@@ -335,7 +358,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   InvokeSkill(last_saved_skill_id_, last_saved_skill_name_,
+               last_saved_skill_icon_);
+@@ -347,7 +372,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (skill_id.empty()) {
+     return;
+@@ -373,7 +400,9 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Transfer is synchronous and must not reenter profile-sensitive user work.
+   CHECK(!aux_profile_switch_prepared_);
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_, aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SkillsUiWindowController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   last_saved_skill_id_ = skill_id;
+   last_saved_skill_name_ = skill_name;
+--- a/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h
++++ b/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_TABS_TAB_STRIP_API_CONTROLLERS_TAB_STRIP_UI_CONTROLLER_IMPL_H_
+ #define CHROME_BROWSER_UI_TABS_TAB_STRIP_API_CONTROLLERS_TAB_STRIP_UI_CONTROLLER_IMPL_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include <memory>
+ 
+ #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller.h"
+@@ -43,6 +44,8 @@
+       const gfx::Point& location) override;
+ 
+  private:
++  void LeaveAuxMutation();
++
+   std::unique_ptr<TabStripUIControllerInjector> injector_;
+ 
+   mojom::TabStripUIControllerBridge bridge_{this};
+@@ -50,6 +53,8 @@
+   int active_command_depth_ = 0;
+ 
+   ui::ScopedUnownedUserData<TabStripUIControllerImpl> scoped_unowned_user_data_;
++
++  base::WeakPtrFactory<TabStripUIControllerImpl> aux_mutation_weak_factory_{this};
+ };
+ 
+ }  // namespace tabs_api
+--- a/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc
++++ b/chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc
+@@ -2,12 +2,14 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
++#include "base/functional/callback_helpers.h"
++#include "base/functional/bind.h"
+ #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
+ 
+ #include <optional>
+ #include <utility>
+ 
+-#include "base/auto_reset.h"
+ #include "base/types/expected.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/browser_apis/tab_strip/adapters/context_menu_adapter.h"
+@@ -31,6 +33,11 @@
+ 
+ TabStripUIControllerImpl::~TabStripUIControllerImpl() = default;
+ 
++void TabStripUIControllerImpl::LeaveAuxMutation() {
++  CHECK(active_command_depth_ > 0);
++  --active_command_depth_;
++}
++
+ bool TabStripUIControllerImpl::HasClientsOrActiveCommand() const {
+   return !receivers_.empty() || active_command_depth_ != 0;
+ }
+@@ -43,8 +50,9 @@
+ mojom::TabStripUIController::ShowTabContextMenuResult
+ TabStripUIControllerImpl::ShowTabContextMenu(const tabs_api::NodeId& id,
+                                              const gfx::Point& location) {
+-  base::AutoReset<int> command_scope(&active_command_depth_,
+-                                     active_command_depth_ + 1);
++  ++active_command_depth_;
++  base::ScopedClosureRunner command_scope(base::BindOnce(
++      &TabStripUIControllerImpl::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+   std::optional<tabs::TabHandle> tab_handle = id.ToTabHandle();
+   if (!tab_handle.has_value()) {
+     return base::unexpected(mojo_base::mojom::Error::New(
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_TOOLBAR_UI_CONTROLLER_H_
+ #define CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_TOOLBAR_UI_CONTROLLER_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include <optional>
+ #include <string>
+ #include <vector>
+@@ -153,6 +154,11 @@
+ 
+  private:
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++  void RestoreAuxRebinding(bool previous);
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   void RebuildForAuxProfileSwitch(Profile* target_profile);
+ #endif
+ 
+@@ -336,6 +342,8 @@
+ #endif
+ 
+   base::WeakPtrFactory<DownloadToolbarUIController> weak_factory_{this};
++
++  base::WeakPtrFactory<DownloadToolbarUIController> aux_mutation_weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_DOWNLOAD_BUBBLE_DOWNLOAD_TOOLBAR_UI_CONTROLLER_H_
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
+ 
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -12,7 +13,6 @@
+ #include <optional>
+ #include <string>
+ 
+-#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/check_op.h"
+ #include "base/functional/bind.h"
+@@ -475,6 +475,15 @@
+ DownloadToolbarUIController::~DownloadToolbarUIController() = default;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void DownloadToolbarUIController::RestoreAuxRebinding(bool previous) {
++  aux_profile_switch_rebinding_ = previous;
++}
++
++void DownloadToolbarUIController::LeaveAuxMutation() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
+ bool DownloadToolbarUIController::CanRebindForAuxProfileSwitch() const {
+   if (aux_profile_switch_prepared_ || aux_callback_depth_ || !browser_view_ ||
+       !controller_ || !bubble_controller_ || pending_bubble_ || bubble_delegate_ ||
+@@ -547,7 +556,11 @@
+   CHECK_EQ(From(browser), this);
+   CHECK(!controller_);
+   CHECK(!bubble_controller_);
+-  base::AutoReset<bool> rebinding(&aux_profile_switch_rebinding_, true);
++  const bool previous_rebinding = aux_profile_switch_rebinding_;
++  aux_profile_switch_rebinding_ = true;
++  base::ScopedClosureRunner rebinding(base::BindOnce(
++      &DownloadToolbarUIController::RestoreAuxRebinding,
++      aux_mutation_weak_factory_.GetWeakPtr(), previous_rebinding));
+ 
+   action_item_ = actions::ActionManager::Get().FindAction(
+       kActionShowDownloads, BrowserActions::From(browser)->root_action_item());
+@@ -590,8 +603,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+@@ -605,8 +619,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   HideDetails();
+   auto* container = GetPinnedToolbarActions(browser_view_);
+@@ -626,8 +641,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   action_item_->SetEnabled(true);
+ }
+@@ -637,8 +653,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   action_item_->SetEnabled(false);
+ }
+@@ -649,8 +666,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   // Whether to update the icon after processing any changes.
+   bool update_icon = false;
+@@ -713,8 +731,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (auto* button = GetDownloadsButton(browser_view_)) {
+     button->GetViewAccessibility().AnnounceText(alert_text);
+@@ -774,8 +793,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (bubble_delegate_ || pending_bubble_) {
+     return;
+@@ -795,8 +815,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (IsShowingDetails()) {
+     CloseDialog(views::Widget::ClosedReason::kUnspecified);
+@@ -813,8 +834,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   // Only update models if the complete view is showing. Offline items
+   // represent past downloads from history and are never displayed in the
+@@ -832,8 +854,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   auto* button = GetDownloadsButton(browser_view_);
+   if (!button) {
+@@ -940,8 +963,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (!bubble_delegate_) {
+     return;
+@@ -960,8 +984,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (!bubble_delegate_) {
+     ShowBubble(DownloadBubbleMode::kComplete, content_id);
+@@ -982,8 +1007,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (bubble_delegate_) {
+     bubble_delegate_->GetWidget()->CloseWithReason(reason);
+@@ -997,8 +1023,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (model.GetDangerType() ==
+           download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT &&
+@@ -1014,8 +1041,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   DeactivateAutoClose();
+ }
+@@ -1039,8 +1067,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   UpdateIconDormant();
+ }
+@@ -1051,8 +1080,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   UpdateIconDormant();
+ }
+@@ -1066,8 +1096,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (!bubble_delegate_ && !bubble_controller_->GetMainView().empty()) {
+     button_click_time_ = base::TimeTicks::Now();
+@@ -1083,8 +1114,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (!has_pending_download_started_animation_) {
+     return;
+@@ -1230,8 +1262,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   pending_bubble_ = false;
+   // The bubble should not show if the button doesn't exist since it would have
+@@ -1348,8 +1381,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   immersive_revealed_lock_.reset();
+   bubble_delegate_ = nullptr;
+@@ -1396,8 +1430,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   // Nothing to do if the bubble is not open.
+   if (!bubble_contents_) {
+@@ -1491,8 +1526,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   // Ensure no updates are attempted once BrowserView destruction has started or
+   // if the host Widget has already been closed.
+@@ -1525,8 +1561,9 @@
+   if (aux_profile_switch_prepared_ && !aux_profile_switch_rebinding_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                     aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &DownloadToolbarUIController::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (bubble_contents_->info().row_list_view_info().rows().empty()) {
+     CloseDialog(views::Widget::ClosedReason::kUnspecified);
+--- a/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h
++++ b/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h
+@@ -69,6 +69,10 @@
+   void SetDisplayNameForTesting(const std::u16string& name);
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++#endif
++
+   // views::ViewObserver
+   void OnViewIsDeleting(views::View* observed_view) override;
+ 
+@@ -94,6 +98,8 @@
+   int aux_callback_depth_ = 0;
+   std::vector<base::WeakPtr<views::Widget>> aux_live_widgets_;
+ #endif
++
++  base::WeakPtrFactory<CookieControlsBubbleCoordinator> aux_mutation_weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_COOKIE_CONTROLS_COOKIE_CONTROLS_BUBBLE_COORDINATOR_H_
+--- a/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc
++++ b/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc
+@@ -2,11 +2,12 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/functional/callback_helpers.h"
++#include "base/functional/bind.h"
+ #include "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h"
+ 
+ #include <algorithm>
+ 
+-#include "base/auto_reset.h"
+ #include "base/callback_list.h"
+ #include "base/check.h"
+ #include "ui/views/widget/widget.h"
+@@ -43,6 +44,11 @@
+ CookieControlsBubbleCoordinator::~CookieControlsBubbleCoordinator() = default;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void CookieControlsBubbleCoordinator::LeaveAuxMutation() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
+ bool CookieControlsBubbleCoordinator::CanRebindForAuxProfileSwitch() const {
+   return !aux_profile_switch_prepared_ && !aux_callback_depth_ &&
+          !bubble_view_ && !view_controller_ &&
+@@ -82,8 +88,9 @@
+   if (aux_profile_switch_prepared_) {
+     return;
+   }
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                      aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &CookieControlsBubbleCoordinator::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   if (bubble_view_ != nullptr) {
+     return;
+@@ -149,8 +156,9 @@
+ void CookieControlsBubbleCoordinator::OnViewIsDeleting(
+     views::View* observed_view) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  base::AutoReset<int> callback_scope(&aux_callback_depth_,
+-                                      aux_callback_depth_ + 1);
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &CookieControlsBubbleCoordinator::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   bubble_view_ = nullptr;
+   view_controller_ = nullptr;
+--- a/chrome/browser/ui/context_highlight/context_highlight_window_feature.h
++++ b/chrome/browser/ui/context_highlight/context_highlight_window_feature.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_CONTEXT_HIGHLIGHT_CONTEXT_HIGHLIGHT_WINDOW_FEATURE_H_
+ #define CHROME_BROWSER_UI_CONTEXT_HIGHLIGHT_CONTEXT_HIGHLIGHT_WINDOW_FEATURE_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
+ #include "build/build_config.h"
+@@ -50,6 +51,10 @@
+   DECLARE_USER_DATA(ContextHighlightWindowFeature);
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxMutation();
++#endif
++
+   // content::TrackedElementObserver:
+   void OnTrackedElementRectsChanged(const viz::TrackedElementRects& rects,
+                                     float device_scale_factor);
+@@ -73,6 +78,8 @@
+   base::CallbackListSubscription active_tab_subscription_;
+ 
+   ui::ScopedUnownedUserData<ContextHighlightWindowFeature> scoped_data_;
++
++  base::WeakPtrFactory<ContextHighlightWindowFeature> aux_mutation_weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_CONTEXT_HIGHLIGHT_CONTEXT_HIGHLIGHT_WINDOW_FEATURE_H_
+--- a/chrome/browser/ui/context_highlight/context_highlight_window_feature.cc
++++ b/chrome/browser/ui/context_highlight/context_highlight_window_feature.cc
+@@ -2,9 +2,9 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
+ 
+-#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -36,6 +36,11 @@
+ }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ContextHighlightWindowFeature::LeaveAuxMutation() {
++  CHECK(aux_update_depth_ > 0);
++  --aux_update_depth_;
++}
++
+ bool ContextHighlightWindowFeature::CanPauseForAuxProfileSwitch() const {
+   return !aux_profile_switch_prepared_ && !aux_update_depth_ &&
+          From(browser_) == this &&
+@@ -91,7 +96,9 @@
+     const viz::TrackedElementRects& rects,
+     float device_scale_factor) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  base::AutoReset<int> update_scope(&aux_update_depth_, aux_update_depth_ + 1);
++  ++aux_update_depth_;
++  base::ScopedClosureRunner update_scope(base::BindOnce(
++      &ContextHighlightWindowFeature::LeaveAuxMutation, aux_mutation_weak_factory_.GetWeakPtr()));
+ #endif
+   // View is created lazyly
+   const auto kAIHighlightFeature = static_cast<viz::TrackedElementFeature>(
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_PROFILES_AVATAR_TOOLBAR_BUTTON_STATE_MANAGER_H_
+ #define CHROME_BROWSER_UI_VIEWS_PROFILES_AVATAR_TOOLBAR_BUTTON_STATE_MANAGER_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include <optional>
+ #include <string>
+ 
+@@ -317,6 +318,7 @@
+  private:
+   // Record only profile-owned provider coordinators separately, preserving the
+   // permanent externally registered state observer list and its ordering.
++  void RestoreAuxInitializing(bool previous);
+   void RegisterProfileObserver(Observer* observer);
+ 
+   // Creates all main states and attach listeners.
+@@ -413,6 +415,8 @@
+ #endif
+ 
+   base::WeakPtrFactory<AvatarToolbarButtonStateManager> weak_ptr_factory_{this};
++
++  base::WeakPtrFactory<AvatarToolbarButtonStateManager> aux_mutation_weak_factory_{this};
+ };
+ 
+ void SigninDetectionServiceFactoryEnsureFactoryBuilt();
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
+ #include "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h"
+ 
+ #include <algorithm>
+@@ -2261,7 +2262,11 @@
+     });
+   });
+   profile_state_manager_observers_.clear();
+-  base::AutoReset<bool> initializing_reset(&is_initializing_, true);
++  const bool previous_initializing = is_initializing_;
++  is_initializing_ = true;
++  base::ScopedClosureRunner initializing_reset(base::BindOnce(
++      &AvatarToolbarButtonStateManager::RestoreAuxInitializing,
++      aux_mutation_weak_factory_.GetWeakPtr(), previous_initializing));
+   // Keep the existing real NormalStateProvider during the synchronous cold
+   // interval so view/animation getters remain valid. It has no subscriptions.
+   // All profile-observing providers and their timers/weak callbacks are retired.
+@@ -2288,17 +2293,33 @@
+   aux_profile_switch_prepared_ = false;
+   // Existing factory and initialization order bind actual target identity,
+   // sync, signin, passkeys, management, preferences and subscription services.
++  auto alive = aux_mutation_weak_factory_.GetWeakPtr();
+   InitializeStates();
++  if (!alive) {
++    return;
++  }
+   UpdateAvatarButton();
+ }
+ #endif
+ 
++void AvatarToolbarButtonStateManager::RestoreAuxInitializing(bool previous) {
++  is_initializing_ = previous;
++}
++
+ void AvatarToolbarButtonStateManager::InitializeStates() {
++  auto alive = aux_mutation_weak_factory_.GetWeakPtr();
+   {
+-    base::AutoReset<bool> initializing_reset(&is_initializing_, true);
++    const bool previous_initializing = is_initializing_;
++    is_initializing_ = true;
++    base::ScopedClosureRunner initializing_reset(base::BindOnce(
++        &AvatarToolbarButtonStateManager::RestoreAuxInitializing,
++        aux_mutation_weak_factory_.GetWeakPtr(), previous_initializing));
+ 
+     // Creates the main states and listeners.
+     CreateStatesAndListeners(browser_);
++    if (!alive) {
++      return;
++    }
+ 
+     // States should initialize here, making sure that this should happen after
+     // all main states are created. This would allow the `Init()` functions of
+@@ -2306,6 +2327,9 @@
+     // constructor there could be a chance that no active state exist yet.
+     for (auto& state : states_) {
+       state.second->Init();
++      if (!alive) {
++        return;
++      }
+     }
+   }
+   ComputeButtonActiveState();

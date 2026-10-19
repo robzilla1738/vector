@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "base": "prior precise Skills/Toast, TabStrip guard, Download rollback, Cookie, Context, Avatar source outputs; see per-file SHA",
+  "files": [
+    {
+      "path": "chrome/browser/ui/toasts/toast_controller.h",
+      "baselineSha256": "bf4ec637d58dfeba1db5acc4df2fe63fde29d7b7db86cc12509373ca56a193ca",
+      "outputSha256": "83f6a9bdaf5515d451eb8dcf897db1acf80208d566490412f471837ef575a058"
+    },
+    {
+      "path": "chrome/browser/ui/toasts/toast_controller.cc",
+      "baselineSha256": "568bee4d9cea92ecdf29474584092b374d101d9664c1c1aca782ce1a6fd7c549",
+      "outputSha256": "f835d26f284bf73592f0787293b61e3a2a476e10fd6d7fe9d0295b08201f7c38"
+    },
+    {
+      "path": "chrome/browser/skills/skills_ui_window_controller.h",
+      "baselineSha256": "2588de60ac3752f22c5b9f6079ea78c542463da32401c51f2fdb39118606b0be",
+      "outputSha256": "d40f13e9d6c31067a43bd80957021d54ca1ad3745e09be454bf31c4f343f358e"
+    },
+    {
+      "path": "chrome/browser/skills/skills_ui_window_controller.cc",
+      "baselineSha256": "ce904441a7b540a5e4091eed2ec43bb468a240242fb90c2207dc86945bea9db0",
+      "outputSha256": "91d31755a514c2473f103f5fb4ae6e02f673181a46d717fd974bac38f52c15db"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h",
+      "baselineSha256": "c178f4849699924c5a3de38c2240a8b81558861e44179d234fc27b778f578b1a",
+      "outputSha256": "82947fe2dba6ae6b7293f3a4901d066ed80e08fcc5e8000afa347b99baa8b500"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.cc",
+      "baselineSha256": "673f63b756191092b82d9216eab55b15a6a1fc4c76f04abc54e7443f6f8a58c3",
+      "outputSha256": "0deec5b436f3af6276a5d8a11c67fcb8533dc41bdec5e50ced0ca0bcb826d7fd"
+    },
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h",
+      "baselineSha256": "6b9c388afaff5583c3c1ea39fbeea7492c2993be786cd61a81e58eb768961a33",
+      "outputSha256": "88844f701cac4df1a0176ce2b30658a97f0682ae69dfcae694488dea6727e128"
+    },
+    {
+      "path": "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc",
+      "baselineSha256": "b1e291e3beac740a03009ef116007593b27f13d6df6eb4981c185880ded4ab21",
+      "outputSha256": "1ee9203161ef511561a0b532f674b6fb9d5f646f098b9b69e39994a5aac1cf85"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h",
+      "baselineSha256": "cd366a7c47a6e4c3a0a8a6fa80c37c4e1a090e28b71d0897c167663ed1bb40db",
+      "outputSha256": "f534a01cc537a45a8590dc25ee3003fb5bfbda817d5fec6cafa4fad69dfc4af4"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc",
+      "baselineSha256": "c9afe32e4838582e5bdc8a78cd38eacbd16fe8c0c71aacbaba356eca58c6bb3d",
+      "outputSha256": "336bc78794f538fc5081bd5ed707277dd3a06e36a8771e98bc215da12f6e2269"
+    },
+    {
+      "path": "chrome/browser/ui/context_highlight/context_highlight_window_feature.h",
+      "baselineSha256": "2a6d9a6abda713f1c25cc2b9321212b7beaf7b79dad81de9f4da298ab051f00f",
+      "outputSha256": "9647be0ac89ff7cc1db2c19098ee44f9603b978a1007fa8a2fc09bfd38a45941"
+    },
+    {
+      "path": "chrome/browser/ui/context_highlight/context_highlight_window_feature.cc",
+      "baselineSha256": "bdd70de6fc6e3cdb888aae9a384f7ee95a3f7e8d9110888f7037dff2ec3541f7",
+      "outputSha256": "1e799a4c74252c583133addce4a65befa9b036422878ab4a205a13b0137aab4e"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h",
+      "baselineSha256": "d6ca5f22e251c17a53cd212fc407473381c20808a8b4de7b1c8425f1ef1ac561",
+      "outputSha256": "10426520b36647e136a1f56dbd15335366911be721cf5f2ebce511606ffd8515"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc",
+      "baselineSha256": "c95a1e509aeb37535b71c29ba4b417ae4f226ed236381afc7b092b6eda87dd57",
+      "outputSha256": "78946b4d84c9537e48377fa35422dee0ebbd98d80227ec67315a442ea4f71c1d"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
