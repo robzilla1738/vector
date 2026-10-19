@@ -8,6 +8,9 @@ Updated 2026-10-19. The accepted clean-room plan replaces the former reference-v
 - Full non-component Chromium build is running. Native cache/refresh, identifier cleanup, retired shell removal and optional-argument corrections remain staged for subsequent integration and compilation; they are not in the running interim browser.
 - Context observation and receipt-bound credential exchange services are integrated in source. Actual OS context capture remains unverified. Native credential exchange is unavailable under this host's ad hoc entitlement enforcement; no eligible signing is authorized.
 - Final20-task acceptance, native API/runtime scenarios, both-theme visual comparisons, fresh native reconstruction/build/provenance audit and final app installation remain outstanding. The sections below preserve slice history and its limitations; earlier waiting tables are historical snapshots.
+- Source now includes configured Search and child-profile/routing settings, a functional four-turn transcript rail, intrinsic Vault/dialog dimensions and a native browser-import dialog. These source/UI boundary checks are not packaged native or visual-parity acceptance.
+- Added user-initiated capture paths with exact native profile/document validation, real full-page/viewport/region CDP geometry, Screen Recording preflight through the helper, explicit clipboard/download actions and cancellation. Focused synthetic checks and classic content-script build validation pass; actual packaged capture/clipboard/download/OS observations remain outstanding.
+- Inline Vault metadata is now origin-matched, password-extension-only and secret-free; an actor-backed inline result panel is in progress. Per-item reprompt remains unavailable pending its contract.
 
 ## Phase 0
 

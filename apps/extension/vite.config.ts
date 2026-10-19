@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { build } from 'esbuild';
 import { defineConfig } from 'vite';
 
 const identities = JSON.parse(
@@ -12,6 +13,20 @@ export default defineConfig({
   plugins: [
     {
       name: 'aux-manifest',
+      async writeBundle() {
+        // Manifest content scripts are classic scripts, so shared modules must
+        // be bundled into this entry rather than emitted as static ESM imports.
+        await build({
+          entryPoints: [new URL('./src/content.ts', import.meta.url).pathname],
+          outfile: new URL('./dist/content.js', import.meta.url).pathname,
+          bundle: true,
+          format: 'iife',
+          platform: 'browser',
+          target: 'es2023',
+          minify: true,
+          legalComments: 'eof',
+        });
+      },
       generateBundle() {
         this.emitFile({
           type: 'asset',
@@ -21,7 +36,7 @@ export default defineConfig({
               manifest_version: 3,
               incognito: 'split',
               name: 'Aux',
-              version: '0.2.0',
+              version: '0.2.1',
               key: identities.agent.key,
               description: 'Local tasks and browsing in Aux.',
               permissions: [
@@ -35,6 +50,8 @@ export default defineConfig({
                 'history',
                 'bookmarks',
                 'downloads',
+                'contextMenus',
+                'clipboardWrite',
                 'alarms',
                 'dev.aux.ext.private.account',
                 'dev.aux.ext.private.omnibox',
@@ -76,7 +93,6 @@ export default defineConfig({
       input: {
         app: new URL('./index.html', import.meta.url).pathname,
         background: new URL('./src/background.ts', import.meta.url).pathname,
-        content: new URL('./src/content.ts', import.meta.url).pathname,
       },
       output: {
         entryFileNames: '[name].js',

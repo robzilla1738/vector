@@ -19,6 +19,8 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 const defaultAllowed = new Set([
+  'capture.verify',
+  'capture.page',
   'chat.activate',
   'context.activity',
   'history.visits',

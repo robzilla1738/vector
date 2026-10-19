@@ -11,6 +11,7 @@ import { matchingSkills } from '@aux/skills';
 import { TRPCError } from '@trpc/server';
 import type { Hono } from 'hono';
 import { z } from 'zod';
+import { createCaptureService } from './capture/index.js';
 import {
   ChannelService,
   channelTools,
@@ -70,6 +71,8 @@ export function createFeatures() {
   let notifications: ReturnType<typeof createNotificationService> | undefined;
   let unregisterNotificationDeletion: (() => void) | undefined;
   let search: ReturnType<typeof createSearchService> | undefined;
+  let capture: ReturnType<typeof createCaptureService> | undefined;
+  let unregisterCaptureDeletion: (() => void) | undefined;
   let unregisterSearchDeletion: (() => void) | undefined;
   let unregisterSearchRedactor: (() => void) | undefined;
   let contextObserver: ReturnType<typeof createContextObserver> | undefined;
@@ -241,6 +244,11 @@ export function createFeatures() {
         services.store,
         helper ? createVaultBiometryAdapter(helper) : undefined,
       );
+      capture = createCaptureService(services, vault, helper);
+      const captureService = capture;
+      unregisterCaptureDeletion = services.store.registerAccountDeletionHandler(
+        (accountId) => captureService.invalidate(accountId),
+      );
       search = createSearchService(services, activeEngine, {
         isUnlocked: (accountId) => !!vault && !vault.status(accountId).locked,
       });
@@ -286,6 +294,7 @@ export function createFeatures() {
           contextObserver?.changed(accountId);
           notifications?.invalidate(accountId);
           search?.invalidate(accountId);
+          capture?.invalidate(accountId);
         },
       );
       routineTimer = setInterval(() => {
@@ -313,6 +322,7 @@ export function createFeatures() {
         channel: createChannelRouter(services, channels),
         subagentConfiguration: subagentConfiguration.router,
         search: createSearchRouter(services, search),
+        capture: capture.router,
         ...createVaultRouters(services, vault),
         passkeys: passkeys.router,
         ...(credentialExchange
@@ -376,6 +386,8 @@ export function createFeatures() {
       await contextObserver?.close();
       notifications?.close();
       search?.close();
+      capture?.close();
+      unregisterCaptureDeletion?.();
       unregisterSearchDeletion?.();
       unregisterNotificationDeletion?.();
       unregisterContextDeletion?.();

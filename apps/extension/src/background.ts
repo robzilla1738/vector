@@ -1,3 +1,4 @@
+import { createCaptureBackground } from './capture-background';
 import { readContextActivity } from './context-bridge';
 import { daemonUrl, getToken, reconnect, resolveAccount } from './daemon';
 import { readHistoryVisits } from './history-bridge';
@@ -14,6 +15,42 @@ let connecting = false;
 let retry = 0;
 const running = new Map<number, AbortController>();
 const debuggedTabs = new Set<number>();
+const capture = createCaptureBackground(async (tabId) => {
+  if (!debuggedTabs.has(tabId)) {
+    await chrome.debugger.attach({ tabId }, '1.3');
+    debuggedTabs.add(tabId);
+  }
+});
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.remove('aux.capture', () => {
+    void chrome.runtime.lastError;
+    chrome.contextMenus.create({
+      id: 'aux.capture',
+      title: 'Capture with Aux',
+      contexts: ['page'],
+      documentUrlPatterns: ['http://*/*', 'https://*/*'],
+    });
+  });
+});
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== 'aux.capture' || !tab) return;
+  void capture.launch(tab).catch((error) => {
+    if (tab.id !== undefined)
+      void chrome.tabs
+        .sendMessage(
+          tab.id,
+          {
+            type: 'aux.capture.error',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Capture is unavailable.',
+          },
+          { frameId: 0 },
+        )
+        .catch(() => {});
+  });
+});
 chrome.debugger.onDetach.addListener((source) => {
   if (source.tabId !== undefined) debuggedTabs.delete(source.tabId);
 });
@@ -188,6 +225,7 @@ const commands: Record<
   string,
   (params: Record<string, unknown>) => Promise<unknown>
 > = {
+  ...capture.handlers,
   'chat.activate': activateNotificationChat,
   'context.activity': readContextActivity,
   'history.visits': readHistoryVisits,
