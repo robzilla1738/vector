@@ -1,0 +1,386 @@
+diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher.cc b/chrome/browser/ui/views/frame/aux_tab_switcher.cc
+new file mode 100644
+index 0000000000..0bbe394c81
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher.cc
+@@ -0,0 +1,268 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
++
++#include <algorithm>
++#include <memory>
++#include <utility>
++#include <vector>
++
++#include "base/callback_list.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/no_destructor.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/favicon/content/content_favicon_driver.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "ui/base/base_window.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/base/ui_base_types.h"
++#include "ui/color/color_id.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/views/background.h"
++#include "ui/views/border.h"
++#include "ui/views/controls/image_view.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/style/typography.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++
++namespace {
++
++constexpr int kMaxEntries = 9;
++constexpr int kPanelWidth = 360;
++constexpr int kRowHeight = 36;
++constexpr int kPanelPadding = 8;
++constexpr base::TimeDelta kPollInterval = base::Milliseconds(30);
++
++class AuxSwitcherRow : public views::View {
++  METADATA_HEADER(AuxSwitcherRow, views::View)
++
++ public:
++  AuxSwitcherRow(const ui::ImageModel& icon, const std::u16string& title) {
++    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(0, 10),
++        10));
++    layout->set_cross_axis_alignment(
++        views::BoxLayout::CrossAxisAlignment::kCenter);
++    auto image = std::make_unique<views::ImageView>(icon);
++    image->SetImageSize(gfx::Size(16, 16));
++    AddChildView(std::move(image));
++    auto label = std::make_unique<views::Label>(
++        title, views::style::CONTEXT_MENU, views::style::STYLE_BODY_3);
++    label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    label->SetElideBehavior(gfx::ELIDE_TAIL);
++    label->SetEnabledColor(ui::kColorSysOnSurface);
++    layout->SetFlexForView(AddChildView(std::move(label)), 1);
++  }
++
++  void SetSelected(bool selected) {
++    SetBackground(selected ? views::CreateRoundedRectBackground(
++                                 ui::kColorSysStateHoverOnProminent, 10)
++                           : nullptr);
++  }
++
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    return gfx::Size(kPanelWidth - 2 * kPanelPadding, kRowHeight);
++  }
++};
++
++BEGIN_METADATA(AuxSwitcherRow)
++END_METADATA
++
++// Owns the switcher for one Ctrl-Tab gesture. Destroying it closes the panel.
++class AuxSwitcherSession {
++ public:
++  AuxSwitcherSession(BrowserWindowInterface* browser, bool forward)
++      : browser_(browser) {
++    TabStripModel* model = browser->GetTabStripModel();
++    for (int i = 0; i < model->count(); ++i) {
++      if (content::WebContents* contents = model->GetWebContentsAt(i)) {
++        tabs_.push_back(contents);
++      }
++    }
++    std::stable_sort(tabs_.begin(), tabs_.end(),
++                     [](content::WebContents* a, content::WebContents* b) {
++                       return a->GetLastActiveTime() > b->GetLastActiveTime();
++                     });
++    if (tabs_.size() > kMaxEntries) {
++      tabs_.resize(kMaxEntries);
++    }
++    for (content::WebContents* contents : tabs_) {
++      watchers_.push_back(std::make_unique<Watcher>(this, contents));
++    }
++    selected_ = forward ? 1 : static_cast<int>(tabs_.size()) - 1;
++    close_subscription_ = browser->RegisterBrowserDidClose(base::BindRepeating(
++        [](AuxSwitcherSession* self, BrowserWindowInterface*) {
++          self->Dismiss();
++        },
++        base::Unretained(this)));
++    if (tabs_.size() > 1) {
++      Show();
++      timer_.Start(FROM_HERE, kPollInterval,
++                   base::BindRepeating(&AuxSwitcherSession::Poll,
++                                       base::Unretained(this)));
++    }
++  }
++
++  bool shown() const { return widget_ != nullptr; }
++
++  void Advance(bool forward) {
++    if (tabs_.size() <= 1) {
++      return;
++    }
++    const int count = static_cast<int>(tabs_.size());
++    selected_ = (selected_ + (forward ? 1 : count - 1)) % count;
++    UpdateSelection();
++  }
++
++  // Activates the highlighted tab and closes the panel.
++  void Commit() {
++    timer_.Stop();
++    content::WebContents* target =
++        selected_ >= 0 && selected_ < static_cast<int>(tabs_.size())
++            ? tabs_[selected_].get()
++            : nullptr;
++    Dismiss();
++    if (!target) {
++      return;
++    }
++    TabStripModel* model = browser_->GetTabStripModel();
++    const int index = model->GetIndexOfWebContents(target);
++    if (index != TabStripModel::kNoTab) {
++      model->ActivateTabAt(index);
++    }
++  }
++
++  void Dismiss() {
++    timer_.Stop();
++    rows_.clear();
++    if (widget_) {
++      widget_->Close();
++      widget_.reset();
++    }
++  }
++
++ private:
++  // Clears a tab from the list if it closes while the panel is open.
++  class Watcher : public content::WebContentsObserver {
++   public:
++    Watcher(AuxSwitcherSession* session, content::WebContents* contents)
++        : content::WebContentsObserver(contents), session_(session) {}
++    void WebContentsDestroyed() override { session_->Forget(web_contents()); }
++
++   private:
++    raw_ptr<AuxSwitcherSession> session_;
++  };
++
++  void Forget(content::WebContents* contents) {
++    std::erase(tabs_, contents);
++    selected_ = std::min(selected_, static_cast<int>(tabs_.size()) - 1);
++    if (rows_.size() != tabs_.size()) {
++      Dismiss();
++    }
++  }
++
++  void Poll() {
++    if (!AuxIsControlKeyDown()) {
++      Commit();
++    }
++  }
++
++  void Show() {
++    auto panel = std::make_unique<views::View>();
++    panel->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical,
++        gfx::Insets(kPanelPadding), 0));
++    panel->SetBackground(
++        views::CreateRoundedRectBackground(ui::kColorSysSurface, 16));
++    panel->SetBorder(views::CreateRoundedRectBorder(1, 16, ui::kColorSysDivider));
++    for (content::WebContents* contents : tabs_) {
++      ui::ImageModel icon = ui::ImageModel::FromVectorIcon(
++          kGlobeIcon, ui::kColorSysOnSurfaceSubtle, 16);
++      if (auto* driver =
++              favicon::ContentFaviconDriver::FromWebContents(contents)) {
++        const gfx::Image favicon = driver->GetFavicon();
++        if (!favicon.IsEmpty()) {
++          icon = ui::ImageModel::FromImage(favicon);
++        }
++      }
++      std::u16string title = contents->GetTitle();
++      if (title.empty()) {
++        title = base::UTF8ToUTF16(contents->GetVisibleURL().host());
++      }
++      rows_.push_back(panel->AddChildView(
++          std::make_unique<AuxSwitcherRow>(icon, title)));
++    }
++    UpdateSelection();
++
++    const int height =
++        static_cast<int>(tabs_.size()) * kRowHeight + 2 * kPanelPadding;
++    const gfx::Rect window = browser_->GetWindow()->GetBounds();
++    gfx::Rect bounds(0, 0, kPanelWidth, height);
++    bounds.set_origin(gfx::Point(window.x() + (window.width() - kPanelWidth) / 2,
++                                 window.y() + (window.height() - height) / 2));
++
++    views::Widget::InitParams params(
++        views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++        views::Widget::InitParams::TYPE_POPUP);
++    params.bounds = bounds;
++    if (views::Widget* parent = views::Widget::GetWidgetForNativeWindow(
++            browser_->GetWindow()->GetNativeWindow())) {
++      params.parent = parent->GetNativeView();
++    }
++    params.activatable = views::Widget::InitParams::Activatable::kNo;
++    params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
++    params.shadow_type = views::Widget::InitParams::ShadowType::kDrop;
++    widget_ = std::make_unique<views::Widget>();
++    widget_->Init(std::move(params));
++    widget_->SetContentsView(std::move(panel));
++    widget_->ShowInactive();
++  }
++
++  void UpdateSelection() {
++    for (size_t i = 0; i < rows_.size(); ++i) {
++      rows_[i]->SetSelected(static_cast<int>(i) == selected_);
++    }
++  }
++
++  const raw_ptr<BrowserWindowInterface> browser_;
++  std::vector<raw_ptr<content::WebContents>> tabs_;
++  std::vector<std::unique_ptr<Watcher>> watchers_;
++  std::vector<raw_ptr<AuxSwitcherRow>> rows_;
++  int selected_ = 0;
++  std::unique_ptr<views::Widget> widget_;
++  base::RepeatingTimer timer_;
++  base::CallbackListSubscription close_subscription_;
++};
++
++std::unique_ptr<AuxSwitcherSession>& Session() {
++  static base::NoDestructor<std::unique_ptr<AuxSwitcherSession>> session;
++  return *session;
++}
++
++}  // namespace
++
++void AuxCycleTabs(BrowserWindowInterface* browser, bool forward) {
++  if (Session() && Session()->shown()) {
++    Session()->Advance(forward);
++    return;
++  }
++  Session() = std::make_unique<AuxSwitcherSession>(browser, forward);
++  if (!Session()->shown()) {
++    // Fewer than two tabs: nothing to switch to.
++    Session().reset();
++  }
++}
+diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher.h b/chrome/browser/ui/views/frame/aux_tab_switcher.h
+new file mode 100644
+index 0000000000..e3796711da
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
++
++class BrowserWindowInterface;
++
++// Ctrl-Tab switcher: lists the window's tabs by recent use, advances the
++// selection on every call and activates it once Control is released.
++void AuxCycleTabs(BrowserWindowInterface* browser, bool forward);
++
++// Whether the Control key is currently held.
++bool AuxIsControlKeyDown();
++
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_SWITCHER_H_
+diff --git a/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm b/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
+new file mode 100644
+index 0000000000..c31c75e38e
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_switcher_mac.mm
+@@ -0,0 +1,11 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
++
++#import <AppKit/AppKit.h>
++
++bool AuxIsControlKeyDown() {
++  return ([NSEvent modifierFlags] & NSEventModifierFlagControl) != 0;
++}
+diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
+index 5d970147ca..a05bc34e04 100644
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -96,6 +97,7 @@
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "chrome/browser/ui/views/frame/aux_tab_switcher.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+@@ -789,34 +853,10 @@ void BrowserCommandController::HandleCommandWithDisposition(
+               TabStripUserGestureDetails::GestureType::kKeyboard, time_stamp));
+       break;
+     case IDC_CYCLE_TO_NEXT_TAB:
+-      if (IsCtrlTabMruEnabled(browser_)) {
+-        base::RecordAction(base::UserMetricsAction("Accel_CycleToNextTab"));
+-        CycleToMruTab(browser_,
+-                      TabStripUserGestureDetails(
+-                          TabStripUserGestureDetails::GestureType::kKeyboard,
+-                          time_stamp));
+-      } else {
+-        base::RecordAction(base::UserMetricsAction("Accel_SelectNextTab"));
+-        SelectNextTab(browser_,
+-                      TabStripUserGestureDetails(
+-                          TabStripUserGestureDetails::GestureType::kKeyboard,
+-                          time_stamp));
+-      }
++      AuxCycleTabs(browser_, /*forward=*/true);
+       break;
+     case IDC_CYCLE_TO_PREV_TAB:
+-      if (IsCtrlTabMruEnabled(browser_)) {
+-        base::RecordAction(base::UserMetricsAction("Accel_CycleToPrevTab"));
+-        CycleToMruTab(browser_,
+-                      TabStripUserGestureDetails(
+-                          TabStripUserGestureDetails::GestureType::kKeyboard,
+-                          time_stamp));
+-      } else {
+-        base::RecordAction(base::UserMetricsAction("Accel_SelectPreviousTab"));
+-        SelectPreviousTab(
+-            browser_, TabStripUserGestureDetails(
+-                          TabStripUserGestureDetails::GestureType::kKeyboard,
+-                          time_stamp));
+-      }
++      AuxCycleTabs(browser_, /*forward=*/false);
+       break;
+     case IDC_MOVE_TAB_NEXT:
+       MoveTabNext(browser_);
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index ca65408a67..fce432aef4 100644
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2551,6 +2551,7 @@ static_library("ui") {
+     sources += [
+       "views/frame/browser_frame_view_factory_mac.mm",
+       "views/frame/browser_frame_view_mac.h",
++      "views/frame/aux_tab_switcher_mac.mm",
+       "views/frame/browser_frame_view_mac.mm",
+       "views/frame/browser_native_widget_mac.h",
+       "views/frame/browser_native_widget_mac.mm",
+@@ -2753,6 +2754,10 @@ static_library("ui") {
+       "views/frame/picture_in_picture_browser_frame_view.h",
+       "views/frame/top_container_view.cc",
+       "views/frame/top_container_view.h",
++      "views/frame/aux_sidebar_view.cc",
++      "views/frame/aux_tab_switcher.cc",
++      "views/frame/aux_tab_switcher.h",
++      "views/frame/aux_sidebar_view.h",
+       "views/frame/vertical_tab_strip_region_view.cc",
+       "views/frame/vertical_tab_strip_region_view.h",
+       "views/tab_search_bubble_host.cc",

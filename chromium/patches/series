@@ -78,3 +78,5 @@ aux/0077-aux-hide-app-menu-button.patch
 aux/0078-aux-downloads-pinned.patch
 aux/0079-aux-sidebar-pill-and-pinned-tiles.patch
 aux/0080-aux-no-toolbar-avatar-and-glass-frame.patch
+aux/0081-aux-sidebar-width-282.patch
+aux/0082-aux-ctrl-tab-switcher.patch

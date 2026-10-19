@@ -99,10 +99,10 @@ index 76f8e997d6..334a80b3b2 100644
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000..b90bf72492
+index 0000000000..b2638a44a1
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
-@@ -0,0 +1,1444 @@
+@@ -0,0 +1,1500 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -146,6 +146,7 @@ index 0000000000..b90bf72492
 +#include "components/favicon/content/content_favicon_driver.h"
 +#include "components/tabs/public/tab_context_menu_command.h"
 +#include "ui/base/accelerators/accelerator.h"
++#include "ui/compositor/layer.h"
 +#include "ui/gfx/canvas.h"
 +#include "ui/gfx/geometry/size.h"
 +#include "ui/views/bubble/bubble_dialog_delegate_view.h"
@@ -367,12 +368,16 @@ index 0000000000..b90bf72492
 +  METADATA_HEADER(AuxPinnedTile, views::Button)
 +
 + public:
++  using MoveCallback = base::RepeatingCallback<void(int from, int to)>;
++
 +  AuxPinnedTile(PressedCallback callback,
++                MoveCallback move_callback,
 +                int tab_index,
 +                const ui::ImageModel& icon,
 +                const std::u16string& title,
 +                bool active)
 +      : views::Button(std::move(callback)),
++        move_callback_(std::move(move_callback)),
 +        tab_index_(tab_index),
 +        active_(active) {
 +    auto image = std::make_unique<views::ImageView>(icon);
@@ -390,6 +395,44 @@ index 0000000000..b90bf72492
 +  }
 +
 +  int tab_index() const { return tab_index_; }
++
++  // Dragging a tile onto another slot reorders the pinned tabs.
++  bool OnMousePressed(const ui::MouseEvent& event) override {
++    press_point_ = event.location();
++    dragging_ = false;
++    return views::Button::OnMousePressed(event);
++  }
++
++  bool OnMouseDragged(const ui::MouseEvent& event) override {
++    if (!dragging_ && (event.location() - press_point_).Length() > 6) {
++      dragging_ = true;
++      SetPaintToLayer();
++      layer()->SetFillsBoundsOpaquely(false);
++      layer()->SetOpacity(0.5f);
++    }
++    return dragging_ ? true : views::Button::OnMouseDragged(event);
++  }
++
++  void OnMouseReleased(const ui::MouseEvent& event) override {
++    if (!dragging_) {
++      views::Button::OnMouseReleased(event);
++      return;
++    }
++    dragging_ = false;
++    DestroyLayer();
++    views::Button::OnMouseCaptureLost();
++    gfx::Point point = event.location();
++    views::View::ConvertPointToTarget(this, parent(), &point);
++    const int count = static_cast<int>(parent()->children().size());
++    const int column = std::clamp(
++        point.x() * kTilesPerRow / std::max(parent()->width(), 1), 0,
++        kTilesPerRow - 1);
++    const int row = std::max(0, point.y() / (kTileHeight + kTileGap));
++    const int target = std::clamp(row * kTilesPerRow + column, 0, count - 1);
++    if (target != tab_index_) {
++      move_callback_.Run(tab_index_, target);
++    }
++  }
 +
 + protected:
 +  void StateChanged(views::Button::ButtonState old_state) override {
@@ -411,8 +454,11 @@ index 0000000000..b90bf72492
 +    SchedulePaint();
 +  }
 +
++  const MoveCallback move_callback_;
 +  const int tab_index_;
 +  const bool active_;
++  gfx::Point press_point_;
++  bool dragging_ = false;
 +  raw_ptr<views::ImageView> image_ = nullptr;
 +};
 +
@@ -939,6 +985,14 @@ index 0000000000..b90bf72492
 +                     weak_factory_.GetWeakPtr()));
 +}
 +
++void AuxSidebarView::MovePinnedTab(int from, int to) {
++  TabStripModel* model = browser_->GetTabStripModel();
++  const int pinned = model->IndexOfFirstNonPinnedTab();
++  if (from < pinned && to < pinned) {
++    model->MoveWebContentsAt(from, to, /*select_after_move=*/false);
++  }
++}
++
 +void AuxSidebarView::ActivateTab(int index) {
 +  browser_->GetTabStripModel()->ActivateTabAt(index);
 +}
@@ -968,6 +1022,8 @@ index 0000000000..b90bf72492
 +    auto* tile = grid->AddChildView(std::make_unique<AuxPinnedTile>(
 +        base::BindRepeating(&AuxSidebarView::ActivateTab,
 +                            base::Unretained(this), i),
++        base::BindRepeating(&AuxSidebarView::MovePinnedTab,
++                            base::Unretained(this)),
 +        i, icon, contents->GetTitle(), i == model->active_index()));
 +    tile->set_context_menu_controller(this);
 +  }
@@ -1549,10 +1605,10 @@ index 0000000000..b90bf72492
 +END_METADATA
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.h b/chrome/browser/ui/views/frame/aux_sidebar_view.h
 new file mode 100644
-index 0000000000..084e3ca274
+index 0000000000..204b3ee91b
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,178 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1644,6 +1700,7 @@ index 0000000000..084e3ca274
 +  void ScheduleRebuild();
 +  void AddPinnedTiles();
 +  void ActivateTab(int index);
++  void MovePinnedTab(int from, int to);
 +  void Poll();
 +  void EnsureSession(base::OnceClosure then);
 +  void OnChallengeLoaded(base::OnceClosure then,
