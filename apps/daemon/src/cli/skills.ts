@@ -5,6 +5,8 @@ import { loadSkills } from '@aux/skills';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { DaemonServices } from '../http/server.js';
+import { createDeveloperSettingsRouter } from './developer-settings.js';
+import { createSkillSettingsRouter } from './skill-settings.js';
 
 export async function accountSkills(
   store: DaemonServices['store'],
@@ -26,7 +28,12 @@ export async function accountSkills(
   const disabled = z
     .array(z.string())
     .parse(store.get(accountId, 'settings', 'skills.disabled') ?? []);
-  return loadSkills(roots, disabled);
+  const projectDisabled = projectId
+    ? z
+        .array(z.string())
+        .parse(store.get(accountId, 'skill-settings', projectId) ?? [])
+    : [];
+  return loadSkills(roots, [...disabled, ...projectDisabled]);
 }
 const targets: Record<string, string> = {
   general: '.agents/skills',
@@ -35,7 +42,12 @@ const targets: Record<string, string> = {
   cursor: '.cursor/skills',
   opencode: '.config/opencode/skills',
 };
-export function createSkillRouters({ store, t, procedure }: DaemonServices) {
+export function createSkillRouters(
+  services: DaemonServices,
+  options: { home?: string; cliExecutable?: string } = {},
+) {
+  const { store, t, procedure } = services;
+  const developerHome = options.home ?? homedir();
   const scope = z.object({
     accountId: z.number().int().nonnegative(),
     projectId: z.string().nullable().optional(),
@@ -71,6 +83,7 @@ export function createSkillRouters({ store, t, procedure }: DaemonServices) {
     }
   }
   return {
+    projectSkills: createSkillSettingsRouter(services),
     cliSkills: t.router({
       skillsList: procedure
         .input(scope)
@@ -85,50 +98,53 @@ export function createSkillRouters({ store, t, procedure }: DaemonServices) {
           skill(input.accountId, input.name, input.projectId),
         ),
     }),
-    developers: t.router({
-      getAuxBrowserSkill: procedure
-        .input(scope)
-        .query(({ input }) => skill(input.accountId, 'aux-browser')),
-      checkAgentInstallations: procedure
-        .input(scope)
-        .query(async ({ input }) => {
-          store.requireAccount(input.accountId);
-          return Promise.all(
-            Object.entries(targets).map(async ([id, root]) => ({
-              id,
-              ...(await installed(
-                join(homedir(), root, 'aux-browser/SKILL.md'),
-              )),
-            })),
-          );
-        }),
-      installAuxBrowserSkill: procedure
-        .input(
-          scope.extend({
-            id: z.enum([
-              'general',
-              'codex',
-              'claude-code',
-              'cursor',
-              'opencode',
-            ]),
+    developers: t.mergeRouters(
+      createDeveloperSettingsRouter(services, options),
+      t.router({
+        getAuxBrowserSkill: procedure
+          .input(scope)
+          .query(({ input }) => skill(input.accountId, 'aux-browser')),
+        checkAgentInstallations: procedure
+          .input(scope)
+          .query(async ({ input }) => {
+            store.requireAccount(input.accountId);
+            return Promise.all(
+              Object.entries(targets).map(async ([id, root]) => ({
+                id,
+                ...(await installed(
+                  join(developerHome, root, 'aux-browser/SKILL.md'),
+                )),
+              })),
+            );
           }),
-        )
-        .mutation(async ({ input }) => {
-          const root = targets[input.id];
-          if (!root)
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Unknown installation target.',
+        installAuxBrowserSkill: procedure
+          .input(
+            scope.extend({
+              id: z.enum([
+                'general',
+                'codex',
+                'claude-code',
+                'cursor',
+                'opencode',
+              ]),
+            }),
+          )
+          .mutation(async ({ input }) => {
+            const root = targets[input.id];
+            if (!root)
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Unknown installation target.',
+              });
+            const source = await skill(input.accountId, 'aux-browser');
+            const directory = join(developerHome, root, 'aux-browser');
+            await mkdir(directory, { recursive: true });
+            await writeFile(join(directory, 'SKILL.md'), source.body, {
+              flag: 'wx',
             });
-          const source = await skill(input.accountId, 'aux-browser');
-          const directory = join(homedir(), root, 'aux-browser');
-          await mkdir(directory, { recursive: true });
-          await writeFile(join(directory, 'SKILL.md'), source.body, {
-            flag: 'wx',
-          });
-          return { installed: true, path: join(directory, 'SKILL.md') };
-        }),
-    }),
+            return { installed: true, path: join(directory, 'SKILL.md') };
+          }),
+      }),
+    ),
   };
 }
