@@ -1,0 +1,10 @@
+{
+  "agent": {
+    "id": "gokkffaiccpmoeodpmeamcjajcagjmkm",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzMC8cpWmbybitC0CpBbGxSFeLgzUrsdv5xm6eIT87SSzJSs0rvGF5NLsyP0pfCcmUqkW/nGxMn1ykuillT19qe6dSi1QCKpkK2wuWoeM+5MWdRCLhM6E0LpWHXpIGn7RPjKvOJ8XWQtB/f0qW0T8M7T2t++4yei+gZUjUV4SUD0qYMK9IP+qnq2ZEOsRW4MfsOXVvPSWuQ4d5vvo6DrwL5wfhrVln9IxfhrMSLFoCgbGzOBThbgzZDIvqCOvJqrzp1hFzwQdiDLA/IR3RkIJW7OmyuM6/PizdGy5kSQcMnqX80f3or7G7kHn6iVdjFxsbt2JxYRZ3N/9wTxBGEMuAQIDAQAB"
+  },
+  "vault": {
+    "id": "nbpghnminpifekjbgjefioajhiilbfla",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6e53ird4W4lwS7G2Cly54nGpw10++E04wPdAiutFu9dQwWdVii7MODObTztBuZfjqB4YMtSbe+mqbe4bxnZik2uEMajGQ9WSFJtRyIXBNq70jmmKPpRajNknpRSoXrqEcEMCHTeOkYIb9els6LBKCUr2EPoWh1Nxm5kdq9LJ6H1s9QE4eG8u2LIoenuhYfYF/6zjNcGlt91vGOUNQI1G3iMk8LwBHP0lMfSRFbyRmvYupGMCITsl8I8dY5bVm3OGkWxnPUxcKz8nXXXuCuJmku7mKK2DFymlO1+xdcIeAtgP+pDHwWLiqqrPTnO8tJjbNDlZcfWqxByY3Ebi2D6OMwIDAQAB"
+  }
+}

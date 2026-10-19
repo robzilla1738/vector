@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Aux — Aside's daemon, extensions, CLI and skills, rebranded and running on a Chromium build.",
+  "description": "Aux local browser, independently implemented from behavior specifications.",
   "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": ">=22.18.0"
@@ -13,9 +13,23 @@
     "aux": "node scripts/aux.mjs",
     "package": "node scripts/package-aux.mjs",
     "smoke": "node scripts/aside-smoke.mjs",
-    "check": "node scripts/vendor-aside.mjs && node scripts/aside-smoke.mjs"
+    "check": "node scripts/vendor-aside.mjs && node scripts/aside-smoke.mjs",
+    "check:cleanroom": "node scripts/check-cleanroom.mjs",
+    "reference:index": "node scripts/reference-hashes.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check apps packages",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test"
   },
   "dependencies": {
     "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^26.6.5",
+    "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   }
 }

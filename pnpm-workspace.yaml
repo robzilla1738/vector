@@ -1,3 +1,5 @@
+packages:
+  - apps/*
+  - packages/*
 allowBuilds:
-  esbuild: false
-  koffi: false
+  esbuild: true
