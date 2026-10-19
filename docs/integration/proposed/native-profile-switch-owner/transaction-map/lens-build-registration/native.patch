@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/lens/BUILD.gn
++++ b/chrome/browser/ui/lens/BUILD.gn
+@@ -138,6 +138,7 @@
+     ]
+ 
+     public_deps = [
++      "//chrome/browser:buildflags",
+       ":backend_logic_public",
+       "//base",
+       "//chrome/browser/companion/text_finder",

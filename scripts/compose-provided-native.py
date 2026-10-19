@@ -115,6 +115,17 @@ steps.extend([
     ('native-popup-resize-animation/native.patch', 'native-popup-resize-animation/manifest.json'),
     ('native-profile-switch-bookmark-ipc/native.patch', 'native-profile-switch-bookmark-ipc/manifest.json'),
     ('native-profile-switch-stock-panels/native.patch', 'native-profile-switch-stock-panels/manifest.json'),
+    ('native-profile-switch-browser-actions/native.patch', 'native-profile-switch-browser-actions/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/standard-services-profile.patch', 'native-profile-switch-owner/transaction-map/standard-services-profile-manifest.json'),
+    ('native-popup-reopen/native.patch', 'native-popup-reopen/manifest.json'),
+    ('native-popup-profile-ownership/native.patch', 'native-popup-profile-ownership/manifest.json'),
+    ('native-profile-switch-live-context/native.patch', 'native-profile-switch-live-context/manifest.json'),
+    ('native-profile-switch-action-service-build-registration/native.patch', 'native-profile-switch-action-service-build-registration/manifest.json'),
+    ('native-profile-switch-live-context/const-query-fix/native.patch', 'native-profile-switch-live-context/const-query-fix/manifest.json'),
+    ('native-profile-switch-focus/native.patch', 'native-profile-switch-focus/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/lens-entry-profile.patch', 'native-profile-switch-owner/transaction-map/lens-entry-profile-manifest.json'),
+    ('native-profile-switch-install-watcher/native.patch', 'native-profile-switch-install-watcher/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/lens-build-registration/native.patch', 'native-profile-switch-owner/transaction-map/lens-build-registration/manifest.json'),
 ])
 
 def safe(path):

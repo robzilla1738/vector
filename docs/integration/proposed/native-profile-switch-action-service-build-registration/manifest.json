@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "e01faf9aa61fb5f4718ceb4c25b4b60fa9984357504e390824e174e7886b80fb",
+      "outputSha256": "8e8f83ed4182feaf9b67c057ebd077449d4a64b79bfe7591435243cec4a162d7"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/BUILD.gn",
+      "baselineSha256": "14e0d42e10db34845e2d1d49b5ebb2b41549f44e15ecbb99eb47a427e0038098",
+      "outputSha256": "71032570ac85cda926f0a9203151aaf2a00a2777309fbbdfdf9e551171a49134"
+    },
+    {
+      "path": "chrome/browser/ui/views/data_sharing/BUILD.gn",
+      "baselineSha256": "cd16fb47714c7bc9d2b3c679325fb90fbf24fc27ec63cea26004a99205be3709",
+      "outputSha256": "a952fbc8c05342d68e83d1b1389fd3f34a75a5bedff4ad748a92e5003a1910d0"
+    },
+    {
+      "path": "chrome/browser/ui/browser_actions.h",
+      "baselineSha256": "4188dd8860ca1947164081f2c6679b9627b98f7594c8a027f345479a33dde0c4",
+      "outputSha256": "1e29cc61042fd2a756ef338f33f8a72086a873a738986510e5852c0ce959e0cc"
+    }
+  ],
+  "compiled": false
+}

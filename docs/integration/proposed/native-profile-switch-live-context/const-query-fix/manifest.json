@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/sessions/chrome_tab_restore_service_client.cc",
+      "baselineSha256": "1b762dbed243a11f74fd825f5623cf41bc861ad4767e959885cd2a08205e9bf0",
+      "outputSha256": "a983fa8a16a311005ab834ccfd51eba6923eb01e7b508d42f2caf9698763c704"
+    }
+  ],
+  "compiled": false,
+  "reason": "actual v90 compiler rejected missing const overload; preserve actual context equality check"
+}

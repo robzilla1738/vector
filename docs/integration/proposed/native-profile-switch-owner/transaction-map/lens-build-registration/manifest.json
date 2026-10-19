@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/lens/BUILD.gn",
+      "baselineSha256": "ce01e02a8e019ad2e5f699d2076aadaa5e883165fe38e0c7f808cbe3e047c705",
+      "outputSha256": "6a4db9b872ccb946d23bf16ee72f1fdf0a63fed10fffa9c4bef216dea3311056"
+    }
+  ],
+  "compiled": false
+}

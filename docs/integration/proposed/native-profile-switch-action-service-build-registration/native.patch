@@ -1,0 +1,64 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -89,6 +89,7 @@
+ source_set("browser_live_tab_context") {
+   public = [ "browser_live_tab_context.h" ]
+   public_deps = [
++      "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/ui/browser_window",
+     "//components/sessions",
+@@ -195,6 +196,7 @@
+   source_set("browser_actions") {
+     public = [ "browser_actions.h" ]
+     public_deps = [
++      "//chrome/browser:buildflags",
+       "//base",
+       "//ui/base/unowned_user_data",
+     ]
+@@ -309,6 +311,7 @@
+     public = [ "browser_tab_menu_model_delegate.h" ]
+     sources = [ "browser_tab_menu_model_delegate.cc" ]
+     public_deps = [
++      "//chrome/browser:buildflags",
+       "//base",
+       "//chrome/browser/ui/tabs:tab_menu",
+       "//components/sessions:session_id",
+@@ -515,6 +518,7 @@
+ 
+ if (!is_android) {
+   source_set("browser_action_prefs_listener") {
++    public_deps = [ "//chrome/browser:buildflags" ]
+     public = [ "browser_action_prefs_listener.h" ]
+     sources = [ "browser_action_prefs_listener.cc" ]
+     deps = [
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -198,6 +198,7 @@
+     deps = [ "//ui/views" ]
+ 
+     public_deps = [
++      "//chrome/browser:buildflags",
+       ":tab_strip_model_observer",
+       "//base",
+       "//components/tab_groups",
+--- a/chrome/browser/ui/views/data_sharing/BUILD.gn
++++ b/chrome/browser/ui/views/data_sharing/BUILD.gn
+@@ -15,6 +15,7 @@
+     "data_sharing_utils.h",
+   ]
+   public_deps = [
++      "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/ui/views/bubble",
+--- a/chrome/browser/ui/browser_actions.h
++++ b/chrome/browser/ui/browser_actions.h
+@@ -12,7 +12,6 @@
+ #include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/buildflags.h"
+-#include "ui/actions/action_id.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class BrowserActionPrefsListener;

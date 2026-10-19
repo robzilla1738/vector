@@ -1,0 +1,13 @@
+--- a/chrome/browser/sessions/chrome_tab_restore_service_client.cc
++++ b/chrome/browser/sessions/chrome_tab_restore_service_client.cc
+@@ -69,7 +69,9 @@
+   auto& contents =
+       static_cast<const sessions::ContentLiveTab*>(tab)->GetWebContents();
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+-  if (contents.GetBrowserContext() != profile_) {
++  // The LiveTab interface exposes const WebContents; Chromium's context query
++  // lacks a const overload. This query does not mutate the tab or its context.
++  if (const_cast<content::WebContents&>(contents).GetBrowserContext() != profile_) {
+     return nullptr;
+   }
+ #endif
