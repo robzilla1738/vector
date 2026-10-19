@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm",
+      "sourceSha256": "b49ded11b9a192c2e61db4c76d5c003a64eb3e5d8ab7b0d72869c558f67861c9",
+      "outputSha256": "827465abd0bd1e7311463631dde20ed39578fae3aaeb5c6664a53b108af6a12f",
+      "anchors": [
+        {
+          "find": "  value.Set(\"inDock\", state == dock::ChromeInDockStatus::kPresent);",
+          "replace": "  // Preserve the supplied macOS contract: only confirmed absence permits Add.\n  // The original isAdded expression also covers an unreadable Dock state;\n  // retain `known` so that uncertainty remains observable to newer consumers.\n  value.Set(\"supported\", true);\n  value.Set(\"isAdded\", state != dock::ChromeInDockStatus::kNotPresent);\n  value.Set(\"canAdd\", state == dock::ChromeInDockStatus::kNotPresent);\n  value.Set(\"inDock\", state == dock::ChromeInDockStatus::kPresent);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

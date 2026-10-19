@@ -1,0 +1,42 @@
+{
+  "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "arm64SliceOffset": 273940480,
+  "arm64SliceBytes": 249334160,
+  "anchors": [
+    {
+      "name": "dock-state-handler",
+      "arm64RvaStart": "0x814c024",
+      "arm64RvaEndExclusive": "0x814c18c",
+      "sha256": "d1eb0a0d46bb6e1569faa56b225cdaa0b4a87cf34caf8341e60938167796b7f5"
+    },
+    {
+      "name": "dock-add-handler",
+      "arm64RvaStart": "0x814c190",
+      "arm64RvaEndExclusive": "0x814c1bc",
+      "sha256": "4767962630caba2b358faebca223a7fdbb5094ecb6d07b2956a3070fdba2d9ed"
+    },
+    {
+      "name": "dock-presence-primitive",
+      "arm64RvaStart": "0x303395c",
+      "arm64RvaEndExclusive": "0x3033a18",
+      "sha256": "0962d930ce25db4c0b7b58233289d7a8a7ed21fdbd9427c4447f733e7e58bd71"
+    },
+    {
+      "name": "import-input-handler-prefix",
+      "arm64RvaStart": "0x4276580",
+      "arm64RvaEndExclusive": "0x42769b0",
+      "sha256": "1f53c1287441bc6a51c9b8e35c7241c8c31045d8af5fe229217e5a83f46187f2"
+    }
+  ],
+  "dockStateFields": {
+    "supported": "true",
+    "isAdded": "status != 1",
+    "canAdd": "status == 1"
+  },
+  "statusValues": {
+    "readFailure": 0,
+    "absent": 1,
+    "present": 2
+  },
+  "limits": "Bounded static raw instructions; no target execution or OS state reads. Dock primitive role inferred from matching upstream implementation and observed call chain. Import prefix does not prove absence of later or inherited gesture guards."
+}
