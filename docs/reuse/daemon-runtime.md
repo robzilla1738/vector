@@ -56,3 +56,7 @@ macOS required cached executable files are `bin/{node,npm,npx,python,python3,pyt
 `AUX_COMPUTER_USE_SOURCE_APP` selects an explicit bundled Computer Use source app; executable name becomes `aux-computer-use`. The existing runtime-copy/update lifecycle remains unchanged. Startup external skill synchronization is opt-in with `AUX_ALLOW_EXTERNAL_SKILL_SYNC=1`, preventing unsolicited writes to owner agent directories. Explicit skill APIs remain the supplied implementation. This is an intentional local platform boundary, not a claimed unchanged behavior.
 
 The compiled daemon ignores its development model-path environment variable. Its actual memory catalog/model/runtime caches remain `$AUX_HOME/memory-catalog.json`, `$AUX_HOME/models` and `$AUX_HOME/memory-runtimes`. Supplying those verified resources is integrator-owned.
+
+### Skill and secure-storage identifiers
+
+Additional counted identity edits change the six embedded `aside-browser` names to `aux-browser` (including skill directory/front matter and MCP client labels), five embedded guide command references, two CLI update command references and the embedded CLI presence check. No lowercase task/file/routine wire links or provider/schema fields are blanket-renamed. `AUX_KEYCHAIN_ID_PREFIX` becomes `aux`; production native scope mapping still needs carrier integration. The mapper does not substitute encrypted bytes or KEM behavior.

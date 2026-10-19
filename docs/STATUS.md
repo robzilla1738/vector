@@ -395,3 +395,7 @@ Added counted `AUX_AGENT_RUNTIME_DIR` and `AUX_COMPUTER_USE_SOURCE_APP` hooks, A
 ### Supplied native crypto reuse: isolated query boundary (2026-10-19, L1)
 
 Static REA/Ghidra and import inspection of the pinned original native binding confirms fixed original group/prefixes and actual P256/PQ KEM, HKDF/ChaChaPoly wrapped-key paths. Added a pure dictionary mapper plus compiled daemon/CLI-only DYLD interposer for SecItem add/copy/delete/update and key creation. Mapper fixtures pass without any Keychain calls: per-home Aux selectors, exact-group removal, unknown/opaque refusal, nested selectors, idempotence and value/flag preservation. The interceptor compiles; it has not been injected or used to execute the supplied binding. Details, evidence IDs and explicit remaining CryptoKit/enclave/native-carrier/browser-authority gaps are in `vendor/provided/native/README.md`. No owner Keychain, profiles, credentials or grants were touched.
+
+### Supplied daemon skill identifier alignment (2026-10-19, L1)
+
+Aligned embedded skill directory/front matter and MCP labels to `aux-browser`, guide/update/presence commands to `aux`, and dynamic secure-storage key prefix to `aux`. Lowercase task/file/routine wire links and provider fields remain unchanged. The pinned daemon now applies 34 counted edit groups; three focused pinning/auth tests pass. Native query interceptor remains staged and unexecuted against the original binding; production readiness is still false.

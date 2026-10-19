@@ -13,6 +13,10 @@ const edit = (name, from, to, count) => ({ name, from, to, count });
 
 // Keep branding separate from the necessary platform/auth/local-service changes.
 export const identityEdits = [
+  edit('browser skill identity', 'aside-browser', 'aux-browser', 6),
+  edit('embedded CLI guide', 'aside guide', 'aux guide', 5),
+  edit('embedded CLI update', 'aside --update', 'aux --update', 2),
+  edit('embedded CLI presence', '`aside` is not installed', '`aux` is not installed', 1),
   edit('environment namespace', 'ASIDE_', 'AUX_', 241),
   edit('bundle identity', 'at.studio.AsideBrowser', 'dev.aux.browser', 9),
   edit('Agent identity', 'fjdhphbdlfjogobdofoaagnlnkoibdge', 'gokkffaiccpmoeodpmeamcjajcagjmkm', 1),
@@ -33,6 +37,7 @@ export const identityEdits = [
 export const platformEdits = [
   edit('computer-use executable', 'aside-computer-use', 'aux-computer-use', 3),
   edit('bundled computer-use source', 'COMPUTER_USE_HELPER_SOURCE_APP_PATH=process.platform', 'COMPUTER_USE_HELPER_SOURCE_APP_PATH=process.env.AUX_COMPUTER_USE_SOURCE_APP?path.resolve(process.env.AUX_COMPUTER_USE_SOURCE_APP):process.platform', 1),
+  edit('secure storage namespace', 'AUX_KEYCHAIN_ID_PREFIX=`aside`', 'AUX_KEYCHAIN_ID_PREFIX=`aux`', 1),
   edit('bundled runtime path', 'AUX_RUNTIME_DIR=path.join(AUX_HOME_PATH,`runtime`)', 'AUX_RUNTIME_DIR=process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR):path.join(AUX_HOME_PATH,`runtime`)', 1),
   edit('explicit external skill synchronization', 'syncInstalledAsideBrowserSkills().catch(()=>{})', 'process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAsideBrowserSkills().catch(()=>{})', 1),
   // Original code hardcodes the original wire-prefix lengths.

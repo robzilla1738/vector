@@ -63,5 +63,5 @@ test('pinned actual daemon keeps real plan checks and count-checked Aux auth rew
   assert.ok(result.code.includes('/auth/onboarding/complete'));
   assert.ok(result.code.includes('process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR)'));
   assert.ok(result.code.includes('process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAuxBrowserSkills()'));
-  assert.equal(result.applied.length, 29);
+  assert.equal(result.applied.length, 34);
 });
