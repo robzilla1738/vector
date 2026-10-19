@@ -1,0 +1,33 @@
+{
+  "kind": "Actual current constructor/destructor/service/observer/menu delegate source",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/toolbar/app_menu_icon_controller.h",
+      "sha256": "86c078a9fcdc2da9917821df24ef374277944a8ca755368b2d680efaca76533f"
+    },
+    {
+      "path": "chrome/browser/ui/toolbar/app_menu_icon_controller.cc",
+      "sha256": "b7925da47758080e3398fc734c5057afeeef75262117325ac1d28f4d4c688771"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h",
+      "sha256": "5d668f48c8817c35b2018ff9bae56e98e8f4cb3382a1e8773c8e5d08e1db0adc"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h",
+      "sha256": "dd1367554757131a037426a6ba8ceeef16bd270bc7b23e4e1ec762a0332bc6a4"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.cc",
+      "sha256": "97783c147afeb2d2a829baaef1b2abcef99a627e631331614229f0d124fb39e2"
+    },
+    {
+      "path": "chrome/browser/ui/global_media_controls/media_toolbar_button_controller.cc",
+      "sha256": "b7162a92c47e64b04e4d1a132758ad38363dfb13d4a799c99ae7bf4db8f63af3"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.cc",
+      "sha256": "17bf1d59edf3a2c0fdc3a4485a9d860194d5e77d3a50e7088cf0aa9e674a4b6d"
+    }
+  ]
+}

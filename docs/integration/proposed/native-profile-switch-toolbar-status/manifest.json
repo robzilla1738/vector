@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "base": "Actual v71 current source; these status files unchanged by prior profile patches",
+  "files": [
+    {
+      "path": "chrome/browser/ui/toolbar/app_menu_icon_controller.h",
+      "baselineSha256": "86c078a9fcdc2da9917821df24ef374277944a8ca755368b2d680efaca76533f",
+      "outputSha256": "3e218d6855447e02fd630deeda6319a69c941ef3dae3e9a536b794bbe8eed20b"
+    },
+    {
+      "path": "chrome/browser/ui/toolbar/app_menu_icon_controller.cc",
+      "baselineSha256": "b7925da47758080e3398fc734c5057afeeef75262117325ac1d28f4d4c688771",
+      "outputSha256": "800c65ceb623b04e44999c9c2c658526f6778b5ed9ad6552654b478b0debfd63"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h",
+      "baselineSha256": "5d668f48c8817c35b2018ff9bae56e98e8f4cb3382a1e8773c8e5d08e1db0adc",
+      "outputSha256": "c22b9df7ea5106041436b1540f9b9310554e8be69d6a92deffddf9309bade72c"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h",
+      "baselineSha256": "dd1367554757131a037426a6ba8ceeef16bd270bc7b23e4e1ec762a0332bc6a4",
+      "outputSha256": "030fc19014e6ade7edbdb6ccc5940cd7599b03291ad3d997461da09a78a073d0"
+    },
+    {
+      "path": "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.cc",
+      "baselineSha256": "97783c147afeb2d2a829baaef1b2abcef99a627e631331614229f0d124fb39e2",
+      "outputSha256": "44b1c8da3a1dae8b6b052a3529c67e27b31f368990683d919e4229b29f83af72"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

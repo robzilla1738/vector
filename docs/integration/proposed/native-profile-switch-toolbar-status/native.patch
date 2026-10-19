@@ -1,0 +1,211 @@
+--- a/chrome/browser/ui/toolbar/app_menu_icon_controller.h
++++ b/chrome/browser/ui/toolbar/app_menu_icon_controller.h
+@@ -12,6 +12,7 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/scoped_observation.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/ui/global_error/global_error_observer.h"
+@@ -77,6 +78,10 @@
+   // will check whether there are any current pending updates, global errors,
+   // etc. and based on that information trigger an appropriate call to the
+   // delegate.
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile& profile);
++#endif
+   void UpdateDelegate();
+ 
+   // Returns the icon type and severity based on the current state.
+@@ -103,7 +108,10 @@
+   // True for desktop Chrome on dev and canary channels.
+   const bool is_unstable_channel_;
+   const raw_ptr<UpgradeDetector> upgrade_detector_;
+-  const raw_ptr<Profile> profile_;
++  raw_ptr<Profile> profile_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool aux_profile_switch_paused_ = false;
++#endif
+   const raw_ptr<Delegate> delegate_;
+   base::ScopedObservation<GlobalErrorService, GlobalErrorObserver>
+       global_error_observation_{this};
+--- a/chrome/browser/ui/toolbar/app_menu_icon_controller.cc
++++ b/chrome/browser/ui/toolbar/app_menu_icon_controller.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/toolbar/app_menu_icon_controller.h"
+ 
+ #include "base/check_op.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "base/rand_util.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
+@@ -143,7 +144,31 @@
+   upgrade_detector_->RemoveObserver(this);
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void AppMenuIconController::PrepareForAuxProfileSwitch() {
++  CHECK(!aux_profile_switch_paused_);
++  aux_profile_switch_paused_ = true;
++  global_error_observation_.Reset();
++}
++
++void AppMenuIconController::RebindForAuxProfileSwitch(Profile& profile) {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(profile.IsRegularProfile());
++  CHECK(!global_error_observation_.IsObserving());
++  profile_ = &profile;
++  global_error_observation_.Observe(
++      GlobalErrorServiceFactory::GetForProfile(profile_));
++  aux_profile_switch_paused_ = false;
++  UpdateDelegate();
++}
++#endif
++
+ void AppMenuIconController::UpdateDelegate() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_paused_) {
++    return;
++  }
++#endif
+   delegate_->UpdateTypeAndSeverity(GetTypeAndSeverity());
+ }
+ 
+--- a/chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h
++++ b/chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h
+@@ -8,6 +8,7 @@
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "build/branding_buildflags.h"
+ #include "ui/menus/simple_menu_model.h"
+ 
+@@ -27,6 +28,10 @@
+   std::unique_ptr<ui::SimpleMenuModel> CreateMenuModel();
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  friend class MediaToolbarButtonView;
++  void RebindForAuxProfileSwitch(Profile& profile) { profile_ = &profile; }
++#endif
+   friend class MediaToolbarButtonContextualMenuTest;
+ 
+   // ui::SimpleMenuModel::Delegate:
+@@ -42,6 +47,6 @@
+   void ReportIssue();
+ #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+ 
+-  const raw_ptr<Profile> profile_;
++  raw_ptr<Profile> profile_;
+ };
+ #endif  // CHROME_BROWSER_UI_VIEWS_GLOBAL_MEDIA_CONTROLS_MEDIA_TOOLBAR_BUTTON_CONTEXTUAL_MENU_H_
+--- a/chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h
++++ b/chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "base/observer_list.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/global_media_controls/media_toolbar_button_controller_delegate.h"
+ #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+@@ -17,6 +18,7 @@
+ class MediaNotificationService;
+ class MediaToolbarButtonController;
+ class MediaToolbarButtonObserver;
++class Profile;
+ class MediaToolbarButtonContextualMenu;
+ 
+ // Media icon shown in the trusted area of toolbar. Its lifetime is tied to that
+@@ -35,6 +37,11 @@
+   MediaToolbarButtonView& operator=(const MediaToolbarButtonView&) = delete;
+   ~MediaToolbarButtonView() override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanPrepareForAuxProfileSwitch(Profile* target) const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch();
++#endif
+   void AddObserver(MediaToolbarButtonObserver* observer);
+   void RemoveObserver(MediaToolbarButtonObserver* observer);
+ 
+@@ -56,7 +63,10 @@
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
+ 
+-  const raw_ptr<MediaNotificationService> service_;
++  raw_ptr<MediaNotificationService> service_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool aux_profile_switch_paused_ = false;
++#endif
+ 
+   std::unique_ptr<MediaToolbarButtonController> controller_;
+ 
+--- a/chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.cc
++++ b/chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
+ 
+ #include "base/observer_list.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "build/build_config.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+@@ -70,6 +71,42 @@
+   controller_.reset();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool MediaToolbarButtonView::CanPrepareForAuxProfileSwitch(
++    Profile* target) const {
++  return target && target->IsRegularProfile() &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         !aux_profile_switch_paused_ && !IsMenuShowing() &&
++         !MediaDialogView::IsShowing() &&
++         MediaNotificationServiceFactory::GetForProfile(target);
++}
++
++void MediaToolbarButtonView::PrepareForAuxProfileSwitch() {
++  CHECK(!aux_profile_switch_paused_);
++  CHECK(!IsMenuShowing());
++  CHECK(!MediaDialogView::IsShowing());
++  aux_profile_switch_paused_ = true;
++  // Real destruction unregisters from the old MediaItemManager. It may call
++  // Hide on this same button, whose permanent observer list must survive.
++  controller_.reset();
++}
++
++void MediaToolbarButtonView::RebindForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!controller_);
++  CHECK(browser_->GetProfile()->IsRegularProfile());
++  service_ = MediaNotificationServiceFactory::GetForProfile(
++      browser_->GetProfile());
++  CHECK(service_);
++  if (context_menu_) {
++    context_menu_->RebindForAuxProfileSwitch(*browser_->GetProfile());
++  }
++  aux_profile_switch_paused_ = false;
++  controller_ = std::make_unique<MediaToolbarButtonController>(
++      this, service_->media_item_manager());
++}
++#endif
++
+ void MediaToolbarButtonView::AddObserver(MediaToolbarButtonObserver* observer) {
+   observers_.AddObserver(observer);
+ }
+@@ -122,6 +159,11 @@
+ }
+ 
+ void MediaToolbarButtonView::ButtonPressed() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_profile_switch_paused_) {
++    return;
++  }
++#endif
+   if (MediaDialogView::IsShowing()) {
+     MediaDialogView::HideDialog();
+   } else {
