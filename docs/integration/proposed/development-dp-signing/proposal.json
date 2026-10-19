@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "kind": "conditional-development-signing-proposal-not-executable-policy",
+  "signingAuthorized": false,
+  "privateKeyAccessAuthorized": false,
+  "provisioningOperationsAuthorized": false,
+  "dpExecutionAuthorizedByThisProposal": false,
+  "identityInspection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/signing-identity-inspection.json",
+    "sha256": "2aa8d91a37b2db4ef2160b7436a99f2369f013f2896de81422f3f1bd1d083f90",
+    "identityKind": "Apple Development",
+    "publicCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "teamId": "68DV3N28DS",
+    "certificateAloneProvesGroupAuthority": false
+  },
+  "exactExistingDisposableHome": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+  "exactScope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "proposedFirstAndOnlySharedGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "proposedDpHosts": [
+    {
+      "role": "daemon",
+      "bundleIdentifier": "dev.aux.browser.daemon",
+      "proposedBundleRelativeToAuxRoot": "apps/daemon/Aux Daemon.app",
+      "proposedMainExecutable": "Contents/MacOS/aux-daemon",
+      "proposedEmbeddedProfile": "Contents/embedded.provisionprofile",
+      "candidateInput": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+        "sha256": "75e69c59aab6d42ab9701a4a6f615daaf4bcdef946b9c37602d1b9693eb12d09",
+        "finalCopiedTargetPinRequired": true
+      },
+      "proposedEntitlements": {
+        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "keychain-access-groups": [
+          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ],
+        "com.apple.security.cs.allow-jit": true,
+        "com.apple.security.cs.allow-unsigned-executable-memory": true,
+        "com.apple.security.cs.disable-library-validation": true,
+        "com.apple.security.cs.allow-dyld-environment-variables": true
+      },
+      "preserveExistingRuntimeFlag": true,
+      "profile": {
+        "path": null,
+        "sha256": null,
+        "cmsAuthorizationVerified": false,
+        "availabilityInspected": false,
+        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.daemon",
+        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "requiredTeamIdentifier": "68DV3N28DS",
+        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredPlatform": "macOS",
+        "mustAuthorizeActualTestMac": true,
+        "mustBeUnexpiredAtSigningAndExecution": true
+      }
+    },
+    {
+      "role": "cli-sea",
+      "bundleIdentifier": "dev.aux.browser.cli",
+      "proposedBundleRelativeToAuxRoot": "apps/cli/Aux CLI.app",
+      "proposedMainExecutable": "Contents/MacOS/aux-cli-sea",
+      "proposedEmbeddedProfile": "Contents/embedded.provisionprofile",
+      "candidateInput": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+        "sha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71",
+        "finalCopiedTargetPinRequired": true
+      },
+      "proposedEntitlements": {
+        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.cli",
+        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "keychain-access-groups": [
+          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ],
+        "com.apple.security.cs.allow-jit": true,
+        "com.apple.security.cs.allow-unsigned-executable-memory": true,
+        "com.apple.security.cs.disable-library-validation": true,
+        "com.apple.security.cs.allow-dyld-environment-variables": true
+      },
+      "preserveExistingRuntimeFlag": true,
+      "profile": {
+        "path": null,
+        "sha256": null,
+        "cmsAuthorizationVerified": false,
+        "availabilityInspected": false,
+        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.cli",
+        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "requiredTeamIdentifier": "68DV3N28DS",
+        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredPlatform": "macOS",
+        "mustAuthorizeActualTestMac": true,
+        "mustBeUnexpiredAtSigningAndExecution": true
+      }
+    },
+    {
+      "role": "carrier",
+      "bundleIdentifier": "dev.aux.browser.native-carrier",
+      "proposedBundleRelativeToAuxRoot": "native/Aux Native Carrier.app",
+      "proposedMainExecutable": "Contents/MacOS/aux-native-carrier",
+      "proposedEmbeddedProfile": "Contents/embedded.provisionprofile",
+      "candidateInput": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/provided-native-sea-current/aux-native-carrier",
+        "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6",
+        "finalCopiedTargetPinRequired": true
+      },
+      "proposedEntitlements": {
+        "com.apple.application-identifier": "68DV3N28DS.dev.aux.browser.native-carrier",
+        "com.apple.developer.team-identifier": "68DV3N28DS",
+        "keychain-access-groups": [
+          "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "preserveExistingRuntimeFlag": false,
+      "profile": {
+        "path": null,
+        "sha256": null,
+        "cmsAuthorizationVerified": false,
+        "availabilityInspected": false,
+        "requiredExactAppId": "68DV3N28DS.dev.aux.browser.native-carrier",
+        "requiredGroup": "68DV3N28DS.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+        "requiredDeveloperCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "requiredTeamIdentifier": "68DV3N28DS",
+        "requiredApplicationIdentifierPrefix": "68DV3N28DS",
+        "requiredPlatform": "macOS",
+        "mustAuthorizeActualTestMac": true,
+        "mustBeUnexpiredAtSigningAndExecution": true
+      }
+    }
+  ],
+  "requiredBeforeSigningApproval": [
+    "Explicit human permission for use of this signing private key; current identity inspection permission is read-only",
+    "Actual verified matching development provisioning profiles, each pinned and authorizing exact host AppID, ownTeam prefix, certificate, common Aux group and current Mac",
+    "Reviewed copied carrier bundle and CLI-main-executable packaging integration with fixed paths",
+    "Final copied-code prehashes, original immutable addon/runtime preservation and explicit inside-out signing plan",
+    "Fresh reviewed diagnostic artifact/preview pins; do not mutate the previously approved stage"
+  ],
+  "remainingRuntimeProof": [
+    "Actual validated entitlement/group authority for all3hosts",
+    "Original status/public/sign share exactly one original authority; never regenerate existing authority for symmetry",
+    "Exact-scope DP write/delete succeeds; report original errors and refuse fallback"
+  ],
+  "forbidden": [
+    "Original Aside group/team fallback",
+    "Invented Team ID or unauthorized profile claims",
+    "Ad hoc restricted-entitlement XML as proof of authority",
+    "File-Keychain/PEM/crypto-format substitution",
+    "Developer ID release/notarization/network provisioning",
+    "Signing or DP operations without explicit approval",
+    "Recursive/deep re-signing immutable original addons/framework/runtime/memory"
+  ],
+  "localProfileAvailability": {
+    "source": "/Users/rcourson/Documents/Vibe/web/out/local-development-profile-metadata.json",
+    "sha256": "bd34913bf4c20e783496a01cc65f6c2f30849bbdbafc16b925b464e12902fe49",
+    "inspectedFileCount": 13,
+    "usableUnexpiredCertificateAndTeamMatches": 0,
+    "auxDaemonCliCarrierGroupCandidates": 0,
+    "findingReportedAndValidatedBy": "root read-only public development metadata inventory",
+    "rawProfilesCopied": false
+  },
+  "currentBlockers": [
+    "No usable matching local development provisioning profile currently exists",
+    "Explicit approval for developer private-key signing is absent",
+    "Provisioning/create/network operations remain unauthorized",
+    "Profile-bearing carrier packaging and CLI actual-main association not implemented or observed"
+  ]
+}
