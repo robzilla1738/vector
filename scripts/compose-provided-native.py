@@ -111,6 +111,9 @@ steps.extend([
     ('native-profile-switch-user-education/native.patch', 'native-profile-switch-user-education/manifest.json'),
     ('native-profile-switch-owner/transaction-map/reload-metrics-profile.patch', 'native-profile-switch-owner/transaction-map/reload-metrics-profile-manifest.json'),
     ('native-profile-switch-user-education/build-registration/native.patch', 'native-profile-switch-user-education/build-registration/manifest.json'),
+    ('native-profile-switch-browser-view-prefs/native.patch', 'native-profile-switch-browser-view-prefs/manifest.json'),
+    ('native-popup-resize-animation/native.patch', 'native-popup-resize-animation/manifest.json'),
+    ('native-profile-switch-bookmark-ipc/native.patch', 'native-profile-switch-bookmark-ipc/manifest.json'),
 ])
 
 def safe(path):

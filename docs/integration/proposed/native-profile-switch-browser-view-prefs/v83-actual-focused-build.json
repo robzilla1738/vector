@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v83/manifest.json",
+  "compositionSha256": "db2096e8c51440c5cfa63707a997122110e507a004edab5d35ae5789f0e38cbc",
+  "appliedSourceOutputs": 211,
+  "artworkTargets": 23,
+  "originalReplaySteps": 93,
+  "originalReplayMatchesAllOutputs": true,
+  "gnLog": "out/native-integration/v83-gn.log",
+  "gnSummary": "Done. Made 36072 targets from 5013 files in 14074ms",
+  "focusedBuild": {
+    "exitCode": 0,
+    "elapsedSeconds": 46.34337568283081,
+    "targets": {
+      "browser_view": "obj/chrome/browser/ui/ui/browser_view.o",
+      "bookmarks_service_feature": "obj/chrome/browser/ui/bookmarks/impl/bookmarks_service_feature.o",
+      "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/ui/browser_view.o",
+      "obj/chrome/browser/ui/bookmarks/impl/bookmarks_service_feature.o",
+      "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+      "-j",
+      "10",
+      "-k",
+      "0"
+    ]
+  },
+  "buildLog": "out/native-integration/v83-focused-build.log",
+  "fullyLinked": false,
+  "runtimeAcceptance": false,
+  "signingPerformed": false
+}
