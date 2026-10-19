@@ -1,0 +1,48 @@
+{
+  "files": [
+    {
+      "root": "native",
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "a1d3478b74bc807c51a153a1fe178bb9cd3c0359267ae6da8bf0ac02e0a81ea9"
+    },
+    {
+      "root": "native",
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "40c3ea3277fd4cca8557b75471787775b2ebd26bce5ba9b1d2f5404453ab7c6b"
+    },
+    {
+      "root": "native",
+      "path": "base/files/file.h",
+      "sha256": "9f14d7ae8876aefc5b2c240814822d5a503c595a29f00656bc7690d744465fd2"
+    },
+    {
+      "root": "native",
+      "path": "base/files/file_util.h",
+      "sha256": "008da08c7df521695e33a3164b471e17ac1e55a64e38b0d82a9ab1c61fe2e8e2"
+    },
+    {
+      "root": "native",
+      "path": "base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "root": "root-workspace",
+      "path": "scripts/package-provided.mjs",
+      "sha256": "0cd1e99d143cdc56e8ac90388cdd1a5e2119c2429fa80c0fc6635187092588cc"
+    },
+    {
+      "root": "root-workspace",
+      "path": "scripts/lib/provided-package.mjs",
+      "sha256": "e94cf769dfde31ce158640259c032654ce3037aaeffde0c7f1f3210ede575269"
+    },
+    {
+      "root": "root-workspace",
+      "path": "scripts/lib/provided-assembly.mjs",
+      "sha256": "b69cd6aabe19638cf470b8312ccf54e88686fd8caca4f573979fd8ff273e4172"
+    }
+  ],
+  "patchSha256": "b5ac3aed0ef605b6f9abc65aea6b92bbe8f07ffa0b0b00218d1470eb6ee6a1ec",
+  "sharedSourceModified": false,
+  "nativeExecuted": false,
+  "nativeBuildRun": false
+}

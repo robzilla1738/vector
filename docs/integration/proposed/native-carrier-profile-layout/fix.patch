@@ -1,0 +1,53 @@
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -15,6 +15,7 @@
+ #include "base/command_line.h"
+ #include "base/containers/span.h"
+ #include "base/environment.h"
++#include "base/files/file.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
+ #include "base/json/json_reader.h"
+@@ -82,7 +83,41 @@
+       return {};
+     return path;
+   };
+-  const auto carrier = bundled("native/aux-native-carrier");
++  // Only an explicit packaged marker selects the profile-bearing carrier app.
++  // Missing metadata preserves the historical fixed loose path. Existing but
++  // unreadable/malformed metadata and unknown values never fall back to it.
++  std::string_view carrier_relative = "native/aux-native-carrier";
++  const auto metadata_path = paths->root.AppendASCII("bundle.json");
++  base::File metadata(metadata_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
++  if (!metadata.IsValid()) {
++    if (metadata.error_details() != base::File::FILE_ERROR_NOT_FOUND ||
++        base::IsLink(metadata_path)) {
++      return std::nullopt;
++    }
++  } else {
++    metadata.Close();
++    const auto safe_metadata = bundled("bundle.json");
++    std::string json;
++    // Current supplied inventories are about4MiB; reject oversized metadata.
++    constexpr size_t kMaxBundleMetadataSize = 16 * 1024 * 1024;
++    if (safe_metadata.empty() ||
++        !base::ReadFileToStringWithMaxSize(safe_metadata, &json,
++                                         kMaxBundleMetadataSize)) {
++      return std::nullopt;
++    }
++    auto bundle = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++    if (!bundle) {
++      return std::nullopt;
++    }
++    if (const auto* layout = bundle->Find("nativeCarrierLayout")) {
++      if (!layout->is_string() || layout->GetString() != "profile-bundle") {
++        return std::nullopt;
++      }
++      carrier_relative =
++          "native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier";
++    }
++  }
++  const auto carrier = bundled(carrier_relative);
+   const auto boundary = bundled("native/libaux-native-boundary.dylib");
+   const auto binding =
+       bundled("apps/daemon/Aux "

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "base": "actual appliedv27; stagedv29 does not modify installation_auth.cc",
+  "files": [
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "baselineSha256": "cf5483de050c1f12fd5080f13e53eca8aa93d8a79d473c6e59d313eefe993882",
+      "outputSha256": "8116f2d0d23b5b7f8441eb4f909edbce38c2cc705ff6e6f812f6805efd39e5dd",
+      "anchors": [
+        {
+          "find": "#include \"base/files/file_util.h\"",
+          "replace": "#include \"base/files/file.h\"\n#include \"base/files/file_util.h\"",
+          "count": 1
+        },
+        {
+          "find": "  const auto carrier = bundled(\"native/aux-native-carrier\");",
+          "replace": "  // Only an explicit packaged marker selects the profile-bearing carrier app.\n  // Missing metadata preserves the historical fixed loose path. Existing but\n  // unreadable/malformed metadata and unknown values never fall back to it.\n  std::string_view carrier_relative = \"native/aux-native-carrier\";\n  const auto metadata_path = paths->root.AppendASCII(\"bundle.json\");\n  base::File metadata(metadata_path, base::File::FLAG_OPEN | base::File::FLAG_READ);\n  if (!metadata.IsValid()) {\n    if (metadata.error_details() != base::File::FILE_ERROR_NOT_FOUND ||\n        base::IsLink(metadata_path)) {\n      return std::nullopt;\n    }\n  } else {\n    metadata.Close();\n    const auto safe_metadata = bundled(\"bundle.json\");\n    std::string json;\n    // Current supplied inventories are about4MiB; reject oversized metadata.\n    constexpr size_t kMaxBundleMetadataSize = 16 * 1024 * 1024;\n    if (safe_metadata.empty() ||\n        !base::ReadFileToStringWithMaxSize(safe_metadata, &json,\n                                         kMaxBundleMetadataSize)) {\n      return std::nullopt;\n    }\n    auto bundle = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);\n    if (!bundle) {\n      return std::nullopt;\n    }\n    if (const auto* layout = bundle->Find(\"nativeCarrierLayout\")) {\n      if (!layout->is_string() || layout->GetString() != \"profile-bundle\") {\n        return std::nullopt;\n      }\n      carrier_relative =\n          \"native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier\";\n    }\n  }\n  const auto carrier = bundled(carrier_relative);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "temporaryReplayVerified": true,
+  "sharedSourceModified": false,
+  "nativeBuildRun": false,
+  "runtimeAcceptance": false
+}
