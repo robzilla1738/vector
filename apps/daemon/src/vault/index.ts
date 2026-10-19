@@ -12,6 +12,7 @@ import {
   vaultFields,
 } from './schema.js';
 import type { VaultService } from './service.js';
+import { lockTimeoutMinutes, vaultSettings } from './settings.js';
 
 export type { VaultBiometryAdapter } from './service.js';
 export { VaultService } from './service.js';
@@ -121,6 +122,36 @@ export function createVaultRouters(
   return {
     passwordManager: t.router({
       auth,
+      settings: t.router({
+        get: procedure
+          .input(scope)
+          .query(({ input }) => vault.settings(input.accountId)),
+        set: procedure
+          .input(scope.extend({ settings: vaultSettings }))
+          .mutation(({ input }) =>
+            vault.setSettings(input.accountId, input.settings),
+          ),
+        update: procedure
+          .input(
+            scope.extend({
+              patch: z
+                .object({ lockTimeoutMinutes: lockTimeoutMinutes.optional() })
+                .strict(),
+            }),
+          )
+          .mutation(({ input }) =>
+            vault.setSettings(input.accountId, {
+              lockTimeoutMinutes:
+                input.patch.lockTimeoutMinutes ??
+                vault.settings(input.accountId).lockTimeoutMinutes,
+            }),
+          ),
+        reset: procedure
+          .input(scope)
+          .mutation(({ input }) =>
+            vault.setSettings(input.accountId, vaultSettings.parse({})),
+          ),
+      }),
       accounts: t.router({
         list: procedure.query(() =>
           store.accounts().map((account) => ({

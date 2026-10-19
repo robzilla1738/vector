@@ -21,6 +21,7 @@ import type { Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
 import { exportSnapshot } from './export';
 import { FillReview } from './fill-review';
+import { VaultLockSettings } from './lock-settings';
 import { OneTimeCode } from './one-time-code';
 import { PasskeyConsent } from './passkeys/consent';
 import { requestIdFromHash } from './passkeys/native';
@@ -1018,6 +1019,11 @@ function VaultSettings({
           Save
         </Button>
       </form>
+      <VaultLockSettings
+        accountId={accountId}
+        pending={pending}
+        mutate={mutate}
+      />
       <section className="stack">
         <h3>Replace recovery key</h3>
         <p>

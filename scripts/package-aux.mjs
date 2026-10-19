@@ -49,6 +49,7 @@ copy(join(root, 'apps/password-importer/dist/Aux Password Importer.app'), join(b
 copy(join(root, 'apps/memory/models/minilm'), join(bundle, 'apps/memory/models/minilm'));
 for (const name of ['NOTICE.md', 'manifest.json', 'LICENSE-APACHE-2.0.txt']) copy(join(root, 'apps/memory/models', name), join(bundle, 'apps/memory/models', name));
 copy(join(root, 'packages/ui/NOTICE.md'), join(bundle, 'licenses/ui/NOTICE.md'));
+copy(join(root, 'apps/daemon/src/passwords/WORDLIST-NOTICE.md'), join(bundle, 'licenses/passphrase-vocabulary.md'));
 copy(join(root, 'packages/ui/licenses'), join(bundle, 'licenses/ui/fonts-icons'));
 copy(join(root, 'vendor/runtime/sources.json'), join(bundle, 'licenses/runtime-sources.json'));
 copy(join(root, 'assets/brand/Aux.icns'), join(temporary, 'Contents/Resources/Aux.icns'));

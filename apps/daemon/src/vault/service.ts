@@ -39,10 +39,16 @@ import {
   validateRecordKeys,
   vaultSchema,
 } from './schema.js';
+import { type VaultSettings, vaultSettings } from './settings.js';
 
 type VaultStore = Pick<
   Store,
-  'requireAccount' | 'safeFile' | 'registerAccountDeletionHandler' | 'accounts'
+  | 'requireAccount'
+  | 'safeFile'
+  | 'registerAccountDeletionHandler'
+  | 'accounts'
+  | 'get'
+  | 'set'
 >;
 const passkeyRecord = z
   .object({ id: recordId, revision: z.number().int().positive() })
@@ -92,6 +98,42 @@ export interface VaultBiometryAdapter {
 }
 export class VaultService {
   private keys = new Map<number, Uint8Array>();
+  private deadlines = new Map<
+    number,
+    { at: number; timer: ReturnType<typeof setTimeout> }
+  >();
+  settings(accountId: number): VaultSettings {
+    this.store.requireAccount(accountId);
+    return vaultSettings.parse(
+      this.store.get(accountId, 'vaultSettings', 'preferences') ?? {},
+    );
+  }
+  setSettings(accountId: number, value: VaultSettings) {
+    this.key(accountId);
+    const parsed = vaultSettings.parse(value);
+    this.store.set(accountId, 'vaultSettings', 'preferences', parsed);
+    this.activity(accountId);
+    return parsed;
+  }
+  private expireIfDue(accountId: number) {
+    const deadline = this.deadlines.get(accountId);
+    if (deadline && deadline.at <= Date.now()) this.lock(accountId);
+  }
+  private activity(accountId: number) {
+    const previous = this.deadlines.get(accountId);
+    if (previous) clearTimeout(previous.timer);
+    this.deadlines.delete(accountId);
+    const minutes = this.settings(accountId).lockTimeoutMinutes;
+    if (minutes <= 0 || !this.keys.has(accountId)) return;
+    const at = Date.now() + minutes * 60_000;
+    const timer = setTimeout(
+      () => this.expireIfDue(accountId),
+      minutes * 60_000,
+    );
+    timer.unref();
+    this.deadlines.set(accountId, { at, timer });
+  }
+
   private generations = new Map<number, number>();
   private securityHandlers = new Set<(accountId: number) => void>();
   private freshChecks = new Map<
@@ -141,8 +183,10 @@ export class VaultService {
 
   private key(accountId: number) {
     this.store.requireAccount(accountId);
+    this.expireIfDue(accountId);
     const key = this.keys.get(accountId);
     if (!key) failure('PRECONDITION_FAILED', 'Unlock your Vault to continue.');
+    this.activity(accountId);
     return key;
   }
   generation(accountId: number) {
@@ -276,6 +320,7 @@ export class VaultService {
   }
   status(accountId: number) {
     this.store.requireAccount(accountId);
+    this.expireIfDue(accountId);
     return {
       initialized: existsSync(this.file(accountId)),
       locked: !this.keys.has(accountId),
@@ -322,6 +367,7 @@ export class VaultService {
       envelope.vaults[vault.id] = this.encrypt(accountId, 'vault', vault, key);
       this.write(envelope);
       this.keys.set(accountId, key);
+      this.activity(accountId);
       this.publishSecurity(accountId);
       return {
         ...this.status(accountId),
@@ -342,10 +388,14 @@ export class VaultService {
     const key = this.passwordMaster(envelope, password);
     this.lock(accountId);
     this.keys.set(accountId, key);
+    this.activity(accountId);
     this.publishSecurity(accountId);
     return this.status(accountId);
   }
   lock(accountId: number) {
+    const deadline = this.deadlines.get(accountId);
+    if (deadline) clearTimeout(deadline.timer);
+    this.deadlines.delete(accountId);
     const key = this.keys.get(accountId);
     if (key) {
       wipe(key);
@@ -411,6 +461,7 @@ export class VaultService {
       this.write(envelope);
       this.lock(accountId);
       this.keys.set(accountId, master);
+      this.activity(accountId);
       this.publishSecurity(accountId);
       return { ...this.status(accountId), recoveryKey: recoveryText(recovery) };
     } catch (error) {
@@ -592,6 +643,7 @@ export class VaultService {
         );
       this.lock(accountId);
       this.keys.set(accountId, master);
+      this.activity(accountId);
       this.publishSecurity(accountId);
       accepted = true;
       return this.status(accountId);

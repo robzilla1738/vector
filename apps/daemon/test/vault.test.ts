@@ -17,7 +17,15 @@ import { VaultService } from '../src/vault/service.js';
 
 function fixture(biometry?: VaultBiometryAdapter) {
   const directory = mkdtempSync(join(tmpdir(), 'aux-vault-test-'));
+  const preferences = new Map<string, unknown>();
   const store = {
+    get(id: number, namespace: string, key: string) {
+      return preferences.get(`${id}/${namespace}/${key}`) ?? null;
+    },
+    set(id: number, namespace: string, key: string, value: unknown) {
+      preferences.set(`${id}/${namespace}/${key}`, value);
+      return value;
+    },
     accounts() {
       return [
         {
@@ -331,5 +339,34 @@ test('recovery preserves items and invalidates old recovery key and old password
     await vault.unlock(1, 'third password value');
   } finally {
     fixtureState.close();
+  }
+});
+
+test('Vault idle expiry refreshes on use and settings changes, never on status polling', async (t) => {
+  const fixtureState = fixture();
+  try {
+    const { vault } = fixtureState;
+    await vault.setup(1, 'idle timeout test password');
+    assert.equal(vault.settings(1).lockTimeoutMinutes, 10080);
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: Date.now() });
+    vault.setSettings(1, { lockTimeoutMinutes: 15 });
+    t.mock.timers.tick(10 * 60_000);
+    assert.equal(vault.status(1).locked, false);
+    vault.snapshot(1);
+    t.mock.timers.tick(10 * 60_000);
+    assert.equal(vault.status(1).locked, false);
+    t.mock.timers.tick(6 * 60_000);
+    assert.equal(vault.status(1).locked, true);
+    assert.throws(() => vault.snapshot(1), /Unlock/);
+    await vault.unlock(1, 'idle timeout test password');
+    vault.setSettings(1, { lockTimeoutMinutes: -1 });
+    t.mock.timers.tick(30 * 24 * 60 * 60_000);
+    assert.equal(vault.status(1).locked, false);
+    vault.setSettings(1, { lockTimeoutMinutes: 15 });
+    t.mock.timers.tick(16 * 60_000);
+    assert.equal(vault.status(1).locked, true);
+  } finally {
+    fixtureState.close();
+    t.mock.timers.reset();
   }
 });
