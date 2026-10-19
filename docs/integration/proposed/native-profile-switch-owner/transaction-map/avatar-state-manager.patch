@@ -1,0 +1,267 @@
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
+@@ -12,6 +12,8 @@
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/time/time.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile_attributes_storage.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/profiles/avatar_toolbar_button_types.h"
+@@ -230,6 +232,12 @@
+   // updates, which will try to access the `StateManager`.
+   void InitializeStates();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
++
+   BrowserWindowInterface* browser() const { return browser_; }
+ 
+   // Returns the active state provider. This is guaranteed to be non-null after
+@@ -307,6 +315,10 @@
+ #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+ 
+  private:
++  // Record only profile-owned provider coordinators separately, preserving the
++  // permanent externally registered state observer list and its ordering.
++  void RegisterProfileObserver(Observer* observer);
++
+   // Creates all main states and attach listeners.
+   void CreateStatesAndListeners(BrowserWindowInterface* browser);
+ 
+@@ -384,7 +396,7 @@
+       subscription_eligibility::SubscriptionEligibilityService::Observer>
+       subscription_service_observation_{this};
+ 
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
+ 
+   // Gaia Id of the account that was signed in from having it's choice
+   // remembered following a web sign-in event but waiting for the available
+@@ -395,6 +407,10 @@
+   const base::TimeTicks creation_time_;
+ 
+   std::vector<raw_ref<Observer>> state_manager_observers_;
++  std::vector<raw_ref<Observer>> profile_state_manager_observers_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++#endif
+ 
+   base::WeakPtrFactory<AvatarToolbarButtonStateManager> weak_ptr_factory_{this};
+ };
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h"
+ 
++#include <algorithm>
+ #include <optional>
+ 
+ #include "base/auto_reset.h"
+@@ -2233,6 +2234,65 @@
+   states_.clear();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool AvatarToolbarButtonStateManager::CanRebindForAuxProfileSwitch() const {
++  auto* menu = ProfileMenuCoordinator::From(browser_);
++  return !aux_profile_switch_prepared_ && !is_updating_ && !is_initializing_ &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         profile_->IsRegularProfile() && &profile_.get() == browser_->GetProfile() &&
++         !HasExplicitButtonState() && (!menu || !menu->IsShowing());
++}
++
++void AvatarToolbarButtonStateManager::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(states_.contains(ButtonState::kNormal));
++  aux_profile_switch_prepared_ = true;
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  scoped_identity_manager_observation_.Reset();
++  profile_observation_.Reset();
++  subscription_service_observation_.Reset();
++  gaia_id_for_signin_choice_remembered_ = GaiaId();
++
++  // Remove only old-profile coordinators/reporters, not outside observers.
++  std::erase_if(state_manager_observers_, [this](const auto& observer) {
++    return std::ranges::any_of(profile_state_manager_observers_,
++                              [&observer](const auto& profile_observer) {
++      return &observer.get() == &profile_observer.get();
++    });
++  });
++  profile_state_manager_observers_.clear();
++  base::AutoReset<bool> initializing_reset(&is_initializing_, true);
++  // Keep the existing real NormalStateProvider during the synchronous cold
++  // interval so view/animation getters remain valid. It has no subscriptions.
++  // All profile-observing providers and their timers/weak callbacks are retired.
++  auto normal = std::move(states_.at(ButtonState::kNormal));
++  current_active_state_pair_ = nullptr;
++  states_.clear();
++  states_.emplace(ButtonState::kNormal, std::move(normal));
++  current_active_state_pair_ = &*states_.find(ButtonState::kNormal);
++  was_update_requested_ = false;
++}
++
++void AvatarToolbarButtonStateManager::RebindForAuxProfileSwitch(
++    Profile* target_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(target_profile);
++  CHECK(target_profile->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), target_profile);
++  CHECK(!scoped_identity_manager_observation_.IsObserving());
++  CHECK(!profile_observation_.IsObserving());
++  CHECK(!subscription_service_observation_.IsObserving());
++  current_active_state_pair_ = nullptr;
++  states_.clear();
++  profile_ = raw_ref<Profile>(*target_profile);
++  aux_profile_switch_prepared_ = false;
++  // Existing factory and initialization order bind actual target identity,
++  // sync, signin, passkeys, management, preferences and subscription services.
++  InitializeStates();
++  UpdateAvatarButton();
++}
++#endif
++
+ void AvatarToolbarButtonStateManager::InitializeStates() {
+   {
+     base::AutoReset<bool> initializing_reset(&is_initializing_, true);
+@@ -2320,12 +2380,23 @@
+   observer_list_.RemoveObserver(observer);
+ }
+ 
++void AvatarToolbarButtonStateManager::RegisterProfileObserver(
++    Observer* observer) {
++  RegisterObserver(observer);
++  profile_state_manager_observers_.emplace_back(*observer);
++}
++
+ void AvatarToolbarButtonStateManager::RegisterObserver(Observer* observer) {
+   state_manager_observers_.emplace_back(*observer);
+ }
+ 
+ void AvatarToolbarButtonStateManager::HandleButtonPressed(
+     bool is_source_accelerator) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+ #if !BUILDFLAG(IS_CHROMEOS)
+   if (browser_ &&
+       BrowserUserEducationInterface::From(browser_)->IsFeaturePromoActive(
+@@ -2447,8 +2518,8 @@
+ void AvatarToolbarButtonStateManager::CreateStatesAndListeners(
+     BrowserWindowInterface* browser) {
+   // Add each possible state for each Profile type or browser configuration,
+-  // since this structure is tied to Browser, in which a Profile cannot
+-  // change, it is correct to initialize the possible fixed states once.
++  // normally fixed for the Browser lifetime. The explicit Aux transaction
++  // retires old providers/listeners before creating the target profile states.
+ 
+   Profile* profile = browser->GetProfile();
+ 
+@@ -2462,7 +2533,7 @@
+ 
+   if (profile->IsRegularProfile()) {
+     if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
+-      RegisterObserver(static_cast<Observer*>(
++      RegisterProfileObserver(static_cast<Observer*>(
+           &OnSigninCoordinator::GetForProfile(*profile)));
+       states_[ButtonState::kOnSignin] =
+           std::make_unique<OnSigninStateProvider>(browser,
+@@ -2504,7 +2575,7 @@
+       auto promo_state_provider =
+           std::make_unique<PromoStateProvider>(browser,
+                                                /*state_observer=*/this);
+-      RegisterObserver(static_cast<Observer*>(
++      RegisterProfileObserver(static_cast<Observer*>(
+           &PromoStateProviderCoordinator::GetOrCreateForProfile(*profile)));
+       states_[ButtonState::kPromo] = std::move(promo_state_provider);
+     }
+@@ -2525,7 +2596,7 @@
+       states_[ButtonState::kPasskeysLockedError] =
+           std::make_unique<PasskeyStateProvider>(profile,
+                                                  /*state_observer=*/this);
+-      RegisterObserver(static_cast<Observer*>(
++      RegisterProfileObserver(static_cast<Observer*>(
+           &AvatarToolbarButtonPasskeyStateChangeReporter::GetOrCreateForProfile(
+               *profile)));
+     }
+@@ -2567,6 +2638,11 @@
+ 
+ void AvatarToolbarButtonStateManager::OnStateProviderUpdateRequest(
+     StateProvider* requesting_state) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   if (is_initializing_) {
+     return;
+   }
+@@ -2601,6 +2677,11 @@
+ }
+ 
+ void AvatarToolbarButtonStateManager::ComputeButtonActiveState() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   if (is_initializing_) {
+     return;
+   }
+@@ -2827,6 +2908,11 @@
+ }
+ 
+ void AvatarToolbarButtonStateManager::UpdateAvatarButton() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++#endif
+   if (is_initializing_) {
+     return;
+   }
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button.h
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button.h
+@@ -38,6 +38,12 @@
+   AvatarToolbarButton(const AvatarToolbarButton&) = delete;
+   AvatarToolbarButton& operator=(const AvatarToolbarButton&) = delete;
+   ~AvatarToolbarButton() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* target_profile);
++#endif
+ 
+   // Attempts showing the In-Product-Help in a subsequent web sign-in when the
+   // explicit browser sign-in preference was remembered.
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button.cc
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button.cc
+@@ -99,6 +99,20 @@
+ 
+ AvatarToolbarButton::~AvatarToolbarButton() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool AvatarToolbarButton::CanRebindForAuxProfileSwitch() const {
++  return state_manager_.CanRebindForAuxProfileSwitch();
++}
++
++void AvatarToolbarButton::PrepareForAuxProfileSwitch() {
++  state_manager_.PrepareForAuxProfileSwitch();
++}
++
++void AvatarToolbarButton::RebindForAuxProfileSwitch(Profile* target_profile) {
++  state_manager_.RebindForAuxProfileSwitch(target_profile);
++}
++#endif
++
+ void AvatarToolbarButton::UpdateIcon() {
+   // If the widget is not set yet, the button doesn't have access to the theme
+   // provider to set colors. Defer updating until AddedToWidget(). This may get

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual shared read-only four Avatar source files, disjoint toolbar/omnibox work",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h",
+      "baselineSha256": "2e9450cb53c5df17a0c9efd3eb7163d189ccb299c7b8dc4299f209ff1afba71e",
+      "outputSha256": "d6ca5f22e251c17a53cd212fc407473381c20808a8b4de7b1c8425f1ef1ac561"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc",
+      "baselineSha256": "93de47cbb1cbc58608fcdcfc18695987f6606344ad94da0d9973256d66a89518",
+      "outputSha256": "c95a1e509aeb37535b71c29ba4b417ae4f226ed236381afc7b092b6eda87dd57"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button.h",
+      "baselineSha256": "450d64a685c7c6ca477ceb964b43fbeb16f4c95b9c4ae77895eb57ca22ad1b73",
+      "outputSha256": "442665264c02e070c74e916b3bb15c5857d36e7a6e9ec69ea3991e300c070ebd"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button.cc",
+      "baselineSha256": "99ffbc65c18b744c5bacbeb1c054cef5a989a7a8cde5f95f2864677bd928adcc",
+      "outputSha256": "d8d4aadb03d9924f1f2d5649de9ba15fd622a04177bba9d53f0ebeae5c87bfdf"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

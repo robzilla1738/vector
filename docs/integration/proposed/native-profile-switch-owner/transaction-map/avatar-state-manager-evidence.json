@@ -1,0 +1,35 @@
+{
+  "method": "actual current155 source ownership/constructor/destructor and factory inspection; no runtime",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h",
+      "sha256": "2e9450cb53c5df17a0c9efd3eb7163d189ccb299c7b8dc4299f209ff1afba71e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc",
+      "sha256": "93de47cbb1cbc58608fcdcfc18695987f6606344ad94da0d9973256d66a89518"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/profiles/avatar_toolbar_button.h",
+      "sha256": "450d64a685c7c6ca477ceb964b43fbeb16f4c95b9c4ae77895eb57ca22ad1b73"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/profiles/avatar_toolbar_button.cc",
+      "sha256": "99ffbc65c18b744c5bacbeb1c054cef5a989a7a8cde5f95f2864677bd928adcc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/profiles/profile_menu_coordinator.h",
+      "sha256": "e8dfdbcad4fa9fb425f90065a9d6a31f257765aedfaa3949253d12b0c554bb20"
+    }
+  ],
+  "anchors": {
+    "state_factory": "AvatarToolbarButtonStateManager::CreateStatesAndListeners",
+    "provider_teardown": "AvatarToolbarButtonStateManager destructor clears providers before observer list",
+    "profile_observers": "three factory RegisterObserver callsites: OnSigninCoordinator/PromoStateProviderCoordinator/passkey reporter",
+    "normal_provider": "NormalStateProvider has no own observers/subscriptions",
+    "menu_guard": "ProfileMenuCoordinator::IsShowing"
+  },
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
